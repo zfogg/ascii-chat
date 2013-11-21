@@ -1,7 +1,7 @@
 TARGET = ../bin/server
 LIBS =
-CC = gcc
-CFLAGS = -g -Wall
+CC = clang
+CFLAGS = -g -Wall -O2
 
 .PHONY: default all clean
 
