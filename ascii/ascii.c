@@ -1,6 +1,10 @@
 #include "../headers/ascii.h"
 
 
-char *get_next_line() {
+void ascii_drawline(char *p) {
+    (void*)p;
+}
+
+char *ascii_getline() {
     return "";
 }

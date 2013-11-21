@@ -1,7 +1,7 @@
 CC = clang
-CFLAGS = -g -Wall -O2
+CFLAGS = -g -Wextra -O2
 
-OBJECTS = $(patsubst %.c, ../build/%.o, $(wildcard *.c))
+OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
 HEADERS = $(wildcard ../headers/*.h)
 
 
@@ -12,8 +12,8 @@ HEADERS = $(wildcard ../headers/*.h)
 default: $(OBJECTS)
 all: default
 
-../build/%.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
 
 clean:
 	-rm -f $(OBJECTS)

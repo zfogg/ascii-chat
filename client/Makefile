@@ -1,9 +1,12 @@
 TARGET = ../bin/client
-LIBS =
+TARGET_SRC = client
+LIBS = -ljpeg -lncurses
 CC = clang
-CFLAGS = -g -Wall -O2
+CFLAGS = -g -Wextra -O2
 
-OBJECTS = $(patsubst %.c, ../build/%.o, $(wildcard *.c))
+OBJS = $(patsubst %.c, %.o, $(wildcard *.c))
+OBJECTS = $(filter-out client.o, $(OBJS))
+NODEP_OBJS = $(patsubst %../ascii/.c, %.o, $(wildcard ../ascii/*.c))
 HEADERS = $(wildcard ../headers/*.h)
 
 
@@ -15,11 +18,11 @@ HEADERS = $(wildcard ../headers/*.h)
 default: $(TARGET)
 all: default
 
-../build/%.o: %.c $(HEADERS)
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+	$(CC) $(OBJECTS) $(NODEP_OBJS) -Wall $(LIBS) $(TARGET_SRC).c -o $@
 
 clean:
 	-rm -f $(OBJECTS)

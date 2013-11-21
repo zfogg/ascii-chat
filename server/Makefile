@@ -1,12 +1,12 @@
 TARGET = ../bin/server
-LIBS =
+LIBS = -ljpeg -lncurses
 CC = clang
-CFLAGS = -g -Wall -O2
+CFLAGS = -g -Wextra -O2
 
-OBJECTS = $(patsubst %.c, ../build/%.o, $(wildcard *.c))
+OBJS = $(patsubst %.c, %.o, $(wildcard *.c))
+OBJECTS = $(filter-out server.o, $(OBJS))
+NODEP_OBJS = $(patsubst %.c, %.o, $(wildcard ../ascii/*.c))
 HEADERS = $(wildcard ../headers/*.h)
-
-ALL_OBJECTS = $(wildcard ../build/*.o)
 
 
 .PHONY: default all clean
@@ -17,11 +17,11 @@ ALL_OBJECTS = $(wildcard ../build/*.o)
 default: $(TARGET)
 all: default
 
-../build/%.o: %.c $(HEADERS)
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(ALL_OBJECTS) -Wall $(LIBS) -o $@
+	$(CC) $(OBJECTS) $(NODEP_OBJS) -Wall $(LIBS) server.c -o $@
 
 clean:
 	-rm -f $(OBJECTS)
