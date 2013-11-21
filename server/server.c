@@ -11,11 +11,6 @@
 
 #include "../headers/ascii.h"
 
-char *get_next_line();
-
-char *get_next_line() {
-    return "string";
-}
 
 int main(int argc, char *argv[]) {
     int listenfd = 0, connfd = 0; // set file descriptors for listen and connection

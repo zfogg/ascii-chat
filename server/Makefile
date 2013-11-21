@@ -6,6 +6,8 @@ CFLAGS = -g -Wall -O2
 OBJECTS = $(patsubst %.c, ../build/%.o, $(wildcard *.c))
 HEADERS = $(wildcard ../headers/*.h)
 
+ALL_OBJECTS = $(wildcard ../build/*.o)
+
 
 .PHONY: default all clean
 
@@ -16,10 +18,10 @@ default: $(TARGET)
 all: default
 
 ../build/%.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o ../build/$@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+	$(CC) $(ALL_OBJECTS) -Wall $(LIBS) -o $@
 
 clean:
 	-rm -f $(OBJECTS)

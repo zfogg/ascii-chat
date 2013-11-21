@@ -3,7 +3,6 @@
 TARGETS = build/ascii.o bin/server bin/client
 
 
-
 default: $(TARGETS)
 all: default
 
@@ -17,4 +16,3 @@ clean:
 	$(MAKE) -C ascii  clean
 	$(MAKE) -C server clean
 	$(MAKE) -C client clean
-
