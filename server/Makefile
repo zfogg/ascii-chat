@@ -1,21 +1,24 @@
-CC=clang
-CFLAGS=-c -Wall -O2
-
 TARGET = ../bin/server
+LIBS =
+CC = gcc
+CFLAGS = -g -Wall
 
-HEADERS = server.h
-OBJECTS = server.o
-
+.PHONY: default all clean
 
 default: $(TARGET)
+all: default
+
+OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
+HEADERS = $(wildcard *.h)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+.PRECIOUS: $(TARGET) $(OBJECTS)
+
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
 
 clean:
-	-rm -f $(OBJECTS)
+	-rm -f *.o
 	-rm -f $(TARGET)
-
