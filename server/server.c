@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <time.h> 
 
-#include "../ascii/ascii.h"
+#include "../headers/ascii.h"
 
 char *get_next_line();
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
         strcpy(sendBuff, get_next_line());
         while (sendBuff[0] != '\0') {
             write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
-            printf("%s", sendBuff);
+            // printf("%s", sendBuff);
 
             // reset sendBuff with next line
             memset(sendBuff, '0', sizeof(sendBuff));
