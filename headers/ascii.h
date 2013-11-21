@@ -1,1 +1,2 @@
-char *get_next_line();
+void ascii_drawline(char *p);
+char *ascii_getline();

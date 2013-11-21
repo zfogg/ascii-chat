@@ -38,14 +38,14 @@ int main(int argc, char *argv[]) {
         printf("2) Connection initiated, sending data.\n");
 
         memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
-        strcpy(sendBuff, get_next_line());
+        strcpy(sendBuff, ascii_getline());
         while (sendBuff[0] != '\0') {
             write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
             // printf("%s", sendBuff);
 
             // reset sendBuff with next line
             memset(sendBuff, '0', sizeof(sendBuff));
-            strcpy(sendBuff, get_next_line());
+            strcpy(sendBuff, ascii_getline());
         }
 
         printf("3) Closing connection.\n---------------------\n");

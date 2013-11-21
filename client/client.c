@@ -9,10 +9,13 @@
 #include <errno.h>
 #include <arpa/inet.h> 
 
+#include "../headers/ascii.h"
+
 int main(int argc, char *argv[])
 {
     int sockfd = 0, n = 0;
-    char recvBuff[1024];
+    // char recvBuff[1024];
+    char recvBuff[10000];
     struct sockaddr_in serv_addr; 
 
     // incorrect number of arguments
@@ -51,9 +54,11 @@ int main(int argc, char *argv[])
     /* read from the socket as long as the size of the read is > 0 */
     while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
         recvBuff[n] = 0;
-        if(fputs(recvBuff, stdout) == EOF) {
-            printf("\n Error : Fputs error\n");
-        }
+
+        // if(fputs(recvBuff, stdout) == EOF) {
+        //     printf("\n Error : Fputs error\n");
+        // }
+        ascii_drawline(recvBuff);
     } 
 
     if(n < 0) {
