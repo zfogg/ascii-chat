@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <time.h> 
 
+#include "ascii.h"
+
 int main(int argc, char *argv[]) {
     int listenfd = 0, connfd = 0; // set file descriptors for listen and connection
     struct sockaddr_in serv_addr; // declare struct that will store connection info for socket
@@ -35,12 +37,22 @@ int main(int argc, char *argv[]) {
         printf("2) Connection initiated, sending data.\n");
         
         /* repeatedly reset the buffer, fill with new line, then send to socket */
-        int i = 0;
-        while (i < 5) {
-            memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
-            snprintf(sendBuff, sizeof(sendBuff), "The number %d.\n", i);
-            write(connfd, sendBuff, strlen(sendBuff)); // write whatever is in sendBuff to the connection w/ file descriptor connfd
-            i += 1;
+        // int i = 0;
+        // while (i < 5) {
+        //     memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
+        //     snprintf(sendBuff, sizeof(sendBuff), "The number %d.\n", i);
+        //     write(connfd, sendBuff, strlen(sendBuff)); // write whatever is in sendBuff to the connection w/ file descriptor connfd
+        //     i += 1;
+        // }
+
+        memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
+        snprintf(sendBuff, sizeof(sendBuff), get_next_line);
+        while (sendBuff[0] != '\0') {
+            write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
+            
+            // reset sendBuff with next line
+            memset(sendBuff, '0', sizeof(sendBuff));
+            snprintf(sendBuff, sizeof(sendBuff), get_next_line);
         }
 
         printf("3) Closing connection.\n---------------------\n");
