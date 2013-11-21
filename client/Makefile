@@ -1,13 +1,24 @@
-CC=clang
-CFLAGS=-c -Wall
+TARGET = ../bin/client
+LIBS =
+CC = clang
+CFLAGS = -g -Wall -O2
 
-all: client
+.PHONY: default all clean
 
-client: client.o
-	$(CC) client.o -o client.out
+default: $(TARGET)
+all: default
 
-client.o: client.c
-	$(CC) $(CFLAGS) -c client.c
+OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
+HEADERS = $(wildcard *.h)
+
+%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+.PRECIOUS: $(TARGET) $(OBJECTS)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
 
 clean:
-	rm -rf *.o
+	-rm -f *.o
+	-rm -f $(TARGET)
