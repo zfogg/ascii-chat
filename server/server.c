@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <time.h> 
 
-#include "ascii.h"
+#include "../ascii/ascii.h"
 
 int main(int argc, char *argv[]) {
     int listenfd = 0, connfd = 0; // set file descriptors for listen and connection
@@ -46,13 +46,15 @@ int main(int argc, char *argv[]) {
         // }
 
         memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
-        snprintf(sendBuff, sizeof(sendBuff), get_next_line);
+        // snprintf(sendBuff, sizeof(sendBuff), get_next_line());
+        strcpy(sendBuff, get_next_line());
         while (sendBuff[0] != '\0') {
             write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
             
             // reset sendBuff with next line
             memset(sendBuff, '0', sizeof(sendBuff));
-            snprintf(sendBuff, sizeof(sendBuff), get_next_line);
+            // snprintf(sendBuff, sizeof(sendBuff), get_next_line());
+            strcpy(sendBuff, get_next_line());
         }
 
         printf("3) Closing connection.\n---------------------\n");
