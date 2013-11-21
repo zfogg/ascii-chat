@@ -1,13 +1,21 @@
 CC=clang
-CFLAGS=-c -Wall
+CFLAGS=-c -Wall -O2
 
-all: server
+TARGET = ../bin/server
 
-server: server.o
-	$(CC) server.o -o server.out
+HEADERS = server.h
+OBJECTS = server.o
 
-server.o: server.c
-	$(CC) $(CFLAGS) -c server.c
+
+default: $(TARGET)
+
+%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -o $@
 
 clean:
-	rm -rf *.o
+	-rm -f $(OBJECTS)
+	-rm -f $(TARGET)
+
