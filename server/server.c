@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     // listen on socket listenfd with max backlog of 10 connections
     listen(listenfd, 10);
 
-    ascii_init(0, NULL);
+    ascii_init_read(0, NULL);
 
     while(1) {
         printf("1) Waiting for a connection...\n");

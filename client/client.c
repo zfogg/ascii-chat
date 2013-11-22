@@ -52,13 +52,12 @@ int main(int argc, char *argv[])
     }
 
     /* read from the socket as long as the size of the read is > 0 */
+    ascii_init_write();
     while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
         recvBuff[n] = 0;
-
         ascii_drawframe(recvBuff);
-
-        // ascii_drawline(recvBuff);
     }
+    ascii_destroy_write();
 
     if(n < 0) {
         printf("\n Read error \n");

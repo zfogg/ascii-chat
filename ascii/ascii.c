@@ -1,14 +1,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
+
+#include <curses.h>
 
 #include "../headers/ascii.h"
+
 #include "../headers/image.h"
 #include "../headers/options.h"
 
 
-void ascii_init(int argc, char** argv) {
+void ascii_init_read(int argc, char **argv) {
+    // Compute the 'width' and 'height' variables:
     parse_options(argc, argv);
+}
+
+void ascii_init_write() {
+    // Init curses
+    initscr();
+    noecho();
+    cbreak();
+    nodelay(stdscr, true);
+    keypad(stdscr, true);
+}
+
+void ascii_destroy_write() {
+    endwin();
 }
 
 char *ascii_getframe(char *filename) {
@@ -33,6 +52,10 @@ char *ascii_getframe(char *filename) {
     return out;
 }
 
-void ascii_drawframe(char *p) {
-    printf("%s\n", p);
+void ascii_drawframe(char *f) {
+    move(0, 0);
+    refresh();
+    usleep(200000);
+    printw(f);
+    refresh();
 }

@@ -14,7 +14,6 @@
 #include <jpeglib.h>
 
 #include "../headers/image.h"
-#include "../headers/handle_input.h"
 #include "../headers/options.h"
 #include "../headers/round.h"
 #include "../headers/aspect_ratio.h"
