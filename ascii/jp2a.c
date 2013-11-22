@@ -45,11 +45,9 @@ char* ascii_test_string(char* filename) {
     }
 }
 
-int ascii_init(int argc, char** argv, char* filename) {
+int ascii_init(int argc, char** argv) {
 
     parse_options(argc, argv);
-
-    ascii_test_string(filename);
 
     return 0;
 }
