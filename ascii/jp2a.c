@@ -22,8 +22,13 @@
 //    return 0;
 //}
 
+void ascii_init(int argc, char** argv) {
+    parse_options(argc, argv);
+}
+
 char* ascii_test_string(char* filename) {
     FILE *fp;
+    char *out = NULL;
 
     if ((fp = fopen(filename, "rb")) != NULL ) {
         image_t *i = image_read(fp);
@@ -33,21 +38,15 @@ char* ascii_test_string(char* filename) {
         image_clear(s);
         image_resize(i, s);
 
-        image_print(s);
+        out = image_print(s);
 
         image_destroy(i);
         image_destroy(s);
 
-        return -1;
     } else {
         printf("err: can't read file\n");
-        return -1;
     }
+
+    return out;
 }
 
-int ascii_init(int argc, char** argv) {
-
-    parse_options(argc, argv);
-
-    return 0;
-}
