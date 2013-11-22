@@ -62,19 +62,19 @@ int main(int argc, char *argv[]) {
     }
 
     /* read from the socket as long as the size of the read is > 0 */
-    ascii_init_write();
+    ascii_write_init();
     int read_result = 0;
     while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff)-1))) {
         recvBuff[read_result] = 0;
         ascii_write(recvBuff);
     }
-    ascii_destroy_write();
+    ascii_write_destroy();
 
     return 0;
 }
 
 void sigint_handler(int sig_no) {
     fprintf(stderr, "\n SIGINT: cleaning up and exiting . . . \n");
-    ascii_destroy_write();
+    ascii_write_destroy();
     close(sockfd);
 }

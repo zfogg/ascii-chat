@@ -7,7 +7,7 @@ CFLAGS = -g -Wextra -O2
 OBJS = $(patsubst %.c, %.o, $(wildcard *.c))
 OBJECTS = $(filter-out server.o, $(OBJS))
 NODEP_OBJS = $(patsubst %.c, %.o, $(wildcard ../ascii/*.c))
-NODEP_OBJS_CPP = $(patsubst %.cpp, %.o, $(wildcard ../ascii/*.cpp))
+NODEP_OBJS_CPP = $(patsubst %.cpp, %.o, $(wildcard ../webcam/*.cpp))
 HEADERS = $(wildcard ../headers/*.h)
 
 
@@ -26,5 +26,5 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) $(NODEP_OBJS) $(NODEP_OBJS_CPP) -Wall $(LIBS) $(TARGET_SRC).c -o $@
 
 clean:
-	-rm -f $(OBJECTS)
+	-rm -f $(OBJS)
 	-rm -f $(TARGET)

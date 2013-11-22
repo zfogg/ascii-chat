@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     // listen on socket listenfd with max backlog of 10 connections
     listen(listenfd, 10);
 
-    ascii_init_read(0, NULL);
+    ascii_read_init();
 
     while(1) {
         printf("1) Waiting for a connection...\n");
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 
         // Send ASCII of every filename argument.
         for (int i = 1; i < argc; i++) {
-            char *frame = ascii_read(argv[i]);
+            char *frame = ascii_read();
             int conn_status = send(connfd, frame, strlen(frame), 0);
             free(frame);
 

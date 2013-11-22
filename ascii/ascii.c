@@ -7,20 +7,19 @@
 #include <curses.h>
 
 #include "../headers/ascii.h"
-#include "../headers/webcam.hpp"
 
 #include "../headers/image.h"
 #include "../headers/options.h"
 
+#include "../headers/webcam.hpp"
 
-void ascii_init_read(int argc, char **argv) {
-    // Compute the 'width' and 'height' variables:
-    parse_options(argc, argv);
-    // Init any available webcam
-    ascii_init_cam();
+
+void ascii_read_init() {
+    parse_options(0, NULL); // computer globals 'width' and 'height'
+    webcam_init();
 }
 
-void ascii_init_write() {
+void ascii_write_init() {
     // Init curses
     initscr();
     noecho();
@@ -30,12 +29,8 @@ void ascii_init_write() {
     curs_set(0); // Invisible cursor.
 }
 
-void ascii_destroy_write() {
-    endwin();
-}
-
-char *ascii_read(char *filename) {
-    return ascii_cam_read();
+char *ascii_read() {
+    return ascii_from_jpeg(webcam_read());
 }
 
 void ascii_write(char *f) {
@@ -47,3 +42,24 @@ void ascii_write(char *f) {
     refresh();
     usleep(30000);
 }
+
+void ascii_write_destroy() {
+    endwin();
+}
+
+char *ascii_from_jpeg(FILE *fp) {
+    char *out = NULL;
+
+    image_t *img = image_read(fp);
+    fclose(fp);
+
+    image_t *s = image_new(width, height);
+    image_clear(s);
+    image_resize(img, s);
+    out = image_print(s);
+    image_destroy(img);
+    image_destroy(s);
+
+    return out;
+}
+

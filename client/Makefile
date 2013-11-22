@@ -7,7 +7,7 @@ CFLAGS = -g -Wextra -O2
 OBJS = $(patsubst %.c, %.o, $(wildcard *.c))
 OBJECTS = $(filter-out client.o, $(OBJS))
 NODEP_OBJS = $(patsubst %.c, %.o, $(wildcard ../ascii/*.c))
-NODEP_OBJS_CPP = $(patsubst %.cpp, %.o, $(wildcard ../ascii/*.cpp))
+NODEP_OBJS_CPP = $(patsubst %.cpp, %.o, $(wildcard ../webcam/*.cpp))
 HEADERS = $(wildcard ../headers/*.h)
 
 
