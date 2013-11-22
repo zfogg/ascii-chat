@@ -13,14 +13,13 @@
 
 
 int main(int argc, char *argv[]) {
-    int listenfd = 0, connfd = 0; // set file descriptors for listen and connection
-    struct sockaddr_in serv_addr; // declare struct that will store connection info for socket
+    // file descriptors for I/O
+    int listenfd = 0,
+        connfd   = 0;
 
-    char sendBuff[1025]; // declare buffer for sending data
+    struct sockaddr_in serv_addr = { 0 };
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0); // initialize socket
-    memset(&serv_addr, '0', sizeof(serv_addr)); // set serv_addr to all 0s
-    memset(sendBuff, '0', sizeof(sendBuff));    // set sendBuff to all 0s
 
     serv_addr.sin_family = AF_INET; // set address family to IPV4, AF_INET6 would be IPV6
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); // set address for socket
@@ -44,12 +43,14 @@ int main(int argc, char *argv[]) {
 
     while(1) {
         printf("1) Waiting for a connection...\n");
+
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL); // accept a connection
+
         printf("2) Connection initiated, sending data.\n");
 
         // Send ASCII of every filename argument.
-        for (int i=1; i < argc; i++) {
-            char *frame = ascii_getframe(argv[i]);
+        for (int i = 1; i < argc; i++) {
+            char *frame = ascii_read(argv[i]);
             int conn_status = send(connfd, frame, strlen(frame), 0);
             free(frame);
 

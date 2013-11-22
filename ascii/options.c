@@ -1,41 +1,39 @@
-/*
- * Copyright (C) 2006 Christian Stigen Larsen, http://csl.sublevel3.org
- * Distributed under the GNU General Public License (GPL) v2.
- *
- * Project homepage on http://jp2a.sf.net
- *
- * $Id: options.c 480 2006-10-12 14:07:56Z cslsublevel3org $
- */
-
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../headers/ascii.h"
 #include "../headers/options.h"
 
 
 // Default options
-int verbose = 0;
-int auto_height = 1;
-int auto_width = 0;
+int verbose           = 0,
+    auto_height       = 1,
+    auto_width        = 0,
 
-int width = 78;
+    width             = 78,
+    height            = 0,
 
-int height = 0;
-int use_border = 0;
-int invert = 1;
-int flipx = 0;
-int flipy = 0;
-int colorfill = 0;
-int convert_grayscale = 0;
-int debug = 0;
-int clearscr = 0;
-int term_width = 0;
-int term_height = 0;
-int usecolors = 0;
+    use_border        = 0,
 
-int termfit = 0;
+    invert            = 1,
+
+    flipx             = 0,
+    flipy             = 0,
+
+    colorfill         = 0,
+    convert_grayscale = 0,
+
+    debug             = 0,
+
+    clearscr          = 0,
+
+    term_width        = 0,
+    term_height       = 0,
+
+    usecolors         = 0,
+
+    termfit           = 0;
 
 #define ASCII_PALETTE_SIZE 256
 char ascii_palette[ASCII_PALETTE_SIZE + 1] = "   ...',;:clodxkO0KXNWM";
@@ -50,18 +48,8 @@ unsigned short int RED[256], GREEN[256], BLUE[256], GRAY[256];
 
 const char *fileout = "-"; // stdout
 
-const char* version   = "0.0.0";
-const char* copyright = "Copyright (C) 2006 Christian Stigen Larsen";
-const char* license   = "Distributed under the GNU General Public License (GPL) v2.";
-const char* url       = "http://jp2a.sf.net";
-
-void print_version() {
-    fprintf(stderr, "%s\n%s\n%s\n", version, copyright, license);
-}
-
 void precalc_rgb(const float red, const float green, const float blue) {
-    int n;
-    for ( n=0; n<256; ++n ) {
+    for (int n = 0; n < 256; ++n) {
         RED[n]   = ((float) n) * red;
         GREEN[n] = ((float) n) * green;
         BLUE[n]  = ((float) n) * blue;
@@ -76,9 +64,7 @@ void parse_options(int argc, char** argv) {
     #define IF_VARS(format, v1, v2) if ( sscanf(s, format, v1, v2) == 2 )
     #define IF_VAR(format, v1)      if ( sscanf(s, format, v1) == 1 )
 
-    int n, files, fit_to_use;
-
-    for ( n=1, files=0; n<argc; ++n ) {
+    for (int n = 1, files = 0; n < argc; ++n) {
         const char *s = argv[n];
 
         if ( *s != '-' ) { // count files to read
@@ -98,7 +84,6 @@ void parse_options(int argc, char** argv) {
         IF_OPT("--background=light")        { invert = 0; continue; }
         IF_OPTS("-x", "--flipx")            { flipx = 1; continue; }
         IF_OPTS("-y", "--flipy")            { flipy = 1; continue; }
-        IF_OPTS("-V", "--version")          { print_version(); exit(0); }
         IF_VAR ("--width=%d", &width)       { auto_height += 1; continue; }
         IF_VAR ("--height=%d", &height)     { auto_width += 1; continue; }
         IF_VAR ("--red=%f", &redweight)     { continue; }

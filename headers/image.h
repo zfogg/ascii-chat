@@ -26,4 +26,4 @@ image_t* image_new(int width, int height);
 void image_destroy(image_t *p);
 void image_clear(image_t *p);
 char* image_print(const image_t *p);
-void image_resize(const image_t* restrict s, image_t* restrict d);
+void image_resize(const image_t* s, image_t* d);

@@ -178,11 +178,10 @@ image_t* image_read(FILE *fp) {
         if ( jpg.output_components == 3 ) {
             memcpy(&p->pixels[(jpg.output_scanline-1)*p->w], &buffer[0][0], sizeof(rgb_t)*p->w);
         } else {
-            int x;
             rgb_t *pixels = &p->pixels[(jpg.output_scanline-1) * p->w];
 
             // grayscale
-            for ( x=0; x < jpg.output_width; ++x )
+            for (int x = 0; x < (int)jpg.output_width; ++x)
                 pixels[x].r = pixels[x].g = pixels[x].b = buffer[0][x];
         }
 
@@ -190,7 +189,7 @@ image_t* image_read(FILE *fp) {
             print_progress((float)jpg.output_scanline/(float)jpg.output_height);
     }
 
-    if ( verbose ) {
+    if (verbose) {
         fprintf(stderr, "\n");
         fflush(stderr);
     }

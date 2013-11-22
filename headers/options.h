@@ -1,13 +1,3 @@
-/*
- * Copyright (C) 2006 Christian Stigen Larsen, http://csl.sublevel3.org
- * Distributed under the GNU General Public License (GPL) v2.
- *
- * Project homepage on http://jp2a.sf.net
- *
- * $Id: options.h 480 2006-10-12 14:07:56Z cslsublevel3org $
- */
-
-// see options.c
 extern int verbose;
 extern int auto_height;
 extern int auto_width;

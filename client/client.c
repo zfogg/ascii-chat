@@ -18,7 +18,6 @@
 int sockfd = 0;
 
 int main(int argc, char *argv[]) {
-    int n = 0;
     char recvBuff[10000];
     struct sockaddr_in serv_addr;
 
@@ -27,10 +26,7 @@ int main(int argc, char *argv[]) {
     sa.sa_handler = sigint_handler;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGINT, &sa, NULL) == -1) {
-        perror("SIGINT");
-        exit(1);
-    }
+    sigaction(SIGINT, &sa, NULL);
 
     // incorrect number of arguments
     if(argc != 2) {
@@ -67,20 +63,18 @@ int main(int argc, char *argv[]) {
 
     /* read from the socket as long as the size of the read is > 0 */
     ascii_init_write();
-    while ((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
-        recvBuff[n] = 0;
-        ascii_draw(recvBuff);
+    int read_result = 0;
+    while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff)-1))) {
+        recvBuff[read_result] = 0;
+        ascii_write(recvBuff);
     }
     ascii_destroy_write();
-
-    if(n < 0) {
-        printf("\n Read error \n");
-        sigint_handler(0);
-    }
 
     return 0;
 }
 
 void sigint_handler(int sig_no) {
+    fprintf(stderr, "\n SIGINT: cleaning up and exiting . . . \n");
+    ascii_destroy_write();
     close(sockfd);
 }
