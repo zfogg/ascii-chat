@@ -8,7 +8,7 @@ OBJS           := $(patsubst %.c, %.o, $(wildcard *.c))
 OBJECTS        := $(filter-out server.o, $(OBJS))
 NODEP_OBJS     := $(patsubst %.c, %.o, $(wildcard ../ascii/*.c))
 NODEP_OBJS_CPP := $(patsubst %.cpp, %.o, $(wildcard ../webcam/*.cpp))
-HEADERS        := $(wildcard ../headers/*.h)
+HEADERS        := $(wildcard *.h)
 
 
 .PHONY: default all clean

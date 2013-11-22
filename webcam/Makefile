@@ -2,8 +2,8 @@ TARGET   := webcam.o
 CC       := g++
 CPPFLAGS := -g -Wextra -O2 -libstdc++
 
-OBJECTS := $(filter-out client.o, $(patsubst %.c, %.o, $(wildcard *.c)))
-HEADERS := $(patsubst %.c, ../headers/%.h, $(wildcard *.c))
+OBJECTS := $(patsubst %.c, %.o, $(wildcard *.c))
+HEADERS := $(patsubst %.c, %.h, $(wildcard *.c))
 
 
 .PHONY: default all clean
