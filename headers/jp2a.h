@@ -7,7 +7,7 @@
  * $Id: jp2a.h 439 2006-09-01 10:52:47Z csl $
  */
 
-int ascii_init(int, char **);
+void ascii_init(int, char **);
 
 char* ascii_test_string(char *);
 
