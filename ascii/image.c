@@ -66,28 +66,6 @@ void image_resize(const image_t* s, image_t* d) {
     global_image_resize_fun(s, d);
 }
 
-static void image_resize_nearest_neighbour(const image_t* source, image_t* dest) {
-    register unsigned int x, y;
-
-    register const rgb_t* restrict sourcepix = source->pixels;
-    register rgb_t* restrict destpix = dest->pixels;
-
-    const unsigned int sourceadd = source->w * (source->h / dest->h);
-
-    unsigned int lookupx[dest->w];
-    for ( x=0; x < dest->w; ++x )
-        lookupx[x] = (int)( (float)x * (float)source->w / (float)dest->w + 0.5f /* round */);
-
-    for ( y=0; y < dest->h; ++y ) {
-
-        for ( x=0; x < dest->w; ++x )
-            destpix[x] = sourcepix[lookupx[x]];
-
-        destpix   += dest->w;
-        sourcepix += sourceadd;
-    }
-}
-
 void image_resize_interpolation(const image_t* source, image_t* dest) {
     register unsigned int r, g, b;
 
@@ -172,12 +150,7 @@ image_t* image_read(FILE *fp) {
     struct jpeg_error_mgr jerr;
     image_t *p;
 
-    //  global_image_resize_fun = image_resize_nearest_neighbour;
     global_image_resize_fun = image_resize_interpolation;
-
-    // TODO: can have jpeglib resize to halves/doubles if it has
-    // compiled-in support of that.. could first scale to nearest
-    // output-dimension and resize on that, probably faster.
 
     jpg.err = jpeg_std_error(&jerr);
 
@@ -238,29 +211,25 @@ char* get_lum_palette() {
     return palette;
 }
 
-char** image_print(const image_t* p) {
+char* image_print(const image_t* p) {
     int h = p->h,
         w = p->w;
 
-    int len = h*(w+1);
-
     rgb_t* pix = p->pixels;
-
     char* palette = get_lum_palette();
 
-    char** lines = (char**)malloc(h*sizeof(char*));
+    int len = h*w;
+    char* lines = (char*)malloc((len + 1)*sizeof(char));
 
     for (int y = 0; y < h; y++) {
-        lines[y] = (char*)calloc(w+1, sizeof(char));
-        lines[y][w] = '\n';
         for (int x = 0; x < w; x++, pix++)
-            lines[y][x] = palette[
+            lines[(y*w)+x] = palette[
                 RED[pix->r] + GREEN[pix->g] + BLUE[pix->b]
             ];
+        lines[(y*w)+w-1] = '\n';
     }
 
-    for (int i = 0; i < h; i++)
-        printf("%s", lines[i]);
+    lines[len] = '\0';
 
     return lines;
 }

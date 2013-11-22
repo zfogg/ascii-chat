@@ -7,10 +7,12 @@
  * $Id: jp2a.h 439 2006-09-01 10:52:47Z csl $
  */
 
-int ascii_init(int argc, char** argv);
+int ascii_init(int, char **, char *);
+
+char* ascii_test_string(char *);
 
 // image.c
-void decompress(FILE *fin, FILE *fout);
+void decompress(FILE *, FILE *);
 
 // options.c
-void parse_options(int argc, char** argv);
+void parse_options(int, char **);

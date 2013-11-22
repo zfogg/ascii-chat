@@ -17,60 +17,39 @@
 
 
 //int main(int argc, char** argv) {
-//    ascii_init(argc, argv);
+//    ascii_init(argc, argv,
+//        "/home/zfogg/code/c/jp2a2/imgs2/frame_000.jpg");
 //    return 0;
 //}
 
-int ascii_init(int argc, char** argv) {
-    int store_width, store_height, store_autow, store_autoh;
-    FILE *fout = stdout;
+char* ascii_test_string(char* filename) {
     FILE *fp;
-    int n;
+
+    if ((fp = fopen(filename, "rb")) != NULL ) {
+        image_t *i = image_read(fp);
+        fclose(fp);
+
+        image_t *s = image_new(width, height);
+        image_clear(s);
+        image_resize(i, s);
+
+        image_print(s);
+
+        image_destroy(i);
+        image_destroy(s);
+
+        return -1;
+    } else {
+        printf("err: can't read file\n");
+        return -1;
+    }
+}
+
+int ascii_init(int argc, char** argv, char* filename) {
 
     parse_options(argc, argv);
 
-    store_width = width;
-    store_height = height;
-    store_autow = auto_width;
-    store_autoh = auto_height;
-
-    if ( strcmp(fileout, "-") ) {
-        if ( (fout = fopen(fileout, "wb")) == NULL ) {
-            fprintf(stderr, "Could not open '%s' for writing.\n", fileout);
-            return 1;
-        }
-    }
-
-    for ( n=1; n<argc; ++n ) {
-
-        width = store_width;
-        height = store_height;
-        auto_width = store_autow;
-        auto_height = store_autoh;
-
-        // read files
-        if ((fp = fopen(argv[n], "rb")) != NULL ) {
-            image_t *i = image_read(fp);
-            fclose(fp);
-
-            image_t *s = image_new(width, height);
-            image_clear(s);
-            image_resize(i, s);
-
-            image_print(s);
-
-            image_destroy(i);
-            image_destroy(s);
-
-            continue;
-        } else {
-            fprintf(stderr, "Can't open %s\n", argv[n]);
-            return 1;
-        }
-    }
-
-    if (fout != stdout )
-        fclose(fout);
+    ascii_test_string(filename);
 
     return 0;
 }
