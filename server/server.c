@@ -32,18 +32,16 @@ int main(int argc, char *argv[]) {
     // listen on socket listenfd with max backlog of 10 connections
     listen(listenfd, 10);
 
+    ascii_init(0, NULL);
+
     while(1) {
         printf("1) Waiting for a connection...\n");
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL); // accept a connection
         printf("2) Connection initiated, sending data.\n");
 
-        ascii_init(0, NULL);
-
         // get the frame as a big string
-        //char *frame = ascii_test_string("/home/zfogg/code/c/jp2a2/imgs2/frame_000.jpg");
         for (int i=1; i < argc; i++) {
-            char *frame = ascii_test_string(argv[i]);
-
+            char *frame = ascii_getframe(argv[i]);
             // write sendBuff to the connection w/ file descriptor connfd
             write(connfd, frame, strlen(frame));
             // free memory for frame

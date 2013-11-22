@@ -11,24 +11,7 @@ void ascii_init(int argc, char** argv) {
     parse_options(argc, argv);
 }
 
-char *ascii_getline() {
-    return "";
-}
-
-void ascii_drawline(char *p) {
-    (void)p;
-}
-
-
-//int main(int argc, char** argv) {
-//    // FIXME: debug
-//    ascii_init(argc, argv,
-//        "/home/zfogg/code/c/jp2a2/imgs2/frame_000.jpg");
-//    return 0;
-//}
-
-char* ascii_test_string(char* filename) {
-    // FIXME: debug
+char *ascii_getframe(char *filename) {
     FILE *in  = NULL;
     char *out = NULL;
 
@@ -44,10 +27,12 @@ char* ascii_test_string(char* filename) {
 
         image_destroy(i);
         image_destroy(s);
-    } else {
+    } else
         printf("err: can't read file\n");
-    }
 
     return out;
 }
 
+void ascii_drawframe(char *p) {
+    printf("%s\n", p);
+}
