@@ -1,14 +1,14 @@
-TARGET = ../bin/server
-TARGET_SRC = server
-LIBS = -ljpeg -lncurses `pkg-config --libs opencv`
-CC = g++
-CFLAGS = -g -Wextra -O2
+TARGET         := ../bin/server
+TARGET_SRC     := server
+LIBS           := -ljpeg -lncurses `pkg-config --libs opencv`
+CC             := g++
+CFLAGS         := -g -Wextra -O2
 
-OBJS = $(patsubst %.c, %.o, $(wildcard *.c))
-OBJECTS = $(filter-out server.o, $(OBJS))
-NODEP_OBJS = $(patsubst %.c, %.o, $(wildcard ../ascii/*.c))
-NODEP_OBJS_CPP = $(patsubst %.cpp, %.o, $(wildcard ../webcam/*.cpp))
-HEADERS = $(wildcard ../headers/*.h)
+OBJS           := $(patsubst %.c, %.o, $(wildcard *.c))
+OBJECTS        := $(filter-out server.o, $(OBJS))
+NODEP_OBJS     := $(patsubst %.c, %.o, $(wildcard ../ascii/*.c))
+NODEP_OBJS_CPP := $(patsubst %.cpp, %.o, $(wildcard ../webcam/*.cpp))
+HEADERS        := $(wildcard ../headers/*.h)
 
 
 .PHONY: default all clean
