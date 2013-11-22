@@ -52,10 +52,14 @@ char *ascii_getframe(char *filename) {
     return out;
 }
 
-void ascii_drawframe(char *f) {
-    move(0, 0);
+void ascii_draw(char *f) {
+    for (int i = 0; f[i] != '\0'; ++i) {
+        if (f[i] == '\t') {
+            move(0, 0);
+        } else {
+            addch(f[i]);
+        }
+    }
     refresh();
-    usleep(200000);
-    printw(f);
-    refresh();
+    usleep(70000);
 }

@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     ascii_init_write();
     while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
         recvBuff[n] = 0;
-        ascii_drawframe(recvBuff);
+        ascii_draw(recvBuff);
     }
     ascii_destroy_write();
 
