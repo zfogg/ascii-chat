@@ -54,11 +54,11 @@ int main(int argc, char *argv[])
     /* read from the socket as long as the size of the read is > 0 */
     while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
         recvBuff[n] = 0;
-
+        
         if(fputs(recvBuff, stdout) == EOF) {
             printf("\n Error : Fputs error\n");
         }
-        // ascii_drawline(recvBuff);
+        // ascii_drawline(recvBuff); 
     }
 
     if(n < 0) {
