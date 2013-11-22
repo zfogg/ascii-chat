@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
     while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
         recvBuff[n] = 0;
 
-        // if(fputs(recvBuff, stdout) == EOF) {
-        //     printf("\n Error : Fputs error\n");
-        // }
-        ascii_drawline(recvBuff);
+        if(fputs(recvBuff, stdout) == EOF) {
+            printf("\n Error : Fputs error\n");
+        }
+        // ascii_drawline(recvBuff);
     }
 
     if(n < 0) {

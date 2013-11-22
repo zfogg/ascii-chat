@@ -10,7 +10,7 @@
 #include <time.h> 
 
 #include "../headers/ascii.h"
-
+#include "../headers/jp2a.h"
 
 int main(int argc, char *argv[]) {
     int listenfd = 0, connfd = 0; // set file descriptors for listen and connection
@@ -48,14 +48,15 @@ int main(int argc, char *argv[]) {
         //     strcpy(sendBuff, ascii_getline());
         // }
 
-        char **ptr = ascii_getline();
-        int num_lines = 10;
-        int i = 0;
-        for (i = 0; i < num_lines; i++) {
-            write(connfd, ptr[i], strlen(ptr[i])); // write sendBuff to the connection w/ file descriptor connfd
-            free(ptr[i]);
-        }
-        free(ptr);
+        // char *frame = (char *)malloc(sizeof(char) * 50);
+        // strcpy(frame, "Here's a string\n");
+
+        ascii_init(0, NULL);
+
+        char *frame = ascii_test_string("/Users/Craig/Pictures/Rabbit.jpg");          // get the frame as a big string
+        printf("%s\n", frame);                  // print in server console to make sure it works
+        write(connfd, frame, strlen(frame));    // write sendBuff to the connection w/ file descriptor connfd
+        free(frame);                            // free memory for frame
 
         printf("3) Closing connection.\n---------------------\n");
         close(connfd);
