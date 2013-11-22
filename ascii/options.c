@@ -11,7 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../headers/jp2a.h"
+#include "../headers/ascii.h"
 #include "../headers/options.h"
 
 
