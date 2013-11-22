@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     if (setsockopt(listenfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) {
         perror("setsockopt");
         exit(1);
-    } 
+    }
 
     // listen on socket listenfd with max backlog of 10 connections
     listen(listenfd, 10);
@@ -47,13 +47,15 @@ int main(int argc, char *argv[]) {
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL); // accept a connection
         printf("2) Connection initiated, sending data.\n");
 
-        // get the frame as a big string
+        // Send ASCII of every filename argument.
         for (int i=1; i < argc; i++) {
             char *frame = ascii_getframe(argv[i]);
-            // write sendBuff to the connection w/ file descriptor connfd
-            write(connfd, frame, strlen(frame));
-            // free memory for frame
+            int conn_status = send(connfd, frame, strlen(frame), 0);
             free(frame);
+
+            // Check if connection is broken.
+            if (conn_status == -1)
+                break;
         }
 
         printf("3) Closing connection.\n---------------------\n");

@@ -53,13 +53,12 @@ char *ascii_getframe(char *filename) {
 }
 
 void ascii_draw(char *f) {
-    for (int i = 0; f[i] != '\0'; ++i) {
-        if (f[i] == '\t') {
+    for (int i = 0; f[i] != '\0'; ++i)
+        if (f[i] == '\t')
             move(0, 0);
-        } else {
+        else
             addch(f[i]);
-        }
-    }
+
     refresh();
     usleep(70000);
 }

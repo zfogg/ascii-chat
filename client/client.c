@@ -1,22 +1,36 @@
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <errno.h>
-#include <arpa/inet.h>
+
+#include "../headers/client.h"
 
 #include "../headers/ascii.h"
 
-int main(int argc, char *argv[])
-{
-    int sockfd = 0, n = 0;
-    // char recvBuff[1024];
+
+int sockfd = 0;
+
+int main(int argc, char *argv[]) {
+    int n = 0;
     char recvBuff[10000];
     struct sockaddr_in serv_addr;
+
+    // Close socket on program exit.
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        perror("SIGINT");
+        exit(1);
+    }
 
     // incorrect number of arguments
     if(argc != 2) {
@@ -46,14 +60,14 @@ int main(int argc, char *argv[])
     }
 
     // failed when trying to connect to the server
-    if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
        printf("\n Error : Connect Failed \n");
        return 1;
     }
 
     /* read from the socket as long as the size of the read is > 0 */
     ascii_init_write();
-    while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
+    while ((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0) {
         recvBuff[n] = 0;
         ascii_draw(recvBuff);
     }
@@ -61,7 +75,12 @@ int main(int argc, char *argv[])
 
     if(n < 0) {
         printf("\n Read error \n");
+        sigint_handler(0);
     }
 
     return 0;
+}
+
+void sigint_handler(int sig_no) {
+    close(sockfd);
 }

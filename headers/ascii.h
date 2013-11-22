@@ -3,3 +3,5 @@ void ascii_init_write();
 void ascii_destroy_write();
 char *ascii_getframe(char *);
 void ascii_draw(char *);
+
+#define ASCII_DELIMITER '\t'

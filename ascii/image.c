@@ -13,10 +13,11 @@
 #include <unistd.h>
 #include <jpeglib.h>
 
+#include "../headers/ascii.h"
+#include "../headers/aspect_ratio.h"
 #include "../headers/image.h"
 #include "../headers/options.h"
 #include "../headers/round.h"
-#include "../headers/aspect_ratio.h"
 
 
 typedef void (*image_resize_ptrfun)(const image_t* , image_t*);
@@ -217,7 +218,10 @@ char* image_print(const image_t* p) {
     char* palette = get_lum_palette();
 
     int len = h*w;
-    char* lines = (char*)malloc((len + 1)*sizeof(char));
+    char* lines = (char*)malloc((len + 2)*sizeof(char));
+
+    lines[len  ] = ASCII_DELIMITER;
+    lines[len+1] = '\0';
 
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++, pix++)
@@ -226,8 +230,6 @@ char* image_print(const image_t* p) {
             ];
         lines[(y*w)+w-1] = '\n';
     }
-
-    lines[len] = '\0';
 
     return lines;
 }
