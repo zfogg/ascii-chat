@@ -26,3 +26,5 @@ extern float redweight, greenweight, blueweight;
 extern unsigned short int RED[256], GREEN[256], BLUE[256], GRAY[256];
 extern const char *fileout;
 extern int usecolors;
+
+void parse_options(int, char **);

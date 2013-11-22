@@ -15,7 +15,6 @@
 
 #include "../headers/image.h"
 #include "../headers/handle_input.h"
-#include "../headers/jp2a.h"
 #include "../headers/options.h"
 #include "../headers/round.h"
 #include "../headers/aspect_ratio.h"

@@ -10,7 +10,7 @@
 #include <time.h> 
 
 #include "../headers/ascii.h"
-#include "../headers/jp2a.h"
+
 
 int main(int argc, char *argv[]) {
     int listenfd = 0, connfd = 0; // set file descriptors for listen and connection
@@ -37,26 +37,16 @@ int main(int argc, char *argv[]) {
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL); // accept a connection
         printf("2) Connection initiated, sending data.\n");
 
-        // memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
-        // strcpy(sendBuff, ascii_getline());
-        // while (sendBuff[0] != '\0') {
-        //     write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
-        //     // printf("%s", sendBuff);
-
-        //     // reset sendBuff with next line
-        //     memset(sendBuff, '0', sizeof(sendBuff));
-        //     strcpy(sendBuff, ascii_getline());
-        // }
-
-        // char *frame = (char *)malloc(sizeof(char) * 50);
-        // strcpy(frame, "Here's a string\n");
-
         ascii_init(0, NULL);
 
-        char *frame = ascii_test_string("/Users/Craig/Pictures/Rabbit.jpg");          // get the frame as a big string
-        printf("%s\n", frame);                  // print in server console to make sure it works
-        write(connfd, frame, strlen(frame));    // write sendBuff to the connection w/ file descriptor connfd
-        free(frame);                            // free memory for frame
+        // get the frame as a big string
+        //char *frame = ascii_test_string("/home/zfogg/code/c/jp2a2/imgs2/frame_000.jpg");
+        char *frame = ascii_test_string("/Users/Craig/Pictures/Rabbit.jpg");
+
+        // write sendBuff to the connection w/ file descriptor connfd
+        write(connfd, frame, strlen(frame));
+        // free memory for frame
+        free(frame);
 
         printf("3) Closing connection.\n---------------------\n");
         close(connfd);
