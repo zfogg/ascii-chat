@@ -29,6 +29,14 @@ int main(int argc, char *argv[]) {
     // bind socket based on address and ports set in serv_addr
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
+    int yes = 1;
+
+    // lose the pesky "Address already in use" error message
+    if (setsockopt(listenfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) {
+        perror("setsockopt");
+        exit(1);
+    } 
+
     // listen on socket listenfd with max backlog of 10 connections
     listen(listenfd, 10);
 
