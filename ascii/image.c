@@ -13,11 +13,11 @@
 #include <unistd.h>
 #include <jpeglib.h>
 
-#include "../headers/ascii.h"
-#include "../headers/aspect_ratio.h"
-#include "../headers/image.h"
-#include "../headers/options.h"
-#include "../headers/round.h"
+#include "ascii.h"
+#include "aspect_ratio.h"
+#include "image.h"
+#include "options.h"
+#include "round.h"
 
 
 typedef void (*image_resize_ptrfun)(const image_t* , image_t*);

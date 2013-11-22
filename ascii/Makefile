@@ -4,7 +4,7 @@ CFLAGS = -g -Wextra -O2
 OBJECTS_C = $(patsubst %.c, %.o, $(wildcard *.c))
 OBJECTS_CPP = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 OBJECTS = $(OBJECTS_C) $(OBJECTS_CPP)
-HEADERS = $(wildcard ../headers/*.h)
+HEADERS = $(wildcard *.h)
 
 
 .PHONY: default all clean

@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../headers/ascii.h"
-#include "../headers/options.h"
+#include "ascii.h"
+#include "options.h"
 
 
 // Default options

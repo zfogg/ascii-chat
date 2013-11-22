@@ -6,12 +6,11 @@
 
 #include <curses.h>
 
-#include "../headers/ascii.h"
+#include "ascii.h"
+#include "image.h"
+#include "options.h"
 
-#include "../headers/image.h"
-#include "../headers/options.h"
-
-#include "../headers/webcam.hpp"
+#include "../webcam/webcam.hpp"
 
 
 void ascii_read_init() {

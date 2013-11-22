@@ -10,9 +10,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../headers/client.h"
+#include "client.h"
 
-#include "../headers/ascii.h"
+#include "../ascii/ascii.h"
 
 
 int sockfd = 0;

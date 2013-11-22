@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <jpeglib.h>
 
-#include "../headers/webcam.hpp"
+#include "webcam.hpp"
 
 using namespace std;
 using namespace cv;

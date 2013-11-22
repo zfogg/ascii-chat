@@ -7,8 +7,8 @@
  * $Id: aspect_ratio.c 466 2006-10-02 11:35:03Z csl $
  */
 
-#include "../headers/options.h"
-#include "../headers/round.h"
+#include "options.h"
+#include "round.h"
 
 // Calculate width or height, but not both
 void aspect_ratio(const int jpeg_w, const int jpeg_h) {
