@@ -1,6 +1,6 @@
 .PHONY: default all clean
 
-TARGETS = build/ascii.o bin/server bin/client
+TARGETS = ascii/ascii.o bin/server bin/client
 
 
 default: $(TARGETS)
@@ -9,7 +9,7 @@ all: default
 bin/%:
 	$(MAKE) -C $(*F)
 
-build/%.o:
+ascii/%.o:
 	$(MAKE) -C $(*F)
 
 clean:
