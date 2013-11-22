@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
             char *frame = ascii_getframe(argv[i]);
             // write sendBuff to the connection w/ file descriptor connfd
             write(connfd, frame, strlen(frame));
+            write(connfd, "\t", strlen("\t"));
             // free memory for frame
             free(frame);
         }
