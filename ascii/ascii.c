@@ -2,7 +2,7 @@
 
 
 void ascii_drawline(char *p) {
-    (void*)p;
+    (void)p;
 }
 
 char *ascii_getline() {
