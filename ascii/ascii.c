@@ -16,6 +16,7 @@
 void ascii_init_read(int argc, char **argv) {
     // Compute the 'width' and 'height' variables:
     parse_options(argc, argv);
+    // Init any available webcam
     ascii_init_cam();
 }
 
