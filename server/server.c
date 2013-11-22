@@ -37,16 +37,25 @@ int main(int argc, char *argv[]) {
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL); // accept a connection
         printf("2) Connection initiated, sending data.\n");
 
-        memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
-        strcpy(sendBuff, ascii_getline());
-        while (sendBuff[0] != '\0') {
-            write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
-            // printf("%s", sendBuff);
+        // memset(sendBuff, '0', sizeof(sendBuff));  // reset the buffer with 0s
+        // strcpy(sendBuff, ascii_getline());
+        // while (sendBuff[0] != '\0') {
+        //     write(connfd, sendBuff, strlen(sendBuff)); // write sendBuff to the connection w/ file descriptor connfd
+        //     // printf("%s", sendBuff);
 
-            // reset sendBuff with next line
-            memset(sendBuff, '0', sizeof(sendBuff));
-            strcpy(sendBuff, ascii_getline());
+        //     // reset sendBuff with next line
+        //     memset(sendBuff, '0', sizeof(sendBuff));
+        //     strcpy(sendBuff, ascii_getline());
+        // }
+
+        char **ptr = ascii_getline();
+        int num_lines = 10;
+        int i = 0;
+        for (i = 0; i < num_lines; i++) {
+            write(connfd, ptr[i], strlen(ptr[i])); // write sendBuff to the connection w/ file descriptor connfd
+            free(ptr[i]);
         }
+        free(ptr);
 
         printf("3) Closing connection.\n---------------------\n");
         close(connfd);
