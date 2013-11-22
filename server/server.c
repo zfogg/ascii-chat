@@ -41,12 +41,14 @@ int main(int argc, char *argv[]) {
 
         // get the frame as a big string
         //char *frame = ascii_test_string("/home/zfogg/code/c/jp2a2/imgs2/frame_000.jpg");
-        char *frame = ascii_test_string("/Users/Craig/Pictures/Rabbit.jpg");
+        for (int i=1; i < argc; i++) {
+            char *frame = ascii_test_string(argv[i]);
 
-        // write sendBuff to the connection w/ file descriptor connfd
-        write(connfd, frame, strlen(frame));
-        // free memory for frame
-        free(frame);
+            // write sendBuff to the connection w/ file descriptor connfd
+            write(connfd, frame, strlen(frame));
+            // free memory for frame
+            free(frame);
+        }
 
         printf("3) Closing connection.\n---------------------\n");
         close(connfd);
