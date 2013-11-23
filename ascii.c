@@ -2,16 +2,35 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
+#include <time.h>
 
 #include <curses.h>
+
+#include "webcam.hpp"
 
 #include "ascii.h"
 #include "image.h"
 #include "options.h"
 
-#include "../webcam/webcam.hpp"
 
+#define _POSIX_C_SOURCE 200809L
+
+
+struct timespec tim = {
+    .tv_sec  = 0,
+    .tv_nsec = 0
+}, tim2 = {
+    .tv_sec  = 0,
+    .tv_nsec = 0
+};
+
+
+static inline
+void zzz() {
+    tim.tv_sec  = 0;
+    tim.tv_nsec = 500;
+    nanosleep(&tim, &tim2);
+}
 
 void ascii_read_init() {
     parse_options(0, NULL); // computer globals 'width' and 'height'
@@ -39,7 +58,7 @@ void ascii_write(char *f) {
         } else
             addch(f[i]);
     refresh();
-    usleep(30000);
+    zzz();
 }
 
 void ascii_write_destroy() {

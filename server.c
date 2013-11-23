@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "../ascii/ascii.h"
+#include "ascii.h"
 
 
 int main(int argc, char *argv[]) {

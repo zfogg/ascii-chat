@@ -18,7 +18,12 @@ vector<int> jpegbuf_params;
 
 VideoCapture camera(0);
 
-extern "C" void webcam_init() {
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void webcam_init() {
     if(!camera.isOpened()) {
         perror("Failed to connect to a webcam.");
         exit(1);
@@ -28,7 +33,8 @@ extern "C" void webcam_init() {
     jpegbuf_params.push_back(100);
 }
 
-extern "C" FILE *webcam_read() {
+
+FILE *webcam_read() {
     Mat frame, edges;
 
     camera >> frame;
@@ -43,3 +49,9 @@ extern "C" FILE *webcam_read() {
 
     return jpegfile;
 }
+
+
+#ifdef __cplusplus
+}
+#endif
+

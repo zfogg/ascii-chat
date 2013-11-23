@@ -8,4 +8,7 @@ void ascii_write_destroy();
 
 char *ascii_from_jpeg(FILE *);
 
+
 #define ASCII_DELIMITER '\t'
+
+#define ASCII_SLEEP_NS 5000000L

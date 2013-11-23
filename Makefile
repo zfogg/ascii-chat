@@ -1,43 +1,46 @@
-.PHONY: default all clean
-
-WEBCAM   := webcam
-ASCII    := ascii
-CLIENT   := client
-SERVER   := server
-
-BIN_DIR  := bin
-
-WEBCAM_  := $(wildcard $(WEBCAM)/*.cpp) $(wildcard $(WEBCAM)/*.h)
-ASCII_   := $(wildcard $(ASCII)/*.c)    $(wildcard $(ASCII)/*.h)
-CLIENT_  := $(wildcard $(CLIENT)/*.c)   $(wildcard $(CLIENT)/*.h)
-SERVER_  := $(wildcard $(SERVER)/*.c)   $(wildcard $(SERVER)/*.h)
-
-TARGETS  := $(addprefix $(BIN_DIR)/, $(CLIENT) $(SERVER))
-TARGETS_ := $(WEBCAM)/$(WEBCAM).o $(ASCII)/$(ASCII).o
+#!/usr/bin/make -f
 
 
-.PHONY: all
+BIN_D     = ./bin
 
-default: $(TARGETS)
+CC        = g++
+CXX       = g++
 
+CFLAGS    = -Wall -O2 -g
+CXXFLAGS  = -Wall -O2 -g
+
+CFLAGS   += -D _POSIX_C_SOURCE=200809L
+CXXFLAGS += -D _POSIX_C_SOURCE=200809L
+
+LDFLAGS  += -lncurses -ljpeg
+LDFLAGS  += `pkg-config --libs opencv`
+LDFLAGS  += -I.
+
+OBJS_C    = $(patsubst %.c, %.o, $(wildcard *.c))
+OBJS_CPP  = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+
+OBJS      = $(OBJS_C) $(OBJS_CPP)
+OBJS_     = $(filter-out $(addsuffix .o, $(TARGETS)), $(OBJS))
+
+HEADERS   = $(wildcard *.h)
+
+TARGETS   = server client
+TARGETS_  = $(addprefix $(BIN_D)/, $(TARGETS))
+
+
+.PHONY: clean default all
+
+default: $(TARGETS_)
 all: default
 
+.PRECIOUS: $(OBJS)
 
-$(BIN_DIR)/$(SERVER): $(TARGETS_) $(SERVER_)
-	$(MAKE) -C $(SERVER)
-
-$(BIN_DIR)/$(CLIENT): $(TARGETS_) $(CLIENT_)
-	$(MAKE) -C $(CLIENT)
-
-$(ASCII)/%.o: $(ASCII_)
-	$(MAKE) -C $(*F)
-
-$(WEBCAM)/%.o: $(WEBCAM_)
-	$(MAKE) -C $(*F)
-
+$(TARGETS_): $(BIN_D)/%: $(OBJS) $(HEADERS)
+	$(CXX) \
+		$(CXXFLAGS) \
+		$(LDFLAGS) \
+		$(OBJS_) \
+		$(*F).c -o $@
 
 clean:
-	$(MAKE) -C webcam clean
-	$(MAKE) -C ascii  clean
-	$(MAKE) -C server clean
-	$(MAKE) -C client clean
+	rm -f $(OBJS) $(TARGETS_)

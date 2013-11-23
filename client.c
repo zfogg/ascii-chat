@@ -12,7 +12,7 @@
 
 #include "client.h"
 
-#include "../ascii/ascii.h"
+#include "ascii.h"
 
 
 int sockfd = 0;
