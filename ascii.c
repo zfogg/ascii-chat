@@ -65,6 +65,9 @@ void ascii_write_destroy() {
     endwin();
 }
 
+void ascii_read_destroy() {
+}
+
 char *ascii_from_jpeg(FILE *fp) {
     char *out = NULL;
 

@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
 }
 
 void sigint_handler(int sig_no) {
+    (void)sig_no;
     fprintf(stderr, "\n SIGINT: cleaning up and exiting . . . \n");
     ascii_write_destroy();
     close(sockfd);

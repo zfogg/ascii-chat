@@ -1,57 +1,54 @@
 #!/usr/bin/make -f
 
 
-BIN_D        = ./bin
-OUT_D        = ./build
+BIN_D       = bin
+OUT_D       = build
 
-CC           = g++
-CXX          = g++
+CC          = clang -std=c99
+CXX         = clang
 
-CFLAGS       = -Wall -O2 -g
-CXXFLAGS     = -Wall -O2 -g
+CFLAGS      = -Wextra -pedantic -O2 -g
+CXXFLAGS    = -Wextra -pedantic -O2 -g
 
-CFLAGS      += -D _POSIX_C_SOURCE=200809L
-CXXFLAGS    += -D _POSIX_C_SOURCE=200809L
+CFLAGS     += -D_POSIX_C_SOURCE=200809L
+CXXFLAGS   +=
 
-LDFLAGS     += -lncurses -ljpeg
-LDFLAGS     += `pkg-config --libs opencv`
-LDFLAGS     += -I.
+LDFLAGS    += -lstdc++ -lncurses -ljpeg
+LDFLAGS    += `pkg-config --libs opencv`
+LDFLAGS    += -I.
 
-OBJS_C       = $(patsubst %.c,   $(OUT_D)/%.o, $(wildcard *.c))
-OBJS_CPP     = $(patsubst %.cpp, $(OUT_D)/%.o, $(wildcard *.cpp))
+TARGETS     = $(addprefix $(BIN_D)/, server client)
 
-OBJS         = $(OBJS_C) $(OBJS_CPP)
-# OBJS_: not targets, i.e. files without main methods.
-OBJS_        = $(filter-out $(patsubst %, $(OUT_D)/%.o, $(TARGETS)), $(OBJS))
+OBJS_C      = $(patsubst %.c,   $(OUT_D)/%.o, $(wildcard *.c))
+OBJS_CPP    = $(patsubst %.cpp, $(OUT_D)/%.o, $(wildcard *.cpp))
 
-HEADERS_C    = $(wildcard *.h)
-HEADERS_CPP  = $(wildcard *.hpp)
+OBJS        = $(OBJS_C) $(OBJS_CPP)
+OBJS_       = $(filter-out $(patsubst $(BIN_D)/%, $(OUT_D)/%.o, $(TARGETS)), $(OBJS))
+# ^ non-targets; files without main methods
 
-HEADERS      = $(HEADERS_C) $(HEADERS_CPP)
-
-TARGETS      = server client
-TARGETS_     = $(addprefix $(BIN_D)/, $(TARGETS))
+HEADERS_C   = $(wildcard *.h)
+HEADERS_CPP = $(wildcard *.hpp)
+HEADERS     = $(HEADERS_C) $(HEADERS_CPP)
 
 
 .PHONY: clean default all
 
-default: $(TARGETS_)
+default: $(TARGETS)
 all: default
 
 .PRECIOUS: $(OBJS)
 
-$(TARGETS_): $(BIN_D)/%: $(OBJS)
+$(TARGETS): $(BIN_D)/%: $(OBJS)
 	$(CXX) \
-		$(CXXFLAGS) \
 		$(LDFLAGS) \
 		$(OBJS_) \
 		$(*F).c -o $@
 
 $(OBJS_C): $(OUT_D)/%.o: %.c $(HEADERS)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJS_CPP): $(OUT_D)/%.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGETS_)
+	rm -f $(OBJS) $(TARGETS)

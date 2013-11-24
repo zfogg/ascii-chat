@@ -19,10 +19,6 @@ vector<int> jpegbuf_params;
 VideoCapture camera(0);
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void webcam_init() {
     if(!camera.isOpened()) {
         perror("Failed to connect to a webcam.");
@@ -43,15 +39,9 @@ FILE *webcam_read() {
 
     imencode(".jpg", frame, jpegbuf, jpegbuf_params);
 
-    FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size(), "r");
+    FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size()+1, "r");
 
-    waitKey(20); // FIXME: do I even need this?
+    //waitKey(20); // FIXME: do I even need this?
 
     return jpegfile;
 }
-
-
-#ifdef __cplusplus
-}
-#endif
-

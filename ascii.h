@@ -4,6 +4,7 @@ void ascii_write_init();
 char *ascii_read();
 void ascii_write(char *);
 
+void ascii_read_destroy();
 void ascii_write_destroy();
 
 char *ascii_from_jpeg(FILE *);
@@ -11,4 +12,4 @@ char *ascii_from_jpeg(FILE *);
 
 #define ASCII_DELIMITER '\t'
 
-#define ASCII_SLEEP_NS 5000000L
+#define ASCII_SLEEP_NS 50000L
