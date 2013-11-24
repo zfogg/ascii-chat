@@ -38,11 +38,11 @@ all: default
 
 .PRECIOUS: $(OBJS)
 
-$(TARGETS): $(BIN_D)/%: $(OBJS)
+$(TARGETS): $(BIN_D)/%: $(OUT_D)/%.o $(OBJS_)
 	$(CXX) \
+		-o $@  \
 		$(LDFLAGS) \
-		$(OBJS_) \
-		$(*F).c -o $@
+		$?
 
 $(OBJS_C): $(OUT_D)/%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
