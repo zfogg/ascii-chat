@@ -10,12 +10,14 @@ CXX         = clang
 CFLAGS      = -Wextra -pedantic -O2 -g
 CXXFLAGS    = -Wextra -pedantic -O2 -g
 
-CFLAGS     += -D_POSIX_C_SOURCE=200809L
-CXXFLAGS   +=
+CFLAGS     += -DUSE_CLANG_COMPLETER -D_POSIX_C_SOURCE=200809L
+CXXFLAGS   += -DUSE_CLANG_COMPLETER
+
+CFLAGS     += -x c   -isystem /usr/include -I .
+CXXFLAGS   += -x c++ -isystem /usr/include -I .
 
 LDFLAGS    += -lstdc++ -lncurses -ljpeg
 LDFLAGS    += `pkg-config --libs opencv`
-LDFLAGS    += -I.
 
 TARGETS     = $(addprefix $(BIN_D)/, server client)
 
