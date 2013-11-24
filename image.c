@@ -14,8 +14,10 @@
 #include <jpeglib.h>
 
 #include "ascii.h"
+#include "aspect_ratio.h"
 #include "image.h"
 #include "options.h"
+#include "round.h"
 
 
 typedef void (*image_resize_ptrfun)(const image_t* , image_t*);
@@ -164,6 +166,7 @@ image_t* image_read(FILE *fp) {
     row_stride = jpg.output_width * jpg.output_components;
     buffer = (*jpg.mem->alloc_sarray)((j_common_ptr) &jpg, JPOOL_IMAGE, row_stride, 1);
 
+    aspect_ratio(jpg.output_width, jpg.output_height);
     p = image_new(jpg.output_width, jpg.output_height);
 
     if ( verbose )

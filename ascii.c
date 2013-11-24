@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include <curses.h>
-
 #include "webcam.hpp"
 
 #include "ascii.h"
@@ -13,38 +11,21 @@
 #include "options.h"
 
 
-#define _POSIX_C_SOURCE 200809L
-
-
-struct timespec tim = {
-    .tv_sec  = 0,
-    .tv_nsec = 0
-}, tim2 = {
-    .tv_sec  = 0,
-    .tv_nsec = 0
-};
-
-
 static inline
 void zzz() {
-    tim.tv_sec  = 0;
-    tim.tv_nsec = 500;
     nanosleep(&tim, &tim2);
 }
 
 void ascii_read_init() {
-    parse_options(0, NULL); // computer globals 'width' and 'height'
+    parse_options(0, NULL);
+    // ^ compute globals 'width' and 'height'
     webcam_init();
 }
 
 void ascii_write_init() {
-    // Init curses
-    initscr();
-    noecho();
-    cbreak();
-    nodelay(stdscr, true);
-    keypad(stdscr, true);
-    curs_set(0); // Invisible cursor.
+    console_clear();
+    cursor_reset();
+    cursor_hide();
 }
 
 char *ascii_read() {
@@ -53,16 +34,17 @@ char *ascii_read() {
 
 void ascii_write(char *f) {
     for (int i = 0; f[i] != '\0'; ++i)
-        if (f[i] == '\t') {
-            move(0, 0);
-        } else
-            addch(f[i]);
-    refresh();
+        if (f[i] == '\t')
+            cursor_reset();
+        else
+            putchar(f[i]);
     zzz();
 }
 
 void ascii_write_destroy() {
-    endwin();
+    console_clear();
+    cursor_reset();
+    cursor_show();
 }
 
 void ascii_read_destroy() {

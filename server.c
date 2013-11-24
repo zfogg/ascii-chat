@@ -49,9 +49,7 @@ int main() {
             char *frame = ascii_read();
             conn = send(connfd, frame, strlen(frame), 0);
             if (conn == -1) {
-                close(connfd);
-                perror("socket failure");
-                exit(1);
+                break;
             }
             free(frame);
         }

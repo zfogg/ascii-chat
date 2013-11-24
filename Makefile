@@ -7,8 +7,8 @@ OUT_D       = build
 CC          = clang -std=c99
 CXX         = clang
 
-CFLAGS      = -Wextra -pedantic -O2 -g
-CXXFLAGS    = -Wextra -pedantic -O2 -g
+CFLAGS      = -Wextra -pedantic -O3 -g
+CXXFLAGS    = -Wextra -pedantic -O3 -g
 
 CFLAGS     += -DUSE_CLANG_COMPLETER -D_POSIX_C_SOURCE=200809L
 CXXFLAGS   += -DUSE_CLANG_COMPLETER
@@ -16,7 +16,7 @@ CXXFLAGS   += -DUSE_CLANG_COMPLETER
 CFLAGS     += -x c   -isystem /usr/include -I .
 CXXFLAGS   += -x c++ -isystem /usr/include -I .
 
-LDFLAGS    += -lstdc++ -lncurses -ljpeg
+LDFLAGS    += -lstdc++ -ljpeg
 LDFLAGS    += `pkg-config --libs opencv`
 
 TARGETS     = $(addprefix $(BIN_D)/, server client)
