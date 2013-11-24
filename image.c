@@ -16,7 +16,6 @@
 #include "ascii.h"
 #include "image.h"
 #include "options.h"
-#include "round.h"
 
 
 typedef void (*image_resize_ptrfun)(const image_t* , image_t*);
