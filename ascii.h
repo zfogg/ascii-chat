@@ -10,7 +10,7 @@ void ascii_write(char *);
 void ascii_read_destroy();
 void ascii_write_destroy();
 
-char *ascii_from_jpeg(FILE *);
+static char *from_jpeg(FILE *);
 
 
 #define ASCII_DELIMITER '\t'
@@ -29,10 +29,16 @@ char *ascii_from_jpeg(FILE *);
 #define cursor_show()   print("\e[?25h")
 
 
-static const struct timespec tim = {
+static const struct timespec
+ASCII_SLEEP_START = {
     .tv_sec  = 0,
     .tv_nsec = 500
-}, tim2 = {
+},
+ASCII_SLEEP_STOP = {
     .tv_sec  = 0,
     .tv_nsec = 0
 };
+
+#define ascii_zzz() nanosleep( \
+    (struct timespec *)&ASCII_SLEEP_START, \
+    (struct timespec *)&ASCII_SLEEP_STOP)

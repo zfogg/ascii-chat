@@ -11,11 +11,6 @@
 #include "options.h"
 
 
-static inline
-void zzz() {
-    nanosleep(&tim, &tim2);
-}
-
 void ascii_read_init() {
     parse_options(0, NULL);
     // ^ compute globals 'width' and 'height'
@@ -29,7 +24,22 @@ void ascii_write_init() {
 }
 
 char *ascii_read() {
-    return ascii_from_jpeg(webcam_read());
+    FILE *jpeg = webcam_read();
+
+    image_t *original = image_read(jpeg),
+            *resized  = image_new(width, height);
+
+    fclose(jpeg);
+
+    image_clear(resized);
+    image_resize(original, resized);
+
+    char *ascii = image_print(resized);
+
+    image_destroy(original);
+    image_destroy(resized);
+
+    return ascii;
 }
 
 void ascii_write(char *f) {
@@ -38,7 +48,7 @@ void ascii_write(char *f) {
             cursor_reset();
         else
             putchar(f[i]);
-    zzz();
+    ascii_zzz();
 }
 
 void ascii_write_destroy() {
@@ -49,20 +59,3 @@ void ascii_write_destroy() {
 
 void ascii_read_destroy() {
 }
-
-char *ascii_from_jpeg(FILE *fp) {
-    char *out = NULL;
-
-    image_t *img = image_read(fp);
-    fclose(fp);
-
-    image_t *s = image_new(width, height);
-    image_clear(s);
-    image_resize(img, s);
-    out = image_print(s);
-    image_destroy(img);
-    image_destroy(s);
-
-    return out;
-}
-

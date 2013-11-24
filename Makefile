@@ -4,11 +4,11 @@
 BIN_D       = bin
 OUT_D       = build
 
-CC          = clang -std=c99
+CC          = clang
 CXX         = clang
 
-CFLAGS      = -Wextra -pedantic -O3 -g
-CXXFLAGS    = -Wextra -pedantic -O3 -g
+CFLAGS      = -std=c99   -Wextra -O3 -g
+CXXFLAGS    = -std=c++11 -Wextra -O3 -g
 
 CFLAGS     += -DUSE_CLANG_COMPLETER -D_POSIX_C_SOURCE=200809L
 CXXFLAGS   += -DUSE_CLANG_COMPLETER
@@ -41,16 +41,17 @@ all: default
 .PRECIOUS: $(OBJS)
 
 $(TARGETS): $(BIN_D)/%: $(OUT_D)/%.o $(OBJS_)
-	$(CXX) \
-		-o $@  \
+	$(CXX) -o $@  \
 		$(LDFLAGS) \
 		$?
 
 $(OBJS_C): $(OUT_D)/%.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) -c $< -o $@ \
+		$(CFLAGS)
 
 $(OBJS_CPP): $(OUT_D)/%.o: %.cpp $(HEADERS)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) -c $< -o $@ \
+		$(CXXFLAGS)
 
 clean:
 	rm -f $(OBJS) $(TARGETS)

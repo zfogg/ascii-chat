@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2006 Christian Stigen Larsen, http://csl.sublevel3.org
- * Distributed under the GNU General Public License (GPL) v2.
- *
- * Project homepage on http://jp2a.sf.net
- *
- * $Id: image.c 480 2006-10-12 14:07:56Z cslsublevel3org $
- */
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -23,16 +14,15 @@
 typedef void (*image_resize_ptrfun)(const image_t* , image_t*);
 image_resize_ptrfun global_image_resize_fun = NULL;
 
-//void image_set_resize_function(
 image_t* image_new(int width, int height) {
     image_t *p;
 
-    if ( !(p = (image_t*) malloc (sizeof(image_t))) ) {
-        perror("jpa: coudln't allocate memory for image");
+    if (!(p = (image_t *) malloc(sizeof(image_t)))) {
+        perror("jp2a: coudln't allocate memory for image");
         exit(1);
     }
 
-    if ( !(p->pixels = (rgb_t*) malloc (width*height*sizeof(rgb_t))) ) {
+    if (!(p->pixels = (rgb_t *) malloc(width*height*sizeof(rgb_t)))) {
         perror("jp2a: couldn't allocate memory for image");
         exit(1);
     }
@@ -56,16 +46,11 @@ rgb_t* image_pixel(image_t *p, const int x, const int y) {
     return &p->pixels[x + y*p->w];
 }
 
-void image_resize(const image_t* s, image_t* d) {
-    if ( global_image_resize_fun == NULL ) {
-        fputs("jp2a: image_resize function not set\n", stderr);
-        exit(1);
-    }
-
+void image_resize(const image_t *s, image_t *d) {
     global_image_resize_fun(s, d);
 }
 
-void image_resize_interpolation(const image_t* source, image_t* dest) {
+void image_resize_interpolation(const image_t *source, image_t *dest) {
     register unsigned int r, g, b;
 
     const int ynrat = (float)source->h / (float)dest->h;
@@ -116,33 +101,7 @@ void image_resize_interpolation(const image_t* source, image_t* dest) {
     }
 }
 
-void print_border(FILE *f, int width) {
-    fputc('+', f);
-    while ( width-- ) fputc('-', f);
-    fprintf(f, "+\n");
-}
-
-void print_progress(const float percent) {
-    static char str[64] = "Decompressing image [....................]\r";
-    int n;
-
-    for ( n=0; n < ROUND(20.0f*percent); ++n )
-        str[21 + n] = '#';
-
-    fputs(str, stderr);
-    fflush(stderr);
-}
-
-void print_info(const struct jpeg_decompress_struct* jpg) {
-    fprintf(stderr, "Source width: %d\n", jpg->output_width);
-    fprintf(stderr, "Source height: %d\n", jpg->output_height);
-    fprintf(stderr, "Source color components: %d\n", jpg->output_components);
-    fprintf(stderr, "Output width: %d\n", width);
-    fprintf(stderr, "Output height: %d\n", height);
-    fprintf(stderr, "Output palette (%d chars): '%s'\n", (int)strlen(ascii_palette), ascii_palette);
-}
-
-image_t* image_read(FILE *fp) {
+image_t *image_read(FILE *fp) {
     JSAMPARRAY buffer;
     int row_stride;
     struct jpeg_decompress_struct jpg;
@@ -158,7 +117,7 @@ image_t* image_read(FILE *fp) {
     jpeg_read_header(&jpg, TRUE);
     jpeg_start_decompress(&jpg);
 
-    if ( jpg.data_precision != 8 ) {
+    if (jpg.data_precision != 8) {
         fprintf(stderr, "jp2a: can only handle 8-bit color channels\n");
         exit(1);
     }
@@ -169,13 +128,10 @@ image_t* image_read(FILE *fp) {
     aspect_ratio(jpg.output_width, jpg.output_height);
     p = image_new(jpg.output_width, jpg.output_height);
 
-    if ( verbose )
-        print_info(&jpg);
-
-    while ( jpg.output_scanline < jpg.output_height ) {
+    while (jpg.output_scanline < jpg.output_height) {
         jpeg_read_scanlines(&jpg, buffer, 1);
 
-        if ( jpg.output_components == 3 ) {
+        if (jpg.output_components == 3) {
             memcpy(&p->pixels[(jpg.output_scanline-1)*p->w], &buffer[0][0], sizeof(rgb_t)*p->w);
         } else {
             rgb_t *pixels = &p->pixels[(jpg.output_scanline-1) * p->w];
@@ -184,14 +140,6 @@ image_t* image_read(FILE *fp) {
             for (int x = 0; x < (int)jpg.output_width; ++x)
                 pixels[x].r = pixels[x].g = pixels[x].b = buffer[0][x];
         }
-
-        if ( verbose )
-            print_progress((float)jpg.output_scanline/(float)jpg.output_height);
-    }
-
-    if (verbose) {
-        fprintf(stderr, "\n");
-        fflush(stderr);
     }
 
     jpeg_finish_decompress(&jpg);
@@ -209,7 +157,7 @@ char* get_lum_palette() {
     return palette;
 }
 
-char* image_print(const image_t* p) {
+char *image_print(const image_t *p) {
     int h = p->h,
         w = p->w;
 
