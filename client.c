@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     sigaction(SIGINT, &sa, NULL);
 
     // incorrect number of arguments
-    if(argc != 2) {
+    if(argc < 2) {
         printf("\n Usage: %s <ip of server> \n",argv[0]);
         return 1;
     }
