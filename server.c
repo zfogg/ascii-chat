@@ -45,14 +45,16 @@ int main() {
         printf("2) Connection initiated, sending data.\n");
 
         ascii_read_init();
+        char *frame = NULL;
         for (int conn = 0; true;) {
-            char *frame = ascii_read();
+            frame = ascii_read(); /* malloc happens here */
             conn = send(connfd, frame, strlen(frame), 0);
             if (conn == -1) {
                 break;
             }
             free(frame);
         }
+
         close(connfd);
         printf("3) Closing connection.\n---------------------\n");
     }
