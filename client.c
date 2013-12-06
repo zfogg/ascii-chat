@@ -46,8 +46,13 @@ int main(int argc, char *argv[]) {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     // set type of address to IPV4 and port to 5000
+    int port_num = 5000;
+    if(argc == 3) {
+        int port_num = atoi(argv[2]); 
+    }
+
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5000);
+    serv_addr.sin_port = htons(port_num);
 
     // an error occurred when trying to set server address and port number
     if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0) {

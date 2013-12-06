@@ -13,7 +13,7 @@
 #include "ascii.h"
 
 
-int main() {
+int main(int argc, char *argv[]) {
     // file descriptors for I/O
     int listenfd = 0,
         connfd   = 0;
@@ -21,10 +21,15 @@ int main() {
     struct sockaddr_in serv_addr;
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0); // initialize socket
+    
+    int port_num = 5000;
+    if (argc == 2) {
+        int port_num = atoi(argv[1]);
+    }
 
     serv_addr.sin_family = AF_INET; // set address family to IPV4, AF_INET6 would be IPV6
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); // set address for socket
-    serv_addr.sin_port = htons(5000); // set port for socket
+    serv_addr.sin_port = htons(port_num); // set port for socket
 
     // bind socket based on address and ports set in serv_addr
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
