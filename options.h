@@ -2,7 +2,7 @@
 
 #define OPTIONS_BUFF_SIZE 256
 
-#define STRTOINT(s) (int)strtol(s, (char **)NULL, 10)
+#define strtoint(s) (int)strtol(s, (char **)NULL, 10)
 
 
 extern

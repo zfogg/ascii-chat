@@ -16,7 +16,7 @@
 
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
-    int port = (int) strtol(opt_port, (char **)NULL, 10);
+    int port = strtoint(opt_port);
 
     // file descriptors for I/O
     int listenfd = 0,

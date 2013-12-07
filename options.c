@@ -62,12 +62,12 @@ void options_init(int argc, char** argv) {
 
             case 'w':
                 snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
-                opt_width = STRTOINT(argbuf);
+                opt_width = strtoint(argbuf);
                 break;
 
             case 'h':
                 snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
-                opt_height = STRTOINT(argbuf);
+                opt_height = strtoint(argbuf);
                 break;
 
             case '?':
