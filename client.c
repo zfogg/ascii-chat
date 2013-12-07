@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     char *address = opt_address;
     int   port    = (int) strtol(opt_port, (char **)NULL, 10);
 
-    char recvBuff[10000];
+    char recvBuff[40000];
     struct sockaddr_in serv_addr;
 
     // Close socket on program exit.
