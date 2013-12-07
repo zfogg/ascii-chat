@@ -29,7 +29,7 @@ void sig_handler(int signo) {
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
     char *address = opt_address;
-    int   port    = (int) strtol(opt_port, (char **)NULL, 10);
+    int   port    = strtoint(opt_port);
 
     char recvBuff[40000];
     struct sockaddr_in serv_addr;
