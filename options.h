@@ -1,20 +1,35 @@
-extern int verbose;
-extern int auto_height;
-extern int auto_width;
-extern int width;
-extern int height;
-extern int use_border;
-extern int invert;
-extern int flipx;
-extern int flipy;
-extern int colorfill;
-extern int convert_grayscale;
-extern int debug;
-extern int clearscr;
-extern char ascii_palette[];
-extern float redweight, greenweight, blueweight;
-extern unsigned short int RED[256], GREEN[256], BLUE[256], GRAY[256];
-extern const char *fileout;
-extern int usecolors;
+#define ASCII_PALETTE_SIZE 256
 
-void parse_options(int, char **);
+
+extern
+char ascii_palette[];
+
+extern
+unsigned short int width,
+                   height,
+                   auto_width,
+                   auto_height;
+
+extern
+char* opt_ipaddress;
+
+extern
+int opt_verbose,
+    opt_port,
+    opt_color;
+
+extern
+char ascii_palette[];
+
+extern
+unsigned short int RED[],
+                   GREEN[],
+                   BLUE[],
+                   GRAY[];
+
+
+void options(int, char **);
+
+void precalc_rgb(const float, const float, const float);
+
+void options_opthelp();

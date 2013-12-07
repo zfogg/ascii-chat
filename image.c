@@ -14,17 +14,18 @@
 typedef void (*image_resize_ptrfun)(const image_t* , image_t*);
 image_resize_ptrfun global_image_resize_fun = NULL;
 
+
 image_t* image_new(int width, int height) {
     image_t *p;
 
     if (!(p = (image_t *) malloc(sizeof(image_t)))) {
         perror("jp2a: coudln't allocate memory for image");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if (!(p->pixels = (rgb_t *) malloc(width*height*sizeof(rgb_t)))) {
         perror("jp2a: couldn't allocate memory for image");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     p->w = width;

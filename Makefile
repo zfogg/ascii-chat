@@ -55,3 +55,5 @@ $(OBJS_CPP): $(OUT_D)/%.o: %.cpp $(HEADERS)
 
 clean:
 	rm -f $(OBJS) $(TARGETS)
+
+test:

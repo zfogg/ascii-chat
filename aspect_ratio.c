@@ -23,11 +23,10 @@ void aspect_ratio(const int jpeg_w, const int jpeg_h) {
         width = CALC_W;
 
         // adjust for too small dimensions
-        while ( width==0 ) {
+        while (width==0) {
             ++height;
             aspect_ratio(jpeg_w, jpeg_h);
         }
-
     }
 
     // calc height

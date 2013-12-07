@@ -12,8 +12,6 @@
 
 
 void ascii_read_init() {
-    parse_options(0, NULL);
-    // ^ compute globals 'width' and 'height'
     webcam_init();
 }
 
