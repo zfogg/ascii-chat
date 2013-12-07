@@ -25,7 +25,7 @@ char *ascii_read() {
     FILE *jpeg = webcam_read();
 
     image_t *original = image_read(jpeg),
-            *resized  = image_new(width, height);
+            *resized  = image_new(opt_width, opt_height);
 
     fclose(jpeg);
 
