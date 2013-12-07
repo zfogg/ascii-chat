@@ -2,13 +2,15 @@
 
 #define OPTIONS_BUFF_SIZE 256
 
+#define STRTOINT(s) (int)strtol(s, (char **)NULL, 10)
+
 
 extern
 char ascii_palette[];
 
 extern
-unsigned short int width,
-                   height,
+unsigned short int opt_width,
+                   opt_height,
                    auto_width,
                    auto_height;
 

@@ -13,8 +13,9 @@ static const float weight_red   = 0.2989f;
 static const float weight_green = 0.5866f;
 static const float weight_blue  = 0.1145f;
 
-unsigned short int width       = 160,
-                   height      = 0,
+unsigned short int opt_width   = 80,
+                   opt_height  = 0,
+
                    auto_width  = 0,
                    auto_height = 1;
 
@@ -32,6 +33,8 @@ unsigned short int RED  [ASCII_PALETTE_SIZE],
 static struct option long_options[] = {
     {"address", optional_argument, NULL, 'a'},
     {"port",    optional_argument, NULL, 'p'},
+    {"width",   optional_argument, NULL, 'w'},
+    {"height",  optional_argument, NULL, 'h'},
     {0, 0, 0, 0}
 };
 
@@ -40,10 +43,11 @@ void options_init(int argc, char** argv) {
     precalc_rgb(weight_red, weight_green, weight_blue);
     while (1) {
         int index  = 0,
-            option = getopt_long(argc, argv, "p:a:", long_options, &index);
+            option = getopt_long(argc, argv, "p:a:w:h:", long_options, &index);
         if (option == -1)
             break;
 
+        char argbuf[1024];
         switch (option) {
             case 0:
                 break;
@@ -54,6 +58,16 @@ void options_init(int argc, char** argv) {
 
             case 'p':
                 snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", optarg);
+                break;
+
+            case 'w':
+                snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
+                opt_width = STRTOINT(argbuf);
+                break;
+
+            case 'h':
+                snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
+                opt_height = STRTOINT(argbuf);
                 break;
 
             case '?':
