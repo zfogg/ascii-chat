@@ -22,10 +22,8 @@ int main(int argc, char *argv[]) {
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0); // initialize socket
     
-    int port_num = 5000;
-    if (argc == 2) {
-        int port_num = atoi(argv[1]);
-    }
+    int port_num = 6000;
+    printf("Running server on port %d\n", port_num);
 
     serv_addr.sin_family = AF_INET; // set address family to IPV4, AF_INET6 would be IPV6
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); // set address for socket

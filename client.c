@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "client.h"
 
@@ -17,16 +18,22 @@
 
 int sockfd = 0;
 
+void sig_handler(int signo) {
+    if (signo == SIGINT) {
+        printf("Closing connection to server...");
+        close(sockfd);
+        ascii_write_destroy();
+    }
+}
+
 int main(int argc, char *argv[]) {
     char recvBuff[10000];
     struct sockaddr_in serv_addr;
 
     // Close socket on program exit.
-    struct sigaction sa;
-    sa.sa_handler = sigint_handler;
-    sa.sa_flags = 0;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGINT, &sa, NULL);
+    if (signal(SIGINT, sig_handler) == SIG_ERR) {
+        printf("Couldn't catch SIGINT\n");
+    }
 
     // incorrect number of arguments
     if(argc < 2) {
@@ -46,10 +53,8 @@ int main(int argc, char *argv[]) {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     // set type of address to IPV4 and port to 5000
-    int port_num = 5000;
-    if(argc == 3) {
-        int port_num = atoi(argv[2]); 
-    }
+    int port_num = 6000;
+    printf("Connecting on port %d\n", port_num);
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port_num);
@@ -78,9 +83,3 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void sigint_handler(int sig_no) {
-    (void)sig_no;
-    fprintf(stderr, "\n SIGINT: cleaning up and exiting . . . \n");
-    ascii_write_destroy();
-    close(sockfd);
-}
