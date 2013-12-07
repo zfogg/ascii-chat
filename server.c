@@ -15,7 +15,8 @@
 
 
 int main(int argc, char *argv[]) {
-    options(argc, argv);
+    options_init(argc, argv);
+    int port = (int) strtol(opt_port, (char **)NULL, 10);
 
     // file descriptors for I/O
     int listenfd = 0,
@@ -24,13 +25,12 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in serv_addr;
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0); // initialize socket
-    
-    int port_num = 6000;
-    printf("Running server on port %d\n", port_num);
+
+    printf("Running server on port %d\n", port);
 
     serv_addr.sin_family = AF_INET; // set address family to IPV4, AF_INET6 would be IPV6
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); // set address for socket
-    serv_addr.sin_port = htons(port_num); // set port for socket
+    serv_addr.sin_port = htons(port); // set port for socket
 
     // bind socket based on address and ports set in serv_addr
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));

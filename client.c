@@ -27,7 +27,9 @@ void sig_handler(int signo) {
 }
 
 int main(int argc, char *argv[]) {
-    options(argc, argv);
+    options_init(argc, argv);
+    char *address = opt_address;
+    int   port    = (int) strtol(opt_port, (char **)NULL, 10);
 
     char recvBuff[10000];
     struct sockaddr_in serv_addr;
@@ -37,17 +39,11 @@ int main(int argc, char *argv[]) {
         printf("Couldn't catch SIGINT\n");
     }
 
-    // incorrect number of arguments
-    if(argc < 2) {
-        printf("\n Usage: %s <ip of server> \n",argv[0]);
-        return 1;
-    }
-
     // try to open a socket
     memset(recvBuff, '0',sizeof(recvBuff));
     // error creating socket
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Error : Could not create socket \n");
+        printf("\n Error: could not create socket \n");
         return 1;
     }
 
@@ -55,21 +51,20 @@ int main(int argc, char *argv[]) {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     // set type of address to IPV4 and port to 5000
-    int port_num = 6000;
-    printf("Connecting on port %d\n", port_num);
+    printf("Connecting on port %d\n", port);
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port_num);
+    serv_addr.sin_port = htons(port);
 
     // an error occurred when trying to set server address and port number
-    if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0) {
-        printf("\n inet_pton error occured\n");
+    if(inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
+        printf("\n Error: inet_pton \n");
         return 1;
     }
 
     // failed when trying to connect to the server
     if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-       printf("\n Error : Connect Failed \n");
+       printf("\n Error: connect failed \n");
        return 1;
     }
 

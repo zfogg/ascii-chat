@@ -1,5 +1,7 @@
 #define ASCII_PALETTE_SIZE 256
 
+#define OPTIONS_BUFF_SIZE 256
+
 
 extern
 char ascii_palette[];
@@ -11,25 +13,19 @@ unsigned short int width,
                    auto_height;
 
 extern
-char* opt_ipaddress;
-
-extern
-int opt_verbose,
-    opt_port,
-    opt_color;
+char opt_address[],
+     opt_port   [];
 
 extern
 char ascii_palette[];
 
 extern
-unsigned short int RED[],
+unsigned short int RED  [],
                    GREEN[],
-                   BLUE[],
-                   GRAY[];
+                   BLUE [],
+                   GRAY [];
 
 
-void options(int, char **);
+void options_init(int, char **);
 
 void precalc_rgb(const float, const float, const float);
-
-void options_opthelp();

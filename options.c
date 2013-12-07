@@ -18,45 +18,51 @@ unsigned short int width       = 160,
                    auto_width  = 0,
                    auto_height = 1;
 
-char* opt_ipaddress = "0.0.0.0";
-
-int opt_verbose = 0,
-    opt_port    = 0,
-    opt_color   = 0;
+char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1",
+     opt_port   [OPTIONS_BUFF_SIZE] = "9001";
 
 char ascii_palette[ASCII_PALETTE_SIZE + 1] =
     "   ...',;:clodxkO0KXNWM";
 
-unsigned short int RED[ASCII_PALETTE_SIZE],
+unsigned short int RED  [ASCII_PALETTE_SIZE],
                    GREEN[ASCII_PALETTE_SIZE],
-                   BLUE[ASCII_PALETTE_SIZE],
-                   GRAY[ASCII_PALETTE_SIZE];
+                   BLUE [ASCII_PALETTE_SIZE],
+                   GRAY [ASCII_PALETTE_SIZE];
+
+static struct option long_options[] = {
+    {"address", optional_argument, NULL, 'a'},
+    {"port",    optional_argument, NULL, 'p'},
+    {0, 0, 0, 0}
+};
 
 
-void options(int argc, char** argv) {
+void options_init(int argc, char** argv) {
     precalc_rgb(weight_red, weight_green, weight_blue);
-
-    int opt;
     while (1) {
-        static struct option long_options[] = {
-            {"verbose", no_argument, &opt_verbose, 1},
-            {"port",    no_argument, &opt_port,    0},
-            {0, 0, 0, 0}
-        };
-
-        /* getopt_long stores the option index here. */
-        int option_index = 0;
-
-        opt = getopt_long(
-            argc, argv, "", long_options, &option_index);
-
-        /* Detect the end of the options. */
-        if (opt == -1)
+        int index  = 0,
+            option = getopt_long(argc, argv, "p:a:", long_options, &index);
+        if (option == -1)
             break;
-    }
-}
 
-void options_opthelp() {
+        switch (option) {
+            case 0:
+                break;
+
+            case 'a':
+                snprintf(opt_address, OPTIONS_BUFF_SIZE, "%s", optarg);
+                break;
+
+            case 'p':
+                snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", optarg);
+                break;
+
+            case '?':
+                break;
+
+            default:
+                abort();
+        }
+    }
 }
 
 void precalc_rgb(const float red, const float green, const float blue) {
