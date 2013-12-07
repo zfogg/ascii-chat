@@ -11,9 +11,9 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "client.h"
-
 #include "ascii.h"
+#include "client.h"
+#include "options.h"
 
 
 int sockfd = 0;
@@ -27,6 +27,8 @@ void sig_handler(int signo) {
 }
 
 int main(int argc, char *argv[]) {
+    options(argc, argv);
+
     char recvBuff[10000];
     struct sockaddr_in serv_addr;
 

@@ -11,9 +11,12 @@
 #include <unistd.h>
 
 #include "ascii.h"
+#include "options.h"
 
 
 int main(int argc, char *argv[]) {
+    options(argc, argv);
+
     // file descriptors for I/O
     int listenfd = 0,
         connfd   = 0;
