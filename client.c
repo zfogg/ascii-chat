@@ -11,19 +11,21 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "ascii.h"
 #include "client.h"
 #include "options.h"
 
 int sockfd = 0;
+static bool keepRunning = true;
 
-void sig_handler(int signo) {
-    if (signo == SIGINT) {
-        printf("Closing connection to server...");
-        close(sockfd);
-        ascii_write_destroy();
-    }
+void sig_handler(int dummy) {
+    dummy = 0;
+    ascii_write_destroy();
+    printf("Closing connection to server...\n");
+    close(sockfd);
+    keepRunning = false;
 }
 
 int main(int argc, char *argv[]) {
@@ -44,13 +46,11 @@ int main(int argc, char *argv[]) {
         .tv_nsec = 0
     };
 
-    /* read from the socket as long as the size of the read is > 0 */
-    while(1) {
-        // Close socket on program exit.
-        if (signal(SIGINT, sig_handler) == SIG_ERR) {
-            printf("Couldn't catch SIGINT\n");
-        }
+    // Close socket on program exit.
+    signal(SIGINT, sig_handler);
 
+    /* read from the socket as long as the size of the read is > 0 */
+    while(keepRunning) {
         // try to open a socket
         memset(recvBuff, '0',sizeof(recvBuff));
         // error creating socket
