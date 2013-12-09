@@ -17,16 +17,17 @@
 #include "client.h"
 #include "options.h"
 
-int sockfd = 0;
-static bool keepRunning = true;
 
-void sig_handler(int dummy) {
-    dummy = 0;
+int sockfd = 0;
+
+void sigint_handler(int sigint) {
+    (void) (sigint);
     ascii_write_destroy();
-    printf("Closing connection to server...\n");
+    printf("Closing connection and exiting . . .\n");
     close(sockfd);
-    keepRunning = false;
+    exit(0);
 }
+
 
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
@@ -46,11 +47,11 @@ int main(int argc, char *argv[]) {
         .tv_nsec = 0
     };
 
-    // Close socket on program exit.
-    signal(SIGINT, sig_handler);
+    // Cleanup nicely on Ctrl+C.
+    signal(SIGINT, sigint_handler);
 
     /* read from the socket as long as the size of the read is > 0 */
-    while(keepRunning) {
+    while(1) {
         // try to open a socket
         memset(recvBuff, '0',sizeof(recvBuff));
         // error creating socket
