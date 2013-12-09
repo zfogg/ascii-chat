@@ -37,12 +37,12 @@ int main(int argc, char *argv[]) {
     char recvBuff[40000];
     struct sockaddr_in serv_addr;
 
-    static const struct timespec
-    ASCII_SLEEP_START = {
+    struct timespec
+    sleep_start = {
         .tv_sec  = 3,
         .tv_nsec = 0
     },
-    ASCII_SLEEP_STOP = {
+    sleep_stop = {
         .tv_sec  = 0,
         .tv_nsec = 0
     };
@@ -79,7 +79,6 @@ int main(int argc, char *argv[]) {
         ascii_write_init();
 
         printf("Attempting to connect...\n");
-
         // failed when trying to connect to the server
         if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
             printf("\n Error: connect failed \n");
@@ -90,9 +89,9 @@ int main(int argc, char *argv[]) {
             ascii_write(recvBuff);
         }
 
-        ascii_write_destroy();
+        console_clear();
 
-        nanosleep((struct timespec *)&ASCII_SLEEP_START,(struct timespec *)&ASCII_SLEEP_STOP);
+        nanosleep((struct timespec *)&sleep_start,(struct timespec *)&sleep_stop);
     }
 
     return 0;
