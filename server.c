@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "ascii.h"
 #include "options.h"
@@ -43,6 +44,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    // ignore SIGPIPE signal
+    signal(SIGPIPE, SIG_IGN);
+
     // listen on socket listenfd with max backlog of 10 connections
     listen(listenfd, 10);
     while(1) {
@@ -52,6 +56,7 @@ int main(int argc, char *argv[]) {
 
         ascii_read_init();
         char *frame = NULL;
+        
         for (int conn = 0; true;) {
             frame = ascii_read(); /* malloc happens here */
             conn = send(connfd, frame, strlen(frame), 0);
@@ -60,7 +65,7 @@ int main(int argc, char *argv[]) {
             }
             free(frame);
         }
-
+        
         close(connfd);
         printf("3) Closing connection.\n---------------------\n");
     }
