@@ -57,3 +57,4 @@ void ascii_write_destroy() {
 
 void ascii_read_destroy() {
 }
+
