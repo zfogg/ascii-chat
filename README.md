@@ -3,6 +3,8 @@ ascii-chat
 
 ASCII video chat.
 
+![Animated demonstration](http://i.imgur.com/E4OuqvX.gif)
+
 
 Dependencies
 ==========
@@ -14,7 +16,6 @@ Dependencies
 TODO
 ==========
 - Client should continuously attempt to reconnect
-- Server should never crash on client disconnect
 - Client program should accept URLs as well as IP addresses
 - Colorize ASCII output
 - Refactor image processing algorithms
