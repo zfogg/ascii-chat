@@ -3,6 +3,13 @@ ascii-chat
 
 ASCII video chat.
 
+Probably the first command line video chat progam.
+
+It just prints ASCII, so it works on your rxvt-unicode in OpenBox, a Putty SSH session, and even iTerm on OSX.  
+It even works in an initial UNIX login shell, i.e. the login shell that runs 'startx'.
+
+Eventually it will support 3+ simultaneous people, 'google-hangouts' style, and sound via PulseAudio or something.
+
 ![Animated demonstration](http://i.imgur.com/E4OuqvX.gif)
 
 
