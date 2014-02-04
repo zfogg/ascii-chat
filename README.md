@@ -8,9 +8,8 @@ ASCII video chat.
 
 Dependencies
 ==========
-- opencv  
-  - Most people: apt-get install clang libopencv-dev libjpeg-dev
-  - ArchLinux masterrace: pacman -S clang opencv libjpeg-turbo
+- Most people: apt-get install clang libopencv-dev libjpeg-dev
+- ArchLinux masterrace: pacman -S clang opencv libjpeg-turbo
 
 
 Build and run
