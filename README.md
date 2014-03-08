@@ -37,3 +37,7 @@ TODO
 - Client should gracefully handle `frame width > term width`
 - Client should gracefully handle `term resize` event
 
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/zfogg/ascii-chat/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
