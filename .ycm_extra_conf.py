@@ -8,9 +8,10 @@ compilation_database_folder = ''
 flags = [
     '-std=c99',
     '-Wextra',
-    '-03',
+    '-Wno-unused-parameter',
+    '-O3',
     '-g',
-    '-DUSE_CLANG_COMPLETER -D_POSIX_C_SOURCE=200809L',
+    '-DUSE_CLANG_COMPLETER',
     '-x', 'c',
     '-isystem', '/usr/include',
     '-I', '.'

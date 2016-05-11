@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <jpeglib.h>
+#include "ext/fmemopen/fmemopen.h"
 
 #include "webcam.hpp"
 

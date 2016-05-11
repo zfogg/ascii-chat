@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-#include <stdbool.h>
 
 #include "ascii.h"
 #include "client.h"

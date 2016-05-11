@@ -1,5 +1,4 @@
 #include <arpa/inet.h>
-#include <stdbool.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -56,8 +55,8 @@ int main(int argc, char *argv[]) {
 
         ascii_read_init();
         char *frame = NULL;
-        
-        for (int conn = 0; true;) {
+
+        for (int conn = 0; 1;) {
             frame = ascii_read(); /* malloc happens here */
             conn = send(connfd, frame, strlen(frame), 0);
             if (conn == -1) {
@@ -65,7 +64,7 @@ int main(int argc, char *argv[]) {
             }
             free(frame);
         }
-        
+
         close(connfd);
         printf("3) Closing connection.\n---------------------\n");
     }

@@ -2,8 +2,10 @@
 extern "C" {
 #endif
 
-    void webcam_init();
-    FILE *webcam_read();
+#include <stdio.h>
+
+void webcam_init();
+FILE *webcam_read();
 
 #ifdef __cplusplus
 }
