@@ -1,21 +1,35 @@
 import os
-import ycm_core
-from clang_helpers import PrepareClangFlags
+#import ycm_core
+#from clang_helpers import PrepareClangFlags
 
 
 compilation_database_folder = ''
 
 flags = [
     '-std=c99',
+    '-stdlib=libc++',
     '-Wextra',
     '-Wno-unused-parameter',
     '-O3',
     '-g',
     '-DUSE_CLANG_COMPLETER',
     '-x', 'c',
-    '-isystem', '/usr/include',
     '-I', '.'
 ]
+
+
+# Add Clang's own include paths to YCM.
+clang_cincludes = os.popen("""
+clang -x c -v -E /dev/null 2>&1 \
+        | grep '^\s\/' \
+        | grep -v 'framework directory' \
+        | sed 's/^\s*//g'
+""").read().strip().split('\n')
+for cinclude_path in clang_cincludes:
+    flags.append('-isystem')
+    flags.append(cinclude_path)
+print flags
+
 
 
 if compilation_database_folder:
