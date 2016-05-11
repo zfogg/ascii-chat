@@ -9,7 +9,7 @@ OUT_D       = build
 CC          = clang
 CXX         = clang++
 
-CFLAGS      = -std=c99   -stdlib=libc++ -Wextra -Wno-unused-parameter -O3 -g
+CFLAGS      = -std=c99                  -Wextra -Wno-unused-parameter -O3 -g
 CXXFLAGS    = -std=c++11 -stdlib=libc++ -Wextra -Wno-unused-parameter -O3 -g
 
 CFLAGS     += -DUSE_CLANG_COMPLETER

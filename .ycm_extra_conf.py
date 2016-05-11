@@ -7,7 +7,6 @@ compilation_database_folder = ''
 
 flags = [
     '-std=c99',
-    '-stdlib=libc++',
     '-Wextra',
     '-Wno-unused-parameter',
     '-O3',
