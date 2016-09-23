@@ -9,16 +9,16 @@ OUT_D       = build
 CC          = clang
 CXX         = clang++
 
-CFLAGS      = -std=c99                  -Wextra -Wno-unused-parameter -O3 -g
-CXXFLAGS    = -std=c++11 -stdlib=libc++ -Wextra -Wno-unused-parameter -O3 -g
+CFLAGS      = -Wextra -Wno-unused-parameter -O3 -g -std=c99
+CXXFLAGS    = -Wextra -Wno-unused-parameter -O3 -g -std=c++11 -stdlib=libc++
 
 CFLAGS     += -DUSE_CLANG_COMPLETER
 CXXFLAGS   += -DUSE_CLANG_COMPLETER
 
-CFLAGS     += -x c   -isystem /usr/include -I .
-CXXFLAGS   += -x c++ -isystem /usr/include -I .
+CFLAGS     += -isystem /usr/include -I . -x c
+CXXFLAGS   += -isystem /usr/include -I . -x c++
 
-LDFLAGS    += -lstdc++ -ljpeg
+LDFLAGS     = -lstdc++ -ljpeg
 LDFLAGS    += `pkg-config --libs opencv`
 
 TARGETS     = $(addprefix $(BIN_D)/, server client)
@@ -38,7 +38,7 @@ HEADERS_CEXT = $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.h)
 HEADERS      = $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 
 
-.PHONY: clean
+.PHONY: all clean
 
 default: $(TARGETS)
 all: default
@@ -59,6 +59,7 @@ $(OBJS_CEXT): $(OUT_D)/%.o: %.c $(HEADERS_CEXT)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
 clean:
-	rm -f $(OBJS) $(TARGETS)
-
-test:
+	@echo 'cleaning...'
+	@find $(OUT_D) $(BIN_D) -mindepth 1 -not -iname '.gitkeep' -delete -print
+	@echo 'done!'
+	@echo
