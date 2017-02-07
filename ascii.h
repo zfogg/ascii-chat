@@ -11,7 +11,7 @@ void ascii_write(char *);
 void ascii_read_destroy();
 void ascii_write_destroy();
 
-static char *from_jpeg(FILE *);
+/*static char *from_jpeg(FILE *);*/
 
 
 #define ASCII_DELIMITER '\t'
