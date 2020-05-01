@@ -19,6 +19,9 @@ char opt_address[],
      opt_port   [];
 
 extern
+unsigned short int opt_webcam_index;
+
+extern
 char ascii_palette[];
 
 extern
@@ -29,5 +32,7 @@ unsigned short int RED  [],
 
 
 void options_init(int, char **);
+
+void usage();
 
 void precalc_rgb(const float, const float, const float);

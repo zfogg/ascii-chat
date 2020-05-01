@@ -18,6 +18,7 @@
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
     int port = strtoint(opt_port);
+    unsigned short int webcam_index = opt_webcam_index;
 
     // file descriptors for I/O
     int listenfd = 0,
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]) {
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
         printf("2) Connection initiated, sending data.\n");
 
-        ascii_read_init();
+        ascii_read_init(webcam_index);
         char *frame = NULL;
 
         for (int conn = 0; true;) {

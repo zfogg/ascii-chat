@@ -2,7 +2,7 @@
 #include <time.h>
 
 
-void ascii_read_init();
+void ascii_read_init(unsigned short int webcam_index);
 void ascii_write_init();
 
 char *ascii_read();

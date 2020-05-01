@@ -17,15 +17,21 @@ Dependencies
 ==========
 - Most people: apt-get install clang libopencv-dev libjpeg-dev
 - ArchLinux masterrace: pacman -S clang opencv libjpeg-turbo
+- MacOS: brew install opencv@2
+    - `cp .macos.envrc .env`
+    - `source .env`
+    - * I recommend using `direnv` with a `.envrc` file
 
 
 Build and run
 ==========
 - Clone this repo onto a computer with a webcam.
 - Install the dependencies.
-- run 'make clean all'.
-- run './bin/server' in one terminal, and then
-- run './bin/client -p 9001 -a 127.0.0.1' in another. 
+- run `make`.
+- run `./bin/server` in one terminal, and then
+- run `./bin/client -p 9001 -a 127.0.0.1` in another.
+
+NOTE: run `./bin/server -h` to see options
 
 
 TODO
@@ -36,8 +42,8 @@ TODO
 - Refactor image processing algorithms
 - Client should gracefully handle `frame width > term width`
 - Client should gracefully handle `term resize` event
-
+- Rewrite entire thing in Rust!
+- Compile to WASM/WASI.
 
 
 [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/zfogg/ascii-chat/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-

@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 #include <jpeglib.h>
-#include "ext/fmemopen/fmemopen.h"
+//#include "ext/fmemopen/fmemopen.h"
 
 #include "webcam.hpp"
 
@@ -17,10 +17,10 @@ vector<uchar> jpegbuf;
 
 vector<int> jpegbuf_params;
 
-VideoCapture camera(0);
+VideoCapture camera;
 
-
-void webcam_init() {
+void webcam_init(unsigned short int webcam_index) {
+    camera.open(webcam_index);
     if(!camera.isOpened()) {
         perror("Failed to connect to a webcam.");
         exit(1);

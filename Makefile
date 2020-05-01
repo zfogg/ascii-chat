@@ -1,26 +1,30 @@
 #!/usr/bin/make -f
 
 
-EXT_CDEPS   = fmemopen
+#EXT_CDEPS   = fmemopen
 
 BIN_D       = bin
 OUT_D       = build
 
-CC          = clang
-CXX         = clang++
+CC          := clang
+CXX         := clang++
 
-CFLAGS      = -O3 -g -std=c99
-CXXFLAGS    = -O3 -g -std=c++11 -stdlib=libc++
+PKG_CONFIG_LIBS = opencv libjpeg
+
+CFLAGS      = -g -isystem /usr/include /usr/local/include -I .
 CFLAGS     += -DUSE_CLANG_COMPLETER
-CXXFLAGS   += -DUSE_CLANG_COMPLETER
-CFLAGS     += -isystem /usr/include -I . -x c
-CXXFLAGS   += -isystem /usr/include -I . -x c++
+CFLAGS     += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
-CFLAGS_W   = -Wextra -Wno-unused-parameter
-CXXFLAGS_W = -Wextra -Wno-unused-parameter
+CXXFLAGS    = $(CFLAGS)
 
-LDFLAGS     = -lstdc++ -ljpeg
-LDFLAGS    += `pkg-config --libs opencv`
+CFLAGS     += -x c   -std=c99
+CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
+
+CFLAGS_W    = -Wextra -Wno-unused-parameter
+CXXFLAGS_W  = -Wextra -Wno-unused-parameter
+
+LDFLAGS     = -lstdc++
+LDFLAGS    += $(shell pkg-config --libs $(PKG_CONFIG_LIBS))
 
 TARGETS     = $(addprefix $(BIN_D)/, server client)
 
@@ -50,7 +54,8 @@ RM = /bin/rm
 
 default: $(TARGETS)
 
-all: compile_commands.json default
+#all: compile_commands.json default
+all: default
 
 
 $(TARGETS): $(BIN_D)/%: $(OUT_D)/%.o $(OBJS_)
@@ -89,10 +94,10 @@ compile_commands.json: Makefile
 clean:
 	@echo 'cleaning...'
 	@printf '\t'
-	@find $(OUT_D) -mindepth 1 \
+	@gfind $(OUT_D) -mindepth 1 \
 		-type f -not -iname '.gitkeep' \
 		-printf '%P ' -delete
-	@find $(BIN_D) -mindepth 1 \
+	@gfind $(BIN_D) -mindepth 1 \
 		-type f -not -iname '.gitkeep' \
 		-printf '%P ' -delete
 	@printf '\n'

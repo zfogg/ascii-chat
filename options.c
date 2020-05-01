@@ -19,8 +19,10 @@ unsigned short int opt_width   = 80,
                    auto_width  = 0,
                    auto_height = 1;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1",
+char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0",
      opt_port   [OPTIONS_BUFF_SIZE] = "9001";
+
+unsigned short int opt_webcam_index = 0;
 
 char ascii_palette[ASCII_PALETTE_SIZE + 1] =
     "   ...',;:clodxkO0KXNWM";
@@ -31,10 +33,12 @@ unsigned short int RED  [ASCII_PALETTE_SIZE],
                    GRAY [ASCII_PALETTE_SIZE];
 
 static struct option long_options[] = {
-    {"address", optional_argument, NULL, 'a'},
-    {"port",    optional_argument, NULL, 'p'},
-    {"width",   optional_argument, NULL, 'w'},
-    {"height",  optional_argument, NULL, 'h'},
+    {"address",       required_argument, NULL, 'a'},
+    {"port",          required_argument, NULL, 'p'},
+    {"width",         optional_argument, NULL, 'x'},
+    {"height",        optional_argument, NULL, 'y'},
+    {"webcam-index",  required_argument, NULL, 'c'},
+    {"help",          optional_argument, NULL, 'h'},
     {0, 0, 0, 0}
 };
 
@@ -43,12 +47,12 @@ void options_init(int argc, char** argv) {
     precalc_rgb(weight_red, weight_green, weight_blue);
     while (1) {
         int index  = 0,
-            option = getopt_long(argc, argv, "p:a:w:h:", long_options, &index);
-        if (option == -1)
+            c = getopt_long(argc, argv, "a:p:x:y:c:h", long_options, &index);
+        if (c == -1)
             break;
 
         char argbuf[1024];
-        switch (option) {
+        switch (c) {
             case 0:
                 break;
 
@@ -60,23 +64,47 @@ void options_init(int argc, char** argv) {
                 snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", optarg);
                 break;
 
-            case 'w':
+            case 'x':
                 snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
                 opt_width = strtoint(argbuf);
                 break;
 
-            case 'h':
+            case 'y':
                 snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
                 opt_height = strtoint(argbuf);
                 break;
 
+            case 'c':
+                snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
+                opt_webcam_index = strtoint(argbuf);
+                break;
+
             case '?':
+                fprintf(stderr, "Unknown option %c\n", optopt);
+                usage(stderr);
+                exit(EXIT_FAILURE);
+                break;
+
+            case 'h':
+                usage(stdout);
+                exit(EXIT_SUCCESS);
                 break;
 
             default:
                 abort();
         }
     }
+}
+
+void usage(FILE* desc /* stdout|stderr*/ ) {
+    fprintf(desc, "ascii-chat\n");
+    fprintf(desc, "\toptions:\n");
+    fprintf(desc, "\t\t -a --address      (server|client) \t ip address\n");
+    fprintf(desc, "\t\t -p --port         (server|client) \t tcp port\n");
+    fprintf(desc, "\t\t -x --width        (client) \t     render width\n");
+    fprintf(desc, "\t\t -y --height       (client) \t     render height\n");
+    fprintf(desc, "\t\t -c --webcam-index (server) \t     webcam device index\n");
+    fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }
 
 void precalc_rgb(const float red, const float green, const float blue) {
@@ -87,4 +115,3 @@ void precalc_rgb(const float red, const float green, const float blue) {
         GRAY[n]  = ((float) n);
     }
 }
-

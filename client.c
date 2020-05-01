@@ -30,8 +30,8 @@ void sigint_handler(int sigint) {
 
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
-    char *address = opt_address;
-    int   port    = strtoint(opt_port);
+    char *address      = opt_address;
+    int   port         = strtoint(opt_port);
 
     char recvBuff[40000];
     struct sockaddr_in serv_addr;

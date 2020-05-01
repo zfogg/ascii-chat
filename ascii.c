@@ -10,8 +10,8 @@
 #include "options.h"
 
 
-void ascii_read_init() {
-    webcam_init();
+void ascii_read_init(unsigned short int webcam_index) {
+    webcam_init(webcam_index);
 }
 
 void ascii_write_init() {
