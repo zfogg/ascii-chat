@@ -18,9 +18,10 @@ Dependencies
 - Most people: apt-get install clang libopencv-dev libjpeg-dev
 - ArchLinux masterrace: pacman -S clang opencv libjpeg-turbo
 - MacOS: brew install opencv@2
-    - `cp .macos.envrc .env`
+    - `cp .macos.env .env`
     - `source .env`
-    - * I recommend using `direnv` with a `.envrc` file
+
+NOTE: I recommend using `direnv` with a `.envrc` file and sourcing the .env file from there
 
 
 Build and run
