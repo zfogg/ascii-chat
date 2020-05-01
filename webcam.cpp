@@ -45,7 +45,7 @@ FILE *webcam_read() {
     FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size()+1, "r");
 
     // FIXME: do I even need this?
-    waitKey(60); // FPS
+    waitKey(16); // FPS
 
     return jpegfile;
 }
