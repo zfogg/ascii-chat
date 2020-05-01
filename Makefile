@@ -20,11 +20,11 @@ CXXFLAGS    = $(CFLAGS)
 CFLAGS     += -x c   -std=c99
 CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
 
-CFLAGS_W    = -Wextra -Wno-unused-parameter
+CFLAGS_W    = -Wall -Wextra -Wl,--no-as-needed
 CXXFLAGS_W  = $(CFLAGS_W)
 
 LDFLAGS     = -lstdc++
-LDFLAGS    += $(shell pkg-config --libs $(PKG_CONFIG_LIBS))
+LDFLAGS    += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
 TARGETS     = $(addprefix $(BIN_D)/, server client)
 
