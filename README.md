@@ -17,7 +17,7 @@ Dependencies
 ==========
 - Most people: apt-get install clang libopencv-dev libjpeg-dev
 - ArchLinux masterrace: pacman -S clang opencv libjpeg-turbo
-- MacOS: brew install opencv@2
+- MacOS: brew install opencv@2 jpeg
     - `cp .macos.env .env`
     - `source .env`
 
