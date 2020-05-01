@@ -21,7 +21,7 @@ CFLAGS     += -x c   -std=c99
 CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
 
 CFLAGS_W    = -Wextra -Wno-unused-parameter
-CXXFLAGS_W  = -Wextra -Wno-unused-parameter
+CXXFLAGS_W  = $(CFLAGS_W)
 
 LDFLAGS     = -lstdc++
 LDFLAGS    += $(shell pkg-config --libs $(PKG_CONFIG_LIBS))

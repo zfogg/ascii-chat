@@ -36,13 +36,16 @@ FILE *webcam_read() {
 
     camera >> frame;
 
+    flip(frame, frame, +1);
+
     cvtColor(frame, edges, CV_BGR2GRAY);
 
     imencode(".jpg", frame, jpegbuf, jpegbuf_params);
 
     FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size()+1, "r");
 
-    //waitKey(20); // FIXME: do I even need this?
+    // FIXME: do I even need this?
+    waitKey(60); // FPS
 
     return jpegfile;
 }
