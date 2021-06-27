@@ -15,12 +15,14 @@ PKG_CFLAGS := $(shell pkg-config --cflags opencv)
 
 #CFLAGS      = -g
 CFLAGS      = $(filter-out --std=c99, ${PKG_CFLAGS})
-CFLAGS     += -g /usr/include -isystem /usr/local/include -I .
+#CFLAGS     += -g /usr/include -isystem /usr/local/include -I .
+CFLAGS     += -I .
 CFLAGS     += -DUSE_CLANG_COMPLETER
 CFLAGS     += -x c   -std=c11
 
-CXXFLAGS    = $(filter-out --std-c++11,${PKG_CFLAGS})
-CXXFLAGS   += -g /usr/include -isystem /usr/local/include -I .
+CXXFLAGS    = $(filter-out --std-c++11, ${PKG_CFLAGS})
+#CXXFLAGS   += -g /usr/include -isystem /usr/local/include -I .
+CXXFLAGS   += -I .
 CXXFLAGS   += -DUSE_CLANG_COMPLETER
 #CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
 CXXFLAGS   += -x c++ -std=c++11
