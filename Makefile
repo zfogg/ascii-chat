@@ -1,36 +1,22 @@
 #!/usr/bin/make -f
 
+CC              := clang
+CXX             := clang++
+PKG_CONFIG_LIBS := opencv libjpeg
 
-#EXT_CDEPS   = fmemopen
+BIN_D = bin
+OUT_D = build
 
-BIN_D       = bin
-OUT_D       = build
+CFLAGS     += -DUSE_CLANG_COMPLETER -Wall -Wextra #-Wl,--no-as-needed
+CXXFLAGS   += $(CFLAGS)
 
-CC          := clang
-CXX         := clang++
-
-PKG_CONFIG_LIBS = opencv libjpeg
-
-PKG_CFLAGS := $(shell pkg-config --cflags opencv)
-
-#CFLAGS      = -g
-CFLAGS      = $(filter-out --std=c99, ${PKG_CFLAGS})
-#CFLAGS     += -g /usr/include -isystem /usr/local/include -I .
-CFLAGS     += -I .
-CFLAGS     += -DUSE_CLANG_COMPLETER
+PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+CFLAGS     += $(filter-out --std=c99,   ${PKG_CFLAGS})
+CXXFLAGS   += $(filter-out --std-c++11, ${PKG_CFLAGS})
 CFLAGS     += -x c   -std=c11
+CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
 
-CXXFLAGS    = $(filter-out --std-c++11, ${PKG_CFLAGS})
-#CXXFLAGS   += -g /usr/include -isystem /usr/local/include -I .
-CXXFLAGS   += -I .
-CXXFLAGS   += -DUSE_CLANG_COMPLETER
-#CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
-CXXFLAGS   += -x c++ -std=c++11
-
-CFLAGS_W    = -Wall -Wextra -Wl,--no-as-needed
-CXXFLAGS_W  = -Wall -Wextra -Wl,--no-as-needed
-
-LDFLAGS     = -lstdc++
+LDFLAGS    += -lstdc++
 LDFLAGS    += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
 TARGETS     = $(addprefix $(BIN_D)/, server client)
@@ -61,7 +47,6 @@ RM = /bin/rm
 
 default: $(TARGETS)
 
-#all: compile_commands.json default
 all: default
 
 
@@ -72,31 +57,16 @@ $(TARGETS): $(BIN_D)/%: $(OUT_D)/%.o $(OBJS_)
 
 $(OBJS_C): $(OUT_D)/%.o: %.c $(HEADERS)
 	$(CC) -c $< -o $@ \
-	$(CFLAGS) \
-	$(CFLAGS_W)
+	$(CFLAGS)
 
 $(OBJS_CPP): $(OUT_D)/%.o: %.cpp $(HEADERS)
 	$(CXX) -c $< -o $@ \
-	$(CXXFLAGS) \
-	$(CXXFLAGS_W)
+	$(CXXFLAGS)
 
 $(OBJS_CEXT): $(OUT_D)/%.o: %.c $(HEADERS_CEXT)
 	@mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ \
-	$(CFLAGS) \
-	$(CFLAGS_W)
-
-compile_commands.json: Makefile
-	@tmp="`mktemp -d "$$TMPDIR"'ascii-chat.XXXXX' || exit 1`"; \
-	cdb="$$tmp/compile_commands.json"; \
-	hdb="$$tmp/compile_commands.hdb.json"; \
-	dbs=("$$cdb" "$$hdb"); \
-	[[ -f './compile_commands.json' ]] && make clean; \
-	bear --cdb "$$cdb" make              || exit 2; \
-	compdb headerdb -p "$$tmp" > "$$hdb" || exit 3; \
-	cat "$${dbs[@]}" | jq -s 'add | sort_by(.file)' > \
-		'./compile_commands.json'        || exit 4; \
-	$(RM) -f "$${dbs[@]}"                || exit 5;
+	$(CFLAGS)
 
 clean:
 	@echo 'cleaning...'
@@ -108,6 +78,4 @@ clean:
 		-type f -not -iname '.gitkeep' \
 		-printf '%P ' -delete
 	@printf '\n'
-	@$(RM) -f compile_commands.json
 	@echo 'done!'
-	@echo
