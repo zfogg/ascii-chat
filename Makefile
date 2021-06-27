@@ -11,17 +11,22 @@ CXX         := clang++
 
 PKG_CONFIG_LIBS = opencv libjpeg
 
-CFLAGS      = -g -isystem /usr/include /usr/local/include -I .
+PKG_CFLAGS := $(shell pkg-config --cflags opencv)
+
+#CFLAGS      = -g
+CFLAGS      = $(filter-out --std=c99, ${PKG_CFLAGS})
+CFLAGS     += -g /usr/include -isystem /usr/local/include -I .
 CFLAGS     += -DUSE_CLANG_COMPLETER
-CFLAGS     += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+CFLAGS     += -x c   -std=c11
 
-CXXFLAGS    = $(CFLAGS)
-
-CFLAGS     += -x c   -std=c99
-CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
+CXXFLAGS    = $(filter-out --std-c++11,${PKG_CFLAGS})
+CXXFLAGS   += -g /usr/include -isystem /usr/local/include -I .
+CXXFLAGS   += -DUSE_CLANG_COMPLETER
+#CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
+CXXFLAGS   += -x c++ -std=c++11
 
 CFLAGS_W    = -Wall -Wextra -Wl,--no-as-needed
-CXXFLAGS_W  = $(CFLAGS_W)
+CXXFLAGS_W  = -Wall -Wextra -Wl,--no-as-needed
 
 LDFLAGS     = -lstdc++
 LDFLAGS    += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
@@ -94,10 +99,10 @@ compile_commands.json: Makefile
 clean:
 	@echo 'cleaning...'
 	@printf '\t'
-	@gfind $(OUT_D) -mindepth 1 \
+	@find $(OUT_D) -mindepth 1 \
 		-type f -not -iname '.gitkeep' \
 		-printf '%P ' -delete
-	@gfind $(BIN_D) -mindepth 1 \
+	@find $(BIN_D) -mindepth 1 \
 		-type f -not -iname '.gitkeep' \
 		-printf '%P ' -delete
 	@printf '\n'
