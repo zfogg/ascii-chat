@@ -15,9 +15,9 @@ Eventually it will support 3+ simultaneous people, 'google-hangouts' style, and 
 
 Dependencies
 ==========
-- Most people: apt-get install clang libopencv-dev libjpeg-dev
-- ArchLinux masterrace: pacman -S clang opencv libjpeg-turbo
-- MacOS: brew install opencv@2 jpeg
+- Most people: `apt-get install clang libopencv-dev libjpeg-dev`
+- ArchLinux masterrace: `pacman -S clang opencv libjpeg-turbo`
+- MacOS: `brew install opencv@2 jpeg findutils`
     - `cp .macos.env .env`
     - `source .env`
 
@@ -29,7 +29,7 @@ Build and run
 - Clone this repo onto a computer with a webcam.
 - Install the dependencies.
 - run `make`.
-- run `./bin/server` in one terminal, and then
+- run `./bin/server -p 9001` in one terminal, and then
 - run `./bin/client -p 9001 -a 127.0.0.1` in another.
 
 NOTE: run `./bin/server -h` to see options
