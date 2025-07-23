@@ -25,8 +25,10 @@ char *ascii_read() {
     
     if (jpeg == NULL) {
         // Return a simple error message if webcam read fails
-        char *error_msg = malloc(100);
-        snprintf(error_msg, 100, "Webcam capture failed\n");
+        char *error_msg = (char *)malloc(100);
+        if (error_msg != NULL) {
+            snprintf(error_msg, 100, "Webcam capture failed\n");
+        }
         return error_msg;
     }
 
@@ -53,7 +55,7 @@ void ascii_write(char *f) {
             cursor_reset();
         else
             putchar(f[i]);
-    ascii_zzz();
+    // ascii_zzz();
 }
 
 void ascii_write_destroy() {

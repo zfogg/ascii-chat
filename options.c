@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include "aspect_ratio.h"
 
 #include "ascii.h"
 #include "options.h"
@@ -15,8 +16,8 @@ static const float weight_red   = 0.2989f;
 static const float weight_green = 0.5866f;
 static const float weight_blue  = 0.1145f;
 
-unsigned short int opt_width   = 180,
-                   opt_height  = 100,
+unsigned short int opt_width   = 110,
+                   opt_height  = 70,
 
                    auto_width  = 1,
                    auto_height = 1;
@@ -25,6 +26,10 @@ char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0",
      opt_port   [OPTIONS_BUFF_SIZE] = "90001";
 
 unsigned short int opt_webcam_index = 0;
+
+// Global variables to store last known image dimensions for aspect ratio recalculation
+unsigned short int last_image_width = 0,
+                   last_image_height = 0;
 
 char ascii_palette[ASCII_PALETTE_SIZE + 1] =
     "   ...',;:clodxkO0KXNWM";
@@ -60,8 +65,8 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
         }
         
         // Final fallback to default values
-        *width = 180;
-        *height = 100;
+        *width = 110;
+        *height = 70;
         return -1;
     }
     
@@ -74,16 +79,56 @@ void update_dimensions_for_full_height(void) {
     unsigned short int term_width, term_height;
     
     if (get_terminal_size(&term_width, &term_height) == 0) {
-        // If height is not specified (auto_height is true), use full terminal height
-        if (auto_height) {
+        // If both dimensions are auto, set height to terminal height and let aspect_ratio calculate width
+        if (auto_height && auto_width) {
             opt_height = term_height;
-            // auto_height = 0; // Mark as manually set
+            // Note: width will be calculated by aspect_ratio() when next image is loaded
         }
-        
-        // If width is not specified (auto_width is true), use full terminal width
-        if (auto_width) {
+        // If only height is auto, use full terminal height
+        else if (auto_height) {
+            opt_height = term_height;
+        }
+        // If only width is auto, use full terminal width
+        else if (auto_width) {
             opt_width = term_width;
-            // auto_width = 0; // Mark as manually set
+        }
+    }
+}
+
+void recalculate_aspect_ratio_on_resize(void) {
+    unsigned short int term_width, term_height;
+    
+    // Get current terminal size
+    if (get_terminal_size(&term_width, &term_height) == 0) {
+        // If both dimensions are auto and we have image dimensions, calculate aspect ratio
+        if (last_image_width > 0 && last_image_height > 0) {
+            // Calculate both possible approaches and choose the one that fits
+            unsigned short int width_based_height, height_based_width;
+            
+            // Approach 1: Set height to terminal height, calculate width
+            opt_height = term_height;
+            aspect_ratio(last_image_width, last_image_height);
+            height_based_width = opt_width;
+            
+            // Approach 2: Set width to terminal width, calculate height
+            opt_width = term_width;
+            aspect_ratio(last_image_width, last_image_height);
+            width_based_height = opt_height;
+            
+            // Choose the approach that fits better (prioritize height fitting)
+            if (height_based_width <= term_width) {
+                // Height-based approach fits
+                opt_height = term_height;
+                opt_width = height_based_width;
+            } else {
+                // Width-based approach fits
+                opt_width = term_width;
+                opt_height = width_based_height;
+            }
+        } else if (auto_width && auto_height) {
+            // If no image loaded but both dimensions are auto, use terminal dimensions
+            opt_height = term_height;
+            opt_width = term_width;
         }
     }
 }

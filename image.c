@@ -139,7 +139,11 @@ image_t *image_read(FILE *fp) {
     row_stride = jpg.output_width * jpg.output_components;
     buffer = (*jpg.mem->alloc_sarray)((j_common_ptr) &jpg, JPOOL_IMAGE, row_stride, 1);
 
-    aspect_ratio(jpg.output_width, jpg.output_height);
+    // Store image dimensions for aspect ratio recalculation on terminal resize
+    last_image_width = jpg.output_width;
+    last_image_height = jpg.output_height;
+    
+    // aspect_ratio(jpg.output_width, jpg.output_height);
     p = image_new(jpg.output_width, jpg.output_height);
 
     while (jpg.output_scanline < jpg.output_height) {
