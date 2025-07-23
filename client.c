@@ -29,8 +29,8 @@ void sigint_handler(int sigint) {
 
 void sigwinch_handler(int sigwinch) {
     (void) (sigwinch);
-    // Terminal was resized, update dimensions
-    update_dimensions_for_full_height();
+    // Terminal was resized, update dimensions and recalculate aspect ratio
+    recalculate_aspect_ratio_on_resize();
 }
 
 

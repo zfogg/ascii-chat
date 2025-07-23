@@ -23,6 +23,11 @@ char opt_address[],
 extern
 unsigned short int opt_webcam_index;
 
+// Global variables to store last known image dimensions for aspect ratio recalculation
+extern
+unsigned short int last_image_width,
+                   last_image_height;
+
 extern
 char ascii_palette[];
 
@@ -42,3 +47,4 @@ void precalc_rgb(const float, const float, const float);
 // Terminal size detection functions
 int get_terminal_size(unsigned short int *width, unsigned short int *height);
 void update_dimensions_for_full_height(void);
+void recalculate_aspect_ratio_on_resize(void);

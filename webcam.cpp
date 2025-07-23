@@ -27,7 +27,6 @@ void webcam_init(unsigned short int webcam_index) {
         std::println(stderr, "On macOS, you may need to grant camera permissions:\n");
         std::println(stderr, "1. Go to System Preferences > Security & Privacy > Privacy > Camera\n");
         std::println(stderr, "2. Add your terminal application (Terminal.app or iTerm2) to the list\n");
-        std::println(stderr, "3. Or run the application from Finder instead of terminal\n");
         exit(1);
     }
     

@@ -18,7 +18,8 @@
 void sigwinch_handler(int sigwinch) {
     (void) (sigwinch);
     // Terminal was resized, update dimensions
-    update_dimensions_for_full_height();
+    recalculate_aspect_ratio_on_resize();
+    printf("sigwinch_handler: opt_width: %d, opt_height: %d\n", opt_width, opt_height);
 }
 
 int main(int argc, char *argv[]) {
@@ -74,6 +75,9 @@ int main(int argc, char *argv[]) {
                 break;
             }
             free(frame);
+            if (rand() % 100 < 100) {
+                printf("opt_width: %d, opt_height: %d\n", opt_width, opt_height);
+            }
         }
 
         close(connfd);
