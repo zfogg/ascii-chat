@@ -22,6 +22,13 @@ void ascii_write_init() {
 
 char *ascii_read() {
     FILE *jpeg = webcam_read();
+    
+    if (jpeg == NULL) {
+        // Return a simple error message if webcam read fails
+        char *error_msg = malloc(100);
+        snprintf(error_msg, 100, "Webcam capture failed\n");
+        return error_msg;
+    }
 
     image_t *original = image_read(jpeg),
             *resized  = image_new(opt_width, opt_height);
@@ -58,4 +65,3 @@ void ascii_read_destroy() {
     console_clear();
     cursor_reset();
 }
-

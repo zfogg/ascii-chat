@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #define ASCII_PALETTE_SIZE 256
 
 #define OPTIONS_BUFF_SIZE 256
@@ -33,6 +35,6 @@ unsigned short int RED  [],
 
 void options_init(int, char **);
 
-void usage();
+void usage(FILE* out_stream);
 
 void precalc_rgb(const float, const float, const float);

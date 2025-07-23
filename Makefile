@@ -1,81 +1,148 @@
 #!/usr/bin/make -f
 
-CC              := clang
-CXX             := clang++
-PKG_CONFIG_LIBS := opencv libjpeg
+# =============================================================================
+# Configuration
+# =============================================================================
 
-BIN_D = bin
-OUT_D = build
+# Compilers
+CC  := clang
+CXX := clang++
 
-CFLAGS     += -DUSE_CLANG_COMPLETER -Wall -Wextra #-Wl,--no-as-needed
-CXXFLAGS   += $(CFLAGS)
+# Package dependencies
+PKG_CONFIG_LIBS := opencv4 libjpeg
 
+# Directories
+BIN_DIR  := bin
+BUILD_DIR := build
+
+# =============================================================================
+# Compiler Flags
+# =============================================================================
+
+# Base flags
+CFLAGS   += -Wall -Wextra
+CXXFLAGS += $(CFLAGS)
+
+# Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
-CFLAGS     += $(filter-out --std=c99,   ${PKG_CFLAGS})
-CXXFLAGS   += $(filter-out --std-c++11, ${PKG_CFLAGS})
-CFLAGS     += -x c   -std=c11
-CXXFLAGS   += -x c++ -std=c++11 -stdlib=libc++
 
-LDFLAGS    += -lstdc++
-LDFLAGS    += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+# Apply package flags and language flags
+CFLAGS   +=  $(PKG_CFLAGS) -std=c23
+CXXFLAGS +=  $(PKG_CFLAGS) -std=c++23 -stdlib=libc++
 
-TARGETS     = $(addprefix $(BIN_D)/, server client)
+# =============================================================================
+# Linker Flags
+# =============================================================================
 
-OBJS_C      = $(patsubst %.c,   $(OUT_D)/%.o, $(wildcard *.c))
-OBJS_CPP    = $(patsubst %.cpp, $(OUT_D)/%.o, $(wildcard *.cpp))
-OBJS_CEXT   = $(patsubst %.c,   $(OUT_D)/%.o, $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.c))
+LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-OBJS        = $(OBJS_C) $(OBJS_CPP) $(OBJS_CEXT)
-OBJS_       = $(filter-out $(patsubst $(BIN_D)/%, $(OUT_D)/%.o, $(TARGETS)), $(OBJS))
-# ^ non-targets; files without main methods
+# =============================================================================
+# File Discovery
+# =============================================================================
 
-HEADERS_C    = $(wildcard *.h)
-HEADERS_CPP  = $(wildcard *.hpp)
-HEADERS_CEXT = $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.h)
+# Targets (executables)
+TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
-HEADERS      = $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
+# Object files for server and client
+OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(wildcard *.c))
+OBJS_CPP  := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(wildcard *.cpp))
+OBJS_CEXT := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.c))
 
-# util
-RM = /bin/rm
+# All object files for server and client
+OBJS := $(OBJS_C) $(OBJS_CPP) $(OBJS_CEXT)
 
+# Non-target object files (files without main methods)
+OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TARGETS)), $(OBJS))
 
-.DEFAULT: default
-.PHONY: all clean
+# Header files
+HEADERS_C    := $(wildcard *.h)
+HEADERS_CPP  := $(wildcard *.hpp)
+HEADERS_CEXT := $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.h)
+HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 
-.PRECIOUS: $(OBJS_)
+# =============================================================================
+# Phony Targets
+# =============================================================================
 
+.PHONY: all clean default help
 
+# =============================================================================
+# Default Target
+# =============================================================================
+
+.DEFAULT_GOAL := default
+
+# =============================================================================
+# Build Rules
+# =============================================================================
+
+# Main targets
 default: $(TARGETS)
-
 all: default
 
+# Build executables
+$(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
+	@echo "Linking $@..."
+	$(CXX) -o $@ $^ $(LDFLAGS)
+	@echo "Built $@ successfully!"
 
-$(TARGETS): $(BIN_D)/%: $(OUT_D)/%.o $(OBJS_)
-	$(CXX) -o $@ \
-	$(LDFLAGS) \
-	$?
+$(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
+	@echo "Linking $@..."
+	$(CXX) -o $@ $^ $(LDFLAGS)
+	@echo "Built $@ successfully!"
 
-$(OBJS_C): $(OUT_D)/%.o: %.c $(HEADERS)
-	$(CC) -c $< -o $@ \
-	$(CFLAGS)
-
-$(OBJS_CPP): $(OUT_D)/%.o: %.cpp $(HEADERS)
-	$(CXX) -c $< -o $@ \
-	$(CXXFLAGS)
-
-$(OBJS_CEXT): $(OUT_D)/%.o: %.c $(HEADERS_CEXT)
+# Compile C source files
+$(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
+	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
-	$(CC) -c $< -o $@ \
-	$(CFLAGS)
+	$(CC) -o $@ $(CFLAGS) -c $< 
 
+# Compile C++ source files
+$(OBJS_CPP): $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
+	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
+	$(CXX) -o $@ $(CXXFLAGS) -c $<
+
+# Compile external C source files
+$(OBJS_CEXT): $(BUILD_DIR)/%.o: %.c $(HEADERS_CEXT)
+	@echo "Compiling external $<..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) -c $<
+
+# =============================================================================
+# Utility Targets
+# =============================================================================
+
+# Clean build artifacts
 clean:
-	@echo 'cleaning...'
-	@printf '\t'
-	@find $(OUT_D) -mindepth 1 \
-		-type f -not -iname '.gitkeep' \
-		-printf '%P ' -delete
-	@find $(BIN_D) -mindepth 1 \
-		-type f -not -iname '.gitkeep' \
-		-printf '%P ' -delete
-	@printf '\n'
-	@echo 'done!'
+	@echo "Cleaning build artifacts..."
+	@if [ -d "$(BUILD_DIR)" ]; then \
+		find $(BUILD_DIR) -mindepth 1 -type f -not -iname '.gitkeep' -delete; \
+		echo "  - Removed build files"; \
+	fi
+	@if [ -d "$(BIN_DIR)" ]; then \
+		find $(BIN_DIR) -mindepth 1 -type f -not -iname '.gitkeep' -delete; \
+		echo "  - Removed binaries"; \
+	fi
+	@echo "Clean complete!"
+
+# Show help information
+help:
+	@echo "Available targets:"
+	@echo "  all     - Build all targets (default)"
+	@echo "  default - Build all targets"
+	@echo "  clean   - Remove build artifacts"
+	@echo "  help    - Show this help message"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  CC=$(CC)"
+	@echo "  CXX=$(CXX)"
+	@echo "  BIN_DIR=$(BIN_DIR)"
+	@echo "  BUILD_DIR=$(BUILD_DIR)"
+	@echo "  PKG_CONFIG_LIBS=$(PKG_CONFIG_LIBS)"
+
+# =============================================================================
+# Dependencies
+# =============================================================================
+
+.PRECIOUS: $(OBJS_NON_TARGET)

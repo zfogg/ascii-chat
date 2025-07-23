@@ -1,13 +1,12 @@
-#include <iostream>
-#include <opencv2/objdetect/objdetect.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 
-#include <stdio.h>
+#include <cstdio>
+#include <print>
 #include <jpeglib.h>
-//#include "ext/fmemopen/fmemopen.h"
 
+#include "ext/fmemopen/fmemopen.h"
 #include "webcam.hpp"
+
 
 using namespace std;
 using namespace cv;
@@ -19,14 +18,22 @@ vector<int> jpegbuf_params;
 
 VideoCapture camera;
 
+
 void webcam_init(unsigned short int webcam_index) {
+    std::println(stderr, "Attempting to open webcam with index {}...", webcam_index);
     camera.open(webcam_index);
     if(!camera.isOpened()) {
-        perror("Failed to connect to a webcam.");
+        std::println(stderr, "Failed to connect to a webcam.\n");
+        std::println(stderr, "On macOS, you may need to grant camera permissions:\n");
+        std::println(stderr, "1. Go to System Preferences > Security & Privacy > Privacy > Camera\n");
+        std::println(stderr, "2. Add your terminal application (Terminal.app or iTerm2) to the list\n");
+        std::println(stderr, "3. Or run the application from Finder instead of terminal\n");
         exit(1);
     }
+    
+    std::println(stderr, "Webcam opened successfully!\n");
 
-    jpegbuf_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+    jpegbuf_params.push_back(IMWRITE_JPEG_QUALITY);
     jpegbuf_params.push_back(100);
 }
 
@@ -35,14 +42,20 @@ FILE *webcam_read() {
     Mat frame, edges;
 
     camera >> frame;
+    
+    // Check if frame was captured successfully
+    if (frame.empty()) {
+        std::println(stderr, "Failed to capture frame from webcam\n");
+        return NULL;
+    }
 
     flip(frame, frame, +1);
 
-    cvtColor(frame, edges, CV_BGR2GRAY);
+    cvtColor(frame, edges, cv::COLOR_BGR2GRAY);
 
     imencode(".jpg", frame, jpegbuf, jpegbuf_params);
 
-    FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size()+1, "r");
+    FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size(), "r");
 
     // FIXME: do I even need this?
     waitKey(16); // FPS
