@@ -10,6 +10,11 @@ void aspect_ratio(const int jpeg_w, const int jpeg_h) {
     #define CALC_W ROUND(2.0f * (float) opt_height * (float) jpeg_w / (float) jpeg_h)
     #define CALC_H ROUND(0.5f * (float) opt_width  * (float) jpeg_h / (float) jpeg_w)
 
+    // If both dimensions are specified, we don't need to calculate anything
+    if (!auto_width && !auto_height) {
+        return;
+    }
+
     // calc width
     if (auto_width && !auto_height) {
         opt_width = CALC_W;
