@@ -27,6 +27,12 @@ void sigint_handler(int sigint) {
     exit(0);
 }
 
+void sigwinch_handler(int sigwinch) {
+    (void) (sigwinch);
+    // Terminal was resized, update dimensions
+    update_dimensions_for_full_height();
+}
+
 
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
@@ -48,6 +54,9 @@ int main(int argc, char *argv[]) {
 
     // Cleanup nicely on Ctrl+C.
     signal(SIGINT, sigint_handler);
+    
+    // Handle terminal resize events
+    signal(SIGWINCH, sigwinch_handler);
 
     /* read from the socket as long as the size of the read is > 0 */
     while(1) {

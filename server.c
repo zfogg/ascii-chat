@@ -15,10 +15,19 @@
 #include "options.h"
 
 
+void sigwinch_handler(int sigwinch) {
+    (void) (sigwinch);
+    // Terminal was resized, update dimensions
+    update_dimensions_for_full_height();
+}
+
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
     int port = strtoint(opt_port);
     unsigned short int webcam_index = opt_webcam_index;
+
+    // Handle terminal resize events
+    signal(SIGWINCH, sigwinch_handler);
 
     // file descriptors for I/O
     int listenfd = 0,

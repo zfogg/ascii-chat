@@ -51,6 +51,19 @@ void image_resize(const image_t *s, image_t *d) {
     global_image_resize_fun(s, d);
 }
 
+void image_flip_horizontal(image_t *p) {
+    int w = p->w;
+    int h = p->h;
+    
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w / 2; x++) {
+            rgb_t temp = p->pixels[y * w + x];
+            p->pixels[y * w + x] = p->pixels[y * w + (w - 1 - x)];
+            p->pixels[y * w + (w - 1 - x)] = temp;
+        }
+    }
+}
+
 void image_resize_interpolation(const image_t *source, image_t *dest) {
     register unsigned int r, g, b;
 

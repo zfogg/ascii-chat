@@ -38,3 +38,7 @@ void options_init(int, char **);
 void usage(FILE* out_stream);
 
 void precalc_rgb(const float, const float, const float);
+
+// Terminal size detection functions
+int get_terminal_size(unsigned short int *width, unsigned short int *height);
+void update_dimensions_for_full_height(void);

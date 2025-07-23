@@ -27,3 +27,4 @@ void image_destroy(image_t *);
 void image_clear(image_t *);
 char* image_print(const image_t *);
 void image_resize(const image_t *, image_t *);
+void image_flip_horizontal(image_t *);

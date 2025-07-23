@@ -37,6 +37,7 @@ char *ascii_read() {
 
     image_clear(resized);
     image_resize(original, resized);
+    image_flip_horizontal(resized);
 
     char *ascii = image_print(resized);
 
