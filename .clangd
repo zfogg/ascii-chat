@@ -1,0 +1,84 @@
+CompileFlags:
+  Add:
+    # Language standards
+    - -std=c23
+    - -std=c++23
+    - -stdlib=libc++
+    
+    # Warning flags
+    - -Wall
+    - -Wextra
+    
+    # Include paths
+    - -I.
+    - -Iext
+    - -Iext/fmemopen
+    
+    # OpenCV and libjpeg flags (these will be resolved by pkg-config)
+    - -I/opt/homebrew/include/opencv4
+    - -I/opt/homebrew/include/libjpeg-turbo
+    - -I/opt/homebrew/include
+    - -I/usr/local/include
+    
+    # System includes
+    - -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
+    - -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1
+    - -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/*/include
+    - -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks
+
+Index:
+  Background: Build
+  External:
+    Dir: .
+    Dir: ext
+
+Diagnostics:
+  ClangTidy:
+    Add:
+      - modernize-*
+      - performance-*
+      - readability-*
+      - cppcoreguidelines-*
+    Remove:
+      - modernize-use-trailing-return-type
+      - cppcoreguidelines-avoid-magic-numbers
+
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
+  Designators: Yes
+  BlockParameters: Yes
+
+Completion:
+  DetailedLabel: Yes
+  Snippets: Yes
+
+Hover:
+  ShowAKA: Yes
+  ShowIncludes: Yes
+
+References:
+  ShowAKA: Yes
+
+SignatureHelp:
+  Enabled: Yes
+
+Format:
+  BasedOnStyle: LLVM
+  IndentWidth: 2
+  TabWidth: 2
+  UseTab: Never
+  ColumnLimit: 100
+  AllowShortFunctionsOnASingleLine: Empty
+  AllowShortIfStatementsOnASingleLine: false
+  AllowShortLoopsOnASingleLine: false
+  AllowShortCaseLabelsOnASingleLine: false
+  PointerAlignment: Left
+  ReferenceAlignment: Left
+  SpaceBeforeParens: ControlStatements
+  SpaceInEmptyParentheses: false
+  SpacesInCStyleCastParentheses: false
+  SpacesInParentheses: false
+  SpacesInSquareBrackets: false
+  Standard: c++23 
