@@ -19,7 +19,7 @@ void sigwinch_handler(int sigwinch) {
     (void) (sigwinch);
     // Terminal was resized, update dimensions
     recalculate_aspect_ratio_on_resize();
-    printf("sigwinch_handler: opt_width: %d, opt_height: %d\n", opt_width, opt_height);
+    // printf("sigwinch_handler: opt_width: %d, opt_height: %d\n", opt_width, opt_height);
 }
 
 int main(int argc, char *argv[]) {
@@ -45,7 +45,10 @@ int main(int argc, char *argv[]) {
     serv_addr.sin_port = htons(port); // set port for socket
 
     // bind socket based on address and ports set in serv_addr
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    if (bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Error: network bind failed");
+        exit(1);
+    }
 
     int yes = 1;
 
@@ -58,26 +61,30 @@ int main(int argc, char *argv[]) {
     // ignore SIGPIPE signal
     signal(SIGPIPE, SIG_IGN);
 
+    ascii_read_init(webcam_index);
+
     // listen on socket listenfd with max backlog of 10 connections
-    listen(listenfd, 10);
+    if (listen(listenfd, 10) < 0) {
+        perror("Error: network listen failed");
+        exit(1);
+    }
+
     while(1) {
         printf("1) Waiting for a connection...\n");
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
         printf("2) Connection initiated, sending data.\n");
 
-        ascii_read_init(webcam_index);
         char *frame = NULL;
 
         for (int conn = 0; true;) {
             frame = ascii_read(); /* malloc happens here */
             conn = send(connfd, frame, strlen(frame), 0);
             if (conn == -1) {
+                free(frame);
+                fprintf(stderr, "%s", "\n Error: send failed \n");
                 break;
             }
             free(frame);
-            if (rand() % 100 < 100) {
-                printf("opt_width: %d, opt_height: %d\n", opt_width, opt_height);
-            }
         }
 
         close(connfd);
