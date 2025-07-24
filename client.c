@@ -95,6 +95,12 @@ int main(int argc, char *argv[]) {
 
         while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff)-1))) {
             recvBuff[read_result] = 0;
+            // INSERT_YOUR_CODE
+            if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
+                console_clear();
+                fprintf(stdout, "Error: %s", recvBuff);
+                continue;
+            }
             ascii_write(recvBuff);
         }
 
@@ -105,4 +111,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-

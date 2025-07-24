@@ -48,7 +48,7 @@ FILE *webcam_read() {
         return NULL;
     }
 
-    flip(frame, frame, +1);
+    // flip(frame, frame, +1); // horizontal flip to mirror the image. do we want it?
 
     cvtColor(frame, edges, cv::COLOR_BGR2GRAY);
 
@@ -61,4 +61,14 @@ FILE *webcam_read() {
     // waitKey(1); // FPS
 
     return jpegfile;
+}
+
+void webcam_cleanup() {
+    bool was_opened = camera.isOpened();
+    if (was_opened) {
+        camera.release();
+        std::println(stdout, "Webcam resources released\n");
+    } else {
+        std::println(stdout, "Webcam was not opened, nothing to release\n");
+    }
 }
