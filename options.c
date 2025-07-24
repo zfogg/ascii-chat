@@ -135,6 +135,7 @@ void recalculate_aspect_ratio_on_resize(void) {
 
 void options_init(int argc, char** argv) {
     precalc_rgb(weight_red, weight_green, weight_blue);
+    recalculate_aspect_ratio_on_resize();
     
     while (1) {
         int index  = 0,
