@@ -22,6 +22,13 @@ void sigwinch_handler(int sigwinch) {
     // printf("sigwinch_handler: opt_width: %d, opt_height: %d\n", opt_width, opt_height);
 }
 
+void sigint_handler(int sigint) {
+    (void) (sigint);
+    ascii_read_destroy();
+    printf("Cleaning up and exiting...\n");
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
     options_init(argc, argv);
     int port = strtoint(opt_port);
@@ -29,6 +36,8 @@ int main(int argc, char *argv[]) {
 
     // Handle terminal resize events
     signal(SIGWINCH, sigwinch_handler);
+    // Handle Ctrl+C for cleanup
+    signal(SIGINT, sigint_handler);
 
     // file descriptors for I/O
     int listenfd = 0,

@@ -39,7 +39,6 @@ char *ascii_read() {
 
     image_clear(resized);
     image_resize(original, resized);
-    image_flip_horizontal(resized);
 
     char *ascii = image_print(resized);
 
@@ -67,4 +66,5 @@ void ascii_write_destroy() {
 void ascii_read_destroy() {
     console_clear();
     cursor_reset();
+    webcam_cleanup();
 }
