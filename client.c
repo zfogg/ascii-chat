@@ -42,15 +42,15 @@ int main(int argc, char *argv[]) {
     char recvBuff[40000];
     struct sockaddr_in serv_addr;
 
-    struct timespec
-    sleep_start = {
-        .tv_sec  = 3,
-        .tv_nsec = 0
-    },
-    sleep_stop = {
-        .tv_sec  = 0,
-        .tv_nsec = 0
-    };
+    // struct timespec
+    // sleep_start = {
+    //     .tv_sec  = 3,
+    //     .tv_nsec = 0
+    // },
+    // sleep_stop = {
+    //     .tv_sec  = 0,
+    //     .tv_nsec = 0
+    // };
 
     // Cleanup nicely on Ctrl+C.
     signal(SIGINT, sigint_handler);
@@ -89,7 +89,8 @@ int main(int argc, char *argv[]) {
         printf("Attempting to connect...\n");
         // failed when trying to connect to the server
         if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            printf("\n Error: connect failed \n");
+            fprintf(stderr, "%s", "\n Error: connect failed \n");
+            exit(1);
         }
 
         while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff)-1))) {
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
 
         console_clear();
 
-        nanosleep((struct timespec *)&sleep_start,(struct timespec *)&sleep_stop);
+        // nanosleep((struct timespec *)&sleep_start,(struct timespec *)&sleep_stop);
     }
 
     return 0;
