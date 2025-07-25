@@ -39,22 +39,43 @@ char *ascii_read() {
 
     image_clear(resized);
     image_resize(original, resized);
+    // image_t *cropped = image_crop(resized, resized->w/2, resized->h/2, opt_width, opt_height);
 
+    // char *ascii = image_print(cropped);
     char *ascii = image_print(resized);
 
     image_destroy(original);
     image_destroy(resized);
+    // image_destroy(cropped);
 
     return ascii;
 }
 
 void ascii_write(char *f) {
-    for (int i = 0; f[i] != '\0'; ++i)
-        if (f[i] == '\t')
+    if (f == nullptr) { return; }  // Safety check
+    
+    char *current = f;
+    char *segment_start = f;
+    
+    while (*current != 0) {
+        if (*current == ASCII_DELIMITER) {
+            // Output the segment before this tab
+            size_t len = current - segment_start;
+            if (len > 0) {
+                fwrite(segment_start, 1, len, stdout);
+            }
+            
             cursor_reset();
-        else
-            putchar(f[i]);
-    // ascii_zzz();
+            segment_start = current + 1;  // Next segment starts after tab
+        }
+        current++;
+    }
+    
+    // Output the final segment
+    size_t remaining = current - segment_start;
+    if (remaining > 0) {
+        fwrite(segment_start, 1, remaining, stdout);
+    }
 }
 
 void ascii_write_destroy() {
