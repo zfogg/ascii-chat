@@ -6,6 +6,7 @@
 
 #include "ext/fmemopen/fmemopen.h"
 #include "webcam.hpp"
+#include "options.h"
 
 
 using namespace std;
@@ -50,7 +51,9 @@ FILE *webcam_read() {
         return NULL;
     }
 
-    // flip(frame, frame, +1); // horizontal flip to mirror the image. do we want it?
+    if (opt_webcam_flip == 1) {
+        flip(frame, frame, +1); // horizontal flip to mirror the image.
+    }
 
     cvtColor(frame, edges, cv::COLOR_BGR2GRAY);
 

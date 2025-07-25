@@ -23,13 +23,15 @@ char opt_address[],
 extern
 unsigned short int opt_webcam_index;
 
-// Global variables to store last known image dimensions for aspect ratio recalculation
+extern
+unsigned short int opt_webcam_flip;
+
+// Global variables to store last known image dimensions for aspect ratio
+// recalculation
 extern
 unsigned short int last_image_width,
                    last_image_height;
 
-extern
-char ascii_palette[];
 
 extern
 unsigned short int RED  [],

@@ -22,7 +22,7 @@ void ascii_write_init() {
 
 char *ascii_read() {
     FILE *jpeg = webcam_read();
-    
+
     if (jpeg == NULL) {
         // Return a simple error message if webcam read fails
         printf("%s", "Webcam capture failed\n");
@@ -45,12 +45,12 @@ char *ascii_read() {
     return ascii;
 }
 
-void ascii_write(char *f) {
-    if (f == nullptr) { return; }  // Safety check
-    
-    char *current = f;
-    char *segment_start = f;
-    
+void ascii_write(char *frame) {
+    if (frame == nullptr) { return; }  // Safety check
+
+    char *current = frame;
+    char *segment_start = frame;
+
     while (*current != 0) {
         if (*current == ASCII_DELIMITER) {
             // Output the segment before this tab
@@ -58,13 +58,13 @@ void ascii_write(char *f) {
             if (len > 0) {
                 fwrite(segment_start, 1, len, stdout);
             }
-            
+
             cursor_reset();
             segment_start = current + 1;  // Next segment starts after tab
         }
         current++;
     }
-    
+
     // Output the final segment
     size_t remaining = current - segment_start;
     if (remaining > 0) {
