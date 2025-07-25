@@ -25,11 +25,13 @@ void webcam_init(unsigned short int webcam_index) {
     if(!camera.isOpened()) {
         std::println(stderr, "Failed to connect to a webcam.\n");
         std::println(stderr, "On macOS, you may need to grant camera permissions:\n");
-        std::println(stderr, "1. Go to System Preferences > Security & Privacy > Privacy > Camera\n");
-        std::println(stderr, "2. Add your terminal application (Terminal.app or iTerm2) to the list\n");
+        std::println(stderr, "*. Say \"yes\" to the popup about system camera access that you see when running this program for the first time.\n");
+        std::println(stderr, "*. If you said \"no\" to the popup, go to System Preferences > Security & Privacy > Privacy > Camera.\n");
+        std::println(stderr, "   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to access your camera.\n");
+        std::println(stderr, "   Then just run this program again.\n");
         exit(1);
     }
-    
+
     std::println(stderr, "Webcam opened successfully!\n");
 
     jpegbuf_params.push_back(IMWRITE_JPEG_QUALITY);
@@ -41,7 +43,7 @@ FILE *webcam_read() {
     Mat frame, edges;
 
     camera >> frame;
-    
+
     // Check if frame was captured successfully
     if (frame.empty()) {
         std::println(stderr, "Failed to capture frame from webcam\n");
@@ -63,6 +65,7 @@ FILE *webcam_read() {
     return jpegfile;
 }
 
+
 void webcam_cleanup() {
     bool was_opened = camera.isOpened();
     if (was_opened) {
@@ -72,3 +75,4 @@ void webcam_cleanup() {
         std::println(stdout, "Webcam was not opened, nothing to release\n");
     }
 }
+

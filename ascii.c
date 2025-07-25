@@ -25,28 +25,22 @@ char *ascii_read() {
     
     if (jpeg == NULL) {
         // Return a simple error message if webcam read fails
-        char *error_msg = (char *)malloc(100);
-        if (error_msg != NULL) {
-            snprintf(error_msg, 100, "Webcam capture failed\n");
-        }
-        return error_msg;
+        printf("%s", "Webcam capture failed\n");
+        return NULL;
     }
 
-    image_t *original = image_read(jpeg),
-            *resized  = image_new(opt_width, opt_height);
+    image_t *original = image_read(jpeg);
+    image_t *resized  = image_new(opt_width, opt_height);
 
     fclose(jpeg);
 
     image_clear(resized);
     image_resize(original, resized);
-    // image_t *cropped = image_crop(resized, resized->w/2, resized->h/2, opt_width, opt_height);
 
-    // char *ascii = image_print(cropped);
     char *ascii = image_print(resized);
 
     image_destroy(original);
     image_destroy(resized);
-    // image_destroy(cropped);
 
     return ascii;
 }
