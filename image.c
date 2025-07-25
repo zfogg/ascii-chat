@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <jpeglib.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #include "ascii.h"
 #include "aspect_ratio.h"
@@ -51,54 +53,29 @@ void image_resize(const image_t *s, image_t *d) {
     global_image_resize_fun(s, d);
 }
 
+// Optimized interpolation function with better integer arithmetic and memory access
 void image_resize_interpolation(const image_t *source, image_t *dest) {
-    register unsigned int r, g, b;
-
-    const int ynrat = (float)source->h / (float)dest->h;
-    const int xnrat = (float)source->w / (float)dest->w;
-
-    const int yinc = ynrat*source->w;
-    const unsigned int adds = xnrat * ynrat;
-
-    register rgb_t* pix = dest->pixels;
-    register rgb_t* pix_next = pix + dest->w;
-
-    register const rgb_t* samp_end;
-    register const rgb_t* src = source->pixels;
-    register const rgb_t* src_end = source->pixels + dest->h*yinc;
-
-    while ( src < src_end ) {
-
-        const rgb_t *sample_start_plus_yinc = src + yinc;
-
-        while ( pix < pix_next ) {
-
-            r = g = b = 0;
-            samp_end = src + xnrat;
-
-            while ( src < sample_start_plus_yinc ) {
-
-                while ( src < samp_end ) {
-                    r += src->r;
-                    g += src->g;
-                    b += src->b;
-                    ++src;
-                }
-
-                src += source->w - xnrat;
-                samp_end += source->w;
-            }
-
-            pix->r = r/adds;
-            pix->g = g/adds;
-            pix->b = b/adds;
-
-            ++pix;
-            src -= yinc - xnrat;
+    const int src_w = source->w;
+    const int src_h = source->h;
+    const int dst_w = dest->w;
+    const int dst_h = dest->h;
+    
+    // Use fixed-point arithmetic for better performance
+    const uint32_t x_ratio = ((src_w << 16) / dst_w) + 1;
+    const uint32_t y_ratio = ((src_h << 16) / dst_h) + 1;
+    
+    const rgb_t *src_pixels = source->pixels;
+    rgb_t *dst_pixels = dest->pixels;
+    
+    for (int y = 0; y < dst_h; y++) {
+        const uint32_t src_y = (y * y_ratio) >> 16;
+        const rgb_t *src_row = src_pixels + src_y * src_w;
+        rgb_t *dst_row = dst_pixels + y * dst_w;
+        
+        for (int x = 0; x < dst_w; x++) {
+            const uint32_t src_x = (x * x_ratio) >> 16;
+            dst_row[x] = src_row[src_x];
         }
-
-        src = sample_start_plus_yinc;
-        pix_next += dest->w;
     }
 }
 
@@ -130,7 +107,6 @@ image_t *image_read(FILE *fp) {
     last_image_width = jpg.output_width;
     last_image_height = jpg.output_height;
     
-    // aspect_ratio(jpg.output_width, jpg.output_height);
     p = image_new(jpg.output_width, jpg.output_height);
 
     while (jpg.output_scanline < jpg.output_height) {
@@ -141,9 +117,12 @@ image_t *image_read(FILE *fp) {
         } else {
             rgb_t *pixels = &p->pixels[(jpg.output_scanline-1) * p->w];
 
-            // grayscale
-            for (int x = 0; x < (int)jpg.output_width; ++x)
-                pixels[x].r = pixels[x].g = pixels[x].b = buffer[0][x];
+            // grayscale - optimized loop
+            const JSAMPLE *src = buffer[0];
+            for (int x = 0; x < (int)jpg.output_width; ++x) {
+                const JSAMPLE gray = src[x];
+                pixels[x].r = pixels[x].g = pixels[x].b = gray;
+            }
         }
     }
 
@@ -152,35 +131,51 @@ image_t *image_read(FILE *fp) {
     return p;
 }
 
+// Optimized palette generation with caching
+static char* cached_palette = NULL;
+
 char* get_lum_palette() {
-    static char palette[256];
+    if (cached_palette != NULL) {
+        return cached_palette;
+    }
+    
+    cached_palette = (char*)malloc(256 * sizeof(char));
+    const int palette_len = strlen(ascii_palette) - 1;
+    
     for (int n = 0; n < 256; n++) {
-        palette[n] = ascii_palette[ROUND(
-            (float)(strlen(ascii_palette) - 1) * (float)n / (float)MAXJSAMPLE
+        cached_palette[n] = ascii_palette[ROUND(
+            (float)palette_len * (float)n / (float)MAXJSAMPLE
         )];
     }
-    return palette;
+    return cached_palette;
 }
 
+// Optimized image printing with better memory access patterns
 char *image_print(const image_t *p) {
-    int h = p->h,
-        w = p->w;
+    const int h = p->h;
+    const int w = p->w;
+    const int len = h * w;
 
-    rgb_t* pix = p->pixels;
-    char* palette = get_lum_palette();
+    const rgb_t *pix = p->pixels;
+    const char *palette = get_lum_palette();
+    const unsigned short int *red_lut = RED;
+    const unsigned short int *green_lut = GREEN;
+    const unsigned short int *blue_lut = BLUE;
 
-    int len = h*w;
-    char* lines = (char*)malloc((len + 2)*sizeof(char));
-
-    lines[len  ] = ASCII_DELIMITER;
-    lines[len+1] = '\0';
+    char* lines = (char*)malloc((len + 2) * sizeof(char));
+    
+    lines[len] = ASCII_DELIMITER;
+    lines[len + 1] = '\0';
 
     for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++, pix++)
-            lines[(y*w)+x] = palette[
-                RED[pix->r] + GREEN[pix->g] + BLUE[pix->b]
-            ];
-        lines[(y*w)+w-1] = '\n';
+        const int row_offset = y * w;
+        
+        for (int x = 0; x < w; x++) {
+            const rgb_t pixel = pix[row_offset + x];
+            const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
+            lines[row_offset + x] = palette[luminance];
+        }
+        lines[row_offset + w - 1] = '\n';
     }
 
     return lines;
