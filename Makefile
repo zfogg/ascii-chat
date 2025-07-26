@@ -35,6 +35,7 @@ CXXFLAGS +=  $(PKG_CFLAGS) -std=c++23 -stdlib=libc++
 # =============================================================================
 
 LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+LDFLAGS += -lpthread
 
 # =============================================================================
 # File Discovery
@@ -64,7 +65,7 @@ HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help
+.PHONY: all clean default help debug release
 
 # =============================================================================
 # Default Target
@@ -80,14 +81,26 @@ HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 default: $(TARGETS)
 all: default
 
+# Debug build
+debug: CFLAGS += -g -O0 -DDEBUG_MEMORY
+debug: CXXFLAGS += -g -O0 -DDEBUG_MEMORY
+debug: $(TARGETS)
+
+# Release build
+release: CFLAGS += -O3 -DNDEBUG
+release: CXXFLAGS += -O3 -DNDEBUG
+release: $(TARGETS)
+
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
+	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
+	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
@@ -129,10 +142,11 @@ clean:
 # Show help information
 help:
 	@echo "Available targets:"
-	@echo "  all     - Build all targets (default)"
-	@echo "  default - Build all targets"
-	@echo "  clean   - Remove build artifacts"
-	@echo "  help    - Show this help message"
+	@echo "  all/default - Build all targets with default flags"
+	@echo "  debug       - Build with debug symbols and no optimization"
+	@echo "  release     - Build with optimizations enabled"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  help        - Show this help message"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  CC=$(CC)"
@@ -140,6 +154,12 @@ help:
 	@echo "  BIN_DIR=$(BIN_DIR)"
 	@echo "  BUILD_DIR=$(BUILD_DIR)"
 	@echo "  PKG_CONFIG_LIBS=$(PKG_CONFIG_LIBS)"
+	@echo ""
+	@echo "New files included:"
+	@echo "  - common.h, logging.c       - Logging and error handling"
+	@echo "  - ringbuffer.h, ringbuffer.c - Lock-free frame buffering"
+	@echo "  - protocol.h                - Protocol definitions"
+	@echo "  - network.c, network.h      - Network timeouts and utilities"
 
 # =============================================================================
 # Dependencies
