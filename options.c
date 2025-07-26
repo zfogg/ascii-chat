@@ -32,6 +32,8 @@ unsigned short int opt_webcam_index = 0;
 
 unsigned short int opt_webcam_flip = 1;
 
+unsigned short int opt_color_output = 0;
+
 // Global variables to store last known image dimensions for aspect ratio recalculation
 unsigned short int last_image_width = 0,
                    last_image_height = 0;
@@ -51,6 +53,7 @@ static struct option long_options[] = {
     {"height",        optional_argument, NULL, 'y'},
     {"webcam-index",  required_argument, NULL, 'c'},
     {"webcam-flip",   optional_argument, NULL, 'f'},
+    {"color",         no_argument,       NULL, 'C'},
     {"help",          optional_argument, NULL, 'h'},
     {0, 0, 0, 0}
 };
@@ -148,7 +151,7 @@ void options_init(int argc, char** argv) {
 
     while (1) {
         int index  = 0,
-            c = getopt_long(argc, argv, "a:p:x:y:c:h:f", long_options, &index);
+            c = getopt_long(argc, argv, "a:p:x:y:c:h:fC", long_options, &index);
         if (c == -1)
             break;
 
@@ -187,6 +190,10 @@ void options_init(int argc, char** argv) {
                 opt_webcam_flip = strtoint(argbuf);
                 break;
 
+            case 'C':
+                opt_color_output = 1;
+                break;
+
             case '?':
                 fprintf(stderr, "Unknown option %c\n", optopt);
                 usage(stderr);
@@ -217,6 +224,7 @@ void usage(FILE* desc /* stdout|stderr*/ ) {
     fprintf(desc, "\t\t -y --height       (client) \t     render height\n");
     fprintf(desc, "\t\t -c --webcam-index (server) \t     webcam device index (0-based)\n");
     fprintf(desc, "\t\t -f --webcam-flip  (server) \t     horizontally flip the image (usually desirable)\n");
+    fprintf(desc, "\t\t -C --color        (server|client) \t enable colored ASCII output\n");
     fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }
 
@@ -228,5 +236,10 @@ void precalc_rgb(const float red, const float green, const float blue) {
         BLUE[n]  = ((float) n) * blue;
         GRAY[n]  = ((float) n);
     }
+}
+
+/* Frame buffer size calculation */
+size_t get_frame_buffer_size(void) {
+    return opt_color_output ? FRAME_BUFFER_SIZE_COLOR : FRAME_BUFFER_SIZE;
 }
 

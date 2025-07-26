@@ -26,6 +26,9 @@ unsigned short int opt_webcam_index;
 extern
 unsigned short int opt_webcam_flip;
 
+// Color output option
+extern unsigned short int opt_color_output;
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 extern
@@ -45,6 +48,9 @@ void options_init(int, char **);
 void usage(FILE* out_stream);
 
 void precalc_rgb(const float, const float, const float);
+
+// Frame buffer size calculation
+size_t get_frame_buffer_size(void);
 
 // Terminal size detection functions
 int get_terminal_size(unsigned short int *width, unsigned short int *height);

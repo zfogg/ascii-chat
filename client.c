@@ -68,7 +68,9 @@ void sigwinch_handler(int sigwinch) {
 void* display_thread_func(void* arg) {
     (void)arg;
     
-    char frame_buffer[FRAME_BUFFER_SIZE];
+    // Allocate frame buffer dynamically based on color mode
+    size_t frame_size = get_frame_buffer_size();
+    char* frame_buffer = (char*)malloc(frame_size);
     struct timespec last_display_time = {0, 0};
     uint64_t frames_displayed = 0;
     
@@ -88,8 +90,9 @@ void* display_thread_func(void* arg) {
         long elapsed_ms = (current_time.tv_sec - last_display_time.tv_sec) * 1000 +
                          (current_time.tv_nsec - last_display_time.tv_nsec) / 1000000;
         
-        if (elapsed_ms < FRAME_INTERVAL_MS) {
-            usleep((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
+        int frame_interval = get_frame_interval_ms();
+        if (elapsed_ms < frame_interval) {
+            usleep((frame_interval - elapsed_ms) * 1000);
             continue;
         }
         
@@ -128,6 +131,10 @@ void* display_thread_func(void* arg) {
     }
     
     ascii_write_destroy();
+    
+    // Free the dynamically allocated frame buffer
+    free(frame_buffer);
+    
     log_info("Display thread stopped");
     return NULL;
 }
@@ -194,6 +201,7 @@ static bool connect_to_server(const char* address, int port) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+
     // Initialize logging
     log_init("client.log", LOG_DEBUG);
     log_info("ASCII Chat Client starting...");
@@ -211,8 +219,10 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // Create frame buffer (buffer 5 frames for smooth playback)
-    g_frame_buffer = framebuffer_create(5, FRAME_BUFFER_SIZE);
+    // Create frame buffer (more capacity for colored mode to handle frame size variations)
+    size_t max_frame_size = get_frame_buffer_size();
+    int buffer_capacity = opt_color_output ? 10 : 5;  // More buffering for colored frames  
+    g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
     if (!g_frame_buffer) {
         log_fatal("Failed to create frame buffer");
         free(recvBuff);
@@ -315,7 +325,7 @@ int main(int argc, char *argv[]) {
             g_stats.bytes_received += read_result;
             if (!buffered) {
                 g_stats.frames_dropped++;
-                log_debug("Frame buffer full, dropped frame");
+                // log_debug("Frame buffer full, dropped frame");
             }
             pthread_mutex_unlock(&g_stats_mutex);
             

@@ -26,4 +26,6 @@ image_t* image_new(int, int);
 void image_destroy(image_t *);
 void image_clear(image_t *);
 char* image_print(const image_t *);
+char* image_print_colored(const image_t *);
+void quantize_color(int* r, int* g, int* b, int levels);
 void image_resize(const image_t *, image_t *);

@@ -38,13 +38,25 @@ typedef struct {
 #define FRAME_VERSION 1
 
 /* Buffer sizes */
-#define FRAME_BUFFER_SIZE   65536   /* 64KB frame buffer */
-#define RECV_BUFFER_SIZE    131072  /* 128KB receive buffer */
-#define SEND_BUFFER_SIZE    131072  /* 128KB send buffer */
+#define FRAME_BUFFER_SIZE   65536   /* 64KB frame buffer (monochrome) */
+#define FRAME_BUFFER_SIZE_COLOR   8388608  /* 8MB frame buffer (colored) */
+#define RECV_BUFFER_SIZE    8388608  /* 8MB receive buffer (for colored frames) */
+#define SEND_BUFFER_SIZE    8388608  /* 8MB send buffer (for colored frames) */
+
+/* Frame buffer size calculation */
+size_t get_frame_buffer_size(void);
 
 /* Performance tuning */
 #define MAX_FPS 30
+#define MAX_FPS_COLOR 15  /* Reduced FPS for colored mode */
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
+#define FRAME_INTERVAL_MS_COLOR (1000 / MAX_FPS_COLOR)
+
+/* Frame interval calculation */
+static inline int get_frame_interval_ms(void) {
+    extern unsigned short int opt_color_output;
+    return opt_color_output ? FRAME_INTERVAL_MS_COLOR : FRAME_INTERVAL_MS;
+}
 
 /* Logging levels */
 typedef enum {
