@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <time.h>
+#include "common.h"
 
 
-void ascii_read_init(unsigned short int webcam_index);
-void ascii_write_init();
+asciichat_error_t ascii_read_init(unsigned short int webcam_index);
+asciichat_error_t ascii_write_init(void);
 
-char *ascii_read();
-void ascii_write(char *);
+char *ascii_read(void);
+asciichat_error_t ascii_write(const char *);
 
-void ascii_read_destroy();
-void ascii_write_destroy();
+void ascii_read_destroy(void);
+void ascii_write_destroy(void);
 
 /*static char *from_jpeg(FILE *);*/
 
