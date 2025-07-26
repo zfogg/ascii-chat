@@ -57,7 +57,12 @@ char *ascii_read(void) {
     image_clear(resized);
     image_resize(original, resized);
 
-    char *ascii = image_print(resized);
+    char *ascii;
+    if (opt_color_output) {
+        ascii = image_print_colored(resized);
+    } else {
+        ascii = image_print(resized);
+    }
     if (!ascii) {
         log_error("Failed to convert image to ASCII");
     }
@@ -119,3 +124,39 @@ void ascii_read_destroy(void) {
     webcam_cleanup();
     log_debug("ASCII reader destroyed");
 }
+
+// RGB to ANSI color conversion functions
+char* rgb_to_ansi_fg(int r, int g, int b) {
+    static char color_code[32];
+    snprintf(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
+    return color_code;
+}
+
+char* rgb_to_ansi_bg(int r, int g, int b) {
+    static char color_code[32];
+    snprintf(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
+    return color_code;
+}
+
+void rgb_to_ansi_8bit(int r, int g, int b, int* fg_code, int* bg_code) {
+    // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
+    if (r == g && g == b) {
+        // Grayscale
+        if (r < 8) {
+            *fg_code = 16;
+        } else if (r > 248) {
+            *fg_code = 231;
+        } else {
+            *fg_code = 232 + (r - 8) / 10;
+        }
+    } else {
+        // Color cube: 16 + 36*r + 6*g + b where r,g,b are 0-5
+        int r_level = (r * 5) / 255;
+        int g_level = (g * 5) / 255;
+        int b_level = (b * 5) / 255;
+        *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
+    }
+    *bg_code = *fg_code;  // Same logic for background
+}
+
+

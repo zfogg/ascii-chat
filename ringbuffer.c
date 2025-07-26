@@ -215,9 +215,9 @@ bool framebuffer_write_frame(framebuffer_t* fb, const char* frame) {
     
     free(temp_frame);
     
-    if (!result) {
-        log_debug("Frame buffer full, dropping frame");
-    }
+    // if (!result) {
+    //     log_debug("Frame buffer full, dropping frame");
+    // }
     
     return result;
 }

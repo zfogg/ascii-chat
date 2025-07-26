@@ -2,6 +2,9 @@
 #include <time.h>
 #include "common.h"
 
+// Forward declaration
+typedef struct image_t image_t;
+
 
 asciichat_error_t ascii_read_init(unsigned short int webcam_index);
 asciichat_error_t ascii_write_init(void);
@@ -12,12 +15,25 @@ asciichat_error_t ascii_write(const char *);
 void ascii_read_destroy(void);
 void ascii_write_destroy(void);
 
+// Color support functions
+char* rgb_to_ansi_fg(int r, int g, int b);
+char* rgb_to_ansi_bg(int r, int g, int b);
+void rgb_to_ansi_8bit(int r, int g, int b, int* fg_code, int* bg_code);
+char* image_print_colored(const image_t *p);
+char* get_lum_palette(void);
+
 /*static char *from_jpeg(FILE *);*/
 
 
 #define ASCII_DELIMITER '\t'
 
 #define ASCII_SLEEP_NS 50000L
+
+// ANSI color codes
+#define ANSI_RESET "\033[0m"
+#define ANSI_FG_PREFIX "\033[38;2;"
+#define ANSI_BG_PREFIX "\033[48;2;"
+#define ANSI_COLOR_SUFFIX "m"
 
 
 #define print(s) fwrite(s, 1, sizeof(s)/sizeof(s[0]), stdout)

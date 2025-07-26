@@ -76,8 +76,9 @@ void* capture_thread_func(void* arg) {
         long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
                          (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
         
-        if (elapsed_ms < FRAME_INTERVAL_MS) {
-            usleep((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
+        int frame_interval = get_frame_interval_ms();
+        if (elapsed_ms < frame_interval) {
+            usleep((frame_interval - elapsed_ms) * 1000);
             continue;
         }
         
@@ -143,8 +144,10 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // Create frame buffer (buffer 10 frames, max 64KB per frame)
-    g_frame_buffer = framebuffer_create(10, FRAME_BUFFER_SIZE);
+    // Create frame buffer (more capacity for colored mode to handle frame size variations)
+    size_t max_frame_size = get_frame_buffer_size();
+    int buffer_capacity = opt_color_output ? 15 : 10;  // More buffering for colored frames
+    g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
     if (!g_frame_buffer) {
         log_fatal("Failed to create frame buffer");
         ascii_read_destroy();
@@ -237,7 +240,9 @@ int main(int argc, char *argv[]) {
         g_stats.bytes_sent = 0;
         pthread_mutex_unlock(&g_stats_mutex);
 
-        char frame_buffer[FRAME_BUFFER_SIZE];
+        // Allocate frame buffer dynamically based on color mode
+        size_t frame_size = get_frame_buffer_size();
+        char* frame_buffer = (char*)malloc(frame_size);
         uint64_t client_frames_sent = 0;
 
         // Client serving loop
@@ -290,6 +295,9 @@ int main(int argc, char *argv[]) {
         close(connfd);
         log_info("Client disconnected after %lu frames", client_frames_sent);
         printf("3) Closing connection.\n---------------------\n");
+        
+        // Free the dynamically allocated frame buffer  
+        free(frame_buffer);
     }
     
     // Cleanup
