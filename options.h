@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-#define ASCII_PALETTE_SIZE 256
-
 #define OPTIONS_BUFF_SIZE 256
+#define LUMINANCE_LEVELS 256
 
 #define strtoint(s) (int)strtol(s, (char **)NULL, 10)
 

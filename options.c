@@ -38,13 +38,24 @@ unsigned short int opt_color_output = 0;
 unsigned short int last_image_width = 0,
                    last_image_height = 0;
 
-char ascii_palette[ASCII_PALETTE_SIZE + 1] =
-    "   ...',;:clodxkO0KXNWM";
+/*
+Analysis of Your Current Palette
+Your palette " ...',;:clodxkO0KXNWM" represents luminance from dark to light:
+    (spaces) = darkest/black areas
+    ...,' = very dark details
+    ;:cl = mid-dark tones
+    odxk = medium tones
+    O0KX = bright areas
+    NWM = brightest/white areas
+*/
 
-unsigned short int RED  [ASCII_PALETTE_SIZE],
-                   GREEN[ASCII_PALETTE_SIZE],
-                   BLUE [ASCII_PALETTE_SIZE],
-                   GRAY [ASCII_PALETTE_SIZE];
+// ASCII palette for image-to-text conversion
+char ascii_palette[] = "   ...',;:clodxkO0KXNWM";
+
+unsigned short int RED  [ASCII_LUMINANCE_LEVELS],
+                   GREEN[ASCII_LUMINANCE_LEVELS],
+                   BLUE [ASCII_LUMINANCE_LEVELS],
+                   GRAY [ASCII_LUMINANCE_LEVELS];
 
 static struct option long_options[] = {
     {"address",       required_argument, NULL, 'a'},
@@ -230,7 +241,7 @@ void usage(FILE* desc /* stdout|stderr*/ ) {
 
 
 void precalc_rgb(const float red, const float green, const float blue) {
-    for (int n = 0; n < ASCII_PALETTE_SIZE; ++n) {
+    for (int n = 0; n < ASCII_LUMINANCE_LEVELS; ++n) {
         RED[n]   = ((float) n) * red;
         GREEN[n] = ((float) n) * green;
         BLUE[n]  = ((float) n) * blue;
