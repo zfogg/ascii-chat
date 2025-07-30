@@ -20,18 +20,19 @@ BUILD_DIR := build
 # =============================================================================
 
 CSTD := -std=c23
-CXXSTD := -std=c++23 -stdlib=libc++
+CXXSTD := -std=c++23
 
 # Base flags
-CFLAGS   += -Wall -Wextra
-CXXFLAGS += $(CFLAGS)
+BASE_FLAGS := -Wall -Wextra
+CFLAGS   += $(BASE_FLAGS)
+CXXFLAGS += $(BASE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
-# Apply package flags and language flags
+# Apply package flags and language flags separately
 CFLAGS   +=  $(PKG_CFLAGS) $(CSTD)
-CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD)
+CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD) -stdlib=libc++
 
 # =============================================================================
 # Linker Flags
