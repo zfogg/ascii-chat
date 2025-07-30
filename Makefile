@@ -32,7 +32,7 @@ PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
 # Apply package flags and language flags separately
 CFLAGS   +=  $(PKG_CFLAGS) $(CSTD)
-CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD) -stdlib=libc++
+CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD)
 
 # =============================================================================
 # Linker Flags
