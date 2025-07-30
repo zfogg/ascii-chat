@@ -2,9 +2,6 @@
 #define ASCII_CHAT_COMMON_H
 
 /* Feature test macros for POSIX functions */
-#define _POSIX_C_SOURCE 200809L
-#define _DEFAULT_SOURCE
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
