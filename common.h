@@ -65,14 +65,11 @@ typedef struct {
 
 /* Performance tuning */
 #define MAX_FPS 120
-#define MAX_FPS_COLOR 120 /* Reduced FPS for colored mode */
 
 /* Frame interval calculation */
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
-#define FRAME_INTERVAL_MS_COLOR (1000 / MAX_FPS_COLOR)
 static inline int get_frame_interval_ms(void) {
-  extern unsigned short int opt_color_output;
-  return opt_color_output ? FRAME_INTERVAL_MS_COLOR : FRAME_INTERVAL_MS;
+  return FRAME_INTERVAL_MS;
 }
 
 /* Logging levels */
