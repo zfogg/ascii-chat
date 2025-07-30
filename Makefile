@@ -65,7 +65,7 @@ HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug release
+.PHONY: all clean default help debug release format format-check
 
 # =============================================================================
 # Default Target
@@ -82,13 +82,13 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: CFLAGS += -g -O0 -DDEBUG_MEMORY
-debug: CXXFLAGS += -g -O0 -DDEBUG_MEMORY
+debug: CFLAGS += -g -O0
+debug: CXXFLAGS += -g -O0
 debug: $(TARGETS)
 
 # Release build
-release: CFLAGS += -O3 -DNDEBUG
-release: CXXFLAGS += -O3 -DNDEBUG
+release: CFLAGS += -O3
+release: CXXFLAGS += -O3
 release: $(TARGETS)
 
 # Build executables
@@ -145,6 +145,8 @@ help:
 	@echo "  all/default - Build all targets with default flags"
 	@echo "  debug       - Build with debug symbols and no optimization"
 	@echo "  release     - Build with optimizations enabled"
+	@echo "  format      - Format source code using clang-format"
+	@echo "  format-check- Check code formatting without modifying files"
 	@echo "  clean       - Remove build artifacts"
 	@echo "  help        - Show this help message"
 	@echo ""
@@ -160,6 +162,35 @@ help:
 	@echo "  - ringbuffer.h, ringbuffer.c - Lock-free frame buffering"
 	@echo "  - protocol.h                - Protocol definitions"
 	@echo "  - network.c, network.h      - Network timeouts and utilities"
+
+# =============================================================================
+# Code Formatting
+# =============================================================================
+
+# Format source code
+format:
+	@echo "Formatting source code..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+		grep -v "ext/" | xargs clang-format -i; \
+		echo "Code formatting complete!"; \
+	else \
+		echo "clang-format not found. Install with: apt-get install clang-format"; \
+		exit 1; \
+	fi
+
+# Check code formatting
+format-check:
+	@echo "Checking code formatting..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+		grep -v "ext/" | xargs clang-format --dry-run --Werror || \
+		(echo "Code formatting issues found. Run 'make format' to fix." && exit 1); \
+		echo "Code formatting check passed!"; \
+	else \
+		echo "clang-format not found. Install with: apt-get install clang-format"; \
+		exit 1; \
+	fi
 
 # =============================================================================
 # Dependencies
