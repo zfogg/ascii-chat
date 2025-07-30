@@ -1,3 +1,6 @@
+/* Feature test macros for POSIX functions */
+#define _GNU_SOURCE
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
