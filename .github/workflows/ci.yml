@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, vibecoding ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main, master, vibecoding ]
+    branches: [ '*' ]
 
 jobs:
   build:
@@ -70,7 +70,7 @@ jobs:
     - name: Run static analysis
       run: |
         # Run clang-tidy on source files
-        find . -name "*.c" -o -name "*.cpp" | head -10 | xargs clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' -- $(pkg-config --cflags opencv4 libjpeg) -std=c23
+        find . -name "*.c" -o -name "*.cpp" | head -10 | xargs clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' -- $(pkg-config --cflags opencv4 libjpeg) -std=c2x
 
     - name: Check for memory leaks patterns
       run: |

@@ -111,7 +111,7 @@ jobs:
 
     - name: Build with format security warnings
       run: |
-        export CFLAGS="-Wformat -Wformat-security -Werror=format-security"
+        export CFLAGS="-Wformat -Wformat-security -Werror=format-security -std=c2x"
         export CXXFLAGS="-Wformat -Wformat-security -Werror=format-security"
         make clean
         make debug

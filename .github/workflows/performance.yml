@@ -2,9 +2,9 @@ name: Performance Tests
 
 on:
   push:
-    branches: [ main, master, vibecoding ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main, master, vibecoding ]
+    branches: [ '*' ]
   schedule:
     # Run performance tests weekly
     - cron: '0 4 * * 1'

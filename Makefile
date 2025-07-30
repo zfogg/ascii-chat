@@ -183,10 +183,13 @@ format:
 format-check:
 	@echo "Checking code formatting..."
 	@if command -v clang-format >/dev/null 2>&1; then \
-		find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
-		grep -v "ext/" | xargs clang-format --dry-run --Werror || \
-		(echo "Code formatting issues found. Run 'make format' to fix." && exit 1); \
-		echo "Code formatting check passed!"; \
+		if find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+		   grep -v "ext/" | xargs clang-format --dry-run --Werror 2>/dev/null; then \
+			echo "Code formatting check passed!"; \
+		else \
+			echo "Code formatting issues found. Run 'make format' to fix."; \
+			exit 1; \
+		fi; \
 	else \
 		echo "clang-format not found. Install with: apt-get install clang-format"; \
 		exit 1; \
