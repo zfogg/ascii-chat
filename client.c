@@ -11,379 +11,135 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-#include <pthread.h>
 
 #include "ascii.h"
 #include "client.h"
 #include "options.h"
-#include "network.h"
-#include "common.h"
-#include "ringbuffer.h"
 
-/* ============================================================================
- * Global State
- * ============================================================================ */
 
-static int sockfd = 0;
-static volatile bool g_should_exit = false;
-static volatile bool g_connected = false;
-static framebuffer_t* g_frame_buffer = NULL;
-static pthread_t g_display_thread;
-static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/* Client statistics */
-typedef struct {
-    uint64_t frames_received;
-    uint64_t frames_displayed;
-    uint64_t frames_dropped;
-    uint64_t bytes_received;
-    double avg_receive_fps;
-    double avg_display_fps;
-    uint64_t network_errors;
-} client_stats_t;
-
-static client_stats_t g_stats = {0};
-
-/* ============================================================================
- * Signal Handlers
- * ============================================================================ */
+int sockfd = 0;
 
 void sigint_handler(int sigint) {
     (void) (sigint);
-    g_should_exit = true;
-    log_info("Client shutdown requested");
+    ascii_write_destroy();
+    printf("Closing connection and exiting . . .\n");
+    close(sockfd);
+    exit(0);
 }
 
 void sigwinch_handler(int sigwinch) {
     (void) (sigwinch);
     // Terminal was resized, update dimensions and recalculate aspect ratio
     recalculate_aspect_ratio_on_resize();
-    log_debug("Terminal resized, recalculated aspect ratio");
 }
 
-/* ============================================================================
- * Display Thread
- * ============================================================================ */
-
-void* display_thread_func(void* arg) {
-    (void)arg;
-    
-    // Allocate frame buffer dynamically based on color mode
-    size_t frame_size = get_frame_buffer_size();
-    char* frame_buffer = (char*)malloc(frame_size);
-    struct timespec last_display_time = {0, 0};
-    uint64_t frames_displayed = 0;
-    
-    log_info("Display thread started");
-    
-    // Initialize ASCII display
-    if (ascii_write_init() != ASCIICHAT_OK) {
-        log_error("Failed to initialize ASCII display");
-        return NULL;
-    }
-    
-    while (!g_should_exit) {
-        // Frame rate limiting for display
-        struct timespec current_time;
-        clock_gettime(CLOCK_MONOTONIC, &current_time);
-        
-        long elapsed_ms = (current_time.tv_sec - last_display_time.tv_sec) * 1000 +
-                         (current_time.tv_nsec - last_display_time.tv_nsec) / 1000000;
-        
-        int frame_interval = get_frame_interval_ms();
-        if (elapsed_ms < frame_interval) {
-            usleep((frame_interval - elapsed_ms) * 1000);
-            continue;
-        }
-        
-        // Try to get a frame from buffer
-        if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
-            // No frames available
-            if (g_connected) {
-                // Connected but no frames - just wait
-                usleep(1000); // 1ms
-            } else {
-                // Not connected - wait longer
-                usleep(10000); // 10ms
-            }
-            continue;
-        }
-        
-        // Display the frame
-        if (ascii_write(frame_buffer) != ASCIICHAT_OK) {
-            log_error("Failed to display ASCII frame");
-        }
-        
-        pthread_mutex_lock(&g_stats_mutex);
-        g_stats.frames_displayed++;
-        pthread_mutex_unlock(&g_stats_mutex);
-        
-        frames_displayed++;
-        last_display_time = current_time;
-        
-        // Update FPS statistics every 30 frames
-        if (frames_displayed % 30 == 0 && elapsed_ms > 0) {
-            double fps = 30000.0 / elapsed_ms;
-            pthread_mutex_lock(&g_stats_mutex);
-            g_stats.avg_display_fps = (g_stats.avg_display_fps * 0.9) + (fps * 0.1);
-            pthread_mutex_unlock(&g_stats_mutex);
-        }
-    }
-    
-    ascii_write_destroy();
-    
-    // Free the dynamically allocated frame buffer
-    free(frame_buffer);
-    
-    log_info("Display thread stopped");
-    return NULL;
-}
-
-/* ============================================================================
- * Connection Management
- * ============================================================================ */
-
-/* Exponential backoff for reconnection */
-static int calculate_backoff(int attempt) {
-    int base_delay = 1;  // 1 second
-    int max_delay = 30;  // 30 seconds
-    int delay = base_delay << (attempt - 1);  // 2^(attempt-1) seconds
-    return (delay > max_delay) ? max_delay : delay;
-}
-
-static bool connect_to_server(const char* address, int port) {
-    struct sockaddr_in serv_addr;
-    
-    // Create socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        log_error("Socket creation failed: %s", strerror(errno));
-        return false;
-    }
-    
-    // Setup server address
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    
-    if (inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
-        log_error("Invalid address: %s", address);
-        close(sockfd);
-        sockfd = 0;
-        return false;
-    }
-    
-    log_info("Attempting connection to %s:%d", address, port);
-    printf("Attempting to connect to %s:%d...\n", address, port);
-    
-    // Connect with timeout
-    if (!connect_with_timeout(sockfd, (struct sockaddr *)&serv_addr, 
-                             sizeof(serv_addr), CONNECT_TIMEOUT)) {
-        log_error("Connection failed: %s", network_error_string(errno));
-        fprintf(stderr, "Error: %s\n", network_error_string(errno));
-        close(sockfd);
-        sockfd = 0;
-        return false;
-    }
-    
-    // Set keep-alive
-    if (set_socket_keepalive(sockfd) < 0) {
-        log_warn("Failed to set keep-alive: %s", strerror(errno));
-    }
-    
-    log_info("Connected successfully to %s:%d", address, port);
-    printf("Connected successfully!\n");
-    return true;
-}
-
-/* ============================================================================
- * Main Client Logic
- * ============================================================================ */
 
 int main(int argc, char *argv[]) {
-
-    // Initialize logging
-    log_init("client.log", LOG_DEBUG);
-    log_info("ASCII Chat Client starting...");
-    
     options_init(argc, argv);
-    char *address = opt_address;
-    int port = strtoint(opt_port);
+    char *address      = opt_address;
+    int   port         = strtoint(opt_port);
 
-    char *recvBuff = NULL;
-    
-    // Allocate receive buffer
-    recvBuff = (char *)malloc(RECV_BUFFER_SIZE);
-    if (!recvBuff) {
-        log_fatal("Failed to allocate receive buffer");
-        exit(1);
-    }
+    char recvBuff[40000];
+    struct sockaddr_in serv_addr;
 
-    // Create frame buffer (more capacity for colored mode to handle frame size variations)
-    size_t max_frame_size = get_frame_buffer_size();
-    int buffer_capacity = opt_color_output ? 10 : 5;  // More buffering for colored frames  
-    g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
-    if (!g_frame_buffer) {
-        log_fatal("Failed to create frame buffer");
-        free(recvBuff);
-        exit(1);
-    }
+    // struct timespec
+    // sleep_start = {
+    //     .tv_sec  = 3,
+    //     .tv_nsec = 0
+    // },
+    // sleep_stop = {
+    //     .tv_sec  = 0,
+    //     .tv_nsec = 0
+    // };
 
-    // Setup signal handlers
+    // Cleanup nicely on Ctrl+C.
     signal(SIGINT, sigint_handler);
+    
+    // Handle terminal resize events
     signal(SIGWINCH, sigwinch_handler);
 
-    // Start display thread
-    if (pthread_create(&g_display_thread, NULL, display_thread_func, NULL) != 0) {
-        log_fatal("Failed to create display thread");
-        framebuffer_destroy(g_frame_buffer);
-        free(recvBuff);
-        exit(1);
-    }
-
-    log_info("Connecting to %s:%d", address, port);
-    
-    int reconnect_attempt = 0;
-    struct timespec last_stats_time = {0, 0};
-    
-    /* Main connection loop with automatic reconnection */
-    while (!g_should_exit) {
-        // Calculate reconnection delay
-        if (reconnect_attempt > 0) {
-            int delay = calculate_backoff(reconnect_attempt);
-            log_info("Reconnection attempt %d in %d seconds...", reconnect_attempt, delay);
-            printf("Reconnection attempt %d in %d seconds...\n", reconnect_attempt, delay);
-            sleep(delay);
-            
-            if (g_should_exit) break;
-        }
-        
-        // Clear receive buffer
-        memset(recvBuff, 0, RECV_BUFFER_SIZE);
-        
-        // Attempt connection
-        if (!connect_to_server(address, port)) {
-            reconnect_attempt++;
-            pthread_mutex_lock(&g_stats_mutex);
-            g_stats.network_errors++;
-            pthread_mutex_unlock(&g_stats_mutex);
-            continue;
-        }
-        
-        // Connection successful
-        g_connected = true;
-        reconnect_attempt = 0;
-        
-        // Reset stats for this connection
-        pthread_mutex_lock(&g_stats_mutex);
-        g_stats.frames_received = 0;
-        g_stats.bytes_received = 0;
-        pthread_mutex_unlock(&g_stats_mutex);
-
-        // Main receive loop
-        while (!g_should_exit && g_connected) {
-            ssize_t read_result = recv_with_timeout(sockfd, recvBuff, RECV_BUFFER_SIZE - 1, RECV_TIMEOUT);
-            
-            if (read_result < 0) {
-                if (errno == ETIMEDOUT) {
-                    log_debug("Receive timeout, checking connection...");
-                    // Send a small probe to check if connection is alive
-                    if (send(sockfd, "", 0, MSG_NOSIGNAL) < 0) {
-                        log_error("Connection lost: %s", network_error_string(errno));
-                        g_connected = false;
-                        break;
-                    }
-                    continue;
-                }
-                log_error("Receive error: %s", network_error_string(errno));
-                pthread_mutex_lock(&g_stats_mutex);
-                g_stats.network_errors++;
-                pthread_mutex_unlock(&g_stats_mutex);
-                g_connected = false;
-                break;
-            }
-            
-            if (read_result == 0) {
-                log_info("Server closed connection");
-                g_connected = false;
-                break;
-            }
-            
-            recvBuff[read_result] = '\0';
-            
-            // Check for error messages from server
-            if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
-                log_error("Server webcam error: %s", recvBuff);
-                continue;
-            }
-            
-            // Try to buffer the frame
-            bool buffered = framebuffer_write_frame(g_frame_buffer, recvBuff);
-            
-            pthread_mutex_lock(&g_stats_mutex);
-            g_stats.frames_received++;
-            g_stats.bytes_received += read_result;
-            if (!buffered) {
-                g_stats.frames_dropped++;
-                // log_debug("Frame buffer full, dropped frame");
-            }
-            pthread_mutex_unlock(&g_stats_mutex);
-            
-            // Print periodic statistics
-            struct timespec current_time;
-            clock_gettime(CLOCK_MONOTONIC, &current_time);
-            long stats_elapsed = (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
-                               (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
-            
-            if (stats_elapsed >= 10000) { // Every 10 seconds
-                pthread_mutex_lock(&g_stats_mutex);
-                log_info("Stats: received=%lu, displayed=%lu, dropped=%lu, buffer_size=%zu", 
-                        g_stats.frames_received, g_stats.frames_displayed, 
-                        g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));
-                pthread_mutex_unlock(&g_stats_mutex);
-                last_stats_time = current_time;
-            }
+    /* read from the socket as long as the size of the read is > 0 */
+    while(1) {
+        // try to open a socket
+        memset(recvBuff, '0',sizeof(recvBuff));
+        // error creating socket
+        if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            printf("\n Error: could not create socket \n");
+            return 1;
         }
 
-        // Connection lost
-        if (sockfd > 0) {
+        // reserve memory space to store IP address
+        memset(&serv_addr, '0', sizeof(serv_addr));
+
+        // set type of address to IPV4 and port to 5000
+        printf("Connecting on port %d\n", port);
+
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(port);
+
+        // an error occurred when trying to set server address and port number
+        if(inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
+            printf("\n Error: inet_pton \n");
+            return 1;
+        }
+
+        int read_result = 0;
+        ascii_write_init();
+
+        printf("Attempting to connect...\n");
+        // failed when trying to connect to the server
+        if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+            fprintf(stderr, "%s", "\n Error: connect failed \n");
+            exit(1);
+        }
+
+        // Allocate frame buffer on heap instead of stack to avoid stack overflow
+        size_t buffer_size = get_frame_buffer_size();
+        char *frame_buffer = (char *)malloc(buffer_size);
+        if (!frame_buffer) {
+            fprintf(stderr, "Error: Failed to allocate frame buffer of size %zu\n", buffer_size);
             close(sockfd);
-            sockfd = 0;
+            exit(1);
         }
-        g_connected = false;
         
-        if (!g_should_exit) {
-            pthread_mutex_lock(&g_stats_mutex);
-            log_info("Connection lost after receiving %lu frames, will reconnect...", 
-                    g_stats.frames_received);
-            pthread_mutex_unlock(&g_stats_mutex);
-            reconnect_attempt++;
-        }
+        int frame_pos = 0;
+         
+         while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff)-1))) {
+             recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
+             
+             // Process each character looking for frame delimiters
+             for (int i = 0; i < read_result; i++) {
+                 if (recvBuff[i] == ASCII_DELIMITER) {
+                     // Found complete frame, display it!
+                     frame_buffer[frame_pos] = '\0'; // Null-terminate the frame, making it a valid C string.
+                     
+                     if (strcmp(frame_buffer, "Webcam capture failed\n") == 0) {
+                         console_clear();
+                         fprintf(stdout, "Error: %s", frame_buffer);
+                     } else {
+                         // Clear screen and display frame
+                         console_clear();
+                         cursor_reset();
+                         printf("%s", frame_buffer);
+                         fflush(stdout);
+                     }
+                     
+                     frame_pos = 0;  // Reset for next frame
+                 } else {
+                     // Add character to current frame
+                     if (frame_pos < (int)buffer_size - 1) {
+                       frame_buffer[frame_pos++] = recvBuff[i];
+                     }
+                 }
+             }
+         }
+
+        // Clean up allocated memory
+        free(frame_buffer);
+        console_clear();
+
+        // nanosleep((struct timespec *)&sleep_start,(struct timespec *)&sleep_stop);
     }
-    
-    // Cleanup
-    log_info("Client shutting down...");
-    g_should_exit = true;
-    g_connected = false;
-    
-    // Wait for display thread to finish
-    pthread_join(g_display_thread, NULL);
-    
-    // Cleanup resources
-    if (sockfd > 0) {
-        close(sockfd);
-    }
-    framebuffer_destroy(g_frame_buffer);
-    free(recvBuff);
-    
-    // Final statistics
-    pthread_mutex_lock(&g_stats_mutex);
-    log_info("Final stats: received=%lu, displayed=%lu, dropped=%lu, errors=%lu", 
-             g_stats.frames_received, g_stats.frames_displayed, 
-             g_stats.frames_dropped, g_stats.network_errors);
-    pthread_mutex_unlock(&g_stats_mutex);
-    
-    printf("Client shutdown complete.\n");
-    log_destroy();
+
     return 0;
 }
