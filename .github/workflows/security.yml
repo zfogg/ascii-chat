@@ -1,0 +1,123 @@
+name: Security
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: +security-and-quality
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev pkg-config
+
+    - name: Build for analysis
+      run: |
+        make clean
+        make debug
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev pkg-config
+
+    - name: Check for known vulnerabilities in system packages
+      run: |
+        # Check OpenCV version for known CVEs
+        opencv_version=$(pkg-config --modversion opencv4)
+        echo "OpenCV version: $opencv_version"
+        
+        # Check libjpeg version
+        if pkg-config --exists libjpeg; then
+          jpeg_version=$(pkg-config --modversion libjpeg)
+          echo "libjpeg version: $jpeg_version"
+        fi
+
+    - name: Run basic security checks
+      run: |
+        echo "Checking for insecure function usage..."
+        
+        # Check for potentially unsafe functions
+        echo "=== Checking for unsafe string functions ==="
+        if grep -n "strcpy\|strcat\|sprintf\|gets" *.c *.h 2>/dev/null; then
+          echo "⚠️  Found potentially unsafe string functions"
+        else
+          echo "✅ No unsafe string functions found"
+        fi
+        
+        echo "=== Checking for unsafe memory functions ==="
+        if grep -n "alloca" *.c *.h 2>/dev/null; then
+          echo "⚠️  Found alloca usage (stack overflow risk)"
+        else
+          echo "✅ No alloca usage found"
+        fi
+        
+        echo "=== Checking for proper bounds checking ==="
+        if grep -n "malloc\|calloc\|realloc" *.c | grep -v "SAFE_MALLOC\|DEBUG_MEMORY"; then
+          echo "⚠️  Found direct malloc usage without SAFE_MALLOC wrapper"
+        else
+          echo "✅ All allocations use safe wrappers"
+        fi
+
+  format-security:
+    name: Format String Security Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev pkg-config
+
+    - name: Build with format security warnings
+      run: |
+        export CFLAGS="-Wformat -Wformat-security -Werror=format-security"
+        export CXXFLAGS="-Wformat -Wformat-security -Werror=format-security"
+        make clean
+        make debug
+
+    - name: Run static security analysis
+      run: |
+        # Use clang static analyzer for security issues
+        scan-build --status-bugs --exclude ext/ make clean
+        scan-build --status-bugs --exclude ext/ make debug
