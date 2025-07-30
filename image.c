@@ -189,34 +189,24 @@ void quantize_color(int* r, int* g, int* b, int levels) {
     *b = (*b / step) * step;
 }
 
-// Buffer overflow checking function
-static size_t check_buffer_overflow(
-    const char* current_pos,
-    const char* buffer_start,
-    size_t buffer_size,
-    size_t operation_size,
-    const char* context
-) {
-    if ((current_pos - buffer_start) + operation_size >= buffer_size) {
-        fprintf(stderr, "Buffer overflow risk (%s). Quitting...\n", context);
-        exit(EXIT_FAILURE);
-    }
-    return operation_size;
-}
-
 // Colored ASCII art printing function with quantization
 char *image_print_colored(const image_t *p) {
     const int h = p->h;
     const int w = p->w;
     
-    // Calculate buffer size: each character can have color codes (~20 chars per pixel)
-    const int estimated_size = (h * w * 25) + (h * 10) + opt_width + opt_height + 1;  // Extra space for newlines and delimiter and null terminator
-    size_t lines_size = estimated_size * sizeof(char);
+    // Calculate buffer size precisely:
+    // Per pixel: foreground (19) + background (19) + ASCII char (1) = 39 chars max
+    // Per row: color reset (4) + newline (1) = 5 chars
+    // At end: delimiter (1) + null terminator (1) = 2 chars
+    const int enough_space = (h * w * 39) + (h * 5) + 2;
+    size_t lines_size = enough_space * sizeof(char);
     char* lines = (char*)malloc(lines_size);
     if (!lines) {
         fprintf(stderr, "Failed to allocate %zu bytes of memory for colored ASCII output\n", lines_size);
         return NULL;
     }
+    // Now we can use the lines buffer safely in this function.
+    // No buffer overflows and don't worry about snprintf's return value.
     
     const rgb_t *pix = p->pixels;
     const char *palette = get_lum_palette();
@@ -235,20 +225,36 @@ char *image_print_colored(const image_t *p) {
             // Quantize colors.
             //quantize_color(&r, &g, &b, 8);
 
-            // Add ANSI color code for foreground
-            size_t max_chars_to_write = check_buffer_overflow(current_pos, lines, lines_size, 30, "Printing colored pixels");
-            int written = snprintf(current_pos, max_chars_to_write, "\033[38;2;%d;%d;%dm%c", r, g, b, ascii_char);
-            current_pos += written;
+            if (opt_background_color) {
+                // Choose contrasting foreground color (black or white) based on luminance
+                int fg_r, fg_g, fg_b;
+                if (luminance < 127) { // Dim background, use black text
+                    fg_r = fg_g = fg_b = 0;
+                } else { // Bright background, use white text
+                    fg_r = fg_g = fg_b = 255;
+                }
+
+                const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
+                const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
+                const size_t operation_size = strlen(ascii_fg) + strlen(ascii_bg) + 1 + 1; // strlen + ascii char + null terminator
+                const int written = snprintf(current_pos, operation_size, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
+                current_pos += written;
+
+            } else {
+                const char *ascii_fg = rgb_to_ansi_fg(r, g, b);
+                const size_t operation_size = strlen(ascii_fg) + 1 + 1; // strlen + ascii char + null terminator
+                const int written = snprintf(current_pos, operation_size, "%s%c", ascii_fg, ascii_char);
+                current_pos += written;
+            }
         }
         
         // Add newline and reset color at end of each row
-        size_t max_chars_to_write = check_buffer_overflow(current_pos, lines, lines_size, 10, "Printing a newline and color reset");
-        int written = snprintf(current_pos, max_chars_to_write, "\033[0m\n");
+        const size_t operation_size = 4 + 1 + 1; // 4 for color reset + newline + null terminator
+        const int written = snprintf(current_pos, operation_size, "\033[0m\n");
         current_pos += written;
     }
     
-    // Add delimiter and null terminator
-    check_buffer_overflow(current_pos, lines, lines_size, 2, "Printing delimiter and null terminator");
+    // Add ASCII delimiter, and null terminator making it a valid C string.
     *current_pos++ = ASCII_DELIMITER;
     *current_pos = '\0';
     

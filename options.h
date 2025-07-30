@@ -24,8 +24,9 @@ unsigned short int opt_webcam_index;
 extern
 unsigned short int opt_webcam_flip;
 
-// Color output option
 extern unsigned short int opt_color_output;
+
+extern unsigned short int opt_background_color;
 
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation

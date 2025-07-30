@@ -34,6 +34,8 @@ unsigned short int opt_webcam_flip = 1;
 
 unsigned short int opt_color_output = 0;
 
+unsigned short int opt_background_color = 0;
+
 // Global variables to store last known image dimensions for aspect ratio recalculation
 unsigned short int last_image_width = 0,
                    last_image_height = 0;
@@ -57,15 +59,17 @@ unsigned short int RED  [ASCII_LUMINANCE_LEVELS],
                    BLUE [ASCII_LUMINANCE_LEVELS],
                    GRAY [ASCII_LUMINANCE_LEVELS];
 
+
 static struct option long_options[] = {
-    {"address",       required_argument, NULL, 'a'},
-    {"port",          required_argument, NULL, 'p'},
-    {"width",         optional_argument, NULL, 'x'},
-    {"height",        optional_argument, NULL, 'y'},
-    {"webcam-index",  required_argument, NULL, 'c'},
-    {"webcam-flip",   optional_argument, NULL, 'f'},
-    {"color",         no_argument,       NULL, 'C'},
-    {"help",          optional_argument, NULL, 'h'},
+    {"address",          required_argument, NULL, 'a'},
+    {"port",             required_argument, NULL, 'p'},
+    {"width",            optional_argument, NULL, 'x'},
+    {"height",           optional_argument, NULL, 'y'},
+    {"webcam-index",     required_argument, NULL, 'c'},
+    {"webcam-flip",      optional_argument, NULL, 'f'},
+    {"color",            no_argument,       NULL, 'C'},
+    {"background-color", no_argument,       NULL, 'b'},
+    {"help",             optional_argument, NULL, 'h'},
     {0, 0, 0, 0}
 };
 
@@ -162,7 +166,7 @@ void options_init(int argc, char** argv) {
 
     while (1) {
         int index  = 0,
-            c = getopt_long(argc, argv, "a:p:x:y:c:h:fC", long_options, &index);
+            c = getopt_long(argc, argv, "a:p:x:y:c:f:Cbh", long_options, &index);
         if (c == -1)
             break;
 
@@ -204,6 +208,11 @@ void options_init(int argc, char** argv) {
             case 'C':
                 opt_color_output = 1;
                 break;
+
+            case 'b':
+                opt_background_color = 1;
+                break;
+
 
             case '?':
                 fprintf(stderr, "Unknown option %c\n", optopt);
