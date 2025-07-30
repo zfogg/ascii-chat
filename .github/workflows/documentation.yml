@@ -2,7 +2,7 @@ name: Documentation
 
 on:
   push:
-    branches: [ main, master, vibecoding ]
+    branches: [ main, master ]
     paths:
       - '**.md'
       - '**.c'
@@ -10,7 +10,7 @@ on:
       - '**.cpp'
       - '**.hpp'
   pull_request:
-    branches: [ main, master, vibecoding ]
+    branches: [ '*' ]
     paths:
       - '**.md'
 

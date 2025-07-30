@@ -1,7 +1,9 @@
 #include <arpa/inet.h>
-#include <stdbool.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,316 +11,327 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-#include <signal.h>
-#include <pthread.h>
 
 #include "ascii.h"
-#include "options.h"
-#include "network.h"
 #include "common.h"
+#include "network.h"
+#include "options.h"
 #include "ringbuffer.h"
 
 /* ============================================================================
  * Global State
- * ============================================================================ */
+ * ============================================================================
+ */
 
 static volatile bool g_should_exit = false;
-static framebuffer_t* g_frame_buffer = NULL;
+static framebuffer_t *g_frame_buffer = NULL;
 static pthread_t g_capture_thread;
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Performance statistics */
 typedef struct {
-    uint64_t frames_captured;
-    uint64_t frames_sent;
-    uint64_t frames_dropped;
-    uint64_t bytes_sent;
-    double avg_capture_fps;
-    double avg_send_fps;
+  uint64_t frames_captured;
+  uint64_t frames_sent;
+  uint64_t frames_dropped;
+  uint64_t bytes_sent;
+  double avg_capture_fps;
+  double avg_send_fps;
 } server_stats_t;
 
 static server_stats_t g_stats = {0};
 
 /* ============================================================================
  * Signal Handlers
- * ============================================================================ */
+ * ============================================================================
+ */
 
 void sigwinch_handler(int sigwinch) {
-    (void) (sigwinch);
-    // Terminal was resized, update dimensions
-    recalculate_aspect_ratio_on_resize();
-    log_debug("Terminal resized, recalculated aspect ratio");
+  (void)(sigwinch);
+  // Terminal was resized, update dimensions
+  recalculate_aspect_ratio_on_resize();
+  log_debug("Terminal resized, recalculated aspect ratio");
 }
 
 void sigint_handler(int sigint) {
-    (void) (sigint);
-    g_should_exit = true;
-    log_info("Server shutdown requested");
+  (void)(sigint);
+  g_should_exit = true;
+  log_info("Server shutdown requested");
 }
 
 /* ============================================================================
  * Frame Capture Thread
- * ============================================================================ */
+ * ============================================================================
+ */
 
-void* capture_thread_func(void* arg) {
-    (void)arg;
-    
-    struct timespec last_capture_time = {0, 0};
-    uint64_t frames_captured = 0;
-    
-    log_info("Frame capture thread started");
-    
-    while (!g_should_exit) {
-        // Frame rate limiting
-        struct timespec current_time;
-        clock_gettime(CLOCK_MONOTONIC, &current_time);
-        
-        long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
-                         (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
-        
-        int frame_interval = get_frame_interval_ms();
-        if (elapsed_ms < frame_interval) {
-            usleep((frame_interval - elapsed_ms) * 1000);
-            continue;
-        }
-        
-        // Capture frame
-        char* frame = ascii_read();
-        if (!frame) {
-            log_error("Failed to capture frame from webcam");
-            usleep(100000); // 100ms delay before retry
-            continue;
-        }
-        
-        // Try to add frame to buffer
-        bool buffered = framebuffer_write_frame(g_frame_buffer, frame);
-        
-        pthread_mutex_lock(&g_stats_mutex);
-        g_stats.frames_captured++;
-        if (!buffered) {
-            g_stats.frames_dropped++;
-            log_debug("Frame buffer full, dropped frame %lu", g_stats.frames_captured);
-        }
-        pthread_mutex_unlock(&g_stats_mutex);
-        
-        free(frame);
-        frames_captured++;
-        last_capture_time = current_time;
-        
-        // Update FPS statistics every 30 frames
-        if (frames_captured % 30 == 0) {
-            double fps = 30000.0 / elapsed_ms; // Convert to FPS
-            pthread_mutex_lock(&g_stats_mutex);
-            g_stats.avg_capture_fps = (g_stats.avg_capture_fps * 0.9) + (fps * 0.1);
-            pthread_mutex_unlock(&g_stats_mutex);
-        }
+void *capture_thread_func(void *arg) {
+  (void)arg;
+
+  struct timespec last_capture_time = {0, 0};
+  uint64_t frames_captured = 0;
+
+  log_info("Frame capture thread started");
+
+  while (!g_should_exit) {
+    // Frame rate limiting
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+    long elapsed_ms =
+        (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
+        (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
+
+    int frame_interval = get_frame_interval_ms();
+    if (elapsed_ms < frame_interval) {
+      usleep((frame_interval - elapsed_ms) * 1000);
+      continue;
     }
-    
-    log_info("Frame capture thread stopped");
-    return NULL;
+
+    // Capture frame
+    char *frame = ascii_read();
+    if (!frame) {
+      log_error("Failed to capture frame from webcam");
+      usleep(100000); // 100ms delay before retry
+      continue;
+    }
+
+    // Try to add frame to buffer
+    bool buffered = framebuffer_write_frame(g_frame_buffer, frame);
+
+    pthread_mutex_lock(&g_stats_mutex);
+    g_stats.frames_captured++;
+    if (!buffered) {
+      g_stats.frames_dropped++;
+      log_debug("Frame buffer full, dropped frame %lu",
+                g_stats.frames_captured);
+    }
+    pthread_mutex_unlock(&g_stats_mutex);
+
+    free(frame);
+    frames_captured++;
+    last_capture_time = current_time;
+
+    // Update FPS statistics every 30 frames
+    if (frames_captured % 30 == 0) {
+      double fps = 30000.0 / elapsed_ms; // Convert to FPS
+      pthread_mutex_lock(&g_stats_mutex);
+      g_stats.avg_capture_fps = (g_stats.avg_capture_fps * 0.9) + (fps * 0.1);
+      pthread_mutex_unlock(&g_stats_mutex);
+    }
+  }
+
+  log_info("Frame capture thread stopped");
+  return NULL;
 }
 
 /* ============================================================================
  * Main Server Logic
- * ============================================================================ */
+ * ============================================================================
+ */
 
 int main(int argc, char *argv[]) {
-    // Initialize logging
-    log_init("server.log", LOG_DEBUG);
-    log_info("ASCII Chat Server starting...");
-    
-    options_init(argc, argv);
-    int port = strtoint(opt_port);
-    unsigned short int webcam_index = opt_webcam_index;
+  // Initialize logging
+  log_init("server.log", LOG_DEBUG);
+  log_info("ASCII Chat Server starting...");
 
-    // Handle terminal resize events
-    signal(SIGWINCH, sigwinch_handler);
-    // Handle Ctrl+C for cleanup
-    signal(SIGINT, sigint_handler);
-    // Ignore SIGPIPE
-    signal(SIGPIPE, SIG_IGN);
+  options_init(argc, argv);
+  int port = strtoint(opt_port);
+  unsigned short int webcam_index = opt_webcam_index;
 
-    // Initialize webcam
-    if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
-        log_fatal("Failed to initialize webcam");
-        exit(1);
-    }
+  // Handle terminal resize events
+  signal(SIGWINCH, sigwinch_handler);
+  // Handle Ctrl+C for cleanup
+  signal(SIGINT, sigint_handler);
+  // Ignore SIGPIPE
+  signal(SIGPIPE, SIG_IGN);
 
-    // Create frame buffer (more capacity for colored mode to handle frame size variations)
-    size_t max_frame_size = get_frame_buffer_size();
-    int buffer_capacity = opt_color_output ? 15 : 10;  // More buffering for colored frames
-    g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
-    if (!g_frame_buffer) {
-        log_fatal("Failed to create frame buffer");
-        ascii_read_destroy();
-        exit(1);
-    }
+  // Initialize webcam
+  if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
+    log_fatal("Failed to initialize webcam");
+    exit(1);
+  }
 
-    // Start capture thread
-    if (pthread_create(&g_capture_thread, NULL, capture_thread_func, NULL) != 0) {
-        log_fatal("Failed to create capture thread");
-        framebuffer_destroy(g_frame_buffer);
-        ascii_read_destroy();
-        exit(1);
-    }
+  // Create frame buffer (more capacity for colored mode to handle frame size
+  // variations)
+  size_t max_frame_size = get_frame_buffer_size();
+  int buffer_capacity =
+      opt_color_output ? 15 : 10; // More buffering for colored frames
+  g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
+  if (!g_frame_buffer) {
+    log_fatal("Failed to create frame buffer");
+    ascii_read_destroy();
+    exit(1);
+  }
 
-    // Network setup
-    int listenfd = 0, connfd = 0;
-    struct sockaddr_in serv_addr;
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-
-    listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenfd < 0) {
-        log_error("Failed to create socket: %s", strerror(errno));
-        exit(1);
-    }
-
-    log_info("Server listening on port %d", port);
-    printf("Running server on port %d\n", port);
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(port);
-
-    // Set socket options
-    int yes = 1;
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-        log_error("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
-        perror("setsockopt");
-        exit(1);
-    }
-
-    // Bind socket
-    if (bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        log_error("Bind failed: %s", strerror(errno));
-        perror("Error: network bind failed");
-        exit(1);
-    }
-
-    // Listen for connections
-    if (listen(listenfd, 10) < 0) {
-        log_error("Listen failed: %s", strerror(errno));
-        perror("Error: network listen failed");
-        exit(1);
-    }
-
-    struct timespec last_stats_time = {0, 0};
-    
-    // Main connection loop
-    while (!g_should_exit) {
-        log_info("Waiting for client connection...");
-        printf("1) Waiting for a connection...\n");
-        
-        // Accept with timeout
-        connfd = accept_with_timeout(listenfd, (struct sockaddr*)&client_addr, 
-                                    &client_len, ACCEPT_TIMEOUT);
-        
-        if (connfd < 0) {
-            if (errno == ETIMEDOUT) {
-                log_debug("Accept timeout, continuing...");
-                continue;
-            }
-            log_error("Accept failed: %s", network_error_string(errno));
-            continue;
-        }
-        
-        // Log client connection
-        char client_ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-        log_info("Client connected from %s:%d", client_ip, ntohs(client_addr.sin_port));
-        printf("2) Connection initiated from %s, sending data.\n", client_ip);
-        
-        // Set keep-alive
-        if (set_socket_keepalive(connfd) < 0) {
-            log_warn("Failed to set keep-alive: %s", strerror(errno));
-        }
-
-        // Reset client-specific stats
-        pthread_mutex_lock(&g_stats_mutex);
-        g_stats.frames_sent = 0;
-        g_stats.bytes_sent = 0;
-        pthread_mutex_unlock(&g_stats_mutex);
-
-        // Allocate frame buffer dynamically based on color mode
-        size_t frame_size = get_frame_buffer_size();
-        char* frame_buffer = (char*)malloc(frame_size);
-        uint64_t client_frames_sent = 0;
-
-        // Client serving loop
-        while (!g_should_exit) {
-            // Try to get a frame from buffer
-            if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
-                // No frames available, wait a bit
-                usleep(1000); // 1ms
-                continue;
-            }
-            
-            // Send frame with timeout
-            size_t frame_len = strlen(frame_buffer);
-            ssize_t sent = send_with_timeout(connfd, frame_buffer, frame_len, SEND_TIMEOUT);
-            
-            if (sent < 0) {
-                log_error("Send failed: %s", network_error_string(errno));
-                fprintf(stderr, "Error: send failed - %s\n", network_error_string(errno));
-                break;
-            }
-            
-            if ((size_t)sent != frame_len) {
-                log_warn("Partial send: %zd of %zu bytes", sent, frame_len);
-            }
-            
-            // Update statistics
-            pthread_mutex_lock(&g_stats_mutex);
-            g_stats.frames_sent++;
-            g_stats.bytes_sent += sent;
-            pthread_mutex_unlock(&g_stats_mutex);
-            
-            client_frames_sent++;
-            
-            // Print periodic statistics
-            struct timespec current_time;
-            clock_gettime(CLOCK_MONOTONIC, &current_time);
-            long stats_elapsed = (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
-                               (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
-            
-            if (stats_elapsed >= 5000) { // Every 5 seconds
-                pthread_mutex_lock(&g_stats_mutex);
-                log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", 
-                        g_stats.frames_captured, g_stats.frames_sent, 
-                        g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));
-                pthread_mutex_unlock(&g_stats_mutex);
-                last_stats_time = current_time;
-            }
-        }
-
-        close(connfd);
-        log_info("Client disconnected after %lu frames", client_frames_sent);
-        printf("3) Closing connection.\n---------------------\n");
-        
-        // Free the dynamically allocated frame buffer  
-        free(frame_buffer);
-    }
-    
-    // Cleanup
-    log_info("Server shutting down...");
-    g_should_exit = true;
-    
-    // Wait for capture thread to finish
-    pthread_join(g_capture_thread, NULL);
-    
-    // Cleanup resources
+  // Start capture thread
+  if (pthread_create(&g_capture_thread, NULL, capture_thread_func, NULL) != 0) {
+    log_fatal("Failed to create capture thread");
     framebuffer_destroy(g_frame_buffer);
     ascii_read_destroy();
-    close(listenfd);
-    
-    // Final statistics
+    exit(1);
+  }
+
+  // Network setup
+  int listenfd = 0, connfd = 0;
+  struct sockaddr_in serv_addr;
+  struct sockaddr_in client_addr;
+  socklen_t client_len = sizeof(client_addr);
+
+  listenfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (listenfd < 0) {
+    log_error("Failed to create socket: %s", strerror(errno));
+    exit(1);
+  }
+
+  log_info("Server listening on port %d", port);
+  printf("Running server on port %d\n", port);
+
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serv_addr.sin_port = htons(port);
+
+  // Set socket options
+  int yes = 1;
+  if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+    log_error("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
+    perror("setsockopt");
+    exit(1);
+  }
+
+  // Bind socket
+  if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    log_error("Bind failed: %s", strerror(errno));
+    perror("Error: network bind failed");
+    exit(1);
+  }
+
+  // Listen for connections
+  if (listen(listenfd, 10) < 0) {
+    log_error("Listen failed: %s", strerror(errno));
+    perror("Error: network listen failed");
+    exit(1);
+  }
+
+  struct timespec last_stats_time = {0, 0};
+
+  // Main connection loop
+  while (!g_should_exit) {
+    log_info("Waiting for client connection...");
+    printf("1) Waiting for a connection...\n");
+
+    // Accept with timeout
+    connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr,
+                                 &client_len, ACCEPT_TIMEOUT);
+
+    if (connfd < 0) {
+      if (errno == ETIMEDOUT) {
+        log_debug("Accept timeout, continuing...");
+        continue;
+      }
+      log_error("Accept failed: %s", network_error_string(errno));
+      continue;
+    }
+
+    // Log client connection
+    char client_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
+    log_info("Client connected from %s:%d", client_ip,
+             ntohs(client_addr.sin_port));
+    printf("2) Connection initiated from %s, sending data.\n", client_ip);
+
+    // Set keep-alive
+    if (set_socket_keepalive(connfd) < 0) {
+      log_warn("Failed to set keep-alive: %s", strerror(errno));
+    }
+
+    // Reset client-specific stats
     pthread_mutex_lock(&g_stats_mutex);
-    log_info("Final stats: captured=%lu, sent=%lu, dropped=%lu", 
-             g_stats.frames_captured, g_stats.frames_sent, g_stats.frames_dropped);
+    g_stats.frames_sent = 0;
+    g_stats.bytes_sent = 0;
     pthread_mutex_unlock(&g_stats_mutex);
-    
-    printf("Server shutdown complete.\n");
-    log_destroy();
-    return 0;
+
+    // Allocate frame buffer dynamically based on color mode
+    size_t frame_size = get_frame_buffer_size();
+    char *frame_buffer = (char *)malloc(frame_size);
+    uint64_t client_frames_sent = 0;
+
+    // Client serving loop
+    while (!g_should_exit) {
+      // Try to get a frame from buffer
+      if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
+        // No frames available, wait a bit
+        usleep(1000); // 1ms
+        continue;
+      }
+
+      // Send frame with timeout
+      size_t frame_len = strlen(frame_buffer);
+      ssize_t sent =
+          send_with_timeout(connfd, frame_buffer, frame_len, SEND_TIMEOUT);
+
+      if (sent < 0) {
+        log_error("Send failed: %s", network_error_string(errno));
+        fprintf(stderr, "Error: send failed - %s\n",
+                network_error_string(errno));
+        break;
+      }
+
+      if ((size_t)sent != frame_len) {
+        log_warn("Partial send: %zd of %zu bytes", sent, frame_len);
+      }
+
+      // Update statistics
+      pthread_mutex_lock(&g_stats_mutex);
+      g_stats.frames_sent++;
+      g_stats.bytes_sent += sent;
+      pthread_mutex_unlock(&g_stats_mutex);
+
+      client_frames_sent++;
+
+      // Print periodic statistics
+      struct timespec current_time;
+      clock_gettime(CLOCK_MONOTONIC, &current_time);
+      long stats_elapsed =
+          (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
+          (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
+
+      if (stats_elapsed >= 5000) { // Every 5 seconds
+        pthread_mutex_lock(&g_stats_mutex);
+        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu",
+                 g_stats.frames_captured, g_stats.frames_sent,
+                 g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));
+        pthread_mutex_unlock(&g_stats_mutex);
+        last_stats_time = current_time;
+      }
+    }
+
+    close(connfd);
+    log_info("Client disconnected after %lu frames", client_frames_sent);
+    printf("3) Closing connection.\n---------------------\n");
+
+    // Free the dynamically allocated frame buffer
+    free(frame_buffer);
+  }
+
+  // Cleanup
+  log_info("Server shutting down...");
+  g_should_exit = true;
+
+  // Wait for capture thread to finish
+  pthread_join(g_capture_thread, NULL);
+
+  // Cleanup resources
+  framebuffer_destroy(g_frame_buffer);
+  ascii_read_destroy();
+  close(listenfd);
+
+  // Final statistics
+  pthread_mutex_lock(&g_stats_mutex);
+  log_info("Final stats: captured=%lu, sent=%lu, dropped=%lu",
+           g_stats.frames_captured, g_stats.frames_sent,
+           g_stats.frames_dropped);
+  pthread_mutex_unlock(&g_stats_mutex);
+
+  printf("Server shutdown complete.\n");
+  log_destroy();
+  return 0;
 }

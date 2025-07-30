@@ -4,25 +4,15 @@
 
 #define strtoint(s) (int)strtol(s, (char **)NULL, 10)
 
+extern char ascii_palette[];
 
-extern
-char ascii_palette[];
+extern unsigned short int opt_width, opt_height, auto_width, auto_height;
 
-extern
-unsigned short int opt_width,
-                   opt_height,
-                   auto_width,
-                   auto_height;
+extern char opt_address[], opt_port[];
 
-extern
-char opt_address[],
-     opt_port   [];
+extern unsigned short int opt_webcam_index;
 
-extern
-unsigned short int opt_webcam_index;
-
-extern
-unsigned short int opt_webcam_flip;
+extern unsigned short int opt_webcam_flip;
 
 extern unsigned short int opt_color_output;
 
@@ -30,21 +20,13 @@ extern unsigned short int opt_background_color;
 
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
-extern
-unsigned short int last_image_width,
-                   last_image_height;
+extern unsigned short int last_image_width, last_image_height;
 
-
-extern
-unsigned short int RED  [],
-                   GREEN[],
-                   BLUE [],
-                   GRAY [];
-
+extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
 void options_init(int, char **);
 
-void usage(FILE* out_stream);
+void usage(FILE *out_stream);
 
 void precalc_rgb(const float, const float, const float);
 
