@@ -94,8 +94,7 @@ int main(int argc, char *argv[]) {
     size_t buffer_size = get_frame_buffer_size();
     char *frame_buffer = (char *)malloc(buffer_size);
     if (!frame_buffer) {
-      fprintf(stderr, "Error: Failed to allocate frame buffer of size %zu\n",
-              buffer_size);
+      fprintf(stderr, "Error: Failed to allocate frame buffer of size %zu\n", buffer_size);
       close(sockfd);
       exit(1);
     }
@@ -103,15 +102,13 @@ int main(int argc, char *argv[]) {
     int frame_pos = 0;
 
     while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff) - 1))) {
-      recvBuff[read_result] =
-          0; // Null-terminate the received data, making it a valid C string.
+      recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
 
       // Process each character looking for frame delimiters
       for (int i = 0; i < read_result; i++) {
         if (recvBuff[i] == ASCII_DELIMITER) {
           // Found complete frame, display it!
-          frame_buffer[frame_pos] =
-              '\0'; // Null-terminate the frame, making it a valid C string.
+          frame_buffer[frame_pos] = '\0'; // Null-terminate the frame, making it a valid C string.
 
           if (strcmp(frame_buffer, "Webcam capture failed\n") == 0) {
             console_clear();
