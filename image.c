@@ -139,12 +139,12 @@ char* get_lum_palette() {
         return cached_palette;
     }
     
-    cached_palette = (char*)malloc(256 * sizeof(char));
+    cached_palette = (char*)malloc(ASCII_LUMINANCE_LEVELS * sizeof(char));
     const int palette_len = strlen(ascii_palette) - 1;
     
-    for (int n = 0; n < 256; n++) {
+    for (int n = 0; n < ASCII_LUMINANCE_LEVELS; n++) {
         cached_palette[n] = ascii_palette[ROUND(
-            (float)palette_len * (float)n / (float)MAXJSAMPLE
+            (float)palette_len * (float)n / (ASCII_LUMINANCE_LEVELS - 1)
         )];
     }
     return cached_palette;
@@ -189,25 +189,37 @@ void quantize_color(int* r, int* g, int* b, int levels) {
     *b = (*b / step) * step;
 }
 
+// Buffer overflow checking function
+static size_t check_buffer_overflow(
+    const char* current_pos,
+    const char* buffer_start,
+    size_t buffer_size,
+    size_t operation_size,
+    const char* context
+) {
+    if ((current_pos - buffer_start) + operation_size >= buffer_size) {
+        fprintf(stderr, "Buffer overflow risk (%s). Quitting...\n", context);
+        exit(EXIT_FAILURE);
+    }
+    return operation_size;
+}
+
 // Colored ASCII art printing function with quantization
 char *image_print_colored(const image_t *p) {
     const int h = p->h;
     const int w = p->w;
     
     // Calculate buffer size: each character can have color codes (~20 chars per pixel)
-    const int estimated_size = h * w * 25 + h * 10 + 100;  // Extra space for newlines and delimiter
-    
-    char* lines = (char*)malloc(estimated_size * sizeof(char));
+    const int estimated_size = (h * w * 25) + (h * 10) + opt_width + opt_height + 1;  // Extra space for newlines and delimiter and null terminator
+    size_t lines_size = estimated_size * sizeof(char);
+    char* lines = (char*)malloc(lines_size);
     if (!lines) {
-        fprintf(stderr, "Failed to allocate memory for colored ASCII output\n");
+        fprintf(stderr, "Failed to allocate %zu bytes of memory for colored ASCII output\n", lines_size);
         return NULL;
     }
     
     const rgb_t *pix = p->pixels;
     const char *palette = get_lum_palette();
-    const unsigned short int *red_lut = RED;
-    const unsigned short int *green_lut = GREEN;
-    const unsigned short int *blue_lut = BLUE;
     
     char *current_pos = lines;
     
@@ -216,25 +228,27 @@ char *image_print_colored(const image_t *p) {
         
         for (int x = 0; x < w; x++) {
             const rgb_t pixel = pix[row_offset + x];
-            const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-            const char ascii_char = palette[luminance];
-            
-            // Quantize colors to reduce frame size (8 levels = 512 total colors instead of 16M)
             int r = pixel.r, g = pixel.g, b = pixel.b;
-            quantize_color(&r, &g, &b, 8);
-            
+            const int luminance = RED[r] + GREEN[g] + BLUE[b];
+            const char ascii_char = palette[luminance];
+
+            // Quantize colors.
+            //quantize_color(&r, &g, &b, 8);
+
             // Add ANSI color code for foreground
-            int written = snprintf(current_pos, 30, "\033[38;2;%d;%d;%dm%c", 
-                                 r, g, b, ascii_char);
+            size_t max_chars_to_write = check_buffer_overflow(current_pos, lines, lines_size, 30, "Printing colored pixels");
+            int written = snprintf(current_pos, max_chars_to_write, "\033[38;2;%d;%d;%dm%c", r, g, b, ascii_char);
             current_pos += written;
         }
         
         // Add newline and reset color at end of each row
-        int written = snprintf(current_pos, 10, "\033[0m\n");
+        size_t max_chars_to_write = check_buffer_overflow(current_pos, lines, lines_size, 10, "Printing a newline and color reset");
+        int written = snprintf(current_pos, max_chars_to_write, "\033[0m\n");
         current_pos += written;
     }
     
     // Add delimiter and null terminator
+    check_buffer_overflow(current_pos, lines, lines_size, 2, "Printing delimiter and null terminator");
     *current_pos++ = ASCII_DELIMITER;
     *current_pos = '\0';
     

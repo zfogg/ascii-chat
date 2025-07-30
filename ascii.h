@@ -24,6 +24,7 @@ char* get_lum_palette(void);
 
 /*static char *from_jpeg(FILE *);*/
 
+#define ASCII_LUMINANCE_LEVELS 256
 
 #define ASCII_DELIMITER '\t'
 
