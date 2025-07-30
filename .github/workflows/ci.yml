@@ -89,11 +89,9 @@ jobs:
     - name: Install clang-format
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang-format
+        sudo apt-get install -y clang-format make
 
     - name: Check code formatting
       run: |
         # Check if code follows consistent formatting
-        find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
-        xargs clang-format --dry-run --Werror || \
-        (echo "Code formatting issues found. Run 'make format' to fix." && exit 1)
+        make format-check
