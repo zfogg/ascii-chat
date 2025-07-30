@@ -10,11 +10,6 @@
 #include "ascii.h"
 #include "options.h"
 
-// Default weights; must add up to 1.0
-static const float weight_red = 0.2989f;
-static const float weight_green = 0.5866f;
-static const float weight_blue = 0.1145f;
-
 static const unsigned short default_width = 110, default_height = 70;
 unsigned short int opt_width = default_width, opt_height = default_height,
 
@@ -34,6 +29,11 @@ unsigned short int opt_background_color = 0;
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;
 
+// Default weights; must add up to 1.0
+const float weight_red = 0.2989f;
+const float weight_green = 0.5866f;
+const float weight_blue = 0.1145f;
+
 /*
 Analysis of Your Current Palette
 Your palette " ...',;:clodxkO0KXNWM" represents luminance from dark to light:
@@ -44,7 +44,6 @@ Your palette " ...',;:clodxkO0KXNWM" represents luminance from dark to light:
     O0KX = bright areas
     NWM = brightest/white areas
 */
-
 // ASCII palette for image-to-text conversion
 char ascii_palette[] = "   ...',;:clodxkO0KXNWM";
 
@@ -150,7 +149,6 @@ void recalculate_aspect_ratio_on_resize(void) {
 }
 
 void options_init(int argc, char **argv) {
-  precalc_rgb(weight_red, weight_green, weight_blue);
   recalculate_aspect_ratio_on_resize();
 
   while (1) {
@@ -235,18 +233,4 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -C --color        (server|client) \t enable colored "
                 "ASCII output\n");
   fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
-}
-
-void precalc_rgb(const float red, const float green, const float blue) {
-  for (int n = 0; n < ASCII_LUMINANCE_LEVELS; ++n) {
-    RED[n] = ((float)n) * red;
-    GREEN[n] = ((float)n) * green;
-    BLUE[n] = ((float)n) * blue;
-    GRAY[n] = ((float)n);
-  }
-}
-
-/* Frame buffer size calculation */
-size_t get_frame_buffer_size(void) {
-  return opt_color_output ? FRAME_BUFFER_SIZE_COLOR : FRAME_BUFFER_SIZE;
 }

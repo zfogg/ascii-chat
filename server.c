@@ -15,6 +15,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "image.h"
 #include "ascii.h"
 #include "common.h"
 #include "network.h"
@@ -52,6 +53,13 @@ void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Terminal was resized, update dimensions
   recalculate_aspect_ratio_on_resize();
+  framebuffer_destroy(g_frame_buffer);
+  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
+  if (!g_frame_buffer) {
+    log_fatal("Failed to create frame buffer");
+    ascii_read_destroy();
+    exit(1);
+  }
   log_debug("Terminal resized, recalculated aspect ratio");
 }
 
@@ -138,6 +146,9 @@ int main(int argc, char *argv[]) {
   int port = strtoint(opt_port);
   unsigned short int webcam_index = opt_webcam_index;
 
+  precalc_luminance_palette();
+  precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+
   // Handle terminal resize events
   signal(SIGWINCH, sigwinch_handler);
   // Handle Ctrl+C for cleanup
@@ -153,9 +164,7 @@ int main(int argc, char *argv[]) {
 
   // Create frame buffer (more capacity for colored mode to handle frame size
   // variations)
-  size_t max_frame_size = get_frame_buffer_size();
-  int buffer_capacity = opt_color_output ? 15 : 10; // More buffering for colored frames
-  g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
+  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
   if (!g_frame_buffer) {
     log_fatal("Failed to create frame buffer");
     ascii_read_destroy();
@@ -178,7 +187,7 @@ int main(int argc, char *argv[]) {
 
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
   if (listenfd < 0) {
-    log_error("Failed to create socket: %s", strerror(errno));
+    log_fatal("Failed to create socket: %s", strerror(errno));
     exit(1);
   }
 
@@ -192,22 +201,21 @@ int main(int argc, char *argv[]) {
   // Set socket options
   int yes = 1;
   if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-    log_error("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
+    log_fatal("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
     perror("setsockopt");
     exit(1);
   }
 
   // Bind socket
   if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    log_error("Bind failed: %s", strerror(errno));
+    log_fatal("Socket bind failed: %s", strerror(errno));
     perror("Error: network bind failed");
     exit(1);
   }
 
   // Listen for connections
   if (listen(listenfd, 10) < 0) {
-    log_error("Listen failed: %s", strerror(errno));
-    perror("Error: network listen failed");
+    log_fatal("Connection listen failed: %s", strerror(errno));
     exit(1);
   }
 
@@ -216,17 +224,15 @@ int main(int argc, char *argv[]) {
   // Main connection loop
   while (!g_should_exit) {
     log_info("Waiting for client connection...");
-    printf("1) Waiting for a connection...\n");
 
-    // Accept with timeout
+    // Accept network connection with timeout
     connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
-
     if (connfd < 0) {
       if (errno == ETIMEDOUT) {
-        log_debug("Accept timeout, continuing...");
+        log_debug("Network accept timeout, continuing...");
         continue;
       }
-      log_error("Accept failed: %s", network_error_string(errno));
+      log_error("Network accept failed: %s", network_error_string(errno));
       continue;
     }
 
@@ -234,7 +240,6 @@ int main(int argc, char *argv[]) {
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
     log_info("Client connected from %s:%d", client_ip, ntohs(client_addr.sin_port));
-    printf("2) Connection initiated from %s, sending data.\n", client_ip);
 
     // Set keep-alive
     if (set_socket_keepalive(connfd) < 0) {
@@ -248,8 +253,8 @@ int main(int argc, char *argv[]) {
     pthread_mutex_unlock(&g_stats_mutex);
 
     // Allocate frame buffer dynamically based on color mode
-    size_t frame_size = get_frame_buffer_size();
-    char *frame_buffer = (char *)malloc(frame_size);
+    char *frame_buffer;
+    SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
     uint64_t client_frames_sent = 0;
 
     // Client serving loop
@@ -264,10 +269,8 @@ int main(int argc, char *argv[]) {
       // Send frame with timeout
       size_t frame_len = strlen(frame_buffer);
       ssize_t sent = send_with_timeout(connfd, frame_buffer, frame_len, SEND_TIMEOUT);
-
       if (sent < 0) {
-        log_error("Send failed: %s", network_error_string(errno));
-        fprintf(stderr, "Error: send failed - %s\n", network_error_string(errno));
+        log_error("Error: Network send of frame failed: %s", network_error_string(errno));
         break;
       }
 
@@ -289,7 +292,7 @@ int main(int argc, char *argv[]) {
       long stats_elapsed = (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
                            (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
 
-      if (stats_elapsed >= 5000) { // Every 5 seconds
+      if (stats_elapsed >= 10000) { // Every 10 seconds
         pthread_mutex_lock(&g_stats_mutex);
         log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", g_stats.frames_captured,
                  g_stats.frames_sent, g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));

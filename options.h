@@ -22,16 +22,16 @@ extern unsigned short int opt_background_color;
 // recalculation
 extern unsigned short int last_image_width, last_image_height;
 
+// Default weights; must add up to 1.0
+extern const float weight_red;
+extern const float weight_green;
+extern const float weight_blue;
+
 extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
 void options_init(int, char **);
 
 void usage(FILE *out_stream);
-
-void precalc_rgb(const float, const float, const float);
-
-// Frame buffer size calculation
-size_t get_frame_buffer_size(void);
 
 // Terminal size detection functions
 int get_terminal_size(unsigned short int *width, unsigned short int *height);
