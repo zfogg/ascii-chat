@@ -25,6 +25,7 @@ jobs:
 
     - name: Build with debug symbols
       run: |
+        export CSTD=-std=c2x
         make clean
         make debug
 
@@ -80,6 +81,7 @@ jobs:
 
     - name: Build different optimization levels
       run: |
+        export CSTD=-std=c2x
         echo "Building debug version..."
         make clean && make debug
         DEBUG_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
