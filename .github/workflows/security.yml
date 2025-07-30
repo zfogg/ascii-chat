@@ -37,9 +37,8 @@ jobs:
 
     - name: Build for analysis
       run: |
-        export CSTD=-std=c2x
-        make clean
-        make debug
+        make clean CSTD=-std=c2x
+        make debug CSTD=-std=c2x
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
@@ -114,11 +113,11 @@ jobs:
       run: |
         export CFLAGS="-Wformat -Wformat-security -Werror=format-security -std=c2x"
         export CXXFLAGS="-Wformat -Wformat-security -Werror=format-security"
-        make clean
-        make debug
+        make clean CSTD=-std=c2x
+        make debug CSTD=-std=c2x
 
     - name: Run static security analysis
       run: |
         # Use clang static analyzer for security issues
-        scan-build --status-bugs --exclude ext/ make clean
-        scan-build --status-bugs --exclude ext/ make debug
+        scan-build --status-bugs --exclude ext/ make clean CSTD=-std=c2x
+        scan-build --status-bugs --exclude ext/ make debug CSTD=-std=c2x

@@ -120,9 +120,8 @@ jobs:
 
     - name: Build release
       run: |
-        export CSTD=-std=c2x
-        make clean
-        make release
+        make clean CSTD=-std=c2x
+        make release CSTD=-std=c2x
 
     - name: Create release package
       run: |
