@@ -35,8 +35,7 @@ static inline size_t next_power_of_two(size_t n) {
 
 ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   if (element_size == 0 || capacity == 0) {
-    log_error("Invalid ring buffer parameters: element_size=%zu, capacity=%zu",
-              element_size, capacity);
+    log_error("Invalid ring buffer parameters: element_size=%zu, capacity=%zu", element_size, capacity);
     return NULL;
   }
 
@@ -51,8 +50,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
 
   rb->buffer = (char *)calloc(actual_capacity, element_size);
   if (!rb->buffer) {
-    log_error("Failed to allocate ring buffer memory: %zu bytes",
-              actual_capacity * element_size);
+    log_error("Failed to allocate ring buffer memory: %zu bytes", actual_capacity * element_size);
     free(rb);
     return NULL;
   }
@@ -65,8 +63,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   atomic_init(&rb->tail, 0);
   atomic_init(&rb->size, 0);
 
-  log_debug("Created ring buffer: capacity=%zu, element_size=%zu",
-            actual_capacity, element_size);
+  log_debug("Created ring buffer: capacity=%zu, element_size=%zu", actual_capacity, element_size);
 
   return rb;
 }
@@ -186,8 +183,7 @@ framebuffer_t *framebuffer_create(size_t capacity, size_t max_frame_size) {
     return NULL;
   }
 
-  log_info("Created frame buffer: capacity=%zu frames, max_frame_size=%zu",
-           capacity, max_frame_size);
+  log_info("Created frame buffer: capacity=%zu frames, max_frame_size=%zu", capacity, max_frame_size);
 
   return fb;
 }
@@ -206,8 +202,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame) {
 
   size_t frame_len = strlen(frame);
   if (frame_len >= fb->max_frame_size) {
-    log_warn("Frame too large: %zu bytes (max: %zu)", frame_len,
-             fb->max_frame_size - 1);
+    log_warn("Frame too large: %zu bytes (max: %zu)", frame_len, fb->max_frame_size - 1);
     return false;
   }
 

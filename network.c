@@ -14,13 +14,11 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) <
-      0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
     return -1;
   }
 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) <
-      0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
     return -1;
   }
 
@@ -29,31 +27,27 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
 
 int set_socket_keepalive(int sockfd) {
   int keepalive = 1;
-  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive,
-                 sizeof(keepalive)) < 0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0) {
     return -1;
   }
 
 #ifdef TCP_KEEPIDLE
   int keepidle = KEEPALIVE_IDLE;
-  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle,
-                 sizeof(keepidle)) < 0) {
+  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle)) < 0) {
     // Not critical, continue
   }
 #endif
 
 #ifdef TCP_KEEPINTVL
   int keepintvl = KEEPALIVE_INTERVAL;
-  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl,
-                 sizeof(keepintvl)) < 0) {
+  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl)) < 0) {
     // Not critical, continue
   }
 #endif
 
 #ifdef TCP_KEEPCNT
   int keepcnt = KEEPALIVE_COUNT;
-  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt)) <
-      0) {
+  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt)) < 0) {
     // Not critical, continue
   }
 #endif
@@ -69,8 +63,7 @@ int set_socket_nonblocking(int sockfd) {
   return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 }
 
-bool connect_with_timeout(int sockfd, const struct sockaddr *addr,
-                          socklen_t addrlen, int timeout_seconds) {
+bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds) {
   // Set socket to non-blocking mode
   if (set_socket_nonblocking(sockfd) < 0) {
     return false;
@@ -112,8 +105,7 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr,
   return (error == 0);
 }
 
-ssize_t send_with_timeout(int sockfd, const void *buf, size_t len,
-                          int timeout_seconds) {
+ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_seconds) {
   fd_set write_fds;
   struct timeval timeout;
   ssize_t total_sent = 0;
@@ -151,8 +143,7 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len,
   return total_sent;
 }
 
-ssize_t recv_with_timeout(int sockfd, void *buf, size_t len,
-                          int timeout_seconds) {
+ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds) {
   fd_set read_fds;
   struct timeval timeout;
 
@@ -174,8 +165,7 @@ ssize_t recv_with_timeout(int sockfd, void *buf, size_t len,
   return recv(sockfd, buf, len, 0);
 }
 
-int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen,
-                        int timeout_seconds) {
+int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
   fd_set read_fds;
   struct timeval timeout;
 

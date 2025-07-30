@@ -17,13 +17,9 @@ static struct {
   log_level_t level;
   pthread_mutex_t mutex;
   bool initialized;
-} g_log = {.file = NULL,
-           .level = LOG_INFO,
-           .mutex = PTHREAD_MUTEX_INITIALIZER,
-           .initialized = false};
+} g_log = {.file = NULL, .level = LOG_INFO, .mutex = PTHREAD_MUTEX_INITIALIZER, .initialized = false};
 
-static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR",
-                                      "FATAL"};
+static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
 static const char *level_colors[] = {
     "\x1b[36m", /* DEBUG: Cyan */
@@ -77,8 +73,7 @@ void log_set_level(log_level_t level) {
   pthread_mutex_unlock(&g_log.mutex);
 }
 
-void log_msg(log_level_t level, const char *file, int line, const char *func,
-             const char *fmt, ...) {
+void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
   if (!g_log.initialized) {
     log_init(NULL, LOG_INFO);
   }
@@ -97,8 +92,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func,
 
   /* Print to file (no colors) */
   if (g_log.file) {
-    fprintf(g_log.file, "[%s] [%s] %s:%d in %s(): ", time_buf,
-            level_strings[level], file, line, func);
+    fprintf(g_log.file, "[%s] [%s] %s:%d in %s(): ", time_buf, level_strings[level], file, line, func);
 
     va_list args;
     va_start(args, fmt);
@@ -111,8 +105,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func,
 
   /* Also print to stderr with colors if it's a terminal */
   if (g_log.file != stderr && isatty(fileno(stderr))) {
-    fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level],
-            time_buf, level_strings[level], file, line, func);
+    fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf, level_strings[level], file,
+            line, func);
 
     va_list args;
     va_start(args, fmt);

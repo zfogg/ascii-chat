@@ -3,7 +3,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 2
 UseTab: Never
-ColumnLimit: 80
+ColumnLimit: 120
 
 # Disable include sorting to prevent jpeglib.h header order issues
 SortIncludes: Never

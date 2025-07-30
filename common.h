@@ -41,8 +41,8 @@ typedef struct {
 /* Buffer sizes */
 #define FRAME_BUFFER_SIZE 65536         /* 64KB frame buffer (monochrome) */
 #define FRAME_BUFFER_SIZE_COLOR 8388608 /* 8MB frame buffer (colored) */
-#define RECV_BUFFER_SIZE 8388608 /* 8MB receive buffer (for colored frames) */
-#define SEND_BUFFER_SIZE 8388608 /* 8MB send buffer (for colored frames) */
+#define RECV_BUFFER_SIZE 8388608        /* 8MB receive buffer (for colored frames) */
+#define SEND_BUFFER_SIZE 8388608        /* 8MB send buffer (for colored frames) */
 
 /* Frame buffer size calculation */
 size_t get_frame_buffer_size(void);
@@ -60,13 +60,7 @@ static inline int get_frame_interval_ms(void) {
 }
 
 /* Logging levels */
-typedef enum {
-  LOG_DEBUG = 0,
-  LOG_INFO,
-  LOG_WARN,
-  LOG_ERROR,
-  LOG_FATAL
-} log_level_t;
+typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;
 
 /* ============================================================================
  * Utility Macros
@@ -74,31 +68,31 @@ typedef enum {
  */
 
 /* Safe memory allocation with error checking */
-#define SAFE_MALLOC(ptr, size)                                                 \
-  do {                                                                         \
-    (ptr) = malloc(size);                                                      \
-    if (!(ptr)) {                                                              \
-      log_error("Memory allocation failed: %zu bytes", (size_t)(size));        \
-      return ASCIICHAT_ERR_MALLOC;                                             \
-    }                                                                          \
+#define SAFE_MALLOC(ptr, size)                                                                                         \
+  do {                                                                                                                 \
+    (ptr) = malloc(size);                                                                                              \
+    if (!(ptr)) {                                                                                                      \
+      log_error("Memory allocation failed: %zu bytes", (size_t)(size));                                                \
+      return ASCIICHAT_ERR_MALLOC;                                                                                     \
+    }                                                                                                                  \
   } while (0)
 
 /* Safe memory reallocation */
-#define SAFE_REALLOC(ptr, new_ptr, size)                                       \
-  do {                                                                         \
-    (new_ptr) = realloc((ptr), (size));                                        \
-    if (!(new_ptr)) {                                                          \
-      log_error("Memory reallocation failed: %zu bytes", (size_t)(size));      \
-      return ASCIICHAT_ERR_MALLOC;                                             \
-    }                                                                          \
-    (ptr) = (new_ptr);                                                         \
+#define SAFE_REALLOC(ptr, new_ptr, size)                                                                               \
+  do {                                                                                                                 \
+    (new_ptr) = realloc((ptr), (size));                                                                                \
+    if (!(new_ptr)) {                                                                                                  \
+      log_error("Memory reallocation failed: %zu bytes", (size_t)(size));                                              \
+      return ASCIICHAT_ERR_MALLOC;                                                                                     \
+    }                                                                                                                  \
+    (ptr) = (new_ptr);                                                                                                 \
   } while (0)
 
 /* Safe string copy */
-#define SAFE_STRNCPY(dst, src, size)                                           \
-  do {                                                                         \
-    strncpy((dst), (src), (size) - 1);                                         \
-    (dst)[(size) - 1] = '\0';                                                  \
+#define SAFE_STRNCPY(dst, src, size)                                                                                   \
+  do {                                                                                                                 \
+    strncpy((dst), (src), (size) - 1);                                                                                 \
+    (dst)[(size) - 1] = '\0';                                                                                          \
   } while (0)
 
 /* Min/Max macros */
@@ -120,20 +114,14 @@ const char *asciichat_error_string(asciichat_error_t error);
 void log_init(const char *filename, log_level_t level);
 void log_destroy(void);
 void log_set_level(log_level_t level);
-void log_msg(log_level_t level, const char *file, int line, const char *func,
-             const char *fmt, ...);
+void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
 
 /* Logging macros */
-#define log_debug(...)                                                         \
-  log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_info(...)                                                          \
-  log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_warn(...)                                                          \
-  log_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_error(...)                                                         \
-  log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_fatal(...)                                                         \
-  log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define log_debug(...) log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define log_info(...) log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define log_warn(...) log_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 /* Memory debugging (only in debug builds) */
 #ifdef DEBUG_MEMORY

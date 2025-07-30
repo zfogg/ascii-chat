@@ -100,8 +100,7 @@ image_t *image_read(FILE *fp) {
   }
 
   row_stride = jpg.output_width * jpg.output_components;
-  buffer =
-      (*jpg.mem->alloc_sarray)((j_common_ptr)&jpg, JPOOL_IMAGE, row_stride, 1);
+  buffer = (*jpg.mem->alloc_sarray)((j_common_ptr)&jpg, JPOOL_IMAGE, row_stride, 1);
 
   // Store image dimensions for aspect ratio recalculation on terminal resize
   last_image_width = jpg.output_width;
@@ -113,8 +112,7 @@ image_t *image_read(FILE *fp) {
     jpeg_read_scanlines(&jpg, buffer, 1);
 
     if (jpg.output_components == 3) {
-      memcpy(&p->pixels[(jpg.output_scanline - 1) * p->w], &buffer[0][0],
-             sizeof(rgb_t) * p->w);
+      memcpy(&p->pixels[(jpg.output_scanline - 1) * p->w], &buffer[0][0], sizeof(rgb_t) * p->w);
     } else {
       rgb_t *pixels = &p->pixels[(jpg.output_scanline - 1) * p->w];
 
@@ -145,8 +143,7 @@ char *get_lum_palette() {
   const int palette_len = strlen(ascii_palette) - 1;
 
   for (int n = 0; n < ASCII_LUMINANCE_LEVELS; n++) {
-    cached_palette[n] = ascii_palette[ROUND((float)palette_len * (float)n /
-                                            (ASCII_LUMINANCE_LEVELS - 1))];
+    cached_palette[n] = ascii_palette[ROUND((float)palette_len * (float)n / (ASCII_LUMINANCE_LEVELS - 1))];
   }
   return cached_palette;
 }
@@ -173,8 +170,7 @@ char *image_print(const image_t *p) {
 
     for (int x = 0; x < w; x++) {
       const rgb_t pixel = pix[row_offset + x];
-      const int luminance =
-          red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
+      const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
       lines[row_offset + x] = palette[luminance];
     }
     lines[row_offset + w - 1] = '\n';
@@ -204,9 +200,7 @@ char *image_print_colored(const image_t *p) {
   size_t lines_size = enough_space * sizeof(char);
   char *lines = (char *)malloc(lines_size);
   if (!lines) {
-    fprintf(stderr,
-            "Failed to allocate %zu bytes of memory for colored ASCII output\n",
-            lines_size);
+    fprintf(stderr, "Failed to allocate %zu bytes of memory for colored ASCII output\n", lines_size);
     return NULL;
   }
   // Now we can use the lines buffer safely in this function.
@@ -242,25 +236,20 @@ char *image_print_colored(const image_t *p) {
         const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
         const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
         const size_t operation_size =
-            strlen(ascii_fg) + strlen(ascii_bg) + 1 +
-            1; // strlen + ascii char + null terminator
-        const int written = snprintf(current_pos, operation_size, "%s%s%c",
-                                     ascii_fg, ascii_bg, ascii_char);
+            strlen(ascii_fg) + strlen(ascii_bg) + 1 + 1; // strlen + ascii char + null terminator
+        const int written = snprintf(current_pos, operation_size, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
         current_pos += written;
 
       } else {
         const char *ascii_fg = rgb_to_ansi_fg(r, g, b);
-        const size_t operation_size =
-            strlen(ascii_fg) + 1 + 1; // strlen + ascii char + null terminator
-        const int written =
-            snprintf(current_pos, operation_size, "%s%c", ascii_fg, ascii_char);
+        const size_t operation_size = strlen(ascii_fg) + 1 + 1; // strlen + ascii char + null terminator
+        const int written = snprintf(current_pos, operation_size, "%s%c", ascii_fg, ascii_char);
         current_pos += written;
       }
     }
 
     // Add newline and reset color at end of each row
-    const size_t operation_size =
-        4 + 1 + 1; // 4 for color reset + newline + null terminator
+    const size_t operation_size = 4 + 1 + 1; // 4 for color reset + newline + null terminator
     const int written = snprintf(current_pos, operation_size, "\033[0m\n");
     current_pos += written;
   }

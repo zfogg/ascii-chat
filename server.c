@@ -76,9 +76,8 @@ void *capture_thread_func(void *arg) {
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    long elapsed_ms =
-        (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
-        (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
+    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
+                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
 
     int frame_interval = get_frame_interval_ms();
     if (elapsed_ms < frame_interval) {
@@ -101,8 +100,7 @@ void *capture_thread_func(void *arg) {
     g_stats.frames_captured++;
     if (!buffered) {
       g_stats.frames_dropped++;
-      log_debug("Frame buffer full, dropped frame %lu",
-                g_stats.frames_captured);
+      log_debug("Frame buffer full, dropped frame %lu", g_stats.frames_captured);
     }
     pthread_mutex_unlock(&g_stats_mutex);
 
@@ -153,8 +151,7 @@ int main(int argc, char *argv[]) {
   // Create frame buffer (more capacity for colored mode to handle frame size
   // variations)
   size_t max_frame_size = get_frame_buffer_size();
-  int buffer_capacity =
-      opt_color_output ? 15 : 10; // More buffering for colored frames
+  int buffer_capacity = opt_color_output ? 15 : 10; // More buffering for colored frames
   g_frame_buffer = framebuffer_create(buffer_capacity, max_frame_size);
   if (!g_frame_buffer) {
     log_fatal("Failed to create frame buffer");
@@ -219,8 +216,7 @@ int main(int argc, char *argv[]) {
     printf("1) Waiting for a connection...\n");
 
     // Accept with timeout
-    connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr,
-                                 &client_len, ACCEPT_TIMEOUT);
+    connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
 
     if (connfd < 0) {
       if (errno == ETIMEDOUT) {
@@ -234,8 +230,7 @@ int main(int argc, char *argv[]) {
     // Log client connection
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-    log_info("Client connected from %s:%d", client_ip,
-             ntohs(client_addr.sin_port));
+    log_info("Client connected from %s:%d", client_ip, ntohs(client_addr.sin_port));
     printf("2) Connection initiated from %s, sending data.\n", client_ip);
 
     // Set keep-alive
@@ -265,13 +260,11 @@ int main(int argc, char *argv[]) {
 
       // Send frame with timeout
       size_t frame_len = strlen(frame_buffer);
-      ssize_t sent =
-          send_with_timeout(connfd, frame_buffer, frame_len, SEND_TIMEOUT);
+      ssize_t sent = send_with_timeout(connfd, frame_buffer, frame_len, SEND_TIMEOUT);
 
       if (sent < 0) {
         log_error("Send failed: %s", network_error_string(errno));
-        fprintf(stderr, "Error: send failed - %s\n",
-                network_error_string(errno));
+        fprintf(stderr, "Error: send failed - %s\n", network_error_string(errno));
         break;
       }
 
@@ -290,15 +283,13 @@ int main(int argc, char *argv[]) {
       // Print periodic statistics
       struct timespec current_time;
       clock_gettime(CLOCK_MONOTONIC, &current_time);
-      long stats_elapsed =
-          (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
-          (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
+      long stats_elapsed = (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
+                           (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
 
       if (stats_elapsed >= 5000) { // Every 5 seconds
         pthread_mutex_lock(&g_stats_mutex);
-        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu",
-                 g_stats.frames_captured, g_stats.frames_sent,
-                 g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));
+        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", g_stats.frames_captured,
+                 g_stats.frames_sent, g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));
         pthread_mutex_unlock(&g_stats_mutex);
         last_stats_time = current_time;
       }
@@ -326,8 +317,7 @@ int main(int argc, char *argv[]) {
 
   // Final statistics
   pthread_mutex_lock(&g_stats_mutex);
-  log_info("Final stats: captured=%lu, sent=%lu, dropped=%lu",
-           g_stats.frames_captured, g_stats.frames_sent,
+  log_info("Final stats: captured=%lu, sent=%lu, dropped=%lu", g_stats.frames_captured, g_stats.frames_sent,
            g_stats.frames_dropped);
   pthread_mutex_unlock(&g_stats_mutex);
 

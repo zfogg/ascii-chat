@@ -18,23 +18,17 @@ vector<int> jpegbuf_params;
 VideoCapture camera;
 
 void webcam_init(unsigned short int webcam_index) {
-  std::println(stderr, "Attempting to open webcam with index {}...",
-               webcam_index);
+  std::println(stderr, "Attempting to open webcam with index {}...", webcam_index);
   camera.open(webcam_index);
   if (!camera.isOpened()) {
     std::println(stderr, "Failed to connect to a webcam.\n");
-    std::println(stderr,
-                 "On macOS, you may need to grant camera permissions:\n");
-    std::println(stderr,
-                 "*. Say \"yes\" to the popup about system camera access that "
-                 "you see when running this program for the first time.\n");
-    std::println(stderr,
-                 "*. If you said \"no\" to the popup, go to System Preferences "
-                 "> Security & Privacy > Privacy > Camera.\n");
-    std::println(
-        stderr,
-        "   Now flip the switch next to your terminal application in that "
-        "privacy list to allow ascii-chat to access your camera.\n");
+    std::println(stderr, "On macOS, you may need to grant camera permissions:\n");
+    std::println(stderr, "*. Say \"yes\" to the popup about system camera access that "
+                         "you see when running this program for the first time.\n");
+    std::println(stderr, "*. If you said \"no\" to the popup, go to System Preferences "
+                         "> Security & Privacy > Privacy > Camera.\n");
+    std::println(stderr, "   Now flip the switch next to your terminal application in that "
+                         "privacy list to allow ascii-chat to access your camera.\n");
     std::println(stderr, "   Then just run this program again.\n");
     exit(1);
   }

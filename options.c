@@ -20,8 +20,7 @@ unsigned short int opt_width = default_width, opt_height = default_height,
 
                    auto_width = 1, auto_height = 1;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0",
-     opt_port[OPTIONS_BUFF_SIZE] = "90001";
+char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "90001";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -49,20 +48,19 @@ Your palette " ...',;:clodxkO0KXNWM" represents luminance from dark to light:
 // ASCII palette for image-to-text conversion
 char ascii_palette[] = "   ...',;:clodxkO0KXNWM";
 
-unsigned short int RED[ASCII_LUMINANCE_LEVELS], GREEN[ASCII_LUMINANCE_LEVELS],
-    BLUE[ASCII_LUMINANCE_LEVELS], GRAY[ASCII_LUMINANCE_LEVELS];
+unsigned short int RED[ASCII_LUMINANCE_LEVELS], GREEN[ASCII_LUMINANCE_LEVELS], BLUE[ASCII_LUMINANCE_LEVELS],
+    GRAY[ASCII_LUMINANCE_LEVELS];
 
-static struct option long_options[] = {
-    {"address", required_argument, NULL, 'a'},
-    {"port", required_argument, NULL, 'p'},
-    {"width", optional_argument, NULL, 'x'},
-    {"height", optional_argument, NULL, 'y'},
-    {"webcam-index", required_argument, NULL, 'c'},
-    {"webcam-flip", optional_argument, NULL, 'f'},
-    {"color", no_argument, NULL, 'C'},
-    {"background-color", no_argument, NULL, 'b'},
-    {"help", optional_argument, NULL, 'h'},
-    {0, 0, 0, 0}};
+static struct option long_options[] = {{"address", required_argument, NULL, 'a'},
+                                       {"port", required_argument, NULL, 'p'},
+                                       {"width", optional_argument, NULL, 'x'},
+                                       {"height", optional_argument, NULL, 'y'},
+                                       {"webcam-index", required_argument, NULL, 'c'},
+                                       {"webcam-flip", optional_argument, NULL, 'f'},
+                                       {"color", no_argument, NULL, 'C'},
+                                       {"background-color", no_argument, NULL, 'b'},
+                                       {"help", optional_argument, NULL, 'h'},
+                                       {0, 0, 0, 0}};
 
 // Terminal size detection functions
 int get_terminal_size(unsigned short int *width, unsigned short int *height) {
@@ -156,8 +154,7 @@ void options_init(int argc, char **argv) {
   recalculate_aspect_ratio_on_resize();
 
   while (1) {
-    int index = 0,
-        c = getopt_long(argc, argv, "a:p:x:y:c:f:Cbh", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f:Cbh", long_options, &index);
     if (c == -1)
       break;
 
@@ -232,9 +229,7 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -p --port         (server|client) \t TCP port\n");
   fprintf(desc, "\t\t -x --width        (client) \t     render width\n");
   fprintf(desc, "\t\t -y --height       (client) \t     render height\n");
-  fprintf(
-      desc,
-      "\t\t -c --webcam-index (server) \t     webcam device index (0-based)\n");
+  fprintf(desc, "\t\t -c --webcam-index (server) \t     webcam device index (0-based)\n");
   fprintf(desc, "\t\t -f --webcam-flip  (server) \t     horizontally flip the "
                 "image (usually desirable)\n");
   fprintf(desc, "\t\t -C --color        (server|client) \t enable colored "

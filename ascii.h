@@ -48,6 +48,4 @@ char *get_lum_palette(void);
 static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
                              ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};
 
-#define ascii_zzz()                                                            \
-  nanosleep((struct timespec *)&ASCII_SLEEP_START,                             \
-            (struct timespec *)&ASCII_SLEEP_STOP)
+#define ascii_zzz() nanosleep((struct timespec *)&ASCII_SLEEP_START, (struct timespec *)&ASCII_SLEEP_STOP)
