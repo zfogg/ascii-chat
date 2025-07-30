@@ -57,8 +57,7 @@ void sigwinch_handler(int sigwinch) {
   g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
   if (!g_frame_buffer) {
     log_fatal("Failed to create frame buffer");
-    ascii_read_destroy();
-    exit(1);
+    exit(ASCIICHAT_ERR_MALLOC);
   }
   log_debug("Terminal resized, recalculated aspect ratio");
 }
@@ -138,9 +137,8 @@ void *capture_thread_func(void *arg) {
  */
 
 int main(int argc, char *argv[]) {
-  // Initialize logging
   log_init("server.log", LOG_DEBUG);
-  log_info("ASCII Chat Server starting...");
+  log_info("ASCII Chat server starting...");
 
   options_init(argc, argv);
   int port = strtoint(opt_port);
@@ -168,7 +166,7 @@ int main(int argc, char *argv[]) {
   if (!g_frame_buffer) {
     log_fatal("Failed to create frame buffer");
     ascii_read_destroy();
-    exit(1);
+    exit(ASCIICHAT_ERR_MALLOC);
   }
 
   // Start capture thread
@@ -303,7 +301,7 @@ int main(int argc, char *argv[]) {
 
     close(connfd);
     log_info("Client disconnected after %lu frames", client_frames_sent);
-    printf("3) Closing connection.\n---------------------\n");
+    log_info("Closing connection.\n---------------------");
 
     // Free the dynamically allocated frame buffer
     free(frame_buffer);

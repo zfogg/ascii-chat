@@ -113,15 +113,16 @@ asciichat_error_t ascii_write(const char *frame) {
 }
 
 void ascii_write_destroy(void) {
-  console_clear();
-  cursor_reset();
+  // console_clear();
+  // cursor_reset();
   cursor_show();
   log_debug("ASCII writer destroyed");
 }
 
 void ascii_read_destroy(void) {
-  console_clear();
-  cursor_reset();
+  // console_clear();
+  // cursor_reset();
+  cursor_show();
   webcam_cleanup();
   log_debug("ASCII reader destroyed");
 }

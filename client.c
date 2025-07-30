@@ -17,11 +17,19 @@
 
 int sockfd = 0;
 
+static void shutdown_client(bool log) {
+  if (log)
+    log_info("Closing tcp socket connection");
+  close(sockfd);
+  ascii_write_destroy();
+  if (log)
+    log_info("Client shutdown complete");
+  log_destroy();
+}
+
 void sigint_handler(int sigint) {
   (void)(sigint);
-  ascii_write_destroy();
-  printf("Closing connection and exiting . . .\n");
-  close(sockfd);
+  shutdown_client(true);
   exit(0);
 }
 
@@ -32,22 +40,14 @@ void sigwinch_handler(int sigwinch) {
 }
 
 int main(int argc, char *argv[]) {
+  log_init("client.log", LOG_DEBUG);
+  log_info("ASCII Chat client starting...");
+
   options_init(argc, argv);
   char *address = opt_address;
   int port = strtoint(opt_port);
 
-  char recvBuff[40000];
   struct sockaddr_in serv_addr;
-
-  // struct timespec
-  // sleep_start = {
-  //     .tv_sec  = 3,
-  //     .tv_nsec = 0
-  // },
-  // sleep_stop = {
-  //     .tv_sec  = 0,
-  //     .tv_nsec = 0
-  // };
 
   // Cleanup nicely on Ctrl+C.
   signal(SIGINT, sigint_handler);
@@ -58,10 +58,10 @@ int main(int argc, char *argv[]) {
   /* read from the socket as long as the size of the read is > 0 */
   while (1) {
     // try to open a socket
-    memset(recvBuff, '0', sizeof(recvBuff));
     // error creating socket
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-      printf("\n Error: could not create socket \n");
+      log_fatal("\n Error: could not create socket");
+      shutdown_client(false);
       return 1;
     }
 
@@ -69,14 +69,15 @@ int main(int argc, char *argv[]) {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     // set type of address to IPV4 and port to 5000
-    printf("Connecting on port %d\n", port);
+    log_info("Connecting on port %d", port);
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
 
     // an error occurred when trying to set server address and port number
     if (inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
-      printf("\n Error: inet_pton \n");
+      log_fatal("Error: couldn't set the server address and port number");
+      shutdown_client(false);
       return 1;
     }
 
@@ -86,58 +87,32 @@ int main(int argc, char *argv[]) {
     printf("Attempting to connect...\n");
     // failed when trying to connect to the server
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      fprintf(stderr, "%s", "\n Error: connect failed \n");
+      log_fatal("%s", "Error: server socket connect() failed");
+      shutdown_client(false);
       exit(1);
     }
 
     // Allocate frame buffer on heap instead of stack to avoid stack overflow
     char *frame_buffer;
     SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
-    if (!frame_buffer) {
-      fprintf(stderr, "Error: Failed to allocate frame buffer of size %d\n", FRAME_BUFFER_SIZE_FINAL);
-      close(sockfd);
-      exit(1);
-    }
 
-    int frame_pos = 0;
+    char recvBuff[FRAME_BUFFER_SIZE_FINAL];
+    memset(recvBuff, '0', sizeof(recvBuff));
 
     while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff) - 1))) {
       recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
-
-      // Process each character looking for frame delimiters
-      for (int i = 0; i < read_result; i++) {
-        if (recvBuff[i] == ASCII_DELIMITER) {
-          // Found complete frame, display it!
-          frame_buffer[frame_pos] = '\0'; // Null-terminate the frame, making it a valid C string.
-
-          if (strcmp(frame_buffer, "Webcam capture failed\n") == 0) {
-            console_clear();
-            fprintf(stdout, "Error: %s", frame_buffer);
-          } else {
-            // Clear screen and display frame
-            console_clear();
-            cursor_reset();
-            printf("%s", frame_buffer);
-            fflush(stdout);
-          }
-
-          frame_pos = 0; // Reset for next frame
-        } else {
-          // Add character to current frame
-          if (frame_pos < (int)FRAME_BUFFER_SIZE_FINAL - 1) {
-            frame_buffer[frame_pos++] = recvBuff[i];
-          }
-        }
+      if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
+        log_error("Error: %s", recvBuff);
+        shutdown_client(false);
+        exit(1);
       }
-    }
+      ascii_write(recvBuff);
+    } // while read()ing result from socket into recvBuff
 
     // Clean up allocated memory
     free(frame_buffer);
-    console_clear();
-
-    // nanosleep((struct timespec *)&sleep_start,(struct timespec
-    // *)&sleep_stop);
   }
 
+  shutdown_client(true);
   return 0;
 }

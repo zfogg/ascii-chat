@@ -39,7 +39,8 @@ char *get_lum_palette(void);
 
 #define console_clear() print("\e[1;1H\e[2J")
 
-#define cursor_reset() print("\033[0;0H")
+//#define cursor_reset() print("\033[0;0H")
+#define cursor_reset() print("\033[H")
 
 #define cursor_hide() print("\e[?25l")
 
