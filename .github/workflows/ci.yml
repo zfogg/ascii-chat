@@ -74,7 +74,9 @@ jobs:
     - name: Run static analysis
       run: |
         # Run clang-tidy on source files
-        find . -name "*.c" -o -name "*.cpp" | head -10 | xargs clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' -- $(pkg-config --cflags opencv4 libjpeg) -std=c2x
+        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.c') -- $(pkg-config --cflags opencv4 libjpeg) -std=c2x
+        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.cpp') -- $(pkg-config --cflags opencv4 libjpeg) -std=c++23 -stdlib=libc++
+
 
     - name: Check for memory leaks patterns
       run: |
