@@ -37,6 +37,7 @@ jobs:
 
     - name: Build for analysis
       run: |
+        export CSTD=-std=c2x
         make clean
         make debug
 
