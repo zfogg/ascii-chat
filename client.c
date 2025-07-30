@@ -91,10 +91,10 @@ int main(int argc, char *argv[]) {
     }
 
     // Allocate frame buffer on heap instead of stack to avoid stack overflow
-    size_t buffer_size = get_frame_buffer_size();
-    char *frame_buffer = (char *)malloc(buffer_size);
+    char *frame_buffer;
+    SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
     if (!frame_buffer) {
-      fprintf(stderr, "Error: Failed to allocate frame buffer of size %zu\n", buffer_size);
+      fprintf(stderr, "Error: Failed to allocate frame buffer of size %d\n", FRAME_BUFFER_SIZE_FINAL);
       close(sockfd);
       exit(1);
     }
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
           frame_pos = 0; // Reset for next frame
         } else {
           // Add character to current frame
-          if (frame_pos < (int)buffer_size - 1) {
+          if (frame_pos < (int)FRAME_BUFFER_SIZE_FINAL - 1) {
             frame_buffer[frame_pos++] = recvBuff[i];
           }
         }

@@ -19,15 +19,8 @@ image_resize_ptrfun global_image_resize_fun = NULL;
 image_t *image_new(int width, int height) {
   image_t *p;
 
-  if (!(p = (image_t *)malloc(sizeof(image_t)))) {
-    perror("jp2a: coudln't allocate memory for image");
-    exit(EXIT_FAILURE);
-  }
-
-  if (!(p->pixels = (rgb_t *)malloc(width * height * sizeof(rgb_t)))) {
-    perror("jp2a: couldn't allocate memory for image");
-    exit(EXIT_FAILURE);
-  }
+  SAFE_MALLOC(p, sizeof(image_t), image_t *);
+  SAFE_MALLOC(p->pixels, width * height * sizeof(rgb_t), rgb_t *);
 
   p->w = width;
   p->h = height;
@@ -131,21 +124,22 @@ image_t *image_read(FILE *fp) {
 }
 
 // Optimized palette generation with caching
-static char *cached_palette = NULL;
+static char luminance_palette[ASCII_LUMINANCE_LEVELS * sizeof(char)];
 
-char *get_lum_palette() {
-  if (cached_palette != NULL) {
-    return cached_palette;
-  }
-
-  // SAFE_MALLOC(cached_palette, ASCII_LUMINANCE_LEVELS * sizeof(char));
-  cached_palette = (char *)malloc(ASCII_LUMINANCE_LEVELS * sizeof(char));
+void precalc_luminance_palette() {
   const int palette_len = strlen(ascii_palette) - 1;
-
   for (int n = 0; n < ASCII_LUMINANCE_LEVELS; n++) {
-    cached_palette[n] = ascii_palette[ROUND((float)palette_len * (float)n / (ASCII_LUMINANCE_LEVELS - 1))];
+    luminance_palette[n] = ascii_palette[ROUND((float)palette_len * (float)n / (ASCII_LUMINANCE_LEVELS - 1))];
   }
-  return cached_palette;
+}
+
+void precalc_rgb_palettes(const float red, const float green, const float blue) {
+  for (int n = 0; n < ASCII_LUMINANCE_LEVELS; ++n) {
+    RED[n] = ((float)n) * red;
+    GREEN[n] = ((float)n) * green;
+    BLUE[n] = ((float)n) * blue;
+    GRAY[n] = ((float)n);
+  }
 }
 
 // Optimized image printing with better memory access patterns
@@ -155,12 +149,12 @@ char *image_print(const image_t *p) {
   const int len = h * w;
 
   const rgb_t *pix = p->pixels;
-  const char *palette = get_lum_palette();
   const unsigned short int *red_lut = RED;
   const unsigned short int *green_lut = GREEN;
   const unsigned short int *blue_lut = BLUE;
 
-  char *lines = (char *)malloc((len + 2) * sizeof(char));
+  char *lines;
+  SAFE_MALLOC(lines, (len + 2) * sizeof(char), char *);
 
   lines[len] = ASCII_DELIMITER;
   lines[len + 1] = '\0';
@@ -171,7 +165,7 @@ char *image_print(const image_t *p) {
     for (int x = 0; x < w; x++) {
       const rgb_t pixel = pix[row_offset + x];
       const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-      lines[row_offset + x] = palette[luminance];
+      lines[row_offset + x] = luminance_palette[luminance];
     }
     lines[row_offset + w - 1] = '\n';
   }
@@ -192,22 +186,14 @@ char *image_print_colored(const image_t *p) {
   const int h = p->h;
   const int w = p->w;
 
-  // Calculate buffer size precisely:
-  // Per pixel: foreground (19) + background (19) + ASCII char (1) = 39 chars
-  // max Per row: color reset (4) + newline (1) = 5 chars At end: delimiter (1)
-  // + null terminator (1) = 2 chars
-  const int enough_space = (h * w * 39) + (h * 5) + 2;
-  size_t lines_size = enough_space * sizeof(char);
-  char *lines = (char *)malloc(lines_size);
-  if (!lines) {
-    fprintf(stderr, "Failed to allocate %zu bytes of memory for colored ASCII output\n", lines_size);
-    return NULL;
-  }
+  size_t lines_size = FRAME_BUFFER_SIZE_FINAL * sizeof(char);
+  char *lines;
+  SAFE_MALLOC(lines, lines_size, char *);
+
   // Now we can use the lines buffer safely in this function.
   // No buffer overflows and don't worry about snprintf's return value.
 
   const rgb_t *pix = p->pixels;
-  const char *palette = get_lum_palette();
 
   char *current_pos = lines;
 
@@ -218,7 +204,7 @@ char *image_print_colored(const image_t *p) {
       const rgb_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
-      const char ascii_char = palette[luminance];
+      const char ascii_char = luminance_palette[luminance];
 
       // Quantize colors.
       // quantize_color(&r, &g, &b, 8);
