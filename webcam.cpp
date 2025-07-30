@@ -2,7 +2,6 @@
 
 #include <cstdio>
 #include <jpeglib.h>
-#include <print>
 
 #include "ext/fmemopen/fmemopen.h"
 #include "options.h"
@@ -18,22 +17,22 @@ vector<int> jpegbuf_params;
 VideoCapture camera;
 
 void webcam_init(unsigned short int webcam_index) {
-  std::println(stderr, "Attempting to open webcam with index {}...", webcam_index);
+  fprintf(stderr, "Attempting to open webcam with index %d...\n", webcam_index);
   camera.open(webcam_index);
   if (!camera.isOpened()) {
-    std::println(stderr, "Failed to connect to a webcam.\n");
-    std::println(stderr, "On macOS, you may need to grant camera permissions:\n");
-    std::println(stderr, "*. Say \"yes\" to the popup about system camera access that "
+    fprintf(stderr, "Failed to connect to a webcam.\n");
+    fprintf(stderr, "On macOS, you may need to grant camera permissions:\n");
+    fprintf(stderr, "*. Say \"yes\" to the popup about system camera access that "
                          "you see when running this program for the first time.\n");
-    std::println(stderr, "*. If you said \"no\" to the popup, go to System Preferences "
+    fprintf(stderr, "*. If you said \"no\" to the popup, go to System Preferences "
                          "> Security & Privacy > Privacy > Camera.\n");
-    std::println(stderr, "   Now flip the switch next to your terminal application in that "
+    fprintf(stderr, "   Now flip the switch next to your terminal application in that "
                          "privacy list to allow ascii-chat to access your camera.\n");
-    std::println(stderr, "   Then just run this program again.\n");
+    fprintf(stderr, "   Then just run this program again.\n");
     exit(1);
   }
 
-  std::println(stderr, "Webcam opened successfully!\n");
+  fprintf(stderr, "Webcam opened successfully!\n");
 
   jpegbuf_params.push_back(IMWRITE_JPEG_QUALITY);
   jpegbuf_params.push_back(100);
@@ -46,7 +45,7 @@ FILE *webcam_read() {
 
   // Check if frame was captured successfully
   if (frame.empty()) {
-    std::println(stderr, "Failed to capture frame from webcam\n");
+    fprintf(stderr, "Failed to capture frame from webcam\n");
     return NULL;
   }
 
@@ -71,8 +70,8 @@ void webcam_cleanup() {
   bool was_opened = camera.isOpened();
   if (was_opened) {
     camera.release();
-    std::println(stdout, "Webcam resources released\n");
+    fprintf(stdout, "Webcam resources released\n");
   } else {
-    std::println(stdout, "Webcam was not opened, nothing to release\n");
+    fprintf(stdout, "Webcam was not opened, nothing to release\n");
   }
 }
