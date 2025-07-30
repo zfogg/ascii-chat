@@ -1,3 +1,6 @@
+/* Feature test macros for POSIX functions */
+#define _GNU_SOURCE
+
 #include "common.h"
 #include <pthread.h>
 #include <stdarg.h>
