@@ -9,7 +9,7 @@ CC  := clang
 CXX := clang++
 
 # Package dependencies
-PKG_CONFIG_LIBS := opencv4 libjpeg
+PKG_CONFIG_LIBS := opencv4 libjpeg zlib
 
 # Directories
 BIN_DIR  := bin

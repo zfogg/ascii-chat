@@ -29,9 +29,16 @@ collowing commands:
 pkill -f bin/server
 pkill -f bin/client
 ```
+Feel free to create and use server.log and client.log files to help you work 
+and test and debug.
 
 Linting:
   Ignore linting errors about C++ code for .c and .h files.
   Ignore linting errors about C code for .cpp and .hpp files.
   My linter is setup for both C and C++ files so sometimes you see it linting 
   C++ code as C and vice versa.
+
+Make sure to delete any log files you generate when you're done with them.
+
+Try not to delete files very much. Almost all of the time, I'll be the one to 
+delete them, even if you make them.
