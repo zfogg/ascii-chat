@@ -43,7 +43,7 @@ void sigwinch_handler(int sigwinch) {
   // Send new size to server if connected
   if (sockfd > 0) {
     if (send_size_message(sockfd, opt_width, opt_height) < 0) {
-      log_warn("Failed to send size update to server");
+      log_warn("Failed to send size update to server: %s", network_error_string(errno));
     } else {
       log_debug("Sent size update to server: %ux%u", opt_width, opt_height);
     }
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     // try to open a socket
     // error creating socket
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-      log_fatal("\n Error: could not create socket");
+      log_fatal("Error: could not create socket: %s", network_error_string(errno));
       shutdown_client(false);
       return 1;
     }
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 
     // an error occurred when trying to set server address and port number
     if (inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
-      log_fatal("Error: couldn't set the server address and port number");
+      log_fatal("Error: couldn't set the server address and port number: %s", network_error_string(errno));
       shutdown_client(false);
       return 1;
     }
@@ -97,19 +97,24 @@ int main(int argc, char *argv[]) {
 
     printf("Attempting to connect...\n");
     // failed when trying to connect to the server
-    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      log_fatal("%s", "Error: server socket connect() failed");
+    if (!connect_with_timeout(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr), CONNECT_TIMEOUT)) {
+      log_fatal("Error: server socket connect() failed: %s", network_error_string(errno));
       shutdown_client(false);
       exit(ASCIICHAT_ERR_NETWORK);
     }
 
     // Send initial terminal size to server
     if (send_size_message(sockfd, opt_width, opt_height) < 0) {
-      log_error("Failed to send initial size to server");
+      log_error("Failed to send initial size to server: %s", network_error_string(errno));
       shutdown_client(false);
       exit(ASCIICHAT_ERR_NETWORK_SIZE);
     }
     log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
+
+    // Set socket keepalive to detect broken connections
+    if (set_socket_keepalive(sockfd) < 0) {
+      log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
+    }
 
     // Allocate frame buffer on heap instead of stack to avoid stack overflow
     char *frame_buffer;
@@ -119,7 +124,7 @@ int main(int argc, char *argv[]) {
     char *recvBuff;
     SAFE_MALLOC(recvBuff, FRAME_BUFFER_SIZE_FINAL, char *);
 
-    while (0 < (read_result = read(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1))) {
+    while (0 < (read_result = recv_with_timeout(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1, RECV_TIMEOUT))) {
       recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
         log_error("Error: %s", recvBuff);
@@ -127,7 +132,12 @@ int main(int argc, char *argv[]) {
         exit(ASCIICHAT_ERR_WEBCAM);
       }
       ascii_write(recvBuff);
-    } // while read()ing result from socket into recvBuff
+    }
+
+    // Handle recv errors with better error reporting
+    if (read_result < 0) {
+      log_error("Network receive failed: %s", network_error_string(errno));
+    }
 
     // Clean up allocated memory
     free(frame_buffer);
