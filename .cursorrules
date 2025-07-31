@@ -21,8 +21,10 @@ You can run the server and client with the following commands:
 ./bin/server --color -p 90010 -c 1 &
 timeout 3 ./bin/client -p 90010
 ```
-Make sure to kill the server and client after running them. You can kill the 
-server and client with the collowing commands:
+Notice how I use a background process and timeout. This is what I want you to 
+do, to simplify your terminal usage experience. Make sure to kill the server 
+and client after running them. You can kill the server and client with the 
+collowing commands:
 ```
 pkill -f bin/server
 pkill -f bin/client
