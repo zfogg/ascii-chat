@@ -9,6 +9,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 /* ============================================================================
  * Logging Implementation
@@ -44,7 +46,8 @@ void log_init(const char *filename, log_level_t level) {
   g_log.level = level;
 
   if (filename) {
-    g_log.file = fopen(filename, "a");
+    int fd = open(filename, O_CREAT | O_WRONLY, S_IRUSR);
+    g_log.file = fdopen(fd, "a");
     if (!g_log.file) {
       fprintf(stderr, "Failed to open log file: %s\n", filename);
       g_log.file = stderr;
