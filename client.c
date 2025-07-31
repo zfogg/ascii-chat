@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   /* Connection and reconnection loop */
   int reconnect_attempt = 0;
   const int max_reconnect_delay = 50; // Maximum delay between reconnection attempts (seconds)
-  
+
   while (!g_should_exit) {
     // Close any existing socket before attempting new connection
     if (sockfd > 0) {
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
       reconnect_attempt++;
       int delay = (reconnect_attempt < max_reconnect_delay) ? reconnect_attempt : max_reconnect_delay;
       log_info("Retrying in %d seconds...", delay);
-      
+
       for (int i = 0; i < delay && !g_should_exit; i++)
         sleep(1);
       continue; // try to connect again
@@ -161,7 +161,8 @@ int main(int argc, char *argv[]) {
     bool connection_broken = false;
 
     // Frame receiving loop - continue until connection breaks or shutdown requested
-    while (!g_should_exit && !connection_broken && 0 < (read_result = recv_with_timeout(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1, RECV_TIMEOUT))) {
+    while (!g_should_exit && !connection_broken &&
+           0 < (read_result = recv_with_timeout(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1, RECV_TIMEOUT))) {
       recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
@@ -170,7 +171,7 @@ int main(int argc, char *argv[]) {
       }
       ascii_write(recvBuff);
     }
- 
+
     // Handle connection termination or shutdown
     if (!g_should_exit && read_result <= 0) {
       if (read_result == 0) {
@@ -187,12 +188,12 @@ int main(int argc, char *argv[]) {
     free(frame_buffer);
     free(recvBuff);
     ascii_write_destroy();
-    
+
     if (g_should_exit) {
       log_info("Shutdown requested, exiting...");
       break;
     }
-    
+
     // Connection broken - will loop back to reconnection logic
     log_info("Connection terminated, preparing to reconnect...");
   }
