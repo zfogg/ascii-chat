@@ -14,6 +14,7 @@
 #include "ascii.h"
 #include "client.h"
 #include "common.h"
+#include "network.h"
 #include "options.h"
 
 int sockfd = 0;
@@ -31,13 +32,22 @@ static void shutdown_client(bool log) {
 void sigint_handler(int sigint) {
   (void)(sigint);
   shutdown_client(true);
-  exit(0);
+  exit(ASCIICHAT_OK);
 }
 
 void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Terminal was resized, update dimensions and recalculate aspect ratio
   recalculate_aspect_ratio_on_resize();
+  
+  // Send new size to server if connected
+  if (sockfd > 0) {
+    if (send_size_message(sockfd, opt_width, opt_height) < 0) {
+      log_warn("Failed to send size update to server");
+    } else {
+      log_debug("Sent size update to server: %ux%u", opt_width, opt_height);
+    }
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -90,8 +100,16 @@ int main(int argc, char *argv[]) {
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       log_fatal("%s", "Error: server socket connect() failed");
       shutdown_client(false);
-      exit(1);
+      exit(ASCIICHAT_ERR_NETWORK);
     }
+    
+    // Send initial terminal size to server
+    if (send_size_message(sockfd, opt_width, opt_height) < 0) {
+      log_error("Failed to send initial size to server");
+      shutdown_client(false);
+      exit(ASCIICHAT_ERR_NETWORK_SIZE);
+    }
+    log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
 
     // Allocate frame buffer on heap instead of stack to avoid stack overflow
     char *frame_buffer;

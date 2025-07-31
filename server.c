@@ -51,15 +51,9 @@ static server_stats_t g_stats = {0};
 
 void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
-  // Terminal was resized, update dimensions
-  recalculate_aspect_ratio_on_resize();
-  framebuffer_destroy(g_frame_buffer);
-  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
-  if (!g_frame_buffer) {
-    log_fatal("Failed to create frame buffer");
-    exit(ASCIICHAT_ERR_MALLOC);
-  }
-  log_debug("Terminal resized, recalculated aspect ratio");
+  // Server terminal resize - we ignore this since we use client's terminal size
+  // Only log that the event occurred
+  log_debug("Server terminal resized (ignored - using client terminal size)");
 }
 
 void sigint_handler(int sigint) {
@@ -132,6 +126,55 @@ void *capture_thread_func(void *arg) {
 }
 
 /* ============================================================================
+ * Client Size Handling
+ * ============================================================================
+ */
+
+int receive_client_size(int connfd, unsigned short *width, unsigned short *height) {
+  char buffer[SIZE_MESSAGE_MAX_LEN];
+  
+  // Use recv with MSG_DONTWAIT to make it non-blocking
+  ssize_t received = recv(connfd, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
+  if (received <= 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return 0; // No data available (non-blocking)
+    }
+    return -1; // Error or connection closed
+  }
+  
+  buffer[received] = '\0';
+  
+  // Look for SIZE message in the received data
+  char *size_msg = strstr(buffer, SIZE_MESSAGE_PREFIX);
+  if (!size_msg) {
+    return 0; // No size message found
+  }
+  
+  // Parse the size message
+  if (parse_size_message(size_msg, width, height) == 0) {
+    return 1; // Successfully parsed size message
+  }
+  
+  return 0; // Failed to parse
+}
+
+void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
+  // Update global dimensions
+  opt_width = width;
+  opt_height = height;
+  
+  // Recreate frame buffer with new size
+  framebuffer_destroy(g_frame_buffer);
+  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
+  if (!g_frame_buffer) {
+    log_fatal("Failed to create frame buffer for new size %ux%u", width, height);
+    exit(ASCIICHAT_ERR_MALLOC);
+  }
+  
+  log_info("Updated frame generation for client size: %ux%u", width, height);
+}
+
+/* ============================================================================
  * Main Server Logic
  * ============================================================================
  */
@@ -143,6 +186,10 @@ int main(int argc, char *argv[]) {
   options_init(argc, argv);
   int port = strtoint(opt_port);
   unsigned short int webcam_index = opt_webcam_index;
+
+  // Set default dimensions for initial frame buffer (will be updated by client)
+  opt_width = 80;
+  opt_height = 24;
 
   precalc_luminance_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
@@ -157,7 +204,7 @@ int main(int argc, char *argv[]) {
   // Initialize webcam
   if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
     log_fatal("Failed to initialize webcam");
-    exit(1);
+    exit(ASCIICHAT_OK);
   }
 
   // Create frame buffer (more capacity for colored mode to handle frame size
@@ -174,7 +221,7 @@ int main(int argc, char *argv[]) {
     log_fatal("Failed to create capture thread");
     framebuffer_destroy(g_frame_buffer);
     ascii_read_destroy();
-    exit(1);
+    exit(ASCIICHAT_ERR_THREAD);
   }
 
   // Network setup
@@ -201,7 +248,7 @@ int main(int argc, char *argv[]) {
   if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
     log_fatal("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
     perror("setsockopt");
-    exit(1);
+    exit(ASCIICHAT_ERR_NETWORK);
   }
 
   // Bind socket
@@ -243,6 +290,27 @@ int main(int argc, char *argv[]) {
     if (set_socket_keepalive(connfd) < 0) {
       log_warn("Failed to set keep-alive: %s", strerror(errno));
     }
+    
+    // Receive initial size message from client
+    unsigned short client_width, client_height;
+    char size_buffer[SIZE_MESSAGE_MAX_LEN];
+    ssize_t size_received = recv_with_timeout(connfd, size_buffer, sizeof(size_buffer) - 1, RECV_TIMEOUT);
+    if (size_received <= 0) {
+      log_error("Failed to receive client size: %s", network_error_string(errno));
+      close(connfd);
+      continue;
+    }
+    
+    size_buffer[size_received] = '\0';
+    if (parse_size_message(size_buffer, &client_width, &client_height) != 0) {
+      log_error("Failed to parse client size message: %s", size_buffer);
+      close(connfd);
+      continue;
+    }
+    
+    // Update frame generation for client size
+    update_frame_buffer_for_size(client_width, client_height);
+    log_info("Client requested frame size: %ux%u", client_width, client_height);
 
     // Reset client-specific stats
     pthread_mutex_lock(&g_stats_mutex);
@@ -257,6 +325,19 @@ int main(int argc, char *argv[]) {
 
     // Client serving loop
     while (!g_should_exit) {
+      // Check for size updates from client (non-blocking)
+      unsigned short new_width, new_height;
+      int size_result = receive_client_size(connfd, &new_width, &new_height);
+      if (size_result > 0) {
+        // Client sent a size update
+        update_frame_buffer_for_size(new_width, new_height);
+        log_info("Client updated frame size to: %ux%u", new_width, new_height);
+      } else if (size_result < 0) {
+        // Error receiving data, client likely disconnected
+        log_info("Client disconnected while checking for size updates");
+        break;
+      }
+      
       // Try to get a frame from buffer
       if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
         // No frames available, wait a bit
@@ -273,7 +354,7 @@ int main(int argc, char *argv[]) {
       }
 
       if ((size_t)sent != frame_len) {
-        log_warn("Partial send: %zd of %zu bytes", sent, frame_len);
+        log_error("Partial send: %zd of %zu bytes", sent, frame_len);
       }
 
       // Update statistics
@@ -301,7 +382,8 @@ int main(int argc, char *argv[]) {
 
     close(connfd);
     log_info("Client disconnected after %lu frames", client_frames_sent);
-    log_info("Closing connection.\n---------------------");
+    log_info("Closing connection.");
+    log_info("---------------------");
 
     // Free the dynamically allocated frame buffer
     free(frame_buffer);

@@ -28,4 +28,8 @@ int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen,
 // Error handling
 const char *network_error_string(int error_code);
 
+// Size communication protocol
+int send_size_message(int sockfd, unsigned short width, unsigned short height);
+int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
+
 #endif // NETWORK_H
