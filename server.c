@@ -44,6 +44,9 @@ typedef struct {
 
 static server_stats_t g_stats = {0};
 
+static int listenfd = 0;
+static int connfd = 0;
+
 /* ============================================================================
  * Signal Handlers
  * ============================================================================
@@ -76,12 +79,16 @@ void *capture_thread_func(void *arg) {
   log_info("Frame capture thread started");
 
   while (!g_should_exit) {
+    if (connfd == 0) {
+      continue;
+    }
+
     // Frame rate limiting
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
-                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
+    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 999 +
+                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 999999;
 
     int frame_interval = get_frame_interval_ms();
     if (elapsed_ms < frame_interval) {
@@ -225,7 +232,6 @@ int main(int argc, char *argv[]) {
   }
 
   // Network setup
-  int listenfd = 0, connfd = 0;
   struct sockaddr_in serv_addr;
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
@@ -297,14 +303,14 @@ int main(int argc, char *argv[]) {
     ssize_t size_received = recv_with_timeout(connfd, size_buffer, sizeof(size_buffer) - 1, RECV_TIMEOUT);
     if (size_received <= 0) {
       log_error("Failed to receive client size: %s", network_error_string(errno));
-      close(connfd);
+      connfd = close(connfd);
       continue;
     }
 
     size_buffer[size_received] = '\0';
     if (parse_size_message(size_buffer, &client_width, &client_height) != 0) {
       log_error("Failed to parse client size message: %s", size_buffer);
-      close(connfd);
+      connfd = close(connfd);
       continue;
     }
 
@@ -380,7 +386,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    close(connfd);
+    connfd = close(connfd);
     log_info("Client disconnected after %lu frames", client_frames_sent);
     log_info("Closing connection.");
     log_info("---------------------");

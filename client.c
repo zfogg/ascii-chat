@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
     // Frame receiving loop - continue until connection breaks or shutdown requested
     while (!g_should_exit && !connection_broken &&
            0 < (read_result = recv_with_timeout(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1, RECV_TIMEOUT))) {
-      recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
+      recvBuff[read_result] = '\0'; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
         connection_broken = true;
