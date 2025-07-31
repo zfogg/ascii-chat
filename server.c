@@ -132,7 +132,7 @@ void *capture_thread_func(void *arg) {
 
 int receive_client_size(int connfd, unsigned short *width, unsigned short *height) {
   char buffer[SIZE_MESSAGE_MAX_LEN];
-  
+
   // Use recv with MSG_DONTWAIT to make it non-blocking
   ssize_t received = recv(connfd, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
   if (received <= 0) {
@@ -141,20 +141,20 @@ int receive_client_size(int connfd, unsigned short *width, unsigned short *heigh
     }
     return -1; // Error or connection closed
   }
-  
+
   buffer[received] = '\0';
-  
+
   // Look for SIZE message in the received data
   char *size_msg = strstr(buffer, SIZE_MESSAGE_PREFIX);
   if (!size_msg) {
     return 0; // No size message found
   }
-  
+
   // Parse the size message
   if (parse_size_message(size_msg, width, height) == 0) {
     return 1; // Successfully parsed size message
   }
-  
+
   return 0; // Failed to parse
 }
 
@@ -162,7 +162,7 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
   // Update global dimensions
   opt_width = width;
   opt_height = height;
-  
+
   // Recreate frame buffer with new size
   framebuffer_destroy(g_frame_buffer);
   g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
@@ -170,7 +170,7 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
     log_fatal("Failed to create frame buffer for new size %ux%u", width, height);
     exit(ASCIICHAT_ERR_MALLOC);
   }
-  
+
   log_info("Updated frame generation for client size: %ux%u", width, height);
 }
 
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
     if (set_socket_keepalive(connfd) < 0) {
       log_warn("Failed to set keep-alive: %s", strerror(errno));
     }
-    
+
     // Receive initial size message from client
     unsigned short client_width, client_height;
     char size_buffer[SIZE_MESSAGE_MAX_LEN];
@@ -300,14 +300,14 @@ int main(int argc, char *argv[]) {
       close(connfd);
       continue;
     }
-    
+
     size_buffer[size_received] = '\0';
     if (parse_size_message(size_buffer, &client_width, &client_height) != 0) {
       log_error("Failed to parse client size message: %s", size_buffer);
       close(connfd);
       continue;
     }
-    
+
     // Update frame generation for client size
     update_frame_buffer_for_size(client_width, client_height);
     log_info("Client requested frame size: %ux%u", client_width, client_height);
@@ -337,7 +337,7 @@ int main(int argc, char *argv[]) {
         log_info("Client disconnected while checking for size updates");
         break;
       }
-      
+
       // Try to get a frame from buffer
       if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
         // No frames available, wait a bit

@@ -220,16 +220,16 @@ const char *network_error_string(int error_code) {
 int send_size_message(int sockfd, unsigned short width, unsigned short height) {
   char message[SIZE_MESSAGE_MAX_LEN];
   int len = snprintf(message, sizeof(message), SIZE_MESSAGE_FORMAT, width, height);
-  
+
   if (len >= (int)sizeof(message)) {
     return -1; // Message too long
   }
-  
+
   ssize_t sent = send(sockfd, message, len, 0);
   if (sent != len) {
     return -1;
   }
-  
+
   return 0;
 }
 
@@ -237,19 +237,19 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
   if (!message || !width || !height) {
     return -1;
   }
-  
+
   // Check if message starts with SIZE_MESSAGE_PREFIX
   if (strncmp(message, SIZE_MESSAGE_PREFIX, strlen(SIZE_MESSAGE_PREFIX)) != 0) {
     return -1;
   }
-  
+
   // Parse the width,height values
   int w, h;
   int parsed = sscanf(message, SIZE_MESSAGE_FORMAT, &w, &h);
   if (parsed != 2 || w <= 0 || h <= 0 || w > 65535 || h > 65535) {
     return -1;
   }
-  
+
   *width = (unsigned short)w;
   *height = (unsigned short)h;
   return 0;

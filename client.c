@@ -39,7 +39,7 @@ void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Terminal was resized, update dimensions and recalculate aspect ratio
   recalculate_aspect_ratio_on_resize();
-  
+
   // Send new size to server if connected
   if (sockfd > 0) {
     if (send_size_message(sockfd, opt_width, opt_height) < 0) {
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
       shutdown_client(false);
       exit(ASCIICHAT_ERR_NETWORK);
     }
-    
+
     // Send initial terminal size to server
     if (send_size_message(sockfd, opt_width, opt_height) < 0) {
       log_error("Failed to send initial size to server");
