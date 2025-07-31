@@ -26,19 +26,28 @@ typedef enum {
 } asciichat_error_t;
 
 /* Frame protocol header */
-typedef struct {
-  uint32_t magic;     /* Magic number: 0x41534349 ('ASCI') */
-  uint32_t version;   /* Protocol version */
-  uint32_t width;     /* Frame width */
-  uint32_t height;    /* Frame height */
-  uint32_t size;      /* Payload size in bytes */
-  uint32_t flags;     /* Frame flags (future use) */
-  uint32_t sequence;  /* Frame sequence number */
-  uint32_t timestamp; /* Unix timestamp */
-} frame_header_t;
+//typedef struct {
+//  uint32_t magic;     /* Magic number: 0x41534349 ('ASCI') */
+//  uint32_t version;   /* Protocol version */
+//  uint32_t width;     /* Frame width */
+//  uint32_t height;    /* Frame height */
+//  uint32_t size;      /* Payload size in bytes */
+//  uint32_t flags;     /* Frame flags (future use) */
+//  uint32_t sequence;  /* Frame sequence number */
+//  uint32_t timestamp; /* Unix timestamp */
+//} frame_header_t;
 
-#define FRAME_MAGIC 0x41534349 /* 'ASCI' */
-#define FRAME_VERSION 1
+//#define FRAME_MAGIC 0x41534349 /* 'ASCI' */
+//#define FRAME_VERSION 1
+
+/* Performance tuning */
+#define MAX_FPS 120
+
+/* Frame interval calculation */
+#define FRAME_INTERVAL_MS (1000 / MAX_FPS)
+static inline int get_frame_interval_ms(void) {
+  return FRAME_INTERVAL_MS;
+}
 
 /* Buffer sizes */
 //#define FRAME_BUFFER_SIZE 65536        /* 64KB frame buffer (monochrome) */
@@ -61,16 +70,7 @@ typedef struct {
 #define FRAME_BUFFER_SIZE_FINAL (FRAME_BUFFER_SIZE < FRAME_BUFFER_SIZE_MIN ? FRAME_BUFFER_SIZE_MIN : \
                                 (FRAME_BUFFER_SIZE > FRAME_BUFFER_SIZE_MAX ? FRAME_BUFFER_SIZE_MAX : FRAME_BUFFER_SIZE))
 
-#define FRAME_BUFFER_CAPACITY 16
-
-/* Performance tuning */
-#define MAX_FPS 120
-
-/* Frame interval calculation */
-#define FRAME_INTERVAL_MS (1000 / MAX_FPS)
-static inline int get_frame_interval_ms(void) {
-  return FRAME_INTERVAL_MS;
-}
+#define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
 
 /* Logging levels */
 typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;

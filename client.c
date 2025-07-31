@@ -13,6 +13,7 @@
 
 #include "ascii.h"
 #include "client.h"
+#include "common.h"
 #include "options.h"
 
 int sockfd = 0;
@@ -96,21 +97,23 @@ int main(int argc, char *argv[]) {
     char *frame_buffer;
     SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
 
-    char recvBuff[FRAME_BUFFER_SIZE_FINAL];
-    memset(recvBuff, '0', sizeof(recvBuff));
+    // Allocate receive buffer on heap instead of stack to avoid stack overflow
+    char *recvBuff;
+    SAFE_MALLOC(recvBuff, FRAME_BUFFER_SIZE_FINAL, char *);
 
-    while (0 < (read_result = read(sockfd, recvBuff, sizeof(recvBuff) - 1))) {
+    while (0 < (read_result = read(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1))) {
       recvBuff[read_result] = 0; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
         log_error("Error: %s", recvBuff);
         shutdown_client(false);
-        exit(1);
+        exit(ASCIICHAT_ERR_WEBCAM);
       }
       ascii_write(recvBuff);
     } // while read()ing result from socket into recvBuff
 
     // Clean up allocated memory
     free(frame_buffer);
+    free(recvBuff);
   }
 
   shutdown_client(true);
