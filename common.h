@@ -17,12 +17,14 @@ typedef enum {
   ASCIICHAT_OK = 0,
   ASCIICHAT_ERR_MALLOC = -1,
   ASCIICHAT_ERR_NETWORK = -2,
-  ASCIICHAT_ERR_WEBCAM = -3,
-  ASCIICHAT_ERR_INVALID_PARAM = -4,
-  ASCIICHAT_ERR_TIMEOUT = -5,
-  ASCIICHAT_ERR_BUFFER_FULL = -6,
-  ASCIICHAT_ERR_JPEG = -7,
-  ASCIICHAT_ERR_TERMINAL = -8
+  ASCIICHAT_ERR_NETWORK_SIZE = -3,
+  ASCIICHAT_ERR_WEBCAM = -4,
+  ASCIICHAT_ERR_INVALID_PARAM = -5,
+  ASCIICHAT_ERR_TIMEOUT = -6,
+  ASCIICHAT_ERR_BUFFER_FULL = -7,
+  ASCIICHAT_ERR_JPEG = -8,
+  ASCIICHAT_ERR_TERMINAL = -9,
+  ASCIICHAT_ERR_THREAD = -10,
 } asciichat_error_t;
 
 /* Frame protocol header */
@@ -119,12 +121,26 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 /* ============================================================================
+ * Protocol Definitions
+ * ============================================================================
+ */
+
+/* Size communication protocol */
+#define SIZE_MESSAGE_PREFIX "SIZE:"
+#define SIZE_MESSAGE_FORMAT "SIZE:%u,%u\n"
+#define SIZE_MESSAGE_MAX_LEN 32
+
+/* ============================================================================
  * Function Declarations
  * ============================================================================
  */
 
 /* Error handling */
 const char *asciichat_error_string(asciichat_error_t error);
+
+/* Protocol functions */
+int send_size_message(int sockfd, unsigned short width, unsigned short height);
+int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 
 /* Logging functions */
 void log_init(const char *filename, log_level_t level);
