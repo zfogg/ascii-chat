@@ -28,19 +28,19 @@ typedef enum {
 } asciichat_error_t;
 
 /* Frame protocol header */
-//typedef struct {
-//  uint32_t magic;     /* Magic number: 0x41534349 ('ASCI') */
-//  uint32_t version;   /* Protocol version */
-//  uint32_t width;     /* Frame width */
-//  uint32_t height;    /* Frame height */
-//  uint32_t size;      /* Payload size in bytes */
-//  uint32_t flags;     /* Frame flags (future use) */
-//  uint32_t sequence;  /* Frame sequence number */
-//  uint32_t timestamp; /* Unix timestamp */
-//} frame_header_t;
+// typedef struct {
+//   uint32_t magic;     /* Magic number: 0x41534349 ('ASCI') */
+//   uint32_t version;   /* Protocol version */
+//   uint32_t width;     /* Frame width */
+//   uint32_t height;    /* Frame height */
+//   uint32_t size;      /* Payload size in bytes */
+//   uint32_t flags;     /* Frame flags (future use) */
+//   uint32_t sequence;  /* Frame sequence number */
+//   uint32_t timestamp; /* Unix timestamp */
+// } frame_header_t;
 
-//#define FRAME_MAGIC 0x41534349 /* 'ASCI' */
-//#define FRAME_VERSION 1
+// #define FRAME_MAGIC 0x41534349 /* 'ASCI' */
+// #define FRAME_VERSION 1
 
 /* Performance tuning */
 #define MAX_FPS 120
@@ -52,25 +52,27 @@ static inline int get_frame_interval_ms(void) {
 }
 
 /* Buffer sizes */
-//#define FRAME_BUFFER_SIZE 65536        /* 64KB frame buffer (monochrome) */
-//#define FRAME_BUFFER_SIZE 4194304      /* 4MB frame buffer */
-// Calculate buffer size more accurately based on actual usage:
-// - Foreground ANSI: avg 16 chars (range 12-19)
-// - Background ANSI: avg 16 chars (range 12-19) 
-// - ASCII char: 1 char
-// - Per row: color reset (4) + newline (1) = 5 chars
-// - At end: delimiter (1) + null terminator (1) = 2 chars
-// Dynamic calculation based on color options:
+// #define FRAME_BUFFER_SIZE 65536        /* 64KB frame buffer (monochrome) */
+// #define FRAME_BUFFER_SIZE 4194304      /* 4MB frame buffer */
+//  Calculate buffer size more accurately based on actual usage:
+//  - Foreground ANSI: avg 16 chars (range 12-19)
+//  - Background ANSI: avg 16 chars (range 12-19)
+//  - ASCII char: 1 char
+//  - Per row: color reset (4) + newline (1) = 5 chars
+//  - At end: delimiter (1) + null terminator (1) = 2 chars
+//  Dynamic calculation based on color options:
 #define FRAME_BUFFER_SIZE_BASE(w, h) ((h) * (w) * (opt_background_color ? 33 : 17) + (h) * 5 + 2)
 // Add 50% safety margin for ANSI sequence length variations and terminal resizing
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_SIZE_BASE(opt_width, opt_height) * 3 / 2)
 // Ensure minimum size for very small terminals
-#define FRAME_BUFFER_SIZE_MIN (1024 * 1024)  /* 1MB minimum */
+#define FRAME_BUFFER_SIZE_MIN (1024 * 1024) /* 1MB minimum */
 // Ensure reasonable maximum to prevent excessive memory usage
-#define FRAME_BUFFER_SIZE_MAX (16 * 1024 * 1024)  /* 16MB maximum */
+#define FRAME_BUFFER_SIZE_MAX (16 * 1024 * 1024) /* 16MB maximum */
 // Final calculation with bounds checking
-#define FRAME_BUFFER_SIZE_FINAL (FRAME_BUFFER_SIZE < FRAME_BUFFER_SIZE_MIN ? FRAME_BUFFER_SIZE_MIN : \
-                                (FRAME_BUFFER_SIZE > FRAME_BUFFER_SIZE_MAX ? FRAME_BUFFER_SIZE_MAX : FRAME_BUFFER_SIZE))
+#define FRAME_BUFFER_SIZE_FINAL                                                                                        \
+  (FRAME_BUFFER_SIZE < FRAME_BUFFER_SIZE_MIN                                                                           \
+       ? FRAME_BUFFER_SIZE_MIN                                                                                         \
+       : (FRAME_BUFFER_SIZE > FRAME_BUFFER_SIZE_MAX ? FRAME_BUFFER_SIZE_MAX : FRAME_BUFFER_SIZE))
 
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
 
@@ -83,13 +85,13 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
  */
 
 /* Safe memory allocation with error checking */
-#define SAFE_MALLOC(ptr, size, cast)                                                                                         \
+#define SAFE_MALLOC(ptr, size, cast)                                                                                   \
   do {                                                                                                                 \
-    (ptr) = (cast)malloc(size);                                                                                              \
+    (ptr) = (cast)malloc(size);                                                                                        \
     if (!(ptr)) {                                                                                                      \
       log_error("Memory allocation failed: %zu bytes", (size_t)(size));                                                \
-      /*return ASCIICHAT_ERR_MALLOC;*/                                                                                     \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                     \
+      /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
+      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
     }                                                                                                                  \
   } while (0)
 

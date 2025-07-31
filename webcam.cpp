@@ -23,11 +23,11 @@ void webcam_init(unsigned short int webcam_index) {
     fprintf(stderr, "Failed to connect to a webcam.\n");
     fprintf(stderr, "On macOS, you may need to grant camera permissions:\n");
     fprintf(stderr, "*. Say \"yes\" to the popup about system camera access that "
-                         "you see when running this program for the first time.\n");
+                    "you see when running this program for the first time.\n");
     fprintf(stderr, "*. If you said \"no\" to the popup, go to System Preferences "
-                         "> Security & Privacy > Privacy > Camera.\n");
+                    "> Security & Privacy > Privacy > Camera.\n");
     fprintf(stderr, "   Now flip the switch next to your terminal application in that "
-                         "privacy list to allow ascii-chat to access your camera.\n");
+                    "privacy list to allow ascii-chat to access your camera.\n");
     fprintf(stderr, "   Then just run this program again.\n");
     exit(1);
   }
