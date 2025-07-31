@@ -164,8 +164,9 @@ int main(int argc, char *argv[]) {
     while (!g_should_exit && !connection_broken &&
            0 < (read_result = recv_with_timeout(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1, RECV_TIMEOUT))) {
       recvBuff[read_result] = '\0'; // Null-terminate the received data, making it a valid C string.
-      if (strcmp(recvBuff, "Webcam capture failed\n") == 0) {
+      if (strcmp(recvBuff, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
+        sleep(1);
         connection_broken = true;
         break;
       }

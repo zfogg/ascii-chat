@@ -110,7 +110,7 @@ char* recv_compressed_frame(int sockfd, size_t* output_size) {
         return NULL;
     }
 
-    char* frame_data = malloc(header.original_size + 1); // +1 for null terminator
+    char* frame_data = (char *)malloc(header.original_size + 1); // +1 for null terminator
     if (!frame_data) {
         return NULL;
     }
@@ -123,7 +123,7 @@ char* recv_compressed_frame(int sockfd, size_t* output_size) {
         }
     } else {
         // Compressed frame
-        char* compressed_data = malloc(header.compressed_size);
+        char* compressed_data = (char *)malloc(header.compressed_size);
         if (!compressed_data) {
             free(frame_data);
             return NULL;

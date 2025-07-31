@@ -80,6 +80,7 @@ void *capture_thread_func(void *arg) {
 
   while (!g_should_exit) {
     if (connfd == 0) {
+      usleep(100 * 1000);
       continue;
     }
 
@@ -257,6 +258,11 @@ int main(int argc, char *argv[]) {
     exit(ASCIICHAT_ERR_NETWORK);
   }
 
+  // If we Set keep-alive on the listener before accept(), connfd will inherit it.
+  if (set_socket_keepalive(listenfd) < 0) {
+    log_warn("Failed to set keep-alive on listener: %s", strerror(errno));
+  }
+
   // Bind socket
   if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
     log_fatal("Socket bind failed: %s", strerror(errno));
@@ -291,11 +297,6 @@ int main(int argc, char *argv[]) {
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
     log_info("Client connected from %s:%d", client_ip, ntohs(client_addr.sin_port));
-
-    // Set keep-alive
-    if (set_socket_keepalive(connfd) < 0) {
-      log_warn("Failed to set keep-alive: %s", strerror(errno));
-    }
 
     // Receive initial size message from client
     unsigned short client_width, client_height;

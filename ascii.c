@@ -33,9 +33,12 @@ char *ascii_read(void) {
 
   if (jpeg == NULL) {
     // Return a simple error message if webcam read fails
-    log_error("Webcam capture failed");
-    printf("%s", "Webcam capture failed\n");
-    return NULL;
+    log_error(ASCIICHAT_WEBCAM_ERROR_STRING);
+    char *err_msg;
+    size_t err_len = strlen(ASCIICHAT_WEBCAM_ERROR_STRING);
+    SAFE_MALLOC(err_msg, err_len, char *);
+    strncpy(err_msg, ASCIICHAT_WEBCAM_ERROR_STRING, err_len);
+    return err_msg;
   }
 
   image_t *original = image_read(jpeg);
