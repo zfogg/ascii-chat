@@ -103,8 +103,9 @@ ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size) {
   // Receive header (exactly sizeof(header) bytes)
   compressed_frame_header_t header;
   ssize_t header_size;
-  if (0 < (header_size = recv_all_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT) != sizeof(header))) {
-    return header_size;
+  header_size = recv_all_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT);
+  if (header_size != (ssize_t)sizeof(header)) {
+    return header_size; // -1 on error/timeout, otherwise unexpected partial read
   }
 
   // Validate magic number

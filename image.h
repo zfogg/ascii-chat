@@ -20,6 +20,11 @@ typedef struct image_t {
   rgb_t *pixels;
 } image_t;
 
+// 4K resolution
+#define IMAGE_MAX_WIDTH 3840
+#define IMAGE_MAX_HEIGHT 2160
+#define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
+
 image_t *image_read(FILE *);
 image_t *image_new(int, int);
 void image_destroy(image_t *);

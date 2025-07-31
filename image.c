@@ -20,7 +20,13 @@ image_t *image_new(int width, int height) {
   image_t *p;
 
   SAFE_MALLOC(p, sizeof(image_t), image_t *);
-  SAFE_MALLOC(p->pixels, width * height * sizeof(rgb_t), rgb_t *);
+
+  const ssize_t pixels_size = width * height * sizeof(rgb_t);
+  if ((unsigned long)pixels_size > IMAGE_MAX_PIXELS_SIZE) {
+    log_error("Image size exceeds maximum allowed: %d x %d", width, height);
+    return NULL;
+  }
+  SAFE_MALLOC(p->pixels, pixels_size, rgb_t *);
 
   p->w = width;
   p->h = height;
@@ -146,7 +152,7 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 char *image_print(const image_t *p) {
   const int h = p->h;
   const int w = p->w;
-  const int len = h * w;
+  const ssize_t len = h * w;
 
   const rgb_t *pix = p->pixels;
   const unsigned short int *red_lut = RED;
