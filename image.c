@@ -21,7 +21,7 @@ image_t *image_new(int width, int height) {
 
   SAFE_MALLOC(p, sizeof(image_t), image_t *);
 
-  const ssize_t pixels_size = width * height * sizeof(rgb_t);
+  const ssize_t pixels_size = (unsigned long)width * (unsigned long)height * sizeof(rgb_t);
   if ((unsigned long)pixels_size > IMAGE_MAX_PIXELS_SIZE) {
     log_error("Image size exceeds maximum allowed: %d x %d", width, height);
     return NULL;
@@ -39,7 +39,7 @@ void image_destroy(image_t *p) {
 }
 
 void image_clear(image_t *p) {
-  memset(p->pixels, 0, p->w * p->h * sizeof(rgb_t));
+  memset(p->pixels, 0, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t));
 }
 
 inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
