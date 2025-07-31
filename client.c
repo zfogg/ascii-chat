@@ -150,13 +150,8 @@ int main(int argc, char *argv[]) {
     // Initialize ASCII output for this connection
     ascii_write_init();
 
-    // Allocate frame buffer on heap instead of stack to avoid stack overflow
-    char *frame_buffer;
-    SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
-
     // Allocate receive buffer on heap instead of stack to avoid stack overflow
     char *recvBuff = NULL;
-    // SAFE_MALLOC(recvBuff, FRAME_BUFFER_SIZE_FINAL, char *);
 
     int read_result = 0;
     bool connection_broken = false;
@@ -188,7 +183,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Clean up allocated memory before next iteration
-    free(frame_buffer);
     free(recvBuff);
     ascii_write_destroy();
 
