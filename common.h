@@ -27,6 +27,8 @@ typedef enum {
   ASCIICHAT_ERR_THREAD = -10,
 } asciichat_error_t;
 
+#define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
+
 /* Frame protocol header */
 // typedef struct {
 //   uint32_t magic;     /* Magic number: 0x41534349 ('ASCI') */
