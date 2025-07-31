@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev pkg-config valgrind
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config valgrind
 
     - name: Build with debug symbols
       run: |
@@ -76,7 +76,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev pkg-config
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
 
     - name: Build different optimization levels
       run: |
