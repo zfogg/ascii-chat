@@ -139,11 +139,11 @@ void *capture_thread_func(void *arg) {
  * ============================================================================
  */
 
-int receive_client_size(int connfd, unsigned short *width, unsigned short *height) {
+int receive_client_size(int sockfd, unsigned short *width, unsigned short *height) {
   char buffer[SIZE_MESSAGE_MAX_LEN];
 
   // Use recv with MSG_DONTWAIT to make it non-blocking
-  ssize_t received = recv(connfd, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
+  ssize_t received = recv(sockfd, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
   if (received <= 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       return 0; // No data available (non-blocking)
