@@ -172,15 +172,12 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
   opt_width = width;
   opt_height = height;
 
-  // Recreate frame buffer with new size
-  framebuffer_destroy(g_frame_buffer);
-  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
-  if (!g_frame_buffer) {
-    log_fatal("Failed to create frame buffer for new size %ux%u", width, height);
-    exit(ASCIICHAT_ERR_MALLOC);
+  // Clear any existing frames for new size but reuse existing buffer memory
+  if (g_frame_buffer && g_frame_buffer->rb) {
+    ringbuffer_clear(g_frame_buffer->rb);
   }
 
-  log_info("Updated frame generation for client size: %ux%u", width, height);
+  log_info("Adjusted frame generation for client size: %ux%u (buffer reused)", width, height);
 }
 
 /* ============================================================================

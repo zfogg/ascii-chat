@@ -2,6 +2,10 @@
 // Add to network.c (requires: sudo apt-get install zlib1g-dev)
 
 #include "compression.h"
+#include <time.h>
+
+// Rate-limit compression debug logs to once every 5 seconds
+static time_t g_last_compression_log_time = 0;
 
 // network.c implementation:
 uint32_t calculate_crc32(const char* data, size_t length) {
@@ -33,7 +37,7 @@ int send_compressed_frame(int sockfd, const char* frame_data, size_t frame_size)
     if (use_compression) {
         // Send compressed frame
         compressed_frame_header_t header = {
-            .magic = FRAME_MAGIC,
+            .magic = COMPRESSION_FRAME_MAGIC,
             .compressed_size = (uint32_t)compressed_size,
             .original_size = (uint32_t)frame_size,
             .checksum = calculate_crc32(frame_data, frame_size)
@@ -51,12 +55,16 @@ int send_compressed_frame(int sockfd, const char* frame_data, size_t frame_size)
             return -1;
         }
 
-        // log_debug("Sent compressed frame: %zu -> %lu bytes (%.1f%%)",
-        //          frame_size, compressed_size, compression_ratio * 100);
+        time_t now = time(NULL);
+        if (now - g_last_compression_log_time >= 5) {
+            log_debug("Sent compressed frame: %zu -> %lu bytes (%.1f%%)",
+                      frame_size, compressed_size, compression_ratio * 100);
+            g_last_compression_log_time = now;
+        }
     } else {
         // Send uncompressed (add special header to indicate this)
         compressed_frame_header_t header = {
-            .magic = FRAME_MAGIC,
+            .magic = COMPRESSION_FRAME_MAGIC,
             .compressed_size = 0,  // 0 indicates uncompressed
             .original_size = (uint32_t)frame_size,
             .checksum = calculate_crc32(frame_data, frame_size)
@@ -72,7 +80,11 @@ int send_compressed_frame(int sockfd, const char* frame_data, size_t frame_size)
             return -1;
         }
 
-        // log_debug("Sent uncompressed frame: %zu bytes (compression not beneficial)", frame_size);
+        time_t now = time(NULL);
+        if (now - g_last_compression_log_time >= 5) {
+            log_debug("Sent uncompressed frame: %zu bytes (compression not beneficial)", frame_size);
+            g_last_compression_log_time = now;
+        }
     }
 
     free(compressed_data);
@@ -100,7 +112,7 @@ char* recv_compressed_frame(int sockfd, size_t* output_size) {
     }
 
     // Validate magic number
-    if (header.magic != FRAME_MAGIC) {
+    if (header.magic != COMPRESSION_FRAME_MAGIC) {
         log_error("Invalid frame magic: 0x%08x", header.magic);
         return NULL;
     }

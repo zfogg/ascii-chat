@@ -18,7 +18,6 @@ void ascii_write_destroy(void);
 char *rgb_to_ansi_fg(int r, int g, int b);
 char *rgb_to_ansi_bg(int r, int g, int b);
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
-char *image_print_colored(const image_t *p);
 char *get_lum_palette(void);
 
 /*static char *from_jpeg(FILE *);*/

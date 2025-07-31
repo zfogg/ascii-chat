@@ -22,8 +22,10 @@ You can run the server and client with the following commands:
 timeout 3 ./bin/client -p 90010
 ```
 Notice how I use a background process and timeout. This is what I want you to 
-do, to simplify your terminal usage experience. Make sure to kill the server 
-and client after running them. You can kill the server and client with the 
+do, to simplify your terminal usage experience. The client will run forever if
+you connect it to the server so YOU NEED TO RUN IT WITH TIMEOUT. Don't forget
+this and run it without timeout.  Make sure to kill the server and client after
+running them. You can kill the server and client with the 
 collowing commands:
 ```
 pkill -f bin/server
