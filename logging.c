@@ -46,7 +46,7 @@ void log_init(const char *filename, log_level_t level) {
   g_log.level = level;
 
   if (filename) {
-    int fd = open(filename, O_CREAT | O_WRONLY, S_IRUSR);
+    int fd = open(filename, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     g_log.file = fdopen(fd, "a");
     if (!g_log.file) {
       fprintf(stderr, "Failed to open log file: %s\n", filename);
@@ -90,15 +90,22 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   pthread_mutex_lock(&g_log.mutex);
 
-  /* Get current time */
-  time_t t = time(NULL);
-  struct tm *tm_info = localtime(&t);
+  /* Get current time using clock_gettime (avoids localtime) */
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+
+  struct tm tm_info;
+  gmtime_r(&ts.tv_sec, &tm_info); /* UTC time; gmtime_r is thread-safe */
+
   char time_buf[32];
-  strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", tm_info);
+  strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_info);
+
+  char time_buf_ms[40];
+  snprintf(time_buf_ms, sizeof(time_buf_ms), "%s.%03ld", time_buf, ts.tv_nsec / 1000000);
 
   /* Print to file (no colors) */
   if (g_log.file) {
-    fprintf(g_log.file, "[%s] [%s] %s:%d in %s(): ", time_buf, level_strings[level], file, line, func);
+    fprintf(g_log.file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
     va_list args;
     va_start(args, fmt);
@@ -111,7 +118,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   /* Also print to stderr with colors if it's a terminal */
   if (g_log.file != stderr && isatty(fileno(stderr))) {
-    fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf, level_strings[level], file,
+    fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
             line, func);
 
     va_list args;
