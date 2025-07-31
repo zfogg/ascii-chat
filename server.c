@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
       }
 
       // NOTE: this isn't actually an error, I don't think. send_with_timeout() supports partial sends.
-      //if ((size_t)sent != frame_len) {
+      // if ((size_t)sent != frame_len) {
       //  log_error("Partial send: %zd of %zu bytes", sent, frame_len);
       //}
 
