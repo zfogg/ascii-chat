@@ -99,44 +99,44 @@ static ssize_t recv_all_with_timeout(int sockfd, void *buf, size_t len, int time
   return (ssize_t)total_received;
 }
 
-char *recv_compressed_frame(int sockfd, size_t *output_size) {
+ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size) {
   // Receive header (exactly sizeof(header) bytes)
   compressed_frame_header_t header;
-  if (recv_all_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT) != sizeof(header)) {
-    return NULL;
+  ssize_t header_size;
+  if (0 < (header_size = recv_all_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT) != sizeof(header))) {
+    return header_size;
   }
 
   // Validate magic number
   if (header.magic != COMPRESSION_FRAME_MAGIC) {
     log_error("Invalid frame magic: 0x%08x", header.magic);
-    return NULL;
+    return -1;
   }
 
-  char *frame_data = (char *)malloc(header.original_size + 1); // +1 for null terminator
-  if (!frame_data) {
-    return NULL;
-  }
+  char *frame_data;
+  SAFE_MALLOC(frame_data, header.original_size + 1, char *); // +1 for null terminator
+
+  ssize_t frame_size;
 
   if (header.compressed_size == 0) {
     // Uncompressed frame
-    if (recv_all_with_timeout(sockfd, frame_data, header.original_size, RECV_TIMEOUT) !=
-        (ssize_t)header.original_size) {
+    frame_size = recv_all_with_timeout(sockfd, frame_data, header.original_size, RECV_TIMEOUT);
+    if (frame_size != (ssize_t)header.original_size) {
+      log_error("Invalid uncompressed frame size: %zu != %zu", frame_size, header.original_size);
       free(frame_data);
-      return NULL;
+      return -1;
     }
   } else {
     // Compressed frame
-    char *compressed_data = (char *)malloc(header.compressed_size);
-    if (!compressed_data) {
-      free(frame_data);
-      return NULL;
-    }
+    char *compressed_data;
+    SAFE_MALLOC(compressed_data, header.compressed_size, char *);
 
-    if (recv_all_with_timeout(sockfd, compressed_data, header.compressed_size, RECV_TIMEOUT) !=
-        (ssize_t)header.compressed_size) {
+    frame_size = recv_all_with_timeout(sockfd, compressed_data, header.compressed_size, RECV_TIMEOUT);
+    if (frame_size != (ssize_t)header.compressed_size) {
+      log_error("Invalid compressed frame size: %zu != %zu", frame_size, header.compressed_size);
       free(compressed_data);
       free(frame_data);
-      return NULL;
+      return -1;
     }
 
     // Decompress
@@ -149,48 +149,21 @@ char *recv_compressed_frame(int sockfd, size_t *output_size) {
     if (result != Z_OK || decompressed_size != header.original_size) {
       log_error("Decompression failed: %d", result);
       free(frame_data);
-      return NULL;
+      return -1;
     }
   }
 
   // Verify checksum
   uint32_t received_checksum = calculate_crc32(frame_data, header.original_size);
   if (received_checksum != header.checksum) {
-    log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", header.checksum, received_checksum);
+    log_error("Compressed frame checksum mismatch: expected 0x%08x, got 0x%08x", header.checksum, received_checksum);
     free(frame_data);
-    return NULL;
+    return -1;
   }
+
+  *buf = frame_data;
 
   frame_data[header.original_size] = '\0'; // Null terminate
   *output_size = header.original_size;
-  return frame_data;
+  return frame_size;
 }
-
-#if defined(ENABLE_COMPRESSION)
-// Usage in server.c:
-// Replace: send_with_timeout(client->socket, frame_buffer, frame_len, SEND_TIMEOUT);
-// With:    send_compressed_frame(client->socket, frame_buffer, frame_len);
-
-// Usage in client.c:
-// Replace the recv loop with:
-while (!g_should_exit && !connection_broken) {
-  size_t frame_size;
-  char *frame = recv_compressed_frame(sockfd, &frame_size);
-
-  if (!frame) {
-    log_warn("Failed to receive frame: %s", network_error_string(errno));
-    connection_broken = true;
-    break;
-  }
-
-  if (strcmp(frame, "Webcam capture failed\n") == 0) {
-    log_error("Server reported webcam failure");
-    free(frame);
-    connection_broken = true;
-    break;
-  }
-
-  ascii_write(frame);
-  free(frame);
-}
-#endif

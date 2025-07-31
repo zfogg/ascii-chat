@@ -158,7 +158,8 @@ int main(int argc, char *argv[]) {
 
     // Frame receiving loop - continue until connection breaks or shutdown requested
     size_t frame_size;
-    while (!g_should_exit && !connection_broken && NULL != (recvBuff = recv_compressed_frame(sockfd, &frame_size))) {
+    while (!g_should_exit && !connection_broken &&
+           0 < (read_result = recv_compressed_frame(sockfd, &recvBuff, &frame_size))) {
       recvBuff[frame_size] = '\0'; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
