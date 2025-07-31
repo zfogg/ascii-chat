@@ -86,9 +86,10 @@ The colored output uses ANSI escape codes to colorize each ASCII character based
 
 - `-a --address`: IPv4 address (default: 0.0.0.0)
 - `-p --port`: TCP port (default: 90001)  
-- `-x --width`: Render width for client
-- `-y --height`: Render height for client
-- `-c --webcam-index`: Webcam device index (0-based, server only)
+- `-x --width`: Render width (default: 110, auto-calculated)
+- `-y --height`: Render height (default: 70, auto-calculated)
+- `-c --webcam-index`: Webcam device index (0-based, server only, default: 0)
 - `-f --webcam-flip`: Horizontally flip image (server only, default: 1)
 - `-C --color`: Enable colored ASCII output (server and client)
+- `-b --background-color`: Enable background colored mode with contrasting text (server only)
 - `-h --help`: Show help message
