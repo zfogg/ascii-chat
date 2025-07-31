@@ -34,23 +34,20 @@ int set_socket_keepalive(int sockfd) {
 
 #ifdef TCP_KEEPIDLE
   int keepidle = KEEPALIVE_IDLE;
-  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle)) < 0) {
-    // Not critical, continue
-  }
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
+  // Not critical, continue if fail.
 #endif
 
 #ifdef TCP_KEEPINTVL
   int keepintvl = KEEPALIVE_INTERVAL;
-  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl)) < 0) {
-    // Not critical, continue
-  }
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
+  // Not critical, continue if fail.
 #endif
 
 #ifdef TCP_KEEPCNT
   int keepcnt = KEEPALIVE_COUNT;
-  if (setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt)) < 0) {
-    // Not critical, continue
-  }
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
+  // Not critical, continue if fail.
 #endif
 
   return 0;
@@ -120,6 +117,10 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
     timeout.tv_sec = timeout_seconds;
     timeout.tv_usec = 0;
 
+    // The first argument to select() should be set to the highest-numbered file descriptor in any of the fd_sets, plus 1.
+    // This is because select() internally checks all file descriptors from 0 up to (but not including) this value to see if they are ready.
+    // An fd_set is a data structure used by select() to represent a set of file descriptors (such as sockets or files) to be monitored for readiness (read, write, or error).
+    // In this case, sockfd is the only file descriptor in the write_fds set, so we pass sockfd + 1.
     int result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
     if (result <= 0) {
       // Timeout or error
