@@ -62,14 +62,14 @@ jobs:
           
           **Linux (Ubuntu/Debian):**
           ```bash
-          sudo apt-get install libopencv-dev libjpeg-dev
+          sudo apt-get install libopencv-dev libjpeg-dev zlib1g-dev pkg-config
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
           tar -xzf ascii-chat-Linux-release.tar.gz
           ```
           
           **macOS:**
           ```bash
-          brew install opencv@4 jpeg-turbo
+          brew install opencv@4 jpeg-turbo zlib
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-macOS-release.tar.gz
           tar -xzf ascii-chat-macOS-release.tar.gz
           ```
@@ -111,7 +111,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev pkg-config
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
