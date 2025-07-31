@@ -21,6 +21,7 @@
 #include "network.h"
 #include "options.h"
 #include "ringbuffer.h"
+#include "compression.h"
 
 /* ============================================================================
  * Global State
@@ -354,15 +355,16 @@ int main(int argc, char *argv[]) {
 
       // Send frame with timeout
       size_t frame_len = strlen(frame_buffer);
-      ssize_t sent = send_with_timeout(connfd, frame_buffer, frame_len, SEND_TIMEOUT);
+      ssize_t sent = send_compressed_frame(connfd, frame_buffer, frame_len);
       if (sent < 0) {
         log_error("Error: Network send of frame failed: %s", network_error_string(errno));
         break;
       }
 
-      if ((size_t)sent != frame_len) {
-        log_error("Partial send: %zd of %zu bytes", sent, frame_len);
-      }
+      // NOTE: this isn't actually an error, I don't think. send_with_timeout() supports partial sends.
+      //if ((size_t)sent != frame_len) {
+      //  log_error("Partial send: %zd of %zu bytes", sent, frame_len);
+      //}
 
       // Update statistics
       pthread_mutex_lock(&g_stats_mutex);

@@ -16,6 +16,7 @@
 #include "common.h"
 #include "network.h"
 #include "options.h"
+#include "compression.h"
 
 int sockfd = 0;
 static volatile bool g_should_exit = false;
@@ -154,16 +155,17 @@ int main(int argc, char *argv[]) {
     SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
 
     // Allocate receive buffer on heap instead of stack to avoid stack overflow
-    char *recvBuff;
-    SAFE_MALLOC(recvBuff, FRAME_BUFFER_SIZE_FINAL, char *);
+    char *recvBuff = NULL;
+    // SAFE_MALLOC(recvBuff, FRAME_BUFFER_SIZE_FINAL, char *);
 
     int read_result = 0;
     bool connection_broken = false;
 
     // Frame receiving loop - continue until connection breaks or shutdown requested
+    size_t frame_size;
     while (!g_should_exit && !connection_broken &&
-           0 < (read_result = recv_with_timeout(sockfd, recvBuff, FRAME_BUFFER_SIZE_FINAL - 1, RECV_TIMEOUT))) {
-      recvBuff[read_result] = '\0'; // Null-terminate the received data, making it a valid C string.
+           NULL != (recvBuff = recv_compressed_frame(sockfd, &frame_size))) {
+      recvBuff[frame_size] = '\0'; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
         sleep(1);

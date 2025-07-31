@@ -1,25 +1,7 @@
 // Example: Frame compression using zlib
 // Add to network.c (requires: sudo apt-get install zlib1g-dev)
 
-#include <zlib.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "common.h"
-#include "network.h"
-
-// network.h additions:
-typedef struct {
-    uint32_t magic;           // 0x41534349 ("ASCI")
-    uint32_t compressed_size;
-    uint32_t original_size;
-    uint32_t checksum;        // CRC32 of original data
-} compressed_frame_header_t;
-
-#define FRAME_MAGIC 0x41534349
-#define COMPRESSION_RATIO_THRESHOLD 0.8f  // Only send compressed if <80% original size
-
-int send_compressed_frame(int sockfd, const char* frame_data, size_t frame_size);
-char* recv_compressed_frame(int sockfd, size_t* output_size);
+#include "compression.h"
 
 // network.c implementation:
 uint32_t calculate_crc32(const char* data, size_t length) {
@@ -69,8 +51,8 @@ int send_compressed_frame(int sockfd, const char* frame_data, size_t frame_size)
             return -1;
         }
 
-        log_debug("Sent compressed frame: %zu -> %lu bytes (%.1f%%)",
-                 frame_size, compressed_size, compression_ratio * 100);
+        // log_debug("Sent compressed frame: %zu -> %lu bytes (%.1f%%)",
+        //          frame_size, compressed_size, compression_ratio * 100);
     } else {
         // Send uncompressed (add special header to indicate this)
         compressed_frame_header_t header = {
@@ -90,17 +72,30 @@ int send_compressed_frame(int sockfd, const char* frame_data, size_t frame_size)
             return -1;
         }
 
-        log_debug("Sent uncompressed frame: %zu bytes (compression not beneficial)", frame_size);
+        // log_debug("Sent uncompressed frame: %zu bytes (compression not beneficial)", frame_size);
     }
 
     free(compressed_data);
     return use_compression ? compressed_size : frame_size;
 }
 
+static ssize_t recv_all_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds) {
+    size_t total_received = 0;
+    char *data = (char *)buf;
+    while (total_received < len) {
+        ssize_t recvd = recv_with_timeout(sockfd, data + total_received, len - total_received, timeout_seconds);
+        if (recvd <= 0) {
+            return -1; // Timeout or error
+        }
+        total_received += recvd;
+    }
+    return (ssize_t)total_received;
+}
+
 char* recv_compressed_frame(int sockfd, size_t* output_size) {
-    // Receive header
+    // Receive header (exactly sizeof(header) bytes)
     compressed_frame_header_t header;
-    if (recv_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT) != sizeof(header)) {
+    if (recv_all_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT) != sizeof(header)) {
         return NULL;
     }
 
@@ -117,7 +112,7 @@ char* recv_compressed_frame(int sockfd, size_t* output_size) {
 
     if (header.compressed_size == 0) {
         // Uncompressed frame
-        if (recv_with_timeout(sockfd, frame_data, header.original_size, RECV_TIMEOUT) != (ssize_t)header.original_size) {
+        if (recv_all_with_timeout(sockfd, frame_data, header.original_size, RECV_TIMEOUT) != (ssize_t)header.original_size) {
             free(frame_data);
             return NULL;
         }
@@ -129,7 +124,7 @@ char* recv_compressed_frame(int sockfd, size_t* output_size) {
             return NULL;
         }
 
-        if (recv_with_timeout(sockfd, compressed_data, header.compressed_size, RECV_TIMEOUT) != (ssize_t)header.compressed_size) {
+        if (recv_all_with_timeout(sockfd, compressed_data, header.compressed_size, RECV_TIMEOUT) != (ssize_t)header.compressed_size) {
             free(compressed_data);
             free(frame_data);
             return NULL;
