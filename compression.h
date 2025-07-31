@@ -15,4 +15,4 @@ typedef struct {
 #define COMPRESSION_RATIO_THRESHOLD 0.8f   // Only send compressed if <80% original size
 
 int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size);
-char *recv_compressed_frame(int sockfd, size_t *output_size);
+ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size);
