@@ -53,14 +53,14 @@ static int connfd = 0;
  * ============================================================================
  */
 
-void sigwinch_handler(int sigwinch) {
+static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Server terminal resize - we ignore this since we use client's terminal size
   // Only log that the event occurred
   log_debug("Server terminal resized (ignored - using client terminal size)");
 }
 
-void sigint_handler(int sigint) {
+static void sigint_handler(int sigint) {
   (void)(sigint);
   g_should_exit = true;
   log_info("Server shutdown requested");
@@ -71,7 +71,7 @@ void sigint_handler(int sigint) {
  * ============================================================================
  */
 
-void *capture_thread_func(void *arg) {
+static void *webcam_capture_thread_func(void *arg) {
   (void)arg;
 
   struct timespec last_capture_time = {0, 0};
@@ -193,10 +193,6 @@ int main(int argc, char *argv[]) {
   int port = strtoint(opt_port);
   unsigned short int webcam_index = opt_webcam_index;
 
-  // Set default dimensions for initial frame buffer (will be updated by client)
-  opt_width = 80;
-  opt_height = 24;
-
   precalc_luminance_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
 
@@ -223,7 +219,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Start capture thread
-  if (pthread_create(&g_capture_thread, NULL, capture_thread_func, NULL) != 0) {
+  if (pthread_create(&g_capture_thread, NULL, webcam_capture_thread_func, NULL) != 0) {
     log_fatal("Failed to create capture thread");
     framebuffer_destroy(g_frame_buffer);
     ascii_read_destroy();
