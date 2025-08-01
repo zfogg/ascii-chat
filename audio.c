@@ -30,13 +30,15 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   audio_context_t *ctx = (audio_context_t *)userData;
   float *output = (float *)outputBuffer;
 
-  if (output != NULL && ctx->playback_buffer != NULL) {
-    int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
-    if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
-      memset(output + samples_read, 0, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
+  if (output != NULL) {
+    if (ctx->playback_buffer != NULL) {
+      int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
+      if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
+        memset(output + samples_read, 0, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
+      }
+    } else {
+      memset(output, 0, framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
     }
-  } else {
-    memset(output, 0, framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
   }
 
   return paContinue;
