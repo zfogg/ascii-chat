@@ -43,10 +43,6 @@ char *ascii_read(void) {
   }
 
   image_t *original = image_read(jpeg);
-  if (original) {
-    // Adjust rendering size based on the newly discovered webcam frame size
-    // aspect_ratio(original->w, original->h);
-  }
   if (!original) {
     log_error("Failed to read JPEG image");
     fclose(jpeg);
@@ -63,10 +59,15 @@ char *ascii_read(void) {
 
   // Calculate how many leading spaces are required to centre the image inside
   // the overall width requested by the user.  Make sure the value is
-  // non-negative so we don’t end up passing a huge number to ascii_pad_frame
+  // non-negative so we don't end up passing a huge number to ascii_pad_frame
   // when width happens to exceed opt_width.
   ssize_t pad_width_ss = opt_width > width ? (opt_width - width) / 2 : 0;
   size_t pad_width = (size_t)pad_width_ss;
+
+  // Calculate how many blank lines are required to centre the image inside
+  // the overall height requested by the user.
+  ssize_t pad_height_ss = opt_height > height ? (opt_height - height) / 2 : 0;
+  size_t pad_height = (size_t)pad_height_ss;
 
   // Resize the captured frame to the aspect-correct dimensions.
   image_t *resized = image_new((int)width, (int)height);
@@ -93,9 +94,12 @@ char *ascii_read(void) {
     log_error("Failed to convert image to ASCII");
   }
 
-  char *ascii_padded = ascii_pad_frame(ascii, pad_width);
+  char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
   free(ascii);
-  // free(ascii_padded);
+
+  // Apply vertical centering (height padding)
+  char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
+  free(ascii_width_padded);
 
   image_destroy(original);
   image_destroy(resized);
@@ -110,33 +114,12 @@ asciichat_error_t ascii_write(const char *frame) {
     return ASCIICHAT_ERR_INVALID_PARAM;
   }
 
-  const char *current = frame;
-  const char *segment_start = frame;
+  cursor_reset();
 
-  while (*current != 0) {
-    if (*current == ASCII_DELIMITER) {
-      // Output the segment before this tab
-      size_t len = current - segment_start;
-      if (len > 0) {
-        if (fwrite(segment_start, 1, len, stdout) != len) {
-          log_error("Failed to write ASCII frame segment");
-          return ASCIICHAT_ERR_TERMINAL;
-        }
-      }
-
-      cursor_reset();
-      segment_start = current + 1; // Next segment starts after tab
-    }
-    current++;
-  }
-
-  // Output the final segment
-  size_t remaining = current - segment_start;
-  if (remaining > 0) {
-    if (fwrite(segment_start, 1, remaining, stdout) != remaining) {
-      log_error("Failed to write final ASCII frame segment");
-      return ASCIICHAT_ERR_TERMINAL;
-    }
+  size_t frame_len = strlen(frame);
+  if (fwrite(frame, 1, frame_len, stdout) != frame_len) {
+    log_error("Failed to write ASCII frame");
+    return ASCIICHAT_ERR_TERMINAL;
   }
 
   return ASCIICHAT_OK;
@@ -178,9 +161,7 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
  *
  * Parameters:
  *   frame      The original, null-terminated ASCII frame. It is expected to
- *              contain `\n` at the end of every visual row and to end with
- *              the special delimiter character (ASCII_DELIMITER) followed by
- *              a null terminator.
+ *              contain `\n` at the end of every visual row.
  *   pad        How many space characters to add in front of every visual row.
  *
  * Returns:
@@ -188,7 +169,7 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
  *   on success, or NULL if either `frame` is NULL or a memory allocation
  *   fails.
  */
-char *ascii_pad_frame(const char *frame, size_t pad) {
+char *ascii_pad_frame_width(const char *frame, size_t pad) {
   if (!frame) {
     return NULL;
   }
@@ -204,19 +185,19 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
   }
 
   /* -------------------------------------------------------------------------
-   * First pass: count how many visual rows we have (lines terminated by '\n')
-   * before the delimiter so we can determine the final buffer size.
+   * Count how many visual rows we have (lines terminated by '\n')
+   * to determine the final buffer size.
    * ----------------------------------------------------------------------- */
   size_t line_count = 1; // There is always at least the first line
   const char *p = frame;
-  while (*p && *p != ASCII_DELIMITER) {
+  while (*p) {
     if (*p == '\n') {
       line_count++;
     }
     p++;
   }
 
-  /* Total length of the source including delimiter and null terminator */
+  /* Total length of the source plus padding */
   const size_t src_len = strlen(frame);
   const size_t extra = line_count * pad;
   const size_t dst_len = src_len + extra;
@@ -225,18 +206,15 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
   SAFE_MALLOC(dst, dst_len + 1, char *);
 
   /* -------------------------------------------------------------------------
-   * Second pass: build the padded frame.
+   * Build the padded frame.
    * ----------------------------------------------------------------------- */
   bool at_line_start = true;
   const char *src = frame;
   char *out = dst;
 
   while (*src) {
-    if (at_line_start && *src != ASCII_DELIMITER) {
-      /* Insert the requested amount of spaces in front of every visual row.
-       * The delimiter character represents the end-of-frame marker and must
-       * never be preceded by padding because it is not rendered.
-       */
+    if (at_line_start) {
+      /* Insert the requested amount of spaces in front of every visual row. */
       memset(out, ' ', pad);
       out += pad;
       at_line_start = false;
@@ -253,6 +231,55 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
 
   *out = '\0';
   return dst;
+}
+
+/**
+ * Adds vertical padding (blank lines) to center a frame vertically.
+ *
+ * Parameters:
+ *   frame        The input ASCII frame to pad vertically.
+ *   pad_top      Number of blank lines to add at the top.
+ *   frame_width  Width of each line (for padding blank lines).
+ *
+ * Returns:
+ *   A newly allocated, null-terminated string with vertical padding,
+ *   or NULL if frame is NULL or memory allocation fails.
+ */
+char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
+  if (!frame) {
+    return NULL;
+  }
+
+  if (pad_top == 0) {
+    // Nothing to do; return a copy because the caller knows to free() the value.
+    size_t orig_len = strlen(frame);
+    char *copy;
+    SAFE_MALLOC(copy, orig_len + 1, char *);
+    memcpy(copy, frame, orig_len + 1);
+    return copy;
+  }
+
+  // Calculate buffer size needed
+  size_t frame_len = strlen(frame);
+  size_t top_padding_len = pad_top; // Just newlines, no spaces
+  size_t total_len = top_padding_len + frame_len;
+
+  char *buffer;
+  SAFE_MALLOC(buffer, total_len + 1, char *);
+
+  char *position = buffer;
+
+  // Add top padding (blank lines - just newlines)
+  for (size_t i = 0; i < pad_top; i++) {
+    *position++ = '\n';
+  }
+
+  // Copy the original frame
+  memcpy(position, frame, frame_len);
+  position += frame_len;
+  *position = '\0';
+
+  return buffer;
 }
 
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
