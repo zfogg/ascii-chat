@@ -33,7 +33,7 @@ jobs:
     - name: Build project (${{ matrix.build_type }})
       run: |
         make clean CSTD=-std=c2x
-        make ${{ matrix.build_type }}
+        make CSTD=-std=c2x ${{ matrix.build_type }}
 
     - name: Test basic functionality
       run: |
