@@ -31,6 +31,32 @@ typedef enum {
 /* Error handling */
 const char *asciichat_error_string(asciichat_error_t error);
 
+const char *asciichat_error_string(asciichat_error_t error) {
+  switch (error) {
+  case ASCIICHAT_OK:
+    return "Success";
+  case ASCIICHAT_ERR_MALLOC:
+    return "Memory allocation failed";
+  case ASCIICHAT_ERR_NETWORK:
+    return "Network error";
+  case ASCIICHAT_ERR_WEBCAM:
+    return "Webcam error";
+  case ASCIICHAT_ERR_INVALID_PARAM:
+    return "Invalid parameter";
+  case ASCIICHAT_ERR_TIMEOUT:
+    return "Operation timed out";
+  case ASCIICHAT_ERR_BUFFER_FULL:
+    return "Buffer full";
+  case ASCIICHAT_ERR_JPEG:
+    return "JPEG processing error";
+  case ASCIICHAT_ERR_TERMINAL:
+    return "Terminal error";
+  default:
+    return "Unknown error";
+  }
+}
+
+
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
 /* Frame protocol header */
