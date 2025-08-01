@@ -9,7 +9,7 @@ CC  := clang
 CXX := clang++
 
 # Package dependencies
-PKG_CONFIG_LIBS := opencv4 libjpeg
+PKG_CONFIG_LIBS := opencv4 libjpeg zlib
 
 # Directories
 BIN_DIR  := bin
@@ -19,22 +19,29 @@ BUILD_DIR := build
 # Compiler Flags
 # =============================================================================
 
+CSTD := -std=c23
+CXXSTD := -std=c++23
+
 # Base flags
-CFLAGS   += -Wall -Wextra
-CXXFLAGS += $(CFLAGS)
+BASE_FLAGS := -Wall -Wextra
+# Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
+FEATURE_FLAGS := -D_GNU_SOURCE
+CFLAGS   += $(BASE_FLAGS) $(FEATURE_FLAGS)
+CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
-# Apply package flags and language flags
-CFLAGS   +=  $(PKG_CFLAGS) -std=c23
-CXXFLAGS +=  $(PKG_CFLAGS) -std=c++23 -stdlib=libc++
+# Apply package flags and language flags separately
+CFLAGS   +=  $(PKG_CFLAGS) $(CSTD)
+CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD)
 
 # =============================================================================
 # Linker Flags
 # =============================================================================
 
 LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+LDFLAGS += -lpthread
 
 # =============================================================================
 # File Discovery
@@ -64,7 +71,7 @@ HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help
+.PHONY: all clean default help debug release format format-check
 
 # =============================================================================
 # Default Target
@@ -80,14 +87,26 @@ HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
 default: $(TARGETS)
 all: default
 
+# Debug build
+debug: CFLAGS += -g -O0
+debug: CXXFLAGS += -g -O0
+debug: $(TARGETS)
+
+# Release build
+release: CFLAGS += -O3
+release: CXXFLAGS += -O3
+release: $(TARGETS)
+
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
+	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
+	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
@@ -129,10 +148,13 @@ clean:
 # Show help information
 help:
 	@echo "Available targets:"
-	@echo "  all     - Build all targets (default)"
-	@echo "  default - Build all targets"
-	@echo "  clean   - Remove build artifacts"
-	@echo "  help    - Show this help message"
+	@echo "  all/default - Build all targets with default flags"
+	@echo "  debug       - Build with debug symbols and no optimization"
+	@echo "  release     - Build with optimizations enabled"
+	@echo "  format      - Format source code using clang-format"
+	@echo "  format-check- Check code formatting without modifying files"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  help        - Show this help message"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  CC=$(CC)"
@@ -140,6 +162,44 @@ help:
 	@echo "  BIN_DIR=$(BIN_DIR)"
 	@echo "  BUILD_DIR=$(BUILD_DIR)"
 	@echo "  PKG_CONFIG_LIBS=$(PKG_CONFIG_LIBS)"
+	@echo ""
+	@echo "New files included:"
+	@echo "  - common.h, logging.c       - Logging and error handling"
+	@echo "  - ringbuffer.h, ringbuffer.c - Lock-free frame buffering"
+	@echo "  - protocol.h                - Protocol definitions"
+	@echo "  - network.c, network.h      - Network timeouts and utilities"
+
+# =============================================================================
+# Code Formatting
+# =============================================================================
+
+# Format source code
+format:
+	@echo "Formatting source code..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+		grep -v "ext/" | xargs clang-format -i; \
+		echo "Code formatting complete!"; \
+	else \
+		echo "clang-format not found. Install with: apt-get install clang-format"; \
+		exit 1; \
+	fi
+
+# Check code formatting
+format-check:
+	@echo "Checking code formatting..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		if find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+		   grep -v "ext/" | xargs clang-format --dry-run --Werror 2>/dev/null; then \
+			echo "Code formatting check passed!"; \
+		else \
+			echo "Code formatting issues found. Run 'make format' to fix."; \
+			exit 1; \
+		fi; \
+	else \
+		echo "clang-format not found. Install with: apt-get install clang-format"; \
+		exit 1; \
+	fi
 
 # =============================================================================
 # Dependencies

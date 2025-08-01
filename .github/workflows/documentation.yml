@@ -1,0 +1,161 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**.md'
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+  pull_request:
+    branches: [ '*' ]
+    paths:
+      - '**.md'
+
+jobs:
+  check-links:
+    name: Check Documentation Links
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install markdown link checker
+      run: |
+        npm install -g markdown-link-check
+
+    - name: Check links in README
+      run: |
+        markdown-link-check README.md --config .github/markdown-link-check.json || true
+
+    - name: Check links in other markdown files
+      run: |
+        find . -name "*.md" -not -path "./node_modules/*" -exec markdown-link-check {} \; || true
+
+  check-documentation:
+    name: Check Documentation Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check README completeness
+      run: |
+        echo "Checking README.md for required sections..."
+        
+        # Check for required sections
+        sections=("Dependencies" "Build and run" "Usage")
+        for section in "${sections[@]}"; do
+          if grep -q "$section" README.md; then
+            echo "✅ Found section: $section"
+          else
+            echo "❌ Missing section: $section"
+          fi
+        done
+
+    - name: Check code documentation
+      run: |
+        echo "Checking for function documentation..."
+        
+        # Check for documented functions in header files
+        undocumented_functions=0
+        for header in *.h; do
+          if [[ -f "$header" ]]; then
+            echo "Checking $header..."
+            # Look for function declarations without preceding comments
+            functions=$(grep -n "^[a-zA-Z_][a-zA-Z0-9_]*.*(" "$header" | grep -v "typedef" | grep -v "define" || true)
+            if [[ -n "$functions" ]]; then
+              echo "Found functions in $header:"
+              echo "$functions"
+            fi
+          fi
+        done
+
+    - name: Generate function list
+      run: |
+        echo "# Function Reference" > FUNCTIONS.md
+        echo "" >> FUNCTIONS.md
+        echo "Auto-generated list of functions in the codebase:" >> FUNCTIONS.md
+        echo "" >> FUNCTIONS.md
+        
+        for file in *.h; do
+          if [[ -f "$file" ]]; then
+            echo "## $file" >> FUNCTIONS.md
+            echo "" >> FUNCTIONS.md
+            grep -n "^[a-zA-Z_][a-zA-Z0-9_]*.*(" "$file" | grep -v "typedef" | grep -v "define" | \
+            sed 's/^\([0-9]*\):\(.*\)/- Line \1: `\2`/' >> FUNCTIONS.md || true
+            echo "" >> FUNCTIONS.md
+          fi
+        done
+
+    - name: Upload function documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: function-documentation
+        path: FUNCTIONS.md
+        retention-days: 30
+
+  spell-check:
+    name: Spell Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install aspell
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y aspell aspell-en
+
+    - name: Create custom dictionary
+      run: |
+        # Create a custom dictionary for technical terms
+        cat > .aspell.en.pws << EOF
+        personal_ws-1.1 en 0
+        ASCII
+        OpenCV
+        libjpeg
+        webcam
+        Ubuntu
+        ArchLinux
+        macOS
+        ANSI
+        RGB
+        FPS
+        TCP
+        IPv4
+        README
+        TODO
+        clang
+        gcc
+        pthread
+        realtime
+        colorize
+        refactor
+        WASM
+        WASI
+        Putty
+        iTerm
+        Kitty
+        rxvt
+        unicode
+        OpenBox
+        startx
+        PulseAudio
+        EOF
+
+    - name: Spell check README
+      run: |
+        aspell --mode=markdown --personal=.aspell.en.pws list < README.md > spelling_errors.txt || true
+        if [[ -s spelling_errors.txt ]]; then
+          echo "Potential spelling errors found in README.md:"
+          cat spelling_errors.txt
+          echo "Note: These may be false positives for technical terms"
+        else
+          echo "No spelling errors found in README.md"
+        fi

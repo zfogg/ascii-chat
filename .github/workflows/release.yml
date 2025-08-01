@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          TAG="${{ github.event.inputs.tag }}"
+        else
+          TAG="${{ github.ref_name }}"
+        fi
+        
+        echo "TAG=$TAG" >> $GITHUB_OUTPUT
+        
+        # Generate changelog from commit messages since last tag
+        LAST_TAG=$(git tag --sort=-version:refname | head -n 2 | tail -n 1)
+        if [[ -n "$LAST_TAG" ]]; then
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "## Changes since $LAST_TAG" >> $GITHUB_OUTPUT
+          git log --pretty=format:"- %s (%an)" $LAST_TAG..HEAD >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.release_notes.outputs.TAG }}
+        release_name: ASCII Chat ${{ steps.release_notes.outputs.TAG }}
+        body: |
+          # ASCII Chat Release ${{ steps.release_notes.outputs.TAG }}
+          
+          ASCII video chat - probably the first command line video chat program!
+          
+          ## Installation
+          
+          **Linux (Ubuntu/Debian):**
+          ```bash
+          sudo apt-get install libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
+          tar -xzf ascii-chat-Linux-release.tar.gz
+          ```
+          
+          **macOS:**
+          ```bash
+          brew install opencv@4 jpeg-turbo zlib
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-macOS-release.tar.gz
+          tar -xzf ascii-chat-macOS-release.tar.gz
+          ```
+          
+          ## Usage
+          
+          Start the server:
+          ```bash
+          ./bin/server -p 90001
+          ```
+          
+          Connect with a client:
+          ```bash
+          ./bin/client -p 90001 -a 127.0.0.1
+          ```
+          
+          Enable color mode:
+          ```bash
+          ./bin/server --color
+          ./bin/client --color
+          ```
+          
+          ${{ steps.release_notes.outputs.CHANGELOG }}
+        draft: false
+        prerelease: false
+
+  build-and-upload:
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install opencv@4 jpeg-turbo pkg-config
+
+    - name: Build release
+      run: |
+        make clean CSTD=-std=c2x
+        make release CSTD=-std=c2x
+
+    - name: Create release package
+      run: |
+        mkdir -p release-package
+        cp bin/server bin/client release-package/
+        cp README.md release-package/
+        echo "ASCII Chat $(date)" > release-package/BUILD_INFO.txt
+        echo "OS: ${{ runner.os }}" >> release-package/BUILD_INFO.txt
+        echo "Commit: ${{ github.sha }}" >> release-package/BUILD_INFO.txt
+        tar -czf ascii-chat-${{ runner.os }}-release.tar.gz -C release-package .
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./ascii-chat-${{ runner.os }}-release.tar.gz
+        asset_name: ascii-chat-${{ runner.os }}-release.tar.gz
+        asset_content_type: application/gzip

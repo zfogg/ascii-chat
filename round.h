@@ -7,4 +7,4 @@
  * $Id: round.h 466 2006-10-02 11:35:03Z csl $
  */
 
-#define ROUND(xfloat) (int) ( 0.5f + xfloat )
+#define ROUND(xfloat) (int)(0.5f + xfloat)

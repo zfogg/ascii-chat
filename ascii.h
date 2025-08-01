@@ -1,45 +1,51 @@
+#include "common.h"
 #include <stdio.h>
 #include <time.h>
 
+// Forward declaration
+typedef struct image_t image_t;
 
-void ascii_read_init(unsigned short int webcam_index);
-void ascii_write_init();
+asciichat_error_t ascii_read_init(unsigned short int webcam_index);
+asciichat_error_t ascii_write_init(void);
 
-char *ascii_read();
-void ascii_write(char *);
+char *ascii_read(void);
+asciichat_error_t ascii_write(const char *);
 
-void ascii_read_destroy();
-void ascii_write_destroy();
+void ascii_read_destroy(void);
+void ascii_write_destroy(void);
+
+// Color support functions
+char *rgb_to_ansi_fg(int r, int g, int b);
+char *rgb_to_ansi_bg(int r, int g, int b);
+void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
+char *get_lum_palette(void);
 
 /*static char *from_jpeg(FILE *);*/
 
+#define ASCII_LUMINANCE_LEVELS 256
 
 #define ASCII_DELIMITER '\t'
 
 #define ASCII_SLEEP_NS 50000L
 
+// ANSI color codes
+#define ANSI_RESET "\033[0m"
+#define ANSI_FG_PREFIX "\033[38;2;"
+#define ANSI_BG_PREFIX "\033[48;2;"
+#define ANSI_COLOR_SUFFIX "m"
 
-#define print(s) fwrite(s, 1, sizeof(s)/sizeof(s[0]), stdout)
+#define print(s) fwrite(s, 1, sizeof(s) / sizeof(s[0]), stdout)
 
 #define console_clear() print("\e[1;1H\e[2J")
 
-#define cursor_reset()  print("\033[0;0H")
+// #define cursor_reset() print("\033[0;0H")
+#define cursor_reset() print("\033[H")
 
-#define cursor_hide()   print("\e[?25l")
+#define cursor_hide() print("\e[?25l")
 
-#define cursor_show()   print("\e[?25h")
+#define cursor_show() print("\e[?25h")
 
+static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
+                             ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};
 
-static const struct timespec
-ASCII_SLEEP_START = {
-    .tv_sec  = 0,
-    .tv_nsec = 500
-},
-ASCII_SLEEP_STOP = {
-    .tv_sec  = 0,
-    .tv_nsec = 0
-};
-
-#define ascii_zzz() nanosleep( \
-    (struct timespec *)&ASCII_SLEEP_START, \
-    (struct timespec *)&ASCII_SLEEP_STOP)
+#define ascii_zzz() nanosleep((struct timespec *)&ASCII_SLEEP_START, (struct timespec *)&ASCII_SLEEP_STOP)
