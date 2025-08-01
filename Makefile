@@ -24,24 +24,21 @@ CXXSTD := -std=c++23
 
 # Base flags
 BASE_FLAGS := -Wall -Wextra
+
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
 FEATURE_FLAGS := -D_GNU_SOURCE
+
 CFLAGS   += $(BASE_FLAGS) $(FEATURE_FLAGS)
 CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-# Apply package flags and language flags separately
 CFLAGS   +=  $(PKG_CFLAGS) $(CSTD)
 CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD)
 
-# =============================================================================
-# Linker Flags
-# =============================================================================
-
-LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
-LDFLAGS += -lpthread
+LDFLAGS := $(PKG_LDFLAGS) -lpthread
 
 # =============================================================================
 # File Discovery
@@ -50,13 +47,15 @@ LDFLAGS += -lpthread
 # Targets (executables)
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
+C_FILES := $(wildcard *.c) 
+CPP_FILES := $(wildcard *.cpp) 
+
 # Object files for server and client
 OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(wildcard *.c))
 OBJS_CPP  := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(wildcard *.cpp))
-OBJS_CEXT := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.c))
 
 # All object files for server and client
-OBJS := $(OBJS_C) $(OBJS_CPP) $(OBJS_CEXT)
+OBJS := $(OBJS_C) $(OBJS_CPP)
 
 # Non-target object files (files without main methods)
 OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TARGETS)), $(OBJS))
@@ -64,14 +63,13 @@ OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TAR
 # Header files
 HEADERS_C    := $(wildcard *.h)
 HEADERS_CPP  := $(wildcard *.hpp)
-HEADERS_CEXT := $(wildcard $(addprefix ext/, $(EXT_CDEPS))/*.h)
-HEADERS      := $(HEADERS_C) $(HEADERS_CPP) $(HEADERS_CEXT)
+HEADERS      := $(HEADERS_C) $(HEADERS_CPP)
 
 # =============================================================================
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug release format format-check
+.PHONY: all clean default help debug release format format-check bear clang-tidy
 
 # =============================================================================
 # Default Target
@@ -122,12 +120,6 @@ $(OBJS_CPP): $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $(CXXFLAGS) -c $<
 
-# Compile external C source files
-$(OBJS_CEXT): $(BUILD_DIR)/%.o: %.c $(HEADERS_CEXT)
-	@echo "Compiling external $<..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) -c $<
-
 # =============================================================================
 # Utility Targets
 # =============================================================================
@@ -143,6 +135,8 @@ clean:
 		find $(BIN_DIR) -mindepth 1 -type f -not -iname '.gitkeep' -delete; \
 		echo "  - Removed binaries"; \
 	fi
+	@rm -f compile_commands.json
+	@echo "  - Removed compile_commands.json"
 	@echo "Clean complete!"
 
 # Show help information
@@ -176,36 +170,28 @@ help:
 # Format source code
 format:
 	@echo "Formatting source code..."
-	@if command -v clang-format >/dev/null 2>&1; then \
-		find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
-		grep -v "ext/" | xargs clang-format -i; \
-		echo "Code formatting complete!"; \
-	else \
-		echo "clang-format not found. Install with: apt-get install clang-format"; \
-		exit 1; \
-	fi
+	@find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+	xargs clang-format -i; \
+	echo "Code formatting complete!"
 
 # Check code formatting
 format-check:
 	@echo "Checking code formatting..."
-	@if command -v clang-format >/dev/null 2>&1; then \
-		if find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
-		   grep -v "ext/" | xargs clang-format --dry-run --Werror 2>/dev/null; then \
-			echo "Code formatting check passed!"; \
-		else \
-			echo "Code formatting issues found. Run 'make format' to fix."; \
-			exit 1; \
-		fi; \
-	else \
-		echo "clang-format not found. Install with: apt-get install clang-format"; \
-		exit 1; \
-	fi
+	find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+	xargs clang-format --dry-run --Werror
 
 # Run bear to generate a compile_commands.json file
-compile_commands.json: Makefile $(OBJS)
+compile_commands.json: Makefile
 	@echo "Running bear to generate compile_commands.json..."
 	@bear -- make clean debug
 	@echo "Bear complete!"
+
+# Run clang-tidy to check code style
+clang-tidy: $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.h) $(wildcard *.hpp)
+	@#clang-tidy -header-filter='.*' $^ -- $(BASE_FLAGS) $(FEATURE_FLAGS) $(PKG_CFLAGS)
+	@clang-tidy $(wildcard *.cpp) $(wildcard *.hpp) -- $(CXXFLAGS)
+	@clang-tidy $(wildcard *.c)   $(wildcard *.h)   -- $(CFLAGS)
+
 
 # =============================================================================
 # Dependencies

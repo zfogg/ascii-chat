@@ -65,13 +65,13 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config bear
 
     - name: Run static analysis
       run: |
         # Run clang-tidy on source files
-        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.c')   -- -D_GNU_SOURCE $(pkg-config --cflags --libs opencv4 libjpeg zlib portaudio-2.0) -std=c2x
-        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.cpp') -- -D_GNU_SOURCE $(pkg-config --cflags --libs opencv4 libjpeg zlib portaduio-2.0) -std=c++23 -stdlib=libc++
+        bear -- make clean debug
+        make CSTD=-std=c2x clang-tidy
 
 
     - name: Check for memory leaks patterns
