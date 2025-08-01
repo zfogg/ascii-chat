@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/stat.h>
 
 /* ============================================================================
  * Logging Implementation
@@ -251,7 +252,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (g_log.file == STDERR_FILENO) {
     log_file = stderr;
   } else {
+    umask(~(S_IRUSR | S_IWUSR) & 0777); /* 0600 */
     log_file = fdopen(g_log.file, "a");
+    umask(0); /* 0666 */
   }
 
   /* Print to file (no colors) */
