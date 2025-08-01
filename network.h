@@ -46,7 +46,7 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 #define AUDIO_MESSAGE_PREFIX "AUDIO:"
 #define AUDIO_MESSAGE_FORMAT "AUDIO:%u\n"
 #define AUDIO_MESSAGE_MAX_LEN 32
-#define AUDIO_SAMPLES_PER_PACKET 256  // Smaller packets for lower latency
+#define AUDIO_SAMPLES_PER_PACKET 256 // Smaller packets for lower latency
 
 /* Packet-based communication protocol */
 #define PACKET_MAGIC 0xDEADBEEF
@@ -92,6 +92,5 @@ int send_video_header_packet(int sockfd, const void *header_data, size_t header_
 int send_video_packet(int sockfd, const void *frame_data, size_t frame_len);
 int send_audio_packet(int sockfd, const float *samples, int num_samples);
 int send_size_packet(int sockfd, unsigned short width, unsigned short height);
-
 
 #endif // NETWORK_H
