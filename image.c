@@ -152,7 +152,7 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 char *image_print(const image_t *p) {
   const int h = p->h;
   const int w = p->w;
-  const ssize_t len = h * w;
+  const ssize_t len = (ssize_t)h * (ssize_t)w;
 
   const rgb_t *pix = p->pixels;
   const unsigned short int *red_lut = RED;
@@ -223,7 +223,7 @@ char *image_print_colored(const image_t *p) {
           fg_r = fg_g = fg_b = 0;
         } else { // Bright background, use white text
           fg_r = fg_g = fg_b = 255;
-        }
+}
 
         const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
         const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
