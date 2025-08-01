@@ -4,11 +4,16 @@ on:
   pull_request:
     types: [opened, synchronize]
     # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    paths:
+      - "Makefile"
+      - "**/*.c"
+      - "**/*.h"
+      - "**/*.cpp"
+      - "**/*.hpp"
+    # paths-ignore:
+    #   - '*.md'
+    #   - '.github/**'
+    #   - '.cursor/**'
 
 jobs:
   claude-review:
