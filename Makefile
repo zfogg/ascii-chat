@@ -47,23 +47,25 @@ LDFLAGS := $(PKG_LDFLAGS) -lpthread
 # Targets (executables)
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
-C_FILES := $(wildcard *.c) 
-CPP_FILES := $(wildcard *.cpp) 
+# Source code files
+C_FILES      := $(wildcard *.c) 
+CPP_FILES    := $(wildcard *.cpp) 
+C_CPP_FILES  := $(C_FILES) $(CPP_FILES)
+
+# Header files
+HEADERS_C    := $(wildcard *.h)
+HEADERS_CPP  := $(wildcard *.hpp)
+HEADERS      := $(HEADERS_C) $(HEADERS_CPP)
 
 # Object files for server and client
-OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(wildcard *.c))
-OBJS_CPP  := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(wildcard *.cpp))
+OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES))
+OBJS_CPP  := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(CPP_FILES))
 
 # All object files for server and client
 OBJS := $(OBJS_C) $(OBJS_CPP)
 
 # Non-target object files (files without main methods)
 OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TARGETS)), $(OBJS))
-
-# Header files
-HEADERS_C    := $(wildcard *.h)
-HEADERS_CPP  := $(wildcard *.hpp)
-HEADERS      := $(HEADERS_C) $(HEADERS_CPP)
 
 # =============================================================================
 # Phony Targets
@@ -98,26 +100,22 @@ release: $(TARGETS)
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 # Compile C source files
 $(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@echo "Compiling $<..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $< 
 
 # Compile C++ source files
 $(OBJS_CPP): $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 	@echo "Compiling $<..."
-	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $(CXXFLAGS) -c $<
 
 # =============================================================================
@@ -194,7 +192,7 @@ clang-tidy: $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.h) $(wildcard *.hpp)
 
 
 # =============================================================================
-# Dependencies
+# Extra Makefile stuff
 # =============================================================================
 
 .PRECIOUS: $(OBJS_NON_TARGET)
