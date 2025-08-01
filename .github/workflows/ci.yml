@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install opencv@4 jpeg-turbo pkg-config
+        brew install opencv@4 jpeg-turbo pkg-config portaudio
 
     - name: Build project (${{ matrix.build_type }})
       run: |
