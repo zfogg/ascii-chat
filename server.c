@@ -183,12 +183,13 @@ static void *audio_thread_func(void *arg) {
 #ifdef AUDIO_DEBUG
       log_debug("Sent %d audio samples", samples_read);
 #endif
+    } else {
+      // Only sleep if no audio available to reduce latency
+      usleep(2 * 1000); // 2ms instead of 10ms when no audio
     }
 
-    // Check shutdown more frequently
-    for (int i = 0; i < 10 && !g_should_exit; i++) {
-      usleep(1 * 1000);
-    }
+    // Quick shutdown check without additional delay
+    if (g_should_exit) break;
   }
 
   log_info("Audio thread stopped");
