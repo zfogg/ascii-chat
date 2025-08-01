@@ -73,8 +73,8 @@ jobs:
     - name: Run static analysis
       run: |
         # Run clang-tidy on source files
-        bear -- make CSTD=c2x CXXSTD=c++2x debug
-        make CSTD=c2x CXXSTD=c++2x clang-tidy
+        bear -- make CSTD=c2x CXXSTD=c++2c debug
+        make CSTD=c2x CXXSTD=c++2c clang-tidy
 
 
     - name: Check for memory leaks patterns
