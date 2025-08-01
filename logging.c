@@ -17,13 +17,13 @@
 #define MAX_LOG_SIZE (3 * 1024 * 1024) /* 3MB max log file size */
 
 static struct {
-  FILE *file;
+  int file;
   log_level_t level;
   pthread_mutex_t mutex;
   bool initialized;
   char filename[256];  /* Store filename for rotation */
   size_t current_size; /* Track current file size */
-} g_log = {.file = NULL,
+} g_log = {.file = 0,
            .level = LOG_INFO,
            .mutex = PTHREAD_MUTEX_INITIALIZER,
            .initialized = false,
@@ -42,12 +42,12 @@ static const char *level_colors[] = {
 
 /* Log rotation function - keeps the tail (recent entries) */
 static void rotate_log_if_needed(void) {
-  if (!g_log.file || g_log.file == stderr || strlen(g_log.filename) == 0) {
+  if (!g_log.file || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
     return;
   }
 
   if (g_log.current_size >= MAX_LOG_SIZE) {
-    fclose(g_log.file);
+    close(g_log.file);
 
     /* Open file for reading to get the tail */
     int read_file = open(g_log.filename, O_RDONLY);
@@ -55,7 +55,7 @@ static void rotate_log_if_needed(void) {
       fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
-      g_log.file = fdopen(fd, "a");
+      g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
@@ -66,7 +66,7 @@ static void rotate_log_if_needed(void) {
       close(read_file);
       /* Fall back to truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
-      g_log.file = fdopen(fd, "a");
+      g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
@@ -86,7 +86,7 @@ static void rotate_log_if_needed(void) {
       close(read_file);
       /* Fall back to truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
-      g_log.file = fdopen(fd, "a");
+      g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
@@ -103,7 +103,7 @@ static void rotate_log_if_needed(void) {
         unlink(temp_filename);
         /* Fall back to truncation */
         int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
-        g_log.file = fdopen(fd, "a");
+        g_log.file = fd;
         g_log.current_size = 0;
         return;
       }
@@ -118,22 +118,32 @@ static void rotate_log_if_needed(void) {
       unlink(temp_filename); /* Clean up temp file */
       /* Fall back to truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
-      g_log.file = fdopen(fd, "a");
+      g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
 
     /* Reopen for appending */
-    g_log.file = fopen(g_log.filename, "a");
-    if (!g_log.file) {
+    g_log.file = open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+    if (g_log.file < 0) {
       fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
-      g_log.file = stderr;
+      g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0';
     } else {
       g_log.current_size = new_size;
       /* Log the rotation event */
-      fprintf(g_log.file, "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", "1970-01-01 00:00:00.000", new_size);
-      fflush(g_log.file);
+      {
+        char log_msg[256];
+        int log_msg_len = snprintf(
+          log_msg, sizeof(log_msg),
+          "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
+          "1970-01-01 00:00:00.000", new_size
+        );
+        if (log_msg_len > 0) {
+          ssize_t written = write(g_log.file, log_msg, (size_t)log_msg_len);
+          (void)written; // suppress unused warning
+        }
+      }
     }
   }
 }
@@ -142,8 +152,8 @@ void log_init(const char *filename, log_level_t level) {
   pthread_mutex_lock(&g_log.mutex);
 
   if (g_log.initialized) {
-    if (g_log.file && g_log.file != stderr) {
-      fclose(g_log.file);
+    if (g_log.file && g_log.file != STDERR_FILENO) {
+      close(g_log.file);
     }
   }
 
@@ -154,22 +164,21 @@ void log_init(const char *filename, log_level_t level) {
     /* Store filename for rotation */
     strncpy(g_log.filename, filename, sizeof(g_log.filename) - 1);
     g_log.filename[sizeof(g_log.filename) - 1] = '\0';
-
     int fd = open(filename, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    g_log.file = fdopen(fd, "a");
+    g_log.file = fd;
     if (!g_log.file) {
       fprintf(stderr, "Failed to open log file: %s\n", filename);
-      g_log.file = stderr;
+      g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0'; /* Clear filename on failure */
     } else {
       /* Get current file size */
       struct stat st;
-      if (fstat(fileno(g_log.file), &st) == 0) {
+      if (fstat(g_log.file, &st) == 0) {
         g_log.current_size = (size_t)st.st_size;
       }
     }
   } else {
-    g_log.file = stderr;
+    g_log.file = STDERR_FILENO;
     g_log.filename[0] = '\0';
   }
 
@@ -180,11 +189,11 @@ void log_init(const char *filename, log_level_t level) {
 void log_destroy(void) {
   pthread_mutex_lock(&g_log.mutex);
 
-  if (g_log.file && g_log.file != stderr) {
-    fclose(g_log.file);
+  if (g_log.file && g_log.file != STDERR_FILENO) {
+    close(g_log.file);
   }
 
-  g_log.file = NULL;
+  g_log.file = 0;
   g_log.initialized = false;
 
   pthread_mutex_unlock(&g_log.mutex);
@@ -199,10 +208,10 @@ void log_set_level(log_level_t level) {
 void log_truncate_if_large(void) {
   pthread_mutex_lock(&g_log.mutex);
 
-  if (g_log.file && g_log.file != stderr && strlen(g_log.filename) > 0) {
+  if (g_log.file && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     /* Check if current log is too large */
     struct stat st;
-    if (fstat(fileno(g_log.file), &st) == 0 && st.st_size > MAX_LOG_SIZE) {
+    if (fstat(g_log.file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
       /* Save the current size and trigger rotation logic */
       g_log.current_size = (size_t)st.st_size;
 
@@ -241,35 +250,37 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   /* Check if log rotation is needed */
   rotate_log_if_needed();
 
+  FILE *log_file = fdopen(g_log.file, "a");
+
   /* Print to file (no colors) */
-  if (g_log.file && g_log.file != stderr) {
-    int written = fprintf(g_log.file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
+  if (g_log.file && g_log.file != STDERR_FILENO) {
+    int written = fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
     va_list args;
     va_start(args, fmt);
-    written = vfprintf(g_log.file, fmt, args);
+    written = vfprintf(log_file, fmt, args);
     va_end(args);
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
-    written = fprintf(g_log.file, "\n");
+    written = fprintf(log_file, "\n");
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
-    fflush(g_log.file);
-  } else if (g_log.file == stderr) {
-    fprintf(g_log.file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
+    fflush(log_file);
+  } else if (g_log.file == STDERR_FILENO) {
+    fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
     va_list args;
     va_start(args, fmt);
-    vfprintf(g_log.file, fmt, args);
+    vfprintf(log_file, fmt, args);
     va_end(args);
 
-    fprintf(g_log.file, "\n");
-    fflush(g_log.file);
+    fprintf(log_file, "\n");
+    fflush(log_file);
   }
 
   /* Also print to stderr with colors if it's a terminal */
-  if (g_log.file != stderr && isatty(fileno(stderr))) {
+  if (g_log.file != STDERR_FILENO && isatty(STDERR_FILENO)) {
     fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
             line, func);
 
