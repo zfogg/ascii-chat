@@ -38,8 +38,9 @@ Check the Makefile to see how it works.
 If you need compile_commands.json for clang-based tools, check out `bear`:
 ```bash
 brew install bear
-bear -- make clean debug
+make compile_commands.json
 ls compile_commands.json
+
 ```
 
 Command line flags
