@@ -100,7 +100,7 @@ static inline int get_frame_interval_ms(void) {
 // Add 50% safety margin for ANSI sequence length variations and terminal resizing
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_SIZE_BASE(opt_width, opt_height) * 3 / 2)
 // Ensure minimum size for very small terminals
-#define FRAME_BUFFER_SIZE_MIN (1024 * 1024) /* 1MB minimum */
+#define FRAME_BUFFER_SIZE_MIN (512 * 1024) /* 512KB minimum */
 // Ensure reasonable maximum to prevent excessive memory usage
 #define FRAME_BUFFER_SIZE_MAX (16 * 1024 * 1024) /* 16MB maximum */
 // Final calculation with bounds checking
