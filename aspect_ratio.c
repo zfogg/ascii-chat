@@ -24,76 +24,75 @@
  * therefore be calculated here.
  */
 
-#define CHAR_ASPECT 2.0f  // terminal cell height ÷ width
+#define CHAR_ASPECT 2.0f // terminal cell height ÷ width
 
 /* Set opt_width / opt_height so that the ASCII art keeps the webcam image's
  * proportions on screen.
  *
  * jpeg_w, jpeg_h  —— pixel dimensions of the captured frame
  */
-void aspect_ratio(const int jpeg_w, const int jpeg_h, ssize_t *out_width, ssize_t *out_height)
-{
-    // If the user asked to stretch, do nothing – the caller will use whatever
-    // dimensions are currently in opt_width/opt_height.
-    if (opt_stretch) {
-        return;
-    }
+void aspect_ratio(const int jpeg_w, const int jpeg_h, ssize_t *out_width, ssize_t *out_height) {
+  // If the user asked to stretch, do nothing – the caller will use whatever
+  // dimensions are currently in opt_width/opt_height.
+  if (opt_stretch) {
+    return;
+  }
 
-    // If both dimensions were given explicitly there's nothing to adjust.
-    if (!auto_width && !auto_height) {
-        return;
-    }
+  // If both dimensions were given explicitly there's nothing to adjust.
+  if (!auto_width && !auto_height) {
+    return;
+  }
 
-    /* Helper macros – they turn a given height (rows) into a width (columns)
-     * and vice-versa, taking CHAR_ASPECT into account.  We use ROUND() from
-     * round.h so we end up with integer character counts.
+  /* Helper macros – they turn a given height (rows) into a width (columns)
+   * and vice-versa, taking CHAR_ASPECT into account.  We use ROUND() from
+   * round.h so we end up with integer character counts.
+   */
+#define CALC_WIDTH_FROM_HEIGHT(h) ROUND((float)(h) * (float)jpeg_w / (float)jpeg_h * CHAR_ASPECT)
+#define CALC_HEIGHT_FROM_WIDTH(w) ROUND(((float)(w) / CHAR_ASPECT) * (float)jpeg_h / (float)jpeg_w)
+
+  if (auto_width && !auto_height) {
+    // Height fixed, width is derived.
+    *out_width = CALC_WIDTH_FROM_HEIGHT(opt_height);
+    if (*out_width == 0) {
+      *out_width = 1; // safeguard against zero
+    }
+    return;
+  }
+
+  if (!auto_width && auto_height) {
+    // Width fixed, height is derived.
+    *out_height = CALC_HEIGHT_FROM_WIDTH(opt_width);
+    if (*out_height == 0) {
+      *out_height = 1;
+    }
+    return;
+  }
+
+  /* If both dimensions are automatic we attempt to base the calculation on
+   * whichever dimension has already been set by terminal-size detection.
+   * Failing that we fall back to a reasonable hard-coded default.
+   */
+  if (auto_width && auto_height) {
+    /* Treat the currently stored opt_width/opt_height as a MAX rectangle
+     * we are allowed to use (these came from the client).  Produce the
+     * largest possible aspect-correct frame that fits entirely inside it.
      */
-#define CALC_WIDTH_FROM_HEIGHT(h)  ROUND((float)(h) * (float)jpeg_w / (float)jpeg_h * CHAR_ASPECT)
-#define CALC_HEIGHT_FROM_WIDTH(w)  ROUND(((float)(w) / CHAR_ASPECT) * (float)jpeg_h / (float)jpeg_w)
+    const int max_w = opt_width;
+    const int max_h = opt_height;
 
-    if (auto_width && !auto_height) {
-        // Height fixed, width is derived.
-        *out_width  = CALC_WIDTH_FROM_HEIGHT(opt_height);
-        if (*out_width == 0) {
-            *out_width = 1;   // safeguard against zero
-        }
-        return;
+    int w_from_h = CALC_WIDTH_FROM_HEIGHT(max_h);
+    if (w_from_h <= max_w) {
+      /* Using the full height still keeps us within the width budget. */
+      *out_width = w_from_h;
+      *out_height = max_h;
+    } else {
+      /* Otherwise scale based on the width limit. */
+      *out_width = max_w;
+      *out_height = CALC_HEIGHT_FROM_WIDTH(max_w);
     }
 
-    if (!auto_width && auto_height) {
-        // Width fixed, height is derived.
-        *out_height  = CALC_HEIGHT_FROM_WIDTH(opt_width);
-        if (*out_height == 0) {
-            *out_height = 1;
-        }
-        return;
-    }
-
-    /* If both dimensions are automatic we attempt to base the calculation on
-     * whichever dimension has already been set by terminal-size detection.
-     * Failing that we fall back to a reasonable hard-coded default.
-     */
-    if (auto_width && auto_height) {
-        /* Treat the currently stored opt_width/opt_height as a MAX rectangle
-         * we are allowed to use (these came from the client).  Produce the
-         * largest possible aspect-correct frame that fits entirely inside it.
-         */
-        const int max_w = opt_width;
-        const int max_h = opt_height;
-
-        int w_from_h = CALC_WIDTH_FROM_HEIGHT(max_h);
-        if (w_from_h <= max_w) {
-            /* Using the full height still keeps us within the width budget. */
-            *out_width  = w_from_h;
-            *out_height = max_h;
-        } else {
-            /* Otherwise scale based on the width limit. */
-            *out_width  = max_w;
-            *out_height = CALC_HEIGHT_FROM_WIDTH(max_w);
-        }
-
-        return;
-    }
+    return;
+  }
 
 #undef CALC_WIDTH_FROM_HEIGHT
 #undef CALC_HEIGHT_FROM_WIDTH

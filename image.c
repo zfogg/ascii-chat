@@ -224,7 +224,7 @@ char *image_print_colored(const image_t *p) {
           fg_r = fg_g = fg_b = 0;
         } else { // Bright background, use white text
           fg_r = fg_g = fg_b = 255;
-}
+        }
 
         const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
         const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
