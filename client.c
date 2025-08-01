@@ -67,8 +67,21 @@ static void shutdown_client() {
       audio_stop_playback(&g_audio_context);
     }
 
+    // Give thread a moment to exit gracefully
+    usleep(100000); // 100ms
+    
+    // Force close socket to break any blocking recv() calls
+    if (sockfd > 0) {
+      close(sockfd);
+      sockfd = 0;
+    }
+    
     // Wait for thread to exit
-    pthread_join(g_data_thread, NULL);
+    int join_result = pthread_join(g_data_thread, NULL);
+    if (join_result != 0) {
+      log_error("Data thread join failed: %d", join_result);
+    }
+    
     g_data_thread_created = false;
 
     if (opt_audio_enabled) {
@@ -78,8 +91,8 @@ static void shutdown_client() {
   }
 
   ascii_write_destroy();
-  log_destroy();
   log_info("Client shutdown complete");
+  log_destroy(); // Destroy logging last
 }
 
 static void sigint_handler(int sigint) {
@@ -156,7 +169,6 @@ static void maybe_size_update(unsigned short width, unsigned short height) {
     last_frame_width = width;
     last_frame_height = height;
     log_info("Server updated frame size to: %ux%u", width, height);
-    printf("Terminal size changed to: %ux%u\n", width, height);
   }
 }
 
@@ -263,7 +275,9 @@ static void handle_video_packet(const void *data, size_t len) {
 static void *data_reception_thread_func(void *arg) {
   (void)arg;
 
-  log_info("Data reception thread started");
+#ifdef DEBUG_THREADS
+  log_debug("Data reception thread started");
+#endif
 
   while (!g_should_exit) {
     if (sockfd == 0) {
@@ -311,7 +325,9 @@ static void *data_reception_thread_func(void *arg) {
     usleep(1 * 1000);
   }
 
-  log_info("Data reception thread stopped");
+#ifdef DEBUG_THREADS
+  log_debug("Data reception thread stopped");
+#endif
   g_data_thread_exited = true;
   return NULL;
 }
@@ -437,7 +453,6 @@ int main(int argc, char *argv[]) {
         continue;
       } else {
         g_data_thread_created = true;
-        log_info("Data reception thread started");
       }
 
       g_first_connection = false;

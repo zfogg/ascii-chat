@@ -1,5 +1,6 @@
 #include "network.h"
 #include "common.h"
+#include "compression.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
@@ -455,11 +456,62 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     return -1;
   }
 
+  // Validate packet type and size constraints
+  switch (pkt_type) {
+    case PACKET_TYPE_VIDEO_HEADER:
+      if (pkt_len != sizeof(compressed_frame_header_t)) {
+        log_error("Invalid video header packet size: %u, expected %zu", pkt_len, sizeof(compressed_frame_header_t));
+        return -1;
+      }
+      break;
+    case PACKET_TYPE_VIDEO:
+      if (pkt_len == 0 || pkt_len > MAX_PACKET_SIZE - 1024) { // Leave room for headers
+        log_error("Invalid video packet size: %u", pkt_len);
+        return -1;
+      }
+      break;
+    case PACKET_TYPE_AUDIO:
+      if (pkt_len == 0 || pkt_len > AUDIO_SAMPLES_PER_PACKET * sizeof(float) * 2) { // Max stereo samples
+        log_error("Invalid audio packet size: %u", pkt_len);
+        return -1;
+      }
+      break;
+    case PACKET_TYPE_SIZE:
+      if (pkt_len != 4) { // width + height as uint16_t each
+        log_error("Invalid size packet size: %u, expected 4", pkt_len);
+        return -1;
+      }
+      break;
+    case PACKET_TYPE_PING:
+    case PACKET_TYPE_PONG:
+      if (pkt_len > 64) { // Ping/pong shouldn't be large
+        log_error("Invalid ping/pong packet size: %u", pkt_len);
+        return -1;
+      }
+      break;
+    default:
+      log_error("Unknown packet type: %u", pkt_type);
+      return -1;
+  }
+
+  // Additional safety: don't allow zero-sized allocations for types that should have data
+  if (pkt_len == 0 && (pkt_type == PACKET_TYPE_VIDEO || pkt_type == PACKET_TYPE_AUDIO || 
+                       pkt_type == PACKET_TYPE_SIZE || pkt_type == PACKET_TYPE_VIDEO_HEADER)) {
+    log_error("Zero-sized packet for type that requires data: %u", pkt_type);
+    return -1;
+  }
+
   *type = (packet_type_t)pkt_type;
   *len = pkt_len;
 
   // Allocate and read payload
   if (pkt_len > 0) {
+    // Additional safety check before allocation (uint32_t max is safe)
+    if (pkt_len > UINT32_MAX / 2) {
+      log_error("Packet size too large for safe allocation: %u", pkt_len);
+      return -1;
+    }
+    
     SAFE_MALLOC(*data, pkt_len, void *);
     if (!*data) {
       log_error("Failed to allocate %u bytes for packet payload", pkt_len);
