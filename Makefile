@@ -201,6 +201,12 @@ format-check:
 		exit 1; \
 	fi
 
+# Run bear to generate a compile_commands.json file
+compile_commands.json: Makefile $(OBJS)
+	@echo "Running bear to generate compile_commands.json..."
+	@bear -- make clean debug
+	@echo "Bear complete!"
+
 # =============================================================================
 # Dependencies
 # =============================================================================

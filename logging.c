@@ -252,13 +252,10 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     log_file = stderr;
   } else {
     log_file = fdopen(g_log.file, "a");
-    if (!log_file) {
-      log_file = stderr;
-    }
   }
 
   /* Print to file (no colors) */
-  if (g_log.file && g_log.file != STDERR_FILENO && log_file != stderr) {
+  if (log_file && g_log.file && g_log.file != STDERR_FILENO && log_file != stderr) {
     int written = fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
