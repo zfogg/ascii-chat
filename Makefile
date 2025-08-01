@@ -24,8 +24,10 @@ CXXSTD := -std=c++23
 
 # Base flags
 BASE_FLAGS := -Wall -Wextra
-CFLAGS   += $(BASE_FLAGS)
-CXXFLAGS += $(BASE_FLAGS)
+# Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
+FEATURE_FLAGS := -D_GNU_SOURCE
+CFLAGS   += $(BASE_FLAGS) $(FEATURE_FLAGS)
+CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
