@@ -120,8 +120,7 @@ jobs:
 
     - name: Build release
       run: |
-        make clean CSTD=-std=c2x
-        make release CSTD=-std=c2x
+        make CSTD=c2x CXXSTD=c++2x clean release
 
     - name: Create release package
       run: |
