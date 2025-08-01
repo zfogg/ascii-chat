@@ -31,7 +31,6 @@ jobs:
         brew install opencv@4 jpeg-turbo pkg-config
 
     - name: Build project (${{ matrix.build_type }})
-      env:
       run: |
         make clean CSTD=-std=c2x
         make ${{ matrix.build_type }}
@@ -41,7 +40,7 @@ jobs:
         # Test that binaries exist and can show help
         ./bin/server --help
         ./bin/client --help
-        
+
         # Test that binaries have correct permissions
         test -x ./bin/server
         test -x ./bin/client
@@ -58,7 +57,7 @@ jobs:
 
   static-analysis:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -84,7 +83,7 @@ jobs:
 
   format-check:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -98,3 +97,4 @@ jobs:
       run: |
         # Check if code follows consistent formatting
         make format-check CSTD=-std=c2x
+
