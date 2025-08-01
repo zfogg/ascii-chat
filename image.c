@@ -8,7 +8,6 @@
 #include <jpeglib.h>
 
 #include "ascii.h"
-#include "aspect_ratio.h"
 #include "image.h"
 #include "options.h"
 #include "round.h"
