@@ -4,22 +4,22 @@ CompileFlags:
     - -std=c23
     - -std=c++23
     - -stdlib=libc++
-    
+
     # Warning flags
     - -Wall
     - -Wextra
-    
+
     # Include paths
     - -I.
     - -Iext
     - -Iext/fmemopen
-    
+
     # OpenCV and libjpeg flags (these will be resolved by pkg-config)
     - -I/opt/homebrew/include/opencv4
-    - -I/opt/homebrew/include/libjpeg-turbo
+    - -I/opt/homebrew/opt/jpeg-turbo/include
     - -I/opt/homebrew/include
     - -I/usr/local/include
-    
+
     # System includes
     - -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
     - -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1
@@ -81,4 +81,4 @@ Format:
   SpacesInCStyleCastParentheses: false
   SpacesInParentheses: false
   SpacesInSquareBrackets: false
-  Standard: c++23 
+  Standard: c++23
