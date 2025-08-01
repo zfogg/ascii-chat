@@ -133,8 +133,6 @@ clean:
 		find $(BIN_DIR) -mindepth 1 -type f -not -iname '.gitkeep' -delete; \
 		echo "  - Removed binaries"; \
 	fi
-	@rm -f compile_commands.json
-	@echo "  - Removed compile_commands.json"
 	@echo "Clean complete!"
 
 # Show help information
