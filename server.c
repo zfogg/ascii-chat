@@ -168,6 +168,9 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
   // Update global dimensions
   opt_width = width;
   opt_height = height;
+  // Mark these dimensions as "auto" so aspect_ratio() will treat them as limits
+  auto_width = 1;
+  auto_height = 1;
 
   // Clear any existing frames for new size but reuse existing buffer memory
   if (g_frame_buffer && g_frame_buffer->rb) {
