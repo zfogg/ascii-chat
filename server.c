@@ -271,17 +271,21 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
              width, height, required_size, 
              g_frame_buffer ? g_frame_buffer->max_frame_size : 0);
     
-    // Destroy old buffer
-    if (g_frame_buffer) {
-      framebuffer_destroy(g_frame_buffer);
+    // Create new buffer first to minimize the NULL window
+    framebuffer_t *new_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, required_size);
+    if (!new_buffer) {
+      pthread_mutex_unlock(&g_framebuffer_mutex);
+      log_fatal("Failed to create new frame buffer for size %ux%u", width, height);
+      exit(ASCIICHAT_ERR_MALLOC);
     }
     
-    // Create new buffer with correct size
-    g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, required_size);
-    if (!g_frame_buffer) {
-      pthread_mutex_unlock(&g_framebuffer_mutex);
-      log_fatal("Failed to recreate frame buffer for size %ux%u", width, height);
-      exit(ASCIICHAT_ERR_MALLOC);
+    // Atomically swap buffers to minimize race window
+    framebuffer_t *old_buffer = g_frame_buffer;
+    g_frame_buffer = new_buffer;
+    
+    // Destroy old buffer after swap
+    if (old_buffer) {
+      framebuffer_destroy(old_buffer);
     }
   } else {
     // Buffer is large enough, just clear existing frames
@@ -597,11 +601,13 @@ int main(int argc, char *argv[]) {
            g_stats.frames_dropped);
   pthread_mutex_unlock(&g_stats_mutex);
 
-  // Destroy mutexes
+  printf("Server shutdown complete.\n");
+  
+  // Destroy mutexes (do this before log_destroy in case logging uses them)
+  pthread_mutex_destroy(&g_stats_mutex);
   pthread_mutex_destroy(&g_socket_mutex);
   pthread_mutex_destroy(&g_framebuffer_mutex);
 
-  printf("Server shutdown complete.\n");
   log_destroy();
   return 0;
 }
