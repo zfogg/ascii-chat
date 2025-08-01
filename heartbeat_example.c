@@ -70,7 +70,8 @@ void handle_incoming_message(char *buffer, int length) {
 // Add heartbeat monitoring to client thread:
 void *client_handler_thread_with_heartbeat(void *arg) {
   client_info_t *client = (client_info_t *)arg;
-  char *frame_buffer = malloc(FRAME_BUFFER_SIZE_FINAL);
+  char *frame_buffer;
+  SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
   time_t last_heartbeat = time(NULL);
 
   while (!g_should_exit && client->active) {
