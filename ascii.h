@@ -18,6 +18,10 @@ void ascii_write_destroy(void);
 char *rgb_to_ansi_fg(int r, int g, int b);
 char *rgb_to_ansi_bg(int r, int g, int b);
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
+
+// Utility to add leading spaces (left-padding) to each line of a frame.
+// Caller owns the returned buffer and must free it with free().
+char *ascii_pad_frame(const char *frame, size_t pad);
 char *get_lum_palette(void);
 
 /*static char *from_jpeg(FILE *);*/
