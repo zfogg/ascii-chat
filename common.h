@@ -26,6 +26,8 @@ typedef enum {
   ASCIICHAT_ERR_TERMINAL = -9,
   ASCIICHAT_ERR_THREAD = -10,
   ASCIICHAT_ERR_AUDIO = -11,
+  ASCIICHAT_ERR_BUFFER_ACCESS = -12,
+  ASCIICHAT_ERR_BUFFER_OVERFLOW = -13,
 } asciichat_error_t;
 
 /* Error handling */
