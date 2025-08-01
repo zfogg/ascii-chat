@@ -38,6 +38,8 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
     compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
                                         .compressed_size = (uint32_t)compressed_size,
                                         .original_size = (uint32_t)frame_size,
+                                        .width = opt_width,
+                                        .height = opt_height,
                                         .checksum = calculate_crc32(frame_data, frame_size)};
 
     // Send header
@@ -63,6 +65,8 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
     compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
                                         .compressed_size = 0, // 0 indicates uncompressed
                                         .original_size = (uint32_t)frame_size,
+                                        .width = opt_width,
+                                        .height = opt_height,
                                         .checksum = calculate_crc32(frame_data, frame_size)};
 
     if (send_with_timeout(sockfd, &header, sizeof(header), SEND_TIMEOUT) != sizeof(header)) {
@@ -99,7 +103,7 @@ static ssize_t recv_all_with_timeout(int sockfd, void *buf, size_t len, int time
   return (ssize_t)total_received;
 }
 
-ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size) {
+ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size, compressed_frame_header_t *out_header) {
   // Receive header (exactly sizeof(header) bytes)
   compressed_frame_header_t header;
   ssize_t header_size;
@@ -107,6 +111,7 @@ ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size) {
   if (header_size != (ssize_t)sizeof(header)) {
     return header_size; // -1 on error/timeout, otherwise unexpected partial read
   }
+  *out_header = header;
 
   // Validate magic number
   if (header.magic != COMPRESSION_FRAME_MAGIC) {
