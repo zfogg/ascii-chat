@@ -187,6 +187,14 @@ int main(int argc, char *argv[]) {
         usleep(1000 * 1000); // 1 second delay then read the socket again
         continue;
       }
+      if (header.width != last_frame_width || header.height != last_frame_height) {
+        // If we get ever a frame of a different size, our terminal might have
+        // gotten smaller in width, so we were printing to an area that we now
+        // won't be. There will be ascii in that area to clear.
+        console_clear();
+        last_frame_width = header.width;
+        last_frame_height = header.height;
+      }
       ascii_write(recvBuff);
       free(recvBuff);
       recvBuff = NULL;
