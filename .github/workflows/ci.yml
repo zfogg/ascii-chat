@@ -32,7 +32,7 @@ jobs:
     - name: Build project (${{ matrix.build_type }}) (macOS)
       if: runner.os == 'macOS'
       run: |
-        make CSTD=c2x CXXSTD=c++2x clean ${{ matrix.build_type }}
+        make CSTD=c2x CXXSTD=c++2b clean ${{ matrix.build_type }}
     - name: Build project (${{ matrix.build_type }}) (Linux)
       if: runner.os == 'Linux'
       run: |
