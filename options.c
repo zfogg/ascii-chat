@@ -25,6 +25,9 @@ unsigned short int opt_color_output = 0;
 
 unsigned short int opt_background_color = 0;
 
+// Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
+unsigned short int opt_stretch = 0;
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;
@@ -58,6 +61,7 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"webcam-flip", optional_argument, NULL, 'f'},
                                        {"color", no_argument, NULL, 'C'},
                                        {"background-color", no_argument, NULL, 'b'},
+                                       {"stretch", no_argument, NULL, 's'},
                                        {"help", optional_argument, NULL, 'h'},
                                        {0, 0, 0, 0}};
 
@@ -108,51 +112,24 @@ void update_dimensions_for_full_height(void) {
   }
 }
 
-void recalculate_aspect_ratio_on_resize(void) {
+void update_dimensions_to_terminal_size(void) {
   unsigned short int term_width, term_height;
-
   // Get current terminal size
   if (get_terminal_size(&term_width, &term_height) == 0) {
-    // If both dimensions are auto and we have image dimensions, calculate
-    // aspect ratio
-    if (last_image_width > 0 && last_image_height > 0) {
-      // Calculate both possible approaches and choose the one that fits
-      unsigned short int width_based_height, height_based_width;
-
-      // Approach 1: Set height to terminal height, calculate width
-      opt_height = term_height;
-      aspect_ratio(last_image_width, last_image_height);
-      height_based_width = opt_width;
-
-      // Approach 2: Set width to terminal width, calculate height
+    if (auto_width) {
       opt_width = term_width;
-      aspect_ratio(last_image_width, last_image_height);
-      width_based_height = opt_height;
-
-      // Choose the approach that fits better (prioritize height fitting)
-      if (height_based_width <= term_width) {
-        // Height-based approach fits
-        opt_height = term_height;
-        opt_width = height_based_width;
-      } else {
-        // Width-based approach fits
-        opt_width = term_width;
-        opt_height = width_based_height;
-      }
-    } else if (auto_width && auto_height) {
-      // If no image loaded but both dimensions are auto, use terminal
-      // dimensions
+    }
+    if (auto_height) {
       opt_height = term_height;
-      opt_width = term_width;
     }
   }
 }
 
 void options_init(int argc, char **argv) {
-  recalculate_aspect_ratio_on_resize();
+  update_dimensions_to_terminal_size();
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f:Cbh", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::Cbsh", long_options, &index);
     if (c == -1)
       break;
 
@@ -195,6 +172,10 @@ void options_init(int argc, char **argv) {
       opt_color_output = 1;
       break;
 
+    case 's':
+      opt_stretch = 1;
+      break;
+
     case 'b':
       opt_background_color = 1;
       break;
@@ -232,5 +213,7 @@ void usage(FILE *desc /* stdout|stderr*/) {
                 "image (usually desirable)\n");
   fprintf(desc, "\t\t -C --color        (server|client) \t enable colored "
                 "ASCII output\n");
+  fprintf(desc, "\t\t -b --background-color (server|client) \t enable background color for ASCII output\n");
+  fprintf(desc, "\t\t -s --stretch          (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
   fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }

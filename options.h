@@ -18,6 +18,9 @@ extern unsigned short int opt_color_output;
 
 extern unsigned short int opt_background_color;
 
+// If non-zero, allow image to stretch or shrink without preserving aspect ratio
+extern unsigned short int opt_stretch;
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 extern unsigned short int last_image_width, last_image_height;
@@ -36,4 +39,4 @@ void usage(FILE *out_stream);
 // Terminal size detection functions
 int get_terminal_size(unsigned short int *width, unsigned short int *height);
 void update_dimensions_for_full_height(void);
-void recalculate_aspect_ratio_on_resize(void);
+void update_dimensions_to_terminal_size(void);
