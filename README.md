@@ -37,7 +37,7 @@ Check the Makefile to see how it works.
 
 If you need compile_commands.json for clang-based tools, check out `bear`:
 ```bash
-brew install bear
+brew install bear # or `apt-get install bear` or `yay -S bear`
 make compile_commands.json
 ls compile_commands.json
 
