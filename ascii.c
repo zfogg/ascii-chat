@@ -94,11 +94,11 @@ char *ascii_read(void) {
     log_error("Failed to convert image to ASCII");
   }
 
-  char *ascii_width_padded = ascii_pad_frame(ascii, pad_width);
+  char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
   free(ascii);
 
   // Apply vertical centering (height padding)
-  char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height, opt_width);
+  char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   free(ascii_width_padded);
 
   image_destroy(original);
@@ -169,7 +169,7 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
  *   on success, or NULL if either `frame` is NULL or a memory allocation
  *   fails.
  */
-char *ascii_pad_frame(const char *frame, size_t pad) {
+char *ascii_pad_frame_width(const char *frame, size_t pad) {
   if (!frame) {
     return NULL;
   }
@@ -245,7 +245,7 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
  *   A newly allocated, null-terminated string with vertical padding,
  *   or NULL if frame is NULL or memory allocation fails.
  */
-char *ascii_pad_frame_height(const char *frame, size_t pad_top, size_t frame_width) {
+char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   if (!frame) {
     return NULL;
   }
