@@ -18,6 +18,8 @@ extern unsigned short int opt_color_output;
 
 extern unsigned short int opt_background_color;
 
+extern unsigned short int opt_audio_enabled;
+
 // If non-zero, allow image to stretch or shrink without preserving aspect ratio
 extern unsigned short int opt_stretch;
 

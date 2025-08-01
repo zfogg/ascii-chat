@@ -106,33 +106,12 @@ asciichat_error_t ascii_write(const char *frame) {
     return ASCIICHAT_ERR_INVALID_PARAM;
   }
 
-  const char *current = frame;
-  const char *segment_start = frame;
+  cursor_reset();
 
-  while (*current != 0) {
-    if (*current == ASCII_DELIMITER) {
-      // Output the segment before this tab
-      size_t len = current - segment_start;
-      if (len > 0) {
-        if (fwrite(segment_start, 1, len, stdout) != len) {
-          log_error("Failed to write ASCII frame segment");
-          return ASCIICHAT_ERR_TERMINAL;
-        }
-      }
-
-      cursor_reset();
-      segment_start = current + 1; // Next segment starts after tab
-    }
-    current++;
-  }
-
-  // Output the final segment
-  size_t remaining = current - segment_start;
-  if (remaining > 0) {
-    if (fwrite(segment_start, 1, remaining, stdout) != remaining) {
-      log_error("Failed to write final ASCII frame segment");
-      return ASCIICHAT_ERR_TERMINAL;
-    }
+  size_t frame_len = strlen(frame);
+  if (fwrite(frame, 1, frame_len, stdout) != frame_len) {
+    log_error("Failed to write ASCII frame");
+    return ASCIICHAT_ERR_TERMINAL;
   }
 
   return ASCIICHAT_OK;
@@ -174,9 +153,7 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
  *
  * Parameters:
  *   frame      The original, null-terminated ASCII frame. It is expected to
- *              contain `\n` at the end of every visual row and to end with
- *              the special delimiter character (ASCII_DELIMITER) followed by
- *              a null terminator.
+ *              contain `\n` at the end of every visual row.
  *   pad        How many space characters to add in front of every visual row.
  *
  * Returns:
@@ -200,19 +177,19 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
   }
 
   /* -------------------------------------------------------------------------
-   * First pass: count how many visual rows we have (lines terminated by '\n')
-   * before the delimiter so we can determine the final buffer size.
+   * Count how many visual rows we have (lines terminated by '\n')
+   * to determine the final buffer size.
    * ----------------------------------------------------------------------- */
   size_t line_count = 1; // There is always at least the first line
   const char *p = frame;
-  while (*p && *p != ASCII_DELIMITER) {
+  while (*p) {
     if (*p == '\n') {
       line_count++;
     }
     p++;
   }
 
-  /* Total length of the source including delimiter and null terminator */
+  /* Total length of the source plus padding */
   const size_t src_len = strlen(frame);
   const size_t extra = line_count * pad;
   const size_t dst_len = src_len + extra;
@@ -221,18 +198,15 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
   SAFE_MALLOC(dst, dst_len + 1, char *);
 
   /* -------------------------------------------------------------------------
-   * Second pass: build the padded frame.
+   * Build the padded frame.
    * ----------------------------------------------------------------------- */
   bool at_line_start = true;
   const char *src = frame;
   char *out = dst;
 
   while (*src) {
-    if (at_line_start && *src != ASCII_DELIMITER) {
-      /* Insert the requested amount of spaces in front of every visual row.
-       * The delimiter character represents the end-of-frame marker and must
-       * never be preceded by padding because it is not rendered.
-       */
+    if (at_line_start) {
+      /* Insert the requested amount of spaces in front of every visual row. */
       memset(out, ' ', pad);
       out += pad;
       at_line_start = false;

@@ -9,7 +9,7 @@ CC  := clang
 CXX := clang++
 
 # Package dependencies
-PKG_CONFIG_LIBS := opencv4 libjpeg zlib
+PKG_CONFIG_LIBS := opencv4 libjpeg zlib portaudio-2.0
 
 # Directories
 BIN_DIR  := bin
