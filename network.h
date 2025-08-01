@@ -32,8 +32,6 @@ const char *network_error_string(int error_code);
 int send_size_message(int sockfd, unsigned short width, unsigned short height);
 int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 
-#endif // NETWORK_H
-
 /* ============================================================================
  * Protocol Definitions
  * ============================================================================
@@ -94,3 +92,6 @@ int send_video_header_packet(int sockfd, const void *header_data, size_t header_
 int send_video_packet(int sockfd, const void *frame_data, size_t frame_len);
 int send_audio_packet(int sockfd, const float *samples, int num_samples);
 int send_size_packet(int sockfd, unsigned short width, unsigned short height);
+
+
+#endif // NETWORK_H
