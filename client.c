@@ -113,7 +113,8 @@ int main(int argc, char *argv[]) {
 
       if (reconnect_attempt > 0) {
         float delay = get_reconnect_delay(reconnect_attempt);
-        log_info("Reconnection attempt #%d to %s:%d in %.2f seconds...", reconnect_attempt, address, port, delay / 1000 / 1000);
+        log_info("Reconnection attempt #%d to %s:%d in %.2f seconds...", reconnect_attempt, address, port,
+                 delay / 1000 / 1000);
         usleep(delay);
       } else {
         log_info("Connecting to %s:%d", address, port);
@@ -175,8 +176,7 @@ int main(int argc, char *argv[]) {
 
     // Frame receiving loop - continue until connection breaks or shutdown requested
     size_t frame_size;
-    while (!g_should_exit &&
-           0 < (read_result = recv_compressed_frame(sockfd, &recvBuff, &frame_size))) {
+    while (!g_should_exit && 0 < (read_result = recv_compressed_frame(sockfd, &recvBuff, &frame_size))) {
       recvBuff[frame_size] = '\0'; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
