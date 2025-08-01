@@ -74,8 +74,7 @@ static void rotate_log_if_needed(void) {
 
     /* Skip to next line boundary to avoid partial lines */
     char c;
-    ssize_t read_result;
-    while ((read_result = read(read_file, &c, 1)) > 0 && c != '\n') {
+    while (read(read_file, &c, 1) > 0 && c != '\n') {
       /* Skip characters until newline */
     }
 
@@ -272,7 +271,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
     fflush(log_file);
-  } else if (log_file == stderr) {
+  } else if (log_file == stderr && log_file != NULL) {
     fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
     va_list args;
