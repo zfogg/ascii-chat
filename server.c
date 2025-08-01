@@ -34,6 +34,7 @@ static bool g_audio_thread_created = false;
 static volatile bool g_audio_send_failed = false;
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_framebuffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 static audio_context_t g_audio_context = {0};
 
 /* Performance statistics */
@@ -119,8 +120,10 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Try to add frame to buffer
-    bool buffered = framebuffer_write_frame(g_frame_buffer, frame);
+    // Try to add frame to buffer (with mutex protection)
+    pthread_mutex_lock(&g_framebuffer_mutex);
+    bool buffered = g_frame_buffer ? framebuffer_write_frame(g_frame_buffer, frame) : false;
+    pthread_mutex_unlock(&g_framebuffer_mutex);
 
     pthread_mutex_lock(&g_stats_mutex);
     g_stats.frames_captured++;
@@ -251,12 +254,42 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
   auto_width = 1;
   auto_height = 1;
 
-  // Clear any existing frames for new size but reuse existing buffer memory
-  if (g_frame_buffer && g_frame_buffer->rb) {
-    ringbuffer_clear(g_frame_buffer->rb);
+  // Calculate required buffer size for this client size
+  size_t required_size = FRAME_BUFFER_SIZE_BASE(width, height) * 3 / 2;
+  if (required_size < FRAME_BUFFER_SIZE_MIN) {
+    required_size = FRAME_BUFFER_SIZE_MIN;
+  } else if (required_size > FRAME_BUFFER_SIZE_MAX) {
+    required_size = FRAME_BUFFER_SIZE_MAX;
   }
 
-  log_info("Adjusted frame generation for client size: %ux%u (buffer reused)", width, height);
+  // Lock framebuffer access to prevent race conditions with capture thread
+  pthread_mutex_lock(&g_framebuffer_mutex);
+  
+  // Check if we need to recreate the framebuffer
+  if (!g_frame_buffer || g_frame_buffer->max_frame_size < required_size) {
+    log_info("Recreating framebuffer for client size %ux%u (need %zu bytes, had %zu)", 
+             width, height, required_size, 
+             g_frame_buffer ? g_frame_buffer->max_frame_size : 0);
+    
+    // Destroy old buffer
+    if (g_frame_buffer) {
+      framebuffer_destroy(g_frame_buffer);
+    }
+    
+    // Create new buffer with correct size
+    g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, required_size);
+    if (!g_frame_buffer) {
+      pthread_mutex_unlock(&g_framebuffer_mutex);
+      log_fatal("Failed to recreate frame buffer for size %ux%u", width, height);
+      exit(ASCIICHAT_ERR_MALLOC);
+    }
+  } else {
+    // Buffer is large enough, just clear existing frames
+    ringbuffer_clear(g_frame_buffer->rb);
+    log_info("Adjusted frame generation for client size: %ux%u (buffer reused)", width, height);
+  }
+  
+  pthread_mutex_unlock(&g_framebuffer_mutex);
 }
 
 /* ============================================================================
@@ -289,14 +322,14 @@ int main(int argc, char *argv[]) {
     exit(ASCIICHAT_OK);
   }
 
-  // Create frame buffer (more capacity for colored mode to handle frame size
-  // variations)
-  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_FINAL);
+  // Create initial frame buffer with minimum size - will be resized when client connects
+  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_MIN);
   if (!g_frame_buffer) {
-    log_fatal("Failed to create frame buffer");
+    log_fatal("Failed to create initial frame buffer");
     ascii_read_destroy();
     exit(ASCIICHAT_ERR_MALLOC);
   }
+  log_info("Created initial framebuffer with %zu bytes (will resize for client)", FRAME_BUFFER_SIZE_MIN);
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
@@ -465,8 +498,12 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      // Try to get a frame from buffer
-      if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
+      // Try to get a frame from buffer (with mutex protection)
+      pthread_mutex_lock(&g_framebuffer_mutex);
+      bool frame_available = g_frame_buffer ? framebuffer_read_frame(g_frame_buffer, frame_buffer) : false;
+      pthread_mutex_unlock(&g_framebuffer_mutex);
+      
+      if (!frame_available) {
         // No frames available, wait a bit
         usleep(1000); // 1ms
         continue;
@@ -503,8 +540,11 @@ int main(int argc, char *argv[]) {
 
       if (stats_elapsed >= 10000) { // Every 10 seconds
         pthread_mutex_lock(&g_stats_mutex);
+        pthread_mutex_lock(&g_framebuffer_mutex);
+        size_t buffer_size = g_frame_buffer ? ringbuffer_size(g_frame_buffer->rb) : 0;
+        pthread_mutex_unlock(&g_framebuffer_mutex);
         log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", g_stats.frames_captured,
-                 g_stats.frames_sent, g_stats.frames_dropped, ringbuffer_size(g_frame_buffer->rb));
+                 g_stats.frames_sent, g_stats.frames_dropped, buffer_size);
         pthread_mutex_unlock(&g_stats_mutex);
         last_stats_time = current_time;
       }
@@ -541,7 +581,13 @@ int main(int argc, char *argv[]) {
   }
 
   // Cleanup resources
-  framebuffer_destroy(g_frame_buffer);
+  pthread_mutex_lock(&g_framebuffer_mutex);
+  if (g_frame_buffer) {
+    framebuffer_destroy(g_frame_buffer);
+    g_frame_buffer = NULL;
+  }
+  pthread_mutex_unlock(&g_framebuffer_mutex);
+  
   ascii_read_destroy();
   close(listenfd);
 
@@ -553,6 +599,7 @@ int main(int argc, char *argv[]) {
 
   // Destroy mutexes
   pthread_mutex_destroy(&g_socket_mutex);
+  pthread_mutex_destroy(&g_framebuffer_mutex);
 
   printf("Server shutdown complete.\n");
   log_destroy();
