@@ -1,9 +1,7 @@
-#include <opencv2/opencv.hpp>
-
 #include <cstdio>
 #include <jpeglib.h>
+#include <opencv2/opencv.hpp>
 
-#include "ext/fmemopen/fmemopen.h"
 #include "options.h"
 #include "webcam.hpp"
 
