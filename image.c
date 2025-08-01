@@ -159,7 +159,7 @@ char *image_print(const image_t *p) {
   const unsigned short int *blue_lut = BLUE;
 
   char *lines;
-  SAFE_MALLOC(lines, (len + 2) * sizeof(char), char *);
+  SAFE_MALLOC(lines, (len + 2 - 1) * sizeof(char), char *);
 
   lines[len] = ASCII_DELIMITER;
   lines[len + 1] = '\0';
@@ -172,7 +172,9 @@ char *image_print(const image_t *p) {
       const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
       lines[row_offset + x] = luminance_palette[luminance];
     }
-    lines[row_offset + w - 1] = '\n';
+    if (y != h - 1) {
+      lines[row_offset + w - 1] = '\n';
+    }
   }
 
   return lines;
@@ -191,7 +193,7 @@ char *image_print_colored(const image_t *p) {
   const int h = p->h;
   const int w = p->w;
 
-  size_t lines_size = FRAME_BUFFER_SIZE_FINAL * sizeof(char);
+  size_t lines_size = (FRAME_BUFFER_SIZE_FINAL - 1) * sizeof(char);
   char *lines;
   SAFE_MALLOC(lines, lines_size, char *);
 
@@ -239,10 +241,12 @@ char *image_print_colored(const image_t *p) {
       }
     }
 
-    // Add newline and reset color at end of each row
-    const size_t operation_size = 4 + 1 + 1; // 4 for color reset + newline + null terminator
-    const int written = snprintf(current_pos, operation_size, "\033[0m\n");
-    current_pos += written;
+    // Add reset sequence; newline only when this is not the last row
+    memcpy(current_pos, "\033[0m", 4);
+    current_pos += 4;
+    if (y != h - 1) {
+      *current_pos++ = '\n';
+    }
   }
 
   // Add ASCII delimiter, and null terminator making it a valid C string.

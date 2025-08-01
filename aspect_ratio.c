@@ -31,7 +31,7 @@
  *
  * jpeg_w, jpeg_h  —— pixel dimensions of the captured frame
  */
-void aspect_ratio(const int jpeg_w, const int jpeg_h)
+void aspect_ratio(const int jpeg_w, const int jpeg_h, ssize_t *out_width, ssize_t *out_height)
 {
     // If the user asked to stretch, do nothing – the caller will use whatever
     // dimensions are currently in opt_width/opt_height.
@@ -53,18 +53,18 @@ void aspect_ratio(const int jpeg_w, const int jpeg_h)
 
     if (auto_width && !auto_height) {
         // Height fixed, width is derived.
-        opt_width  = CALC_WIDTH_FROM_HEIGHT(opt_height);
-        if (opt_width == 0) {
-            opt_width = 1;   // safeguard against zero
+        *out_width  = CALC_WIDTH_FROM_HEIGHT(opt_height);
+        if (*out_width == 0) {
+            *out_width = 1;   // safeguard against zero
         }
         return;
     }
 
     if (!auto_width && auto_height) {
         // Width fixed, height is derived.
-        opt_height  = CALC_HEIGHT_FROM_WIDTH(opt_width);
-        if (opt_height == 0) {
-            opt_height = 1;
+        *out_height  = CALC_HEIGHT_FROM_WIDTH(opt_width);
+        if (*out_height == 0) {
+            *out_height = 1;
         }
         return;
     }
@@ -84,12 +84,12 @@ void aspect_ratio(const int jpeg_w, const int jpeg_h)
         int w_from_h = CALC_WIDTH_FROM_HEIGHT(max_h);
         if (w_from_h <= max_w) {
             /* Using the full height still keeps us within the width budget. */
-            opt_width  = w_from_h;
-            opt_height = max_h;
+            *out_width  = w_from_h;
+            *out_height = max_h;
         } else {
             /* Otherwise scale based on the width limit. */
-            opt_width  = max_w;
-            opt_height = CALC_HEIGHT_FROM_WIDTH(max_w);
+            *out_width  = max_w;
+            *out_height = CALC_HEIGHT_FROM_WIDTH(max_w);
         }
 
         return;
