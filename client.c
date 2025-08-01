@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <zlib.h>
 
 #include "ascii.h"
 #include "common.h"
@@ -224,7 +225,9 @@ static void handle_video_packet(const void *data, size_t len) {
       }
 
       frame_data[g_compression_header.original_size] = '\0';
+#ifdef COMPRESSION_DEBUG
       log_debug("Decompressed frame: %zu -> %u bytes", len, g_compression_header.original_size);
+#endif
     }
 
     // Verify checksum

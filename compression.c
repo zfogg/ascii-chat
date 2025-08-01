@@ -1,4 +1,6 @@
 #include <time.h>
+#include <stdint.h>
+#include <zlib.h>
 #include "compression.h"
 #include "common.h"
 #include "options.h"

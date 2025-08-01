@@ -273,7 +273,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   pthread_mutex_unlock(&g_log.mutex);
 }
 
-
 /* ============================================================================
  * Memory Debugging (Debug builds only)
  * ============================================================================
