@@ -6,10 +6,10 @@ on:
     # Optional: Only run on specific file changes
     paths:
       - "Makefile"
-      - "**/*.c"
-      - "**/*.h"
-      - "**/*.cpp"
-      - "**/*.hpp"
+      - "**.c"
+      - "**.h"
+      - "**.cpp"
+      - "**.hpp"
     # paths-ignore:
     #   - '*.md'
     #   - '.github/**'
