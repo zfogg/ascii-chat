@@ -111,13 +111,11 @@ jobs:
 
     - name: Build with format security warnings
       run: |
-        export CFLAGS="-Wformat -Wformat-security -Werror=format-security -std=c2x"
-        export CXXFLAGS="-Wformat -Wformat-security -Werror=format-security"
-        make clean CSTD=-std=c2x
-        make debug CSTD=-std=c2x
+        CFLAGS="-Wformat -Wformat-security -Werror=format-security"
+        CXXFLAGS="-Wformat -Wformat-security -Werror=format-security"
+        make CSTD=c2x CXXSTD=c++2x CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS" clean debug
 
     - name: Run static security analysis
       run: |
         # Use clang static analyzer for security issues
-        scan-build --status-bugs --exclude ext/ make clean CSTD=-std=c2x
-        scan-build --status-bugs --exclude ext/ make debug CSTD=-std=c2x
+        scan-build --status-bugs --exclude ext/ make CSTD=c2x CXXSTD=c++2x clean debug

@@ -19,8 +19,8 @@ BUILD_DIR := build
 # Compiler Flags
 # =============================================================================
 
-CSTD := -std=c23
-CXXSTD := -std=c++23
+CSTD := c23
+CXXSTD := c++23
 
 # Base flags
 BASE_FLAGS := -Wall -Wextra
@@ -35,8 +35,8 @@ CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-CFLAGS   +=  $(PKG_CFLAGS) $(CSTD)
-CXXFLAGS +=  $(PKG_CFLAGS) $(CXXSTD)
+CFLAGS   +=  $(PKG_CFLAGS) -std=$(CSTD)
+CXXFLAGS +=  $(PKG_CFLAGS) -std=$(CXXSTD)
 
 LDFLAGS := $(PKG_LDFLAGS) -lpthread
 
