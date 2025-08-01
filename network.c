@@ -117,10 +117,11 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
     timeout.tv_sec = timeout_seconds;
     timeout.tv_usec = 0;
 
-    // The first argument to select() should be set to the highest-numbered file descriptor in any of the fd_sets, plus 1.
-    // This is because select() internally checks all file descriptors from 0 up to (but not including) this value to see if they are ready.
-    // An fd_set is a data structure used by select() to represent a set of file descriptors (such as sockets or files) to be monitored for readiness (read, write, or error).
-    // In this case, sockfd is the only file descriptor in the write_fds set, so we pass sockfd + 1.
+    // The first argument to select() should be set to the highest-numbered file descriptor in any of the fd_sets,
+    // plus 1. This is because select() internally checks all file descriptors from 0 up to (but not including) this
+    // value to see if they are ready. An fd_set is a data structure used by select() to represent a set of file
+    // descriptors (such as sockets or files) to be monitored for readiness (read, write, or error). In this case,
+    // sockfd is the only file descriptor in the write_fds set, so we pass sockfd + 1.
     int result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
     if (result <= 0) {
       // Timeout or error
