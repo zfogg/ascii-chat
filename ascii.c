@@ -53,7 +53,7 @@ char *ascii_read(void) {
   // the terminal). These can be modified by aspect_ratio() if stretching is
   // disabled and one of the dimensions was left to be calculated
   // automatically.
-  ssize_t width  = opt_width;
+  ssize_t width = opt_width;
   ssize_t height = opt_height;
   aspect_ratio(original->w, original->h, &width, &height);
 
