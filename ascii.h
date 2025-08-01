@@ -28,8 +28,6 @@ char *get_lum_palette(void);
 
 #define ASCII_LUMINANCE_LEVELS 256
 
-#define ASCII_DELIMITER '\t'
-
 #define ASCII_SLEEP_NS 50000L
 
 // ANSI color codes

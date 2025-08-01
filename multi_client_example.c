@@ -25,7 +25,8 @@ static client_manager_t g_clients = {0};
 
 void *client_handler_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
-  char *frame_buffer = (char *)malloc(FRAME_BUFFER_SIZE_FINAL);
+  char *frame_buffer;
+  SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
 
   log_info("Client handler started for %s:%d", client->client_ip, client->port);
 

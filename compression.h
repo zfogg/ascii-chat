@@ -1,8 +1,6 @@
 #include <zlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "common.h"
-#include "network.h"
 
 typedef struct {
   uint32_t magic;           // COMPRESSION_FRAME_MAGIC
@@ -18,3 +16,4 @@ typedef struct {
 
 int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size);
 ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size, compressed_frame_header_t *out_header);
+uint32_t calculate_crc32(const char *data, size_t length);

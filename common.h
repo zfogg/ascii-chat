@@ -25,7 +25,11 @@ typedef enum {
   ASCIICHAT_ERR_JPEG = -8,
   ASCIICHAT_ERR_TERMINAL = -9,
   ASCIICHAT_ERR_THREAD = -10,
+  ASCIICHAT_ERR_AUDIO = -11,
 } asciichat_error_t;
+
+/* Error handling */
+const char *asciichat_error_string(asciichat_error_t error);
 
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
@@ -124,32 +128,11 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 /* Array size */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-/* ============================================================================
- * Protocol Definitions
- * ============================================================================
- */
-
-/* Size communication protocol */
-#define SIZE_MESSAGE_PREFIX "SIZE:"
-#define SIZE_MESSAGE_FORMAT "SIZE:%u,%u\n"
-#define SIZE_MESSAGE_MAX_LEN 32
-
-/* ============================================================================
- * Function Declarations
- * ============================================================================
- */
-
-/* Error handling */
-const char *asciichat_error_string(asciichat_error_t error);
-
-/* Protocol functions */
-int send_size_message(int sockfd, unsigned short width, unsigned short height);
-int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
-
 /* Logging functions */
 void log_init(const char *filename, log_level_t level);
 void log_destroy(void);
 void log_set_level(log_level_t level);
+void log_truncate_if_large(void); /* Manually truncate large log files */
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
 
 /* Logging macros */
