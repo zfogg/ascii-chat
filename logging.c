@@ -50,8 +50,8 @@ static void rotate_log_if_needed(void) {
     fclose(g_log.file);
 
     /* Open file for reading to get the tail */
-    FILE *read_file = fopen(g_log.filename, "r");
-    if (!read_file) {
+    int read_file = open(g_log.filename, O_RDONLY);
+    if (read_file < 0) {
       fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
@@ -62,8 +62,8 @@ static void rotate_log_if_needed(void) {
 
     /* Seek to position where we want to start keeping data (keep last 2MB) */
     size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
-    if (fseek(read_file, (long)(g_log.current_size - keep_size), SEEK_SET) != 0) {
-      fclose(read_file);
+    if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
+      close(read_file);
       /* Fall back to truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
       g_log.file = fdopen(fd, "a");
@@ -72,17 +72,18 @@ static void rotate_log_if_needed(void) {
     }
 
     /* Skip to next line boundary to avoid partial lines */
-    int c;
-    while ((c = fgetc(read_file)) != EOF && c != '\n') {
+    char c;
+    ssize_t read_result;
+    while ((read_result = read(read_file, &c, 1)) > 0 && c != '\n') {
       /* Skip characters until newline */
     }
 
     /* Read the tail into a temporary file */
     char temp_filename[512];
     snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
-    FILE *temp_file = fopen(temp_filename, "w");
-    if (!temp_file) {
-      fclose(read_file);
+    int temp_file = open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (temp_file < 0) {
+      close(read_file);
       /* Fall back to truncation */
       int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
       g_log.file = fdopen(fd, "a");
@@ -92,15 +93,25 @@ static void rotate_log_if_needed(void) {
 
     /* Copy tail to temp file */
     char buffer[8192];
-    size_t bytes_read;
+    ssize_t bytes_read;
     size_t new_size = 0;
-    while ((bytes_read = fread(buffer, 1, sizeof(buffer), read_file)) > 0) {
-      fwrite(buffer, 1, bytes_read, temp_file);
-      new_size += bytes_read;
+    while ((bytes_read = read(read_file, buffer, sizeof(buffer))) > 0) {
+      ssize_t written = write(temp_file, buffer, bytes_read);
+      if (written != bytes_read) {
+        close(read_file);
+        close(temp_file);
+        unlink(temp_filename);
+        /* Fall back to truncation */
+        int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+        g_log.file = fdopen(fd, "a");
+        g_log.current_size = 0;
+        return;
+      }
+      new_size += (size_t)bytes_read;
     }
 
-    fclose(read_file);
-    fclose(temp_file);
+    close(read_file);
+    close(temp_file);
 
     /* Replace original with temp file */
     if (rename(temp_filename, g_log.filename) != 0) {
