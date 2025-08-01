@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        build_type: [debug, release]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install opencv@4 jpeg-turbo pkg-config
+
+    - name: Build project (${{ matrix.build_type }})
+      env:
+      run: |
+        make clean CSTD=-std=c2x
+        make ${{ matrix.build_type }}
+
+    - name: Test basic functionality
+      run: |
+        # Test that binaries exist and can show help
+        ./bin/server --help
+        ./bin/client --help
+        
+        # Test that binaries have correct permissions
+        test -x ./bin/server
+        test -x ./bin/client
+
+    - name: Upload artifacts
+      if: matrix.build_type == 'release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ascii-chat-${{ runner.os }}-${{ matrix.build_type }}
+        path: |
+          bin/server
+          bin/client
+        retention-days: 30
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+
+    - name: Run static analysis
+      run: |
+        # Run clang-tidy on source files
+        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.c') -- $(pkg-config --cflags opencv4 libjpeg) -std=c2x
+        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.cpp') -- $(pkg-config --cflags opencv4 libjpeg) -std=c++23 -stdlib=libc++
+
+
+    - name: Check for memory leaks patterns
+      run: |
+        # Simple grep-based checks for common memory leak patterns
+        echo "Checking for potential memory leaks..."
+        ! grep -n "malloc\|calloc\|realloc" *.c | grep -v "free\|DEBUG_MEMORY"
+        echo "Memory leak check completed"
+
+  format-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format make
+
+    - name: Check code formatting
+      run: |
+        # Check if code follows consistent formatting
+        make format-check CSTD=-std=c2x

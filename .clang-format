@@ -1,0 +1,17 @@
+---
+# clang-format configuration for ascii-chat
+BasedOnStyle: LLVM
+IndentWidth: 2
+UseTab: Never
+ColumnLimit: 120
+
+# Disable include sorting to prevent jpeglib.h header order issues
+SortIncludes: Never
+
+# Additional formatting preferences
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Attach
+SpacesInParentheses: false
+SpacesInSquareBrackets: false

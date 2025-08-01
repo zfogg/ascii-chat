@@ -1,0 +1,46 @@
+# ascii-chat
+
+
+Check the README.md and the Makefile to understand this project. You'll learn 
+how to build the project and work with the server and client and understand 
+what I'm trying to build with this project.
+
+Use the Makefile and `make` to build the project and see if there are any 
+compilation errors. Do this when you make changes to the code to confirm that 
+the changes compile.
+
+There are two binaries created by this project: bin/client and bin/server. Run 
+them with `--help` to confirm that they run without errors after compiling. Be 
+sure to `make clean` as you work on the project to ensure we don't have any 
+lingering changes in object files from previous builds.
+
+Sometimes you'll want to run the server and client after making changes to see 
+if they work as expected or solve the problem I was having.
+You can run the server and client with the following commands:
+```
+./bin/server --color -p 90010 -c 1 &
+timeout 3 ./bin/client -p 90010
+```
+Notice how I use a background process and timeout. This is what I want you to 
+do, to simplify your terminal usage experience. The client will run forever if
+you connect it to the server so YOU NEED TO RUN IT WITH TIMEOUT. Don't forget
+this and run it without timeout.  Make sure to kill the server and client after
+running them. You can kill the server and client with the 
+collowing commands:
+```
+pkill -f bin/server
+pkill -f bin/client
+```
+Feel free to create and use server.log and client.log files to help you work 
+and test and debug.
+
+Linting:
+  Ignore linting errors about C++ code for .c and .h files.
+  Ignore linting errors about C code for .cpp and .hpp files.
+  My linter is setup for both C and C++ files so sometimes you see it linting 
+  C++ code as C and vice versa.
+
+Make sure to delete any log files you generate when you're done with them.
+
+Try not to delete files very much. Almost all of the time, I'll be the one to 
+delete them, even if you make them.

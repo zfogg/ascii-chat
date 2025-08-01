@@ -7,23 +7,32 @@
  * $Id: image.h 470 2006-10-12 08:13:37Z cslsublevel3org $
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <jpeglib.h>
-
+#include <stdio.h>
+#include <stdlib.h>
 
 typedef struct rgb_t {
-    JSAMPLE r, g, b;
+  JSAMPLE r, g, b;
 } rgb_t;
 
 typedef struct image_t {
-    int w, h;
-    rgb_t *pixels;
+  int w, h;
+  rgb_t *pixels;
 } image_t;
 
-image_t* image_read(FILE *);
-image_t* image_new(int, int);
+// 4K resolution
+#define IMAGE_MAX_WIDTH 3840
+#define IMAGE_MAX_HEIGHT 2160
+#define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
+
+image_t *image_read(FILE *);
+image_t *image_new(int, int);
 void image_destroy(image_t *);
 void image_clear(image_t *);
-char* image_print(const image_t *);
+char *image_print(const image_t *);
+char *image_print_colored(const image_t *);
+void quantize_color(int *r, int *g, int *b, int levels);
 void image_resize(const image_t *, image_t *);
+
+void precalc_luminance_palette(void);
+void precalc_rgb_palettes(const float, const float, const float);
