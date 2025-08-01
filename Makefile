@@ -28,17 +28,17 @@ BASE_FLAGS := -Wall -Wextra
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
 FEATURE_FLAGS := -D_GNU_SOURCE
 
-CFLAGS   += $(BASE_FLAGS) $(FEATURE_FLAGS)
-CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
+override CFLAGS   += $(BASE_FLAGS) $(FEATURE_FLAGS)
+override CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-CFLAGS   +=  $(PKG_CFLAGS) -std=$(CSTD)
-CXXFLAGS +=  $(PKG_CFLAGS) -std=$(CXXSTD)
+override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD)
+override CXXFLAGS += $(PKG_CFLAGS) -std=$(CXXSTD)
 
-LDFLAGS := $(PKG_LDFLAGS) -lpthread
+override LDFLAGS := $(PKG_LDFLAGS) -lpthread
 
 # =============================================================================
 # File Discovery
