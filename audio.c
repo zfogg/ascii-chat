@@ -84,7 +84,7 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
   // Optimize: copy in chunks instead of one sample at a time
   int write_idx = rb->write_index;
   int remaining = AUDIO_RING_BUFFER_SIZE - write_idx;
-  
+
   if (to_write <= remaining) {
     // Can copy in one chunk
     memcpy(&rb->data[write_idx], data, to_write * sizeof(float));
@@ -93,7 +93,7 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
     memcpy(&rb->data[write_idx], data, remaining * sizeof(float));
     memcpy(&rb->data[0], &data[remaining], (to_write - remaining) * sizeof(float));
   }
-  
+
   rb->write_index = (write_idx + to_write) % AUDIO_RING_BUFFER_SIZE;
 
   pthread_mutex_unlock(&rb->mutex);
@@ -112,7 +112,7 @@ int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
   // Optimize: copy in chunks instead of one sample at a time
   int read_idx = rb->read_index;
   int remaining = AUDIO_RING_BUFFER_SIZE - read_idx;
-  
+
   if (to_read <= remaining) {
     // Can copy in one chunk
     memcpy(data, &rb->data[read_idx], to_read * sizeof(float));
@@ -121,7 +121,7 @@ int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
     memcpy(data, &rb->data[read_idx], remaining * sizeof(float));
     memcpy(&data[remaining], &rb->data[0], (to_read - remaining) * sizeof(float));
   }
-  
+
   rb->read_index = (read_idx + to_read) % AUDIO_RING_BUFFER_SIZE;
 
   pthread_mutex_unlock(&rb->mutex);

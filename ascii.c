@@ -235,12 +235,12 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
 
 /**
  * Adds vertical padding (blank lines) to center a frame vertically.
- * 
+ *
  * Parameters:
  *   frame        The input ASCII frame to pad vertically.
  *   pad_top      Number of blank lines to add at the top.
  *   frame_width  Width of each line (for padding blank lines).
- * 
+ *
  * Returns:
  *   A newly allocated, null-terminated string with vertical padding,
  *   or NULL if frame is NULL or memory allocation fails.

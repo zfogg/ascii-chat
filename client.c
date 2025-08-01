@@ -69,19 +69,19 @@ static void shutdown_client() {
 
     // Give thread a moment to exit gracefully
     usleep(100000); // 100ms
-    
+
     // Force close socket to break any blocking recv() calls
     if (sockfd > 0) {
       close(sockfd);
       sockfd = 0;
     }
-    
+
     // Wait for thread to exit
     int join_result = pthread_join(g_data_thread, NULL);
     if (join_result != 0) {
       log_error("Data thread join failed: %d", join_result);
     }
-    
+
     g_data_thread_created = false;
 
     if (opt_audio_enabled) {
