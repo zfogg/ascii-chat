@@ -29,9 +29,7 @@ typedef enum {
 } asciichat_error_t;
 
 /* Error handling */
-const char *asciichat_error_string(asciichat_error_t error);
-
-const char *asciichat_error_string(asciichat_error_t error) {
+static inline const char *asciichat_error_string(asciichat_error_t error) {
   switch (error) {
   case ASCIICHAT_OK:
     return "Success";
@@ -51,10 +49,15 @@ const char *asciichat_error_string(asciichat_error_t error) {
     return "JPEG processing error";
   case ASCIICHAT_ERR_TERMINAL:
     return "Terminal error";
+  case ASCIICHAT_ERR_THREAD:
+    return "Thread error";
+  case ASCIICHAT_ERR_AUDIO:
+    return "Audio error";
   default:
     return "Unknown error";
   }
 }
+
 
 
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"

@@ -18,9 +18,9 @@ Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audi
 
 Dependencies
 ==========
-- Most people: `apt-get install clang libopencv-dev libjpeg-dev portaudio19-dev`
-- ArchLinux masterrace: `pacman -S clang opencv libjpeg-turbo portaudio`
-- macOS: `brew install opencv@4 jpeg-turbo portaudio`
+- Most people: `apt-get install clang pkg-config libopencv-dev libjpeg-dev portaudio19-dev`
+- ArchLinux masterrace: `pacman -S pkg-config clang opencv libjpeg-turbo portaudio`
+- macOS: `brew install pkg-config opencv@4 jpeg-turbo portaudio`
 
 
 Build and run
@@ -35,6 +35,12 @@ Use `make clean debug` as you edit and test code.
 
 Check the Makefile to see how it works.
 
+If you need compile_commands.json for clang-based tools, check out `bear`:
+```bash
+brew install bear
+bear -- make clean debug
+ls compile_commands.json
+```
 
 Command line flags
 =========
@@ -103,16 +109,19 @@ Audio is captured on the server and streamed to the client in real-time using Po
 
 TODO
 ==========
+- [x] Audio.
 - [x] Client should continuously attempt to reconnect
 - [ ] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
 - [x] Colorize ASCII output
 - [ ] Refactor image processing algorithms
 - [x] client reconnect logic
 - [x] terminal resize events
+- [x] A nice protocol for the thing (packets and headers).
 - [x] client requests a frame size
 - [x] Client should gracefully handle `frame width > term width`
 - [x] Client should gracefully handle `term resize` event
 - [ ] Compile to WASM/WASI and run in the browser
+- [x] Socket multiplexing.
 
 
 Notes
