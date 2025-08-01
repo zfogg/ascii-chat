@@ -113,9 +113,9 @@ jobs:
       run: |
         CFLAGS="-Wformat -Wformat-security -Werror=format-security"
         CXXFLAGS="-Wformat -Wformat-security -Werror=format-security"
-        make CSTD=c2x CXXSTD=c++2x CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS" clean debug
+        make CSTD=c2x CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS" clean debug
 
     - name: Run static security analysis
       run: |
         # Use clang static analyzer for security issues
-        scan-build --status-bugs --exclude ext/ make CSTD=c2x CXXSTD=c++2x clean debug
+        scan-build --status-bugs --exclude ext/ make CSTD=c2x clean debug
