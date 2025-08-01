@@ -27,33 +27,33 @@ image_t *image_new(int width, int height) {
     free(p);
     return NULL;
   }
-  
+
   const unsigned long w_ul = (unsigned long)width;
   const unsigned long h_ul = (unsigned long)height;
-  
+
   // Check if multiplication would overflow
   if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {
     log_error("Image dimensions too large (would overflow): %d x %d", width, height);
     free(p);
     return NULL;
   }
-  
+
   const unsigned long total_pixels = w_ul * h_ul;
-  
+
   // Check if final size calculation would overflow
   if (total_pixels > ULONG_MAX / sizeof(rgb_t)) {
     log_error("Image pixel count too large: %lu pixels", total_pixels);
     free(p);
     return NULL;
   }
-  
+
   const size_t pixels_size = total_pixels * sizeof(rgb_t);
   if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
     log_error("Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height, pixels_size);
     free(p);
     return NULL;
   }
-  
+
   SAFE_MALLOC(p->pixels, pixels_size, rgb_t *);
 
   p->w = width;
@@ -264,7 +264,7 @@ char *image_print_colored(const image_t *p) {
 
         const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
         const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
-        
+
         const int written = snprintf(current_pos, remaining, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
         if (written < 0 || (size_t)written >= remaining) {
           log_error("Buffer overflow prevented in color processing (background)");
@@ -274,7 +274,7 @@ char *image_print_colored(const image_t *p) {
 
       } else {
         const char *ascii_fg = rgb_to_ansi_fg(r, g, b);
-        
+
         const int written = snprintf(current_pos, remaining, "%s%c", ascii_fg, ascii_char);
         if (written < 0 || (size_t)written >= remaining) {
           log_error("Buffer overflow prevented in color processing (foreground)");

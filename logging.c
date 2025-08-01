@@ -134,11 +134,8 @@ static void rotate_log_if_needed(void) {
       /* Log the rotation event */
       {
         char log_msg[256];
-        int log_msg_len = snprintf(
-          log_msg, sizeof(log_msg),
-          "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
-          "1970-01-01 00:00:00.000", new_size
-        );
+        int log_msg_len = snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
+                                   "1970-01-01 00:00:00.000", new_size);
         if (log_msg_len > 0) {
           ssize_t written = write(g_log.file, log_msg, (size_t)log_msg_len);
           (void)written; // suppress unused warning

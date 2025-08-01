@@ -189,7 +189,8 @@ static void *audio_thread_func(void *arg) {
     }
 
     // Quick shutdown check without additional delay
-    if (g_should_exit) break;
+    if (g_should_exit)
+      break;
   }
 
   log_info("Audio thread stopped");
@@ -265,13 +266,12 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
 
   // Lock framebuffer access to prevent race conditions with capture thread
   pthread_mutex_lock(&g_framebuffer_mutex);
-  
+
   // Check if we need to recreate the framebuffer
   if (!g_frame_buffer || g_frame_buffer->max_frame_size < required_size) {
-    log_info("Recreating framebuffer for client size %ux%u (need %zu bytes, had %zu)", 
-             width, height, required_size, 
+    log_info("Recreating framebuffer for client size %ux%u (need %zu bytes, had %zu)", width, height, required_size,
              g_frame_buffer ? g_frame_buffer->max_frame_size : 0);
-    
+
     // Create new buffer first to minimize the NULL window
     framebuffer_t *new_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, required_size);
     if (!new_buffer) {
@@ -279,11 +279,11 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
       log_fatal("Failed to create new frame buffer for size %ux%u", width, height);
       exit(ASCIICHAT_ERR_MALLOC);
     }
-    
+
     // Atomically swap buffers to minimize race window
     framebuffer_t *old_buffer = g_frame_buffer;
     g_frame_buffer = new_buffer;
-    
+
     // Destroy old buffer after swap
     if (old_buffer) {
       framebuffer_destroy(old_buffer);
@@ -293,7 +293,7 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
     ringbuffer_clear(g_frame_buffer->rb);
     log_info("Adjusted frame generation for client size: %ux%u (buffer reused)", width, height);
   }
-  
+
   pthread_mutex_unlock(&g_framebuffer_mutex);
 }
 
@@ -507,7 +507,7 @@ int main(int argc, char *argv[]) {
       pthread_mutex_lock(&g_framebuffer_mutex);
       bool frame_available = g_frame_buffer ? framebuffer_read_frame(g_frame_buffer, frame_buffer) : false;
       pthread_mutex_unlock(&g_framebuffer_mutex);
-      
+
       if (!frame_available) {
         // No frames available, wait a bit
         usleep(1000); // 1ms
@@ -592,7 +592,7 @@ int main(int argc, char *argv[]) {
     g_frame_buffer = NULL;
   }
   pthread_mutex_unlock(&g_framebuffer_mutex);
-  
+
   ascii_read_destroy();
   close(listenfd);
 
@@ -603,7 +603,7 @@ int main(int argc, char *argv[]) {
   pthread_mutex_unlock(&g_stats_mutex);
 
   printf("Server shutdown complete.\n");
-  
+
   // Destroy mutexes (do this before log_destroy in case logging uses them)
   pthread_mutex_destroy(&g_stats_mutex);
   pthread_mutex_destroy(&g_socket_mutex);
