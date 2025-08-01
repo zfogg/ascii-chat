@@ -37,8 +37,7 @@ jobs:
 
     - name: Build for analysis
       run: |
-        make clean CSTD=-std=c2x
-        make debug CSTD=-std=c2x
+        make CSTD=c2x clean debug
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
