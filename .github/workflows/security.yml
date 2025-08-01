@@ -69,6 +69,18 @@ jobs:
           echo "libjpeg version: $jpeg_version"
         fi
 
+        # Check zlib version
+        if pkg-config --exists zlib; then
+          zlib_version=$(pkg-config --modversion zlib)
+          echo "libjpeg version: $zlib_version"
+        fi
+
+        # Check portaudio version
+        if pkg-config --exists portaudio-2.0; then
+          portaudio_version=$(pkg-config --modversion portaudio-2.0)
+          echo "portaudio version: $portaudio_version"
+        fi
+
     - name: Run basic security checks
       run: |
         echo "Checking for insecure function usage..."
