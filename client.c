@@ -322,7 +322,7 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     free(data);
-    usleep(1 * 1000);
+    // usleep(1 * 1000); // TODO: figure out if I need this. I don't think I do.
   }
 
 #ifdef DEBUG_THREADS

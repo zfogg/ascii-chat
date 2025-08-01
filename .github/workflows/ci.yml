@@ -70,7 +70,7 @@ jobs:
     - name: Run static analysis
       run: |
         # Run clang-tidy on source files
-        bear -- make clean debug
+        bear -- make CSTD=-std=c2x debug
         make CSTD=-std=c2x clang-tidy
 
 
