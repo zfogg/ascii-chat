@@ -59,10 +59,15 @@ char *ascii_read(void) {
 
   // Calculate how many leading spaces are required to centre the image inside
   // the overall width requested by the user.  Make sure the value is
-  // non-negative so we don’t end up passing a huge number to ascii_pad_frame
+  // non-negative so we don't end up passing a huge number to ascii_pad_frame
   // when width happens to exceed opt_width.
   ssize_t pad_width_ss = opt_width > width ? (opt_width - width) / 2 : 0;
   size_t pad_width = (size_t)pad_width_ss;
+
+  // Calculate how many blank lines are required to centre the image inside
+  // the overall height requested by the user.
+  ssize_t pad_height_ss = opt_height > height ? (opt_height - height) / 2 : 0;
+  size_t pad_height = (size_t)pad_height_ss;
 
   // Resize the captured frame to the aspect-correct dimensions.
   image_t *resized = image_new((int)width, (int)height);
@@ -89,9 +94,12 @@ char *ascii_read(void) {
     log_error("Failed to convert image to ASCII");
   }
 
-  char *ascii_padded = ascii_pad_frame(ascii, pad_width);
+  char *ascii_width_padded = ascii_pad_frame(ascii, pad_width);
   free(ascii);
-  // free(ascii_padded);
+
+  // Apply vertical centering (height padding)
+  char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height, opt_width);
+  free(ascii_width_padded);
 
   image_destroy(original);
   image_destroy(resized);
@@ -223,6 +231,55 @@ char *ascii_pad_frame(const char *frame, size_t pad) {
 
   *out = '\0';
   return dst;
+}
+
+/**
+ * Adds vertical padding (blank lines) to center a frame vertically.
+ * 
+ * Parameters:
+ *   frame        The input ASCII frame to pad vertically.
+ *   pad_top      Number of blank lines to add at the top.
+ *   frame_width  Width of each line (for padding blank lines).
+ * 
+ * Returns:
+ *   A newly allocated, null-terminated string with vertical padding,
+ *   or NULL if frame is NULL or memory allocation fails.
+ */
+char *ascii_pad_frame_height(const char *frame, size_t pad_top, size_t frame_width) {
+  if (!frame) {
+    return NULL;
+  }
+
+  if (pad_top == 0) {
+    // Nothing to do; return a copy because the caller knows to free() the value.
+    size_t orig_len = strlen(frame);
+    char *copy;
+    SAFE_MALLOC(copy, orig_len + 1, char *);
+    memcpy(copy, frame, orig_len + 1);
+    return copy;
+  }
+
+  // Calculate buffer size needed
+  size_t frame_len = strlen(frame);
+  size_t top_padding_len = pad_top; // Just newlines, no spaces
+  size_t total_len = top_padding_len + frame_len;
+
+  char *buffer;
+  SAFE_MALLOC(buffer, total_len + 1, char *);
+
+  char *position = buffer;
+
+  // Add top padding (blank lines - just newlines)
+  for (size_t i = 0; i < pad_top; i++) {
+    *position++ = '\n';
+  }
+
+  // Copy the original frame
+  memcpy(position, frame, frame_len);
+  position += frame_len;
+  *position = '\0';
+
+  return buffer;
 }
 
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
