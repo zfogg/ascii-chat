@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdlib>
 #include <jpeglib.h>
 #include <opencv2/opencv.hpp>
 

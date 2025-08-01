@@ -7,9 +7,9 @@
  * $Id: image.h 470 2006-10-12 08:13:37Z cslsublevel3org $
  */
 
-#include <jpeglib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <jpeglib.h>
 
 typedef struct rgb_t {
   JSAMPLE r, g, b;
