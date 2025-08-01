@@ -7,6 +7,7 @@
 #include "common.h"
 #include "image.h"
 #include "options.h"
+#include "aspect_ratio.h"
 #include "webcam.hpp"
 
 /* ============================================================================
@@ -42,6 +43,10 @@ char *ascii_read(void) {
   }
 
   image_t *original = image_read(jpeg);
+  if (original) {
+    // Adjust rendering size based on the newly discovered webcam frame size
+    // aspect_ratio(original->w, original->h);
+  }
   if (!original) {
     log_error("Failed to read JPEG image");
     fclose(jpeg);

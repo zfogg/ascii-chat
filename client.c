@@ -22,6 +22,9 @@ static volatile bool g_should_exit = false;
 static volatile bool g_first_connection = true;
 static volatile bool g_should_reconnect = false;
 
+static volatile int last_frame_width = 0;
+static volatile int last_frame_height = 0;
+
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
     log_info("Closing socket connection");
@@ -52,7 +55,7 @@ static void sigint_handler(int sigint) {
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Terminal was resized, update dimensions and recalculate aspect ratio
-  recalculate_aspect_ratio_on_resize();
+  update_dimensions_to_terminal_size();
 
   // Send new size to server if connected
   if (sockfd > 0) {
@@ -176,12 +179,21 @@ int main(int argc, char *argv[]) {
 
     // Frame receiving loop - continue until connection breaks or shutdown requested
     size_t frame_size;
-    while (!g_should_exit && 0 < (read_result = recv_compressed_frame(sockfd, &recvBuff, &frame_size))) {
+    compressed_frame_header_t header;
+    while (!g_should_exit && 0 < (read_result = recv_compressed_frame(sockfd, &recvBuff, &frame_size, &header))) {
       recvBuff[frame_size] = '\0'; // Null-terminate the received data, making it a valid C string.
       if (strcmp(recvBuff, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
         log_error("Server reported webcam failure: %s", recvBuff);
         usleep(1000 * 1000); // 1 second delay then read the socket again
         continue;
+      }
+      if (header.width != last_frame_width || header.height != last_frame_height) {
+        // If we get ever a frame of a different size, our terminal might have
+        // gotten smaller in width, so we were printing to an area that we now
+        // won't be. There will be ascii in that area to clear.
+        console_clear();
+        last_frame_width = header.width;
+        last_frame_height = header.height;
       }
       ascii_write(recvBuff);
       free(recvBuff);
