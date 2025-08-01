@@ -19,6 +19,7 @@
 #include "options.h"
 #include "ringbuffer.h"
 #include "compression.h"
+#include "audio.h"
 
 /* ============================================================================
  * Global State
@@ -28,7 +29,12 @@
 static volatile bool g_should_exit = false;
 static framebuffer_t *g_frame_buffer = NULL;
 static pthread_t g_capture_thread;
+static pthread_t g_audio_thread;
+static bool g_audio_thread_created = false;
+static volatile bool g_audio_send_failed = false;
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+static audio_context_t g_audio_context = {0};
 
 /* Performance statistics */
 typedef struct {
@@ -61,6 +67,16 @@ static void sigint_handler(int sigint) {
   (void)(sigint);
   g_should_exit = true;
   log_info("Server shutdown requested");
+
+  // Close listening socket to interrupt accept()
+  if (listenfd > 0) {
+    close(listenfd);
+  }
+
+  // Close client socket to interrupt send/recv operations
+  if (connfd > 0) {
+    close(connfd);
+  }
 }
 
 /* ============================================================================
@@ -110,7 +126,9 @@ static void *webcam_capture_thread_func(void *arg) {
     g_stats.frames_captured++;
     if (!buffered) {
       g_stats.frames_dropped++;
-      log_debug("Frame buffer full, dropped frame %lu", g_stats.frames_captured);
+      if (g_stats.frames_dropped % 100 == 0) {
+        log_debug("Frame buffer full, dropped frame %lu", g_stats.frames_captured);
+      }
     }
     pthread_mutex_unlock(&g_stats_mutex);
 
@@ -132,36 +150,97 @@ static void *webcam_capture_thread_func(void *arg) {
 }
 
 /* ============================================================================
+ * Audio Thread
+ * ============================================================================
+ */
+
+static void *audio_thread_func(void *arg) {
+  (void)arg;
+
+  log_info("Audio thread started");
+
+  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
+
+  while (!g_should_exit && opt_audio_enabled) {
+    if (connfd == 0) {
+      usleep(10 * 1000);
+      continue;
+    }
+
+    int samples_read = audio_read_samples(&g_audio_context, audio_buffer, AUDIO_SAMPLES_PER_PACKET);
+    if (samples_read > 0) {
+      pthread_mutex_lock(&g_socket_mutex);
+      if (send_audio_packet(connfd, audio_buffer, samples_read) < 0) {
+        pthread_mutex_unlock(&g_socket_mutex);
+        log_error("Failed to send audio packet");
+        g_audio_send_failed = true;
+        break; // Exit on network error
+      }
+      pthread_mutex_unlock(&g_socket_mutex);
+#ifdef AUDIO_DEBUG
+      log_debug("Sent %d audio samples", samples_read);
+#endif
+    }
+
+    // Check shutdown more frequently
+    for (int i = 0; i < 10 && !g_should_exit; i++) {
+      usleep(1 * 1000);
+    }
+  }
+
+  log_info("Audio thread stopped");
+  return NULL;
+}
+
+/* ============================================================================
  * Client Size Handling
  * ============================================================================
  */
 
 int receive_client_size(int sockfd, unsigned short *width, unsigned short *height) {
-  char buffer[SIZE_MESSAGE_MAX_LEN];
-
-  // Use recv with MSG_DONTWAIT to make it non-blocking
-  ssize_t received = recv(sockfd, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
-  if (received <= 0) {
+  // Try to peek for a packet header to see if there's a size packet
+  packet_header_t header;
+  ssize_t peeked = recv(sockfd, &header, sizeof(header), MSG_PEEK | MSG_DONTWAIT);
+  if (peeked <= 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       return 0; // No data available (non-blocking)
     }
     return -1; // Error or connection closed
   }
 
-  buffer[received] = '\0';
-
-  // Look for SIZE message in the received data
-  char *size_msg = strstr(buffer, SIZE_MESSAGE_PREFIX);
-  if (!size_msg) {
-    return 0; // No size message found
+  if (peeked < (ssize_t)sizeof(header)) {
+    return 0; // Not enough data for a complete header
   }
 
-  // Parse the size message
-  if (parse_size_message(size_msg, width, height) == 0) {
-    return 1; // Successfully parsed size message
+  // Check if this is a size packet
+  uint32_t magic = ntohl(header.magic);
+  uint16_t type = ntohs(header.type);
+
+  if (magic != PACKET_MAGIC || type != PACKET_TYPE_SIZE) {
+    return 0; // Not a size packet
   }
 
-  return 0; // Failed to parse
+  // Receive the complete packet
+  packet_type_t pkt_type;
+  void *data;
+  size_t len;
+
+  int result = receive_packet(sockfd, &pkt_type, &data, &len);
+  if (result <= 0) {
+    return result; // Error or connection closed
+  }
+
+  if (pkt_type != PACKET_TYPE_SIZE || len != 4) {
+    free(data);
+    return 0; // Invalid size packet
+  }
+
+  const uint16_t *size_data = (const uint16_t *)data;
+  *width = ntohs(size_data[0]);
+  *height = ntohs(size_data[1]);
+
+  free(data);
+  return 1; // Successfully parsed size packet
 }
 
 void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
@@ -187,6 +266,7 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
 
 int main(int argc, char *argv[]) {
   log_init("server.log", LOG_DEBUG);
+  log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
   options_init(argc, argv);
@@ -218,12 +298,44 @@ int main(int argc, char *argv[]) {
     exit(ASCIICHAT_ERR_MALLOC);
   }
 
+  // Initialize audio if enabled
+  if (opt_audio_enabled) {
+    if (audio_init(&g_audio_context) != 0) {
+      log_fatal("Failed to initialize audio system");
+      framebuffer_destroy(g_frame_buffer);
+      ascii_read_destroy();
+      exit(ASCIICHAT_ERR_AUDIO);
+    }
+
+    if (audio_start_capture(&g_audio_context) != 0) {
+      log_error("Failed to start audio capture");
+      audio_destroy(&g_audio_context);
+      framebuffer_destroy(g_frame_buffer);
+      ascii_read_destroy();
+      exit(ASCIICHAT_ERR_AUDIO);
+    }
+
+    log_info("Audio system initialized and capture started");
+  }
+
   // Start capture thread
   if (pthread_create(&g_capture_thread, NULL, webcam_capture_thread_func, NULL) != 0) {
     log_fatal("Failed to create capture thread");
     framebuffer_destroy(g_frame_buffer);
     ascii_read_destroy();
     exit(ASCIICHAT_ERR_THREAD);
+  }
+
+  // Start audio thread if enabled
+  if (opt_audio_enabled) {
+    if (pthread_create(&g_audio_thread, NULL, audio_thread_func, NULL) != 0) {
+      log_fatal("Failed to create audio thread");
+      framebuffer_destroy(g_frame_buffer);
+      ascii_read_destroy();
+      audio_destroy(&g_audio_context);
+      exit(ASCIICHAT_ERR_THREAD);
+    }
+    g_audio_thread_created = true;
   }
 
   // Network setup
@@ -238,7 +350,6 @@ int main(int argc, char *argv[]) {
   }
 
   log_info("Server listening on port %d", port);
-  printf("Running server on port %d\n", port);
 
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -292,32 +403,41 @@ int main(int argc, char *argv[]) {
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
     log_info("Client connected from %s:%d", client_ip, ntohs(client_addr.sin_port));
 
-    // Receive initial size message from client
+    // Receive initial size packet from client
     unsigned short client_width, client_height;
-    char size_buffer[SIZE_MESSAGE_MAX_LEN];
-    ssize_t size_received = recv_with_timeout(connfd, size_buffer, sizeof(size_buffer) - 1, RECV_TIMEOUT);
-    if (size_received <= 0) {
-      log_error("Failed to receive client size: %s", network_error_string(errno));
+    packet_type_t type;
+    void *data;
+    size_t len;
+
+    int result = receive_packet(connfd, &type, &data, &len);
+    if (result <= 0) {
+      log_error("Failed to receive initial size packet: %s", network_error_string(errno));
       connfd = close(connfd);
       continue;
     }
 
-    size_buffer[size_received] = '\0';
-    if (parse_size_message(size_buffer, &client_width, &client_height) != 0) {
-      log_error("Failed to parse client size message: %s", size_buffer);
+    if (type != PACKET_TYPE_SIZE || len != 4) {
+      log_error("Expected size packet but got type=%d, len=%zu", type, len);
+      free(data);
       connfd = close(connfd);
       continue;
     }
+
+    const uint16_t *size_data = (const uint16_t *)data;
+    client_width = ntohs(size_data[0]);
+    client_height = ntohs(size_data[1]);
+    free(data);
 
     // Update frame generation for client size
     update_frame_buffer_for_size(client_width, client_height);
     log_info("Client requested frame size: %ux%u", client_width, client_height);
 
-    // Reset client-specific stats
+    // Reset client-specific stats and flags
     pthread_mutex_lock(&g_stats_mutex);
     g_stats.frames_sent = 0;
     g_stats.bytes_sent = 0;
     pthread_mutex_unlock(&g_stats_mutex);
+    g_audio_send_failed = false; // Reset audio failure flag for new client
 
     // Allocate frame buffer dynamically based on color mode
     char *frame_buffer;
@@ -339,6 +459,12 @@ int main(int argc, char *argv[]) {
         break;
       }
 
+      // Check if audio thread failed
+      if (g_audio_send_failed) {
+        log_info("Audio send failed, disconnecting client");
+        break;
+      }
+
       // Try to get a frame from buffer
       if (!framebuffer_read_frame(g_frame_buffer, frame_buffer)) {
         // No frames available, wait a bit
@@ -346,11 +472,13 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      // Send frame with timeout
+      // Send frame with timeout (protected by socket mutex)
       size_t frame_len = strlen(frame_buffer);
-      ssize_t sent = send_compressed_frame(connfd, frame_buffer, frame_len);
+      pthread_mutex_lock(&g_socket_mutex);
+      int sent = send_compressed_frame(connfd, frame_buffer, frame_len);
+      pthread_mutex_unlock(&g_socket_mutex);
       if (sent < 0) {
-        log_error("Error: Network send of frame failed: %s", network_error_string(errno));
+        log_error("Error: Network send of video packet failed: %s", network_error_string(errno));
         break;
       }
 
@@ -362,7 +490,7 @@ int main(int argc, char *argv[]) {
       // Update statistics
       pthread_mutex_lock(&g_stats_mutex);
       g_stats.frames_sent++;
-      g_stats.bytes_sent += sent;
+      g_stats.bytes_sent += frame_len; // Approximate bytes sent (not counting packet overhead)
       pthread_mutex_unlock(&g_stats_mutex);
 
       client_frames_sent++;
@@ -398,6 +526,20 @@ int main(int argc, char *argv[]) {
   // Wait for capture thread to finish
   pthread_join(g_capture_thread, NULL);
 
+  // Wait for audio thread to finish if enabled
+  if (opt_audio_enabled && g_audio_thread_created) {
+    log_info("Waiting for audio thread to finish...");
+
+    // Stop audio capture to help thread exit
+    audio_stop_capture(&g_audio_context);
+
+    // Wait for thread to exit
+    pthread_join(g_audio_thread, NULL);
+
+    audio_destroy(&g_audio_context);
+    log_info("Audio thread joined and context destroyed");
+  }
+
   // Cleanup resources
   framebuffer_destroy(g_frame_buffer);
   ascii_read_destroy();
@@ -408,6 +550,9 @@ int main(int argc, char *argv[]) {
   log_info("Final stats: captured=%lu, sent=%lu, dropped=%lu", g_stats.frames_captured, g_stats.frames_sent,
            g_stats.frames_dropped);
   pthread_mutex_unlock(&g_stats_mutex);
+
+  // Destroy mutexes
+  pthread_mutex_destroy(&g_socket_mutex);
 
   printf("Server shutdown complete.\n");
   log_destroy();

@@ -10,12 +10,14 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "ascii.h"
 #include "common.h"
 #include "network.h"
 #include "options.h"
 #include "compression.h"
+#include "audio.h"
 
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
@@ -24,6 +26,15 @@ static volatile bool g_should_reconnect = false;
 
 static volatile int last_frame_width = 0;
 static volatile int last_frame_height = 0;
+
+static audio_context_t g_audio_context = {0};
+
+// Compression state
+static volatile bool g_expecting_compressed_frame = false;
+static compressed_frame_header_t g_compression_header = {0};
+static pthread_t g_data_thread;
+static bool g_data_thread_created = false;
+static volatile bool g_data_thread_exited = false;
 
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
@@ -38,9 +49,33 @@ static int close_socket(int socketfd) {
 }
 
 static void shutdown_client() {
-  if (0 > (sockfd = close_socket(sockfd))) {
+  if (close_socket(sockfd) < 0) {
     exit(ASCIICHAT_ERR_NETWORK);
   }
+  sockfd = 0;
+
+  // Clean up data reception thread
+  if (g_data_thread_created) {
+    log_info("Waiting for data reception thread to finish...");
+
+    // Signal thread to stop first
+    g_should_exit = true;
+
+    // Stop audio playback to help thread exit
+    if (opt_audio_enabled) {
+      audio_stop_playback(&g_audio_context);
+    }
+
+    // Wait for thread to exit
+    pthread_join(g_data_thread, NULL);
+    g_data_thread_created = false;
+
+    if (opt_audio_enabled) {
+      audio_destroy(&g_audio_context);
+    }
+    log_info("Data reception thread joined and context destroyed");
+  }
+
   ascii_write_destroy();
   log_destroy();
   log_info("Client shutdown complete");
@@ -50,6 +85,10 @@ static void sigint_handler(int sigint) {
   (void)(sigint);
   printf("\nShutdown requested...\n");
   g_should_exit = true;
+
+  // Close socket to interrupt recv operations
+  close_socket(sockfd);
+  sockfd = 0;
 }
 
 static void sigwinch_handler(int sigwinch) {
@@ -59,7 +98,7 @@ static void sigwinch_handler(int sigwinch) {
 
   // Send new size to server if connected
   if (sockfd > 0) {
-    if (send_size_message(sockfd, opt_width, opt_height) < 0) {
+    if (send_size_packet(sockfd, opt_width, opt_height) < 0) {
       log_warn("Failed to send size update to server: %s", network_error_string(errno));
     } else {
       log_debug("Sent size update to server: %ux%u", opt_width, opt_height);
@@ -76,8 +115,207 @@ static float get_reconnect_delay(unsigned int reconnect_attempt) {
   return delay;
 }
 
+// Audio volume control
+#define AUDIO_VOLUME_BOOST 2.0f
+
+static void handle_audio_packet(const void *data, size_t len) {
+  if (!opt_audio_enabled || !data || len == 0) {
+    return;
+  }
+
+  int num_samples = (int)(len / sizeof(float));
+  if (num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    log_warn("Audio packet too large: %d samples", num_samples);
+    return;
+  }
+
+  // Copy and apply volume boost
+  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
+  const float *samples = (const float *)data;
+
+  for (int i = 0; i < num_samples; i++) {
+    audio_buffer[i] = samples[i] * AUDIO_VOLUME_BOOST;
+    // Clamp to prevent distortion
+    if (audio_buffer[i] > 1.0f)
+      audio_buffer[i] = 1.0f;
+    if (audio_buffer[i] < -1.0f)
+      audio_buffer[i] = -1.0f;
+  }
+
+  audio_write_samples(&g_audio_context, audio_buffer, num_samples);
+#ifdef AUDIO_DEBUG
+  log_debug("Processed %d audio samples", num_samples);
+#endif
+}
+
+static void maybe_size_update(unsigned short width, unsigned short height) {
+  // Handle terminal size changes
+  if (width != last_frame_width || height != last_frame_height) {
+    console_clear();
+    last_frame_width = width;
+    last_frame_height = height;
+    log_info("Server updated frame size to: %ux%u", width, height);
+    printf("Terminal size changed to: %ux%u\n", width, height);
+  }
+}
+
+static void handle_video_header_packet(const void *data, size_t len) {
+  if (!data || len != sizeof(compressed_frame_header_t)) {
+    log_warn("Invalid video header packet size: %zu", len);
+    return;
+  }
+
+  memcpy(&g_compression_header, data, sizeof(compressed_frame_header_t));
+
+  // Validate magic number
+  if (g_compression_header.magic != COMPRESSION_FRAME_MAGIC) {
+    log_error("Invalid compression magic: 0x%08x", g_compression_header.magic);
+    return;
+  }
+
+  g_expecting_compressed_frame = true;
+#ifdef COMPRESSION_DEBUG
+  log_debug("Received compression header: %s, original_size=%u, compressed_size=%u",
+            g_compression_header.compressed_size == 0 ? "uncompressed" : "compressed",
+            g_compression_header.original_size, g_compression_header.compressed_size);
+#endif
+}
+
+static void handle_video_packet(const void *data, size_t len) {
+  if (!data || len == 0) {
+    return;
+  }
+
+  char *frame_data = NULL;
+
+  if (g_expecting_compressed_frame) {
+    // This is compressed/uncompressed frame data with header
+    g_expecting_compressed_frame = false;
+
+    if (g_compression_header.compressed_size == 0) {
+      // Uncompressed frame
+      if (len != g_compression_header.original_size) {
+        log_error("Uncompressed frame size mismatch: expected %u, got %zu", g_compression_header.original_size, len);
+        return;
+      }
+
+      SAFE_MALLOC(frame_data, len + 1, char *);
+      memcpy(frame_data, data, len);
+      frame_data[len] = '\0';
+
+    } else {
+      // Compressed frame - decompress it
+      if (len != g_compression_header.compressed_size) {
+        log_error("Compressed frame size mismatch: expected %u, got %zu", g_compression_header.compressed_size, len);
+        return;
+      }
+
+      SAFE_MALLOC(frame_data, g_compression_header.original_size + 1, char *);
+
+      // Decompress using zlib
+      uLongf decompressed_size = g_compression_header.original_size;
+      int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)data, len);
+
+      if (result != Z_OK || decompressed_size != g_compression_header.original_size) {
+        log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
+                  g_compression_header.original_size);
+        free(frame_data);
+        return;
+      }
+
+      frame_data[g_compression_header.original_size] = '\0';
+      log_debug("Decompressed frame: %zu -> %u bytes", len, g_compression_header.original_size);
+    }
+
+    // Verify checksum
+    uint32_t received_checksum = calculate_crc32(frame_data, g_compression_header.original_size);
+    if (received_checksum != g_compression_header.checksum) {
+      log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum,
+                received_checksum);
+      free(frame_data);
+      return;
+    }
+
+  } else {
+    // Legacy uncompressed frame (fallback for old protocol)
+    SAFE_MALLOC(frame_data, len + 1, char *);
+
+    memcpy(frame_data, data, len);
+    frame_data[len] = '\0';
+  }
+
+  // Process the frame
+  if (strcmp(frame_data, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
+    log_error("Server reported webcam failure: %s", frame_data);
+    usleep(1000 * 1000);
+  } else {
+    ascii_write(frame_data);
+  }
+
+  maybe_size_update(opt_width, opt_height);
+
+  free(frame_data);
+}
+
+static void *data_reception_thread_func(void *arg) {
+  (void)arg;
+
+  log_info("Data reception thread started");
+
+  while (!g_should_exit) {
+    if (sockfd == 0) {
+      usleep(10 * 1000);
+      continue;
+    }
+
+    packet_type_t type;
+    void *data;
+    size_t len;
+
+    int result = receive_packet(sockfd, &type, &data, &len);
+    if (result < 0) {
+      log_error("Failed to receive packet");
+      break;
+    } else if (result == 0) {
+      log_info("Server closed connection");
+      break;
+    }
+
+    switch (type) {
+    case PACKET_TYPE_VIDEO_HEADER:
+      handle_video_header_packet(data, len);
+      break;
+
+    case PACKET_TYPE_VIDEO:
+      handle_video_packet(data, len);
+      break;
+
+    case PACKET_TYPE_AUDIO:
+      handle_audio_packet(data, len);
+      break;
+
+    case PACKET_TYPE_PING:
+      // Respond with PONG (implement later if needed)
+      log_debug("Received PING");
+      break;
+
+    default:
+      log_warn("Unknown packet type: %d", type);
+      break;
+    }
+
+    free(data);
+    usleep(1 * 1000);
+  }
+
+  log_info("Data reception thread stopped");
+  g_data_thread_exited = true;
+  return NULL;
+}
+
 int main(int argc, char *argv[]) {
   log_init("client.log", LOG_DEBUG);
+  log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat client starting...");
 
   options_init(argc, argv);
@@ -94,6 +332,24 @@ int main(int argc, char *argv[]) {
 
   // Initialize ASCII output for this connection
   ascii_write_init();
+
+  // Initialize audio if enabled
+  if (opt_audio_enabled) {
+    if (audio_init(&g_audio_context) != 0) {
+      log_fatal("Failed to initialize audio system");
+      ascii_write_destroy();
+      exit(ASCIICHAT_ERR_AUDIO);
+    }
+
+    if (audio_start_playback(&g_audio_context) != 0) {
+      log_error("Failed to start audio playback");
+      audio_destroy(&g_audio_context);
+      ascii_write_destroy();
+      exit(ASCIICHAT_ERR_AUDIO);
+    }
+
+    log_info("Audio system initialized and playback started");
+  }
 
   /* Connection and reconnection loop */
   int reconnect_attempt = 0;
@@ -157,67 +413,58 @@ int main(int argc, char *argv[]) {
       reconnect_attempt = 0; // Reset reconnection counter on successful connection
 
       // Send initial terminal size to server
-      if (send_size_message(sockfd, opt_width, opt_height) < 0) {
+      if (send_size_packet(sockfd, opt_width, opt_height) < 0) {
         log_error("Failed to send initial size to server: %s", network_error_string(errno));
         g_should_reconnect = true;
         continue; // try to connect again
       }
       log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
+      maybe_size_update(opt_width, opt_height);
 
       // Set socket keepalive to detect broken connections
       if (set_socket_keepalive(sockfd) < 0) {
         log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
       }
 
+      // Start data reception thread
+      g_data_thread_exited = false; // Reset exit flag for new connection
+      if (pthread_create(&g_data_thread, NULL, data_reception_thread_func, NULL) != 0) {
+        log_error("Failed to create data reception thread");
+        g_should_reconnect = true;
+        continue;
+      } else {
+        g_data_thread_created = true;
+        log_info("Data reception thread started");
+      }
+
       g_first_connection = false;
       g_should_reconnect = false;
     }
 
-    // Allocate receive buffer on heap instead of stack to avoid stack overflow
-    char *recvBuff = NULL;
-    int read_result = 0;
+    // Connection monitoring loop - wait for connection to break or shutdown
+    while (!g_should_exit && sockfd > 0) {
+      // Check if data thread has exited (indicates connection lost)
+      if (g_data_thread_exited) {
+        log_info("Data thread exited, connection lost");
+        break;
+      }
 
-    // Frame receiving loop - continue until connection breaks or shutdown requested
-    size_t frame_size;
-    compressed_frame_header_t header;
-    while (!g_should_exit && 0 < (read_result = recv_compressed_frame(sockfd, &recvBuff, &frame_size, &header))) {
-      recvBuff[frame_size] = '\0'; // Null-terminate the received data, making it a valid C string.
-      if (strcmp(recvBuff, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
-        log_error("Server reported webcam failure: %s", recvBuff);
-        usleep(1000 * 1000); // 1 second delay then read the socket again
-        continue;
-      }
-      ascii_write(recvBuff);
-      free(recvBuff);
-      recvBuff = NULL;
-      if (header.width != last_frame_width || header.height != last_frame_height) {
-        // If we get ever a frame of a different size, our terminal might have
-        // gotten smaller in width, so we were printing to an area that we now
-        // won't be. There will be ascii in that area to clear.
-        console_clear();
-        last_frame_width = header.width;
-        last_frame_height = header.height;
-      }
+      usleep(100 * 1000); // 0.1 second
     }
-
-    free(recvBuff);
 
     if (g_should_exit) {
       log_info("Shutdown requested, exiting...");
       break;
     }
 
-    // Handle connection termination or shutdown
-    if (read_result <= 0) {
-      if (read_result == 0) {
-        log_info("Server closed connection gracefully");
-        log_info("Server disconnected. Attempting to reconnect...");
-      } else {
-        log_warn("Network receive failed: %s", network_error_string(errno));
-        log_info("Connection lost. Attempting to reconnect...");
-      }
-      g_should_reconnect = true;
-      continue;
+    // Connection broken, attempt to reconnect
+    log_info("Connection lost. Attempting to reconnect...");
+    g_should_reconnect = true;
+
+    // Clean up data thread for this connection
+    if (g_data_thread_created) {
+      pthread_join(g_data_thread, NULL);
+      g_data_thread_created = false;
     }
   }
 

@@ -159,10 +159,9 @@ char *image_print(const image_t *p) {
   const unsigned short int *blue_lut = BLUE;
 
   char *lines;
-  SAFE_MALLOC(lines, (len + 2 - 1) * sizeof(char), char *);
+  SAFE_MALLOC(lines, (len + 1) * sizeof(char), char *);
 
-  lines[len] = ASCII_DELIMITER;
-  lines[len + 1] = '\0';
+  lines[len] = '\0';
 
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
@@ -249,8 +248,7 @@ char *image_print_colored(const image_t *p) {
     }
   }
 
-  // Add ASCII delimiter, and null terminator making it a valid C string.
-  *current_pos++ = ASCII_DELIMITER;
+  // Add null terminator making it a valid C string.
   *current_pos = '\0';
 
   return lines;
