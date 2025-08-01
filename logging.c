@@ -161,7 +161,7 @@ void log_init(const char *filename, log_level_t level) {
     /* Store filename for rotation */
     strncpy(g_log.filename, filename, sizeof(g_log.filename) - 1);
     g_log.filename[sizeof(g_log.filename) - 1] = '\0';
-    int fd = open(filename, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
     g_log.file = fd;
     if (!g_log.file) {
       fprintf(stderr, "Failed to open log file: %s\n", filename);
@@ -247,10 +247,18 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   /* Check if log rotation is needed */
   rotate_log_if_needed();
 
-  FILE *log_file = fdopen(g_log.file, "a");
+  FILE *log_file = NULL;
+  if (g_log.file == STDERR_FILENO) {
+    log_file = stderr;
+  } else {
+    log_file = fdopen(g_log.file, "a");
+    if (!log_file) {
+      log_file = stderr;
+    }
+  }
 
   /* Print to file (no colors) */
-  if (g_log.file && g_log.file != STDERR_FILENO) {
+  if (g_log.file && g_log.file != STDERR_FILENO && log_file != stderr) {
     int written = fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
@@ -264,7 +272,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     g_log.current_size += (written > 0) ? (size_t)written : 0;
 
     fflush(log_file);
-  } else if (g_log.file == STDERR_FILENO) {
+  } else if (log_file == stderr) {
     fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
     va_list args;
