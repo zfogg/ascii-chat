@@ -6,8 +6,8 @@
 Checks: '-*,readability-*,performance-*,portability-*,bugprone-*'
 
 # Filter headers to check (only project headers, not system/external headers)
-# HeaderFilterRegex: '.*ascii-chat/.*\.(h|hpp)$'
-HeaderFilterRegex: '.*'
+HeaderFilterRegex: '.*ascii-chat/.*\.(h|hpp)$'
+# HeaderFilterRegex: '.*'
 
 # Treat warnings as errors for CI/CD
 # WarningsAsErrors: ''
