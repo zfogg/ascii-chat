@@ -46,7 +46,7 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 #define AUDIO_MESSAGE_PREFIX "AUDIO:"
 #define AUDIO_MESSAGE_FORMAT "AUDIO:%u\n"
 #define AUDIO_MESSAGE_MAX_LEN 32
-#define AUDIO_SAMPLES_PER_PACKET 512
+#define AUDIO_SAMPLES_PER_PACKET 256  // Smaller packets for lower latency
 
 /* Packet-based communication protocol */
 #define PACKET_MAGIC 0xDEADBEEF

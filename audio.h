@@ -6,10 +6,10 @@
 #include <portaudio.h>
 
 #define AUDIO_SAMPLE_RATE 44100
-#define AUDIO_FRAMES_PER_BUFFER 512
+#define AUDIO_FRAMES_PER_BUFFER 256  // Reduced for lower latency
 #define AUDIO_CHANNELS 1
 #define AUDIO_BUFFER_SIZE (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS)
-#define AUDIO_RING_BUFFER_SIZE (AUDIO_BUFFER_SIZE * 32)
+#define AUDIO_RING_BUFFER_SIZE (AUDIO_BUFFER_SIZE * 4)  // Much smaller buffer = ~23ms total
 
 typedef struct {
   float data[AUDIO_RING_BUFFER_SIZE];
