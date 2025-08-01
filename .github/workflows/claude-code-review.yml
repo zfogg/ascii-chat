@@ -70,6 +70,7 @@ jobs:
           
           # Optional: Add specific tools for running tests or linting
           # allowed_tools: "Bash(npm run test),Bash(npm run lint),Bash(npm run typecheck)"
+          allowed_tools: "Bash(make *),Bash(./bin/client *),Bash(./bin/server *),Bash(clang *),Bash(clang++ *)"
           
           # Optional: Skip review for certain conditions
           # if: |
