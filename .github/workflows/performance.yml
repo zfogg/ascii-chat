@@ -25,7 +25,7 @@ jobs:
 
     - name: Build with debug symbols
       run: |
-        make CSTD=c2x CXXSTD=c++2x clean debug
+        make CSTD=c2x clean debug
 
     - name: Run memory leak detection
       run: |
@@ -80,12 +80,12 @@ jobs:
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
-        make CSTD=c2x CXXSTD=c++2x clean debug
+        make CSTD=c2x clean debug
         DEBUG_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
         DEBUG_CLIENT_SIZE=$(stat -f%z bin/client 2>/dev/null || stat -c%s bin/client)
         
         echo "Building release version..."
-        make CSTD=c2x CXXSTD=c++2x clean release
+        make CSTD=c2x clean release
         RELEASE_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
         RELEASE_CLIENT_SIZE=$(stat -f%z bin/client 2>/dev/null || stat -c%s bin/client)
         
