@@ -2,7 +2,6 @@
 /build/*
 /compile_commands.json
 .env
-/webcam.cpp.tu-*
 /*.log
 /*.txt
 /*.old

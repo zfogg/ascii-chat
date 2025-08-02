@@ -3,6 +3,10 @@ name: Security
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.m'
   pull_request:
     branches: [ '*' ]
 
