@@ -245,20 +245,18 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) == 0) {
       break; // Success
     }
-    
+
     if (errno == EAGAIN) {
       return NULL; // No frame available - this is normal
     }
-    
-    // For other errors, retry a few times
+
     retry_count++;
-    
-    // Brief delay before retry
+    if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
+      log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, strerror(errno));
+      return NULL;
+    }
+
     usleep(1000); // 1ms
-  }
-  if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
-    log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, strerror(errno));
-    return NULL;
   }
 
   // Create image_t structure
