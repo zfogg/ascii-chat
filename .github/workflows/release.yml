@@ -62,14 +62,14 @@ jobs:
           
           **Linux (Ubuntu/Debian):**
           ```bash
-          sudo apt-get install libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+          sudo apt-get install libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
           tar -xzf ascii-chat-Linux-release.tar.gz
           ```
           
           **macOS:**
           ```bash
-          brew install opencv@4 jpeg-turbo zlib
+          brew install opencv@4 jpeg-turbo zlib portaudio
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-macOS-release.tar.gz
           tar -xzf ascii-chat-macOS-release.tar.gz
           ```
@@ -111,17 +111,16 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install opencv@4 jpeg-turbo pkg-config
+        brew install opencv@4 jpeg-turbo pkg-config portaudio
 
     - name: Build release
       run: |
-        make clean CSTD=-std=c2x
-        make release CSTD=-std=c2x
+        make CSTD=c2x clean release
 
     - name: Create release package
       run: |
