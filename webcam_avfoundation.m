@@ -8,6 +8,10 @@
 #include "webcam_platform.h"
 #include "common.h"
 
+// AVFoundation timeout configuration
+#define AVFOUNDATION_FRAME_TIMEOUT_NS 500000000  // 500ms timeout (adjustable for slow cameras)
+#define AVFOUNDATION_INIT_TIMEOUT_NS (2 * NSEC_PER_SEC)  // 2 second timeout for initialization
+
 @interface WebcamCaptureDelegate : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 @property (nonatomic, strong) dispatch_semaphore_t frameSemaphore;
 @property (nonatomic) CVPixelBufferRef currentFrame;
@@ -189,7 +193,7 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
         [context->session startRunning];
         
         // Wait for first frame to get dimensions
-        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC);
+        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, AVFOUNDATION_INIT_TIMEOUT_NS);
         if (dispatch_semaphore_wait(context->delegate.frameSemaphore, timeout) == 0) {
             context->width = context->delegate.frameWidth;
             context->height = context->delegate.frameHeight;
@@ -274,10 +278,10 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     if (!ctx || !ctx->delegate || !ctx->delegate.isActive) return NULL;
     
     @autoreleasepool {
-        // Wait for a frame (with longer timeout to account for camera framerate)
-        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 200000000); // 200ms timeout
+        // Wait for a frame (configurable timeout for different camera speeds)
+        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, AVFOUNDATION_FRAME_TIMEOUT_NS);
         if (dispatch_semaphore_wait(ctx->delegate.frameSemaphore, timeout) != 0) {
-            return NULL; // No frame available
+            return NULL; // No frame available within timeout
         }
         
         // Reset the new frame flag so we can get the next semaphore signal
