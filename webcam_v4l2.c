@@ -252,13 +252,13 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     
     // For other errors, retry a few times
     retry_count++;
-    if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
-      log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, strerror(errno));
-      return NULL;
-    }
     
     // Brief delay before retry
     usleep(1000); // 1ms
+  }
+  if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
+    log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, strerror(errno));
+    return NULL;
   }
 
   // Create image_t structure
