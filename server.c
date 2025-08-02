@@ -481,9 +481,26 @@ int main(int argc, char *argv[]) {
     pthread_mutex_unlock(&g_stats_mutex);
     g_audio_send_failed = false; // Reset audio failure flag for new client
 
-    // Allocate frame buffer dynamically based on color mode
+    // Calculate and validate buffer size for safety
+    size_t buffer_size = FRAME_BUFFER_SIZE_BASE(client_width, client_height) * 3 / 2;
+    if (buffer_size < FRAME_BUFFER_SIZE_MIN) {
+      buffer_size = FRAME_BUFFER_SIZE_MIN;
+    } else if (buffer_size > FRAME_BUFFER_SIZE_MAX) {
+      buffer_size = FRAME_BUFFER_SIZE_MAX;
+    }
+    
+    // Check for invalid client dimensions and disconnect gracefully
+    if (client_width == 0 || client_height == 0) {
+      log_error("Client sent invalid dimensions: %ux%u", client_width, client_height);
+      connfd = close(connfd);
+      continue;
+    }
+    
+    log_debug("Allocating frame buffer: %zu bytes for %ux%u client", buffer_size, client_width, client_height);
+    
+    // Allocate frame buffer with validated size
     char *frame_buffer;
-    SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
+    SAFE_MALLOC(frame_buffer, buffer_size, char *);
     uint64_t client_frames_sent = 0;
 
     // Client serving loop
@@ -512,9 +529,12 @@ int main(int argc, char *argv[]) {
       bool frame_available = g_frame_buffer ? framebuffer_read_frame(g_frame_buffer, frame_buffer) : false;
       pthread_mutex_unlock(&g_framebuffer_mutex);
 
-      // Ensure frame is null-terminated for strlen() safety
+      // Ensure frame is null-terminated for safe string operations
       if (frame_available) {
-        frame_buffer[FRAME_BUFFER_SIZE_FINAL - 1] = '\0';
+        // Use actual buffer size instead of macro for bounds checking
+        if (buffer_size > 0) {
+          frame_buffer[buffer_size - 1] = '\0';
+        }
       }
 
       if (!frame_available) {
@@ -523,8 +543,16 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
+      // Calculate frame length safely with bounds checking
+      size_t frame_len = frame_available ? strnlen(frame_buffer, buffer_size - 1) : 0;
+      
+      // Truncate frame if it exceeds buffer size (defensive programming)
+      if (frame_len >= buffer_size) {
+        frame_len = buffer_size - 1;
+        frame_buffer[frame_len] = '\0';
+        log_warn("Frame truncated to fit buffer: %zu bytes", frame_len);
+      }
       // Send frame with timeout (protected by socket mutex)
-      size_t frame_len = strlen(frame_buffer);
       pthread_mutex_lock(&g_socket_mutex);
       int sent = send_compressed_frame(connfd, frame_buffer, frame_len);
       pthread_mutex_unlock(&g_socket_mutex);

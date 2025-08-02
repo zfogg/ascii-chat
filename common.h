@@ -96,7 +96,10 @@ static inline int get_frame_interval_ms(void) {
 //  - Per row: color reset (4) + newline (1) = 5 chars
 //  - At end: delimiter (1) + null terminator (1) = 2 chars
 //  Dynamic calculation based on color options:
-#define FRAME_BUFFER_SIZE_BASE(w, h) ((h) * (w) * (opt_background_color ? 33 : 17) + (h) * 5 + 2)
+#define FRAME_BUFFER_SIZE_BASE(w, h) \
+  (((w) > 0 && (h) > 0 && (w) <= 65535 && (h) <= 65535) ? \
+   ((size_t)(h) * (size_t)(w) * (opt_background_color ? 33 : 17) + (size_t)(h) * 5 + 2) : \
+   FRAME_BUFFER_SIZE_MIN)
 // Add 50% safety margin for ANSI sequence length variations and terminal resizing
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_SIZE_BASE(opt_width, opt_height) * 3 / 2)
 // Ensure minimum size for very small terminals
