@@ -13,7 +13,10 @@
 #include "webcam_platform.h"
 #include "common.h"
 
-#define WEBCAM_BUFFER_COUNT 4
+#define WEBCAM_BUFFER_COUNT_DEFAULT 4
+#define WEBCAM_BUFFER_COUNT_MAX 8
+#define WEBCAM_DEVICE_INDEX_MAX 99
+#define WEBCAM_READ_RETRY_COUNT 3
 
 typedef struct {
   void *start;
@@ -24,7 +27,7 @@ struct webcam_context_t {
   int fd;
   int width;
   int height;
-  webcam_buffer_t buffers[WEBCAM_BUFFER_COUNT];
+  webcam_buffer_t *buffers;
   int buffer_count;
 };
 
@@ -50,7 +53,7 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
 
 static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
   struct v4l2_requestbuffers req = {0};
-  req.count = WEBCAM_BUFFER_COUNT;
+  req.count = WEBCAM_BUFFER_COUNT_DEFAULT;
   req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   req.memory = V4L2_MEMORY_MMAP;
 
@@ -64,7 +67,23 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
     return -1;
   }
 
+  // Ensure we don't exceed our maximum buffer count
+  if (req.count > WEBCAM_BUFFER_COUNT_MAX) {
+    log_warn("Driver requested %d buffers, limiting to %d", req.count, WEBCAM_BUFFER_COUNT_MAX);
+    req.count = WEBCAM_BUFFER_COUNT_MAX;
+  }
+  
   ctx->buffer_count = req.count;
+  
+  // Allocate buffer array
+  ctx->buffers = malloc(sizeof(webcam_buffer_t) * ctx->buffer_count);
+  if (!ctx->buffers) {
+    log_error("Failed to allocate buffer array");
+    return -1;
+  }
+  
+  // Initialize buffer array
+  memset(ctx->buffers, 0, sizeof(webcam_buffer_t) * ctx->buffer_count);
 
   for (int i = 0; i < ctx->buffer_count; i++) {
     struct v4l2_buffer buf = {0};
@@ -122,6 +141,13 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
 
   memset(context, 0, sizeof(webcam_context_t));
 
+  // Validate device index
+  if (device_index > WEBCAM_DEVICE_INDEX_MAX) {
+    log_error("Invalid device index: %d (max: %d)", device_index, WEBCAM_DEVICE_INDEX_MAX);
+    free(context);
+    return -1;
+  }
+
   // Open V4L2 device
   char device_path[32];
   snprintf(device_path, sizeof(device_path), "/dev/video%d", device_index);
@@ -171,6 +197,7 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
         munmap(context->buffers[i].start, context->buffers[i].length);
       }
     }
+    free(context->buffers);
     close(context->fd);
     free(context);
     return -1;
@@ -190,10 +217,13 @@ void webcam_platform_cleanup(webcam_context_t *ctx) {
   ioctl(ctx->fd, VIDIOC_STREAMOFF, &type);
 
   // Unmap buffers
-  for (int i = 0; i < ctx->buffer_count; i++) {
-    if (ctx->buffers[i].start != MAP_FAILED) {
-      munmap(ctx->buffers[i].start, ctx->buffers[i].length);
+  if (ctx->buffers) {
+    for (int i = 0; i < ctx->buffer_count; i++) {
+      if (ctx->buffers[i].start != MAP_FAILED) {
+        munmap(ctx->buffers[i].start, ctx->buffers[i].length);
+      }
     }
+    free(ctx->buffers);
   }
 
   close(ctx->fd);
@@ -209,13 +239,26 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
 
-  // Dequeue a buffer
-  if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) == -1) {
-    if (errno == EAGAIN) {
-      return NULL; // No frame available
+  // Dequeue a buffer with retry logic for transient errors
+  int retry_count = 0;
+  while (retry_count < WEBCAM_READ_RETRY_COUNT) {
+    if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) == 0) {
+      break; // Success
     }
-    log_error("Failed to dequeue V4L2 buffer: %s", strerror(errno));
-    return NULL;
+    
+    if (errno == EAGAIN) {
+      return NULL; // No frame available - this is normal
+    }
+    
+    // For other errors, retry a few times
+    retry_count++;
+    if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
+      log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, strerror(errno));
+      return NULL;
+    }
+    
+    // Brief delay before retry
+    usleep(1000); // 1ms
   }
 
   // Create image_t structure
