@@ -33,7 +33,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang libopencv-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Build for analysis
       run: |
@@ -55,7 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang libopencv-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Check for known vulnerabilities in system packages
       run: |
@@ -63,16 +63,10 @@ jobs:
         opencv_version=$(pkg-config --modversion opencv4)
         echo "OpenCV version: $opencv_version"
         
-        # Check libjpeg version
-        if pkg-config --exists libjpeg; then
-          jpeg_version=$(pkg-config --modversion libjpeg)
-          echo "libjpeg version: $jpeg_version"
-        fi
-
         # Check zlib version
         if pkg-config --exists zlib; then
           zlib_version=$(pkg-config --modversion zlib)
-          echo "libjpeg version: $zlib_version"
+          echo "zlib version: $zlib_version"
         fi
 
         # Check portaudio version
@@ -118,7 +112,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang clang-tools libopencv-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Build with format security warnings
       run: |

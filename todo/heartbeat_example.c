@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "common.h"
-#include "network.h"
+#include "../common.h"
+#include "../network.h"
 
 // network.h additions:
 #define PING_MESSAGE "PING\n"

@@ -220,6 +220,6 @@ The codebase now follows professional C development practices:
 - **C23 Standard**: Modern C features while maintaining portability
 - **POSIX Threads**: Standard threading library
 - **Cross-Platform**: Works on Linux, macOS, and other UNIX-like systems
-- **Dependencies**: OpenCV, libjpeg, pthread (all commonly available)
+- **Dependencies**: OpenCV, pthread (all commonly available)
 
 This improved ASCII Chat demonstrates how to build robust, production-quality C applications with proper error handling, performance optimization, and maintainable architecture. 
