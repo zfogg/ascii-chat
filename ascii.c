@@ -30,9 +30,9 @@ asciichat_error_t ascii_write_init(void) {
 }
 
 char *ascii_read(void) {
-  FILE *jpeg = webcam_read();
+  image_t *original = webcam_read();
 
-  if (jpeg == NULL) {
+  if (original == NULL) {
     // Return a simple error message if webcam read fails
     log_error(ASCIICHAT_WEBCAM_ERROR_STRING);
     char *err_msg;
@@ -40,13 +40,6 @@ char *ascii_read(void) {
     SAFE_MALLOC(err_msg, err_len, char *);
     strncpy(err_msg, ASCIICHAT_WEBCAM_ERROR_STRING, err_len);
     return err_msg;
-  }
-
-  image_t *original = image_read(jpeg);
-  if (!original) {
-    log_error("Failed to read JPEG image");
-    fclose(jpeg);
-    return NULL;
   }
 
   // Start with the target dimensions requested by the user (or detected from
@@ -74,11 +67,8 @@ char *ascii_read(void) {
   if (!resized) {
     log_error("Failed to allocate resized image");
     image_destroy(original);
-    fclose(jpeg);
     return NULL;
   }
-
-  fclose(jpeg);
 
   image_clear(resized);
   image_resize(original, resized);

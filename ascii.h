@@ -28,8 +28,6 @@ char *ascii_pad_frame_width(const char *frame, size_t pad);
 char *ascii_pad_frame_height(const char *frame, size_t pad_top);
 char *get_lum_palette(void);
 
-/*static char *from_jpeg(FILE *);*/
-
 #define ASCII_LUMINANCE_LEVELS 256
 
 #define ASCII_SLEEP_NS 50000L
