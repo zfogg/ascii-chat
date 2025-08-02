@@ -511,7 +511,7 @@ int main(int argc, char *argv[]) {
       pthread_mutex_lock(&g_framebuffer_mutex);
       bool frame_available = g_frame_buffer ? framebuffer_read_frame(g_frame_buffer, frame_buffer) : false;
       pthread_mutex_unlock(&g_framebuffer_mutex);
-      
+
       // Ensure frame is null-terminated for strlen() safety
       if (frame_available) {
         frame_buffer[FRAME_BUFFER_SIZE_FINAL - 1] = '\0';
