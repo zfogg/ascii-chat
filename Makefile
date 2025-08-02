@@ -9,7 +9,7 @@ CC  := clang
 CXX := clang++
 
 # Package dependencies
-PKG_CONFIG_LIBS := opencv4 zlib portaudio-2.0
+PKG_CONFIG_LIBS := zlib portaudio-2.0
 
 # Directories
 BIN_DIR  := bin
@@ -38,7 +38,22 @@ PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD)
 override CXXFLAGS += $(PKG_CFLAGS) -std=$(CXXSTD)
 
-override LDFLAGS := $(PKG_LDFLAGS) -lpthread
+# Platform-specific flags
+ifeq ($(shell uname),Darwin)
+    # macOS: Add AVFoundation and CoreMedia frameworks
+    PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
+    PLATFORM_SOURCES := webcam_avfoundation.m
+else ifeq ($(shell uname),Linux)
+    # Linux: No additional frameworks needed for V4L2
+    PLATFORM_LDFLAGS := 
+    PLATFORM_SOURCES := webcam_v4l2.c
+else
+    # Other platforms: Use fallback
+    PLATFORM_LDFLAGS := 
+    PLATFORM_SOURCES := 
+endif
+
+override LDFLAGS := $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
 
 # =============================================================================
 # File Discovery
@@ -48,7 +63,7 @@ override LDFLAGS := $(PKG_LDFLAGS) -lpthread
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
-C_FILES      := $(wildcard *.c) 
+C_FILES      := $(wildcard *.c) $(PLATFORM_SOURCES)
 CPP_FILES    := $(wildcard *.cpp) 
 C_CPP_FILES  := $(C_FILES) $(CPP_FILES)
 
@@ -57,12 +72,15 @@ HEADERS_C    := $(wildcard *.h)
 HEADERS_CPP  := $(wildcard *.hpp)
 HEADERS      := $(HEADERS_C) $(HEADERS_CPP)
 
-# Object files for server and client
-OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES))
+# Object files for server and client  
+C_FILES_FILTERED := $(filter %.c, $(C_FILES))
+M_FILES := $(filter %.m, $(C_FILES))
+OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES_FILTERED))
+OBJS_M    := $(patsubst %.m,   $(BUILD_DIR)/%.o, $(M_FILES))
 OBJS_CPP  := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(CPP_FILES))
 
 # All object files for server and client
-OBJS := $(OBJS_C) $(OBJS_CPP)
+OBJS := $(OBJS_C) $(OBJS_M) $(OBJS_CPP)
 
 # Non-target object files (files without main methods)
 OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TARGETS)), $(OBJS))
@@ -117,6 +135,11 @@ $(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
 $(OBJS_CPP): $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 	@echo "Compiling $<..."
 	$(CXX) -o $@ $(CXXFLAGS) -c $<
+
+# Compile Objective-C source files
+$(OBJS_M): $(BUILD_DIR)/%.o: %.m $(HEADERS)
+	@echo "Compiling $<..."
+	$(CC) -o $@ $(CFLAGS) -c $<
 
 # =============================================================================
 # Utility Targets

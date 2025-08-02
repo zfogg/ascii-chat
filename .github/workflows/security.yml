@@ -33,7 +33,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Build for analysis
       run: |
@@ -55,7 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Check for known vulnerabilities in system packages
       run: |
@@ -112,7 +112,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang clang-tools libopencv-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Build with format security warnings
       run: |

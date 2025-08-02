@@ -125,6 +125,10 @@ static void *webcam_capture_thread_func(void *arg) {
     bool buffered = g_frame_buffer ? framebuffer_write_frame(g_frame_buffer, frame) : false;
     pthread_mutex_unlock(&g_framebuffer_mutex);
 
+    if (strcmp(frame, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
+      usleep(100000); // 100ms delay before retry
+    }
+
     pthread_mutex_lock(&g_stats_mutex);
     g_stats.frames_captured++;
     if (!buffered) {

@@ -18,9 +18,13 @@ Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audi
 
 Dependencies
 ==========
-- Most people: `apt-get install clang pkg-config libopencv-dev portaudio19-dev`
-- ArchLinux masterrace: `pacman -S pkg-config clang opencv portaudio`
-- macOS: `brew install pkg-config opencv@4 portaudio`
+- Most people: `apt-get install build-essential clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev`
+- ArchLinux masterrace: `pacman -S clang pkg-config v4l-utils zlib portaudio`
+- macOS: `brew install pkg-config zlib portaudio`
+
+**Note:** OpenCV is no longer required! The project now uses native platform APIs:
+- **Linux**: V4L2 (Video4Linux2)
+- **macOS**: AVFoundation
 
 
 Build and run
@@ -43,6 +47,7 @@ ls compile_commands.json
 
 ```
 
+
 Command line flags
 =========
 
@@ -59,6 +64,7 @@ NOTE: run `./bin/server -h` to see these options
 - `-A --audio`: Enable audio capture and playback (server and client)
 - `-h --help`: Show help message
 
+
 Usage
 ==========
 
@@ -71,6 +77,7 @@ Connect with a client:
 ```bash
 ./bin/client [options]
 ```
+
 
 ### New Color Feature
 
@@ -91,6 +98,7 @@ The colored output uses ANSI escape codes to colorize each ASCII character based
 on the RGB values from the original webcam image, creating a much more vibrant
 and realistic representation.
 
+
 ### Audio Feature
 
 You can now enable real-time audio streaming between server and client! Use the `--audio` or `-A` flag:
@@ -106,6 +114,7 @@ You can now enable real-time audio streaming between server and client! Use the 
 ```
 
 Audio is captured on the server and streamed to the client in real-time using PortAudio for cross-platform compatibility. The system works on both Linux (ALSA) and macOS (Core Audio).
+
 
 
 TODO
