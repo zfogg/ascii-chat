@@ -3,6 +3,10 @@ name: Performance Tests
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.m'
   pull_request:
     branches: [ '*' ]
   schedule:
@@ -129,7 +133,7 @@ jobs:
         cloc --exclude-dir=ext,build,bin,.github,.claude,.cursor .
         
         echo "=== Detailed File Analysis ==="
-        wc -l *.c *.h *.cpp *.hpp 2>/dev/null | sort -n || true
+        wc -l *.c *.h *.m 2>/dev/null | sort -n || true
         
         echo "=== Function Count ==="
         echo "C functions:"

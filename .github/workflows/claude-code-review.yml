@@ -8,8 +8,7 @@ on:
       - "Makefile"
       - "**.c"
       - "**.h"
-      - "**.cpp"
-      - "**.hpp"
+      - "**.m"
     # paths-ignore:
     #   - '*.md'
     #   - '.github/**'

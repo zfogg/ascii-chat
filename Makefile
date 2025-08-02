@@ -177,14 +177,14 @@ help:
 # Format source code
 format:
 	@echo "Formatting source code..."
-	@find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+	@find . -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
 	xargs clang-format -i; \
 	echo "Code formatting complete!"
 
 # Check code formatting
 format-check:
 	@echo "Checking code formatting..."
-	find . -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
+	find . -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
 	xargs clang-format --dry-run --Werror
 
 # Run bear to generate a compile_commands.json file
@@ -194,10 +194,9 @@ compile_commands.json: Makefile
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
-clang-tidy: $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.h) $(wildcard *.hpp)
+clang-tidy: $(wildcard *.c) $(wildcard *.h) $(wildcard *.m)
 	@#clang-tidy -header-filter='.*' $^ -- $(BASE_FLAGS) $(FEATURE_FLAGS) $(PKG_CFLAGS)
-	@clang-tidy $(wildcard *.cpp) $(wildcard *.hpp) -- $(CXXFLAGS)
-	@clang-tidy $(wildcard *.c)   $(wildcard *.h)   -- $(CFLAGS)
+	@clang-tidy $(wildcard *.c) $(wildcard *.h) $(wildcard *.m) -- $(CFLAGS)
 
 
 # =============================================================================
