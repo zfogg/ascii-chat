@@ -9,6 +9,10 @@ on:
       - '**.m'
   pull_request:
     branches: [ '*' ]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.m'
 
 jobs:
   build:
