@@ -228,7 +228,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
   }
 
   // Copy frame data (V4L2 RGB24 format matches our rgb_t structure)
-  const size_t frame_size = ctx->width * ctx->height * 3;
+  const size_t frame_size = (size_t)ctx->width * ctx->height * 3;
   memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
 
   // Re-queue the buffer
