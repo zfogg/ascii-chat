@@ -387,16 +387,17 @@ int audio_set_realtime_priority(void) {
 #ifdef __linux__
   struct sched_param param;
   int policy = SCHED_FIFO;
-  
+
   // Set high priority for real-time scheduling
   param.sched_priority = 80; // High priority (1-99 range)
-  
+
   // Try to set real-time scheduling for current thread
   if (pthread_setschedparam(pthread_self(), policy, &param) != 0) {
-    log_error("Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
+    log_error(
+        "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
     return -1;
   }
-  
+
   log_info("✓ Audio thread real-time priority set to %d with SCHED_FIFO", param.sched_priority);
   return 0;
 #elif defined(__APPLE__)
@@ -405,20 +406,16 @@ int audio_set_realtime_priority(void) {
   policy.period = 0;
   policy.computation = 5000; // 5ms computation time
   policy.constraint = 10000; // 10ms constraint
-  policy.preemptible = 0; // Not preemptible
-  
-  kern_return_t result = thread_policy_set(
-    mach_thread_self(),
-    THREAD_TIME_CONSTRAINT_POLICY,
-    (thread_policy_t)&policy,
-    THREAD_TIME_CONSTRAINT_POLICY_COUNT
-  );
-  
+  policy.preemptible = 0;    // Not preemptible
+
+  kern_return_t result = thread_policy_set(mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&policy,
+                                           THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+
   if (result != KERN_SUCCESS) {
     log_error("Failed to set real-time thread priority on macOS");
     return -1;
   }
-  
+
   log_info("✓ Audio thread real-time priority set on macOS");
   return 0;
 #else
