@@ -64,9 +64,9 @@ jobs:
     - name: Check for known vulnerabilities in system packages
       run: |
         # Check libv4l version
-        if pkg-config --exists v4l2; then
-          v4l2_version=$(pkg-config --modversion v4l2)
-          echo "v4l2 version: $v4l2_version"
+        if pkg-config --exists libv4l2; then
+          libv4l2_version=$(pkg-config --modversion libv4l2)
+          echo "libv4l2 version: $libv4l2_version"
         fi
 
         # Check zlib version
