@@ -7,24 +7,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ascii.h"
 #include "image.h"
+#include "ascii.h"
 #include "options.h"
 #include "round.h"
 
-typedef void (*image_resize_ptrfun)(const image_t *, image_t *);
-image_resize_ptrfun global_image_resize_fun = NULL;
-
-// Forward declaration
-void image_resize_interpolation(const image_t *source, image_t *dest);
-
 image_t *image_new(int width, int height) {
   image_t *p;
-
-  // Set the global resize function if not already set
-  if (global_image_resize_fun == NULL) {
-    global_image_resize_fun = image_resize_interpolation;
-  }
 
   SAFE_MALLOC(p, sizeof(image_t), image_t *);
 
@@ -82,7 +71,7 @@ inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
 }
 
 void image_resize(const image_t *s, image_t *d) {
-  global_image_resize_fun(s, d);
+  image_resize_interpolation(s, d);
 }
 
 // Optimized interpolation function with better integer arithmetic and memory
@@ -102,8 +91,8 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   for (int y = 0; y < dst_h; y++) {
     const uint32_t src_y = (y * y_ratio) >> 16;
-    const rgb_t *src_row = src_pixels + src_y * src_w;
-    rgb_t *dst_row = dst_pixels + y * dst_w;
+    const rgb_t *src_row = src_pixels + (src_y * src_w);
+    rgb_t *dst_row = dst_pixels + (y * dst_w);
 
     for (int x = 0; x < dst_w; x++) {
       const uint32_t src_x = (x * x_ratio) >> 16;
@@ -111,7 +100,6 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
     }
   }
 }
-
 
 // Optimized palette generation with caching
 static char luminance_palette[ASCII_LUMINANCE_LEVELS * sizeof(char)];
