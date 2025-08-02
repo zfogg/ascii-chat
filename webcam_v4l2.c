@@ -72,16 +72,16 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
     log_warn("Driver requested %d buffers, limiting to %d", req.count, WEBCAM_BUFFER_COUNT_MAX);
     req.count = WEBCAM_BUFFER_COUNT_MAX;
   }
-  
+
   ctx->buffer_count = req.count;
-  
+
   // Allocate buffer array
   ctx->buffers = malloc(sizeof(webcam_buffer_t) * ctx->buffer_count);
   if (!ctx->buffers) {
     log_error("Failed to allocate buffer array");
     return -1;
   }
-  
+
   // Initialize buffer array
   memset(ctx->buffers, 0, sizeof(webcam_buffer_t) * ctx->buffer_count);
 
