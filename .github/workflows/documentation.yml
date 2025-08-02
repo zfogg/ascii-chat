@@ -116,10 +116,8 @@ jobs:
       run: |
         # Create a custom dictionary for technical terms
         cat > .aspell.en.pws << EOF
-        personal_ws-1.1 en 0
         ASCII
         OpenCV
-        libjpeg
         webcam
         Ubuntu
         ArchLinux

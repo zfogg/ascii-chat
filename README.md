@@ -18,9 +18,9 @@ Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audi
 
 Dependencies
 ==========
-- Most people: `apt-get install clang pkg-config libopencv-dev libjpeg-dev portaudio19-dev`
-- ArchLinux masterrace: `pacman -S pkg-config clang opencv libjpeg-turbo portaudio`
-- macOS: `brew install pkg-config opencv@4 jpeg-turbo portaudio`
+- Most people: `apt-get install clang pkg-config libopencv-dev portaudio19-dev`
+- ArchLinux masterrace: `pacman -S pkg-config clang opencv portaudio`
+- macOS: `brew install pkg-config opencv@4 portaudio`
 
 
 Build and run

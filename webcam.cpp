@@ -1,17 +1,13 @@
 #include <cstdio>
 #include <cstdlib>
-#include <jpeglib.h>
 #include <opencv2/opencv.hpp>
 
 #include "options.h"
 #include "webcam.hpp"
+#include "image.h"
 
 using namespace std;
 using namespace cv;
-
-vector<uchar> jpegbuf;
-
-vector<int> jpegbuf_params;
 
 VideoCapture camera;
 
@@ -32,13 +28,10 @@ void webcam_init(unsigned short int webcam_index) {
   }
 
   fprintf(stderr, "Webcam opened successfully!\n");
-
-  jpegbuf_params.push_back(IMWRITE_JPEG_QUALITY);
-  jpegbuf_params.push_back(100);
 }
 
-FILE *webcam_read() {
-  Mat frame, edges;
+image_t *webcam_read() {
+  Mat frame;
 
   camera >> frame;
 
@@ -52,17 +45,24 @@ FILE *webcam_read() {
     flip(frame, frame, +1); // horizontal flip to mirror the image.
   }
 
-  cvtColor(frame, edges, cv::COLOR_BGR2GRAY);
+  // Convert BGR to RGB (OpenCV uses BGR by default)
+  cvtColor(frame, frame, cv::COLOR_BGR2RGB);
 
-  imencode(".jpg", frame, jpegbuf, jpegbuf_params);
+  // Create image_t structure
+  image_t *img = image_new(frame.cols, frame.rows);
+  if (!img) {
+    fprintf(stderr, "Failed to allocate image buffer\n");
+    return NULL;
+  }
 
-  FILE *jpegfile = fmemopen(jpegbuf.data(), jpegbuf.size(), "r");
+  // Copy OpenCV Mat data directly to image_t
+  // OpenCV Mat stores data as contiguous RGB bytes
+  const size_t data_size =
+      static_cast<size_t>(frame.cols) * static_cast<size_t>(frame.rows) * 3; // 3 bytes per RGB pixel
 
-  // FIXME: do I even need this?
-  // waitKey(16); // FPS
-  // waitKey(1); // FPS
+  memcpy(img->pixels, frame.data, data_size);
 
-  return jpegfile;
+  return img;
 }
 
 void webcam_cleanup() {

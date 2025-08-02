@@ -26,12 +26,7 @@
 
 #define CHAR_ASPECT 2.0f // terminal cell height ÷ width
 
-/* Set opt_width / opt_height so that the ASCII art keeps the webcam image's
- * proportions on screen.
- *
- * jpeg_w, jpeg_h  —— pixel dimensions of the captured frame
- */
-void aspect_ratio(const int jpeg_w, const int jpeg_h, ssize_t *out_width, ssize_t *out_height) {
+void aspect_ratio(const int img_w, const int img_h, ssize_t *out_width, ssize_t *out_height) {
   // If the user asked to stretch, do nothing – the caller will use whatever
   // dimensions are currently in opt_width/opt_height.
   if (opt_stretch) {
@@ -47,8 +42,8 @@ void aspect_ratio(const int jpeg_w, const int jpeg_h, ssize_t *out_width, ssize_
    * and vice-versa, taking CHAR_ASPECT into account.  We use ROUND() from
    * round.h so we end up with integer character counts.
    */
-#define CALC_WIDTH_FROM_HEIGHT(h) ROUND((float)(h) * (float)jpeg_w / (float)jpeg_h * CHAR_ASPECT)
-#define CALC_HEIGHT_FROM_WIDTH(w) ROUND(((float)(w) / CHAR_ASPECT) * (float)jpeg_h / (float)jpeg_w)
+#define CALC_WIDTH_FROM_HEIGHT(h) ROUND((float)(h) * (float)img_w / (float)img_h * CHAR_ASPECT)
+#define CALC_HEIGHT_FROM_WIDTH(w) ROUND(((float)(w) / CHAR_ASPECT) * (float)img_h / (float)img_w)
 
   if (auto_width && !auto_height) {
     // Height fixed, width is derived.

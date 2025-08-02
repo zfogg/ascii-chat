@@ -5,6 +5,15 @@
 #include <pthread.h>
 #include <portaudio.h>
 
+#ifdef __linux__
+#include <sched.h>
+#include <sys/resource.h>
+#elif defined(__APPLE__)
+#include <mach/mach.h>
+#include <mach/thread_policy.h>
+#include <mach/kern_return.h>
+#endif
+
 #define AUDIO_SAMPLE_RATE 44100
 #define AUDIO_FRAMES_PER_BUFFER 256 // Reduced for lower latency
 #define AUDIO_CHANNELS 1
@@ -40,6 +49,8 @@ int audio_stop_playback(audio_context_t *ctx);
 
 int audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples);
 int audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples);
+
+int audio_set_realtime_priority(void);
 
 audio_ring_buffer_t *audio_ring_buffer_create(void);
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
