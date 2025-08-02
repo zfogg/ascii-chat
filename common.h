@@ -150,9 +150,13 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
     (dst)[(size) - 1] = '\0';                                                                                          \
   } while (0)
 
-/* Min/Max macros */
+/* Min/Max macros (with guards for macOS Foundation.h) */
+#ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 /* Array size */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
