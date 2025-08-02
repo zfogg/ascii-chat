@@ -111,6 +111,12 @@ static inline int get_frame_interval_ms(void) {
 
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
 
+
+// Global variables to store last known image dimensions for aspect ratio
+// recalculation
+extern unsigned short int last_image_width, last_image_height;
+
+
 /* Logging levels */
 typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;
 

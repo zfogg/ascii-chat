@@ -13,11 +13,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx);
 int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 
 // Platform detection
-typedef enum {
-    WEBCAM_PLATFORM_UNKNOWN = 0,
-    WEBCAM_PLATFORM_V4L2,
-    WEBCAM_PLATFORM_AVFOUNDATION
-} webcam_platform_type_t;
+typedef enum { WEBCAM_PLATFORM_UNKNOWN = 0, WEBCAM_PLATFORM_V4L2, WEBCAM_PLATFORM_AVFOUNDATION } webcam_platform_type_t;
 
 webcam_platform_type_t webcam_get_platform(void);
-const char* webcam_platform_name(webcam_platform_type_t platform);
+const char *webcam_platform_name(webcam_platform_type_t platform);

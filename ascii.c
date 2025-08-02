@@ -8,7 +8,7 @@
 #include "image.h"
 #include "options.h"
 #include "aspect_ratio.h"
-#include "webcam.hpp"
+#include "webcam.h"
 
 /* ============================================================================
  * ASCII Art Video Processing

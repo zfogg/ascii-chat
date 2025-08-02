@@ -466,7 +466,6 @@ int main(int argc, char *argv[]) {
         log_info("Data thread exited, connection lost");
         break;
       }
-      
 
       usleep(100 * 1000); // 0.1 second
     }
