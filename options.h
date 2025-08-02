@@ -23,10 +23,6 @@ extern unsigned short int opt_audio_enabled;
 // If non-zero, allow image to stretch or shrink without preserving aspect ratio
 extern unsigned short int opt_stretch;
 
-// Global variables to store last known image dimensions for aspect ratio
-// recalculation
-extern unsigned short int last_image_width, last_image_height;
-
 // Default weights; must add up to 1.0
 extern const float weight_red;
 extern const float weight_green;

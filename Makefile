@@ -6,7 +6,6 @@
 
 # Compilers
 CC  := clang
-CXX := clang++
 
 # Package dependencies
 PKG_CONFIG_LIBS := zlib portaudio-2.0
@@ -63,24 +62,21 @@ override LDFLAGS := $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
-C_FILES      := $(wildcard *.c) $(PLATFORM_SOURCES)
-CPP_FILES    := $(wildcard *.cpp) 
-C_CPP_FILES  := $(C_FILES) $(CPP_FILES)
+C_FILES   := $(wildcard *.c)
 
 # Header files
-HEADERS_C    := $(wildcard *.h)
-HEADERS_CPP  := $(wildcard *.hpp)
-HEADERS      := $(HEADERS_C) $(HEADERS_CPP)
+HEADERS     := $(wildcard *.h)
 
 # Object files for server and client  
-C_FILES_FILTERED := $(filter %.c, $(C_FILES))
-M_FILES := $(filter %.m, $(C_FILES))
-OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES_FILTERED))
+C_FILES := $(wildcard *.c)
+M_FILES := $(wildcard *.m)
+
+# Object files (binaries)
+OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES))
 OBJS_M    := $(patsubst %.m,   $(BUILD_DIR)/%.o, $(M_FILES))
-OBJS_CPP  := $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(CPP_FILES))
 
 # All object files for server and client
-OBJS := $(OBJS_C) $(OBJS_M) $(OBJS_CPP)
+OBJS := $(OBJS_C) $(OBJS_M)
 
 # Non-target object files (files without main methods)
 OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TARGETS)), $(OBJS))
@@ -107,34 +103,27 @@ all: default
 
 # Debug build
 debug: CFLAGS += -g -O0
-debug: CXXFLAGS += -g -O0
 debug: $(TARGETS)
 
 # Release build
 release: CFLAGS += -O3
-release: CXXFLAGS += -O3
 release: $(TARGETS)
 
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 # Compile C source files
 $(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $< 
-
-# Compile C++ source files
-$(OBJS_CPP): $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
-	@echo "Compiling $<..."
-	$(CXX) -o $@ $(CXXFLAGS) -c $<
 
 # Compile Objective-C source files
 $(OBJS_M): $(BUILD_DIR)/%.o: %.m $(HEADERS)
@@ -171,7 +160,6 @@ help:
 	@echo ""
 	@echo "Configuration:"
 	@echo "  CC=$(CC)"
-	@echo "  CXX=$(CXX)"
 	@echo "  BIN_DIR=$(BIN_DIR)"
 	@echo "  BUILD_DIR=$(BUILD_DIR)"
 	@echo "  PKG_CONFIG_LIBS=$(PKG_CONFIG_LIBS)"
