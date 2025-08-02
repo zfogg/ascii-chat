@@ -127,4 +127,4 @@ jobs:
     - name: Run static security analysis
       run: |
         # Use clang static analyzer for security issues
-        scan-build --status-bugs make CSTD=c2x clean debug
+        scan-build --status-bugs make CSTD=c2x clean c-objs

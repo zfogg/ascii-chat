@@ -85,7 +85,7 @@ OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TAR
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug release format format-check bear clang-tidy
+.PHONY: all clean default help debug release c-objs format format-check bear clang-tidy
 
 # =============================================================================
 # Default Target
@@ -129,6 +129,14 @@ $(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
 $(OBJS_M): $(BUILD_DIR)/%.o: %.m $(HEADERS)
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $<
+
+
+c-objs: $(OBJS_C)
+	@echo "C object files:"
+	@echo $(OBJS_C)
+	@echo "C object files count: $(words $(OBJS_C))"
+	@echo "C object files size: $(shell du -sh $(OBJS_C) | cut -f1)"
+	@echo "C object files count: $(words $(OBJS_C))"
 
 # =============================================================================
 # Utility Targets
