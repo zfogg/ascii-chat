@@ -1,8 +1,10 @@
 #include "network.h"
 #include "common.h"
+#include "compression.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,6 +92,9 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
 
   result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
   if (result <= 0) {
+    if (errno == EINTR) {
+      return false; // Interrupted by signal
+    }
     return false; // Timeout or error
   }
 
@@ -127,6 +132,9 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
       // Timeout or error
       if (result == 0) {
         errno = ETIMEDOUT;
+      } else if (errno == EINTR) {
+        // Interrupted by signal
+        return -1;
       }
       return -1;
     }
@@ -149,23 +157,45 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
 ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds) {
   fd_set read_fds;
   struct timeval timeout;
+  ssize_t total_received = 0;
+  char *data = (char *)buf;
 
-  FD_ZERO(&read_fds);
-  FD_SET(sockfd, &read_fds);
+  while (total_received < (ssize_t)len) {
+    // Set up select for read timeout
+    FD_ZERO(&read_fds);
+    FD_SET(sockfd, &read_fds);
 
-  timeout.tv_sec = timeout_seconds;
-  timeout.tv_usec = 0;
+    timeout.tv_sec = timeout_seconds;
+    timeout.tv_usec = 0;
 
-  int result = select(sockfd + 1, &read_fds, NULL, NULL, &timeout);
-  if (result <= 0) {
-    // Timeout or error
-    if (result == 0) {
-      errno = ETIMEDOUT;
+    int result = select(sockfd + 1, &read_fds, NULL, NULL, &timeout);
+    if (result <= 0) {
+      // Timeout or error
+      if (result == 0) {
+        errno = ETIMEDOUT;
+      } else if (errno == EINTR) {
+        // Interrupted by signal
+        return -1;
+      }
+      return -1;
     }
-    return -1;
+
+    // Try to receive data
+    ssize_t received = recv(sockfd, data + total_received, len - total_received, 0);
+    if (received < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        continue; // Try again
+      }
+      return -1; // Real error
+    } else if (received == 0) {
+      // Connection closed
+      return total_received;
+    }
+
+    total_received += received;
   }
 
-  return recv(sockfd, buf, len, 0);
+  return total_received;
 }
 
 int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
@@ -183,6 +213,9 @@ int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen,
     // Timeout or error
     if (result == 0) {
       errno = ETIMEDOUT;
+    } else if (errno == EINTR) {
+      // Interrupted by signal - this is expected during shutdown
+      return -1;
     }
     return -1;
   }
@@ -255,4 +288,284 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
   *width = (unsigned short)w;
   *height = (unsigned short)h;
   return 0;
+}
+
+int send_audio_data(int sockfd, const float *samples, int num_samples) {
+  if (!samples || num_samples <= 0 || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    return -1;
+  }
+
+  char header[AUDIO_MESSAGE_MAX_LEN];
+  int header_len = snprintf(header, sizeof(header), AUDIO_MESSAGE_FORMAT, num_samples);
+
+  if (header_len >= (int)sizeof(header)) {
+    return -1;
+  }
+
+  ssize_t sent = send_with_timeout(sockfd, header, header_len, SEND_TIMEOUT);
+  if (sent != header_len) {
+    return -1;
+  }
+
+  size_t data_size = num_samples * sizeof(float);
+  sent = send_with_timeout(sockfd, samples, data_size, SEND_TIMEOUT);
+  if (sent != (ssize_t)data_size) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int receive_audio_data(int sockfd, float *samples, int max_samples) {
+  if (!samples || max_samples <= 0) {
+    return -1;
+  }
+
+  char header[AUDIO_MESSAGE_MAX_LEN];
+  ssize_t received = recv_with_timeout(sockfd, header, sizeof(header) - 1, RECV_TIMEOUT);
+  if (received <= 0) {
+    return -1;
+  }
+
+  header[received] = '\0';
+
+  if (strncmp(header, AUDIO_MESSAGE_PREFIX, strlen(AUDIO_MESSAGE_PREFIX)) != 0) {
+    return -1;
+  }
+
+  int num_samples;
+  int parsed = sscanf(header, AUDIO_MESSAGE_FORMAT, &num_samples);
+  if (parsed != 1 || num_samples <= 0 || num_samples > max_samples || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    return -1;
+  }
+
+  size_t data_size = num_samples * sizeof(float);
+  received = recv_with_timeout(sockfd, samples, data_size, RECV_TIMEOUT);
+  if (received != (ssize_t)data_size) {
+    return -1;
+  }
+
+  return num_samples;
+}
+
+/* ============================================================================
+ * Packet Protocol Implementation
+ * ============================================================================
+ */
+
+// Simple CRC32 implementation
+uint32_t asciichat_crc32(const void *data, size_t len) {
+  const uint8_t *bytes = (const uint8_t *)data;
+  uint32_t crc = 0xFFFFFFFF;
+
+  for (size_t i = 0; i < len; i++) {
+    crc ^= bytes[i];
+    for (int j = 0; j < 8; j++) {
+      if (crc & 1) {
+        crc = (crc >> 1) ^ 0xEDB88320;
+      } else {
+        crc >>= 1;
+      }
+    }
+  }
+
+  return ~crc;
+}
+
+// Global sequence counter (thread-safe)
+static uint32_t g_sequence_counter = 0;
+static pthread_mutex_t g_sequence_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+uint32_t get_next_sequence(void) {
+  pthread_mutex_lock(&g_sequence_mutex);
+  uint32_t seq = ++g_sequence_counter;
+  pthread_mutex_unlock(&g_sequence_mutex);
+  return seq;
+}
+
+int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
+  if (len > MAX_PACKET_SIZE) {
+    log_error("Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
+    return -1;
+  }
+
+  packet_header_t header = {.magic = htonl(PACKET_MAGIC),
+                            .type = htons((uint16_t)type),
+                            .length = htonl((uint32_t)len),
+                            .sequence = htonl(get_next_sequence()),
+                            .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0)};
+
+  // Send header first
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), SEND_TIMEOUT);
+  if (sent != sizeof(header)) {
+    log_error("Failed to send packet header: %zd/%zu bytes", sent, sizeof(header));
+    return -1;
+  }
+
+  // Send payload if present
+  if (len > 0 && data) {
+    sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
+    if (sent != (ssize_t)len) {
+      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      return -1;
+    }
+  }
+
+#ifdef NETWORK_DEBUG
+  log_debug("Sent packet type=%d, len=%zu, seq=%u", type, len, ntohl(header.sequence));
+#endif
+  return 0;
+}
+
+int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
+  if (!type || !data || !len) {
+    return -1;
+  }
+
+  packet_header_t header;
+
+  // Read header
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT);
+  if (received != sizeof(header)) {
+    if (received == 0) {
+      log_info("Connection closed while reading packet header");
+    } else if (received > 0) {
+      log_error("Partial packet header received: %zd/%zu bytes", received, sizeof(header));
+    }
+    return received == 0 ? 0 : -1;
+  }
+
+  // Convert from network byte order
+  uint32_t magic = ntohl(header.magic);
+  uint16_t pkt_type = ntohs(header.type);
+  uint32_t pkt_len = ntohl(header.length);
+#ifdef NETWORK_DEBUG
+  uint32_t sequence = ntohl(header.sequence);
+#endif
+  uint32_t expected_crc = ntohl(header.crc32);
+
+  // Validate magic
+  if (magic != PACKET_MAGIC) {
+    log_error("Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
+    return -1;
+  }
+
+  // Validate packet size
+  if (pkt_len > MAX_PACKET_SIZE) {
+    log_error("Packet too large: %u > %d", pkt_len, MAX_PACKET_SIZE);
+    return -1;
+  }
+
+  // Validate packet type and size constraints
+  switch (pkt_type) {
+  case PACKET_TYPE_VIDEO_HEADER:
+    if (pkt_len != sizeof(compressed_frame_header_t)) {
+      log_error("Invalid video header packet size: %u, expected %zu", pkt_len, sizeof(compressed_frame_header_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_VIDEO:
+    if (pkt_len == 0 || pkt_len > MAX_PACKET_SIZE - 1024) { // Leave room for headers
+      log_error("Invalid video packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_AUDIO:
+    if (pkt_len == 0 || pkt_len > AUDIO_SAMPLES_PER_PACKET * sizeof(float) * 2) { // Max stereo samples
+      log_error("Invalid audio packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_SIZE:
+    if (pkt_len != 4) { // width + height as uint16_t each
+      log_error("Invalid size packet size: %u, expected 4", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_PING:
+  case PACKET_TYPE_PONG:
+    if (pkt_len > 64) { // Ping/pong shouldn't be large
+      log_error("Invalid ping/pong packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
+  default:
+    log_error("Unknown packet type: %u", pkt_type);
+    return -1;
+  }
+
+  // Additional safety: don't allow zero-sized allocations for types that should have data
+  if (pkt_len == 0 && (pkt_type == PACKET_TYPE_VIDEO || pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_SIZE ||
+                       pkt_type == PACKET_TYPE_VIDEO_HEADER)) {
+    log_error("Zero-sized packet for type that requires data: %u", pkt_type);
+    return -1;
+  }
+
+  *type = (packet_type_t)pkt_type;
+  *len = pkt_len;
+
+  // Allocate and read payload
+  if (pkt_len > 0) {
+    // Additional safety check before allocation (uint32_t max is safe)
+    if (pkt_len > UINT32_MAX / 2) {
+      log_error("Packet size too large for safe allocation: %u", pkt_len);
+      return -1;
+    }
+
+    SAFE_MALLOC(*data, pkt_len, void *);
+    if (!*data) {
+      log_error("Failed to allocate %u bytes for packet payload", pkt_len);
+      return -1;
+    }
+
+    received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
+    if (received != (ssize_t)pkt_len) {
+      log_error("Failed to receive complete packet payload: %zd/%u bytes", received, pkt_len);
+      free(*data);
+      *data = NULL;
+      return -1;
+    }
+
+    // Verify checksum
+    uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
+    if (actual_crc != expected_crc) {
+      log_error("Packet checksum mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
+      free(*data);
+      *data = NULL;
+      return -1;
+    }
+  } else {
+    *data = NULL;
+  }
+
+#ifdef NETWORK_DEBUG
+  log_debug("Received packet type=%d, len=%zu, seq=%u", *type, *len, sequence);
+#endif
+  return 1;
+}
+
+int send_video_header_packet(int sockfd, const void *header_data, size_t header_len) {
+  return send_packet(sockfd, PACKET_TYPE_VIDEO_HEADER, header_data, header_len);
+}
+
+int send_video_packet(int sockfd, const void *frame_data, size_t frame_len) {
+  return send_packet(sockfd, PACKET_TYPE_VIDEO, frame_data, frame_len);
+}
+
+int send_audio_packet(int sockfd, const float *samples, int num_samples) {
+  if (!samples || num_samples <= 0 || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    return -1;
+  }
+
+  size_t data_size = num_samples * sizeof(float);
+  return send_packet(sockfd, PACKET_TYPE_AUDIO, samples, data_size);
+}
+
+int send_size_packet(int sockfd, unsigned short width, unsigned short height) {
+  struct {
+    uint16_t width;
+    uint16_t height;
+  } size_data = {.width = htons(width), .height = htons(height)};
+
+  return send_packet(sockfd, PACKET_TYPE_SIZE, &size_data, sizeof(size_data));
 }

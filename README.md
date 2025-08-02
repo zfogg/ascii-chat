@@ -11,16 +11,16 @@ session, and even iTerm or Kitty.app on macOS.
 It even works in an initial UNIX login shell, i.e. the login shell that runs
 'startx'.
 
-Eventually it will support 3+ simultaneous people, 'google-hangouts' style, and sound via PulseAudio or something.
+Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audio streaming is now supported via PortAudio!
 
 ![Animated demonstration](http://i.imgur.com/E4OuqvX.gif)
 
 
 Dependencies
 ==========
-- Most people: `apt-get install clang libopencv-dev libjpeg-dev`
-- ArchLinux masterrace: `pacman -S clang opencv libjpeg-turbo`
-- macOS: `brew install opencv@4 jpeg-turbo`
+- Most people: `apt-get install clang pkg-config libopencv-dev libjpeg-dev portaudio19-dev`
+- ArchLinux masterrace: `pacman -S pkg-config clang opencv libjpeg-turbo portaudio`
+- macOS: `brew install pkg-config opencv@4 jpeg-turbo portaudio`
 
 
 Build and run
@@ -35,6 +35,13 @@ Use `make clean debug` as you edit and test code.
 
 Check the Makefile to see how it works.
 
+If you need compile_commands.json for clang-based tools, check out `bear`:
+```bash
+brew install bear # or `apt-get install bear` or `yay -S bear`
+make compile_commands.json
+ls compile_commands.json
+
+```
 
 Command line flags
 =========
@@ -49,6 +56,7 @@ NOTE: run `./bin/server -h` to see these options
 - `-f --webcam-flip`: Horizontally flip image (server only, default: 1)
 - `-C --color`: Enable colored ASCII output (server and client)
 - `-b --background-color`: Enable background colored mode with contrasting text (server only)
+- `-A --audio`: Enable audio capture and playback (server and client)
 - `-h --help`: Show help message
 
 Usage
@@ -83,19 +91,38 @@ The colored output uses ANSI escape codes to colorize each ASCII character based
 on the RGB values from the original webcam image, creating a much more vibrant
 and realistic representation.
 
+### Audio Feature
+
+You can now enable real-time audio streaming between server and client! Use the `--audio` or `-A` flag:
+
+**Server with audio:**
+```bash
+./bin/server --audio
+```
+
+**Client with audio:**
+```bash
+./bin/client --audio
+```
+
+Audio is captured on the server and streamed to the client in real-time using PortAudio for cross-platform compatibility. The system works on both Linux (ALSA) and macOS (Core Audio).
+
 
 TODO
 ==========
+- [x] Audio.
 - [x] Client should continuously attempt to reconnect
 - [ ] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
 - [x] Colorize ASCII output
 - [ ] Refactor image processing algorithms
 - [x] client reconnect logic
 - [x] terminal resize events
+- [x] A nice protocol for the thing (packets and headers).
 - [x] client requests a frame size
 - [x] Client should gracefully handle `frame width > term width`
 - [x] Client should gracefully handle `term resize` event
 - [ ] Compile to WASM/WASI and run in the browser
+- [x] Socket multiplexing.
 
 
 Notes

@@ -25,6 +25,8 @@ unsigned short int opt_color_output = 0;
 
 unsigned short int opt_background_color = 0;
 
+unsigned short int opt_audio_enabled = 0;
+
 // Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
 unsigned short int opt_stretch = 0;
 
@@ -61,6 +63,7 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"webcam-flip", optional_argument, NULL, 'f'},
                                        {"color", no_argument, NULL, 'C'},
                                        {"background-color", no_argument, NULL, 'b'},
+                                       {"audio", no_argument, NULL, 'A'},
                                        {"stretch", no_argument, NULL, 's'},
                                        {"help", optional_argument, NULL, 'h'},
                                        {0, 0, 0, 0}};
@@ -129,7 +132,7 @@ void options_init(int argc, char **argv) {
   update_dimensions_to_terminal_size();
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::Cbsh", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsh", long_options, &index);
     if (c == -1)
       break;
 
@@ -180,6 +183,10 @@ void options_init(int argc, char **argv) {
       opt_background_color = 1;
       break;
 
+    case 'A':
+      opt_audio_enabled = 1;
+      break;
+
     case '?':
       fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr);
@@ -214,6 +221,7 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -C --color        (server|client) \t enable colored "
                 "ASCII output\n");
   fprintf(desc, "\t\t -b --background-color (server|client) \t enable background color for ASCII output\n");
+  fprintf(desc, "\t\t -A --audio        (server|client) \t enable audio capture and playback\n");
   fprintf(desc, "\t\t -s --stretch          (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
   fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }

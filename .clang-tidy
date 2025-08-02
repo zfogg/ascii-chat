@@ -1,0 +1,37 @@
+---
+# clang-tidy configuration for ascii-chat project
+# Based on Makefile configuration and desired check categories
+
+# Enable specific check categories while disabling all others
+Checks: '-*,readability-*,performance-*,portability-*,bugprone-*'
+
+# Filter headers to check (only project headers, not system/external headers)
+HeaderFilterRegex: '.*ascii-chat/.*\.(h|hpp)$'
+# HeaderFilterRegex: '.*'
+
+# Treat warnings as errors for CI/CD
+# WarningsAsErrors: ''
+
+# Check configuration options
+CheckOptions:
+  # Readability checks
+  - key: readability-function-size.LineThreshold
+    value: 140
+  - key: readability-function-size.StatementThreshold
+    value: 60
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: '0;1;2;3;4;8;16;32;64;128;256;512;1024'
+  - key: readability-identifier-length
+    value: 'false'
+  
+  # Performance checks
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: 'false'
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: ''
+  
+  # Bugprone checks
+  - key: bugprone-assert-side-effect.AssertMacros
+    value: 'assert,ASSERT'
+  - key: bugprone-string-constructor.WarnOnLargeLength
+    value: 'true'

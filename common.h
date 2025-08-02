@@ -25,7 +25,40 @@ typedef enum {
   ASCIICHAT_ERR_JPEG = -8,
   ASCIICHAT_ERR_TERMINAL = -9,
   ASCIICHAT_ERR_THREAD = -10,
+  ASCIICHAT_ERR_AUDIO = -11,
+  ASCIICHAT_ERR_BUFFER_ACCESS = -12,
+  ASCIICHAT_ERR_BUFFER_OVERFLOW = -13,
 } asciichat_error_t;
+
+/* Error handling */
+static inline const char *asciichat_error_string(asciichat_error_t error) {
+  switch (error) {
+  case ASCIICHAT_OK:
+    return "Success";
+  case ASCIICHAT_ERR_MALLOC:
+    return "Memory allocation failed";
+  case ASCIICHAT_ERR_NETWORK:
+    return "Network error";
+  case ASCIICHAT_ERR_WEBCAM:
+    return "Webcam error";
+  case ASCIICHAT_ERR_INVALID_PARAM:
+    return "Invalid parameter";
+  case ASCIICHAT_ERR_TIMEOUT:
+    return "Operation timed out";
+  case ASCIICHAT_ERR_BUFFER_FULL:
+    return "Buffer full";
+  case ASCIICHAT_ERR_JPEG:
+    return "JPEG processing error";
+  case ASCIICHAT_ERR_TERMINAL:
+    return "Terminal error";
+  case ASCIICHAT_ERR_THREAD:
+    return "Thread error";
+  case ASCIICHAT_ERR_AUDIO:
+    return "Audio error";
+  default:
+    return "Unknown error";
+  }
+}
 
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
@@ -67,7 +100,7 @@ static inline int get_frame_interval_ms(void) {
 // Add 50% safety margin for ANSI sequence length variations and terminal resizing
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_SIZE_BASE(opt_width, opt_height) * 3 / 2)
 // Ensure minimum size for very small terminals
-#define FRAME_BUFFER_SIZE_MIN (1024 * 1024) /* 1MB minimum */
+#define FRAME_BUFFER_SIZE_MIN (512 * 1024) /* 512KB minimum */
 // Ensure reasonable maximum to prevent excessive memory usage
 #define FRAME_BUFFER_SIZE_MAX (16 * 1024 * 1024) /* 16MB maximum */
 // Final calculation with bounds checking
@@ -124,32 +157,11 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 /* Array size */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-/* ============================================================================
- * Protocol Definitions
- * ============================================================================
- */
-
-/* Size communication protocol */
-#define SIZE_MESSAGE_PREFIX "SIZE:"
-#define SIZE_MESSAGE_FORMAT "SIZE:%u,%u\n"
-#define SIZE_MESSAGE_MAX_LEN 32
-
-/* ============================================================================
- * Function Declarations
- * ============================================================================
- */
-
-/* Error handling */
-const char *asciichat_error_string(asciichat_error_t error);
-
-/* Protocol functions */
-int send_size_message(int sockfd, unsigned short width, unsigned short height);
-int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
-
 /* Logging functions */
 void log_init(const char *filename, log_level_t level);
 void log_destroy(void);
 void log_set_level(log_level_t level);
+void log_truncate_if_large(void); /* Manually truncate large log files */
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
 
 /* Logging macros */

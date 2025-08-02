@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,11 +21,39 @@ image_t *image_new(int width, int height) {
 
   SAFE_MALLOC(p, sizeof(image_t), image_t *);
 
-  const ssize_t pixels_size = (unsigned long)width * (unsigned long)height * sizeof(rgb_t);
-  if ((unsigned long)pixels_size > IMAGE_MAX_PIXELS_SIZE) {
-    log_error("Image size exceeds maximum allowed: %d x %d", width, height);
+  // Check for integer overflow before multiplication
+  if (width < 0 || height < 0) {
+    log_error("Invalid image dimensions: %d x %d", width, height);
+    free(p);
     return NULL;
   }
+
+  const unsigned long w_ul = (unsigned long)width;
+  const unsigned long h_ul = (unsigned long)height;
+
+  // Check if multiplication would overflow
+  if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {
+    log_error("Image dimensions too large (would overflow): %d x %d", width, height);
+    free(p);
+    return NULL;
+  }
+
+  const unsigned long total_pixels = w_ul * h_ul;
+
+  // Check if final size calculation would overflow
+  if (total_pixels > ULONG_MAX / sizeof(rgb_t)) {
+    log_error("Image pixel count too large: %lu pixels", total_pixels);
+    free(p);
+    return NULL;
+  }
+
+  const size_t pixels_size = total_pixels * sizeof(rgb_t);
+  if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
+    log_error("Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height, pixels_size);
+    free(p);
+    return NULL;
+  }
+
   SAFE_MALLOC(p->pixels, pixels_size, rgb_t *);
 
   p->w = width;
@@ -159,10 +188,9 @@ char *image_print(const image_t *p) {
   const unsigned short int *blue_lut = BLUE;
 
   char *lines;
-  SAFE_MALLOC(lines, (len + 2 - 1) * sizeof(char), char *);
+  SAFE_MALLOC(lines, (len + 1) * sizeof(char), char *);
 
-  lines[len] = ASCII_DELIMITER;
-  lines[len + 1] = '\0';
+  lines[len] = '\0';
 
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
@@ -203,6 +231,7 @@ char *image_print_colored(const image_t *p) {
   const rgb_t *pix = p->pixels;
 
   char *current_pos = lines;
+  char *buffer_end = lines + lines_size - 1; // Reserve space for null terminator
 
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
@@ -216,6 +245,13 @@ char *image_print_colored(const image_t *p) {
       // Quantize colors.
       // quantize_color(&r, &g, &b, 8);
 
+      // Calculate remaining buffer space
+      size_t remaining = buffer_end - current_pos;
+      if (remaining < 64) { // Safety margin for longest possible ANSI sequence
+        log_error("Buffer overflow prevented in color processing");
+        exit(ASCIICHAT_ERR_BUFFER_ACCESS);
+      }
+
       if (opt_background_color) {
         // Choose contrasting foreground color (black or white) based on
         // luminance
@@ -228,20 +264,32 @@ char *image_print_colored(const image_t *p) {
 
         const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
         const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
-        const size_t operation_size =
-            strlen(ascii_fg) + strlen(ascii_bg) + 1 + 1; // strlen + ascii char + null terminator
-        const int written = snprintf(current_pos, operation_size, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
+
+        const int written = snprintf(current_pos, remaining, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
+        if (written < 0 || (size_t)written >= remaining) {
+          log_error("Buffer overflow prevented in color processing (background)");
+          exit(ASCIICHAT_ERR_BUFFER_ACCESS);
+        }
         current_pos += written;
 
       } else {
         const char *ascii_fg = rgb_to_ansi_fg(r, g, b);
-        const size_t operation_size = strlen(ascii_fg) + 1 + 1; // strlen + ascii char + null terminator
-        const int written = snprintf(current_pos, operation_size, "%s%c", ascii_fg, ascii_char);
+
+        const int written = snprintf(current_pos, remaining, "%s%c", ascii_fg, ascii_char);
+        if (written < 0 || (size_t)written >= remaining) {
+          log_error("Buffer overflow prevented in color processing (foreground)");
+          exit(ASCIICHAT_ERR_BUFFER_ACCESS);
+        }
         current_pos += written;
       }
     }
 
     // Add reset sequence; newline only when this is not the last row
+    size_t remaining = buffer_end - current_pos;
+    if (remaining < 8) { // Need space for reset + newline
+      log_error("Buffer overflow prevented in reset sequence");
+      exit(ASCIICHAT_ERR_BUFFER_ACCESS);
+    }
     memcpy(current_pos, "\033[0m", 4);
     current_pos += 4;
     if (y != h - 1) {
@@ -249,8 +297,7 @@ char *image_print_colored(const image_t *p) {
     }
   }
 
-  // Add ASCII delimiter, and null terminator making it a valid C string.
-  *current_pos++ = ASCII_DELIMITER;
+  // Add null terminator making it a valid C string.
   *current_pos = '\0';
 
   return lines;

@@ -21,14 +21,16 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
 
 // Utility to add leading spaces (left-padding) to each line of a frame.
 // Caller owns the returned buffer and must free it with free().
-char *ascii_pad_frame(const char *frame, size_t pad);
+char *ascii_pad_frame_width(const char *frame, size_t pad);
+
+// Utility to add blank lines (vertical padding) to center a frame vertically.
+// Caller owns the returned buffer and must free it with free().
+char *ascii_pad_frame_height(const char *frame, size_t pad_top);
 char *get_lum_palette(void);
 
 /*static char *from_jpeg(FILE *);*/
 
 #define ASCII_LUMINANCE_LEVELS 256
-
-#define ASCII_DELIMITER '\t'
 
 #define ASCII_SLEEP_NS 50000L
 

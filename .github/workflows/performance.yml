@@ -21,12 +21,11 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config valgrind
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config valgrind
 
     - name: Build with debug symbols
       run: |
-        make clean CSTD=-std=c2x
-        make debug CSTD=-std=c2x
+        make CSTD=c2x clean debug
 
     - name: Run memory leak detection
       run: |
@@ -76,17 +75,17 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
 
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
-        make clean CSTD=-std=c2x && make debug CSTD=-std=c2x
+        make CSTD=c2x clean debug
         DEBUG_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
         DEBUG_CLIENT_SIZE=$(stat -f%z bin/client 2>/dev/null || stat -c%s bin/client)
         
         echo "Building release version..."
-        make clean CSTD=-std=c2x && make release CSTD=-std=c2x
+        make CSTD=c2x clean release
         RELEASE_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
         RELEASE_CLIENT_SIZE=$(stat -f%z bin/client 2>/dev/null || stat -c%s bin/client)
         
@@ -127,7 +126,7 @@ jobs:
     - name: Generate code metrics
       run: |
         echo "=== Lines of Code Analysis ==="
-        cloc --exclude-dir=ext,build,bin .
+        cloc --exclude-dir=ext,build,bin,.github,.claude,.cursor .
         
         echo "=== Detailed File Analysis ==="
         wc -l *.c *.h *.cpp *.hpp 2>/dev/null | sort -n || true

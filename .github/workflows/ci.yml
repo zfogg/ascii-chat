@@ -23,25 +23,27 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev pkg-config
-
+        sudo apt-get install -y clang libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install opencv@4 jpeg-turbo pkg-config
+        brew install opencv@4 jpeg-turbo pkg-config portaudio
 
-    - name: Build project (${{ matrix.build_type }})
-      env:
+    - name: Build project (${{ matrix.build_type }}) (macOS)
+      if: runner.os == 'macOS'
       run: |
-        make clean CSTD=-std=c2x
-        make ${{ matrix.build_type }}
+        make CSTD=c2x CXXSTD=c++2b clean ${{ matrix.build_type }}
+    - name: Build project (${{ matrix.build_type }}) (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        make CSTD=c2x clean ${{ matrix.build_type }}
 
     - name: Test basic functionality
       run: |
         # Test that binaries exist and can show help
         ./bin/server --help
         ./bin/client --help
-        
+
         # Test that binaries have correct permissions
         test -x ./bin/server
         test -x ./bin/client
@@ -58,7 +60,7 @@ jobs:
 
   static-analysis:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -66,13 +68,13 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev zlib1g-dev pkg-config
+        sudo apt-get install -y clang clang-tools libopencv-dev libjpeg-dev zlib1g-dev portaudio19-dev pkg-config bear
 
     - name: Run static analysis
       run: |
         # Run clang-tidy on source files
-        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.c') -- $(pkg-config --cflags opencv4 libjpeg) -std=c2x
-        clang-tidy --checks='-*,readability-*,performance-*,portability-*,bugprone-*' $(find . -name '*.cpp') -- $(pkg-config --cflags opencv4 libjpeg) -std=c++23 -stdlib=libc++
+        bear -- make CSTD=c2x clean debug
+        make CSTD=c2x clang-tidy
 
 
     - name: Check for memory leaks patterns
@@ -84,7 +86,7 @@ jobs:
 
   format-check:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -97,4 +99,4 @@ jobs:
     - name: Check code formatting
       run: |
         # Check if code follows consistent formatting
-        make format-check CSTD=-std=c2x
+        make CSTD=c2x CXXSTD=c++2x format-check
