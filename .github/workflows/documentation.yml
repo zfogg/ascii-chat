@@ -50,7 +50,6 @@ jobs:
         # Create a custom dictionary for technical terms
         cat > .aspell.en.pws << EOF
         ASCII
-        OpenCV
         webcam
         Ubuntu
         ArchLinux

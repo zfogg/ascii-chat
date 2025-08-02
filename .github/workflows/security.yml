@@ -59,14 +59,16 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev
 
     - name: Check for known vulnerabilities in system packages
       run: |
-        # Check OpenCV version for known CVEs
-        opencv_version=$(pkg-config --modversion opencv4)
-        echo "OpenCV version: $opencv_version"
-        
+        # Check libv4l version
+        if pkg-config --exists v4l2; then
+          v4l2_version=$(pkg-config --modversion v4l2)
+          echo "v4l2 version: $v4l2_version"
+        fi
+
         # Check zlib version
         if pkg-config --exists zlib; then
           zlib_version=$(pkg-config --modversion zlib)
