@@ -57,7 +57,8 @@ image_t *webcam_read() {
 
   // Copy OpenCV Mat data directly to image_t
   // OpenCV Mat stores data as contiguous RGB bytes
-  const size_t data_size = static_cast<size_t>(frame.cols) * static_cast<size_t>(frame.rows) * 3; // 3 bytes per RGB pixel
+  const size_t data_size =
+      static_cast<size_t>(frame.cols) * static_cast<size_t>(frame.rows) * 3; // 3 bytes per RGB pixel
 
   memcpy(img->pixels, frame.data, data_size);
 
