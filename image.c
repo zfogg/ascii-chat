@@ -6,15 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <jpeglib.h>
 
-#include "ascii.h"
 #include "image.h"
+#include "ascii.h"
 #include "options.h"
 #include "round.h"
-
-typedef void (*image_resize_ptrfun)(const image_t *, image_t *);
-image_resize_ptrfun global_image_resize_fun = NULL;
 
 image_t *image_new(int width, int height) {
   image_t *p;
@@ -75,7 +71,7 @@ inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
 }
 
 void image_resize(const image_t *s, image_t *d) {
-  global_image_resize_fun(s, d);
+  image_resize_interpolation(s, d);
 }
 
 // Optimized interpolation function with better integer arithmetic and memory
@@ -95,66 +91,14 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   for (int y = 0; y < dst_h; y++) {
     const uint32_t src_y = (y * y_ratio) >> 16;
-    const rgb_t *src_row = src_pixels + src_y * src_w;
-    rgb_t *dst_row = dst_pixels + y * dst_w;
+    const rgb_t *src_row = src_pixels + (src_y * src_w);
+    rgb_t *dst_row = dst_pixels + (y * dst_w);
 
     for (int x = 0; x < dst_w; x++) {
       const uint32_t src_x = (x * x_ratio) >> 16;
       dst_row[x] = src_row[src_x];
     }
   }
-}
-
-image_t *image_read(FILE *fp) {
-  JSAMPARRAY buffer;
-  int row_stride;
-  struct jpeg_decompress_struct jpg;
-  struct jpeg_error_mgr jerr;
-  image_t *p;
-
-  global_image_resize_fun = image_resize_interpolation;
-
-  jpg.err = jpeg_std_error(&jerr);
-
-  jpeg_create_decompress(&jpg);
-  jpeg_stdio_src(&jpg, fp);
-  jpeg_read_header(&jpg, TRUE);
-  jpeg_start_decompress(&jpg);
-
-  if (jpg.data_precision != 8) {
-    fprintf(stderr, "jp2a: can only handle 8-bit color channels\n");
-    exit(1);
-  }
-
-  row_stride = jpg.output_width * jpg.output_components;
-  buffer = (*jpg.mem->alloc_sarray)((j_common_ptr)&jpg, JPOOL_IMAGE, row_stride, 1);
-
-  // Store image dimensions for aspect ratio recalculation on terminal resize
-  last_image_width = jpg.output_width;
-  last_image_height = jpg.output_height;
-
-  p = image_new(jpg.output_width, jpg.output_height);
-
-  while (jpg.output_scanline < jpg.output_height) {
-    jpeg_read_scanlines(&jpg, buffer, 1);
-
-    if (jpg.output_components == 3) {
-      memcpy(&p->pixels[(jpg.output_scanline - 1) * p->w], &buffer[0][0], sizeof(rgb_t) * p->w);
-    } else {
-      rgb_t *pixels = &p->pixels[(jpg.output_scanline - 1) * p->w];
-
-      // grayscale - optimized loop
-      const JSAMPLE *src = buffer[0];
-      for (int x = 0; x < (int)jpg.output_width; ++x) {
-        const JSAMPLE gray = src[x];
-        pixels[x].r = pixels[x].g = pixels[x].b = gray;
-      }
-    }
-  }
-
-  jpeg_finish_decompress(&jpg);
-  jpeg_destroy_decompress(&jpg);
-  return p;
 }
 
 // Optimized palette generation with caching

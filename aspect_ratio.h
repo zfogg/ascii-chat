@@ -8,4 +8,4 @@
  */
 #include <sys/types.h>
 
-void aspect_ratio(const int jpeg_width, const int jpeg_height, ssize_t *out_width, ssize_t *out_height);
+void aspect_ratio(const int img_width, const int img_height, ssize_t *out_width, ssize_t *out_height);

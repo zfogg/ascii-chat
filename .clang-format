@@ -5,7 +5,6 @@ IndentWidth: 2
 UseTab: Never
 ColumnLimit: 120
 
-# Disable include sorting to prevent jpeglib.h header order issues
 SortIncludes: Never
 
 # Additional formatting preferences
