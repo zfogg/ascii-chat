@@ -8,8 +8,9 @@
 
 // Helper functions for aspect ratio calculations
 static inline int calc_width_from_height(int height, int img_w, int img_h) {
-  if (img_h == 0)
+  if (img_h == 0) {
     return MIN_DIMENSION;
+  }
 
   float width = (float)height * (float)img_w / (float)img_h * CHAR_ASPECT;
   int result = ROUND(width);
@@ -17,8 +18,9 @@ static inline int calc_width_from_height(int height, int img_w, int img_h) {
 }
 
 static inline int calc_height_from_width(int width, int img_w, int img_h) {
-  if (img_w == 0)
+  if (img_w == 0) {
     return MIN_DIMENSION;
+  }
 
   float height = ((float)width / CHAR_ASPECT) * (float)img_h / (float)img_w;
   int result = ROUND(height);
@@ -48,10 +50,12 @@ static void calculate_fit_dimensions(int img_w, int img_h, int max_w, int max_h,
   }
 
   // Final safety check
-  if (*out_width <= 0)
+  if (*out_width <= 0) {
     *out_width = MIN_DIMENSION;
-  if (*out_height <= 0)
+  }
+  if (*out_height <= 0) {
     *out_height = MIN_DIMENSION;
+  }
 }
 
 void aspect_ratio(const int img_w, const int img_h, ssize_t *out_width, ssize_t *out_height) {
