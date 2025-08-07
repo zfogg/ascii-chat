@@ -44,13 +44,6 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
     return -1;
   }
 
-  // Verify frame_size fits in uLong for zlib
-  if (frame_size > UINT32_MAX) {
-    log_error("frame_size too large for zlib: %zu", frame_size);
-    free(compressed_data);
-    return -1;
-  }
-
   // Try using deflate instead of compress2 for more control
   z_stream strm;
   memset(&strm, 0, sizeof(strm));
