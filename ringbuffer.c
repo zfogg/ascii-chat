@@ -278,9 +278,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
 
     if (frame->size > 10 * 1024 * 1024) {
       log_error("CORRUPTION: Frame size too large: %zu", frame->size);
-      if (frame->data) {
-        free(frame->data);
-      }
+      free(frame->data);
       frame->data = NULL;
       frame->size = 0;
       return false;
