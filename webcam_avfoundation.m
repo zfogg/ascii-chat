@@ -149,7 +149,8 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
         NSArray *devices = discoverySession.devices;
 
         for (AVCaptureDevice *device in devices) {
-          log_info("Found device: %s (type: %s)", [device.localizedName UTF8String], [device.deviceType UTF8String]);
+          NSUInteger idx = [devices indexOfObject:device];
+          log_info("Found device %lu: %s (type: %s)", (unsigned long)idx, [device.localizedName UTF8String], [device.deviceType UTF8String]);
         }
 
         if (device_index < [devices count]) {
