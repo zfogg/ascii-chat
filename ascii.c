@@ -50,14 +50,14 @@ char *ascii_read(void) {
   ssize_t height = opt_height;
   aspect_ratio(original->w, original->h, &width, &height);
 
-  // Calculate how many leading spaces are required to centre the image inside
+  // Calculate how many leading spaces are required to center the image inside
   // the overall width requested by the user.  Make sure the value is
   // non-negative so we don't end up passing a huge number to ascii_pad_frame
   // when width happens to exceed opt_width.
   ssize_t pad_width_ss = opt_width > width ? (opt_width - width) / 2 : 0;
   size_t pad_width = (size_t)pad_width_ss;
 
-  // Calculate how many blank lines are required to centre the image inside
+  // Calculate how many blank lines are required to center the image inside
   // the overall height requested by the user.
   ssize_t pad_height_ss = opt_height > height ? (opt_height - height) / 2 : 0;
   size_t pad_height = (size_t)pad_height_ss;
@@ -82,12 +82,12 @@ char *ascii_read(void) {
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII");
+    return NULL;
   }
 
   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
   free(ascii);
 
-  // Apply vertical centering (height padding)
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   free(ascii_width_padded);
 
@@ -95,7 +95,6 @@ char *ascii_read(void) {
   image_destroy(resized);
 
   return ascii_padded;
-  // return ascii;
 }
 
 asciichat_error_t ascii_write(const char *frame) {
