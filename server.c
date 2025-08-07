@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdatomic.h>
 
 #include "image.h"
 #include "ascii.h"
@@ -28,7 +27,7 @@
  */
 
 static volatile bool g_should_exit = false;
-static _Atomic(framebuffer_t *) g_frame_buffer = NULL;
+static framebuffer_t *g_frame_buffer = NULL;
 static pthread_t g_capture_thread;
 static pthread_t g_audio_thread;
 static bool g_audio_thread_created = false;
@@ -133,18 +132,11 @@ static void *webcam_capture_thread_func(void *arg) {
     pthread_mutex_lock(&g_stats_mutex);
     pthread_mutex_lock(&g_framebuffer_mutex);
 
-    // Memory barrier to ensure all writes are visible
-    atomic_thread_fence(memory_order_acquire);
-
     // Extra safety check - make sure framebuffer exists and isn't being cleared
     bool buffered = false;
-    framebuffer_t *fb = atomic_load(&g_frame_buffer);
-    if (fb && fb->rb && !g_capture_paused) {
-      buffered = framebuffer_write_frame(fb, frame, frame_len);
+    if (g_frame_buffer && g_frame_buffer->rb && !g_capture_paused) {
+      buffered = framebuffer_write_frame(g_frame_buffer, frame, frame_len);
     }
-
-    // Memory barrier before unlock
-    atomic_thread_fence(memory_order_release);
 
     pthread_mutex_unlock(&g_framebuffer_mutex);
 
@@ -324,13 +316,12 @@ int main(int argc, char *argv[]) {
   }
 
   // Create frame buffer - no need for size specification anymore
-  framebuffer_t *fb = framebuffer_create(FRAME_BUFFER_CAPACITY);
-  if (!fb) {
+  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY);
+  if (!g_frame_buffer) {
     log_fatal("Failed to create frame buffer");
     ascii_read_destroy();
     exit(ASCIICHAT_ERR_MALLOC);
   }
-  atomic_store(&g_frame_buffer, fb);
   log_info("Created framebuffer with capacity for %d frames", FRAME_BUFFER_CAPACITY);
 
   // Initialize audio if enabled
@@ -543,9 +534,8 @@ int main(int argc, char *argv[]) {
       frame_t frame = {.magic = 0, .size = 0, .data = NULL};
       pthread_mutex_lock(&g_framebuffer_mutex);
       bool frame_available = false;
-      framebuffer_t *frame_buffer = atomic_load(&g_frame_buffer);
-      if (frame_buffer) {
-        frame_available = framebuffer_read_frame(frame_buffer, &frame);
+      if (g_frame_buffer) {
+        frame_available = framebuffer_read_frame(g_frame_buffer, &frame);
       }
       pthread_mutex_unlock(&g_framebuffer_mutex);
 
@@ -633,16 +623,14 @@ int main(int argc, char *argv[]) {
           pthread_mutex_unlock(&g_stats_mutex);
           continue;
         }
-        framebuffer_t *fb_stats = atomic_load(&g_frame_buffer);
-
         size_t buffer_size = 0;
-        if (fb_stats && fb_stats->rb) {
-          buffer_size = ringbuffer_size(fb_stats->rb);
+        if (g_frame_buffer && g_frame_buffer->rb) {
+          buffer_size = ringbuffer_size(g_frame_buffer->rb);
         }
 
         // Copy stats while we hold the mutex to avoid race conditions
         uint64_t captured = g_stats.frames_captured;
-        uint64_t frames_sent = g_stats.frames_sent;
+        uint64_t sent = g_stats.frames_sent;
         uint64_t dropped = g_stats.frames_dropped;
 
         pthread_mutex_unlock(&g_framebuffer_mutex);
@@ -693,11 +681,10 @@ int main(int argc, char *argv[]) {
   // Cleanup resources
   log_debug("Cleaning up framebuffer...");
   pthread_mutex_lock(&g_framebuffer_mutex);
-  framebuffer_t *fb_cleanup = atomic_load(&g_frame_buffer);
-  if (fb_cleanup) {
-    log_debug("Destroying framebuffer at %p", fb_cleanup);
-    framebuffer_destroy(fb_cleanup);
-    atomic_store(&g_frame_buffer, NULL);
+  if (g_frame_buffer) {
+    log_debug("Destroying framebuffer at %p", g_frame_buffer);
+    framebuffer_destroy(g_frame_buffer);
+    g_frame_buffer = NULL;
     log_debug("Framebuffer destroyed");
   }
   pthread_mutex_unlock(&g_framebuffer_mutex);
