@@ -544,9 +544,9 @@ int main(int argc, char *argv[]) {
       frame_t frame = {.magic = 0, .size = 0, .data = NULL};
       pthread_mutex_lock(&g_framebuffer_mutex);
       bool frame_available = false;
-      framebuffer_t *fb = atomic_load(&g_frame_buffer);
-      if (fb) {
-        frame_available = framebuffer_read_frame(fb, &frame);
+      framebuffer_t *frame_buffer = atomic_load(&g_frame_buffer);
+      if (frame_buffer) {
+        frame_available = framebuffer_read_frame(frame_buffer, &frame);
       }
       pthread_mutex_unlock(&g_framebuffer_mutex);
 
