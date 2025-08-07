@@ -58,6 +58,11 @@ image_t *image_new(int width, int height) {
 }
 
 void image_destroy(image_t *p) {
+  if (!p) {
+    log_error("image_destroy: p is NULL");
+    return;
+  }
+
   free(p->pixels);
   free(p);
 }
@@ -71,16 +76,32 @@ inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
 }
 
 void image_resize(const image_t *s, image_t *d) {
+  if (!s || !d) {
+    log_error("image_resize: s or d is NULL");
+    return;
+  }
+
   image_resize_interpolation(s, d);
 }
 
 // Optimized interpolation function with better integer arithmetic and memory
 // access
 void image_resize_interpolation(const image_t *source, image_t *dest) {
+  if (!source || !dest || !source->pixels || !dest->pixels) {
+    log_error("Invalid parameters to image_resize_interpolation");
+    return;
+  }
+
   const int src_w = source->w;
   const int src_h = source->h;
   const int dst_w = dest->w;
   const int dst_h = dest->h;
+
+  // Handle edge cases
+  if (src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0) {
+    log_error("Invalid image dimensions for resize");
+    return;
+  }
 
   // Use fixed-point arithmetic for better performance
   const uint32_t x_ratio = ((src_w << 16) / dst_w) + 1;
@@ -91,12 +112,15 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   for (int y = 0; y < dst_h; y++) {
     const uint32_t src_y = (y * y_ratio) >> 16;
-    const rgb_t *src_row = src_pixels + (src_y * src_w);
+    const uint32_t safe_src_y = (src_y >= (uint32_t)src_h) ? (uint32_t)(src_h - 1) : src_y;
+    const rgb_t *src_row = src_pixels + (safe_src_y * src_w);
+
     rgb_t *dst_row = dst_pixels + (y * dst_w);
 
     for (int x = 0; x < dst_w; x++) {
       const uint32_t src_x = (x * x_ratio) >> 16;
-      dst_row[x] = src_row[src_x];
+      const uint32_t safe_src_x = (src_x >= (uint32_t)src_w) ? (uint32_t)(src_w - 1) : src_x;
+      dst_row[x] = src_row[safe_src_x];
     }
   }
 }
@@ -122,6 +146,11 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 
 // Optimized image printing with better memory access patterns
 char *image_print(const image_t *p) {
+  if (!p || !p->pixels) {
+    log_error("image_print: p is NULL");
+    return NULL;
+  }
+
   const int h = p->h;
   const int w = p->w;
   const ssize_t len = (ssize_t)h * (ssize_t)w;
@@ -162,6 +191,11 @@ void quantize_color(int *r, int *g, int *b, int levels) {
 
 // Colored ASCII art printing function with quantization
 char *image_print_colored(const image_t *p) {
+  if (!p || !p->pixels) {
+    log_error("image_print_colored: p is NULL");
+    return NULL;
+  }
+
   const int h = p->h;
   const int w = p->w;
 
@@ -247,4 +281,38 @@ char *image_print_colored(const image_t *p) {
   *current_pos = '\0';
 
   return lines;
+}
+
+// RGB to ANSI color conversion functions
+char *rgb_to_ansi_fg(int r, int g, int b) {
+  static char color_code[32];
+  snprintf(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
+  return color_code;
+}
+
+char *rgb_to_ansi_bg(int r, int g, int b) {
+  static char color_code[32];
+  snprintf(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
+  return color_code;
+}
+
+void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
+  // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
+  if (r == g && g == b) {
+    // Grayscale
+    if (r < 8) {
+      *fg_code = 16;
+    } else if (r > 248) {
+      *fg_code = 231;
+    } else {
+      *fg_code = 232 + (r - 8) / 10;
+    }
+  } else {
+    // Color cube: 16 + 36*r + 6*g + b where r,g,b are 0-5
+    int r_level = (r * 5) / 255;
+    int g_level = (g * 5) / 255;
+    int b_level = (b * 5) / 255;
+    *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
+  }
+  *bg_code = *fg_code; // Same logic for background
 }

@@ -1,94 +1,90 @@
+#include <stdlib.h>
+#include "common.h"
 #include "options.h"
 #include "round.h"
-#include <stdlib.h>
-
-/*============================================================================
- * Aspect-ratio handling
- *============================================================================
- *
- * Character cells in most monospace fonts are roughly twice as tall as they
- * are wide.  This means that if we render an image 100 characters wide and 100
- * characters tall it will look vertically stretched on-screen.  To compensate
- * we introduce a constant (CHAR_ASPECT) that represents the ratio of the cell
- * height to its width.  With a value of 2.0 the resulting ASCII art will keep
- * the original picture proportions.
- *
- * The user can override this behaviour with the command-line switch
- *   -s / --stretch
- * which sets the global flag `opt_stretch`.  When that flag is non-zero we
- * skip all aspect-ratio corrections so the frame is stretched/shrunk to fill
- * exactly the requested width/height.
- *
- * auto_width / auto_height come from the options parser.  They are non-zero
- * when the corresponding dimension was **not** specified by the user and must
- * therefore be calculated here.
- */
 
 #define CHAR_ASPECT 2.0f // terminal cell height ÷ width
+#define MIN_DIMENSION 1  // minimum width/height to prevent zero dimensions
+
+// Helper functions for aspect ratio calculations
+static inline int calc_width_from_height(int height, int img_w, int img_h) {
+  if (img_h == 0)
+    return MIN_DIMENSION;
+
+  float width = (float)height * (float)img_w / (float)img_h * CHAR_ASPECT;
+  int result = ROUND(width);
+  return (result > 0) ? result : MIN_DIMENSION;
+}
+
+static inline int calc_height_from_width(int width, int img_w, int img_h) {
+  if (img_w == 0)
+    return MIN_DIMENSION;
+
+  float height = ((float)width / CHAR_ASPECT) * (float)img_h / (float)img_w;
+  int result = ROUND(height);
+  return (result > 0) ? result : MIN_DIMENSION;
+}
+
+static void calculate_fit_dimensions(int img_w, int img_h, int max_w, int max_h, ssize_t *out_width,
+                                     ssize_t *out_height) {
+  if (!out_width || !out_height) {
+    log_error("calculate_fit_dimensions: out_width or out_height is NULL");
+    return;
+  }
+
+  // Calculate both possible dimensions
+  int width_from_height = calc_width_from_height(max_h, img_w, img_h);
+  int height_from_width = calc_height_from_width(max_w, img_w, img_h);
+
+  // Choose the option that fits within both constraints
+  if (width_from_height <= max_w) {
+    // Height-constrained: use full height, calculated width
+    *out_width = width_from_height;
+    *out_height = max_h;
+  } else {
+    // Width-constrained: use full width, calculated height
+    *out_width = max_w;
+    *out_height = height_from_width;
+  }
+
+  // Final safety check
+  if (*out_width <= 0)
+    *out_width = MIN_DIMENSION;
+  if (*out_height <= 0)
+    *out_height = MIN_DIMENSION;
+}
 
 void aspect_ratio(const int img_w, const int img_h, ssize_t *out_width, ssize_t *out_height) {
-  // If the user asked to stretch, do nothing – the caller will use whatever
-  // dimensions are currently in opt_width/opt_height.
-  if (opt_stretch) {
+  // Input validation
+  if (!out_width || !out_height) {
+    return; // or log error
+  }
+
+  if (img_w <= 0 || img_h <= 0) {
+    // Handle degenerate image dimensions
+    *out_width = MIN_DIMENSION;
+    *out_height = MIN_DIMENSION;
     return;
   }
 
-  // If both dimensions were given explicitly there's nothing to adjust.
-  if (!auto_width && !auto_height) {
-    return;
+  // Early returns for cases where no calculation is needed
+  if (opt_stretch || (!auto_width && !auto_height)) {
+    return; // Use existing dimensions
   }
-
-  /* Helper macros – they turn a given height (rows) into a width (columns)
-   * and vice-versa, taking CHAR_ASPECT into account.  We use ROUND() from
-   * round.h so we end up with integer character counts.
-   */
-#define CALC_WIDTH_FROM_HEIGHT(h) ROUND((float)(h) * (float)img_w / (float)img_h * CHAR_ASPECT)
-#define CALC_HEIGHT_FROM_WIDTH(w) ROUND(((float)(w) / CHAR_ASPECT) * (float)img_h / (float)img_w)
 
   if (auto_width && !auto_height) {
-    // Height fixed, width is derived.
-    *out_width = CALC_WIDTH_FROM_HEIGHT(opt_height);
-    if (*out_width == 0) {
-      *out_width = 1; // safeguard against zero
-    }
+    *out_width = calc_width_from_height(opt_height, img_w, img_h);
     return;
   }
 
   if (!auto_width && auto_height) {
-    // Width fixed, height is derived.
-    *out_height = CALC_HEIGHT_FROM_WIDTH(opt_width);
-    if (*out_height == 0) {
-      *out_height = 1;
-    }
+    *out_height = calc_height_from_width(opt_width, img_w, img_h);
     return;
   }
 
-  /* If both dimensions are automatic we attempt to base the calculation on
-   * whichever dimension has already been set by terminal-size detection.
-   * Failing that we fall back to a reasonable hard-coded default.
-   */
+  // Handle both dimensions automatic - fit within max rectangle
   if (auto_width && auto_height) {
-    /* Treat the currently stored opt_width/opt_height as a MAX rectangle
-     * we are allowed to use (these came from the client).  Produce the
-     * largest possible aspect-correct frame that fits entirely inside it.
-     */
-    const int max_w = opt_width;
-    const int max_h = opt_height;
-
-    int w_from_h = CALC_WIDTH_FROM_HEIGHT(max_h);
-    if (w_from_h <= max_w) {
-      /* Using the full height still keeps us within the width budget. */
-      *out_width = w_from_h;
-      *out_height = max_h;
-    } else {
-      /* Otherwise scale based on the width limit. */
-      *out_width = max_w;
-      *out_height = CALC_HEIGHT_FROM_WIDTH(max_w);
-    }
-
+    calculate_fit_dimensions(img_w, img_h, opt_width, opt_height, out_width, out_height);
     return;
   }
-
-#undef CALC_WIDTH_FROM_HEIGHT
-#undef CALC_HEIGHT_FROM_WIDTH
 }
