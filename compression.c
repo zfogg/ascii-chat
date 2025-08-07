@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdint.h>
+#include <string.h>
 #include <zlib.h>
 #include "compression.h"
 #include "common.h"
@@ -11,12 +12,31 @@ static time_t g_last_compression_log_time = 0;
 
 // network.c implementation:
 uint32_t calculate_crc32(const char *data, size_t length) {
+  // Validate pointer before use
+  if (!data || length == 0) {
+    log_error("Invalid parameters to calculate_crc32!");
+    return 0;
+  }
+
   return crc32(0L, (const Bytef *)data, length);
 }
 
 int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size) {
+  // Validate frame size
+  if (frame_size == 0 || !frame_data) {
+    log_error("Invalid frame data: frame_data=%p, frame_size=%zu", frame_data, frame_size);
+    return -1;
+  }
+
+  // Check for suspicious frame size
+  if (frame_size > 10 * 1024 * 1024) { // 10MB seems unreasonable for ASCII art
+    log_error("Suspicious frame_size=%zu, might be corrupted", frame_size);
+    return -1;
+  }
+
   // Calculate maximum compressed size
   uLongf compressed_size = compressBound(frame_size);
+
   char *compressed_data;
   SAFE_MALLOC(compressed_data, compressed_size, char *);
 
@@ -24,8 +44,42 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
     return -1;
   }
 
-  // Compress the frame
-  int result = compress((Bytef *)compressed_data, &compressed_size, (const Bytef *)frame_data, frame_size);
+  // Verify frame_size fits in uLong for zlib
+  if (frame_size > UINT32_MAX) {
+    log_error("frame_size too large for zlib: %zu", frame_size);
+    free(compressed_data);
+    return -1;
+  }
+
+  // Try using deflate instead of compress2 for more control
+  z_stream strm;
+  memset(&strm, 0, sizeof(strm));
+
+  int ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  if (ret != Z_OK) {
+    log_error("deflateInit failed: %d", ret);
+    free(compressed_data);
+    return -1;
+  }
+
+  strm.avail_in = frame_size;
+  strm.next_in = (Bytef *)frame_data;
+  strm.avail_out = compressed_size;
+  strm.next_out = (Bytef *)compressed_data;
+
+  ret = deflate(&strm, Z_FINISH);
+
+  if (ret != Z_STREAM_END) {
+    log_error("deflate failed: %d", ret);
+    deflateEnd(&strm);
+    free(compressed_data);
+    return -1;
+  }
+
+  compressed_size = strm.total_out;
+  deflateEnd(&strm);
+
+  int result = Z_OK; // For compatibility with the rest of the code
 
   if (result != Z_OK) {
     free(compressed_data);
@@ -38,12 +92,14 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
 
   if (use_compression) {
     // Send compressed frame
+    uint32_t checksum = calculate_crc32(frame_data, frame_size);
+
     compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
                                         .compressed_size = (uint32_t)compressed_size,
                                         .original_size = (uint32_t)frame_size,
                                         .width = opt_width,
                                         .height = opt_height,
-                                        .checksum = calculate_crc32(frame_data, frame_size)};
+                                        .checksum = checksum};
 
     if (send_video_header_packet(sockfd, &header, sizeof(header)) < 0) {
       free(compressed_data);
