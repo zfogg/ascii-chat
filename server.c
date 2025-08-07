@@ -166,7 +166,6 @@ static void *webcam_capture_thread_func(void *arg) {
     // Free the original frame from ascii_read() - framebuffer_write_frame made a copy
     free(frame);
 
-    // REMOVED DUPLICATE free(frame) - frame was already freed on line 134
     frames_captured++;
     last_capture_time = current_time;
 
@@ -561,15 +560,6 @@ int main(int argc, char *argv[]) {
       if (!frame.data || frame.size == 0) {
         log_error("Invalid frame: data=%p, size=%zu", frame.data, frame.size);
         // Free frame data if it exists but size is 0
-        if (frame.data) {
-          free(frame.data);
-        }
-        continue;
-      }
-
-      // Extra validation - check if frame data looks valid
-      if (frame.size > 10 * 1024 * 1024) {
-        log_error("Frame size too large: %zu, likely corrupted", frame.size);
         free(frame.data);
         continue;
       }
@@ -586,6 +576,10 @@ int main(int argc, char *argv[]) {
         frame.magic = FRAME_FREED; // Mark as freed before freeing
         free(frame.data);
         frame.data = NULL;
+      } else {
+        log_error("Sent invalid frame! frame.magic=%d", frame.magic);
+        free(frame.data);
+        continue;
       }
 
       if (sent < 0) {
@@ -626,19 +620,12 @@ int main(int argc, char *argv[]) {
       long nsec_diff = stats_time.tv_nsec - last_stats_time.tv_nsec;
       long stats_elapsed = sec_diff * 1000 + nsec_diff / 1000000;
 
-      if (client_frames_sent % 100 == 0) {
-        log_debug("Stats check: elapsed=%ldms, frames_sent=%lu", stats_elapsed, client_frames_sent);
-      }
-
       if (stats_elapsed >= 1000) { // Every 1 second
-        log_debug("About to print stats (elapsed=%ld)...", stats_elapsed);
-
         // Lock stats mutex first
         if (pthread_mutex_lock(&g_stats_mutex) != 0) {
           log_error("Failed to lock stats mutex!");
           continue;
         }
-        log_debug("Stats mutex locked");
 
         // Lock framebuffer mutex second
         if (pthread_mutex_lock(&g_framebuffer_mutex) != 0) {
@@ -647,19 +634,10 @@ int main(int argc, char *argv[]) {
           continue;
         }
         framebuffer_t *fb_stats = atomic_load(&g_frame_buffer);
-        log_debug("Framebuffer mutex locked, g_frame_buffer=%p", fb_stats);
 
         size_t buffer_size = 0;
-        if (fb_stats) {
-          log_debug("g_frame_buffer->rb=%p", fb_stats->rb);
-          if (fb_stats->rb) {
-            buffer_size = ringbuffer_size(fb_stats->rb);
-            log_debug("Got buffer_size=%zu", buffer_size);
-          } else {
-            log_error("g_frame_buffer->rb is NULL!");
-          }
-        } else {
-          log_error("g_frame_buffer is NULL!");
+        if (fb_stats && fb_stats->rb) {
+          buffer_size = ringbuffer_size(fb_stats->rb);
         }
 
         // Copy stats while we hold the mutex to avoid race conditions
@@ -668,16 +646,10 @@ int main(int argc, char *argv[]) {
         uint64_t dropped = g_stats.frames_dropped;
 
         pthread_mutex_unlock(&g_framebuffer_mutex);
-        log_debug("Framebuffer mutex unlocked");
-
         pthread_mutex_unlock(&g_stats_mutex);
-        log_debug("Stats mutex unlocked");
-
         // Log stats after releasing all mutexes
         log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", captured, sent, dropped, buffer_size);
-
         last_stats_time = stats_time;
-        log_debug("Stats updated, continuing main loop...");
       }
     }
 

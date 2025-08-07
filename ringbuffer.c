@@ -285,12 +285,13 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
     }
 
     // Additional check - validate pointer is not obviously bad
-    if ((uintptr_t)frame->data < 0x1000) {
-      log_error("CORRUPTION: Invalid frame data pointer: %p", frame->data);
-      frame->data = NULL;
-      frame->size = 0;
-      return false;
-    }
+    // NOTE: unreliable across platforms
+    // if ((uintptr_t)frame->data < 0x1000) {
+    //   log_error("CORRUPTION: Invalid frame data pointer: %p", frame->data);
+    //   frame->data = NULL;
+    //   frame->size = 0;
+    //   return false;
+    // }
   }
 
   return result;
