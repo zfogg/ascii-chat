@@ -189,29 +189,93 @@ void quantize_color(int *r, int *g, int *b, int levels) {
   *b = (*b / step) * step;
 }
 
-// Colored ASCII art printing function with quantization
+/**
+ * Converts an image to colored ASCII art with ANSI escape codes.
+ * 
+ * This function generates a string representation of an image where each pixel
+ * is converted to an ASCII character with ANSI color codes. The character is
+ * chosen based on luminance, and colors are applied using 24-bit RGB ANSI
+ * escape sequences.
+ * 
+ * Buffer allocation is precisely calculated to avoid waste and prevent overflows:
+ * - Each pixel: 1 ASCII char + foreground ANSI code (19 bytes max)
+ * - Background mode: adds background ANSI code (19 bytes max per pixel)
+ * - Each row: reset sequence (\033[0m = 4 bytes) + newline (except last row)
+ * - At the end: null terminator (1 byte)
+ * 
+ * Color modes:
+ * - Foreground only (default): ASCII characters with colored foreground
+ * - Background mode (opt_background_color): colored background with contrasting
+ *   foreground (black on bright backgrounds, white on dark backgrounds)
+ * 
+ * ANSI escape code format:
+ * - Foreground: \033[38;2;R;G;Bm (11-19 bytes depending on RGB values)
+ * - Background: \033[48;2;R;G;Bm (11-19 bytes depending on RGB values)
+ * - Reset: \033[0m (4 bytes)
+ * 
+ * @param p Pointer to image_t structure containing pixel data
+ * @return Dynamically allocated string containing colored ASCII art, or NULL on error.
+ *         Caller is responsible for freeing the returned string.
+ * 
+ * @note The function performs overflow checks to prevent integer overflow when
+ *       calculating buffer sizes for very large images.
+ * @note Uses global opt_background_color to determine color mode.
+ * @note Exits with ASCIICHAT_ERR_BUFFER_ACCESS if buffer overflow is detected
+ *       during string construction (should never happen with correct calculation).
+ */
 char *image_print_colored(const image_t *p) {
   if (!p || !p->pixels) {
-    log_error("image_print_colored: p is NULL");
+    log_error("p or p->pixels is NULL");
     return NULL;
   }
 
   const int h = p->h;
   const int w = p->w;
 
-  // Allocate a reasonable buffer for the ASCII output
-  // Maximum expected size: height * width * (chars per pixel + color codes) + newlines
-  size_t lines_size = h * w * 40 + h * 2 + 1024; // Conservative estimate with margin
+  // Constants for ANSI escape codes
+  const size_t max_fg_ansi = 19; // \033[38;2;255;255;255m
+  const size_t max_bg_ansi = 19; // \033[48;2;255;255;255m
+  const size_t reset_len   = 4;  // \033[0m
+
+  const size_t h_sz = (size_t)h;
+  const size_t w_sz = (size_t)w;
+
+  // Ensure h * w won't overflow
+  if (h_sz > 0 && w_sz > SIZE_MAX / h_sz) {
+    log_error("Image dimensions too large: %d x %d", h, w);
+    return NULL;
+  }
+
+  const size_t total_pixels = h_sz * w_sz;
+  const size_t bytes_per_pixel = 1 + max_fg_ansi + (opt_background_color ? max_bg_ansi : 0);
+
+  // Ensure total_pixels * bytes_per_pixel won't overflow
+  if (total_pixels > SIZE_MAX / bytes_per_pixel) {
+    log_error("Pixel data too large for buffer: %d x %d", h, w);
+    return NULL;
+  }
+
+  const size_t pixel_bytes = total_pixels * bytes_per_pixel;
+
+  // Per row: reset sequence + newline (except last row)
+  const size_t total_resets = h_sz * reset_len;
+  const size_t total_newlines = (h_sz > 0) ? (h_sz - 1) : 0;
+
+  // Final buffer size: pixel bytes + per-row extras + null terminator
+  const size_t extra_bytes = total_resets + total_newlines + 1;
+
+  if (pixel_bytes > SIZE_MAX - extra_bytes) {
+    log_error("Final buffer size would overflow: %d x %d", h, w);
+    return NULL;
+  }
+
+  const size_t lines_size = pixel_bytes + extra_bytes;
   char *lines;
   SAFE_MALLOC(lines, lines_size, char *);
 
-  // Now we can use the lines buffer safely in this function.
-  // No buffer overflows and don't worry about snprintf's return value.
-
   const rgb_t *pix = p->pixels;
-
   char *current_pos = lines;
-  char *buffer_end = lines + lines_size - 1; // Reserve space for null terminator
+  const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
 
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
@@ -222,64 +286,53 @@ char *image_print_colored(const image_t *p) {
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
       const char ascii_char = luminance_palette[luminance];
 
-      // Quantize colors.
-      // quantize_color(&r, &g, &b, 8);
-
-      // Calculate remaining buffer space
-      size_t remaining = buffer_end - current_pos;
-      if (remaining < 64) { // Safety margin for longest possible ANSI sequence
-        log_error("Buffer overflow prevented in color processing");
+      const size_t remaining = buffer_end - current_pos;
+      if (remaining < 64) {
+        log_error("Buffer overflow prevented in pixel write");
         exit(ASCIICHAT_ERR_BUFFER_ACCESS);
       }
 
       if (opt_background_color) {
-        // Choose contrasting foreground color (black or white) based on
-        // luminance
-        int fg_r, fg_g, fg_b;
-        if (luminance < 127) { // Dim background, use black text
-          fg_r = fg_g = fg_b = 0;
-        } else { // Bright background, use white text
-          fg_r = fg_g = fg_b = 255;
-        }
+        int fg_r = (luminance < 127) ? 0 : 255;
+        int fg_g = fg_r, fg_b = fg_r;
 
         const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
         const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
 
         const int written = snprintf(current_pos, remaining, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
         if (written < 0 || (size_t)written >= remaining) {
-          log_error("Buffer overflow prevented in color processing (background)");
+          log_error("Buffer overflow (background)");
           exit(ASCIICHAT_ERR_BUFFER_ACCESS);
         }
         current_pos += written;
-
       } else {
         const char *ascii_fg = rgb_to_ansi_fg(r, g, b);
 
         const int written = snprintf(current_pos, remaining, "%s%c", ascii_fg, ascii_char);
         if (written < 0 || (size_t)written >= remaining) {
-          log_error("Buffer overflow prevented in color processing (foreground)");
+          log_error("Buffer overflow (foreground)");
           exit(ASCIICHAT_ERR_BUFFER_ACCESS);
         }
         current_pos += written;
       }
     }
 
-    // Add reset sequence; newline only when this is not the last row
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 8) { // Need space for reset + newline
-      log_error("Buffer overflow prevented in reset sequence");
+    // Write reset + optional newline
+    const size_t remaining = buffer_end - current_pos;
+    if (remaining < 8) {
+      log_error("Buffer overflow during reset");
       exit(ASCIICHAT_ERR_BUFFER_ACCESS);
     }
-    memcpy(current_pos, "\033[0m", 4);
-    current_pos += 4;
+
+    memcpy(current_pos, "\033[0m", reset_len);
+    current_pos += reset_len;
+
     if (y != h - 1) {
       *current_pos++ = '\n';
     }
   }
 
-  // Add null terminator making it a valid C string.
   *current_pos = '\0';
-
   return lines;
 }
 
