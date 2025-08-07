@@ -165,7 +165,9 @@ char *image_print_colored(const image_t *p) {
   const int h = p->h;
   const int w = p->w;
 
-  size_t lines_size = (FRAME_BUFFER_SIZE_FINAL - 1) * sizeof(char);
+  // Allocate a reasonable buffer for the ASCII output
+  // Maximum expected size: height * width * (chars per pixel + color codes) + newlines
+  size_t lines_size = h * w * 40 + h * 2 + 1024; // Conservative estimate with margin
   char *lines;
   SAFE_MALLOC(lines, lines_size, char *);
 

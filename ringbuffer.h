@@ -101,18 +101,29 @@ void ringbuffer_clear(ringbuffer_t *rb);
  * ============================================================================
  */
 
+/**
+ * Frame structure that stores both data and actual size
+ * This eliminates the need for fixed-size buffers and null-terminator scanning
+ */
+typedef struct {
+  uint32_t magic; /* Magic number to detect corruption */
+  size_t size;    /* Actual size of frame data */
+  char *data;     /* Pointer to frame data (not owned by this struct) */
+} frame_t;
+
+#define FRAME_MAGIC 0xDEADBEEF
+#define FRAME_FREED 0xFEEDFACE
+
 typedef struct {
   ringbuffer_t *rb;
-  size_t max_frame_size;
 } framebuffer_t;
 
 /**
  * Create a frame buffer for ASCII frames
  * @param capacity Number of frames to buffer
- * @param max_frame_size Maximum size of a single frame
  * @return Frame buffer or NULL on failure
  */
-framebuffer_t *framebuffer_create(size_t capacity, size_t max_frame_size);
+framebuffer_t *framebuffer_create(size_t capacity);
 
 /**
  * Destroy a frame buffer
@@ -123,17 +134,24 @@ void framebuffer_destroy(framebuffer_t *fb);
 /**
  * Write a frame to the buffer
  * @param fb Frame buffer
- * @param frame Frame data (null-terminated string)
+ * @param frame_data Frame data
+ * @param frame_size Actual size of frame data
  * @return true if successful, false if buffer is full
  */
-bool framebuffer_write_frame(framebuffer_t *fb, const char *frame);
+bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size);
 
 /**
  * Read a frame from the buffer
  * @param fb Frame buffer
- * @param frame Buffer to read frame into (must be at least max_frame_size)
+ * @param frame Pointer to frame_t struct to be filled
  * @return true if successful, false if buffer is empty
  */
-bool framebuffer_read_frame(framebuffer_t *fb, char *frame);
+bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame);
+
+/**
+ * Clear all frames from the buffer, freeing their data
+ * @param fb Frame buffer
+ */
+void framebuffer_clear(framebuffer_t *fb);
 
 #endif /* ASCII_CHAT_RINGBUFFER_H */
