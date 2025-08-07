@@ -566,7 +566,7 @@ int main(int argc, char *argv[]) {
         frame.magic = FRAME_FREED; // Mark as freed before freeing
         free(frame.data);
         frame.data = NULL;
-      } else {
+      } else if (frame.data) {
         log_error("Sent invalid frame! frame.magic=%d", frame.magic);
         free(frame.data);
         continue;
