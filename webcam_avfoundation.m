@@ -230,22 +230,22 @@ void webcam_platform_cleanup(webcam_context_t *ctx) {
     if (!ctx) return;
     
     @autoreleasepool {
-        // Stop the session first to prevent new callbacks
-        if (ctx->session && [ctx->session isRunning]) {
-            [ctx->session stopRunning];
-            
-            // Wait a bit for any pending callbacks to complete
-            usleep(100000); // 100ms
-        }
-        
-        // Deactivate delegate to prevent callbacks during cleanup
+        // First, deactivate delegate to reject new callbacks
         if (ctx->delegate) {
             [ctx->delegate deactivate];
         }
         
-        // Remove delegate to prevent callbacks during cleanup
-        if (ctx->output && ctx->delegate) {
+        // Remove delegate to prevent any further callbacks
+        if (ctx->output) {
             [ctx->output setSampleBufferDelegate:nil queue:nil];
+        }
+        
+        // Now stop the session
+        if (ctx->session && [ctx->session isRunning]) {
+            [ctx->session stopRunning];
+            
+            // Wait longer for session to fully stop
+            usleep(200000); // 200ms - give more time for cleanup
         }
         
         // Clean up session and associated objects
@@ -327,6 +327,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
         
         if (!baseAddress) {
             CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+            CVPixelBufferRelease(pixelBuffer);  // Release our retained reference
             log_error("Failed to get pixel buffer base address");
             return NULL;
         }
@@ -335,6 +336,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
         image_t *img = image_new((int)width, (int)height);
         if (!img) {
             CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+            CVPixelBufferRelease(pixelBuffer);  // Release our retained reference
             log_error("Failed to allocate image buffer");
             return NULL;
         }
