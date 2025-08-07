@@ -73,7 +73,6 @@ void ringbuffer_destroy(ringbuffer_t *rb) {
   if (rb) {
     free(rb->buffer);
     free(rb);
-    log_debug("Destroyed ring buffer");
   }
 }
 
@@ -184,8 +183,6 @@ framebuffer_t *framebuffer_create(size_t capacity) {
     return NULL;
   }
 
-  log_info("Created frame buffer: capacity=%zu frames", capacity);
-
   return fb;
 }
 
@@ -196,7 +193,6 @@ void framebuffer_destroy(framebuffer_t *fb) {
 
     ringbuffer_destroy(fb->rb);
     free(fb);
-    log_info("Destroyed frame buffer");
   }
 }
 

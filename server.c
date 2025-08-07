@@ -684,7 +684,6 @@ int main(int argc, char *argv[]) {
     log_debug("Destroying framebuffer at %p", g_frame_buffer);
     framebuffer_destroy(g_frame_buffer);
     g_frame_buffer = NULL;
-    log_debug("Framebuffer destroyed");
   }
   pthread_mutex_unlock(&g_framebuffer_mutex);
   log_debug("Framebuffer cleanup complete");
