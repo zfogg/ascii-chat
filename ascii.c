@@ -162,12 +162,12 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   // Count how many visual rows we have (lines terminated by '\n') to determine
   // the final buffer size.
   size_t line_count = 1; // There is always at least the first line
-  const char *p = frame;
-  while (*p) {
-    if (*p == '\n') {
+  const char *char_in_frame = frame;
+  while (*char_in_frame) {
+    if (*char_in_frame == '\n') {
       line_count++;
     }
-    p++;
+    char_in_frame++;
   }
 
   // Total length of the source plus padding.
