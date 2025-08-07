@@ -191,32 +191,32 @@ void quantize_color(int *r, int *g, int *b, int levels) {
 
 /**
  * Converts an image to colored ASCII art with ANSI escape codes.
- * 
+ *
  * This function generates a string representation of an image where each pixel
  * is converted to an ASCII character with ANSI color codes. The character is
  * chosen based on luminance, and colors are applied using 24-bit RGB ANSI
  * escape sequences.
- * 
+ *
  * Buffer allocation is precisely calculated to avoid waste and prevent overflows:
  * - Each pixel: 1 ASCII char + foreground ANSI code (19 bytes max)
  * - Background mode: adds background ANSI code (19 bytes max per pixel)
  * - Each row: reset sequence (\033[0m = 4 bytes) + newline (except last row)
  * - At the end: null terminator (1 byte)
- * 
+ *
  * Color modes:
  * - Foreground only (default): ASCII characters with colored foreground
  * - Background mode (opt_background_color): colored background with contrasting
  *   foreground (black on bright backgrounds, white on dark backgrounds)
- * 
+ *
  * ANSI escape code format:
  * - Foreground: \033[38;2;R;G;Bm (11-19 bytes depending on RGB values)
  * - Background: \033[48;2;R;G;Bm (11-19 bytes depending on RGB values)
  * - Reset: \033[0m (4 bytes)
- * 
+ *
  * @param p Pointer to image_t structure containing pixel data
  * @return Dynamically allocated string containing colored ASCII art, or NULL on error.
  *         Caller is responsible for freeing the returned string.
- * 
+ *
  * @note The function performs overflow checks to prevent integer overflow when
  *       calculating buffer sizes for very large images.
  * @note Uses global opt_background_color to determine color mode.
@@ -235,7 +235,7 @@ char *image_print_colored(const image_t *p) {
   // Constants for ANSI escape codes
   const size_t max_fg_ansi = 19; // \033[38;2;255;255;255m
   const size_t max_bg_ansi = 19; // \033[48;2;255;255;255m
-  const size_t reset_len   = 4;  // \033[0m
+  const size_t reset_len = 4;    // \033[0m
 
   const size_t h_sz = (size_t)h;
   const size_t w_sz = (size_t)w;
