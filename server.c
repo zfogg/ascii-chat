@@ -664,7 +664,7 @@ int main(int argc, char *argv[]) {
 
         // Copy stats while we hold the mutex to avoid race conditions
         uint64_t captured = g_stats.frames_captured;
-        uint64_t sent = g_stats.frames_sent;
+        uint64_t frames_sent = g_stats.frames_sent;
         uint64_t dropped = g_stats.frames_dropped;
 
         pthread_mutex_unlock(&g_framebuffer_mutex);
