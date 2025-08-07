@@ -112,7 +112,7 @@ release: $(TARGETS)
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	$(CC) -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS) -sectcreate __TEXT __info_plist Info.plist
 	@echo "Built $@ successfully!"
 
 $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)

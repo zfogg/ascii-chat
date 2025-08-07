@@ -679,7 +679,6 @@ int main(int argc, char *argv[]) {
   }
 
   // Cleanup resources
-  log_debug("Cleaning up framebuffer...");
   pthread_mutex_lock(&g_framebuffer_mutex);
   if (g_frame_buffer) {
     log_debug("Destroying framebuffer at %p", g_frame_buffer);
