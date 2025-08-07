@@ -338,13 +338,13 @@ char *image_print_colored(const image_t *p) {
 
 // RGB to ANSI color conversion functions
 char *rgb_to_ansi_fg(int r, int g, int b) {
-  static char color_code[32];
+  _Thread_local static char color_code[32];
   snprintf(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
   return color_code;
 }
 
 char *rgb_to_ansi_bg(int r, int g, int b) {
-  static char color_code[32];
+  _Thread_local static char color_code[32];
   snprintf(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
   return color_code;
 }
