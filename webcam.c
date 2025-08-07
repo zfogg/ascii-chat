@@ -12,11 +12,10 @@ void webcam_init(unsigned short int webcam_index) {
   webcam_platform_type_t platform = webcam_get_platform();
 
   log_info("Initializing webcam with %s", webcam_platform_name(platform));
-  fprintf(stderr, "Attempting to open webcam with index %d using %s...\n", webcam_index,
-          webcam_platform_name(platform));
+  log_info("Attempting to open webcam with index %d using %s...", webcam_index, webcam_platform_name(platform));
 
   if (webcam_platform_init(&global_webcam_ctx, webcam_index) != 0) {
-    fprintf(stderr, "Failed to connect to webcam.\n");
+    log_error("Failed to connect to webcam");
 
     // Platform-specific error messages
     if (platform == WEBCAM_PLATFORM_V4L2) {
@@ -66,9 +65,9 @@ image_t *webcam_read(void) {
     // Flip the image horizontally
     for (int y = 0; y < frame->h; y++) {
       for (int x = 0; x < frame->w / 2; x++) {
-        rgb_t temp = frame->pixels[y * frame->w + x];
-        frame->pixels[y * frame->w + x] = frame->pixels[y * frame->w + (frame->w - 1 - x)];
-        frame->pixels[y * frame->w + (frame->w - 1 - x)] = temp;
+        rgb_t temp = frame->pixels[y * frame->w + x];                                       // Store left pixel
+        frame->pixels[y * frame->w + x] = frame->pixels[y * frame->w + (frame->w - 1 - x)]; // Move right pixel to left
+        frame->pixels[y * frame->w + (frame->w - 1 - x)] = temp; // Move stored left pixel to right
       }
     }
   }
@@ -84,8 +83,8 @@ void webcam_cleanup(void) {
   if (global_webcam_ctx) {
     webcam_platform_cleanup(global_webcam_ctx);
     global_webcam_ctx = NULL;
-    fprintf(stdout, "Webcam resources released\n");
+    log_info("Webcam resources released");
   } else {
-    fprintf(stdout, "Webcam was not opened, nothing to release\n");
+    log_info("Webcam was not opened, nothing to release");
   }
 }

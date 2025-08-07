@@ -10,7 +10,7 @@
 
 // AVFoundation timeout configuration
 #define AVFOUNDATION_FRAME_TIMEOUT_NS 500000000  // 500ms timeout (adjustable for slow cameras)
-#define AVFOUNDATION_INIT_TIMEOUT_NS (2 * NSEC_PER_SEC)  // 2 second timeout for initialization
+#define AVFOUNDATION_INIT_TIMEOUT_NS (3 * NSEC_PER_SEC)  // 3 second timeout for initialization
 
 @interface WebcamCaptureDelegate : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate>
 @property (nonatomic, strong) dispatch_semaphore_t frameSemaphore;
@@ -96,6 +96,26 @@ struct webcam_context_t {
     int height;
 };
 
+// Helper function to get supported device types without deprecated ones
+static NSArray *getSupportedDeviceTypes(void) {
+    NSMutableArray *deviceTypes = [NSMutableArray array];
+    
+    // Always add built-in camera
+    [deviceTypes addObject:AVCaptureDeviceTypeBuiltInWideAngleCamera];
+    
+    // Add continuity camera support for macOS 13.0+
+    if (@available(macOS 13.0, *)) {
+        [deviceTypes addObject:AVCaptureDeviceTypeContinuityCamera];
+    }
+
+    // Add external camera support for macOS 14.0+
+    if (@available(macOS 14.0, *)) {
+        [deviceTypes addObject:AVCaptureDeviceTypeExternal];
+    }
+
+    return [deviceTypes copy];
+}
+
 int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
     webcam_context_t *context = malloc(sizeof(webcam_context_t));
     if (!context) {
@@ -117,14 +137,21 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
         // Set session preset for quality
         [context->session setSessionPreset:AVCaptureSessionPreset640x480];
         
-        // Find camera device using newer discovery session API
+        // Find camera device using newer discovery session API with proper device types
         AVCaptureDevice *device = nil;
+
+        NSArray *deviceTypes = getSupportedDeviceTypes();
         AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
-            discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera]
+            discoverySessionWithDeviceTypes:deviceTypes
             mediaType:AVMediaTypeVideo
             position:AVCaptureDevicePositionUnspecified];
         
         NSArray *devices = discoverySession.devices;
+
+        for (AVCaptureDevice *device in devices) {
+          log_info("Found device: %s (type: %s)", [device.localizedName UTF8String], [device.deviceType UTF8String]);
+        }
+
         if (device_index < [devices count]) {
             device = [devices objectAtIndex:device_index];
         } else if ([devices count] > 0) {
@@ -292,6 +319,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
         // Wait for a frame (configurable timeout for different camera speeds)
         dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, AVFOUNDATION_FRAME_TIMEOUT_NS);
         if (dispatch_semaphore_wait(ctx->delegate.frameSemaphore, timeout) != 0) {
+            log_error("No webcam frame available within timeout: %0.2f seconds", AVFOUNDATION_FRAME_TIMEOUT_NS / NSEC_PER_SEC);
             return NULL; // No frame available within timeout
         }
         

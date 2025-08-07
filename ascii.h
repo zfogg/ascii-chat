@@ -14,11 +14,6 @@ asciichat_error_t ascii_write(const char *);
 void ascii_read_destroy(void);
 void ascii_write_destroy(void);
 
-// Color support functions
-char *rgb_to_ansi_fg(int r, int g, int b);
-char *rgb_to_ansi_bg(int r, int g, int b);
-void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
-
 // Utility to add leading spaces (left-padding) to each line of a frame.
 // Caller owns the returned buffer and must free it with free().
 char *ascii_pad_frame_width(const char *frame, size_t pad);

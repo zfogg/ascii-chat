@@ -130,19 +130,6 @@ void ascii_read_destroy(void) {
   log_debug("ASCII reader destroyed");
 }
 
-// RGB to ANSI color conversion functions
-char *rgb_to_ansi_fg(int r, int g, int b) {
-  static char color_code[32];
-  snprintf(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
-  return color_code;
-}
-
-char *rgb_to_ansi_bg(int r, int g, int b) {
-  static char color_code[32];
-  snprintf(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
-  return color_code;
-}
-
 /*
  * Pads each line of an ASCII frame with a given number of leading space
  * characters. The function allocates a new buffer large enough to hold the
@@ -152,19 +139,18 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
  * Parameters:
  *   frame      The original, null-terminated ASCII frame. It is expected to
  *              contain `\n` at the end of every visual row.
- *   pad        How many space characters to add in front of every visual row.
+ *   pad_left   How many space characters to add in front of every visual row.
  *
  * Returns:
  *   A newly allocated, null-terminated string that contains the padded frame
- *   on success, or NULL if either `frame` is NULL or a memory allocation
- *   fails.
+ *   on success, or NULL if either `frame`.
  */
-char *ascii_pad_frame_width(const char *frame, size_t pad) {
+char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   if (!frame) {
     return NULL;
   }
 
-  if (pad == 0) {
+  if (pad_left == 0) {
     // Nothing to do; return a copy so the caller can free it safely without
     // worrying about the original allocation strategy.
     size_t orig_len = strlen(frame);
@@ -174,10 +160,8 @@ char *ascii_pad_frame_width(const char *frame, size_t pad) {
     return copy;
   }
 
-  /* -------------------------------------------------------------------------
-   * Count how many visual rows we have (lines terminated by '\n')
-   * to determine the final buffer size.
-   * ----------------------------------------------------------------------- */
+  // Count how many visual rows we have (lines terminated by '\n') to determine
+  // the final buffer size.
   size_t line_count = 1; // There is always at least the first line
   const char *p = frame;
   while (*p) {
@@ -187,30 +171,28 @@ char *ascii_pad_frame_width(const char *frame, size_t pad) {
     p++;
   }
 
-  /* Total length of the source plus padding */
-  const size_t src_len = strlen(frame);
-  const size_t extra = line_count * pad;
-  const size_t dst_len = src_len + extra;
+  // Total length of the source plus padding.
+  const size_t frame_len = strlen(frame);
+  const size_t left_padding_len = line_count * pad_left;
+  const size_t total_len = frame_len + left_padding_len;
 
-  char *dst;
-  SAFE_MALLOC(dst, dst_len + 1, char *);
+  char *buffer;
+  SAFE_MALLOC(buffer, total_len + 1, char *);
 
-  /* -------------------------------------------------------------------------
-   * Build the padded frame.
-   * ----------------------------------------------------------------------- */
+  // Build the padded frame.
   bool at_line_start = true;
   const char *src = frame;
-  char *out = dst;
+  char *position = buffer;
 
   while (*src) {
     if (at_line_start) {
-      /* Insert the requested amount of spaces in front of every visual row. */
-      memset(out, ' ', pad);
-      out += pad;
+      // Insert the requested amount of spaces in front of every visual row.
+      memset(position, ' ', pad_left);
+      position += pad_left;
       at_line_start = false;
     }
 
-    *out++ = *src;
+    *position++ = *src;
 
     if (*src == '\n') {
       at_line_start = true;
@@ -219,8 +201,8 @@ char *ascii_pad_frame_width(const char *frame, size_t pad) {
     src++;
   }
 
-  *out = '\0';
-  return dst;
+  *position = '\0';
+  return buffer;
 }
 
 /**
@@ -229,11 +211,10 @@ char *ascii_pad_frame_width(const char *frame, size_t pad) {
  * Parameters:
  *   frame        The input ASCII frame to pad vertically.
  *   pad_top      Number of blank lines to add at the top.
- *   frame_width  Width of each line (for padding blank lines).
  *
  * Returns:
  *   A newly allocated, null-terminated string with vertical padding,
- *   or NULL if frame is NULL or memory allocation fails.
+ *   or NULL if frame is NULL.
  */
 char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   if (!frame) {
@@ -270,25 +251,4 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   *position = '\0';
 
   return buffer;
-}
-
-void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
-  // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
-  if (r == g && g == b) {
-    // Grayscale
-    if (r < 8) {
-      *fg_code = 16;
-    } else if (r > 248) {
-      *fg_code = 231;
-    } else {
-      *fg_code = 232 + (r - 8) / 10;
-    }
-  } else {
-    // Color cube: 16 + 36*r + 6*g + b where r,g,b are 0-5
-    int r_level = (r * 5) / 255;
-    int g_level = (g * 5) / 255;
-    int b_level = (b * 5) / 255;
-    *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
-  }
-  *bg_code = *fg_code; // Same logic for background
 }
