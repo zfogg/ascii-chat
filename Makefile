@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Compilers
-CC  := clang
+override CC  := clang
 
 # Package dependencies
 PKG_CONFIG_LIBS := zlib portaudio-2.0

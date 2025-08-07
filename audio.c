@@ -78,6 +78,12 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
   if (!rb || !data || samples <= 0)
     return 0;
 
+  // Validate samples doesn't exceed our buffer size
+  if (samples > AUDIO_RING_BUFFER_SIZE) {
+    log_error("Attempted to write %d samples, but buffer size is only %d", samples, AUDIO_RING_BUFFER_SIZE);
+    return 0;
+  }
+
   pthread_mutex_lock(&rb->mutex);
 
   int available = audio_ring_buffer_available_write(rb);
@@ -134,6 +140,7 @@ int audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   if (!rb)
     return 0;
 
+  // Note: This function must be called with mutex already locked
   int write_idx = rb->write_index;
   int read_idx = rb->read_index;
 

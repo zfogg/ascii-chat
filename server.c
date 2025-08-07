@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdatomic.h>
 
 #include "image.h"
 #include "ascii.h"
@@ -27,11 +28,13 @@
  */
 
 static volatile bool g_should_exit = false;
-static framebuffer_t *g_frame_buffer = NULL;
+static _Atomic(framebuffer_t *) g_frame_buffer = NULL;
 static pthread_t g_capture_thread;
 static pthread_t g_audio_thread;
 static bool g_audio_thread_created = false;
 static volatile bool g_audio_send_failed = false;
+static volatile bool g_capture_paused = false;       // Flag to pause capture during client operations
+static volatile bool g_capture_thread_ready = false; // Flag to indicate capture thread is ready
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_framebuffer_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -93,8 +96,11 @@ static void *webcam_capture_thread_func(void *arg) {
 
   log_info("Frame capture thread started");
 
+  // Signal that capture thread is ready
+  g_capture_thread_ready = true;
+
   while (!g_should_exit) {
-    if (connfd == 0) {
+    if (connfd == 0 || g_capture_paused) {
       usleep(100 * 1000);
       continue;
     }
@@ -103,8 +109,8 @@ static void *webcam_capture_thread_func(void *arg) {
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 999 +
-                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 999999;
+    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
+                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
 
     int frame_interval = get_frame_interval_ms();
     if (elapsed_ms < frame_interval) {
@@ -121,15 +127,28 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Try to add frame to buffer (with mutex protection)
-    pthread_mutex_lock(&g_framebuffer_mutex);
-    bool buffered = g_frame_buffer ? framebuffer_write_frame(g_frame_buffer, frame) : false;
-    pthread_mutex_unlock(&g_framebuffer_mutex);
+    size_t frame_len = strlen(frame);
 
-    if (strcmp(frame, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
-      usleep(100000); // 100ms delay before retry
+    // Lock both mutexes in consistent order: stats first, then framebuffer
+    pthread_mutex_lock(&g_stats_mutex);
+    pthread_mutex_lock(&g_framebuffer_mutex);
+
+    // Memory barrier to ensure all writes are visible
+    atomic_thread_fence(memory_order_acquire);
+
+    // Extra safety check - make sure framebuffer exists and isn't being cleared
+    bool buffered = false;
+    framebuffer_t *fb = atomic_load(&g_frame_buffer);
+    if (fb && fb->rb && !g_capture_paused) {
+      buffered = framebuffer_write_frame(fb, frame, frame_len);
     }
 
-    pthread_mutex_lock(&g_stats_mutex);
+    // Memory barrier before unlock
+    atomic_thread_fence(memory_order_release);
+
+    pthread_mutex_unlock(&g_framebuffer_mutex);
+
+    // Update stats while we still hold the stats mutex
     g_stats.frames_captured++;
     if (!buffered) {
       g_stats.frames_dropped++;
@@ -137,9 +156,17 @@ static void *webcam_capture_thread_func(void *arg) {
         log_debug("Frame buffer full, dropped frame %lu", g_stats.frames_captured);
       }
     }
+
     pthread_mutex_unlock(&g_stats_mutex);
 
+    if (strcmp(frame, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
+      usleep(100000); // 100ms delay before retry
+    }
+
+    // Free the original frame from ascii_read() - framebuffer_write_frame made a copy
     free(frame);
+
+    // REMOVED DUPLICATE free(frame) - frame was already freed on line 134
     frames_captured++;
     last_capture_time = current_time;
 
@@ -152,7 +179,7 @@ static void *webcam_capture_thread_func(void *arg) {
     }
   }
 
-  log_info("Frame capture thread stopped");
+  log_info("Frame capture thread exiting (g_should_exit=%d)", g_should_exit);
   return NULL;
 }
 
@@ -260,45 +287,11 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
   auto_width = 1;
   auto_height = 1;
 
-  // Calculate required buffer size for this client size
-  size_t required_size = FRAME_BUFFER_SIZE_BASE(width, height) * 3 / 2;
-  if (required_size < FRAME_BUFFER_SIZE_MIN) {
-    required_size = FRAME_BUFFER_SIZE_MIN;
-  } else if (required_size > FRAME_BUFFER_SIZE_MAX) {
-    required_size = FRAME_BUFFER_SIZE_MAX;
-  }
-
-  // Lock framebuffer access to prevent race conditions with capture thread
-  pthread_mutex_lock(&g_framebuffer_mutex);
-
-  // Check if we need to recreate the framebuffer
-  if (!g_frame_buffer || g_frame_buffer->max_frame_size < required_size) {
-    log_info("Recreating framebuffer for client size %ux%u (need %zu bytes, had %zu)", width, height, required_size,
-             g_frame_buffer ? g_frame_buffer->max_frame_size : 0);
-
-    // Create new buffer first to minimize the NULL window
-    framebuffer_t *new_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, required_size);
-    if (!new_buffer) {
-      pthread_mutex_unlock(&g_framebuffer_mutex);
-      log_fatal("Failed to create new frame buffer for size %ux%u", width, height);
-      exit(ASCIICHAT_ERR_MALLOC);
-    }
-
-    // Atomically swap buffers to minimize race window
-    framebuffer_t *old_buffer = g_frame_buffer;
-    g_frame_buffer = new_buffer;
-
-    // Destroy old buffer after swap
-    if (old_buffer) {
-      framebuffer_destroy(old_buffer);
-    }
-  } else {
-    // Buffer is large enough, just clear existing frames
-    ringbuffer_clear(g_frame_buffer->rb);
-    log_info("Adjusted frame generation for client size: %ux%u (buffer reused)", width, height);
-  }
-
-  pthread_mutex_unlock(&g_framebuffer_mutex);
+  // DON'T clear the framebuffer when just updating size!
+  // This causes use-after-free bugs when frames are in flight.
+  // The capture thread will automatically start generating frames
+  // with the new size, and old frames will naturally drain out.
+  log_info("Updated frame size to: %ux%u (buffer not cleared)", width, height);
 }
 
 /* ============================================================================
@@ -328,17 +321,18 @@ int main(int argc, char *argv[]) {
   // Initialize webcam
   if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
     log_fatal("Failed to initialize webcam");
-    exit(ASCIICHAT_OK);
+    exit(ASCIICHAT_ERR_WEBCAM);
   }
 
-  // Create initial frame buffer with minimum size - will be resized when client connects
-  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY, FRAME_BUFFER_SIZE_MIN);
-  if (!g_frame_buffer) {
-    log_fatal("Failed to create initial frame buffer");
+  // Create frame buffer - no need for size specification anymore
+  framebuffer_t *fb = framebuffer_create(FRAME_BUFFER_CAPACITY);
+  if (!fb) {
+    log_fatal("Failed to create frame buffer");
     ascii_read_destroy();
     exit(ASCIICHAT_ERR_MALLOC);
   }
-  log_info("Created initial framebuffer with %zu bytes (will resize for client)", FRAME_BUFFER_SIZE_MIN);
+  atomic_store(&g_frame_buffer, fb);
+  log_info("Created framebuffer with capacity for %d frames", FRAME_BUFFER_CAPACITY);
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
@@ -367,6 +361,13 @@ int main(int argc, char *argv[]) {
     ascii_read_destroy();
     exit(ASCIICHAT_ERR_THREAD);
   }
+
+  // Wait for capture thread to be ready before accepting connections
+  log_info("Waiting for capture thread to initialize...");
+  while (!g_capture_thread_ready && !g_should_exit) {
+    usleep(10000); // 10ms
+  }
+  log_info("Capture thread ready");
 
   // Start audio thread if enabled
   if (opt_audio_enabled) {
@@ -423,15 +424,25 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  struct timespec last_stats_time = {0, 0};
+  struct timespec last_stats_time;
+  clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
   // Main connection loop
   while (!g_should_exit) {
     log_info("Waiting for client connection...");
 
+    // Pause capture thread before accepting new connection
+    // Only pause if thread is ready (important for first connection)
+    if (g_capture_thread_ready) {
+      g_capture_paused = true;
+    }
+
     // Accept network connection with timeout
     connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
     if (connfd < 0) {
+      if (g_capture_thread_ready) {
+        g_capture_paused = false; // Resume capture on error
+      }
       if (errno == ETIMEDOUT) {
         log_debug("Network accept timeout, continuing...");
         continue;
@@ -454,14 +465,16 @@ int main(int argc, char *argv[]) {
     int result = receive_packet(connfd, &type, &data, &len);
     if (result <= 0) {
       log_error("Failed to receive initial size packet: %s", network_error_string(errno));
-      connfd = close(connfd);
+      close(connfd);
+      connfd = 0;
       continue;
     }
 
     if (type != PACKET_TYPE_SIZE || len != 4) {
       log_error("Expected size packet but got type=%d, len=%zu", type, len);
       free(data);
-      connfd = close(connfd);
+      close(connfd);
+      connfd = 0;
       continue;
     }
 
@@ -469,6 +482,10 @@ int main(int argc, char *argv[]) {
     client_width = ntohs(size_data[0]);
     client_height = ntohs(size_data[1]);
     free(data);
+
+    // DON'T clear framebuffer on new client - causes use-after-free!
+    // Frames in the buffer will naturally drain out as they're sent.
+    // The capture thread will start generating frames with the new size.
 
     // Update frame generation for client size
     update_frame_buffer_for_size(client_width, client_height);
@@ -481,24 +498,40 @@ int main(int argc, char *argv[]) {
     pthread_mutex_unlock(&g_stats_mutex);
     g_audio_send_failed = false; // Reset audio failure flag for new client
 
-    // Allocate frame buffer dynamically based on color mode
-    char *frame_buffer;
-    SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
+    // Resume capture thread now that client is ready
+    g_capture_paused = false;
+
+    // No more fixed-size buffers needed!
     uint64_t client_frames_sent = 0;
 
     // Client serving loop
+    log_debug("Starting client serving loop");
+    struct timespec last_size_check = {0, 0};
+
+    // Reset stats time for this client
+    clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
+
     while (!g_should_exit) {
-      // Check for size updates from client (non-blocking)
-      unsigned short new_width, new_height;
-      int size_result = receive_client_size(connfd, &new_width, &new_height);
-      if (size_result > 0) {
-        // Client sent a size update
-        update_frame_buffer_for_size(new_width, new_height);
-        log_info("Client updated frame size to: %ux%u", new_width, new_height);
-      } else if (size_result < 0) {
-        // Error receiving data, client likely disconnected
-        log_info("Client disconnected while checking for size updates");
-        break;
+
+      // Check for size updates from client (non-blocking, but rate limited)
+      struct timespec current_time;
+      clock_gettime(CLOCK_MONOTONIC, &current_time);
+      long size_check_elapsed = (current_time.tv_sec - last_size_check.tv_sec) * 1000 +
+                                (current_time.tv_nsec - last_size_check.tv_nsec) / 1000000;
+
+      if (size_check_elapsed >= 100) { // Check for size updates at most every 100ms
+        unsigned short new_width, new_height;
+        int size_result = receive_client_size(connfd, &new_width, &new_height);
+        if (size_result > 0) {
+          // Client sent a size update
+          update_frame_buffer_for_size(new_width, new_height);
+          log_info("Client updated frame size to: %ux%u", new_width, new_height);
+        } else if (size_result < 0) {
+          // Error receiving data, client likely disconnected
+          log_info("Client disconnected while checking for size updates");
+          break;
+        }
+        last_size_check = current_time;
       }
 
       // Check if audio thread failed
@@ -507,15 +540,15 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      // Try to get a frame from buffer (with mutex protection)
+      // Try to get a frame from buffer
+      frame_t frame = {.magic = 0, .size = 0, .data = NULL};
       pthread_mutex_lock(&g_framebuffer_mutex);
-      bool frame_available = g_frame_buffer ? framebuffer_read_frame(g_frame_buffer, frame_buffer) : false;
-      pthread_mutex_unlock(&g_framebuffer_mutex);
-
-      // Ensure frame is null-terminated for strlen() safety
-      if (frame_available) {
-        frame_buffer[FRAME_BUFFER_SIZE_FINAL - 1] = '\0';
+      bool frame_available = false;
+      framebuffer_t *fb = atomic_load(&g_frame_buffer);
+      if (fb) {
+        frame_available = framebuffer_read_frame(fb, &frame);
       }
+      pthread_mutex_unlock(&g_framebuffer_mutex);
 
       if (!frame_available) {
         // No frames available, wait a bit
@@ -524,10 +557,37 @@ int main(int argc, char *argv[]) {
       }
 
       // Send frame with timeout (protected by socket mutex)
-      size_t frame_len = strlen(frame_buffer);
+      // Add safety check for frame data
+      if (!frame.data || frame.size == 0) {
+        log_error("Invalid frame: data=%p, size=%zu", frame.data, frame.size);
+        // Free frame data if it exists but size is 0
+        if (frame.data) {
+          free(frame.data);
+        }
+        continue;
+      }
+
+      // Extra validation - check if frame data looks valid
+      if (frame.size > 10 * 1024 * 1024) {
+        log_error("Frame size too large: %zu, likely corrupted", frame.size);
+        free(frame.data);
+        continue;
+      }
+
+      // Save frame size before freeing
+      size_t frame_size_for_stats = frame.size;
+
       pthread_mutex_lock(&g_socket_mutex);
-      int sent = send_compressed_frame(connfd, frame_buffer, frame_len);
+      int sent = send_compressed_frame(connfd, frame.data, frame.size);
       pthread_mutex_unlock(&g_socket_mutex);
+
+      // CRITICAL: Free the frame data copy after sending
+      if (frame.magic == FRAME_MAGIC && frame.data) {
+        frame.magic = FRAME_FREED; // Mark as freed before freeing
+        free(frame.data);
+        frame.data = NULL;
+      }
+
       if (sent < 0) {
         log_error("Error: Network send of video packet failed: %s", network_error_string(errno));
         break;
@@ -541,44 +601,108 @@ int main(int argc, char *argv[]) {
       // Update statistics
       pthread_mutex_lock(&g_stats_mutex);
       g_stats.frames_sent++;
-      g_stats.bytes_sent += frame_len; // Approximate bytes sent (not counting packet overhead)
+      g_stats.bytes_sent += frame_size_for_stats; // Approximate bytes sent (not counting packet overhead)
       pthread_mutex_unlock(&g_stats_mutex);
 
       client_frames_sent++;
 
       // Print periodic statistics
-      struct timespec current_time;
-      clock_gettime(CLOCK_MONOTONIC, &current_time);
-      long stats_elapsed = (current_time.tv_sec - last_stats_time.tv_sec) * 1000 +
-                           (current_time.tv_nsec - last_stats_time.tv_nsec) / 1000000;
+      struct timespec stats_time;
+      clock_gettime(CLOCK_MONOTONIC, &stats_time);
 
-      if (stats_elapsed >= 10000) { // Every 10 seconds
-        pthread_mutex_lock(&g_stats_mutex);
-        pthread_mutex_lock(&g_framebuffer_mutex);
-        size_t buffer_size = g_frame_buffer ? ringbuffer_size(g_frame_buffer->rb) : 0;
+      if (client_frames_sent == 1) {
+        // Initialize stats time on first frame
+        last_stats_time = stats_time;
+        log_debug("Initialized last_stats_time on first frame");
+      }
+
+      // Safety check - make sure we're still connected
+      if (connfd <= 0) {
+        log_error("Connection lost during frame send");
+        break;
+      }
+
+      long sec_diff = stats_time.tv_sec - last_stats_time.tv_sec;
+      long nsec_diff = stats_time.tv_nsec - last_stats_time.tv_nsec;
+      long stats_elapsed = sec_diff * 1000 + nsec_diff / 1000000;
+
+      if (client_frames_sent % 100 == 0) {
+        log_debug("Stats check: elapsed=%ldms, frames_sent=%lu", stats_elapsed, client_frames_sent);
+      }
+
+      if (stats_elapsed >= 1000) { // Every 1 second
+        log_debug("About to print stats (elapsed=%ld)...", stats_elapsed);
+
+        // Lock stats mutex first
+        if (pthread_mutex_lock(&g_stats_mutex) != 0) {
+          log_error("Failed to lock stats mutex!");
+          continue;
+        }
+        log_debug("Stats mutex locked");
+
+        // Lock framebuffer mutex second
+        if (pthread_mutex_lock(&g_framebuffer_mutex) != 0) {
+          log_error("Failed to lock framebuffer mutex!");
+          pthread_mutex_unlock(&g_stats_mutex);
+          continue;
+        }
+        framebuffer_t *fb_stats = atomic_load(&g_frame_buffer);
+        log_debug("Framebuffer mutex locked, g_frame_buffer=%p", fb_stats);
+
+        size_t buffer_size = 0;
+        if (fb_stats) {
+          log_debug("g_frame_buffer->rb=%p", fb_stats->rb);
+          if (fb_stats->rb) {
+            buffer_size = ringbuffer_size(fb_stats->rb);
+            log_debug("Got buffer_size=%zu", buffer_size);
+          } else {
+            log_error("g_frame_buffer->rb is NULL!");
+          }
+        } else {
+          log_error("g_frame_buffer is NULL!");
+        }
+
+        // Copy stats while we hold the mutex to avoid race conditions
+        uint64_t captured = g_stats.frames_captured;
+        uint64_t sent = g_stats.frames_sent;
+        uint64_t dropped = g_stats.frames_dropped;
+
         pthread_mutex_unlock(&g_framebuffer_mutex);
-        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", g_stats.frames_captured,
-                 g_stats.frames_sent, g_stats.frames_dropped, buffer_size);
+        log_debug("Framebuffer mutex unlocked");
+
         pthread_mutex_unlock(&g_stats_mutex);
-        last_stats_time = current_time;
+        log_debug("Stats mutex unlocked");
+
+        // Log stats after releasing all mutexes
+        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", captured, sent, dropped, buffer_size);
+
+        last_stats_time = stats_time;
+        log_debug("Stats updated, continuing main loop...");
       }
     }
 
-    connfd = close(connfd);
+    // Pause capture thread before closing connection
+    g_capture_paused = true;
+    usleep(50000); // Give capture thread time to pause
+
+    close(connfd);
+    connfd = 0;
     log_info("Client disconnected after %lu frames", client_frames_sent);
     log_info("Closing connection.");
     log_info("---------------------");
 
-    // Free the dynamically allocated frame buffer
-    free(frame_buffer);
+    // Don't clear framebuffer here - it will be cleared when next client connects
+    // This avoids race conditions with any frames that might still be in use
   }
 
   // Cleanup
   log_info("Server shutting down...");
   g_should_exit = true;
 
+  log_debug("Waiting for capture thread to finish...");
   // Wait for capture thread to finish
   pthread_join(g_capture_thread, NULL);
+  log_debug("Capture thread finished");
 
   // Wait for audio thread to finish if enabled
   if (opt_audio_enabled && g_audio_thread_created) {
@@ -595,12 +719,17 @@ int main(int argc, char *argv[]) {
   }
 
   // Cleanup resources
+  log_debug("Cleaning up framebuffer...");
   pthread_mutex_lock(&g_framebuffer_mutex);
-  if (g_frame_buffer) {
-    framebuffer_destroy(g_frame_buffer);
-    g_frame_buffer = NULL;
+  framebuffer_t *fb_cleanup = atomic_load(&g_frame_buffer);
+  if (fb_cleanup) {
+    log_debug("Destroying framebuffer at %p", fb_cleanup);
+    framebuffer_destroy(fb_cleanup);
+    atomic_store(&g_frame_buffer, NULL);
+    log_debug("Framebuffer destroyed");
   }
   pthread_mutex_unlock(&g_framebuffer_mutex);
+  log_debug("Framebuffer cleanup complete");
 
   ascii_read_destroy();
   close(listenfd);

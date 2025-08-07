@@ -19,6 +19,7 @@
 @property (nonatomic) int frameHeight;
 @property (nonatomic) BOOL isActive;
 @property (nonatomic) BOOL hasNewFrame;
+@property (nonatomic, strong) NSLock *frameLock;
 @end
 
 @implementation WebcamCaptureDelegate
@@ -32,14 +33,19 @@
         _frameHeight = 0;
         _isActive = YES;
         _hasNewFrame = NO;
+        _frameLock = [[NSLock alloc] init];
     }
     return self;
 }
 
 - (void)dealloc {
+    [_frameLock lock];
     if (_currentFrame) {
         CVPixelBufferRelease(_currentFrame);
+        _currentFrame = NULL;
     }
+    [_frameLock unlock];
+    [_frameLock release];
     [super dealloc];
 }
 
@@ -51,6 +57,8 @@
     
     CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (!pixelBuffer) return;
+    
+    [self.frameLock lock];
     
     // Replace old frame with new one
     CVPixelBufferRef oldFrame = self.currentFrame;
@@ -66,6 +74,9 @@
     
     // Always signal semaphore when we get a new frame
     self.hasNewFrame = YES;
+    
+    [self.frameLock unlock];
+    
     dispatch_semaphore_signal(self.frameSemaphore);
 }
 
@@ -287,12 +298,24 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
         // Reset the new frame flag so we can get the next semaphore signal
         ctx->delegate.hasNewFrame = NO;
         
+        // Lock to safely access the current frame
+        [ctx->delegate.frameLock lock];
+        
         CVPixelBufferRef pixelBuffer = ctx->delegate.currentFrame;
-        if (!pixelBuffer) return NULL;
+        if (!pixelBuffer) {
+            [ctx->delegate.frameLock unlock];
+            return NULL;
+        }
+        
+        // Retain the buffer while we're using it
+        CVPixelBufferRetain(pixelBuffer);
+        
+        [ctx->delegate.frameLock unlock];
         
         // Lock the pixel buffer
         if (CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess) {
             log_error("Failed to lock pixel buffer");
+            CVPixelBufferRelease(pixelBuffer);
             return NULL;
         }
         
@@ -323,12 +346,15 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
         } else {
             // Copy row by row to handle padding
             for (size_t y = 0; y < height; y++) {
-                memcpy(&img->pixels[y * width], &baseAddress[y * bytesPerRow], width * 3);
+                memcpy(&img->pixels[y * width * 3], &baseAddress[y * bytesPerRow], width * 3);
             }
         }
         
         // Unlock the pixel buffer
         CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+        
+        // Release our retained reference
+        CVPixelBufferRelease(pixelBuffer);
         
         return img;
     }

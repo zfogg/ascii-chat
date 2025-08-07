@@ -3,6 +3,7 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 /* ============================================================================
  * Helper Functions
@@ -163,8 +164,8 @@ void ringbuffer_clear(ringbuffer_t *rb) {
  * ============================================================================
  */
 
-framebuffer_t *framebuffer_create(size_t capacity, size_t max_frame_size) {
-  if (capacity == 0 || max_frame_size == 0) {
+framebuffer_t *framebuffer_create(size_t capacity) {
+  if (capacity == 0) {
     log_error("Invalid frame buffer parameters");
     return NULL;
   }
@@ -175,59 +176,149 @@ framebuffer_t *framebuffer_create(size_t capacity, size_t max_frame_size) {
     return NULL;
   }
 
-  fb->max_frame_size = max_frame_size;
-  fb->rb = ringbuffer_create(max_frame_size, capacity);
+  // Create ringbuffer to store frame_t structs
+  fb->rb = ringbuffer_create(sizeof(frame_t), capacity);
 
   if (!fb->rb) {
     free(fb);
     return NULL;
   }
 
-  log_info("Created frame buffer: capacity=%zu frames, max_frame_size=%zu", capacity, max_frame_size);
+  log_info("Created frame buffer: capacity=%zu frames", capacity);
 
   return fb;
 }
 
 void framebuffer_destroy(framebuffer_t *fb) {
   if (fb) {
+    // Use framebuffer_clear to properly clean up all frames
+    framebuffer_clear(fb);
+
     ringbuffer_destroy(fb->rb);
     free(fb);
     log_info("Destroyed frame buffer");
   }
 }
 
-bool framebuffer_write_frame(framebuffer_t *fb, const char *frame) {
-  if (!fb || !frame)
+bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size) {
+  if (!fb || !frame_data || frame_size == 0)
     return false;
 
-  size_t frame_len = strlen(frame);
-  if (frame_len >= fb->max_frame_size) {
-    log_warn("Frame too large: %zu bytes (max: %zu)", frame_len, fb->max_frame_size - 1);
-    return false;
-  }
-
-  /* Create a temporary buffer to ensure null termination */
-  char *temp_frame = (char *)calloc(fb->max_frame_size, 1);
-  if (!temp_frame) {
-    log_error("Failed to allocate temporary frame buffer");
+  // Validate frame size to prevent overflow
+  if (frame_size > 10 * 1024 * 1024) { // 10MB max for ASCII frames
+    log_error("Rejecting oversized frame: %zu bytes", frame_size);
     return false;
   }
 
-  strncpy(temp_frame, frame, fb->max_frame_size - 1);
-  bool result = ringbuffer_write(fb->rb, temp_frame);
+  // Check if buffer is full - if so, we need to drop the oldest frame
+  if (ringbuffer_size(fb->rb) >= fb->rb->capacity) {
+    // Buffer is full, read and free the oldest frame before writing new one
+    frame_t old_frame;
+    if (ringbuffer_read(fb->rb, &old_frame)) {
+      if (old_frame.magic == FRAME_MAGIC && old_frame.data) {
+        old_frame.magic = FRAME_FREED;
+        free(old_frame.data);
+      } else if (old_frame.magic != FRAME_MAGIC) {
+        log_error("CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
+      }
+    }
+  }
 
-  free(temp_frame);
+  // Allocate a copy of the frame data that will be owned by the ringbuffer
+  char *frame_copy = (char *)malloc(frame_size + 1);
+  if (!frame_copy) {
+    log_error("Failed to allocate memory for frame copy");
+    return false;
+  }
 
-  // if (!result) {
-  //     log_debug("Frame buffer full, dropping frame");
-  // }
+  memcpy(frame_copy, frame_data, frame_size);
+  frame_copy[frame_size] = '\0'; // Ensure null termination
+
+  // Create a frame_t struct with the copy
+  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size, .data = frame_copy};
+
+  bool result = ringbuffer_write(fb->rb, &frame);
+
+  if (!result) {
+    // If we still couldn't write to ringbuffer, free the copy
+    free(frame_copy);
+    log_error("Failed to write frame to ringbuffer even after dropping oldest");
+  }
 
   return result;
 }
 
-bool framebuffer_read_frame(framebuffer_t *fb, char *frame) {
-  if (!fb || !frame)
+bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
+  if (!fb || !frame) {
     return false;
+  }
 
-  return ringbuffer_read(fb->rb, frame);
+  // Initialize frame to safe values
+  frame->magic = 0;
+  frame->data = NULL;
+  frame->size = 0;
+
+  bool result = ringbuffer_read(fb->rb, frame);
+
+  // Validate the frame we just read
+  if (result) {
+    if (frame->magic != FRAME_MAGIC) {
+      log_error("CORRUPTION: Invalid frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
+      frame->data = NULL;
+      frame->size = 0;
+      return false;
+    }
+
+    if (frame->magic == FRAME_FREED) {
+      log_error("CORRUPTION: Reading already-freed frame!");
+      frame->data = NULL;
+      frame->size = 0;
+      return false;
+    }
+
+    if (frame->size > 10 * 1024 * 1024) {
+      log_error("CORRUPTION: Frame size too large: %zu", frame->size);
+      if (frame->data) {
+        free(frame->data);
+      }
+      frame->data = NULL;
+      frame->size = 0;
+      return false;
+    }
+
+    // Additional check - validate pointer is not obviously bad
+    if ((uintptr_t)frame->data < 0x1000) {
+      log_error("CORRUPTION: Invalid frame data pointer: %p", frame->data);
+      frame->data = NULL;
+      frame->size = 0;
+      return false;
+    }
+  }
+
+  return result;
+}
+
+void framebuffer_clear(framebuffer_t *fb) {
+  if (!fb || !fb->rb)
+    return;
+
+  // Read and free all frames
+  frame_t frame;
+  while (ringbuffer_read(fb->rb, &frame)) {
+    if (frame.magic == FRAME_MAGIC && frame.data) {
+      frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
+      free(frame.data);
+      frame.data = NULL;
+    } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
+      log_error("CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
+    }
+  }
+
+  // Clear the ringbuffer indices
+  ringbuffer_clear(fb->rb);
+
+  // Zero out the entire buffer to prevent any dangling pointers
+  if (fb->rb->buffer) {
+    memset(fb->rb->buffer, 0, fb->rb->capacity * fb->rb->element_size);
+  }
 }
