@@ -51,7 +51,7 @@ jobs:
 
           # Optional: Allow Claude to run specific commands
           # allowed_tools: "Bash(npm run test),Bash(npm run lint),Bash(npm run typecheck)"
-          allowed_tools: "Bash(sudo:*),Bash(make:*),Bash(bin/client:*),Bash(bin/server:*),Bash(clang:*),Bash(apt-get:*),Bash(apt:*),Bash(ls:*),Bash(cat:*),Bash(cd:*),Bash(rm:*),Bash(touch:*),Bash(clang:*),Bash(clang-tidy:*)"
+          allowed_tools: "Bash(sudo:*),Bash(make:*),Bash(bin/client:*),Bash(bin/server:*),Bash(clang:*),Bash(apt-get:*),Bash(apt:*),Bash(ls:*),Bash(cat:*),Bash(cd:*),Bash(rm:*),Bash(touch:*),Bash(clang:*),Bash(clang-tidy:*),Bash(grep:*),Bash(sed:*)"
 
           # Optional: Add custom instructions for Claude to customize its behavior for your project
           # custom_instructions: |
