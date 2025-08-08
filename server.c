@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "image.h"
 #include "ascii.h"
@@ -112,6 +113,8 @@ typedef struct {
 // Global audio mixer
 static audio_mixer_t g_audio_mixer = {0};
 
+// Video mixing system (inline mixing, no global buffers needed)
+
 static server_stats_t g_stats = {0};
 
 static int listenfd = 0;
@@ -131,6 +134,9 @@ void *audio_mixer_thread_func(void *arg);
 int audio_mixer_init(audio_mixer_t *mixer);
 void audio_mixer_destroy(audio_mixer_t *mixer);
 int mix_audio_from_clients(float *output_buffer, int num_samples);
+
+// Video mixing functions
+char *create_mixed_ascii_frame(unsigned short width, unsigned short height, size_t *out_size);
 
 // Client management functions
 int add_client(int socket, const char *client_ip, int port);
@@ -516,6 +522,195 @@ void *audio_mixer_thread_func(void *arg) {
 }
 
 /* ============================================================================
+ * Video Mixing Functions
+ * ============================================================================
+ */
+
+// Create a mixed ASCII frame from all active video sources
+char *create_mixed_ascii_frame(unsigned short width, unsigned short height, size_t *out_size) {
+  if (!out_size || width == 0 || height == 0) {
+    return NULL;
+  }
+
+  // Collect all active video sources
+  typedef struct {
+    char *frame_data;
+    size_t frame_size;
+    uint32_t client_id;
+    unsigned short src_width, src_height;
+  } video_source_t;
+
+  video_source_t sources[MAX_CLIENTS + 1]; // +1 for server's own video
+  int source_count = 0;
+
+  // Add server's own video if available
+  frame_t server_frame = {.magic = 0, .size = 0, .data = NULL};
+  pthread_mutex_lock(&g_framebuffer_mutex);
+  bool server_frame_available = false;
+  if (g_frame_buffer) {
+    server_frame_available = framebuffer_read_frame(g_frame_buffer, &server_frame);
+  }
+  pthread_mutex_unlock(&g_framebuffer_mutex);
+
+  if (server_frame_available && server_frame.data && server_frame.size > 0) {
+    sources[source_count].frame_data = server_frame.data;
+    sources[source_count].frame_size = server_frame.size;
+    sources[source_count].client_id = 0;     // Server ID
+    sources[source_count].src_width = width; // Assume server matches client size
+    sources[source_count].src_height = height;
+    source_count++;
+  }
+
+  // Add client video sources
+  pthread_mutex_lock(&g_client_manager_mutex);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
+      multi_source_frame_t multi_frame = {0};
+      if (framebuffer_read_multi_frame(client->incoming_video_buffer, &multi_frame)) {
+        sources[source_count].frame_data = multi_frame.data;
+        sources[source_count].frame_size = multi_frame.size;
+        sources[source_count].client_id = client->client_id;
+        sources[source_count].src_width = client->width > 0 ? client->width : width;
+        sources[source_count].src_height = client->height > 0 ? client->height : height;
+        source_count++;
+      }
+    }
+  }
+  pthread_mutex_unlock(&g_client_manager_mutex);
+
+  // If no video sources, return empty frame
+  if (source_count == 0) {
+    *out_size = 0;
+    return NULL;
+  }
+
+  // If only one source, return it directly
+  if (source_count == 1) {
+    char *result;
+    SAFE_MALLOC(result, sources[0].frame_size, char *);
+    memcpy(result, sources[0].frame_data, sources[0].frame_size);
+    *out_size = sources[0].frame_size;
+    // Free source frame if it was from server
+    if (sources[0].client_id == 0 && server_frame.data) {
+      free(server_frame.data);
+    }
+    return result;
+  }
+
+  // Multiple sources: create grid layout
+  // Calculate grid dimensions (try to make it roughly square)
+  int grid_cols = (int)ceil(sqrt(source_count));
+  int grid_rows = (int)ceil((double)source_count / grid_cols);
+
+  // Calculate dimensions for each cell (leave 1 char for separators)
+  int cell_width = (width - (grid_cols - 1)) / grid_cols;
+  int cell_height = (height - (grid_rows - 1)) / grid_rows;
+
+  if (cell_width < 10 || cell_height < 3) {
+    // Too small for grid layout, just use first source
+    char *result;
+    SAFE_MALLOC(result, sources[0].frame_size, char *);
+    memcpy(result, sources[0].frame_data, sources[0].frame_size);
+    *out_size = sources[0].frame_size;
+    // Cleanup
+    if (sources[0].client_id == 0 && server_frame.data) {
+      free(server_frame.data);
+    }
+    for (int i = 1; i < source_count; i++) {
+      if (sources[i].frame_data) {
+        free(sources[i].frame_data);
+      }
+    }
+    return result;
+  }
+
+  // Allocate mixed frame buffer
+  size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
+  char *mixed_frame;
+  SAFE_MALLOC(mixed_frame, mixed_size, char *);
+
+  // Initialize mixed frame with spaces
+  memset(mixed_frame, ' ', mixed_size - 1);
+  mixed_frame[mixed_size - 1] = '\0';
+
+  // Add newlines at the end of each row
+  for (int row = 0; row < height; row++) {
+    mixed_frame[row * (width + 1) + width] = '\n';
+  }
+
+  // Place each video source in the grid
+  for (int src = 0; src < source_count; src++) {
+    int grid_row = src / grid_cols;
+    int grid_col = src % grid_cols;
+
+    // Calculate position in mixed frame
+    int start_row = grid_row * (cell_height + 1); // +1 for separator
+    int start_col = grid_col * (cell_width + 1);  // +1 for separator
+
+    // Parse source frame line by line and place in grid
+    const char *src_data = sources[src].frame_data;
+    int src_row = 0;
+    int src_pos = 0;
+
+    while (src_pos < (int)sources[src].frame_size && src_row < cell_height && start_row + src_row < height) {
+      // Find end of current line in source
+      int line_start = src_pos;
+      while (src_pos < (int)sources[src].frame_size && src_data[src_pos] != '\n') {
+        src_pos++;
+      }
+      int line_len = src_pos - line_start;
+
+      // Copy line to mixed frame (truncate if too long)
+      int copy_len = (line_len < cell_width) ? line_len : cell_width;
+      if (copy_len > 0 && start_col + copy_len <= width) {
+        int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
+        memcpy(mixed_frame + mixed_pos, src_data + line_start, copy_len);
+      }
+
+      // Move to next line
+      if (src_pos < (int)sources[src].frame_size && src_data[src_pos] == '\n') {
+        src_pos++;
+      }
+      src_row++;
+    }
+
+    // Draw separators
+    if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
+      // Vertical separator
+      for (int row = start_row; row < start_row + cell_height && row < height; row++) {
+        mixed_frame[row * (width + 1) + start_col + cell_width] = '|';
+      }
+    }
+
+    if (grid_row < grid_rows - 1 && start_row + cell_height < height) {
+      // Horizontal separator
+      for (int col = start_col; col < start_col + cell_width && col < width; col++) {
+        mixed_frame[(start_row + cell_height) * (width + 1) + col] = '_';
+      }
+      // Corner character where separators meet
+      if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
+        mixed_frame[(start_row + cell_height) * (width + 1) + start_col + cell_width] = '+';
+      }
+    }
+  }
+
+  *out_size = strlen(mixed_frame);
+
+  // Cleanup source frames
+  if (server_frame.data) {
+    free(server_frame.data);
+  }
+  for (int i = 1; i < source_count; i++) {
+    if (sources[i].frame_data) {
+      free(sources[i].frame_data);
+    }
+  }
+
+  return mixed_frame;
+}
+
+/* ============================================================================
  * Main Server Logic
  * ============================================================================
  */
@@ -710,178 +905,8 @@ int main(int argc, char *argv[]) {
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
     connfd = 0; // Reset since ownership transferred to client manager
 
-    // Multi-client mode: Each client manages its own size via protocol packets
-    // Frame size will be determined per-client by their individual threads
-
-    // Reset client-specific stats and flags
-    pthread_mutex_lock(&g_stats_mutex);
-    g_stats.frames_sent = 0;
-    g_stats.bytes_sent = 0;
-    pthread_mutex_unlock(&g_stats_mutex);
-    g_audio_send_failed = false; // Reset audio failure flag for new client
-
     // Resume capture thread now that client is ready
     g_capture_paused = false;
-
-    // No more fixed-size buffers needed!
-    uint64_t client_frames_sent = 0;
-
-    // Client serving loop
-    log_debug("Starting client serving loop");
-    struct timespec last_size_check = {0, 0};
-
-    // Reset stats time for this client
-    clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
-
-    while (!g_should_exit) {
-
-      // Check for size updates from client (non-blocking, but rate limited)
-      struct timespec current_time;
-      clock_gettime(CLOCK_MONOTONIC, &current_time);
-      long size_check_elapsed = (current_time.tv_sec - last_size_check.tv_sec) * 1000 +
-                                (current_time.tv_nsec - last_size_check.tv_nsec) / 1000000;
-
-      if (size_check_elapsed >= 100) { // Check for size updates at most every 100ms
-        unsigned short new_width, new_height;
-        int size_result = receive_client_size(connfd, &new_width, &new_height);
-        if (size_result > 0) {
-          // Client sent a size update
-          update_frame_buffer_for_size(new_width, new_height);
-          log_info("Client updated frame size to: %ux%u", new_width, new_height);
-        } else if (size_result < 0) {
-          // Error receiving data, client likely disconnected
-          log_info("Client disconnected while checking for size updates");
-          break;
-        }
-        last_size_check = current_time;
-      }
-
-      // Check if audio thread failed
-      if (g_audio_send_failed) {
-        log_info("Audio send failed, disconnecting client");
-        break;
-      }
-
-      // Try to get a frame from buffer
-      frame_t frame = {.magic = 0, .size = 0, .data = NULL};
-      pthread_mutex_lock(&g_framebuffer_mutex);
-      bool frame_available = false;
-      if (g_frame_buffer) {
-        frame_available = framebuffer_read_frame(g_frame_buffer, &frame);
-      }
-      pthread_mutex_unlock(&g_framebuffer_mutex);
-
-      if (!frame_available) {
-        // No frames available, wait a bit
-        usleep(1000); // 1ms
-        continue;
-      }
-
-      // Send frame with timeout (protected by socket mutex)
-      // Add safety check for frame data
-      if (!frame.data || frame.size == 0) {
-        log_error("Invalid frame: data=%p, size=%zu", frame.data, frame.size);
-        // Free frame data if it exists but size is 0
-        free(frame.data);
-        continue;
-      }
-
-      // Save frame size before freeing
-      size_t frame_size_for_stats = frame.size;
-
-      pthread_mutex_lock(&g_socket_mutex);
-      int sent = send_compressed_frame(connfd, frame.data, frame.size);
-      pthread_mutex_unlock(&g_socket_mutex);
-
-      // CRITICAL: Free the frame data copy after sending
-      if (frame.magic == FRAME_MAGIC && frame.data) {
-        frame.magic = FRAME_FREED; // Mark as freed before freeing
-        free(frame.data);
-        frame.data = NULL;
-      } else if (frame.data) {
-        log_error("Sent invalid frame! frame.magic=%d", frame.magic);
-        free(frame.data);
-        continue;
-      }
-
-      if (sent < 0) {
-        log_error("Error: Network send of video packet failed: %s", network_error_string(errno));
-        break;
-      }
-
-      // NOTE: this isn't actually an error, I don't think. send_with_timeout() supports partial sends.
-      // if ((size_t)sent != frame_len) {
-      //  log_error("Partial send: %zd of %zu bytes", sent, frame_len);
-      //}
-
-      // Update statistics
-      pthread_mutex_lock(&g_stats_mutex);
-      g_stats.frames_sent++;
-      g_stats.bytes_sent += frame_size_for_stats; // Approximate bytes sent (not counting packet overhead)
-      pthread_mutex_unlock(&g_stats_mutex);
-
-      client_frames_sent++;
-
-      // Print periodic statistics
-      struct timespec stats_time;
-      clock_gettime(CLOCK_MONOTONIC, &stats_time);
-
-      if (client_frames_sent == 1) {
-        // Initialize stats time on first frame
-        last_stats_time = stats_time;
-        log_debug("Initialized last_stats_time on first frame");
-      }
-
-      // Safety check - make sure we're still connected
-      if (connfd <= 0) {
-        log_error("Connection lost during frame send");
-        break;
-      }
-
-      long sec_diff = stats_time.tv_sec - last_stats_time.tv_sec;
-      long nsec_diff = stats_time.tv_nsec - last_stats_time.tv_nsec;
-      long stats_elapsed = sec_diff * 1000 + nsec_diff / 1000000;
-
-      if (stats_elapsed >= 1000) { // Every 1 second
-        // Lock stats mutex first
-        if (pthread_mutex_lock(&g_stats_mutex) != 0) {
-          log_error("Failed to lock stats mutex!");
-          continue;
-        }
-
-        // Lock framebuffer mutex second
-        if (pthread_mutex_lock(&g_framebuffer_mutex) != 0) {
-          log_error("Failed to lock framebuffer mutex!");
-          pthread_mutex_unlock(&g_stats_mutex);
-          continue;
-        }
-        size_t buffer_size = 0;
-        if (g_frame_buffer && g_frame_buffer->rb) {
-          buffer_size = ringbuffer_size(g_frame_buffer->rb);
-        }
-
-        // Copy stats while we hold the mutex to avoid race conditions
-        uint64_t captured = g_stats.frames_captured;
-        uint64_t sent = g_stats.frames_sent;
-        uint64_t dropped = g_stats.frames_dropped;
-
-        pthread_mutex_unlock(&g_framebuffer_mutex);
-        pthread_mutex_unlock(&g_stats_mutex);
-        // Log stats after releasing all mutexes
-        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", captured, sent, dropped, buffer_size);
-        last_stats_time = stats_time;
-      }
-    }
-
-    // Pause capture thread before closing connection
-    g_capture_paused = true;
-    usleep(50000); // Give capture thread time to pause
-
-    close(connfd);
-    connfd = 0;
-    log_info("Client disconnected after %lu frames", client_frames_sent);
-    log_info("Closing connection.");
-    log_info("---------------------");
 
     // Don't clear framebuffer here - it will be cleared when next client connects
     // This avoids race conditions with any frames that might still be in use
@@ -1095,73 +1120,31 @@ void *client_send_thread_func(void *arg) {
   log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
 
   while (!g_should_exit && client->active) {
-    // Send server's own video frames to this client
-    frame_t frame = {.magic = 0, .size = 0, .data = NULL};
-    pthread_mutex_lock(&g_framebuffer_mutex);
-    bool frame_available = false;
-    if (g_frame_buffer) {
-      frame_available = framebuffer_read_frame(g_frame_buffer, &frame);
-    }
-    pthread_mutex_unlock(&g_framebuffer_mutex);
+    // Create and send mixed video frame containing all active sources
+    size_t mixed_frame_size = 0;
+    char *mixed_frame = create_mixed_ascii_frame(client->width > 0 ? client->width : 80,
+                                                 client->height > 0 ? client->height : 24, &mixed_frame_size);
 
-    if (frame_available && frame.data && frame.size > 0) {
-      // Send frame to this client (use compression)
-      int sent = send_compressed_frame(client->socket, frame.data, frame.size);
+    if (mixed_frame && mixed_frame_size > 0) {
+      // Send mixed frame to this client (use compression)
+      int sent = send_compressed_frame(client->socket, mixed_frame, mixed_frame_size);
       if (sent >= 0) {
         client->frames_sent++;
         pthread_mutex_lock(&g_stats_mutex);
-        g_stats.bytes_sent += frame.size;
+        g_stats.bytes_sent += mixed_frame_size;
         pthread_mutex_unlock(&g_stats_mutex);
       } else {
-        log_error("Failed to send frame to client %u", client->client_id);
+        log_error("Failed to send mixed frame to client %u", client->client_id);
         // Client might be disconnected
+        free(mixed_frame);
         break;
       }
 
-      // Free frame data
-      if (frame.magic == FRAME_MAGIC && frame.data) {
-        frame.magic = FRAME_FREED;
-        free(frame.data);
-        frame.data = NULL;
-      }
+      free(mixed_frame);
     } else {
-      // No frames available, wait a bit
-      usleep(1000); // 1ms
+      // No mixed frame available, wait a bit
+      usleep(10000); // 10ms
     }
-
-    // Send video frames from OTHER clients to this client (multi-user video routing)
-    pthread_mutex_lock(&g_client_manager_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      client_info_t *other_client = &g_client_manager.clients[i];
-
-      // Skip inactive clients, self, and clients not sending video
-      if (!other_client->active || other_client->client_id == client->client_id || !other_client->is_sending_video ||
-          !other_client->incoming_video_buffer) {
-        continue;
-      }
-
-      // Read frame from other client's buffer
-      multi_source_frame_t multi_frame = {0};
-      if (framebuffer_read_multi_frame(other_client->incoming_video_buffer, &multi_frame)) {
-        // Send other client's video frame to this client
-        int sent = send_packet_from_client(client->socket, PACKET_TYPE_VIDEO, other_client->client_id, multi_frame.data,
-                                           multi_frame.size);
-        if (sent >= 0) {
-          client->frames_sent++;
-          pthread_mutex_lock(&g_stats_mutex);
-          g_stats.bytes_sent += multi_frame.size;
-          pthread_mutex_unlock(&g_stats_mutex);
-        } else {
-          log_debug("Failed to send frame from client %u to client %u", other_client->client_id, client->client_id);
-        }
-
-        // Free the multi-frame data
-        if (multi_frame.data) {
-          free(multi_frame.data);
-        }
-      }
-    }
-    pthread_mutex_unlock(&g_client_manager_mutex);
   }
 
   log_info("Send thread for client %u terminated", client->client_id);
