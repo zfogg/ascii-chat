@@ -64,7 +64,6 @@ static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Multi-user packet handlers
 static void handle_client_list_packet(const void *data, size_t len);
-static void handle_mixed_audio_packet(const void *data, size_t len);
 
 // Local capture threads (declarations removed - functions will be implemented later)
 
@@ -352,10 +351,6 @@ static void *data_reception_thread_func(void *arg) {
       handle_client_list_packet(data, len);
       break;
 
-    case PACKET_TYPE_MIXED_AUDIO:
-      handle_mixed_audio_packet(data, len);
-      break;
-
     default:
       log_warn("Unknown packet type: %d", type);
       break;
@@ -412,34 +407,6 @@ static void handle_client_list_packet(const void *data, size_t len) {
   for (int i = 0; i < g_remote_client_count; i++) {
     log_info("  - Client %u: %s", g_remote_clients[i].client_id, g_remote_clients[i].display_name);
   }
-}
-
-static void handle_mixed_audio_packet(const void *data, size_t len) {
-  if (!opt_audio_enabled || !data || len == 0) {
-    return;
-  }
-
-  int num_samples = (int)(len / sizeof(float));
-  if (num_samples > AUDIO_SAMPLES_PER_PACKET) {
-    log_warn("Mixed audio packet too large: %d samples", num_samples);
-    return;
-  }
-
-  // Process mixed audio from multiple clients
-  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
-  const float *samples = (const float *)data;
-
-  for (int i = 0; i < num_samples; i++) {
-    audio_buffer[i] = samples[i] * AUDIO_VOLUME_BOOST;
-    // Clamp to prevent distortion
-    if (audio_buffer[i] > 1.0f)
-      audio_buffer[i] = 1.0f;
-    if (audio_buffer[i] < -1.0f)
-      audio_buffer[i] = -1.0f;
-  }
-
-  audio_write_samples(&g_audio_context, audio_buffer, num_samples);
-  log_debug("Processed %d mixed audio samples from multiple clients", num_samples);
 }
 
 /* ============================================================================
