@@ -65,7 +65,6 @@ typedef enum {
   PACKET_TYPE_CLIENT_LIST = 9,   // Server sends list of active clients
   PACKET_TYPE_STREAM_START = 10, // Client requests to start sending video/audio
   PACKET_TYPE_STREAM_STOP = 11,  // Client stops sending media
-  PACKET_TYPE_MIXED_AUDIO = 12,  // Server sends mixed audio from all clients
 } packet_type_t;
 
 typedef struct {
@@ -137,7 +136,6 @@ int send_client_leave_packet(int sockfd, uint32_t client_id);
 int send_client_list_packet(int sockfd, const client_list_packet_t *client_list);
 int send_stream_start_packet(int sockfd, uint32_t stream_type);
 int send_stream_stop_packet(int sockfd, uint32_t stream_type);
-int send_mixed_audio_packet(int sockfd, const float *mixed_samples, int num_samples);
 
 // Packet sending with client ID
 int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);

@@ -498,7 +498,7 @@ void *audio_mixer_thread_func(void *arg) {
       for (int i = 0; i < MAX_CLIENTS; i++) {
         client_info_t *client = &g_client_manager.clients[i];
         if (client->active) {
-          int sent = send_mixed_audio_packet(client->socket, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+          int sent = send_audio_packet(client->socket, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
           if (sent < 0) {
             log_debug("Failed to send mixed audio to client %u", client->client_id);
           }
@@ -1105,8 +1105,8 @@ void *client_send_thread_func(void *arg) {
     pthread_mutex_unlock(&g_framebuffer_mutex);
 
     if (frame_available && frame.data && frame.size > 0) {
-      // Send frame to this client
-      int sent = send_video_packet(client->socket, frame.data, frame.size);
+      // Send frame to this client (use compression)
+      int sent = send_compressed_frame(client->socket, frame.data, frame.size);
       if (sent >= 0) {
         client->frames_sent++;
         pthread_mutex_lock(&g_stats_mutex);
