@@ -37,6 +37,45 @@ static pthread_t g_data_thread;
 static bool g_data_thread_created = false;
 static volatile bool g_data_thread_exited = false;
 
+/* ============================================================================
+ * Multi-User Client State
+ * ============================================================================
+ */
+
+// Multi-user client state
+static uint32_t g_my_client_id = 0;
+static volatile bool g_is_sending_video = false;
+static volatile bool g_is_sending_audio = false;
+static pthread_t g_local_video_capture_thread;
+static pthread_t g_local_audio_capture_thread;
+static bool g_video_capture_thread_created = false;
+static bool g_audio_capture_thread_created = false;
+
+// Remote client tracking (up to MAX_CLIENTS)
+typedef struct {
+  uint32_t client_id;
+  char display_name[MAX_DISPLAY_NAME_LEN];
+  bool is_active;
+  time_t last_seen;
+} remote_client_info_t;
+
+static remote_client_info_t g_remote_clients[MAX_CLIENTS];
+static int g_remote_client_count = 0;
+static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* ============================================================================
+ * Function Declarations
+ * ============================================================================
+ */
+
+// Multi-user packet handlers
+static void handle_client_list_packet(const void *data, size_t len);
+static void handle_mixed_audio_packet(const void *data, size_t len);
+
+// Local capture threads
+static void *local_video_capture_thread_func(void *arg);
+static void *local_audio_capture_thread_func(void *arg);
+
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
     log_info("Closing socket connection");
@@ -316,6 +355,15 @@ static void *data_reception_thread_func(void *arg) {
       log_debug("Received PING");
       break;
 
+    // Multi-user protocol packets
+    case PACKET_TYPE_CLIENT_LIST:
+      handle_client_list_packet(data, len);
+      break;
+
+    case PACKET_TYPE_MIXED_AUDIO:
+      handle_mixed_audio_packet(data, len);
+      break;
+
     default:
       log_warn("Unknown packet type: %d", type);
       break;
@@ -329,6 +377,111 @@ static void *data_reception_thread_func(void *arg) {
   log_debug("Data reception thread stopped");
 #endif
   g_data_thread_exited = true;
+  return NULL;
+}
+
+/* ============================================================================
+ * Multi-User Packet Handlers
+ * ============================================================================
+ */
+
+static void handle_client_list_packet(const void *data, size_t len) {
+  if (!data || len != sizeof(client_list_packet_t)) {
+    log_error("Invalid client list packet size: %zu", len);
+    return;
+  }
+
+  const client_list_packet_t *client_list = (const client_list_packet_t *)data;
+
+  pthread_mutex_lock(&g_remote_clients_mutex);
+
+  // Clear existing remote clients
+  memset(g_remote_clients, 0, sizeof(g_remote_clients));
+  g_remote_client_count = 0;
+
+  // Add clients from server list (excluding ourselves)
+  for (uint32_t i = 0; i < client_list->client_count && i < MAX_CLIENTS; i++) {
+    const client_info_packet_t *client_info = &client_list->clients[i];
+
+    if (client_info->client_id != g_my_client_id && g_remote_client_count < MAX_CLIENTS) {
+      remote_client_info_t *remote = &g_remote_clients[g_remote_client_count];
+      remote->client_id = client_info->client_id;
+      strncpy(remote->display_name, client_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+      remote->display_name[MAX_DISPLAY_NAME_LEN - 1] = '\0';
+      remote->is_active = true;
+      remote->last_seen = time(NULL);
+      g_remote_client_count++;
+    }
+  }
+
+  pthread_mutex_unlock(&g_remote_clients_mutex);
+
+  log_info("Updated client list: %d remote clients connected", g_remote_client_count);
+  for (int i = 0; i < g_remote_client_count; i++) {
+    log_info("  - Client %u: %s", g_remote_clients[i].client_id, g_remote_clients[i].display_name);
+  }
+}
+
+static void handle_mixed_audio_packet(const void *data, size_t len) {
+  if (!opt_audio_enabled || !data || len == 0) {
+    return;
+  }
+
+  int num_samples = (int)(len / sizeof(float));
+  if (num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    log_warn("Mixed audio packet too large: %d samples", num_samples);
+    return;
+  }
+
+  // Process mixed audio from multiple clients
+  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
+  const float *samples = (const float *)data;
+
+  for (int i = 0; i < num_samples; i++) {
+    audio_buffer[i] = samples[i] * AUDIO_VOLUME_BOOST;
+    // Clamp to prevent distortion
+    if (audio_buffer[i] > 1.0f)
+      audio_buffer[i] = 1.0f;
+    if (audio_buffer[i] < -1.0f)
+      audio_buffer[i] = -1.0f;
+  }
+
+  audio_write_samples(&g_audio_context, audio_buffer, num_samples);
+  log_debug("Processed %d mixed audio samples from multiple clients", num_samples);
+}
+
+/* ============================================================================
+ * Multi-User Local Capture Threads (Stub Implementation)
+ * ============================================================================
+ */
+
+// Thread function for capturing local video and sending to server
+static void *local_video_capture_thread_func(void *arg) {
+  (void)arg;
+  log_info("Local video capture thread started (STUB - not yet capturing)");
+
+  while (!g_should_exit && g_is_sending_video) {
+    // TODO: Implement actual video capture using webcam APIs
+    // For now, just sleep to avoid busy loop
+    usleep(33333); // ~30 FPS
+  }
+
+  log_info("Local video capture thread stopped");
+  return NULL;
+}
+
+// Thread function for capturing local audio and sending to server
+static void *local_audio_capture_thread_func(void *arg) {
+  (void)arg;
+  log_info("Local audio capture thread started (STUB - not yet capturing)");
+
+  while (!g_should_exit && g_is_sending_audio) {
+    // TODO: Implement actual audio capture using PortAudio
+    // For now, just sleep to avoid busy loop
+    usleep(10000); // 100 FPS audio packets
+  }
+
+  log_info("Local audio capture thread stopped");
   return NULL;
 }
 
@@ -439,6 +592,24 @@ int main(int argc, char *argv[]) {
       }
       log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
       maybe_size_update(opt_width, opt_height);
+
+      // Send client join packet for multi-user support
+      uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
+      if (opt_audio_enabled) {
+        my_capabilities |= CLIENT_CAP_AUDIO; // Add audio if enabled
+      }
+
+      char my_display_name[MAX_DISPLAY_NAME_LEN];
+      snprintf(my_display_name, sizeof(my_display_name), "ClientUser");
+
+      if (send_client_join_packet(sockfd, my_display_name, my_capabilities) < 0) {
+        log_error("Failed to send client join packet: %s", network_error_string(errno));
+        g_should_reconnect = true;
+        continue; // try to connect again
+      }
+      log_info("Sent client join packet with capabilities: video=%s, audio=%s",
+               (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no",
+               (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no");
 
       // Set socket keepalive to detect broken connections
       if (set_socket_keepalive(sockfd) < 0) {
