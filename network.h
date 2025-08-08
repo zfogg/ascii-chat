@@ -59,6 +59,13 @@ typedef enum {
   PACKET_TYPE_SIZE = 4,
   PACKET_TYPE_PING = 5,
   PACKET_TYPE_PONG = 6,
+  // NEW MULTI-USER TYPES:
+  PACKET_TYPE_CLIENT_JOIN = 7,     // Client announces capability to send media
+  PACKET_TYPE_CLIENT_LEAVE = 8,    // Clean disconnect notification  
+  PACKET_TYPE_CLIENT_LIST = 9,     // Server sends list of active clients
+  PACKET_TYPE_STREAM_START = 10,   // Client requests to start sending video/audio
+  PACKET_TYPE_STREAM_STOP = 11,    // Client stops sending media
+  PACKET_TYPE_MIXED_AUDIO = 12,    // Server sends mixed audio from all clients
 } packet_type_t;
 
 typedef struct {
@@ -68,6 +75,37 @@ typedef struct {
   uint32_t sequence; // for ordering/duplicate detection
   uint32_t crc32;    // payload checksum
 } __attribute__((packed)) packet_header_t;
+
+/* Multi-user packet structures */
+#define CLIENT_NAME_MAX 32
+
+typedef struct {
+  uint32_t client_id;           // Unique client identifier
+  char display_name[CLIENT_NAME_MAX]; // User display name
+  uint32_t capabilities;        // Bitmask: VIDEO_CAPABLE | AUDIO_CAPABLE
+  uint16_t video_width;         // Client's video dimensions
+  uint16_t video_height;
+} __attribute__((packed)) client_info_packet_t;
+
+typedef struct {
+  uint32_t client_id;           // Which client this stream is from  
+  uint32_t stream_type;         // VIDEO_STREAM | AUDIO_STREAM
+  uint32_t sequence;            // For frame ordering
+  uint32_t timestamp;           // When frame was captured
+} __attribute__((packed)) stream_header_t;
+
+typedef struct {
+  uint32_t num_clients;
+  // Followed by num_clients * client_info_packet_t entries
+} __attribute__((packed)) client_list_packet_t;
+
+// Capability flags
+#define CLIENT_CAP_VIDEO (1 << 0)
+#define CLIENT_CAP_AUDIO (1 << 1)
+
+// Stream type flags  
+#define STREAM_TYPE_VIDEO 1
+#define STREAM_TYPE_AUDIO 2
 
 /* ============================================================================
  * Protocol Function Declarations
@@ -92,5 +130,16 @@ int send_video_header_packet(int sockfd, const void *header_data, size_t header_
 int send_video_packet(int sockfd, const void *frame_data, size_t frame_len);
 int send_audio_packet(int sockfd, const float *samples, int num_samples);
 int send_size_packet(int sockfd, unsigned short width, unsigned short height);
+
+/* Multi-user protocol functions */
+int send_client_join_packet(int sockfd, uint32_t client_id, const char *display_name, 
+                           uint32_t capabilities, uint16_t width, uint16_t height);
+int send_client_leave_packet(int sockfd, uint32_t client_id);
+int send_client_list_packet(int sockfd, const client_info_packet_t *clients, uint32_t num_clients);
+int send_stream_start_packet(int sockfd, uint32_t client_id, uint32_t stream_type);
+int send_stream_stop_packet(int sockfd, uint32_t client_id, uint32_t stream_type);
+int send_mixed_audio_packet(int sockfd, const float *samples, int num_samples);
+int send_stream_packet(int sockfd, uint32_t client_id, uint32_t stream_type, 
+                      const void *data, size_t len);
 
 #endif // NETWORK_H

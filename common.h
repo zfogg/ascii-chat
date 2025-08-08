@@ -87,6 +87,7 @@ static inline int get_frame_interval_ms(void) {
 }
 
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
+#define FRAME_BUFFER_SIZE_FINAL (320 * 240 * 64 + 1024) // ~4.9MB for terminal frames with ANSI colors
 
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation

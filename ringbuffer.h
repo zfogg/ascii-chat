@@ -111,6 +111,19 @@ typedef struct {
   char *data;     /* Pointer to frame data (not owned by this struct) */
 } frame_t;
 
+/**
+ * Multi-source frame structure for multi-user support
+ * Includes metadata about which client sent the frame
+ */
+typedef struct {
+  uint32_t magic;           /* Magic number to detect corruption */
+  uint32_t source_client_id; /* Which client sent this frame */
+  uint32_t frame_sequence;   /* Frame ordering */
+  uint32_t timestamp;        /* When frame was captured */
+  size_t size;              /* Actual size of frame data */
+  char *data;               /* Pointer to frame data (not owned by this struct) */
+} multi_source_frame_t;
+
 #define FRAME_MAGIC 0xDEADBEEF
 #define FRAME_FREED 0xFEEDFACE
 
@@ -153,5 +166,27 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame);
  * @param fb Frame buffer
  */
 void framebuffer_clear(framebuffer_t *fb);
+
+/**
+ * Write a multi-source frame to the buffer
+ * @param fb Frame buffer
+ * @param frame_data Frame data
+ * @param frame_size Actual size of frame data
+ * @param source_client_id Which client sent this frame
+ * @param frame_sequence Frame ordering
+ * @param timestamp When frame was captured
+ * @return true if successful, false if buffer is full
+ */
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, 
+                                  size_t frame_size, uint32_t source_client_id,
+                                  uint32_t frame_sequence, uint32_t timestamp);
+
+/**
+ * Read a multi-source frame from the buffer
+ * @param fb Frame buffer
+ * @param frame Pointer to multi_source_frame_t struct to be filled
+ * @return true if successful, false if buffer is empty
+ */
+bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
 
 #endif /* ASCII_CHAT_RINGBUFFER_H */

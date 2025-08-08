@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <time.h>
 #include <unistd.h>
 
 int set_socket_timeout(int sockfd, int timeout_seconds) {
@@ -568,4 +569,114 @@ int send_size_packet(int sockfd, unsigned short width, unsigned short height) {
   } size_data = {.width = htons(width), .height = htons(height)};
 
   return send_packet(sockfd, PACKET_TYPE_SIZE, &size_data, sizeof(size_data));
+}
+
+/* Multi-user protocol implementation */
+int send_client_join_packet(int sockfd, uint32_t client_id, const char *display_name, 
+                           uint32_t capabilities, uint16_t width, uint16_t height) {
+  client_info_packet_t client_info = {
+    .client_id = htonl(client_id),
+    .capabilities = htonl(capabilities),
+    .video_width = htons(width),
+    .video_height = htons(height)
+  };
+  
+  // Safe string copy
+  if (display_name) {
+    strncpy(client_info.display_name, display_name, CLIENT_NAME_MAX - 1);
+    client_info.display_name[CLIENT_NAME_MAX - 1] = '\0';
+  } else {
+    snprintf(client_info.display_name, CLIENT_NAME_MAX, "User%u", client_id);
+  }
+  
+  return send_packet(sockfd, PACKET_TYPE_CLIENT_JOIN, &client_info, sizeof(client_info));
+}
+
+int send_client_leave_packet(int sockfd, uint32_t client_id) {
+  uint32_t client_id_net = htonl(client_id);
+  return send_packet(sockfd, PACKET_TYPE_CLIENT_LEAVE, &client_id_net, sizeof(client_id_net));
+}
+
+int send_client_list_packet(int sockfd, const client_info_packet_t *clients, uint32_t num_clients) {
+  if (!clients && num_clients > 0) {
+    return -1;
+  }
+  
+  // Calculate total size
+  size_t total_size = sizeof(client_list_packet_t) + (num_clients * sizeof(client_info_packet_t));
+  void *packet_data = malloc(total_size);
+  if (!packet_data) {
+    return -1;
+  }
+  
+  client_list_packet_t *list_header = (client_list_packet_t *)packet_data;
+  list_header->num_clients = htonl(num_clients);
+  
+  // Copy client info entries
+  if (num_clients > 0) {
+    memcpy((char *)packet_data + sizeof(client_list_packet_t), clients, 
+           num_clients * sizeof(client_info_packet_t));
+  }
+  
+  int result = send_packet(sockfd, PACKET_TYPE_CLIENT_LIST, packet_data, total_size);
+  free(packet_data);
+  return result;
+}
+
+int send_stream_start_packet(int sockfd, uint32_t client_id, uint32_t stream_type) {
+  struct {
+    uint32_t client_id;
+    uint32_t stream_type;
+  } stream_data = {.client_id = htonl(client_id), .stream_type = htonl(stream_type)};
+  
+  return send_packet(sockfd, PACKET_TYPE_STREAM_START, &stream_data, sizeof(stream_data));
+}
+
+int send_stream_stop_packet(int sockfd, uint32_t client_id, uint32_t stream_type) {
+  struct {
+    uint32_t client_id;
+    uint32_t stream_type;
+  } stream_data = {.client_id = htonl(client_id), .stream_type = htonl(stream_type)};
+  
+  return send_packet(sockfd, PACKET_TYPE_STREAM_STOP, &stream_data, sizeof(stream_data));
+}
+
+int send_mixed_audio_packet(int sockfd, const float *samples, int num_samples) {
+  if (!samples || num_samples <= 0) {
+    return -1;
+  }
+  
+  size_t data_size = num_samples * sizeof(float);
+  return send_packet(sockfd, PACKET_TYPE_MIXED_AUDIO, samples, data_size);
+}
+
+int send_stream_packet(int sockfd, uint32_t client_id, uint32_t stream_type, 
+                      const void *data, size_t len) {
+  if (!data || len == 0) {
+    return -1;
+  }
+  
+  // Create packet with stream header + data
+  size_t total_size = sizeof(stream_header_t) + len;
+  void *packet_data = malloc(total_size);
+  if (!packet_data) {
+    return -1;
+  }
+  
+  stream_header_t *header = (stream_header_t *)packet_data;
+  header->client_id = htonl(client_id);
+  header->stream_type = htonl(stream_type);
+  header->sequence = htonl(get_next_sequence());
+  header->timestamp = htonl((uint32_t)time(NULL));
+  
+  // Copy payload data
+  memcpy((char *)packet_data + sizeof(stream_header_t), data, len);
+  
+  // Send as video or audio packet based on type
+  packet_type_t packet_type = (stream_type == STREAM_TYPE_VIDEO) ? 
+                             PACKET_TYPE_VIDEO : PACKET_TYPE_AUDIO;
+  
+  int result = send_packet(sockfd, packet_type, packet_data, total_size);
+  free(packet_data);
+  return result;
 }

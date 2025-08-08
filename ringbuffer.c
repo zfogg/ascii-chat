@@ -317,3 +317,74 @@ void framebuffer_clear(framebuffer_t *fb) {
     memset(fb->rb->buffer, 0, fb->rb->capacity * fb->rb->element_size);
   }
 }
+
+/* Multi-source frame functions */
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, 
+                                  size_t frame_size, uint32_t source_client_id,
+                                  uint32_t frame_sequence, uint32_t timestamp) {
+  if (!fb || !frame_data || frame_size == 0) {
+    log_error("Invalid arguments to framebuffer_write_multi_frame");
+    return false;
+  }
+
+  // Allocate memory for frame data
+  char *data_copy = malloc(frame_size);
+  if (!data_copy) {
+    log_error("Failed to allocate memory for multi-source frame data");
+    return false;
+  }
+
+  // Copy data
+  memcpy(data_copy, frame_data, frame_size);
+
+  // Create frame struct
+  multi_source_frame_t frame = {
+    .magic = FRAME_MAGIC,
+    .source_client_id = source_client_id,
+    .frame_sequence = frame_sequence,
+    .timestamp = timestamp,
+    .size = frame_size,
+    .data = data_copy
+  };
+
+  // Try to write to ring buffer
+  if (!ringbuffer_write(fb->rb, &frame)) {
+    log_warn("Frame buffer full, dropping multi-source frame from client %u", source_client_id);
+    free(data_copy);
+    return false;
+  }
+
+  return true;
+}
+
+bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame) {
+  if (!fb || !frame) {
+    log_error("Invalid arguments to framebuffer_read_multi_frame");
+    return false;
+  }
+
+  // Try to read from ring buffer
+  if (!ringbuffer_read(fb->rb, frame)) {
+    return false; // Buffer empty
+  }
+
+  // Validate frame
+  if (frame->magic != FRAME_MAGIC) {
+    if (frame->magic == FRAME_FREED) {
+      log_error("CORRUPTION: Attempt to read freed multi-source frame");
+    } else if (frame->magic == 0) {
+      log_debug("Empty/cleared multi-source frame slot");
+    } else {
+      log_error("CORRUPTION: Invalid multi-source frame magic 0x%x", frame->magic);
+    }
+    return false;
+  }
+
+  if (!frame->data || frame->size == 0) {
+    log_error("CORRUPTION: Multi-source frame with null data or zero size");
+    frame->magic = FRAME_FREED;
+    return false;
+  }
+
+  return true;
+}

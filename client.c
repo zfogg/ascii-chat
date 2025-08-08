@@ -30,6 +30,15 @@ static volatile int last_frame_height = 0;
 
 static audio_context_t g_audio_context = {0};
 
+// Multi-user client support
+static uint32_t g_my_client_id = 0;
+static volatile bool g_is_sending_video = false;
+static volatile bool g_is_sending_audio = false;
+static pthread_t g_capture_thread;
+static pthread_t g_audio_capture_thread;
+static bool g_capture_thread_created = false;
+static bool g_audio_capture_thread_created = false;
+
 // Compression state
 static volatile bool g_expecting_compressed_frame = false;
 static compressed_frame_header_t g_compression_header = {0};
@@ -50,6 +59,9 @@ static int close_socket(int socketfd) {
 }
 
 static void shutdown_client() {
+  // Stop local capture first
+  stop_local_capture();
+  
   if (close_socket(sockfd) < 0) {
     exit(ASCIICHAT_ERR_NETWORK);
   }
@@ -93,6 +105,148 @@ static void shutdown_client() {
   ascii_write_destroy();
   log_info("Client shutdown complete");
   log_destroy(); // Destroy logging last
+}
+
+/* ============================================================================
+ * Local Media Capture Threads (for bidirectional support)
+ * ============================================================================
+ */
+
+static void *local_video_capture_thread_func(void *arg) {
+  (void)arg;
+  
+  log_info("Local video capture thread started");
+  
+  // Initialize webcam for local capture
+  if (ascii_read_init(0) != ASCIICHAT_OK) {
+    log_error("Failed to initialize webcam for local capture");
+    return NULL;
+  }
+  
+  while (!g_should_exit && g_is_sending_video) {
+    // Capture frame
+    if (ascii_read() != ASCIICHAT_OK) {
+      log_error("Failed to capture frame");
+      usleep(33000); // ~30 FPS fallback
+      continue;
+    }
+    
+    // Convert to ASCII
+    char *ascii_frame = image_print_colored(opt_width, opt_height);
+    if (!ascii_frame) {
+      log_error("Failed to convert frame to ASCII");
+      continue;
+    }
+    
+    // Send frame to server
+    size_t frame_len = strlen(ascii_frame);
+    if (send_stream_packet(sockfd, g_my_client_id, STREAM_TYPE_VIDEO, 
+                          ascii_frame, frame_len) < 0) {
+      log_error("Failed to send video frame to server");
+      free(ascii_frame);
+      break;
+    }
+    
+    free(ascii_frame);
+    
+    // Frame rate limiting (30 FPS)
+    usleep(33000);
+  }
+  
+  ascii_read_destroy();
+  log_info("Local video capture thread finished");
+  return NULL;
+}
+
+static void *local_audio_capture_thread_func(void *arg) {
+  (void)arg;
+  
+  log_info("Local audio capture thread started");
+  
+  float audio_buffer[AUDIO_BUFFER_SIZE];
+  
+  while (!g_should_exit && g_is_sending_audio) {
+    // Read audio samples
+    int samples_read = audio_read_samples(&g_audio_context, audio_buffer, AUDIO_BUFFER_SIZE);
+    if (samples_read <= 0) {
+      usleep(10000); // 10ms wait
+      continue;
+    }
+    
+    // Send audio to server
+    if (send_stream_packet(sockfd, g_my_client_id, STREAM_TYPE_AUDIO, 
+                          audio_buffer, samples_read * sizeof(float)) < 0) {
+      log_error("Failed to send audio to server");
+      break;
+    }
+  }
+  
+  log_info("Local audio capture thread finished");
+  return NULL;
+}
+
+static int start_local_video_capture(void) {
+  if (g_capture_thread_created || g_is_sending_video) {
+    return 0; // Already started
+  }
+  
+  g_is_sending_video = true;
+  
+  if (pthread_create(&g_capture_thread, NULL, local_video_capture_thread_func, NULL) != 0) {
+    log_error("Failed to create local video capture thread");
+    g_is_sending_video = false;
+    return -1;
+  }
+  
+  g_capture_thread_created = true;
+  
+  // Notify server we're starting to send video
+  send_stream_start_packet(sockfd, g_my_client_id, STREAM_TYPE_VIDEO);
+  
+  log_info("Started local video capture");
+  return 0;
+}
+
+static int start_local_audio_capture(void) {
+  if (g_audio_capture_thread_created || g_is_sending_audio) {
+    return 0; // Already started
+  }
+  
+  g_is_sending_audio = true;
+  
+  if (pthread_create(&g_audio_capture_thread, NULL, local_audio_capture_thread_func, NULL) != 0) {
+    log_error("Failed to create local audio capture thread");
+    g_is_sending_audio = false;
+    return -1;
+  }
+  
+  g_audio_capture_thread_created = true;
+  
+  // Notify server we're starting to send audio
+  send_stream_start_packet(sockfd, g_my_client_id, STREAM_TYPE_AUDIO);
+  
+  log_info("Started local audio capture");
+  return 0;
+}
+
+static void stop_local_capture(void) {
+  // Stop video capture
+  if (g_capture_thread_created) {
+    g_is_sending_video = false;
+    send_stream_stop_packet(sockfd, g_my_client_id, STREAM_TYPE_VIDEO);
+    pthread_join(g_capture_thread, NULL);
+    g_capture_thread_created = false;
+    log_info("Stopped local video capture");
+  }
+  
+  // Stop audio capture
+  if (g_audio_capture_thread_created) {
+    g_is_sending_audio = false;
+    send_stream_stop_packet(sockfd, g_my_client_id, STREAM_TYPE_AUDIO);
+    pthread_join(g_audio_capture_thread, NULL);
+    g_audio_capture_thread_created = false;
+    log_info("Stopped local audio capture");
+  }
 }
 
 static void sigint_handler(int sigint) {
@@ -316,6 +470,52 @@ static void *data_reception_thread_func(void *arg) {
       log_debug("Received PING");
       break;
 
+    // Multi-user packet handling
+    case PACKET_TYPE_CLIENT_JOIN:
+      if (len == sizeof(client_info_packet_t)) {
+        client_info_packet_t *client_info = (client_info_packet_t *)data;
+        uint32_t client_id = ntohl(client_info->client_id);
+        
+        if (g_my_client_id == 0) {
+          // Server is assigning us our client ID
+          g_my_client_id = client_id;
+          log_info("Successfully joined server as client %u", client_id);
+          
+          // Start local capture if audio is enabled
+          if (opt_audio_enabled) {
+            start_local_audio_capture();
+          }
+        } else if (client_id == g_my_client_id) {
+          // Confirmation of our own join
+          log_debug("Confirmed join as client %u", client_id);
+        } else {
+          // Another client joined
+          log_info("Client %u (%s) joined", client_id, client_info->display_name);
+        }
+      }
+      break;
+
+    case PACKET_TYPE_CLIENT_LEAVE:
+      if (len == sizeof(uint32_t)) {
+        uint32_t client_id = ntohl(*(uint32_t *)data);
+        log_info("Client %u left", client_id);
+      }
+      break;
+
+    case PACKET_TYPE_CLIENT_LIST:
+      // Handle client list update (could be used to show active users)
+      if (len >= sizeof(client_list_packet_t)) {
+        client_list_packet_t *list = (client_list_packet_t *)data;
+        uint32_t num_clients = ntohl(list->num_clients);
+        log_info("Active clients: %u", num_clients);
+      }
+      break;
+
+    case PACKET_TYPE_MIXED_AUDIO:
+      // Handle mixed audio from server (same as regular audio for now)
+      handle_audio_packet(data, len);
+      break;
+
     default:
       log_warn("Unknown packet type: %d", type);
       break;
@@ -438,6 +638,19 @@ int main(int argc, char *argv[]) {
         continue; // try to connect again
       }
       log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
+
+      // Send client join packet for multi-user support
+      uint32_t capabilities = CLIENT_CAP_VIDEO;
+      if (opt_audio_enabled) {
+        capabilities |= CLIENT_CAP_AUDIO;
+      }
+      
+      if (send_client_join_packet(sockfd, 0, "Client", capabilities, opt_width, opt_height) < 0) {
+        log_error("Failed to send join packet to server: %s", network_error_string(errno));
+        g_should_reconnect = true;
+        continue; // try to connect again
+      }
+      log_info("Sent join packet to server with capabilities: 0x%x", capabilities);
       maybe_size_update(opt_width, opt_height);
 
       // Set socket keepalive to detect broken connections

@@ -54,6 +54,56 @@ static server_stats_t g_stats = {0};
 static int listenfd = 0;
 static int connfd = 0;
 
+/* Multi-client support */
+#define MAX_CLIENTS 10
+
+typedef struct {
+  int socket;
+  pthread_t receive_thread;        // Thread for receiving client data
+  pthread_t send_thread;           // Thread for sending data to client
+  uint32_t client_id;
+  char display_name[CLIENT_NAME_MAX];
+  char client_ip[INET_ADDRSTRLEN];
+  int port;
+  
+  // Media capabilities
+  bool can_send_video;
+  bool can_send_audio;
+  bool is_sending_video;
+  bool is_sending_audio;
+  
+  // Stream dimensions  
+  unsigned short width, height;
+  
+  // Statistics
+  bool active;
+  time_t connected_at;
+  uint64_t frames_sent;
+  uint64_t frames_received;        // Track incoming frames from this client
+  
+  // Buffers for incoming media
+  framebuffer_t *incoming_video_buffer; // Buffer for this client's video
+  audio_ring_buffer_t *incoming_audio_buffer; // Buffer for this client's audio
+} client_info_t;
+
+typedef struct {
+  client_info_t clients[MAX_CLIENTS];
+  int client_count;
+  uint32_t next_client_id;         // For assigning unique IDs
+  pthread_mutex_t mutex;
+} client_manager_t;
+
+typedef struct {
+  framebuffer_t *composite_video_buffer; // Mixed video from all clients
+  audio_ring_buffer_t *mixed_audio_buffer; // Mixed audio from all clients
+  pthread_t video_mixer_thread;
+  pthread_t audio_mixer_thread;
+  pthread_mutex_t mixer_mutex;
+} stream_mixer_t;
+
+static client_manager_t g_clients = {0};
+static stream_mixer_t g_mixer = {0};
+
 /* ============================================================================
  * Signal Handlers
  * ============================================================================
@@ -80,6 +130,304 @@ static void sigint_handler(int sigint) {
   if (connfd > 0) {
     close(connfd);
   }
+}
+
+/* ============================================================================
+ * Multi-Client Management
+ * ============================================================================
+ */
+
+static void initialize_client_manager(void) {
+  pthread_mutex_init(&g_clients.mutex, NULL);
+  g_clients.client_count = 0;
+  g_clients.next_client_id = 1; // Start client IDs from 1
+  
+  // Initialize all client slots as inactive
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    g_clients.clients[i].active = false;
+    g_clients.clients[i].socket = -1;
+  }
+}
+
+static void destroy_client_manager(void) {
+  pthread_mutex_lock(&g_clients.mutex);
+  
+  // Clean up all active clients
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (g_clients.clients[i].active) {
+      client_info_t *client = &g_clients.clients[i];
+      
+      // Close socket
+      if (client->socket > 0) {
+        close(client->socket);
+        client->socket = -1;
+      }
+      
+      // Clean up buffers
+      if (client->incoming_video_buffer) {
+        framebuffer_destroy(client->incoming_video_buffer);
+        client->incoming_video_buffer = NULL;
+      }
+      
+      if (client->incoming_audio_buffer) {
+        audio_ring_buffer_destroy(client->incoming_audio_buffer);
+        client->incoming_audio_buffer = NULL;
+      }
+      
+      client->active = false;
+    }
+  }
+  
+  g_clients.client_count = 0;
+  pthread_mutex_unlock(&g_clients.mutex);
+  pthread_mutex_destroy(&g_clients.mutex);
+}
+
+static client_info_t* find_available_client_slot(void) {
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (!g_clients.clients[i].active) {
+      return &g_clients.clients[i];
+    }
+  }
+  return NULL;
+}
+
+static void *client_receive_thread_func(void *arg) {
+  client_info_t *client = (client_info_t *)arg;
+  packet_type_t packet_type;
+  void *packet_data = NULL;
+  size_t packet_len = 0;
+  
+  log_info("Client receive thread started for %s:%d (ID: %u)", 
+           client->client_ip, client->port, client->client_id);
+  
+  while (!g_should_exit && client->active) {
+    // Receive packet from client
+    int result = receive_packet(client->socket, &packet_type, &packet_data, &packet_len);
+    
+    if (result <= 0) {
+      if (result == 0) {
+        log_info("Client %u disconnected", client->client_id);
+      } else {
+        log_warn("Failed to receive from client %u: %s", 
+                 client->client_id, network_error_string(errno));
+      }
+      break;
+    }
+    
+    // Process packet based on type
+    switch (packet_type) {
+      case PACKET_TYPE_VIDEO:
+        if (client->is_sending_video && client->incoming_video_buffer) {
+          // Extract stream header and video data
+          if (packet_len > sizeof(stream_header_t)) {
+            stream_header_t *header = (stream_header_t *)packet_data;
+            char *video_data = (char *)packet_data + sizeof(stream_header_t);
+            size_t video_len = packet_len - sizeof(stream_header_t);
+            
+            // Store in client's video buffer with metadata
+            framebuffer_write_multi_frame(client->incoming_video_buffer, 
+                                         video_data, video_len,
+                                         ntohl(header->client_id),
+                                         ntohl(header->sequence), 
+                                         ntohl(header->timestamp));
+            client->frames_received++;
+          }
+        }
+        break;
+        
+      case PACKET_TYPE_AUDIO:
+        if (client->is_sending_audio && client->incoming_audio_buffer) {
+          // Extract stream header and audio data
+          if (packet_len > sizeof(stream_header_t)) {
+            char *audio_data = (char *)packet_data + sizeof(stream_header_t);
+            size_t audio_len = packet_len - sizeof(stream_header_t);
+            
+            // Store in client's audio buffer
+            int samples = audio_len / sizeof(float);
+            audio_ring_buffer_write(client->incoming_audio_buffer, 
+                                   (float *)audio_data, samples);
+          }
+        }
+        break;
+        
+      case PACKET_TYPE_STREAM_START: {
+        if (packet_len >= 2 * sizeof(uint32_t)) {
+          uint32_t *data = (uint32_t *)packet_data;
+          uint32_t stream_type = ntohl(data[1]);
+          
+          if (stream_type == STREAM_TYPE_VIDEO) {
+            client->is_sending_video = true;
+            log_info("Client %u started sending video", client->client_id);
+          } else if (stream_type == STREAM_TYPE_AUDIO) {
+            client->is_sending_audio = true;
+            log_info("Client %u started sending audio", client->client_id);
+          }
+        }
+        break;
+      }
+      
+      case PACKET_TYPE_STREAM_STOP: {
+        if (packet_len >= 2 * sizeof(uint32_t)) {
+          uint32_t *data = (uint32_t *)packet_data;
+          uint32_t stream_type = ntohl(data[1]);
+          
+          if (stream_type == STREAM_TYPE_VIDEO) {
+            client->is_sending_video = false;
+            log_info("Client %u stopped sending video", client->client_id);
+          } else if (stream_type == STREAM_TYPE_AUDIO) {
+            client->is_sending_audio = false;
+            log_info("Client %u stopped sending audio", client->client_id);
+          }
+        }
+        break;
+      }
+        
+      default:
+        log_warn("Unexpected packet type %d from client %u", packet_type, client->client_id);
+        break;
+    }
+    
+    // Free packet data
+    if (packet_data) {
+      free(packet_data);
+      packet_data = NULL;
+    }
+  }
+  
+  // Cleanup
+  if (packet_data) {
+    free(packet_data);
+  }
+  
+  log_info("Client receive thread finished for %u", client->client_id);
+  return NULL;
+}
+
+static void *client_send_thread_func(void *arg) {
+  client_info_t *client = (client_info_t *)arg;
+  char *frame_buffer = NULL;
+  SAFE_MALLOC(frame_buffer, FRAME_BUFFER_SIZE_FINAL, char *);
+  
+  log_info("Client send thread started for %s:%d (ID: %u)", 
+           client->client_ip, client->port, client->client_id);
+  
+  while (!g_should_exit && client->active) {
+    // Get frame from shared buffer (mixed from all clients)
+    if (!framebuffer_read_frame(g_frame_buffer, (frame_t *)frame_buffer)) {
+      usleep(1000); // 1ms wait
+      continue;
+    }
+    
+    frame_t *frame = (frame_t *)frame_buffer;
+    
+    // Send frame to this specific client
+    ssize_t sent = send_with_timeout(client->socket, frame->data, frame->size, SEND_TIMEOUT);
+    
+    if (sent < 0) {
+      log_warn("Client %u (%s:%d) send failed: %s", 
+               client->client_id, client->client_ip, client->port, 
+               network_error_string(errno));
+      break;
+    }
+    
+    client->frames_sent++;
+    
+    // Free frame data
+    if (frame->data) {
+      free(frame->data);
+      frame->data = NULL;
+    }
+  }
+  
+  // Cleanup
+  free(frame_buffer);
+  
+  log_info("Client send thread finished for %u", client->client_id);
+  return NULL;
+}
+
+static int add_client(int sockfd, struct sockaddr_in *addr) {
+  pthread_mutex_lock(&g_clients.mutex);
+  
+  if (g_clients.client_count >= MAX_CLIENTS) {
+    pthread_mutex_unlock(&g_clients.mutex);
+    log_warn("Server full, rejecting client");
+    return -1; // Server full
+  }
+  
+  // Find empty slot
+  client_info_t *client = find_available_client_slot();
+  if (!client) {
+    pthread_mutex_unlock(&g_clients.mutex);
+    return -1;
+  }
+  
+  // Initialize client
+  memset(client, 0, sizeof(*client));
+  client->socket = sockfd;
+  client->client_id = g_clients.next_client_id++;
+  client->active = true;
+  client->connected_at = time(NULL);
+  client->frames_sent = 0;
+  client->frames_received = 0;
+  client->port = ntohs(addr->sin_port);
+  inet_ntop(AF_INET, &addr->sin_addr, client->client_ip, sizeof(client->client_ip));
+  
+  // Set default capabilities
+  client->can_send_video = true;
+  client->can_send_audio = true;
+  client->is_sending_video = false;
+  client->is_sending_audio = false;
+  
+  // Create buffers for incoming streams
+  client->incoming_video_buffer = framebuffer_create(32); // 32 frame buffer
+  client->incoming_audio_buffer = audio_ring_buffer_create();
+  
+  if (!client->incoming_video_buffer || !client->incoming_audio_buffer) {
+    log_error("Failed to create buffers for client %u", client->client_id);
+    if (client->incoming_video_buffer) {
+      framebuffer_destroy(client->incoming_video_buffer);
+    }
+    if (client->incoming_audio_buffer) {
+      audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    }
+    client->active = false;
+    pthread_mutex_unlock(&g_clients.mutex);
+    return -1;
+  }
+  
+  // Create threads
+  if (pthread_create(&client->receive_thread, NULL, client_receive_thread_func, client) != 0) {
+    log_error("Failed to create receive thread for client %u", client->client_id);
+    framebuffer_destroy(client->incoming_video_buffer);
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    client->active = false;
+    pthread_mutex_unlock(&g_clients.mutex);
+    return -1;
+  }
+  
+  if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
+    log_error("Failed to create send thread for client %u", client->client_id);
+    pthread_cancel(client->receive_thread);
+    framebuffer_destroy(client->incoming_video_buffer);
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    client->active = false;
+    pthread_mutex_unlock(&g_clients.mutex);
+    return -1;
+  }
+  
+  g_clients.client_count++;
+  pthread_mutex_unlock(&g_clients.mutex);
+  
+  // Send client join notification to client
+  send_client_join_packet(sockfd, client->client_id, client->display_name,
+                         CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO,
+                         client->width, client->height);
+  
+  log_info("Added client %u (%s:%d) - total clients: %d", 
+           client->client_id, client->client_ip, client->port, g_clients.client_count);
+  return 0;
 }
 
 /* ============================================================================
@@ -324,6 +672,10 @@ int main(int argc, char *argv[]) {
   }
   log_info("Created framebuffer with capacity for %d frames", FRAME_BUFFER_CAPACITY);
 
+  // Initialize client manager for multi-user support
+  initialize_client_manager();
+  log_info("Initialized multi-client manager (max %d clients)", MAX_CLIENTS);
+
   // Initialize audio if enabled
   if (opt_audio_enabled) {
     if (audio_init(&g_audio_context) != 0) {
@@ -417,22 +769,13 @@ int main(int argc, char *argv[]) {
   struct timespec last_stats_time;
   clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
-  // Main connection loop
+  // Multi-client connection loop
   while (!g_should_exit) {
-    log_info("Waiting for client connection...");
-
-    // Pause capture thread before accepting new connection
-    // Only pause if thread is ready (important for first connection)
-    if (g_capture_thread_ready) {
-      g_capture_paused = true;
-    }
+    log_info("Waiting for client connections (active: %d/%d)...", g_clients.client_count, MAX_CLIENTS);
 
     // Accept network connection with timeout
-    connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
-    if (connfd < 0) {
-      if (g_capture_thread_ready) {
-        g_capture_paused = false; // Resume capture on error
-      }
+    int new_connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
+    if (new_connfd < 0) {
       if (errno == ETIMEDOUT) {
         log_debug("Network accept timeout, continuing...");
         continue;
@@ -441,223 +784,30 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    // Log client connection
+    // Log client connection attempt
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-    log_info("Client connected from %s:%d", client_ip, ntohs(client_addr.sin_port));
+    log_info("Client connecting from %s:%d", client_ip, ntohs(client_addr.sin_port));
 
-    // Receive initial size packet from client
-    unsigned short client_width, client_height;
-    packet_type_t type;
-    void *data;
-    size_t len;
-
-    int result = receive_packet(connfd, &type, &data, &len);
-    if (result <= 0) {
-      log_error("Failed to receive initial size packet: %s", network_error_string(errno));
-      close(connfd);
-      connfd = 0;
+    // Try to add client to multi-client manager
+    if (add_client(new_connfd, &client_addr) < 0) {
+      log_warn("Failed to add client %s:%d (server may be full)", 
+               client_ip, ntohs(client_addr.sin_port));
+      close(new_connfd);
       continue;
     }
 
-    if (type != PACKET_TYPE_SIZE || len != 4) {
-      log_error("Expected size packet but got type=%d, len=%zu", type, len);
-      free(data);
-      close(connfd);
-      connfd = 0;
-      continue;
-    }
-
-    const uint16_t *size_data = (const uint16_t *)data;
-    client_width = ntohs(size_data[0]);
-    client_height = ntohs(size_data[1]);
-    free(data);
-
-    // DON'T clear framebuffer on new client - causes use-after-free!
-    // Frames in the buffer will naturally drain out as they're sent.
-    // The capture thread will start generating frames with the new size.
-
-    // Update frame generation for client size
-    update_frame_buffer_for_size(client_width, client_height);
-    log_info("Client requested frame size: %ux%u", client_width, client_height);
-
-    // Reset client-specific stats and flags
-    pthread_mutex_lock(&g_stats_mutex);
-    g_stats.frames_sent = 0;
-    g_stats.bytes_sent = 0;
-    pthread_mutex_unlock(&g_stats_mutex);
-    g_audio_send_failed = false; // Reset audio failure flag for new client
-
-    // Resume capture thread now that client is ready
-    g_capture_paused = false;
-
-    // No more fixed-size buffers needed!
-    uint64_t client_frames_sent = 0;
-
-    // Client serving loop
-    log_debug("Starting client serving loop");
-    struct timespec last_size_check = {0, 0};
-
-    // Reset stats time for this client
-    clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
-
-    while (!g_should_exit) {
-
-      // Check for size updates from client (non-blocking, but rate limited)
-      struct timespec current_time;
-      clock_gettime(CLOCK_MONOTONIC, &current_time);
-      long size_check_elapsed = (current_time.tv_sec - last_size_check.tv_sec) * 1000 +
-                                (current_time.tv_nsec - last_size_check.tv_nsec) / 1000000;
-
-      if (size_check_elapsed >= 100) { // Check for size updates at most every 100ms
-        unsigned short new_width, new_height;
-        int size_result = receive_client_size(connfd, &new_width, &new_height);
-        if (size_result > 0) {
-          // Client sent a size update
-          update_frame_buffer_for_size(new_width, new_height);
-          log_info("Client updated frame size to: %ux%u", new_width, new_height);
-        } else if (size_result < 0) {
-          // Error receiving data, client likely disconnected
-          log_info("Client disconnected while checking for size updates");
-          break;
-        }
-        last_size_check = current_time;
-      }
-
-      // Check if audio thread failed
-      if (g_audio_send_failed) {
-        log_info("Audio send failed, disconnecting client");
-        break;
-      }
-
-      // Try to get a frame from buffer
-      frame_t frame = {.magic = 0, .size = 0, .data = NULL};
-      pthread_mutex_lock(&g_framebuffer_mutex);
-      bool frame_available = false;
-      if (g_frame_buffer) {
-        frame_available = framebuffer_read_frame(g_frame_buffer, &frame);
-      }
-      pthread_mutex_unlock(&g_framebuffer_mutex);
-
-      if (!frame_available) {
-        // No frames available, wait a bit
-        usleep(1000); // 1ms
-        continue;
-      }
-
-      // Send frame with timeout (protected by socket mutex)
-      // Add safety check for frame data
-      if (!frame.data || frame.size == 0) {
-        log_error("Invalid frame: data=%p, size=%zu", frame.data, frame.size);
-        // Free frame data if it exists but size is 0
-        free(frame.data);
-        continue;
-      }
-
-      // Save frame size before freeing
-      size_t frame_size_for_stats = frame.size;
-
-      pthread_mutex_lock(&g_socket_mutex);
-      int sent = send_compressed_frame(connfd, frame.data, frame.size);
-      pthread_mutex_unlock(&g_socket_mutex);
-
-      // CRITICAL: Free the frame data copy after sending
-      if (frame.magic == FRAME_MAGIC && frame.data) {
-        frame.magic = FRAME_FREED; // Mark as freed before freeing
-        free(frame.data);
-        frame.data = NULL;
-      } else if (frame.data) {
-        log_error("Sent invalid frame! frame.magic=%d", frame.magic);
-        free(frame.data);
-        continue;
-      }
-
-      if (sent < 0) {
-        log_error("Error: Network send of video packet failed: %s", network_error_string(errno));
-        break;
-      }
-
-      // NOTE: this isn't actually an error, I don't think. send_with_timeout() supports partial sends.
-      // if ((size_t)sent != frame_len) {
-      //  log_error("Partial send: %zd of %zu bytes", sent, frame_len);
-      //}
-
-      // Update statistics
-      pthread_mutex_lock(&g_stats_mutex);
-      g_stats.frames_sent++;
-      g_stats.bytes_sent += frame_size_for_stats; // Approximate bytes sent (not counting packet overhead)
-      pthread_mutex_unlock(&g_stats_mutex);
-
-      client_frames_sent++;
-
-      // Print periodic statistics
-      struct timespec stats_time;
-      clock_gettime(CLOCK_MONOTONIC, &stats_time);
-
-      if (client_frames_sent == 1) {
-        // Initialize stats time on first frame
-        last_stats_time = stats_time;
-        log_debug("Initialized last_stats_time on first frame");
-      }
-
-      // Safety check - make sure we're still connected
-      if (connfd <= 0) {
-        log_error("Connection lost during frame send");
-        break;
-      }
-
-      long sec_diff = stats_time.tv_sec - last_stats_time.tv_sec;
-      long nsec_diff = stats_time.tv_nsec - last_stats_time.tv_nsec;
-      long stats_elapsed = sec_diff * 1000 + nsec_diff / 1000000;
-
-      if (stats_elapsed >= 1000) { // Every 1 second
-        // Lock stats mutex first
-        if (pthread_mutex_lock(&g_stats_mutex) != 0) {
-          log_error("Failed to lock stats mutex!");
-          continue;
-        }
-
-        // Lock framebuffer mutex second
-        if (pthread_mutex_lock(&g_framebuffer_mutex) != 0) {
-          log_error("Failed to lock framebuffer mutex!");
-          pthread_mutex_unlock(&g_stats_mutex);
-          continue;
-        }
-        size_t buffer_size = 0;
-        if (g_frame_buffer && g_frame_buffer->rb) {
-          buffer_size = ringbuffer_size(g_frame_buffer->rb);
-        }
-
-        // Copy stats while we hold the mutex to avoid race conditions
-        uint64_t captured = g_stats.frames_captured;
-        uint64_t sent = g_stats.frames_sent;
-        uint64_t dropped = g_stats.frames_dropped;
-
-        pthread_mutex_unlock(&g_framebuffer_mutex);
-        pthread_mutex_unlock(&g_stats_mutex);
-        // Log stats after releasing all mutexes
-        log_info("Stats: captured=%lu, sent=%lu, dropped=%lu, buffer_size=%zu", captured, sent, dropped, buffer_size);
-        last_stats_time = stats_time;
-      }
-    }
-
-    // Pause capture thread before closing connection
-    g_capture_paused = true;
-    usleep(50000); // Give capture thread time to pause
-
-    close(connfd);
-    connfd = 0;
-    log_info("Client disconnected after %lu frames", client_frames_sent);
-    log_info("Closing connection.");
-    log_info("---------------------");
-
-    // Don't clear framebuffer here - it will be cleared when next client connects
-    // This avoids race conditions with any frames that might still be in use
+    // Client successfully added and threads started
+    log_info("Client %s:%d added successfully", client_ip, ntohs(client_addr.sin_port));
   }
 
   // Cleanup
   log_info("Server shutting down...");
   g_should_exit = true;
+
+  // Clean up all clients first
+  destroy_client_manager();
+  log_info("Client manager cleaned up");
 
   log_debug("Waiting for capture thread to finish...");
   // Wait for capture thread to finish
