@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #include "ascii.h"
 #include "common.h"
@@ -202,6 +203,134 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
 
   *position = '\0';
   return buffer;
+}
+
+/**
+ * Creates a grid layout from multiple ASCII frame sources with | and _ separators.
+ *
+ * Parameters:
+ *   sources       Array of ASCII frame sources to combine
+ *   source_count  Number of sources in the array
+ *   width         Target width of the output grid
+ *   height        Target height of the output grid
+ *   out_size      Output parameter for the size of the returned buffer
+ *
+ * Returns:
+ *   A newly allocated, null-terminated string containing the grid layout,
+ *   or NULL on error. Caller must free the returned buffer.
+ */
+char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int width, int height, size_t *out_size) {
+  if (!sources || source_count <= 0 || width <= 0 || height <= 0 || !out_size) {
+    return NULL;
+  }
+
+  // If no sources, return empty frame
+  if (source_count == 0) {
+    *out_size = 0;
+    return NULL;
+  }
+
+  // If only one source, return it directly (make a copy)
+  if (source_count == 1) {
+    char *result;
+    SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
+    memcpy(result, sources[0].frame_data, sources[0].frame_size);
+    result[sources[0].frame_size] = '\0';
+    *out_size = sources[0].frame_size;
+    return result;
+  }
+
+  // Multiple sources: create grid layout
+  // Calculate grid dimensions (try to make it roughly square)
+  int grid_cols = (int)ceil(sqrt(source_count));
+  int grid_rows = (int)ceil((double)source_count / grid_cols);
+
+  // Calculate dimensions for each cell (leave 1 char for separators)
+  int cell_width = (width - (grid_cols - 1)) / grid_cols;
+  int cell_height = (height - (grid_rows - 1)) / grid_rows;
+
+  if (cell_width < 10 || cell_height < 3) {
+    // Too small for grid layout, just use first source
+    char *result;
+    SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
+    memcpy(result, sources[0].frame_data, sources[0].frame_size);
+    result[sources[0].frame_size] = '\0';
+    *out_size = sources[0].frame_size;
+    return result;
+  }
+
+  // Allocate mixed frame buffer
+  size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
+  char *mixed_frame;
+  SAFE_MALLOC(mixed_frame, mixed_size, char *);
+
+  // Initialize mixed frame with spaces
+  memset(mixed_frame, ' ', mixed_size - 1);
+  mixed_frame[mixed_size - 1] = '\0';
+
+  // Add newlines at the end of each row
+  for (int row = 0; row < height; row++) {
+    mixed_frame[row * (width + 1) + width] = '\n';
+  }
+
+  // Place each video source in the grid
+  for (int src = 0; src < source_count; src++) {
+    int grid_row = src / grid_cols;
+    int grid_col = src % grid_cols;
+
+    // Calculate position in mixed frame
+    int start_row = grid_row * (cell_height + 1); // +1 for separator
+    int start_col = grid_col * (cell_width + 1);  // +1 for separator
+
+    // Parse source frame line by line and place in grid
+    const char *src_data = sources[src].frame_data;
+    int src_row = 0;
+    int src_pos = 0;
+
+    while (src_pos < (int)sources[src].frame_size && src_row < cell_height && start_row + src_row < height) {
+      // Find end of current line in source
+      int line_start = src_pos;
+      while (src_pos < (int)sources[src].frame_size && src_data[src_pos] != '\n') {
+        src_pos++;
+      }
+      int line_len = src_pos - line_start;
+
+      // Copy line to mixed frame (truncate if too long)
+      int copy_len = (line_len < cell_width) ? line_len : cell_width;
+      if (copy_len > 0 && start_col + copy_len <= width) {
+        int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
+        memcpy(mixed_frame + mixed_pos, src_data + line_start, copy_len);
+      }
+
+      // Move to next line
+      if (src_pos < (int)sources[src].frame_size && src_data[src_pos] == '\n') {
+        src_pos++;
+      }
+      src_row++;
+    }
+
+    // Draw separators
+    if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
+      // Vertical separator
+      for (int row = start_row; row < start_row + cell_height && row < height; row++) {
+        mixed_frame[row * (width + 1) + start_col + cell_width] = '|';
+      }
+    }
+
+    if (grid_row < grid_rows - 1 && start_row + cell_height < height) {
+      // Horizontal separator
+      for (int col = start_col; col < start_col + cell_width && col < width; col++) {
+        mixed_frame[(start_row + cell_height) * (width + 1) + col] = '_';
+      }
+      // Corner character where separators meet
+      if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
+        mixed_frame[(start_row + cell_height) * (width + 1) + start_col + cell_width] = '+';
+      }
+    }
+  }
+
+  *out_size = strlen(mixed_frame);
+  return mixed_frame;
 }
 
 /**

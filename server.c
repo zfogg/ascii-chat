@@ -598,104 +598,19 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, size
     return result;
   }
 
-  // Multiple sources: create grid layout
-  // Calculate grid dimensions (try to make it roughly square)
-  int grid_cols = (int)ceil(sqrt(source_count));
-  int grid_rows = (int)ceil((double)source_count / grid_cols);
+  // Convert to ascii_frame_source_t format for the grid function
+  ascii_frame_source_t *ascii_sources;
+  SAFE_MALLOC(ascii_sources, source_count * sizeof(ascii_frame_source_t), ascii_frame_source_t *);
 
-  // Calculate dimensions for each cell (leave 1 char for separators)
-  int cell_width = (width - (grid_cols - 1)) / grid_cols;
-  int cell_height = (height - (grid_rows - 1)) / grid_rows;
-
-  if (cell_width < 10 || cell_height < 3) {
-    // Too small for grid layout, just use first source
-    char *result;
-    SAFE_MALLOC(result, sources[0].frame_size, char *);
-    memcpy(result, sources[0].frame_data, sources[0].frame_size);
-    *out_size = sources[0].frame_size;
-    // Cleanup
-    if (sources[0].client_id == 0 && server_frame.data) {
-      free(server_frame.data);
-    }
-    for (int i = 1; i < source_count; i++) {
-      if (sources[i].frame_data) {
-        free(sources[i].frame_data);
-      }
-    }
-    return result;
+  for (int i = 0; i < source_count; i++) {
+    ascii_sources[i].frame_data = sources[i].frame_data;
+    ascii_sources[i].frame_size = sources[i].frame_size;
   }
 
-  // Allocate mixed frame buffer
-  size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
-  char *mixed_frame;
-  SAFE_MALLOC(mixed_frame, mixed_size, char *);
+  // Use the abstracted grid creation function from ascii.c
+  char *mixed_frame = ascii_create_grid(ascii_sources, source_count, width, height, out_size);
 
-  // Initialize mixed frame with spaces
-  memset(mixed_frame, ' ', mixed_size - 1);
-  mixed_frame[mixed_size - 1] = '\0';
-
-  // Add newlines at the end of each row
-  for (int row = 0; row < height; row++) {
-    mixed_frame[row * (width + 1) + width] = '\n';
-  }
-
-  // Place each video source in the grid
-  for (int src = 0; src < source_count; src++) {
-    int grid_row = src / grid_cols;
-    int grid_col = src % grid_cols;
-
-    // Calculate position in mixed frame
-    int start_row = grid_row * (cell_height + 1); // +1 for separator
-    int start_col = grid_col * (cell_width + 1);  // +1 for separator
-
-    // Parse source frame line by line and place in grid
-    const char *src_data = sources[src].frame_data;
-    int src_row = 0;
-    int src_pos = 0;
-
-    while (src_pos < (int)sources[src].frame_size && src_row < cell_height && start_row + src_row < height) {
-      // Find end of current line in source
-      int line_start = src_pos;
-      while (src_pos < (int)sources[src].frame_size && src_data[src_pos] != '\n') {
-        src_pos++;
-      }
-      int line_len = src_pos - line_start;
-
-      // Copy line to mixed frame (truncate if too long)
-      int copy_len = (line_len < cell_width) ? line_len : cell_width;
-      if (copy_len > 0 && start_col + copy_len <= width) {
-        int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
-        memcpy(mixed_frame + mixed_pos, src_data + line_start, copy_len);
-      }
-
-      // Move to next line
-      if (src_pos < (int)sources[src].frame_size && src_data[src_pos] == '\n') {
-        src_pos++;
-      }
-      src_row++;
-    }
-
-    // Draw separators
-    if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
-      // Vertical separator
-      for (int row = start_row; row < start_row + cell_height && row < height; row++) {
-        mixed_frame[row * (width + 1) + start_col + cell_width] = '|';
-      }
-    }
-
-    if (grid_row < grid_rows - 1 && start_row + cell_height < height) {
-      // Horizontal separator
-      for (int col = start_col; col < start_col + cell_width && col < width; col++) {
-        mixed_frame[(start_row + cell_height) * (width + 1) + col] = '_';
-      }
-      // Corner character where separators meet
-      if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
-        mixed_frame[(start_row + cell_height) * (width + 1) + start_col + cell_width] = '+';
-      }
-    }
-  }
-
-  *out_size = strlen(mixed_frame);
+  free(ascii_sources);
 
   // Cleanup source frames
   if (server_frame.data) {
@@ -1089,6 +1004,22 @@ void *client_receive_thread_func(void *arg) {
         client->height = ntohs(size_data[1]);
         log_info("Client %u updated size to %ux%u", client->client_id, client->width, client->height);
       }
+      break;
+    }
+
+    case PACKET_TYPE_PING: {
+      // Handle ping from client - send pong back
+      if (send_pong_packet(client->socket) < 0) {
+        log_debug("Failed to send PONG response to client %u", client->client_id);
+      } else {
+        log_debug("Sent PONG response to client %u", client->client_id);
+      }
+      break;
+    }
+
+    case PACKET_TYPE_PONG: {
+      // Handle pong from client - just log it
+      log_debug("Received PONG from client %u", client->client_id);
       break;
     }
 

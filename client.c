@@ -37,6 +37,11 @@ static pthread_t g_data_thread;
 static bool g_data_thread_created = false;
 static volatile bool g_data_thread_exited = false;
 
+// Ping thread for keepalive
+static pthread_t g_ping_thread;
+static bool g_ping_thread_created = false;
+static volatile bool g_ping_thread_exited = false;
+
 /* ============================================================================
  * Multi-User Client State
  * ============================================================================
@@ -64,6 +69,9 @@ static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Multi-user packet handlers
 static void handle_client_list_packet(const void *data, size_t len);
+
+// Ping thread for connection keepalive
+static void *ping_thread_func(void *arg);
 
 // Local capture threads (declarations removed - functions will be implemented later)
 
@@ -342,8 +350,12 @@ static void *data_reception_thread_func(void *arg) {
       break;
 
     case PACKET_TYPE_PING:
-      // Respond with PONG (implement later if needed)
-      log_debug("Received PING");
+      // Respond with PONG
+      if (send_pong_packet(sockfd) < 0) {
+        log_error("Failed to send PONG response");
+      } else {
+        log_debug("Sent PONG response to server PING");
+      }
       break;
 
     // Multi-user protocol packets
@@ -364,6 +376,40 @@ static void *data_reception_thread_func(void *arg) {
   log_debug("Data reception thread stopped");
 #endif
   g_data_thread_exited = true;
+  return NULL;
+}
+
+static void *ping_thread_func(void *arg) {
+  (void)arg;
+
+#ifdef DEBUG_THREADS
+  log_debug("Ping thread started");
+#endif
+
+  while (!g_should_exit) {
+    if (sockfd <= 0) {
+      usleep(1000 * 1000); // 1 second
+      continue;
+    }
+
+    // Send ping packet every 30 seconds to keep connection alive
+    if (send_ping_packet(sockfd) < 0) {
+      log_debug("Failed to send ping packet");
+      break;
+    }
+
+    log_debug("Sent ping packet to server");
+
+    // Wait 30 seconds before next ping
+    for (int i = 0; i < 30 && !g_should_exit && sockfd > 0; i++) {
+      usleep(1000 * 1000); // 1 second
+    }
+  }
+
+#ifdef DEBUG_THREADS
+  log_debug("Ping thread stopped");
+#endif
+  g_ping_thread_exited = true;
   return NULL;
 }
 
@@ -558,6 +604,16 @@ int main(int argc, char *argv[]) {
         g_data_thread_created = true;
       }
 
+      // Start ping thread for keepalive
+      g_ping_thread_exited = false; // Reset exit flag for new connection
+      if (pthread_create(&g_ping_thread, NULL, ping_thread_func, NULL) != 0) {
+        log_error("Failed to create ping thread");
+        g_should_reconnect = true;
+        continue;
+      } else {
+        g_ping_thread_created = true;
+      }
+
       g_first_connection = false;
       g_should_reconnect = false;
     }
@@ -586,6 +642,12 @@ int main(int argc, char *argv[]) {
     if (g_data_thread_created) {
       pthread_join(g_data_thread, NULL);
       g_data_thread_created = false;
+    }
+
+    // Clean up ping thread for this connection
+    if (g_ping_thread_created) {
+      pthread_join(g_ping_thread, NULL);
+      g_ping_thread_created = false;
     }
   }
 
