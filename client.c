@@ -44,8 +44,6 @@ static volatile bool g_data_thread_exited = false;
 
 // Multi-user client state
 static uint32_t g_my_client_id = 0;
-static volatile bool g_is_sending_video = false;
-static volatile bool g_is_sending_audio = false;
 
 // Remote client tracking (up to MAX_CLIENTS)
 typedef struct {
@@ -68,9 +66,7 @@ static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void handle_client_list_packet(const void *data, size_t len);
 static void handle_mixed_audio_packet(const void *data, size_t len);
 
-// Local capture threads
-static void *local_video_capture_thread_func(void *arg);
-static void *local_audio_capture_thread_func(void *arg);
+// Local capture threads (declarations removed - functions will be implemented later)
 
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
@@ -447,39 +443,12 @@ static void handle_mixed_audio_packet(const void *data, size_t len) {
 }
 
 /* ============================================================================
- * Multi-User Local Capture Threads (Stub Implementation)
+ * Multi-User Local Capture Threads (Future Implementation)
  * ============================================================================
  */
 
-// Thread function for capturing local video and sending to server
-static void *local_video_capture_thread_func(void *arg) {
-  (void)arg;
-  log_info("Local video capture thread started (STUB - not yet capturing)");
-
-  while (!g_should_exit && g_is_sending_video) {
-    // TODO: Implement actual video capture using webcam APIs
-    // For now, just sleep to avoid busy loop
-    usleep(33333); // ~30 FPS
-  }
-
-  log_info("Local video capture thread stopped");
-  return NULL;
-}
-
-// Thread function for capturing local audio and sending to server
-static void *local_audio_capture_thread_func(void *arg) {
-  (void)arg;
-  log_info("Local audio capture thread started (STUB - not yet capturing)");
-
-  while (!g_should_exit && g_is_sending_audio) {
-    // TODO: Implement actual audio capture using PortAudio
-    // For now, just sleep to avoid busy loop
-    usleep(10000); // 100 FPS audio packets
-  }
-
-  log_info("Local audio capture thread stopped");
-  return NULL;
-}
+// NOTE: Local capture thread functions will be implemented in future commits
+// when actual local video/audio capture functionality is added to clients.
 
 int main(int argc, char *argv[]) {
   log_init("client.log", LOG_DEBUG);
