@@ -577,8 +577,7 @@ int send_client_join_packet(int sockfd, const char *display_name, uint32_t capab
   memset(&join_packet, 0, sizeof(join_packet));
 
   join_packet.client_id = 0; // Will be assigned by server
-  strncpy(join_packet.display_name, display_name ? display_name : "Unknown", MAX_DISPLAY_NAME_LEN - 1);
-  join_packet.display_name[MAX_DISPLAY_NAME_LEN - 1] = '\0';
+  snprintf(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
   join_packet.capabilities = capabilities;
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
