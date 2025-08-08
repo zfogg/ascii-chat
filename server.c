@@ -378,9 +378,11 @@ int audio_mixer_init(audio_mixer_t *mixer) {
     return -1;
 
   mixer->mix_buffer_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
-  mixer->mix_buffer = SAFE_MALLOC(mixer->mix_buffer_size);
-  if (!mixer->mix_buffer) {
-    log_error("Failed to allocate mix buffer");
+  SAFE_MALLOC(mixer->mix_buffer, mixer->mix_buffer_size, float *);
+  mixer->active_input_count = 0;
+  if (pthread_mutex_init(&mixer->mix_mutex, NULL) != 0) {
+    log_error("Failed to initialize mixer mutex");
+    free(mixer->mix_buffer);
     return -1;
   }
 
