@@ -605,15 +605,6 @@ int send_stream_stop_packet(int sockfd, uint32_t stream_type) {
   return send_packet(sockfd, PACKET_TYPE_STREAM_STOP, &type_data, sizeof(type_data));
 }
 
-int send_mixed_audio_packet(int sockfd, const float *mixed_samples, int num_samples) {
-  if (!mixed_samples || num_samples <= 0) {
-    return -1;
-  }
-
-  size_t data_size = num_samples * sizeof(float);
-  return send_packet(sockfd, PACKET_TYPE_MIXED_AUDIO, mixed_samples, data_size);
-}
-
 int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len) {
   // Enhanced version of send_packet that includes client_id
   packet_header_t header;
