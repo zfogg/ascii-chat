@@ -317,3 +317,68 @@ void framebuffer_clear(framebuffer_t *fb) {
     memset(fb->rb->buffer, 0, fb->rb->capacity * fb->rb->element_size);
   }
 }
+
+// Multi-source frame functions for multi-user support
+
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size,
+                                   uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp) {
+  if (!fb || !fb->rb || !frame_data || frame_size == 0) {
+    return false;
+  }
+
+  // Allocate memory for frame data (caller will free it when reading)
+  char *data_copy;
+  SAFE_MALLOC(data_copy, frame_size, char *);
+  if (!data_copy) {
+    log_error("Failed to allocate %zu bytes for multi-source frame", frame_size);
+    return false;
+  }
+
+  // Copy frame data
+  memcpy(data_copy, frame_data, frame_size);
+
+  // Create multi-source frame
+  multi_source_frame_t multi_frame = {.magic = FRAME_MAGIC,
+                                      .source_client_id = source_client_id,
+                                      .frame_sequence = frame_sequence,
+                                      .timestamp = timestamp,
+                                      .size = frame_size,
+                                      .data = data_copy};
+
+  // Try to write to ring buffer
+  bool success = ringbuffer_write(fb->rb, &multi_frame);
+  if (!success) {
+    // Buffer full, free the allocated memory
+    free(data_copy);
+    log_debug("Frame buffer full, dropping multi-source frame from client %u", source_client_id);
+  }
+
+  return success;
+}
+
+bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame) {
+  if (!fb || !fb->rb || !frame) {
+    return false;
+  }
+
+  bool result = ringbuffer_read(fb->rb, frame);
+
+  if (result) {
+    // Validate frame magic
+    if (frame->magic != FRAME_MAGIC) {
+      log_error("CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
+      frame->data = NULL;
+      frame->size = 0;
+      frame->source_client_id = 0;
+      return false;
+    }
+
+    // Additional validation
+    if (frame->size == 0 || !frame->data) {
+      log_error("CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)", frame->size, frame->data);
+      return false;
+    }
+  }
+
+  return result;
+}
