@@ -221,11 +221,8 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   }
 
   // Allocate a copy of the frame data that will be owned by the ringbuffer
-  char *frame_copy = (char *)malloc(frame_size + 1);
-  if (!frame_copy) {
-    log_error("Failed to allocate memory for frame copy");
-    return false;
-  }
+  char *frame_copy;
+  SAFE_MALLOC(frame_copy, frame_size + 1, char *);
 
   memcpy(frame_copy, frame_data, frame_size);
   frame_copy[frame_size] = '\0'; // Ensure null termination

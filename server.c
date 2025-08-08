@@ -491,7 +491,7 @@ int main(int argc, char *argv[]) {
         pthread_mutex_lock(&g_client_manager_mutex);
         for (int i = 0; i < MAX_CLIENTS; i++) {
           client_info_t *client = &g_client_manager.clients[i];
-          if (client->active && !client->active) { // Thread marked as inactive
+          if (client->active && client->socket <= 0) { // Check socket status for disconnected clients
             log_info("Cleaning up disconnected client %u", client->client_id);
             // Wait for threads to finish
             pthread_join(client->receive_thread, NULL);
@@ -986,7 +986,9 @@ int add_client(int socket, const char *client_ip, int port) {
 
   if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
     log_error("Failed to create send thread for client %u", client->client_id);
-    pthread_cancel(client->receive_thread);
+    // Signal receive thread to exit gracefully and wait for it
+    client->active = false;
+    pthread_join(client->receive_thread, NULL);
     remove_client(client->client_id);
     return -1;
   }
