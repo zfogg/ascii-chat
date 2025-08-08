@@ -712,3 +712,11 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
 
   return 1;
 }
+
+int send_ping_packet(int sockfd) {
+  return send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
+}
+
+int send_pong_packet(int sockfd) {
+  return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
+}

@@ -141,4 +141,8 @@ int send_stream_stop_packet(int sockfd, uint32_t stream_type);
 int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);
 int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
 
+// Heartbeat/ping functions
+int send_ping_packet(int sockfd);
+int send_pong_packet(int sockfd);
+
 #endif // NETWORK_H
