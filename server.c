@@ -79,7 +79,8 @@ typedef struct {
   uint64_t frames_received; // NEW: Track incoming frames from this client
 
   // Buffers for incoming media (individual per client)
-  framebuffer_t *incoming_video_buffer; // NEW: Buffer for this client's video
+  framebuffer_t *incoming_video_buffer;       // NEW: Buffer for this client's video
+  audio_ring_buffer_t *incoming_audio_buffer; // NEW: Buffer for this client's audio
 } client_info_t;
 
 typedef struct {
@@ -92,6 +93,24 @@ typedef struct {
 // Global multi-client state
 static client_manager_t g_client_manager = {0};
 static pthread_mutex_t g_client_manager_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* ============================================================================
+ * Audio Mixing System
+ * ============================================================================
+ */
+
+typedef struct {
+  float *mix_buffer; // Temporary mixing buffer
+  size_t mix_buffer_size;
+  int active_input_count; // Number of clients sending audio
+  pthread_mutex_t mix_mutex;
+  pthread_t audio_mixer_thread;
+  bool mixer_thread_created;
+  audio_ring_buffer_t *mixed_audio_buffer; // Output buffer for mixed audio
+} audio_mixer_t;
+
+// Global audio mixer
+static audio_mixer_t g_audio_mixer = {0};
 
 static server_stats_t g_stats = {0};
 
@@ -106,6 +125,12 @@ static int connfd = 0;
 // Thread functions
 void *client_receive_thread_func(void *arg);
 void *client_send_thread_func(void *arg);
+
+// Audio mixing functions
+void *audio_mixer_thread_func(void *arg);
+int audio_mixer_init(audio_mixer_t *mixer);
+void audio_mixer_destroy(audio_mixer_t *mixer);
+int mix_audio_from_clients(float *output_buffer, int num_samples);
 
 // Client management functions
 int add_client(int socket, const char *client_ip, int port);
@@ -343,6 +368,152 @@ void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
 }
 
 /* ============================================================================
+ * Audio Mixing Implementation
+ * ============================================================================
+ */
+
+// Initialize the audio mixer
+int audio_mixer_init(audio_mixer_t *mixer) {
+  if (!mixer)
+    return -1;
+
+  mixer->mix_buffer_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
+  mixer->mix_buffer = SAFE_MALLOC(mixer->mix_buffer_size);
+  if (!mixer->mix_buffer) {
+    log_error("Failed to allocate mix buffer");
+    return -1;
+  }
+
+  mixer->mixed_audio_buffer = audio_ring_buffer_create();
+  if (!mixer->mixed_audio_buffer) {
+    log_error("Failed to create mixed audio ring buffer");
+    free(mixer->mix_buffer);
+    return -1;
+  }
+
+  mixer->active_input_count = 0;
+  pthread_mutex_init(&mixer->mix_mutex, NULL);
+  mixer->mixer_thread_created = false;
+
+  log_info("Audio mixer initialized");
+  return 0;
+}
+
+// Destroy the audio mixer
+void audio_mixer_destroy(audio_mixer_t *mixer) {
+  if (!mixer)
+    return;
+
+  if (mixer->mixer_thread_created) {
+    pthread_join(mixer->audio_mixer_thread, NULL);
+    mixer->mixer_thread_created = false;
+  }
+
+  pthread_mutex_destroy(&mixer->mix_mutex);
+
+  if (mixer->mix_buffer) {
+    free(mixer->mix_buffer);
+    mixer->mix_buffer = NULL;
+  }
+
+  if (mixer->mixed_audio_buffer) {
+    audio_ring_buffer_destroy(mixer->mixed_audio_buffer);
+    mixer->mixed_audio_buffer = NULL;
+  }
+
+  log_info("Audio mixer destroyed");
+}
+
+// Mix audio from all active clients
+int mix_audio_from_clients(float *output_buffer, int num_samples) {
+  if (!output_buffer || num_samples <= 0)
+    return -1;
+
+  // Clear output buffer
+  memset(output_buffer, 0, num_samples * sizeof(float));
+
+  pthread_mutex_lock(&g_client_manager_mutex);
+  int mixed_clients = 0;
+
+  // Mix audio from each client that has audio to contribute
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+
+    if (!client->active || !client->is_sending_audio || !client->incoming_audio_buffer) {
+      continue;
+    }
+
+    // Read samples from this client's audio buffer
+    float client_buffer[num_samples];
+    int samples_read = audio_ring_buffer_read(client->incoming_audio_buffer, client_buffer, num_samples);
+
+    if (samples_read > 0) {
+      // Mix this client's audio into the output
+      for (int j = 0; j < samples_read; j++) {
+        output_buffer[j] += client_buffer[j];
+      }
+      mixed_clients++;
+    }
+  }
+
+  pthread_mutex_unlock(&g_client_manager_mutex);
+
+  // Normalize if we mixed multiple clients to prevent clipping
+  if (mixed_clients > 1) {
+    float scale = 1.0f / mixed_clients;
+    for (int i = 0; i < num_samples; i++) {
+      output_buffer[i] *= scale;
+    }
+  }
+
+  return mixed_clients;
+}
+
+// Audio mixing thread function
+void *audio_mixer_thread_func(void *arg) {
+  (void)arg;
+  log_info("Audio mixer thread started");
+
+  float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
+
+  while (!g_should_exit) {
+    // Mix audio from all clients
+    int clients_mixed = mix_audio_from_clients(mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+
+    if (clients_mixed > 0) {
+      // Store mixed audio in the mixer's output buffer
+      pthread_mutex_lock(&g_audio_mixer.mix_mutex);
+      if (g_audio_mixer.mixed_audio_buffer) {
+        int written = audio_ring_buffer_write(g_audio_mixer.mixed_audio_buffer, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+        if (written < AUDIO_FRAMES_PER_BUFFER) {
+          log_debug("Mixed audio buffer full, dropped %d samples", AUDIO_FRAMES_PER_BUFFER - written);
+        }
+      }
+      pthread_mutex_unlock(&g_audio_mixer.mix_mutex);
+
+      // Send mixed audio to all connected clients
+      pthread_mutex_lock(&g_client_manager_mutex);
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        client_info_t *client = &g_client_manager.clients[i];
+        if (client->active) {
+          int sent = send_mixed_audio_packet(client->socket, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+          if (sent < 0) {
+            log_debug("Failed to send mixed audio to client %u", client->client_id);
+          }
+        }
+      }
+      pthread_mutex_unlock(&g_client_manager_mutex);
+    }
+
+    // Audio mixing rate - ~100 FPS for low latency
+    usleep(10000); // 10ms
+  }
+
+  log_info("Audio mixer thread stopped");
+  return NULL;
+}
+
+/* ============================================================================
  * Main Server Logic
  * ============================================================================
  */
@@ -426,6 +597,20 @@ int main(int argc, char *argv[]) {
       exit(ASCIICHAT_ERR_THREAD);
     }
     g_audio_thread_created = true;
+
+    // Initialize audio mixer for multi-user audio mixing
+    if (audio_mixer_init(&g_audio_mixer) != 0) {
+      log_error("Failed to initialize audio mixer");
+    } else {
+      // Start audio mixer thread
+      if (pthread_create(&g_audio_mixer.audio_mixer_thread, NULL, audio_mixer_thread_func, NULL) != 0) {
+        log_error("Failed to create audio mixer thread");
+        audio_mixer_destroy(&g_audio_mixer);
+      } else {
+        g_audio_mixer.mixer_thread_created = true;
+        log_info("Audio mixer initialized and thread started");
+      }
+    }
   }
 
   // Network setup
@@ -721,6 +906,9 @@ int main(int argc, char *argv[]) {
 
     audio_destroy(&g_audio_context);
     log_info("Audio thread joined and context destroyed");
+
+    // Cleanup audio mixer
+    audio_mixer_destroy(&g_audio_mixer);
   }
 
   // Cleanup resources
@@ -848,6 +1036,24 @@ void *client_receive_thread_func(void *arg) {
       break;
     }
 
+    case PACKET_TYPE_AUDIO: {
+      // Handle incoming audio samples from client
+      if (client->is_sending_audio && data && len > 0) {
+        // Convert data to float samples
+        int num_samples = len / sizeof(float);
+        if (num_samples > 0 && client->incoming_audio_buffer) {
+          const float *samples = (const float *)data;
+          int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
+          if (written < num_samples) {
+            log_debug("Client %u audio buffer full, dropped %d samples", client->client_id, num_samples - written);
+          } else {
+            log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
+          }
+        }
+      }
+      break;
+    }
+
     case PACKET_TYPE_SIZE: {
       // Handle size update from client
       if (len == 4) {
@@ -921,8 +1127,39 @@ void *client_send_thread_func(void *arg) {
       usleep(1000); // 1ms
     }
 
-    // TODO: Also send video frames from OTHER clients to this client
-    // This would implement the multi-user video routing
+    // Send video frames from OTHER clients to this client (multi-user video routing)
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *other_client = &g_client_manager.clients[i];
+
+      // Skip inactive clients, self, and clients not sending video
+      if (!other_client->active || other_client->client_id == client->client_id || !other_client->is_sending_video ||
+          !other_client->incoming_video_buffer) {
+        continue;
+      }
+
+      // Read frame from other client's buffer
+      multi_source_frame_t multi_frame = {0};
+      if (framebuffer_read_multi_frame(other_client->incoming_video_buffer, &multi_frame)) {
+        // Send other client's video frame to this client
+        int sent = send_packet_from_client(client->socket, PACKET_TYPE_VIDEO, other_client->client_id, multi_frame.data,
+                                           multi_frame.size);
+        if (sent >= 0) {
+          client->frames_sent++;
+          pthread_mutex_lock(&g_stats_mutex);
+          g_stats.bytes_sent += multi_frame.size;
+          pthread_mutex_unlock(&g_stats_mutex);
+        } else {
+          log_debug("Failed to send frame from client %u to client %u", other_client->client_id, client->client_id);
+        }
+
+        // Free the multi-frame data
+        if (multi_frame.data) {
+          free(multi_frame.data);
+        }
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
   }
 
   log_info("Send thread for client %u terminated", client->client_id);
@@ -974,6 +1211,16 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
+  // Create individual audio buffer for this client
+  client->incoming_audio_buffer = audio_ring_buffer_create();
+  if (!client->incoming_audio_buffer) {
+    log_error("Failed to create audio buffer for client %u", client->client_id);
+    framebuffer_destroy(client->incoming_video_buffer);
+    client->incoming_video_buffer = NULL;
+    pthread_mutex_unlock(&g_client_manager_mutex);
+    return -1;
+  }
+
   g_client_manager.client_count++;
   pthread_mutex_unlock(&g_client_manager_mutex);
 
@@ -1014,6 +1261,11 @@ int remove_client(uint32_t client_id) {
       if (client->incoming_video_buffer) {
         framebuffer_destroy(client->incoming_video_buffer);
         client->incoming_video_buffer = NULL;
+      }
+
+      if (client->incoming_audio_buffer) {
+        audio_ring_buffer_destroy(client->incoming_audio_buffer);
+        client->incoming_audio_buffer = NULL;
       }
 
       g_client_manager.client_count--;
