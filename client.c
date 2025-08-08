@@ -46,10 +46,6 @@ static volatile bool g_data_thread_exited = false;
 static uint32_t g_my_client_id = 0;
 static volatile bool g_is_sending_video = false;
 static volatile bool g_is_sending_audio = false;
-static pthread_t g_local_video_capture_thread;
-static pthread_t g_local_audio_capture_thread;
-static bool g_video_capture_thread_created = false;
-static bool g_audio_capture_thread_created = false;
 
 // Remote client tracking (up to MAX_CLIENTS)
 typedef struct {
