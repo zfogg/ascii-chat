@@ -195,4 +195,12 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
  */
 bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
 
+/**
+ * Peek at the latest multi-source frame without removing it
+ * @param fb Frame buffer
+ * @param frame Pointer to multi_source_frame_t struct to be filled
+ * @return true if successful, false if buffer is empty
+ */
+bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
+
 #endif /* ASCII_CHAT_RINGBUFFER_H */

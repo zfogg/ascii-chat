@@ -489,6 +489,39 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
+  case PACKET_TYPE_CLIENT_JOIN:
+    if (pkt_len != sizeof(client_info_packet_t)) {
+      log_error("Invalid client join packet size: %u, expected %zu", pkt_len, sizeof(client_info_packet_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CLIENT_LEAVE:
+    // Client leave packet can be empty or contain reason
+    if (pkt_len > 256) {
+      log_error("Invalid client leave packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CLIENT_LIST:
+    if (pkt_len != sizeof(client_list_packet_t)) {
+      log_error("Invalid client list packet size: %u, expected %zu", pkt_len, sizeof(client_list_packet_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_STREAM_START:
+  case PACKET_TYPE_STREAM_STOP:
+    if (pkt_len != sizeof(uint32_t)) {
+      log_error("Invalid stream control packet size: %u, expected %zu", pkt_len, sizeof(uint32_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CLEAR_CONSOLE:
+    // Clear console packet should be empty
+    if (pkt_len != 0) {
+      log_error("Invalid clear console packet size: %u, expected 0", pkt_len);
+      return -1;
+    }
+    break;
   default:
     log_error("Unknown packet type: %u", pkt_type);
     return -1;
@@ -719,4 +752,8 @@ int send_ping_packet(int sockfd) {
 
 int send_pong_packet(int sockfd) {
   return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
+}
+
+int send_clear_console_packet(int sockfd) {
+  return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
 }

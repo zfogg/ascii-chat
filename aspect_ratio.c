@@ -102,7 +102,7 @@ void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t targe
   // Calculate aspect ratios
   float img_aspect = (float)img_w / (float)img_h;
   float target_aspect = (float)target_w / (float)target_h;
-  
+
   // Check if we should fit to width or height
   if (target_aspect > img_aspect) {
     // Target is wider than image aspect, fit to height
@@ -113,7 +113,7 @@ void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t targe
     *out_width = target_w;
     *out_height = (ssize_t)(target_w / img_aspect);
   }
-  
+
   // Ensure minimum dimensions
   if (*out_width <= 0) {
     *out_width = MIN_DIMENSION;
