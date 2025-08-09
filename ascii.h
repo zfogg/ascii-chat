@@ -8,7 +8,8 @@ typedef struct image_t image_t;
 asciichat_error_t ascii_read_init(unsigned short int webcam_index);
 asciichat_error_t ascii_write_init(void);
 
-char *ascii_read(void);
+char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
+                    const bool aspect_ratio, const bool stretch);
 asciichat_error_t ascii_write(const char *);
 
 void ascii_read_destroy(void);
@@ -21,6 +22,15 @@ char *ascii_pad_frame_width(const char *frame, size_t pad);
 // Utility to add blank lines (vertical padding) to center a frame vertically.
 // Caller owns the returned buffer and must free it with free().
 char *ascii_pad_frame_height(const char *frame, size_t pad_top);
+
+// Grid layout utility for combining multiple ASCII frames into a single grid
+typedef struct {
+  const char *frame_data;
+  size_t frame_size;
+} ascii_frame_source_t;
+
+char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int width, int height, size_t *out_size);
+
 char *get_lum_palette(void);
 
 #define ASCII_LUMINANCE_LEVELS 256

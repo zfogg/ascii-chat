@@ -153,7 +153,14 @@ char *image_print(const image_t *p) {
 
   const int h = p->h;
   const int w = p->w;
-  const ssize_t len = (ssize_t)h * (ssize_t)w;
+
+  if (h <= 0 || w <= 0) {
+    log_error("image_print: invalid dimensions h=%d, w=%d", h, w);
+    return NULL;
+  }
+
+  // Need space for h rows, each with w characters, plus h-1 newlines, plus null terminator
+  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
 
   const rgb_t *pix = p->pixels;
   const unsigned short int *red_lut = RED;
@@ -161,21 +168,26 @@ char *image_print(const image_t *p) {
   const unsigned short int *blue_lut = BLUE;
 
   char *lines;
-  SAFE_MALLOC(lines, (len + 1) * sizeof(char), char *);
+  SAFE_MALLOC(lines, len * sizeof(char), char *);
 
-  lines[len] = '\0';
-
+  int out_idx = 0;
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
 
     for (int x = 0; x < w; x++) {
       const rgb_t pixel = pix[row_offset + x];
       const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-      lines[row_offset + x] = luminance_palette[luminance];
+      lines[out_idx++] = luminance_palette[luminance];
     }
     if (y != h - 1) {
-      lines[row_offset + w - 1] = '\n';
+      lines[out_idx++] = '\n';
     }
+  }
+  lines[out_idx] = '\0';
+
+  // Debug: check if we actually wrote anything
+  if (out_idx == 0) {
+    log_error("image_print produced empty output (h=%d, w=%d)", h, w);
   }
 
   return lines;

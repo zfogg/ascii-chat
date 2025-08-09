@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #include "ascii.h"
 #include "common.h"
 #include "image.h"
-#include "options.h"
 #include "aspect_ratio.h"
 #include "webcam.h"
 
@@ -29,44 +29,49 @@ asciichat_error_t ascii_write_init(void) {
   return ASCIICHAT_OK;
 }
 
-char *ascii_read(void) {
-  image_t *original = webcam_read();
-
+char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
+                    const bool _aspect_ratio, const bool stretch) {
   if (original == NULL) {
-    // Return a simple error message if webcam read fails
-    log_error(ASCIICHAT_WEBCAM_ERROR_STRING);
-    char *err_msg;
-    size_t err_len = strlen(ASCIICHAT_WEBCAM_ERROR_STRING);
-    SAFE_MALLOC(err_msg, err_len, char *);
-    strncpy(err_msg, ASCIICHAT_WEBCAM_ERROR_STRING, err_len);
-    return err_msg;
+    exit(ASCIICHAT_ERR_WEBCAM);
   }
 
   // Start with the target dimensions requested by the user (or detected from
   // the terminal). These can be modified by aspect_ratio() if stretching is
   // disabled and one of the dimensions was left to be calculated
   // automatically.
-  ssize_t width = opt_width;
-  ssize_t height = opt_height;
-  aspect_ratio(original->w, original->h, &width, &height);
+  ssize_t resized_width = width;
+  ssize_t resized_height = height;
 
-  // Calculate how many leading spaces are required to center the image inside
-  // the overall width requested by the user.  Make sure the value is
-  // non-negative so we don't end up passing a huge number to ascii_pad_frame
-  // when width happens to exceed opt_width.
-  ssize_t pad_width_ss = opt_width > width ? (opt_width - width) / 2 : 0;
-  size_t pad_width = (size_t)pad_width_ss;
+  // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
+  if (_aspect_ratio) {
+    // The server now provides images at width*2 x height pixels
+    // The aspect_ratio function will handle terminal character aspect ratio
+    aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
+  }
 
-  // Calculate how many blank lines are required to center the image inside
-  // the overall height requested by the user.
-  ssize_t pad_height_ss = opt_height > height ? (opt_height - height) / 2 : 0;
-  size_t pad_height = (size_t)pad_height_ss;
+  // Calculate padding for centering
+  size_t pad_width = 0;
+  size_t pad_height = 0;
+
+  if (_aspect_ratio) {
+    // Only calculate padding when not stretching
+    ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
+    pad_width = (size_t)pad_width_ss;
+
+    ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
+    pad_height = (size_t)pad_height_ss;
+  }
 
   // Resize the captured frame to the aspect-correct dimensions.
-  image_t *resized = image_new((int)width, (int)height);
+  if (resized_width <= 0 || resized_height <= 0) {
+    log_error("Invalid dimensions for resize: width=%zd, height=%zd", resized_width, resized_height);
+    return NULL;
+  }
+
+  // Always resize to target dimensions
+  image_t *resized = image_new((int)resized_width, (int)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
-    image_destroy(original);
     return NULL;
   }
 
@@ -74,7 +79,7 @@ char *ascii_read(void) {
   image_resize(original, resized);
 
   char *ascii;
-  if (opt_color_output) {
+  if (color) {
     ascii = image_print_colored(resized);
   } else {
     ascii = image_print(resized);
@@ -82,6 +87,15 @@ char *ascii_read(void) {
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII");
+    image_destroy(resized);
+    return NULL;
+  }
+
+  size_t ascii_len = strlen(ascii);
+  if (ascii_len == 0) {
+    log_error("ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w, resized->h);
+    free(ascii);
+    image_destroy(resized);
     return NULL;
   }
 
@@ -91,7 +105,7 @@ char *ascii_read(void) {
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   free(ascii_width_padded);
 
-  image_destroy(original);
+  // Only destroy resized if we allocated it (not when using original directly)
   image_destroy(resized);
 
   return ascii_padded;
@@ -202,6 +216,187 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
 
   *position = '\0';
   return buffer;
+}
+
+/**
+ * Creates a grid layout from multiple ASCII frame sources with | and _ separators.
+ *
+ * Parameters:
+ *   sources       Array of ASCII frame sources to combine
+ *   source_count  Number of sources in the array
+ *   width         Target width of the output grid
+ *   height        Target height of the output grid
+ *   out_size      Output parameter for the size of the returned buffer
+ *
+ * Returns:
+ *   A newly allocated, null-terminated string containing the grid layout,
+ *   or NULL on error. Caller must free the returned buffer.
+ */
+char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int width, int height, size_t *out_size) {
+  if (!sources || source_count <= 0 || width <= 0 || height <= 0 || !out_size) {
+    return NULL;
+  }
+
+  // If no sources, return empty frame
+
+  // If only one source, ensure it fills the target dimensions
+  if (source_count == 1) {
+    // Create a frame of the target size filled with spaces
+    size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
+    char *result;
+    SAFE_MALLOC(result, target_size, char *);
+    memset(result, ' ', target_size - 1);
+    result[target_size - 1] = '\0';
+
+    // Add newlines at the end of each row
+    for (int row = 0; row < height; row++) {
+      result[row * (width + 1) + width] = '\n';
+    }
+
+    // Copy the source frame into the result, line by line, centering it
+    const char *src_data = sources[0].frame_data;
+    int src_pos = 0;
+    int src_size = (int)sources[0].frame_size;
+
+    // Count lines in source to calculate vertical padding
+    int src_lines = 0;
+    for (int i = 0; i < src_size; i++) {
+      if (src_data[i] == '\n')
+        src_lines++;
+    }
+
+    int v_padding = (height - src_lines) / 2;
+    if (v_padding < 0)
+      v_padding = 0;
+
+    int dst_row = v_padding;
+    src_pos = 0;
+
+    while (src_pos < src_size && dst_row < height) {
+      // Find end of current line in source
+      int line_start = src_pos;
+      int line_len = 0;
+      while (src_pos < src_size && src_data[src_pos] != '\n') {
+        line_len++;
+        src_pos++;
+      }
+
+      // Calculate horizontal padding to center the line
+      int h_padding = (width - line_len) / 2;
+      if (h_padding < 0)
+        h_padding = 0;
+
+      // Copy line to result with padding
+      int dst_pos = dst_row * (width + 1) + h_padding;
+      int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
+
+      if (copy_len > 0 && dst_pos + copy_len < (int)target_size) {
+        memcpy(&result[dst_pos], &src_data[line_start], copy_len);
+      }
+
+      // Skip newline in source
+      if (src_pos < src_size && src_data[src_pos] == '\n') {
+        src_pos++;
+      }
+
+      dst_row++;
+    }
+
+    *out_size = target_size - 1; // Don't count null terminator
+    return result;
+  }
+
+  // Multiple sources: create grid layout
+  // Calculate grid dimensions (try to make it roughly square)
+  int grid_cols = (int)ceil(sqrt(source_count));
+  int grid_rows = (int)ceil((double)source_count / grid_cols);
+
+  // Calculate dimensions for each cell (leave 1 char for separators)
+  int cell_width = (width - (grid_cols - 1)) / grid_cols;
+  int cell_height = (height - (grid_rows - 1)) / grid_rows;
+
+  if (cell_width < 10 || cell_height < 3) {
+    // Too small for grid layout, just use first source
+    char *result;
+    SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
+    memcpy(result, sources[0].frame_data, sources[0].frame_size);
+    result[sources[0].frame_size] = '\0';
+    *out_size = sources[0].frame_size;
+    return result;
+  }
+
+  // Allocate mixed frame buffer
+  size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
+  char *mixed_frame;
+  SAFE_MALLOC(mixed_frame, mixed_size, char *);
+
+  // Initialize mixed frame with spaces
+  memset(mixed_frame, ' ', mixed_size - 1);
+  mixed_frame[mixed_size - 1] = '\0';
+
+  // Add newlines at the end of each row
+  for (int row = 0; row < height; row++) {
+    mixed_frame[row * (width + 1) + width] = '\n';
+  }
+
+  // Place each video source in the grid
+  for (int src = 0; src < source_count; src++) {
+    int grid_row = src / grid_cols;
+    int grid_col = src % grid_cols;
+
+    // Calculate position in mixed frame
+    int start_row = grid_row * (cell_height + 1); // +1 for separator
+    int start_col = grid_col * (cell_width + 1);  // +1 for separator
+
+    // Parse source frame line by line and place in grid
+    const char *src_data = sources[src].frame_data;
+    int src_row = 0;
+    int src_pos = 0;
+
+    while (src_pos < (int)sources[src].frame_size && src_row < cell_height && start_row + src_row < height) {
+      // Find end of current line in source
+      int line_start = src_pos;
+      while (src_pos < (int)sources[src].frame_size && src_data[src_pos] != '\n') {
+        src_pos++;
+      }
+      int line_len = src_pos - line_start;
+
+      // Copy line to mixed frame (truncate if too long)
+      int copy_len = (line_len < cell_width) ? line_len : cell_width;
+      if (copy_len > 0 && start_col + copy_len <= width) {
+        int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
+        memcpy(mixed_frame + mixed_pos, src_data + line_start, copy_len);
+      }
+
+      // Move to next line
+      if (src_pos < (int)sources[src].frame_size && src_data[src_pos] == '\n') {
+        src_pos++;
+      }
+      src_row++;
+    }
+
+    // Draw separators
+    if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
+      // Vertical separator
+      for (int row = start_row; row < start_row + cell_height && row < height; row++) {
+        mixed_frame[row * (width + 1) + start_col + cell_width] = '|';
+      }
+    }
+
+    if (grid_row < grid_rows - 1 && start_row + cell_height < height) {
+      // Horizontal separator
+      for (int col = start_col; col < start_col + cell_width && col < width; col++) {
+        mixed_frame[(start_row + cell_height) * (width + 1) + col] = '_';
+      }
+      // Corner character where separators meet
+      if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
+        mixed_frame[(start_row + cell_height) * (width + 1) + start_col + cell_width] = '+';
+      }
+    }
+  }
+
+  *out_size = strlen(mixed_frame);
+  return mixed_frame;
 }
 
 /**

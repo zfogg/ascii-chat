@@ -50,13 +50,18 @@ void webcam_init(unsigned short int webcam_index) {
 
 image_t *webcam_read(void) {
   if (!global_webcam_ctx) {
-    fprintf(stderr, "Webcam not initialized\n");
+    log_error("ERROR: Webcam not initialized - global_webcam_ctx is NULL");
     return NULL;
   }
 
   image_t *frame = webcam_platform_read(global_webcam_ctx);
   if (!frame) {
-    // This can happen normally with non-blocking reads, so don't spam errors
+    // Enable debug to see what's happening
+    static int null_count = 0;
+    null_count++;
+    if (null_count % 100 == 0) {
+      log_debug("DEBUG: webcam_platform_read returned NULL (count=%d)", null_count);
+    }
     return NULL;
   }
 

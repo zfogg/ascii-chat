@@ -229,14 +229,29 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
         }
         
         // Start the session
+        log_info("Starting AVFoundation capture session...");
         [context->session startRunning];
+        
+        // Check if session is actually running
+        if (![context->session isRunning]) {
+            log_error("Failed to start capture session - session not running");
+            [context->delegate release];
+            [context->output release];
+            [context->input release];
+            [context->session release];
+            dispatch_release(context->queue);
+            free(context);
+            return -1;
+        }
+        log_info("Capture session started successfully");
         
         // Wait for first frame to get dimensions
         dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, AVFOUNDATION_INIT_TIMEOUT_NS);
         if (dispatch_semaphore_wait(context->delegate.frameSemaphore, timeout) == 0) {
             context->width = context->delegate.frameWidth;
             context->height = context->delegate.frameHeight;
-            log_info("AVFoundation webcam initialized: %dx%d", context->width, context->height);
+            log_info("AVFoundation webcam initialized: %dx%d, delegate isActive=%d", 
+                     context->width, context->height, context->delegate.isActive);
         } else {
             log_error("Timeout waiting for first frame");
             [context->session stopRunning];

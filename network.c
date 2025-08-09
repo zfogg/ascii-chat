@@ -489,6 +489,46 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
+  case PACKET_TYPE_CLIENT_JOIN:
+    if (pkt_len != sizeof(client_info_packet_t)) {
+      log_error("Invalid client join packet size: %u, expected %zu", pkt_len, sizeof(client_info_packet_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CLIENT_LEAVE:
+    // Client leave packet can be empty or contain reason
+    if (pkt_len > 256) {
+      log_error("Invalid client leave packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CLIENT_LIST:
+    if (pkt_len != sizeof(client_list_packet_t)) {
+      log_error("Invalid client list packet size: %u, expected %zu", pkt_len, sizeof(client_list_packet_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_STREAM_START:
+  case PACKET_TYPE_STREAM_STOP:
+    if (pkt_len != sizeof(uint32_t)) {
+      log_error("Invalid stream control packet size: %u, expected %zu", pkt_len, sizeof(uint32_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CLEAR_CONSOLE:
+    // Clear console packet should be empty
+    if (pkt_len != 0) {
+      log_error("Invalid clear console packet size: %u, expected 0", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_SERVER_STATE:
+    // Server state packet has fixed size
+    if (pkt_len != sizeof(server_state_packet_t)) {
+      log_error("Invalid server state packet size: %u, expected %zu", pkt_len, sizeof(server_state_packet_t));
+      return -1;
+    }
+    break;
   default:
     log_error("Unknown packet type: %u", pkt_type);
     return -1;
@@ -568,4 +608,173 @@ int send_size_packet(int sockfd, unsigned short width, unsigned short height) {
   } size_data = {.width = htons(width), .height = htons(height)};
 
   return send_packet(sockfd, PACKET_TYPE_SIZE, &size_data, sizeof(size_data));
+}
+
+// Multi-user protocol functions implementation
+
+int send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities) {
+  client_info_packet_t join_packet;
+  memset(&join_packet, 0, sizeof(join_packet));
+
+  join_packet.client_id = 0; // Will be assigned by server
+  snprintf(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
+  join_packet.capabilities = capabilities;
+
+  return send_packet(sockfd, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
+}
+
+int send_client_leave_packet(int sockfd, uint32_t client_id) {
+  uint32_t id_data = htonl(client_id);
+  return send_packet(sockfd, PACKET_TYPE_CLIENT_LEAVE, &id_data, sizeof(id_data));
+}
+
+int send_client_list_packet(int sockfd, const client_list_packet_t *client_list) {
+  if (!client_list) {
+    return -1;
+  }
+  return send_packet(sockfd, PACKET_TYPE_CLIENT_LIST, client_list, sizeof(client_list_packet_t));
+}
+
+int send_stream_start_packet(int sockfd, uint32_t stream_type) {
+  uint32_t type_data = htonl(stream_type);
+  return send_packet(sockfd, PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
+}
+
+int send_stream_stop_packet(int sockfd, uint32_t stream_type) {
+  uint32_t type_data = htonl(stream_type);
+  return send_packet(sockfd, PACKET_TYPE_STREAM_STOP, &type_data, sizeof(type_data));
+}
+
+int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len) {
+  // Enhanced version of send_packet that includes client_id
+  packet_header_t header;
+
+  // Build header
+  header.magic = htonl(PACKET_MAGIC);
+  header.type = htons((uint16_t)type);
+  header.length = htonl((uint32_t)len);
+  header.sequence = htonl(get_next_sequence());
+  header.client_id = htonl(client_id);
+
+  // Calculate CRC for payload
+  uint32_t crc = 0;
+  if (len > 0 && data) {
+    crc = asciichat_crc32(data, len);
+  }
+  header.crc32 = htonl(crc);
+
+  // Send header
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), SEND_TIMEOUT);
+  if (sent != sizeof(header)) {
+    log_error("Failed to send packet header with client ID: %zd/%zu bytes", sent, sizeof(header));
+    return -1;
+  }
+
+  // Send payload if present
+  if (len > 0 && data) {
+    sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
+    if (sent != (ssize_t)len) {
+      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len) {
+  if (!type || !client_id || !data || !len) {
+    return -1;
+  }
+
+  packet_header_t header;
+
+  // Read header
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT);
+  if (received != sizeof(header)) {
+    if (received == 0) {
+      log_info("Connection closed while reading packet header");
+    } else if (received > 0) {
+      log_error("Partial packet header received: %zd/%zu bytes", received, sizeof(header));
+    }
+    return received == 0 ? 0 : -1;
+  }
+
+  // Convert from network byte order
+  uint32_t magic = ntohl(header.magic);
+  uint16_t pkt_type = ntohs(header.type);
+  uint32_t pkt_len = ntohl(header.length);
+  uint32_t expected_crc = ntohl(header.crc32);
+  uint32_t pkt_client_id = ntohl(header.client_id);
+
+  // Validate magic
+  if (magic != PACKET_MAGIC) {
+    log_error("Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
+    return -1;
+  }
+
+  // Validate length
+  if (pkt_len > MAX_PACKET_SIZE) {
+    log_error("Packet too large: %u bytes (max %d)", pkt_len, MAX_PACKET_SIZE);
+    return -1;
+  }
+
+  // Read payload if present
+  *data = NULL;
+  if (pkt_len > 0) {
+    SAFE_MALLOC(*data, pkt_len, void *);
+    if (!*data) {
+      log_error("Failed to allocate %u bytes for packet payload", pkt_len);
+      return -1;
+    }
+
+    received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
+    if (received != (ssize_t)pkt_len) {
+      log_error("Failed to receive packet payload: %zd/%u bytes", received, pkt_len);
+      free(*data);
+      *data = NULL;
+      return -1;
+    }
+
+    // Verify CRC
+    uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
+    if (actual_crc != expected_crc) {
+      log_error("Packet CRC mismatch: got 0x%x, expected 0x%x", actual_crc, expected_crc);
+      free(*data);
+      *data = NULL;
+      return -1;
+    }
+  }
+
+  *type = (packet_type_t)pkt_type;
+  *client_id = pkt_client_id;
+  *len = pkt_len;
+
+  return 1;
+}
+
+int send_ping_packet(int sockfd) {
+  return send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
+}
+
+int send_pong_packet(int sockfd) {
+  return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
+}
+
+int send_clear_console_packet(int sockfd) {
+  return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
+}
+
+int send_server_state_packet(int sockfd, const server_state_packet_t *state) {
+  if (!state) {
+    return -1;
+  }
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = htonl(state->connected_client_count);
+  net_state.active_client_count = htonl(state->active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  return send_packet(sockfd, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state));
 }

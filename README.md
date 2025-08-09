@@ -132,6 +132,8 @@ TODO
 - [x] Client should gracefully handle `term resize` event
 - [ ] Compile to WASM/WASI and run in the browser
 - [x] Socket multiplexing.
+- [ ] Edge detection and other things like that to make the image nicer.
+- [x] Multiple clients.
 
 
 Notes
