@@ -433,6 +433,38 @@ void *audio_mixer_thread_func(void *arg) {
 }
 
 /* ============================================================================
+ * Unit Conversion Helpers
+ * ============================================================================
+ */
+
+// Terminal characters have a 2:1 aspect ratio (height:width in screen space)
+#define CHAR_ASPECT_RATIO 2.0f
+
+// Convert pixel dimensions to character dimensions
+// Each pixel becomes one character, but we need to account for character aspect ratio
+static inline int pixels_to_chars_width(int pixel_width) {
+  // For width, it's 1:1 - each pixel becomes one character
+  return pixel_width;
+}
+
+static inline int pixels_to_chars_height(int pixel_height) {
+  // For height, it's 1:1 - each pixel becomes one character
+  return pixel_height;
+}
+
+// Convert character dimensions to pixel dimensions for compositing
+// The composite buffer uses 2x width to account for character aspect ratio
+static inline int chars_to_pixels_width(int char_width) {
+  // We use 2x pixels in width to account for terminal character aspect ratio
+  return char_width * 2;
+}
+
+static inline int chars_to_pixels_height(int char_height) {
+  // Height is 1:1
+  return char_height;
+}
+
+/* ============================================================================
  * Video Broadcasting Thread
  * ============================================================================
  */
@@ -498,7 +530,7 @@ static void *video_broadcast_thread_func(void *arg) {
         multi_source_frame_t frame;
         multi_source_frame_t latest_frame = {0};
         bool has_frame = false;
-        
+
         // Consume all frames and keep only the latest
         while (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame)) {
           // Free the previous frame if we had one
@@ -508,13 +540,13 @@ static void *video_broadcast_thread_func(void *arg) {
           latest_frame = frame;
           has_frame = true;
         }
-        
+
         // If we got a frame, write it back so peek can see it
         if (has_frame && latest_frame.data) {
           // Write the latest frame back to the buffer for peeking
           framebuffer_write_multi_frame(client->incoming_video_buffer, latest_frame.data, latest_frame.size,
-                                       latest_frame.source_client_id, latest_frame.frame_sequence, 
-                                       latest_frame.timestamp);
+                                        latest_frame.source_client_id, latest_frame.frame_sequence,
+                                        latest_frame.timestamp);
           // Now free our copy
           free(latest_frame.data);
         }
@@ -644,6 +676,7 @@ static void *video_broadcast_thread_func(void *arg) {
 // Create a mixed ASCII frame from all active image sources
 char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, bool wants_stretch,
                                size_t *out_size) {
+  (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
   if (!out_size || width == 0 || height == 0) {
     return NULL;
   }
@@ -695,6 +728,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         uint32_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
         rgb_t *pixels = (rgb_t *)(latest_frame.data + sizeof(uint32_t) * 2);
 
+        log_info("[SERVER COMPOSITE] Got image from client %u: %ux%u, aspect: %.3f (needs terminal adjustment)",
+                 client->client_id, img_width, img_height, (float)img_width / (float)img_height);
+
         // Create an image_t structure
         image_t *img = image_new(img_width, img_height);
         if (img) {
@@ -730,11 +766,57 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
   // This is critical for preventing the "old frames" issue
 
   if (source_count == 1 && sources[0].image) {
-    // Single source - create a properly sized composite for it
-    // Don't use the source directly as it might not be the right size
-    composite = image_new(width * 2, height);
+    // Single source - calculate proper dimensions for display
+
+    // Calculate source aspect ratio
+    float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
+    
+    log_info("Single source: img %dx%d (aspect %.3f), terminal %dx%d chars",
+             sources[0].image->w, sources[0].image->h, src_aspect, width, height);
+    
+    // CORRECT CALCULATION:
+    // For a 400x225 image (aspect 1.778) on a 203x32 terminal:
+    // Option 1: Fill width to 203 -> height = 203/1.778 = 114 chars (too tall!)
+    // Option 2: Fill height to 32 -> width = 32*1.778 = 57 chars (fits!)
+    // Result: Display 57x32 characters
+    
+    int display_width_chars, display_height_chars;
+    
+    // Try filling width
+    int width_if_fill_w = width;
+    int height_if_fill_w = (int)((float)width / src_aspect + 0.5f);
+    
+    // Try filling height  
+    int width_if_fill_h = (int)((float)height * src_aspect + 0.5f);
+    int height_if_fill_h = height;
+    
+    log_info("[SERVER ASPECT] Fill width: %dx%d chars, Fill height: %dx%d chars",
+             width_if_fill_w, height_if_fill_w, width_if_fill_h, height_if_fill_h);
+    
+    // Choose the option that fits
+    if (height_if_fill_w <= height) {
+      // Filling width fits
+      display_width_chars = width_if_fill_w;
+      display_height_chars = height_if_fill_w;
+      log_info("[SERVER ASPECT] Chose to fill width: %dx%d chars", 
+               display_width_chars, display_height_chars);
+    } else {
+      // Fill height instead
+      display_width_chars = width_if_fill_h;
+      display_height_chars = height_if_fill_h;
+      log_info("[SERVER ASPECT] Chose to fill height: %dx%d chars",
+               display_width_chars, display_height_chars);
+    }
+    
+    // Clamp to terminal bounds
+    if (display_width_chars > width) display_width_chars = width;
+    if (display_height_chars > height) display_height_chars = height;
+    
+    // Create composite at exactly the display size in pixels
+    // Since stretch=false, ascii_convert won't resize, so composite = output
+    composite = image_new(display_width_chars, display_height_chars);
     if (!composite) {
-      log_error("Failed to create composite image for single source");
+      log_error("Failed to create composite image");
       *out_size = 0;
       for (int i = 0; i < source_count; i++) {
         if (sources[i].image) {
@@ -743,68 +825,17 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       }
       return NULL;
     }
-
-    // Clear the composite to ensure no old data remains
-    // First memset to zero, then use image_clear for proper initialization
-    memset(composite->pixels, 0, composite->w * composite->h * sizeof(rgb_t));
+    
     image_clear(composite);
+    
+    log_info("[SERVER ASPECT] Created composite: %dx%d pixels for %dx%d char display",
+             display_width_chars, display_height_chars, display_width_chars, display_height_chars);
 
-    // Calculate how to fit the single source while maintaining aspect ratio
-    float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
-    float display_aspect = (float)width / (float)height; // Terminal display aspect
-
-    int target_width, target_height;
-    // Apply scale factor to make single images larger (0.98 = 98% of available space)
-    float scale_factor = 0.98f;
-
-    if (src_aspect > display_aspect) {
-      // Source is wider - fit to width
-      target_width = (int)((width * 2) * scale_factor);               // Scale to use most of the width
-      target_height = (int)((float)target_width / 2.0f / src_aspect); // Maintain aspect ratio
-    } else {
-      // Source is taller - fit to height
-      target_height = (int)(height * scale_factor);                   // Scale to use most of the height
-      target_width = (int)((float)target_height * src_aspect * 2.0f); // *2 for terminal aspect
-    }
-
-    // Ensure bounds
-    if (target_width > width * 2)
-      target_width = width * 2;
-    if (target_height > height)
-      target_height = height;
-    if (target_width < 10)
-      target_width = 10;
-    if (target_height < 5)
-      target_height = 5;
-
-    // Resize and center the image
-    image_t *resized = image_new(target_width, target_height);
-    if (resized) {
-      image_resize(sources[0].image, resized);
-
-      // Center in the composite
-      int x_padding = (width * 2 - target_width) / 2;
-      int y_padding = (height - target_height) / 2;
-
-      // Copy to composite
-      for (int y = 0; y < target_height; y++) {
-        for (int x = 0; x < target_width; x++) {
-          int src_idx = y * target_width + x;
-          int dst_x = x_padding + x;
-          int dst_y = y_padding + y;
-          int dst_idx = dst_y * (width * 2) + dst_x;
-
-          if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h) {
-            composite->pixels[dst_idx] = resized->pixels[src_idx];
-          }
-        }
-      }
-
-      image_destroy(resized);
-    }
+    // Resize source image directly to composite
+    image_resize(sources[0].image, composite);
   } else if (source_count > 1) {
     // Multiple sources - create grid layout
-    // Use double width for the composite to account for terminal character aspect ratio
+    // Terminal characters are 2:1 (height:width), so we need width*2 x height pixels
     composite = image_new(width * 2, height);
     if (!composite) {
       log_error("Failed to create composite image");
@@ -825,7 +856,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     int grid_cols = (source_count == 2) ? 2 : (source_count <= 4) ? 2 : 3;
     int grid_rows = (source_count + grid_cols - 1) / grid_cols;
 
-    // Calculate cell dimensions
+    // Calculate cell dimensions - no spacing between cells to maximize usage
+    // Composite is width*2 x height pixels
     int cell_width = (width * 2) / grid_cols;
     int cell_height = height / grid_rows;
 
@@ -841,37 +873,51 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
       // Create resized version of source to fit in cell while maintaining aspect ratio
       // The cell has pixel dimensions cell_width x cell_height
-      // But cell_width is already doubled for terminal character aspect ratio
-      // So the actual display aspect ratio is (cell_width/2):cell_height
+      // Each pixel becomes one character in the output
 
       float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
 
-      // For terminal display, we need to consider that each character is 2:1 (width:height)
-      // So a cell that's cell_width pixels wide displays as cell_width/2 characters wide
-      float display_width_chars = (float)cell_width / 2.0f;
-      float display_aspect = display_width_chars / (float)cell_height;
+      // The client sends images at their original aspect ratio
+      // Cell dimensions in pixels are cell_width x cell_height
+      // But cell_width is already doubled (width*2 / grid_cols)
+      // So we need to work with the actual display dimensions
+
+      int cell_display_width = cell_width / 2; // Actual display width in characters
+
+      log_info("[GRID CELL %d] Source: %dx%d (aspect %.3f), Cell pixels: %dx%d, Display: %dx%d", i, sources[i].image->w,
+               sources[i].image->h, src_aspect, cell_width, cell_height, cell_display_width, cell_height);
 
       int target_width, target_height;
 
-      // We want to fill as much of the cell as possible while maintaining aspect ratio
-      // Apply a scale factor to make images larger within cells (0.95 = 95% of cell size)
-      float scale_factor = 0.95f;
+      // Maximize image size in the cell while maintaining aspect ratio
+      // Cell pixel dimensions are cell_width x cell_height
+      // Display dimensions are cell_display_width x cell_height chars
 
-      if (src_aspect > display_aspect) {
-        // Source is wider than cell display - fit to width
-        target_width = (int)(cell_width * scale_factor);                // Scale up to use more of the cell
-        target_height = (int)((float)target_width / 2.0f / src_aspect); // Adjusted for display
+      // Calculate dimensions if we fill the cell width
+      int width_if_fill_width = cell_width; // Already in pixel space (doubled)
+      int height_if_fill_width = (int)((float)cell_display_width / src_aspect);
+
+      // Calculate dimensions if we fill the cell height
+      int height_if_fill_height = cell_height;
+      int width_if_fill_height = (int)((float)cell_height * src_aspect * 2.0f);
+
+      // Choose whichever fits in the cell
+      if (height_if_fill_width <= cell_height) {
+        // Filling width fits
+        target_width = width_if_fill_width;
+        target_height = height_if_fill_width;
+        log_debug("Filling width fits: %dx%d", target_width, target_height);
       } else {
-        // Source is taller than cell display - fit to height
-        target_height = (int)(cell_height * scale_factor);              // Scale up to use more of the cell
-        target_width = (int)((float)target_height * src_aspect * 2.0f); // *2 for terminal aspect
+        // Fill height instead
+        target_width = width_if_fill_height;
+        target_height = height_if_fill_height;
+        log_debug("Filling height fits: %dx%d", target_width, target_height);
+        // Clamp to cell width if needed
+        if (target_width > cell_width) {
+          target_width = cell_width;
+          target_height = (int)((float)cell_display_width / src_aspect);
+        }
       }
-
-      // Make sure we don't exceed cell bounds (safety check)
-      if (target_width > cell_width)
-        target_width = cell_width;
-      if (target_height > cell_height)
-        target_height = cell_height;
 
       // Ensure minimum size with better defaults
       if (target_width < 10)
@@ -886,6 +932,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         // Center the resized image in the cell
         int x_padding = (cell_width - target_width) / 2;
         int y_padding = (cell_height - target_height) / 2;
+        log_debug("Cell: %dx%d, Target: %dx%d, Padding: %d,%d", cell_width, cell_height, target_width, target_height,
+                  x_padding, y_padding);
 
         // Copy resized image to composite at the appropriate position with centering
         for (int y = 0; y < target_height; y++) {
@@ -918,11 +966,44 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     image_clear(composite);
   }
 
-  char *ascii_frame = ascii_convert(composite, width, height, wants_color, wants_stretch);
+  // Pass the terminal dimensions to ascii_convert
+  // The composite is already sized correctly in pixels (width*2, height)
+  // ascii_convert expects character dimensions, so we pass the original width and height
+  // Pass stretch=false because we've already sized the composite to the exact dimensions we want
+  log_info("[SERVER ASPECT] ascii_convert(composite, %d, %d, %d, true, false)", width, height, wants_color);
+  char *ascii_frame = ascii_convert(composite, width, height, wants_color, true, false);
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
-    // log_debug("Generated %s ASCII frame: %zu bytes", wants_color ? "colored" : "plain", *out_size);
+
+    // Analyze the actual ASCII frame dimensions
+    int actual_width = 0;
+    int actual_height = 0;
+    int current_line_width = 0;
+    bool in_escape = false;
+
+    for (const char *p = ascii_frame; *p; p++) {
+      if (*p == '\033') {
+        in_escape = true;
+      } else if (in_escape && *p == 'm') {
+        in_escape = false;
+      } else if (!in_escape) {
+        if (*p == '\n') {
+          if (current_line_width > actual_width) {
+            actual_width = current_line_width;
+          }
+          current_line_width = 0;
+          actual_height++;
+        } else if (*p != '\r') {
+          current_line_width++;
+        }
+      }
+    }
+
+    log_info("[SERVER FRAME ANALYSIS] Requested: %dx%d, Composite: %dx%d pixels, ASCII: %dx%d chars, "
+             "Fill: %.1f%% width, %.1f%% height, Sources: %d",
+             width, height, composite->w, composite->h, actual_width, actual_height, (float)actual_width / width * 100,
+             (float)actual_height / height * 100, source_count);
   } else {
     log_error("Failed to convert image to ASCII");
     *out_size = 0;
@@ -1082,21 +1163,27 @@ int main(int argc, char *argv[]) {
         pthread_mutex_lock(&g_client_manager_mutex);
         for (int i = 0; i < MAX_CLIENTS; i++) {
           client_info_t *client = &g_client_manager.clients[i];
-          // Check for clients that are either inactive or have no socket
-          if ((client->client_id > 0) && (!client->active || client->socket <= 0)) {
-            uint32_t client_id = client->client_id;
-            pthread_mutex_unlock(&g_client_manager_mutex);
+          // Check for clients that were active but are now inactive
+          // client_id check removed - 0 is a valid client ID
+          if (client->client_id != 0 || client->active) {
+            // This slot has or had a client
+            if (!client->active && client->socket > 0) {
+              // Client marked as inactive but socket not closed yet
+              uint32_t client_id = client->client_id;
+              pthread_mutex_unlock(&g_client_manager_mutex);
 
-            log_info("Cleaning up disconnected client %u", client_id);
-            // Wait for receive thread to finish (send thread removed)
-            pthread_join(client->receive_thread, NULL);
-            // No send thread to join anymore
+              log_info("Cleaning up disconnected client %u", client_id);
+              // Wait for receive thread to finish
+              if (client->receive_thread) {
+                pthread_join(client->receive_thread, NULL);
+              }
 
-            // Remove the client
-            remove_client(client_id);
+              // Remove the client and clean up resources
+              remove_client(client_id);
 
-            // Re-lock for next iteration
-            pthread_mutex_lock(&g_client_manager_mutex);
+              // Re-lock for next iteration
+              pthread_mutex_lock(&g_client_manager_mutex);
+            }
           }
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
@@ -1204,6 +1291,8 @@ void *client_receive_thread_func(void *arg) {
       } else {
         log_error("Error receiving from client %u: %s", client->client_id, strerror(errno));
       }
+      // Mark client as inactive when disconnected
+      client->active = false;
       break;
     }
 
@@ -1269,6 +1358,9 @@ void *client_receive_thread_func(void *arg) {
         uint32_t img_width = ntohl(*(uint32_t *)data);
         uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
         size_t expected_size = sizeof(uint32_t) * 2 + img_width * img_height * sizeof(rgb_t);
+
+        log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
+                 img_width, img_height, (float)img_width / (float)img_height);
 
         if (len != expected_size) {
           log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id,
@@ -1487,6 +1579,10 @@ int remove_client(uint32_t client_id) {
       g_client_manager.client_count--;
 
       log_info("Removed client %u (%s)", client_id, client->display_name);
+
+      // Clear the entire client structure to ensure it's ready for reuse
+      memset(client, 0, sizeof(client_info_t));
+
       pthread_mutex_unlock(&g_client_manager_mutex);
       return 0;
     }

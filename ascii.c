@@ -30,7 +30,7 @@ asciichat_error_t ascii_write_init(void) {
 }
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
-                    const bool stretch) {
+                    const bool _aspect_ratio, const bool stretch) {
   if (original == NULL) {
     exit(ASCIICHAT_ERR_WEBCAM);
   }
@@ -43,22 +43,24 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   ssize_t resized_height = height;
 
   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
-  if (!stretch) {
-    // Pass the stretch parameter directly to aspect_ratio
-    aspect_ratio(original->w, original->h * 2, resized_width, resized_height, stretch, &resized_width, &resized_height);
+  if (_aspect_ratio) {
+    // The server now provides images at width*2 x height pixels
+    // The aspect_ratio function will handle terminal character aspect ratio
+    aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
   }
 
-  // Calculate how many leading spaces are required to center the image inside
-  // the overall width requested by the user.  Make sure the value is
-  // non-negative so we don't end up passing a huge number to ascii_pad_frame
-  // when width happens to exceed resized_width.
-  ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
-  size_t pad_width = (size_t)pad_width_ss;
+  // Calculate padding for centering
+  size_t pad_width = 0;
+  size_t pad_height = 0;
 
-  // Calculate how many blank lines are required to center the image inside
-  // the overall height requested by the user.
-  ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
-  size_t pad_height = (size_t)pad_height_ss;
+  if (_aspect_ratio) {
+    // Only calculate padding when not stretching
+    ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
+    pad_width = (size_t)pad_width_ss;
+
+    ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
+    pad_height = (size_t)pad_height_ss;
+  }
 
   // Resize the captured frame to the aspect-correct dimensions.
   if (resized_width <= 0 || resized_height <= 0) {
@@ -66,6 +68,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     return NULL;
   }
 
+  // Always resize to target dimensions
   image_t *resized = image_new((int)resized_width, (int)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
@@ -102,6 +105,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   free(ascii_width_padded);
 
+  // Only destroy resized if we allocated it (not when using original directly)
   image_destroy(resized);
 
   return ascii_padded;
