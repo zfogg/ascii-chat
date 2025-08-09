@@ -245,10 +245,16 @@ static void handle_video_packet(const void *data, size_t len) {
   }
 
   char *frame_data = NULL;
+  int frame_width = 0;
+  int frame_height = 0;
 
   if (g_expecting_compressed_frame) {
     // This is compressed/uncompressed frame data with header
     g_expecting_compressed_frame = false;
+    
+    // Get dimensions from header
+    frame_width = g_compression_header.width;
+    frame_height = g_compression_header.height;
 
     if (g_compression_header.compressed_size == 0) {
       // Uncompressed frame
@@ -298,6 +304,7 @@ static void handle_video_packet(const void *data, size_t len) {
 
   } else {
     // Legacy uncompressed frame (fallback for old protocol)
+    log_debug("Got legacy uncompressed frame (no header), dimensions unknown");
     SAFE_MALLOC(frame_data, len + 1, char *);
 
     memcpy(frame_data, data, len);
@@ -309,44 +316,16 @@ static void handle_video_packet(const void *data, size_t len) {
     log_error("Server reported webcam failure: %s", frame_data);
     usleep(1000 * 1000);
   } else {
-    // Calculate frame dimensions by counting lines and line width
-    int frame_height = 0;
-    int frame_width = 0;
-    int current_line_width = 0;
-    
-    for (const char *p = frame_data; *p; p++) {
-      if (*p == '\n') {
-        frame_height++;
-        if (current_line_width > frame_width) {
-          frame_width = current_line_width;
-        }
-        current_line_width = 0;
-      } else if (*p == '\033' && *(p+1) == '[') {
-        // Skip ANSI escape sequences (for colored output)
-        while (*p && *p != 'm') p++;
-        if (!*p) break;
-      } else {
-        current_line_width++;
-      }
-    }
-    // Count last line if it doesn't end with newline
-    if (current_line_width > 0) {
-      frame_height++;
-      if (current_line_width > frame_width) {
-        frame_width = current_line_width;
-      }
-    }
-    
     // Check if frame dimensions have changed
-    if (g_last_frame_width != 0 && g_last_frame_height != 0 &&
-        (g_last_frame_width != frame_width || g_last_frame_height != frame_height)) {
-      // Frame dimensions changed, clear console to avoid artifacts
-      console_clear();
-      log_debug("Frame dimensions changed from %dx%d to %dx%d, clearing console", 
-                g_last_frame_width, g_last_frame_height, frame_width, frame_height);
+    if (frame_width > 0 && frame_height > 0) {
+      if (g_last_frame_width != 0 && g_last_frame_height != 0 &&
+          (g_last_frame_width != frame_width || g_last_frame_height != frame_height)) {
+        // Frame dimensions changed, clear console to avoid artifacts
+        console_clear();
+      }
+      g_last_frame_width = frame_width;
+      g_last_frame_height = frame_height;
     }
-    g_last_frame_width = frame_width;
-    g_last_frame_height = frame_height;
     
     ascii_write(frame_data);
   }
