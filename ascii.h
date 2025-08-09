@@ -8,7 +8,7 @@ typedef struct image_t image_t;
 asciichat_error_t ascii_read_init(unsigned short int webcam_index);
 asciichat_error_t ascii_write_init(void);
 
-char *ascii_read(void);
+char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color, const bool stretch);
 asciichat_error_t ascii_write(const char *);
 
 void ascii_read_destroy(void);

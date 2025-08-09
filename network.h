@@ -102,6 +102,7 @@ typedef struct {
 #define CLIENT_CAP_VIDEO 0x01
 #define CLIENT_CAP_AUDIO 0x02
 #define CLIENT_CAP_COLOR 0x04
+#define CLIENT_CAP_STRETCH 0x08
 
 // Stream type flags
 #define STREAM_TYPE_VIDEO 0x01
