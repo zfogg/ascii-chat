@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <sys/_types/_ssize_t.h>
-#include <stdbool.h>
 #include "common.h"
 #include "round.h"
 
