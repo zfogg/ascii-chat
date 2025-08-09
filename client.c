@@ -575,7 +575,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Serialize image data for transmission
     // Format: [width:4][height:4][rgb_data:w*h*3]
-    size_t rgb_size = image->w * image->h * sizeof(rgb_t);
+    size_t rgb_size = (size_t)image->w * (size_t)image->h * sizeof(rgb_t);
     size_t packet_size = sizeof(uint32_t) * 2 + rgb_size; // width + height + pixels
 
     uint8_t *packet_data = malloc(packet_size);
