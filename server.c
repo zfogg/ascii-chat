@@ -433,35 +433,61 @@ void *audio_mixer_thread_func(void *arg) {
 }
 
 /* ============================================================================
- * Unit Conversion Helpers
+ * Aspect Ratio Helpers
  * ============================================================================
  */
 
-// Terminal characters have a 2:1 aspect ratio (height:width in screen space)
-#define CHAR_ASPECT_RATIO 2.0f
+// Calculate the best dimensions to fit an image in a terminal area while preserving aspect ratio
+// Returns the dimensions in characters/pixels (1:1 for our use case with stretch=false)
+static void calculate_fit_dimensions(int img_width, int img_height, int max_width, int max_height, int *out_width,
+                                     int *out_height) {
+  if (!out_width || !out_height || img_width <= 0 || img_height <= 0) {
+    if (out_width)
+      *out_width = max_width;
+    if (out_height)
+      *out_height = max_height;
+    return;
+  }
 
-// Convert pixel dimensions to character dimensions
-// Each pixel becomes one character, but we need to account for character aspect ratio
-static inline int pixels_to_chars_width(int pixel_width) {
-  // For width, it's 1:1 - each pixel becomes one character
-  return pixel_width;
-}
+  float src_aspect = (float)img_width / (float)img_height;
 
-static inline int pixels_to_chars_height(int pixel_height) {
-  // For height, it's 1:1 - each pixel becomes one character
-  return pixel_height;
-}
+  // Try filling width
+  int width_if_fill_w = max_width;
+  int height_if_fill_w = (int)((float)max_width / src_aspect + 0.5f);
 
-// Convert character dimensions to pixel dimensions for compositing
-// The composite buffer uses 2x width to account for character aspect ratio
-static inline int chars_to_pixels_width(int char_width) {
-  // We use 2x pixels in width to account for terminal character aspect ratio
-  return char_width * 2;
-}
+  // Try filling height
+  int width_if_fill_h = (int)((float)max_height * src_aspect + 0.5f);
+  int height_if_fill_h = max_height;
 
-static inline int chars_to_pixels_height(int char_height) {
-  // Height is 1:1
-  return char_height;
+  log_debug("calculate_fit_dimensions: img %dx%d (aspect %.3f), max %dx%d", img_width, img_height, src_aspect,
+            max_width, max_height);
+  log_debug("  Fill width: %dx%d, Fill height: %dx%d", width_if_fill_w, height_if_fill_w, width_if_fill_h,
+            height_if_fill_h);
+
+  // Choose the option that fits
+  if (height_if_fill_w <= max_height) {
+    // Filling width fits
+    log_debug("  Choosing fill width: %dx%d", width_if_fill_w, height_if_fill_w);
+    *out_width = width_if_fill_w;
+    *out_height = height_if_fill_w;
+  } else {
+    // Fill height instead
+    log_debug("  Choosing fill height: %dx%d", width_if_fill_h, height_if_fill_h);
+    *out_width = width_if_fill_h;
+    *out_height = height_if_fill_h;
+  }
+
+  // Clamp to bounds
+  if (*out_width > max_width)
+    *out_width = max_width;
+  if (*out_height > max_height)
+    *out_height = max_height;
+  if (*out_width < 1)
+    *out_width = 1;
+  if (*out_height < 1)
+    *out_height = 1;
+
+  log_debug("  Final output: %dx%d", *out_width, *out_height);
 }
 
 /* ============================================================================
@@ -721,6 +747,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       multi_source_frame_t latest_frame = {0};
       bool got_frame = framebuffer_peek_latest_multi_frame(client->incoming_video_buffer, &latest_frame);
 
+      log_debug("Client %u: peek attempt, got_frame=%d, data=%p, size=%zu", client->client_id, got_frame,
+                latest_frame.data, latest_frame.size);
+
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
         // Parse the image data
         // Format: [width:4][height:4][rgb_data:w*h*3]
@@ -770,48 +799,17 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
     // Calculate source aspect ratio
     float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
-    
-    log_info("Single source: img %dx%d (aspect %.3f), terminal %dx%d chars",
-             sources[0].image->w, sources[0].image->h, src_aspect, width, height);
-    
-    // CORRECT CALCULATION:
-    // For a 400x225 image (aspect 1.778) on a 203x32 terminal:
-    // Option 1: Fill width to 203 -> height = 203/1.778 = 114 chars (too tall!)
-    // Option 2: Fill height to 32 -> width = 32*1.778 = 57 chars (fits!)
-    // Result: Display 57x32 characters
-    
+
+    log_info("Single source: img %dx%d (aspect %.3f), terminal %dx%d chars", sources[0].image->w, sources[0].image->h,
+             src_aspect, width, height);
+
+    // Use our helper function to calculate the best fit
     int display_width_chars, display_height_chars;
-    
-    // Try filling width
-    int width_if_fill_w = width;
-    int height_if_fill_w = (int)((float)width / src_aspect + 0.5f);
-    
-    // Try filling height  
-    int width_if_fill_h = (int)((float)height * src_aspect + 0.5f);
-    int height_if_fill_h = height;
-    
-    log_info("[SERVER ASPECT] Fill width: %dx%d chars, Fill height: %dx%d chars",
-             width_if_fill_w, height_if_fill_w, width_if_fill_h, height_if_fill_h);
-    
-    // Choose the option that fits
-    if (height_if_fill_w <= height) {
-      // Filling width fits
-      display_width_chars = width_if_fill_w;
-      display_height_chars = height_if_fill_w;
-      log_info("[SERVER ASPECT] Chose to fill width: %dx%d chars", 
-               display_width_chars, display_height_chars);
-    } else {
-      // Fill height instead
-      display_width_chars = width_if_fill_h;
-      display_height_chars = height_if_fill_h;
-      log_info("[SERVER ASPECT] Chose to fill height: %dx%d chars",
-               display_width_chars, display_height_chars);
-    }
-    
-    // Clamp to terminal bounds
-    if (display_width_chars > width) display_width_chars = width;
-    if (display_height_chars > height) display_height_chars = height;
-    
+    calculate_fit_dimensions(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
+                             &display_height_chars);
+
+    log_info("[SERVER ASPECT] Best fit for single source: %dx%d chars", display_width_chars, display_height_chars);
+
     // Create composite at exactly the display size in pixels
     // Since stretch=false, ascii_convert won't resize, so composite = output
     composite = image_new(display_width_chars, display_height_chars);
@@ -825,18 +823,18 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       }
       return NULL;
     }
-    
+
     image_clear(composite);
-    
-    log_info("[SERVER ASPECT] Created composite: %dx%d pixels for %dx%d char display",
-             display_width_chars, display_height_chars, display_width_chars, display_height_chars);
+
+    log_info("[SERVER ASPECT] Created composite: %dx%d pixels for %dx%d char display", display_width_chars,
+             display_height_chars, display_width_chars, display_height_chars);
 
     // Resize source image directly to composite
     image_resize(sources[0].image, composite);
   } else if (source_count > 1) {
     // Multiple sources - create grid layout
-    // Terminal characters are 2:1 (height:width), so we need width*2 x height pixels
-    composite = image_new(width * 2, height);
+    // Create composite at terminal size (no doubling for stretch=false)
+    composite = image_new(width, height);
     if (!composite) {
       log_error("Failed to create composite image");
       *out_size = 0;
@@ -848,18 +846,25 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       return NULL;
     }
 
-    // Clear the composite with black background - ensure no old data remains
-    memset(composite->pixels, 0, composite->w * composite->h * sizeof(rgb_t));
+    // Clear the composite with black background
     image_clear(composite);
 
     // Calculate grid dimensions based on source count
+    // For 2 sources: side by side (2x1 grid)
+    // For 3-4 sources: 2x2 grid
+    // For 5-9 sources: 3x3 grid
     int grid_cols = (source_count == 2) ? 2 : (source_count <= 4) ? 2 : 3;
     int grid_rows = (source_count + grid_cols - 1) / grid_cols;
 
-    // Calculate cell dimensions - no spacing between cells to maximize usage
-    // Composite is width*2 x height pixels
-    int cell_width = (width * 2) / grid_cols;
+    log_info("[GRID] Creating %dx%d grid for %d sources on %dx%d terminal", grid_cols, grid_rows, source_count, width,
+             height);
+
+    // Calculate cell dimensions in characters
+    int cell_width = width / grid_cols;
     int cell_height = height / grid_rows;
+
+    log_info("[GRID] Each cell is %dx%d chars (terminal %dx%d / grid %dx%d)", cell_width, cell_height, width, height,
+             grid_cols, grid_rows);
 
     // Place each source in the grid
     for (int i = 0; i < source_count && i < 9; i++) { // Max 9 sources in 3x3 grid
@@ -868,63 +873,41 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
       int row = i / grid_cols;
       int col = i % grid_cols;
-      int x_offset = col * cell_width;
-      int y_offset = row * cell_height;
-
-      // Create resized version of source to fit in cell while maintaining aspect ratio
-      // The cell has pixel dimensions cell_width x cell_height
-      // Each pixel becomes one character in the output
+      int cell_x_offset = col * cell_width;
+      int cell_y_offset = row * cell_height;
 
       float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
+      log_info("[GRID CELL %d] Source: %dx%d (aspect %.3f), Cell: %dx%d chars at (%d,%d)", i, sources[i].image->w,
+               sources[i].image->h, src_aspect, cell_width, cell_height, cell_x_offset, cell_y_offset);
 
-      // The client sends images at their original aspect ratio
-      // Cell dimensions in pixels are cell_width x cell_height
-      // But cell_width is already doubled (width*2 / grid_cols)
-      // So we need to work with the actual display dimensions
-
-      int cell_display_width = cell_width / 2; // Actual display width in characters
-
-      log_info("[GRID CELL %d] Source: %dx%d (aspect %.3f), Cell pixels: %dx%d, Display: %dx%d", i, sources[i].image->w,
-               sources[i].image->h, src_aspect, cell_width, cell_height, cell_display_width, cell_height);
-
+      // Calculate best fit for this image in the cell
       int target_width, target_height;
 
-      // Maximize image size in the cell while maintaining aspect ratio
-      // Cell pixel dimensions are cell_width x cell_height
-      // Display dimensions are cell_display_width x cell_height chars
+      // Debug: manually calculate to see what's happening
+      int width_if_fill_w = cell_width;
+      int height_if_fill_w = (int)((float)cell_width / src_aspect + 0.5f);
+      int width_if_fill_h = (int)((float)cell_height * src_aspect + 0.5f);
+      int height_if_fill_h = cell_height;
 
-      // Calculate dimensions if we fill the cell width
-      int width_if_fill_width = cell_width; // Already in pixel space (doubled)
-      int height_if_fill_width = (int)((float)cell_display_width / src_aspect);
+      log_info("[GRID CELL %d] Fill width: %dx%d, Fill height: %dx%d", i, width_if_fill_w, height_if_fill_w,
+               width_if_fill_h, height_if_fill_h);
 
-      // Calculate dimensions if we fill the cell height
-      int height_if_fill_height = cell_height;
-      int width_if_fill_height = (int)((float)cell_height * src_aspect * 2.0f);
+      // Log what calculate_fit_dimensions is about to do
+      log_info("[GRID CELL %d] Calling calculate_fit_dimensions with img %dx%d, max %dx%d", i, sources[i].image->w,
+               sources[i].image->h, cell_width, cell_height);
 
-      // Choose whichever fits in the cell
-      if (height_if_fill_width <= cell_height) {
-        // Filling width fits
-        target_width = width_if_fill_width;
-        target_height = height_if_fill_width;
-        log_debug("Filling width fits: %dx%d", target_width, target_height);
-      } else {
-        // Fill height instead
-        target_width = width_if_fill_height;
-        target_height = height_if_fill_height;
-        log_debug("Filling height fits: %dx%d", target_width, target_height);
-        // Clamp to cell width if needed
-        if (target_width > cell_width) {
-          target_width = cell_width;
-          target_height = (int)((float)cell_display_width / src_aspect);
-        }
+      calculate_fit_dimensions(sources[i].image->w, sources[i].image->h, cell_width, cell_height, &target_width,
+                               &target_height);
+
+      log_info("[GRID CELL %d] calculate_fit_dimensions returned: %dx%d chars", i, target_width, target_height);
+
+      // Double-check the calculation
+      if (target_height != cell_height && height_if_fill_h == cell_height && width_if_fill_h <= cell_width) {
+        log_error("[GRID CELL %d] ERROR: Should have filled height! Got %dx%d but expected %dx%d", i, target_width,
+                  target_height, width_if_fill_h, height_if_fill_h);
       }
 
-      // Ensure minimum size with better defaults
-      if (target_width < 10)
-        target_width = 10;
-      if (target_height < 5)
-        target_height = 5;
-
+      // Create resized image
       image_t *resized = image_new(target_width, target_height);
       if (resized) {
         image_resize(sources[i].image, resized);
@@ -932,19 +915,20 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         // Center the resized image in the cell
         int x_padding = (cell_width - target_width) / 2;
         int y_padding = (cell_height - target_height) / 2;
-        log_debug("Cell: %dx%d, Target: %dx%d, Padding: %d,%d", cell_width, cell_height, target_width, target_height,
-                  x_padding, y_padding);
 
-        // Copy resized image to composite at the appropriate position with centering
+        log_debug("Cell %d: Centering %dx%d image in %dx%d cell, padding: %d,%d", i, target_width, target_height,
+                  cell_width, cell_height, x_padding, y_padding);
+
+        // Copy resized image to composite
         for (int y = 0; y < target_height; y++) {
           for (int x = 0; x < target_width; x++) {
             int src_idx = y * target_width + x;
-            int dst_x = x_offset + x_padding + x;
-            int dst_y = y_offset + y_padding + y;
-            int dst_idx = dst_y * (width * 2) + dst_x;
+            int dst_x = cell_x_offset + x_padding + x;
+            int dst_y = cell_y_offset + y_padding + y;
+            int dst_idx = dst_y * width + dst_x;
 
             if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h &&
-                dst_x < (x_offset + cell_width) && dst_y < (y_offset + cell_height)) {
+                dst_x < (cell_x_offset + cell_width) && dst_y < (cell_y_offset + cell_height)) {
               composite->pixels[dst_idx] = resized->pixels[src_idx];
             }
           }
@@ -957,7 +941,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     log_debug("Created grid layout: %dx%d grid for %d sources", grid_cols, grid_rows, source_count);
   } else {
     // No sources, create empty composite
-    composite = image_new(width * 2, height);
+    composite = image_new(width, height);
     if (!composite) {
       log_error("Failed to create empty image");
       *out_size = 0;

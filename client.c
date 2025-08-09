@@ -525,8 +525,8 @@ static void *webcam_capture_thread_func(void *arg) {
     // This is roughly 2x typical terminal sizes
     // Always maintain original aspect ratio
 
-    ssize_t max_width = 400;  // Good size for network transmission
-    ssize_t max_height = 300; // Gives server room to resize
+    ssize_t max_width = 800;  // Good size for network transmission
+    ssize_t max_height = 600; // Gives server room to resize
     ssize_t resized_width, resized_height;
 
     // Calculate dimensions maintaining aspect ratio
