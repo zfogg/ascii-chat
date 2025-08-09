@@ -71,6 +71,10 @@ static remote_client_info_t g_remote_clients[MAX_CLIENTS];
 static int g_remote_client_count = 0;
 static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Server state tracking for console clear logic
+static uint32_t g_last_active_count = 0;
+static bool g_server_state_initialized = false;
+
 /* ============================================================================
  * Function Declarations
  * ============================================================================
@@ -78,6 +82,7 @@ static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Multi-user packet handlers
 static void handle_client_list_packet(const void *data, size_t len);
+static void handle_server_state_packet(const void *data, size_t len);
 
 // Ping thread for connection keepalive
 static void *ping_thread_func(void *arg);
@@ -358,9 +363,9 @@ static void handle_video_packet(const void *data, size_t len) {
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    log_info("[CLIENT FRAME ANALYSIS] Frame: %dx%d chars, Terminal: %dx%d, Fill: %.1f%% width, %.1f%% height",
-             actual_width, actual_height, w.ws_col, w.ws_row, (float)actual_width / w.ws_col * 100,
-             (float)actual_height / w.ws_row * 100);
+    // log_info("[CLIENT FRAME ANALYSIS] Frame: %dx%d chars, Terminal: %dx%d, Fill: %.1f%% width, %.1f%% height",
+    //          actual_width, actual_height, w.ws_col, w.ws_row, (float)actual_width / w.ws_col * 100,
+    //          (float)actual_height / w.ws_row * 100);
 
     ascii_write(frame_data);
   }
@@ -430,7 +435,12 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_CLEAR_CONSOLE:
       // Server requested console clear
+      log_info("Server requested console clear");
       console_clear();
+      break;
+
+    case PACKET_TYPE_SERVER_STATE:
+      handle_server_state_packet(data, len);
       break;
 
     default:
@@ -515,8 +525,8 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
-             (float)image->w / (float)image->h);
+    // log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
+    //          (float)image->w / (float)image->h);
 
     // Resize image to a reasonable size for network transmission
     // We want to send images large enough for the server to resize for any client
@@ -550,8 +560,8 @@ static void *webcam_capture_thread_func(void *arg) {
       resized_height = image->h;
     }
 
-    log_info("[CLIENT RESIZE] Max: %ldx%ld, Resized to: %ldx%ld, aspect: %.3f", max_width, max_height, resized_width,
-             resized_height, (float)resized_width / (float)resized_height);
+    // log_info("[CLIENT RESIZE] Max: %ldx%ld, Resized to: %ldx%ld, aspect: %.3f", max_width, max_height, resized_width,
+    //          resized_height, (float)resized_width / (float)resized_height);
 
     image_t *resized = NULL;
     if (image->w != resized_width || image->h != resized_height) {
@@ -583,7 +593,7 @@ static void *webcam_capture_thread_func(void *arg) {
     memcpy(packet_data + sizeof(uint32_t) * 2, image->pixels, rgb_size);
 
     // Send image data to server via VIDEO packet
-    log_info("[CLIENT SEND] Sending frame: %dx%d to server", image->w, image->h);
+    // log_info("[CLIENT SEND] Sending frame: %dx%d to server", image->w, image->h);
     if (send_video_packet(sockfd, (char *)packet_data, packet_size) < 0) {
       log_debug("Failed to send video frame to server");
     }
@@ -640,6 +650,36 @@ static void handle_client_list_packet(const void *data, size_t len) {
   for (int i = 0; i < g_remote_client_count; i++) {
     log_info("  - Client %u: %s", g_remote_clients[i].client_id, g_remote_clients[i].display_name);
   }
+}
+
+static void handle_server_state_packet(const void *data, size_t len) {
+  if (!data || len != sizeof(server_state_packet_t)) {
+    log_error("Invalid server state packet size: %zu", len);
+    return;
+  }
+
+  const server_state_packet_t *state = (const server_state_packet_t *)data;
+
+  // Convert from network byte order
+  uint32_t connected_count = ntohl(state->connected_client_count);
+  uint32_t active_count = ntohl(state->active_client_count);
+
+  log_info("Server state: %u connected clients, %u active clients", connected_count, active_count);
+
+  // Check if connected count changed - if so, clear console
+  if (g_server_state_initialized) {
+    if (g_last_active_count != active_count) {
+      log_info("Active client count changed from %u to %u - clearing console", g_last_active_count, active_count);
+      console_clear();
+      log_debug("ACTIVE COUNT CHANGED - Console cleared");
+    }
+  } else {
+    // First state packet received
+    g_server_state_initialized = true;
+    log_info("Initial server state received: %u connected clients", connected_count);
+  }
+
+  g_last_active_count = active_count;
 }
 
 /* ============================================================================
@@ -803,6 +843,10 @@ int main(int argc, char *argv[]) {
 
       // Reset connection lost flag for new connection
       g_connection_lost = false;
+
+      // Reset server state tracking for new connection
+      g_server_state_initialized = false;
+      g_last_active_count = 0;
 
       // Start data reception thread
       g_data_thread_exited = false; // Reset exit flag for new connection

@@ -66,6 +66,7 @@ typedef enum {
   PACKET_TYPE_STREAM_START = 10,  // Client requests to start sending video/audio
   PACKET_TYPE_STREAM_STOP = 11,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 12, // Server tells client to clear console
+  PACKET_TYPE_SERVER_STATE = 13,  // Server sends current state to clients
 } packet_type_t;
 
 typedef struct {
@@ -98,6 +99,13 @@ typedef struct {
   uint32_t client_count;                     // Number of clients in list
   client_info_packet_t clients[MAX_CLIENTS]; // Client info array
 } __attribute__((packed)) client_list_packet_t;
+
+// Server state packet - sent to clients when state changes
+typedef struct {
+  uint32_t connected_client_count; // Number of currently connected clients
+  uint32_t active_client_count;    // Number of clients actively sending video
+  uint32_t reserved[6];            // Reserved for future use
+} __attribute__((packed)) server_state_packet_t;
 
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
@@ -150,5 +158,6 @@ int send_pong_packet(int sockfd);
 
 // Console control functions
 int send_clear_console_packet(int sockfd);
+int send_server_state_packet(int sockfd, const server_state_packet_t *state);
 
 #endif // NETWORK_H
