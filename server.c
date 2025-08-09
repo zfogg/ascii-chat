@@ -28,16 +28,11 @@
  */
 
 static volatile bool g_should_exit = false;
-static framebuffer_t *g_frame_buffer = NULL;
-static pthread_t g_capture_thread;
 static pthread_t g_audio_thread;
 static bool g_audio_thread_created = false;
 static volatile bool g_audio_send_failed = false;
-static volatile bool g_capture_paused = false;       // Flag to pause capture during client operations
-static volatile bool g_capture_thread_ready = false; // Flag to indicate capture thread is ready
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t g_framebuffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 static audio_context_t g_audio_context = {0};
 
 /* Performance statistics */
@@ -67,6 +62,7 @@ typedef struct {
   // Media capabilities
   bool can_send_video;
   bool can_send_audio;
+  bool wants_color; // Client wants colored ASCII output
   bool is_sending_video;
   bool is_sending_audio;
 
@@ -136,7 +132,7 @@ void audio_mixer_destroy(audio_mixer_t *mixer);
 int mix_audio_from_clients(float *output_buffer, int num_samples);
 
 // Video mixing functions
-char *create_mixed_ascii_frame(unsigned short width, unsigned short height, size_t *out_size);
+char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, size_t *out_size);
 
 // Client management functions
 int add_client(int socket, const char *client_ip, int port);
@@ -171,96 +167,9 @@ static void sigint_handler(int sigint) {
 }
 
 /* ============================================================================
- * Frame Capture Thread
+ * No server capture thread - clients send their video
  * ============================================================================
  */
-
-static void *webcam_capture_thread_func(void *arg) {
-  (void)arg;
-
-  struct timespec last_capture_time = {0, 0};
-  uint64_t frames_captured = 0;
-
-  log_info("Frame capture thread started");
-
-  // Signal that capture thread is ready
-  g_capture_thread_ready = true;
-
-  while (!g_should_exit) {
-    if (connfd == 0 || g_capture_paused) {
-      usleep(100 * 1000);
-      continue;
-    }
-
-    // Frame rate limiting
-    struct timespec current_time;
-    clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
-                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
-
-    int frame_interval = get_frame_interval_ms();
-    if (elapsed_ms < frame_interval) {
-      usleep((frame_interval - elapsed_ms) * 1000);
-      continue;
-    }
-
-    // Capture frame
-    char *frame = ascii_read();
-    if (!frame) {
-      log_error("Failed to capture frame from webcam");
-      usleep(100000); // 100ms delay before retry
-      continue;
-    }
-
-    // Try to add frame to buffer (with mutex protection)
-    size_t frame_len = strlen(frame);
-
-    // Lock both mutexes in consistent order: stats first, then framebuffer
-    pthread_mutex_lock(&g_stats_mutex);
-    pthread_mutex_lock(&g_framebuffer_mutex);
-
-    // Extra safety check - make sure framebuffer exists and isn't being cleared
-    bool buffered = false;
-    if (g_frame_buffer && g_frame_buffer->rb && !g_capture_paused) {
-      buffered = framebuffer_write_frame(g_frame_buffer, frame, frame_len);
-    }
-
-    pthread_mutex_unlock(&g_framebuffer_mutex);
-
-    // Update stats while we still hold the stats mutex
-    g_stats.frames_captured++;
-    if (!buffered) {
-      g_stats.frames_dropped++;
-      if (g_stats.frames_dropped % 100 == 0) {
-        log_debug("Frame buffer full, dropped frame %lu", g_stats.frames_captured);
-      }
-    }
-
-    pthread_mutex_unlock(&g_stats_mutex);
-
-    if (strcmp(frame, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
-      usleep(100000); // 100ms delay before retry
-    }
-
-    // Free the original frame from ascii_read() - framebuffer_write_frame made a copy
-    free(frame);
-
-    frames_captured++;
-    last_capture_time = current_time;
-
-    // Update FPS statistics every 30 frames
-    if (frames_captured % 30 == 0) {
-      double fps = 30000.0 / elapsed_ms; // Convert to FPS
-      pthread_mutex_lock(&g_stats_mutex);
-      g_stats.avg_capture_fps = (g_stats.avg_capture_fps * 0.9) + (fps * 0.1);
-      pthread_mutex_unlock(&g_stats_mutex);
-    }
-  }
-
-  log_info("Frame capture thread exiting (g_should_exit=%d)", g_should_exit);
-  return NULL;
-}
 
 /* ============================================================================
  * Audio Thread
@@ -522,107 +431,223 @@ void *audio_mixer_thread_func(void *arg) {
 }
 
 /* ============================================================================
+ * Video Broadcasting Thread
+ * ============================================================================
+ */
+
+static pthread_t g_video_broadcast_thread;
+static bool g_video_broadcast_running = false;
+
+static void *video_broadcast_thread_func(void *arg) {
+  (void)arg;
+
+  log_info("Video broadcast thread started");
+  g_video_broadcast_running = true;
+
+  // Frame rate control (30 FPS)
+  const int target_fps = 30;
+  const int frame_interval_ms = 1000 / target_fps;
+  struct timespec last_broadcast_time;
+  clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
+
+  while (!g_should_exit) {
+    // Rate limiting
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+    long elapsed_ms = (current_time.tv_sec - last_broadcast_time.tv_sec) * 1000 +
+                      (current_time.tv_nsec - last_broadcast_time.tv_nsec) / 1000000;
+
+    if (elapsed_ms < frame_interval_ms) {
+      usleep((frame_interval_ms - elapsed_ms) * 1000);
+      continue;
+    }
+
+    // log_debug("Broadcast thread tick (elapsed=%ldms)", elapsed_ms);
+
+    // Check if we have any clients
+    pthread_mutex_lock(&g_client_manager_mutex);
+    int client_count = g_client_manager.client_count;
+    pthread_mutex_unlock(&g_client_manager_mutex);
+
+    if (client_count == 0) {
+      // log_debug("Broadcast thread: No clients connected");
+      usleep(100000); // 100ms sleep when no clients
+      continue;
+    }
+
+    // log_debug("Broadcast thread: %d clients connected", client_count);
+
+    // Create and send frames to each client based on their dimensions
+    // NOTE: We DON'T lock mutex here because create_mixed_ascii_frame will lock it
+    int sent_count = 0;
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      // Get client info with mutex lock
+      pthread_mutex_lock(&g_client_manager_mutex);
+      client_info_t client_copy = g_client_manager.clients[i];
+      pthread_mutex_unlock(&g_client_manager_mutex);
+
+      // log_debug("Checking client slot %d: active=%d, socket=%d", i, client_copy.active, client_copy.socket);
+      if (client_copy.active && client_copy.socket > 0) {
+        // Use client's dimensions if available, otherwise use defaults
+        unsigned short target_width = client_copy.width > 0 ? client_copy.width : 110;
+        unsigned short target_height = client_copy.height > 0 ? client_copy.height : 70;
+
+        // Create mixed frame for this client's dimensions
+        size_t mixed_size = 0;
+        char *mixed_frame = create_mixed_ascii_frame(target_width, target_height, client_copy.wants_color, &mixed_size);
+
+        if (mixed_frame && mixed_size > 0) {
+
+          // Send the mixed frame to this client
+          if (send_video_packet(client_copy.socket, mixed_frame, mixed_size) < 0) {
+            // log_debug("Failed to send video frame to client %u", client_copy.client_id);
+          } else {
+            sent_count++;
+          }
+
+          free(mixed_frame);
+        } else {
+          // log_debug("No mixed frame created for client %u (frame=%p, size=%zu)", client_copy.client_id, mixed_frame,
+          //           mixed_size);
+        }
+      }
+    }
+
+    if (sent_count > 0) {
+      // log_debug("Sent frames to %d clients", sent_count);
+    }
+
+    last_broadcast_time = current_time;
+  }
+
+  g_video_broadcast_running = false;
+  log_info("Video broadcast thread stopped");
+  return NULL;
+}
+
+/* ============================================================================
  * Video Mixing Functions
  * ============================================================================
  */
 
-// Create a mixed ASCII frame from all active video sources
-char *create_mixed_ascii_frame(unsigned short width, unsigned short height, size_t *out_size) {
+// Create a mixed ASCII frame from all active image sources
+char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, size_t *out_size) {
   if (!out_size || width == 0 || height == 0) {
     return NULL;
   }
 
-  // Collect all active video sources
+  // Collect all active image sources
   typedef struct {
-    char *frame_data;
-    size_t frame_size;
+    image_t *image;
     uint32_t client_id;
-    unsigned short src_width, src_height;
-  } video_source_t;
+  } image_source_t;
 
-  video_source_t sources[MAX_CLIENTS + 1]; // +1 for server's own video
+  image_source_t sources[MAX_CLIENTS];
   int source_count = 0;
 
-  // Add server's own video if available
-  frame_t server_frame = {.magic = 0, .size = 0, .data = NULL};
-  pthread_mutex_lock(&g_framebuffer_mutex);
-  bool server_frame_available = false;
-  if (g_frame_buffer) {
-    server_frame_available = framebuffer_read_frame(g_frame_buffer, &server_frame);
-  }
-  pthread_mutex_unlock(&g_framebuffer_mutex);
-
-  if (server_frame_available && server_frame.data && server_frame.size > 0) {
-    sources[source_count].frame_data = server_frame.data;
-    sources[source_count].frame_size = server_frame.size;
-    sources[source_count].client_id = 0;     // Server ID
-    sources[source_count].src_width = width; // Assume server matches client size
-    sources[source_count].src_height = height;
-    source_count++;
-  }
-
-  // Add client video sources
+  // Collect client image sources
   pthread_mutex_lock(&g_client_manager_mutex);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
+      // Try to get the most recent image, discarding older ones
       multi_source_frame_t multi_frame = {0};
-      if (framebuffer_read_multi_frame(client->incoming_video_buffer, &multi_frame)) {
-        sources[source_count].frame_data = multi_frame.data;
-        sources[source_count].frame_size = multi_frame.size;
-        sources[source_count].client_id = client->client_id;
-        sources[source_count].src_width = client->width > 0 ? client->width : width;
-        sources[source_count].src_height = client->height > 0 ? client->height : height;
-        source_count++;
+      multi_source_frame_t latest_frame = {0};
+      bool got_frame = false;
+
+      // Consume all available frames and keep only the latest
+      while (framebuffer_read_multi_frame(client->incoming_video_buffer, &multi_frame)) {
+        // Free the previous frame if we had one
+        if (got_frame && latest_frame.data) {
+          free(latest_frame.data);
+        }
+        latest_frame = multi_frame;
+        got_frame = true;
+      }
+
+      if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
+        // Parse the image data
+        // Format: [width:4][height:4][rgb_data:w*h*3]
+        uint32_t img_width = ntohl(*(uint32_t *)latest_frame.data);
+        uint32_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
+        rgb_t *pixels = (rgb_t *)(latest_frame.data + sizeof(uint32_t) * 2);
+
+        // Create an image_t structure
+        image_t *img = image_new(img_width, img_height);
+        if (img) {
+          memcpy(img->pixels, pixels, img_width * img_height * sizeof(rgb_t));
+          sources[source_count].image = img;
+          sources[source_count].client_id = client->client_id;
+          source_count++;
+          // log_debug("Got image from client %u: %ux%u", client->client_id, img_width, img_height);
+        }
+
+        // Free the frame data
+        free(latest_frame.data);
       }
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
 
-  // If no video sources, return empty frame
+  // If no image sources, return empty frame
   if (source_count == 0) {
+    // log_debug("No image sources available for mixing");
     *out_size = 0;
     return NULL;
   }
 
-  // If only one source, return it directly
-  if (source_count == 1) {
-    char *result;
-    SAFE_MALLOC(result, sources[0].frame_size, char *);
-    memcpy(result, sources[0].frame_data, sources[0].frame_size);
-    *out_size = sources[0].frame_size;
-    // Free source frame if it was from server
-    if (sources[0].client_id == 0 && server_frame.data) {
-      free(server_frame.data);
+  // log_debug("Mixing %d image sources for %ux%u output", source_count, width, height);
+
+  // Create a composite image at the target dimensions
+  image_t *composite = image_new(width, height);
+  if (!composite) {
+    log_error("Failed to create composite image");
+    // Clean up source images
+    for (int i = 0; i < source_count; i++) {
+      if (sources[i].image) {
+        image_destroy(sources[i].image);
+      }
     }
-    return result;
+    *out_size = 0;
+    return NULL;
   }
 
-  // Convert to ascii_frame_source_t format for the grid function
-  ascii_frame_source_t *ascii_sources;
-  SAFE_MALLOC(ascii_sources, source_count * sizeof(ascii_frame_source_t), ascii_frame_source_t *);
+  // Clear composite to black
+  image_clear(composite);
 
+  // For now, just use the first image and resize it to fill the frame
+  // TODO: Implement proper grid layout for multiple sources
+  if (source_count >= 1 && sources[0].image) {
+    image_resize(sources[0].image, composite);
+  }
+
+  // Convert the composite image to ASCII (colored or plain based on client preference)
+  char *ascii_frame;
+  if (wants_color) {
+    ascii_frame = image_print_colored(composite);
+  } else {
+    ascii_frame = image_print(composite);
+  }
+
+  if (ascii_frame) {
+    *out_size = strlen(ascii_frame);
+    // log_debug("Generated %s ASCII frame: %zu bytes", wants_color ? "colored" : "plain", *out_size);
+  } else {
+    log_error("Failed to convert image to ASCII");
+    *out_size = 0;
+  }
+
+  // Clean up
+  image_destroy(composite);
   for (int i = 0; i < source_count; i++) {
-    ascii_sources[i].frame_data = sources[i].frame_data;
-    ascii_sources[i].frame_size = sources[i].frame_size;
-  }
-
-  // Use the abstracted grid creation function from ascii.c
-  char *mixed_frame = ascii_create_grid(ascii_sources, source_count, width, height, out_size);
-
-  free(ascii_sources);
-
-  // Cleanup source frames
-  if (server_frame.data) {
-    free(server_frame.data);
-  }
-  for (int i = 1; i < source_count; i++) {
-    if (sources[i].frame_data) {
-      free(sources[i].frame_data);
+    if (sources[i].image) {
+      image_destroy(sources[i].image);
     }
   }
 
-  return mixed_frame;
+  return ascii_frame;
 }
 
 /* ============================================================================
@@ -637,7 +662,6 @@ int main(int argc, char *argv[]) {
 
   options_init(argc, argv);
   int port = strtoint(opt_port);
-  unsigned short int webcam_index = opt_webcam_index;
 
   precalc_luminance_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
@@ -649,62 +673,31 @@ int main(int argc, char *argv[]) {
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
-  // Initialize webcam
-  if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
-    log_fatal("Failed to initialize webcam");
-    exit(ASCIICHAT_ERR_WEBCAM);
-  }
-
-  // Create frame buffer - no need for size specification anymore
-  g_frame_buffer = framebuffer_create(FRAME_BUFFER_CAPACITY);
-  if (!g_frame_buffer) {
-    log_fatal("Failed to create frame buffer");
-    ascii_read_destroy();
-    exit(ASCIICHAT_ERR_MALLOC);
-  }
-  log_info("Created framebuffer with capacity for %d frames", FRAME_BUFFER_CAPACITY);
+  // Server no longer captures webcam - clients send their video
+  // Frame buffer removed - using client buffers instead
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
     if (audio_init(&g_audio_context) != 0) {
       log_fatal("Failed to initialize audio system");
-      framebuffer_destroy(g_frame_buffer);
-      ascii_read_destroy();
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
     if (audio_start_capture(&g_audio_context) != 0) {
       log_error("Failed to start audio capture");
       audio_destroy(&g_audio_context);
-      framebuffer_destroy(g_frame_buffer);
-      ascii_read_destroy();
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
     log_info("Audio system initialized and capture started");
   }
 
-  // Start capture thread
-  if (pthread_create(&g_capture_thread, NULL, webcam_capture_thread_func, NULL) != 0) {
-    log_fatal("Failed to create capture thread");
-    framebuffer_destroy(g_frame_buffer);
-    ascii_read_destroy();
-    exit(ASCIICHAT_ERR_THREAD);
-  }
-
-  // Wait for capture thread to be ready before accepting connections
-  log_info("Waiting for capture thread to initialize...");
-  while (!g_capture_thread_ready && !g_should_exit) {
-    usleep(10000); // 10ms
-  }
-  log_info("Capture thread ready");
+  // No capture thread needed - clients send their video
 
   // Start audio thread if enabled
   if (opt_audio_enabled) {
     if (pthread_create(&g_audio_thread, NULL, audio_thread_func, NULL) != 0) {
       log_fatal("Failed to create audio thread");
-      framebuffer_destroy(g_frame_buffer);
-      ascii_read_destroy();
       audio_destroy(&g_audio_context);
       exit(ASCIICHAT_ERR_THREAD);
     }
@@ -723,6 +716,13 @@ int main(int argc, char *argv[]) {
         log_info("Audio mixer initialized and thread started");
       }
     }
+  }
+
+  // Start video broadcast thread for mixing and sending frames to all clients
+  if (pthread_create(&g_video_broadcast_thread, NULL, video_broadcast_thread_func, NULL) != 0) {
+    log_error("Failed to create video broadcast thread");
+  } else {
+    log_info("Video broadcast thread started");
   }
 
   // Network setup
@@ -818,10 +818,6 @@ int main(int argc, char *argv[]) {
     }
 
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
-    connfd = 0; // Reset since ownership transferred to client manager
-
-    // Resume capture thread now that client is ready
-    g_capture_paused = false;
 
     // Don't clear framebuffer here - it will be cleared when next client connects
     // This avoids race conditions with any frames that might still be in use
@@ -831,10 +827,12 @@ int main(int argc, char *argv[]) {
   log_info("Server shutting down...");
   g_should_exit = true;
 
-  log_debug("Waiting for capture thread to finish...");
-  // Wait for capture thread to finish
-  pthread_join(g_capture_thread, NULL);
-  log_debug("Capture thread finished");
+  // Wait for video broadcast thread to finish
+  if (g_video_broadcast_running) {
+    log_info("Waiting for video broadcast thread to finish...");
+    pthread_join(g_video_broadcast_thread, NULL);
+    log_info("Video broadcast thread stopped");
+  }
 
   // Wait for audio thread to finish if enabled
   if (opt_audio_enabled && g_audio_thread_created) {
@@ -854,16 +852,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Cleanup resources
-  pthread_mutex_lock(&g_framebuffer_mutex);
-  if (g_frame_buffer) {
-    log_debug("Destroying framebuffer at %p", g_frame_buffer);
-    framebuffer_destroy(g_frame_buffer);
-    g_frame_buffer = NULL;
-  }
-  pthread_mutex_unlock(&g_framebuffer_mutex);
-  log_debug("Framebuffer cleanup complete");
-
-  ascii_read_destroy();
+  // No server framebuffer or webcam to clean up
   close(listenfd);
 
   // Final statistics
@@ -877,7 +866,6 @@ int main(int argc, char *argv[]) {
   // Destroy mutexes (do this before log_destroy in case logging uses them)
   pthread_mutex_destroy(&g_stats_mutex);
   pthread_mutex_destroy(&g_socket_mutex);
-  pthread_mutex_destroy(&g_framebuffer_mutex);
 
   log_destroy();
   return 0;
@@ -925,8 +913,9 @@ void *client_receive_thread_func(void *arg) {
         strncpy(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
         client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
         client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
-        log_info("Client %u joined: %s (video=%d, audio=%d)", client->client_id, client->display_name,
-                 client->can_send_video, client->can_send_audio);
+        client->wants_color = (join_info->capabilities & CLIENT_CAP_COLOR) != 0;
+        log_info("Client %u joined: %s (video=%d, audio=%d, color=%d)", client->client_id, client->display_name,
+                 client->can_send_video, client->can_send_audio, client->wants_color);
       }
       break;
     }
@@ -964,16 +953,40 @@ void *client_receive_thread_func(void *arg) {
     }
 
     case PACKET_TYPE_VIDEO: {
-      // Handle incoming video frame from client
-      if (client->is_sending_video && data && len > 0) {
-        // Store frame in client's buffer with metadata
+      // Handle incoming image data from client
+      // Format: [width:4][height:4][rgb_data:w*h*3]
+      if (client->is_sending_video && data && len > sizeof(uint32_t) * 2) {
+        // Parse image dimensions
+        uint32_t img_width = ntohl(*(uint32_t *)data);
+        uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
+        size_t expected_size = sizeof(uint32_t) * 2 + img_width * img_height * sizeof(rgb_t);
+
+        if (len != expected_size) {
+          log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id,
+                    expected_size, len);
+          break;
+        }
+
+        // log_debug("Received image from client %u: %ux%u", client->client_id, img_width, img_height);
+
+        // Store the entire packet (including dimensions) in the buffer
+        // The mixing function will parse it
         uint32_t timestamp = (uint32_t)time(NULL);
         if (client->incoming_video_buffer) {
-          framebuffer_write_multi_frame(client->incoming_video_buffer, (const char *)data, len, client->client_id, 0,
-                                        timestamp);
-          client->frames_received++;
-          log_debug("Stored video frame from client %u (size=%zu)", client->client_id, len);
+          bool stored = framebuffer_write_multi_frame(client->incoming_video_buffer, (const char *)data, len,
+                                                      client->client_id, 0, timestamp);
+          if (stored) {
+            client->frames_received++;
+            // log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
+            //           client->frames_received);
+          } else {
+            log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
+          }
+        } else {
+          log_error("Client %u has no incoming video buffer!", client->client_id);
         }
+      } else {
+        log_debug("Ignoring video packet: is_sending=%d, len=%zu", client->is_sending_video, len);
       }
       break;
     }
@@ -1041,6 +1054,7 @@ void *client_receive_thread_func(void *arg) {
 }
 
 // Thread function to send data to a specific client
+// DISABLED: Using broadcast thread instead to avoid competition
 void *client_send_thread_func(void *arg) {
   client_info_t *client = (client_info_t *)arg;
   if (!client || client->socket <= 0) {
@@ -1048,34 +1062,12 @@ void *client_send_thread_func(void *arg) {
     return NULL;
   }
 
-  log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
+  log_info("Send thread for client %u (%s) - disabled, using broadcast thread", client->client_id,
+           client->display_name);
 
+  // Just wait for exit signal - broadcast thread handles sending
   while (!g_should_exit && client->active) {
-    // Create and send mixed video frame containing all active sources
-    size_t mixed_frame_size = 0;
-    char *mixed_frame = create_mixed_ascii_frame(client->width > 0 ? client->width : 80,
-                                                 client->height > 0 ? client->height : 24, &mixed_frame_size);
-
-    if (mixed_frame && mixed_frame_size > 0) {
-      // Send mixed frame to this client (use compression)
-      int sent = send_compressed_frame(client->socket, mixed_frame, mixed_frame_size);
-      if (sent >= 0) {
-        client->frames_sent++;
-        pthread_mutex_lock(&g_stats_mutex);
-        g_stats.bytes_sent += mixed_frame_size;
-        pthread_mutex_unlock(&g_stats_mutex);
-      } else {
-        log_error("Failed to send mixed frame to client %u", client->client_id);
-        // Client might be disconnected
-        free(mixed_frame);
-        break;
-      }
-
-      free(mixed_frame);
-    } else {
-      // No mixed frame available, wait a bit
-      usleep(10000); // 10ms
-    }
+    usleep(100000); // 100ms
   }
 
   log_info("Send thread for client %u terminated", client->client_id);
@@ -1120,7 +1112,7 @@ int add_client(int socket, const char *client_ip, int port) {
   snprintf(client->display_name, sizeof(client->display_name), "Client%u", client->client_id);
 
   // Create individual video buffer for this client
-  client->incoming_video_buffer = framebuffer_create(16); // 16 frame buffer per client
+  client->incoming_video_buffer = framebuffer_create_multi(64); // Increased to 64 frames to handle bursts
   if (!client->incoming_video_buffer) {
     log_error("Failed to create video buffer for client %u", client->client_id);
     pthread_mutex_unlock(&g_client_manager_mutex);

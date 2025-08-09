@@ -139,6 +139,13 @@ typedef struct {
 framebuffer_t *framebuffer_create(size_t capacity);
 
 /**
+ * Create a multi-source frame buffer for multi-user support
+ * @param capacity Number of frames to buffer
+ * @return Frame buffer or NULL on failure
+ */
+framebuffer_t *framebuffer_create_multi(size_t capacity);
+
+/**
  * Destroy a frame buffer
  * @param fb Frame buffer to destroy
  */

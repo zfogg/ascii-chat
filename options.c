@@ -9,6 +9,7 @@
 
 #include "ascii.h"
 #include "options.h"
+#include "common.h"
 
 static const unsigned short default_width = 110, default_height = 70;
 unsigned short int opt_width = default_width, opt_height = default_height,
@@ -97,21 +98,27 @@ void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
 
   if (get_terminal_size(&term_width, &term_height) == 0) {
+    log_debug("Terminal size detected: %dx%d, auto_width=%d, auto_height=%d", term_width, term_height, auto_width,
+              auto_height);
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (auto_height && auto_width) {
       opt_height = term_height;
-      // Note: width will be calculated by aspect_ratio() when next image is
-      // loaded
+      opt_width = term_width; // Also set width when both are auto
+      log_debug("Both auto: set to %dx%d", opt_width, opt_height);
     }
     // If only height is auto, use full terminal height
     else if (auto_height) {
       opt_height = term_height;
+      log_debug("Height auto: set height to %d", opt_height);
     }
     // If only width is auto, use full terminal width
     else if (auto_width) {
       opt_width = term_width;
+      log_debug("Width auto: set width to %d", opt_width);
     }
+  } else {
+    log_debug("Failed to get terminal size, using defaults: %dx%d", opt_width, opt_height);
   }
 }
 
@@ -119,12 +126,16 @@ void update_dimensions_to_terminal_size(void) {
   unsigned short int term_width, term_height;
   // Get current terminal size
   if (get_terminal_size(&term_width, &term_height) == 0) {
+    log_debug("Initial terminal size: %dx%d", term_width, term_height);
     if (auto_width) {
       opt_width = term_width;
     }
     if (auto_height) {
       opt_height = term_height;
     }
+    log_debug("After initial update: opt_width=%d, opt_height=%d", opt_width, opt_height);
+  } else {
+    log_debug("Failed to get initial terminal size");
   }
 }
 
