@@ -60,11 +60,12 @@ typedef enum {
   PACKET_TYPE_PING = 5,
   PACKET_TYPE_PONG = 6,
   // Multi-user protocol extensions
-  PACKET_TYPE_CLIENT_JOIN = 7,   // Client announces capability to send media
-  PACKET_TYPE_CLIENT_LEAVE = 8,  // Clean disconnect notification
-  PACKET_TYPE_CLIENT_LIST = 9,   // Server sends list of active clients
-  PACKET_TYPE_STREAM_START = 10, // Client requests to start sending video/audio
-  PACKET_TYPE_STREAM_STOP = 11,  // Client stops sending media
+  PACKET_TYPE_CLIENT_JOIN = 7,    // Client announces capability to send media
+  PACKET_TYPE_CLIENT_LEAVE = 8,   // Clean disconnect notification
+  PACKET_TYPE_CLIENT_LIST = 9,    // Server sends list of active clients
+  PACKET_TYPE_STREAM_START = 10,  // Client requests to start sending video/audio
+  PACKET_TYPE_STREAM_STOP = 11,   // Client stops sending media
+  PACKET_TYPE_CLEAR_CONSOLE = 12, // Server tells client to clear console
 } packet_type_t;
 
 typedef struct {
@@ -146,5 +147,8 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
 // Heartbeat/ping functions
 int send_ping_packet(int sockfd);
 int send_pong_packet(int sockfd);
+
+// Console control functions
+int send_clear_console_packet(int sockfd);
 
 #endif // NETWORK_H

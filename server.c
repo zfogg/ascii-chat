@@ -52,8 +52,8 @@ typedef struct {
 
 typedef struct {
   int socket;
-  pthread_t receive_thread; // NEW: Thread for receiving client data
-  pthread_t send_thread;    // Existing: Thread for sending data to client
+  pthread_t receive_thread; // Thread for receiving client data
+  // Send thread removed - using broadcast thread for all sending
   uint32_t client_id;
   char display_name[MAX_DISPLAY_NAME_LEN];
   char client_ip[INET_ADDRSTRLEN];
@@ -465,6 +465,9 @@ static void *video_broadcast_thread_func(void *arg) {
       continue;
     }
 
+    // Remove startup delay - might be causing issues
+    // Clients should be ready when they set dimensions
+
     // log_debug("Broadcast thread tick (elapsed=%ldms)", elapsed_ms);
 
     // Check if we have any clients
@@ -476,6 +479,12 @@ static void *video_broadcast_thread_func(void *arg) {
       // log_debug("Broadcast thread: No clients connected");
       usleep(100000); // 100ms sleep when no clients
       continue;
+    }
+
+    static int frame_counter = 0;
+    frame_counter++;
+    if (frame_counter % 30 == 0) { // Log every 30 frames (1 second)
+      log_info("Broadcast thread: frame %d, %d clients connected", frame_counter, client_count);
     }
 
     // log_debug("Broadcast thread: %d clients connected", client_count);
@@ -490,8 +499,40 @@ static void *video_broadcast_thread_func(void *arg) {
       client_info_t client_copy = g_client_manager.clients[i];
       pthread_mutex_unlock(&g_client_manager_mutex);
 
-      // log_debug("Checking client slot %d: active=%d, socket=%d", i, client_copy.active, client_copy.socket);
+      // Skip if client hasn't finished initialization
+      if (client_copy.width == 0 || client_copy.height == 0) {
+        if (client_copy.active) {
+          static int skip_count[MAX_CLIENTS] = {0};
+          skip_count[i]++;
+          if (skip_count[i] == 1 || skip_count[i] % 30 == 0) {
+            log_warn("Skipping client %u (slot %d) - dimensions not set (w=%u, h=%u) - skipped %d times",
+                     client_copy.client_id, i, client_copy.width, client_copy.height, skip_count[i]);
+          }
+        }
+        continue;
+      }
+
+      // Add debug logging to track what's happening with second client
+      if (client_copy.active) {
+        static int client_frame_count[MAX_CLIENTS] = {0};
+        client_frame_count[i]++;
+        if (client_frame_count[i] % 30 == 0) { // Log every 30 frames
+          log_info("Broadcasting to client %u (slot %d): socket=%d, width=%u, height=%u, frames_sent=%d",
+                   client_copy.client_id, i, client_copy.socket, client_copy.width, client_copy.height,
+                   client_frame_count[i]);
+        }
+      }
+
       if (client_copy.active && client_copy.socket > 0) {
+        // Lock mutex while sending to ensure thread safety
+        pthread_mutex_lock(&g_client_manager_mutex);
+        // Verify client is still active and socket matches
+        if (!g_client_manager.clients[i].active || g_client_manager.clients[i].socket != client_copy.socket) {
+          pthread_mutex_unlock(&g_client_manager_mutex);
+          log_warn("Client %u state changed during broadcast, skipping", client_copy.client_id);
+          continue;
+        }
+        pthread_mutex_unlock(&g_client_manager_mutex);
         // Use client's dimensions if available, otherwise use defaults
         unsigned short target_width = client_copy.width > 0 ? client_copy.width : 110;
         unsigned short target_height = client_copy.height > 0 ? client_copy.height : 70;
@@ -504,29 +545,45 @@ static void *video_broadcast_thread_func(void *arg) {
         if (mixed_frame && mixed_size > 0) {
 
           // Send frame with header that includes dimensions
-          compressed_frame_header_t header = {
-            .magic = COMPRESSION_FRAME_MAGIC,
-            .compressed_size = 0,  // Not compressed
-            .original_size = mixed_size,
-            .checksum = calculate_crc32(mixed_frame, mixed_size),
-            .width = target_width,
-            .height = target_height
-          };
-          
+          compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
+                                              .compressed_size = 0, // Not compressed
+                                              .original_size = mixed_size,
+                                              .checksum = calculate_crc32(mixed_frame, mixed_size),
+                                              .width = target_width,
+                                              .height = target_height};
+
           // Send header first
-          if (send_video_header_packet(client_copy.socket, &header, sizeof(header)) >= 0) {
+          int header_result = send_video_header_packet(client_copy.socket, &header, sizeof(header));
+          if (header_result < 0) {
+            log_error("Failed to send header to client %u (socket=%d): %s", client_copy.client_id, client_copy.socket,
+                      strerror(errno));
+          } else {
             // Then send the frame data
-            if (send_video_packet(client_copy.socket, mixed_frame, mixed_size) < 0) {
-              // log_debug("Failed to send video frame to client %u", client_copy.client_id);
+            int frame_result = send_video_packet(client_copy.socket, mixed_frame, mixed_size);
+            if (frame_result < 0) {
+              log_error("Failed to send video frame to client %u (socket=%d): %s", client_copy.client_id,
+                        client_copy.socket, strerror(errno));
+              // Mark client as inactive if we can't send to it
+              pthread_mutex_lock(&g_client_manager_mutex);
+              if (g_client_manager.clients[i].client_id == client_copy.client_id) {
+                g_client_manager.clients[i].active = false;
+              }
+              pthread_mutex_unlock(&g_client_manager_mutex);
             } else {
               sent_count++;
+              static int success_count[MAX_CLIENTS] = {0};
+              success_count[i]++;
+              if (success_count[i] == 1 || success_count[i] % 30 == 0) { // Log first and every 30 successful sends
+                log_info("Successfully sent %d frames to client %u (slot %d, socket=%d, size=%zu)", success_count[i],
+                         client_copy.client_id, i, client_copy.socket, mixed_size);
+              }
             }
           }
 
           free(mixed_frame);
         } else {
-          // log_debug("No mixed frame created for client %u (frame=%p, size=%zu)", client_copy.client_id, mixed_frame,
-          //           mixed_size);
+          log_warn("No mixed frame created for client %u (frame=%p, size=%zu)", client_copy.client_id, mixed_frame,
+                   mixed_size);
         }
       }
     }
@@ -534,6 +591,24 @@ static void *video_broadcast_thread_func(void *arg) {
     if (sent_count > 0) {
       // log_debug("Sent frames to %d clients", sent_count);
     }
+
+    // After broadcasting to all clients, consume the frames from buffers to prevent overflow
+    // This ensures fresh frames for the next cycle
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->active && client->incoming_video_buffer) {
+        multi_source_frame_t frame_to_discard;
+        // Consume the frame we just broadcast
+        if (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame_to_discard)) {
+          // Free the frame data that was allocated when written to the buffer
+          if (frame_to_discard.data) {
+            free(frame_to_discard.data);
+          }
+        }
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
 
     last_broadcast_time = current_time;
   }
@@ -566,23 +641,34 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   // Collect client image sources
   pthread_mutex_lock(&g_client_manager_mutex);
+  int active_client_count = 0;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (g_client_manager.clients[i].active) {
+      active_client_count++;
+    }
+  }
+  static int mix_frame_count = 0;
+  mix_frame_count++;
+  if (mix_frame_count % 30 == 0) { // Log every 30 frames
+    log_info("create_mixed_ascii_frame #%d: Creating %ux%u frame (%d active clients)", mix_frame_count, width, height,
+             active_client_count);
+  }
+
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
-      // Try to get the most recent image, discarding older ones
-      multi_source_frame_t multi_frame = {0};
-      multi_source_frame_t latest_frame = {0};
-      bool got_frame = false;
-
-      // Consume all available frames and keep only the latest
-      while (framebuffer_read_multi_frame(client->incoming_video_buffer, &multi_frame)) {
-        // Free the previous frame if we had one
-        if (got_frame && latest_frame.data) {
-          free(latest_frame.data);
-        }
-        latest_frame = multi_frame;
-        got_frame = true;
+    if (client->active) {
+      static int log_count = 0;
+      log_count++;
+      if (log_count <= 10 || log_count % 100 == 0) { // Log first 10 then every 100
+        log_info("  Client slot %d: id=%u, sending_video=%d, has_buffer=%d, width=%u, height=%u", i, client->client_id,
+                 client->is_sending_video, (client->incoming_video_buffer != NULL), client->width, client->height);
       }
+    }
+
+    if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
+      // Peek at the latest frame without consuming it
+      multi_source_frame_t latest_frame = {0};
+      bool got_frame = framebuffer_peek_latest_multi_frame(client->incoming_video_buffer, &latest_frame);
 
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
         // Parse the image data
@@ -610,33 +696,211 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   // If no image sources, return empty frame
   if (source_count == 0) {
-    // log_debug("No image sources available for mixing");
+    log_debug("No image sources available for mixing (%d active clients, 0 sending video)", active_client_count);
     *out_size = 0;
     return NULL;
   }
 
-  log_debug("Mixing %d image sources for %ux%u output", source_count, width, height);
+  if (mix_frame_count % 30 == 0) { // Log every 30 frames
+    log_info("Mixing %d image sources for %ux%u output (frame #%d)", source_count, width, height, mix_frame_count);
+  }
 
-  // For now, just use the first image source directly without pre-resizing
-  // TODO: Implement proper grid layout for multiple sources
-  image_t *source_image = NULL;
+  // Create composite image for multiple sources with grid layout
   image_t *composite = NULL;
-  
-  if (source_count >= 1 && sources[0].image) {
-    source_image = sources[0].image;
+
+  // Initialize to prevent old frame data from appearing
+  // This is critical for preventing the "old frames" issue
+
+  if (source_count == 1 && sources[0].image) {
+    // Single source - create a properly sized composite for it
+    // Don't use the source directly as it might not be the right size
+    composite = image_new(width * 2, height);
+    if (!composite) {
+      log_error("Failed to create composite image for single source");
+      *out_size = 0;
+      for (int i = 0; i < source_count; i++) {
+        if (sources[i].image) {
+          image_destroy(sources[i].image);
+        }
+      }
+      return NULL;
+    }
+
+    // Clear the composite to ensure no old data remains
+    // First memset to zero, then use image_clear for proper initialization
+    memset(composite->pixels, 0, composite->w * composite->h * sizeof(rgb_t));
+    image_clear(composite);
+
+    // Calculate how to fit the single source while maintaining aspect ratio
+    float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
+    float display_aspect = (float)width / (float)height; // Terminal display aspect
+
+    int target_width, target_height;
+    // Apply scale factor to make single images larger (0.98 = 98% of available space)
+    float scale_factor = 0.98f;
+
+    if (src_aspect > display_aspect) {
+      // Source is wider - fit to width
+      target_width = (int)((width * 2) * scale_factor);               // Scale to use most of the width
+      target_height = (int)((float)target_width / 2.0f / src_aspect); // Maintain aspect ratio
+    } else {
+      // Source is taller - fit to height
+      target_height = (int)(height * scale_factor);                   // Scale to use most of the height
+      target_width = (int)((float)target_height * src_aspect * 2.0f); // *2 for terminal aspect
+    }
+
+    // Ensure bounds
+    if (target_width > width * 2)
+      target_width = width * 2;
+    if (target_height > height)
+      target_height = height;
+    if (target_width < 10)
+      target_width = 10;
+    if (target_height < 5)
+      target_height = 5;
+
+    // Resize and center the image
+    image_t *resized = image_new(target_width, target_height);
+    if (resized) {
+      image_resize(sources[0].image, resized);
+
+      // Center in the composite
+      int x_padding = (width * 2 - target_width) / 2;
+      int y_padding = (height - target_height) / 2;
+
+      // Copy to composite
+      for (int y = 0; y < target_height; y++) {
+        for (int x = 0; x < target_width; x++) {
+          int src_idx = y * target_width + x;
+          int dst_x = x_padding + x;
+          int dst_y = y_padding + y;
+          int dst_idx = dst_y * (width * 2) + dst_x;
+
+          if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h) {
+            composite->pixels[dst_idx] = resized->pixels[src_idx];
+          }
+        }
+      }
+
+      image_destroy(resized);
+    }
+  } else if (source_count > 1) {
+    // Multiple sources - create grid layout
+    // Use double width for the composite to account for terminal character aspect ratio
+    composite = image_new(width * 2, height);
+    if (!composite) {
+      log_error("Failed to create composite image");
+      *out_size = 0;
+      for (int i = 0; i < source_count; i++) {
+        if (sources[i].image) {
+          image_destroy(sources[i].image);
+        }
+      }
+      return NULL;
+    }
+
+    // Clear the composite with black background - ensure no old data remains
+    memset(composite->pixels, 0, composite->w * composite->h * sizeof(rgb_t));
+    image_clear(composite);
+
+    // Calculate grid dimensions based on source count
+    int grid_cols = (source_count == 2) ? 2 : (source_count <= 4) ? 2 : 3;
+    int grid_rows = (source_count + grid_cols - 1) / grid_cols;
+
+    // Calculate cell dimensions
+    int cell_width = (width * 2) / grid_cols;
+    int cell_height = height / grid_rows;
+
+    // Place each source in the grid
+    for (int i = 0; i < source_count && i < 9; i++) { // Max 9 sources in 3x3 grid
+      if (!sources[i].image)
+        continue;
+
+      int row = i / grid_cols;
+      int col = i % grid_cols;
+      int x_offset = col * cell_width;
+      int y_offset = row * cell_height;
+
+      // Create resized version of source to fit in cell while maintaining aspect ratio
+      // The cell has pixel dimensions cell_width x cell_height
+      // But cell_width is already doubled for terminal character aspect ratio
+      // So the actual display aspect ratio is (cell_width/2):cell_height
+
+      float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
+
+      // For terminal display, we need to consider that each character is 2:1 (width:height)
+      // So a cell that's cell_width pixels wide displays as cell_width/2 characters wide
+      float display_width_chars = (float)cell_width / 2.0f;
+      float display_aspect = display_width_chars / (float)cell_height;
+
+      int target_width, target_height;
+
+      // We want to fill as much of the cell as possible while maintaining aspect ratio
+      // Apply a scale factor to make images larger within cells (0.95 = 95% of cell size)
+      float scale_factor = 0.95f;
+
+      if (src_aspect > display_aspect) {
+        // Source is wider than cell display - fit to width
+        target_width = (int)(cell_width * scale_factor);                // Scale up to use more of the cell
+        target_height = (int)((float)target_width / 2.0f / src_aspect); // Adjusted for display
+      } else {
+        // Source is taller than cell display - fit to height
+        target_height = (int)(cell_height * scale_factor);              // Scale up to use more of the cell
+        target_width = (int)((float)target_height * src_aspect * 2.0f); // *2 for terminal aspect
+      }
+
+      // Make sure we don't exceed cell bounds (safety check)
+      if (target_width > cell_width)
+        target_width = cell_width;
+      if (target_height > cell_height)
+        target_height = cell_height;
+
+      // Ensure minimum size with better defaults
+      if (target_width < 10)
+        target_width = 10;
+      if (target_height < 5)
+        target_height = 5;
+
+      image_t *resized = image_new(target_width, target_height);
+      if (resized) {
+        image_resize(sources[i].image, resized);
+
+        // Center the resized image in the cell
+        int x_padding = (cell_width - target_width) / 2;
+        int y_padding = (cell_height - target_height) / 2;
+
+        // Copy resized image to composite at the appropriate position with centering
+        for (int y = 0; y < target_height; y++) {
+          for (int x = 0; x < target_width; x++) {
+            int src_idx = y * target_width + x;
+            int dst_x = x_offset + x_padding + x;
+            int dst_y = y_offset + y_padding + y;
+            int dst_idx = dst_y * (width * 2) + dst_x;
+
+            if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h &&
+                dst_x < (x_offset + cell_width) && dst_y < (y_offset + cell_height)) {
+              composite->pixels[dst_idx] = resized->pixels[src_idx];
+            }
+          }
+        }
+
+        image_destroy(resized);
+      }
+    }
+
+    log_debug("Created grid layout: %dx%d grid for %d sources", grid_cols, grid_rows, source_count);
   } else {
     // No sources, create empty composite
-    composite = image_new(width, height);
+    composite = image_new(width * 2, height);
     if (!composite) {
       log_error("Failed to create empty image");
       *out_size = 0;
       return NULL;
     }
-    source_image = composite;
-    image_clear(source_image);
+    image_clear(composite);
   }
 
-  char *ascii_frame = ascii_convert(source_image, width, height, wants_color, wants_stretch);
+  char *ascii_frame = ascii_convert(composite, width, height, wants_color, wants_stretch);
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
@@ -646,10 +910,13 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     *out_size = 0;
   }
 
-  // Clean up - only destroy composite if we created one
+  // Clean up
+  // We always create a new composite image regardless of source count
   if (composite) {
     image_destroy(composite);
   }
+
+  // Always destroy source images as we created them
   for (int i = 0; i < source_count; i++) {
     if (sources[i].image) {
       image_destroy(sources[i].image);
@@ -797,12 +1064,21 @@ int main(int argc, char *argv[]) {
         pthread_mutex_lock(&g_client_manager_mutex);
         for (int i = 0; i < MAX_CLIENTS; i++) {
           client_info_t *client = &g_client_manager.clients[i];
-          if (client->active && client->socket <= 0) { // Check socket status for disconnected clients
-            log_info("Cleaning up disconnected client %u", client->client_id);
-            // Wait for threads to finish
+          // Check for clients that are either inactive or have no socket
+          if ((client->client_id > 0) && (!client->active || client->socket <= 0)) {
+            uint32_t client_id = client->client_id;
+            pthread_mutex_unlock(&g_client_manager_mutex);
+
+            log_info("Cleaning up disconnected client %u", client_id);
+            // Wait for receive thread to finish (send thread removed)
             pthread_join(client->receive_thread, NULL);
-            pthread_join(client->send_thread, NULL);
-            remove_client(client->client_id);
+            // No send thread to join anymore
+
+            // Remove the client
+            remove_client(client_id);
+
+            // Re-lock for next iteration
+            pthread_mutex_lock(&g_client_manager_mutex);
           }
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
@@ -927,6 +1203,10 @@ void *client_receive_thread_func(void *arg) {
         log_info("Client %u joined: %s (video=%d, audio=%d, color=%d, stretch=%d)", client->client_id,
                  client->display_name, client->can_send_video, client->can_send_audio, client->wants_color,
                  client->wants_stretch);
+
+        // REMOVED: Don't send CLEAR_CONSOLE to other clients when a new client joins
+        // This was causing flickering for existing clients
+        // The grid layout will update naturally with the next frame
       }
       break;
     }
@@ -1058,8 +1338,12 @@ void *client_receive_thread_func(void *arg) {
     }
   }
 
-  // Mark client as inactive
+  // Mark client as inactive and close socket to trigger cleanup
   client->active = false;
+  if (client->socket > 0) {
+    close(client->socket);
+    client->socket = 0;
+  }
   log_info("Receive thread for client %u terminated", client->client_id);
   return NULL;
 }
@@ -1150,14 +1434,9 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
-    log_error("Failed to create send thread for client %u", client->client_id);
-    // Signal receive thread to exit gracefully and wait for it
-    client->active = false;
-    pthread_join(client->receive_thread, NULL);
-    remove_client(client->client_id);
-    return -1;
-  }
+  // No send thread needed - broadcast thread handles all sending
+  // This avoids race conditions and simplifies synchronization
+  log_info("Client %u initialized (using broadcast thread for sending)", client->client_id);
 
   log_info("Added client %u from %s:%d", client->client_id, client_ip, port);
   return client->client_id;

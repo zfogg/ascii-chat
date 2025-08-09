@@ -402,3 +402,42 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 
   return result;
 }
+
+bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame) {
+  if (!fb || !fb->rb || !frame) {
+    return false;
+  }
+
+  // Use ringbuffer_peek to get the frame without consuming it
+  bool result = ringbuffer_peek(fb->rb, frame);
+
+  if (result) {
+    // Validate frame magic
+    if (frame->magic != FRAME_MAGIC) {
+      log_error("CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek", frame->magic, FRAME_MAGIC);
+      frame->data = NULL;
+      frame->size = 0;
+      frame->source_client_id = 0;
+      return false;
+    }
+
+    // Additional validation
+    if (frame->size == 0 || !frame->data) {
+      log_error("CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek", frame->size, frame->data);
+      return false;
+    }
+
+    // IMPORTANT: We need to make a copy of the data since we're not consuming the frame
+    // The original data pointer will remain valid in the ring buffer
+    // Caller is responsible for freeing this copy
+    char *data_copy = malloc(frame->size);
+    if (!data_copy) {
+      log_error("Failed to allocate memory for frame data copy in peek");
+      return false;
+    }
+    memcpy(data_copy, frame->data, frame->size);
+    frame->data = data_copy;
+  }
+
+  return result;
+}

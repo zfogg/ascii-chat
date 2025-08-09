@@ -251,7 +251,7 @@ static void handle_video_packet(const void *data, size_t len) {
   if (g_expecting_compressed_frame) {
     // This is compressed/uncompressed frame data with header
     g_expecting_compressed_frame = false;
-    
+
     // Get dimensions from header
     frame_width = g_compression_header.width;
     frame_height = g_compression_header.height;
@@ -326,7 +326,7 @@ static void handle_video_packet(const void *data, size_t len) {
       g_last_frame_width = frame_width;
       g_last_frame_height = frame_height;
     }
-    
+
     ascii_write(frame_data);
   }
 
@@ -391,6 +391,11 @@ static void *data_reception_thread_func(void *arg) {
     // Multi-user protocol packets
     case PACKET_TYPE_CLIENT_LIST:
       handle_client_list_packet(data, len);
+      break;
+
+    case PACKET_TYPE_CLEAR_CONSOLE:
+      // Server requested console clear
+      console_clear();
       break;
 
     default:
@@ -479,14 +484,14 @@ static void *webcam_capture_thread_func(void *arg) {
     // We need to account for terminal character aspect ratio (chars are ~2x taller than wide)
     // So we send images with 2x the width to compensate
     // Target: opt_width*2 x opt_height, but maintain webcam aspect ratio
-    
-    ssize_t target_width = opt_width * 2;   // e.g., 220
-    ssize_t target_height = opt_height;     // e.g., 70
+
+    ssize_t target_width = opt_width * 2; // e.g., 220
+    ssize_t target_height = opt_height;   // e.g., 70
     ssize_t resized_width, resized_height;
-    
+
     // Use aspect_ratio2 which doesn't apply terminal character correction
     aspect_ratio2(image->w, image->h, target_width, target_height, &resized_width, &resized_height);
-    
+
     image_t *resized = NULL;
     if (image->w != resized_width || image->h != resized_height) {
       resized = image_new(resized_width, resized_height);
@@ -713,8 +718,8 @@ int main(int argc, char *argv[]) {
       if (opt_stretch) {
         my_capabilities |= CLIENT_CAP_STRETCH; // Add stretch if enabled
       }
-      log_debug("Client opt_stretch=%d, sending stretch capability=%s", 
-                opt_stretch, (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
+      log_debug("Client opt_stretch=%d, sending stretch capability=%s", opt_stretch,
+                (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
       char my_display_name[MAX_DISPLAY_NAME_LEN];
       snprintf(my_display_name, sizeof(my_display_name), "ClientUser");
