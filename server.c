@@ -1138,7 +1138,8 @@ int main(int argc, char *argv[]) {
     // Check for disconnected clients BEFORE accepting new ones
     // This ensures slots are freed up for new connections
     pthread_mutex_lock(&g_client_manager_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
+    int i = 0;
+    while (i < MAX_CLIENTS) {
       client_info_t *client = &g_client_manager.clients[i];
       // Check if this client has been marked inactive by its receive thread
       if (client->client_id != 0 && !client->active && client->receive_thread != 0) {
@@ -1160,8 +1161,10 @@ int main(int argc, char *argv[]) {
 
         // Start over from the beginning since we released the lock
         pthread_mutex_lock(&g_client_manager_mutex);
-        i = -1; // Will be incremented to 0 at loop continuation
+        i = 0;
+        continue;
       }
+      i++;
     }
     pthread_mutex_unlock(&g_client_manager_mutex);
 
