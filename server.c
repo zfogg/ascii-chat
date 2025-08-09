@@ -789,7 +789,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     // Use our helper function to calculate the best fit
     int display_width_chars, display_height_chars;
     calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
-                             &display_height_chars);
+                                   &display_height_chars);
 
     log_info("[SERVER ASPECT] Best fit for single source: %dx%d chars", display_width_chars, display_height_chars);
 
@@ -1452,7 +1452,7 @@ int add_client(int socket, const char *client_ip, int port) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (!g_client_manager.clients[i].active) {
       if (slot == -1) {
-        slot = i;  // Take first available slot
+        slot = i; // Take first available slot
       }
     } else {
       active_count++;
@@ -1462,14 +1462,14 @@ int add_client(int socket, const char *client_ip, int port) {
   if (slot == -1) {
     pthread_mutex_unlock(&g_client_manager_mutex);
     log_error("No available client slots (all %d slots are active)", MAX_CLIENTS);
-    
+
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     send(socket, reject_msg, strlen(reject_msg), MSG_NOSIGNAL);
-    
+
     return -1;
   }
-  
+
   // Update client_count to match actual active count
   g_client_manager.client_count = active_count;
 
@@ -1503,7 +1503,7 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  g_client_manager.client_count = active_count + 1;  // We just added a client
+  g_client_manager.client_count = active_count + 1; // We just added a client
   pthread_mutex_unlock(&g_client_manager_mutex);
 
   // Start threads for this client

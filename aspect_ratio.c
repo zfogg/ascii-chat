@@ -134,7 +134,7 @@ void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t targe
 // Calculate the best dimensions to fit an image in a terminal area while preserving aspect ratio
 // Returns the dimensions in characters/pixels (1:1 for our use case with stretch=false)
 void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width, int max_height, int *out_width,
-                                           int *out_height) {
+                                    int *out_height) {
   if (!out_width || !out_height || img_width <= 0 || img_height <= 0) {
     if (out_width)
       *out_width = max_width;
