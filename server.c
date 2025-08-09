@@ -539,7 +539,7 @@ static void *video_broadcast_thread_func(void *arg) {
         // Consume all frames and keep only the latest
         while (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame)) {
           // Free the previous frame if we had one
-          if (has_frame && latest_frame.data) {
+          if (has_frame) {
             free(latest_frame.data);
           }
           latest_frame = frame;
