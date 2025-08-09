@@ -50,7 +50,7 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 
 /* Packet-based communication protocol */
 #define PACKET_MAGIC 0xDEADBEEF
-#define MAX_PACKET_SIZE (1024 * 1024) // 1MB max packet size
+#define MAX_PACKET_SIZE (5 * 1024 * 1024) // 5MB max packet size
 
 typedef enum {
   PACKET_TYPE_VIDEO_HEADER = 1,
