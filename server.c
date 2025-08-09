@@ -1343,7 +1343,7 @@ void *client_receive_thread_func(void *arg) {
         // Parse image dimensions
         uint32_t img_width = ntohl(*(uint32_t *)data);
         uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
-        size_t expected_size = sizeof(uint32_t) * 2 + img_width * img_height * sizeof(rgb_t);
+        size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
 
         log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
                  img_width, img_height, (float)img_width / (float)img_height);
