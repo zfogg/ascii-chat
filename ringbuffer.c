@@ -186,6 +186,29 @@ framebuffer_t *framebuffer_create(size_t capacity) {
   return fb;
 }
 
+framebuffer_t *framebuffer_create_multi(size_t capacity) {
+  if (capacity == 0) {
+    log_error("Invalid capacity: %zu", capacity);
+    return NULL;
+  }
+
+  framebuffer_t *fb = (framebuffer_t *)calloc(1, sizeof(framebuffer_t));
+  if (!fb) {
+    log_error("Failed to allocate frame buffer structure");
+    return NULL;
+  }
+
+  // Create ringbuffer to store multi_source_frame_t structs
+  fb->rb = ringbuffer_create(sizeof(multi_source_frame_t), capacity);
+
+  if (!fb->rb) {
+    free(fb);
+    return NULL;
+  }
+
+  return fb;
+}
+
 void framebuffer_destroy(framebuffer_t *fb) {
   if (fb) {
     // Use framebuffer_clear to properly clean up all frames

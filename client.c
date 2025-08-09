@@ -19,14 +19,14 @@
 #include "options.h"
 #include "compression.h"
 #include "audio.h"
+#include "ringbuffer.h"
+#include "image.h"
+#include "webcam.h"
 
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
 static volatile bool g_first_connection = true;
 static volatile bool g_should_reconnect = false;
-
-static volatile int last_frame_width = 0;
-static volatile int last_frame_height = 0;
 
 static audio_context_t g_audio_context = {0};
 
@@ -41,6 +41,11 @@ static volatile bool g_data_thread_exited = false;
 static pthread_t g_ping_thread;
 static bool g_ping_thread_created = false;
 static volatile bool g_ping_thread_exited = false;
+
+// Webcam capture thread
+static pthread_t g_capture_thread;
+static bool g_capture_thread_created = false;
+static volatile bool g_capture_thread_exited = false;
 
 /* ============================================================================
  * Multi-User Client State
@@ -73,7 +78,8 @@ static void handle_client_list_packet(const void *data, size_t len);
 // Ping thread for connection keepalive
 static void *ping_thread_func(void *arg);
 
-// Local capture threads (declarations removed - functions will be implemented later)
+// Webcam capture thread
+static void *webcam_capture_thread_func(void *arg);
 
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
@@ -127,6 +133,9 @@ static void shutdown_client() {
     }
     log_info("Data reception thread joined and context destroyed");
   }
+
+  // Clean up webcam
+  ascii_read_destroy();
 
   ascii_write_destroy();
   log_info("Client shutdown complete");
@@ -200,15 +209,7 @@ static void handle_audio_packet(const void *data, size_t len) {
 #endif
 }
 
-static void maybe_size_update(unsigned short width, unsigned short height) {
-  // Handle terminal size changes
-  if (width != last_frame_width || height != last_frame_height) {
-    console_clear();
-    last_frame_width = width;
-    last_frame_height = height;
-    log_info("Server updated frame size to: %ux%u", width, height);
-  }
-}
+// Removed maybe_size_update - clients control their own size
 
 static void handle_video_header_packet(const void *data, size_t len) {
   if (!data || len != sizeof(compressed_frame_header_t)) {
@@ -305,8 +306,6 @@ static void handle_video_packet(const void *data, size_t len) {
     ascii_write(frame_data);
   }
 
-  maybe_size_update(opt_width, opt_height);
-
   free(frame_data);
 }
 
@@ -358,6 +357,11 @@ static void *data_reception_thread_func(void *arg) {
       }
       break;
 
+    case PACKET_TYPE_PONG:
+      // Server acknowledged our PING
+      // log_debug("Received PONG from server");
+      break;
+
     // Multi-user protocol packets
     case PACKET_TYPE_CLIENT_LIST:
       handle_client_list_packet(data, len);
@@ -392,16 +396,14 @@ static void *ping_thread_func(void *arg) {
       continue;
     }
 
-    // Send ping packet every 30 seconds to keep connection alive
+    // Send ping packet every 3 seconds to keep connection alive (server timeout is 5 seconds)
     if (send_ping_packet(sockfd) < 0) {
       log_debug("Failed to send ping packet");
       break;
     }
 
-    log_debug("Sent ping packet to server");
-
-    // Wait 30 seconds before next ping
-    for (int i = 0; i < 30 && !g_should_exit && sockfd > 0; i++) {
+    // Wait 3 seconds before next ping
+    for (int i = 0; i < 3 && !g_should_exit && sockfd > 0; i++) {
       usleep(1000 * 1000); // 1 second
     }
   }
@@ -410,6 +412,88 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread stopped");
 #endif
   g_ping_thread_exited = true;
+  return NULL;
+}
+
+static void *webcam_capture_thread_func(void *arg) {
+  (void)arg;
+
+  struct timespec last_capture_time = {0, 0};
+
+  log_info("Webcam capture thread started");
+
+  while (!g_should_exit) {
+    if (sockfd <= 0) {
+      usleep(100 * 1000); // Wait for connection
+      continue;
+    }
+
+    // Frame rate limiting
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
+                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
+
+    int frame_interval = get_frame_interval_ms();
+    if (elapsed_ms < frame_interval) {
+      usleep((frame_interval - elapsed_ms) * 1000);
+      continue;
+    }
+
+    // Capture raw image from webcam
+    image_t *image = webcam_read();
+    if (!image) {
+      log_debug("No frame available from webcam yet");
+      usleep(10000); // 10ms delay before retry
+      continue;
+    }
+
+    // Resize image to a reasonable size for network transmission
+    // Target 320x240 to keep packet size manageable (about 230KB)
+    image_t *resized = NULL;
+    if (image->w > opt_width || image->h > opt_height) {
+      resized = image_new(opt_width, opt_height);
+      if (resized) {
+        image_resize(image, resized);
+        image_destroy(image);
+        image = resized;
+      }
+    }
+
+    // Serialize image data for transmission
+    // Format: [width:4][height:4][rgb_data:w*h*3]
+    size_t rgb_size = image->w * image->h * sizeof(rgb_t);
+    size_t packet_size = sizeof(uint32_t) * 2 + rgb_size; // width + height + pixels
+
+    uint8_t *packet_data = malloc(packet_size);
+    if (!packet_data) {
+      log_error("Failed to allocate packet buffer");
+      image_destroy(image);
+      continue;
+    }
+
+    // Pack the image data
+    uint32_t width_net = htonl(image->w);
+    uint32_t height_net = htonl(image->h);
+    memcpy(packet_data, &width_net, sizeof(uint32_t));
+    memcpy(packet_data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+    memcpy(packet_data + sizeof(uint32_t) * 2, image->pixels, rgb_size);
+
+    // Send image data to server via VIDEO packet
+    if (send_video_packet(sockfd, (char *)packet_data, packet_size) < 0) {
+      log_debug("Failed to send video frame to server");
+    }
+
+    // Update capture time
+    last_capture_time = current_time;
+
+    free(packet_data);
+    image_destroy(image);
+  }
+
+  log_info("Webcam capture thread stopped");
+  g_capture_thread_exited = true;
   return NULL;
 }
 
@@ -482,6 +566,18 @@ int main(int argc, char *argv[]) {
 
   // Initialize ASCII output for this connection
   ascii_write_init();
+
+  // Initialize luminance palette for ASCII conversion
+  precalc_luminance_palette();
+
+  // Initialize webcam capture
+  int webcam_index = 0;
+  if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
+    log_fatal("Failed to initialize webcam capture");
+    ascii_write_destroy();
+    exit(ASCIICHAT_ERR_WEBCAM);
+  }
+  log_info("Webcam initialized successfully");
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
@@ -569,12 +665,14 @@ int main(int argc, char *argv[]) {
         continue; // try to connect again
       }
       log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
-      maybe_size_update(opt_width, opt_height);
 
       // Send client join packet for multi-user support
       uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
       if (opt_audio_enabled) {
         my_capabilities |= CLIENT_CAP_AUDIO; // Add audio if enabled
+      }
+      if (opt_color_output) {
+        my_capabilities |= CLIENT_CAP_COLOR; // Add color if enabled
       }
 
       char my_display_name[MAX_DISPLAY_NAME_LEN];
@@ -585,9 +683,9 @@ int main(int argc, char *argv[]) {
         g_should_reconnect = true;
         continue; // try to connect again
       }
-      log_info("Sent client join packet with capabilities: video=%s, audio=%s",
-               (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no",
-               (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no");
+      log_info("Sent client join packet with capabilities: video=%s, audio=%s, color=%s",
+               (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no", (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no",
+               (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no");
 
       // Set socket keepalive to detect broken connections
       if (set_socket_keepalive(sockfd) < 0) {
@@ -614,6 +712,22 @@ int main(int argc, char *argv[]) {
         g_ping_thread_created = true;
       }
 
+      // Start webcam capture thread
+      g_capture_thread_exited = false;
+      if (pthread_create(&g_capture_thread, NULL, webcam_capture_thread_func, NULL) != 0) {
+        log_error("Failed to create webcam capture thread");
+        g_should_reconnect = true;
+        continue;
+      } else {
+        g_capture_thread_created = true;
+        log_info("Webcam capture thread started");
+
+        // Notify server we're starting to send video
+        if (send_stream_start_packet(sockfd, STREAM_TYPE_VIDEO) < 0) {
+          log_error("Failed to send stream start packet");
+        }
+      }
+
       g_first_connection = false;
       g_should_reconnect = false;
     }
@@ -638,6 +752,12 @@ int main(int argc, char *argv[]) {
     log_info("Connection lost. Attempting to reconnect...");
     g_should_reconnect = true;
 
+    // Close the socket to signal threads to exit
+    if (sockfd > 0) {
+      close(sockfd);
+      sockfd = 0;
+    }
+
     // Clean up data thread for this connection
     if (g_data_thread_created) {
       pthread_join(g_data_thread, NULL);
@@ -648,6 +768,12 @@ int main(int argc, char *argv[]) {
     if (g_ping_thread_created) {
       pthread_join(g_ping_thread, NULL);
       g_ping_thread_created = false;
+    }
+
+    // Clean up capture thread for this connection
+    if (g_capture_thread_created) {
+      pthread_join(g_capture_thread, NULL);
+      g_capture_thread_created = false;
     }
   }
 
