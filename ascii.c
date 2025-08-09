@@ -238,10 +238,6 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // If no sources, return empty frame
-  if (source_count == 0) {
-    log_error("INVALID PARAM: No sources provided");
-    exit(ASCIICHAT_ERR_INVALID_PARAM);
-  }
 
   // If only one source, ensure it fills the target dimensions
   if (source_count == 1) {
