@@ -21,6 +21,7 @@
 #include "ringbuffer.h"
 #include "compression.h"
 #include "audio.h"
+#include "aspect_ratio.h"
 
 /* ============================================================================
  * Global State
@@ -432,64 +433,6 @@ void *audio_mixer_thread_func(void *arg) {
 }
 
 /* ============================================================================
- * Aspect Ratio Helpers
- * ============================================================================
- */
-
-// Calculate the best dimensions to fit an image in a terminal area while preserving aspect ratio
-// Returns the dimensions in characters/pixels (1:1 for our use case with stretch=false)
-static void calculate_fit_dimensions(int img_width, int img_height, int max_width, int max_height, int *out_width,
-                                     int *out_height) {
-  if (!out_width || !out_height || img_width <= 0 || img_height <= 0) {
-    if (out_width)
-      *out_width = max_width;
-    if (out_height)
-      *out_height = max_height;
-    return;
-  }
-
-  float src_aspect = (float)img_width / (float)img_height;
-
-  // Try filling width
-  int width_if_fill_w = max_width;
-  int height_if_fill_w = (int)((float)max_width / src_aspect + 0.5f);
-
-  // Try filling height
-  int width_if_fill_h = (int)((float)max_height * src_aspect + 0.5f);
-  int height_if_fill_h = max_height;
-
-  log_debug("calculate_fit_dimensions: img %dx%d (aspect %.3f), max %dx%d", img_width, img_height, src_aspect,
-            max_width, max_height);
-  log_debug("  Fill width: %dx%d, Fill height: %dx%d", width_if_fill_w, height_if_fill_w, width_if_fill_h,
-            height_if_fill_h);
-
-  // Choose the option that fits
-  if (height_if_fill_w <= max_height) {
-    // Filling width fits
-    log_debug("  Choosing fill width: %dx%d", width_if_fill_w, height_if_fill_w);
-    *out_width = width_if_fill_w;
-    *out_height = height_if_fill_w;
-  } else {
-    // Fill height instead
-    log_debug("  Choosing fill height: %dx%d", width_if_fill_h, height_if_fill_h);
-    *out_width = width_if_fill_h;
-    *out_height = height_if_fill_h;
-  }
-
-  // Clamp to bounds
-  if (*out_width > max_width)
-    *out_width = max_width;
-  if (*out_height > max_height)
-    *out_height = max_height;
-  if (*out_width < 1)
-    *out_width = 1;
-  if (*out_height < 1)
-    *out_height = 1;
-
-  log_debug("  Final output: %dx%d", *out_width, *out_height);
-}
-
-/* ============================================================================
  * Video Broadcasting Thread
  * ============================================================================
  */
@@ -853,7 +796,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
     // Use our helper function to calculate the best fit
     int display_width_chars, display_height_chars;
-    calculate_fit_dimensions(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
+    calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
                              &display_height_chars);
 
     log_info("[SERVER ASPECT] Best fit for single source: %dx%d chars", display_width_chars, display_height_chars);
@@ -935,7 +878,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       // The cell dimensions need special handling:
       // - Width: 1 char = 1 pixel width (no conversion needed)
       // - Height: 1 char = 2 pixels height (terminal aspect ratio)
-      
+
       // Convert cell dimensions to pixel space for aspect ratio calculations
       int cell_width_px = cell_width;       // Width in pixels = width in chars
       int cell_height_px = cell_height * 2; // Height in pixels = chars * 2
@@ -943,9 +886,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       // Calculate the best fit maintaining aspect ratio
       // src_aspect already calculated above
       float cell_aspect = (float)cell_width_px / (float)cell_height_px;
-      
+
       int target_width_px, target_height_px;
-      
+
       if (src_aspect > cell_aspect) {
         // Image is wider than cell - fit to width
         target_width_px = cell_width_px;
@@ -985,7 +928,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
             // x_padding and cell_x_offset are in characters, keep them as-is for X
             // For Y, we need to convert character offsets to pixel offsets (multiply by 2)
             int dst_x = cell_x_offset + x_padding + x;
-            int dst_y = (cell_y_offset + y_padding) * 2 + y;  // Convert char offset to pixel offset
+            int dst_y = (cell_y_offset + y_padding) * 2 + y; // Convert char offset to pixel offset
             int dst_idx = dst_y * width + dst_x;
 
             if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h &&
@@ -1508,26 +1451,32 @@ void *client_receive_thread_func(void *arg) {
 int add_client(int socket, const char *client_ip, int port) {
   pthread_mutex_lock(&g_client_manager_mutex);
 
-  if (g_client_manager.client_count >= MAX_CLIENTS) {
-    pthread_mutex_unlock(&g_client_manager_mutex);
-    log_error("Maximum client limit reached (%d)", MAX_CLIENTS);
-    return -1;
-  }
-
-  // Find empty slot
+  // Find empty slot - this is the authoritative check
   int slot = -1;
+  int active_count = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (!g_client_manager.clients[i].active) {
-      slot = i;
-      break;
+      if (slot == -1) {
+        slot = i;  // Take first available slot
+      }
+    } else {
+      active_count++;
     }
   }
 
   if (slot == -1) {
     pthread_mutex_unlock(&g_client_manager_mutex);
-    log_error("No available client slots");
+    log_error("No available client slots (all %d slots are active)", MAX_CLIENTS);
+    
+    // Send a rejection message to the client before closing
+    const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
+    send(socket, reject_msg, strlen(reject_msg), MSG_NOSIGNAL);
+    
     return -1;
   }
+  
+  // Update client_count to match actual active count
+  g_client_manager.client_count = active_count;
 
   // Initialize client
   client_info_t *client = &g_client_manager.clients[slot];
@@ -1559,7 +1508,7 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  g_client_manager.client_count++;
+  g_client_manager.client_count = active_count + 1;  // We just added a client
   pthread_mutex_unlock(&g_client_manager_mutex);
 
   // Start threads for this client
@@ -1622,9 +1571,17 @@ int remove_client(uint32_t client_id) {
         audio_ring_buffer_destroy(audio_buffer);
       }
 
-      g_client_manager.client_count--;
+      // Recalculate client_count to ensure accuracy
+      // Note: client->active is already false at this point
+      int active_count = 0;
+      for (int j = 0; j < MAX_CLIENTS; j++) {
+        if (g_client_manager.clients[j].active) {
+          active_count++;
+        }
+      }
+      g_client_manager.client_count = active_count;
 
-      log_info("Removed client %u (%s)", client_id, client->display_name);
+      log_info("Removed client %u (%s), remaining clients: %d", client_id, client->display_name, active_count);
 
       // Clear the entire client structure to ensure it's ready for reuse
       memset(client, 0, sizeof(client_info_t));
