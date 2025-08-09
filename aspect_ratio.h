@@ -15,3 +15,6 @@ void aspect_ratio(const ssize_t img_width, const ssize_t img_height, const ssize
 // Simple aspect ratio calculation without terminal character correction
 void aspect_ratio2(const ssize_t img_width, const ssize_t img_height, const ssize_t target_width,
                    const ssize_t target_height, ssize_t *out_width, ssize_t *out_height);
+
+void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width, int max_height, int *out_width,
+                                    int *out_height);
