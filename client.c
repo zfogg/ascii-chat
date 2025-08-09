@@ -35,7 +35,6 @@ static volatile bool g_connection_lost = false;
 static audio_context_t g_audio_context = {0};
 
 // Compression state
-static volatile bool g_expecting_compressed_frame = false;
 static compressed_frame_header_t g_compression_header = {0};
 static pthread_t g_data_thread;
 static bool g_data_thread_created = false;
@@ -234,7 +233,6 @@ static void handle_video_header_packet(const void *data, size_t len) {
     return;
   }
 
-  g_expecting_compressed_frame = true;
 #ifdef COMPRESSION_DEBUG
   log_debug("Received compression header: %s, original_size=%u, compressed_size=%u",
             g_compression_header.compressed_size == 0 ? "uncompressed" : "compressed",
@@ -255,67 +253,54 @@ static void handle_video_packet(const void *data, size_t len) {
   int frame_width = 0;
   int frame_height = 0;
 
-  if (g_expecting_compressed_frame) {
-    // This is compressed/uncompressed frame data with header
-    g_expecting_compressed_frame = false;
+  // Get dimensions from header
+  frame_width = g_compression_header.width;
+  frame_height = g_compression_header.height;
 
-    // Get dimensions from header
-    frame_width = g_compression_header.width;
-    frame_height = g_compression_header.height;
-
-    if (g_compression_header.compressed_size == 0) {
-      // Uncompressed frame
-      if (len != g_compression_header.original_size) {
-        log_error("Uncompressed frame size mismatch: expected %u, got %zu", g_compression_header.original_size, len);
-        return;
-      }
-
-      SAFE_MALLOC(frame_data, len + 1, char *);
-      memcpy(frame_data, data, len);
-      frame_data[len] = '\0';
-
-    } else {
-      // Compressed frame - decompress it
-      if (len != g_compression_header.compressed_size) {
-        log_error("Compressed frame size mismatch: expected %u, got %zu", g_compression_header.compressed_size, len);
-        return;
-      }
-
-      SAFE_MALLOC(frame_data, g_compression_header.original_size + 1, char *);
-
-      // Decompress using zlib
-      uLongf decompressed_size = g_compression_header.original_size;
-      int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)data, len);
-
-      if (result != Z_OK || decompressed_size != g_compression_header.original_size) {
-        log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
-                  g_compression_header.original_size);
-        free(frame_data);
-        return;
-      }
-
-      frame_data[g_compression_header.original_size] = '\0';
-#ifdef COMPRESSION_DEBUG
-      log_debug("Decompressed frame: %zu -> %u bytes", len, g_compression_header.original_size);
-#endif
+  if (g_compression_header.compressed_size == 0) {
+    // Uncompressed frame
+    if (len != g_compression_header.original_size) {
+      log_error("Uncompressed frame size mismatch: expected %u, got %zu", g_compression_header.original_size, len);
+      return;
     }
 
-    // Verify checksum
-    uint32_t received_checksum = calculate_crc32(frame_data, g_compression_header.original_size);
-    if (received_checksum != g_compression_header.checksum) {
-      log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum,
-                received_checksum);
+    SAFE_MALLOC(frame_data, len + 1, char *);
+    memcpy(frame_data, data, len);
+    frame_data[len] = '\0';
+
+  } else {
+    // Compressed frame - decompress it
+    if (len != g_compression_header.compressed_size) {
+      log_error("Compressed frame size mismatch: expected %u, got %zu", g_compression_header.compressed_size, len);
+      return;
+    }
+
+    SAFE_MALLOC(frame_data, g_compression_header.original_size + 1, char *);
+
+    // Decompress using zlib
+    uLongf decompressed_size = g_compression_header.original_size;
+    int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)data, len);
+
+    if (result != Z_OK || decompressed_size != g_compression_header.original_size) {
+      log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
+                g_compression_header.original_size);
       free(frame_data);
       return;
     }
 
-  } else {
-    // Legacy uncompressed frame (fallback for old protocol)
-    log_debug("Got legacy uncompressed frame (no header), dimensions unknown");
-    SAFE_MALLOC(frame_data, len + 1, char *);
+    frame_data[g_compression_header.original_size] = '\0';
+#ifdef COMPRESSION_DEBUG
+    log_debug("Decompressed frame: %zu -> %u bytes", len, g_compression_header.original_size);
+#endif
+  }
 
-    memcpy(frame_data, data, len);
-    frame_data[len] = '\0';
+  // Verify checksum
+  uint32_t received_checksum = calculate_crc32(frame_data, g_compression_header.original_size);
+  if (received_checksum != g_compression_header.checksum) {
+    log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum,
+              received_checksum);
+    free(frame_data);
+    return;
   }
 
   // Process the frame
@@ -333,39 +318,6 @@ static void handle_video_packet(const void *data, size_t len) {
       g_last_frame_width = frame_width;
       g_last_frame_height = frame_height;
     }
-
-    // Analyze frame dimensions
-    int actual_width = 0;
-    int actual_height = 0;
-    int current_line_width = 0;
-    bool in_escape = false;
-
-    // Count actual characters (excluding ANSI escape sequences)
-    for (const char *p = frame_data; *p; p++) {
-      if (*p == '\033') {
-        in_escape = true;
-      } else if (in_escape && *p == 'm') {
-        in_escape = false;
-      } else if (!in_escape) {
-        if (*p == '\n') {
-          if (current_line_width > actual_width) {
-            actual_width = current_line_width;
-          }
-          current_line_width = 0;
-          actual_height++;
-        } else if (*p != '\r') {
-          current_line_width++;
-        }
-      }
-    }
-
-    // Get terminal dimensions
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-
-    // log_info("[CLIENT FRAME ANALYSIS] Frame: %dx%d chars, Terminal: %dx%d, Fill: %.1f%% width, %.1f%% height",
-    //          actual_width, actual_height, w.ws_col, w.ws_row, (float)actual_width / w.ws_col * 100,
-    //          (float)actual_height / w.ws_row * 100);
 
     ascii_write(frame_data);
   }

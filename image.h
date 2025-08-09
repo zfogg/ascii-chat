@@ -27,7 +27,7 @@ typedef struct image_t {
 #define IMAGE_MAX_HEIGHT 2160
 #define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
 
-image_t *image_new(int, int);
+image_t *image_new(size_t, size_t);
 void image_destroy(image_t *);
 void image_clear(image_t *);
 char *image_print(const image_t *);
