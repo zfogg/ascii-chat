@@ -22,6 +22,7 @@
 #include "ringbuffer.h"
 #include "image.h"
 #include "webcam.h"
+#include "aspect_ratio.h"
 
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
@@ -234,6 +235,10 @@ static void handle_video_header_packet(const void *data, size_t len) {
 #endif
 }
 
+// Track last frame dimensions to detect size changes
+static int g_last_frame_width = 0;
+static int g_last_frame_height = 0;
+
 static void handle_video_packet(const void *data, size_t len) {
   if (!data || len == 0) {
     return;
@@ -304,6 +309,45 @@ static void handle_video_packet(const void *data, size_t len) {
     log_error("Server reported webcam failure: %s", frame_data);
     usleep(1000 * 1000);
   } else {
+    // Calculate frame dimensions by counting lines and line width
+    int frame_height = 0;
+    int frame_width = 0;
+    int current_line_width = 0;
+    
+    for (const char *p = frame_data; *p; p++) {
+      if (*p == '\n') {
+        frame_height++;
+        if (current_line_width > frame_width) {
+          frame_width = current_line_width;
+        }
+        current_line_width = 0;
+      } else if (*p == '\033' && *(p+1) == '[') {
+        // Skip ANSI escape sequences (for colored output)
+        while (*p && *p != 'm') p++;
+        if (!*p) break;
+      } else {
+        current_line_width++;
+      }
+    }
+    // Count last line if it doesn't end with newline
+    if (current_line_width > 0) {
+      frame_height++;
+      if (current_line_width > frame_width) {
+        frame_width = current_line_width;
+      }
+    }
+    
+    // Check if frame dimensions have changed
+    if (g_last_frame_width != 0 && g_last_frame_height != 0 &&
+        (g_last_frame_width != frame_width || g_last_frame_height != frame_height)) {
+      // Frame dimensions changed, clear console to avoid artifacts
+      console_clear();
+      log_debug("Frame dimensions changed from %dx%d to %dx%d, clearing console", 
+                g_last_frame_width, g_last_frame_height, frame_width, frame_height);
+    }
+    g_last_frame_width = frame_width;
+    g_last_frame_height = frame_height;
+    
     ascii_write(frame_data);
   }
 
@@ -453,10 +497,20 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Resize image to a reasonable size for network transmission
-    // Target 320x240 to keep packet size manageable (about 230KB)
+    // We need to account for terminal character aspect ratio (chars are ~2x taller than wide)
+    // So we send images with 2x the width to compensate
+    // Target: opt_width*2 x opt_height, but maintain webcam aspect ratio
+    
+    ssize_t target_width = opt_width * 2;   // e.g., 220
+    ssize_t target_height = opt_height;     // e.g., 70
+    ssize_t resized_width, resized_height;
+    
+    // Use aspect_ratio2 which doesn't apply terminal character correction
+    aspect_ratio2(image->w, image->h, target_width, target_height, &resized_width, &resized_height);
+    
     image_t *resized = NULL;
-    if (image->w > opt_width || image->h > opt_height) {
-      resized = image_new(opt_width, opt_height);
+    if (image->w != resized_width || image->h != resized_height) {
+      resized = image_new(resized_width, resized_height);
       if (resized) {
         image_resize(image, resized);
         image_destroy(image);
@@ -677,6 +731,11 @@ int main(int argc, char *argv[]) {
       if (opt_color_output) {
         my_capabilities |= CLIENT_CAP_COLOR; // Add color if enabled
       }
+      if (opt_stretch) {
+        my_capabilities |= CLIENT_CAP_STRETCH; // Add stretch if enabled
+      }
+      log_debug("Client opt_stretch=%d, sending stretch capability=%s", 
+                opt_stretch, (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
       char my_display_name[MAX_DISPLAY_NAME_LEN];
       snprintf(my_display_name, sizeof(my_display_name), "ClientUser");
@@ -686,9 +745,10 @@ int main(int argc, char *argv[]) {
         g_should_reconnect = true;
         continue; // try to connect again
       }
-      log_info("Sent client join packet with capabilities: video=%s, audio=%s, color=%s",
+      log_info("Sent client join packet with capabilities: video=%s, audio=%s, color=%s, stretch=%s",
                (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no", (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no",
-               (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no");
+               (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no",
+               (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
       // Set socket keepalive to detect broken connections
       if (set_socket_keepalive(sockfd) < 0) {

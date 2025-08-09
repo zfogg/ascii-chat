@@ -7,5 +7,11 @@
  * $Id: aspect_ratio.c 466 2006-10-02 11:35:03Z csl $
  */
 #include <sys/types.h>
+#include <stdbool.h>
 
-void aspect_ratio(const int img_width, const int img_height, ssize_t *out_width, ssize_t *out_height);
+void aspect_ratio(const ssize_t img_width, const ssize_t img_height, const ssize_t width, const ssize_t height,
+                  const bool stretch, ssize_t *out_width, ssize_t *out_height);
+
+// Simple aspect ratio calculation without terminal character correction
+void aspect_ratio2(const ssize_t img_width, const ssize_t img_height, const ssize_t target_width, const ssize_t target_height,
+                   ssize_t *out_width, ssize_t *out_height);

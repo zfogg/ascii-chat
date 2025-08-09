@@ -7,7 +7,6 @@
 #include "ascii.h"
 #include "common.h"
 #include "image.h"
-#include "options.h"
 #include "aspect_ratio.h"
 #include "webcam.h"
 
@@ -30,49 +29,46 @@ asciichat_error_t ascii_write_init(void) {
   return ASCIICHAT_OK;
 }
 
-char *ascii_read(void) {
-  image_t *original = webcam_read();
-
+char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
+                    const bool stretch) {
   if (original == NULL) {
-    // Return a simple error message if webcam read fails
-    char *err_msg;
-    size_t err_len = strlen(ASCIICHAT_WEBCAM_ERROR_STRING) + 1; // +1 for null terminator
-    SAFE_MALLOC(err_msg, err_len, char *);
-    strcpy(err_msg, ASCIICHAT_WEBCAM_ERROR_STRING);
-    return err_msg;
+    exit(ASCIICHAT_ERR_WEBCAM);
   }
 
   // Start with the target dimensions requested by the user (or detected from
   // the terminal). These can be modified by aspect_ratio() if stretching is
   // disabled and one of the dimensions was left to be calculated
   // automatically.
-  ssize_t width = opt_width;
-  ssize_t height = opt_height;
-  aspect_ratio(original->w, original->h, &width, &height);
+  ssize_t resized_width = width;
+  ssize_t resized_height = height;
+  
+  // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
+  if (!stretch) {
+    // Pass the stretch parameter directly to aspect_ratio
+    aspect_ratio(original->w, original->h, width, height, stretch, &resized_width, &resized_height);
+  }
 
   // Calculate how many leading spaces are required to center the image inside
   // the overall width requested by the user.  Make sure the value is
   // non-negative so we don't end up passing a huge number to ascii_pad_frame
-  // when width happens to exceed opt_width.
-  ssize_t pad_width_ss = opt_width > width ? (opt_width - width) / 2 : 0;
+  // when width happens to exceed resized_width.
+  ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
   size_t pad_width = (size_t)pad_width_ss;
 
   // Calculate how many blank lines are required to center the image inside
   // the overall height requested by the user.
-  ssize_t pad_height_ss = opt_height > height ? (opt_height - height) / 2 : 0;
+  ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
   size_t pad_height = (size_t)pad_height_ss;
 
   // Resize the captured frame to the aspect-correct dimensions.
-  if (width <= 0 || height <= 0) {
-    log_error("Invalid dimensions for resize: width=%zd, height=%zd", width, height);
-    image_destroy(original);
+  if (resized_width <= 0 || resized_height <= 0) {
+    log_error("Invalid dimensions for resize: width=%zd, height=%zd", resized_width, resized_height);
     return NULL;
   }
 
-  image_t *resized = image_new((int)width, (int)height);
+  image_t *resized = image_new((int)resized_width, (int)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
-    image_destroy(original);
     return NULL;
   }
 
@@ -80,7 +76,7 @@ char *ascii_read(void) {
   image_resize(original, resized);
 
   char *ascii;
-  if (opt_color_output) {
+  if (color) {
     ascii = image_print_colored(resized);
   } else {
     ascii = image_print(resized);
@@ -88,7 +84,6 @@ char *ascii_read(void) {
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII");
-    image_destroy(original);
     image_destroy(resized);
     return NULL;
   }
@@ -97,7 +92,6 @@ char *ascii_read(void) {
   if (ascii_len == 0) {
     log_error("ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w, resized->h);
     free(ascii);
-    image_destroy(original);
     image_destroy(resized);
     return NULL;
   }
@@ -108,7 +102,6 @@ char *ascii_read(void) {
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   free(ascii_width_padded);
 
-  image_destroy(original);
   image_destroy(resized);
 
   return ascii_padded;

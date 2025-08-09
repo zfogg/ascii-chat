@@ -62,7 +62,8 @@ typedef struct {
   // Media capabilities
   bool can_send_video;
   bool can_send_audio;
-  bool wants_color; // Client wants colored ASCII output
+  bool wants_color;   // Client wants colored ASCII output
+  bool wants_stretch; // Client wants stretched output (ignore aspect ratio)
   bool is_sending_video;
   bool is_sending_audio;
 
@@ -132,7 +133,8 @@ void audio_mixer_destroy(audio_mixer_t *mixer);
 int mix_audio_from_clients(float *output_buffer, int num_samples);
 
 // Video mixing functions
-char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, size_t *out_size);
+char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, bool wants_stretch,
+                               size_t *out_size);
 
 // Client management functions
 int add_client(int socket, const char *client_ip, int port);
@@ -496,7 +498,8 @@ static void *video_broadcast_thread_func(void *arg) {
 
         // Create mixed frame for this client's dimensions
         size_t mixed_size = 0;
-        char *mixed_frame = create_mixed_ascii_frame(target_width, target_height, client_copy.wants_color, &mixed_size);
+        char *mixed_frame = create_mixed_ascii_frame(target_width, target_height, client_copy.wants_color,
+                                                     client_copy.wants_stretch, &mixed_size);
 
         if (mixed_frame && mixed_size > 0) {
 
@@ -533,7 +536,8 @@ static void *video_broadcast_thread_func(void *arg) {
  */
 
 // Create a mixed ASCII frame from all active image sources
-char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, size_t *out_size) {
+char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, bool wants_stretch,
+                               size_t *out_size) {
   if (!out_size || width == 0 || height == 0) {
     return NULL;
   }
@@ -581,7 +585,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           sources[source_count].image = img;
           sources[source_count].client_id = client->client_id;
           source_count++;
-          // log_debug("Got image from client %u: %ux%u", client->client_id, img_width, img_height);
+          log_debug("Got image from client %u: %ux%u", client->client_id, img_width, img_height);
         }
 
         // Free the frame data
@@ -598,38 +602,28 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     return NULL;
   }
 
-  // log_debug("Mixing %d image sources for %ux%u output", source_count, width, height);
+  log_debug("Mixing %d image sources for %ux%u output", source_count, width, height);
 
-  // Create a composite image at the target dimensions
-  image_t *composite = image_new(width, height);
-  if (!composite) {
-    log_error("Failed to create composite image");
-    // Clean up source images
-    for (int i = 0; i < source_count; i++) {
-      if (sources[i].image) {
-        image_destroy(sources[i].image);
-      }
-    }
-    *out_size = 0;
-    return NULL;
-  }
-
-  // Clear composite to black
-  image_clear(composite);
-
-  // For now, just use the first image and resize it to fill the frame
+  // For now, just use the first image source directly without pre-resizing
   // TODO: Implement proper grid layout for multiple sources
+  image_t *source_image = NULL;
+  image_t *composite = NULL;
+  
   if (source_count >= 1 && sources[0].image) {
-    image_resize(sources[0].image, composite);
+    source_image = sources[0].image;
+  } else {
+    // No sources, create empty composite
+    composite = image_new(width, height);
+    if (!composite) {
+      log_error("Failed to create empty image");
+      *out_size = 0;
+      return NULL;
+    }
+    source_image = composite;
+    image_clear(source_image);
   }
 
-  // Convert the composite image to ASCII (colored or plain based on client preference)
-  char *ascii_frame;
-  if (wants_color) {
-    ascii_frame = image_print_colored(composite);
-  } else {
-    ascii_frame = image_print(composite);
-  }
+  char *ascii_frame = ascii_convert(source_image, width, height, wants_color, wants_stretch);
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
@@ -639,8 +633,10 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     *out_size = 0;
   }
 
-  // Clean up
-  image_destroy(composite);
+  // Clean up - only destroy composite if we created one
+  if (composite) {
+    image_destroy(composite);
+  }
   for (int i = 0; i < source_count; i++) {
     if (sources[i].image) {
       image_destroy(sources[i].image);
@@ -914,8 +910,10 @@ void *client_receive_thread_func(void *arg) {
         client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
         client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
         client->wants_color = (join_info->capabilities & CLIENT_CAP_COLOR) != 0;
-        log_info("Client %u joined: %s (video=%d, audio=%d, color=%d)", client->client_id, client->display_name,
-                 client->can_send_video, client->can_send_audio, client->wants_color);
+        client->wants_stretch = (join_info->capabilities & CLIENT_CAP_STRETCH) != 0;
+        log_info("Client %u joined: %s (video=%d, audio=%d, color=%d, stretch=%d)", client->client_id,
+                 client->display_name, client->can_send_video, client->can_send_audio, client->wants_color,
+                 client->wants_stretch);
       }
       break;
     }
