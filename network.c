@@ -522,6 +522,13 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
+  case PACKET_TYPE_SERVER_STATE:
+    // Server state packet has fixed size
+    if (pkt_len != sizeof(server_state_packet_t)) {
+      log_error("Invalid server state packet size: %u, expected %zu", pkt_len, sizeof(server_state_packet_t));
+      return -1;
+    }
+    break;
   default:
     log_error("Unknown packet type: %u", pkt_type);
     return -1;
@@ -756,4 +763,18 @@ int send_pong_packet(int sockfd) {
 
 int send_clear_console_packet(int sockfd) {
   return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
+}
+
+int send_server_state_packet(int sockfd, const server_state_packet_t *state) {
+  if (!state) {
+    return -1;
+  }
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = htonl(state->connected_client_count);
+  net_state.active_client_count = htonl(state->active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  return send_packet(sockfd, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state));
 }
