@@ -489,6 +489,39 @@ static void *video_broadcast_thread_func(void *arg) {
 
     // log_debug("Broadcast thread: %d clients connected", client_count);
 
+    // First, consume all old frames and keep only the latest from each client
+    // This ensures we always use the most recent frame and prevents desync
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->active && client->incoming_video_buffer) {
+        multi_source_frame_t frame;
+        multi_source_frame_t latest_frame = {0};
+        bool has_frame = false;
+        
+        // Consume all frames and keep only the latest
+        while (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame)) {
+          // Free the previous frame if we had one
+          if (has_frame && latest_frame.data) {
+            free(latest_frame.data);
+          }
+          latest_frame = frame;
+          has_frame = true;
+        }
+        
+        // If we got a frame, write it back so peek can see it
+        if (has_frame && latest_frame.data) {
+          // Write the latest frame back to the buffer for peeking
+          framebuffer_write_multi_frame(client->incoming_video_buffer, latest_frame.data, latest_frame.size,
+                                       latest_frame.source_client_id, latest_frame.frame_sequence, 
+                                       latest_frame.timestamp);
+          // Now free our copy
+          free(latest_frame.data);
+        }
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+
     // Create and send frames to each client based on their dimensions
     // NOTE: We DON'T lock mutex here because create_mixed_ascii_frame will lock it
     int sent_count = 0;
@@ -592,23 +625,8 @@ static void *video_broadcast_thread_func(void *arg) {
       // log_debug("Sent frames to %d clients", sent_count);
     }
 
-    // After broadcasting to all clients, consume the frames from buffers to prevent overflow
-    // This ensures fresh frames for the next cycle
-    pthread_mutex_lock(&g_client_manager_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      client_info_t *client = &g_client_manager.clients[i];
-      if (client->active && client->incoming_video_buffer) {
-        multi_source_frame_t frame_to_discard;
-        // Consume the frame we just broadcast
-        if (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame_to_discard)) {
-          // Free the frame data that was allocated when written to the buffer
-          if (frame_to_discard.data) {
-            free(frame_to_discard.data);
-          }
-        }
-      }
-    }
-    pthread_mutex_unlock(&g_client_manager_mutex);
+    // Frames are already consumed at the beginning of the cycle
+    // No need to consume them again here
 
     last_broadcast_time = current_time;
   }
