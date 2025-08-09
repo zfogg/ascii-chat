@@ -613,11 +613,15 @@ static void *video_broadcast_thread_func(void *arg) {
 
         // If we got a frame, write it back so peek can see it
         if (has_frame && latest_frame.data) {
-          // Write the latest frame back to the buffer for peeking
-          framebuffer_write_multi_frame(client->incoming_video_buffer, latest_frame.data, latest_frame.size,
-                                        latest_frame.source_client_id, latest_frame.frame_sequence,
-                                        latest_frame.timestamp);
-          // Now free our copy
+          // Check if client is still active and buffer still exists before writing back
+          // This prevents crashes if client disconnected while we were processing
+          if (client->active && client->incoming_video_buffer) {
+            // Write the latest frame back to the buffer for peeking
+            framebuffer_write_multi_frame(client->incoming_video_buffer, latest_frame.data, latest_frame.size,
+                                          latest_frame.source_client_id, latest_frame.frame_sequence,
+                                          latest_frame.timestamp);
+          }
+          // Always free our copy
           free(latest_frame.data);
         }
       }

@@ -317,16 +317,33 @@ void framebuffer_clear(framebuffer_t *fb) {
   if (!fb || !fb->rb)
     return;
 
-  // Read and free all frames
-  frame_t frame;
-  while (ringbuffer_read(fb->rb, &frame)) {
-    if (frame.magic == FRAME_MAGIC && frame.data) {
-      frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
-      free(frame.data);
-      frame.data = NULL;
-    } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
-      log_error("CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
+  // Check the element size to determine frame type
+  if (fb->rb->element_size == sizeof(multi_source_frame_t)) {
+    // Multi-source frame buffer - read and free multi_source_frame_t
+    multi_source_frame_t multi_frame;
+    while (ringbuffer_read(fb->rb, &multi_frame)) {
+      if (multi_frame.magic == FRAME_MAGIC && multi_frame.data) {
+        multi_frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
+        free(multi_frame.data);
+        multi_frame.data = NULL;
+      } else if (multi_frame.magic != FRAME_MAGIC && multi_frame.magic != 0) {
+        log_error("CORRUPTION: Invalid multi-source frame magic 0x%x during clear", multi_frame.magic);
+      }
     }
+  } else if (fb->rb->element_size == sizeof(frame_t)) {
+    // Single-source frame buffer - read and free frame_t
+    frame_t frame;
+    while (ringbuffer_read(fb->rb, &frame)) {
+      if (frame.magic == FRAME_MAGIC && frame.data) {
+        frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
+        free(frame.data);
+        frame.data = NULL;
+      } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
+        log_error("CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
+      }
+    }
+  } else {
+    log_error("Unknown frame buffer type with element size %zu", fb->rb->element_size);
   }
 
   // Clear the ringbuffer indices
