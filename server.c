@@ -124,7 +124,6 @@ static int connfd = 0;
 
 // Thread functions
 void *client_receive_thread_func(void *arg);
-void *client_send_thread_func(void *arg);
 
 // Audio mixing functions
 void *audio_mixer_thread_func(void *arg);
@@ -510,6 +509,10 @@ static void *video_broadcast_thread_func(void *arg) {
   struct timespec last_broadcast_time;
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
 
+  // Track the number of active clients for console clear detection
+  int last_active_client_count = 0;
+  int last_connected_count = 0;
+
   while (!g_should_exit) {
     // Rate limiting
     struct timespec current_time;
@@ -531,18 +534,59 @@ static void *video_broadcast_thread_func(void *arg) {
     // Check if we have any clients
     pthread_mutex_lock(&g_client_manager_mutex);
     int client_count = g_client_manager.client_count;
+
+    // Count active clients that are ready to receive video
+    int active_client_count = 0;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0 &&
+          g_client_manager.clients[i].width > 0 && g_client_manager.clients[i].height > 0) {
+        active_client_count++;
+      }
+    }
     pthread_mutex_unlock(&g_client_manager_mutex);
 
     if (client_count == 0) {
       // log_debug("Broadcast thread: No clients connected");
       usleep(100000); // 100ms sleep when no clients
+      last_active_client_count = 0;
+      last_connected_count = 0;
       continue;
     }
+
+    // Check if the number of connected clients has changed (not just active)
+    if (client_count != last_connected_count) {
+      log_info("Connected client count changed from %d to %d, sending server state update", last_connected_count,
+               client_count);
+
+      // Create server state packet
+      server_state_packet_t state;
+      state.connected_client_count = client_count;
+      state.active_client_count = active_client_count;
+      memset(state.reserved, 0, sizeof(state.reserved));
+
+      // Send server state update to all clients
+      pthread_mutex_lock(&g_client_manager_mutex);
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0) {
+          if (send_server_state_packet(g_client_manager.clients[i].socket, &state) < 0) {
+            log_warn("Failed to send server state to client %u", g_client_manager.clients[i].client_id);
+          }
+        }
+      }
+      pthread_mutex_unlock(&g_client_manager_mutex);
+
+      // Update the tracked count
+      last_connected_count = client_count;
+    }
+
+    // Update the tracked active count
+    last_active_client_count = active_client_count;
 
     static int frame_counter = 0;
     frame_counter++;
     if (frame_counter % 30 == 0) { // Log every 30 frames (1 second)
-      log_info("Broadcast thread: frame %d, %d clients connected", frame_counter, client_count);
+      log_info("Broadcast thread: frame %d, %d clients connected (%d active)", frame_counter, client_count,
+               active_client_count);
     }
 
     // log_debug("Broadcast thread: %d clients connected", client_count);
@@ -833,8 +877,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     image_resize(sources[0].image, composite);
   } else if (source_count > 1) {
     // Multiple sources - create grid layout
-    // Create composite at terminal size (no doubling for stretch=false)
-    composite = image_new(width, height);
+    // IMPORTANT: Create composite in PIXEL space, not character space
+    // Since each character is 2 pixels tall, we need height * 2 pixels
+    composite = image_new(width, height * 2);
     if (!composite) {
       log_error("Failed to create composite image");
       *out_size = 0;
@@ -880,55 +925,67 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       log_info("[GRID CELL %d] Source: %dx%d (aspect %.3f), Cell: %dx%d chars at (%d,%d)", i, sources[i].image->w,
                sources[i].image->h, src_aspect, cell_width, cell_height, cell_x_offset, cell_y_offset);
 
-      // Calculate best fit for this image in the cell
-      int target_width, target_height;
+      // For grid cells, calculate dimensions to fill at least one dimension
+      // while maintaining aspect ratio
+      // IMPORTANT: We need to work in pixel space for the image
+      // The cell dimensions need special handling:
+      // - Width: 1 char = 1 pixel width (no conversion needed)
+      // - Height: 1 char = 2 pixels height (terminal aspect ratio)
+      
+      // Convert cell dimensions to pixel space for aspect ratio calculations
+      int cell_width_px = cell_width;       // Width in pixels = width in chars
+      int cell_height_px = cell_height * 2; // Height in pixels = chars * 2
 
-      // Debug: manually calculate to see what's happening
-      int width_if_fill_w = cell_width;
-      int height_if_fill_w = (int)((float)cell_width / src_aspect + 0.5f);
-      int width_if_fill_h = (int)((float)cell_height * src_aspect + 0.5f);
-      int height_if_fill_h = cell_height;
-
-      log_info("[GRID CELL %d] Fill width: %dx%d, Fill height: %dx%d", i, width_if_fill_w, height_if_fill_w,
-               width_if_fill_h, height_if_fill_h);
-
-      // Log what calculate_fit_dimensions is about to do
-      log_info("[GRID CELL %d] Calling calculate_fit_dimensions with img %dx%d, max %dx%d", i, sources[i].image->w,
-               sources[i].image->h, cell_width, cell_height);
-
-      calculate_fit_dimensions(sources[i].image->w, sources[i].image->h, cell_width, cell_height, &target_width,
-                               &target_height);
-
-      log_info("[GRID CELL %d] calculate_fit_dimensions returned: %dx%d chars", i, target_width, target_height);
-
-      // Double-check the calculation
-      if (target_height != cell_height && height_if_fill_h == cell_height && width_if_fill_h <= cell_width) {
-        log_error("[GRID CELL %d] ERROR: Should have filled height! Got %dx%d but expected %dx%d", i, target_width,
-                  target_height, width_if_fill_h, height_if_fill_h);
+      // Calculate the best fit maintaining aspect ratio
+      // src_aspect already calculated above
+      float cell_aspect = (float)cell_width_px / (float)cell_height_px;
+      
+      int target_width_px, target_height_px;
+      
+      if (src_aspect > cell_aspect) {
+        // Image is wider than cell - fit to width
+        target_width_px = cell_width_px;
+        target_height_px = (int)(cell_width_px / src_aspect + 0.5f);
+      } else {
+        // Image is taller than cell - fit to height
+        target_height_px = cell_height_px;
+        target_width_px = (int)(cell_height_px * src_aspect + 0.5f);
       }
 
-      // Create resized image
-      image_t *resized = image_new(target_width, target_height);
+      log_info("[GRID CELL %d] Best fit in cell: %dx%d pixels (from %dx%d image, cell %dx%d chars = %dx%d px)", i,
+               target_width_px, target_height_px, sources[i].image->w, sources[i].image->h, cell_width, cell_height,
+               cell_width_px, cell_height_px);
+
+      // Create resized image with pixel dimensions
+      image_t *resized = image_new(target_width_px, target_height_px);
       if (resized) {
         image_resize(sources[i].image, resized);
 
-        // Center the resized image in the cell
-        int x_padding = (cell_width - target_width) / 2;
-        int y_padding = (cell_height - target_height) / 2;
+        // Center the image in the cell
+        // Convert pixel dimensions back to character dimensions for centering
+        int target_width_chars = target_width_px;
+        int target_height_chars = target_height_px / 2; // Convert pixels to chars
 
-        log_debug("Cell %d: Centering %dx%d image in %dx%d cell, padding: %d,%d", i, target_width, target_height,
-                  cell_width, cell_height, x_padding, y_padding);
+        int x_padding = (cell_width - target_width_chars) / 2;
+        int y_padding = (cell_height - target_height_chars) / 2;
 
-        // Copy resized image to composite
-        for (int y = 0; y < target_height; y++) {
-          for (int x = 0; x < target_width; x++) {
-            int src_idx = y * target_width + x;
+        log_debug("Cell %d: Centering %dx%d px (%dx%d chars) in %dx%d cell, padding: %d,%d", i, target_width_px,
+                  target_height_px, target_width_chars, target_height_chars, cell_width, cell_height, x_padding,
+                  y_padding);
+
+        // Copy resized image to composite (now in pixel space)
+        for (int y = 0; y < target_height_px; y++) {
+          for (int x = 0; x < target_width_px; x++) {
+            int src_idx = y * target_width_px + x;
+            // Convert character offsets to pixel offsets
+            // x_padding and cell_x_offset are in characters, keep them as-is for X
+            // For Y, we need to convert character offsets to pixel offsets (multiply by 2)
             int dst_x = cell_x_offset + x_padding + x;
-            int dst_y = cell_y_offset + y_padding + y;
+            int dst_y = (cell_y_offset + y_padding) * 2 + y;  // Convert char offset to pixel offset
             int dst_idx = dst_y * width + dst_x;
 
             if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h &&
-                dst_x < (cell_x_offset + cell_width) && dst_y < (cell_y_offset + cell_height)) {
+                dst_x < (cell_x_offset + cell_width) && dst_y < ((cell_y_offset + cell_height) * 2)) {
               composite->pixels[dst_idx] = resized->pixels[src_idx];
             }
           }
@@ -1139,38 +1196,41 @@ int main(int argc, char *argv[]) {
   while (!g_should_exit) {
     log_info("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
 
+    // Check for disconnected clients BEFORE accepting new ones
+    // This ensures slots are freed up for new connections
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      // Check if this client has been marked inactive by its receive thread
+      if (client->client_id != 0 && !client->active && client->receive_thread != 0) {
+        // Client marked as inactive and has a thread to clean up
+        uint32_t client_id = client->client_id;
+        pthread_t receive_thread = client->receive_thread;
+
+        // Clear the thread handle immediately to avoid double-join
+        client->receive_thread = 0;
+
+        pthread_mutex_unlock(&g_client_manager_mutex);
+
+        log_info("Cleaning up disconnected client %u", client_id);
+        // Wait for receive thread to finish
+        pthread_join(receive_thread, NULL);
+
+        // Remove the client and clean up resources
+        remove_client(client_id);
+
+        // Start over from the beginning since we released the lock
+        pthread_mutex_lock(&g_client_manager_mutex);
+        i = -1; // Will be incremented to 0 at loop continuation
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+
     // Accept network connection with timeout
     connfd = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
     if (connfd < 0) {
       if (errno == ETIMEDOUT) {
-        // Check for disconnected clients during timeout
-        pthread_mutex_lock(&g_client_manager_mutex);
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-          client_info_t *client = &g_client_manager.clients[i];
-          // Check for clients that were active but are now inactive
-          // client_id check removed - 0 is a valid client ID
-          if (client->client_id != 0 || client->active) {
-            // This slot has or had a client
-            if (!client->active && client->socket > 0) {
-              // Client marked as inactive but socket not closed yet
-              uint32_t client_id = client->client_id;
-              pthread_mutex_unlock(&g_client_manager_mutex);
-
-              log_info("Cleaning up disconnected client %u", client_id);
-              // Wait for receive thread to finish
-              if (client->receive_thread) {
-                pthread_join(client->receive_thread, NULL);
-              }
-
-              // Remove the client and clean up resources
-              remove_client(client_id);
-
-              // Re-lock for next iteration
-              pthread_mutex_lock(&g_client_manager_mutex);
-            }
-          }
-        }
-        pthread_mutex_unlock(&g_client_manager_mutex);
+        // Timeout is normal, just continue
         continue;
       }
       log_error("Network accept failed: %s", network_error_string(errno));
@@ -1275,8 +1335,8 @@ void *client_receive_thread_func(void *arg) {
       } else {
         log_error("Error receiving from client %u: %s", client->client_id, strerror(errno));
       }
-      // Mark client as inactive when disconnected
-      client->active = false;
+      // Don't just mark inactive - properly remove the client
+      // This will be done after the loop exits
       break;
     }
 
@@ -1432,34 +1492,11 @@ void *client_receive_thread_func(void *arg) {
     }
   }
 
-  // Mark client as inactive and close socket to trigger cleanup
+  // Mark client as inactive so main thread can clean it up
+  // Do NOT call remove_client here - it causes race conditions and double-frees
+  // Do NOT close the socket here - let the main thread detect it and clean up
   client->active = false;
-  if (client->socket > 0) {
-    close(client->socket);
-    client->socket = 0;
-  }
   log_info("Receive thread for client %u terminated", client->client_id);
-  return NULL;
-}
-
-// Thread function to send data to a specific client
-// DISABLED: Using broadcast thread instead to avoid competition
-void *client_send_thread_func(void *arg) {
-  client_info_t *client = (client_info_t *)arg;
-  if (!client || client->socket <= 0) {
-    log_error("Invalid client info in send thread");
-    return NULL;
-  }
-
-  log_info("Send thread for client %u (%s) - disabled, using broadcast thread", client->client_id,
-           client->display_name);
-
-  // Just wait for exit signal - broadcast thread handles sending
-  while (!g_should_exit && client->active) {
-    usleep(100000); // 100ms
-  }
-
-  log_info("Send thread for client %u terminated", client->client_id);
   return NULL;
 }
 
@@ -1532,6 +1569,19 @@ int add_client(int socket, const char *client_ip, int port) {
   // This avoids race conditions and simplifies synchronization
   log_info("Client %u initialized (using broadcast thread for sending)", client->client_id);
 
+  // Send initial server state to the new client
+  server_state_packet_t state;
+  state.connected_client_count = g_client_manager.client_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  if (send_server_state_packet(client->socket, &state) < 0) {
+    log_warn("Failed to send initial server state to client %u", client->client_id);
+  } else {
+    log_info("Sent initial server state to client %u: %u connected clients", client->client_id,
+             state.connected_client_count);
+  }
+
   log_info("Added client %u from %s:%d", client->client_id, client_ip, port);
   return client->client_id;
 }
@@ -1541,7 +1591,9 @@ int remove_client(uint32_t client_id) {
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->active && client->client_id == client_id) {
+    // Remove the client if it matches the ID (regardless of active status)
+    // This allows cleaning up clients that have been marked inactive
+    if (client->client_id == client_id && client->client_id != 0) {
       client->active = false;
 
       // Clean up client resources
@@ -1550,14 +1602,20 @@ int remove_client(uint32_t client_id) {
         client->socket = 0;
       }
 
-      if (client->incoming_video_buffer) {
-        framebuffer_destroy(client->incoming_video_buffer);
-        client->incoming_video_buffer = NULL;
+      // Only destroy buffers if they haven't been destroyed already
+      // Use temporary pointers to avoid race conditions
+      framebuffer_t *video_buffer = client->incoming_video_buffer;
+      audio_ring_buffer_t *audio_buffer = client->incoming_audio_buffer;
+
+      client->incoming_video_buffer = NULL;
+      client->incoming_audio_buffer = NULL;
+
+      if (video_buffer) {
+        framebuffer_destroy(video_buffer);
       }
 
-      if (client->incoming_audio_buffer) {
-        audio_ring_buffer_destroy(client->incoming_audio_buffer);
-        client->incoming_audio_buffer = NULL;
+      if (audio_buffer) {
+        audio_ring_buffer_destroy(audio_buffer);
       }
 
       g_client_manager.client_count--;
