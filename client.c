@@ -612,7 +612,7 @@ int main(int argc, char *argv[]) {
   precalc_luminance_palette();
 
   // Initialize webcam capture
-  int webcam_index = 0;
+  int webcam_index = opt_webcam_index;
   if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
     log_fatal("Failed to initialize webcam capture");
     ascii_write_destroy();
