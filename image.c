@@ -12,17 +12,10 @@
 #include "options.h"
 #include "round.h"
 
-image_t *image_new(int width, int height) {
+image_t *image_new(size_t width, size_t height) {
   image_t *p;
 
   SAFE_MALLOC(p, sizeof(image_t), image_t *);
-
-  // Check for integer overflow before multiplication
-  if (width < 0 || height < 0) {
-    log_error("Invalid image dimensions: %d x %d", width, height);
-    free(p);
-    return NULL;
-  }
 
   const unsigned long w_ul = (unsigned long)width;
   const unsigned long h_ul = (unsigned long)height;
