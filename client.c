@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <zlib.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 
 #include "ascii.h"
 #include "common.h"
@@ -327,6 +329,39 @@ static void handle_video_packet(const void *data, size_t len) {
       g_last_frame_height = frame_height;
     }
 
+    // Analyze frame dimensions
+    int actual_width = 0;
+    int actual_height = 0;
+    int current_line_width = 0;
+    bool in_escape = false;
+
+    // Count actual characters (excluding ANSI escape sequences)
+    for (const char *p = frame_data; *p; p++) {
+      if (*p == '\033') {
+        in_escape = true;
+      } else if (in_escape && *p == 'm') {
+        in_escape = false;
+      } else if (!in_escape) {
+        if (*p == '\n') {
+          if (current_line_width > actual_width) {
+            actual_width = current_line_width;
+          }
+          current_line_width = 0;
+          actual_height++;
+        } else if (*p != '\r') {
+          current_line_width++;
+        }
+      }
+    }
+
+    // Get terminal dimensions
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    log_info("[CLIENT FRAME ANALYSIS] Frame: %dx%d chars, Terminal: %dx%d, Fill: %.1f%% width, %.1f%% height",
+             actual_width, actual_height, w.ws_col, w.ws_row, (float)actual_width / w.ws_col * 100,
+             (float)actual_height / w.ws_row * 100);
+
     ascii_write(frame_data);
   }
 
@@ -480,17 +515,43 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Resize image to a reasonable size for network transmission
-    // We need to account for terminal character aspect ratio (chars are ~2x taller than wide)
-    // So we send images with 2x the width to compensate
-    // Target: opt_width*2 x opt_height, but maintain webcam aspect ratio
+    log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
+             (float)image->w / (float)image->h);
 
-    ssize_t target_width = opt_width * 2; // e.g., 220
-    ssize_t target_height = opt_height;   // e.g., 70
+    // Resize image to a reasonable size for network transmission
+    // We want to send images large enough for the server to resize for any client
+    // But not so large that they waste bandwidth
+    // Let's target 400x300 as a reasonable maximum that gives server flexibility
+    // This is roughly 2x typical terminal sizes
+    // Always maintain original aspect ratio
+
+    ssize_t max_width = 400;  // Good size for network transmission
+    ssize_t max_height = 300; // Gives server room to resize
     ssize_t resized_width, resized_height;
 
-    // Use aspect_ratio2 which doesn't apply terminal character correction
-    aspect_ratio2(image->w, image->h, target_width, target_height, &resized_width, &resized_height);
+    // Calculate dimensions maintaining aspect ratio
+    float img_aspect = (float)image->w / (float)image->h;
+
+    // Fit within max bounds while maintaining aspect ratio
+    if (image->w > max_width || image->h > max_height) {
+      // Image needs resizing
+      if ((float)max_width / (float)max_height > img_aspect) {
+        // Max box is wider than image aspect - fit to height
+        resized_height = max_height;
+        resized_width = (ssize_t)(max_height * img_aspect);
+      } else {
+        // Max box is taller than image aspect - fit to width
+        resized_width = max_width;
+        resized_height = (ssize_t)(max_width / img_aspect);
+      }
+    } else {
+      // Image is already small enough, send as-is
+      resized_width = image->w;
+      resized_height = image->h;
+    }
+
+    log_info("[CLIENT RESIZE] Max: %ldx%ld, Resized to: %ldx%ld, aspect: %.3f", max_width, max_height, resized_width,
+             resized_height, (float)resized_width / (float)resized_height);
 
     image_t *resized = NULL;
     if (image->w != resized_width || image->h != resized_height) {
@@ -522,6 +583,7 @@ static void *webcam_capture_thread_func(void *arg) {
     memcpy(packet_data + sizeof(uint32_t) * 2, image->pixels, rgb_size);
 
     // Send image data to server via VIDEO packet
+    log_info("[CLIENT SEND] Sending frame: %dx%d to server", image->w, image->h);
     if (send_video_packet(sockfd, (char *)packet_data, packet_size) < 0) {
       log_debug("Failed to send video frame to server");
     }

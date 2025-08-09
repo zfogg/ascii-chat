@@ -99,19 +99,30 @@ void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t targe
     return;
   }
 
-  // Calculate aspect ratios
+  // Calculate aspect ratio
   float img_aspect = (float)img_w / (float)img_h;
-  float target_aspect = (float)target_w / (float)target_h;
 
-  // Check if we should fit to width or height
-  if (target_aspect > img_aspect) {
-    // Target is wider than image aspect, fit to height
-    *out_height = target_h;
-    *out_width = (ssize_t)(target_h * img_aspect);
+  // We want the image to fill at least one dimension of the target box
+  // while maintaining aspect ratio and fitting within the box
+
+  // Calculate dimensions if we scale to fill width
+  ssize_t width_if_fill_width = target_w;
+  ssize_t height_if_fill_width = (ssize_t)((float)target_w / img_aspect);
+
+  // Calculate dimensions if we scale to fill height
+  ssize_t width_if_fill_height = (ssize_t)((float)target_h * img_aspect);
+  ssize_t height_if_fill_height = target_h;
+
+  // Choose the scaling that maximizes usage of the target box
+  // We want to fill at least one dimension completely
+  if (height_if_fill_width <= target_h) {
+    // Filling width fits within height - use it
+    *out_width = width_if_fill_width;
+    *out_height = height_if_fill_width;
   } else {
-    // Target is taller than or equal to image aspect, fit to width
-    *out_width = target_w;
-    *out_height = (ssize_t)(target_w / img_aspect);
+    // Filling width would exceed height, so fill height instead
+    *out_width = width_if_fill_height;
+    *out_height = height_if_fill_height;
   }
 
   // Ensure minimum dimensions
