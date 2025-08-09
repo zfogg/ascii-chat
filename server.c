@@ -503,11 +503,24 @@ static void *video_broadcast_thread_func(void *arg) {
 
         if (mixed_frame && mixed_size > 0) {
 
-          // Send the mixed frame to this client
-          if (send_video_packet(client_copy.socket, mixed_frame, mixed_size) < 0) {
-            // log_debug("Failed to send video frame to client %u", client_copy.client_id);
-          } else {
-            sent_count++;
+          // Send frame with header that includes dimensions
+          compressed_frame_header_t header = {
+            .magic = COMPRESSION_FRAME_MAGIC,
+            .compressed_size = 0,  // Not compressed
+            .original_size = mixed_size,
+            .checksum = calculate_crc32(mixed_frame, mixed_size),
+            .width = target_width,
+            .height = target_height
+          };
+          
+          // Send header first
+          if (send_video_header_packet(client_copy.socket, &header, sizeof(header)) >= 0) {
+            // Then send the frame data
+            if (send_video_packet(client_copy.socket, mixed_frame, mixed_size) < 0) {
+              // log_debug("Failed to send video frame to client %u", client_copy.client_id);
+            } else {
+              sent_count++;
+            }
           }
 
           free(mixed_frame);
