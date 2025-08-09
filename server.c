@@ -736,8 +736,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
         // Parse the image data
         // Format: [width:4][height:4][rgb_data:w*h*3]
-        uint32_t img_width = ntohl(*(uint32_t *)latest_frame.data);
-        uint32_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
+        size_t img_width = ntohl(*(uint32_t *)latest_frame.data);
+        size_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
         rgb_t *pixels = (rgb_t *)(latest_frame.data + sizeof(uint32_t) * 2);
 
         log_info("[SERVER COMPOSITE] Got image from client %u: %ux%u, aspect: %.3f (needs terminal adjustment)",
@@ -746,7 +746,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         // Create an image_t structure
         image_t *img = image_new(img_width, img_height);
         if (img) {
-          memcpy(img->pixels, pixels, img_width * img_height * sizeof(rgb_t));
+          memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
           sources[source_count].image = img;
           sources[source_count].client_id = client->client_id;
           source_count++;
