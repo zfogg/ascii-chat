@@ -133,3 +133,56 @@ void aspect_ratio2(const ssize_t img_w, const ssize_t img_h, const ssize_t targe
     *out_height = MIN_DIMENSION;
   }
 }
+
+// Calculate the best dimensions to fit an image in a terminal area while preserving aspect ratio
+// Returns the dimensions in characters/pixels (1:1 for our use case with stretch=false)
+void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width, int max_height, int *out_width,
+                                           int *out_height) {
+  if (!out_width || !out_height || img_width <= 0 || img_height <= 0) {
+    if (out_width)
+      *out_width = max_width;
+    if (out_height)
+      *out_height = max_height;
+    return;
+  }
+
+  float src_aspect = (float)img_width / (float)img_height;
+
+  // Try filling width
+  int width_if_fill_w = max_width;
+  int height_if_fill_w = (int)((float)max_width / src_aspect + 0.5f);
+
+  // Try filling height
+  int width_if_fill_h = (int)((float)max_height * src_aspect + 0.5f);
+  int height_if_fill_h = max_height;
+
+  // log_debug("calculate_fit_dimensions: img %dx%d (aspect %.3f), max %dx%d", img_width, img_height, src_aspect,
+  //           max_width, max_height);
+  // log_debug("  Fill width: %dx%d, Fill height: %dx%d", width_if_fill_w, height_if_fill_w, width_if_fill_h,
+  //           height_if_fill_h);
+
+  // Choose the option that fits
+  if (height_if_fill_w <= max_height) {
+    // Filling width fits
+    // log_debug("  Choosing fill width: %dx%d", width_if_fill_w, height_if_fill_w);
+    *out_width = width_if_fill_w;
+    *out_height = height_if_fill_w;
+  } else {
+    // Fill height instead
+    // log_debug("  Choosing fill height: %dx%d", width_if_fill_h, height_if_fill_h);
+    *out_width = width_if_fill_h;
+    *out_height = height_if_fill_h;
+  }
+
+  // Clamp to bounds
+  if (*out_width > max_width)
+    *out_width = max_width;
+  if (*out_height > max_height)
+    *out_height = max_height;
+  if (*out_width < 1)
+    *out_width = 1;
+  if (*out_height < 1)
+    *out_height = 1;
+
+  // log_debug("  Final output: %dx%d", *out_width, *out_height);
+}
