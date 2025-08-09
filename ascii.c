@@ -41,11 +41,11 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   // automatically.
   ssize_t resized_width = width;
   ssize_t resized_height = height;
-  
+
   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
   if (!stretch) {
     // Pass the stretch parameter directly to aspect_ratio
-    aspect_ratio(original->w, original->h, width, height, stretch, &resized_width, &resized_height);
+    aspect_ratio(original->w, original->h * 2, resized_width, resized_height, stretch, &resized_width, &resized_height);
   }
 
   // Calculate how many leading spaces are required to center the image inside
