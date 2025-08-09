@@ -2,9 +2,11 @@
 #define ASCII_CHAT_COMMON_H
 
 /* Feature test macros for POSIX functions */
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include "options.h"
 
 /* ============================================================================

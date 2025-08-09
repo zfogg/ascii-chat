@@ -311,7 +311,6 @@ int audio_mixer_init(audio_mixer_t *mixer) {
   }
 
   mixer->active_input_count = 0;
-  pthread_mutex_init(&mixer->mix_mutex, NULL);
   mixer->mixer_thread_created = false;
 
   log_info("Audio mixer initialized");
@@ -330,10 +329,8 @@ void audio_mixer_destroy(audio_mixer_t *mixer) {
 
   pthread_mutex_destroy(&mixer->mix_mutex);
 
-  if (mixer->mix_buffer) {
-    free(mixer->mix_buffer);
-    mixer->mix_buffer = NULL;
-  }
+  free(mixer->mix_buffer);
+  mixer->mix_buffer = NULL;
 
   if (mixer->mixed_audio_buffer) {
     audio_ring_buffer_destroy(mixer->mixed_audio_buffer);
@@ -453,7 +450,6 @@ static void *video_broadcast_thread_func(void *arg) {
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
 
   // Track the number of active clients for console clear detection
-  int last_active_client_count = 0;
   int last_connected_count = 0;
 
   while (!g_should_exit) {
@@ -491,7 +487,6 @@ static void *video_broadcast_thread_func(void *arg) {
     if (client_count == 0) {
       // log_debug("Broadcast thread: No clients connected");
       usleep(100000); // 100ms sleep when no clients
-      last_active_client_count = 0;
       last_connected_count = 0;
       continue;
     }
@@ -521,9 +516,6 @@ static void *video_broadcast_thread_func(void *arg) {
       // Update the tracked count
       last_connected_count = client_count;
     }
-
-    // Update the tracked active count
-    last_active_client_count = active_client_count;
 
     static int frame_counter = 0;
     frame_counter++;
