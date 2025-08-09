@@ -27,6 +27,7 @@ static int sockfd = 0;
 static volatile bool g_should_exit = false;
 static volatile bool g_first_connection = true;
 static volatile bool g_should_reconnect = false;
+static volatile bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
 
@@ -329,9 +330,11 @@ static void *data_reception_thread_func(void *arg) {
     int result = receive_packet(sockfd, &type, &data, &len);
     if (result < 0) {
       log_error("Failed to receive packet");
+      g_connection_lost = true;
       break;
     } else if (result == 0) {
       log_info("Server closed connection");
+      g_connection_lost = true;
       break;
     }
 
@@ -390,7 +393,7 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread started");
 #endif
 
-  while (!g_should_exit) {
+  while (!g_should_exit && !g_connection_lost) {
     if (sockfd <= 0) {
       usleep(1000 * 1000); // 1 second
       continue;
@@ -403,7 +406,7 @@ static void *ping_thread_func(void *arg) {
     }
 
     // Wait 3 seconds before next ping
-    for (int i = 0; i < 3 && !g_should_exit && sockfd > 0; i++) {
+    for (int i = 0; i < 3 && !g_should_exit && !g_connection_lost && sockfd > 0; i++) {
       usleep(1000 * 1000); // 1 second
     }
   }
@@ -422,7 +425,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
   log_info("Webcam capture thread started");
 
-  while (!g_should_exit) {
+  while (!g_should_exit && !g_connection_lost) {
     if (sockfd <= 0) {
       usleep(100 * 1000); // Wait for connection
       continue;
@@ -692,6 +695,9 @@ int main(int argc, char *argv[]) {
         log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
       }
 
+      // Reset connection lost flag for new connection
+      g_connection_lost = false;
+
       // Start data reception thread
       g_data_thread_exited = false; // Reset exit flag for new connection
       if (pthread_create(&g_data_thread, NULL, data_reception_thread_func, NULL) != 0) {
@@ -733,7 +739,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Connection monitoring loop - wait for connection to break or shutdown
-    while (!g_should_exit && sockfd > 0) {
+    while (!g_should_exit && sockfd > 0 && !g_connection_lost) {
       // Check if data thread has exited (indicates connection lost)
       if (g_data_thread_exited) {
         log_info("Data thread exited, connection lost");
