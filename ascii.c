@@ -35,11 +35,10 @@ char *ascii_read(void) {
 
   if (original == NULL) {
     // Return a simple error message if webcam read fails
-    log_error(ASCIICHAT_WEBCAM_ERROR_STRING);
     char *err_msg;
-    size_t err_len = strlen(ASCIICHAT_WEBCAM_ERROR_STRING);
+    size_t err_len = strlen(ASCIICHAT_WEBCAM_ERROR_STRING) + 1; // +1 for null terminator
     SAFE_MALLOC(err_msg, err_len, char *);
-    strncpy(err_msg, ASCIICHAT_WEBCAM_ERROR_STRING, err_len);
+    strcpy(err_msg, ASCIICHAT_WEBCAM_ERROR_STRING);
     return err_msg;
   }
 
@@ -64,6 +63,12 @@ char *ascii_read(void) {
   size_t pad_height = (size_t)pad_height_ss;
 
   // Resize the captured frame to the aspect-correct dimensions.
+  if (width <= 0 || height <= 0) {
+    log_error("Invalid dimensions for resize: width=%zd, height=%zd", width, height);
+    image_destroy(original);
+    return NULL;
+  }
+
   image_t *resized = image_new((int)width, (int)height);
   if (!resized) {
     log_error("Failed to allocate resized image");
@@ -83,6 +88,17 @@ char *ascii_read(void) {
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII");
+    image_destroy(original);
+    image_destroy(resized);
+    return NULL;
+  }
+
+  size_t ascii_len = strlen(ascii);
+  if (ascii_len == 0) {
+    log_error("ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w, resized->h);
+    free(ascii);
+    image_destroy(original);
+    image_destroy(resized);
     return NULL;
   }
 
@@ -230,13 +246,70 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     return NULL;
   }
 
-  // If only one source, return it directly (make a copy)
+  // If only one source, ensure it fills the target dimensions
   if (source_count == 1) {
+    // Create a frame of the target size filled with spaces
+    size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
     char *result;
-    SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
-    memcpy(result, sources[0].frame_data, sources[0].frame_size);
-    result[sources[0].frame_size] = '\0';
-    *out_size = sources[0].frame_size;
+    SAFE_MALLOC(result, target_size, char *);
+    memset(result, ' ', target_size - 1);
+    result[target_size - 1] = '\0';
+
+    // Add newlines at the end of each row
+    for (int row = 0; row < height; row++) {
+      result[row * (width + 1) + width] = '\n';
+    }
+
+    // Copy the source frame into the result, line by line, centering it
+    const char *src_data = sources[0].frame_data;
+    int src_pos = 0;
+    int src_size = (int)sources[0].frame_size;
+
+    // Count lines in source to calculate vertical padding
+    int src_lines = 0;
+    for (int i = 0; i < src_size; i++) {
+      if (src_data[i] == '\n')
+        src_lines++;
+    }
+
+    int v_padding = (height - src_lines) / 2;
+    if (v_padding < 0)
+      v_padding = 0;
+
+    int dst_row = v_padding;
+    src_pos = 0;
+
+    while (src_pos < src_size && dst_row < height) {
+      // Find end of current line in source
+      int line_start = src_pos;
+      int line_len = 0;
+      while (src_pos < src_size && src_data[src_pos] != '\n') {
+        line_len++;
+        src_pos++;
+      }
+
+      // Calculate horizontal padding to center the line
+      int h_padding = (width - line_len) / 2;
+      if (h_padding < 0)
+        h_padding = 0;
+
+      // Copy line to result with padding
+      int dst_pos = dst_row * (width + 1) + h_padding;
+      int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
+
+      if (copy_len > 0 && dst_pos + copy_len < (int)target_size) {
+        memcpy(&result[dst_pos], &src_data[line_start], copy_len);
+      }
+
+      // Skip newline in source
+      if (src_pos < src_size && src_data[src_pos] == '\n') {
+        src_pos++;
+      }
+
+      dst_row++;
+    }
+
+    *out_size = target_size - 1; // Don't count null terminator
     return result;
   }
 
