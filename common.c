@@ -24,12 +24,20 @@ static struct {
   size_t total_freed;
   size_t current_usage;
   size_t peak_usage;
+  size_t malloc_calls;
+  size_t free_calls;
+  size_t calloc_calls;
+  size_t realloc_calls;
   pthread_mutex_t mutex;
 } g_mem = {.head = NULL,
            .total_allocated = 0,
            .total_freed = 0,
            .current_usage = 0,
            .peak_usage = 0,
+           .malloc_calls = 0,
+           .free_calls = 0,
+           .calloc_calls = 0,
+           .realloc_calls = 0,
            .mutex = PTHREAD_MUTEX_INITIALIZER};
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
@@ -38,12 +46,33 @@ static struct {
 #undef calloc
 #undef realloc
 
+static inline void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
+  const double MB = 1024.0 * 1024.0;
+  const double GB = MB * 1024.0;
+  const double TB = GB * 1024.0;
+
+  if ((double)bytes < MB) {
+    snprintf(out, out_capacity, "%zu B", bytes);
+  } else if ((double)bytes < GB) {
+    double value = (double)bytes / MB;
+    snprintf(out, out_capacity, "%.2f MB", value);
+  } else if ((double)bytes < TB) {
+    double value = (double)bytes / GB;
+    snprintf(out, out_capacity, "%.2f GB", value);
+  } else {
+    double value = (double)bytes / TB;
+    snprintf(out, out_capacity, "%.2f TB", value);
+  }
+}
+
 void *debug_malloc(size_t size, const char *file, int line) {
   void *ptr = malloc(size);
   if (!ptr)
     return NULL;
 
   pthread_mutex_lock(&g_mem.mutex);
+
+  g_mem.malloc_calls++;
 
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
   if (block) {
@@ -71,6 +100,8 @@ void debug_free(void *ptr, const char *file, int line) {
     return;
 
   pthread_mutex_lock(&g_mem.mutex);
+
+  g_mem.free_calls++;
 
   mem_block_t *prev = NULL;
   mem_block_t *curr = g_mem.head;
@@ -110,12 +141,13 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
   pthread_mutex_lock(&g_mem.mutex);
 
+  g_mem.calloc_calls++;
+
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
   if (block) {
     block->ptr = ptr;
     block->size = total;
     SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-    block->file[sizeof(block->file) - 1] = '\0';
     block->line = line;
     block->next = g_mem.head;
     g_mem.head = block;
@@ -133,6 +165,11 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 }
 
 void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
+  // Count the realloc call even if it delegates to malloc or free
+  pthread_mutex_lock(&g_mem.mutex);
+  g_mem.realloc_calls++;
+  pthread_mutex_unlock(&g_mem.mutex);
+
   if (ptr == NULL) {
     return debug_malloc(size, file, line);
   }
@@ -182,7 +219,6 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       block->ptr = new_ptr;
       block->size = size;
       SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-      block->file[sizeof(block->file) - 1] = '\0';
       block->line = line;
       block->next = g_mem.head;
       g_mem.head = block;
@@ -205,16 +241,32 @@ void debug_memory_report(void) {
 
   /* Write directly to stderr in case logging is already destroyed at exit */
   fprintf(stderr, "\n=== Memory Report ===\n");
-  fprintf(stderr, "Total allocated: %zu bytes\n", g_mem.total_allocated);
-  fprintf(stderr, "Total freed: %zu bytes\n", g_mem.total_freed);
-  fprintf(stderr, "Current usage: %zu bytes\n", g_mem.current_usage);
-  fprintf(stderr, "Peak usage: %zu bytes\n", g_mem.peak_usage);
+
+  char pretty_total[64];
+  char pretty_freed[64];
+  char pretty_current[64];
+  char pretty_peak[64];
+  format_bytes_pretty(g_mem.total_allocated, pretty_total, sizeof(pretty_total));
+  format_bytes_pretty(g_mem.total_freed, pretty_freed, sizeof(pretty_freed));
+  format_bytes_pretty(g_mem.current_usage, pretty_current, sizeof(pretty_current));
+  format_bytes_pretty(g_mem.peak_usage, pretty_peak, sizeof(pretty_peak));
+
+  fprintf(stderr, "Total allocated: %s\n", pretty_total);
+  fprintf(stderr, "Total freed: %s\n", pretty_freed);
+  fprintf(stderr, "Current usage: %s\n", pretty_current);
+  fprintf(stderr, "Peak usage: %s\n", pretty_peak);
+  fprintf(stderr, "malloc calls: %zu\n", g_mem.malloc_calls);
+  fprintf(stderr, "free calls: %zu\n", g_mem.free_calls);
+  fprintf(stderr, "calloc calls: %zu\n", g_mem.calloc_calls);
+  // fprintf(stderr, "realloc calls: %zu\n", g_mem.realloc_calls);
 
   if (g_mem.head) {
-    fprintf(stderr, "\nLeaked allocations:\n");
+    fprintf(stderr, "\nCurrent allocations:\n");
     mem_block_t *curr = g_mem.head;
     while (curr) {
-      fprintf(stderr, "  - %zu bytes at %s:%d\n", curr->size, curr->file, curr->line);
+      char pretty_size[64];
+      format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
+      fprintf(stderr, "  - %s:%d - %s\n", curr->file, curr->line, pretty_size);
       curr = curr->next;
     }
   }

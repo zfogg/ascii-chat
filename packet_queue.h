@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "network.h"
+#include "buffer_pool.h"
 
 /*
  * Packet Queue System for Per-Client Send Threads
@@ -17,16 +18,17 @@
  * Each client has separate queues for audio and video to allow prioritization.
  */
 
-// Forward declaration
-typedef struct packet_node packet_node_t;
-
 // A single packet ready to send (header already in network byte order)
 typedef struct {
-  packet_header_t header; // Complete packet header
-  void *data;             // Packet payload (can be NULL)
-  size_t data_len;        // Length of payload
-  bool owns_data;         // If true, free data when packet is freed
+  packet_header_t header;          // Complete packet header
+  void *data;                      // Packet payload (can be NULL)
+  size_t data_len;                 // Length of payload
+  bool owns_data;                  // If true, free data when packet is freed
+  data_buffer_pool_t *buffer_pool; // Pool that allocated the data (NULL if malloc'd)
 } queued_packet_t;
+
+// Forward declaration
+typedef struct packet_node packet_node_t;
 
 // Node in the packet queue linked list
 struct packet_node {
@@ -51,8 +53,9 @@ typedef struct {
   size_t max_size;     // Maximum queue size (0 = unlimited)
   size_t bytes_queued; // Total bytes of data queued
 
-  // Memory pool for nodes
-  node_pool_t *node_pool; // Optional memory pool (NULL = use malloc/free)
+  // Memory pools
+  node_pool_t *node_pool;          // Optional memory pool for nodes (NULL = use malloc/free)
+  data_buffer_pool_t *buffer_pool; // Optional memory pool for data buffers (NULL = use malloc/free)
 
   // Thread synchronization
   pthread_mutex_t mutex;
@@ -67,7 +70,7 @@ typedef struct {
   bool shutdown; // Signal to shutdown queue
 } packet_queue_t;
 
-// Memory pool functions
+// Node pool functions
 node_pool_t *node_pool_create(size_t pool_size);
 void node_pool_destroy(node_pool_t *pool);
 packet_node_t *node_pool_get(node_pool_t *pool);
@@ -76,6 +79,7 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node);
 // Queue management functions
 packet_queue_t *packet_queue_create(size_t max_size);
 packet_queue_t *packet_queue_create_with_pool(size_t max_size, size_t pool_size);
+packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool_size, bool use_buffer_pool);
 void packet_queue_destroy(packet_queue_t *queue);
 
 // Enqueue a packet (returns 0 on success, -1 on error)

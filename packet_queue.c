@@ -1,4 +1,5 @@
 #include "packet_queue.h"
+#include "buffer_pool.h"
 #include "common.h"
 #include <stdlib.h>
 #include <string.h>
@@ -112,6 +113,10 @@ packet_queue_t *packet_queue_create(size_t max_size) {
 }
 
 packet_queue_t *packet_queue_create_with_pool(size_t max_size, size_t pool_size) {
+  return packet_queue_create_with_pools(max_size, pool_size, false);
+}
+
+packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool_size, bool use_buffer_pool) {
   packet_queue_t *queue;
   SAFE_MALLOC(queue, sizeof(packet_queue_t), packet_queue_t *);
 
@@ -121,8 +126,9 @@ packet_queue_t *packet_queue_create_with_pool(size_t max_size, size_t pool_size)
   queue->max_size = max_size;
   queue->bytes_queued = 0;
 
-  // Create memory pool if requested
-  queue->node_pool = pool_size > 0 ? node_pool_create(pool_size) : NULL;
+  // Create memory pools if requested
+  queue->node_pool = node_pool_size > 0 ? node_pool_create(node_pool_size) : NULL;
+  queue->buffer_pool = use_buffer_pool ? data_buffer_pool_create() : NULL;
 
   pthread_mutex_init(&queue->mutex, NULL);
   pthread_cond_init(&queue->not_empty, NULL);
@@ -146,9 +152,22 @@ void packet_queue_destroy(packet_queue_t *queue) {
   // Clear any remaining packets
   packet_queue_clear(queue);
 
-  // Destroy memory pool if present
+  // Log buffer pool statistics before destroying
+  if (queue->buffer_pool) {
+    uint64_t hits, misses;
+    data_buffer_pool_get_stats(queue->buffer_pool, &hits, &misses);
+    if (hits + misses > 0) {
+      log_info("Buffer pool stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
+               (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
+    }
+  }
+
+  // Destroy memory pools if present
   if (queue->node_pool) {
     node_pool_destroy(queue->node_pool);
+  }
+  if (queue->buffer_pool) {
+    data_buffer_pool_destroy(queue->buffer_pool);
   }
 
   pthread_mutex_destroy(&queue->mutex);
@@ -183,7 +202,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
 
       queue->bytes_queued -= old_head->packet.data_len;
       if (old_head->packet.owns_data && old_head->packet.data) {
-        free(old_head->packet.data);
+        data_buffer_pool_free(queue->buffer_pool, old_head->packet.data, old_head->packet.data_len);
       }
       node_pool_put(queue->node_pool, old_head);
       queue->count--;
@@ -212,18 +231,27 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   // Handle data
   if (data_len > 0 && data) {
     if (copy_data) {
-      // Copy the data
-      SAFE_MALLOC(node->packet.data, data_len, void *);
+      // Try to allocate from buffer pool (local or global)
+      if (queue->buffer_pool) {
+        node->packet.data = data_buffer_pool_alloc(queue->buffer_pool, data_len);
+        node->packet.buffer_pool = queue->buffer_pool;
+      } else {
+        // Use global pool if no local pool
+        node->packet.data = buffer_pool_alloc(data_len);
+        node->packet.buffer_pool = data_buffer_pool_get_global();
+      }
       memcpy(node->packet.data, data, data_len);
       node->packet.owns_data = true;
     } else {
       // Use the data pointer directly (caller must ensure it stays valid)
       node->packet.data = (void *)data;
       node->packet.owns_data = false;
+      node->packet.buffer_pool = NULL;
     }
   } else {
     node->packet.data = NULL;
     node->packet.owns_data = false;
+    node->packet.buffer_pool = NULL;
   }
 
   node->packet.data_len = data_len;
@@ -279,7 +307,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
 
       queue->bytes_queued -= old_head->packet.data_len;
       if (old_head->packet.owns_data && old_head->packet.data) {
-        free(old_head->packet.data);
+        data_buffer_pool_free(queue->buffer_pool, old_head->packet.data, old_head->packet.data_len);
       }
       node_pool_put(queue->node_pool, old_head);
       queue->count--;
@@ -290,8 +318,32 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   // Create new node (use pool if available)
   packet_node_t *node = node_pool_get(queue->node_pool);
 
-  // Copy the packet
+  // Copy the packet header
   memcpy(&node->packet, packet, sizeof(queued_packet_t));
+
+  // Deep copy the data if needed
+  if (packet->data && packet->data_len > 0 && packet->owns_data) {
+    // If the packet owns its data, we need to make a copy
+    // Try to allocate from buffer pool (local or global)
+    void *data_copy;
+    if (queue->buffer_pool) {
+      data_copy = data_buffer_pool_alloc(queue->buffer_pool, packet->data_len);
+      node->packet.buffer_pool = queue->buffer_pool;
+    } else {
+      // Use global pool if no local pool
+      data_copy = buffer_pool_alloc(packet->data_len);
+      node->packet.buffer_pool = data_buffer_pool_get_global();
+    }
+    memcpy(data_copy, packet->data, packet->data_len);
+    node->packet.data = data_copy;
+    node->packet.owns_data = true;
+  } else {
+    // Either no data or packet doesn't own it (shared reference is OK)
+    node->packet.data = packet->data;
+    node->packet.owns_data = packet->owns_data;
+    node->packet.buffer_pool = packet->buffer_pool; // Preserve original pool reference
+  }
+
   node->next = NULL;
 
   // Add to queue
@@ -360,6 +412,22 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
       return NULL;
     }
 
+    // Validate CRC if there's data
+    if (node->packet.data_len > 0 && node->packet.data) {
+      uint32_t expected_crc = ntohl(node->packet.header.crc32);
+      uint32_t actual_crc = asciichat_crc32(node->packet.data, node->packet.data_len);
+      if (actual_crc != expected_crc) {
+        log_error("CORRUPTION: CRC mismatch in dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu", actual_crc,
+                  expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
+        // Free data if packet owns it
+        if (node->packet.owns_data && node->packet.data) {
+          data_buffer_pool_free(queue->buffer_pool, node->packet.data, node->packet.data_len);
+        }
+        node_pool_put(queue->node_pool, node);
+        return NULL;
+      }
+    }
+
     // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
@@ -411,6 +479,22 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
       return NULL;
     }
 
+    // Validate CRC if there's data
+    if (node->packet.data_len > 0 && node->packet.data) {
+      uint32_t expected_crc = ntohl(node->packet.header.crc32);
+      uint32_t actual_crc = asciichat_crc32(node->packet.data, node->packet.data_len);
+      if (actual_crc != expected_crc) {
+        log_error("CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
+                  actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
+        // Free data if packet owns it
+        if (node->packet.owns_data && node->packet.data) {
+          data_buffer_pool_free(queue->buffer_pool, node->packet.data, node->packet.data_len);
+        }
+        node_pool_put(queue->node_pool, node);
+        return NULL;
+      }
+    }
+
     // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
@@ -427,7 +511,8 @@ void packet_queue_free_packet(queued_packet_t *packet) {
     return;
 
   if (packet->owns_data && packet->data) {
-    free(packet->data);
+    // Return to appropriate pool or free
+    data_buffer_pool_free(packet->buffer_pool, packet->data, packet->data_len);
   }
   free(packet);
 }
@@ -480,7 +565,7 @@ void packet_queue_clear(packet_queue_t *queue) {
     queue->head = node->next;
 
     if (node->packet.owns_data && node->packet.data) {
-      free(node->packet.data);
+      data_buffer_pool_free(queue->buffer_pool, node->packet.data, node->packet.data_len);
     }
     node_pool_put(queue->node_pool, node);
   }

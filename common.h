@@ -116,7 +116,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
       /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
       exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
     }                                                                                                                  \
-    (ptr) = (cast)(new_ptr);                                                                                           \
+    (ptr) = (cast)(tmp_ptr);                                                                                           \
   } while (0)
 
 /* Safe free that nulls the pointer */

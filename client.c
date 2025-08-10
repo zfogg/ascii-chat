@@ -17,6 +17,7 @@
 #include <math.h>
 
 #include "ascii.h"
+#include "buffer_pool.h"
 #include "common.h"
 #include "network.h"
 #include "options.h"
@@ -25,6 +26,7 @@
 #include "image.h"
 #include "webcam.h"
 #include "aspect_ratio.h"
+#include "buffer_pool.h"
 
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
@@ -101,6 +103,7 @@ static void *audio_capture_thread_func(void *arg);
 // Define macros to use thread-safe versions
 #define send_packet safe_send_packet
 #define send_audio_packet safe_send_audio_packet
+#define send_audio_batch_packet safe_send_audio_batch_packet
 #define send_size_packet safe_send_size_packet
 #define send_pong_packet safe_send_pong_packet
 #define send_ping_packet safe_send_ping_packet
@@ -124,6 +127,16 @@ static int safe_send_audio_packet(int sockfd, const float *samples, int num_samp
 #undef send_audio_packet
   int result = send_audio_packet(sockfd, samples, num_samples);
 #define send_audio_packet safe_send_audio_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_audio_batch_packet
+static int safe_send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count) {
+  pthread_mutex_lock(&g_send_mutex);
+#undef send_audio_batch_packet
+  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count);
+#define send_audio_batch_packet safe_send_audio_batch_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -498,7 +511,7 @@ static void *data_reception_thread_func(void *arg) {
       break;
     }
 
-    free(data);
+    buffer_pool_free(data, len);
   }
 
 #ifdef DEBUG_THREADS
@@ -689,6 +702,11 @@ static void *audio_capture_thread_func(void *arg) {
 
   float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
 
+  // Audio batching buffers
+  float batch_buffer[AUDIO_BATCH_SAMPLES]; // Buffer for accumulating samples
+  int batch_samples_collected = 0;         // How many samples we've collected
+  int batch_chunks_collected = 0;          // How many chunks we've collected
+
   // Noise gate parameters
   static const float NOISE_GATE_THRESHOLD = 0.01f; // Adjust this to reduce background noise
   static const float GATE_ATTACK_TIME = 0.002f;    // 2ms attack
@@ -748,17 +766,45 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      // Only send if gate is open (reduces network traffic for silence)
+      // Only batch if gate is open (reduces network traffic for silence)
       if (gate_envelope > 0.1f) {
-        if (send_audio_packet(sockfd, audio_buffer, samples_read) < 0) {
-          log_debug("Failed to send audio packet to server");
-          // Don't set g_connection_lost here as receive thread will detect it
+        // Copy processed samples to batch buffer
+        memcpy(&batch_buffer[batch_samples_collected], audio_buffer, samples_read * sizeof(float));
+        batch_samples_collected += samples_read;
+        batch_chunks_collected++;
+
+        // Send batch when we have enough chunks or buffer is full
+        if (batch_chunks_collected >= AUDIO_BATCH_COUNT ||
+            batch_samples_collected + AUDIO_SAMPLES_PER_PACKET > AUDIO_BATCH_SAMPLES) {
+
+          (void)send_audio_packet; // suppress warning about unused function
+          if (send_audio_batch_packet(sockfd, batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
+            log_debug("Failed to send audio batch to server");
+            // Don't set g_connection_lost here as receive thread will detect it
+          }
+#ifdef AUDIO_DEBUG
+          else {
+            log_debug("Sent audio batch: %d chunks, %d total samples (gate: %.2f)", batch_chunks_collected,
+                      batch_samples_collected, gate_envelope);
+          }
+#endif
+          // Reset batch counters
+          batch_samples_collected = 0;
+          batch_chunks_collected = 0;
+        }
+      } else if (batch_samples_collected > 0) {
+        // Gate closed but we have pending samples - send what we have
+        if (send_audio_batch_packet(sockfd, batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
+          log_debug("Failed to send final audio batch to server");
         }
 #ifdef AUDIO_DEBUG
         else {
-          log_debug("Sent %d audio samples to server (gate: %.2f)", samples_read, gate_envelope);
+          log_debug("Sent final audio batch before silence: %d chunks, %d samples", batch_chunks_collected,
+                    batch_samples_collected);
         }
 #endif
+        batch_samples_collected = 0;
+        batch_chunks_collected = 0;
       }
     } else {
       // Small delay if no audio available
@@ -821,6 +867,10 @@ int main(int argc, char *argv[]) {
 #endif
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat client starting...");
+
+  // Initialize global shared buffer pool
+  data_buffer_pool_init_global();
+  atexit(data_buffer_pool_cleanup_global);
 
   options_init(argc, argv);
   char *address = opt_address;

@@ -342,6 +342,8 @@ Before committing any changes:
 7. **mixer.c**: Multi-client audio sample mixing logic. Ducking and compression
 8. **ringbuffer.c**: Framebuffer code lives here (data structure for 
    multi-frame storage with metadata)
+9. **packet_queue.c**: Thread-safe per-client queue implementation for the 
+   network protcol and its packets. It has node pools and uses buffer_pool.c/h
 
 ## CRITICAL UNDERSTANDING: Proper Ringbuffer Usage in Video Streaming
 
@@ -507,3 +509,5 @@ Added a global send mutex (`g_send_mutex`) in the client and created thread-safe
 - Check existing branch naming patterns before creating new branches
 - Run `make format` before EVERY commit
 - CLIENT SIDE: Must synchronize socket writes if multiple threads send packets
+- NEVER use forward declarations - use proper header files instead
+- When you need to reference a type from another module, include its header file

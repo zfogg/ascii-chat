@@ -1,0 +1,288 @@
+#include "buffer_pool.h"
+#include "common.h"
+#include <stdlib.h>
+#include <string.h>
+
+/* ============================================================================
+ * Internal Buffer Pool Functions
+ * ============================================================================
+ */
+
+static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_size) {
+  if (buffer_size == 0 || pool_size == 0) {
+    return NULL;
+  }
+
+  buffer_pool_t *pool;
+  SAFE_MALLOC(pool, sizeof(buffer_pool_t), buffer_pool_t *);
+
+  // Allocate array of buffer nodes
+  SAFE_MALLOC(pool->nodes, sizeof(buffer_node_t) * pool_size, buffer_node_t *);
+
+  // Allocate single memory block for all buffers
+  SAFE_MALLOC(pool->memory_block, buffer_size * pool_size, void *);
+
+  // Initialize each buffer node
+  uint8_t *current_buffer = (uint8_t *)pool->memory_block;
+  for (size_t i = 0; i < pool_size; i++) {
+    pool->nodes[i].data = current_buffer;
+    pool->nodes[i].size = buffer_size;
+    pool->nodes[i].in_use = false;
+    pool->nodes[i].next = (i < pool_size - 1) ? &pool->nodes[i + 1] : NULL;
+    current_buffer += buffer_size;
+  }
+
+  pool->free_list = &pool->nodes[0];
+  pool->buffer_size = buffer_size;
+  pool->pool_size = pool_size;
+  pool->used_count = 0;
+  pool->hits = 0;
+  pool->misses = 0;
+  pool->returns = 0;
+
+  return pool;
+}
+
+static void buffer_pool_destroy_single(buffer_pool_t *pool) {
+  if (!pool) {
+    return;
+  }
+
+  free(pool->memory_block);
+  free(pool->nodes);
+  free(pool);
+}
+
+static void *buffer_pool_alloc_single(buffer_pool_t *pool, size_t size) {
+  if (!pool || size > pool->buffer_size) {
+    return NULL;
+  }
+
+  buffer_node_t *node = pool->free_list;
+  if (node) {
+    pool->free_list = node->next;
+    node->next = NULL;
+    node->in_use = true;
+    pool->used_count++;
+    pool->hits++;
+    return node->data;
+  }
+
+  pool->misses++;
+  return NULL;
+}
+
+static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
+  if (!pool || !data) {
+    return false;
+  }
+
+  // Check if this buffer belongs to our pool
+  uint8_t *pool_start = (uint8_t *)pool->memory_block;
+  uint8_t *pool_end = pool_start + (pool->buffer_size * pool->pool_size);
+  uint8_t *buffer = (uint8_t *)data;
+
+  if (buffer < pool_start || buffer >= pool_end) {
+    return false; // Not from this pool
+  }
+
+  // Find the corresponding node
+  size_t index = (buffer - pool_start) / pool->buffer_size;
+  if (index >= pool->pool_size) {
+    return false;
+  }
+
+  buffer_node_t *node = &pool->nodes[index];
+  if (!node->in_use) {
+    log_error("Double free detected in buffer pool!");
+    return false;
+  }
+
+  // Return to free list
+  node->in_use = false;
+  node->next = pool->free_list;
+  pool->free_list = node;
+  pool->used_count--;
+  pool->returns++;
+
+  return true;
+}
+
+/* ============================================================================
+ * Public Buffer Pool API
+ * ============================================================================
+ */
+
+data_buffer_pool_t *data_buffer_pool_create(void) {
+  data_buffer_pool_t *pool;
+  SAFE_MALLOC(pool, sizeof(data_buffer_pool_t), data_buffer_pool_t *);
+
+  // Create pools for different size classes
+  pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
+  pool->medium_pool = buffer_pool_create_single(BUFFER_POOL_MEDIUM_SIZE, BUFFER_POOL_MEDIUM_COUNT);
+  pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
+
+  pthread_mutex_init(&pool->pool_mutex, NULL);
+
+  pool->total_allocs = 0;
+  pool->pool_hits = 0;
+  pool->malloc_fallbacks = 0;
+
+  log_info("Created data buffer pool: %zu KB small, %zu KB medium, %zu KB large",
+           (BUFFER_POOL_SMALL_SIZE * BUFFER_POOL_SMALL_COUNT) / 1024,
+           (BUFFER_POOL_MEDIUM_SIZE * BUFFER_POOL_MEDIUM_COUNT) / 1024,
+           (BUFFER_POOL_LARGE_SIZE * BUFFER_POOL_LARGE_COUNT) / 1024);
+
+  return pool;
+}
+
+void data_buffer_pool_destroy(data_buffer_pool_t *pool) {
+  if (!pool) {
+    return;
+  }
+
+  buffer_pool_destroy_single(pool->small_pool);
+  buffer_pool_destroy_single(pool->medium_pool);
+  buffer_pool_destroy_single(pool->large_pool);
+
+  pthread_mutex_destroy(&pool->pool_mutex);
+  free(pool);
+}
+
+void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
+  if (!pool) {
+    // No pool, fallback to malloc
+    void *data;
+    SAFE_MALLOC(data, size, void *);
+    return data;
+  }
+
+  pthread_mutex_lock(&pool->pool_mutex);
+  pool->total_allocs++;
+
+  void *buffer = NULL;
+
+  // Try to allocate from appropriate pool based on size
+  if (size <= BUFFER_POOL_SMALL_SIZE) {
+    buffer = buffer_pool_alloc_single(pool->small_pool, size);
+  } else if (size <= BUFFER_POOL_MEDIUM_SIZE) {
+    buffer = buffer_pool_alloc_single(pool->medium_pool, size);
+  } else if (size <= BUFFER_POOL_LARGE_SIZE) {
+    buffer = buffer_pool_alloc_single(pool->large_pool, size);
+  }
+
+  if (buffer) {
+    pool->pool_hits++;
+  } else {
+    // Fallback to malloc for sizes not in pool or pool exhausted
+    pool->malloc_fallbacks++;
+  }
+
+  pthread_mutex_unlock(&pool->pool_mutex);
+
+  // If no buffer from pool, use malloc
+  if (!buffer) {
+    SAFE_MALLOC(buffer, size, void *);
+  }
+
+  return buffer;
+}
+
+void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
+  if (!data) {
+    return;
+  }
+
+  if (!pool) {
+    // No pool, just free
+    free(data);
+    return;
+  }
+
+  pthread_mutex_lock(&pool->pool_mutex);
+
+  bool freed = false;
+
+  // Try to return to appropriate pool
+  if (size <= BUFFER_POOL_SMALL_SIZE) {
+    freed = buffer_pool_free_single(pool->small_pool, data);
+  } else if (size <= BUFFER_POOL_MEDIUM_SIZE) {
+    freed = buffer_pool_free_single(pool->medium_pool, data);
+  } else if (size <= BUFFER_POOL_LARGE_SIZE) {
+    freed = buffer_pool_free_single(pool->large_pool, data);
+  }
+
+  pthread_mutex_unlock(&pool->pool_mutex);
+
+  // If not from any pool, it was malloc'd
+  if (!freed) {
+    free(data);
+  }
+}
+
+void data_buffer_pool_get_stats(data_buffer_pool_t *pool, uint64_t *hits, uint64_t *misses) {
+  if (!pool) {
+    if (hits)
+      *hits = 0;
+    if (misses)
+      *misses = 0;
+    return;
+  }
+
+  pthread_mutex_lock(&pool->pool_mutex);
+  if (hits)
+    *hits = pool->pool_hits;
+  if (misses)
+    *misses = pool->malloc_fallbacks;
+  pthread_mutex_unlock(&pool->pool_mutex);
+}
+
+/* ============================================================================
+ * Global Shared Buffer Pool
+ * ============================================================================
+ */
+
+static data_buffer_pool_t *g_global_buffer_pool = NULL;
+static pthread_mutex_t g_global_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void data_buffer_pool_init_global(void) {
+  pthread_mutex_lock(&g_global_pool_mutex);
+  if (!g_global_buffer_pool) {
+    g_global_buffer_pool = data_buffer_pool_create();
+    if (g_global_buffer_pool) {
+      log_info("Initialized global shared buffer pool");
+    }
+  }
+  pthread_mutex_unlock(&g_global_pool_mutex);
+}
+
+void data_buffer_pool_cleanup_global(void) {
+  pthread_mutex_lock(&g_global_pool_mutex);
+  if (g_global_buffer_pool) {
+    // Log final statistics
+    uint64_t hits, misses;
+    data_buffer_pool_get_stats(g_global_buffer_pool, &hits, &misses);
+    if (hits + misses > 0) {
+      log_info("Global buffer pool final stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
+               (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
+    }
+
+    data_buffer_pool_destroy(g_global_buffer_pool);
+    g_global_buffer_pool = NULL;
+    log_info("Cleaned up global shared buffer pool");
+  }
+  pthread_mutex_unlock(&g_global_pool_mutex);
+}
+
+data_buffer_pool_t *data_buffer_pool_get_global(void) {
+  return g_global_buffer_pool;
+}
+
+// Convenience functions that use the global pool
+void *buffer_pool_alloc(size_t size) {
+  return data_buffer_pool_alloc(g_global_buffer_pool, size);
+}
+
+void buffer_pool_free(void *data, size_t size) {
+  data_buffer_pool_free(g_global_buffer_pool, data, size);
+}
