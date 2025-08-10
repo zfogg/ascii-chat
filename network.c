@@ -468,15 +468,17 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
 
   // Validate packet type and size constraints
   switch (pkt_type) {
-  case PACKET_TYPE_VIDEO_HEADER:
-    if (pkt_len != sizeof(compressed_frame_header_t)) {
-      log_error("Invalid video header packet size: %u, expected %zu", pkt_len, sizeof(compressed_frame_header_t));
+  case PACKET_TYPE_ASCII_FRAME:
+    // ASCII frame contains header + frame data
+    if (pkt_len < sizeof(ascii_frame_packet_t)) {
+      log_error("Invalid ASCII frame packet size: %u, minimum %zu", pkt_len, sizeof(ascii_frame_packet_t));
       return -1;
     }
     break;
-  case PACKET_TYPE_VIDEO:
-    if (pkt_len == 0 || pkt_len > MAX_PACKET_SIZE - 1024) { // Leave room for headers
-      log_error("Invalid video packet size: %u", pkt_len);
+  case PACKET_TYPE_IMAGE_FRAME:
+    // Image frame contains header + pixel data
+    if (pkt_len < sizeof(image_frame_packet_t)) {
+      log_error("Invalid image frame packet size: %u, minimum %zu", pkt_len, sizeof(image_frame_packet_t));
       return -1;
     }
     break;
@@ -539,8 +541,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   }
 
   // Additional safety: don't allow zero-sized allocations for types that should have data
-  if (pkt_len == 0 && (pkt_type == PACKET_TYPE_VIDEO || pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_SIZE ||
-                       pkt_type == PACKET_TYPE_VIDEO_HEADER)) {
+  if (pkt_len == 0 && (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_SIZE)) {
     log_error("Zero-sized packet for type that requires data: %u", pkt_type);
     return -1;
   }
@@ -584,17 +585,13 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
     if (actual_crc != expected_crc) {
       // Debug: log first few bytes of data
-      if (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_VIDEO_HEADER) {
+      if (pkt_type == PACKET_TYPE_AUDIO) {
         unsigned char *bytes = (unsigned char *)*data;
         log_debug(
             "Packet type %u first 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
             "%02x %02x",
             pkt_type, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
             bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-        if (pkt_type == PACKET_TYPE_VIDEO_HEADER && pkt_len == 24) {
-          log_debug("Rest of header: %02x %02x %02x %02x %02x %02x %02x %02x", bytes[16], bytes[17], bytes[18],
-                    bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]);
-        }
       }
       log_error("Packet checksum mismatch for type %u: got 0x%x, expected 0x%x (len=%u)", pkt_type, actual_crc,
                 expected_crc, pkt_len);
@@ -610,30 +607,6 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   log_debug("Received packet type=%d, len=%zu, seq=%u", *type, *len, sequence);
 #endif
   return 1;
-}
-
-int send_video_header_packet(int sockfd, const void *header_data, size_t header_len) {
-  // Debug: log header bytes being sent
-  if (header_len == 24) {
-    unsigned char *bytes = (unsigned char *)header_data;
-    uint32_t crc = asciichat_crc32(header_data, header_len);
-    log_debug("Sending VIDEO_HEADER: CRC=0x%x, first 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-              "%02x %02x %02x %02x %02x",
-              crc, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
-              bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-    log_debug("Rest of header: %02x %02x %02x %02x %02x %02x %02x %02x", bytes[16], bytes[17], bytes[18], bytes[19],
-              bytes[20], bytes[21], bytes[22], bytes[23]);
-  }
-  return send_packet(sockfd, PACKET_TYPE_VIDEO_HEADER, header_data, header_len);
-}
-
-int send_video_packet(int sockfd, const void *frame_data, size_t frame_len) {
-  // Log large video packets for debugging
-  if (frame_len > 100000) {
-    // uint32_t crc = frame_data ? asciichat_crc32(frame_data, frame_len) : 0;
-    // log_debug("Sending large video packet: len=%zu, crc=0x%x", frame_len, crc);
-  }
-  return send_packet(sockfd, PACKET_TYPE_VIDEO, frame_data, frame_len);
 }
 
 int send_audio_packet(int sockfd, const float *samples, int num_samples) {

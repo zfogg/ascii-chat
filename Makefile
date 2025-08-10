@@ -25,17 +25,20 @@ CXXSTD := c++23
 BASE_FLAGS := -Wall -Wextra
 
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
-FEATURE_FLAGS := -D_GNU_SOURCE
+C_FEATURE_FLAGS := -D_GNU_SOURCE
 
-override CFLAGS   += $(BASE_FLAGS) $(FEATURE_FLAGS)
-override CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
+override CFLAGS   += $(BASE_FLAGS) $(C_FEATURE_FLAGS)
+#override CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
+override OBJCFLAGS += $(BASE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
 override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD)
-override CXXFLAGS += $(PKG_CFLAGS) -std=$(CXXSTD)
+#override CXXFLAGS += $(PKG_CFLAGS) -std=$(CXXSTD)
+override OBJCFLAGS +=
 
 # Platform-specific flags
 ifeq ($(shell uname),Darwin)
@@ -52,7 +55,7 @@ else
     PLATFORM_SOURCES := 
 endif
 
-override LDFLAGS := $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
+override LDFLAGS += $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
 
 # =============================================================================
 # File Discovery
@@ -62,14 +65,11 @@ override LDFLAGS := $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
-C_FILES   := $(wildcard *.c)
+C_FILES := $(wildcard *.c)
+M_FILES := $(wildcard *.m)
 
 # Header files
 HEADERS     := $(wildcard *.h)
-
-# Object files for server and client  
-C_FILES := $(wildcard *.c)
-M_FILES := $(wildcard *.m)
 
 # Object files (binaries)
 OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES))
@@ -85,7 +85,7 @@ OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TAR
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug release c-objs format format-check bear clang-tidy
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy
 
 # =============================================================================
 # Default Target
@@ -103,7 +103,14 @@ all: default
 
 # Debug build
 debug: CFLAGS += -g -O0
+debug: OBJCFLAGS += -g -O0
 debug: $(TARGETS)
+
+# Memory sanitizer build
+sanitize: debug 
+sanitize: CFLAGS += -fsanitize=address
+sanitize: LDFLAGS += -fsanitize=address 
+sanitize: $(TARGETS)
 
 # Release build
 release: CFLAGS += -O3
@@ -112,7 +119,7 @@ release: $(TARGETS)
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	$(CC) -o $@ $^ $(LDFLAGS) -sectcreate __TEXT __info_plist Info.plist
+	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
 $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
@@ -128,7 +135,7 @@ $(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
 # Compile Objective-C source files
 $(OBJS_M): $(BUILD_DIR)/%.o: %.m $(HEADERS)
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(CFLAGS) -c $<
+	$(CC) -o $@ $(OBJCFLAGS) -c $<
 
 
 c-objs: $(OBJS_C)

@@ -34,8 +34,6 @@ static volatile bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
 
-// Compression state
-static compressed_frame_header_t g_compression_header = {0};
 static pthread_t g_data_thread;
 static bool g_data_thread_created = false;
 static volatile bool g_data_thread_exited = false;
@@ -249,115 +247,92 @@ static void handle_audio_packet(const void *data, size_t len) {
 
 // Removed maybe_size_update - clients control their own size
 
-static void handle_video_header_packet(const void *data, size_t len) {
-  if (!data || len != sizeof(compressed_frame_header_t)) {
-    log_warn("Invalid video header packet size: %zu", len);
+// Handle the new unified ASCII frame packet (server sends this now)
+static void handle_ascii_frame_packet(const void *data, size_t len) {
+  if (!data || len < sizeof(ascii_frame_packet_t)) {
+    log_warn("Invalid ASCII frame packet size: %zu", len);
     return;
   }
 
-  memcpy(&g_compression_header, data, sizeof(compressed_frame_header_t));
+  // Extract header from the packet
+  ascii_frame_packet_t header;
+  memcpy(&header, data, sizeof(ascii_frame_packet_t));
 
   // Convert from network byte order
-  g_compression_header.magic = ntohl(g_compression_header.magic);
-  g_compression_header.compressed_size = ntohl(g_compression_header.compressed_size);
-  g_compression_header.original_size = ntohl(g_compression_header.original_size);
-  g_compression_header.checksum = ntohl(g_compression_header.checksum);
-  g_compression_header.width = ntohl(g_compression_header.width);
-  g_compression_header.height = ntohl(g_compression_header.height);
+  header.width = ntohl(header.width);
+  header.height = ntohl(header.height);
+  header.original_size = ntohl(header.original_size);
+  header.compressed_size = ntohl(header.compressed_size);
+  header.checksum = ntohl(header.checksum);
+  header.flags = ntohl(header.flags);
 
-  // Validate magic number
-  if (g_compression_header.magic != COMPRESSION_FRAME_MAGIC) {
-    log_error("Invalid compression magic: 0x%08x", g_compression_header.magic);
-    return;
-  }
-
-#ifdef COMPRESSION_DEBUG
-  log_debug("Received compression header: %s, original_size=%u, compressed_size=%u",
-            g_compression_header.compressed_size == 0 ? "uncompressed" : "compressed",
-            g_compression_header.original_size, g_compression_header.compressed_size);
-#endif
-}
-
-// Track last frame dimensions to detect size changes
-static int g_last_frame_width = 0;
-static int g_last_frame_height = 0;
-
-static void handle_video_packet(const void *data, size_t len) {
-  if (!data || len == 0) {
-    return;
-  }
+  // Get the frame data (starts after the header)
+  const char *frame_data_ptr = (const char *)data + sizeof(ascii_frame_packet_t);
+  size_t frame_data_len = len - sizeof(ascii_frame_packet_t);
 
   char *frame_data = NULL;
-  int frame_width = 0;
-  int frame_height = 0;
 
-  // Get dimensions from header
-  frame_width = g_compression_header.width;
-  frame_height = g_compression_header.height;
-
-  if (g_compression_header.compressed_size == 0) {
-    // Uncompressed frame
-    if (len != g_compression_header.original_size) {
-      log_error("Uncompressed frame size mismatch: expected %u, got %zu", g_compression_header.original_size, len);
-      return;
-    }
-
-    SAFE_MALLOC(frame_data, len + 1, char *);
-    memcpy(frame_data, data, len);
-    frame_data[len] = '\0';
-
-  } else {
+  // Handle compression if needed
+  if (header.flags & FRAME_FLAG_IS_COMPRESSED && header.compressed_size > 0) {
     // Compressed frame - decompress it
-    if (len != g_compression_header.compressed_size) {
-      log_error("Compressed frame size mismatch: expected %u, got %zu", g_compression_header.compressed_size, len);
+    if (frame_data_len != header.compressed_size) {
+      log_error("Compressed frame size mismatch: expected %u, got %zu", header.compressed_size, frame_data_len);
       return;
     }
 
-    SAFE_MALLOC(frame_data, g_compression_header.original_size + 1, char *);
+    SAFE_MALLOC(frame_data, header.original_size + 1, char *);
 
     // Decompress using zlib
-    uLongf decompressed_size = g_compression_header.original_size;
-    int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)data, len);
+    uLongf decompressed_size = header.original_size;
+    int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)frame_data_ptr, frame_data_len);
 
-    if (result != Z_OK || decompressed_size != g_compression_header.original_size) {
+    if (result != Z_OK || decompressed_size != header.original_size) {
       log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
-                g_compression_header.original_size);
+                header.original_size);
       free(frame_data);
       return;
     }
 
-    frame_data[g_compression_header.original_size] = '\0';
+    frame_data[header.original_size] = '\0';
 #ifdef COMPRESSION_DEBUG
-    log_debug("Decompressed frame: %zu -> %u bytes", len, g_compression_header.original_size);
+    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, header.original_size);
 #endif
+  } else {
+    // Uncompressed frame
+    if (frame_data_len != header.original_size) {
+      log_error("Uncompressed frame size mismatch: expected %u, got %zu", header.original_size, frame_data_len);
+      return;
+    }
+
+    SAFE_MALLOC(frame_data, frame_data_len + 1, char *);
+    memcpy(frame_data, frame_data_ptr, frame_data_len);
+    frame_data[frame_data_len] = '\0';
   }
 
-  // Verify checksum using the same CRC function as the network layer
-  uint32_t received_checksum = asciichat_crc32(frame_data, g_compression_header.original_size);
-  if (received_checksum != g_compression_header.checksum) {
-    log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum, received_checksum);
+  // Verify checksum
+  uint32_t actual_crc = asciichat_crc32(frame_data, header.original_size);
+  if (actual_crc != header.checksum) {
+    log_error("Frame checksum mismatch: got 0x%x, expected 0x%x", actual_crc, header.checksum);
     free(frame_data);
     return;
   }
 
-  // Process the frame
-  if (strcmp(frame_data, ASCIICHAT_WEBCAM_ERROR_STRING) == 0) {
-    log_error("Server reported webcam failure: %s", frame_data);
-    usleep(1000 * 1000);
-  } else {
-    // Check if frame dimensions have changed
-    if (frame_width > 0 && frame_height > 0) {
-      if (g_last_frame_width != 0 && g_last_frame_height != 0 &&
-          (g_last_frame_width != frame_width || g_last_frame_height != frame_height)) {
-        // Frame dimensions changed, clear console to avoid artifacts
-        console_clear();
-      }
-      g_last_frame_width = frame_width;
-      g_last_frame_height = frame_height;
-    }
+  // Process and display the frame
+  static uint32_t last_width = 0;
+  static uint32_t last_height = 0;
 
-    ascii_write(frame_data);
+  // Check if frame dimensions have changed
+  if (header.width > 0 && header.height > 0) {
+    if (header.width != last_width || header.height != last_height) {
+      log_info("Frame size changed from %ux%u to %ux%u", last_width, last_height, header.width, header.height);
+      last_width = header.width;
+      last_height = header.height;
+    }
   }
+
+  // Clear screen and display frame
+  printf("\033[H\033[J%s", frame_data);
+  fflush(stdout);
 
   free(frame_data);
 }
@@ -391,12 +366,9 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     switch (type) {
-    case PACKET_TYPE_VIDEO_HEADER:
-      handle_video_header_packet(data, len);
-      break;
-
-    case PACKET_TYPE_VIDEO:
-      handle_video_packet(data, len);
+    case PACKET_TYPE_ASCII_FRAME:
+      // Unified frame packet from server
+      handle_ascii_frame_packet(data, len);
       break;
 
     case PACKET_TYPE_AUDIO:
@@ -590,9 +562,9 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
 
-    // Send image data to server via VIDEO packet
+    // Send image data to server via IMAGE_FRAME packet
     // log_debug("[CLIENT SEND] Sending frame: %dx%d, size=%zu bytes", image->w, image->h, packet_size);
-    if (send_video_packet(sockfd, (char *)packet_data, packet_size) < 0) {
+    if (send_packet(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
       log_error("Failed to send video frame to server: %s", strerror(errno));
       // This is likely why we're disconnecting - set connection lost
       g_connection_lost = true;
