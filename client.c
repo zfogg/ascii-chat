@@ -746,8 +746,13 @@ int main(int argc, char *argv[]) {
       log_debug("Client opt_stretch=%d, sending stretch capability=%s", opt_stretch,
                 (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
+      char *os_username = getenv("USER");
+      char *display_name = os_username;
+      if (strcmp(os_username, "") == 0) {
+        display_name = ASCIICHAT_DEFAULT_DISPLAY_NAME;
+      }
       char my_display_name[MAX_DISPLAY_NAME_LEN];
-      snprintf(my_display_name, sizeof(my_display_name), "ClientUser");
+      snprintf(my_display_name, sizeof(my_display_name), "%s", display_name);
 
       if (send_client_join_packet(sockfd, my_display_name, my_capabilities) < 0) {
         log_error("Failed to send client join packet: %s", network_error_string(errno));

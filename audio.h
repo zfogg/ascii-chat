@@ -18,14 +18,10 @@
 #define AUDIO_FRAMES_PER_BUFFER 256 // Reduced for lower latency
 #define AUDIO_CHANNELS 1
 #define AUDIO_BUFFER_SIZE (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS)
-#define AUDIO_RING_BUFFER_SIZE (AUDIO_BUFFER_SIZE * 4) // Much smaller buffer = ~23ms total
+// Include ringbuffer.h to get the audio_ring_buffer_t type
+#include "ringbuffer.h"
 
-typedef struct {
-  float data[AUDIO_RING_BUFFER_SIZE];
-  volatile int write_index;
-  volatile int read_index;
-  pthread_mutex_t mutex;
-} audio_ring_buffer_t;
+// Note: AUDIO_RING_BUFFER_SIZE is defined in ringbuffer.h
 
 typedef struct {
   PaStream *input_stream;

@@ -1048,7 +1048,12 @@ int main(int argc, char *argv[]) {
 
   // Main multi-client connection loop
   while (!g_should_exit) {
-    log_info("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
+    // Only log when client count changes
+    static int last_logged_count = -1;
+    if (g_client_manager.client_count != last_logged_count) {
+      log_info("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
+      last_logged_count = g_client_manager.client_count;
+    }
 
     // Check for disconnected clients BEFORE accepting new ones
     // This ensures slots are freed up for new connections
@@ -1364,20 +1369,20 @@ int add_client(int socket, const char *client_ip, int port) {
 
   // Find empty slot - this is the authoritative check
   int slot = -1;
-  int active_count = 0;
+  int existing_count = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (!g_client_manager.clients[i].active) {
+    if (g_client_manager.clients[i].client_id == 0) {
       if (slot == -1) {
         slot = i; // Take first available slot
       }
     } else {
-      active_count++;
+      existing_count++;
     }
   }
 
   if (slot == -1) {
     pthread_mutex_unlock(&g_client_manager_mutex);
-    log_error("No available client slots (all %d slots are active)", MAX_CLIENTS);
+    log_error("No available client slots (all %d slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
@@ -1386,8 +1391,8 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  // Update client_count to match actual active count
-  g_client_manager.client_count = active_count;
+  // Update client_count to match actual count before adding new client
+  g_client_manager.client_count = existing_count;
 
   // Initialize client
   client_info_t *client = &g_client_manager.clients[slot];
@@ -1419,7 +1424,7 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  g_client_manager.client_count = active_count + 1; // We just added a client
+  g_client_manager.client_count = existing_count + 1; // We just added a client
   pthread_mutex_unlock(&g_client_manager_mutex);
 
   // Start threads for this client
@@ -1482,20 +1487,25 @@ int remove_client(uint32_t client_id) {
         audio_ring_buffer_destroy(audio_buffer);
       }
 
-      // Recalculate client_count to ensure accuracy
-      // Note: client->active is already false at this point
-      int active_count = 0;
-      for (int j = 0; j < MAX_CLIENTS; j++) {
-        if (g_client_manager.clients[j].active) {
-          active_count++;
-        }
-      }
-      g_client_manager.client_count = active_count;
-
-      log_info("Removed client %u (%s), remaining clients: %d", client_id, client->display_name, active_count);
+      // Store display name before clearing
+      char display_name_copy[MAX_DISPLAY_NAME_LEN];
+      strncpy(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
+      display_name_copy[MAX_DISPLAY_NAME_LEN - 1] = '\0';
 
       // Clear the entire client structure to ensure it's ready for reuse
       memset(client, 0, sizeof(client_info_t));
+
+      // Recalculate client_count to ensure accuracy
+      // Count clients with valid client_id (non-zero)
+      int remaining_count = 0;
+      for (int j = 0; j < MAX_CLIENTS; j++) {
+        if (g_client_manager.clients[j].client_id != 0) {
+          remaining_count++;
+        }
+      }
+      g_client_manager.client_count = remaining_count;
+
+      log_info("Removed client %u (%s), remaining clients: %d", client_id, display_name_copy, remaining_count);
 
       pthread_mutex_unlock(&g_client_manager_mutex);
       return 0;

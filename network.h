@@ -9,7 +9,7 @@
 #define CONNECT_TIMEOUT 10
 #define SEND_TIMEOUT 5
 #define RECV_TIMEOUT 5
-#define ACCEPT_TIMEOUT 30
+#define ACCEPT_TIMEOUT 1 // 1 second timeout for faster client cleanup detection
 
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60
@@ -62,11 +62,10 @@ typedef enum {
   // Multi-user protocol extensions
   PACKET_TYPE_CLIENT_JOIN = 7,    // Client announces capability to send media
   PACKET_TYPE_CLIENT_LEAVE = 8,   // Clean disconnect notification
-  PACKET_TYPE_CLIENT_LIST = 9,    // Server sends list of active clients
-  PACKET_TYPE_STREAM_START = 10,  // Client requests to start sending video/audio
-  PACKET_TYPE_STREAM_STOP = 11,   // Client stops sending media
-  PACKET_TYPE_CLEAR_CONSOLE = 12, // Server tells client to clear console
-  PACKET_TYPE_SERVER_STATE = 13,  // Server sends current state to clients
+  PACKET_TYPE_STREAM_START = 9,   // Client requests to start sending video/audio
+  PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
+  PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
+  PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
 } packet_type_t;
 
 typedef struct {
@@ -79,6 +78,7 @@ typedef struct {
 } __attribute__((packed)) packet_header_t;
 
 // Multi-user protocol structures
+#define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
 #define MAX_DISPLAY_NAME_LEN 32
 #define MAX_CLIENTS 10
 
