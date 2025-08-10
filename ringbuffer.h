@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <pthread.h>
 
 /* ============================================================================
  * Lock-Free Ring Buffer for Frame Management
@@ -25,6 +26,20 @@ typedef struct {
   bool is_power_of_two; /* Whether capacity is power of 2 (for optimization) */
   size_t capacity_mask; /* Mask for fast modulo when power of 2 */
 } ringbuffer_t;
+
+/* ============================================================================
+ * Audio Ring Buffer - Simple ring buffer for audio samples
+ * ============================================================================
+ */
+
+#define AUDIO_RING_BUFFER_SIZE (256 * 4) // Match the size from audio.h
+
+typedef struct audio_ring_buffer {
+  float data[AUDIO_RING_BUFFER_SIZE];
+  volatile int write_index;
+  volatile int read_index;
+  pthread_mutex_t mutex;
+} audio_ring_buffer_t;
 
 /* ============================================================================
  * Ring Buffer API

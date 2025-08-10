@@ -1,0 +1,381 @@
+#include "mixer.h"
+#include "audio.h"
+#include "common.h"
+#include <math.h>
+#include <string.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// Utility functions
+float db_to_linear(float db) {
+  return powf(10.0f, db / 20.0f);
+}
+
+float linear_to_db(float linear) {
+  return 20.0f * log10f(fmaxf(linear, 1e-12f));
+}
+
+float clamp_float(float value, float min, float max) {
+  return value < min ? min : (value > max ? max : value);
+}
+
+// Compressor implementation
+void compressor_init(compressor_t *comp, float sample_rate) {
+  comp->sample_rate = sample_rate;
+  comp->envelope = 0.0f;
+  comp->gain_lin = 1.0f;
+
+  // Set default parameters
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 3.0f);
+}
+
+void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
+                           float makeup_dB) {
+  comp->threshold_dB = threshold_dB;
+  comp->ratio = ratio;
+  comp->attack_ms = attack_ms;
+  comp->release_ms = release_ms;
+  comp->makeup_dB = makeup_dB;
+  comp->knee_dB = 2.0f; // Fixed soft knee
+
+  // Calculate time constants
+  float attack_tau = attack_ms / 1000.0f;
+  float release_tau = release_ms / 1000.0f;
+  comp->attack_coeff = expf(-1.0f / (attack_tau * comp->sample_rate + 1e-12f));
+  comp->release_coeff = expf(-1.0f / (release_tau * comp->sample_rate + 1e-12f));
+}
+
+static float compressor_gain_reduction_db(const compressor_t *comp, float level_dB) {
+  float over = level_dB - comp->threshold_dB;
+  float knee = comp->knee_dB;
+
+  if (knee > 0.0f) {
+    if (over <= -knee * 0.5f)
+      return 0.0f;
+    if (over >= knee * 0.5f)
+      return (1.0f / comp->ratio - 1.0f) * over;
+    float x = over + knee * 0.5f;
+    return (1.0f / comp->ratio - 1.0f) * (x * x) / (2.0f * knee);
+  } else {
+    if (over <= 0.0f)
+      return 0.0f;
+    return (1.0f / comp->ratio - 1.0f) * over;
+  }
+}
+
+float compressor_process_sample(compressor_t *comp, float sidechain) {
+  float x = fabsf(sidechain);
+
+  // Update envelope with attack/release
+  if (x > comp->envelope)
+    comp->envelope = comp->attack_coeff * comp->envelope + (1.0f - comp->attack_coeff) * x;
+  else
+    comp->envelope = comp->release_coeff * comp->envelope + (1.0f - comp->release_coeff) * x;
+
+  // Calculate gain reduction
+  float level_dB = linear_to_db(comp->envelope);
+  float gr_dB = compressor_gain_reduction_db(comp, level_dB);
+  float target_lin = db_to_linear(gr_dB + comp->makeup_dB);
+
+  // Smooth gain changes
+  if (target_lin < comp->gain_lin)
+    comp->gain_lin = comp->attack_coeff * comp->gain_lin + (1.0f - comp->attack_coeff) * target_lin;
+  else
+    comp->gain_lin = comp->release_coeff * comp->gain_lin + (1.0f - comp->release_coeff) * target_lin;
+
+  return comp->gain_lin;
+}
+
+// Ducking implementation
+void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
+  // Set default parameters
+  duck->threshold_dB = -40.0f;
+  duck->leader_margin_dB = 3.0f;
+  duck->atten_dB = -12.0f;
+  duck->attack_ms = 5.0f;
+  duck->release_ms = 100.0f;
+
+  // Calculate time constants
+  float attack_tau = duck->attack_ms / 1000.0f;
+  float release_tau = duck->release_ms / 1000.0f;
+  duck->attack_coeff = expf(-1.0f / (attack_tau * sample_rate + 1e-12f));
+  duck->release_coeff = expf(-1.0f / (release_tau * sample_rate + 1e-12f));
+
+  // Allocate arrays
+  SAFE_MALLOC(duck->envelope, num_sources * sizeof(float), float *);
+  SAFE_MALLOC(duck->gain, num_sources * sizeof(float), float *);
+
+  // Initialize
+  memset(duck->envelope, 0, num_sources * sizeof(float));
+  for (int i = 0; i < num_sources; i++) {
+    duck->gain[i] = 1.0f;
+  }
+}
+
+void ducking_free(ducking_t *duck) {
+  if (duck->envelope) {
+    free(duck->envelope);
+    duck->envelope = NULL;
+  }
+  if (duck->gain) {
+    free(duck->gain);
+    duck->gain = NULL;
+  }
+}
+
+void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, float attack_ms,
+                        float release_ms) {
+  duck->threshold_dB = threshold_dB;
+  duck->leader_margin_dB = leader_margin_dB;
+  duck->atten_dB = atten_dB;
+  duck->attack_ms = attack_ms;
+  duck->release_ms = release_ms;
+}
+
+void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int num_sources) {
+  // Find the loudest source
+  float max_dB = -120.0f;
+  float env_dB[MIXER_MAX_SOURCES];
+
+  for (int i = 0; i < num_sources; i++) {
+    env_dB[i] = linear_to_db(envelopes[i]);
+    if (env_dB[i] > max_dB)
+      max_dB = env_dB[i];
+  }
+
+  // Calculate ducking gain for each source
+  float leader_cut = db_to_linear(duck->atten_dB);
+
+  for (int i = 0; i < num_sources; i++) {
+    bool is_speaking = env_dB[i] > duck->threshold_dB;
+    bool is_leader = is_speaking && (env_dB[i] >= max_dB - duck->leader_margin_dB);
+
+    float target = is_leader ? 1.0f : (is_speaking ? leader_cut : 1.0f);
+
+    // Smooth gain transitions
+    if (target < gains[i])
+      gains[i] = duck->attack_coeff * gains[i] + (1.0f - duck->attack_coeff) * target;
+    else
+      gains[i] = duck->release_coeff * gains[i] + (1.0f - duck->release_coeff) * target;
+  }
+}
+
+// Mixer implementation
+mixer_t *mixer_create(int max_sources, int sample_rate) {
+  mixer_t *mixer;
+  SAFE_MALLOC(mixer, sizeof(mixer_t), mixer_t *);
+
+  mixer->num_sources = 0;
+  mixer->max_sources = max_sources;
+  mixer->sample_rate = sample_rate;
+
+  // Allocate source management arrays
+  SAFE_MALLOC(mixer->source_buffers, max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
+  SAFE_MALLOC(mixer->source_ids, max_sources * sizeof(uint32_t), uint32_t *);
+  SAFE_MALLOC(mixer->source_active, max_sources * sizeof(bool), bool *);
+
+  // Initialize arrays
+  memset(mixer->source_buffers, 0, max_sources * sizeof(audio_ring_buffer_t *));
+  memset(mixer->source_ids, 0, max_sources * sizeof(uint32_t));
+  memset(mixer->source_active, 0, max_sources * sizeof(bool));
+
+  // Set crowd scaling parameters
+  mixer->crowd_alpha = 0.5f; // Square root scaling
+  mixer->base_gain = 0.7f;   // Base gain to prevent clipping
+
+  // Initialize processing
+  ducking_init(&mixer->ducking, max_sources, sample_rate);
+  compressor_init(&mixer->compressor, sample_rate);
+
+  // Allocate mix buffer
+  SAFE_MALLOC(mixer->mix_buffer, MIXER_FRAME_SIZE * sizeof(float), float *);
+
+  log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
+
+  return mixer;
+}
+
+void mixer_destroy(mixer_t *mixer) {
+  if (!mixer)
+    return;
+
+  ducking_free(&mixer->ducking);
+
+  if (mixer->source_buffers)
+    free(mixer->source_buffers);
+  if (mixer->source_ids)
+    free(mixer->source_ids);
+  if (mixer->source_active)
+    free(mixer->source_active);
+  if (mixer->mix_buffer)
+    free(mixer->mix_buffer);
+
+  free(mixer);
+  log_info("Audio mixer destroyed");
+}
+
+int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *buffer) {
+  if (!mixer || !buffer)
+    return -1;
+
+  // Find an empty slot
+  int slot = -1;
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] == 0) {
+      slot = i;
+      break;
+    }
+  }
+
+  if (slot == -1) {
+    log_warn("Mixer: No available slots for client %u", client_id);
+    return -1;
+  }
+
+  mixer->source_buffers[slot] = buffer;
+  mixer->source_ids[slot] = client_id;
+  mixer->source_active[slot] = true;
+  mixer->num_sources++;
+
+  log_info("Mixer: Added source for client %u at slot %d", client_id, slot);
+  return slot;
+}
+
+void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
+  if (!mixer)
+    return;
+
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] == client_id) {
+      mixer->source_buffers[i] = NULL;
+      mixer->source_ids[i] = 0;
+      mixer->source_active[i] = false;
+      mixer->num_sources--;
+
+      // Reset ducking state for this source
+      mixer->ducking.envelope[i] = 0.0f;
+      mixer->ducking.gain[i] = 1.0f;
+
+      log_info("Mixer: Removed source for client %u from slot %d", client_id, i);
+      return;
+    }
+  }
+}
+
+void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
+  if (!mixer)
+    return;
+
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] == client_id) {
+      mixer->source_active[i] = active;
+      log_debug("Mixer: Set source %u active=%d", client_id, active);
+      return;
+    }
+  }
+}
+
+int mixer_process(mixer_t *mixer, float *output, int num_samples) {
+  if (!mixer || !output || num_samples <= 0)
+    return -1;
+
+  // Clear output buffer
+  memset(output, 0, num_samples * sizeof(float));
+
+  // Count active sources
+  int active_count = 0;
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] != 0 && mixer->source_active[i] && mixer->source_buffers[i]) {
+      active_count++;
+    }
+  }
+
+  if (active_count == 0) {
+    // No active sources, output silence
+    return 0;
+  }
+
+  // Process in frames for efficiency
+  for (int frame_start = 0; frame_start < num_samples; frame_start += MIXER_FRAME_SIZE) {
+    int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
+
+    // Clear mix buffer
+    memset(mixer->mix_buffer, 0, frame_size * sizeof(float));
+
+    // Temporary buffers for source audio
+    float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
+    int source_count = 0;
+    int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
+
+    // Read from each active source
+    for (int i = 0; i < mixer->max_sources; i++) {
+      if (mixer->source_ids[i] != 0 && mixer->source_active[i] && mixer->source_buffers[i]) {
+        // Read samples from this source's ring buffer
+        int samples_read = audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+
+        // If we didn't get enough samples, pad with silence
+        if (samples_read < frame_size) {
+          memset(&source_samples[source_count][samples_read], 0, (frame_size - samples_read) * sizeof(float));
+        }
+
+        source_map[source_count] = i;
+        source_count++;
+
+        if (source_count >= MIXER_MAX_SOURCES)
+          break;
+      }
+    }
+
+    // Process each sample in the frame
+    for (int s = 0; s < frame_size; s++) {
+      // Update envelopes for active speaker detection
+      int speaking_count = 0;
+      for (int i = 0; i < source_count; i++) {
+        int slot = source_map[i];
+        float sample = source_samples[i][s];
+        float abs_sample = fabsf(sample);
+
+        // Update envelope
+        if (abs_sample > mixer->ducking.envelope[slot]) {
+          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
+        } else {
+          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
+        }
+
+        // Count speaking sources
+        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+          speaking_count++;
+      }
+
+      // Apply ducking
+      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+      // Calculate crowd scaling
+      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+      float pre_bus = mixer->base_gain * crowd_gain;
+
+      // Mix sources with ducking and crowd scaling
+      float mix = 0.0f;
+      for (int i = 0; i < source_count; i++) {
+        int slot = source_map[i];
+        float sample = source_samples[i][s];
+        float gain = mixer->ducking.gain[slot];
+        mix += sample * gain;
+      }
+      mix *= pre_bus;
+
+      // Apply bus compression
+      float comp_gain = compressor_process_sample(&mixer->compressor, mix);
+      mix *= comp_gain;
+
+      // Clamp and output
+      output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
+    }
+  }
+
+  return num_samples;
+}
