@@ -713,10 +713,10 @@ static void *audio_capture_thread_func(void *arg) {
 
   // Initialize audio processors on first run
   if (!processors_initialized) {
-    noise_gate_init(&noise_gate, 48000);
+    noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE);  // Use correct sample rate
     noise_gate_set_params(&noise_gate, 0.01f, 2.0f, 50.0f, 0.9f);
 
-    highpass_filter_init(&hp_filter, 80.0f, 48000);
+    highpass_filter_init(&hp_filter, 80.0f, AUDIO_SAMPLE_RATE);  // Use correct sample rate
 
     processors_initialized = true;
   }
