@@ -219,21 +219,6 @@ int receive_client_size(int sockfd, unsigned short *width, unsigned short *heigh
   return 1; // Successfully parsed size packet
 }
 
-void update_frame_buffer_for_size(unsigned short width, unsigned short height) {
-  // Update global dimensions
-  opt_width = width;
-  opt_height = height;
-  // Mark these dimensions as "auto" so aspect_ratio() will treat them as limits
-  auto_width = 1;
-  auto_height = 1;
-
-  // DON'T clear the framebuffer when just updating size!
-  // This causes use-after-free bugs when frames are in flight.
-  // The capture thread will automatically start generating frames
-  // with the new size, and old frames will naturally drain out.
-  log_info("Updated frame size to: %ux%u (buffer not cleared)", width, height);
-}
-
 /* ============================================================================
  * Audio Mixing Implementation
  * ============================================================================
@@ -265,7 +250,6 @@ void *audio_mixer_thread_func(void *arg) {
       memcpy(send_buffer, mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
 
       // Debug: Calculate CRC before sending and check for DEADBEEF
-      uint32_t crc_before = asciichat_crc32(send_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
       uint32_t *check_magic = (uint32_t *)send_buffer;
       if (*check_magic == 0xDEADBEEF || *check_magic == 0xEFBEADDE) {
         log_error(
@@ -278,7 +262,11 @@ void *audio_mixer_thread_func(void *arg) {
             ((unsigned char *)send_buffer)[12], ((unsigned char *)send_buffer)[13], ((unsigned char *)send_buffer)[14],
             ((unsigned char *)send_buffer)[15]);
       }
-      // log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
+
+#ifdef AUDIO_DEBUG
+      uint32_t crc_before = asciichat_crc32(send_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+      log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
+#endif
 
       // Queue mixed audio to all connected clients
       pthread_mutex_lock(&g_client_manager_mutex);
@@ -321,8 +309,7 @@ static void *video_broadcast_thread_func(void *arg) {
   g_video_broadcast_running = true;
 
   // Frame rate control (30 FPS)
-  const int target_fps = 30;
-  const int frame_interval_ms = 1000 / target_fps;
+  const int frame_interval_ms = FRAME_INTERVAL_MS;
   struct timespec last_broadcast_time;
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
 
@@ -405,7 +392,7 @@ static void *video_broadcast_thread_func(void *arg) {
 
     static int frame_counter = 0;
     frame_counter++;
-    if (frame_counter % 30 == 0) { // Log every 30 frames (1 second)
+    if (frame_counter % MAX_FPS == 0) { // Log every MAX_FPS frames (1 second)
       log_info("Broadcast thread: frame %d, %d clients connected (%d active)", frame_counter, client_count,
                active_client_count);
     }
@@ -422,7 +409,7 @@ static void *video_broadcast_thread_func(void *arg) {
         multi_source_frame_t frame;
         multi_source_frame_t prev_frame = {0};
         bool has_prev = false;
-        
+
         // Read all frames, keeping only the latest
         while (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame)) {
           // Free the previous frame if we had one
@@ -432,7 +419,7 @@ static void *video_broadcast_thread_func(void *arg) {
           prev_frame = frame;
           has_prev = true;
         }
-        
+
         // If we have a frame, write it back for peeking
         // But this time we need to copy the data to avoid use-after-free
         if (has_prev && prev_frame.data) {
@@ -441,8 +428,7 @@ static void *video_broadcast_thread_func(void *arg) {
           if (data_copy) {
             memcpy(data_copy, prev_frame.data, prev_frame.size);
             framebuffer_write_multi_frame(client->incoming_video_buffer, data_copy, prev_frame.size,
-                                        prev_frame.source_client_id, prev_frame.frame_sequence,
-                                        prev_frame.timestamp);
+                                          prev_frame.source_client_id, prev_frame.frame_sequence, prev_frame.timestamp);
             // Note: framebuffer now owns data_copy, don't free it here
           }
           // Free the original
@@ -464,14 +450,6 @@ static void *video_broadcast_thread_func(void *arg) {
 
       // Skip if client hasn't finished initialization
       if (client_copy.width == 0 || client_copy.height == 0) {
-        if (client_copy.active) {
-          static int skip_count[MAX_CLIENTS] = {0};
-          skip_count[i]++;
-          if (skip_count[i] == 1 || skip_count[i] % 30 == 0) {
-            log_warn("Skipping client %u (slot %d) - dimensions not set (w=%u, h=%u) - skipped %d times",
-                     client_copy.client_id, i, client_copy.width, client_copy.height, skip_count[i]);
-          }
-        }
         continue;
       }
 
@@ -479,7 +457,7 @@ static void *video_broadcast_thread_func(void *arg) {
       if (client_copy.active) {
         static int client_frame_count[MAX_CLIENTS] = {0};
         client_frame_count[i]++;
-        if (client_frame_count[i] % 30 == 0) { // Log every 30 frames
+        if (client_frame_count[i] % MAX_FPS == 0) { // Log every 30 frames
           log_info("Broadcasting to client %u (slot %d): socket=%d, width=%u, height=%u, frames_sent=%d",
                    client_copy.client_id, i, client_copy.socket, client_copy.width, client_copy.height,
                    client_frame_count[i]);
@@ -536,7 +514,8 @@ static void *video_broadcast_thread_func(void *arg) {
               sent_count++;
               static int success_count[MAX_CLIENTS] = {0};
               success_count[i]++;
-              if (success_count[i] == 1 || success_count[i] % 30 == 0) { // Log first and every 30 successful queues
+              if (success_count[i] == 1 ||
+                  success_count[i] % MAX_FPS == 0) { // Log first and every MAX_FPS successful queues
                 log_info("Successfully queued %d frames for client %u (slot %d, size=%zu)", success_count[i],
                          client_copy.client_id, i, mixed_size);
               }
@@ -1427,7 +1406,7 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  client->video_queue = packet_queue_create(30); // Max 30 video frames queued (1 second at 30fps)
+  client->video_queue = packet_queue_create(MAX_FPS); // Max 30 video frames queued (1 second at 30fps)
   if (!client->video_queue) {
     log_error("Failed to create video queue for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
