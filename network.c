@@ -1,6 +1,7 @@
 #include "network.h"
 #include "common.h"
 #include "compression.h"
+#include "buffer_pool.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
@@ -433,10 +434,18 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     return received == 0 ? 0 : -1;
   }
 
+  // First validate packet length BEFORE converting from network byte order
+  // This prevents potential integer overflow issues
+  uint32_t pkt_len_network = header.length;
+  if (pkt_len_network == 0xFFFFFFFF) {
+    log_error("Invalid packet length in network byte order: 0xFFFFFFFF");
+    return -1;
+  }
+
   // Convert from network byte order
   uint32_t magic = ntohl(header.magic);
   uint16_t pkt_type = ntohs(header.type);
-  uint32_t pkt_len = ntohl(header.length);
+  uint32_t pkt_len = ntohl(pkt_len_network);
   uint32_t expected_crc = ntohl(header.crc32);
 
   // Validate magic
@@ -445,7 +454,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     return -1;
   }
 
-  // Validate packet size
+  // Validate packet size with bounds checking
   if (pkt_len > MAX_PACKET_SIZE) {
     log_error("Packet too large: %u > %d", pkt_len, MAX_PACKET_SIZE);
     return -1;
@@ -470,6 +479,13 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   case PACKET_TYPE_AUDIO:
     if (pkt_len == 0 || pkt_len > AUDIO_SAMPLES_PER_PACKET * sizeof(float) * 2) { // Max stereo samples
       log_error("Invalid audio packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_AUDIO_BATCH:
+    // Batch must have at least header + some samples
+    if (pkt_len < sizeof(audio_batch_packet_t) + sizeof(float)) {
+      log_error("Invalid audio batch packet size: %u", pkt_len);
       return -1;
     }
     break;
@@ -526,7 +542,8 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   }
 
   // Additional safety: don't allow zero-sized allocations for types that should have data
-  if (pkt_len == 0 && (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_SIZE)) {
+  if (pkt_len == 0 &&
+      (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_SIZE || pkt_type == PACKET_TYPE_AUDIO_BATCH)) {
     log_error("Zero-sized packet for type that requires data: %u", pkt_type);
     return -1;
   }
@@ -542,12 +559,17 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
 
-    SAFE_MALLOC(*data, pkt_len, void *);
+    // Try to allocate from global buffer pool first
+    *data = buffer_pool_alloc(pkt_len);
+    if (!*data) {
+      log_error("Failed to allocate %u bytes for packet", pkt_len);
+      return -1;
+    }
 
     received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
     if (received != (ssize_t)pkt_len) {
       log_error("Failed to receive complete packet payload: %zd/%u bytes", received, pkt_len);
-      free(*data);
+      buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
     }
@@ -576,7 +598,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       }
       log_error("Packet checksum mismatch for type %u: got 0x%x, expected 0x%x (len=%u)", pkt_type, actual_crc,
                 expected_crc, pkt_len);
-      free(*data);
+      buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
     }
@@ -605,6 +627,41 @@ int send_audio_packet(int sockfd, const float *samples, int num_samples) {
 #endif
 
   return send_packet(sockfd, PACKET_TYPE_AUDIO, samples, data_size);
+}
+
+int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count) {
+  if (!samples || num_samples <= 0 || batch_count <= 0) {
+    log_error("Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples, num_samples, batch_count);
+    return -1;
+  }
+
+  // Build batch header
+  audio_batch_packet_t header;
+  header.batch_count = htonl(batch_count);
+  header.total_samples = htonl(num_samples);
+  header.sample_rate = htonl(44100); // Could make this configurable
+  header.channels = htonl(1);        // Mono for now
+
+  // Calculate total payload size
+  size_t header_size = sizeof(audio_batch_packet_t);
+  size_t samples_size = num_samples * sizeof(float);
+  size_t total_size = header_size + samples_size;
+
+  // Allocate buffer for header + samples
+  uint8_t *buffer;
+  SAFE_MALLOC(buffer, total_size, uint8_t *);
+
+  // Copy header and samples to buffer
+  memcpy(buffer, &header, header_size);
+  memcpy(buffer + header_size, samples, samples_size);
+
+#ifdef AUDIO_DEBUG
+  log_debug("Sending audio batch: %d chunks, %d total samples, %zu bytes", batch_count, num_samples, total_size);
+#endif
+
+  int result = send_packet(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size);
+  free(buffer);
+  return result;
 }
 
 int send_size_packet(int sockfd, unsigned short width, unsigned short height) {
@@ -698,10 +755,18 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
     return received == 0 ? 0 : -1;
   }
 
+  // First validate packet length BEFORE converting from network byte order
+  // This prevents potential integer overflow issues
+  uint32_t pkt_len_network = header.length;
+  if (pkt_len_network == 0xFFFFFFFF) {
+    log_error("Invalid packet length in network byte order: 0xFFFFFFFF");
+    return -1;
+  }
+
   // Convert from network byte order
   uint32_t magic = ntohl(header.magic);
   uint16_t pkt_type = ntohs(header.type);
-  uint32_t pkt_len = ntohl(header.length);
+  uint32_t pkt_len = ntohl(pkt_len_network);
   uint32_t expected_crc = ntohl(header.crc32);
   uint32_t pkt_client_id = ntohl(header.client_id);
 
@@ -711,7 +776,7 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
     return -1;
   }
 
-  // Validate length
+  // Validate length with bounds checking
   if (pkt_len > MAX_PACKET_SIZE) {
     log_error("Packet too large: %u bytes (max %d)", pkt_len, MAX_PACKET_SIZE);
     return -1;
@@ -720,12 +785,17 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
   // Read payload if present
   *data = NULL;
   if (pkt_len > 0) {
-    SAFE_MALLOC(*data, pkt_len, void *);
+    // Try to allocate from global buffer pool first
+    *data = buffer_pool_alloc(pkt_len);
+    if (!*data) {
+      log_error("Failed to allocate %u bytes for packet", pkt_len);
+      return -1;
+    }
 
     received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
     if (received != (ssize_t)pkt_len) {
       log_error("Failed to receive packet payload: %zd/%u bytes", received, pkt_len);
-      free(*data);
+      buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
     }
@@ -735,7 +805,7 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
     if (actual_crc != expected_crc) {
       log_error("Packet CRC mismatch for type %u from client %u: got 0x%x, expected 0x%x (len=%u)", pkt_type,
                 pkt_client_id, actual_crc, expected_crc, pkt_len);
-      free(*data);
+      buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
     }

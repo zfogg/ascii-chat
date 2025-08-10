@@ -137,6 +137,7 @@ TODO
 - [ ] Snapshot mode for clients with --snap to "take a photo" and print it to the terminal rather than render video for a long time.
 - [x] Audio mixing for multiple clients with compression and ducking.
 - [ ] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
+- [ ] Lock-free packet send queues.
 
 
 Notes
