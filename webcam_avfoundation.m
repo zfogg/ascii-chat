@@ -415,3 +415,4 @@ int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *heigh
 }
 
 #endif // __APPLE__
+
