@@ -248,30 +248,41 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   rotate_log_if_needed();
 
   FILE *log_file = NULL;
+
   if (g_log.file == STDERR_FILENO) {
     log_file = stderr;
-  } else {
-    umask(~(S_IRUSR | S_IWUSR) & 0777); /* 0600 */
-    log_file = fdopen(g_log.file, "a");
-    umask(0); /* 0666 */
-  }
+  } else if (g_log.file > 0) {
+    // Write directly using the file descriptor to avoid FILE* resource leak
+    // Format the log message into a buffer first
+    char log_buffer[4096];
+    int offset = 0;
 
-  /* Print to file (no colors) */
-  if (log_file && g_log.file && g_log.file != STDERR_FILENO && log_file != stderr) {
-    int written = fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
-    g_log.current_size += (written > 0) ? (size_t)written : 0;
+    // Add timestamp, level, location
+    offset = snprintf(log_buffer, sizeof(log_buffer), "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level],
+                      file, line, func);
 
+    // Add the actual message
     va_list args;
     va_start(args, fmt);
-    written = vfprintf(log_file, fmt, args);
+    offset += vsnprintf(log_buffer + offset, sizeof(log_buffer) - offset, fmt, args);
     va_end(args);
-    g_log.current_size += (written > 0) ? (size_t)written : 0;
 
-    written = fprintf(log_file, "\n");
-    g_log.current_size += (written > 0) ? (size_t)written : 0;
+    // Add newline
+    if (offset < (int)sizeof(log_buffer) - 1) {
+      log_buffer[offset++] = '\n';
+    }
 
-    fflush(log_file);
-  } else if (log_file == stderr && log_file != NULL) {
+    // Write to file descriptor directly
+    ssize_t written = write(g_log.file, log_buffer, offset);
+    if (written > 0) {
+      g_log.current_size += (size_t)written;
+    }
+
+    // No need to flush with direct write() - it bypasses stdio buffering
+  }
+
+  // Handle stderr output separately
+  if (log_file == stderr) {
     fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
     va_list args;
