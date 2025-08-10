@@ -96,6 +96,17 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
     }                                                                                                                  \
   } while (0)
 
+/* Safe zero-initialized memory allocation */
+#define SAFE_CALLOC(ptr, count, size, cast)                                                                             \
+  do {                                                                                                                 \
+    (ptr) = (cast)calloc((count), (size));                                                                             \
+    if (!(ptr)) {                                                                                                      \
+      log_error("Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));                \
+      /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
+      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
 /* Safe memory reallocation */
 #define SAFE_REALLOC(ptr, new_ptr, size)                                                                               \
   do {                                                                                                                 \

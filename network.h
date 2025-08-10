@@ -53,12 +53,16 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 #define MAX_PACKET_SIZE (5 * 1024 * 1024) // 5MB max packet size
 
 typedef enum {
-  PACKET_TYPE_VIDEO_HEADER = 1,
-  PACKET_TYPE_VIDEO = 2,
+  // Unified frame packets (header + data in single packet)
+  PACKET_TYPE_ASCII_FRAME = 1, // Complete ASCII frame with all metadata
+  PACKET_TYPE_IMAGE_FRAME = 2, // Complete RGB image with dimensions
+
+  // Audio and control
   PACKET_TYPE_AUDIO = 3,
   PACKET_TYPE_SIZE = 4,
   PACKET_TYPE_PING = 5,
   PACKET_TYPE_PONG = 6,
+
   // Multi-user protocol extensions
   PACKET_TYPE_CLIENT_JOIN = 7,    // Client announces capability to send media
   PACKET_TYPE_CLIENT_LEAVE = 8,   // Clean disconnect notification
@@ -107,6 +111,51 @@ typedef struct {
   uint32_t reserved[6];            // Reserved for future use
 } __attribute__((packed)) server_state_packet_t;
 
+// ============================================================================
+// Unified Frame Packet Structures
+// ============================================================================
+
+// ASCII frame packet - contains complete ASCII art frame with metadata
+// This replaces the old two-packet system (VIDEO_HEADER + VIDEO)
+typedef struct {
+  // Frame metadata
+  uint32_t width;           // Terminal width in characters
+  uint32_t height;          // Terminal height in characters
+  uint32_t original_size;   // Size of uncompressed ASCII data
+  uint32_t compressed_size; // Size of compressed data (0 = not compressed)
+  uint32_t checksum;        // CRC32 of original ASCII data
+  uint32_t flags;           // Bit flags: HAS_COLOR, IS_COMPRESSED, etc.
+
+  // The actual ASCII frame data follows this header in the packet payload
+  // If compressed_size > 0, data is zlib compressed
+  // Format: char data[original_size] or compressed_data[compressed_size]
+} __attribute__((packed)) ascii_frame_packet_t;
+
+// Image frame packet - contains raw RGB image with dimensions
+// Used when client sends camera frames to server
+typedef struct {
+  uint32_t width;           // Image width in pixels
+  uint32_t height;          // Image height in pixels
+  uint32_t pixel_format;    // Format: 0=RGB, 1=RGBA, 2=BGR, etc.
+  uint32_t compressed_size; // If >0, image is compressed
+  uint32_t checksum;        // CRC32 of pixel data
+  uint32_t timestamp;       // When frame was captured
+
+  // The actual pixel data follows this header in the packet payload
+  // Format: rgb_t pixels[width * height] or compressed data
+} __attribute__((packed)) image_frame_packet_t;
+
+// Frame flags for ascii_frame_packet_t
+#define FRAME_FLAG_HAS_COLOR 0x01     // Frame includes ANSI color codes
+#define FRAME_FLAG_IS_COMPRESSED 0x02 // Frame data is zlib compressed
+#define FRAME_FLAG_IS_STRETCHED 0x04  // Frame was stretched (aspect adjusted)
+
+// Pixel formats for image_frame_packet_t
+#define PIXEL_FORMAT_RGB 0
+#define PIXEL_FORMAT_RGBA 1
+#define PIXEL_FORMAT_BGR 2
+#define PIXEL_FORMAT_BGRA 3
+
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
 #define CLIENT_CAP_AUDIO 0x02
@@ -134,8 +183,6 @@ uint32_t get_next_sequence(void);
 int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
 int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);
 
-int send_video_header_packet(int sockfd, const void *header_data, size_t header_len);
-int send_video_packet(int sockfd, const void *frame_data, size_t frame_len);
 int send_audio_packet(int sockfd, const float *samples, int num_samples);
 int send_size_packet(int sockfd, unsigned short width, unsigned short height);
 

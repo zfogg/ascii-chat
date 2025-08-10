@@ -1,19 +1,22 @@
+#ifndef COMPRESSION_H
+#define COMPRESSION_H
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 
-typedef struct {
-  uint32_t magic;           // COMPRESSION_FRAME_MAGIC
-  uint32_t compressed_size; // value of 0 means uncompressed
-  uint32_t original_size;
-  uint32_t checksum; // CRC32 of original data
-  int width;
-  int height;
-} compressed_frame_header_t;
+// Compression settings
+#define COMPRESSION_RATIO_THRESHOLD 0.8f // Only send compressed if <80% original size
 
-#define COMPRESSION_FRAME_MAGIC 0x41534349 // 0x41 0x53 0x43 0x49 (“ASCI” in ASCII)
-#define COMPRESSION_RATIO_THRESHOLD 0.8f   // Only send compressed if <80% original size
+// Function declarations for unified packet system
+int send_ascii_frame_packet(int sockfd, const char *frame_data, size_t frame_size, int width, int height);
+int send_image_frame_packet(int sockfd, const void *pixel_data, size_t pixel_size, int width, int height,
+                            uint32_t pixel_format);
 
+// Legacy functions (deprecated - use unified packet functions above)
 int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size);
-ssize_t recv_compressed_frame(int sockfd, char **buf, size_t *output_size, compressed_frame_header_t *out_header);
-// CRC32 calculation is now done via asciichat_crc32() from network.h
+
+// Note: compressed_frame_header_t has been removed in favor of
+// ascii_frame_packet_t and image_frame_packet_t in network.h
+
+#endif // COMPRESSION_H
