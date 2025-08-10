@@ -18,6 +18,7 @@
 #include "common.h"
 #include "network.h"
 #include "options.h"
+#include "packet_queue.h"
 #include "ringbuffer.h"
 #include "compression.h"
 #include "audio.h"
@@ -30,12 +31,8 @@
  */
 
 static volatile bool g_should_exit = false;
-// Old server audio capture removed - clients now capture and send their own audio
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// Mutex to serialize all socket sends to prevent packet interleaving between threads
-static pthread_mutex_t g_socket_send_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Performance statistics */
 typedef struct {
@@ -82,9 +79,13 @@ typedef struct {
   framebuffer_t *incoming_video_buffer;       // NEW: Buffer for this client's video
   audio_ring_buffer_t *incoming_audio_buffer; // NEW: Buffer for this client's audio
 
-  // Mutex for serializing sends to this client's socket
-  pthread_mutex_t send_mutex;
-  bool send_mutex_initialized;
+  // Packet queues for outgoing data (per-client queues for isolation)
+  packet_queue_t *audio_queue; // Queue for audio packets to send to this client
+  packet_queue_t *video_queue; // Queue for video packets to send to this client
+
+  // Dedicated send thread for this client
+  pthread_t send_thread;
+  bool send_thread_running;
 } client_info_t;
 
 typedef struct {
@@ -121,6 +122,7 @@ static int listenfd = 0;
 
 // Thread functions
 void *client_receive_thread_func(void *arg);
+void *client_send_thread_func(void *arg);
 
 // Audio mixing thread function
 void *audio_mixer_thread_func(void *arg);
@@ -278,21 +280,18 @@ void *audio_mixer_thread_func(void *arg) {
       }
       log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
 
-      // Send mixed audio to all connected clients
+      // Queue mixed audio to all connected clients
       pthread_mutex_lock(&g_client_manager_mutex);
       for (int i = 0; i < MAX_CLIENTS; i++) {
         client_info_t *client = &g_client_manager.clients[i];
-        if (client->active && client->socket > 0) {
-          // Lock socket sends to prevent interleaving with video packets
-          pthread_mutex_lock(&g_socket_send_mutex);
-          int sent = send_audio_packet(client->socket, send_buffer, AUDIO_FRAMES_PER_BUFFER);
-          pthread_mutex_unlock(&g_socket_send_mutex);
-
-          if (sent < 0) {
-            log_debug("Failed to send mixed audio to client %u, marking as disconnected", client->client_id);
-            // Mark client as inactive to prevent further send attempts
-            client->active = false;
-            // The receive thread will handle the actual cleanup
+        if (client->active && client->socket > 0 && client->audio_queue) {
+          // Queue the audio packet for this client
+          // Note: We copy the data so each queue has its own copy
+          size_t data_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
+          int result = packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO, send_buffer, data_size, 0,
+                                            true); // client_id=0 for server-originated, copy=true
+          if (result < 0) {
+            log_debug("Failed to queue audio for client %u (queue full or shutdown)", client->client_id);
           }
         }
       }
@@ -380,15 +379,22 @@ static void *video_broadcast_thread_func(void *arg) {
       state.active_client_count = active_client_count;
       memset(state.reserved, 0, sizeof(state.reserved));
 
-      // Send server state update to all clients
+      // Convert to network byte order
+      server_state_packet_t net_state;
+      net_state.connected_client_count = htonl(state.connected_client_count);
+      net_state.active_client_count = htonl(state.active_client_count);
+      memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+      // Queue server state update to all clients
       pthread_mutex_lock(&g_client_manager_mutex);
       for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0) {
-          pthread_mutex_lock(&g_socket_send_mutex);
-          if (send_server_state_packet(g_client_manager.clients[i].socket, &state) < 0) {
-            log_warn("Failed to send server state to client %u", g_client_manager.clients[i].client_id);
+        if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0 &&
+            g_client_manager.clients[i].video_queue) {
+          int result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_SERVER_STATE,
+                                            &net_state, sizeof(net_state), 0, true);
+          if (result < 0) {
+            log_warn("Failed to queue server state for client %u", g_client_manager.clients[i].client_id);
           }
-          pthread_mutex_unlock(&g_socket_send_mutex);
         }
       }
       pthread_mutex_unlock(&g_client_manager_mutex);
@@ -506,45 +512,34 @@ static void *video_broadcast_thread_func(void *arg) {
                                               .width = htonl(target_width),
                                               .height = htonl(target_height)};
 
-          // Send header first
-          pthread_mutex_lock(&g_socket_send_mutex);
-          int header_result = send_video_header_packet(client_copy.socket, &header, sizeof(header));
-          pthread_mutex_unlock(&g_socket_send_mutex);
-          if (header_result < 0) {
-            log_error("Failed to send header to client %u (socket=%d): %s", client_copy.client_id, client_copy.socket,
-                      strerror(errno));
-            // Mark client as inactive if we can't send to it
-            pthread_mutex_lock(&g_client_manager_mutex);
-            if (g_client_manager.clients[i].client_id == client_copy.client_id) {
-              g_client_manager.clients[i].active = false;
+          // Queue header first
+          pthread_mutex_lock(&g_client_manager_mutex);
+          if (g_client_manager.clients[i].active && g_client_manager.clients[i].video_queue) {
+            int header_result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_VIDEO_HEADER,
+                                                     &header, sizeof(header), 0, true);
+            if (header_result < 0) {
+              log_error("Failed to queue header for client %u: queue full or shutdown", client_copy.client_id);
+              pthread_mutex_unlock(&g_client_manager_mutex);
+              free(mixed_frame);
+              continue; // Don't try to queue video data if header failed
             }
-            pthread_mutex_unlock(&g_client_manager_mutex);
-            free(mixed_frame);
-            continue; // Don't try to send video data if header failed
-          }
 
-          // Then send the frame data
-          pthread_mutex_lock(&g_socket_send_mutex);
-          int frame_result = send_video_packet(client_copy.socket, mixed_frame, mixed_size);
-          pthread_mutex_unlock(&g_socket_send_mutex);
-          if (frame_result < 0) {
-            log_error("Failed to send video frame to client %u (socket=%d): %s", client_copy.client_id,
-                      client_copy.socket, strerror(errno));
-            // Mark client as inactive if we can't send to it
-            pthread_mutex_lock(&g_client_manager_mutex);
-            if (g_client_manager.clients[i].client_id == client_copy.client_id) {
-              g_client_manager.clients[i].active = false;
-            }
-            pthread_mutex_unlock(&g_client_manager_mutex);
-          } else {
-            sent_count++;
-            static int success_count[MAX_CLIENTS] = {0};
-            success_count[i]++;
-            if (success_count[i] == 1 || success_count[i] % 30 == 0) { // Log first and every 30 successful sends
-              log_info("Successfully sent %d frames to client %u (slot %d, socket=%d, size=%zu)", success_count[i],
-                       client_copy.client_id, i, client_copy.socket, mixed_size);
+            // Then queue the frame data
+            int frame_result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_VIDEO,
+                                                    mixed_frame, mixed_size, 0, true);
+            if (frame_result < 0) {
+              log_error("Failed to queue video frame for client %u: queue full or shutdown", client_copy.client_id);
+            } else {
+              sent_count++;
+              static int success_count[MAX_CLIENTS] = {0};
+              success_count[i]++;
+              if (success_count[i] == 1 || success_count[i] % 30 == 0) { // Log first and every 30 successful queues
+                log_info("Successfully queued %d frames for client %u (slot %d, size=%zu)", success_count[i],
+                         client_copy.client_id, i, mixed_size);
+              }
             }
           }
+          pthread_mutex_unlock(&g_client_manager_mutex);
 
           free(mixed_frame);
         } else {
@@ -1208,14 +1203,16 @@ void *client_receive_thread_func(void *arg) {
     }
 
     case PACKET_TYPE_PING: {
-      // Handle ping from client - send pong back
-      pthread_mutex_lock(&g_socket_send_mutex);
-      if (send_pong_packet(client->socket) < 0) {
-        log_debug("Failed to send PONG response to client %u", client->client_id);
-      } else {
-        log_debug("Sent PONG response to client %u", client->client_id);
+      // Handle ping from client - queue pong response
+      if (client->video_queue) {
+        // PONG packet has no payload
+        int result = packet_queue_enqueue(client->video_queue, PACKET_TYPE_PONG, NULL, 0, 0, false);
+        if (result < 0) {
+          log_debug("Failed to queue PONG response for client %u", client->client_id);
+        } else {
+          log_debug("Queued PONG response for client %u", client->client_id);
+        }
       }
-      pthread_mutex_unlock(&g_socket_send_mutex);
       break;
     }
 
@@ -1241,6 +1238,90 @@ void *client_receive_thread_func(void *arg) {
   // Do NOT close the socket here - let the main thread detect it and clean up
   client->active = false;
   log_info("Receive thread for client %u terminated", client->client_id);
+  return NULL;
+}
+
+// Thread function to handle sending data to a specific client
+void *client_send_thread_func(void *arg) {
+  client_info_t *client = (client_info_t *)arg;
+  if (!client || client->socket <= 0) {
+    log_error("Invalid client info in send thread");
+    return NULL;
+  }
+
+  log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
+
+  // Mark thread as running
+  client->send_thread_running = true;
+
+  while (!g_should_exit && client->active && client->send_thread_running) {
+    queued_packet_t *packet = NULL;
+
+    // Try to get audio packet first (higher priority for low latency)
+    if (client->audio_queue) {
+      packet = packet_queue_try_dequeue(client->audio_queue);
+    }
+
+    // If no audio packet, try video
+    if (!packet && client->video_queue) {
+      packet = packet_queue_try_dequeue(client->video_queue);
+    }
+
+    // If still no packet, wait a bit for one
+    if (!packet) {
+      // Use blocking dequeue on audio queue with timeout
+      if (client->audio_queue) {
+        // This will block until a packet is available or queue is shutdown
+        packet = packet_queue_dequeue(client->audio_queue);
+      }
+
+      // If audio queue returned NULL (shutdown), check video once more
+      if (!packet && client->video_queue) {
+        packet = packet_queue_try_dequeue(client->video_queue);
+      }
+    }
+
+    // If we got a packet, send it
+    if (packet) {
+      // Send header
+      ssize_t sent = send_with_timeout(client->socket, &packet->header, sizeof(packet->header), SEND_TIMEOUT);
+      if (sent != sizeof(packet->header)) {
+        log_error("Failed to send packet header to client %u: %zd/%zu bytes", client->client_id, sent,
+                  sizeof(packet->header));
+        packet_queue_free_packet(packet);
+        break; // Socket error, exit thread
+      }
+
+      // Send payload if present
+      if (packet->data_len > 0 && packet->data) {
+        sent = send_with_timeout(client->socket, packet->data, packet->data_len, SEND_TIMEOUT);
+        if (sent != (ssize_t)packet->data_len) {
+          log_error("Failed to send packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
+                    packet->data_len);
+          packet_queue_free_packet(packet);
+          break; // Socket error, exit thread
+        }
+      }
+
+// Successfully sent packet
+#ifdef NETWORK_DEBUG
+      uint16_t pkt_type = ntohs(packet->header.type);
+      log_debug("Sent packet type=%d to client %u (len=%zu)", pkt_type, client->client_id, packet->data_len);
+#endif
+
+      // Free the packet
+      packet_queue_free_packet(packet);
+    }
+
+    // Small sleep to prevent busy waiting if queues are empty
+    if (!packet) {
+      usleep(1000); // 1ms
+    }
+  }
+
+  // Mark thread as stopped
+  client->send_thread_running = false;
+  log_info("Send thread for client %u terminated", client->client_id);
   return NULL;
 }
 
@@ -1305,6 +1386,31 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
+  // Create packet queues for outgoing data
+  client->audio_queue = packet_queue_create(100); // Max 100 audio packets queued
+  if (!client->audio_queue) {
+    log_error("Failed to create audio queue for client %u", client->client_id);
+    framebuffer_destroy(client->incoming_video_buffer);
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    client->incoming_video_buffer = NULL;
+    client->incoming_audio_buffer = NULL;
+    pthread_mutex_unlock(&g_client_manager_mutex);
+    return -1;
+  }
+
+  client->video_queue = packet_queue_create(30); // Max 30 video frames queued (1 second at 30fps)
+  if (!client->video_queue) {
+    log_error("Failed to create video queue for client %u", client->client_id);
+    framebuffer_destroy(client->incoming_video_buffer);
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    packet_queue_destroy(client->audio_queue);
+    client->incoming_video_buffer = NULL;
+    client->incoming_audio_buffer = NULL;
+    client->audio_queue = NULL;
+    pthread_mutex_unlock(&g_client_manager_mutex);
+    return -1;
+  }
+
   g_client_manager.client_count = existing_count + 1; // We just added a client
 
   // Register this client's audio buffer with the mixer
@@ -1325,24 +1431,34 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  // No send thread needed - broadcast thread handles all sending
-  // This avoids race conditions and simplifies synchronization
-  log_info("Client %u initialized (using broadcast thread for sending)", client->client_id);
+  // Start send thread for this client
+  if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
+    log_error("Failed to create send thread for client %u", client->client_id);
+    // Note: remove_client will handle thread cleanup
+    remove_client(client->client_id);
+    return -1;
+  }
 
-  // Send initial server state to the new client
+  log_info("Client %u initialized with dedicated send thread", client->client_id);
+
+  // Queue initial server state to the new client
   server_state_packet_t state;
   state.connected_client_count = g_client_manager.client_count;
   state.active_client_count = 0; // Will be updated by broadcast thread
   memset(state.reserved, 0, sizeof(state.reserved));
 
-  pthread_mutex_lock(&g_socket_send_mutex);
-  if (send_server_state_packet(client->socket, &state) < 0) {
-    log_warn("Failed to send initial server state to client %u", client->client_id);
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = htonl(state.connected_client_count);
+  net_state.active_client_count = htonl(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  if (packet_queue_enqueue(client->video_queue, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state), 0, true) < 0) {
+    log_warn("Failed to queue initial server state for client %u", client->client_id);
   } else {
-    log_info("Sent initial server state to client %u: %u connected clients", client->client_id,
+    log_info("Queued initial server state for client %u: %u connected clients", client->client_id,
              state.connected_client_count);
   }
-  pthread_mutex_unlock(&g_socket_send_mutex);
 
   log_info("Added client %u from %s:%d", client->client_id, client_ip, port);
   return client->client_id;
@@ -1378,6 +1494,34 @@ int remove_client(uint32_t client_id) {
 
       if (audio_buffer) {
         audio_ring_buffer_destroy(audio_buffer);
+      }
+
+      // Shutdown and destroy packet queues
+      if (client->audio_queue) {
+        packet_queue_shutdown(client->audio_queue);
+      }
+      if (client->video_queue) {
+        packet_queue_shutdown(client->video_queue);
+      }
+
+      // Wait for send thread to exit if it's running
+      if (client->send_thread_running) {
+        // The shutdown signal above will cause the send thread to exit
+        pthread_join(client->send_thread, NULL);
+        log_debug("Send thread for client %u has terminated", client_id);
+      }
+
+      // Now destroy the queues
+      packet_queue_t *audio_queue = client->audio_queue;
+      packet_queue_t *video_queue = client->video_queue;
+      client->audio_queue = NULL;
+      client->video_queue = NULL;
+
+      if (audio_queue) {
+        packet_queue_destroy(audio_queue);
+      }
+      if (video_queue) {
+        packet_queue_destroy(video_queue);
       }
 
       // Remove from audio mixer before clearing client data
