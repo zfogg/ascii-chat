@@ -388,16 +388,16 @@ if (framebuffer_read_multi_frame(buffer, &frame)) {
 
 ## Troubleshooting Quick Reference
 
-| Symptom | Likely Cause | Solution |
-|---------|--------------|----------|
-| "Unknown packet type: 1" | Missing validation case | Add PACKET_TYPE_ASCII_FRAME to receive_packet() switch |
-| "DEADBEEF" in audio data | TCP stream corruption | Implement per-client packet queues |
-| Video not displaying | Wrong packet type | Verify server sends ASCII_FRAME (type 1) |
-| Crash after "Image size exceeds" | Use-after-free | Don't write frames back to buffer |
-| High CPU usage | Busy loops | Add usleep(10000) in tight loops |
-| Clients randomly disconnect | Timeout or queue full | Increase timeouts or queue sizes |
-| CRC checksum mismatch | Concurrent writes | Use packet queues, not direct sends |
-| Memory leak | Missing free | Check all SAFE_MALLOC has corresponding free |
+ | Symptom                          | Likely Cause            | Solution                                               |
+ |----------------------------------|-------------------------|--------------------------------------------------------|
+ | "Unknown packet type: 1"         | Missing validation case | Add PACKET_TYPE_ASCII_FRAME to receive_packet() switch |
+ | "DEADBEEF" in audio data         | TCP stream corruption   | Implement per-client packet queues                     |
+ | Video not displaying             | Wrong packet type       | Verify server sends ASCII_FRAME (type 1)               |
+ | Crash after "Image size exceeds" | Use-after-free          | Don't write frames back to buffer                      |
+ | High CPU usage                   | Busy loops              | Add usleep(10000) in tight loops                       |
+ | Clients randomly disconnect      | Timeout or queue full   | Increase timeouts or queue sizes                       |
+ | CRC checksum mismatch            | Concurrent writes       | Use packet queues, not direct sends                    |
+ | Memory leak                      | Missing free            | Check all SAFE_MALLOC has corresponding free           |
 
 ## Protocol Migration Notes
 
