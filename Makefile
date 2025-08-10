@@ -88,7 +88,7 @@ OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/clien
 # Phony Targets
 # =============================================================================
 
-.-HONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze
 
 # =============================================================================
 # Default Target
