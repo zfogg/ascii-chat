@@ -402,7 +402,8 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
                             .type = htons((uint16_t)type),
                             .length = htonl((uint32_t)len),
                             .sequence = htonl(get_next_sequence()),
-                            .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0)};
+                            .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0),
+                            .client_id = htonl(0)}; // Always initialize client_id to 0 in network byte order
 
   // Send header first
   ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), SEND_TIMEOUT);
@@ -572,7 +573,8 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     // Verify checksum
     uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
     if (actual_crc != expected_crc) {
-      log_error("Packet checksum mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
+      log_error("Packet checksum mismatch for type %u: got 0x%x, expected 0x%x (len=%u)", pkt_type, actual_crc,
+                expected_crc, pkt_len);
       free(*data);
       *data = NULL;
       return -1;
@@ -592,6 +594,11 @@ int send_video_header_packet(int sockfd, const void *header_data, size_t header_
 }
 
 int send_video_packet(int sockfd, const void *frame_data, size_t frame_len) {
+  // Log large video packets for debugging
+  if (frame_len > 100000) {
+    uint32_t crc = frame_data ? asciichat_crc32(frame_data, frame_len) : 0;
+    log_debug("Sending large video packet: len=%zu, crc=0x%x", frame_len, crc);
+  }
   return send_packet(sockfd, PACKET_TYPE_VIDEO, frame_data, frame_len);
 }
 
@@ -735,7 +742,8 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
     // Verify CRC
     uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
     if (actual_crc != expected_crc) {
-      log_error("Packet CRC mismatch: got 0x%x, expected 0x%x", actual_crc, expected_crc);
+      log_error("Packet CRC mismatch for type %u from client %u: got 0x%x, expected 0x%x (len=%u)", pkt_type,
+                pkt_client_id, actual_crc, expected_crc, pkt_len);
       free(*data);
       *data = NULL;
       return -1;
