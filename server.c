@@ -567,18 +567,21 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     client_info_t *client = &g_client_manager.clients[i];
     
     if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
-      // Try to peek at the latest frame first
+      // Consume ALL old frames to get to the latest one
+      // This reduces lag by discarding stale frames
       multi_source_frame_t latest_frame = {0};
-      bool got_frame = framebuffer_peek_latest_multi_frame(client->incoming_video_buffer, &latest_frame);
+      multi_source_frame_t temp_frame = {0};
+      bool got_frame = false;
       
-      // If we got a frame, consume it to prevent buffer overflow
-      if (got_frame) {
-        multi_source_frame_t consumed_frame = {0};
-        framebuffer_read_multi_frame(client->incoming_video_buffer, &consumed_frame);
-        // Use the peeked frame data, but free the consumed frame if different
-        if (consumed_frame.data && consumed_frame.data != latest_frame.data) {
-          free(consumed_frame.data);
+      // Keep reading frames until we get the last one
+      while (framebuffer_read_multi_frame(client->incoming_video_buffer, &temp_frame)) {
+        // Free the previous frame if we had one
+        if (got_frame && latest_frame.data) {
+          free(latest_frame.data);
         }
+        // This is now our latest frame
+        latest_frame = temp_frame;
+        got_frame = true;
       }
 
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
