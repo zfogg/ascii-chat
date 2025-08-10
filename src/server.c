@@ -289,8 +289,9 @@ void *audio_mixer_thread_func(void *arg) {
       pthread_mutex_unlock(&g_client_manager_mutex);
     }
 
-    // Audio mixing rate - ~50 FPS for balance between latency and network load
-    usleep(20000); // 20ms
+    // Audio mixing rate - process every ~5.8ms to match buffer size
+    // 256 samples at 44100 Hz = 5.8ms
+    usleep(5800); // 5.8ms
   }
 
   log_info("Audio mixer thread stopped");
@@ -1246,12 +1247,9 @@ void *client_receive_thread_func(void *arg) {
         if (num_samples > 0 && client->incoming_audio_buffer) {
           const float *samples = (const float *)data;
           int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
-          if (written < num_samples) {
-            // log_debug("Client %u audio buffer full, dropped %d samples", client->client_id, num_samples - written);
-          } else {
-            (void)0;
-            // log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
-          }
+          // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
+          (void)written;
+          // log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
         }
       }
       break;
@@ -1286,13 +1284,10 @@ void *client_receive_thread_func(void *arg) {
         // Write all samples to the ring buffer
         if (client->incoming_audio_buffer) {
           int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
-          if (written < (int)total_samples) {
-            log_debug("Client %u audio buffer full, dropped %d/%u samples from batch", client->client_id,
-                      total_samples - written, total_samples);
-          } else {
-            log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
-                      total_samples, sample_rate);
-          }
+          // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
+          (void)written;
+          log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
+                    total_samples, sample_rate);
         }
       }
       break;
