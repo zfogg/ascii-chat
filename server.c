@@ -278,7 +278,7 @@ void *audio_mixer_thread_func(void *arg) {
             ((unsigned char *)send_buffer)[12], ((unsigned char *)send_buffer)[13], ((unsigned char *)send_buffer)[14],
             ((unsigned char *)send_buffer)[15]);
       }
-      log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
+      // log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
 
       // Queue mixed audio to all connected clients
       pthread_mutex_lock(&g_client_manager_mutex);
@@ -412,38 +412,41 @@ static void *video_broadcast_thread_func(void *arg) {
 
     // log_debug("Broadcast thread: %d clients connected", client_count);
 
-    // First, consume all old frames and keep only the latest from each client
-    // This ensures we always use the most recent frame and prevents desync
+    // Clear old frames from buffers to prevent memory buildup
+    // Keep clearing until we have at most 1 frame per client
     pthread_mutex_lock(&g_client_manager_mutex);
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
       if (client->active && client->incoming_video_buffer) {
+        // Try to consume all but the latest frame
         multi_source_frame_t frame;
-        multi_source_frame_t latest_frame = {0};
-        bool has_frame = false;
-
-        // Consume all frames and keep only the latest
+        multi_source_frame_t prev_frame = {0};
+        bool has_prev = false;
+        
+        // Read all frames, keeping only the latest
         while (framebuffer_read_multi_frame(client->incoming_video_buffer, &frame)) {
           // Free the previous frame if we had one
-          if (has_frame) {
-            free(latest_frame.data);
+          if (has_prev && prev_frame.data) {
+            free(prev_frame.data);
           }
-          latest_frame = frame;
-          has_frame = true;
+          prev_frame = frame;
+          has_prev = true;
         }
-
-        // If we got a frame, write it back so peek can see it
-        if (has_frame && latest_frame.data) {
-          // Check if client is still active and buffer still exists before writing back
-          // This prevents crashes if client disconnected while we were processing
-          if (client->active && client->incoming_video_buffer) {
-            // Write the latest frame back to the buffer for peeking
-            framebuffer_write_multi_frame(client->incoming_video_buffer, latest_frame.data, latest_frame.size,
-                                          latest_frame.source_client_id, latest_frame.frame_sequence,
-                                          latest_frame.timestamp);
+        
+        // If we have a frame, write it back for peeking
+        // But this time we need to copy the data to avoid use-after-free
+        if (has_prev && prev_frame.data) {
+          // Make a copy of the data
+          char *data_copy = malloc(prev_frame.size);
+          if (data_copy) {
+            memcpy(data_copy, prev_frame.data, prev_frame.size);
+            framebuffer_write_multi_frame(client->incoming_video_buffer, data_copy, prev_frame.size,
+                                        prev_frame.source_client_id, prev_frame.frame_sequence,
+                                        prev_frame.timestamp);
+            // Note: framebuffer now owns data_copy, don't free it here
           }
-          // Always free our copy
-          free(latest_frame.data);
+          // Free the original
+          free(prev_frame.data);
         }
       }
     }
@@ -610,8 +613,34 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
         // Parse the image data
         // Format: [width:4][height:4][rgb_data:w*h*3]
-        size_t img_width = ntohl(*(uint32_t *)latest_frame.data);
-        size_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
+        uint32_t img_width = ntohl(*(uint32_t *)latest_frame.data);
+        uint32_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
+
+        // Validate dimensions are reasonable (max 4K resolution)
+        if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
+          log_error("Invalid image dimensions from client %u: %ux%u (data may be corrupted)", client->client_id,
+                    img_width, img_height);
+          // Free the corrupted frame
+          free(latest_frame.data);
+          continue;
+        }
+
+        // Validate that the frame size matches expected size
+        size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+        if (latest_frame.size != expected_size) {
+          log_error("Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image", client->client_id,
+                    latest_frame.size, expected_size, img_width, img_height);
+          // Free the corrupted frame
+          free(latest_frame.data);
+          continue;
+        }
+
+        // The image data received from the client is formatted as:
+        // [width:4 bytes][height:4 bytes][pixel data...]
+        // So, the first 8 bytes (2 * sizeof(uint32_t)) are the width and height (each 4 bytes).
+        // The actual pixel data (an array of rgb_t structs) starts immediately after these 8 bytes.
+        // By adding sizeof(uint32_t) * 2 to the data pointer, we skip past the width and height fields
+        // and point directly to the start of the pixel data.
         rgb_t *pixels = (rgb_t *)(latest_frame.data + sizeof(uint32_t) * 2);
 
         // log_info("[SERVER COMPOSITE] Got image from client %u: %ux%u, aspect: %.3f (needs terminal adjustment)",
