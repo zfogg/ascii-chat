@@ -21,7 +21,6 @@
 #include "options.h"
 #include "compression.h"
 #include "audio.h"
-#include "ringbuffer.h"
 #include "image.h"
 #include "webcam.h"
 #include "aspect_ratio.h"
@@ -56,7 +55,7 @@ static volatile bool g_capture_thread_exited = false;
  */
 
 // Multi-user client state
-static uint32_t g_my_client_id = 0;
+uint32_t g_my_client_id = 0;
 
 // Remote client tracking (up to MAX_CLIENTS)
 typedef struct {
@@ -65,10 +64,6 @@ typedef struct {
   bool is_active;
   time_t last_seen;
 } remote_client_info_t;
-
-static remote_client_info_t g_remote_clients[MAX_CLIENTS];
-static int g_remote_client_count = 0;
-static pthread_mutex_t g_remote_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Server state tracking for console clear logic
 static uint32_t g_last_active_count = 0;
@@ -80,7 +75,6 @@ static bool g_server_state_initialized = false;
  */
 
 // Multi-user packet handlers
-static void handle_client_list_packet(const void *data, size_t len);
 static void handle_server_state_packet(const void *data, size_t len);
 
 // Ping thread for connection keepalive
@@ -297,8 +291,7 @@ static void handle_video_packet(const void *data, size_t len) {
   // Verify checksum
   uint32_t received_checksum = calculate_crc32(frame_data, g_compression_header.original_size);
   if (received_checksum != g_compression_header.checksum) {
-    log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum,
-              received_checksum);
+    log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum, received_checksum);
     free(frame_data);
     return;
   }
@@ -370,24 +363,16 @@ static void *data_reception_thread_func(void *arg) {
       // Respond with PONG
       if (send_pong_packet(sockfd) < 0) {
         log_error("Failed to send PONG response");
-      } else {
-        log_debug("Sent PONG response to server PING");
       }
       break;
 
     case PACKET_TYPE_PONG:
-      // Server acknowledged our PING
+      // INFO: Nothing to do here. We win. Server acknowledged our PING
       // log_debug("Received PONG from server");
-      break;
-
-    // Multi-user protocol packets
-    case PACKET_TYPE_CLIENT_LIST:
-      handle_client_list_packet(data, len);
       break;
 
     case PACKET_TYPE_CLEAR_CONSOLE:
       // Server requested console clear
-      log_info("Server requested console clear");
       console_clear();
       break;
 
@@ -401,7 +386,6 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     free(data);
-    // usleep(1 * 1000); // TODO: figure out if I need this. I don't think I do.
   }
 
 #ifdef DEBUG_THREADS
@@ -419,14 +403,17 @@ static void *ping_thread_func(void *arg) {
 #endif
 
   while (!g_should_exit && !g_connection_lost) {
+    // Check if socket is still valid before sending
     if (sockfd <= 0) {
-      usleep(1000 * 1000); // 1 second
-      continue;
+      log_debug("Socket closed, exiting ping thread");
+      break;
     }
 
     // Send ping packet every 3 seconds to keep connection alive (server timeout is 5 seconds)
     if (send_ping_packet(sockfd) < 0) {
       log_debug("Failed to send ping packet");
+      // Set connection lost flag so main loop knows to reconnect
+      g_connection_lost = true;
       break;
     }
 
@@ -463,9 +450,8 @@ static void *webcam_capture_thread_func(void *arg) {
     long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
                       (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
 
-    int frame_interval = get_frame_interval_ms();
-    if (elapsed_ms < frame_interval) {
-      usleep((frame_interval - elapsed_ms) * 1000);
+    if (elapsed_ms < FRAME_INTERVAL_MS) {
+      usleep((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
       continue;
     }
 
@@ -544,10 +530,19 @@ static void *webcam_capture_thread_func(void *arg) {
     memcpy(packet_data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
     memcpy(packet_data + sizeof(uint32_t) * 2, image->pixels, rgb_size);
 
+    // Check if socket is still valid before sending
+    if (sockfd <= 0) {
+      log_debug("Socket closed, stopping video send");
+      free(packet_data);
+      image_destroy(image);
+      break;
+    }
+
     // Send image data to server via VIDEO packet
     // log_info("[CLIENT SEND] Sending frame: %dx%d to server", image->w, image->h);
     if (send_video_packet(sockfd, (char *)packet_data, packet_size) < 0) {
       log_debug("Failed to send video frame to server");
+      // Don't set g_connection_lost here as receive thread will detect it
     }
 
     // Update capture time
@@ -566,43 +561,6 @@ static void *webcam_capture_thread_func(void *arg) {
  * Multi-User Packet Handlers
  * ============================================================================
  */
-
-static void handle_client_list_packet(const void *data, size_t len) {
-  if (!data || len != sizeof(client_list_packet_t)) {
-    log_error("Invalid client list packet size: %zu", len);
-    return;
-  }
-
-  const client_list_packet_t *client_list = (const client_list_packet_t *)data;
-
-  pthread_mutex_lock(&g_remote_clients_mutex);
-
-  // Clear existing remote clients
-  memset(g_remote_clients, 0, sizeof(g_remote_clients));
-  g_remote_client_count = 0;
-
-  // Add clients from server list (excluding ourselves)
-  for (uint32_t i = 0; i < client_list->client_count && i < MAX_CLIENTS; i++) {
-    const client_info_packet_t *client_info = &client_list->clients[i];
-
-    if (client_info->client_id != g_my_client_id && g_remote_client_count < MAX_CLIENTS) {
-      remote_client_info_t *remote = &g_remote_clients[g_remote_client_count];
-      remote->client_id = client_info->client_id;
-      strncpy(remote->display_name, client_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
-      remote->display_name[MAX_DISPLAY_NAME_LEN - 1] = '\0';
-      remote->is_active = true;
-      remote->last_seen = time(NULL);
-      g_remote_client_count++;
-    }
-  }
-
-  pthread_mutex_unlock(&g_remote_clients_mutex);
-
-  log_info("Updated client list: %d remote clients connected", g_remote_client_count);
-  for (int i = 0; i < g_remote_client_count; i++) {
-    log_info("  - Client %u: %s", g_remote_clients[i].client_id, g_remote_clients[i].display_name);
-  }
-}
 
 static void handle_server_state_packet(const void *data, size_t len) {
   if (!data || len != sizeof(server_state_packet_t)) {
@@ -623,7 +581,6 @@ static void handle_server_state_packet(const void *data, size_t len) {
     if (g_last_active_count != active_count) {
       log_info("Active client count changed from %u to %u - clearing console", g_last_active_count, active_count);
       console_clear();
-      log_debug("ACTIVE COUNT CHANGED - Console cleared");
     }
   } else {
     // First state packet received
@@ -658,6 +615,9 @@ int main(int argc, char *argv[]) {
 
   // Handle terminal resize events
   signal(SIGWINCH, sigwinch_handler);
+
+  // Ignore SIGPIPE - we'll handle write errors ourselves
+  signal(SIGPIPE, SIG_IGN);
 
   // Initialize ASCII output for this connection
   ascii_write_init();
@@ -752,6 +712,17 @@ int main(int argc, char *argv[]) {
       printf("Connected successfully!\n");
       log_info("Connected to server %s:%d", address, port);
       reconnect_attempt = 0; // Reset reconnection counter on successful connection
+
+      struct sockaddr_in local_addr;
+      socklen_t addr_len = sizeof(local_addr);
+      if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
+        perror("getsockname");
+        exit(1);
+      }
+      int local_port = ntohs(local_addr.sin_port);
+      log_info("Local port: %d", local_port);
+
+      g_my_client_id = local_port;
 
       // Send initial terminal size to server
       if (send_size_packet(sockfd, opt_width, opt_height) < 0) {

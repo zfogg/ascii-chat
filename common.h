@@ -64,29 +64,9 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
 
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
-/* Frame protocol header */
-// typedef struct {
-//   uint32_t magic;     /* Magic number: 0x41534349 ('ASCI') */
-//   uint32_t version;   /* Protocol version */
-//   uint32_t width;     /* Frame width */
-//   uint32_t height;    /* Frame height */
-//   uint32_t size;      /* Payload size in bytes */
-//   uint32_t flags;     /* Frame flags (future use) */
-//   uint32_t sequence;  /* Frame sequence number */
-//   uint32_t timestamp; /* Unix timestamp */
-// } frame_header_t;
-
-// #define FRAME_MAGIC 0x41534349 /* 'ASCI' */
-// #define FRAME_VERSION 1
-
-/* Performance tuning */
 #define MAX_FPS 120
 
-/* Frame interval calculation */
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
-static inline int get_frame_interval_ms(void) {
-  return FRAME_INTERVAL_MS;
-}
 
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
 

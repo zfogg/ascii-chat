@@ -140,10 +140,19 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
     }
 
     // Try to send data
+#ifdef MSG_NOSIGNAL
+    ssize_t sent = send(sockfd, data + total_sent, len - total_sent, MSG_NOSIGNAL);
+#else
+    // macOS doesn't have MSG_NOSIGNAL, but we ignore SIGPIPE signal instead
     ssize_t sent = send(sockfd, data + total_sent, len - total_sent, 0);
+#endif
     if (sent < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         continue; // Try again
+      }
+      if (errno == EPIPE) {
+        // Connection closed by peer
+        log_debug("Connection closed by peer (EPIPE)");
       }
       return -1; // Real error
     }
@@ -502,12 +511,6 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
-  case PACKET_TYPE_CLIENT_LIST:
-    if (pkt_len != sizeof(client_list_packet_t)) {
-      log_error("Invalid client list packet size: %u, expected %zu", pkt_len, sizeof(client_list_packet_t));
-      return -1;
-    }
-    break;
   case PACKET_TYPE_STREAM_START:
   case PACKET_TYPE_STREAM_STOP:
     if (pkt_len != sizeof(uint32_t)) {
@@ -626,13 +629,6 @@ int send_client_join_packet(int sockfd, const char *display_name, uint32_t capab
 int send_client_leave_packet(int sockfd, uint32_t client_id) {
   uint32_t id_data = htonl(client_id);
   return send_packet(sockfd, PACKET_TYPE_CLIENT_LEAVE, &id_data, sizeof(id_data));
-}
-
-int send_client_list_packet(int sockfd, const client_list_packet_t *client_list) {
-  if (!client_list) {
-    return -1;
-  }
-  return send_packet(sockfd, PACKET_TYPE_CLIENT_LIST, client_list, sizeof(client_list_packet_t));
 }
 
 int send_stream_start_packet(int sockfd, uint32_t stream_type) {

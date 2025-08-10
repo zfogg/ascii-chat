@@ -687,6 +687,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
                                size_t *out_size) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
   if (!out_size || width == 0 || height == 0) {
+    log_error("Invalid parameters for create_mixed_ascii_frame: width=%u, height=%u, out_size=%p", width, height,
+              out_size);
     return NULL;
   }
 
@@ -707,31 +709,16 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       active_client_count++;
     }
   }
-  static int mix_frame_count = 0;
-  mix_frame_count++;
-  if (mix_frame_count % 30 == 0) { // Log every 30 frames
-    log_info("create_mixed_ascii_frame #%d: Creating %ux%u frame (%d active clients)", mix_frame_count, width, height,
-             active_client_count);
-  }
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->active) {
-      static int log_count = 0;
-      log_count++;
-      if (log_count <= 10 || log_count % 100 == 0) { // Log first 10 then every 100
-        log_info("  Client slot %d: id=%u, sending_video=%d, has_buffer=%d, width=%u, height=%u", i, client->client_id,
-                 client->is_sending_video, (client->incoming_video_buffer != NULL), client->width, client->height);
-      }
-    }
-
     if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
       // Peek at the latest frame without consuming it
       multi_source_frame_t latest_frame = {0};
       bool got_frame = framebuffer_peek_latest_multi_frame(client->incoming_video_buffer, &latest_frame);
 
-      log_debug("Client %u: peek attempt, got_frame=%d, data=%p, size=%zu", client->client_id, got_frame,
-                latest_frame.data, latest_frame.size);
+      // log_debug("Client %u: peek attempt, got_frame=%d, data=%p, size=%zu", client->client_id, got_frame,
+      //           latest_frame.data, latest_frame.size);
 
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
         // Parse the image data
@@ -740,8 +727,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         size_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
         rgb_t *pixels = (rgb_t *)(latest_frame.data + sizeof(uint32_t) * 2);
 
-        log_info("[SERVER COMPOSITE] Got image from client %u: %ux%u, aspect: %.3f (needs terminal adjustment)",
-                 client->client_id, img_width, img_height, (float)img_width / (float)img_height);
+        // log_info("[SERVER COMPOSITE] Got image from client %u: %ux%u, aspect: %.3f (needs terminal adjustment)",
+        //          client->client_id, img_width, img_height, (float)img_width / (float)img_height);
 
         // Create an image_t structure
         image_t *img = image_new(img_width, img_height);
@@ -750,7 +737,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           sources[source_count].image = img;
           sources[source_count].client_id = client->client_id;
           source_count++;
-          log_debug("Got image from client %u: %ux%u", client->client_id, img_width, img_height);
+          // log_debug("Got image from client %u: %ux%u", client->client_id, img_width, img_height);
         }
 
         // Free the frame data
@@ -767,31 +754,16 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     return NULL;
   }
 
-  if (mix_frame_count % 30 == 0) { // Log every 30 frames
-    log_info("Mixing %d image sources for %ux%u output (frame #%d)", source_count, width, height, mix_frame_count);
-  }
-
   // Create composite image for multiple sources with grid layout
   image_t *composite = NULL;
 
-  // Initialize to prevent old frame data from appearing
-  // This is critical for preventing the "old frames" issue
-
   if (source_count == 1 && sources[0].image) {
     // Single source - calculate proper dimensions for display
-
-    // Calculate source aspect ratio
-    float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
-
-    log_info("Single source: img %dx%d (aspect %.3f), terminal %dx%d chars", sources[0].image->w, sources[0].image->h,
-             src_aspect, width, height);
 
     // Use our helper function to calculate the best fit
     int display_width_chars, display_height_chars;
     calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
                                    &display_height_chars);
-
-    log_info("[SERVER ASPECT] Best fit for single source: %dx%d chars", display_width_chars, display_height_chars);
 
     // Create composite at exactly the display size in pixels
     // Since stretch=false, ascii_convert won't resize, so composite = output
@@ -800,17 +772,15 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       log_error("Failed to create composite image");
       *out_size = 0;
       for (int i = 0; i < source_count; i++) {
-        if (sources[i].image) {
-          image_destroy(sources[i].image);
-        }
+        image_destroy(sources[i].image);
       }
       return NULL;
     }
 
     image_clear(composite);
 
-    log_info("[SERVER ASPECT] Created composite: %dx%d pixels for %dx%d char display", display_width_chars,
-             display_height_chars, display_width_chars, display_height_chars);
+    // log_info("[SERVER ASPECT] Created composite: %dx%d pixels for %dx%d char display", display_width_chars,
+    //          display_height_chars, display_width_chars, display_height_chars);
 
     // Resize source image directly to composite
     image_resize(sources[0].image, composite);
@@ -823,9 +793,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       log_error("Failed to create composite image");
       *out_size = 0;
       for (int i = 0; i < source_count; i++) {
-        if (sources[i].image) {
-          image_destroy(sources[i].image);
-        }
+        image_destroy(sources[i].image);
       }
       return NULL;
     }
@@ -840,15 +808,16 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     int grid_cols = (source_count == 2) ? 2 : (source_count <= 4) ? 2 : 3;
     int grid_rows = (source_count + grid_cols - 1) / grid_cols;
 
-    log_info("[GRID] Creating %dx%d grid for %d sources on %dx%d terminal", grid_cols, grid_rows, source_count, width,
-             height);
+    // log_info("[GRID] Creating %dx%d grid for %d sources on %dx%d terminal", grid_cols, grid_rows, source_count,
+    // width,
+    //  height);
 
     // Calculate cell dimensions in characters
     int cell_width = width / grid_cols;
     int cell_height = height / grid_rows;
 
-    log_info("[GRID] Each cell is %dx%d chars (terminal %dx%d / grid %dx%d)", cell_width, cell_height, width, height,
-             grid_cols, grid_rows);
+    // log_info("[GRID] Each cell is %dx%d chars (terminal %dx%d / grid %dx%d)", cell_width, cell_height, width, height,
+    //          grid_cols, grid_rows);
 
     // Place each source in the grid
     for (int i = 0; i < source_count && i < 9; i++) { // Max 9 sources in 3x3 grid
@@ -861,8 +830,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       int cell_y_offset = row * cell_height;
 
       float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
-      log_info("[GRID CELL %d] Source: %dx%d (aspect %.3f), Cell: %dx%d chars at (%d,%d)", i, sources[i].image->w,
-               sources[i].image->h, src_aspect, cell_width, cell_height, cell_x_offset, cell_y_offset);
+      // log_info("[GRID CELL %d] Source: %dx%d (aspect %.3f), Cell: %dx%d chars at (%d,%d)", i, sources[i].image->w,
+      //          sources[i].image->h, src_aspect, cell_width, cell_height, cell_x_offset, cell_y_offset);
 
       // For grid cells, calculate dimensions to fill at least one dimension
       // while maintaining aspect ratio
@@ -891,9 +860,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         target_width_px = (int)(cell_height_px * src_aspect + 0.5f);
       }
 
-      log_info("[GRID CELL %d] Best fit in cell: %dx%d pixels (from %dx%d image, cell %dx%d chars = %dx%d px)", i,
-               target_width_px, target_height_px, sources[i].image->w, sources[i].image->h, cell_width, cell_height,
-               cell_width_px, cell_height_px);
+      // log_info("[GRID CELL %d] Best fit in cell: %dx%d pixels (from %dx%d image, cell %dx%d chars = %dx%d px)", i,
+      //          target_width_px, target_height_px, sources[i].image->w, sources[i].image->h, cell_width, cell_height,
+      //          cell_width_px, cell_height_px);
 
       // Create resized image with pixel dimensions
       image_t *resized = image_new(target_width_px, target_height_px);
@@ -908,9 +877,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         int x_padding = (cell_width - target_width_chars) / 2;
         int y_padding = (cell_height - target_height_chars) / 2;
 
-        log_debug("Cell %d: Centering %dx%d px (%dx%d chars) in %dx%d cell, padding: %d,%d", i, target_width_px,
-                  target_height_px, target_width_chars, target_height_chars, cell_width, cell_height, x_padding,
-                  y_padding);
+        // log_debug("Cell %d: Centering %dx%d px (%dx%d chars) in %dx%d cell, padding: %d,%d", i, target_width_px,
+        //           target_height_px, target_width_chars, target_height_chars, cell_width, cell_height, x_padding,
+        //           y_padding);
 
         // Copy resized image to composite (now in pixel space)
         for (int y = 0; y < target_height_px; y++) {
@@ -934,7 +903,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       }
     }
 
-    log_debug("Created grid layout: %dx%d grid for %d sources", grid_cols, grid_rows, source_count);
+    // log_debug("Created grid layout: %dx%d grid for %d sources", grid_cols, grid_rows, source_count);
   } else {
     // No sources, create empty composite
     composite = image_new(width, height);
@@ -946,54 +915,21 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     image_clear(composite);
   }
 
-  // Pass the terminal dimensions to ascii_convert
+  // Pass the terminal dimensions of the client to ascii_convert
   // The composite is already sized correctly in pixels (width*2, height)
   // ascii_convert expects character dimensions, so we pass the original width and height
   // Pass stretch=false because we've already sized the composite to the exact dimensions we want
-  log_info("[SERVER ASPECT] ascii_convert(composite, %d, %d, %d, true, false)", width, height, wants_color);
   char *ascii_frame = ascii_convert(composite, width, height, wants_color, true, false);
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
-
-    // Analyze the actual ASCII frame dimensions
-    int actual_width = 0;
-    int actual_height = 0;
-    int current_line_width = 0;
-    bool in_escape = false;
-
-    for (const char *p = ascii_frame; *p; p++) {
-      if (*p == '\033') {
-        in_escape = true;
-      } else if (in_escape && *p == 'm') {
-        in_escape = false;
-      } else if (!in_escape) {
-        if (*p == '\n') {
-          if (current_line_width > actual_width) {
-            actual_width = current_line_width;
-          }
-          current_line_width = 0;
-          actual_height++;
-        } else if (*p != '\r') {
-          current_line_width++;
-        }
-      }
-    }
-
-    log_info("[SERVER FRAME ANALYSIS] Requested: %dx%d, Composite: %dx%d pixels, ASCII: %dx%d chars, "
-             "Fill: %.1f%% width, %.1f%% height, Sources: %d",
-             width, height, composite->w, composite->h, actual_width, actual_height, (float)actual_width / width * 100,
-             (float)actual_height / height * 100, source_count);
   } else {
     log_error("Failed to convert image to ASCII");
     *out_size = 0;
   }
 
-  // Clean up
   // We always create a new composite image regardless of source count
-  if (composite) {
-    image_destroy(composite);
-  }
+  image_destroy(composite);
 
   // Always destroy source images as we created them
   for (int i = 0; i < source_count; i++) {
@@ -1027,27 +963,6 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
-
-  // Server no longer captures webcam - clients send their video
-  // Frame buffer removed - using client buffers instead
-
-  // Initialize audio if enabled
-  if (opt_audio_enabled) {
-    if (audio_init(&g_audio_context) != 0) {
-      log_fatal("Failed to initialize audio system");
-      exit(ASCIICHAT_ERR_AUDIO);
-    }
-
-    if (audio_start_capture(&g_audio_context) != 0) {
-      log_error("Failed to start audio capture");
-      audio_destroy(&g_audio_context);
-      exit(ASCIICHAT_ERR_AUDIO);
-    }
-
-    log_info("Audio system initialized and capture started");
-  }
-
-  // No capture thread needed - clients send their video
 
   // Start audio thread if enabled
   if (opt_audio_enabled) {
@@ -1345,8 +1260,8 @@ void *client_receive_thread_func(void *arg) {
         uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
         size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
 
-        log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
-                 img_width, img_height, (float)img_width / (float)img_height);
+        // log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
+        //          img_width, img_height, (float)img_width / (float)img_height);
 
         if (len != expected_size) {
           log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id,
@@ -1389,7 +1304,8 @@ void *client_receive_thread_func(void *arg) {
           if (written < num_samples) {
             log_debug("Client %u audio buffer full, dropped %d samples", client->client_id, num_samples - written);
           } else {
-            log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
+            (void)0;
+            // log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
           }
         }
       }
