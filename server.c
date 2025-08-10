@@ -79,7 +79,7 @@ typedef struct {
 
   // Cached frame for when buffer is empty (prevents flicker)
   multi_source_frame_t last_valid_frame; // Cache of most recent valid frame
-  bool has_cached_frame; // Whether we have a valid cached frame
+  bool has_cached_frame;                 // Whether we have a valid cached frame
 
   // Packet queues for outgoing data (per-client queues for isolation)
   packet_queue_t *audio_queue; // Queue for audio packets to send to this client
@@ -404,7 +404,7 @@ static void *video_broadcast_thread_func(void *arg) {
 
     // Each client gets a custom-sized frame for their terminal
     // No more "common" dimensions that cause wrong-sized frames!
-    
+
     int sent_count = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -432,15 +432,14 @@ static void *video_broadcast_thread_func(void *arg) {
       if (client_copy.active && client_copy.socket > 0) {
         // Create a custom-sized frame for THIS client's terminal dimensions
         size_t client_frame_size = 0;
-        char *client_frame = create_mixed_ascii_frame(client_copy.width, client_copy.height, 
-                                                      client_copy.wants_color, client_copy.wants_stretch, 
-                                                      &client_frame_size);
-        
+        char *client_frame = create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color,
+                                                      client_copy.wants_stretch, &client_frame_size);
+
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
           continue;
         }
-        
+
         // Lock mutex while sending to ensure thread safety
         pthread_mutex_lock(&g_client_manager_mutex);
         // Verify client is still active and socket matches
@@ -551,25 +550,25 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       // Use cached frame if buffer is empty
       multi_source_frame_t current_frame = {0};
       bool got_new_frame = false;
-      
+
       // Try to read ONE frame from buffer (oldest first - proper FIFO)
       if (client->incoming_video_buffer) {
         got_new_frame = framebuffer_read_multi_frame(client->incoming_video_buffer, &current_frame);
-        
+
         if (got_new_frame) {
           // Got a new frame - update our cache
           // Free old cached frame data if we had one
           if (client->has_cached_frame && client->last_valid_frame.data) {
             free(client->last_valid_frame.data);
           }
-          
+
           // Cache this frame for future use (make a copy)
           client->last_valid_frame.magic = current_frame.magic;
           client->last_valid_frame.source_client_id = current_frame.source_client_id;
           client->last_valid_frame.frame_sequence = current_frame.frame_sequence;
           client->last_valid_frame.timestamp = current_frame.timestamp;
           client->last_valid_frame.size = current_frame.size;
-          
+
           // Allocate and copy frame data for cache
           client->last_valid_frame.data = malloc(current_frame.size);
           if (client->last_valid_frame.data) {
@@ -578,7 +577,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           }
         }
       }
-      
+
       // Use either the new frame or the cached frame
       multi_source_frame_t *frame_to_use = NULL;
       if (got_new_frame) {
@@ -586,7 +585,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       } else if (client->has_cached_frame) {
         frame_to_use = &client->last_valid_frame;
       }
-      
+
       if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
         // Parse the image data
         // Format: [width:4][height:4][rgb_data:w*h*3]
@@ -858,6 +857,10 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
 int main(int argc, char *argv[]) {
   log_init("server.log", LOG_DEBUG);
+  atexit(log_destroy);
+#ifdef DEBUG_MEMORY
+  atexit(debug_memory_report);
+#endif
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
@@ -998,6 +1001,9 @@ int main(int argc, char *argv[]) {
     if (client_sock < 0) {
       if (errno == ETIMEDOUT) {
         // Timeout is normal, just continue
+#ifdef DEBUG_MEMORY
+        debug_memory_report();
+#endif
         continue;
       }
       log_error("Network accept failed: %s", network_error_string(errno));
@@ -1019,9 +1025,6 @@ int main(int argc, char *argv[]) {
     }
 
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
-
-    // Don't clear framebuffer here - it will be cleared when next client connects
-    // This avoids race conditions with any frames that might still be in use
   }
 
   // Cleanup
@@ -1044,6 +1047,19 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // Clean up all connected clients
+  log_info("Cleaning up connected clients...");
+  pthread_mutex_lock(&g_client_manager_mutex);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (g_client_manager.clients[i].active) {
+      uint32_t client_id = g_client_manager.clients[i].client_id;
+      pthread_mutex_unlock(&g_client_manager_mutex);
+      remove_client(client_id);
+      pthread_mutex_lock(&g_client_manager_mutex);
+    }
+  }
+  pthread_mutex_unlock(&g_client_manager_mutex);
+
   // Cleanup resources
   // No server framebuffer or webcam to clean up
   close(listenfd);
@@ -1060,7 +1076,6 @@ int main(int argc, char *argv[]) {
   pthread_mutex_destroy(&g_stats_mutex);
   pthread_mutex_destroy(&g_socket_mutex);
 
-  log_destroy();
   return 0;
 }
 
@@ -1094,6 +1109,11 @@ void *client_receive_thread_func(void *arg) {
       } else {
         log_error("Error receiving from client %u: %s", client->client_id, strerror(errno));
       }
+      // Free any data that might have been allocated before the error
+      if (data) {
+        free(data);
+        data = NULL;
+      }
       // Don't just mark inactive - properly remove the client
       // This will be done after the loop exits
       break;
@@ -1105,7 +1125,7 @@ void *client_receive_thread_func(void *arg) {
       // Handle client join request
       if (len == sizeof(client_info_packet_t)) {
         const client_info_packet_t *join_info = (const client_info_packet_t *)data;
-        strncpy(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+        SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
         client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
         client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
         client->wants_color = (join_info->capabilities & CLIENT_CAP_COLOR) != 0;
@@ -1398,7 +1418,7 @@ int add_client(int socket, const char *client_ip, int port) {
 
   client->socket = socket;
   client->client_id = ++g_client_manager.next_client_id;
-  strncpy(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
+  SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   client->active = true;
   client->connected_at = time(NULL);
@@ -1575,8 +1595,7 @@ int remove_client(uint32_t client_id) {
 
       // Store display name before clearing
       char display_name_copy[MAX_DISPLAY_NAME_LEN];
-      strncpy(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
-      display_name_copy[MAX_DISPLAY_NAME_LEN - 1] = '\0';
+      SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
       // Clear the entire client structure to ensure it's ready for reuse
       memset(client, 0, sizeof(client_info_t));

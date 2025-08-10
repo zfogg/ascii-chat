@@ -53,7 +53,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   SAFE_CALLOC(rb->buffer, actual_capacity, element_size, char *);
   if (!rb->buffer) {
     log_error("Failed to allocate ring buffer memory: %zu bytes", actual_capacity * element_size);
-    free(rb);
+    SAFE_FREE(rb);
     return NULL;
   }
 
@@ -72,8 +72,8 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
 
 void ringbuffer_destroy(ringbuffer_t *rb) {
   if (rb) {
-    free(rb->buffer);
-    free(rb);
+    SAFE_FREE(rb->buffer);
+    SAFE_FREE(rb);
   }
 }
 
@@ -181,7 +181,7 @@ framebuffer_t *framebuffer_create(size_t capacity) {
   fb->rb = ringbuffer_create(sizeof(frame_t), capacity);
 
   if (!fb->rb) {
-    free(fb);
+    SAFE_FREE(fb);
     return NULL;
   }
 
@@ -205,7 +205,7 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
   fb->rb = ringbuffer_create(sizeof(multi_source_frame_t), capacity);
 
   if (!fb->rb) {
-    free(fb);
+    SAFE_FREE(fb);
     return NULL;
   }
 
@@ -218,7 +218,7 @@ void framebuffer_destroy(framebuffer_t *fb) {
     framebuffer_clear(fb);
 
     ringbuffer_destroy(fb->rb);
-    free(fb);
+    SAFE_FREE(fb);
   }
 }
 
@@ -239,7 +239,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     if (ringbuffer_read(fb->rb, &old_frame)) {
       if (old_frame.magic == FRAME_MAGIC && old_frame.data) {
         old_frame.magic = FRAME_FREED;
-        free(old_frame.data);
+        SAFE_FREE(old_frame.data);
       } else if (old_frame.magic != FRAME_MAGIC) {
         log_error("CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
       }
@@ -260,7 +260,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
 
   if (!result) {
     // If we still couldn't write to ringbuffer, free the copy
-    free(frame_copy);
+    SAFE_FREE(frame_copy);
     log_error("Failed to write frame to ringbuffer even after dropping oldest");
   }
 
@@ -297,7 +297,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
 
     if (frame->size > 10 * 1024 * 1024) {
       log_error("CORRUPTION: Frame size too large: %zu", frame->size);
-      free(frame->data);
+      SAFE_FREE(frame->data);
       frame->data = NULL;
       frame->size = 0;
       return false;
@@ -327,8 +327,7 @@ void framebuffer_clear(framebuffer_t *fb) {
     while (ringbuffer_read(fb->rb, &multi_frame)) {
       if (multi_frame.magic == FRAME_MAGIC && multi_frame.data) {
         multi_frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
-        free(multi_frame.data);
-        multi_frame.data = NULL;
+        SAFE_FREE(multi_frame.data);
       } else if (multi_frame.magic != FRAME_MAGIC && multi_frame.magic != 0) {
         log_error("CORRUPTION: Invalid multi-source frame magic 0x%x during clear", multi_frame.magic);
       }
@@ -339,8 +338,7 @@ void framebuffer_clear(framebuffer_t *fb) {
     while (ringbuffer_read(fb->rb, &frame)) {
       if (frame.magic == FRAME_MAGIC && frame.data) {
         frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
-        free(frame.data);
-        frame.data = NULL;
+        SAFE_FREE(frame.data);
       } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
         log_error("CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
       }
@@ -389,7 +387,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   bool success = ringbuffer_write(fb->rb, &multi_frame);
   if (!success) {
     // Buffer full, free the allocated memory
-    free(data_copy);
+    SAFE_FREE(data_copy);
     log_debug("Frame buffer full, dropping multi-source frame from client %u", source_client_id);
   }
 
@@ -450,7 +448,8 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
     // IMPORTANT: We need to make a copy of the data since we're not consuming the frame
     // The original data pointer will remain valid in the ring buffer
     // Caller is responsible for freeing this copy
-    char *data_copy = malloc(frame->size);
+    char *data_copy;
+    SAFE_MALLOC(data_copy, frame->size, char *);
     if (!data_copy) {
       log_error("Failed to allocate memory for frame data copy in peek");
       return false;
