@@ -30,6 +30,7 @@ typedef enum {
   ASCIICHAT_ERR_AUDIO = -11,
   ASCIICHAT_ERR_BUFFER_ACCESS = -12,
   ASCIICHAT_ERR_BUFFER_OVERFLOW = -13,
+  ASCIICHAT_ERR_INVALID_FRAME = -14,
 } asciichat_error_t;
 
 /* Error handling */
@@ -57,6 +58,8 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
     return "Thread error";
   case ASCIICHAT_ERR_AUDIO:
     return "Audio error";
+  case ASCIICHAT_ERR_INVALID_FRAME:
+    return "Frame data error";
   default:
     return "Unknown error";
   }
