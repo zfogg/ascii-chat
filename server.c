@@ -421,17 +421,12 @@ static void *video_broadcast_thread_func(void *arg) {
         }
 
         // If we have a frame, write it back for peeking
-        // But this time we need to copy the data to avoid use-after-free
+        // framebuffer_write_multi_frame makes its own copy, so we pass the original
         if (has_prev && prev_frame.data) {
-          // Make a copy of the data
-          char *data_copy = malloc(prev_frame.size);
-          if (data_copy) {
-            memcpy(data_copy, prev_frame.data, prev_frame.size);
-            framebuffer_write_multi_frame(client->incoming_video_buffer, data_copy, prev_frame.size,
-                                          prev_frame.source_client_id, prev_frame.frame_sequence, prev_frame.timestamp);
-            // Note: framebuffer now owns data_copy, don't free it here
-          }
-          // Free the original
+          // Write the frame back - framebuffer will make its own copy internally
+          framebuffer_write_multi_frame(client->incoming_video_buffer, prev_frame.data, prev_frame.size,
+                                        prev_frame.source_client_id, prev_frame.frame_sequence, prev_frame.timestamp);
+          // Free our original frame data
           free(prev_frame.data);
         }
       }
