@@ -40,7 +40,8 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
     return NULL;
   }
 
-  ringbuffer_t *rb = (ringbuffer_t *)calloc(1, sizeof(ringbuffer_t));
+  ringbuffer_t *rb;
+  SAFE_CALLOC(rb, 1, sizeof(ringbuffer_t), ringbuffer_t *);
   if (!rb) {
     log_error("Failed to allocate ring buffer structure");
     return NULL;
@@ -49,7 +50,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   /* Round capacity up to power of 2 for optimization */
   size_t actual_capacity = next_power_of_two(capacity);
 
-  rb->buffer = (char *)calloc(actual_capacity, element_size);
+  SAFE_CALLOC(rb->buffer, actual_capacity, element_size, char *);
   if (!rb->buffer) {
     log_error("Failed to allocate ring buffer memory: %zu bytes", actual_capacity * element_size);
     free(rb);
@@ -169,7 +170,8 @@ framebuffer_t *framebuffer_create(size_t capacity) {
     return NULL;
   }
 
-  framebuffer_t *fb = (framebuffer_t *)calloc(1, sizeof(framebuffer_t));
+  framebuffer_t *fb;
+  SAFE_CALLOC(fb, 1, sizeof(framebuffer_t), framebuffer_t *);
   if (!fb) {
     log_error("Failed to allocate frame buffer structure");
     return NULL;
@@ -192,7 +194,8 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
     return NULL;
   }
 
-  framebuffer_t *fb = (framebuffer_t *)calloc(1, sizeof(framebuffer_t));
+  framebuffer_t *fb;
+  SAFE_CALLOC(fb, 1, sizeof(framebuffer_t), framebuffer_t *);
   if (!fb) {
     log_error("Failed to allocate frame buffer structure");
     return NULL;
