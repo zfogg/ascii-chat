@@ -97,7 +97,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   } while (0)
 
 /* Safe zero-initialized memory allocation */
-#define SAFE_CALLOC(ptr, count, size, cast)                                                                             \
+#define SAFE_CALLOC(ptr, count, size, cast)                                                                            \
   do {                                                                                                                 \
     (ptr) = (cast)calloc((count), (size));                                                                             \
     if (!(ptr)) {                                                                                                      \

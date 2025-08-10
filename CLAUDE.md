@@ -340,6 +340,58 @@ Before committing any changes:
 8. **ringbuffer.c**: Framebuffer code lives here (data structure for 
    multi-frame storage with metadata)
 
+## CRITICAL UNDERSTANDING: Proper Ringbuffer Usage in Video Streaming
+
+### The Breakthrough (2025-08-10)
+After struggling with flickering video and lag issues, we finally understood how ringbuffers SHOULD be used in networked video applications:
+
+#### What We Were Doing Wrong:
+- Trying to always get the "latest" frame by consuming/discarding all old frames
+- This defeated the entire purpose of having a buffer
+- Caused flickering when broadcast rate > client send rate (empty buffers)
+- Wasted all the frames we carefully saved
+
+#### The Correct Architecture:
+```
+Client sends frames → [Ringbuffer (FIFO)] → Server reads OLDEST frame → Mix → Send
+                           ↑
+                    Network lag? Frames queue up here
+                    Good network? Buffer drains naturally
+```
+
+#### Key Insights:
+1. **FIFO Processing is Essential**: Always process frames in the order they arrived (oldest first)
+2. **Buffers Handle Network Jitter**: That's their whole purpose - smooth out irregular packet arrival
+3. **Never Discard Frames Unnecessarily**: We saved them for a reason - to handle lag!
+4. **Cache Last Valid Frame**: Each client needs a cached frame for when buffer is empty
+
+#### The Solution That Fixed Everything:
+```c
+// Each client now has:
+multi_source_frame_t last_valid_frame;  // Cache of most recent valid frame
+bool has_cached_frame;                  // Whether we have a valid cached frame
+
+// When mixing frames:
+1. Try to read ONE frame from buffer (oldest first - proper FIFO)
+2. If successful, update cached frame
+3. If buffer empty, use cached frame (no flicker!)
+4. Never have missing clients in grid
+```
+
+This is how **real video streaming applications** work - they display the last frame until a new one arrives!
+
+### Why This Matters:
+- **No More Flicker**: Clients never disappear from the grid
+- **Smooth Playback**: Frames are processed in temporal order
+- **Proper Lag Handling**: Buffer fills during network issues, drains when network is good
+- **Natural Flow Control**: System self-regulates based on network conditions
+
+### Remember:
+- Ringbuffers are FIFO queues, not "latest frame" getters
+- The buffer's job is to smooth out network irregularities
+- Always have a fallback (cached frame) for when buffer is empty
+- This pattern applies to ALL streaming media applications
+
 ## Common Code Patterns
 
 ### Safe Memory Allocation

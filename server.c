@@ -77,6 +77,10 @@ typedef struct {
   framebuffer_t *incoming_video_buffer;       // NEW: Buffer for this client's video
   audio_ring_buffer_t *incoming_audio_buffer; // NEW: Buffer for this client's audio
 
+  // Cached frame for when buffer is empty (prevents flicker)
+  multi_source_frame_t last_valid_frame; // Cache of most recent valid frame
+  bool has_cached_frame; // Whether we have a valid cached frame
+
   // Packet queues for outgoing data (per-client queues for isolation)
   packet_queue_t *audio_queue; // Queue for audio packets to send to this client
   packet_queue_t *video_queue; // Queue for video packets to send to this client
@@ -308,7 +312,7 @@ static void *video_broadcast_thread_func(void *arg) {
 
   // Frame rate control - use a reasonable rate that matches client capabilities
   // 15 FPS gives clients time to send frames and reduces buffer starvation
-  const int frame_interval_ms = 1000 / 15;  // 15 FPS instead of 120
+  const int frame_interval_ms = 1000 / 30; // 15 FPS instead of 120
   struct timespec last_broadcast_time;
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
 
@@ -407,7 +411,7 @@ static void *video_broadcast_thread_func(void *arg) {
     unsigned short common_height = 70;
     bool wants_color = false;
     bool wants_stretch = false;
-    
+
     pthread_mutex_lock(&g_client_manager_mutex);
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (g_client_manager.clients[i].active && g_client_manager.clients[i].width > 0) {
@@ -423,12 +427,12 @@ static void *video_broadcast_thread_func(void *arg) {
       }
     }
     pthread_mutex_unlock(&g_client_manager_mutex);
-    
+
     // Create ONE mixed frame for all clients
     // The read operations happen inside this function
     size_t mixed_size = 0;
     char *mixed_frame = create_mixed_ascii_frame(common_width, common_height, wants_color, wants_stretch, &mixed_size);
-    
+
     if (!mixed_frame || mixed_size == 0) {
       // No frame available, wait for next cycle
       last_broadcast_time = current_time;
@@ -492,26 +496,26 @@ static void *video_broadcast_thread_func(void *arg) {
         memcpy(packet_buffer, &frame_header, sizeof(ascii_frame_packet_t));
         memcpy(packet_buffer + sizeof(ascii_frame_packet_t), mixed_frame, mixed_size);
 
-          // Queue the complete frame as a single packet
-          pthread_mutex_lock(&g_client_manager_mutex);
-          if (g_client_manager.clients[i].active && g_client_manager.clients[i].video_queue) {
-            int result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_ASCII_FRAME,
-                                              packet_buffer, packet_size, 0, true);
-            if (result < 0) {
-              log_error("Failed to queue ASCII frame for client %u: queue full or shutdown", client_copy.client_id);
-            } else {
-              sent_count++;
-              static int success_count[MAX_CLIENTS] = {0};
-              success_count[i]++;
-              if (success_count[i] == 1 || success_count[i] % MAX_FPS == 0) {
-                log_info("Successfully queued %d ASCII frames for client %u (slot %d, size=%zu)", success_count[i],
-                         client_copy.client_id, i, packet_size);
-              }
+        // Queue the complete frame as a single packet
+        pthread_mutex_lock(&g_client_manager_mutex);
+        if (g_client_manager.clients[i].active && g_client_manager.clients[i].video_queue) {
+          int result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_ASCII_FRAME,
+                                            packet_buffer, packet_size, 0, true);
+          if (result < 0) {
+            log_error("Failed to queue ASCII frame for client %u: queue full or shutdown", client_copy.client_id);
+          } else {
+            sent_count++;
+            static int success_count[MAX_CLIENTS] = {0};
+            success_count[i]++;
+            if (success_count[i] == 1 || success_count[i] % MAX_FPS == 0) {
+              log_info("Successfully queued %d ASCII frames for client %u (slot %d, size=%zu)", success_count[i],
+                       client_copy.client_id, i, packet_size);
             }
           }
-          pthread_mutex_unlock(&g_client_manager_mutex);
+        }
+        pthread_mutex_unlock(&g_client_manager_mutex);
 
-          free(packet_buffer);
+        free(packet_buffer);
       }
     }
 
@@ -565,47 +569,74 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    
-    if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
-      // Consume ALL old frames to get to the latest one
-      // This reduces lag by discarding stale frames
-      multi_source_frame_t latest_frame = {0};
-      multi_source_frame_t temp_frame = {0};
-      bool got_frame = false;
-      
-      // Keep reading frames until we get the last one
-      while (framebuffer_read_multi_frame(client->incoming_video_buffer, &temp_frame)) {
-        // Free the previous frame if we had one
-        if (got_frame && latest_frame.data) {
-          free(latest_frame.data);
-        }
-        // This is now our latest frame
-        latest_frame = temp_frame;
-        got_frame = true;
-      }
 
-      if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
+    if (client->active && client->is_sending_video && source_count < MAX_CLIENTS) {
+      // PROPER RINGBUFFER USAGE: Read ONE frame (oldest first - FIFO)
+      // Use cached frame if buffer is empty
+      multi_source_frame_t current_frame = {0};
+      bool got_new_frame = false;
+      
+      // Try to read ONE frame from buffer (oldest first - proper FIFO)
+      if (client->incoming_video_buffer) {
+        got_new_frame = framebuffer_read_multi_frame(client->incoming_video_buffer, &current_frame);
+        
+        if (got_new_frame) {
+          // Got a new frame - update our cache
+          // Free old cached frame data if we had one
+          if (client->has_cached_frame && client->last_valid_frame.data) {
+            free(client->last_valid_frame.data);
+          }
+          
+          // Cache this frame for future use (make a copy)
+          client->last_valid_frame.magic = current_frame.magic;
+          client->last_valid_frame.source_client_id = current_frame.source_client_id;
+          client->last_valid_frame.frame_sequence = current_frame.frame_sequence;
+          client->last_valid_frame.timestamp = current_frame.timestamp;
+          client->last_valid_frame.size = current_frame.size;
+          
+          // Allocate and copy frame data for cache
+          client->last_valid_frame.data = malloc(current_frame.size);
+          if (client->last_valid_frame.data) {
+            memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
+            client->has_cached_frame = true;
+          }
+        }
+      }
+      
+      // Use either the new frame or the cached frame
+      multi_source_frame_t *frame_to_use = NULL;
+      if (got_new_frame) {
+        frame_to_use = &current_frame;
+      } else if (client->has_cached_frame) {
+        frame_to_use = &client->last_valid_frame;
+      }
+      
+      if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
         // Parse the image data
         // Format: [width:4][height:4][rgb_data:w*h*3]
-        uint32_t img_width = ntohl(*(uint32_t *)latest_frame.data);
-        uint32_t img_height = ntohl(*(uint32_t *)(latest_frame.data + sizeof(uint32_t)));
+        uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
+        uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
 
         // Validate dimensions are reasonable (max 4K resolution)
         if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
           log_error("Invalid image dimensions from client %u: %ux%u (data may be corrupted)", client->client_id,
                     img_width, img_height);
-          // Free the corrupted frame
-          free(latest_frame.data);
+          // Don't free cached frame, just skip this client
+          if (got_new_frame) {
+            free(current_frame.data);
+          }
           continue;
         }
 
         // Validate that the frame size matches expected size
         size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
-        if (latest_frame.size != expected_size) {
+        if (frame_to_use->size != expected_size) {
           log_error("Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image", client->client_id,
-                    latest_frame.size, expected_size, img_width, img_height);
-          // Free the corrupted frame
-          free(latest_frame.data);
+                    frame_to_use->size, expected_size, img_width, img_height);
+          // Don't free cached frame, just skip this client
+          if (got_new_frame) {
+            free(current_frame.data);
+          }
           continue;
         }
 
@@ -615,7 +646,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
         // The actual pixel data (an array of rgb_t structs) starts immediately after these 8 bytes.
         // By adding sizeof(uint32_t) * 2 to the data pointer, we skip past the width and height fields
         // and point directly to the start of the pixel data.
-        rgb_t *pixels = (rgb_t *)(latest_frame.data + sizeof(uint32_t) * 2);
+        rgb_t *pixels = (rgb_t *)(frame_to_use->data + sizeof(uint32_t) * 2);
 
         // log_info("[SERVER COMPOSITE] Got image from client %u: %ux%u, aspect: %.3f (needs terminal adjustment)",
         //          client->client_id, img_width, img_height, (float)img_width / (float)img_height);
@@ -630,8 +661,10 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // log_debug("Got image from client %u: %ux%u", client->client_id, img_width, img_height);
         }
 
-        // Free the frame data
-        free(latest_frame.data);
+        // Free the current frame data if we got a new one (cached frame persists)
+        if (got_new_frame) {
+          free(current_frame.data);
+        }
       }
     }
   }
@@ -648,8 +681,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       }
     }
     pthread_mutex_unlock(&g_client_manager_mutex);
-    
-    log_debug("No frames available for mixing (%d active, %d sending video, but 0 frames in buffers)", 
+
+    log_debug("No frames available for mixing (%d active, %d sending video, but 0 frames in buffers)",
               active_client_count, sending_video_count);
     *out_size = 0;
     return NULL;
@@ -1156,7 +1189,7 @@ void *client_receive_thread_func(void *arg) {
         static int frame_count[MAX_CLIENTS] = {0};
         frame_count[client->client_id % MAX_CLIENTS]++;
         if (frame_count[client->client_id % MAX_CLIENTS] % 100 == 0) {
-          log_debug("Client %u has sent %d IMAGE_FRAME packets", client->client_id, 
+          log_debug("Client %u has sent %d IMAGE_FRAME packets", client->client_id,
                     frame_count[client->client_id % MAX_CLIENTS]);
         }
       }
@@ -1425,7 +1458,7 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  client->video_queue = packet_queue_create(MAX_FPS); // Max 30 video frames queued (1 second at 30fps)
+  client->video_queue = packet_queue_create(30); // Max 30 video frames queued (1 second at 30fps)
   if (!client->video_queue) {
     log_error("Failed to create video queue for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
@@ -1505,6 +1538,13 @@ int remove_client(uint32_t client_id) {
       if (client->socket > 0) {
         close(client->socket);
         client->socket = 0;
+      }
+
+      // Free cached frame if we have one
+      if (client->has_cached_frame && client->last_valid_frame.data) {
+        free(client->last_valid_frame.data);
+        client->last_valid_frame.data = NULL;
+        client->has_cached_frame = false;
       }
 
       // Only destroy buffers if they haven't been destroyed already
