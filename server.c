@@ -306,8 +306,9 @@ static void *video_broadcast_thread_func(void *arg) {
   log_info("Video broadcast thread started");
   g_video_broadcast_running = true;
 
-  // Frame rate control (30 FPS)
-  const int frame_interval_ms = FRAME_INTERVAL_MS;
+  // Frame rate control - use a reasonable rate that matches client capabilities
+  // 15 FPS gives clients time to send frames and reduces buffer starvation
+  const int frame_interval_ms = 1000 / 15;  // 15 FPS instead of 120
   struct timespec last_broadcast_time;
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
 
@@ -401,8 +402,40 @@ static void *video_broadcast_thread_func(void *arg) {
     // The framebuffer already maintains frames and peek will get the latest
     // Removing this entire section prevents race conditions and corruption
 
-    // Create and send frames to each client based on their dimensions
-    // NOTE: We DON'T lock mutex here because create_mixed_ascii_frame will lock it
+    // Collect all active clients' settings
+    unsigned short common_width = 110;
+    unsigned short common_height = 70;
+    bool wants_color = false;
+    bool wants_stretch = false;
+    
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (g_client_manager.clients[i].active && g_client_manager.clients[i].width > 0) {
+        common_width = g_client_manager.clients[i].width;
+        common_height = g_client_manager.clients[i].height;
+        // If ANY client wants color, enable it
+        if (g_client_manager.clients[i].wants_color) {
+          wants_color = true;
+        }
+        if (g_client_manager.clients[i].wants_stretch) {
+          wants_stretch = true;
+        }
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+    
+    // Create ONE mixed frame for all clients
+    // The read operations happen inside this function
+    size_t mixed_size = 0;
+    char *mixed_frame = create_mixed_ascii_frame(common_width, common_height, wants_color, wants_stretch, &mixed_size);
+    
+    if (!mixed_frame || mixed_size == 0) {
+      // No frame available, wait for next cycle
+      last_broadcast_time = current_time;
+      continue;
+    }
+
+    // Now send this frame to all clients
     int sent_count = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -437,37 +470,27 @@ static void *video_broadcast_thread_func(void *arg) {
           continue;
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
-        // Use client's dimensions if available, otherwise use defaults
-        unsigned short target_width = client_copy.width > 0 ? client_copy.width : 110;
-        unsigned short target_height = client_copy.height > 0 ? client_copy.height : 70;
 
-        // Create mixed frame for this client's dimensions
-        size_t mixed_size = 0;
-        char *mixed_frame = create_mixed_ascii_frame(target_width, target_height, client_copy.wants_color,
-                                                     client_copy.wants_stretch, &mixed_size);
+        // Use the common frame for all clients
+        // Create unified ASCII frame packet with metadata
+        ascii_frame_packet_t frame_header = {.width = htonl(common_width),
+                                             .height = htonl(common_height),
+                                             .original_size = htonl(mixed_size),
+                                             .compressed_size = htonl(0), // Not compressed for now
+                                             .checksum = htonl(asciichat_crc32(mixed_frame, mixed_size)),
+                                             .flags = htonl(client_copy.wants_color ? FRAME_FLAG_HAS_COLOR : 0)};
 
-        if (mixed_frame && mixed_size > 0) {
+        // Allocate buffer for complete packet (header + data)
+        size_t packet_size = sizeof(ascii_frame_packet_t) + mixed_size;
+        char *packet_buffer = malloc(packet_size);
+        if (!packet_buffer) {
+          log_error("Failed to allocate packet buffer for client %u", client_copy.client_id);
+          continue;
+        }
 
-          // Create unified ASCII frame packet with metadata
-          ascii_frame_packet_t frame_header = {.width = htonl(target_width),
-                                               .height = htonl(target_height),
-                                               .original_size = htonl(mixed_size),
-                                               .compressed_size = htonl(0), // Not compressed for now
-                                               .checksum = htonl(asciichat_crc32(mixed_frame, mixed_size)),
-                                               .flags = htonl(client_copy.wants_color ? FRAME_FLAG_HAS_COLOR : 0)};
-
-          // Allocate buffer for complete packet (header + data)
-          size_t packet_size = sizeof(ascii_frame_packet_t) + mixed_size;
-          char *packet_buffer = malloc(packet_size);
-          if (!packet_buffer) {
-            log_error("Failed to allocate packet buffer for client %u", client_copy.client_id);
-            free(mixed_frame);
-            continue;
-          }
-
-          // Copy header and frame data into single buffer
-          memcpy(packet_buffer, &frame_header, sizeof(ascii_frame_packet_t));
-          memcpy(packet_buffer + sizeof(ascii_frame_packet_t), mixed_frame, mixed_size);
+        // Copy header and frame data into single buffer
+        memcpy(packet_buffer, &frame_header, sizeof(ascii_frame_packet_t));
+        memcpy(packet_buffer + sizeof(ascii_frame_packet_t), mixed_frame, mixed_size);
 
           // Queue the complete frame as a single packet
           pthread_mutex_lock(&g_client_manager_mutex);
@@ -489,21 +512,15 @@ static void *video_broadcast_thread_func(void *arg) {
           pthread_mutex_unlock(&g_client_manager_mutex);
 
           free(packet_buffer);
-
-          free(mixed_frame);
-        } else {
-          log_warn("No mixed frame created for client %u (frame=%p, size=%zu)", client_copy.client_id, mixed_frame,
-                   mixed_size);
-        }
       }
     }
+
+    // Free the mixed frame after sending to all clients
+    free(mixed_frame);
 
     if (sent_count > 0) {
       // log_debug("Sent frames to %d clients", sent_count);
     }
-
-    // Frames are already consumed at the beginning of the cycle
-    // No need to consume them again here
 
     last_broadcast_time = current_time;
   }
@@ -548,13 +565,21 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
+    
     if (client->active && client->is_sending_video && client->incoming_video_buffer && source_count < MAX_CLIENTS) {
-      // Read the latest frame from the buffer (consumes it)
+      // Try to peek at the latest frame first
       multi_source_frame_t latest_frame = {0};
-      bool got_frame = framebuffer_read_multi_frame(client->incoming_video_buffer, &latest_frame);
-
-      // log_debug("Client %u: peek attempt, got_frame=%d, data=%p, size=%zu", client->client_id, got_frame,
-      //           latest_frame.data, latest_frame.size);
+      bool got_frame = framebuffer_peek_latest_multi_frame(client->incoming_video_buffer, &latest_frame);
+      
+      // If we got a frame, consume it to prevent buffer overflow
+      if (got_frame) {
+        multi_source_frame_t consumed_frame = {0};
+        framebuffer_read_multi_frame(client->incoming_video_buffer, &consumed_frame);
+        // Use the peeked frame data, but free the consumed frame if different
+        if (consumed_frame.data && consumed_frame.data != latest_frame.data) {
+          free(consumed_frame.data);
+        }
+      }
 
       if (got_frame && latest_frame.data && latest_frame.size > sizeof(uint32_t) * 2) {
         // Parse the image data
@@ -611,7 +636,18 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   // If no image sources, return empty frame
   if (source_count == 0) {
-    log_debug("No image sources available for mixing (%d active clients, 0 sending video)", active_client_count);
+    // Count how many clients are actually marked as sending video
+    int sending_video_count = 0;
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (g_client_manager.clients[i].active && g_client_manager.clients[i].is_sending_video) {
+        sending_video_count++;
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+    
+    log_debug("No frames available for mixing (%d active, %d sending video, but 0 frames in buffers)", 
+              active_client_count, sending_video_count);
     *out_size = 0;
     return NULL;
   }
@@ -1112,6 +1148,14 @@ void *client_receive_thread_func(void *arg) {
         // Auto-enable video sending when we receive image frames
         client->is_sending_video = true;
         log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
+      } else {
+        // Log periodically to confirm we're receiving frames
+        static int frame_count[MAX_CLIENTS] = {0};
+        frame_count[client->client_id % MAX_CLIENTS]++;
+        if (frame_count[client->client_id % MAX_CLIENTS] % 100 == 0) {
+          log_debug("Client %u has sent %d IMAGE_FRAME packets", client->client_id, 
+                    frame_count[client->client_id % MAX_CLIENTS]);
+        }
       }
       if (data && len > sizeof(uint32_t) * 2) {
         // Parse image dimensions
