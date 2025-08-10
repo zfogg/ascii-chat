@@ -911,9 +911,8 @@ int main(int argc, char *argv[]) {
         continue; // try to connect again
       }
       log_info("Sent client join packet with display name: %s, capabilities: video=%s, audio=%s, color=%s, stretch=%s",
-               my_display_name,
-               (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no", (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no",
-               (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no",
+               my_display_name, (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no",
+               (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no", (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no",
                (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
       // Set socket keepalive to detect broken connections
