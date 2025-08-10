@@ -470,6 +470,28 @@ if (framebuffer_read_multi_frame(buffer, &frame)) {
 - Atomic send operation prevents corruption
 - 50% reduction in network overhead
 
+## CRC Mismatch Bug Fix (TCP Stream Corruption)
+
+### Problem
+Intermittent CRC mismatches were occurring for various packet types (audio, video, stream control) between client and server. The error logs showed:
+```
+[ERROR] Packet CRC mismatch for type 3 from client 0: got 0x45125ad7, expected 0x12b9e3f2 (len=1024)
+```
+
+### Root Cause
+The client had multiple threads sending packets concurrently to the same socket without synchronization:
+- Webcam capture thread - sends video frames
+- Audio capture thread - sends audio packets  
+- Ping thread - sends ping packets
+- Data receive thread - sends pong responses
+
+Without a mutex, these concurrent writes could interleave, causing TCP stream corruption where packet headers and data from different threads would mix.
+
+### Solution
+Added a global send mutex (`g_send_mutex`) in the client and created thread-safe wrapper functions for all packet sending operations. This ensures only one thread can write to the socket at a time, preventing packet interleaving.
+
+**Important Architecture Note**: The server doesn't have this issue because each client has a dedicated send thread that's the only writer to that client's socket. The server can still send to multiple clients simultaneously.
+
 ## Notes for Future Development
 
 - The packet queue system is CRITICAL for preventing race conditions
@@ -481,3 +503,4 @@ if (framebuffer_read_multi_frame(buffer, &frame)) {
 - When adding new packet types, MUST add to receive_packet() validation
 - Check existing branch naming patterns before creating new branches
 - Run `make format` before EVERY commit
+- CLIENT SIDE: Must synchronize socket writes if multiple threads send packets

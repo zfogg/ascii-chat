@@ -117,7 +117,8 @@ static NSArray *getSupportedDeviceTypes(void) {
 }
 
 int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
-    webcam_context_t *context = malloc(sizeof(webcam_context_t));
+    webcam_context_t *context;
+    SAFE_MALLOC(context, sizeof(webcam_context_t), webcam_context_t *);
     if (!context) {
         log_error("Failed to allocate webcam context");
         return -1;

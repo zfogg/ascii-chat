@@ -76,7 +76,7 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
   ctx->buffer_count = req.count;
 
   // Allocate buffer array
-  ctx->buffers = malloc(sizeof(webcam_buffer_t) * ctx->buffer_count);
+  SAFE_MALLOC(ctx->buffers, sizeof(webcam_buffer_t) * ctx->buffer_count, webcam_buffer_t *);
   if (!ctx->buffers) {
     log_error("Failed to allocate buffer array");
     return -1;
@@ -133,7 +133,8 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
 }
 
 int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
-  webcam_context_t *context = malloc(sizeof(webcam_context_t));
+  webcam_context_t *context;
+  SAFE_MALLOC(context, sizeof(webcam_context_t), webcam_context_t *);
   if (!context) {
     log_error("Failed to allocate webcam context");
     return -1;

@@ -53,6 +53,9 @@ static pthread_t g_audio_capture_thread;
 static bool g_audio_capture_thread_created = false;
 static volatile bool g_audio_capture_thread_exited = false;
 
+// Mutex to protect socket sends (prevent interleaved packets)
+static pthread_mutex_t g_send_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* ============================================================================
  * Multi-User Client State
  * ============================================================================
@@ -89,6 +92,101 @@ static void *webcam_capture_thread_func(void *arg);
 
 // Audio capture thread
 static void *audio_capture_thread_func(void *arg);
+
+/* ============================================================================
+ * Thread-Safe Packet Sending Functions
+ * ============================================================================
+ */
+
+// Define macros to use thread-safe versions
+#define send_packet safe_send_packet
+#define send_audio_packet safe_send_audio_packet
+#define send_size_packet safe_send_size_packet
+#define send_pong_packet safe_send_pong_packet
+#define send_ping_packet safe_send_ping_packet
+#define send_stream_start_packet safe_send_stream_start_packet
+#define send_stream_stop_packet safe_send_stream_stop_packet
+#define send_client_join_packet safe_send_client_join_packet
+
+// Thread-safe wrapper for network.h send_packet
+static int safe_send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_packet
+  int result = send_packet(sockfd, type, data, len);
+  #define send_packet safe_send_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_audio_packet
+static int safe_send_audio_packet(int sockfd, const float *samples, int num_samples) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_audio_packet
+  int result = send_audio_packet(sockfd, samples, num_samples);
+  #define send_audio_packet safe_send_audio_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_size_packet
+static int safe_send_size_packet(int sockfd, unsigned short width, unsigned short height) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_size_packet
+  int result = send_size_packet(sockfd, width, height);
+  #define send_size_packet safe_send_size_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_pong_packet
+static int safe_send_pong_packet(int sockfd) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_pong_packet
+  int result = send_pong_packet(sockfd);
+  #define send_pong_packet safe_send_pong_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_ping_packet
+static int safe_send_ping_packet(int sockfd) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_ping_packet
+  int result = send_ping_packet(sockfd);
+  #define send_ping_packet safe_send_ping_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_stream_start_packet
+static int safe_send_stream_start_packet(int sockfd, uint32_t stream_type) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_stream_start_packet
+  int result = send_stream_start_packet(sockfd, stream_type);
+  #define send_stream_start_packet safe_send_stream_start_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_stream_stop_packet
+static int safe_send_stream_stop_packet(int sockfd, uint32_t stream_type) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_stream_stop_packet
+  int result = send_stream_stop_packet(sockfd, stream_type);
+  #define send_stream_stop_packet safe_send_stream_stop_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
+
+// Thread-safe wrapper for network.h send_client_join_packet
+static int safe_send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities) {
+  pthread_mutex_lock(&g_send_mutex);
+  #undef send_client_join_packet
+  int result = send_client_join_packet(sockfd, display_name, capabilities);
+  #define send_client_join_packet safe_send_client_join_packet
+  pthread_mutex_unlock(&g_send_mutex);
+  return result;
+}
 
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
@@ -129,7 +227,6 @@ static void shutdown_client() {
     if (sockfd > 0) {
       shutdown(sockfd, SHUT_RDWR);
       close(sockfd);
-      sockfd = 0;
     }
 
     // Wait for thread to exit - but with a timeout check
@@ -718,6 +815,10 @@ static void handle_server_state_packet(const void *data, size_t len) {
 
 int main(int argc, char *argv[]) {
   log_init("client.log", LOG_DEBUG);
+  atexit(log_destroy);
+#ifdef DEBUG_MEMORY
+  atexit(debug_memory_report);
+#endif
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat client starting...");
 
@@ -946,7 +1047,8 @@ int main(int argc, char *argv[]) {
           log_info("Audio capture thread started");
 
           // Notify server we're starting to send audio
-          if (send_stream_start_packet(sockfd, STREAM_TYPE_AUDIO) < 0) {
+          (void)safe_send_stream_stop_packet; // unused function - stop the compiler warning with this void
+          if (safe_send_stream_start_packet(sockfd, STREAM_TYPE_AUDIO) < 0) {
             log_error("Failed to send audio stream start packet");
           }
         }
