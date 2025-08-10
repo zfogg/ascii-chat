@@ -81,7 +81,7 @@ typedef struct {
   // Buffers for incoming media (individual per client)
   framebuffer_t *incoming_video_buffer;       // NEW: Buffer for this client's video
   audio_ring_buffer_t *incoming_audio_buffer; // NEW: Buffer for this client's audio
-  
+
   // Mutex for serializing sends to this client's socket
   pthread_mutex_t send_mutex;
   bool send_mutex_initialized;
@@ -266,15 +266,15 @@ void *audio_mixer_thread_func(void *arg) {
       uint32_t crc_before = asciichat_crc32(send_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
       uint32_t *check_magic = (uint32_t *)send_buffer;
       if (*check_magic == 0xDEADBEEF || *check_magic == 0xEFBEADDE) {
-        log_error("DEADBEEF found in audio buffer! First 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                  ((unsigned char*)send_buffer)[0], ((unsigned char*)send_buffer)[1], 
-                  ((unsigned char*)send_buffer)[2], ((unsigned char*)send_buffer)[3],
-                  ((unsigned char*)send_buffer)[4], ((unsigned char*)send_buffer)[5],
-                  ((unsigned char*)send_buffer)[6], ((unsigned char*)send_buffer)[7],
-                  ((unsigned char*)send_buffer)[8], ((unsigned char*)send_buffer)[9],
-                  ((unsigned char*)send_buffer)[10], ((unsigned char*)send_buffer)[11],
-                  ((unsigned char*)send_buffer)[12], ((unsigned char*)send_buffer)[13],
-                  ((unsigned char*)send_buffer)[14], ((unsigned char*)send_buffer)[15]);
+        log_error(
+            "DEADBEEF found in audio buffer! First 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+            "%02x %02x %02x %02x %02x",
+            ((unsigned char *)send_buffer)[0], ((unsigned char *)send_buffer)[1], ((unsigned char *)send_buffer)[2],
+            ((unsigned char *)send_buffer)[3], ((unsigned char *)send_buffer)[4], ((unsigned char *)send_buffer)[5],
+            ((unsigned char *)send_buffer)[6], ((unsigned char *)send_buffer)[7], ((unsigned char *)send_buffer)[8],
+            ((unsigned char *)send_buffer)[9], ((unsigned char *)send_buffer)[10], ((unsigned char *)send_buffer)[11],
+            ((unsigned char *)send_buffer)[12], ((unsigned char *)send_buffer)[13], ((unsigned char *)send_buffer)[14],
+            ((unsigned char *)send_buffer)[15]);
       }
       log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
 
@@ -287,7 +287,7 @@ void *audio_mixer_thread_func(void *arg) {
           pthread_mutex_lock(&g_socket_send_mutex);
           int sent = send_audio_packet(client->socket, send_buffer, AUDIO_FRAMES_PER_BUFFER);
           pthread_mutex_unlock(&g_socket_send_mutex);
-          
+
           if (sent < 0) {
             log_debug("Failed to send mixed audio to client %u, marking as disconnected", client->client_id);
             // Mark client as inactive to prevent further send attempts
@@ -522,7 +522,7 @@ static void *video_broadcast_thread_func(void *arg) {
             free(mixed_frame);
             continue; // Don't try to send video data if header failed
           }
-          
+
           // Then send the frame data
           pthread_mutex_lock(&g_socket_send_mutex);
           int frame_result = send_video_packet(client_copy.socket, mixed_frame, mixed_size);

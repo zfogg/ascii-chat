@@ -579,7 +579,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
         // Try to recover by treating this as a new packet...
       }
     }
-    
+
     // Verify checksum
     uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
     if (actual_crc != expected_crc) {
