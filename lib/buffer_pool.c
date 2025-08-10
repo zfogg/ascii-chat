@@ -194,7 +194,7 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
   }
 
   if (!pool) {
-    // No pool, just free
+    // No pool, must have been malloc'd directly
     free(data);
     return;
   }
@@ -280,9 +280,27 @@ data_buffer_pool_t *data_buffer_pool_get_global(void) {
 
 // Convenience functions that use the global pool
 void *buffer_pool_alloc(size_t size) {
+  if (!g_global_buffer_pool) {
+    // If global pool not initialized, fall back to regular malloc
+    void *data;
+    SAFE_MALLOC(data, size, void *);
+    return data;
+  }
   return data_buffer_pool_alloc(g_global_buffer_pool, size);
 }
 
 void buffer_pool_free(void *data, size_t size) {
-  data_buffer_pool_free(g_global_buffer_pool, data, size);
+  if (!data) {
+    return;
+  }
+
+  // If we have a global pool, try to free through it
+  if (g_global_buffer_pool) {
+    data_buffer_pool_free(g_global_buffer_pool, data, size);
+    return;
+  }
+
+  // No global pool - this memory must have been malloc'd
+  // (unless it's from a pool that was already destroyed, in which case we leak)
+  free(data);
 }

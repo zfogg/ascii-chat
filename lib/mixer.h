@@ -29,6 +29,32 @@ typedef struct {
   float release_coeff;
 } compressor_t;
 
+// Noise gate settings
+typedef struct {
+  float threshold;  // Linear threshold (e.g., 0.01f)
+  float attack_ms;  // Attack time in milliseconds
+  float release_ms; // Release time in milliseconds
+  float hysteresis; // Hysteresis factor to prevent chatter (e.g., 0.9)
+
+  // Internal state
+  float sample_rate;
+  float envelope;
+  float attack_coeff;
+  float release_coeff;
+  bool gate_open;
+} noise_gate_t;
+
+// High-pass filter settings
+typedef struct {
+  float cutoff_hz; // Cutoff frequency in Hz
+  float sample_rate;
+
+  // Internal state
+  float alpha;
+  float prev_input;
+  float prev_output;
+} highpass_filter_t;
+
 // Ducking settings (for active speaker detection)
 typedef struct {
   float threshold_dB;     // Below this, source isn't "speaking"
@@ -96,5 +122,22 @@ void ducking_free(ducking_t *duck);
 void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, float attack_ms,
                         float release_ms);
 void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int num_sources);
+
+// Noise gate functions
+void noise_gate_init(noise_gate_t *gate, float sample_rate);
+void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms, float release_ms, float hysteresis);
+float noise_gate_process_sample(noise_gate_t *gate, float input, float peak_amplitude);
+void noise_gate_process_buffer(noise_gate_t *gate, float *buffer, int num_samples);
+bool noise_gate_is_open(const noise_gate_t *gate);
+
+// High-pass filter functions
+void highpass_filter_init(highpass_filter_t *filter, float cutoff_hz, float sample_rate);
+void highpass_filter_reset(highpass_filter_t *filter);
+float highpass_filter_process_sample(highpass_filter_t *filter, float input);
+void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, int num_samples);
+
+// Soft clipping function
+float soft_clip(float sample, float threshold);
+void soft_clip_buffer(float *buffer, int num_samples, float threshold);
 
 #endif // MIXER_H

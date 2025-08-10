@@ -1117,8 +1117,8 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
     //          img_width, img_height, (float)img_width / (float)img_height);
 
     if (len != expected_size) {
-      log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id,
-                expected_size, len);
+      log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id, expected_size,
+                len);
       return;
     }
 

@@ -202,7 +202,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
 
       queue->bytes_queued -= old_head->packet.data_len;
       if (old_head->packet.owns_data && old_head->packet.data) {
-        data_buffer_pool_free(queue->buffer_pool, old_head->packet.data, old_head->packet.data_len);
+        data_buffer_pool_free(old_head->packet.buffer_pool, old_head->packet.data, old_head->packet.data_len);
       }
       node_pool_put(queue->node_pool, old_head);
       queue->count--;
@@ -307,7 +307,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
 
       queue->bytes_queued -= old_head->packet.data_len;
       if (old_head->packet.owns_data && old_head->packet.data) {
-        data_buffer_pool_free(queue->buffer_pool, old_head->packet.data, old_head->packet.data_len);
+        data_buffer_pool_free(old_head->packet.buffer_pool, old_head->packet.data, old_head->packet.data_len);
       }
       node_pool_put(queue->node_pool, old_head);
       queue->count--;
@@ -421,7 +421,7 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
                   expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
         // Free data if packet owns it
         if (node->packet.owns_data && node->packet.data) {
-          data_buffer_pool_free(queue->buffer_pool, node->packet.data, node->packet.data_len);
+          data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
         }
         node_pool_put(queue->node_pool, node);
         return NULL;
@@ -488,7 +488,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
                   actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
         // Free data if packet owns it
         if (node->packet.owns_data && node->packet.data) {
-          data_buffer_pool_free(queue->buffer_pool, node->packet.data, node->packet.data_len);
+          data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
         }
         node_pool_put(queue->node_pool, node);
         return NULL;
@@ -565,7 +565,7 @@ void packet_queue_clear(packet_queue_t *queue) {
     queue->head = node->next;
 
     if (node->packet.owns_data && node->packet.data) {
-      data_buffer_pool_free(queue->buffer_pool, node->packet.data, node->packet.data_len);
+      data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
     }
     node_pool_put(queue->node_pool, node);
   }

@@ -11,15 +11,16 @@ override CC  := clang
 PKG_CONFIG_LIBS := zlib portaudio-2.0
 
 # Directories
-BIN_DIR  := bin
+BIN_DIR   := bin
 BUILD_DIR := build
+SRC_DIR   := src
+LIB_DIR   := lib
 
 # =============================================================================
 # Compiler Flags
 # =============================================================================
 
 CSTD := c23
-CXXSTD := c++23
 
 # Base flags
 BASE_FLAGS := -Wall -Wextra
@@ -27,8 +28,7 @@ BASE_FLAGS := -Wall -Wextra
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
 C_FEATURE_FLAGS := -D_GNU_SOURCE
 
-override CFLAGS   += $(BASE_FLAGS) $(C_FEATURE_FLAGS)
-#override CXXFLAGS += $(BASE_FLAGS) $(FEATURE_FLAGS)
+override CFLAGS    += $(BASE_FLAGS) $(C_FEATURE_FLAGS) -I$(LIB_DIR)
 override OBJCFLAGS += $(BASE_FLAGS)
 
 # Get package-specific flags
@@ -37,7 +37,6 @@ PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
 override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD)
-#override CXXFLAGS += $(PKG_CFLAGS) -std=$(CXXSTD)
 override OBJCFLAGS +=
 
 # Platform-specific flags
@@ -65,23 +64,25 @@ override LDFLAGS += $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
-C_FILES := $(wildcard *.c)
-M_FILES := $(wildcard *.m)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(LIB_DIR)/*.c)
+M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
-C_HEADERS     := $(wildcard *.h)
+C_HEADERS     := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(LIB_DIR)/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
 # Object files (binaries)
-OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES))
-OBJS_M    := $(patsubst %.m,   $(BUILD_DIR)/%.o, $(M_FILES))
+OBJS_C    := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+             $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M    := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+             $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
 # All object files for server and client
 OBJS := $(OBJS_C) $(OBJS_M)
 
 # Non-target object files (files without main methods)
-OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TARGETS)), $(OBJS))
+OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/client.o, $(OBJS))
 
 # =============================================================================
 # Phony Targets
@@ -119,23 +120,37 @@ release: CFLAGS += -O3
 release: $(TARGETS)
 
 # Build executables
-$(BIN_DIR)/server: $(BUILD_DIR)/server.o $(OBJS_NON_TARGET)
+$(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
 	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
+$(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
 	$(CC) -o $@ $^ $(LDFLAGS) -sectcreate __TEXT __info_plist Info.plist
 	@echo "Built $@ successfully!"
 
-# Compile C source files
-$(OBJS_C): $(BUILD_DIR)/%.o: %.c $(C_HEADERS)
+# Create build directories
+$(BUILD_DIR)/src $(BUILD_DIR)/lib:
+	@mkdir -p $@
+
+# Compile C source files from src/
+$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $< 
 
-# Compile Objective-C source files
-$(OBJS_M): $(BUILD_DIR)/%.o: %.m $(C_HEADERS)
+# Compile C source files from lib/
+$(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
+	@echo "Compiling $<..."
+	$(CC) -o $@ $(CFLAGS) -c $< 
+
+# Compile Objective-C source files from src/
+$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/src
+	@echo "Compiling $<..."
+	$(CC) -o $@ $(OBJCFLAGS) -c $<
+
+# Compile Objective-C source files from lib/
+$(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(OBJCFLAGS) -c $<
 
@@ -194,14 +209,14 @@ help:
 # Format source code
 format:
 	@echo "Formatting source code..."
-	@find . -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
+	@find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
 	xargs clang-format -i; \
 	echo "Code formatting complete!"
 
 # Check code formatting
 format-check:
 	@echo "Checking code formatting..."
-	find . -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
+	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
 	xargs clang-format --dry-run --Werror
 
 # Run bear to generate a compile_commands.json file
@@ -211,9 +226,9 @@ compile_commands.json: Makefile
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
-clang-tidy: $(wildcard *.c) $(wildcard *.h) $(wildcard *.m)
+clang-tidy: $(C_FILES) $(C_HEADERS) $(M_FILES)
 	@#clang-tidy -header-filter='.*' $^ -- $(BASE_FLAGS) $(FEATURE_FLAGS) $(PKG_CFLAGS)
-	@clang-tidy $(wildcard *.c) $(wildcard *.h) $(wildcard *.m) -- $(CFLAGS)
+	@clang-tidy $^ -- $(CFLAGS)
 
 analyze:
 	clang --analyze $(SOURCES)
