@@ -32,7 +32,7 @@ typedef struct {
  * ============================================================================
  */
 
-#define AUDIO_RING_BUFFER_SIZE (256 * 16) // 4096 samples = ~93ms @ 44.1kHz, 4x batch size
+#define AUDIO_RING_BUFFER_SIZE (256 * 32) // 8192 samples = ~186ms @ 44.1kHz, 8x batch size
 
 typedef struct audio_ring_buffer {
   float data[AUDIO_RING_BUFFER_SIZE];

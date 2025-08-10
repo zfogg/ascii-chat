@@ -87,25 +87,31 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
   pthread_mutex_lock(&rb->mutex);
 
   int available = audio_ring_buffer_available_write(rb);
-  int to_write = (samples > available) ? available : samples;
 
-  // Optimize: copy in chunks instead of one sample at a time
+  // If we need more space than available, drop old samples by advancing read index
+  if (samples > available) {
+    int samples_to_drop = samples - available;
+    rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
+    // Now we have enough space to write all samples
+  }
+
+  // Write all samples (we've made room if needed)
   int write_idx = rb->write_index;
   int remaining = AUDIO_RING_BUFFER_SIZE - write_idx;
 
-  if (to_write <= remaining) {
+  if (samples <= remaining) {
     // Can copy in one chunk
-    memcpy(&rb->data[write_idx], data, to_write * sizeof(float));
+    memcpy(&rb->data[write_idx], data, samples * sizeof(float));
   } else {
     // Need to wrap around - copy in two chunks
     memcpy(&rb->data[write_idx], data, remaining * sizeof(float));
-    memcpy(&rb->data[0], &data[remaining], (to_write - remaining) * sizeof(float));
+    memcpy(&rb->data[0], &data[remaining], (samples - remaining) * sizeof(float));
   }
 
-  rb->write_index = (write_idx + to_write) % AUDIO_RING_BUFFER_SIZE;
+  rb->write_index = (write_idx + samples) % AUDIO_RING_BUFFER_SIZE;
 
   pthread_mutex_unlock(&rb->mutex);
-  return to_write;
+  return samples; // Always return that we wrote all samples
 }
 
 int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {

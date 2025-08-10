@@ -25,25 +25,25 @@ single server, with video mixing and audio streaming capabilities.
 
 ```
 ascii-chat/
-├── bin/                    # Compiled binaries (server, client)
-├── build/                  # Object files (.o)
-├── notes/                  # Text about the project, things I want to learn or do or remember.
-├── todo/                   # Example code that I want to include eventually, usually from you and ChatGPT.
-├── common.c/h              # Code that all files tend to use. Macros, logging, memory debugging, protocol definitions, errors, constants.
-├── server.c                # Server main - handles multiple clients
-├── client.c                # Client main - captures/displays video
-├── network.c/h             # Network protocol and packet handling
-├── packet_queue.c/h        # Per-client packet queue system
-├── compression.c/h         # Frame compression with zlib
-├── mixer.c/h               # Audio mixing for multiple clients
-├── ascii.c/h               # ASCII art conversion and grid layout
-├── webcam.c/h              # Webcam capture abstraction
-├── webcam_avfoundation.m   # macOS webcam implementation (Objective-C file)
-├── webcam_v4l2.c           # Linux webcam implementation (v4l2 API)
-├── audio.c/h               # Audio capture/playback (PortAudio)
-├── framebuffer.c/h         # Multi-producer frame buffering
-├── ringbuffer.c/h          # Lock-free ring buffer
-└── Makefile                # Build configuration
+├── bin/                        # Compiled binaries (server, client)
+├── build/                      # Object files (.o)
+├── notes/                      # Text about the project, things I want to learn or do or remember.
+├── todo/                       # Example code that I want to include eventually, usually from you and ChatGPT.
+├── common.c/h                  # Code that all files tend to use. Macros, logging, memory debugging, protocol definitions, errors, constants.
+├── src/server.c                # Server main - handles multiple clients
+├── src/client.c                # Client main - captures/displays video
+├── lib/network.c/h             # Network protocol and packet handling
+├── lib/packet_queue.c/h        # Per-client packet queue system
+├── lib/compression.c/h         # Frame compression with zlib
+├── lib/mixer.c/h               # Audio mixing for multiple clients
+├── lib/ascii.c/h               # ASCII art conversion and grid layout
+├── lib/webcam.c/h              # Webcam capture abstraction
+├── lib/webcam_avfoundation.m   # macOS webcam implementation (Objective-C file)
+├── lib/webcam_v4l2.c           # Linux webcam implementation (v4l2 API)
+├── lib/audio.c/h               # Audio capture/playback (PortAudio)
+├── lib/framebuffer.c/h         # Multi-producer frame buffering
+├── lib/ringbuffer.c/h          # Lock-free ring buffer
+└── Makefile                    # Build configuration
 ```
 
 ## Building and Running
