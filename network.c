@@ -381,17 +381,6 @@ uint32_t asciichat_crc32(const void *data, size_t len) {
   return ~crc;
 }
 
-// Global sequence counter (thread-safe)
-static uint32_t g_sequence_counter = 0;
-static pthread_mutex_t g_sequence_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-uint32_t get_next_sequence(void) {
-  pthread_mutex_lock(&g_sequence_mutex);
-  uint32_t seq = ++g_sequence_counter;
-  pthread_mutex_unlock(&g_sequence_mutex);
-  return seq;
-}
-
 int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
   if (len > MAX_PACKET_SIZE) {
     log_error("Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
@@ -401,7 +390,6 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
   packet_header_t header = {.magic = htonl(PACKET_MAGIC),
                             .type = htons((uint16_t)type),
                             .length = htonl((uint32_t)len),
-                            .sequence = htonl(get_next_sequence()),
                             .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0),
                             .client_id = htonl(0)}; // Always initialize client_id to 0 in network byte order
 
@@ -422,7 +410,7 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
   }
 
 #ifdef NETWORK_DEBUG
-  log_debug("Sent packet type=%d, len=%zu, seq=%u", type, len, ntohl(header.sequence));
+  log_debug("Sent packet type=%d, len=%zu", type, len);
 #endif
   return 0;
 }
@@ -449,9 +437,6 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   uint32_t magic = ntohl(header.magic);
   uint16_t pkt_type = ntohs(header.type);
   uint32_t pkt_len = ntohl(header.length);
-#ifdef NETWORK_DEBUG
-  uint32_t sequence = ntohl(header.sequence);
-#endif
   uint32_t expected_crc = ntohl(header.crc32);
 
   // Validate magic
@@ -558,10 +543,6 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     }
 
     SAFE_MALLOC(*data, pkt_len, void *);
-    if (!*data) {
-      log_error("Failed to allocate %u bytes for packet payload", pkt_len);
-      return -1;
-    }
 
     received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
     if (received != (ssize_t)pkt_len) {
@@ -604,7 +585,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   }
 
 #ifdef NETWORK_DEBUG
-  log_debug("Received packet type=%d, len=%zu, seq=%u", *type, *len, sequence);
+  log_debug("Received packet type=%d, len=%zu", *type, *len);
 #endif
   return 1;
 }
@@ -671,7 +652,6 @@ int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, 
   header.magic = htonl(PACKET_MAGIC);
   header.type = htons((uint16_t)type);
   header.length = htonl((uint32_t)len);
-  header.sequence = htonl(get_next_sequence());
   header.client_id = htonl(client_id);
 
   // Calculate CRC for payload
@@ -741,10 +721,6 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
   *data = NULL;
   if (pkt_len > 0) {
     SAFE_MALLOC(*data, pkt_len, void *);
-    if (!*data) {
-      log_error("Failed to allocate %u bytes for packet payload", pkt_len);
-      return -1;
-    }
 
     received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
     if (received != (ssize_t)pkt_len) {

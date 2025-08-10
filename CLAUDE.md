@@ -7,7 +7,9 @@
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 
 ## Project Overview
-ASCII-Chat is a terminal-based video chat application that converts webcam video to ASCII art in real-time. It supports multiple clients connecting to a single server, with video mixing and audio streaming capabilities.
+ASCII-Chat is a terminal-based video chat application that converts webcam 
+video to ASCII art in real-time. It supports multiple clients connecting to a 
+single server, with video mixing and audio streaming capabilities.
 
 **Key Features:**
 - Real-time webcam to ASCII conversion
@@ -27,6 +29,7 @@ ascii-chat/
 ├── build/                  # Object files (.o)
 ├── notes/                  # Text about the project, things I want to learn or do or remember.
 ├── todo/                   # Example code that I want to include eventually, usually from you and ChatGPT.
+├── common.c/h              # Code that all files tend to use. Macros, logging, memory debugging, protocol definitions, errors, constants.
 ├── server.c                # Server main - handles multiple clients
 ├── client.c                # Client main - captures/displays video
 ├── network.c/h             # Network protocol and packet handling
