@@ -34,6 +34,15 @@ struct packet_node {
   packet_node_t *next;
 };
 
+// Memory pool for packet nodes to reduce malloc/free overhead
+typedef struct node_pool {
+  packet_node_t *free_list;   // Stack of free nodes
+  packet_node_t *nodes;       // Pre-allocated array of nodes
+  size_t pool_size;           // Total number of nodes in pool
+  size_t used_count;          // Number of nodes currently in use
+  pthread_mutex_t pool_mutex; // Protect free list access
+} node_pool_t;
+
 // Thread-safe packet queue
 typedef struct {
   packet_node_t *head; // Front of queue (dequeue from here)
@@ -41,6 +50,9 @@ typedef struct {
   size_t count;        // Number of packets in queue
   size_t max_size;     // Maximum queue size (0 = unlimited)
   size_t bytes_queued; // Total bytes of data queued
+
+  // Memory pool for nodes
+  node_pool_t *node_pool; // Optional memory pool (NULL = use malloc/free)
 
   // Thread synchronization
   pthread_mutex_t mutex;
@@ -55,8 +67,15 @@ typedef struct {
   bool shutdown; // Signal to shutdown queue
 } packet_queue_t;
 
+// Memory pool functions
+node_pool_t *node_pool_create(size_t pool_size);
+void node_pool_destroy(node_pool_t *pool);
+packet_node_t *node_pool_get(node_pool_t *pool);
+void node_pool_put(node_pool_t *pool, packet_node_t *node);
+
 // Queue management functions
 packet_queue_t *packet_queue_create(size_t max_size);
+packet_queue_t *packet_queue_create_with_pool(size_t max_size, size_t pool_size);
 void packet_queue_destroy(packet_queue_t *queue);
 
 // Enqueue a packet (returns 0 on success, -1 on error)
@@ -90,5 +109,8 @@ void packet_queue_clear(packet_queue_t *queue);
 
 // Get statistics
 void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t *dequeued, uint64_t *dropped);
+
+// Validate packet integrity (returns true if valid)
+bool packet_queue_validate_packet(const queued_packet_t *packet);
 
 #endif // PACKET_QUEUE_H

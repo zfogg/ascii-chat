@@ -4,7 +4,114 @@
 #include <string.h>
 #include <unistd.h>
 
+/* ============================================================================
+ * Memory Pool Implementation
+ * ============================================================================
+ */
+
+node_pool_t *node_pool_create(size_t pool_size) {
+  if (pool_size == 0) {
+    return NULL;
+  }
+
+  node_pool_t *pool;
+  SAFE_MALLOC(pool, sizeof(node_pool_t), node_pool_t *);
+
+  // Allocate all nodes at once
+  SAFE_MALLOC(pool->nodes, sizeof(packet_node_t) * pool_size, packet_node_t *);
+
+  // Link all nodes into free list
+  for (size_t i = 0; i < pool_size - 1; i++) {
+    pool->nodes[i].next = &pool->nodes[i + 1];
+  }
+  pool->nodes[pool_size - 1].next = NULL;
+
+  pool->free_list = &pool->nodes[0];
+  pool->pool_size = pool_size;
+  pool->used_count = 0;
+
+  pthread_mutex_init(&pool->pool_mutex, NULL);
+
+  return pool;
+}
+
+void node_pool_destroy(node_pool_t *pool) {
+  if (!pool) {
+    return;
+  }
+
+  pthread_mutex_destroy(&pool->pool_mutex);
+  free(pool->nodes);
+  free(pool);
+}
+
+packet_node_t *node_pool_get(node_pool_t *pool) {
+  if (!pool) {
+    // No pool, fallback to malloc
+    packet_node_t *node;
+    SAFE_MALLOC(node, sizeof(packet_node_t), packet_node_t *);
+    return node;
+  }
+
+  pthread_mutex_lock(&pool->pool_mutex);
+
+  packet_node_t *node = pool->free_list;
+  if (node) {
+    pool->free_list = node->next;
+    pool->used_count++;
+    node->next = NULL; // Clear next pointer
+  }
+
+  pthread_mutex_unlock(&pool->pool_mutex);
+
+  if (!node) {
+    // Pool exhausted, fallback to malloc
+    SAFE_MALLOC(node, sizeof(packet_node_t), packet_node_t *);
+    log_debug("Memory pool exhausted, falling back to malloc (used: %zu/%zu)", pool->used_count, pool->pool_size);
+  }
+
+  return node;
+}
+
+void node_pool_put(node_pool_t *pool, packet_node_t *node) {
+  if (!node) {
+    return;
+  }
+
+  if (!pool) {
+    // No pool, just free
+    free(node);
+    return;
+  }
+
+  // Check if this node is from our pool
+  bool is_pool_node = (node >= pool->nodes && node < pool->nodes + pool->pool_size);
+
+  if (is_pool_node) {
+    pthread_mutex_lock(&pool->pool_mutex);
+
+    // Return to free list
+    node->next = pool->free_list;
+    pool->free_list = node;
+    pool->used_count--;
+
+    pthread_mutex_unlock(&pool->pool_mutex);
+  } else {
+    // This was malloc'd, so free it
+    free(node);
+  }
+}
+
+/* ============================================================================
+ * Packet Queue Implementation
+ * ============================================================================
+ */
+
 packet_queue_t *packet_queue_create(size_t max_size) {
+  return packet_queue_create_with_pool(max_size, 0); // No pool by default
+}
+
+packet_queue_t *packet_queue_create_with_pool(size_t max_size, size_t pool_size) {
   packet_queue_t *queue;
   SAFE_MALLOC(queue, sizeof(packet_queue_t), packet_queue_t *);
 
@@ -13,6 +120,9 @@ packet_queue_t *packet_queue_create(size_t max_size) {
   queue->count = 0;
   queue->max_size = max_size;
   queue->bytes_queued = 0;
+
+  // Create memory pool if requested
+  queue->node_pool = pool_size > 0 ? node_pool_create(pool_size) : NULL;
 
   pthread_mutex_init(&queue->mutex, NULL);
   pthread_cond_init(&queue->not_empty, NULL);
@@ -35,6 +145,11 @@ void packet_queue_destroy(packet_queue_t *queue) {
 
   // Clear any remaining packets
   packet_queue_clear(queue);
+
+  // Destroy memory pool if present
+  if (queue->node_pool) {
+    node_pool_destroy(queue->node_pool);
+  }
 
   pthread_mutex_destroy(&queue->mutex);
   pthread_cond_destroy(&queue->not_empty);
@@ -70,7 +185,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
       if (old_head->packet.owns_data && old_head->packet.data) {
         free(old_head->packet.data);
       }
-      free(old_head);
+      node_pool_put(queue->node_pool, old_head);
       queue->count--;
       queue->packets_dropped++;
 
@@ -78,9 +193,8 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     }
   }
 
-  // Create new node
-  packet_node_t *node;
-  SAFE_MALLOC(node, sizeof(packet_node_t), packet_node_t *);
+  // Create new node (use pool if available)
+  packet_node_t *node = node_pool_get(queue->node_pool);
 
   // Build packet header
   node->packet.header.magic = htonl(PACKET_MAGIC);
@@ -139,6 +253,12 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   if (!queue || !packet)
     return -1;
 
+  // Validate packet before enqueueing
+  if (!packet_queue_validate_packet(packet)) {
+    log_error("Refusing to enqueue invalid packet");
+    return -1;
+  }
+
   pthread_mutex_lock(&queue->mutex);
 
   // Check if shutdown
@@ -161,15 +281,14 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
       if (old_head->packet.owns_data && old_head->packet.data) {
         free(old_head->packet.data);
       }
-      free(old_head);
+      node_pool_put(queue->node_pool, old_head);
       queue->count--;
       queue->packets_dropped++;
     }
   }
 
-  // Create new node
-  packet_node_t *node;
-  SAFE_MALLOC(node, sizeof(packet_node_t), packet_node_t *);
+  // Create new node (use pool if available)
+  packet_node_t *node = node_pool_get(queue->node_pool);
 
   // Copy the packet
   memcpy(&node->packet, packet, sizeof(queued_packet_t));
@@ -231,11 +350,21 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
   pthread_mutex_unlock(&queue->mutex);
 
   if (node) {
-    // Extract packet and free node
+    // Verify packet magic number for corruption detection
+    uint32_t magic = ntohl(node->packet.header.magic);
+    if (magic != PACKET_MAGIC) {
+      log_error("CORRUPTION: Invalid magic in dequeued packet: 0x%x (expected 0x%x), type=%u", magic, PACKET_MAGIC,
+                ntohs(node->packet.header.type));
+      // Still return node to pool but don't return corrupted packet
+      node_pool_put(queue->node_pool, node);
+      return NULL;
+    }
+
+    // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
     memcpy(packet, &node->packet, sizeof(queued_packet_t));
-    free(node);
+    node_pool_put(queue->node_pool, node);
     return packet;
   }
 
@@ -272,11 +401,21 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
   pthread_mutex_unlock(&queue->mutex);
 
   if (node) {
-    // Extract packet and free node
+    // Verify packet magic number for corruption detection
+    uint32_t magic = ntohl(node->packet.header.magic);
+    if (magic != PACKET_MAGIC) {
+      log_error("CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic, PACKET_MAGIC,
+                ntohs(node->packet.header.type));
+      // Still return node to pool but don't return corrupted packet
+      node_pool_put(queue->node_pool, node);
+      return NULL;
+    }
+
+    // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
     memcpy(packet, &node->packet, sizeof(queued_packet_t));
-    free(node);
+    node_pool_put(queue->node_pool, node);
     return packet;
   }
 
@@ -343,7 +482,7 @@ void packet_queue_clear(packet_queue_t *queue) {
     if (node->packet.owns_data && node->packet.data) {
       free(node->packet.data);
     }
-    free(node);
+    node_pool_put(queue->node_pool, node);
   }
 
   queue->head = NULL;
@@ -366,4 +505,43 @@ void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t 
   if (dropped)
     *dropped = queue->packets_dropped;
   pthread_mutex_unlock(&queue->mutex);
+}
+
+bool packet_queue_validate_packet(const queued_packet_t *packet) {
+  if (!packet) {
+    return false;
+  }
+
+  // Check magic number
+  uint32_t magic = ntohl(packet->header.magic);
+  if (magic != PACKET_MAGIC) {
+    log_error("Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
+    return false;
+  }
+
+  // Check packet type is valid
+  uint16_t type = ntohs(packet->header.type);
+  if (type < PACKET_TYPE_ASCII_FRAME || type > PACKET_TYPE_AUDIO_BATCH) {
+    log_error("Invalid packet type: %u", type);
+    return false;
+  }
+
+  // Check length matches data_len
+  uint32_t length = ntohl(packet->header.length);
+  if (length != packet->data_len) {
+    log_error("Packet length mismatch: header says %u, data_len is %zu", length, packet->data_len);
+    return false;
+  }
+
+  // Check CRC if there's data
+  if (packet->data_len > 0 && packet->data) {
+    uint32_t expected_crc = ntohl(packet->header.crc32);
+    uint32_t actual_crc = asciichat_crc32(packet->data, packet->data_len);
+    if (actual_crc != expected_crc) {
+      log_error("Packet CRC mismatch: got 0x%x, expected 0x%x", actual_crc, expected_crc);
+      return false;
+    }
+  }
+
+  return true;
 }
