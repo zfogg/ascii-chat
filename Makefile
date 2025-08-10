@@ -69,7 +69,9 @@ C_FILES := $(wildcard *.c)
 M_FILES := $(wildcard *.m)
 
 # Header files
-HEADERS     := $(wildcard *.h)
+C_HEADERS     := $(wildcard *.h)
+
+SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
 # Object files (binaries)
 OBJS_C    := $(patsubst %.c,   $(BUILD_DIR)/%.o, $(C_FILES))
@@ -85,13 +87,13 @@ OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TAR
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy valgrind analyze
 
 # =============================================================================
 # Default Target
 # =============================================================================
 
-.DEFAULT_GOAL := default
+.DEFAULT_GOAL := debug
 
 # =============================================================================
 # Build Rules
@@ -102,7 +104,7 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: CFLAGS += -g -O0
+debug: CFLAGS += -g -O0 -DDEBUG -DDEBUG_MEMORY
 debug: OBJCFLAGS += -g -O0
 debug: $(TARGETS)
 
@@ -128,12 +130,12 @@ $(BIN_DIR)/client: $(BUILD_DIR)/client.o $(OBJS_NON_TARGET)
 	@echo "Built $@ successfully!"
 
 # Compile C source files
-$(OBJS_C): $(BUILD_DIR)/%.o: %.c $(HEADERS)
+$(OBJS_C): $(BUILD_DIR)/%.o: %.c $(C_HEADERS)
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $< 
 
 # Compile Objective-C source files
-$(OBJS_M): $(BUILD_DIR)/%.o: %.m $(HEADERS)
+$(OBJS_M): $(BUILD_DIR)/%.o: %.m $(C_HEADERS)
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(OBJCFLAGS) -c $<
 
@@ -213,6 +215,12 @@ clang-tidy: $(wildcard *.c) $(wildcard *.h) $(wildcard *.m)
 	@#clang-tidy -header-filter='.*' $^ -- $(BASE_FLAGS) $(FEATURE_FLAGS) $(PKG_CFLAGS)
 	@clang-tidy $(wildcard *.c) $(wildcard *.h) $(wildcard *.m) -- $(CFLAGS)
 
+valgrind: debug
+	valgrind --leak-check=full --show-leak-kinds=all ./bin/server
+
+analyze:
+	clang --analyze $(SOURCES)
+	cppcheck --enable=all $(C_FILES) $(C_HEADERS)
 
 # =============================================================================
 # Extra Makefile stuff
