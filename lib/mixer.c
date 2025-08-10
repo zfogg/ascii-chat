@@ -379,3 +379,158 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
   return num_samples;
 }
+
+/* ============================================================================
+ * Noise Gate Implementation
+ * ============================================================================
+ */
+
+void noise_gate_init(noise_gate_t *gate, float sample_rate) {
+  if (!gate)
+    return;
+
+  gate->sample_rate = sample_rate;
+  gate->envelope = 0.0f;
+  gate->gate_open = false;
+
+  // Default parameters
+  noise_gate_set_params(gate, 0.01f, 2.0f, 50.0f, 0.9f);
+}
+
+void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms, float release_ms, float hysteresis) {
+  if (!gate)
+    return;
+
+  gate->threshold = threshold;
+  gate->attack_ms = attack_ms;
+  gate->release_ms = release_ms;
+  gate->hysteresis = hysteresis;
+
+  // Calculate coefficients for envelope follower
+  // Using exponential moving average: coeff = 1 - exp(-1 / (time_ms * sample_rate / 1000))
+  gate->attack_coeff = 1.0f - expf(-1.0f / (attack_ms * gate->sample_rate / 1000.0f));
+  gate->release_coeff = 1.0f - expf(-1.0f / (release_ms * gate->sample_rate / 1000.0f));
+}
+
+float noise_gate_process_sample(noise_gate_t *gate, float input, float peak_amplitude) {
+  if (!gate)
+    return input;
+
+  // Determine target state with hysteresis
+  float target;
+  if (gate->gate_open) {
+    // Gate is open - use lower threshold (hysteresis) to close
+    target = (peak_amplitude > gate->threshold * gate->hysteresis) ? 1.0f : 0.0f;
+  } else {
+    // Gate is closed - use normal threshold to open
+    target = (peak_amplitude > gate->threshold) ? 1.0f : 0.0f;
+  }
+
+  // Update gate state
+  gate->gate_open = (target > 0.5f);
+
+  // Update envelope with appropriate coefficient
+  float coeff = (target > gate->envelope) ? gate->attack_coeff : gate->release_coeff;
+  gate->envelope += coeff * (target - gate->envelope);
+
+  // Apply gate
+  return input * gate->envelope;
+}
+
+void noise_gate_process_buffer(noise_gate_t *gate, float *buffer, int num_samples) {
+  if (!gate || !buffer || num_samples <= 0)
+    return;
+
+  // First pass: find peak amplitude
+  float peak = 0.0f;
+  for (int i = 0; i < num_samples; i++) {
+    float abs_sample = fabsf(buffer[i]);
+    if (abs_sample > peak) {
+      peak = abs_sample;
+    }
+  }
+
+  // Second pass: apply gate
+  for (int i = 0; i < num_samples; i++) {
+    buffer[i] = noise_gate_process_sample(gate, buffer[i], peak);
+  }
+}
+
+bool noise_gate_is_open(const noise_gate_t *gate) {
+  return gate ? gate->gate_open : false;
+}
+
+/* ============================================================================
+ * High-Pass Filter Implementation
+ * ============================================================================
+ */
+
+void highpass_filter_init(highpass_filter_t *filter, float cutoff_hz, float sample_rate) {
+  if (!filter)
+    return;
+
+  filter->cutoff_hz = cutoff_hz;
+  filter->sample_rate = sample_rate;
+
+  // Calculate filter coefficient
+  // alpha = 1 / (1 + 2*pi*fc/fs)
+  filter->alpha = 1.0f / (1.0f + 2.0f * M_PI * cutoff_hz / sample_rate);
+
+  highpass_filter_reset(filter);
+}
+
+void highpass_filter_reset(highpass_filter_t *filter) {
+  if (!filter)
+    return;
+
+  filter->prev_input = 0.0f;
+  filter->prev_output = 0.0f;
+}
+
+float highpass_filter_process_sample(highpass_filter_t *filter, float input) {
+  if (!filter)
+    return input;
+
+  // First-order high-pass filter
+  // y[n] = alpha * (y[n-1] + x[n] - x[n-1])
+  float output = filter->alpha * (filter->prev_output + input - filter->prev_input);
+
+  filter->prev_input = input;
+  filter->prev_output = output;
+
+  return output;
+}
+
+void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, int num_samples) {
+  if (!filter || !buffer || num_samples <= 0)
+    return;
+
+  for (int i = 0; i < num_samples; i++) {
+    buffer[i] = highpass_filter_process_sample(filter, buffer[i]);
+  }
+}
+
+/* ============================================================================
+ * Soft Clipping Implementation
+ * ============================================================================
+ */
+
+float soft_clip(float sample, float threshold) {
+  if (sample > threshold) {
+    // Soft clip positive values
+    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 10.0f);
+  } else if (sample < -threshold) {
+    // Soft clip negative values
+    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 10.0f);
+  }
+  return sample;
+}
+
+void soft_clip_buffer(float *buffer, int num_samples, float threshold) {
+  if (!buffer || num_samples <= 0)
+    return;
+
+  for (int i = 0; i < num_samples; i++) {
+    buffer[i] = soft_clip(buffer[i], threshold);
+  }
+}
