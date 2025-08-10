@@ -570,9 +570,32 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
 
+    // Check if we accidentally received another packet header as payload
+    if (pkt_len >= 4) {
+      uint32_t first_word = *(uint32_t *)*data;
+      if (first_word == 0xEFBEADDE) { // DEADBEEF in little-endian
+        log_error("CRITICAL: Received packet header (DEADBEEF) as payload data! Stream is desynchronized!");
+        log_error("This packet was supposed to be type %u with %u bytes", pkt_type, pkt_len);
+        // Try to recover by treating this as a new packet...
+      }
+    }
+    
     // Verify checksum
     uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
     if (actual_crc != expected_crc) {
+      // Debug: log first few bytes of data
+      if (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_VIDEO_HEADER) {
+        unsigned char *bytes = (unsigned char *)*data;
+        log_debug(
+            "Packet type %u first 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+            "%02x %02x",
+            pkt_type, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
+            bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+        if (pkt_type == PACKET_TYPE_VIDEO_HEADER && pkt_len == 24) {
+          log_debug("Rest of header: %02x %02x %02x %02x %02x %02x %02x %02x", bytes[16], bytes[17], bytes[18],
+                    bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]);
+        }
+      }
       log_error("Packet checksum mismatch for type %u: got 0x%x, expected 0x%x (len=%u)", pkt_type, actual_crc,
                 expected_crc, pkt_len);
       free(*data);
@@ -590,24 +613,43 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
 }
 
 int send_video_header_packet(int sockfd, const void *header_data, size_t header_len) {
+  // Debug: log header bytes being sent
+  if (header_len == 24) {
+    unsigned char *bytes = (unsigned char *)header_data;
+    uint32_t crc = asciichat_crc32(header_data, header_len);
+    log_debug("Sending VIDEO_HEADER: CRC=0x%x, first 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+              "%02x %02x %02x %02x %02x",
+              crc, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
+              bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+    log_debug("Rest of header: %02x %02x %02x %02x %02x %02x %02x %02x", bytes[16], bytes[17], bytes[18], bytes[19],
+              bytes[20], bytes[21], bytes[22], bytes[23]);
+  }
   return send_packet(sockfd, PACKET_TYPE_VIDEO_HEADER, header_data, header_len);
 }
 
 int send_video_packet(int sockfd, const void *frame_data, size_t frame_len) {
   // Log large video packets for debugging
   if (frame_len > 100000) {
-    uint32_t crc = frame_data ? asciichat_crc32(frame_data, frame_len) : 0;
-    log_debug("Sending large video packet: len=%zu, crc=0x%x", frame_len, crc);
+    // uint32_t crc = frame_data ? asciichat_crc32(frame_data, frame_len) : 0;
+    // log_debug("Sending large video packet: len=%zu, crc=0x%x", frame_len, crc);
   }
   return send_packet(sockfd, PACKET_TYPE_VIDEO, frame_data, frame_len);
 }
 
 int send_audio_packet(int sockfd, const float *samples, int num_samples) {
   if (!samples || num_samples <= 0 || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    log_error("Invalid audio packet: samples=%p, num_samples=%d", samples, num_samples);
     return -1;
   }
 
   size_t data_size = num_samples * sizeof(float);
+
+// Debug: log CRC of audio data being sent
+#ifdef AUDIO_DEBUG
+  uint32_t crc = asciichat_crc32(samples, data_size);
+  log_debug("Sending audio packet: %d samples, %zu bytes, CRC=0x%x", num_samples, data_size, crc);
+#endif
+
   return send_packet(sockfd, PACKET_TYPE_AUDIO, samples, data_size);
 }
 

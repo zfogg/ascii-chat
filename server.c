@@ -34,6 +34,9 @@ static volatile bool g_should_exit = false;
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Mutex to serialize all socket sends to prevent packet interleaving between threads
+static pthread_mutex_t g_socket_send_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Performance statistics */
 typedef struct {
   uint64_t frames_captured;
@@ -78,6 +81,10 @@ typedef struct {
   // Buffers for incoming media (individual per client)
   framebuffer_t *incoming_video_buffer;       // NEW: Buffer for this client's video
   audio_ring_buffer_t *incoming_audio_buffer; // NEW: Buffer for this client's audio
+  
+  // Mutex for serializing sends to this client's socket
+  pthread_mutex_t send_mutex;
+  bool send_mutex_initialized;
 } client_info_t;
 
 typedef struct {
@@ -239,6 +246,7 @@ void *audio_mixer_thread_func(void *arg) {
   log_info("Audio mixer thread started (using advanced mixer with ducking and compression)");
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
+  float send_buffer[AUDIO_FRAMES_PER_BUFFER]; // Separate buffer for sending
 
   while (!g_should_exit) {
     if (!g_audio_mixer) {
@@ -251,12 +259,35 @@ void *audio_mixer_thread_func(void *arg) {
     int samples_mixed = mixer_process(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
 
     if (samples_mixed > 0) {
+      // Copy to send buffer to avoid race conditions
+      memcpy(send_buffer, mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+
+      // Debug: Calculate CRC before sending and check for DEADBEEF
+      uint32_t crc_before = asciichat_crc32(send_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+      uint32_t *check_magic = (uint32_t *)send_buffer;
+      if (*check_magic == 0xDEADBEEF || *check_magic == 0xEFBEADDE) {
+        log_error("DEADBEEF found in audio buffer! First 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                  ((unsigned char*)send_buffer)[0], ((unsigned char*)send_buffer)[1], 
+                  ((unsigned char*)send_buffer)[2], ((unsigned char*)send_buffer)[3],
+                  ((unsigned char*)send_buffer)[4], ((unsigned char*)send_buffer)[5],
+                  ((unsigned char*)send_buffer)[6], ((unsigned char*)send_buffer)[7],
+                  ((unsigned char*)send_buffer)[8], ((unsigned char*)send_buffer)[9],
+                  ((unsigned char*)send_buffer)[10], ((unsigned char*)send_buffer)[11],
+                  ((unsigned char*)send_buffer)[12], ((unsigned char*)send_buffer)[13],
+                  ((unsigned char*)send_buffer)[14], ((unsigned char*)send_buffer)[15]);
+      }
+      log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
+
       // Send mixed audio to all connected clients
       pthread_mutex_lock(&g_client_manager_mutex);
       for (int i = 0; i < MAX_CLIENTS; i++) {
         client_info_t *client = &g_client_manager.clients[i];
         if (client->active && client->socket > 0) {
-          int sent = send_audio_packet(client->socket, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+          // Lock socket sends to prevent interleaving with video packets
+          pthread_mutex_lock(&g_socket_send_mutex);
+          int sent = send_audio_packet(client->socket, send_buffer, AUDIO_FRAMES_PER_BUFFER);
+          pthread_mutex_unlock(&g_socket_send_mutex);
+          
           if (sent < 0) {
             log_debug("Failed to send mixed audio to client %u, marking as disconnected", client->client_id);
             // Mark client as inactive to prevent further send attempts
@@ -353,9 +384,11 @@ static void *video_broadcast_thread_func(void *arg) {
       pthread_mutex_lock(&g_client_manager_mutex);
       for (int i = 0; i < MAX_CLIENTS; i++) {
         if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0) {
+          pthread_mutex_lock(&g_socket_send_mutex);
           if (send_server_state_packet(g_client_manager.clients[i].socket, &state) < 0) {
             log_warn("Failed to send server state to client %u", g_client_manager.clients[i].client_id);
           }
+          pthread_mutex_unlock(&g_socket_send_mutex);
         }
       }
       pthread_mutex_unlock(&g_client_manager_mutex);
@@ -466,15 +499,17 @@ static void *video_broadcast_thread_func(void *arg) {
         if (mixed_frame && mixed_size > 0) {
 
           // Send frame with header that includes dimensions
-          compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
-                                              .compressed_size = 0, // Not compressed
-                                              .original_size = mixed_size,
-                                              .checksum = asciichat_crc32(mixed_frame, mixed_size),
-                                              .width = target_width,
-                                              .height = target_height};
+          compressed_frame_header_t header = {.magic = htonl(COMPRESSION_FRAME_MAGIC),
+                                              .compressed_size = htonl(0), // Not compressed
+                                              .original_size = htonl(mixed_size),
+                                              .checksum = htonl(asciichat_crc32(mixed_frame, mixed_size)),
+                                              .width = htonl(target_width),
+                                              .height = htonl(target_height)};
 
           // Send header first
+          pthread_mutex_lock(&g_socket_send_mutex);
           int header_result = send_video_header_packet(client_copy.socket, &header, sizeof(header));
+          pthread_mutex_unlock(&g_socket_send_mutex);
           if (header_result < 0) {
             log_error("Failed to send header to client %u (socket=%d): %s", client_copy.client_id, client_copy.socket,
                       strerror(errno));
@@ -484,26 +519,30 @@ static void *video_broadcast_thread_func(void *arg) {
               g_client_manager.clients[i].active = false;
             }
             pthread_mutex_unlock(&g_client_manager_mutex);
+            free(mixed_frame);
+            continue; // Don't try to send video data if header failed
+          }
+          
+          // Then send the frame data
+          pthread_mutex_lock(&g_socket_send_mutex);
+          int frame_result = send_video_packet(client_copy.socket, mixed_frame, mixed_size);
+          pthread_mutex_unlock(&g_socket_send_mutex);
+          if (frame_result < 0) {
+            log_error("Failed to send video frame to client %u (socket=%d): %s", client_copy.client_id,
+                      client_copy.socket, strerror(errno));
+            // Mark client as inactive if we can't send to it
+            pthread_mutex_lock(&g_client_manager_mutex);
+            if (g_client_manager.clients[i].client_id == client_copy.client_id) {
+              g_client_manager.clients[i].active = false;
+            }
+            pthread_mutex_unlock(&g_client_manager_mutex);
           } else {
-            // Then send the frame data
-            int frame_result = send_video_packet(client_copy.socket, mixed_frame, mixed_size);
-            if (frame_result < 0) {
-              log_error("Failed to send video frame to client %u (socket=%d): %s", client_copy.client_id,
-                        client_copy.socket, strerror(errno));
-              // Mark client as inactive if we can't send to it
-              pthread_mutex_lock(&g_client_manager_mutex);
-              if (g_client_manager.clients[i].client_id == client_copy.client_id) {
-                g_client_manager.clients[i].active = false;
-              }
-              pthread_mutex_unlock(&g_client_manager_mutex);
-            } else {
-              sent_count++;
-              static int success_count[MAX_CLIENTS] = {0};
-              success_count[i]++;
-              if (success_count[i] == 1 || success_count[i] % 30 == 0) { // Log first and every 30 successful sends
-                log_info("Successfully sent %d frames to client %u (slot %d, socket=%d, size=%zu)", success_count[i],
-                         client_copy.client_id, i, client_copy.socket, mixed_size);
-              }
+            sent_count++;
+            static int success_count[MAX_CLIENTS] = {0};
+            success_count[i]++;
+            if (success_count[i] == 1 || success_count[i] % 30 == 0) { // Log first and every 30 successful sends
+              log_info("Successfully sent %d frames to client %u (slot %d, socket=%d, size=%zu)", success_count[i],
+                       client_copy.client_id, i, client_copy.socket, mixed_size);
             }
           }
 
@@ -1170,11 +1209,13 @@ void *client_receive_thread_func(void *arg) {
 
     case PACKET_TYPE_PING: {
       // Handle ping from client - send pong back
+      pthread_mutex_lock(&g_socket_send_mutex);
       if (send_pong_packet(client->socket) < 0) {
         log_debug("Failed to send PONG response to client %u", client->client_id);
       } else {
         log_debug("Sent PONG response to client %u", client->client_id);
       }
+      pthread_mutex_unlock(&g_socket_send_mutex);
       break;
     }
 
@@ -1294,12 +1335,14 @@ int add_client(int socket, const char *client_ip, int port) {
   state.active_client_count = 0; // Will be updated by broadcast thread
   memset(state.reserved, 0, sizeof(state.reserved));
 
+  pthread_mutex_lock(&g_socket_send_mutex);
   if (send_server_state_packet(client->socket, &state) < 0) {
     log_warn("Failed to send initial server state to client %u", client->client_id);
   } else {
     log_info("Sent initial server state to client %u: %u connected clients", client->client_id,
              state.connected_client_count);
   }
+  pthread_mutex_unlock(&g_socket_send_mutex);
 
   log_info("Added client %u from %s:%d", client->client_id, client_ip, port);
   return client->client_id;

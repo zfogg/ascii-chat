@@ -64,7 +64,7 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
 
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
-#define MAX_FPS 120
+#define MAX_FPS 120 // Reduced from 120 to avoid network congestion
 
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
 
