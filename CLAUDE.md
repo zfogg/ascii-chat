@@ -396,9 +396,13 @@ This is how **real video streaming applications** work - they display the last f
 
 ### Safe Memory Allocation
 ```c
-// Always use SAFE_MALLOC macro
+// Always use these macros instead of their standard non-macro counterparts.
 char *buffer;
 SAFE_MALLOC(buffer, size, char *);
+ringbuffer_t *rb;
+SAFE_CALLOC(rb, 1, sizeof(ringbuffer_t), ringbuffer_t *);
+char *new_buffer;
+SAFE_REALLOC(buffer, new_buffer, len, char *);
 // Automatically logs errors and returns on failure
 ```
 
@@ -406,6 +410,8 @@ SAFE_MALLOC(buffer, size, char *);
 ```c
 // Build packet with network byte order
 header.field = htonl(value);  // 32-bit version
+// Build packet with host byte order
+header.height = ntohl(header.height);
 
 // Server: use packet queue
 packet_queue_enqueue(client->video_queue, type, data, len, client_id, true);

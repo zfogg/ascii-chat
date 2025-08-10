@@ -108,7 +108,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   } while (0)
 
 /* Safe memory reallocation */
-#define SAFE_REALLOC(ptr, new_ptr, size)                                                                               \
+#define SAFE_REALLOC(ptr, new_ptr, size, cast)                                                                               \
   do {                                                                                                                 \
     void *tmp_ptr = realloc((ptr), (size));                                                                            \
     if (!(tmp_ptr)) {                                                                                                  \
@@ -116,7 +116,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
       /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
       exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
     }                                                                                                                  \
-    (new_ptr) = tmp_ptr;                                                                                               \
+    (new_ptr) = (cast)tmp_ptr;                                                                                         \
     (ptr) = (new_ptr);                                                                                                 \
   } while (0)
 
