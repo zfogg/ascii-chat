@@ -87,7 +87,7 @@ OBJS_NON_TARGET := $(filter-out $(patsubst $(BIN_DIR)/%, $(BUILD_DIR)/%.o, $(TAR
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy valgrind analyze
+.-HONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze
 
 # =============================================================================
 # Default Target
@@ -105,7 +105,7 @@ all: default
 
 # Debug build
 debug: CFLAGS += -g -O0 -DDEBUG -DDEBUG_MEMORY
-debug: OBJCFLAGS += -g -O0
+debug: OBJCFLAGS += -g -O0 -DDEBUG -DDEBUG_MEMORY
 debug: $(TARGETS)
 
 # Memory sanitizer build
@@ -214,9 +214,6 @@ compile_commands.json: Makefile
 clang-tidy: $(wildcard *.c) $(wildcard *.h) $(wildcard *.m)
 	@#clang-tidy -header-filter='.*' $^ -- $(BASE_FLAGS) $(FEATURE_FLAGS) $(PKG_CFLAGS)
 	@clang-tidy $(wildcard *.c) $(wildcard *.h) $(wildcard *.m) -- $(CFLAGS)
-
-valgrind: debug
-	valgrind --leak-check=full --show-leak-kinds=all ./bin/server
 
 analyze:
 	clang --analyze $(SOURCES)

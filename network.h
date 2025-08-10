@@ -48,6 +48,11 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 #define AUDIO_MESSAGE_MAX_LEN 32
 #define AUDIO_SAMPLES_PER_PACKET 256 // Smaller packets for lower latency
 
+/* Audio batching for efficiency */
+#define AUDIO_BATCH_COUNT 4                                                // Number of audio chunks per batch
+#define AUDIO_BATCH_SAMPLES (AUDIO_SAMPLES_PER_PACKET * AUDIO_BATCH_COUNT) // 1024 samples = 23.2ms @ 44.1kHz
+#define AUDIO_BATCH_MS 23                                                  // Approximate milliseconds per batch
+
 /* Packet-based communication protocol */
 #define PACKET_MAGIC 0xDEADBEEF
 #define MAX_PACKET_SIZE (5 * 1024 * 1024) // 5MB max packet size
@@ -70,6 +75,7 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
+  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
 } packet_type_t;
 
 typedef struct {
@@ -154,6 +160,15 @@ typedef struct {
 #define PIXEL_FORMAT_BGR 2
 #define PIXEL_FORMAT_BGRA 3
 
+// Audio batch packet - contains multiple audio chunks for efficiency
+typedef struct {
+  uint32_t batch_count;   // Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT)
+  uint32_t total_samples; // Total samples across all chunks
+  uint32_t sample_rate;   // Sample rate (e.g., 44100)
+  uint32_t channels;      // Number of channels (1=mono, 2=stereo)
+  // The actual audio data follows: float samples[total_samples]
+} __attribute__((packed)) audio_batch_packet_t;
+
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
 #define CLIENT_CAP_AUDIO 0x02
@@ -180,6 +195,7 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
 int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);
 
 int send_audio_packet(int sockfd, const float *samples, int num_samples);
+int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count);
 int send_size_packet(int sockfd, unsigned short width, unsigned short height);
 
 // Multi-user protocol functions

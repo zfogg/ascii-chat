@@ -18,6 +18,7 @@
 #include "network.h"
 #include "options.h"
 #include "packet_queue.h"
+#include "buffer_pool.h"
 #include "ringbuffer.h"
 #include "audio.h"
 #include "aspect_ratio.h"
@@ -209,7 +210,7 @@ int receive_client_size(int sockfd, unsigned short *width, unsigned short *heigh
   }
 
   if (pkt_type != PACKET_TYPE_SIZE || len != 4) {
-    free(data);
+    buffer_pool_free(data, len);
     return 0; // Invalid size packet
   }
 
@@ -217,7 +218,7 @@ int receive_client_size(int sockfd, unsigned short *width, unsigned short *heigh
   *width = ntohs(size_data[0]);
   *height = ntohs(size_data[1]);
 
-  free(data);
+  buffer_pool_free(data, len);
   return 1; // Successfully parsed size packet
 }
 
@@ -559,7 +560,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // Got a new frame - update our cache
           // Free old cached frame data if we had one
           if (client->has_cached_frame && client->last_valid_frame.data) {
-            free(client->last_valid_frame.data);
+            buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
           }
 
           // Cache this frame for future use (make a copy)
@@ -569,8 +570,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           client->last_valid_frame.timestamp = current_frame.timestamp;
           client->last_valid_frame.size = current_frame.size;
 
-          // Allocate and copy frame data for cache
-          client->last_valid_frame.data = malloc(current_frame.size);
+          // Allocate and copy frame data for cache using buffer pool
+          client->last_valid_frame.data = buffer_pool_alloc(current_frame.size);
           if (client->last_valid_frame.data) {
             memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
             client->has_cached_frame = true;
@@ -864,6 +865,10 @@ int main(int argc, char *argv[]) {
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
+  // Initialize global shared buffer pool
+  data_buffer_pool_init_global();
+  atexit(data_buffer_pool_cleanup_global);
+
   options_init(argc, argv);
   int port = strtoint(opt_port);
 
@@ -1111,7 +1116,7 @@ void *client_receive_thread_func(void *arg) {
       }
       // Free any data that might have been allocated before the error
       if (data) {
-        free(data);
+        buffer_pool_free(data, len);
         data = NULL;
       }
       // Don't just mark inactive - properly remove the client
@@ -1229,7 +1234,7 @@ void *client_receive_thread_func(void *arg) {
     }
 
     case PACKET_TYPE_AUDIO: {
-      // Handle incoming audio samples from client
+      // Handle incoming audio samples from client (old single-packet format)
       if (client->is_sending_audio && data && len > 0) {
         // Convert data to float samples
         int num_samples = len / sizeof(float);
@@ -1241,6 +1246,47 @@ void *client_receive_thread_func(void *arg) {
           } else {
             (void)0;
             // log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
+          }
+        }
+      }
+      break;
+    }
+
+    case PACKET_TYPE_AUDIO_BATCH: {
+      // Handle batched audio samples from client (new efficient format)
+      if (client->is_sending_audio && data && len >= sizeof(audio_batch_packet_t)) {
+        // Parse batch header
+        const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+        uint32_t batch_count = ntohl(batch_header->batch_count);
+        uint32_t total_samples = ntohl(batch_header->total_samples);
+        uint32_t sample_rate = ntohl(batch_header->sample_rate);
+        // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
+
+        // Validate batch parameters
+        size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));
+        if (len != expected_size) {
+          log_error("Invalid audio batch size from client %u: got %zu, expected %zu", client->client_id, len,
+                    expected_size);
+          break;
+        }
+
+        if (total_samples > AUDIO_BATCH_SAMPLES * 2) { // Sanity check
+          log_error("Audio batch too large from client %u: %u samples", client->client_id, total_samples);
+          break;
+        }
+
+        // Extract samples (they follow the header)
+        const float *samples = (const float *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+
+        // Write all samples to the ring buffer
+        if (client->incoming_audio_buffer) {
+          int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+          if (written < (int)total_samples) {
+            log_debug("Client %u audio buffer full, dropped %d/%u samples from batch", client->client_id,
+                      total_samples - written, total_samples);
+          } else {
+            log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
+                      total_samples, sample_rate);
           }
         }
       }
@@ -1284,15 +1330,20 @@ void *client_receive_thread_func(void *arg) {
     }
 
     if (data) {
-      free(data);
+      buffer_pool_free(data, len);
       data = NULL;
     }
   }
 
-  // Mark client as inactive so main thread can clean it up
-  // Do NOT call remove_client here - it causes race conditions and double-frees
-  // Do NOT close the socket here - let the main thread detect it and clean up
+  // Mark client as inactive and stop send thread first to avoid race conditions
+  // Set send_thread_running to false BEFORE remove_client to ensure proper cleanup order
   client->active = false;
+  client->send_thread_running = false; // Signal send thread to stop
+
+  // Now it's safe to remove the client
+  // The remove_client function will wait for the send thread to exit
+  remove_client(client->client_id);
+
   log_info("Receive thread for client %u terminated", client->client_id);
   return NULL;
 }
@@ -1443,7 +1494,9 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   // Create packet queues for outgoing data
-  client->audio_queue = packet_queue_create(100); // Max 100 audio packets queued
+  // Use node pools but share the global buffer pool
+  client->audio_queue =
+      packet_queue_create_with_pools(100, 200, false); // Max 100 audio packets, 200 nodes, NO local buffer pool
   if (!client->audio_queue) {
     log_error("Failed to create audio queue for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
@@ -1454,7 +1507,8 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  client->video_queue = packet_queue_create(30); // Max 30 video frames queued (1 second at 30fps)
+  client->video_queue =
+      packet_queue_create_with_pools(30, 60, false); // Max 30 video frames, 60 nodes, NO local buffer pool
   if (!client->video_queue) {
     log_error("Failed to create video queue for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
@@ -1538,7 +1592,7 @@ int remove_client(uint32_t client_id) {
 
       // Free cached frame if we have one
       if (client->has_cached_frame && client->last_valid_frame.data) {
-        free(client->last_valid_frame.data);
+        buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
         client->last_valid_frame.data = NULL;
         client->has_cached_frame = false;
       }
