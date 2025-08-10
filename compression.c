@@ -10,16 +10,7 @@
 // Rate-limit compression debug logs to once every 5 seconds
 static time_t g_last_compression_log_time = 0;
 
-// network.c implementation:
-uint32_t calculate_crc32(const char *data, size_t length) {
-  // Validate pointer before use
-  if (!data || length == 0) {
-    log_error("Invalid parameters to calculate_crc32!");
-    return 0;
-  }
-
-  return crc32(0L, (const Bytef *)data, length);
-}
+// Using asciichat_crc32 from network.c for all CRC calculations
 
 int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size) {
   // Validate frame size
@@ -85,7 +76,7 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
 
   if (use_compression) {
     // Send compressed frame
-    uint32_t checksum = calculate_crc32(frame_data, frame_size);
+    uint32_t checksum = asciichat_crc32(frame_data, frame_size);
 
     compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
                                         .compressed_size = (uint32_t)compressed_size,
@@ -117,7 +108,7 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
                                         .original_size = (uint32_t)frame_size,
                                         .width = opt_width,
                                         .height = opt_height,
-                                        .checksum = calculate_crc32(frame_data, frame_size)};
+                                        .checksum = asciichat_crc32(frame_data, frame_size)};
 
     if (send_video_header_packet(sockfd, &header, sizeof(header)) < 0) {
       free(compressed_data);
