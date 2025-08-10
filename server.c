@@ -1090,6 +1090,61 @@ int main(int argc, char *argv[]) {
  */
 
 // Thread function to handle incoming data from a specific client
+// Helper function to handle PACKET_TYPE_IMAGE_FRAME case
+static void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
+  // Handle incoming image data from client
+  // Format: [width:4][height:4][rgb_data:w*h*3]
+  if (!client->is_sending_video) {
+    // Auto-enable video sending when we receive image frames
+    client->is_sending_video = true;
+    log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
+  } else {
+    // Log periodically to confirm we're receiving frames
+    static int frame_count[MAX_CLIENTS] = {0};
+    frame_count[client->client_id % MAX_CLIENTS]++;
+    if (frame_count[client->client_id % MAX_CLIENTS] % 100 == 0) {
+      log_debug("Client %u has sent %d IMAGE_FRAME packets", client->client_id,
+                frame_count[client->client_id % MAX_CLIENTS]);
+    }
+  }
+  if (data && len > sizeof(uint32_t) * 2) {
+    // Parse image dimensions
+    uint32_t img_width = ntohl(*(uint32_t *)data);
+    uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
+    size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+
+    // log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
+    //          img_width, img_height, (float)img_width / (float)img_height);
+
+    if (len != expected_size) {
+      log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id,
+                expected_size, len);
+      return;
+    }
+
+    // log_debug("Received image from client %u: %ux%u", client->client_id, img_width, img_height);
+
+    // Store the entire packet (including dimensions) in the buffer
+    // The mixing function will parse it
+    uint32_t timestamp = (uint32_t)time(NULL);
+    if (client->incoming_video_buffer) {
+      bool stored = framebuffer_write_multi_frame(client->incoming_video_buffer, (const char *)data, len,
+                                                  client->client_id, 0, timestamp);
+      if (stored) {
+        client->frames_received++;
+        // log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
+        //           client->frames_received);
+      } else {
+        log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
+      }
+    } else {
+      log_error("Client %u has no incoming video buffer!", client->client_id);
+    }
+  } else {
+    log_debug("Ignoring video packet: len=%zu (too small)", len);
+  }
+}
+
 void *client_receive_thread_func(void *arg) {
   client_info_t *client = (client_info_t *)arg;
   if (!client || client->socket <= 0) {
@@ -1179,57 +1234,7 @@ void *client_receive_thread_func(void *arg) {
     }
 
     case PACKET_TYPE_IMAGE_FRAME: {
-      // Handle incoming image data from client
-      // Format: [width:4][height:4][rgb_data:w*h*3]
-      if (!client->is_sending_video) {
-        // Auto-enable video sending when we receive image frames
-        client->is_sending_video = true;
-        log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
-      } else {
-        // Log periodically to confirm we're receiving frames
-        static int frame_count[MAX_CLIENTS] = {0};
-        frame_count[client->client_id % MAX_CLIENTS]++;
-        if (frame_count[client->client_id % MAX_CLIENTS] % 100 == 0) {
-          log_debug("Client %u has sent %d IMAGE_FRAME packets", client->client_id,
-                    frame_count[client->client_id % MAX_CLIENTS]);
-        }
-      }
-      if (data && len > sizeof(uint32_t) * 2) {
-        // Parse image dimensions
-        uint32_t img_width = ntohl(*(uint32_t *)data);
-        uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
-        size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
-
-        // log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
-        //          img_width, img_height, (float)img_width / (float)img_height);
-
-        if (len != expected_size) {
-          log_error("Invalid image packet from client %u: expected %zu bytes, got %zu", client->client_id,
-                    expected_size, len);
-          break;
-        }
-
-        // log_debug("Received image from client %u: %ux%u", client->client_id, img_width, img_height);
-
-        // Store the entire packet (including dimensions) in the buffer
-        // The mixing function will parse it
-        uint32_t timestamp = (uint32_t)time(NULL);
-        if (client->incoming_video_buffer) {
-          bool stored = framebuffer_write_multi_frame(client->incoming_video_buffer, (const char *)data, len,
-                                                      client->client_id, 0, timestamp);
-          if (stored) {
-            client->frames_received++;
-            // log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
-            //           client->frames_received);
-          } else {
-            log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
-          }
-        } else {
-          log_error("Client %u has no incoming video buffer!", client->client_id);
-        }
-      } else {
-        log_debug("Ignoring video packet: len=%zu (too small)", len);
-      }
+      handle_image_frame_packet(client, data, len);
       break;
     }
 
