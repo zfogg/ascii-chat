@@ -179,10 +179,10 @@ static int safe_send_stream_stop_packet(int sockfd, uint32_t stream_type) {
 }
 
 // Thread-safe wrapper for network.h send_client_join_packet
-static int safe_send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities) {
+static int safe_send_client_join_packet(int socketfd, const char *display_name, uint32_t capabilities) {
   pthread_mutex_lock(&g_send_mutex);
 #undef send_client_join_packet
-  int result = send_client_join_packet(sockfd, display_name, capabilities);
+  int result = send_client_join_packet(socketfd, display_name, capabilities);
 #define send_client_join_packet safe_send_client_join_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
