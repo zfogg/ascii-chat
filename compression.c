@@ -78,12 +78,12 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
     // Send compressed frame
     uint32_t checksum = asciichat_crc32(frame_data, frame_size);
 
-    compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
-                                        .compressed_size = (uint32_t)compressed_size,
-                                        .original_size = (uint32_t)frame_size,
-                                        .width = opt_width,
-                                        .height = opt_height,
-                                        .checksum = checksum};
+    compressed_frame_header_t header = {.magic = htonl(COMPRESSION_FRAME_MAGIC),
+                                        .compressed_size = htonl((uint32_t)compressed_size),
+                                        .original_size = htonl((uint32_t)frame_size),
+                                        .width = htonl(opt_width),
+                                        .height = htonl(opt_height),
+                                        .checksum = htonl(checksum)};
 
     if (send_video_header_packet(sockfd, &header, sizeof(header)) < 0) {
       free(compressed_data);
@@ -103,12 +103,12 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
     }
   } else {
     // Send uncompressed (add special header to indicate this)
-    compressed_frame_header_t header = {.magic = COMPRESSION_FRAME_MAGIC,
-                                        .compressed_size = 0, // 0 indicates uncompressed
-                                        .original_size = (uint32_t)frame_size,
-                                        .width = opt_width,
-                                        .height = opt_height,
-                                        .checksum = asciichat_crc32(frame_data, frame_size)};
+    compressed_frame_header_t header = {.magic = htonl(COMPRESSION_FRAME_MAGIC),
+                                        .compressed_size = htonl(0), // 0 indicates uncompressed
+                                        .original_size = htonl((uint32_t)frame_size),
+                                        .width = htonl(opt_width),
+                                        .height = htonl(opt_height),
+                                        .checksum = htonl(asciichat_crc32(frame_data, frame_size))};
 
     if (send_video_header_packet(sockfd, &header, sizeof(header)) < 0) {
       free(compressed_data);
