@@ -111,9 +111,9 @@ static void *audio_capture_thread_func(void *arg);
 // Thread-safe wrapper for network.h send_packet
 static int safe_send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_packet
+#undef send_packet
   int result = send_packet(sockfd, type, data, len);
-  #define send_packet safe_send_packet
+#define send_packet safe_send_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -121,9 +121,9 @@ static int safe_send_packet(int sockfd, packet_type_t type, const void *data, si
 // Thread-safe wrapper for network.h send_audio_packet
 static int safe_send_audio_packet(int sockfd, const float *samples, int num_samples) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_audio_packet
+#undef send_audio_packet
   int result = send_audio_packet(sockfd, samples, num_samples);
-  #define send_audio_packet safe_send_audio_packet
+#define send_audio_packet safe_send_audio_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -131,9 +131,9 @@ static int safe_send_audio_packet(int sockfd, const float *samples, int num_samp
 // Thread-safe wrapper for network.h send_size_packet
 static int safe_send_size_packet(int sockfd, unsigned short width, unsigned short height) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_size_packet
+#undef send_size_packet
   int result = send_size_packet(sockfd, width, height);
-  #define send_size_packet safe_send_size_packet
+#define send_size_packet safe_send_size_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -141,9 +141,9 @@ static int safe_send_size_packet(int sockfd, unsigned short width, unsigned shor
 // Thread-safe wrapper for network.h send_pong_packet
 static int safe_send_pong_packet(int sockfd) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_pong_packet
+#undef send_pong_packet
   int result = send_pong_packet(sockfd);
-  #define send_pong_packet safe_send_pong_packet
+#define send_pong_packet safe_send_pong_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -151,9 +151,9 @@ static int safe_send_pong_packet(int sockfd) {
 // Thread-safe wrapper for network.h send_ping_packet
 static int safe_send_ping_packet(int sockfd) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_ping_packet
+#undef send_ping_packet
   int result = send_ping_packet(sockfd);
-  #define send_ping_packet safe_send_ping_packet
+#define send_ping_packet safe_send_ping_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -161,9 +161,9 @@ static int safe_send_ping_packet(int sockfd) {
 // Thread-safe wrapper for network.h send_stream_start_packet
 static int safe_send_stream_start_packet(int sockfd, uint32_t stream_type) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_stream_start_packet
+#undef send_stream_start_packet
   int result = send_stream_start_packet(sockfd, stream_type);
-  #define send_stream_start_packet safe_send_stream_start_packet
+#define send_stream_start_packet safe_send_stream_start_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -171,9 +171,9 @@ static int safe_send_stream_start_packet(int sockfd, uint32_t stream_type) {
 // Thread-safe wrapper for network.h send_stream_stop_packet
 static int safe_send_stream_stop_packet(int sockfd, uint32_t stream_type) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_stream_stop_packet
+#undef send_stream_stop_packet
   int result = send_stream_stop_packet(sockfd, stream_type);
-  #define send_stream_stop_packet safe_send_stream_stop_packet
+#define send_stream_stop_packet safe_send_stream_stop_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -181,9 +181,9 @@ static int safe_send_stream_stop_packet(int sockfd, uint32_t stream_type) {
 // Thread-safe wrapper for network.h send_client_join_packet
 static int safe_send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities) {
   pthread_mutex_lock(&g_send_mutex);
-  #undef send_client_join_packet
+#undef send_client_join_packet
   int result = send_client_join_packet(sockfd, display_name, capabilities);
-  #define send_client_join_packet safe_send_client_join_packet
+#define send_client_join_packet safe_send_client_join_packet
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
