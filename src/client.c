@@ -14,14 +14,13 @@
 #include <zlib.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-#include <math.h>
 
 #include "ascii.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "mixer.h"
 #include "network.h"
 #include "options.h"
-#include "compression.h"
 #include "audio.h"
 #include "image.h"
 #include "webcam.h"
@@ -707,20 +706,20 @@ static void *audio_capture_thread_func(void *arg) {
   int batch_samples_collected = 0;         // How many samples we've collected
   int batch_chunks_collected = 0;          // How many chunks we've collected
 
-  // Noise gate parameters
-  static const float NOISE_GATE_THRESHOLD = 0.01f; // Adjust this to reduce background noise
-  static const float GATE_ATTACK_TIME = 0.002f;    // 2ms attack
-  static const float GATE_RELEASE_TIME = 0.05f;    // 50ms release
-  static const int SAMPLE_RATE = 48000;
-  const float ATTACK_COEFF = 1.0f - expf(-1.0f / (GATE_ATTACK_TIME * SAMPLE_RATE));
-  const float RELEASE_COEFF = 1.0f - expf(-1.0f / (GATE_RELEASE_TIME * SAMPLE_RATE));
-  static float gate_envelope = 0.0f;
+  // Audio processing components
+  static noise_gate_t noise_gate;
+  static highpass_filter_t hp_filter;
+  static bool processors_initialized = false;
 
-  // Simple high-pass filter to reduce low-frequency rumble
-  static float hp_prev_input = 0.0f;
-  static float hp_prev_output = 0.0f;
-  static const float HP_CUTOFF = 80.0f; // 80 Hz high-pass
-  static const float hp_alpha = 1.0f / (1.0f + 2.0f * M_PI * HP_CUTOFF / SAMPLE_RATE);
+  // Initialize audio processors on first run
+  if (!processors_initialized) {
+    noise_gate_init(&noise_gate, 48000);
+    noise_gate_set_params(&noise_gate, 0.01f, 2.0f, 50.0f, 0.9f);
+
+    highpass_filter_init(&hp_filter, 80.0f, 48000);
+
+    processors_initialized = true;
+  }
 
   while (!g_should_exit && !g_connection_lost) {
     if (sockfd <= 0) {
@@ -732,42 +731,18 @@ static void *audio_capture_thread_func(void *arg) {
     int samples_read = audio_read_samples(&g_audio_context, audio_buffer, AUDIO_SAMPLES_PER_PACKET);
 
     if (samples_read > 0) {
-      // Apply simple processing to reduce noise and feedback
-      float max_amplitude = 0.0f;
+      // Apply audio processing chain
+      // 1. High-pass filter to remove low-frequency rumble
+      highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
 
-      // First pass: find max amplitude for gate detection
-      for (int i = 0; i < samples_read; i++) {
-        float abs_sample = fabsf(audio_buffer[i]);
-        if (abs_sample > max_amplitude) {
-          max_amplitude = abs_sample;
-        }
-      }
+      // 2. Noise gate to eliminate background noise
+      noise_gate_process_buffer(&noise_gate, audio_buffer, samples_read);
 
-      // Apply noise gate and high-pass filter
-      for (int i = 0; i < samples_read; i++) {
-        // High-pass filter to remove low-frequency rumble
-        float hp_output = hp_alpha * (hp_prev_output + audio_buffer[i] - hp_prev_input);
-        hp_prev_input = audio_buffer[i];
-        hp_prev_output = hp_output;
-
-        // Update gate envelope
-        float target = (max_amplitude > NOISE_GATE_THRESHOLD) ? 1.0f : 0.0f;
-        float rate = (target > gate_envelope) ? ATTACK_COEFF : RELEASE_COEFF;
-        gate_envelope += rate * (target - gate_envelope);
-
-        // Apply gate and filter
-        audio_buffer[i] = hp_output * gate_envelope;
-
-        // Soft clipping to prevent harsh distortion
-        if (audio_buffer[i] > 0.95f) {
-          audio_buffer[i] = 0.95f + 0.05f * tanhf((audio_buffer[i] - 0.95f) * 10.0f);
-        } else if (audio_buffer[i] < -0.95f) {
-          audio_buffer[i] = -0.95f + 0.05f * tanhf((audio_buffer[i] + 0.95f) * 10.0f);
-        }
-      }
+      // 3. Soft clipping to prevent harsh distortion
+      soft_clip_buffer(audio_buffer, samples_read, 0.95f);
 
       // Only batch if gate is open (reduces network traffic for silence)
-      if (gate_envelope > 0.1f) {
+      if (noise_gate_is_open(&noise_gate)) {
         // Copy processed samples to batch buffer
         memcpy(&batch_buffer[batch_samples_collected], audio_buffer, samples_read * sizeof(float));
         batch_samples_collected += samples_read;
@@ -784,8 +759,8 @@ static void *audio_capture_thread_func(void *arg) {
           }
 #ifdef AUDIO_DEBUG
           else {
-            log_debug("Sent audio batch: %d chunks, %d total samples (gate: %.2f)", batch_chunks_collected,
-                      batch_samples_collected, gate_envelope);
+            log_debug("Sent audio batch: %d chunks, %d total samples (gate: %s)", batch_chunks_collected,
+                      batch_samples_collected, noise_gate_is_open(&noise_gate) ? "open" : "closed");
           }
 #endif
           // Reset batch counters
