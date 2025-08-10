@@ -621,19 +621,19 @@ static void *audio_capture_thread_func(void *arg) {
   float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
 
   // Noise gate parameters
-  const float NOISE_GATE_THRESHOLD = 0.01f; // Adjust this to reduce background noise
-  const float GATE_ATTACK_TIME = 0.002f;    // 2ms attack
-  const float GATE_RELEASE_TIME = 0.05f;    // 50ms release
-  const int SAMPLE_RATE = 48000;
+  static const float NOISE_GATE_THRESHOLD = 0.01f; // Adjust this to reduce background noise
+  static const float GATE_ATTACK_TIME = 0.002f;    // 2ms attack
+  static const float GATE_RELEASE_TIME = 0.05f;    // 50ms release
+  static const int SAMPLE_RATE = 48000;
   const float ATTACK_COEFF = 1.0f - expf(-1.0f / (GATE_ATTACK_TIME * SAMPLE_RATE));
   const float RELEASE_COEFF = 1.0f - expf(-1.0f / (GATE_RELEASE_TIME * SAMPLE_RATE));
-  float gate_envelope = 0.0f;
+  static float gate_envelope = 0.0f;
 
   // Simple high-pass filter to reduce low-frequency rumble
-  float hp_prev_input = 0.0f;
-  float hp_prev_output = 0.0f;
-  const float HP_CUTOFF = 80.0f; // 80 Hz high-pass
-  const float hp_alpha = 1.0f / (1.0f + 2.0f * M_PI * HP_CUTOFF / SAMPLE_RATE);
+  static float hp_prev_input = 0.0f;
+  static float hp_prev_output = 0.0f;
+  static const float HP_CUTOFF = 80.0f; // 80 Hz high-pass
+  static const float hp_alpha = 1.0f / (1.0f + 2.0f * M_PI * HP_CUTOFF / SAMPLE_RATE);
 
   while (!g_should_exit && !g_connection_lost) {
     if (sockfd <= 0) {
@@ -895,8 +895,6 @@ int main(int argc, char *argv[]) {
       if (opt_stretch) {
         my_capabilities |= CLIENT_CAP_STRETCH; // Add stretch if enabled
       }
-      log_debug("Client opt_stretch=%d, sending stretch capability=%s", opt_stretch,
-                (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
       char *os_username = getenv("USER");
       char *display_name = os_username;
@@ -904,14 +902,16 @@ int main(int argc, char *argv[]) {
         display_name = ASCIICHAT_DEFAULT_DISPLAY_NAME;
       }
       char my_display_name[MAX_DISPLAY_NAME_LEN];
-      snprintf(my_display_name, sizeof(my_display_name), "%s", display_name);
+      int pid = getpid();
+      snprintf(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
 
       if (send_client_join_packet(sockfd, my_display_name, my_capabilities) < 0) {
         log_error("Failed to send client join packet: %s", network_error_string(errno));
         g_should_reconnect = true;
         continue; // try to connect again
       }
-      log_info("Sent client join packet with capabilities: video=%s, audio=%s, color=%s, stretch=%s",
+      log_info("Sent client join packet with display name: %s, capabilities: video=%s, audio=%s, color=%s, stretch=%s",
+               my_display_name,
                (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no", (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no",
                (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no",
                (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
