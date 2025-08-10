@@ -16,7 +16,6 @@
 #include <termios.h>
 
 #include "ascii.h"
-#include "buffer_pool.h"
 #include "common.h"
 #include "mixer.h"
 #include "network.h"
