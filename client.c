@@ -552,7 +552,7 @@ static void *webcam_capture_thread_func(void *arg) {
     size_t rgb_size = (size_t)image->w * (size_t)image->h * sizeof(rgb_t);
     size_t packet_size = sizeof(uint32_t) * 2 + rgb_size; // width + height + pixels
 
-    uint8_t * packet_data = NULL;
+    uint8_t *packet_data = NULL;
     SAFE_MALLOC(packet_data, packet_size, uint8_t *);
     if (!packet_data) {
       log_error("Failed to allocate packet buffer");
