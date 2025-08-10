@@ -76,7 +76,6 @@ typedef struct {
   uint32_t magic;     // PACKET_MAGIC for packet validation
   uint16_t type;      // packet_type_t
   uint32_t length;    // payload length
-  uint32_t sequence;  // for ordering/duplicate detection
   uint32_t crc32;     // payload checksum
   uint32_t client_id; // which client this packet is from (0 = server)
 } __attribute__((packed)) packet_header_t;
@@ -95,7 +94,6 @@ typedef struct {
 typedef struct {
   uint32_t client_id;   // Which client this stream is from
   uint32_t stream_type; // VIDEO_STREAM | AUDIO_STREAM
-  uint32_t sequence;    // For frame ordering
   uint32_t timestamp;   // When frame was captured
 } __attribute__((packed)) stream_header_t;
 
@@ -177,8 +175,6 @@ int receive_audio_data(int sockfd, float *samples, int max_samples);
 
 /* Packet protocol functions */
 uint32_t asciichat_crc32(const void *data, size_t len);
-
-uint32_t get_next_sequence(void);
 
 int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
 int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);

@@ -86,7 +86,6 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   node->packet.header.magic = htonl(PACKET_MAGIC);
   node->packet.header.type = htons((uint16_t)type);
   node->packet.header.length = htonl((uint32_t)data_len);
-  node->packet.header.sequence = htonl(get_next_sequence());
   node->packet.header.client_id = htonl(client_id);
 
   // Calculate CRC on the data
