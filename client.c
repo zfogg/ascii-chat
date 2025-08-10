@@ -14,6 +14,7 @@
 #include <zlib.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <math.h>
 
 #include "ascii.h"
 #include "common.h"
@@ -49,6 +50,11 @@ static pthread_t g_capture_thread;
 static bool g_capture_thread_created = false;
 static volatile bool g_capture_thread_exited = false;
 
+// Audio capture thread
+static pthread_t g_audio_capture_thread;
+static bool g_audio_capture_thread_created = false;
+static volatile bool g_audio_capture_thread_exited = false;
+
 /* ============================================================================
  * Multi-User Client State
  * ============================================================================
@@ -83,6 +89,9 @@ static void *ping_thread_func(void *arg);
 // Webcam capture thread
 static void *webcam_capture_thread_func(void *arg);
 
+// Audio capture thread
+static void *audio_capture_thread_func(void *arg);
+
 static int close_socket(int socketfd) {
   if (socketfd > 0) {
     log_info("Closing socket connection");
@@ -107,10 +116,12 @@ static void shutdown_client() {
 
     // Signal thread to stop first
     g_should_exit = true;
+    g_connection_lost = true;
 
     // Stop audio playback to help thread exit
     if (opt_audio_enabled) {
       audio_stop_playback(&g_audio_context);
+      audio_stop_capture(&g_audio_context);
     }
 
     // Give thread a moment to exit gracefully
@@ -118,14 +129,25 @@ static void shutdown_client() {
 
     // Force close socket to break any blocking recv() calls
     if (sockfd > 0) {
+      shutdown(sockfd, SHUT_RDWR);
       close(sockfd);
       sockfd = 0;
     }
 
-    // Wait for thread to exit
-    int join_result = pthread_join(g_data_thread, NULL);
-    if (join_result != 0) {
-      log_error("Data thread join failed: %d", join_result);
+    // Wait for thread to exit - but with a timeout check
+    // Since macOS doesn't have pthread_timedjoin_np, we'll do a simple wait
+    int wait_count = 0;
+    while (wait_count < 20 && !g_data_thread_exited) { // Wait up to 2 seconds
+      usleep(100000);                                  // 100ms
+      wait_count++;
+    }
+
+    if (!g_data_thread_exited) {
+      log_error("Data thread not responding - forcing cancellation");
+      pthread_cancel(g_data_thread);
+      pthread_join(g_data_thread, NULL); // Still need to join even after cancel
+    } else {
+      pthread_join(g_data_thread, NULL);
     }
 
     g_data_thread_created = false;
@@ -146,12 +168,26 @@ static void shutdown_client() {
 
 static void sigint_handler(int sigint) {
   (void)(sigint);
-  printf("\nShutdown requested...\n");
+
+  // If this is the second Ctrl-C, force exit
+  static int sigint_count = 0;
+  sigint_count++;
+
+  if (sigint_count > 1) {
+    printf("\nForce quit!\n");
+    _exit(1); // Force immediate exit
+  }
+
+  printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
   g_should_exit = true;
+  g_connection_lost = true; // Signal all threads to exit
 
   // Close socket to interrupt recv operations
-  close_socket(sockfd);
-  sockfd = 0;
+  if (sockfd > 0) {
+    shutdown(sockfd, SHUT_RDWR); // More aggressive than close
+    close(sockfd);
+    sockfd = 0;
+  }
 }
 
 static void sigwinch_handler(int sigwinch) {
@@ -288,8 +324,8 @@ static void handle_video_packet(const void *data, size_t len) {
 #endif
   }
 
-  // Verify checksum
-  uint32_t received_checksum = calculate_crc32(frame_data, g_compression_header.original_size);
+  // Verify checksum using the same CRC function as the network layer
+  uint32_t received_checksum = asciichat_crc32(frame_data, g_compression_header.original_size);
   if (received_checksum != g_compression_header.checksum) {
     log_error("Frame checksum mismatch: expected 0x%08x, got 0x%08x", g_compression_header.checksum, received_checksum);
     free(frame_data);
@@ -516,7 +552,8 @@ static void *webcam_capture_thread_func(void *arg) {
     size_t rgb_size = (size_t)image->w * (size_t)image->h * sizeof(rgb_t);
     size_t packet_size = sizeof(uint32_t) * 2 + rgb_size; // width + height + pixels
 
-    uint8_t *packet_data = malloc(packet_size);
+    uint8_t * packet_data = NULL;
+    SAFE_MALLOC(packet_data, packet_size, uint8_t *);
     if (!packet_data) {
       log_error("Failed to allocate packet buffer");
       image_destroy(image);
@@ -554,6 +591,95 @@ static void *webcam_capture_thread_func(void *arg) {
 
   log_info("Webcam capture thread stopped");
   g_capture_thread_exited = true;
+  return NULL;
+}
+
+static void *audio_capture_thread_func(void *arg) {
+  (void)arg;
+
+  log_info("Audio capture thread started");
+
+  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
+
+  // Noise gate parameters
+  const float NOISE_GATE_THRESHOLD = 0.01f; // Adjust this to reduce background noise
+  const float GATE_ATTACK_TIME = 0.002f;    // 2ms attack
+  const float GATE_RELEASE_TIME = 0.05f;    // 50ms release
+  const int SAMPLE_RATE = 48000;
+  const float ATTACK_COEFF = 1.0f - expf(-1.0f / (GATE_ATTACK_TIME * SAMPLE_RATE));
+  const float RELEASE_COEFF = 1.0f - expf(-1.0f / (GATE_RELEASE_TIME * SAMPLE_RATE));
+  float gate_envelope = 0.0f;
+
+  // Simple high-pass filter to reduce low-frequency rumble
+  float hp_prev_input = 0.0f;
+  float hp_prev_output = 0.0f;
+  const float HP_CUTOFF = 80.0f; // 80 Hz high-pass
+  const float hp_alpha = 1.0f / (1.0f + 2.0f * M_PI * HP_CUTOFF / SAMPLE_RATE);
+
+  while (!g_should_exit && !g_connection_lost) {
+    if (sockfd <= 0) {
+      usleep(100 * 1000); // Wait for connection
+      continue;
+    }
+
+    // Read audio samples from microphone
+    int samples_read = audio_read_samples(&g_audio_context, audio_buffer, AUDIO_SAMPLES_PER_PACKET);
+
+    if (samples_read > 0) {
+      // Apply simple processing to reduce noise and feedback
+      float max_amplitude = 0.0f;
+
+      // First pass: find max amplitude for gate detection
+      for (int i = 0; i < samples_read; i++) {
+        float abs_sample = fabsf(audio_buffer[i]);
+        if (abs_sample > max_amplitude) {
+          max_amplitude = abs_sample;
+        }
+      }
+
+      // Apply noise gate and high-pass filter
+      for (int i = 0; i < samples_read; i++) {
+        // High-pass filter to remove low-frequency rumble
+        float hp_output = hp_alpha * (hp_prev_output + audio_buffer[i] - hp_prev_input);
+        hp_prev_input = audio_buffer[i];
+        hp_prev_output = hp_output;
+
+        // Update gate envelope
+        float target = (max_amplitude > NOISE_GATE_THRESHOLD) ? 1.0f : 0.0f;
+        float rate = (target > gate_envelope) ? ATTACK_COEFF : RELEASE_COEFF;
+        gate_envelope += rate * (target - gate_envelope);
+
+        // Apply gate and filter
+        audio_buffer[i] = hp_output * gate_envelope;
+
+        // Soft clipping to prevent harsh distortion
+        if (audio_buffer[i] > 0.95f) {
+          audio_buffer[i] = 0.95f + 0.05f * tanhf((audio_buffer[i] - 0.95f) * 10.0f);
+        } else if (audio_buffer[i] < -0.95f) {
+          audio_buffer[i] = -0.95f + 0.05f * tanhf((audio_buffer[i] + 0.95f) * 10.0f);
+        }
+      }
+
+      // Only send if gate is open (reduces network traffic for silence)
+      if (gate_envelope > 0.1f) {
+        if (send_audio_packet(sockfd, audio_buffer, samples_read) < 0) {
+          log_debug("Failed to send audio packet to server");
+          // Don't set g_connection_lost here as receive thread will detect it
+        }
+#ifdef AUDIO_DEBUG
+        else {
+          log_debug("Sent %d audio samples to server (gate: %.2f)", samples_read, gate_envelope);
+        }
+#endif
+      }
+    } else {
+      // Small delay if no audio available
+      usleep(5 * 1000); // 5ms
+    }
+  }
+
+  log_info("Audio capture thread stopped");
+  g_audio_capture_thread_exited = true;
   return NULL;
 }
 
@@ -649,7 +775,14 @@ int main(int argc, char *argv[]) {
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
-    log_info("Audio system initialized and playback started");
+    if (audio_start_capture(&g_audio_context) != 0) {
+      log_error("Failed to start audio capture");
+      audio_destroy(&g_audio_context);
+      ascii_write_destroy();
+      exit(ASCIICHAT_ERR_AUDIO);
+    }
+
+    log_info("Audio system initialized with capture and playback");
   }
 
   /* Connection and reconnection loop */
@@ -812,6 +945,23 @@ int main(int argc, char *argv[]) {
         }
       }
 
+      // Start audio capture thread if audio is enabled
+      if (opt_audio_enabled) {
+        g_audio_capture_thread_exited = false;
+        if (pthread_create(&g_audio_capture_thread, NULL, audio_capture_thread_func, NULL) != 0) {
+          log_error("Failed to create audio capture thread");
+          // Non-fatal, continue without audio
+        } else {
+          g_audio_capture_thread_created = true;
+          log_info("Audio capture thread started");
+
+          // Notify server we're starting to send audio
+          if (send_stream_start_packet(sockfd, STREAM_TYPE_AUDIO) < 0) {
+            log_error("Failed to send audio stream start packet");
+          }
+        }
+      }
+
       g_first_connection = false;
       g_should_reconnect = false;
     }
@@ -858,6 +1008,12 @@ int main(int argc, char *argv[]) {
     if (g_capture_thread_created) {
       pthread_join(g_capture_thread, NULL);
       g_capture_thread_created = false;
+    }
+
+    // Clean up audio capture thread for this connection
+    if (g_audio_capture_thread_created) {
+      pthread_join(g_audio_capture_thread, NULL);
+      g_audio_capture_thread_created = false;
     }
   }
 

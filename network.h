@@ -123,8 +123,6 @@ typedef struct {
  */
 
 /* Protocol functions */
-int send_size_message(int sockfd, unsigned short width, unsigned short height);
-int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 int send_audio_data(int sockfd, const float *samples, int num_samples);
 int receive_audio_data(int sockfd, float *samples, int max_samples);
 
