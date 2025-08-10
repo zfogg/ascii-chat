@@ -257,6 +257,14 @@ static void handle_video_header_packet(const void *data, size_t len) {
 
   memcpy(&g_compression_header, data, sizeof(compressed_frame_header_t));
 
+  // Convert from network byte order
+  g_compression_header.magic = ntohl(g_compression_header.magic);
+  g_compression_header.compressed_size = ntohl(g_compression_header.compressed_size);
+  g_compression_header.original_size = ntohl(g_compression_header.original_size);
+  g_compression_header.checksum = ntohl(g_compression_header.checksum);
+  g_compression_header.width = ntohl(g_compression_header.width);
+  g_compression_header.height = ntohl(g_compression_header.height);
+
   // Validate magic number
   if (g_compression_header.magic != COMPRESSION_FRAME_MAGIC) {
     log_error("Invalid compression magic: 0x%08x", g_compression_header.magic);
@@ -509,8 +517,8 @@ static void *webcam_capture_thread_func(void *arg) {
     // This is roughly 2x typical terminal sizes
     // Always maintain original aspect ratio
 
-    ssize_t max_width = 800;  // Good size for network transmission
-    ssize_t max_height = 600; // Gives server room to resize
+    ssize_t max_width = 800;  // Reduced size to avoid large packets
+    ssize_t max_height = 600; // This is fine for macbook pros using Kitty.app
     ssize_t resized_width, resized_height;
 
     // Calculate dimensions maintaining aspect ratio
@@ -552,10 +560,17 @@ static void *webcam_capture_thread_func(void *arg) {
     size_t rgb_size = (size_t)image->w * (size_t)image->h * sizeof(rgb_t);
     size_t packet_size = sizeof(uint32_t) * 2 + rgb_size; // width + height + pixels
 
+    // Check packet size before allocation
+    if (packet_size > MAX_PACKET_SIZE) {
+      log_error("Packet too large: %zu bytes (max %d)", packet_size, MAX_PACKET_SIZE);
+      image_destroy(image);
+      continue;
+    }
+
     uint8_t *packet_data = NULL;
     SAFE_MALLOC(packet_data, packet_size, uint8_t *);
     if (!packet_data) {
-      log_error("Failed to allocate packet buffer");
+      log_error("Failed to allocate packet buffer of size %zu", packet_size);
       image_destroy(image);
       continue;
     }
@@ -576,10 +591,14 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Send image data to server via VIDEO packet
-    // log_info("[CLIENT SEND] Sending frame: %dx%d to server", image->w, image->h);
+    // log_debug("[CLIENT SEND] Sending frame: %dx%d, size=%zu bytes", image->w, image->h, packet_size);
     if (send_video_packet(sockfd, (char *)packet_data, packet_size) < 0) {
-      log_debug("Failed to send video frame to server");
-      // Don't set g_connection_lost here as receive thread will detect it
+      log_error("Failed to send video frame to server: %s", strerror(errno));
+      // This is likely why we're disconnecting - set connection lost
+      g_connection_lost = true;
+      free(packet_data);
+      image_destroy(image);
+      break;
     }
 
     // Update capture time
