@@ -402,44 +402,9 @@ static void *video_broadcast_thread_func(void *arg) {
 
     // log_debug("Broadcast thread: %d clients connected", client_count);
 
-    // Don't manipulate frames in the broadcast thread
-    // The framebuffer already maintains frames and peek will get the latest
-    // Removing this entire section prevents race conditions and corruption
-
-    // Collect all active clients' settings
-    unsigned short common_width = 110;
-    unsigned short common_height = 70;
-    bool wants_color = false;
-    bool wants_stretch = false;
-
-    pthread_mutex_lock(&g_client_manager_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      if (g_client_manager.clients[i].active && g_client_manager.clients[i].width > 0) {
-        common_width = g_client_manager.clients[i].width;
-        common_height = g_client_manager.clients[i].height;
-        // If ANY client wants color, enable it
-        if (g_client_manager.clients[i].wants_color) {
-          wants_color = true;
-        }
-        if (g_client_manager.clients[i].wants_stretch) {
-          wants_stretch = true;
-        }
-      }
-    }
-    pthread_mutex_unlock(&g_client_manager_mutex);
-
-    // Create ONE mixed frame for all clients
-    // The read operations happen inside this function
-    size_t mixed_size = 0;
-    char *mixed_frame = create_mixed_ascii_frame(common_width, common_height, wants_color, wants_stretch, &mixed_size);
-
-    if (!mixed_frame || mixed_size == 0) {
-      // No frame available, wait for next cycle
-      last_broadcast_time = current_time;
-      continue;
-    }
-
-    // Now send this frame to all clients
+    // Each client gets a custom-sized frame for their terminal
+    // No more "common" dimensions that cause wrong-sized frames!
+    
     int sent_count = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -465,36 +430,48 @@ static void *video_broadcast_thread_func(void *arg) {
       }
 
       if (client_copy.active && client_copy.socket > 0) {
+        // Create a custom-sized frame for THIS client's terminal dimensions
+        size_t client_frame_size = 0;
+        char *client_frame = create_mixed_ascii_frame(client_copy.width, client_copy.height, 
+                                                      client_copy.wants_color, client_copy.wants_stretch, 
+                                                      &client_frame_size);
+        
+        if (!client_frame || client_frame_size == 0) {
+          // No frame available for this client, skip
+          continue;
+        }
+        
         // Lock mutex while sending to ensure thread safety
         pthread_mutex_lock(&g_client_manager_mutex);
         // Verify client is still active and socket matches
         if (!g_client_manager.clients[i].active || g_client_manager.clients[i].socket != client_copy.socket) {
           pthread_mutex_unlock(&g_client_manager_mutex);
           log_warn("Client %u state changed during broadcast, skipping", client_copy.client_id);
+          free(client_frame);
           continue;
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
 
-        // Use the common frame for all clients
-        // Create unified ASCII frame packet with metadata
-        ascii_frame_packet_t frame_header = {.width = htonl(common_width),
-                                             .height = htonl(common_height),
-                                             .original_size = htonl(mixed_size),
+        // Create unified ASCII frame packet with THIS client's dimensions
+        ascii_frame_packet_t frame_header = {.width = htonl(client_copy.width),
+                                             .height = htonl(client_copy.height),
+                                             .original_size = htonl(client_frame_size),
                                              .compressed_size = htonl(0), // Not compressed for now
-                                             .checksum = htonl(asciichat_crc32(mixed_frame, mixed_size)),
+                                             .checksum = htonl(asciichat_crc32(client_frame, client_frame_size)),
                                              .flags = htonl(client_copy.wants_color ? FRAME_FLAG_HAS_COLOR : 0)};
 
         // Allocate buffer for complete packet (header + data)
-        size_t packet_size = sizeof(ascii_frame_packet_t) + mixed_size;
+        size_t packet_size = sizeof(ascii_frame_packet_t) + client_frame_size;
         char *packet_buffer = malloc(packet_size);
         if (!packet_buffer) {
           log_error("Failed to allocate packet buffer for client %u", client_copy.client_id);
+          free(client_frame);
           continue;
         }
 
         // Copy header and frame data into single buffer
         memcpy(packet_buffer, &frame_header, sizeof(ascii_frame_packet_t));
-        memcpy(packet_buffer + sizeof(ascii_frame_packet_t), mixed_frame, mixed_size);
+        memcpy(packet_buffer + sizeof(ascii_frame_packet_t), client_frame, client_frame_size);
 
         // Queue the complete frame as a single packet
         pthread_mutex_lock(&g_client_manager_mutex);
@@ -516,11 +493,10 @@ static void *video_broadcast_thread_func(void *arg) {
         pthread_mutex_unlock(&g_client_manager_mutex);
 
         free(packet_buffer);
+        // Free the client-specific frame
+        free(client_frame);
       }
     }
-
-    // Free the mixed frame after sending to all clients
-    free(mixed_frame);
 
     if (sent_count > 0) {
       // log_debug("Sent frames to %d clients", sent_count);
