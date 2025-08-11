@@ -322,7 +322,7 @@ size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffe
 
   // Clean up heap allocation if used
   if (heap_allocated) {
-    free(ascii_chars);
+    SAFE_FREE(ascii_chars);
   }
 
   return current_pos - output_buffer;
@@ -446,7 +446,7 @@ size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffe
 
   // Clean up heap allocation if used
   if (heap_allocated) {
-    free(ascii_chars);
+    SAFE_FREE(ascii_chars);
   }
 
   return current_pos - output_buffer;
@@ -597,8 +597,8 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
 
   // Clean up heap allocation if used
   if (heap_allocated) {
-    free(ascii_chars);
-    free(luminance_values);
+    SAFE_FREE(ascii_chars);
+    SAFE_FREE(luminance_values);
   }
 
   return current_pos - output_buffer;
