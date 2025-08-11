@@ -239,8 +239,6 @@ ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, in
 
     // Calculate luminance using integer arithmetic
     int luminance = (LUMA_RED * p[0] + LUMA_GREEN * p[1] + LUMA_BLUE * p[2]) >> 8;
-    if (luminance > 255)
-      luminance = 255;
 
     // Map luminance to ASCII character
     int palette_index = (luminance * palette_len) / 255;
