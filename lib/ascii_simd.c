@@ -320,93 +320,41 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
  */
 
 #ifdef SIMD_SUPPORT_NEON
+// Apply the SAME optimizations that made color SIMD successful:
+// 1. Process larger batches (16 pixels like color version)  
+// 2. Use compiler auto-vectorization effectively
+// 3. Optimize for cache locality and branch prediction
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
-  init_palette(); // uses your existing luminance_palette[]
+  init_palette();
 
-  int i = 0;
+  // Process in batches of 16 like the successful color version
+  const int batch_size = 16;
+  int full_batches = count / batch_size;
+  int remainder = count % batch_size;
 
-  // Fast path for 3-byte RGB (RGBRGB...)
-  if (sizeof(rgb_pixel_t) == 3) {
-    for (; i + 15 < count; i += 16) {
-      const uint8_t *base = (const uint8_t *)(pixels + i);
-
-      // Load 16 interleaved RGB pixels → 3 separate 16-byte vectors
-      uint8x16x3_t rgb = vld3q_u8(base);
-
-      // Widen to 16-bit
-      uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
-      uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb.val[0]));
-      uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb.val[1]));
-      uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb.val[1]));
-      uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb.val[2]));
-      uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb.val[2]));
-
-      // y = (77*r + 150*g + 29*b) >> 8   (fits in 16-bit)
-      uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
-      y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
-      y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
-      y_lo = vshrq_n_u16(y_lo, 8);
-
-      uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
-      y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
-      y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
-      y_hi = vshrq_n_u16(y_hi, 8);
-
-      // Pack back to u8
-      uint8x16_t y = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
-
-      // Map luminance → ASCII (scalar gather from 256-byte table)
-      uint8_t lum8[16];
-      vst1q_u8(lum8, y);
-      for (int k = 0; k < 16; ++k) {
-        ascii_chars[i + k] = luminance_palette[lum8[k]];
-      }
-    }
-  }
-  // Fast path for 4-byte RGBA/RGBX (RGBARGBARGBA...)
-  else if (sizeof(rgb_pixel_t) == 4) {
-    for (; i + 15 < count; i += 16) {
-      const uint8_t *base = (const uint8_t *)(pixels + i);
-
-      // Load 16 interleaved RGBA → 4 separate 16-byte vectors
-      uint8x16x4_t rgba = vld4q_u8(base);
-      uint8x16_t r8 = rgba.val[0];
-      uint8x16_t g8 = rgba.val[1];
-      uint8x16_t b8 = rgba.val[2];
-
-      uint16x8_t r_lo = vmovl_u8(vget_low_u8(r8));
-      uint16x8_t r_hi = vmovl_u8(vget_high_u8(r8));
-      uint16x8_t g_lo = vmovl_u8(vget_low_u8(g8));
-      uint16x8_t g_hi = vmovl_u8(vget_high_u8(g8));
-      uint16x8_t b_lo = vmovl_u8(vget_low_u8(b8));
-      uint16x8_t b_hi = vmovl_u8(vget_high_u8(b8));
-
-      uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
-      y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
-      y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
-      y_lo = vshrq_n_u16(y_lo, 8);
-
-      uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
-      y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
-      y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
-      y_hi = vshrq_n_u16(y_hi, 8);
-
-      uint8x16_t y = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
-
-      uint8_t lum8[16];
-      vst1q_u8(lum8, y);
-      for (int k = 0; k < 16; ++k) {
-        ascii_chars[i + k] = luminance_palette[lum8[k]];
-      }
+  // Process full batches of 16 pixels (let compiler auto-vectorize)
+  for (int batch = 0; batch < full_batches; batch++) {
+    int base_idx = batch * batch_size;
+    
+    // Process 16 pixels in tight loop - optimal for compiler vectorization
+    for (int j = 0; j < batch_size; j++) {
+      const rgb_pixel_t *p = &pixels[base_idx + j];
+      
+      // Use the EXACT same calculation as color version for consistency
+      // This ensures the compiler can apply the same optimizations
+      int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+      
+      // Use the same palette lookup as color version
+      ascii_chars[base_idx + j] = luminance_palette[luminance];
     }
   }
 
-  // Tail (any remaining pixels)
-  for (; i < count; ++i) {
-    const rgb_pixel_t *p = &pixels[i];
-    // Clamp is unnecessary because 77+150+29==256 and inputs are 0..255
-    int y = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    ascii_chars[i] = luminance_palette[y];
+  // Process remaining pixels (same pattern as color version)
+  int base_remainder = full_batches * batch_size;
+  for (int i = 0; i < remainder; i++) {
+    const rgb_pixel_t *p = &pixels[base_remainder + i];
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    ascii_chars[base_remainder + i] = luminance_palette[luminance];
   }
 }
 #endif
