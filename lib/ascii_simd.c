@@ -458,8 +458,10 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   size_t data_size = pixel_count * sizeof(rgb_pixel_t);
 
   // Generate test data
-  rgb_pixel_t *test_pixels = malloc(data_size);
-  char *output_buffer = malloc(pixel_count);
+  rgb_pixel_t *test_pixels;
+  char *output_buffer;
+  SAFE_MALLOC(test_pixels, data_size, rgb_pixel_t *);
+  SAFE_MALLOC(output_buffer, pixel_count, char *);
 
   // Fill with random RGB data
   srand(12345); // Consistent results

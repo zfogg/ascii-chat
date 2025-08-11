@@ -86,7 +86,24 @@ static void init_dec3(void) {
   g_dec3_init = true;
 }
 
-// -------- ultra-fast SGR builders --------
+// -------- ultra-fast SGR builders with size calculation --------
+
+// Calculate exact size needed for SGR sequences (for security)
+static inline size_t calculate_sgr_truecolor_fg_size(uint8_t r, uint8_t g, uint8_t b) {
+  init_dec3();
+  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[38;2;" + R + ";" + G + ";" + B + "m"
+}
+
+static inline size_t calculate_sgr_truecolor_bg_size(uint8_t r, uint8_t g, uint8_t b) __attribute__((unused)) {
+  init_dec3();  
+  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[48;2;" + R + ";" + G + ";" + B + "m"
+}
+
+static inline size_t calculate_sgr_truecolor_fg_bg_size(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
+  init_dec3();
+  return 7 + g_dec3[fr].len + 1 + g_dec3[fg].len + 1 + g_dec3[fb].len + 
+         6 + g_dec3[br].len + 1 + g_dec3[bg].len + 1 + g_dec3[bb].len + 1; // Combined FG+BG
+}
 
 static inline char *append_sgr_reset(char *dst) {
   // "\x1b[0m"
@@ -629,8 +646,9 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 
       if (!have_color || px->r != cr || px->g != cg || px->b != cb || fg_val != br) {
         // Color changed - emit combined FG+BG sequence
-        if (end - p < 36)
-          break; // worst case FG+BG ~32B + char
+        size_t sgr_size = calculate_sgr_truecolor_fg_bg_size(fg_val, fg_val, fg_val, px->r, px->g, px->b);
+        if ((size_t)(end - p) < sgr_size + 1) // +1 for ASCII character
+          break; // Exact space check prevents buffer overflow
         p = append_sgr_truecolor_fg_bg(p, fg_val, fg_val, fg_val, px->r, px->g, px->b);
         cr = px->r;
         cg = px->g;
@@ -642,8 +660,9 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
       // Foreground mode: Use pixel color as foreground
       if (!have_color || px->r != cr || px->g != cg || px->b != cb) {
         // Color changed - emit foreground sequence
-        if (end - p < 24)
-          break; // worst case FG ~19B + char
+        size_t sgr_size = calculate_sgr_truecolor_fg_size(px->r, px->g, px->b);
+        if ((size_t)(end - p) < sgr_size + 1) // +1 for ASCII character
+          break; // Exact space check prevents buffer overflow
         p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
         cr = px->r;
         cg = px->g;
