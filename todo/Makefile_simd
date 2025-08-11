@@ -50,8 +50,8 @@ endif
 CFLAGS = $(BASE_CFLAGS) $(SIMD_CFLAGS)
 LDFLAGS = -lm
 
-# Link against main project's SIMD-optimized object files
-MAIN_PROJECT_OBJECTS = ../build/lib/ascii_simd.o ../build/lib/ascii_simd_color.o ../build/lib/logging.o ../build/lib/buffer_pool.o ../build/lib/common.o ../build/lib/options.o ../build/lib/image.o
+# Link against main project's SIMD-optimized object files  
+MAIN_PROJECT_OBJECTS = ../build/lib/ascii_simd.o ../build/lib/ascii_simd_color.o ../build/lib/ansi_fast.o ../build/lib/logging.o ../build/lib/buffer_pool.o ../build/lib/common.o ../build/lib/options.o ../build/lib/image.o
 
 # Source files for test programs (only test files, use main project objects for libraries)
 ASCII_SIMD_TEST_SOURCES = ascii_simd_test.c
@@ -131,6 +131,15 @@ test-all: test-scalar test-sse2 test-neon
 benchmark: $(ASCII_SIMD_EXECUTABLE)
 	@echo "Running basic SIMD benchmark..."
 	./$(ASCII_SIMD_EXECUTABLE)
+
+# Test non-SIMD colored ASCII with ansi_fast.c optimizations
+benchmark-nonsimd: benchmark_nonsimd
+	@echo "Testing non-SIMD with ansi_fast.c optimizations..."
+	./benchmark_nonsimd
+
+benchmark_nonsimd: benchmark_nonsimd.o | ensure-main-objects
+	@echo "Linking non-SIMD benchmark..."
+	$(CC) benchmark_nonsimd.o $(MAIN_PROJECT_OBJECTS) -o benchmark_nonsimd $(LDFLAGS)
 
 benchmark-color: $(ASCII_SIMD_COLOR_EXECUTABLE)
 	@echo "Running colored SIMD benchmark..."
