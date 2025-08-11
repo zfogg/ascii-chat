@@ -1,0 +1,487 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include "ascii_simd.h"
+#include "options.h"
+#include "image.h"
+#include "common.h"
+#include "buffer_pool.h"
+
+// ASCII palette (matches your existing one)
+// static const char ascii_palette2[] = " .,:;ox%#@";
+static const char ascii_palette2[] = "   ...',;:clodxkO0KXNWM";
+static const int palette_len = sizeof(ascii_palette2) - 2; // -1 for null, -1 for indexing
+
+// Luminance calculation constants (matches your existing RED, GREEN, BLUE arrays)
+// These are based on the standard NTSC weights: 0.299*R + 0.587*G + 0.114*B
+// Scaled to integers for faster computation
+#define LUMA_RED 77    // 0.299 * 256
+#define LUMA_GREEN 150 // 0.587 * 256
+#define LUMA_BLUE 29   // 0.114 * 256
+
+// Pre-calculated luminance palette
+static char luminance_palette[256];
+static bool palette_initialized = false;
+
+static void init_palette(void) {
+  if (palette_initialized)
+    return;
+
+  for (int i = 0; i < 256; i++) {
+    int palette_index = (i * palette_len) / 255;
+    if (palette_index > palette_len)
+      palette_index = palette_len;
+    luminance_palette[i] = ascii_palette2[palette_index];
+  }
+  palette_initialized = true;
+}
+
+/* ============================================================================
+ * Scalar Implementation (Baseline)
+ * ============================================================================
+ */
+
+void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+  init_palette();
+
+  for (int i = 0; i < count; i++) {
+    const rgb_pixel_t *p = &pixels[i];
+
+    // Calculate luminance using integer arithmetic
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+
+    // Clamp to [0, 255]
+    if (luminance > 255)
+      luminance = 255;
+
+    ascii_chars[i] = luminance_palette[luminance];
+  }
+}
+
+// --------------------------------------
+// SIMD-convert an image into ASCII characters and return it with newlines
+char *image_print_simd(image_t *image) {
+  size_t ascii_len = image->w * image->h;
+
+  // Use buffer pool for consistent memory management with color SIMD
+  data_buffer_pool_t *pool = data_buffer_pool_get_global();
+  char *ascii_chars = data_buffer_pool_alloc(pool, ascii_len);
+  if (!ascii_chars) {
+    log_error("Failed to allocate ASCII characters buffer from buffer pool");
+    image_destroy(image);
+    return NULL;
+  }
+
+  // Convert pixels to ASCII characters using SIMD
+  convert_pixels_optimized((const rgb_pixel_t *)image->pixels, ascii_chars, ascii_len);
+
+  // Format into lines with newlines - use malloc for return value compatibility
+  char *ascii;
+  SAFE_MALLOC(ascii, ascii_len + image->h, char *); // +(height-1) for newlines, +1 for null
+  if (!ascii) {
+    log_error("Failed to allocate ASCII output buffer");
+    data_buffer_pool_free(pool, ascii_chars, ascii_len);
+    image_destroy(image);
+    return NULL;
+  }
+
+  char *pos = ascii;
+  for (int y = 0; y < image->h; y++) {
+    memcpy(pos, &ascii_chars[y * image->w], image->w);
+    pos += image->w;
+    if (y != image->h - 1) { // Only add newline if NOT the last row
+      *pos++ = '\n';
+    }
+  }
+  *pos = '\0';
+
+  data_buffer_pool_free(pool, ascii_chars, ascii_len);
+
+  return ascii;
+}
+
+/* ============================================================================
+ * SSE2 Implementation (4 pixels at once)
+ * ============================================================================
+ */
+
+#ifdef SIMD_SUPPORT_SSE2
+void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+  init_palette();
+
+  int simd_count = (count / 4) * 4;
+  int i;
+
+  // Process 4 pixels at a time
+  for (i = 0; i < simd_count; i += 4) {
+    // Load 4 RGB pixels (12 bytes) - this is tricky with packed RGB
+    // We'll process them one by one but use SIMD for luminance calculation
+
+    __m128i r_vals = _mm_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r);
+    __m128i g_vals = _mm_setr_epi32(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g);
+    __m128i b_vals = _mm_setr_epi32(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b);
+
+    // Multiply by luminance weights
+    __m128i luma_r = _mm_mullo_epi32(r_vals, _mm_set1_epi32(LUMA_RED));
+    __m128i luma_g = _mm_mullo_epi32(g_vals, _mm_set1_epi32(LUMA_GREEN));
+    __m128i luma_b = _mm_mullo_epi32(b_vals, _mm_set1_epi32(LUMA_BLUE));
+
+    // Sum and shift right by 8 (divide by 256)
+    __m128i luminance = _mm_add_epi32(_mm_add_epi32(luma_r, luma_g), luma_b);
+    luminance = _mm_srli_epi32(luminance, 8);
+
+    // Clamp to [0, 255] and extract results
+    int lum[4];
+    _mm_storeu_si128((__m128i *)lum, luminance);
+
+    for (int j = 0; j < 4; j++) {
+      if (lum[j] > 255)
+        lum[j] = 255;
+      ascii_chars[i + j] = luminance_palette[lum[j]];
+    }
+  }
+
+  // Process remaining pixels with scalar code
+  for (; i < count; i++) {
+    const rgb_pixel_t *p = &pixels[i];
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    if (luminance > 255)
+      luminance = 255;
+    ascii_chars[i] = luminance_palette[luminance];
+  }
+}
+#endif
+
+/* ============================================================================
+ * AVX2 Implementation (8 pixels at once)
+ * ============================================================================
+ */
+
+#ifdef SIMD_SUPPORT_AVX2
+void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+  init_palette();
+
+  int simd_count = (count / 8) * 8;
+  int i;
+
+  // AVX2 constants
+  const __m256i luma_r_vec = _mm256_set1_epi32(LUMA_RED);
+  const __m256i luma_g_vec = _mm256_set1_epi32(LUMA_GREEN);
+  const __m256i luma_b_vec = _mm256_set1_epi32(LUMA_BLUE);
+  const __m256i clamp_255 = _mm256_set1_epi32(255);
+
+  // Process 8 pixels at a time
+  for (i = 0; i < simd_count; i += 8) {
+    // Load 8 RGB pixels into separate vectors
+    __m256i r_vals = _mm256_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, pixels[i + 4].r,
+                                       pixels[i + 5].r, pixels[i + 6].r, pixels[i + 7].r);
+    __m256i g_vals = _mm256_setr_epi32(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g, pixels[i + 4].g,
+                                       pixels[i + 5].g, pixels[i + 6].g, pixels[i + 7].g);
+    __m256i b_vals = _mm256_setr_epi32(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b, pixels[i + 4].b,
+                                       pixels[i + 5].b, pixels[i + 6].b, pixels[i + 7].b);
+
+    // Multiply by luminance weights
+    __m256i luma_r = _mm256_mullo_epi32(r_vals, luma_r_vec);
+    __m256i luma_g = _mm256_mullo_epi32(g_vals, luma_g_vec);
+    __m256i luma_b = _mm256_mullo_epi32(b_vals, luma_b_vec);
+
+    // Sum components
+    __m256i luminance = _mm256_add_epi32(luma_r, luma_g);
+    luminance = _mm256_add_epi32(luminance, luma_b);
+
+    // Shift right by 8 (divide by 256)
+    luminance = _mm256_srli_epi32(luminance, 8);
+
+    // Clamp to [0, 255]
+    luminance = _mm256_min_epi32(luminance, clamp_255);
+
+    // Extract results and convert to ASCII
+    int lum[8];
+    _mm256_storeu_si256((__m256i *)lum, luminance);
+
+    for (int j = 0; j < 8; j++) {
+      ascii_chars[i + j] = luminance_palette[lum[j]];
+    }
+  }
+
+  // Process remaining pixels with scalar code
+  for (; i < count; i++) {
+    const rgb_pixel_t *p = &pixels[i];
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    if (luminance > 255)
+      luminance = 255;
+    ascii_chars[i] = luminance_palette[luminance];
+  }
+}
+
+// More advanced version with ANSI color output
+void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                    bool background_mode) {
+  init_palette();
+
+  char *current_pos = output_buffer;
+  char *buffer_end = output_buffer + buffer_size;
+  int pixel_count = width; // Assuming single row for this example
+
+  // Process 8 pixels at a time for luminance calculation
+  int simd_count = (pixel_count / 8) * 8;
+  int i;
+
+  for (i = 0; i < simd_count; i += 8) {
+    // Calculate luminance for 8 pixels (same as above)
+    __m256i r_vals = _mm256_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, pixels[i + 4].r,
+                                       pixels[i + 5].r, pixels[i + 6].r, pixels[i + 7].r);
+    __m256i g_vals = _mm256_setr_epi32(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g, pixels[i + 4].g,
+                                       pixels[i + 5].g, pixels[i + 6].g, pixels[i + 7].g);
+    __m256i b_vals = _mm256_setr_epi32(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b, pixels[i + 4].b,
+                                       pixels[i + 5].b, pixels[i + 6].b, pixels[i + 7].b);
+
+    __m256i luma_r = _mm256_mullo_epi32(r_vals, _mm256_set1_epi32(LUMA_RED));
+    __m256i luma_g = _mm256_mullo_epi32(g_vals, _mm256_set1_epi32(LUMA_GREEN));
+    __m256i luma_b = _mm256_mullo_epi32(b_vals, _mm256_set1_epi32(LUMA_BLUE));
+
+    __m256i luminance = _mm256_add_epi32(luma_r, luma_g);
+    luminance = _mm256_add_epi32(luminance, luma_b);
+    luminance = _mm256_srli_epi32(luminance, 8);
+    luminance = _mm256_min_epi32(luminance, _mm256_set1_epi32(255));
+
+    int lum[8];
+    _mm256_storeu_si256((__m256i *)lum, luminance);
+
+    // Generate ANSI color codes for each pixel
+    for (int j = 0; j < 8; j++) {
+      const rgb_pixel_t *p = &pixels[i + j];
+      char ascii_char = luminance_palette[lum[j]];
+
+      size_t remaining = buffer_end - current_pos;
+      if (remaining < 64)
+        break; // Safety margin for ANSI codes
+
+      if (background_mode) {
+        // Background color mode
+        int fg_color = (lum[j] < 127) ? 255 : 0; // White on dark, black on bright
+        int written = snprintf(current_pos, remaining, "\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%c", fg_color, fg_color,
+                               fg_color,         // Foreground
+                               p->r, p->g, p->b, // Background
+                               ascii_char);
+        current_pos += written;
+      } else {
+        // Foreground color mode
+        int written = snprintf(current_pos, remaining, "\033[38;2;%d;%d;%dm%c", p->r, p->g, p->b, ascii_char);
+        current_pos += written;
+      }
+    }
+  }
+
+  // Process remaining pixels
+  for (; i < pixel_count; i++) {
+    const rgb_pixel_t *p = &pixels[i];
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    if (luminance > 255)
+      luminance = 255;
+    char ascii_char = luminance_palette[luminance];
+
+    size_t remaining = buffer_end - current_pos;
+    if (remaining < 64)
+      break;
+
+    if (background_mode) {
+      int fg_color = (luminance < 127) ? 255 : 0;
+      int written = snprintf(current_pos, remaining, "\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm%c", fg_color, fg_color,
+                             fg_color, p->r, p->g, p->b, ascii_char);
+      current_pos += written;
+    } else {
+      int written = snprintf(current_pos, remaining, "\033[38;2;%d;%d;%dm%c", p->r, p->g, p->b, ascii_char);
+      current_pos += written;
+    }
+  }
+
+  // Add reset sequence and null terminator
+  size_t remaining = buffer_end - current_pos;
+  if (remaining > 5) {
+    strcpy(current_pos, "\033[0m");
+  }
+}
+#endif
+
+/* ============================================================================
+ * ARM NEON Implementation (for Apple Silicon Macs)
+ * ============================================================================
+ */
+
+#ifdef SIMD_SUPPORT_NEON
+void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+  init_palette();
+
+  int simd_count = (count / 4) * 4;
+  int i;
+
+  // NEON constants
+  const uint32x4_t luma_r_vec = vdupq_n_u32(LUMA_RED);
+  const uint32x4_t luma_g_vec = vdupq_n_u32(LUMA_GREEN);
+  const uint32x4_t luma_b_vec = vdupq_n_u32(LUMA_BLUE);
+
+  for (i = 0; i < simd_count; i += 4) {
+    // Load 4 pixels
+    uint32x4_t r_vals = {pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r};
+    uint32x4_t g_vals = {pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g};
+    uint32x4_t b_vals = {pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b};
+
+    // Multiply by luminance weights
+    uint32x4_t luma_r = vmulq_u32(r_vals, luma_r_vec);
+    uint32x4_t luma_g = vmulq_u32(g_vals, luma_g_vec);
+    uint32x4_t luma_b = vmulq_u32(b_vals, luma_b_vec);
+
+    // Sum and shift
+    uint32x4_t luminance = vaddq_u32(vaddq_u32(luma_r, luma_g), luma_b);
+    luminance = vshrq_n_u32(luminance, 8);
+
+    // Extract and clamp
+    uint32_t lum[4];
+    vst1q_u32(lum, luminance);
+
+    for (int j = 0; j < 4; j++) {
+      if (lum[j] > 255)
+        lum[j] = 255;
+      ascii_chars[i + j] = luminance_palette[lum[j]];
+    }
+  }
+
+  // Scalar fallback for remaining pixels
+  for (; i < count; i++) {
+    const rgb_pixel_t *p = &pixels[i];
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    if (luminance > 255)
+      luminance = 255;
+    ascii_chars[i] = luminance_palette[luminance];
+  }
+}
+#endif
+
+/* ============================================================================
+ * Auto-dispatch and Benchmarking
+ * ============================================================================
+ */
+
+void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+#ifdef SIMD_SUPPORT_AVX2
+  convert_pixels_avx2(pixels, ascii_chars, count);
+#elif defined(SIMD_SUPPORT_NEON)
+  convert_pixels_neon(pixels, ascii_chars, count);
+#elif defined(SIMD_SUPPORT_SSE2)
+  convert_pixels_sse2(pixels, ascii_chars, count);
+#else
+  convert_pixels_scalar(pixels, ascii_chars, count);
+#endif
+}
+
+void print_simd_capabilities(void) {
+  printf("SIMD Support:\n");
+#ifdef SIMD_SUPPORT_AVX2
+  printf("  ✓ AVX2 (8 pixels/cycle)\n");
+#endif
+#ifdef SIMD_SUPPORT_NEON
+  printf("  ✓ ARM NEON (4 pixels/cycle)\n");
+#endif
+#ifdef SIMD_SUPPORT_SSE2
+  printf("  ✓ SSE2 (4 pixels/cycle)\n");
+#endif
+  printf("  ✓ Scalar fallback\n");
+}
+
+static double get_time_seconds(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    // Fallback to clock() if CLOCK_MONOTONIC not available
+    return (double)clock() / CLOCKS_PER_SEC;
+  }
+  return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
+simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations) {
+  simd_benchmark_t result = {0};
+
+  int pixel_count = width * height;
+  size_t data_size = pixel_count * sizeof(rgb_pixel_t);
+
+  // Generate test data
+  rgb_pixel_t *test_pixels = malloc(data_size);
+  char *output_buffer = malloc(pixel_count);
+
+  // Fill with random RGB data
+  srand(12345); // Consistent results
+  for (int i = 0; i < pixel_count; i++) {
+    test_pixels[i].r = rand() % 256;
+    test_pixels[i].g = rand() % 256;
+    test_pixels[i].b = rand() % 256;
+  }
+
+  printf("Benchmarking %dx%d (%d pixels) x %d iterations...\n", width, height, pixel_count, iterations);
+
+  // Benchmark scalar version
+  double start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_scalar(test_pixels, output_buffer, pixel_count);
+  }
+  result.scalar_time = get_time_seconds() - start;
+
+#ifdef SIMD_SUPPORT_SSE2
+  // Benchmark SSE2
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_sse2(test_pixels, output_buffer, pixel_count);
+  }
+  result.sse2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  // Benchmark AVX2
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_avx2(test_pixels, output_buffer, pixel_count);
+  }
+  result.avx2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+  // Benchmark NEON
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_neon(test_pixels, output_buffer, pixel_count);
+  }
+  result.neon_time = get_time_seconds() - start;
+#endif
+
+  // Find best method
+  double best_time = result.scalar_time;
+  result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_SSE2
+  if (result.sse2_time > 0 && result.sse2_time < best_time) {
+    best_time = result.sse2_time;
+    result.best_method = "SSE2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  if (result.avx2_time > 0 && result.avx2_time < best_time) {
+    best_time = result.avx2_time;
+    result.best_method = "AVX2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+  if (result.neon_time > 0 && result.neon_time < best_time) {
+    best_time = result.neon_time;
+    result.best_method = "NEON";
+  }
+#endif
+
+  result.speedup_best = result.scalar_time / best_time;
+
+  free(test_pixels);
+  free(output_buffer);
+
+  return result;
+}

@@ -23,6 +23,8 @@
 #include "audio.h"
 #include "aspect_ratio.h"
 #include "mixer.h"
+#include "hashtable.h"
+#include "frame_debug.h"
 
 /* ============================================================================
  * Global State
@@ -92,10 +94,11 @@ typedef struct {
 } client_info_t;
 
 typedef struct {
-  client_info_t clients[MAX_CLIENTS];
+  client_info_t clients[MAX_CLIENTS]; // Backing storage (still needed)
+  hashtable_t *client_hashtable;      // Hash table for O(1) lookup by client_id
   int client_count;
   pthread_mutex_t mutex;
-  uint32_t next_client_id; // NEW: For assigning unique IDs
+  uint32_t next_client_id; // For assigning unique IDs
 } client_manager_t;
 
 // Global multi-client state
@@ -112,7 +115,25 @@ static mixer_t *g_audio_mixer = NULL;
 static pthread_t g_audio_mixer_thread;
 static bool g_audio_mixer_thread_created = false;
 
+// Statistics logging thread
+static pthread_t g_stats_logger_thread;
+static bool g_stats_logger_thread_created = false;
+
+// Frame debugging trackers
+static frame_debug_tracker_t g_server_frame_debug;
+
+// Blank frame statistics
+static uint64_t g_blank_frames_sent = 0;
+
 // Video mixing system (inline mixing, no global buffers needed)
+
+// Last valid frame cache for consistent delivery (prevents flickering)
+static char *g_last_valid_frame = NULL;
+static size_t g_last_valid_frame_size = 0;
+static unsigned short g_last_frame_width = 0;
+static unsigned short g_last_frame_height = 0;
+static bool g_last_frame_was_color = false;
+static pthread_mutex_t g_frame_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static server_stats_t g_stats = {0};
 
@@ -130,6 +151,9 @@ void *client_send_thread_func(void *arg);
 // Audio mixing thread function
 void *audio_mixer_thread_func(void *arg);
 
+// Statistics logging thread function
+void *stats_logger_thread_func(void *arg);
+
 // Video mixing functions
 char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool wants_color, bool wants_stretch,
                                size_t *out_size);
@@ -137,6 +161,10 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 // Client management functions
 int add_client(int socket, const char *client_ip, int port);
 int remove_client(uint32_t client_id);
+
+// Fast client lookup functions using hash table
+client_info_t *find_client_by_id(uint32_t client_id);
+client_info_t *find_client_by_id_fast(uint32_t client_id); // O(1) hash table lookup
 
 /* ============================================================================
  * Signal Handlers
@@ -159,6 +187,33 @@ static void sigint_handler(int sigint) {
   if (listenfd > 0) {
     close(listenfd);
   }
+}
+
+/* ============================================================================
+ * Fast Client Lookup Functions
+ * ============================================================================ */
+
+// O(1) hash table lookup for client by ID
+client_info_t *find_client_by_id_fast(uint32_t client_id) {
+  if (client_id == 0 || !g_client_manager.client_hashtable) {
+    return NULL;
+  }
+
+  return (client_info_t *)hashtable_lookup(g_client_manager.client_hashtable, client_id);
+}
+
+// Traditional O(n) linear search (kept for debugging/verification)
+client_info_t *find_client_by_id(uint32_t client_id) {
+  if (client_id == 0) {
+    return NULL;
+  }
+
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (g_client_manager.clients[i].client_id == client_id && g_client_manager.clients[i].active) {
+      return &g_client_manager.clients[i];
+    }
+  }
+  return NULL;
 }
 
 /* ============================================================================
@@ -233,10 +288,9 @@ int receive_client_size(int sockfd, unsigned short *width, unsigned short *heigh
 // Audio mixing thread function using the new advanced mixer
 void *audio_mixer_thread_func(void *arg) {
   (void)arg;
-  log_info("Audio mixer thread started (using advanced mixer with ducking and compression)");
+  log_info("Audio mixer thread started (per-client mixes excluding own audio)");
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
-  float send_buffer[AUDIO_FRAMES_PER_BUFFER]; // Separate buffer for sending
 
   while (!g_should_exit) {
     if (!g_audio_mixer) {
@@ -244,50 +298,64 @@ void *audio_mixer_thread_func(void *arg) {
       continue;
     }
 
-    // Use the new mixer to process audio from all clients
-    // The mixer handles ducking, compression, and crowd scaling automatically
-    int samples_mixed = mixer_process(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+    // Create per-client mixes excluding each client's own audio
+    pthread_mutex_lock(&g_client_manager_mutex);
 
-    if (samples_mixed > 0) {
-      // Copy to send buffer to avoid race conditions
-      memcpy(send_buffer, mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
-
-      // Debug: Calculate CRC before sending and check for DEADBEEF
-      uint32_t *check_magic = (uint32_t *)send_buffer;
-      if (*check_magic == 0xDEADBEEF || *check_magic == 0xEFBEADDE) {
-        log_error(
-            "DEADBEEF found in audio buffer! First 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-            "%02x %02x %02x %02x %02x",
-            ((unsigned char *)send_buffer)[0], ((unsigned char *)send_buffer)[1], ((unsigned char *)send_buffer)[2],
-            ((unsigned char *)send_buffer)[3], ((unsigned char *)send_buffer)[4], ((unsigned char *)send_buffer)[5],
-            ((unsigned char *)send_buffer)[6], ((unsigned char *)send_buffer)[7], ((unsigned char *)send_buffer)[8],
-            ((unsigned char *)send_buffer)[9], ((unsigned char *)send_buffer)[10], ((unsigned char *)send_buffer)[11],
-            ((unsigned char *)send_buffer)[12], ((unsigned char *)send_buffer)[13], ((unsigned char *)send_buffer)[14],
-            ((unsigned char *)send_buffer)[15]);
+    // Count active clients with audio
+    int active_audio_clients = 0;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0 &&
+          g_client_manager.clients[i].audio_queue) {
+        active_audio_clients++;
       }
+    }
+
+    // Process each client separately
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->active && client->socket > 0 && client->audio_queue) {
+        // Create a mix excluding this client's own audio
+        int samples_mixed =
+            mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client->client_id);
+
+        if (samples_mixed > 0 || active_audio_clients == 1) {
+          // If only one client, send silence (samples_mixed will be 0)
+          if (active_audio_clients == 1) {
+            memset(mix_buffer, 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+            samples_mixed = AUDIO_FRAMES_PER_BUFFER;
+          }
+
+          // Debug: Check for DEADBEEF
+          uint32_t *check_magic = (uint32_t *)mix_buffer;
+          if (*check_magic == 0xDEADBEEF || *check_magic == 0xEFBEADDE) {
+            log_error(
+                "DEADBEEF found in audio buffer for client %u! First 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x "
+                "%02x %02x %02x %02x %02x %02x %02x %02x",
+                client->client_id, ((unsigned char *)mix_buffer)[0], ((unsigned char *)mix_buffer)[1],
+                ((unsigned char *)mix_buffer)[2], ((unsigned char *)mix_buffer)[3], ((unsigned char *)mix_buffer)[4],
+                ((unsigned char *)mix_buffer)[5], ((unsigned char *)mix_buffer)[6], ((unsigned char *)mix_buffer)[7],
+                ((unsigned char *)mix_buffer)[8], ((unsigned char *)mix_buffer)[9], ((unsigned char *)mix_buffer)[10],
+                ((unsigned char *)mix_buffer)[11], ((unsigned char *)mix_buffer)[12], ((unsigned char *)mix_buffer)[13],
+                ((unsigned char *)mix_buffer)[14], ((unsigned char *)mix_buffer)[15]);
+          }
 
 #ifdef AUDIO_DEBUG
-      uint32_t crc_before = asciichat_crc32(send_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
-      log_debug("Sending audio: samples_mixed=%d, CRC=0x%x", samples_mixed, crc_before);
+          uint32_t crc_before = asciichat_crc32(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+          log_debug("Sending audio to client %u: samples_mixed=%d, CRC=0x%x", client->client_id, samples_mixed,
+                    crc_before);
 #endif
 
-      // Queue mixed audio to all connected clients
-      pthread_mutex_lock(&g_client_manager_mutex);
-      for (int i = 0; i < MAX_CLIENTS; i++) {
-        client_info_t *client = &g_client_manager.clients[i];
-        if (client->active && client->socket > 0 && client->audio_queue) {
           // Queue the audio packet for this client
-          // Note: We copy the data so each queue has its own copy
           size_t data_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
-          int result = packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO, send_buffer, data_size, 0,
+          int result = packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO, mix_buffer, data_size, 0,
                                             true); // client_id=0 for server-originated, copy=true
           if (result < 0) {
             log_debug("Failed to queue audio for client %u (queue full or shutdown)", client->client_id);
           }
         }
       }
-      pthread_mutex_unlock(&g_client_manager_mutex);
     }
+    pthread_mutex_unlock(&g_client_manager_mutex);
 
     // Audio mixing rate - process every ~5.8ms to match buffer size
     // 256 samples at 44100 Hz = 5.8ms
@@ -295,6 +363,85 @@ void *audio_mixer_thread_func(void *arg) {
   }
 
   log_info("Audio mixer thread stopped");
+  return NULL;
+}
+
+/* ============================================================================
+ * Statistics Logging Thread
+ * ============================================================================
+ */
+
+void *stats_logger_thread_func(void *arg) {
+  (void)arg;
+  log_info("Statistics logger thread started");
+
+  while (!g_should_exit) {
+    // Log buffer pool statistics every 30 seconds
+    sleep(30);
+
+    if (g_should_exit)
+      break;
+
+    log_info("=== Periodic Statistics Report ===");
+
+    // Log global buffer pool stats
+    buffer_pool_log_global_stats();
+
+    // Log client statistics
+    pthread_mutex_lock(&g_client_manager_mutex);
+    int active_clients = 0;
+    int clients_with_audio = 0;
+    int clients_with_video = 0;
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (g_client_manager.clients[i].active) {
+        active_clients++;
+        if (g_client_manager.clients[i].audio_queue) {
+          clients_with_audio++;
+        }
+        if (g_client_manager.clients[i].video_queue) {
+          clients_with_video++;
+        }
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+
+    log_info("Active clients: %d, Audio: %d, Video: %d", active_clients, clients_with_audio, clients_with_video);
+    log_info("Blank frames sent: %llu", (unsigned long long)g_blank_frames_sent);
+
+    // Log hash table statistics
+    if (g_client_manager.client_hashtable) {
+      hashtable_print_stats(g_client_manager.client_hashtable, "Client Lookup");
+    }
+
+    // Log per-client buffer pool stats if they have local pools
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->active && client->client_id != 0) {
+        // Log packet queue stats if available
+        if (client->audio_queue) {
+          uint64_t enqueued, dequeued, dropped;
+          packet_queue_get_stats(client->audio_queue, &enqueued, &dequeued, &dropped);
+          if (enqueued > 0 || dequeued > 0 || dropped > 0) {
+            log_info("Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client->client_id,
+                     (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
+          }
+        }
+        if (client->video_queue) {
+          uint64_t enqueued, dequeued, dropped;
+          packet_queue_get_stats(client->video_queue, &enqueued, &dequeued, &dropped);
+          if (enqueued > 0 || dequeued > 0 || dropped > 0) {
+            log_info("Client %u video queue: %llu enqueued, %llu dequeued, %llu dropped", client->client_id,
+                     (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
+          }
+        }
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+  }
+
+  log_info("Statistics logger thread stopped");
   return NULL;
 }
 
@@ -434,12 +581,59 @@ static void *video_broadcast_thread_func(void *arg) {
       if (client_copy.active && client_copy.socket > 0) {
         // Create a custom-sized frame for THIS client's terminal dimensions
         size_t client_frame_size = 0;
-        char *client_frame = create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color,
-                                                      client_copy.wants_stretch, &client_frame_size);
+
+        // DEBUG: Log frame generation parameters
+        if (frame_counter % (MAX_FPS * 2) == 0) { // Log every 2 seconds
+          log_info("FRAME DEBUG: Generating frame for client %u: %ux%u, color=%s", client_copy.client_id,
+                   client_copy.width, client_copy.height, (client_copy.wants_color && opt_color_output) ? "yes" : "no");
+        }
+
+        char *client_frame =
+            create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output,
+                                     client_copy.wants_stretch, &client_frame_size);
 
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
           continue;
+        }
+
+        // Debug frame generation
+        if (g_frame_debug_enabled) {
+          frame_debug_record_frame(&g_server_frame_debug, client_frame, client_frame_size);
+        }
+
+        // BLANK FRAME DEBUG: Check if we're sending empty/blank frames
+        bool is_blank_frame = true;
+        size_t non_whitespace_count = 0;
+        size_t printable_chars = 0;
+
+        for (size_t j = 0; j < client_frame_size && j < 1024; j++) { // Check first 1KB
+          char c = client_frame[j];
+          if (c >= 32 && c < 127) { // Printable ASCII
+            printable_chars++;
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+              non_whitespace_count++;
+            }
+          }
+        }
+
+        // Frame is blank if <1% non-whitespace or <10 total non-whitespace chars
+        double non_ws_ratio = (printable_chars > 0) ? (double)non_whitespace_count / printable_chars : 0.0;
+        is_blank_frame = (non_whitespace_count < 10 || non_ws_ratio < 0.01);
+
+        if (is_blank_frame) {
+          g_blank_frames_sent++;
+          log_warn("BLANK FRAME DETECTED: Sending blank frame #%llu to client %u - size=%zu, non-ws=%zu/%zu (%.1f%%), "
+                   "sample: '%.20s'",
+                   (unsigned long long)g_blank_frames_sent, client_copy.client_id, client_frame_size,
+                   non_whitespace_count, printable_chars, non_ws_ratio * 100.0, client_frame);
+        } else if (frame_counter % (MAX_FPS * 3) == 0) { // Log every 3 seconds for non-blank frames
+          // Calculate expected size for verification
+          size_t expected_size =
+              (size_t)client_copy.width * client_copy.height + client_copy.height; // +height for newlines
+          log_info("FRAME SIZE DEBUG: Client %u (%ux%u) - generated=%zu, expected~%zu, ratio=%.2f",
+                   client_copy.client_id, client_copy.width, client_copy.height, client_frame_size, expected_size,
+                   (double)client_frame_size / expected_size);
         }
 
         // Lock mutex while sending to ensure thread safety
@@ -647,20 +841,45 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
 
-  // If no image sources, return empty frame
+  // FLICKERING FIX: When no active video sources, use cached frame or generate placeholder
+  // to maintain consistent frame delivery and prevent flickering
   if (source_count == 0) {
-    // Count how many clients are actually marked as sending video
-    int sending_video_count = 0;
-    pthread_mutex_lock(&g_client_manager_mutex);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      if (g_client_manager.clients[i].active && g_client_manager.clients[i].is_sending_video) {
-        sending_video_count++;
+    pthread_mutex_lock(&g_frame_cache_mutex);
+
+    // Try to reuse last valid frame if dimensions and color mode match
+    if (g_last_valid_frame && g_last_valid_frame_size > 0 && g_last_frame_width == width &&
+        g_last_frame_height == height && g_last_frame_was_color == wants_color) {
+
+      // Return a copy of the cached frame
+      char *cached_copy;
+      SAFE_MALLOC(cached_copy, g_last_valid_frame_size, char *);
+      if (cached_copy) {
+        memcpy(cached_copy, g_last_valid_frame, g_last_valid_frame_size);
+        *out_size = g_last_valid_frame_size;
+        pthread_mutex_unlock(&g_frame_cache_mutex);
+        return cached_copy;
       }
     }
-    pthread_mutex_unlock(&g_client_manager_mutex);
+    pthread_mutex_unlock(&g_frame_cache_mutex);
 
-    log_debug("No frames available for mixing (%d active, %d sending video, but 0 frames in buffers)",
-              active_client_count, sending_video_count);
+    // Generate a simple "No Video" placeholder frame to maintain consistent delivery
+    size_t placeholder_size = width * height + height + 1; // +height for newlines, +1 for null
+    char *placeholder;
+    SAFE_MALLOC(placeholder, placeholder_size, char *);
+    if (placeholder) {
+      // Fill with spaces and newlines to create a blank but valid frame
+      for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+          placeholder[row * (width + 1) + col] = ' ';
+        }
+        placeholder[row * (width + 1) + width] = '\n';
+      }
+      placeholder[placeholder_size - 1] = '\0';
+      *out_size = placeholder_size - 1;
+      return placeholder;
+    }
+
+    // Last resort: return NULL (original behavior)
     *out_size = 0;
     return NULL;
   }
@@ -834,6 +1053,26 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
+
+    // Cache this valid frame to prevent flickering when source_count becomes 0
+    pthread_mutex_lock(&g_frame_cache_mutex);
+
+    // Free old cached frame
+    if (g_last_valid_frame) {
+      free(g_last_valid_frame);
+    }
+
+    // Cache the new frame
+    g_last_valid_frame_size = *out_size;
+    SAFE_MALLOC(g_last_valid_frame, g_last_valid_frame_size, char *);
+    if (g_last_valid_frame) {
+      memcpy(g_last_valid_frame, ascii_frame, g_last_valid_frame_size);
+      g_last_frame_width = width;
+      g_last_frame_height = height;
+      g_last_frame_was_color = wants_color;
+    }
+
+    pthread_mutex_unlock(&g_frame_cache_mutex);
   } else {
     log_error("Failed to convert image to ASCII");
     *out_size = 0;
@@ -850,6 +1089,17 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
   }
 
   return ascii_frame;
+}
+
+// Cleanup frame cache on shutdown
+void cleanup_frame_cache() {
+  pthread_mutex_lock(&g_frame_cache_mutex);
+  if (g_last_valid_frame) {
+    free(g_last_valid_frame);
+    g_last_valid_frame = NULL;
+    g_last_valid_frame_size = 0;
+  }
+  pthread_mutex_unlock(&g_frame_cache_mutex);
 }
 
 /* ============================================================================
@@ -909,6 +1159,14 @@ int main(int argc, char *argv[]) {
     log_info("Video broadcast thread started");
   }
 
+  // Start statistics logging thread for periodic performance monitoring
+  if (pthread_create(&g_stats_logger_thread, NULL, stats_logger_thread_func, NULL) != 0) {
+    log_error("Failed to create statistics logger thread");
+  } else {
+    g_stats_logger_thread_created = true;
+    log_info("Statistics logger thread started");
+  }
+
   // Network setup
   struct sockaddr_in serv_addr;
   struct sockaddr_in client_addr;
@@ -960,6 +1218,18 @@ int main(int argc, char *argv[]) {
   pthread_mutex_init(&g_client_manager.mutex, NULL);
   g_client_manager.next_client_id = 0;
 
+  // Initialize client hash table for O(1) lookup
+  g_client_manager.client_hashtable = hashtable_create();
+  if (!g_client_manager.client_hashtable) {
+    log_fatal("Failed to create client hash table");
+    exit(1);
+  }
+
+  // Initialize frame debugging
+  g_frame_debug_enabled = true; // Enable by default for debugging
+  g_frame_debug_verbosity = 2;  // Show warnings and stats
+  frame_debug_init(&g_server_frame_debug, "Server-VideoGeneration");
+
   // Main multi-client connection loop
   while (!g_should_exit) {
     // Only log when client count changes
@@ -1008,7 +1278,7 @@ int main(int argc, char *argv[]) {
       if (errno == ETIMEDOUT) {
         // Timeout is normal, just continue
 #ifdef DEBUG_MEMORY
-        debug_memory_report();
+        // debug_memory_report();
 #endif
         continue;
       }
@@ -1052,6 +1322,9 @@ int main(int argc, char *argv[]) {
       g_audio_mixer = NULL;
     }
   }
+
+  // Cleanup cached frames
+  cleanup_frame_cache();
 
   // Clean up all connected clients
   log_info("Cleaning up connected clients...");
@@ -1286,8 +1559,10 @@ void *client_receive_thread_func(void *arg) {
           int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
           // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
           (void)written;
+#ifdef DEBUG_AUDIO
           log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
                     total_samples, sample_rate);
+#endif
         }
       }
       break;
@@ -1523,6 +1798,12 @@ int add_client(int socket, const char *client_ip, int port) {
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
 
+  // Add client to hash table for O(1) lookup
+  if (!hashtable_insert(g_client_manager.client_hashtable, client->client_id, client)) {
+    log_error("Failed to add client %u to hash table", client->client_id);
+    // Continue anyway - hash table is optimization, not critical
+  }
+
   // Register this client's audio buffer with the mixer
   if (g_audio_mixer && client->incoming_audio_buffer) {
     if (mixer_add_source(g_audio_mixer, client->client_id, client->incoming_audio_buffer) < 0) {
@@ -1645,6 +1926,11 @@ int remove_client(uint32_t client_id) {
       if (g_audio_mixer) {
         mixer_remove_source(g_audio_mixer, client_id);
         log_debug("Removed client %u from audio mixer", client_id);
+      }
+
+      // Remove from hash table
+      if (!hashtable_remove(g_client_manager.client_hashtable, client_id)) {
+        log_warn("Failed to remove client %u from hash table", client_id);
       }
 
       // Store display name before clearing

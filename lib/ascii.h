@@ -1,6 +1,8 @@
-#include "common.h"
 #include <stdio.h>
 #include <time.h>
+#include "common.h"
+
+extern char ascii_palette[];
 
 // Forward declaration
 typedef struct image_t image_t;

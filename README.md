@@ -138,16 +138,12 @@ TODO
 - [x] Audio mixing for multiple clients with compression and ducking.
 - [ ] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
 - [ ] Lock-free packet send queues.
+- [x] Hardware-accelerated ASCII-conversion via SIMD.
 
 
 Notes
 ==========
-**Performance Optimizations for Colored Mode:**
-- **Color Quantization**: Reduces 16M colors to 512 colors for smaller, more consistent frames
-- **Larger Buffers**: More frame buffering to handle colored frame size variations
-- **Optimized Processing**: Reduces frame drops and visual stutter
+**Note:** Colored frames are many times larger than monochrome frames due
+to the ANSI color codes.
 
-**Note:** Colored frames are approximately 3x larger than monochrome frames due
-*to the ANSI color codes. The system automatically adjusts the frame buffer size
-*accordingly:
-- 1-16MB frame buffer (plus 8MB network buffers)
+We don't really save bandwidth by sending color ascii video. I did the math with Claude Code.

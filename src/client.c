@@ -25,6 +25,7 @@
 #include "webcam.h"
 #include "aspect_ratio.h"
 #include "buffer_pool.h"
+#include "frame_debug.h"
 
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
@@ -33,6 +34,9 @@ static volatile bool g_should_reconnect = false;
 static volatile bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
+
+// Frame debugging tracker
+static frame_debug_tracker_t g_client_frame_debug;
 
 static pthread_t g_data_thread;
 static bool g_data_thread_created = false;
@@ -438,9 +442,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
   }
 
-  // Clear screen and display frame
-  printf("\033[H\033[J%s", frame_data);
+  // Position cursor at top-left and display frame (preserve last frame instead of clearing)
+  printf("\033[H%s", frame_data);
   fflush(stdout);
+
+  // Record frame for debugging (track client-side frame reception)
+  frame_debug_record_frame(&g_client_frame_debug, frame_data, header.original_size);
 
   free(frame_data);
 }
@@ -498,6 +505,7 @@ static void *data_reception_thread_func(void *arg) {
     case PACKET_TYPE_CLEAR_CONSOLE:
       // Server requested console clear
       console_clear();
+      log_info("Console cleared by server");
       break;
 
     case PACKET_TYPE_SERVER_STATE:
@@ -712,10 +720,10 @@ static void *audio_capture_thread_func(void *arg) {
 
   // Initialize audio processors on first run
   if (!processors_initialized) {
-    noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE);  // Use correct sample rate
+    noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE); // Use correct sample rate
     noise_gate_set_params(&noise_gate, 0.01f, 2.0f, 50.0f, 0.9f);
 
-    highpass_filter_init(&hp_filter, 80.0f, AUDIO_SAMPLE_RATE);  // Use correct sample rate
+    highpass_filter_init(&hp_filter, 80.0f, AUDIO_SAMPLE_RATE); // Use correct sample rate
 
     processors_initialized = true;
   }
@@ -846,6 +854,11 @@ int main(int argc, char *argv[]) {
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
 
+  // Initialize frame debugging
+  frame_debug_init(&g_client_frame_debug, "Client-FrameReceiver");
+  g_frame_debug_enabled = true; // Enable debugging by default
+  g_frame_debug_verbosity = 2;  // Show issues and warnings
+
   options_init(argc, argv);
   char *address = opt_address;
   int port = strtoint(opt_port);
@@ -863,6 +876,9 @@ int main(int argc, char *argv[]) {
 
   // Initialize ASCII output for this connection
   ascii_write_init();
+
+  // Disable terminal log output to prevent flickering with ASCII frame display
+  log_set_terminal_output(false);
 
   // Initialize luminance palette for ASCII conversion
   precalc_luminance_palette();
@@ -958,7 +974,6 @@ int main(int argc, char *argv[]) {
       }
 
       // Connection successful!
-      printf("Connected successfully!\n");
       log_info("Connected to server %s:%d", address, port);
       reconnect_attempt = 0; // Reset reconnection counter on successful connection
 
