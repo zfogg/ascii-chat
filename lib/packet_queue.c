@@ -428,6 +428,9 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
             // This was allocated from global pool or malloc, use buffer_pool_free which handles both
             buffer_pool_free(node->packet.data, node->packet.data_len);
           }
+          // CRITICAL: Clear pointer to prevent double-free when packet is copied later
+          node->packet.data = NULL;
+          node->packet.owns_data = false;
         }
         node_pool_put(queue->node_pool, node);
         return NULL;
@@ -501,6 +504,9 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
             // This was allocated from global pool or malloc, use buffer_pool_free which handles both
             buffer_pool_free(node->packet.data, node->packet.data_len);
           }
+          // CRITICAL: Clear pointer to prevent double-free when packet is copied later
+          node->packet.data = NULL;
+          node->packet.owns_data = false;
         }
         node_pool_put(queue->node_pool, node);
         return NULL;

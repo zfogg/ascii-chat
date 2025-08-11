@@ -1060,6 +1060,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     // Free old cached frame
     if (g_last_valid_frame) {
       free(g_last_valid_frame);
+      g_last_valid_frame = NULL;  // CRITICAL: Prevent double-free
+      g_last_valid_frame_size = 0;
     }
 
     // Cache the new frame
@@ -1091,13 +1093,17 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
   return ascii_frame;
 }
 
-// Cleanup frame cache on shutdown
+// Cleanup frame cache on shutdown  
 void cleanup_frame_cache() {
   pthread_mutex_lock(&g_frame_cache_mutex);
   if (g_last_valid_frame) {
     free(g_last_valid_frame);
     g_last_valid_frame = NULL;
     g_last_valid_frame_size = 0;
+    // Reset other cache state to prevent stale data
+    g_last_frame_width = 0;
+    g_last_frame_height = 0; 
+    g_last_frame_was_color = false;
   }
   pthread_mutex_unlock(&g_frame_cache_mutex);
 }
@@ -1351,9 +1357,16 @@ int main(int argc, char *argv[]) {
 
   printf("Server shutdown complete.\n");
 
+  // Cleanup client manager resources
+  if (g_client_manager.client_hashtable) {
+    hashtable_destroy(g_client_manager.client_hashtable);
+    g_client_manager.client_hashtable = NULL;
+  }
+
   // Destroy mutexes (do this before log_destroy in case logging uses them)
   pthread_mutex_destroy(&g_stats_mutex);
   pthread_mutex_destroy(&g_socket_mutex);
+  pthread_mutex_destroy(&g_client_manager_mutex);
 
   return 0;
 }
@@ -1825,7 +1838,9 @@ int add_client(int socket, const char *client_ip, int port) {
   // Start send thread for this client
   if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
     log_error("Failed to create send thread for client %u", client->client_id);
-    // Note: remove_client will handle thread cleanup
+    // Join the receive thread before cleaning up to prevent race conditions
+    pthread_join(client->receive_thread, NULL);
+    // Now safe to remove client (won't double-free since first thread creation succeeded)
     remove_client(client->client_id);
     return -1;
   }
