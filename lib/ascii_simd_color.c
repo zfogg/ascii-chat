@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 #include "ascii_simd.h"
 #include "options.h"
 #include "common.h"
@@ -16,134 +17,218 @@
  * ============================================================================
  */
 
+// Luminance calculation constants (matches ascii_simd.c)
+#define LUMA_RED 77    // 0.299 * 256
+#define LUMA_GREEN 150 // 0.587 * 256
+#define LUMA_BLUE 29   // 0.114 * 256
+
+// ASCII palette and luminance palette (duplicated from ascii_simd.c for now)
+static const char ascii_palette_color[] = "   ...',;:clodxkO0KXNWM";
+static const int palette_len_color = sizeof(ascii_palette_color) - 2;
+
+static char luminance_palette_color[256];
+static bool palette_initialized_color = false;
+
+static void init_palette(void) {
+  if (palette_initialized_color)
+    return;
+
+  for (int i = 0; i < 256; i++) {
+    int palette_index = (i * palette_len_color) / 255;
+    if (palette_index > palette_len_color)
+      palette_index = palette_len_color;
+    luminance_palette_color[i] = ascii_palette_color[palette_index];
+  }
+  palette_initialized_color = true;
+}
+
+#define luminance_palette luminance_palette_color
+
 // Pre-computed ANSI escape code templates
-static const char ANSI_FG_PREFIX[] = "\033[38;2;";
-static const char ANSI_BG_PREFIX[] = "\033[48;2;";
+// static const char ANSI_FG_PREFIX[] = "\033[38;2;";  // Unused, replaced by inline constants
+// static const char ANSI_BG_PREFIX[] = "\033[48;2;";  // Unused, replaced by inline constants
 // static const char ANSI_SUFFIX[] = "m";
 static const char ANSI_RESET[] = "\033[0m";
 
-// Fast integer to string conversion (3 digits max for RGB values 0-255)
-static inline int fast_uint8_to_str(uint8_t value, char *str) {
-  if (value >= 100) {
-    str[0] = '0' + (value / 100);
-    str[1] = '0' + ((value % 100) / 10);
-    str[2] = '0' + (value % 10);
-    return 3;
-  } else if (value >= 10) {
-    str[0] = '0' + (value / 10);
-    str[1] = '0' + (value % 10);
-    return 2;
-  } else {
-    str[0] = '0' + value;
-    return 1;
+// -------- precomputed decimal strings for 0..255 --------
+
+typedef struct {
+  uint8_t len; // 1..3
+  char s[3];   // digits only, no terminator
+} dec3_t;
+
+static dec3_t g_dec3[256];
+static bool g_dec3_init = false;
+
+static void init_dec3(void) {
+  if (g_dec3_init)
+    return;
+  for (int v = 0; v < 256; ++v) {
+    int d2 = v / 100;     // 0..2
+    int r = v - d2 * 100; // 0..99
+    int d1 = r / 10;      // 0..9
+    int d0 = r - d1 * 10; // 0..9
+
+    if (d2) {
+      g_dec3[v].len = 3;
+      g_dec3[v].s[0] = '0' + d2;
+      g_dec3[v].s[1] = '0' + d1;
+      g_dec3[v].s[2] = '0' + d0;
+    } else if (d1) {
+      g_dec3[v].len = 2;
+      g_dec3[v].s[0] = '0' + d1;
+      g_dec3[v].s[1] = '0' + d0;
+    } else {
+      g_dec3[v].len = 1;
+      g_dec3[v].s[0] = '0' + d0;
+    }
   }
+  g_dec3_init = true;
 }
 
-// Generate ANSI foreground color code directly into buffer
-static inline int generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *buffer) {
-  char *pos = buffer;
+// -------- ultra-fast SGR builders --------
 
-  // Copy prefix: "\033[38;2;"
-  memcpy(pos, ANSI_FG_PREFIX, sizeof(ANSI_FG_PREFIX) - 1);
-  pos += sizeof(ANSI_FG_PREFIX) - 1;
-
-  // Red component
-  int len = fast_uint8_to_str(r, pos);
-  pos += len;
-  *pos++ = ';';
-
-  // Green component
-  len = fast_uint8_to_str(g, pos);
-  pos += len;
-  *pos++ = ';';
-
-  // Blue component
-  len = fast_uint8_to_str(b, pos);
-  pos += len;
-
-  // Suffix: "m"
-  *pos++ = 'm';
-
-  return pos - buffer;
+static inline char *append_sgr_reset(char *dst) {
+  // "\x1b[0m"
+  static const char RESET[] = "\033[0m";
+  memcpy(dst, RESET, sizeof(RESET) - 1);
+  return dst + (sizeof(RESET) - 1);
 }
 
-// Generate ANSI background color code
-static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *buffer) {
-  char *pos = buffer;
+// \x1b[38;2;R;G;Bm
+static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  init_dec3();
+  static const char PFX[] = "\033[38;2;";
+  memcpy(dst, PFX, sizeof(PFX) - 1);
+  dst += sizeof(PFX) - 1;
 
-  // Copy prefix: "\033[48;2;"
-  memcpy(pos, ANSI_BG_PREFIX, sizeof(ANSI_BG_PREFIX) - 1);
-  pos += sizeof(ANSI_BG_PREFIX) - 1;
-
-  // RGB components (same as foreground)
-  int len = fast_uint8_to_str(r, pos);
-  pos += len;
-  *pos++ = ';';
-
-  len = fast_uint8_to_str(g, pos);
-  pos += len;
-  *pos++ = ';';
-
-  len = fast_uint8_to_str(b, pos);
-  pos += len;
-  *pos++ = 'm';
-
-  return pos - buffer;
+  memcpy(dst, g_dec3[r].s, g_dec3[r].len);
+  dst += g_dec3[r].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[g].s, g_dec3[g].len);
+  dst += g_dec3[g].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[b].s, g_dec3[b].len);
+  dst += g_dec3[b].len;
+  *dst++ = 'm';
+  return dst;
 }
 
-// Forward declaration for _with_buffer wrapper function
-size_t convert_row_with_color_optimized_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                                    int width, bool background_mode, char *reusable_ascii_chars);
+// \x1b[48;2;R;G;Bm
+static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  init_dec3();
+  static const char PFX[] = "\033[48;2;";
+  memcpy(dst, PFX, sizeof(PFX) - 1);
+  dst += sizeof(PFX) - 1;
+
+  memcpy(dst, g_dec3[r].s, g_dec3[r].len);
+  dst += g_dec3[r].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[g].s, g_dec3[g].len);
+  dst += g_dec3[g].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[b].s, g_dec3[b].len);
+  dst += g_dec3[b].len;
+  *dst++ = 'm';
+  return dst;
+}
+
+// \x1b[38;2;R;G;B;48;2;r;g;bm   (one sequence for both FG and BG)
+static inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
+                                               uint8_t bb) {
+  init_dec3();
+  static const char FG[] = "\033[38;2;";
+  static const char BG[] = ";48;2;";
+  memcpy(dst, FG, sizeof(FG) - 1);
+  dst += sizeof(FG) - 1;
+
+  memcpy(dst, g_dec3[fr].s, g_dec3[fr].len);
+  dst += g_dec3[fr].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[fg].s, g_dec3[fg].len);
+  dst += g_dec3[fg].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[fb].s, g_dec3[fb].len);
+  dst += g_dec3[fb].len;
+
+  memcpy(dst, BG, sizeof(BG) - 1);
+  dst += sizeof(BG) - 1;
+  memcpy(dst, g_dec3[br].s, g_dec3[br].len);
+  dst += g_dec3[br].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[bg].s, g_dec3[bg].len);
+  dst += g_dec3[bg].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[bb].s, g_dec3[bb].len);
+  dst += g_dec3[bb].len;
+
+  *dst++ = 'm';
+  return dst;
+}
+
+// Legacy wrapper functions for backward compatibility
+static inline int generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
+  char *result = append_sgr_truecolor_fg(dst, r, g, b);
+  return (int)(result - dst);
+}
+
+static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
+  char *result = append_sgr_truecolor_bg(dst, r, g, b);
+  return (int)(result - dst);
+}
+
+// Optimized row renderer with run-length encoding and FG+BG combined sequences
+size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
+                                            bool background_mode);
 
 // ----------------
 char *image_print_colored_simd(image_t *image) {
-  size_t max_output_size = image->w * image->h * 40; // Generous estimate for ANSI codes
+  // Calculate exact maximum buffer size with precise per-pixel bounds
+  const int h = image->h;
+  const int w = image->w;
 
-  // Use buffer pool for internal processing but return malloc'd memory for compatibility
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
-  char *temp_buffer = data_buffer_pool_alloc(pool, max_output_size);
-  if (!temp_buffer) {
-    log_error("Failed to allocate temp buffer from buffer pool (size: %zu)", max_output_size);
+  // Exact per-pixel maximums (with run-length encoding this will be much smaller in practice)
+  const size_t per_px = opt_background_color ? 39 : 20; // Worst case per pixel
+  const size_t reset_len = 4;                           // \033[0m
+
+  const size_t h_sz = (size_t)h;
+  const size_t w_sz = (size_t)w;
+  const size_t total_resets = h_sz * reset_len;
+  const size_t total_newlines = (h_sz > 0) ? (h_sz - 1) : 0;
+  const size_t lines_size = w_sz * h_sz * per_px + total_resets + total_newlines + 1;
+
+  // Single allocation - no buffer pool overhead, no copying!
+  char *ascii;
+  SAFE_MALLOC(ascii, lines_size, char *);
+  if (!ascii) {
+    log_error("Memory allocation failed: %zu bytes", lines_size);
     return NULL;
   }
 
-  // Allocate row buffer once per frame to reduce buffer pool contention
-  char *row_ascii_chars = data_buffer_pool_alloc(pool, image->w);
-  if (!row_ascii_chars) {
-    log_error("Failed to allocate row ASCII buffer");
-    data_buffer_pool_free(pool, temp_buffer, max_output_size);
-    return NULL;
-  }
+  // Note: The new render_row_truecolor_ascii_runlength() function handles
+  // everything internally and doesn't need separate ASCII character buffers
 
-  // Process row by row with SIMD optimization
+  // The run-length encoding implementation is now the primary optimized path
+  // Future: streaming NEON can be added here for very large images
+
+  // Process directly into final buffer using optimized run-length encoding
   size_t total_len = 0;
-  for (int y = 0; y < image->h; y++) {
-    // Use the reusable row buffer instead of allocating per row
-    size_t row_len = convert_row_with_color_optimized_with_buffer((const rgb_pixel_t *)&image->pixels[y * image->w],
-                                                                  temp_buffer + total_len, max_output_size - total_len,
-                                                                  image->w, opt_background_color, row_ascii_chars);
+  for (int y = 0; y < h; y++) {
+    // Debug assertion: ensure we have enough space
+    const size_t row_max = w * per_px + reset_len;
+    assert(total_len + row_max <= lines_size);
+
+    // Use the NEW optimized run-length encoding function with combined SGR sequences
+    size_t row_len = render_row_truecolor_ascii_runlength((const rgb_pixel_t *)&image->pixels[y * w], w,
+                                                          ascii + total_len, lines_size - total_len, opt_background_color);
     total_len += row_len;
 
     // Add newline after each row (except the last row)
-    if (y != image->h - 1 && total_len < max_output_size - 1) {
-      temp_buffer[total_len++] = '\n';
+    if (y != h - 1 && total_len < lines_size - 1) {
+      ascii[total_len++] = '\n';
     }
   }
-  temp_buffer[total_len] = '\0';
-
-  // Copy to malloc'd memory for compatibility with free()
-  char *ascii;
-  SAFE_MALLOC(ascii, total_len + 1, char *);
-  if (!ascii) {
-    log_error("Failed to allocate final ASCII buffer");
-    data_buffer_pool_free(pool, temp_buffer, max_output_size);
-    data_buffer_pool_free(pool, row_ascii_chars, image->w);
-    return NULL;
-  }
-
-  memcpy(ascii, temp_buffer, total_len + 1);
-  data_buffer_pool_free(pool, temp_buffer, max_output_size);
-  data_buffer_pool_free(pool, row_ascii_chars, image->w);
+  ascii[total_len] = '\0';
 
   return ascii;
 }
@@ -153,59 +238,27 @@ char *image_print_colored_simd(image_t *image) {
  * ============================================================================
  */
 
-// Forward declarations for _with_buffer functions
-#ifdef SIMD_SUPPORT_AVX2
-size_t convert_row_with_color_avx2_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                               int width, bool background_mode, char *ascii_chars);
-#endif
+// Note: All the old slow convert_row_with_color_* functions have been removed.
+// We now use the optimized render_row_truecolor_ascii_runlength() function instead.
 
-#ifdef SIMD_SUPPORT_SSE2
-size_t convert_row_with_color_sse2_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                               int width, bool background_mode, char *ascii_chars);
-#endif
-
-#ifdef SIMD_SUPPORT_NEON
-size_t convert_row_with_color_neon_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                               int width, bool background_mode, char *ascii_chars);
-#endif
-
-size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                                 int width, bool background_mode, char *ascii_chars);
-
-// Wrapper function declaration
-size_t convert_row_with_color_optimized_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                                    int width, bool background_mode, char *reusable_ascii_chars);
-
-// Wrapper function that uses a pre-allocated buffer to reduce buffer pool contention
-size_t convert_row_with_color_optimized_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                                    int width, bool background_mode, char *reusable_ascii_chars) {
-#ifdef SIMD_SUPPORT_AVX2
-  return convert_row_with_color_avx2_with_buffer(pixels, output_buffer, buffer_size, width, background_mode,
-                                                 reusable_ascii_chars);
-#elif defined(SIMD_SUPPORT_SSE2)
-  return convert_row_with_color_sse2_with_buffer(pixels, output_buffer, buffer_size, width, background_mode,
-                                                 reusable_ascii_chars);
-#elif defined(SIMD_SUPPORT_NEON)
-  return convert_row_with_color_neon_with_buffer(pixels, output_buffer, buffer_size, width, background_mode,
-                                                 reusable_ascii_chars);
-#else
-  return convert_row_with_color_scalar_with_buffer(pixels, output_buffer, buffer_size, width, background_mode,
-                                                   reusable_ascii_chars);
-#endif
-}
 
 #ifdef SIMD_SUPPORT_AVX2
-// Process entire row with SIMD luminance + optimized color generation
+// Process entire row with SIMD luminance + optimized color generation - OPTIMIZED (no buffer pool)
 size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                    bool background_mode) {
 
-  // Step 1: SIMD luminance conversion for entire row
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
-  char *ascii_chars = data_buffer_pool_alloc(pool, width);
-  if (!ascii_chars) {
-    log_error("Failed to allocate temporary ASCII chars buffer");
-    return 0;
+  // Use stack allocation for small widths, heap for large
+  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
+  char *ascii_chars = stack_ascii_chars;
+  bool heap_allocated = false;
+
+  if (width > 2048) {
+    // Only use heap allocation for very wide images
+    SAFE_MALLOC(ascii_chars, width, char *);
+    heap_allocated = true;
   }
+
+  // Step 1: SIMD luminance conversion - NO BUFFER POOL!
   convert_pixels_avx2(pixels, ascii_chars, width);
 
   // Step 2: Generate colored output
@@ -251,7 +304,11 @@ size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffe
     current_pos += sizeof(ANSI_RESET) - 1;
   }
 
-  data_buffer_pool_free(pool, ascii_chars, width);
+  // Clean up heap allocation if used
+  if (heap_allocated) {
+    free(ascii_chars);
+  }
+
   return current_pos - output_buffer;
 }
 
@@ -310,20 +367,25 @@ size_t convert_row_with_color_avx2_with_buffer(const rgb_pixel_t *pixels, char *
 #endif
 
 #ifdef SIMD_SUPPORT_SSE2
-// SSE2 version for older Intel/AMD systems
+// SSE2 version for older Intel/AMD systems - OPTIMIZED (no buffer pool)
 size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                    bool background_mode) {
 
-  // Step 1: SIMD luminance conversion for entire row using SSE2
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
-  char *ascii_chars = data_buffer_pool_alloc(pool, width);
-  if (!ascii_chars) {
-    log_error("Failed to allocate temporary ASCII chars buffer");
-    return 0;
+  // Use stack allocation for small widths, heap for large
+  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
+  char *ascii_chars = stack_ascii_chars;
+  bool heap_allocated = false;
+
+  if (width > 2048) {
+    // Only use heap allocation for very wide images
+    SAFE_MALLOC(ascii_chars, width, char *);
+    heap_allocated = true;
   }
+
+  // Step 1: SIMD luminance conversion - NO BUFFER POOL!
   convert_pixels_sse2(pixels, ascii_chars, width);
 
-  // Step 2: Generate colored output (same as AVX2/NEON versions)
+  // Step 2: Generate colored output
   char *current_pos = output_buffer;
   char *buffer_end = output_buffer + buffer_size;
 
@@ -366,7 +428,11 @@ size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffe
     current_pos += sizeof(ANSI_RESET) - 1;
   }
 
-  data_buffer_pool_free(pool, ascii_chars, width);
+  // Clean up heap allocation if used
+  if (heap_allocated) {
+    free(ascii_chars);
+  }
+
   return current_pos - output_buffer;
 }
 
@@ -526,198 +592,74 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
   return current_pos - output_buffer;
 }
 
-#ifdef SIMD_SUPPORT_NEON
-// ARM NEON version for Apple Silicon
-size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode) {
-
-  // Step 1: SIMD luminance conversion for entire row using NEON
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
-  char *ascii_chars = data_buffer_pool_alloc(pool, width);
-  if (!ascii_chars) {
-    log_error("Failed to allocate temporary ASCII chars buffer");
-    return 0;
-  }
-  convert_pixels_neon(pixels, ascii_chars, width);
-
-  // Step 2: Generate colored output (same as AVX2 version)
-  char *current_pos = output_buffer;
-  char *buffer_end = output_buffer + buffer_size;
-
-  for (int x = 0; x < width; x++) {
-    const rgb_pixel_t *pixel = &pixels[x];
-    char ascii_char = ascii_chars[x];
-
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 64)
-      break; // Safety margin
-
-    if (background_mode) {
-      // Background mode: colored background, contrasting foreground
-      uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
-      uint8_t fg_color = (luminance < 127) ? 255 : 0;
-
-      // Generate foreground color code
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-
-      // Generate background color code
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
-
-      // Add ASCII character
-      *current_pos++ = ascii_char;
-
-    } else {
-      // Foreground mode: colored character
-      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += fg_len;
-      *current_pos++ = ascii_char;
-    }
-  }
-
-  // Add reset sequence
-  size_t remaining = buffer_end - current_pos;
-  if (remaining >= sizeof(ANSI_RESET)) {
-    memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
-    current_pos += sizeof(ANSI_RESET) - 1;
-  }
-
-  data_buffer_pool_free(pool, ascii_chars, width);
-  return current_pos - output_buffer;
-}
-
-// NEON version with pre-allocated buffer to reduce buffer pool contention
-size_t convert_row_with_color_neon_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                               int width, bool background_mode, char *ascii_chars) {
-  // Step 1: Use provided buffer for SIMD luminance conversion
-  convert_pixels_neon(pixels, ascii_chars, width);
-
-  // Step 2: Generate colored output (same as regular NEON version)
-  char *current_pos = output_buffer;
-  char *buffer_end = output_buffer + buffer_size;
-
-  for (int x = 0; x < width; x++) {
-    const rgb_pixel_t *pixel = &pixels[x];
-    char ascii_char = ascii_chars[x];
-
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 64)
-      break; // Safety margin
-
-    if (background_mode) {
-      // Background mode: colored background, contrasting foreground
-      uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
-      uint8_t fg_color = (luminance < 127) ? 255 : 0;
-
-      // Generate foreground color code
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-
-      // Generate background color code
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
-
-      // Add ASCII character
-      *current_pos++ = ascii_char;
-
-    } else {
-      // Foreground mode: colored character
-      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += fg_len;
-      *current_pos++ = ascii_char;
-    }
-  }
-
-  // Add reset sequence
-  size_t remaining2 = buffer_end - current_pos;
-  if (remaining2 >= sizeof(ANSI_RESET)) {
-    memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
-    current_pos += sizeof(ANSI_RESET) - 1;
-  }
-
-  // No buffer pool free - using pre-allocated buffer
-  return current_pos - output_buffer;
-}
-#endif
-
-// Auto-dispatch version
+// Auto-dispatch version - just use the optimized run-length implementation for all platforms
 size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                         bool background_mode) {
-#ifdef SIMD_SUPPORT_AVX2
-  return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
-#elif defined(SIMD_SUPPORT_NEON)
-  return convert_row_with_color_neon(pixels, output_buffer, buffer_size, width, background_mode);
-#elif defined(SIMD_SUPPORT_SSE2)
-  return convert_row_with_color_sse2(pixels, output_buffer, buffer_size, width, background_mode);
-#else
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
-#endif
+  // The run-length encoding with optimized SGR generation is fastest for all platforms
+  return render_row_truecolor_ascii_runlength(pixels, width, output_buffer, buffer_size, background_mode);
 }
 
 /* ============================================================================
- * Benchmark Colored ASCII Performance
+ * Run-Length Encoding Color Optimization
  * ============================================================================
  */
 
-typedef struct {
-  double scalar_time;
-  double simd_time;
-  double speedup;
-  size_t output_size_scalar;
-  size_t output_size_simd;
-} color_benchmark_t;
+// Build one colored ASCII row with FG only or FG+BG, run-length colors.
+size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
+                                            bool background_mode) {
+  init_palette();
+  init_dec3();
 
-color_benchmark_t benchmark_colored_ascii(int width, int height, int iterations, bool background_mode) {
-  color_benchmark_t result = {0};
+  char *p = dst;
+  char *end = dst + cap;
 
-  int pixel_count = width * height;
-  size_t max_output_size = pixel_count * 40; // Generous estimate for ANSI codes
+  bool have_color = false;
+  uint8_t cr = 0, cg = 0, cb = 0; // current foreground color
+  uint8_t br = 0;                 // current fg brightness (for background mode)
 
-  // Generate test data
-  rgb_pixel_t *test_pixels = malloc(pixel_count * sizeof(rgb_pixel_t));
-  char *scalar_output = malloc(max_output_size);
-  char *simd_output = malloc(max_output_size);
+  for (int x = 0; x < width; ++x) {
+    const rgb_pixel_t *px = &row[x];
 
-  srand(12345);
-  for (int i = 0; i < pixel_count; i++) {
-    test_pixels[i].r = rand() % 256;
-    test_pixels[i].g = rand() % 256;
-    test_pixels[i].b = rand() % 256;
-  }
+    // Calculate luminance for ASCII character selection
+    int y = (LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8;
+    char ch = luminance_palette[y];
 
-  printf("Benchmarking colored ASCII %dx%d (%s mode) x %d iterations...\n", width, height,
-         background_mode ? "background" : "foreground", iterations);
+    if (background_mode) {
+      // Background mode: Use pixel color as background, contrasting foreground
+      uint8_t fg_val = (y < 127) ? 255 : 0; // White text on dark bg, black on light bg
 
-  // Benchmark scalar version
-  double start = (double)clock() / CLOCKS_PER_SEC;
-  for (int iter = 0; iter < iterations; iter++) {
-    for (int y = 0; y < height; y++) {
-      size_t row_size = convert_row_with_color_scalar(&test_pixels[y * width], scalar_output, max_output_size, width,
-                                                      background_mode);
-      if (iter == 0)
-        result.output_size_scalar += row_size;
+      if (!have_color || px->r != cr || px->g != cg || px->b != cb || fg_val != br) {
+        // Color changed - emit combined FG+BG sequence
+        if (end - p < 36)
+          break; // worst case FG+BG ~32B + char
+        p = append_sgr_truecolor_fg_bg(p, fg_val, fg_val, fg_val, px->r, px->g, px->b);
+        cr = px->r;
+        cg = px->g;
+        cb = px->b;
+        br = fg_val;
+        have_color = true;
+      }
+    } else {
+      // Foreground mode: Use pixel color as foreground
+      if (!have_color || px->r != cr || px->g != cg || px->b != cb) {
+        // Color changed - emit foreground sequence
+        if (end - p < 24)
+          break; // worst case FG ~19B + char
+        p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
+        cr = px->r;
+        cg = px->g;
+        cb = px->b;
+        have_color = true;
+      }
     }
+
+    if (p == end)
+      break;
+    *p++ = ch;
   }
-  result.scalar_time = (double)clock() / CLOCKS_PER_SEC - start;
 
-  // Benchmark SIMD version
-  start = (double)clock() / CLOCKS_PER_SEC;
-  for (int iter = 0; iter < iterations; iter++) {
-    for (int y = 0; y < height; y++) {
-      size_t row_size = convert_row_with_color_optimized(&test_pixels[y * width], simd_output, max_output_size, width,
-                                                         background_mode);
-      if (iter == 0)
-        result.output_size_simd += row_size;
-    }
-  }
-  result.simd_time = (double)clock() / CLOCKS_PER_SEC - start;
-
-  result.speedup = result.scalar_time / result.simd_time;
-
-  free(test_pixels);
-  free(scalar_output);
-  free(simd_output);
-
-  return result;
+  // Reset sequence (but no newline - let the caller handle that)
+  if (end - p >= 4)
+    p = append_sgr_reset(p);
+  return (size_t)(p - dst);
 }
