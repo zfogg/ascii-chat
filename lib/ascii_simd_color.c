@@ -219,8 +219,8 @@ char *image_print_colored_simd(image_t *image) {
     assert(total_len + row_max <= lines_size);
 
     // Use the NEW optimized run-length encoding function with combined SGR sequences
-    size_t row_len = render_row_truecolor_ascii_runlength((const rgb_pixel_t *)&image->pixels[y * w], w,
-                                                          ascii + total_len, lines_size - total_len, opt_background_color);
+    size_t row_len = render_row_truecolor_ascii_runlength(
+        (const rgb_pixel_t *)&image->pixels[y * w], w, ascii + total_len, lines_size - total_len, opt_background_color);
     total_len += row_len;
 
     // Add newline after each row (except the last row)
@@ -240,7 +240,6 @@ char *image_print_colored_simd(image_t *image) {
 
 // Note: All the old slow convert_row_with_color_* functions have been removed.
 // We now use the optimized render_row_truecolor_ascii_runlength() function instead.
-
 
 #ifdef SIMD_SUPPORT_AVX2
 // Process entire row with SIMD luminance + optimized color generation - OPTIMIZED (no buffer pool)
