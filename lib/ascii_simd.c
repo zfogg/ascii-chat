@@ -62,41 +62,35 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
 char *image_print_simd(image_t *image) {
-  size_t ascii_len = image->w * image->h;
+  const int h = image->h;
+  const int w = image->w;
+  
+  // Calculate exact buffer size (matching non-SIMD version)
+  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
 
-  // Use buffer pool for consistent memory management with color SIMD
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
-  char *ascii_chars = data_buffer_pool_alloc(pool, ascii_len);
-  if (!ascii_chars) {
-    log_error("Failed to allocate ASCII characters buffer from buffer pool");
-    image_destroy(image);
-    return NULL;
-  }
-
-  // Convert pixels to ASCII characters using SIMD
-  convert_pixels_optimized((const rgb_pixel_t *)image->pixels, ascii_chars, ascii_len);
-
-  // Format into lines with newlines - use malloc for return value compatibility
+  // Single allocation - no buffer pool overhead
   char *ascii;
-  SAFE_MALLOC(ascii, ascii_len + image->h, char *); // +(height-1) for newlines, +1 for null
+  SAFE_MALLOC(ascii, len * sizeof(char), char *);
   if (!ascii) {
-    log_error("Failed to allocate ASCII output buffer");
-    data_buffer_pool_free(pool, ascii_chars, ascii_len);
-    image_destroy(image);
+    log_error("Failed to allocate ASCII buffer");
     return NULL;
   }
 
+  // Process directly into final buffer - no copying!
   char *pos = ascii;
-  for (int y = 0; y < image->h; y++) {
-    memcpy(pos, &ascii_chars[y * image->w], image->w);
-    pos += image->w;
-    if (y != image->h - 1) { // Only add newline if NOT the last row
+  for (int y = 0; y < h; y++) {
+    const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
+    
+    // Use SIMD to convert this row directly into final buffer
+    convert_pixels_optimized(row_pixels, pos, w);
+    pos += w;
+    
+    // Add newline (except for last row)  
+    if (y != h - 1) {
       *pos++ = '\n';
     }
   }
   *pos = '\0';
-
-  data_buffer_pool_free(pool, ascii_chars, ascii_len);
 
   return ascii;
 }
@@ -113,27 +107,30 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
   int simd_count = (count / 4) * 4;
   int i;
 
-  // Process 4 pixels at a time
+  // Process 4 pixels at a time using SSE2-compatible operations
   for (i = 0; i < simd_count; i += 4) {
-    // Load 4 RGB pixels (12 bytes) - this is tricky with packed RGB
-    // We'll process them one by one but use SIMD for luminance calculation
+    // Load 4 RGB pixels and convert to 16-bit for SSE2 compatibility
+    // SSE2 doesn't have _mm_mullo_epi32, so we use 16-bit arithmetic
+    
+    __m128i r_vals = _mm_setr_epi16(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, 0, 0, 0, 0);
+    __m128i g_vals = _mm_setr_epi16(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g, 0, 0, 0, 0);
+    __m128i b_vals = _mm_setr_epi16(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b, 0, 0, 0, 0);
 
-    __m128i r_vals = _mm_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r);
-    __m128i g_vals = _mm_setr_epi32(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g);
-    __m128i b_vals = _mm_setr_epi32(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b);
-
-    // Multiply by luminance weights
-    __m128i luma_r = _mm_mullo_epi32(r_vals, _mm_set1_epi32(LUMA_RED));
-    __m128i luma_g = _mm_mullo_epi32(g_vals, _mm_set1_epi32(LUMA_GREEN));
-    __m128i luma_b = _mm_mullo_epi32(b_vals, _mm_set1_epi32(LUMA_BLUE));
+    // Multiply by luminance weights using 16-bit multiplication
+    __m128i luma_r = _mm_mullo_epi16(r_vals, _mm_set1_epi16(LUMA_RED));
+    __m128i luma_g = _mm_mullo_epi16(g_vals, _mm_set1_epi16(LUMA_GREEN));
+    __m128i luma_b = _mm_mullo_epi16(b_vals, _mm_set1_epi16(LUMA_BLUE));
 
     // Sum and shift right by 8 (divide by 256)
-    __m128i luminance = _mm_add_epi32(_mm_add_epi32(luma_r, luma_g), luma_b);
-    luminance = _mm_srli_epi32(luminance, 8);
+    __m128i luminance = _mm_add_epi16(_mm_add_epi16(luma_r, luma_g), luma_b);
+    luminance = _mm_srli_epi16(luminance, 8);
 
-    // Clamp to [0, 255] and extract results
+    // Extract results and convert to ASCII
     int lum[4];
-    _mm_storeu_si128((__m128i *)lum, luminance);
+    lum[0] = _mm_extract_epi16(luminance, 0);
+    lum[1] = _mm_extract_epi16(luminance, 1);
+    lum[2] = _mm_extract_epi16(luminance, 2);
+    lum[3] = _mm_extract_epi16(luminance, 3);
 
     for (int j = 0; j < 4; j++) {
       if (lum[j] > 255)
