@@ -1,0 +1,24 @@
+# Makefile for Rate Limiter Example
+CC = gcc
+CFLAGS = -Wall -Wextra -O2
+LDFLAGS = -lm
+
+SOURCES = rate_limiter.c rate_limiter_example.c
+OBJECTS = $(SOURCES:.c=.o)
+EXECUTABLE = rate_limiter_example
+
+all: $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJECTS) $(EXECUTABLE)
+
+run: $(EXECUTABLE)
+	./$(EXECUTABLE)
+
+.PHONY: all clean run

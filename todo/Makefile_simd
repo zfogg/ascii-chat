@@ -1,0 +1,187 @@
+# Makefile for SIMD ASCII Optimization
+CC = clang
+BASE_CFLAGS = -Wall -Wextra -O3 -std=c99 -I../lib -D_GNU_SOURCE
+
+# Detect CPU capabilities and set appropriate flags (matching main project Makefile)
+UNAME_M := $(shell uname -m)
+UNAME_S := $(shell uname -s)
+
+# macOS specifics: detect Apple Silicon and Rosetta
+ifeq ($(UNAME_S),Darwin)
+  IS_APPLE_SILICON := $(shell sysctl -n hw.optional.arm64 2>/dev/null || echo 0)
+  IS_ROSETTA       := $(shell sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
+endif
+
+# Auto-detect SIMD mode (matching main project logic)
+ifeq ($(UNAME_S),Darwin)
+  ifeq ($(IS_ROSETTA),1)
+    SIMD_MODE := sse2
+  else ifeq ($(IS_APPLE_SILICON),1)
+    SIMD_MODE := neon
+  else
+    SIMD_MODE := sse2
+  endif
+else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+  SIMD_MODE := neon
+else ifeq ($(UNAME_M),x86_64)
+  SIMD_MODE := sse2
+else
+  SIMD_MODE := off
+endif
+
+# Map mode to compiler flags (matching main project)
+ifneq (,$(filter $(SIMD_MODE),off))
+  $(info Building without SIMD (scalar))
+  SIMD_CFLAGS := 
+else ifneq (,$(filter $(SIMD_MODE),sse2))
+  $(info Using SSE2 baseline)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2
+else ifneq (,$(filter $(SIMD_MODE),avx2))
+  $(info Using AVX2 (ensure target CPUs support it)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_AVX2 -mavx2
+else ifneq (,$(filter $(SIMD_MODE),neon))
+  $(info Using ARM NEON)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON
+else
+  $(info Unknown architecture $(UNAME_M); building without SIMD)
+  SIMD_CFLAGS := 
+endif
+
+CFLAGS = $(BASE_CFLAGS) $(SIMD_CFLAGS)
+LDFLAGS = -lm
+
+# Link against main project's SIMD-optimized object files
+MAIN_PROJECT_OBJECTS = ../build/lib/ascii_simd.o ../build/lib/ascii_simd_color.o ../build/lib/logging.o ../build/lib/buffer_pool.o ../build/lib/common.o ../build/lib/options.o ../build/lib/image.o
+
+# Source files for test programs (only test files, use main project objects for libraries)
+ASCII_SIMD_TEST_SOURCES = ascii_simd_test.c
+ASCII_SIMD_COLOR_TEST_SOURCES = ascii_simd_color_test.c
+ANSI_FAST_TEST_SOURCES = ansi_fast_test.c
+
+# Object files for test programs
+ASCII_SIMD_TEST_OBJECTS = $(ASCII_SIMD_TEST_SOURCES:.c=.o)
+ASCII_SIMD_COLOR_TEST_OBJECTS = $(ASCII_SIMD_COLOR_TEST_SOURCES:.c=.o)
+ANSI_FAST_TEST_OBJECTS = $(ANSI_FAST_TEST_SOURCES:.c=.o)
+
+# Executables
+ASCII_SIMD_EXECUTABLE = ascii_simd_test
+ASCII_SIMD_COLOR_EXECUTABLE = ascii_simd_color_test
+ANSI_FAST_EXECUTABLE = ansi_fast_test
+
+# First ensure main project objects are built
+ensure-main-objects:
+	@echo "Ensuring main project objects are built..."
+	@cd .. && $(MAKE) debug
+
+# Targets
+all: ensure-main-objects $(ASCII_SIMD_EXECUTABLE) $(ASCII_SIMD_COLOR_EXECUTABLE) $(ANSI_FAST_EXECUTABLE)
+	@echo "Built all test programs with: $(SIMD_CFLAGS)"
+
+$(ASCII_SIMD_EXECUTABLE): $(ASCII_SIMD_TEST_OBJECTS) | ensure-main-objects
+	@echo "Linking $@ with main project SIMD objects..."
+	$(CC) $(ASCII_SIMD_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) -o $@ $(LDFLAGS)
+
+$(ASCII_SIMD_COLOR_EXECUTABLE): $(ASCII_SIMD_COLOR_TEST_OBJECTS) | ensure-main-objects
+	@echo "Linking $@ with main project SIMD objects..."
+	$(CC) $(ASCII_SIMD_COLOR_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) -o $@ $(LDFLAGS)
+
+# ANSI fast test needs ansi_fast.c compiled separately
+$(ANSI_FAST_EXECUTABLE): $(ANSI_FAST_TEST_OBJECTS) ../lib/ansi_fast.o | ensure-main-objects
+	@echo "Linking $@ with optimized ANSI generation..."
+	$(CC) $(ANSI_FAST_TEST_OBJECTS) ../lib/ansi_fast.o ../build/lib/logging.o ../build/lib/common.o -o $@ $(LDFLAGS)
+
+# Compile ansi_fast.c
+../lib/ansi_fast.o: ../lib/ansi_fast.c ../lib/ansi_fast.h
+	@echo "Compiling ansi_fast.c..."
+	$(CC) $(CFLAGS) -c ../lib/ansi_fast.c -o ../lib/ansi_fast.o
+
+# Individual targets for convenience
+ascii_simd_test: $(ASCII_SIMD_EXECUTABLE)
+
+ascii_simd_color_test: $(ASCII_SIMD_COLOR_EXECUTABLE)
+
+ansi_fast_test: $(ANSI_FAST_EXECUTABLE)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Test different compilation modes (these compile and link separately for comparison)
+test-scalar: ensure-main-objects
+	@echo "Building scalar test programs..."
+	$(CC) $(BASE_CFLAGS) ascii_simd_test.c ../lib/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_scalar $(LDFLAGS)
+	$(CC) $(BASE_CFLAGS) ascii_simd_color_test.c ../lib/ascii_simd.c ../lib/ascii_simd_color.c ../lib/logging.c ../lib/buffer_pool.c -o $(ASCII_SIMD_COLOR_EXECUTABLE)_scalar $(LDFLAGS)
+	@echo "Built scalar-only versions"
+
+test-sse2: ensure-main-objects
+	@echo "Building SSE2 test programs..."
+	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2 ascii_simd_test.c ../lib/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_sse2 $(LDFLAGS)
+	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2 ascii_simd_color_test.c ../lib/ascii_simd.c ../lib/ascii_simd_color.c ../lib/logging.c ../lib/buffer_pool.c -o $(ASCII_SIMD_COLOR_EXECUTABLE)_sse2 $(LDFLAGS)
+	@echo "Built SSE2 versions"
+
+test-neon: ensure-main-objects
+	@echo "Building NEON test programs..."
+	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON ascii_simd_test.c ../lib/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_neon $(LDFLAGS)
+	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON ascii_simd_color_test.c ../lib/ascii_simd.c ../lib/ascii_simd_color.c ../lib/logging.c ../lib/buffer_pool.c -o $(ASCII_SIMD_COLOR_EXECUTABLE)_neon $(LDFLAGS)
+	@echo "Built NEON versions"
+
+test-all: test-scalar test-sse2 test-neon
+	@echo "Built all variants for comparison"
+
+# Run benchmarks
+benchmark: $(ASCII_SIMD_EXECUTABLE)
+	@echo "Running basic SIMD benchmark..."
+	./$(ASCII_SIMD_EXECUTABLE)
+
+benchmark-color: $(ASCII_SIMD_COLOR_EXECUTABLE)
+	@echo "Running colored SIMD benchmark..."
+	./$(ASCII_SIMD_COLOR_EXECUTABLE)
+
+benchmark-ansi-fast: $(ANSI_FAST_EXECUTABLE)
+	@echo "Running optimized ANSI string generation benchmark..."
+	./$(ANSI_FAST_EXECUTABLE)
+
+benchmark-all: benchmark benchmark-color benchmark-ansi-fast
+	@echo "All benchmarks complete"
+
+# Clean targets
+clean:
+	rm -f $(ASCII_SIMD_TEST_OBJECTS) $(ASCII_SIMD_COLOR_TEST_OBJECTS) $(ANSI_FAST_TEST_OBJECTS) $(ASCII_SIMD_EXECUTABLE) $(ASCII_SIMD_COLOR_EXECUTABLE) $(ANSI_FAST_EXECUTABLE) $(ASCII_SIMD_EXECUTABLE)_* $(ASCII_SIMD_COLOR_EXECUTABLE)_* *.o ../lib/ansi_fast.o
+
+# Show compilation info
+info:
+	@echo "System: $(UNAME_S) $(UNAME_M)"
+	@echo "Compiler: $(CC)"
+	@echo "SIMD flags: $(SIMD_CFLAGS)"
+	@echo "Full CFLAGS: $(CFLAGS)"
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all               - Build all test programs linking with main project SIMD objects"
+	@echo "  ascii_simd_test   - Build basic SIMD test program"
+	@echo "  ascii_simd_color_test - Build colored SIMD test program"
+	@echo "  ansi_fast_test    - Build optimized ANSI string generation test"
+	@echo "  test-scalar       - Build scalar-only versions (separate compilation)"
+	@echo "  test-sse2         - Build SSE2 versions (separate compilation)"
+	@echo "  test-neon         - Build NEON versions (separate compilation)"
+	@echo "  test-all          - Build all versions for comparison"
+	@echo "  benchmark         - Run basic SIMD benchmark"
+	@echo "  benchmark-color   - Run colored SIMD benchmark"
+	@echo "  benchmark-ansi-fast - Run optimized ANSI string benchmark"
+	@echo "  benchmark-all     - Run all benchmarks"
+	@echo "  clean             - Remove build files"
+	@echo "  info              - Show compilation information"
+	@echo "  help              - Show this help"
+	@echo ""
+	@echo "NEW: ansi_fast_test implements ChatGPT's optimization recommendations:"
+	@echo "     - Precomputed decimal lookup table (dec3[])"
+	@echo "     - memcpy-based ANSI generation (no snprintf)"
+	@echo "     - Run-length color encoding (emit SGR only on change)"
+	@echo "     - Two pixels per cell using ▀ character"
+	@echo "     - Single write() batching for entire frame"
+	@echo "     - Separate timing measurements (pixel/string/output)"
+	@echo ""
+	@echo "NOTE: Default targets link against main project's SIMD-optimized objects."
+	@echo "      Use test-* targets to build with independent compilation for comparison."
+
+.PHONY: all ascii_simd_test ascii_simd_color_test ansi_fast_test ensure-main-objects test-scalar test-sse2 test-neon test-all benchmark benchmark-color benchmark-ansi-fast benchmark-all clean info help
