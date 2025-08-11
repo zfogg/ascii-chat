@@ -8,6 +8,18 @@
 #include "common.h"
 #include "buffer_pool.h"
 
+#ifdef SIMD_SUPPORT_NEON
+#include <arm_neon.h>
+#endif
+
+#ifdef SIMD_SUPPORT_SSE2
+#include <emmintrin.h>
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+#include <immintrin.h>
+#endif
+
 // ASCII palette (matches your existing one)
 // static const char ascii_palette2[] = " .,:;ox%#@";
 static const char ascii_palette2[] = "   ...',;:clodxkO0KXNWM";
@@ -64,7 +76,7 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
 char *image_print_simd(image_t *image) {
   const int h = image->h;
   const int w = image->w;
-  
+
   // Calculate exact buffer size (matching non-SIMD version)
   const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
 
@@ -80,12 +92,12 @@ char *image_print_simd(image_t *image) {
   char *pos = ascii;
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
-    
+
     // Use SIMD to convert this row directly into final buffer
     convert_pixels_optimized(row_pixels, pos, w);
     pos += w;
-    
-    // Add newline (except for last row)  
+
+    // Add newline (except for last row)
     if (y != h - 1) {
       *pos++ = '\n';
     }
@@ -111,7 +123,7 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
   for (i = 0; i < simd_count; i += 4) {
     // Load 4 RGB pixels and convert to 16-bit for SSE2 compatibility
     // SSE2 doesn't have _mm_mullo_epi32, so we use 16-bit arithmetic
-    
+
     __m128i r_vals = _mm_setr_epi16(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, 0, 0, 0, 0);
     __m128i g_vals = _mm_setr_epi16(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g, 0, 0, 0, 0);
     __m128i b_vals = _mm_setr_epi16(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b, 0, 0, 0, 0);
@@ -308,50 +320,93 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
  */
 
 #ifdef SIMD_SUPPORT_NEON
-void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-  init_palette();
+void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
+  init_palette(); // uses your existing luminance_palette[]
 
-  int simd_count = (count / 4) * 4;
-  int i;
+  int i = 0;
 
-  // NEON constants
-  const uint32x4_t luma_r_vec = vdupq_n_u32(LUMA_RED);
-  const uint32x4_t luma_g_vec = vdupq_n_u32(LUMA_GREEN);
-  const uint32x4_t luma_b_vec = vdupq_n_u32(LUMA_BLUE);
+  // Fast path for 3-byte RGB (RGBRGB...)
+  if (sizeof(rgb_pixel_t) == 3) {
+    for (; i + 15 < count; i += 16) {
+      const uint8_t *base = (const uint8_t *)(pixels + i);
 
-  for (i = 0; i < simd_count; i += 4) {
-    // Load 4 pixels
-    uint32x4_t r_vals = {pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r};
-    uint32x4_t g_vals = {pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g};
-    uint32x4_t b_vals = {pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b};
+      // Load 16 interleaved RGB pixels → 3 separate 16-byte vectors
+      uint8x16x3_t rgb = vld3q_u8(base);
 
-    // Multiply by luminance weights
-    uint32x4_t luma_r = vmulq_u32(r_vals, luma_r_vec);
-    uint32x4_t luma_g = vmulq_u32(g_vals, luma_g_vec);
-    uint32x4_t luma_b = vmulq_u32(b_vals, luma_b_vec);
+      // Widen to 16-bit
+      uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
+      uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb.val[0]));
+      uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb.val[1]));
+      uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb.val[1]));
+      uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb.val[2]));
+      uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb.val[2]));
 
-    // Sum and shift
-    uint32x4_t luminance = vaddq_u32(vaddq_u32(luma_r, luma_g), luma_b);
-    luminance = vshrq_n_u32(luminance, 8);
+      // y = (77*r + 150*g + 29*b) >> 8   (fits in 16-bit)
+      uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
+      y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
+      y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
+      y_lo = vshrq_n_u16(y_lo, 8);
 
-    // Extract and clamp
-    uint32_t lum[4];
-    vst1q_u32(lum, luminance);
+      uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
+      y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
+      y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
+      y_hi = vshrq_n_u16(y_hi, 8);
 
-    for (int j = 0; j < 4; j++) {
-      if (lum[j] > 255)
-        lum[j] = 255;
-      ascii_chars[i + j] = luminance_palette[lum[j]];
+      // Pack back to u8
+      uint8x16_t y = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
+
+      // Map luminance → ASCII (scalar gather from 256-byte table)
+      uint8_t lum8[16];
+      vst1q_u8(lum8, y);
+      for (int k = 0; k < 16; ++k) {
+        ascii_chars[i + k] = luminance_palette[lum8[k]];
+      }
+    }
+  }
+  // Fast path for 4-byte RGBA/RGBX (RGBARGBARGBA...)
+  else if (sizeof(rgb_pixel_t) == 4) {
+    for (; i + 15 < count; i += 16) {
+      const uint8_t *base = (const uint8_t *)(pixels + i);
+
+      // Load 16 interleaved RGBA → 4 separate 16-byte vectors
+      uint8x16x4_t rgba = vld4q_u8(base);
+      uint8x16_t r8 = rgba.val[0];
+      uint8x16_t g8 = rgba.val[1];
+      uint8x16_t b8 = rgba.val[2];
+
+      uint16x8_t r_lo = vmovl_u8(vget_low_u8(r8));
+      uint16x8_t r_hi = vmovl_u8(vget_high_u8(r8));
+      uint16x8_t g_lo = vmovl_u8(vget_low_u8(g8));
+      uint16x8_t g_hi = vmovl_u8(vget_high_u8(g8));
+      uint16x8_t b_lo = vmovl_u8(vget_low_u8(b8));
+      uint16x8_t b_hi = vmovl_u8(vget_high_u8(b8));
+
+      uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
+      y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
+      y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
+      y_lo = vshrq_n_u16(y_lo, 8);
+
+      uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
+      y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
+      y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
+      y_hi = vshrq_n_u16(y_hi, 8);
+
+      uint8x16_t y = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
+
+      uint8_t lum8[16];
+      vst1q_u8(lum8, y);
+      for (int k = 0; k < 16; ++k) {
+        ascii_chars[i + k] = luminance_palette[lum8[k]];
+      }
     }
   }
 
-  // Scalar fallback for remaining pixels
-  for (; i < count; i++) {
+  // Tail (any remaining pixels)
+  for (; i < count; ++i) {
     const rgb_pixel_t *p = &pixels[i];
-    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    if (luminance > 255)
-      luminance = 255;
-    ascii_chars[i] = luminance_palette[luminance];
+    // Clamp is unnecessary because 77+150+29==256 and inputs are 0..255
+    int y = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    ascii_chars[i] = luminance_palette[y];
   }
 }
 #endif
