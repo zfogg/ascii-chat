@@ -125,9 +125,39 @@ else
   SIMD_CFLAGS := 
 endif
 
-# Apply to both C and ObjC compilation
-override CFLAGS    += $(SIMD_CFLAGS)
-override OBJCFLAGS += $(SIMD_CFLAGS)
+# =============================================================================
+# CPU-aware Optimization Flags
+# =============================================================================
+
+# CPU-aware optimization flags for all platforms
+ifeq ($(UNAME_S),Darwin)
+    # macOS: Apple Silicon gets specific optimizations, Intel gets generic -O3
+    ifeq ($(IS_APPLE_SILICON),1)
+        CPU_OPT_FLAGS := -O3 -mcpu=apple-m1 -ffast-math
+        $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
+    else
+        # Intel Mac
+        CPU_OPT_FLAGS := -O3 -march=native
+        $(info Using Intel Mac optimizations: $(CPU_OPT_FLAGS))
+    endif
+else ifeq ($(UNAME_S),Linux)
+    # Linux: CPU-specific optimizations
+    ifeq ($(UNAME_M),aarch64)
+        CPU_OPT_FLAGS := -O3 -mcpu=native
+        $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
+    else
+        CPU_OPT_FLAGS := -O3 -march=native
+        $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
+    endif
+else
+    # Other platforms: Generic -O3
+    CPU_OPT_FLAGS := -O3
+    $(info Using generic optimizations: $(CPU_OPT_FLAGS))
+endif
+
+# Apply SIMD and CPU optimization flags to both C and ObjC compilation
+override CFLAGS    += $(SIMD_CFLAGS) $(CPU_OPT_FLAGS)
+override OBJCFLAGS += $(SIMD_CFLAGS) $(CPU_OPT_FLAGS)
 
 # =============================================================================
 # File Discovery
@@ -188,8 +218,7 @@ sanitize: CFLAGS += -fsanitize=address
 sanitize: LDFLAGS += -fsanitize=address 
 sanitize: $(TARGETS)
 
-# Release build
-release: CFLAGS += -O3
+# Release build (CPU optimization flags already applied via CPU_OPT_FLAGS)
 release: $(TARGETS)
 
 # Build executables
