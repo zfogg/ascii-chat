@@ -42,9 +42,11 @@ typedef struct buffer_pool {
   size_t pool_size;         // Number of buffers in pool
   size_t used_count;        // Number currently in use
   // Statistics
-  uint64_t hits;    // Successful allocations from pool
-  uint64_t misses;  // Had to fallback to malloc
-  uint64_t returns; // Successful returns to pool
+  uint64_t hits;                  // Successful allocations from pool
+  uint64_t misses;                // Had to fallback to malloc
+  uint64_t returns;               // Successful returns to pool
+  uint64_t peak_used;             // Peak number of buffers used
+  uint64_t total_bytes_allocated; // Total bytes served (for analysis)
 } buffer_pool_t;
 
 // Multi-size buffer pool manager
@@ -75,5 +77,17 @@ data_buffer_pool_t *data_buffer_pool_get_global(void);
 // Convenience functions that use the global pool
 void *buffer_pool_alloc(size_t size);
 void buffer_pool_free(void *data, size_t size);
+
+// Enhanced statistics functions
+typedef struct {
+  uint64_t small_hits, small_misses, small_returns, small_peak_used, small_bytes;
+  uint64_t medium_hits, medium_misses, medium_returns, medium_peak_used, medium_bytes;
+  uint64_t large_hits, large_misses, large_returns, large_peak_used, large_bytes;
+  uint64_t total_allocations, total_bytes, total_pool_usage_percent;
+} buffer_pool_detailed_stats_t;
+
+void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_detailed_stats_t *stats);
+void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name);
+void buffer_pool_log_global_stats(void); // Log global pool stats
 
 #endif // BUFFER_POOL_H

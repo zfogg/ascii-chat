@@ -421,7 +421,13 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
                   expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
         // Free data if packet owns it
         if (node->packet.owns_data && node->packet.data) {
-          data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+          // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
+          if (node->packet.buffer_pool) {
+            data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+          } else {
+            // This was allocated from global pool or malloc, use buffer_pool_free which handles both
+            buffer_pool_free(node->packet.data, node->packet.data_len);
+          }
         }
         node_pool_put(queue->node_pool, node);
         return NULL;
@@ -488,7 +494,13 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
                   actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
         // Free data if packet owns it
         if (node->packet.owns_data && node->packet.data) {
-          data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+          // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
+          if (node->packet.buffer_pool) {
+            data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+          } else {
+            // This was allocated from global pool or malloc, use buffer_pool_free which handles both
+            buffer_pool_free(node->packet.data, node->packet.data_len);
+          }
         }
         node_pool_put(queue->node_pool, node);
         return NULL;
@@ -512,7 +524,12 @@ void packet_queue_free_packet(queued_packet_t *packet) {
 
   if (packet->owns_data && packet->data) {
     // Return to appropriate pool or free
-    data_buffer_pool_free(packet->buffer_pool, packet->data, packet->data_len);
+    if (packet->buffer_pool) {
+      data_buffer_pool_free(packet->buffer_pool, packet->data, packet->data_len);
+    } else {
+      // This was allocated from global pool or malloc, use buffer_pool_free which handles both
+      buffer_pool_free(packet->data, packet->data_len);
+    }
   }
   free(packet);
 }
@@ -565,7 +582,13 @@ void packet_queue_clear(packet_queue_t *queue) {
     queue->head = node->next;
 
     if (node->packet.owns_data && node->packet.data) {
-      data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+      // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
+      if (node->packet.buffer_pool) {
+        data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+      } else {
+        // This was allocated from global pool or malloc, use buffer_pool_free which handles both
+        buffer_pool_free(node->packet.data, node->packet.data_len);
+      }
     }
     node_pool_put(queue->node_pool, node);
   }

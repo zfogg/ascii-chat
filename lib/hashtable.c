@@ -1,0 +1,310 @@
+#include "hashtable.h"
+#include "common.h"
+#include <stdlib.h>
+#include <string.h>
+
+/* ============================================================================
+ * Hash Function
+ * ============================================================================ */
+
+// Simple hash function for 32-bit integers (client IDs)
+// Using FNV-1a hash which has good distribution properties
+static inline uint32_t hash_uint32(uint32_t key) {
+  uint32_t hash = 2166136261U; // FNV-1a 32-bit offset basis
+
+  // Hash each byte of the key
+  hash ^= (key & 0xFF);
+  hash *= 16777619U; // FNV-1a 32-bit prime
+
+  hash ^= ((key >> 8) & 0xFF);
+  hash *= 16777619U;
+
+  hash ^= ((key >> 16) & 0xFF);
+  hash *= 16777619U;
+
+  hash ^= ((key >> 24) & 0xFF);
+  hash *= 16777619U;
+
+  // Use bit masking instead of modulo for power-of-2 bucket counts
+  return hash & (HASHTABLE_BUCKET_COUNT - 1);
+}
+
+/* ============================================================================
+ * Hash Table Implementation
+ * ============================================================================ */
+
+hashtable_t *hashtable_create(void) {
+  hashtable_t *ht;
+  SAFE_MALLOC(ht, sizeof(hashtable_t), hashtable_t *);
+
+  // Initialize buckets to NULL
+  memset(ht->buckets, 0, sizeof(ht->buckets));
+
+  // Pre-allocate entry pool
+  ht->pool_size = HASHTABLE_MAX_ENTRIES;
+  SAFE_MALLOC(ht->entry_pool, sizeof(hashtable_entry_t) * ht->pool_size, hashtable_entry_t *);
+
+  // Initialize free list (stack of free entries)
+  ht->free_list = NULL;
+  for (size_t i = 0; i < ht->pool_size; i++) {
+    hashtable_entry_t *entry = &ht->entry_pool[i];
+    entry->in_use = false;
+    entry->next = ht->free_list;
+    ht->free_list = entry;
+  }
+
+  ht->entry_count = 0;
+
+  // Initialize reader-writer lock
+  if (pthread_rwlock_init(&ht->rwlock, NULL) != 0) {
+    log_error("Failed to initialize hashtable rwlock");
+    free(ht->entry_pool);
+    free(ht);
+    return NULL;
+  }
+
+  // Initialize statistics
+  ht->lookups = 0;
+  ht->hits = 0;
+  ht->insertions = 0;
+  ht->deletions = 0;
+  ht->collisions = 0;
+
+  log_debug("Created hashtable: %zu buckets, %zu entry pool", (size_t)HASHTABLE_BUCKET_COUNT, ht->pool_size);
+
+  return ht;
+}
+
+void hashtable_destroy(hashtable_t *ht) {
+  if (!ht)
+    return;
+
+  // Print final statistics
+  hashtable_print_stats(ht, "Final");
+
+  pthread_rwlock_destroy(&ht->rwlock);
+  free(ht->entry_pool);
+  free(ht);
+}
+
+// Get a free entry from the pool (must be called with write lock held)
+static hashtable_entry_t *get_free_entry(hashtable_t *ht) {
+  if (!ht->free_list) {
+    return NULL; // Pool exhausted
+  }
+
+  hashtable_entry_t *entry = ht->free_list;
+  ht->free_list = entry->next;
+
+  entry->next = NULL;
+  entry->in_use = true;
+
+  return entry;
+}
+
+// Return an entry to the pool (must be called with write lock held)
+static void return_entry_to_pool(hashtable_t *ht, hashtable_entry_t *entry) {
+  entry->key = 0;
+  entry->value = NULL;
+  entry->in_use = false;
+  entry->next = ht->free_list;
+  ht->free_list = entry;
+}
+
+bool hashtable_insert(hashtable_t *ht, uint32_t key, void *value) {
+  if (!ht || !value || key == 0) {
+    return false; // Invalid parameters (key 0 is reserved)
+  }
+
+  uint32_t bucket_idx = hash_uint32(key);
+
+  pthread_rwlock_wrlock(&ht->rwlock);
+
+  // Check if key already exists
+  hashtable_entry_t *existing = ht->buckets[bucket_idx];
+  while (existing) {
+    if (existing->key == key) {
+      // Update existing value
+      existing->value = value;
+      pthread_rwlock_unlock(&ht->rwlock);
+      return true;
+    }
+    existing = existing->next;
+  }
+
+  // Get a free entry from pool
+  hashtable_entry_t *entry = get_free_entry(ht);
+  if (!entry) {
+    log_error("Hashtable entry pool exhausted");
+    pthread_rwlock_unlock(&ht->rwlock);
+    return false;
+  }
+
+  // Initialize new entry
+  entry->key = key;
+  entry->value = value;
+
+  // Insert at head of bucket chain
+  entry->next = ht->buckets[bucket_idx];
+  if (ht->buckets[bucket_idx]) {
+    ht->collisions++; // Count collision
+  }
+  ht->buckets[bucket_idx] = entry;
+
+  ht->entry_count++;
+  ht->insertions++;
+
+  pthread_rwlock_unlock(&ht->rwlock);
+
+  log_debug("Inserted key %u into bucket %u (load factor: %.2f)", key, bucket_idx, hashtable_load_factor(ht));
+
+  return true;
+}
+
+void *hashtable_lookup(hashtable_t *ht, uint32_t key) {
+  if (!ht || key == 0) {
+    return NULL;
+  }
+
+  uint32_t bucket_idx = hash_uint32(key);
+
+  pthread_rwlock_rdlock(&ht->rwlock);
+
+  ht->lookups++;
+
+  hashtable_entry_t *entry = ht->buckets[bucket_idx];
+  while (entry) {
+    if (entry->key == key) {
+      void *value = entry->value;
+      ht->hits++;
+      pthread_rwlock_unlock(&ht->rwlock);
+      return value;
+    }
+    entry = entry->next;
+  }
+
+  pthread_rwlock_unlock(&ht->rwlock);
+  return NULL; // Not found
+}
+
+bool hashtable_remove(hashtable_t *ht, uint32_t key) {
+  if (!ht || key == 0) {
+    return false;
+  }
+
+  uint32_t bucket_idx = hash_uint32(key);
+
+  pthread_rwlock_wrlock(&ht->rwlock);
+
+  hashtable_entry_t *entry = ht->buckets[bucket_idx];
+  hashtable_entry_t *prev = NULL;
+
+  while (entry) {
+    if (entry->key == key) {
+      // Remove from chain
+      if (prev) {
+        prev->next = entry->next;
+      } else {
+        ht->buckets[bucket_idx] = entry->next;
+      }
+
+      // Return entry to pool
+      return_entry_to_pool(ht, entry);
+
+      ht->entry_count--;
+      ht->deletions++;
+
+      pthread_rwlock_unlock(&ht->rwlock);
+
+      log_debug("Removed key %u from bucket %u", key, bucket_idx);
+      return true;
+    }
+
+    prev = entry;
+    entry = entry->next;
+  }
+
+  pthread_rwlock_unlock(&ht->rwlock);
+  return false; // Not found
+}
+
+bool hashtable_contains(hashtable_t *ht, uint32_t key) {
+  return hashtable_lookup(ht, key) != NULL;
+}
+
+void hashtable_foreach(hashtable_t *ht, hashtable_foreach_fn callback, void *user_data) {
+  if (!ht || !callback)
+    return;
+
+  // NOTE: This requires external locking for thread safety
+  // The caller should hold a read or write lock
+
+  for (size_t i = 0; i < HASHTABLE_BUCKET_COUNT; i++) {
+    hashtable_entry_t *entry = ht->buckets[i];
+    while (entry) {
+      if (entry->in_use) {
+        callback(entry->key, entry->value, user_data);
+      }
+      entry = entry->next;
+    }
+  }
+}
+
+size_t hashtable_size(hashtable_t *ht) {
+  if (!ht)
+    return 0;
+
+  pthread_rwlock_rdlock(&ht->rwlock);
+  size_t size = ht->entry_count;
+  pthread_rwlock_unlock(&ht->rwlock);
+
+  return size;
+}
+
+double hashtable_load_factor(hashtable_t *ht) {
+  if (!ht)
+    return 0.0;
+  return (double)ht->entry_count / (double)HASHTABLE_BUCKET_COUNT;
+}
+
+void hashtable_print_stats(hashtable_t *ht, const char *name) {
+  if (!ht)
+    return;
+
+  pthread_rwlock_rdlock(&ht->rwlock);
+
+  double hit_rate = (ht->lookups > 0) ? ((double)ht->hits * 100.0 / (double)ht->lookups) : 0.0;
+  double load_factor = (double)ht->entry_count / (double)HASHTABLE_BUCKET_COUNT;
+  size_t free_entries = ht->pool_size - ht->entry_count;
+
+  log_info("=== Hashtable Stats: %s ===", name ? name : "Unknown");
+  log_info("Size: %zu/%zu entries, Load factor: %.2f, Free: %zu", ht->entry_count, ht->pool_size, load_factor,
+           free_entries);
+  log_info("Operations: %llu lookups (%.1f%% hit rate), %llu insertions, %llu deletions",
+           (unsigned long long)ht->lookups, hit_rate, (unsigned long long)ht->insertions,
+           (unsigned long long)ht->deletions);
+  log_info("Collisions: %llu", (unsigned long long)ht->collisions);
+
+  pthread_rwlock_unlock(&ht->rwlock);
+}
+
+// Locking functions for external coordination
+void hashtable_read_lock(hashtable_t *ht) {
+  if (ht)
+    pthread_rwlock_rdlock(&ht->rwlock);
+}
+
+void hashtable_read_unlock(hashtable_t *ht) {
+  if (ht)
+    pthread_rwlock_unlock(&ht->rwlock);
+}
+
+void hashtable_write_lock(hashtable_t *ht) {
+  if (ht)
+    pthread_rwlock_wrlock(&ht->rwlock);
+}
+
+void hashtable_write_unlock(hashtable_t *ht) {
+  if (ht)
+    pthread_rwlock_unlock(&ht->rwlock);
+}

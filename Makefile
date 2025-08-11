@@ -54,7 +54,80 @@ else
     PLATFORM_SOURCES := 
 endif
 
-override LDFLAGS += $(PKG_LDFLAGS) -lpthread $(PLATFORM_LDFLAGS)
+override LDFLAGS := $(PKG_LDFLAGS) -lm -lpthread $(PLATFORM_LDFLAGS)
+
+# Only embed Info.plist on macOS
+ifeq ($(shell uname),Darwin)
+    INFO_PLIST_FLAGS := -sectcreate __TEXT __info_plist Info.plist
+else
+    INFO_PLIST_FLAGS :=
+endif
+
+# =============================================================================
+# SIMD Flags
+# =============================================================================
+# Detect CPU/OS for reasonable defaults (build-host only)
+UNAME_M := $(shell uname -m)
+UNAME_S := $(shell uname -s)
+
+# macOS specifics: detect Apple Silicon and Rosetta
+ifeq ($(UNAME_S),Darwin)
+  IS_APPLE_SILICON := $(shell sysctl -n hw.optional.arm64 2>/dev/null || echo 0)
+  IS_ROSETTA       := $(shell sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
+endif
+
+# User override controls
+# SIMD_MODE can be one of: auto, off, sse2, avx2, neon, native
+SIMD_MODE ?= auto
+
+# Decide an effective mode: either user-provided or autodetected
+# Autodetect chooses a conservative baseline suitable for distribution.
+ifeq ($(SIMD_MODE),auto)
+  # Compute SIMD_MODE_AUTO based on OS/arch; Rosetta counts as x86_64.
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_ROSETTA),1)
+      SIMD_MODE_AUTO := sse2
+    else ifeq ($(IS_APPLE_SILICON),1)
+      SIMD_MODE_AUTO := neon
+    else
+      SIMD_MODE_AUTO := sse2
+    endif
+  else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+    SIMD_MODE_AUTO := neon
+  else ifeq ($(UNAME_M),x86_64)
+    SIMD_MODE_AUTO := sse2
+  else ifeq ($(UNAME_M),aarch64)
+    SIMD_MODE_AUTO := native
+  else
+    SIMD_MODE_AUTO := off
+  endif
+else
+  SIMD_MODE_AUTO := $(SIMD_MODE)
+endif
+
+# Map the effective mode to compiler flags (single table)
+ifneq (,$(filter $(SIMD_MODE_AUTO),off))
+  $(info Building without SIMD (scalar))
+else ifneq (,$(filter $(SIMD_MODE_AUTO),sse2))
+  $(info Using SSE2 baseline)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2
+else ifneq (,$(filter $(SIMD_MODE_AUTO),avx2))
+  $(info Using AVX2 (ensure target CPUs support it)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_AVX2 -mavx2
+else ifneq (,$(filter $(SIMD_MODE_AUTO),neon))
+  $(info Using ARM NEON)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON
+else ifneq (,$(filter $(SIMD_MODE_AUTO),native))
+  $(info Using -march=native (build-host only))
+  SIMD_CFLAGS := -DSIMD_SUPPORT -march=native
+else
+  $(info Unknown architecture $(UNAME_M); building without SIMD)
+  SIMD_CFLAGS := 
+endif
+
+# Apply to both C and ObjC compilation
+override CFLAGS    += $(SIMD_CFLAGS)
+override OBJCFLAGS += $(SIMD_CFLAGS)
 
 # =============================================================================
 # File Discovery
@@ -88,7 +161,7 @@ OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/clien
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze cloc
 
 # =============================================================================
 # Default Target
@@ -127,7 +200,7 @@ $(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET)
 
 $(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET)
 	@echo "Linking $@..."
-	$(CC) -o $@ $^ $(LDFLAGS) -sectcreate __TEXT __info_plist Info.plist
+	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
 
 # Create build directories
@@ -222,7 +295,7 @@ format-check:
 # Run bear to generate a compile_commands.json file
 compile_commands.json: Makefile
 	@echo "Running bear to generate compile_commands.json..."
-	@bear -- make clean debug
+	@make clean && bear -- make debug
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
@@ -233,6 +306,9 @@ clang-tidy: $(C_FILES) $(C_HEADERS) $(M_FILES)
 analyze:
 	clang --analyze $(SOURCES)
 	cppcheck --enable=all $(C_FILES) $(C_HEADERS)
+
+cloc:
+	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
 
 # =============================================================================
 # Extra Makefile stuff

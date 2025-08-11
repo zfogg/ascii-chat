@@ -380,6 +380,111 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   return num_samples;
 }
 
+int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_samples, uint32_t exclude_client_id) {
+  if (!mixer || !output || num_samples <= 0)
+    return -1;
+
+  // Clear output buffer
+  memset(output, 0, num_samples * sizeof(float));
+
+  // Count active sources (excluding the specified client)
+  int active_count = 0;
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] != 0 && mixer->source_ids[i] != exclude_client_id && mixer->source_active[i] &&
+        mixer->source_buffers[i]) {
+      active_count++;
+    }
+  }
+
+  if (active_count == 0) {
+    // No active sources (excluding the specified client), output silence
+    return 0;
+  }
+
+  // Process in frames for efficiency
+  for (int frame_start = 0; frame_start < num_samples; frame_start += MIXER_FRAME_SIZE) {
+    int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
+
+    // Clear mix buffer
+    memset(mixer->mix_buffer, 0, frame_size * sizeof(float));
+
+    // Temporary buffers for source audio
+    float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
+    int source_count = 0;
+    int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
+
+    // Read from each active source (excluding the specified client)
+    for (int i = 0; i < mixer->max_sources; i++) {
+      if (mixer->source_ids[i] != 0 && mixer->source_ids[i] != exclude_client_id && mixer->source_active[i] &&
+          mixer->source_buffers[i]) {
+        // Read samples from this source's ring buffer
+        int samples_read = audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+
+        // If we didn't get enough samples, pad with silence
+        if (samples_read < frame_size) {
+          memset(&source_samples[source_count][samples_read], 0, (frame_size - samples_read) * sizeof(float));
+        }
+
+        source_map[source_count] = i;
+        source_count++;
+
+        if (source_count >= MIXER_MAX_SOURCES)
+          break;
+      }
+    }
+
+    // Process each sample in the frame
+    for (int s = 0; s < frame_size; s++) {
+      // Update envelopes for active speaker detection
+      int speaking_count = 0;
+      for (int i = 0; i < source_count; i++) {
+        int slot = source_map[i];
+        float sample = source_samples[i][s];
+        float abs_sample = fabsf(sample);
+
+        // Update envelope
+        if (abs_sample > mixer->ducking.envelope[slot]) {
+          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
+        } else {
+          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
+        }
+
+        // Count speaking sources
+        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+          speaking_count++;
+      }
+
+      // Apply ducking
+      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+      // Calculate crowd scaling
+      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+      float pre_bus = mixer->base_gain * crowd_gain;
+
+      // Mix sources with ducking and crowd scaling
+      float mix = 0.0f;
+      for (int i = 0; i < source_count; i++) {
+        int slot = source_map[i];
+        float sample = source_samples[i][s];
+        float gain = mixer->ducking.gain[slot];
+        mix += sample * gain;
+      }
+      mix *= pre_bus;
+
+      // Apply bus compression
+      float comp_gain = compressor_process_sample(&mixer->compressor, mix);
+      mix *= comp_gain;
+
+      // Clamp and output
+      output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
+    }
+  }
+
+  return num_samples;
+}
+
 /* ============================================================================
  * Noise Gate Implementation
  * ============================================================================

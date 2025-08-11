@@ -6,3 +6,6 @@
 /*.txt
 /*.old
 /.cache
+/.claude/settings.local.json
+
+*.o
