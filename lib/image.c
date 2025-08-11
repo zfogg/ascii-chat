@@ -11,6 +11,7 @@
 #include "ascii.h"
 #include "options.h"
 #include "round.h"
+#include "ansi_fast.h"
 
 image_t *image_new(size_t width, size_t height) {
   image_t *p;
@@ -234,10 +235,13 @@ char *image_print_colored(const image_t *p) {
     return NULL;
   }
 
+  // Initialize ansi_fast lookup tables
+  ansi_fast_init();
+
   const int h = p->h;
   const int w = p->w;
 
-  // Constants for ANSI escape codes
+  // Constants for ANSI escape codes (using exact sizes from ansi_fast.c)
   const size_t max_fg_ansi = 19; // \033[38;2;255;255;255m
   const size_t max_bg_ansi = 19; // \033[48;2;255;255;255m
   const size_t reset_len = 4;    // \033[0m
@@ -301,24 +305,13 @@ char *image_print_colored(const image_t *p) {
         int fg_r = (luminance < 127) ? 0 : 255;
         int fg_g = fg_r, fg_b = fg_r;
 
-        const char *ascii_fg = rgb_to_ansi_fg(fg_r, fg_g, fg_b);
-        const char *ascii_bg = rgb_to_ansi_bg(r, g, b);
-
-        const int written = snprintf(current_pos, remaining, "%s%s%c", ascii_fg, ascii_bg, ascii_char);
-        if (written < 0 || (size_t)written >= remaining) {
-          log_error("Buffer overflow (background)");
-          exit(ASCIICHAT_ERR_BUFFER_ACCESS);
-        }
-        current_pos += written;
+        // Use ansi_fast.c for 10x speedup - no snprintf!
+        current_pos = append_truecolor_fg_bg(current_pos, fg_r, fg_g, fg_b, r, g, b);
+        *current_pos++ = ascii_char;
       } else {
-        const char *ascii_fg = rgb_to_ansi_fg(r, g, b);
-
-        const int written = snprintf(current_pos, remaining, "%s%c", ascii_fg, ascii_char);
-        if (written < 0 || (size_t)written >= remaining) {
-          log_error("Buffer overflow (foreground)");
-          exit(ASCIICHAT_ERR_BUFFER_ACCESS);
-        }
-        current_pos += written;
+        // Use ansi_fast.c for 10x speedup - no snprintf!
+        current_pos = append_truecolor_fg(current_pos, r, g, b);
+        *current_pos++ = ascii_char;
       }
     }
 

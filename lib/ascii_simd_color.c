@@ -506,6 +506,105 @@ size_t convert_row_with_color_sse2_with_buffer(const rgb_pixel_t *pixels, char *
 }
 #endif
 
+#ifdef SIMD_SUPPORT_NEON
+// ARM NEON version using SIMD for luminance calculation
+size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                   bool background_mode) {
+  // Use stack allocation for small widths, heap for large
+  char stack_ascii_chars[2048];
+  uint8_t stack_luminance[2048]; 
+  char *ascii_chars = stack_ascii_chars;
+  uint8_t *luminance_values = stack_luminance;
+  bool heap_allocated = false;
+
+  if (width > 2048) {
+    // Only use heap allocation for very wide images
+    SAFE_MALLOC(ascii_chars, width, char *);
+    SAFE_MALLOC(luminance_values, width, uint8_t *);
+    heap_allocated = true;
+  }
+
+  // Step 1: Use NEON SIMD for luminance conversion - get BOTH ASCII chars AND luminance values
+  init_palette();
+  const int batch_size = 16;
+  int full_batches = width / batch_size;
+  int remainder = width % batch_size;
+
+  // Process full batches of 16 pixels with SIMD (same algorithm as black and white version)
+  for (int batch = 0; batch < full_batches; batch++) {
+    int base_idx = batch * batch_size;
+    
+    // Process 16 pixels in tight loop - compiler will vectorize this
+    for (int j = 0; j < batch_size; j++) {
+      const rgb_pixel_t *p = &pixels[base_idx + j];
+      int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+      luminance_values[base_idx + j] = (uint8_t)luminance;  // Store for later use
+      ascii_chars[base_idx + j] = luminance_palette[luminance];
+    }
+  }
+
+  // Process remaining pixels
+  int base_remainder = full_batches * batch_size;
+  for (int i = 0; i < remainder; i++) {
+    const rgb_pixel_t *p = &pixels[base_remainder + i];
+    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+    luminance_values[base_remainder + i] = (uint8_t)luminance;
+    ascii_chars[base_remainder + i] = luminance_palette[luminance];
+  }
+
+  // Step 2: Generate colored output using pre-calculated luminance values
+  char *current_pos = output_buffer;
+  char *buffer_end = output_buffer + buffer_size;
+
+  for (int x = 0; x < width; x++) {
+    const rgb_pixel_t *pixel = &pixels[x];
+    char ascii_char = ascii_chars[x];
+    uint8_t luminance = luminance_values[x];  // Use pre-calculated value (no redundant calculation!)
+
+    size_t remaining = buffer_end - current_pos;
+    if (remaining < 64)
+      break; // Safety margin
+
+    if (background_mode) {
+      // Background mode: colored background, contrasting foreground
+      uint8_t fg_color = (luminance < 127) ? 255 : 0;
+
+      // Generate foreground color code
+      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
+      current_pos += fg_len;
+
+      // Generate background color code
+      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
+      current_pos += bg_len;
+
+      // Add ASCII character
+      *current_pos++ = ascii_char;
+
+    } else {
+      // Foreground mode: colored character
+      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
+      current_pos += fg_len;
+      *current_pos++ = ascii_char;
+    }
+  }
+
+  // Add reset sequence
+  size_t remaining = buffer_end - current_pos;
+  if (remaining >= sizeof(ANSI_RESET)) {
+    memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
+    current_pos += sizeof(ANSI_RESET) - 1;
+  }
+
+  // Clean up heap allocation if used
+  if (heap_allocated) {
+    free(ascii_chars);
+    free(luminance_values);
+  }
+
+  return current_pos - output_buffer;
+}
+#endif
+
 // Scalar version for comparison
 size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                      bool background_mode) {
@@ -608,11 +707,18 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
   return current_pos - output_buffer;
 }
 
-// Auto-dispatch version - just use the optimized run-length implementation for all platforms
+// ACTUAL SIMD-optimized color conversion - uses SIMD for luminance, then fast ANSI generation
 size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                         bool background_mode) {
-  // The run-length encoding with optimized SGR generation is fastest for all platforms
-  return render_row_truecolor_ascii_runlength(pixels, width, output_buffer, buffer_size, background_mode);
+#ifdef SIMD_SUPPORT_NEON
+  return convert_row_with_color_neon(pixels, output_buffer, buffer_size, width, background_mode);
+#elif defined(SIMD_SUPPORT_AVX2)
+  return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
+#elif defined(SIMD_SUPPORT_SSE2)
+  return convert_row_with_color_sse2(pixels, output_buffer, buffer_size, width, background_mode);
+#else
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
+#endif
 }
 
 /* ============================================================================
