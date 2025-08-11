@@ -65,6 +65,10 @@ static void *buffer_pool_alloc_single(buffer_pool_t *pool, size_t size) {
     node->in_use = true;
     pool->used_count++;
     pool->hits++;
+    pool->total_bytes_allocated += size;
+    if (pool->used_count > pool->peak_used) {
+      pool->peak_used = pool->used_count;
+    }
     return node->data;
   }
 
@@ -303,4 +307,104 @@ void buffer_pool_free(void *data, size_t size) {
   // No global pool - this memory must have been malloc'd
   // (unless it's from a pool that was already destroyed, in which case we leak)
   free(data);
+}
+
+/* ============================================================================
+ * Enhanced Statistics Functions
+ * ============================================================================ */
+
+void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_detailed_stats_t *stats) {
+  if (!pool || !stats) {
+    return;
+  }
+
+  memset(stats, 0, sizeof(*stats));
+
+  pthread_mutex_lock(&pool->pool_mutex);
+
+  // Small pool stats
+  if (pool->small_pool) {
+    stats->small_hits = pool->small_pool->hits;
+    stats->small_misses = pool->small_pool->misses;
+    stats->small_returns = pool->small_pool->returns;
+    stats->small_peak_used = pool->small_pool->peak_used;
+    stats->small_bytes = pool->small_pool->total_bytes_allocated;
+  }
+
+  // Medium pool stats
+  if (pool->medium_pool) {
+    stats->medium_hits = pool->medium_pool->hits;
+    stats->medium_misses = pool->medium_pool->misses;
+    stats->medium_returns = pool->medium_pool->returns;
+    stats->medium_peak_used = pool->medium_pool->peak_used;
+    stats->medium_bytes = pool->medium_pool->total_bytes_allocated;
+  }
+
+  // Large pool stats
+  if (pool->large_pool) {
+    stats->large_hits = pool->large_pool->hits;
+    stats->large_misses = pool->large_pool->misses;
+    stats->large_returns = pool->large_pool->returns;
+    stats->large_peak_used = pool->large_pool->peak_used;
+    stats->large_bytes = pool->large_pool->total_bytes_allocated;
+  }
+
+  // Calculate totals
+  stats->total_allocations = stats->small_hits + stats->medium_hits + stats->large_hits + stats->small_misses +
+                             stats->medium_misses + stats->large_misses;
+  stats->total_bytes = stats->small_bytes + stats->medium_bytes + stats->large_bytes;
+
+  // Calculate pool usage efficiency
+  uint64_t total_hits = stats->small_hits + stats->medium_hits + stats->large_hits;
+  if (stats->total_allocations > 0) {
+    stats->total_pool_usage_percent = (total_hits * 100) / stats->total_allocations;
+  }
+
+  pthread_mutex_unlock(&pool->pool_mutex);
+}
+
+void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name) {
+  if (!pool) {
+    return;
+  }
+
+  buffer_pool_detailed_stats_t stats;
+  data_buffer_pool_get_detailed_stats(pool, &stats);
+
+  log_info("=== Buffer Pool Stats: %s ===", pool_name ? pool_name : "Unknown");
+  log_info("Total allocations: %llu, Pool hit rate: %llu%%, Total bytes: %.2f MB",
+           (unsigned long long)stats.total_allocations, (unsigned long long)stats.total_pool_usage_percent,
+           (double)stats.total_bytes / (1024.0 * 1024.0));
+
+  if (stats.small_hits + stats.small_misses > 0) {
+    log_info("  Small (1KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+             (unsigned long long)stats.small_hits, (unsigned long long)stats.small_misses,
+             (double)stats.small_hits * 100.0 / (stats.small_hits + stats.small_misses),
+             (unsigned long long)stats.small_peak_used, BUFFER_POOL_SMALL_COUNT,
+             (double)stats.small_bytes / (1024.0 * 1024.0));
+  }
+
+  if (stats.medium_hits + stats.medium_misses > 0) {
+    log_info("  Medium (64KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+             (unsigned long long)stats.medium_hits, (unsigned long long)stats.medium_misses,
+             (double)stats.medium_hits * 100.0 / (stats.medium_hits + stats.medium_misses),
+             (unsigned long long)stats.medium_peak_used, BUFFER_POOL_MEDIUM_COUNT,
+             (double)stats.medium_bytes / (1024.0 * 1024.0));
+  }
+
+  if (stats.large_hits + stats.large_misses > 0) {
+    log_info("  Large (256KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+             (unsigned long long)stats.large_hits, (unsigned long long)stats.large_misses,
+             (double)stats.large_hits * 100.0 / (stats.large_hits + stats.large_misses),
+             (unsigned long long)stats.large_peak_used, BUFFER_POOL_LARGE_COUNT,
+             (double)stats.large_bytes / (1024.0 * 1024.0));
+  }
+}
+
+void buffer_pool_log_global_stats(void) {
+  if (g_global_buffer_pool) {
+    data_buffer_pool_log_stats(g_global_buffer_pool, "Global");
+  } else {
+    log_info("Global buffer pool not initialized");
+  }
 }

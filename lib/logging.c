@@ -22,14 +22,16 @@ static struct {
   log_level_t level;
   pthread_mutex_t mutex;
   bool initialized;
-  char filename[256];  /* Store filename for rotation */
-  size_t current_size; /* Track current file size */
+  char filename[256];           /* Store filename for rotation */
+  size_t current_size;          /* Track current file size */
+  bool terminal_output_enabled; /* Control stderr output to terminal */
 } g_log = {.file = 0,
            .level = LOG_INFO,
            .mutex = PTHREAD_MUTEX_INITIALIZER,
            .initialized = false,
            .filename = {0},
-           .current_size = 0};
+           .current_size = 0,
+           .terminal_output_enabled = true};
 
 static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
@@ -201,6 +203,12 @@ void log_set_level(log_level_t level) {
   pthread_mutex_unlock(&g_log.mutex);
 }
 
+void log_set_terminal_output(bool enabled) {
+  pthread_mutex_lock(&g_log.mutex);
+  g_log.terminal_output_enabled = enabled;
+  pthread_mutex_unlock(&g_log.mutex);
+}
+
 void log_truncate_if_large(void) {
   pthread_mutex_lock(&g_log.mutex);
 
@@ -293,8 +301,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     fflush(log_file);
   }
 
-  /* Also print to stderr with colors if it's a terminal */
-  if (g_log.file != STDERR_FILENO && isatty(STDERR_FILENO)) {
+  /* Also print to stderr with colors if it's a terminal and terminal output is enabled */
+  if (g_log.terminal_output_enabled && g_log.file != STDERR_FILENO && isatty(STDERR_FILENO)) {
     fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
             line, func);
 

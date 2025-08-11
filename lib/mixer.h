@@ -104,6 +104,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active);
 
 // Processing
 int mixer_process(mixer_t *mixer, float *output, int num_samples);
+int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_samples, uint32_t exclude_client_id);
 
 // Utility functions
 float db_to_linear(float db);

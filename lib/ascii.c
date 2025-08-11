@@ -5,10 +5,12 @@
 #include <math.h>
 
 #include "ascii.h"
+#include "ascii_simd.h"
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"
 #include "webcam.h"
+#include "options.h"
 
 /* ============================================================================
  * ASCII Art Video Processing
@@ -80,9 +82,19 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 
   char *ascii;
   if (color) {
+#ifdef SIMD_SUPPORT
+    // Allocate buffer for SIMD colored ASCII output
+    ascii = image_print_colored_simd(resized);
+#else
     ascii = image_print_colored(resized);
+#endif
   } else {
+#ifdef SIMD_SUPPORT
+    // Allocate buffer for grayscale ASCII output
+    ascii = image_print_simd(resized);
+#else
     ascii = image_print(resized);
+#endif
   }
 
   if (!ascii) {
