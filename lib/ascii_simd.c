@@ -233,7 +233,7 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
   int pixel_count = width; // Assuming single row for this example
   int i;
 
-  // Process 8 pixels at a time for luminance calculation with explicit bounds checking  
+  // Process 8 pixels at a time for luminance calculation with explicit bounds checking
   for (i = 0; i + 7 < pixel_count; i += 8) {
     // Calculate luminance for 8 pixels (same as above)
     __m256i r_vals = _mm256_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, pixels[i + 4].r,
