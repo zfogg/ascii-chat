@@ -1323,8 +1323,8 @@ size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buf
     if (luminance > 255)
       luminance = 255;
 
-    // Get ASCII character
-    static const char palette[] = " .,:;ox%#@";
+    // Get ASCII character - FIXED: Use same palette as SIMD implementation
+    static const char palette[] = "   ...',;:clodxkO0KXNWM";
     char ascii_char = palette[luminance * (sizeof(palette) - 2) / 255];
 
     size_t remaining = buffer_end - current_pos;
@@ -1333,10 +1333,8 @@ size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buf
 
     if (background_mode) {
       uint8_t fg_color = (luminance < 127) ? 255 : 0;
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
+      // FIXED: Use combined FG+BG sequence like SIMD implementation
+      current_pos = append_sgr_truecolor_fg_bg(current_pos, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
       *current_pos++ = ascii_char;
     } else {
       int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
@@ -1370,8 +1368,8 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
     if (luminance > 255)
       luminance = 255;
 
-    // Get ASCII character
-    static const char palette[] = " .,:;ox%#@";
+    // Get ASCII character - FIXED: Use same palette as SIMD implementation
+    static const char palette[] = "   ...',;:clodxkO0KXNWM";
     ascii_chars[x] = palette[luminance * (sizeof(palette) - 2) / 255];
   }
 
@@ -1387,10 +1385,8 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
     if (background_mode) {
       uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
       uint8_t fg_color = (luminance < 127) ? 255 : 0;
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
+      // FIXED: Use combined FG+BG sequence like SIMD implementation
+      current_pos = append_sgr_truecolor_fg_bg(current_pos, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
       *current_pos++ = ascii_char;
     } else {
       int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
