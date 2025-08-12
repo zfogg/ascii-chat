@@ -1,11 +1,11 @@
 /bin/*
 /build/*
-/compile_commands.json
-.env
-/*.log
-/*.txt
-/*.old
-/.cache
 /.claude/settings.local.json
 
+compile_commands.json
+.env
+*.log
+*.txt
+*.old
+.cache
 *.o
