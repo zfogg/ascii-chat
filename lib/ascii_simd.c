@@ -320,36 +320,35 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
  */
 
 #ifdef SIMD_SUPPORT_NEON
-// Apply the SAME optimizations that made color SIMD successful:
-// 1. Process larger batches (16 pixels like color version)  
-// 2. Use compiler auto-vectorization effectively
-// 3. Optimize for cache locality and branch prediction
+// Optimized NEON implementation that helps compiler auto-vectorization
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
   init_palette();
 
-  // Process in batches of 16 like the successful color version
+  // Use the SAME efficient approach as the color version that works
+  // Process in batches of 16 like the successful color version - lets compiler optimize
   const int batch_size = 16;
   int full_batches = count / batch_size;
   int remainder = count % batch_size;
 
-  // Process full batches of 16 pixels (let compiler auto-vectorize)
+  // Process full batches of 16 pixels (optimal for compiler auto-vectorization)
   for (int batch = 0; batch < full_batches; batch++) {
     int base_idx = batch * batch_size;
-    
-    // Process 16 pixels in tight loop - optimal for compiler vectorization
+    const rgb_pixel_t *__restrict batch_pixels = &pixels[base_idx];
+    char *__restrict batch_output = &ascii_chars[base_idx];
+
+    // Tight inner loop - compiler can auto-vectorize this efficiently
     for (int j = 0; j < batch_size; j++) {
-      const rgb_pixel_t *p = &pixels[base_idx + j];
+      const rgb_pixel_t *p = &batch_pixels[j];
       
-      // Use the EXACT same calculation as color version for consistency
-      // This ensures the compiler can apply the same optimizations
+      // Same calculation as color version - compiler knows how to optimize this
       int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
       
-      // Use the same palette lookup as color version
-      ascii_chars[base_idx + j] = luminance_palette[luminance];
+      // Direct palette lookup - fast and cache-friendly
+      batch_output[j] = luminance_palette[luminance];
     }
   }
 
-  // Process remaining pixels (same pattern as color version)
+  // Process remaining pixels
   int base_remainder = full_batches * batch_size;
   for (int i = 0; i < remainder; i++) {
     const rgb_pixel_t *p = &pixels[base_remainder + i];

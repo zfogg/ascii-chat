@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <execinfo.h>
 
 /* ============================================================================
  * Internal Buffer Pool Functions
@@ -174,12 +175,22 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
   // Try to allocate from appropriate pool based on size
   if (size <= BUFFER_POOL_SMALL_SIZE) {
     buffer = buffer_pool_alloc_single(pool->small_pool, size);
+    if (!buffer)
+      log_warn("SMALL POOL EXHAUSTED for size=%zu", size);
   } else if (size <= BUFFER_POOL_MEDIUM_SIZE) {
     buffer = buffer_pool_alloc_single(pool->medium_pool, size);
+    if (!buffer)
+      log_warn("MEDIUM POOL EXHAUSTED for size=%zu", size);
   } else if (size <= BUFFER_POOL_LARGE_SIZE) {
     buffer = buffer_pool_alloc_single(pool->large_pool, size);
+    if (!buffer)
+      log_warn("LARGE POOL EXHAUSTED for size=%zu", size);
   } else if (size <= BUFFER_POOL_XLARGE_SIZE) {
     buffer = buffer_pool_alloc_single(pool->xlarge_pool, size);
+    if (!buffer)
+      log_warn("XLARGE POOL EXHAUSTED for size=%zu", size);
+  } else {
+    log_warn("ALLOCATION TOO LARGE: size=%zu exceeds max pool size", size);
   }
 
   if (buffer) {
@@ -193,8 +204,22 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
 
   // If no buffer from pool, use malloc
   if (!buffer) {
-    log_warn("MALLOC FALLBACK: size=%zu at %s:%d", size, __FILE__, __LINE__);
+    void *callstack[3];
+    int frames = backtrace(callstack, 3);
+    char **symbols = backtrace_symbols(callstack, frames);
+
+    fprintf(stderr, "MALLOC FALLBACK ALLOC: size=%zu at %s:%d thread=%p\n", size, __FILE__, __LINE__,
+            (void *)pthread_self());
+    if (symbols && frames >= 2) {
+      fprintf(stderr, "  Called from: %s\n", symbols[1]);
+      if (frames >= 3)
+        fprintf(stderr, "  Called from: %s\n", symbols[2]);
+    }
+    free(symbols);
+
     SAFE_MALLOC(buffer, size, void *);
+    fprintf(stderr, "MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p\n", size, buffer,
+            (void *)pthread_self());
   }
 
   return buffer;
@@ -231,8 +256,11 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
 
   // If not from any pool, it was malloc'd
   if (!freed) {
-    log_warn("MALLOC FALLBACK FREE: size=%zu at %s:%d", size, __FILE__, __LINE__);
+    void *original_ptr = data; // Save pointer before freeing for logging
+    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, original_ptr, __FILE__, __LINE__,
+            (void *)pthread_self());
     SAFE_FREE(data);
+    fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=%p thread=%p\n", size, original_ptr, (void *)pthread_self());
   }
 }
 
@@ -321,8 +349,10 @@ void buffer_pool_free(void *data, size_t size) {
 
   // No global pool - this memory must have been malloc'd
   // (unless it's from a pool that was already destroyed, in which case we leak)
-  log_warn("MALLOC FALLBACK FREE (global pool destroyed): size=%zu at %s:%d", size, __FILE__, __LINE__);
+  fprintf(stderr, "MALLOC FALLBACK FREE (global pool destroyed): size=%zu ptr=%p at %s:%d\n", size, data, __FILE__,
+          __LINE__);
   SAFE_FREE(data);
+  fprintf(stderr, "MALLOC FALLBACK FREE (global pool destroyed) COMPLETE: size=%zu ptr=%p\n", size, data);
 }
 
 /* ============================================================================
@@ -375,7 +405,7 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
   }
 
   // Calculate totals
-  stats->total_allocations = stats->small_hits + stats->medium_hits + stats->large_hits + stats->xlarge_hits + 
+  stats->total_allocations = stats->small_hits + stats->medium_hits + stats->large_hits + stats->xlarge_hits +
                              stats->small_misses + stats->medium_misses + stats->large_misses + stats->xlarge_misses;
   stats->total_bytes = stats->small_bytes + stats->medium_bytes + stats->large_bytes + stats->xlarge_bytes;
 
