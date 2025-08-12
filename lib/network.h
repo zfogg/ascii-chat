@@ -8,7 +8,7 @@
 #define CONNECT_TIMEOUT 10
 #define SEND_TIMEOUT 10
 #define RECV_TIMEOUT 10
-#define ACCEPT_TIMEOUT 3 // 1 second timeout for faster client cleanup detection
+#define ACCEPT_TIMEOUT 10
 
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60
