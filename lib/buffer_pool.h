@@ -16,14 +16,16 @@
  */
 
 // Buffer sizes we commonly allocate (based on memory report analysis)
-#define BUFFER_POOL_SMALL_SIZE 1024   // Audio packets (1KB)
-#define BUFFER_POOL_MEDIUM_SIZE 65536 // Small video frames (64KB)
-#define BUFFER_POOL_LARGE_SIZE 262144 // Large video frames (256KB)
+#define BUFFER_POOL_SMALL_SIZE 1024     // Audio packets (1KB)
+#define BUFFER_POOL_MEDIUM_SIZE 65536   // Small video frames (64KB)
+#define BUFFER_POOL_LARGE_SIZE 262144   // Large video frames (256KB)
+#define BUFFER_POOL_XLARGE_SIZE 1310720 // Extra large frames (1.25MB)
 
 // Number of buffers to pre-allocate per size class
 #define BUFFER_POOL_SMALL_COUNT 128 // 128KB total for audio
 #define BUFFER_POOL_MEDIUM_COUNT 32 // 2MB total for small frames
 #define BUFFER_POOL_LARGE_COUNT 16  // 4MB total for large frames
+#define BUFFER_POOL_XLARGE_COUNT 32 // 40MB total for extra large frames
 
 // Single buffer in the pool
 typedef struct buffer_node {
@@ -54,6 +56,7 @@ typedef struct data_buffer_pool {
   buffer_pool_t *small_pool;  // Pool for small buffers (audio)
   buffer_pool_t *medium_pool; // Pool for medium buffers (small frames)
   buffer_pool_t *large_pool;  // Pool for large buffers (large frames)
+  buffer_pool_t *xlarge_pool; // Pool for extra large buffers (1MB+ frames)
   pthread_mutex_t pool_mutex; // Protect all pools
   // Global statistics
   uint64_t total_allocs;     // Total allocation requests
@@ -83,6 +86,7 @@ typedef struct {
   uint64_t small_hits, small_misses, small_returns, small_peak_used, small_bytes;
   uint64_t medium_hits, medium_misses, medium_returns, medium_peak_used, medium_bytes;
   uint64_t large_hits, large_misses, large_returns, large_peak_used, large_bytes;
+  uint64_t xlarge_hits, xlarge_misses, xlarge_returns, xlarge_peak_used, xlarge_bytes;
   uint64_t total_allocations, total_bytes, total_pool_usage_percent;
 } buffer_pool_detailed_stats_t;
 
