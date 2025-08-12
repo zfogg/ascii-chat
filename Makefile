@@ -334,6 +334,10 @@ analyze:
 		--suppress=missingIncludeSystem \
 		$(C_FILES) $(C_HEADERS)
 
+scan-build: c-objs
+	export SCANBUILD_CFLAGS="-Wformat -Wformat-security -Werror=format-security"; \
+		scan-build --status-bugs -analyze-headers make CSTD=\"$(CSTD)\" CFLAGS=\"$$SCANBUILD_CFLAGS\" c-objs
+
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
 
@@ -371,4 +375,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze cloc todo todo-clean
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc todo todo-clean
