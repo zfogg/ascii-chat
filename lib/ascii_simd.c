@@ -1058,10 +1058,10 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // This gives much more realistic results than random RGB data
   webcam_init(0);
   image_t *webcam_frame = webcam_read();
-  
+
   if (webcam_frame && webcam_frame->pixels) {
     printf("Using real webcam data (%dx%d) for realistic color testing\n", webcam_frame->w, webcam_frame->h);
-    
+
     // Resize webcam data to match test dimensions
     for (int i = 0; i < pixel_count; i++) {
       // Sample from webcam with wrapping (simple but effective)
@@ -1082,21 +1082,27 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
       int base_r = (x * 255 / width);
       int base_g = (y * 255 / height);
       int base_b = ((x + y) * 127 / (width + height));
-      
-      test_pixels[i].r = base_r + (rand() % 16 - 8);  // Less variation than before
-      test_pixels[i].g = base_g + (rand() % 16 - 8);  
+
+      test_pixels[i].r = base_r + (rand() % 16 - 8); // Less variation than before
+      test_pixels[i].g = base_g + (rand() % 16 - 8);
       test_pixels[i].b = base_b + (rand() % 16 - 8);
-      
+
       // Clamp to valid range
-      if (test_pixels[i].r < 0) test_pixels[i].r = 0;
-      if (test_pixels[i].r > 255) test_pixels[i].r = 255;
-      if (test_pixels[i].g < 0) test_pixels[i].g = 0; 
-      if (test_pixels[i].g > 255) test_pixels[i].g = 255;
-      if (test_pixels[i].b < 0) test_pixels[i].b = 0;
-      if (test_pixels[i].b > 255) test_pixels[i].b = 255;
+      if (test_pixels[i].r < 0)
+        test_pixels[i].r = 0;
+      if (test_pixels[i].r > 255)
+        test_pixels[i].r = 255;
+      if (test_pixels[i].g < 0)
+        test_pixels[i].g = 0;
+      if (test_pixels[i].g > 255)
+        test_pixels[i].g = 255;
+      if (test_pixels[i].b < 0)
+        test_pixels[i].b = 0;
+      if (test_pixels[i].b > 255)
+        test_pixels[i].b = 255;
     }
   }
-  
+
   webcam_cleanup();
 
   const char *mode_str = background_mode ? "background" : "foreground";

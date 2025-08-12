@@ -23,6 +23,9 @@ extern unsigned short int opt_audio_enabled;
 // If non-zero, allow image to stretch or shrink without preserving aspect ratio
 extern unsigned short int opt_stretch;
 
+// If non-zero, disable console logging (quiet mode)
+extern unsigned short int opt_quiet;
+
 // Default weights; must add up to 1.0
 extern const float weight_red;
 extern const float weight_green;

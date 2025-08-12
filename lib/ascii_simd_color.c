@@ -1090,63 +1090,71 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
     // ADVANCED RUN-LENGTH ENCODING: Look ahead for consecutive pixels with same colors
     static uint8_t last_fg_r = 255, last_fg_g = 255, last_fg_b = 255;
     static uint8_t last_bg_r = 255, last_bg_g = 255, last_bg_b = 255;
-    
+
     int k = 0;
     while (k < 32) {
       const rgb_pixel_t *px = &pixels[x + k];
-      
+
       // Exact space check prevents buffer overflow
       if ((size_t)(end - p) < (background_mode ? 40 : 24))
         goto done;
 
       // Calculate current color values
       uint8_t curr_fg_r, curr_fg_g, curr_fg_b, curr_bg_r, curr_bg_g, curr_bg_b;
-      
+
       if (background_mode) {
         uint8_t fg = (luma_batch[k] < 127) ? 255 : 0;
         curr_fg_r = curr_fg_g = curr_fg_b = fg;
-        curr_bg_r = px->r; curr_bg_g = px->g; curr_bg_b = px->b;
+        curr_bg_r = px->r;
+        curr_bg_g = px->g;
+        curr_bg_b = px->b;
       } else {
-        curr_fg_r = px->r; curr_fg_g = px->g; curr_fg_b = px->b;
+        curr_fg_r = px->r;
+        curr_fg_g = px->g;
+        curr_fg_b = px->b;
         curr_bg_r = curr_bg_g = curr_bg_b = 0; // Not used in foreground mode
       }
-      
+
       // Check if color changed from previous pixel
       bool color_changed = false;
       if (background_mode) {
         color_changed = (curr_fg_r != last_fg_r || curr_fg_g != last_fg_g || curr_fg_b != last_fg_b ||
-                        curr_bg_r != last_bg_r || curr_bg_g != last_bg_g || curr_bg_b != last_bg_b);
+                         curr_bg_r != last_bg_r || curr_bg_g != last_bg_g || curr_bg_b != last_bg_b);
       } else {
         color_changed = (curr_fg_r != last_fg_r || curr_fg_g != last_fg_g || curr_fg_b != last_fg_b);
       }
-      
+
       // Look ahead to count consecutive pixels with same color
       int run_length = 1;
       int lookahead_limit = (32 - k < width - x) ? 32 - k : width - x;
-      
+
       for (int j = k + 1; j < lookahead_limit; j++) {
         const rgb_pixel_t *next_px = &pixels[x + j];
         uint8_t next_fg_r, next_fg_g, next_fg_b, next_bg_r, next_bg_g, next_bg_b;
-        
+
         if (background_mode) {
           uint8_t next_fg = (luma_batch[j] < 127) ? 255 : 0;
           next_fg_r = next_fg_g = next_fg_b = next_fg;
-          next_bg_r = next_px->r; next_bg_g = next_px->g; next_bg_b = next_px->b;
-          
-          if (next_fg_r != curr_fg_r || next_fg_g != curr_fg_g || next_fg_b != curr_fg_b ||
-              next_bg_r != curr_bg_r || next_bg_g != curr_bg_g || next_bg_b != curr_bg_b) {
+          next_bg_r = next_px->r;
+          next_bg_g = next_px->g;
+          next_bg_b = next_px->b;
+
+          if (next_fg_r != curr_fg_r || next_fg_g != curr_fg_g || next_fg_b != curr_fg_b || next_bg_r != curr_bg_r ||
+              next_bg_g != curr_bg_g || next_bg_b != curr_bg_b) {
             break; // Color changed, end of run
           }
         } else {
-          next_fg_r = next_px->r; next_fg_g = next_px->g; next_fg_b = next_px->b;
-          
+          next_fg_r = next_px->r;
+          next_fg_g = next_px->g;
+          next_fg_b = next_px->b;
+
           if (next_fg_r != curr_fg_r || next_fg_g != curr_fg_g || next_fg_b != curr_fg_b) {
             break; // Color changed, end of run
           }
         }
         run_length++;
       }
-      
+
       // Emit color code only if changed
       if (color_changed) {
         if (background_mode) {
@@ -1154,18 +1162,23 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
         } else {
           p = append_sgr_truecolor_fg(p, curr_fg_r, curr_fg_g, curr_fg_b);
         }
-        
+
         // Update last colors
-        last_fg_r = curr_fg_r; last_fg_g = curr_fg_g; last_fg_b = curr_fg_b;
-        last_bg_r = curr_bg_r; last_bg_g = curr_bg_g; last_bg_b = curr_bg_b;
+        last_fg_r = curr_fg_r;
+        last_fg_g = curr_fg_g;
+        last_fg_b = curr_fg_b;
+        last_bg_r = curr_bg_r;
+        last_bg_g = curr_bg_g;
+        last_bg_b = curr_bg_b;
       }
-      
+
       // Emit all consecutive characters with same color
       for (int j = 0; j < run_length; j++) {
-        if ((size_t)(end - p) < 1) goto done;
+        if ((size_t)(end - p) < 1)
+          goto done;
         *p++ = luminance_palette[luma_batch[k + j]];
       }
-      
+
       k += run_length; // Skip processed pixels
     }
   }
@@ -1203,35 +1216,39 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
         goto done;
 
       bool color_changed = false;
-      
+
       if (background_mode) {
         uint8_t fg = (luma_values[k] < 127) ? 255 : 0;
         static uint8_t last_fg_r = 255, last_fg_g = 255, last_fg_b = 255;
         static uint8_t last_bg_r = 255, last_bg_g = 255, last_bg_b = 255;
-        
-        if (fg != last_fg_r || fg != last_fg_g || fg != last_fg_b ||
-            px->r != last_bg_r || px->g != last_bg_g || px->b != last_bg_b) {
+
+        if (fg != last_fg_r || fg != last_fg_g || fg != last_fg_b || px->r != last_bg_r || px->g != last_bg_g ||
+            px->b != last_bg_b) {
           color_changed = true;
           last_fg_r = last_fg_g = last_fg_b = fg;
-          last_bg_r = px->r; last_bg_g = px->g; last_bg_b = px->b;
+          last_bg_r = px->r;
+          last_bg_g = px->g;
+          last_bg_b = px->b;
         }
-        
+
         if (color_changed) {
           p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
         }
       } else {
         static uint8_t last_r = 255, last_g = 255, last_b = 255;
-        
+
         if (px->r != last_r || px->g != last_g || px->b != last_b) {
           color_changed = true;
-          last_r = px->r; last_g = px->g; last_b = px->b;
+          last_r = px->r;
+          last_g = px->g;
+          last_b = px->b;
         }
-        
+
         if (color_changed) {
           p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
         }
       }
-      
+
       *p++ = luminance_palette[luma_values[k]];
     }
     x += 16;
@@ -1246,35 +1263,39 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
       break;
 
     bool color_changed = false;
-    
+
     if (background_mode) {
       uint8_t fg = (y < 127) ? 255 : 0;
       static uint8_t last_fg_r = 255, last_fg_g = 255, last_fg_b = 255;
       static uint8_t last_bg_r = 255, last_bg_g = 255, last_bg_b = 255;
-      
-      if (fg != last_fg_r || fg != last_fg_g || fg != last_fg_b ||
-          px->r != last_bg_r || px->g != last_bg_g || px->b != last_bg_b) {
+
+      if (fg != last_fg_r || fg != last_fg_g || fg != last_fg_b || px->r != last_bg_r || px->g != last_bg_g ||
+          px->b != last_bg_b) {
         color_changed = true;
         last_fg_r = last_fg_g = last_fg_b = fg;
-        last_bg_r = px->r; last_bg_g = px->g; last_bg_b = px->b;
+        last_bg_r = px->r;
+        last_bg_g = px->g;
+        last_bg_b = px->b;
       }
-      
+
       if (color_changed) {
         p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
       }
     } else {
       static uint8_t last_r = 255, last_g = 255, last_b = 255;
-      
+
       if (px->r != last_r || px->g != last_g || px->b != last_b) {
         color_changed = true;
-        last_r = px->r; last_g = px->g; last_b = px->b;
+        last_r = px->r;
+        last_g = px->g;
+        last_b = px->b;
       }
-      
+
       if (color_changed) {
         p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
       }
     }
-    
+
     *p++ = luminance_palette[y];
   }
 
