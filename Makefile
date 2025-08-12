@@ -28,16 +28,16 @@ BASE_FLAGS := -Wall -Wextra
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
 C_FEATURE_FLAGS := -D_GNU_SOURCE
 
-override CFLAGS    += $(BASE_FLAGS) $(C_FEATURE_FLAGS) -I$(LIB_DIR)
-override OBJCFLAGS += $(BASE_FLAGS)
+BASE_CFLAGS    := $(BASE_FLAGS) $(C_FEATURE_FLAGS) -I$(LIB_DIR)
+BASE_OBJCFLAGS := $(BASE_FLAGS)
 
 # Get package-specific flags
 PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD) -funroll-loops
-override OBJCFLAGS +=
+BASE_CFLAGS    += $(PKG_CFLAGS) -std=$(CSTD)
+BASE_OBJCFLAGS +=
 
 # Platform-specific flags
 ifeq ($(shell uname),Darwin)
@@ -54,7 +54,7 @@ else
     PLATFORM_SOURCES := 
 endif
 
-override LDFLAGS := $(PKG_LDFLAGS) -lm -lpthread $(PLATFORM_LDFLAGS)
+LDFLAGS_BASE := $(PKG_LDFLAGS) -lm -lpthread $(PLATFORM_LDFLAGS)
 
 # Only embed Info.plist on macOS
 ifeq ($(shell uname),Darwin)
@@ -80,9 +80,7 @@ endif
 ifeq ($(UNAME_S),Darwin)
   ifeq ($(IS_APPLE_SILICON),1)
     ifneq ($(IS_ROSETTA),1)
-      override CFLAGS    += -arch arm64
-      override OBJCFLAGS += -arch arm64
-      override LDFLAGS   += -arch arm64
+      ARCH_FLAGS := -arch arm64
       $(info Forcing arm64 build on Apple Silicon)
     endif
   endif
@@ -169,9 +167,17 @@ else
     $(info Using generic optimizations: $(CPU_OPT_FLAGS))
 endif
 
-# Apply SIMD and CPU optimization flags to both C and ObjC compilation
-override CFLAGS    += $(SIMD_CFLAGS) $(CPU_OPT_FLAGS)
-override OBJCFLAGS += $(SIMD_CFLAGS) $(CPU_OPT_FLAGS)
+# Compose per-config flags cleanly (no filter-out hacks)
+DEBUG_FLAGS   := -g -O0 -DDEBUG -DDEBUG_MEMORY
+RELEASE_FLAGS := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
+SANITIZE_FLAGS:= -fsanitize=address
+
+# Effective compile flags per configuration
+CFLAGS_DEBUG      := $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
+OBJCFLAGS_DEBUG   := $(BASE_OBJCFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
+CFLAGS_RELEASE    := $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
+OBJCFLAGS_RELEASE := $(BASE_OBJCFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
+LDFLAGS_EFFECTIVE := $(LDFLAGS_BASE) $(ARCH_FLAGS)
 
 # =============================================================================
 # File Discovery
@@ -222,17 +228,21 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: CFLAGS += -g -O0 -DDEBUG -DDEBUG_MEMORY
-debug: OBJCFLAGS += -g -O0 -DDEBUG -DDEBUG_MEMORY
+debug: CFLAGS := $(CFLAGS_DEBUG)
+debug: OBJCFLAGS := $(OBJCFLAGS_DEBUG)
+debug: LDFLAGS := $(LDFLAGS_EFFECTIVE)
 debug: $(TARGETS)
 
-# Memory sanitizer build
-sanitize: debug 
-sanitize: CFLAGS += -fsanitize=address
-sanitize: LDFLAGS += -fsanitize=address 
+# Memory sanitizer build (inherits debug flags)
+sanitize: CFLAGS := $(CFLAGS_DEBUG) $(SANITIZE_FLAGS)
+sanitize: OBJCFLAGS := $(OBJCFLAGS_DEBUG) $(SANITIZE_FLAGS)
+sanitize: LDFLAGS := $(LDFLAGS_EFFECTIVE) $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
-# Release build (CPU optimization flags already applied via CPU_OPT_FLAGS)
+# Release build
+release: CFLAGS := $(CFLAGS_RELEASE)
+release: OBJCFLAGS := $(OBJCFLAGS_RELEASE)
+release: LDFLAGS := $(LDFLAGS_EFFECTIVE)
 release: $(TARGETS)
 
 # Build executables
