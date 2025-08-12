@@ -847,6 +847,15 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   result.sse2_time = get_time_seconds() - start;
 #endif
 
+#ifdef SIMD_SUPPORT_SSSE3
+  // Benchmark SSSE3
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_ssse3(test_pixels, output_buffer, pixel_count);
+  }
+  result.ssse3_time = get_time_seconds() - start;
+#endif
+
 #ifdef SIMD_SUPPORT_AVX2
   // Benchmark AVX2
   start = get_time_seconds();
@@ -873,6 +882,13 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
     best_time = result.sse2_time;
     result.best_method = "SSE2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
+    best_time = result.ssse3_time;
+    result.best_method = "SSSE3";
   }
 #endif
 
