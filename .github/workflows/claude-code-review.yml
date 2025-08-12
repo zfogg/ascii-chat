@@ -2,7 +2,8 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    # Trigger only when a PR is opened (do not run on subsequent pushes)
+    types: [opened]
     # Optional: Only run on specific file changes
     paths:
       - "Makefile"
