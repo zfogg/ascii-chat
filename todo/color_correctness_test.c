@@ -6,41 +6,11 @@
 #include "../lib/common.h"
 #include "../lib/webcam.h"
 
-// Test colored ASCII correctness by comparing scalar vs SIMD implementations
-int main() {
-    log_init(NULL, LOG_ERROR);
-
-    printf("=== Color ASCII Correctness Test ===\n\n");
-
-    // Test parameters
-    int test_width = 20;
-    int test_height = 10;
-    int pixel_count = test_width * test_height;
-
-    // Buffer size for colored ASCII output (generous allocation)
-    size_t buffer_size = pixel_count * 50; // ~50 bytes per pixel for ANSI codes
-
-    // Create test data
-    rgb_pixel_t *test_pixels;
-    char *scalar_output;
-    char *simd_output;
-
-    SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
-    SAFE_MALLOC(scalar_output, buffer_size, char *);
-    SAFE_MALLOC(simd_output, buffer_size, char *);
-
-    // Generate diverse test pattern
-    printf("Generating test pattern with %d pixels...\n", pixel_count);
-    srand(42); // Consistent results
-    for (int i = 0; i < pixel_count; i++) {
-        // Create varied colors to stress test ANSI generation
-        test_pixels[i].r = (i * 7) % 256;      // Red gradient
-        test_pixels[i].g = (i * 11 + 85) % 256; // Green offset pattern
-        test_pixels[i].b = (255 - i * 13) % 256; // Blue inverse pattern
-    }
-
-    printf("Testing both foreground and background modes...\n\n");
-
+// Run color correctness test with provided pixel data
+void run_color_test(const rgb_pixel_t *test_pixels, int width, int height, 
+                   char *scalar_output, char *simd_output, size_t buffer_size) {
+    int pixel_count = width * height;
+    
     // Test both modes
     bool modes[] = {false, true}; // foreground, background
     const char *mode_names[] = {"FOREGROUND", "BACKGROUND"};
@@ -97,10 +67,94 @@ int main() {
         }
         printf("\n");
     }
+}
 
+// Test colored ASCII correctness by comparing scalar vs SIMD implementations
+int main() {
+    log_init(NULL, LOG_ERROR);
+
+    printf("=== Color ASCII Correctness Test ===\n\n");
+
+    // Initialize webcam
+    printf("Initializing webcam for real test data...\n");
+    webcam_init(0); // Use default webcam
+    
+    image_t *webcam_image = webcam_read();
+    if (!webcam_image) {
+        printf("❌ Failed to capture webcam, falling back to synthetic test data\n");
+        
+        // Fallback: synthetic test data
+        int test_width = 40;
+        int test_height = 20;
+        int pixel_count = test_width * test_height;
+        
+        rgb_pixel_t *test_pixels;
+        SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
+        
+        printf("Generating synthetic test pattern with %d pixels...\n", pixel_count);
+        srand(42); // Consistent results
+        for (int i = 0; i < pixel_count; i++) {
+            // Create varied colors to stress test ANSI generation
+            test_pixels[i].r = (i * 7) % 256;      // Red gradient
+            test_pixels[i].g = (i * 11 + 85) % 256; // Green offset pattern
+            test_pixels[i].b = (255 - i * 13) % 256; // Blue inverse pattern
+        }
+        
+        printf("Testing with synthetic %dx%d pattern...\n\n", test_width, test_height);
+        
+        // Buffer size for colored ASCII output (generous allocation)
+        size_t buffer_size = pixel_count * 50; // ~50 bytes per pixel for ANSI codes
+        
+        char *scalar_output;
+        char *simd_output;
+        SAFE_MALLOC(scalar_output, buffer_size, char *);
+        SAFE_MALLOC(simd_output, buffer_size, char *);
+        
+        // Run test with synthetic data
+        run_color_test(test_pixels, test_width, test_height, scalar_output, simd_output, buffer_size);
+        
+        free(test_pixels);
+        free(scalar_output);
+        free(simd_output);
+        webcam_cleanup();
+        log_destroy();
+        return 0;
+    }
+
+    // Real webcam data
+    printf("✅ Captured real webcam image: %dx%d (%d pixels)\n", 
+           webcam_image->w, webcam_image->h, webcam_image->w * webcam_image->h);
+    
+    // Convert to rgb_pixel_t format for test functions
+    int pixel_count = webcam_image->w * webcam_image->h;
+    rgb_pixel_t *test_pixels;
+    SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
+    
+    for (int i = 0; i < pixel_count; i++) {
+        test_pixels[i].r = webcam_image->pixels[i].r;
+        test_pixels[i].g = webcam_image->pixels[i].g;  
+        test_pixels[i].b = webcam_image->pixels[i].b;
+    }
+    
+    printf("Testing with real webcam data (%dx%d)...\n\n", webcam_image->w, webcam_image->h);
+    
+    // Buffer size for colored ASCII output (generous allocation) 
+    size_t buffer_size = pixel_count * 50; // ~50 bytes per pixel for ANSI codes
+    
+    char *scalar_output;
+    char *simd_output;
+    SAFE_MALLOC(scalar_output, buffer_size, char *);
+    SAFE_MALLOC(simd_output, buffer_size, char *);
+    
+    // Run test with real webcam data  
+    run_color_test(test_pixels, webcam_image->w, webcam_image->h, scalar_output, simd_output, buffer_size);
+    
+    // Cleanup
     free(test_pixels);
-    free(scalar_output);
+    free(scalar_output); 
     free(simd_output);
+    image_destroy(webcam_image);
+    webcam_cleanup();
     log_destroy();
 
     return 0;
