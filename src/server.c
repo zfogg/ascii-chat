@@ -137,7 +137,6 @@ static pthread_mutex_t g_frame_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static server_stats_t g_stats = {0};
 
-
 static int listenfd = 0;
 
 /* ============================================================================
@@ -182,7 +181,7 @@ static void sigwinch_handler(int sigwinch) {
 static void sigint_handler(int sigint) {
   (void)(sigint);
   g_should_exit = true;
-  
+
   // Signal-safe logging - avoid log_info() which may not be signal-safe
   const char msg[] = "SIGINT received - shutting down server...\n";
   write(STDOUT_FILENO, msg, sizeof(msg) - 1);
@@ -191,7 +190,7 @@ static void sigint_handler(int sigint) {
   if (listenfd > 0) {
     close(listenfd);
   }
-  
+
   // Don't do complex operations in signal handler - they can cause deadlocks
   // Let the main thread handle the cleanup when it sees g_should_exit = true
 }
@@ -208,7 +207,7 @@ static void sigterm_handler(int sigterm) {
   if (listenfd > 0) {
     close(listenfd);
   }
-  
+
   // Close all client sockets to interrupt receive threads
   pthread_mutex_lock(&g_client_manager_mutex);
   for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -222,7 +221,7 @@ static void sigterm_handler(int sigterm) {
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
-  
+
   // Cancel all receive threads to force immediate exit
   pthread_mutex_lock(&g_client_manager_mutex);
   for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -1186,21 +1185,21 @@ int main(int argc, char *argv[]) {
 
   // Handle terminal resize events
   signal(SIGWINCH, sigwinch_handler);
-  
+
   // Block signals for all threads except main thread in multi-threaded application
   sigset_t mask, oldmask;
   sigemptyset(&mask);
   sigaddset(&mask, SIGINT);
   sigaddset(&mask, SIGTERM);
-  
+
   // Block these signals for all threads created after this point
   if (pthread_sigmask(SIG_BLOCK, &mask, &oldmask) != 0) {
     log_error("Failed to block signals: %s", strerror(errno));
   }
-  
+
   // Use sigaction for more reliable signal handling in multi-threaded applications
   struct sigaction sa;
-  
+
   // Handle Ctrl+C for cleanup
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = sigint_handler;
@@ -1209,7 +1208,7 @@ int main(int argc, char *argv[]) {
   if (sigaction(SIGINT, &sa, NULL) == -1) {
     log_error("Failed to set SIGINT handler: %s", strerror(errno));
   }
-  
+
   // Handle SIGTERM for cleanup
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = sigterm_handler;
@@ -1218,10 +1217,10 @@ int main(int argc, char *argv[]) {
   if (sigaction(SIGTERM, &sa, NULL) == -1) {
     log_error("Failed to set SIGTERM handler: %s", strerror(errno));
   }
-  
+
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
-  
+
   // Unblock signals for the main thread only
   if (pthread_sigmask(SIG_SETMASK, &oldmask, NULL) != 0) {
     log_error("Failed to unblock signals for main thread: %s", strerror(errno));
@@ -1403,7 +1402,7 @@ int main(int argc, char *argv[]) {
     }
 
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
-    
+
     // Check if we should exit after processing this client
     if (g_should_exit) {
       break;
@@ -1451,7 +1450,7 @@ int main(int argc, char *argv[]) {
 
   // Clean up all connected clients
   log_info("Cleaning up connected clients...");
-  
+
   // First, close all client sockets to interrupt receive threads
   pthread_mutex_lock(&g_client_manager_mutex);
   for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -1464,7 +1463,7 @@ int main(int argc, char *argv[]) {
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
-  
+
   // Now clean up client resources
   pthread_mutex_lock(&g_client_manager_mutex);
   for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -1581,7 +1580,7 @@ void *client_receive_thread_func(void *arg) {
     log_error("Invalid client info in receive thread");
     return NULL;
   }
-  
+
   // Enable thread cancellation for clean shutdown
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
@@ -1596,7 +1595,6 @@ void *client_receive_thread_func(void *arg) {
   while (!g_should_exit && client->active) {
     // Receive packet from this client
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
-
 
     if (result <= 0) {
       if (result == 0) {
@@ -1698,7 +1696,7 @@ void *client_receive_thread_func(void *arg) {
         uint32_t total_samples = ntohl(batch_header->total_samples);
         uint32_t sample_rate = ntohl(batch_header->sample_rate);
         // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
-        
+
         // Suppress static analyzer warnings for conditionally used variables
         (void)batch_count; // Used in DEBUG_AUDIO log
         (void)sample_rate; // Used in DEBUG_AUDIO log
@@ -1791,7 +1789,7 @@ void *client_receive_thread_func(void *arg) {
   // Don't call remove_client() from the receive thread itself - this causes a deadlock
   // because main thread may be trying to join this thread via remove_client()
   // The main cleanup code will handle client removal after threads exit
-  
+
   log_info("Receive thread for client %u terminated", client->client_id);
   return NULL;
 }
