@@ -94,158 +94,160 @@ static void init_dec3(void) {
 
 // RGB to ANSI 256-color conversion (6×6×6 cube + grays)
 static inline uint8_t rgb_to_ansi256(uint8_t r, uint8_t g, uint8_t b) {
-    // Convert to 6-level cube coordinates (0-5)
-    int cr = (r * 5 + 127) / 255;  // Round to nearest
-    int cg = (g * 5 + 127) / 255;
-    int cb = (b * 5 + 127) / 255;
-    
-    // Check if it's closer to a gray level (colors 232-255: 24 grays)
-    int gray = (r + g + b) / 3;
-    int closest_gray_idx = 232 + (gray * 23) / 255;  // 232-255 range
-    
-    // Calculate actual gray value for this index
-    int gray_level = 8 + (closest_gray_idx - 232) * 10;  // 8 to 238
-    int gray_dist = abs(gray - gray_level);
-    
-    // Calculate 6x6x6 cube color distance
-    int cube_r = (cr * 255) / 5;
-    int cube_g = (cg * 255) / 5; 
-    int cube_b = (cb * 255) / 5;
-    int cube_dist = abs(r - cube_r) + abs(g - cube_g) + abs(b - cube_b);
-    
-    if (gray_dist < cube_dist) {
-        return (uint8_t)closest_gray_idx;
-    } else {
-        return (uint8_t)(16 + cr * 36 + cg * 6 + cb);  // 6x6x6 cube
-    }
+  // Convert to 6-level cube coordinates (0-5)
+  int cr = (r * 5 + 127) / 255; // Round to nearest
+  int cg = (g * 5 + 127) / 255;
+  int cb = (b * 5 + 127) / 255;
+
+  // Check if it's closer to a gray level (colors 232-255: 24 grays)
+  int gray = (r + g + b) / 3;
+  int closest_gray_idx = 232 + (gray * 23) / 255; // 232-255 range
+
+  // Calculate actual gray value for this index
+  int gray_level = 8 + (closest_gray_idx - 232) * 10; // 8 to 238
+  int gray_dist = abs(gray - gray_level);
+
+  // Calculate 6x6x6 cube color distance
+  int cube_r = (cr * 255) / 5;
+  int cube_g = (cg * 255) / 5;
+  int cube_b = (cb * 255) / 5;
+  int cube_dist = abs(r - cube_r) + abs(g - cube_g) + abs(b - cube_b);
+
+  if (gray_dist < cube_dist) {
+    return (uint8_t)closest_gray_idx;
+  } else {
+    return (uint8_t)(16 + cr * 36 + cg * 6 + cb); // 6x6x6 cube
+  }
 }
 
 // Precomputed 256-color SGR strings - ~1.5-2MB total but HUGE speed win
 typedef struct {
-    char str[32];  // Max: "\e[38;5;255;48;5;255m" = 20 chars
-    uint8_t len;
+  char str[32]; // Max: "\e[38;5;255;48;5;255m" = 20 chars
+  uint8_t len;
 } sgr256_t;
 
-static sgr256_t g_sgr256_fgbg[256][256];  // 65,536 combinations
+static sgr256_t g_sgr256_fgbg[256][256]; // 65,536 combinations
 static bool g_sgr256_initialized = false;
 
 static void init_sgr256_cache(void) {
-    if (g_sgr256_initialized) return;
-    
-    // Precompute all 65,536 FG+BG combinations
-    for (int fg = 0; fg < 256; fg++) {
-        for (int bg = 0; bg < 256; bg++) {
-            char *p = g_sgr256_fgbg[fg][bg].str;
-            *p++ = '\033';
-            *p++ = '[';
-            *p++ = '3';
-            *p++ = '8';
-            *p++ = ';';
-            *p++ = '5';
-            *p++ = ';';
-            
-            // FG color
-            if (fg < 10) {
-                *p++ = '0' + fg;
-            } else if (fg < 100) {
-                *p++ = '0' + (fg / 10);
-                *p++ = '0' + (fg % 10);
-            } else {
-                *p++ = '0' + (fg / 100);
-                *p++ = '0' + ((fg / 10) % 10);
-                *p++ = '0' + (fg % 10);
-            }
-            
-            *p++ = ';';
-            *p++ = '4';
-            *p++ = '8';
-            *p++ = ';';
-            *p++ = '5';
-            *p++ = ';';
-            
-            // BG color
-            if (bg < 10) {
-                *p++ = '0' + bg;
-            } else if (bg < 100) {
-                *p++ = '0' + (bg / 10);
-                *p++ = '0' + (bg % 10);
-            } else {
-                *p++ = '0' + (bg / 100);
-                *p++ = '0' + ((bg / 10) % 10);
-                *p++ = '0' + (bg % 10);
-            }
-            
-            *p++ = 'm';
-            g_sgr256_fgbg[fg][bg].len = (uint8_t)(p - g_sgr256_fgbg[fg][bg].str);
-        }
+  if (g_sgr256_initialized)
+    return;
+
+  // Precompute all 65,536 FG+BG combinations
+  for (int fg = 0; fg < 256; fg++) {
+    for (int bg = 0; bg < 256; bg++) {
+      char *p = g_sgr256_fgbg[fg][bg].str;
+      *p++ = '\033';
+      *p++ = '[';
+      *p++ = '3';
+      *p++ = '8';
+      *p++ = ';';
+      *p++ = '5';
+      *p++ = ';';
+
+      // FG color
+      if (fg < 10) {
+        *p++ = '0' + fg;
+      } else if (fg < 100) {
+        *p++ = '0' + (fg / 10);
+        *p++ = '0' + (fg % 10);
+      } else {
+        *p++ = '0' + (fg / 100);
+        *p++ = '0' + ((fg / 10) % 10);
+        *p++ = '0' + (fg % 10);
+      }
+
+      *p++ = ';';
+      *p++ = '4';
+      *p++ = '8';
+      *p++ = ';';
+      *p++ = '5';
+      *p++ = ';';
+
+      // BG color
+      if (bg < 10) {
+        *p++ = '0' + bg;
+      } else if (bg < 100) {
+        *p++ = '0' + (bg / 10);
+        *p++ = '0' + (bg % 10);
+      } else {
+        *p++ = '0' + (bg / 100);
+        *p++ = '0' + ((bg / 10) % 10);
+        *p++ = '0' + (bg % 10);
+      }
+
+      *p++ = 'm';
+      g_sgr256_fgbg[fg][bg].len = (uint8_t)(p - g_sgr256_fgbg[fg][bg].str);
     }
-    
-    g_sgr256_initialized = true;
+  }
+
+  g_sgr256_initialized = true;
 }
 
 // Fast 256-color FG+BG sequence emission (single memcpy!)
 static inline char *append_sgr256_fg_bg(char *dst, uint8_t fg, uint8_t bg) {
-    init_sgr256_cache();
-    const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
-    memcpy(dst, sgr->str, sgr->len);
-    return dst + sgr->len;
+  init_sgr256_cache();
+  const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
+  memcpy(dst, sgr->str, sgr->len);
+  return dst + sgr->len;
 }
 
-// Fast 256-color FG-only sequences  
+// Fast 256-color FG-only sequences
 static sgr256_t g_sgr256_fg[256];
 static bool g_sgr256_fg_initialized = false;
 
 static void init_sgr256_fg_cache(void) {
-    if (g_sgr256_fg_initialized) return;
-    
-    for (int fg = 0; fg < 256; fg++) {
-        char *p = g_sgr256_fg[fg].str;
-        *p++ = '\033';
-        *p++ = '[';
-        *p++ = '3';
-        *p++ = '8';
-        *p++ = ';';
-        *p++ = '5';
-        *p++ = ';';
-        
-        if (fg < 10) {
-            *p++ = '0' + fg;
-        } else if (fg < 100) {
-            *p++ = '0' + (fg / 10);
-            *p++ = '0' + (fg % 10);
-        } else {
-            *p++ = '0' + (fg / 100);
-            *p++ = '0' + ((fg / 10) % 10);
-            *p++ = '0' + (fg % 10);
-        }
-        
-        *p++ = 'm';
-        g_sgr256_fg[fg].len = (uint8_t)(p - g_sgr256_fg[fg].str);
+  if (g_sgr256_fg_initialized)
+    return;
+
+  for (int fg = 0; fg < 256; fg++) {
+    char *p = g_sgr256_fg[fg].str;
+    *p++ = '\033';
+    *p++ = '[';
+    *p++ = '3';
+    *p++ = '8';
+    *p++ = ';';
+    *p++ = '5';
+    *p++ = ';';
+
+    if (fg < 10) {
+      *p++ = '0' + fg;
+    } else if (fg < 100) {
+      *p++ = '0' + (fg / 10);
+      *p++ = '0' + (fg % 10);
+    } else {
+      *p++ = '0' + (fg / 100);
+      *p++ = '0' + ((fg / 10) % 10);
+      *p++ = '0' + (fg % 10);
     }
-    
-    g_sgr256_fg_initialized = true;
+
+    *p++ = 'm';
+    g_sgr256_fg[fg].len = (uint8_t)(p - g_sgr256_fg[fg].str);
+  }
+
+  g_sgr256_fg_initialized = true;
 }
 
 static inline char *append_sgr256_fg(char *dst, uint8_t fg) {
-    init_sgr256_fg_cache();
-    const sgr256_t *sgr = &g_sgr256_fg[fg];
-    memcpy(dst, sgr->str, sgr->len);
-    return dst + sgr->len;
+  init_sgr256_fg_cache();
+  const sgr256_t *sgr = &g_sgr256_fg[fg];
+  memcpy(dst, sgr->str, sgr->len);
+  return dst + sgr->len;
 }
 
 // Quality vs speed trade-off flag (will move fast path functions after append_sgr_reset)
-static bool g_use_256_color_fast_path = false;  // DEBUGGING: Use truecolor path that was working
+static bool g_use_256_color_fast_path = false; // DEBUGGING: Use truecolor path that was working
 
 // API to control quality vs speed
 void set_color_quality_mode(bool high_quality) {
-    g_use_256_color_fast_path = !high_quality;
+  g_use_256_color_fast_path = !high_quality;
 }
 
 // Forward declarations for fast path functions (defined after append_sgr_reset)
 size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                            bool background_mode);
-size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, char *dst,
-                                            size_t cap);
+size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width,
+                                            char *dst, size_t cap);
 
 // -------- ultra-fast SGR builders with size calculation --------
 
@@ -365,12 +367,12 @@ static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
 size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                            bool background_mode) {
   init_palette();
-  
+
   char *p = dst;
-  
-  // OPTIMIZATION #3: Compute per-row sentinel once 
+
+  // OPTIMIZATION #3: Compute per-row sentinel once
   const size_t max_per_pixel = background_mode ? 22 + 1 : 12 + 1; // Much shorter 256-color SGR
-  const size_t row_max_size = width * max_per_pixel + 4; // +4 for reset
+  const size_t row_max_size = width * max_per_pixel + 4;          // +4 for reset
   char *row_end = dst + ((cap < row_max_size) ? cap : row_max_size);
 
   bool have_color = false;
@@ -397,7 +399,7 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
       }
     } else {
       uint8_t new_fg_idx = rgb_to_ansi256(px->r, px->g, px->b);
-      
+
       if (!have_color || new_fg_idx != fg_idx) {
         // OPTIMIZATION #4: Single memcpy instead of expensive snprintf!
         p = append_sgr256_fg(p, new_fg_idx);
@@ -408,26 +410,27 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
 
     // Simple bounds check only when approaching row boundary
     if (p >= row_end - 30) { // Smaller safety margin due to shorter SGR sequences
-      if (p >= row_end) break;
+      if (p >= row_end)
+        break;
     }
-    
+
     // Write the character directly (no run-length compression)
     *p++ = ch;
   }
 
-  // Reset sequence 
+  // Reset sequence
   if (row_end - p >= 4)
     p = append_sgr_reset(p);
   return (size_t)(p - dst);
 }
 
 // Fast 256-color upper half block renderer with OPTIMIZATION #5: REP compression
-size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, char *dst,
-                                            size_t cap) {
+size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width,
+                                            char *dst, size_t cap) {
   char *p = dst;
-  
+
   // OPTIMIZATION #3: Compute per-row sentinel once
-  const size_t max_per_pixel = 22 + 3; // Max 256-color FG+BG SGR + UTF-8 ▀
+  const size_t max_per_pixel = 22 + 3;                   // Max 256-color FG+BG SGR + UTF-8 ▀
   const size_t row_max_size = width * max_per_pixel + 4; // +4 for reset
   char *row_end = dst + ((cap < row_max_size) ? cap : row_max_size);
 
@@ -443,20 +446,21 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
     // Convert to 256-color indices
     uint8_t run_fg_idx = rgb_to_ansi256(top_px->r, top_px->g, top_px->b);
     uint8_t run_bg_idx = rgb_to_ansi256(bot_px->r, bot_px->g, bot_px->b);
-    
-    // OPTIMIZATION #5: Look ahead for identical consecutive ▀ blocks  
+
+    // OPTIMIZATION #5: Look ahead for identical consecutive ▀ blocks
     int run_length = 1;
-    
+
     // Count consecutive ▀ blocks with same FG+BG color combination
     while (x + run_length < width) {
       const rgb_pixel_t *next_top_px = &top_row[x + run_length];
       const rgb_pixel_t *next_bot_px = &bottom_row[x + run_length];
-      
+
       uint8_t next_fg_idx = rgb_to_ansi256(next_top_px->r, next_top_px->g, next_top_px->b);
       uint8_t next_bg_idx = rgb_to_ansi256(next_bot_px->r, next_bot_px->g, next_bot_px->b);
-      
-      if (next_fg_idx != run_fg_idx || next_bg_idx != run_bg_idx) break; // Different colors
-      
+
+      if (next_fg_idx != run_fg_idx || next_bg_idx != run_bg_idx)
+        break; // Different colors
+
       run_length++;
     }
 
@@ -471,15 +475,16 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
 
     // Simple bounds check only when approaching row boundary
     if (p >= row_end - 30) {
-      if (p >= row_end) break;
+      if (p >= row_end)
+        break;
     }
-    
+
     // OPTIMIZATION #5: Use REP compression for runs >= 3 ▀ blocks (saves more due to 3-byte UTF-8)
     if (false && run_length >= 3) { // DEBUGGING: Disable REP compression temporarily
       // Use CSI n b (REP) to repeat ▀: \x1b[%db followed by ▀
       *p++ = '\x1b';
       *p++ = '[';
-      
+
       // Convert run_length to decimal string manually (faster than snprintf)
       if (run_length >= 100) {
         *p++ = '0' + (run_length / 100);
@@ -492,9 +497,9 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
       } else {
         *p++ = '0' + run_length;
       }
-      
+
       *p++ = 'b'; // REP command
-      
+
       // Add single ▀ character (UTF-8: 0xE2 0x96 0x80) - REP will repeat it
       *p++ = 0xE2;
       *p++ = 0x96;
@@ -542,11 +547,9 @@ typedef struct {
 static void *row_worker(void *arg) {
   thread_data_t *data = (thread_data_t *)arg;
   for (int y = data->start_row; y < data->end_row; y++) {
-    data->tasks[y].row_length = render_row_truecolor_ascii_runlength(
-      data->tasks[y].row_pixels, data->tasks[y].width,
-      data->tasks[y].row_output, data->tasks[y].row_capacity,
-      data->tasks[y].background_mode
-    );
+    data->tasks[y].row_length =
+        render_row_truecolor_ascii_runlength(data->tasks[y].row_pixels, data->tasks[y].width, data->tasks[y].row_output,
+                                             data->tasks[y].row_capacity, data->tasks[y].background_mode);
   }
   return NULL;
 }
@@ -584,15 +587,15 @@ char *image_print_colored_simd(image_t *image) {
   // OPTIMIZATION #8: Parallelize across rows for memory bandwidth
   // For large images, use threading to process multiple rows simultaneously
   bool use_threading = false; // DEBUGGING: Disable threading temporarily
-  
+
   if (use_threading) {
     // Parallel processing for large images - improves memory bandwidth utilization
     // We'll pre-compute row pointers and sizes, then assemble in order
-    
+
     // Allocate task array
     row_task_t *tasks;
     SAFE_MALLOC(tasks, h * sizeof(row_task_t), row_task_t *);
-    
+
     // Pre-calculate row output positions
     size_t current_pos = 0;
     for (int y = 0; y < h; y++) {
@@ -602,11 +605,11 @@ char *image_print_colored_simd(image_t *image) {
       tasks[y].width = w;
       tasks[y].background_mode = opt_background_color;
       tasks[y].row_length = 0;
-      
+
       // Reserve space for this row + newline
       const size_t row_max = w * per_px + reset_len;
       current_pos += row_max + 1; // +1 for newline
-      
+
       if (current_pos >= lines_size) {
         // Safety fallback
         free(tasks);
@@ -614,35 +617,36 @@ char *image_print_colored_simd(image_t *image) {
         break;
       }
     }
-    
+
     if (use_threading) {
       // Process rows in parallel using pthread worker threads
       // For memory-bound workloads, use number of cores to maximize memory bandwidth
       const int num_threads = 4; // Conservative for Apple Silicon (4-8 performance cores)
       const int rows_per_thread = (h + num_threads - 1) / num_threads;
-      
+
       pthread_t threads[num_threads];
       thread_data_t thread_data[num_threads];
-      
+
       // Launch worker threads
       for (int t = 0; t < num_threads; t++) {
         thread_data[t].tasks = tasks;
         thread_data[t].start_row = t * rows_per_thread;
         thread_data[t].end_row = (t + 1) * rows_per_thread;
-        if (thread_data[t].end_row > h) thread_data[t].end_row = h;
-        
+        if (thread_data[t].end_row > h)
+          thread_data[t].end_row = h;
+
         if (thread_data[t].start_row < h) {
           pthread_create(&threads[t], NULL, row_worker, &thread_data[t]);
         }
       }
-      
+
       // Wait for all threads to complete
       for (int t = 0; t < num_threads; t++) {
         if (thread_data[t].start_row < h) {
           pthread_join(threads[t], NULL);
         }
       }
-      
+
       // Assemble final output by shifting rows to correct positions
       size_t total_len = 0;
       for (int y = 0; y < h; y++) {
@@ -651,20 +655,20 @@ char *image_print_colored_simd(image_t *image) {
           memmove(ascii + total_len, tasks[y].row_output, tasks[y].row_length);
         }
         total_len += tasks[y].row_length;
-        
+
         // Add newline after each row (except the last row)
         if (y != h - 1 && total_len < lines_size - 1) {
           ascii[total_len++] = '\n';
         }
       }
-      
+
       free(tasks);
       ascii[total_len] = '\0';
       return ascii;
     }
   }
-  
-  // Serial processing fallback (for small images or if threading setup failed)  
+
+  // Serial processing fallback (for small images or if threading setup failed)
   size_t total_len = 0;
   for (int y = 0; y < h; y++) {
     // Debug assertion: ensure we have enough space
@@ -1156,22 +1160,22 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
 // Build one colored ASCII row with FG only or FG+BG, run-length colors.
 size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                             bool background_mode) {
-  
+
   // OPTIMIZATION #4: Use 256-color fast path by default (huge speed boost!)
   if (g_use_256_color_fast_path) {
     return render_row_256color_ascii_runlength(row, width, dst, cap, background_mode);
   }
-  
+
   // Fallback to truecolor for high quality mode
   init_palette();
   init_dec3();
 
   char *p = dst;
-  
+
   // OPTIMIZATION #3: Compute per-row sentinel once (kill per-pixel capacity checks)
   // Worst case: every pixel changes color + has 1 ASCII char + reset at end
-  const size_t max_per_pixel = background_mode ? 39 + 1 : 20 + 1; // SGR + ASCII char  
-  const size_t row_max_size = width * max_per_pixel + 4; // +4 for reset
+  const size_t max_per_pixel = background_mode ? 39 + 1 : 20 + 1; // SGR + ASCII char
+  const size_t row_max_size = width * max_per_pixel + 4;          // +4 for reset
   char *row_end = dst + ((cap < row_max_size) ? cap : row_max_size);
 
   bool have_color = false;
@@ -1214,7 +1218,8 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 
     // Simple bounds check only when approaching row boundary
     if (p >= row_end - 50) { // 50 byte safety margin
-      if (p >= row_end) break;
+      if (p >= row_end)
+        break;
     }
     *p++ = ch;
   }
@@ -1234,20 +1239,20 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 // FG = top pixel color, BG = bottom pixel color = 2x vertical resolution!
 size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, char *dst,
                                    size_t cap) {
-  
+
   // OPTIMIZATION #4: Use 256-color fast path by default (huge speed boost!)
   if (g_use_256_color_fast_path) {
     return render_row_upper_half_block_256color(top_row, bottom_row, width, dst, cap);
   }
-  
+
   // Fallback to truecolor for high quality mode
   init_dec3();
 
   char *p = dst;
-  
+
   // OPTIMIZATION #3: Compute per-row sentinel once (kill per-pixel capacity checks)
   // Worst case: every pixel changes FG+BG color + has ▀ UTF-8 char (3 bytes)
-  const size_t max_per_pixel = 39 + 3; // Max FG+BG SGR + UTF-8 ▀
+  const size_t max_per_pixel = 39 + 3;                   // Max FG+BG SGR + UTF-8 ▀
   const size_t row_max_size = width * max_per_pixel + 4; // +4 for reset
   char *row_end = dst + ((cap < row_max_size) ? cap : row_max_size);
 
@@ -1281,9 +1286,10 @@ size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t
 
     // Simple bounds check only when approaching row boundary
     if (p >= row_end - 50) { // 50 byte safety margin
-      if (p >= row_end) break;
+      if (p >= row_end)
+        break;
     }
-    
+
     // Add ▀ character (UTF-8: 0xE2 0x96 0x80)
     *p++ = 0xE2;
     *p++ = 0x96;
@@ -1309,7 +1315,8 @@ char *image_print_half_height_blocks(image_t *image) {
   const size_t max_per_char = 48; // Conservative estimate
   const size_t reset_len = 4;     // \033[0m
   const size_t total_newlines = (output_height > 0) ? (output_height - 1) : 0;
-  const size_t buffer_size = (size_t)output_height * (size_t)w * max_per_char + (size_t)output_height * reset_len + total_newlines + 1;
+  const size_t buffer_size =
+      (size_t)output_height * (size_t)w * max_per_char + (size_t)output_height * reset_len + total_newlines + 1;
 
   // Single allocation
   char *ascii;

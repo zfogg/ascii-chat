@@ -326,13 +326,13 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
   // NEON constants for luminance calculation
   const uint16x8_t luma_r = vdupq_n_u16(LUMA_RED);
-  const uint16x8_t luma_g = vdupq_n_u16(LUMA_GREEN); 
+  const uint16x8_t luma_g = vdupq_n_u16(LUMA_GREEN);
   const uint16x8_t luma_b = vdupq_n_u16(LUMA_BLUE);
 
   // Create NEON table lookup for ASCII palette (16-byte table)
   // We need to handle 256 luminance values, so we'll use direct indexing for now
   // The palette has 22 chars, so we can use vqtbl1q_u8 for sub-tables
-  
+
   int simd_count = (count / 8) * 8;
   int i;
 
@@ -348,31 +348,31 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
     // Compute luminance: (LUMA_RED * r + LUMA_GREEN * g + LUMA_BLUE * b) >> 8
     uint16x8_t luma_result = vmulq_u16(r_16, luma_r);
-    luma_result = vmlaq_u16(luma_result, g_16, luma_g);  // Add G contribution
-    luma_result = vmlaq_u16(luma_result, b_16, luma_b);  // Add B contribution
+    luma_result = vmlaq_u16(luma_result, g_16, luma_g); // Add G contribution
+    luma_result = vmlaq_u16(luma_result, b_16, luma_b); // Add B contribution
 
     // Shift right by 8 to get final luminance values
     uint8x8_t luminance = vshrn_n_u16(luma_result, 8);
 
     // OPTIMIZATION #7: Full NEON table lookup for ASCII character mapping
     // Use multiple vqtbl1q_u8 calls to handle full 256-entry luminance palette
-    
+
     // We need 16 tables of 16 bytes each to cover all 256 luminance values
     // Each vqtbl1q_u8 can handle indices 0-15, so we use modulo and divide operations
-    
+
     // Convert 8 luminance values to 16-bit for NEON processing
     uint16x8_t lum_16 = vmovl_u8(luminance);
-    
+
     // Split luminance into high and low parts for table lookup
-    // High 4 bits = table index (0-15), Low 4 bits = index within table (0-15) 
-    uint8x8_t table_indices = vshrn_n_u16(lum_16, 4);  // luminance >> 4 (table number)
-    uint8x8_t within_indices = vand_s8(luminance, vdup_n_u8(0x0F));  // luminance & 0x0F (index in table)
-    
+    // High 4 bits = table index (0-15), Low 4 bits = index within table (0-15)
+    uint8x8_t table_indices = vshrn_n_u16(lum_16, 4);               // luminance >> 4 (table number)
+    uint8x8_t within_indices = vand_s8(luminance, vdup_n_u8(0x0F)); // luminance & 0x0F (index in table)
+
     // For now, use direct array access since building 16 NEON tables is complex
     // This still benefits from NEON luminance calculation above
     uint8_t lum_array[8];
     vst1_u8(lum_array, luminance);
-    
+
     // Direct table lookup using the precomputed luminance palette (already optimized)
     for (int j = 0; j < 8; j++) {
       ascii_chars[i + j] = luminance_palette[lum_array[j]];
