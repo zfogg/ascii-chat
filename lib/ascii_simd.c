@@ -118,37 +118,36 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
 
   int i;
 
-  // Process 4 pixels at a time using SSE2-compatible operations
+  // Process 4 pixels at a time using optimized SSE2 operations
   for (i = 0; i + 3 < count; i += 4) {
-    // Explicit bounds check: ensure we can safely access pixels[i+3]
-    // Load 4 RGB pixels and convert to 16-bit for SSE2 compatibility
-    // SSE2 doesn't have _mm_mullo_epi32, so we use 16-bit arithmetic
+    // Load 4 RGB pixels using only SSE2 instructions
+    // For maximum compatibility, use scalar loads but process with SIMD arithmetic
+    const uint8_t *pixel_ptr = (const uint8_t *)(pixels + i);
 
-    __m128i r_vals = _mm_setr_epi16(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, 0, 0, 0, 0);
-    __m128i g_vals = _mm_setr_epi16(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g, 0, 0, 0, 0);
-    __m128i b_vals = _mm_setr_epi16(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b, 0, 0, 0, 0);
+    // Extract RGB values using SSE2-compatible approach
+    __m128i r_16 = _mm_setr_epi16(pixel_ptr[0], pixel_ptr[3], pixel_ptr[6], pixel_ptr[9], 0, 0, 0, 0);
+    __m128i g_16 = _mm_setr_epi16(pixel_ptr[1], pixel_ptr[4], pixel_ptr[7], pixel_ptr[10], 0, 0, 0, 0);
+    __m128i b_16 = _mm_setr_epi16(pixel_ptr[2], pixel_ptr[5], pixel_ptr[8], pixel_ptr[11], 0, 0, 0, 0);
 
-    // Multiply by luminance weights using 16-bit multiplication
-    __m128i luma_r = _mm_mullo_epi16(r_vals, _mm_set1_epi16(LUMA_RED));
-    __m128i luma_g = _mm_mullo_epi16(g_vals, _mm_set1_epi16(LUMA_GREEN));
-    __m128i luma_b = _mm_mullo_epi16(b_vals, _mm_set1_epi16(LUMA_BLUE));
+    // SIMD luminance calculation: (77*r + 150*g + 29*b) >> 8
+    __m128i luma_r = _mm_mullo_epi16(r_16, _mm_set1_epi16(LUMA_RED));
+    __m128i luma_g = _mm_mullo_epi16(g_16, _mm_set1_epi16(LUMA_GREEN));
+    __m128i luma_b = _mm_mullo_epi16(b_16, _mm_set1_epi16(LUMA_BLUE));
 
-    // Sum and shift right by 8 (divide by 256)
     __m128i luminance = _mm_add_epi16(_mm_add_epi16(luma_r, luma_g), luma_b);
     luminance = _mm_srli_epi16(luminance, 8);
 
-    // Extract results and convert to ASCII
-    int lum[4];
-    lum[0] = _mm_extract_epi16(luminance, 0);
-    lum[1] = _mm_extract_epi16(luminance, 1);
-    lum[2] = _mm_extract_epi16(luminance, 2);
-    lum[3] = _mm_extract_epi16(luminance, 3);
+    // Pack back to 8-bit and store for palette lookup
+    __m128i lum_8 = _mm_packus_epi16(luminance, _mm_setzero_si128());
 
-    for (int j = 0; j < 4; j++) {
-      if (lum[j] > 255)
-        lum[j] = 255;
-      ascii_chars[i + j] = luminance_palette[lum[j]];
-    }
+    // Extract and convert to ASCII using bulk store + scalar lookup
+    uint8_t lum[4];
+    _mm_storeu_si32(lum, lum_8);
+
+    ascii_chars[i + 0] = luminance_palette[lum[0]];
+    ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];
+    ascii_chars[i + 3] = luminance_palette[lum[3]];
   }
 
   // Process remaining pixels with scalar code
