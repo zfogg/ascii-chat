@@ -159,6 +159,11 @@ Add these defines to see detailed logs:
 - Monitor packet queue overflow (drops oldest packets)
 - Verify keepalive is working (KEEPALIVE_IDLE settings)
 
+**Socket bind errors ("Operation not supported on socket"):**
+- Try using a different port: `./bin/server --port 9000`
+- Port 8080 may be blocked or in use by another service
+- Common alternative ports: 9000, 8081, 3000
+
 ### 3. Debugging Tools
 
 Use the following tools frequently to debug and work and help the developer.
