@@ -179,10 +179,7 @@ void frame_debug_detect_issues(frame_debug_tracker_t *tracker) {
     size_t start_idx = tracker->history_index;
 
     for (size_t i = 1; i < FRAME_DEBUG_HISTORY_SIZE; i++) {
-      size_t prev_idx = (start_idx + i - 1) % FRAME_DEBUG_HISTORY_SIZE;
       size_t curr_idx = (start_idx + i) % FRAME_DEBUG_HISTORY_SIZE;
-
-      frame_debug_entry_t *prev = &tracker->history[prev_idx];
       frame_debug_entry_t *curr = &tracker->history[curr_idx];
 
       // Check for timing gaps (>200ms)
