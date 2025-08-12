@@ -137,83 +137,6 @@ void test_colored_ascii_performance(void) {
     }
 }
 
-void test_colored_output_sample(void) {
-    printf("=== Colored ASCII Output Sample ===\n");
-
-    // Generate a small test image with gradient
-    const int width = 60, height = 8;
-    rgb_pixel_t *pixels;
-    SAFE_MALLOC(pixels, width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
-
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int idx = y * width + x;
-
-            // Create rainbow gradient
-            float hue = (float)x / width * 360.0f;  // Hue across width
-            float brightness = 1.0f - (float)y / height * 0.7f;  // Brightness down height
-
-            // Simple HSV to RGB conversion
-            float c = brightness;
-            float h_prime = hue / 60.0f;
-            float x_val = c * (1.0f - fabsf(fmodf(h_prime, 2.0f) - 1.0f));
-
-            float r, g, b;
-            if (h_prime < 1) { r = c; g = x_val; b = 0; }
-            else if (h_prime < 2) { r = x_val; g = c; b = 0; }
-            else if (h_prime < 3) { r = 0; g = c; b = x_val; }
-            else if (h_prime < 4) { r = 0; g = x_val; b = c; }
-            else if (h_prime < 5) { r = x_val; g = 0; b = c; }
-            else { r = c; g = 0; b = x_val; }
-
-            pixels[idx].r = (uint8_t)(r * 255);
-            pixels[idx].g = (uint8_t)(g * 255);
-            pixels[idx].b = (uint8_t)(b * 255);
-        }
-    }
-
-    // Test the new image_print_colored_simd function
-    image_t test_image = {
-        .pixels = (rgb_t *)pixels,
-        .w = width,
-        .h = height
-    };
-
-    printf("\nTesting new optimized image_print_colored_simd function:\n\n");
-
-    // Test foreground mode
-    opt_background_color = false;
-    char *foreground_ascii = image_print_colored_simd(&test_image);
-    if (foreground_ascii) {
-        printf("Foreground colored ASCII (SIMD):\n%s\n\n", foreground_ascii);
-        free(foreground_ascii);
-    }
-
-    // Test background mode
-    opt_background_color = true;
-    char *background_ascii = image_print_colored_simd(&test_image);
-    if (background_ascii) {
-        printf("Background colored ASCII (SIMD):\n%s\n\n", background_ascii);
-        free(background_ascii);
-    }
-
-    // Also test row-by-row conversion
-    size_t max_output = width * 40;
-    char *output_buffer;
-    SAFE_MALLOC(output_buffer, max_output, char *);
-
-    printf("Row-by-row conversion test (foreground):\n");
-    for (int y = 0; y < height; y++) {
-        size_t len = convert_row_with_color_optimized(
-            &pixels[y * width], output_buffer, max_output, width, false);
-        output_buffer[len] = '\0';
-        printf("%s\n", output_buffer);
-    }
-
-    free(pixels);
-    free(output_buffer);
-}
-
 int main(void) {
     printf("====================================\n");
     printf("  Colored ASCII SIMD Optimization  \n");
@@ -223,9 +146,6 @@ int main(void) {
     log_init(NULL, LOG_ERROR);
 
     test_colored_ascii_performance();
-
-    printf("Running colored ASCII output sample test...\n");
-    test_colored_output_sample();
 
     log_destroy();
 

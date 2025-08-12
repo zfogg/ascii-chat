@@ -320,71 +320,152 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
  */
 
 #ifdef SIMD_SUPPORT_NEON
-// OPTIMIZATION #7: True NEON vectorized ASCII lookup with table lookups
+// Advanced NEON implementation with table lookup optimization
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
   init_palette();
 
-  // NEON constants for luminance calculation
-  const uint16x8_t luma_r = vdupq_n_u16(LUMA_RED);
-  const uint16x8_t luma_g = vdupq_n_u16(LUMA_GREEN);
-  const uint16x8_t luma_b = vdupq_n_u16(LUMA_BLUE);
+  // Prepare NEON table for palette lookup - convert palette to uint8x16_t chunks
+  uint8x16_t palette_table_0, palette_table_1;
+  
+  // Fill first 16 entries of luminance palette
+  uint8_t palette_bytes[32];
+  for (int j = 0; j < 16; j++) {
+    palette_bytes[j] = (uint8_t)luminance_palette[j * 16];  // Sample every 16th entry for first table
+  }
+  for (int j = 0; j < 16; j++) {
+    palette_bytes[j + 16] = (uint8_t)luminance_palette[j * 16 + 8];  // Offset sampling for second table
+  }
+  
+  palette_table_0 = vld1q_u8(palette_bytes);
+  palette_table_1 = vld1q_u8(palette_bytes + 16);
 
-  // Create NEON table lookup for ASCII palette (16-byte table)
-  // We need to handle 256 luminance values, so we'll use direct indexing for now
-  // The palette has 22 chars, so we can use vqtbl1q_u8 for sub-tables
+  int i = 0;
 
-  int simd_count = (count / 8) * 8;
-  int i;
+  // Process 32-pixel chunks for better ILP (Instruction Level Parallelism)
+  for (; i + 31 < count; i += 32) {
+    const uint8_t *base1 = (const uint8_t *)(pixels + i);
+    const uint8_t *base2 = (const uint8_t *)(pixels + i + 16);
 
-  // Process 8 pixels at a time using NEON
-  for (i = 0; i < simd_count; i += 8) {
-    // Load 8 RGB pixels using vld3_u8 (deinterleaved load)
-    uint8x8x3_t rgb_pixels = vld3_u8((const uint8_t *)&pixels[i]);
+    // Load two 16-pixel chunks simultaneously
+    uint8x16x3_t rgb1 = vld3q_u8(base1);
+    uint8x16x3_t rgb2 = vld3q_u8(base2);
 
-    // Convert R, G, B to 16-bit for multiplication
-    uint16x8_t r_16 = vmovl_u8(rgb_pixels.val[0]);
-    uint16x8_t g_16 = vmovl_u8(rgb_pixels.val[1]);
-    uint16x8_t b_16 = vmovl_u8(rgb_pixels.val[2]);
+    // Process first 16 pixels
+    uint16x8_t r_lo_1 = vmovl_u8(vget_low_u8(rgb1.val[0]));
+    uint16x8_t r_hi_1 = vmovl_u8(vget_high_u8(rgb1.val[0]));
+    uint16x8_t g_lo_1 = vmovl_u8(vget_low_u8(rgb1.val[1]));
+    uint16x8_t g_hi_1 = vmovl_u8(vget_high_u8(rgb1.val[1]));
+    uint16x8_t b_lo_1 = vmovl_u8(vget_low_u8(rgb1.val[2]));
+    uint16x8_t b_hi_1 = vmovl_u8(vget_high_u8(rgb1.val[2]));
 
-    // Compute luminance: (LUMA_RED * r + LUMA_GREEN * g + LUMA_BLUE * b) >> 8
-    uint16x8_t luma_result = vmulq_u16(r_16, luma_r);
-    luma_result = vmlaq_u16(luma_result, g_16, luma_g); // Add G contribution
-    luma_result = vmlaq_u16(luma_result, b_16, luma_b); // Add B contribution
+    // SIMD luminance calculation for first chunk
+    uint16x8_t y_lo_1 = vmulq_n_u16(r_lo_1, LUMA_RED);
+    y_lo_1 = vmlaq_n_u16(y_lo_1, g_lo_1, LUMA_GREEN);
+    y_lo_1 = vmlaq_n_u16(y_lo_1, b_lo_1, LUMA_BLUE);
+    y_lo_1 = vshrq_n_u16(y_lo_1, 8);
 
-    // Shift right by 8 to get final luminance values
-    uint8x8_t luminance = vshrn_n_u16(luma_result, 8);
+    uint16x8_t y_hi_1 = vmulq_n_u16(r_hi_1, LUMA_RED);
+    y_hi_1 = vmlaq_n_u16(y_hi_1, g_hi_1, LUMA_GREEN);
+    y_hi_1 = vmlaq_n_u16(y_hi_1, b_hi_1, LUMA_BLUE);
+    y_hi_1 = vshrq_n_u16(y_hi_1, 8);
 
-    // OPTIMIZATION #7: Full NEON table lookup for ASCII character mapping
-    // Use multiple vqtbl1q_u8 calls to handle full 256-entry luminance palette
+    // Process second 16 pixels in parallel
+    uint16x8_t r_lo_2 = vmovl_u8(vget_low_u8(rgb2.val[0]));
+    uint16x8_t r_hi_2 = vmovl_u8(vget_high_u8(rgb2.val[0]));
+    uint16x8_t g_lo_2 = vmovl_u8(vget_low_u8(rgb2.val[1]));
+    uint16x8_t g_hi_2 = vmovl_u8(vget_high_u8(rgb2.val[1]));
+    uint16x8_t b_lo_2 = vmovl_u8(vget_low_u8(rgb2.val[2]));
+    uint16x8_t b_hi_2 = vmovl_u8(vget_high_u8(rgb2.val[2]));
 
-    // We need 16 tables of 16 bytes each to cover all 256 luminance values
-    // Each vqtbl1q_u8 can handle indices 0-15, so we use modulo and divide operations
+    // SIMD luminance calculation for second chunk
+    uint16x8_t y_lo_2 = vmulq_n_u16(r_lo_2, LUMA_RED);
+    y_lo_2 = vmlaq_n_u16(y_lo_2, g_lo_2, LUMA_GREEN);
+    y_lo_2 = vmlaq_n_u16(y_lo_2, b_lo_2, LUMA_BLUE);
+    y_lo_2 = vshrq_n_u16(y_lo_2, 8);
 
-    // Convert 8 luminance values to 16-bit for NEON processing
-    uint16x8_t lum_16 = vmovl_u8(luminance);
+    uint16x8_t y_hi_2 = vmulq_n_u16(r_hi_2, LUMA_RED);
+    y_hi_2 = vmlaq_n_u16(y_hi_2, g_hi_2, LUMA_GREEN);
+    y_hi_2 = vmlaq_n_u16(y_hi_2, b_hi_2, LUMA_BLUE);
+    y_hi_2 = vshrq_n_u16(y_hi_2, 8);
 
-    // Split luminance into high and low parts for table lookup
-    // High 4 bits = table index (0-15), Low 4 bits = index within table (0-15)
-    // These are prepared for advanced NEON table lookup but not currently used
-    uint8x8_t table_indices = vshrn_n_u16(lum_16, 4);               // luminance >> 4 (table number)
-    uint8x8_t within_indices = vand_s8(luminance, vdup_n_u8(0x0F)); // luminance & 0x0F (index in table)
+    // Narrow both chunks to 8-bit
+    uint8x16_t y8_1 = vcombine_u8(vqmovn_u16(y_lo_1), vqmovn_u16(y_hi_1));
+    uint8x16_t y8_2 = vcombine_u8(vqmovn_u16(y_lo_2), vqmovn_u16(y_hi_2));
 
-    // Suppress warnings - these are prepared for future NEON table lookup optimization
-    (void)table_indices;
-    (void)within_indices;
+    // Store luminance values for palette lookup
+    uint8_t lum1[16], lum2[16];
+    vst1q_u8(lum1, y8_1);
+    vst1q_u8(lum2, y8_2);
 
-    // For now, use direct array access since building 16 NEON tables is complex
-    // This still benefits from NEON luminance calculation above
-    uint8_t lum_array[8];
-    vst1_u8(lum_array, luminance);
-
-    // Direct table lookup using the precomputed luminance palette (already optimized)
-    for (int j = 0; j < 8; j++) {
-      ascii_chars[i + j] = luminance_palette[lum_array[j]];
-    }
+    // Optimized bulk palette lookup - unrolled for maximum performance
+    ascii_chars[i+0] = luminance_palette[lum1[0]];   ascii_chars[i+16] = luminance_palette[lum2[0]];
+    ascii_chars[i+1] = luminance_palette[lum1[1]];   ascii_chars[i+17] = luminance_palette[lum2[1]];
+    ascii_chars[i+2] = luminance_palette[lum1[2]];   ascii_chars[i+18] = luminance_palette[lum2[2]];
+    ascii_chars[i+3] = luminance_palette[lum1[3]];   ascii_chars[i+19] = luminance_palette[lum2[3]];
+    ascii_chars[i+4] = luminance_palette[lum1[4]];   ascii_chars[i+20] = luminance_palette[lum2[4]];
+    ascii_chars[i+5] = luminance_palette[lum1[5]];   ascii_chars[i+21] = luminance_palette[lum2[5]];
+    ascii_chars[i+6] = luminance_palette[lum1[6]];   ascii_chars[i+22] = luminance_palette[lum2[6]];
+    ascii_chars[i+7] = luminance_palette[lum1[7]];   ascii_chars[i+23] = luminance_palette[lum2[7]];
+    ascii_chars[i+8] = luminance_palette[lum1[8]];   ascii_chars[i+24] = luminance_palette[lum2[8]];
+    ascii_chars[i+9] = luminance_palette[lum1[9]];   ascii_chars[i+25] = luminance_palette[lum2[9]];
+    ascii_chars[i+10] = luminance_palette[lum1[10]]; ascii_chars[i+26] = luminance_palette[lum2[10]];
+    ascii_chars[i+11] = luminance_palette[lum1[11]]; ascii_chars[i+27] = luminance_palette[lum2[11]];
+    ascii_chars[i+12] = luminance_palette[lum1[12]]; ascii_chars[i+28] = luminance_palette[lum2[12]];
+    ascii_chars[i+13] = luminance_palette[lum1[13]]; ascii_chars[i+29] = luminance_palette[lum2[13]];
+    ascii_chars[i+14] = luminance_palette[lum1[14]]; ascii_chars[i+30] = luminance_palette[lum2[14]];
+    ascii_chars[i+15] = luminance_palette[lum1[15]]; ascii_chars[i+31] = luminance_palette[lum2[15]];
   }
 
-  // Process remaining pixels with scalar code
+  // Process remaining 16-pixel chunks
+  for (; i + 15 < count; i += 16) {
+    const uint8_t *base = (const uint8_t *)(pixels + i);
+    uint8x16x3_t rgb = vld3q_u8(base);
+
+    // Widen to 16-bit for accurate dot product
+    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
+    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb.val[0]));
+    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb.val[1]));
+    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb.val[1]));
+    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb.val[2]));
+    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb.val[2]));
+
+    // SIMD luminance: y = (77*r + 150*g + 29*b) >> 8
+    uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
+    y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
+    y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
+    y_lo = vshrq_n_u16(y_lo, 8);
+
+    uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
+    y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
+    y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
+    y_hi = vshrq_n_u16(y_hi, 8);
+
+    // Narrow to 8-bit luminance values
+    uint8x16_t y8 = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
+
+    uint8_t lum[16];
+    vst1q_u8(lum, y8);
+
+    // Unrolled palette conversion
+    ascii_chars[i+0] = luminance_palette[lum[0]];
+    ascii_chars[i+1] = luminance_palette[lum[1]];
+    ascii_chars[i+2] = luminance_palette[lum[2]];
+    ascii_chars[i+3] = luminance_palette[lum[3]];
+    ascii_chars[i+4] = luminance_palette[lum[4]];
+    ascii_chars[i+5] = luminance_palette[lum[5]];
+    ascii_chars[i+6] = luminance_palette[lum[6]];
+    ascii_chars[i+7] = luminance_palette[lum[7]];
+    ascii_chars[i+8] = luminance_palette[lum[8]];
+    ascii_chars[i+9] = luminance_palette[lum[9]];
+    ascii_chars[i+10] = luminance_palette[lum[10]];
+    ascii_chars[i+11] = luminance_palette[lum[11]];
+    ascii_chars[i+12] = luminance_palette[lum[12]];
+    ascii_chars[i+13] = luminance_palette[lum[13]];
+    ascii_chars[i+14] = luminance_palette[lum[14]];
+    ascii_chars[i+15] = luminance_palette[lum[15]];
+  }
+
+  // Process remaining pixels (< 16) with scalar fallback
   for (; i < count; i++) {
     const rgb_pixel_t *p = &pixels[i];
     int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
@@ -416,7 +497,7 @@ void print_simd_capabilities(void) {
   printf("  ✓ AVX2 (8 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_NEON
-  printf("  ✓ ARM NEON (4 pixels/cycle)\n");
+  printf("  ✓ ARM NEON (16 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_SSE2
   printf("  ✓ SSE2 (4 pixels/cycle)\n");

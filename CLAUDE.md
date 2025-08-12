@@ -5,7 +5,7 @@
 - Format code with `make format` after you edit it.
 - Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
-- Use clang instead of gcc.
+- Use `clang` instead of `gcc`.
 - Don't use `git add .`, add all files individually.
 - Use AdrressSanitizer (ASan) and memory reports from common.c for memory 
 debugging. `make clean && make sanitize`.

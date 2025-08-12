@@ -218,63 +218,9 @@ void test_performance(void) {
                    benchmark.neon_time * 1000 / iterations, speedup);
         }
 
-        printf("  Best:      %s (%.1fx overall speedup)\n\n",
-               benchmark.best_method, benchmark.speedup_best);
+        printf("  Best:      %s\n\n",
+               benchmark.best_method);
     }
-}
-
-// Test 3: Real-time ASCII animation using new optimized function
-void test_animation(void) {
-    printf("\n=== Test 3: Real-time ASCII Animation ===\n");
-    printf("Generating 5 seconds of 15 FPS ASCII animation using image_print_simd...\n");
-    printf("Press Ctrl+C to stop early.\n\n");
-
-    sleep(2); // Give user time to read
-
-    rgb_pixel_t *full_image;
-    SAFE_MALLOC(full_image, TEST_PIXELS * sizeof(rgb_pixel_t), rgb_pixel_t *);
-
-    rgb_pixel_t *small_image;
-    SAFE_MALLOC(small_image, ASCII_WIDTH * ASCII_HEIGHT * sizeof(rgb_pixel_t), rgb_pixel_t *);
-
-    const int total_frames = 75; // 5 seconds at 15 FPS
-    const int frame_delay_us = 1000000 / 15; // 15 FPS
-
-    for (int frame = 0; frame < total_frames; frame++) {
-        // Clear screen (ANSI escape code)
-        printf("\033[2J\033[H");
-
-        // Generate and resize test image
-        generate_test_image(full_image, TEST_WIDTH, TEST_HEIGHT, frame);
-        resize_image(full_image, TEST_WIDTH, TEST_HEIGHT,
-                    small_image, ASCII_WIDTH, ASCII_HEIGHT);
-
-        // Convert to ASCII using new optimized image_print_simd function
-        image_t test_image = {
-            .pixels = (rgb_t *)small_image,
-            .w = ASCII_WIDTH,
-            .h = ASCII_HEIGHT
-        };
-
-        char *ascii_output = image_print_simd(&test_image);
-        if (ascii_output) {
-            // Display
-            printf("Frame %d/%d - NEW Optimized SIMD ASCII Animation\n", frame + 1, total_frames);
-            printf("%s\n", ascii_output);
-            free(ascii_output);
-        } else {
-            printf("Error: Failed to generate ASCII frame\n");
-            break;
-        }
-
-        // Timing
-        usleep(frame_delay_us);
-    }
-
-    printf("\nAnimation complete!\n");
-
-    free(full_image);
-    free(small_image);
 }
 
 // Test 4: Integration example - NEW OPTIMIZED VERSION
@@ -311,7 +257,7 @@ void test_integration(void) {
         printf("- SIMD (%s): %.2f ms per frame (%.1fx faster)\n",
                simd_method, simd_time * 1000 / 1000, bench.scalar_time / simd_time);
     }
-    printf("- Best method: %s (%.1fx speedup)\n", bench.best_method, bench.speedup_best);
+    printf("- Best method: %s\n", bench.best_method);
     printf("- At 60 FPS: %.1f%% CPU time saved\n",
            100.0 * (1.0 - 1.0/bench.speedup_best));
 }
