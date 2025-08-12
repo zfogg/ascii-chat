@@ -1456,16 +1456,34 @@ int main(int argc, char *argv[]) {
   pthread_mutex_unlock(&g_client_manager_mutex);
 
   // Now clean up client resources
+  log_info("Scanning for clients to clean up (active or with allocated resources)...");
   pthread_mutex_lock(&g_client_manager_mutex);
+  int active_clients_found = 0;
+  int inactive_clients_with_resources = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active) {
-      uint32_t client_id = g_client_manager.clients[i].client_id;
-      pthread_mutex_unlock(&g_client_manager_mutex);
-      remove_client(client_id);
-      pthread_mutex_lock(&g_client_manager_mutex);
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->client_id != 0) {  // Client slot has been used
+      bool has_resources = (client->audio_queue != NULL || client->video_queue != NULL || 
+                           client->incoming_video_buffer != NULL || client->incoming_audio_buffer != NULL);
+      
+      if (client->active) {
+        active_clients_found++;
+        log_info("Found active client %u in slot %d during shutdown cleanup", client->client_id, i);
+        pthread_mutex_unlock(&g_client_manager_mutex);
+        remove_client(client->client_id);
+        pthread_mutex_lock(&g_client_manager_mutex);
+      } else if (has_resources) {
+        inactive_clients_with_resources++;
+        log_info("Found inactive client %u in slot %d with allocated resources - cleaning up", client->client_id, i);
+        pthread_mutex_unlock(&g_client_manager_mutex);
+        remove_client(client->client_id);
+        pthread_mutex_lock(&g_client_manager_mutex);
+      }
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
+  log_info("Client cleanup complete - removed %d active clients and %d inactive clients with resources", 
+           active_clients_found, inactive_clients_with_resources);
 
   // Cleanup resources
   // No server framebuffer or webcam to clean up
