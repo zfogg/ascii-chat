@@ -478,43 +478,43 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
     const __m128i mask_r_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, 2, 5, 8, 11, 14, -1, -1, -1, -1, -1);
     const __m128i mask_r_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 4, 7, 10, 13);
 
-    __m128i r_vec1 = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_1, mask_r_0),
-                                               _mm_shuffle_epi8(rgb_chunk1_1, mask_r_1)),
-                                  _mm_shuffle_epi8(rgb_chunk2_1, mask_r_2));
+    __m128i r_vec1 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_1, mask_r_0), _mm_shuffle_epi8(rgb_chunk1_1, mask_r_1)),
+                     _mm_shuffle_epi8(rgb_chunk2_1, mask_r_2));
 
-    __m128i r_vec2 = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_2, mask_r_0),
-                                               _mm_shuffle_epi8(rgb_chunk1_2, mask_r_1)),
-                                  _mm_shuffle_epi8(rgb_chunk2_2, mask_r_2));
+    __m128i r_vec2 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_2, mask_r_0), _mm_shuffle_epi8(rgb_chunk1_2, mask_r_1)),
+                     _mm_shuffle_epi8(rgb_chunk2_2, mask_r_2));
 
-    // Extract G values  
+    // Extract G values
     const __m128i mask_g_0 = _mm_setr_epi8(1, 4, 7, 10, 13, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
     const __m128i mask_g_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, 0, 3, 6, 9, 12, 15, -1, -1, -1, -1, -1);
     const __m128i mask_g_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2, 5, 8, 11, 14);
 
-    __m128i g_vec1 = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_1, mask_g_0),
-                                               _mm_shuffle_epi8(rgb_chunk1_1, mask_g_1)),
-                                  _mm_shuffle_epi8(rgb_chunk2_1, mask_g_2));
+    __m128i g_vec1 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_1, mask_g_0), _mm_shuffle_epi8(rgb_chunk1_1, mask_g_1)),
+                     _mm_shuffle_epi8(rgb_chunk2_1, mask_g_2));
 
-    __m128i g_vec2 = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_2, mask_g_0),
-                                               _mm_shuffle_epi8(rgb_chunk1_2, mask_g_1)),
-                                  _mm_shuffle_epi8(rgb_chunk2_2, mask_g_2));
+    __m128i g_vec2 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_2, mask_g_0), _mm_shuffle_epi8(rgb_chunk1_2, mask_g_1)),
+                     _mm_shuffle_epi8(rgb_chunk2_2, mask_g_2));
 
     // Extract B values
     const __m128i mask_b_0 = _mm_setr_epi8(2, 5, 8, 11, 14, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
     const __m128i mask_b_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, 1, 4, 7, 10, 13, -1, -1, -1, -1, -1, -1);
     const __m128i mask_b_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 3, 6, 9, 12, 15);
 
-    __m128i b_vec1 = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_1, mask_b_0),
-                                               _mm_shuffle_epi8(rgb_chunk1_1, mask_b_1)),
-                                  _mm_shuffle_epi8(rgb_chunk2_1, mask_b_2));
+    __m128i b_vec1 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_1, mask_b_0), _mm_shuffle_epi8(rgb_chunk1_1, mask_b_1)),
+                     _mm_shuffle_epi8(rgb_chunk2_1, mask_b_2));
 
-    __m128i b_vec2 = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_2, mask_b_0),
-                                               _mm_shuffle_epi8(rgb_chunk1_2, mask_b_1)),
-                                  _mm_shuffle_epi8(rgb_chunk2_2, mask_b_2));
+    __m128i b_vec2 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(rgb_chunk0_2, mask_b_0), _mm_shuffle_epi8(rgb_chunk1_2, mask_b_1)),
+                     _mm_shuffle_epi8(rgb_chunk2_2, mask_b_2));
 
     // Combine into 256-bit AVX2 vectors for parallel processing
     __m256i r_vals1 = _mm256_cvtepu8_epi16(r_vec1); // Widen first 16 R values to 16-bit
-    __m256i g_vals1 = _mm256_cvtepu8_epi16(g_vec1); // Widen first 16 G values to 16-bit  
+    __m256i g_vals1 = _mm256_cvtepu8_epi16(g_vec1); // Widen first 16 G values to 16-bit
     __m256i b_vals1 = _mm256_cvtepu8_epi16(b_vec1); // Widen first 16 B values to 16-bit
 
     __m256i r_vals2 = _mm256_cvtepu8_epi16(r_vec2); // Widen second 16 R values to 16-bit
@@ -751,51 +751,131 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
   int i = 0;
 
-  // BYPASS NEON VECTORIZATION - The assembly analysis shows the real problem:
-  // Scalar extraction from NEON vectors is expensive (2-3 cycles per extraction)
-  // The compiler auto-vectorizes scalar code better than our manual NEON!
-  //
-  // Strategy: Process more pixels per iteration with better scalar scheduling
-  for (; i + 7 < count; i += 8) {
-    const rgb_pixel_t *p0 = &pixels[i+0];
-    const rgb_pixel_t *p1 = &pixels[i+1];
-    const rgb_pixel_t *p2 = &pixels[i+2];
-    const rgb_pixel_t *p3 = &pixels[i+3];
-    const rgb_pixel_t *p4 = &pixels[i+4];
-    const rgb_pixel_t *p5 = &pixels[i+5];
-    const rgb_pixel_t *p6 = &pixels[i+6];
-    const rgb_pixel_t *p7 = &pixels[i+7];
-
-    // Process 8 pixels with interleaved arithmetic to help compiler pipeline
-    // Calculate luminance: (77*r + 150*g + 29*b) >> 8
-    int lum0 = (LUMA_RED * p0->r + LUMA_GREEN * p0->g + LUMA_BLUE * p0->b) >> 8;
-    int lum1 = (LUMA_RED * p1->r + LUMA_GREEN * p1->g + LUMA_BLUE * p1->b) >> 8;
-    int lum2 = (LUMA_RED * p2->r + LUMA_GREEN * p2->g + LUMA_BLUE * p2->b) >> 8;
-    int lum3 = (LUMA_RED * p3->r + LUMA_GREEN * p3->g + LUMA_BLUE * p3->b) >> 8;
-    int lum4 = (LUMA_RED * p4->r + LUMA_GREEN * p4->g + LUMA_BLUE * p4->b) >> 8;
-    int lum5 = (LUMA_RED * p5->r + LUMA_GREEN * p5->g + LUMA_BLUE * p5->b) >> 8;
-    int lum6 = (LUMA_RED * p6->r + LUMA_GREEN * p6->g + LUMA_BLUE * p6->b) >> 8;
-    int lum7 = (LUMA_RED * p7->r + LUMA_GREEN * p7->g + LUMA_BLUE * p7->b) >> 8;
-
-    // Clamp to [0, 255] - compiler will optimize these branches
-    if (lum0 > 255) lum0 = 255;
-    if (lum1 > 255) lum1 = 255;
-    if (lum2 > 255) lum2 = 255;
-    if (lum3 > 255) lum3 = 255;
-    if (lum4 > 255) lum4 = 255;
-    if (lum5 > 255) lum5 = 255;
-    if (lum6 > 255) lum6 = 255;
-    if (lum7 > 255) lum7 = 255;
-
-    // Palette lookups - much more cache-friendly than NEON extractions
-    ascii_chars[i+0] = luminance_palette[lum0];
-    ascii_chars[i+1] = luminance_palette[lum1];
-    ascii_chars[i+2] = luminance_palette[lum2];
-    ascii_chars[i+3] = luminance_palette[lum3];
-    ascii_chars[i+4] = luminance_palette[lum4];
-    ascii_chars[i+5] = luminance_palette[lum5];
-    ascii_chars[i+6] = luminance_palette[lum6];
-    ascii_chars[i+7] = luminance_palette[lum7];
+  // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration
+  // Use every NEON register and instruction to push for 2-3x speedup
+  for (; i + 31 < count; i += 32) {
+    const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
+    
+    // Load 96 bytes (32 RGB pixels) using two interleaved loads
+    uint8x16x3_t rgb_batch1 = vld3q_u8(rgb_data);      // Pixels 0-15
+    uint8x16x3_t rgb_batch2 = vld3q_u8(rgb_data + 48); // Pixels 16-31
+    
+    // Process batch 1 (pixels 0-15)
+    uint16x8_t r1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[0]));
+    uint16x8_t r1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[0]));
+    uint16x8_t g1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[1]));
+    uint16x8_t g1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[1]));
+    uint16x8_t b1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[2]));
+    uint16x8_t b1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[2]));
+    
+    // Process batch 2 (pixels 16-31) 
+    uint16x8_t r2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[0]));
+    uint16x8_t r2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[0]));
+    uint16x8_t g2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[1]));
+    uint16x8_t g2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[1]));
+    uint16x8_t b2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[2]));
+    uint16x8_t b2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[2]));
+    
+    // Parallel luminance computation on 4 NEON vectors (32 pixels total)
+    uint16x8_t luma1_lo = vmulq_n_u16(r1_lo, LUMA_RED);
+    luma1_lo = vmlaq_n_u16(luma1_lo, g1_lo, LUMA_GREEN);
+    luma1_lo = vmlaq_n_u16(luma1_lo, b1_lo, LUMA_BLUE);
+    luma1_lo = vshrq_n_u16(luma1_lo, 8);
+    
+    uint16x8_t luma1_hi = vmulq_n_u16(r1_hi, LUMA_RED);
+    luma1_hi = vmlaq_n_u16(luma1_hi, g1_hi, LUMA_GREEN);
+    luma1_hi = vmlaq_n_u16(luma1_hi, b1_hi, LUMA_BLUE);
+    luma1_hi = vshrq_n_u16(luma1_hi, 8);
+    
+    uint16x8_t luma2_lo = vmulq_n_u16(r2_lo, LUMA_RED);
+    luma2_lo = vmlaq_n_u16(luma2_lo, g2_lo, LUMA_GREEN);
+    luma2_lo = vmlaq_n_u16(luma2_lo, b2_lo, LUMA_BLUE);
+    luma2_lo = vshrq_n_u16(luma2_lo, 8);
+    
+    uint16x8_t luma2_hi = vmulq_n_u16(r2_hi, LUMA_RED);
+    luma2_hi = vmlaq_n_u16(luma2_hi, g2_hi, LUMA_GREEN);
+    luma2_hi = vmlaq_n_u16(luma2_hi, b2_hi, LUMA_BLUE);
+    luma2_hi = vshrq_n_u16(luma2_hi, 8);
+    
+    // Pack luminance results into two 16-byte vectors
+    uint8x16_t luma_vec1 = vcombine_u8(vqmovn_u16(luma1_lo), vqmovn_u16(luma1_hi));
+    uint8x16_t luma_vec2 = vcombine_u8(vqmovn_u16(luma2_lo), vqmovn_u16(luma2_hi));
+    
+    // PROPER NEON PALETTE LOOKUP using the real 24-character ASCII palette
+    // Palette: "   ...',;:clodxkO0KXNWM" (24 chars)
+    //
+    // Strategy: Use hybrid approach - NEON arithmetic + optimized scalar lookups
+    // NEON excels at parallel arithmetic; scalar excels at small table lookups
+    
+    // Store NEON-computed luminance values for efficient palette lookup
+    uint8_t luma_batch[32] __attribute__((aligned(16)));
+    vst1q_u8(&luma_batch[0], luma_vec1);
+    vst1q_u8(&luma_batch[16], luma_vec2);
+    
+    // Optimized unrolled palette lookups - compiler will vectorize this efficiently
+    ascii_chars[i + 0] = luminance_palette[luma_batch[0]];
+    ascii_chars[i + 1] = luminance_palette[luma_batch[1]];
+    ascii_chars[i + 2] = luminance_palette[luma_batch[2]];
+    ascii_chars[i + 3] = luminance_palette[luma_batch[3]];
+    ascii_chars[i + 4] = luminance_palette[luma_batch[4]];
+    ascii_chars[i + 5] = luminance_palette[luma_batch[5]];
+    ascii_chars[i + 6] = luminance_palette[luma_batch[6]];
+    ascii_chars[i + 7] = luminance_palette[luma_batch[7]];
+    ascii_chars[i + 8] = luminance_palette[luma_batch[8]];
+    ascii_chars[i + 9] = luminance_palette[luma_batch[9]];
+    ascii_chars[i + 10] = luminance_palette[luma_batch[10]];
+    ascii_chars[i + 11] = luminance_palette[luma_batch[11]];
+    ascii_chars[i + 12] = luminance_palette[luma_batch[12]];
+    ascii_chars[i + 13] = luminance_palette[luma_batch[13]];
+    ascii_chars[i + 14] = luminance_palette[luma_batch[14]];
+    ascii_chars[i + 15] = luminance_palette[luma_batch[15]];
+    ascii_chars[i + 16] = luminance_palette[luma_batch[16]];
+    ascii_chars[i + 17] = luminance_palette[luma_batch[17]];
+    ascii_chars[i + 18] = luminance_palette[luma_batch[18]];
+    ascii_chars[i + 19] = luminance_palette[luma_batch[19]];
+    ascii_chars[i + 20] = luminance_palette[luma_batch[20]];
+    ascii_chars[i + 21] = luminance_palette[luma_batch[21]];
+    ascii_chars[i + 22] = luminance_palette[luma_batch[22]];
+    ascii_chars[i + 23] = luminance_palette[luma_batch[23]];
+    ascii_chars[i + 24] = luminance_palette[luma_batch[24]];
+    ascii_chars[i + 25] = luminance_palette[luma_batch[25]];
+    ascii_chars[i + 26] = luminance_palette[luma_batch[26]];
+    ascii_chars[i + 27] = luminance_palette[luma_batch[27]];
+    ascii_chars[i + 28] = luminance_palette[luma_batch[28]];
+    ascii_chars[i + 29] = luminance_palette[luma_batch[29]];
+    ascii_chars[i + 30] = luminance_palette[luma_batch[30]];
+    ascii_chars[i + 31] = luminance_palette[luma_batch[31]];
+  }
+  
+  // Handle remaining 16 pixels  
+  for (; i + 15 < count; i += 16) {
+    const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
+    uint8x16x3_t rgb_vectors = vld3q_u8(rgb_data);
+    
+    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[0]));
+    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[0]));
+    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[1]));
+    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[1]));
+    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[2]));
+    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[2]));
+    
+    uint16x8_t luma_lo = vmulq_n_u16(r_lo, LUMA_RED);
+    luma_lo = vmlaq_n_u16(luma_lo, g_lo, LUMA_GREEN);
+    luma_lo = vmlaq_n_u16(luma_lo, b_lo, LUMA_BLUE);
+    luma_lo = vshrq_n_u16(luma_lo, 8);
+    
+    uint16x8_t luma_hi = vmulq_n_u16(r_hi, LUMA_RED);
+    luma_hi = vmlaq_n_u16(luma_hi, g_hi, LUMA_GREEN);
+    luma_hi = vmlaq_n_u16(luma_hi, b_hi, LUMA_BLUE);
+    luma_hi = vshrq_n_u16(luma_hi, 8);
+    
+    uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
+    uint8_t luma_values[16] __attribute__((aligned(16)));
+    vst1q_u8(luma_values, luma_vec);
+    
+    for (int j = 0; j < 16; j++) {
+      ascii_chars[i + j] = luminance_palette[luma_values[j]];
+    }
   }
 
   // Process remaining pixels with scalar fallback
