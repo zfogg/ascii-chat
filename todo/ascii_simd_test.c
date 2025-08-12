@@ -281,31 +281,6 @@ void test_animation(void) {
 void test_integration(void) {
     printf("\n=== Test 4: Integration with Your Project - NEW OPTIMIZED ===\n");
 
-    printf("The NEW optimized implementation fixes all performance issues:\n\n");
-
-    printf("```c\n");
-    printf("// MAJOR IMPROVEMENTS MADE:\n");
-    printf("// 1. Single allocation - no buffer pool overhead\n");
-    printf("// 2. Direct processing into final buffer - no copying\n");
-    printf("// 3. Fixed newline formatting consistency with non-SIMD\n");
-    printf("// 4. Eliminated memory allocation churn\n\n");
-
-    printf("// NEW INTEGRATION (much simpler):\n");
-    printf("// Replace calls to image_to_ascii() with:\n");
-    printf("char *ascii_output = image_print_simd(&image);\n");
-    printf("// That's it! Single function call, optimized implementation\n\n");
-
-    printf("// For colored ASCII, replace image_to_ascii_color() with:\n");
-    printf("char *colored_ascii = image_print_colored_simd(&image);\n");
-    printf("// Handles both foreground and background modes automatically\n\n");
-
-    printf("// Key benefits:\n");
-    printf("// - No more malloc/free per row\n");
-    printf("// - No more buffer pool contention\n");
-    printf("// - No more memory copying overhead\n");
-    printf("// - SIMD should now be FASTER than scalar\n");
-    printf("```\n\n");
-
     printf("Performance test on your 203x64 terminal:\n");
     simd_benchmark_t bench = benchmark_simd_conversion(203, 64, 1000);
     printf("- Scalar: %.2f ms per frame\n", bench.scalar_time * 1000 / 1000);
@@ -341,31 +316,6 @@ void test_integration(void) {
            100.0 * (1.0 - 1.0/bench.speedup_best));
 }
 
-// Test 5: Memory usage analysis
-void test_memory_usage(void) {
-    printf("\n=== Test 5: Memory Usage Analysis ===\n");
-
-    printf("Memory requirements for SIMD optimization:\n\n");
-
-    printf("Additional memory per frame conversion:\n");
-    printf("- No extra allocation for basic conversion\n");
-    printf("- Pre-computed palette: 256 bytes (one-time)\n");
-    printf("- SIMD registers: ~32 bytes (automatic)\n");
-    printf("- Total overhead: < 300 bytes\n\n");
-
-    printf("Your current frame sizes:\n");
-    printf("- 203x64 terminal: %d pixels = %d KB RGB data\n",
-           203 * 64, (203 * 64 * 3) / 1024);
-    printf("- Typical webcam 640x480: %d pixels = %d KB RGB data\n",
-           640 * 480, (640 * 480 * 3) / 1024);
-    printf("- HD webcam 1280x720: %d pixels = %d KB RGB data\n",
-           1280 * 720, (1280 * 720 * 3) / 1024);
-
-    printf("\nMemory access patterns:\n");
-    printf("- Sequential reads (cache-friendly)\n");
-    printf("- Vectorized operations (bandwidth efficient)\n");
-    printf("- No dynamic allocation in hot path\n");
-}
 
 int main(void) {
     printf("====================================\n");
@@ -378,7 +328,6 @@ int main(void) {
     // Run all tests
     test_correctness();
     test_performance();
-    test_memory_usage();
     test_integration();
 
     log_destroy();
