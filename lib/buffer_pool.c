@@ -209,18 +209,18 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     int frames = backtrace(callstack, 3);
     char **symbols = backtrace_symbols(callstack, frames);
 
-    fprintf(stderr, "MALLOC FALLBACK ALLOC: size=%zu at %s:%d thread=%p\n", size, __FILE__, __LINE__,
-            (void *)pthread_self());
-    if (symbols && frames >= 2) {
-      fprintf(stderr, "  Called from: %s\n", symbols[1]);
-      if (frames >= 3)
-        fprintf(stderr, "  Called from: %s\n", symbols[2]);
-    }
+    // fprintf(stderr, "MALLOC FALLBACK ALLOC: size=%zu at %s:%d thread=%p\n", size, __FILE__, __LINE__,
+    //         (void *)pthread_self());
+    // if (symbols && frames >= 2) {
+    //   fprintf(stderr, "  Called from: %s\n", symbols[1]);
+    //   if (frames >= 3)
+    //     fprintf(stderr, "  Called from: %s\n", symbols[2]);
+    // }
     free(symbols);
 
     SAFE_MALLOC(buffer, size, void *);
-    fprintf(stderr, "MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p\n", size, buffer,
-            (void *)pthread_self());
+    // fprintf(stderr, "MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p\n", size, buffer,
+    //         (void *)pthread_self());
   }
 
   return buffer;
