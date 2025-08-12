@@ -137,112 +137,6 @@ static pthread_mutex_t g_frame_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static server_stats_t g_stats = {0};
 
-/* ============================================================================
- * Global Packet Data Tracking for Signal Safety
- * ============================================================================
- */
-
-// Track all active packet data allocations for emergency cleanup
-typedef struct packet_data_node {
-  void *data;
-  size_t size;
-  pthread_t thread_id;
-  struct packet_data_node *next;
-} packet_data_node_t;
-
-static packet_data_node_t *g_active_packet_data = NULL;
-static pthread_mutex_t g_packet_data_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// Register packet data for tracking
-static void register_packet_data(void *data, size_t size) {
-  if (!data)
-    return;
-
-  packet_data_node_t *node;
-  SAFE_MALLOC(node, sizeof(packet_data_node_t), packet_data_node_t *);
-  node->data = data;
-  node->size = size;
-  node->thread_id = pthread_self();
-
-  pthread_mutex_lock(&g_packet_data_mutex);
-  node->next = g_active_packet_data;
-  g_active_packet_data = node;
-  pthread_mutex_unlock(&g_packet_data_mutex);
-
-  // log_debug("Registered packet data %p (%zu bytes) for thread %p", data, size, (void*)pthread_self());
-}
-
-// Unregister packet data when properly freed
-static void unregister_packet_data(void *data) {
-  if (!data)
-    return;
-
-  pthread_mutex_lock(&g_packet_data_mutex);
-  packet_data_node_t **current = &g_active_packet_data;
-  while (*current) {
-    if ((*current)->data == data) {
-      packet_data_node_t *to_remove = *current;
-      *current = (*current)->next;
-      // log_debug("Unregistered packet data %p for thread %p", data, (void*)pthread_self());
-      SAFE_FREE(to_remove);
-      pthread_mutex_unlock(&g_packet_data_mutex);
-      return;
-    } else if ((*current)->data == NULL) {
-      // This data was already freed by emergency cleanup, remove the node
-      packet_data_node_t *to_remove = *current;
-      *current = (*current)->next;
-      // log_debug("Removed already-freed packet data node for thread %p", (void*)to_remove->thread_id);
-      SAFE_FREE(to_remove);
-      pthread_mutex_unlock(&g_packet_data_mutex);
-      return;
-    }
-    current = &(*current)->next;
-  }
-  pthread_mutex_unlock(&g_packet_data_mutex);
-
-  // If we get here, the data wasn't found - it may have already been cleaned up
-  // log_debug("Packet data %p not found for unregistration (already cleaned up?)", data);
-}
-
-// Emergency cleanup of all tracked packet data (signal-safe)
-static void cleanup_all_packet_data(void) {
-  log_warn("Emergency cleanup: freeing all tracked packet data");
-
-  // Try to acquire mutex non-blocking to avoid deadlock in signal handler
-  if (pthread_mutex_trylock(&g_packet_data_mutex) != 0) {
-    log_warn("Emergency cleanup: could not acquire mutex, skipping cleanup to avoid deadlock");
-    return;
-  }
-
-  packet_data_node_t *current = g_active_packet_data;
-  int count = 0;
-  while (current) {
-    packet_data_node_t *next = current->next;
-
-    // Mark this data as being cleaned up to prevent double-free
-    void *data_to_free = current->data;
-    size_t size_to_free = current->size;
-    current->data = NULL; // Mark as already freed to prevent double-free
-
-    log_warn("Emergency cleanup: freeing packet data %p (%zu bytes) from thread %p", data_to_free, size_to_free,
-             (void *)current->thread_id);
-
-    // Free the data outside the critical section
-    pthread_mutex_unlock(&g_packet_data_mutex);
-    buffer_pool_free(data_to_free, size_to_free);
-    pthread_mutex_lock(&g_packet_data_mutex);
-
-    SAFE_FREE(current);
-    current = next;
-    count++;
-  }
-  g_active_packet_data = NULL;
-  pthread_mutex_unlock(&g_packet_data_mutex);
-
-  if (count > 0) {
-    log_warn("Emergency cleanup: freed %d orphaned packet data allocations", count);
-  }
-}
 
 static int listenfd = 0;
 
@@ -288,15 +182,18 @@ static void sigwinch_handler(int sigwinch) {
 static void sigint_handler(int sigint) {
   (void)(sigint);
   g_should_exit = true;
-  log_info("Server shutdown requested");
+  
+  // Signal-safe logging - avoid log_info() which may not be signal-safe
+  const char msg[] = "SIGINT received - shutting down server...\n";
+  write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 
-  // NOTE: Emergency cleanup disabled - let normal shutdown handle cleanup
-  // cleanup_all_packet_data();
-
-  // Close listening socket to interrupt accept()
+  // Close listening socket to interrupt accept() - this is signal-safe
   if (listenfd > 0) {
     close(listenfd);
   }
+  
+  // Don't do complex operations in signal handler - they can cause deadlocks
+  // Let the main thread handle the cleanup when it sees g_should_exit = true
 }
 
 static void sigterm_handler(int sigterm) {
@@ -311,6 +208,35 @@ static void sigterm_handler(int sigterm) {
   if (listenfd > 0) {
     close(listenfd);
   }
+  
+  // Close all client sockets to interrupt receive threads
+  pthread_mutex_lock(&g_client_manager_mutex);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->active && client->socket > 0) {
+      // Shutdown the socket to force immediate close
+      shutdown(client->socket, SHUT_RDWR);
+      close(client->socket);
+      client->socket = 0; // Mark as closed
+      log_debug("Closed socket for client %u to interrupt receive thread", client->client_id);
+    }
+  }
+  pthread_mutex_unlock(&g_client_manager_mutex);
+  
+  // Cancel all receive threads to force immediate exit
+  pthread_mutex_lock(&g_client_manager_mutex);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->active && client->receive_thread != 0) {
+      int cancel_result = pthread_cancel(client->receive_thread);
+      if (cancel_result == 0) {
+        log_debug("Cancelled receive thread for client %u", client->client_id);
+      } else {
+        log_warn("Failed to cancel receive thread for client %u: %d", client->client_id, cancel_result);
+      }
+    }
+  }
+  pthread_mutex_unlock(&g_client_manager_mutex);
 }
 
 /* ============================================================================
@@ -881,7 +807,6 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // Got a new frame - update our cache
           // Free old cached frame data if we had one
           if (client->has_cached_frame && client->last_valid_frame.data) {
-            unregister_packet_data(client->last_valid_frame.data);
             buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
           }
 
@@ -895,8 +820,6 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // Allocate and copy frame data for cache using buffer pool
           client->last_valid_frame.data = buffer_pool_alloc(current_frame.size);
           if (client->last_valid_frame.data) {
-            // Track this allocation for emergency cleanup
-            register_packet_data(client->last_valid_frame.data, current_frame.size);
             memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
             client->has_cached_frame = true;
           }
@@ -1264,12 +1187,46 @@ int main(int argc, char *argv[]) {
 
   // Handle terminal resize events
   signal(SIGWINCH, sigwinch_handler);
+  
+  // Block signals for all threads except main thread in multi-threaded application
+  sigset_t mask, oldmask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGINT);
+  sigaddset(&mask, SIGTERM);
+  
+  // Block these signals for all threads created after this point
+  if (pthread_sigmask(SIG_BLOCK, &mask, &oldmask) != 0) {
+    log_error("Failed to block signals: %s", strerror(errno));
+  }
+  
+  // Use sigaction for more reliable signal handling in multi-threaded applications
+  struct sigaction sa;
+  
   // Handle Ctrl+C for cleanup
-  signal(SIGINT, sigint_handler);
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = sigint_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  if (sigaction(SIGINT, &sa, NULL) == -1) {
+    log_error("Failed to set SIGINT handler: %s", strerror(errno));
+  }
+  
   // Handle SIGTERM for cleanup
-  signal(SIGTERM, sigterm_handler);
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = sigterm_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  if (sigaction(SIGTERM, &sa, NULL) == -1) {
+    log_error("Failed to set SIGTERM handler: %s", strerror(errno));
+  }
+  
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
+  
+  // Unblock signals for the main thread only
+  if (pthread_sigmask(SIG_SETMASK, &oldmask, NULL) != 0) {
+    log_error("Failed to unblock signals for main thread: %s", strerror(errno));
+  }
 
   // Initialize audio mixer if audio is enabled
   if (opt_audio_enabled) {
@@ -1420,6 +1377,14 @@ int main(int argc, char *argv[]) {
 #endif
         continue;
       }
+      if (errno == EINTR) {
+        // Interrupted by signal - check if we should exit
+        log_debug("accept() interrupted by signal");
+        if (g_should_exit) {
+          break;
+        }
+        continue;
+      }
       log_error("Network accept failed: %s", network_error_string(errno));
       continue;
     }
@@ -1439,6 +1404,11 @@ int main(int argc, char *argv[]) {
     }
 
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
+    
+    // Check if we should exit after processing this client
+    if (g_should_exit) {
+      break;
+    }
   }
 
   // Cleanup
@@ -1482,6 +1452,21 @@ int main(int argc, char *argv[]) {
 
   // Clean up all connected clients
   log_info("Cleaning up connected clients...");
+  
+  // First, close all client sockets to interrupt receive threads
+  pthread_mutex_lock(&g_client_manager_mutex);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (client->active && client->socket > 0) {
+      log_debug("Closing socket for client %u to interrupt receive thread", client->client_id);
+      shutdown(client->socket, SHUT_RDWR);
+      close(client->socket);
+      client->socket = 0; // Mark as closed
+    }
+  }
+  pthread_mutex_unlock(&g_client_manager_mutex);
+  
+  // Now clean up client resources
   pthread_mutex_lock(&g_client_manager_mutex);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (g_client_manager.clients[i].active) {
@@ -1511,9 +1496,7 @@ int main(int argc, char *argv[]) {
     g_client_manager.client_hashtable = NULL;
   }
 
-  // Clean up any remaining tracked packet data before buffer pool cleanup
-  // This prevents malloc fallback frees after pool is destroyed
-  cleanup_all_packet_data();
+  // No emergency cleanup needed - proper resource management handles cleanup
 
   // Explicitly clean up global buffer pool before atexit handlers
   // This ensures any malloc fallbacks are freed while pool tracking is still active
@@ -1599,6 +1582,10 @@ void *client_receive_thread_func(void *arg) {
     log_error("Invalid client info in receive thread");
     return NULL;
   }
+  
+  // Enable thread cancellation for clean shutdown
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
   log_info("Started receive thread for client %u (%s)", client->client_id, client->display_name);
 
@@ -1611,10 +1598,6 @@ void *client_receive_thread_func(void *arg) {
     // Receive packet from this client
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
 
-    // Register packet data for tracking if allocation succeeded
-    if (result > 0 && data) {
-      register_packet_data(data, len);
-    }
 
     if (result <= 0) {
       if (result == 0) {
@@ -1624,7 +1607,6 @@ void *client_receive_thread_func(void *arg) {
       }
       // Free any data that might have been allocated before the error
       if (data) {
-        unregister_packet_data(data);
         buffer_pool_free(data, len);
         data = NULL;
       }
@@ -1785,7 +1767,6 @@ void *client_receive_thread_func(void *arg) {
     }
 
     if (data) {
-      unregister_packet_data(data);
       buffer_pool_free(data, len);
       data = NULL;
     }
@@ -1795,20 +1776,19 @@ void *client_receive_thread_func(void *arg) {
   if (data) {
     log_debug("Client %u receive thread: freeing orphaned packet data %zu bytes during shutdown", client->client_id,
               len);
-    unregister_packet_data(data);
     buffer_pool_free(data, len);
     data = NULL;
   }
 
   // Mark client as inactive and stop send thread first to avoid race conditions
-  // Set send_thread_running to false BEFORE remove_client to ensure proper cleanup order
+  // Set send_thread_running to false to signal send thread to stop
   client->active = false;
-  client->send_thread_running = false; // Signal send thread to stop
+  client->send_thread_running = false;
 
-  // Now it's safe to remove the client
-  // The remove_client function will wait for the send thread to exit
-  remove_client(client->client_id);
-
+  // Don't call remove_client() from the receive thread itself - this causes a deadlock
+  // because main thread may be trying to join this thread via remove_client()
+  // The main cleanup code will handle client removal after threads exit
+  
   log_info("Receive thread for client %u terminated", client->client_id);
   return NULL;
 }
@@ -2075,7 +2055,6 @@ int remove_client(uint32_t client_id) {
 
       // Free cached frame if we have one
       if (client->has_cached_frame && client->last_valid_frame.data) {
-        unregister_packet_data(client->last_valid_frame.data);
         buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
         client->last_valid_frame.data = NULL;
         client->has_cached_frame = false;
@@ -2115,6 +2094,16 @@ int remove_client(uint32_t client_id) {
           log_debug("Send thread for client %u has terminated", client_id);
         } else {
           log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
+        }
+      }
+
+      // Join receive thread if it exists and we're not in the receive thread context
+      if (client->receive_thread != 0 && !pthread_equal(pthread_self(), client->receive_thread)) {
+        int join_result = pthread_join(client->receive_thread, NULL);
+        if (join_result == 0) {
+          log_debug("Receive thread for client %u has terminated", client_id);
+        } else {
+          log_warn("Failed to join receive thread for client %u: %d", client_id, join_result);
         }
       }
 
