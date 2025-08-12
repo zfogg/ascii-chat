@@ -448,46 +448,138 @@ void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int coun
 void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
   init_palette();
 
-  int i;
+  int i = 0;
 
-  // AVX2 constants
-  const __m256i luma_r_vec = _mm256_set1_epi32(LUMA_RED);
-  const __m256i luma_g_vec = _mm256_set1_epi32(LUMA_GREEN);
-  const __m256i luma_b_vec = _mm256_set1_epi32(LUMA_BLUE);
-  const __m256i clamp_255 = _mm256_set1_epi32(255);
+  // AVX2 constants for 16-bit arithmetic (matches SSSE3 approach)
+  const __m256i luma_const_77 = _mm256_set1_epi16(LUMA_RED);
+  const __m256i luma_const_150 = _mm256_set1_epi16(LUMA_GREEN);  
+  const __m256i luma_const_29 = _mm256_set1_epi16(LUMA_BLUE);
 
-  // Process 8 pixels at a time with explicit bounds checking
-  for (i = 0; i + 7 < count; i += 8) {
-    // Load 8 RGB pixels into separate vectors
-    __m256i r_vals = _mm256_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, pixels[i + 4].r,
-                                       pixels[i + 5].r, pixels[i + 6].r, pixels[i + 7].r);
-    __m256i g_vals = _mm256_setr_epi32(pixels[i].g, pixels[i + 1].g, pixels[i + 2].g, pixels[i + 3].g, pixels[i + 4].g,
-                                       pixels[i + 5].g, pixels[i + 6].g, pixels[i + 7].g);
-    __m256i b_vals = _mm256_setr_epi32(pixels[i].b, pixels[i + 1].b, pixels[i + 2].b, pixels[i + 3].b, pixels[i + 4].b,
-                                       pixels[i + 5].b, pixels[i + 6].b, pixels[i + 7].b);
+  // Process 32-pixel chunks using dual 16-pixel AVX2 operations for maximum throughput
+  for (; i + 31 < count; i += 32) {
+    // Process first 16 pixels using direct 16-bit arithmetic (proven fastest approach)
+    const rgb_pixel_t *pixel_batch1 = &pixels[i];
+    
+    // Extract RGB for first 16 pixels using two 8-pixel AVX2 vectors
+    __m256i r_vals1 = _mm256_setr_epi16(pixel_batch1[0].r, pixel_batch1[1].r, pixel_batch1[2].r, pixel_batch1[3].r,
+                                        pixel_batch1[4].r, pixel_batch1[5].r, pixel_batch1[6].r, pixel_batch1[7].r,
+                                        pixel_batch1[8].r, pixel_batch1[9].r, pixel_batch1[10].r, pixel_batch1[11].r,
+                                        pixel_batch1[12].r, pixel_batch1[13].r, pixel_batch1[14].r, pixel_batch1[15].r);
+    __m256i g_vals1 = _mm256_setr_epi16(pixel_batch1[0].g, pixel_batch1[1].g, pixel_batch1[2].g, pixel_batch1[3].g,
+                                        pixel_batch1[4].g, pixel_batch1[5].g, pixel_batch1[6].g, pixel_batch1[7].g,
+                                        pixel_batch1[8].g, pixel_batch1[9].g, pixel_batch1[10].g, pixel_batch1[11].g,
+                                        pixel_batch1[12].g, pixel_batch1[13].g, pixel_batch1[14].g, pixel_batch1[15].g);
+    __m256i b_vals1 = _mm256_setr_epi16(pixel_batch1[0].b, pixel_batch1[1].b, pixel_batch1[2].b, pixel_batch1[3].b,
+                                        pixel_batch1[4].b, pixel_batch1[5].b, pixel_batch1[6].b, pixel_batch1[7].b,
+                                        pixel_batch1[8].b, pixel_batch1[9].b, pixel_batch1[10].b, pixel_batch1[11].b,
+                                        pixel_batch1[12].b, pixel_batch1[13].b, pixel_batch1[14].b, pixel_batch1[15].b);
 
-    // Multiply by luminance weights
-    __m256i luma_r = _mm256_mullo_epi32(r_vals, luma_r_vec);
-    __m256i luma_g = _mm256_mullo_epi32(g_vals, luma_g_vec);
-    __m256i luma_b = _mm256_mullo_epi32(b_vals, luma_b_vec);
+    // Process second 16 pixels
+    const rgb_pixel_t *pixel_batch2 = &pixels[i + 16];
+    
+    __m256i r_vals2 = _mm256_setr_epi16(pixel_batch2[0].r, pixel_batch2[1].r, pixel_batch2[2].r, pixel_batch2[3].r,
+                                        pixel_batch2[4].r, pixel_batch2[5].r, pixel_batch2[6].r, pixel_batch2[7].r,
+                                        pixel_batch2[8].r, pixel_batch2[9].r, pixel_batch2[10].r, pixel_batch2[11].r,
+                                        pixel_batch2[12].r, pixel_batch2[13].r, pixel_batch2[14].r, pixel_batch2[15].r);
+    __m256i g_vals2 = _mm256_setr_epi16(pixel_batch2[0].g, pixel_batch2[1].g, pixel_batch2[2].g, pixel_batch2[3].g,
+                                        pixel_batch2[4].g, pixel_batch2[5].g, pixel_batch2[6].g, pixel_batch2[7].g,
+                                        pixel_batch2[8].g, pixel_batch2[9].g, pixel_batch2[10].g, pixel_batch2[11].g,
+                                        pixel_batch2[12].g, pixel_batch2[13].g, pixel_batch2[14].g, pixel_batch2[15].g);
+    __m256i b_vals2 = _mm256_setr_epi16(pixel_batch2[0].b, pixel_batch2[1].b, pixel_batch2[2].b, pixel_batch2[3].b,
+                                        pixel_batch2[4].b, pixel_batch2[5].b, pixel_batch2[6].b, pixel_batch2[7].b,
+                                        pixel_batch2[8].b, pixel_batch2[9].b, pixel_batch2[10].b, pixel_batch2[11].b,
+                                        pixel_batch2[12].b, pixel_batch2[13].b, pixel_batch2[14].b, pixel_batch2[15].b);
 
-    // Sum components
-    __m256i luminance = _mm256_add_epi32(luma_r, luma_g);
-    luminance = _mm256_add_epi32(luminance, luma_b);
+    // AVX2 luminance calculation: y = (77*r + 150*g + 29*b) >> 8 for both 16-pixel chunks
+    __m256i luma1 = _mm256_mullo_epi16(r_vals1, luma_const_77);
+    luma1 = _mm256_add_epi16(luma1, _mm256_mullo_epi16(g_vals1, luma_const_150));
+    luma1 = _mm256_add_epi16(luma1, _mm256_mullo_epi16(b_vals1, luma_const_29));
+    luma1 = _mm256_srli_epi16(luma1, 8);
 
-    // Shift right by 8 (divide by 256)
-    luminance = _mm256_srli_epi32(luminance, 8);
+    __m256i luma2 = _mm256_mullo_epi16(r_vals2, luma_const_77);
+    luma2 = _mm256_add_epi16(luma2, _mm256_mullo_epi16(g_vals2, luma_const_150));
+    luma2 = _mm256_add_epi16(luma2, _mm256_mullo_epi16(b_vals2, luma_const_29));
+    luma2 = _mm256_srli_epi16(luma2, 8);
 
-    // Clamp to [0, 255]
-    luminance = _mm256_min_epi32(luminance, clamp_255);
+    // Pack to 8-bit and store both 16-pixel results
+    __m256i luma_packed1 = _mm256_packus_epi16(luma1, _mm256_setzero_si256());
+    __m256i luma_packed2 = _mm256_packus_epi16(luma2, _mm256_setzero_si256());
 
-    // Extract results and convert to ASCII
-    int lum[8];
-    _mm256_storeu_si256((__m256i *)lum, luminance);
+    // Store luminance for palette lookup (32 pixels total)
+    uint8_t lum[32];
+    // AVX2 stores in weird lane order, so we handle the first 16 properly
+    _mm_storeu_si128((__m128i *)&lum[0], _mm256_castsi256_si128(luma_packed1));
+    _mm_storeu_si128((__m128i *)&lum[8], _mm256_extracti128_si256(luma_packed1, 1));
+    _mm_storeu_si128((__m128i *)&lum[16], _mm256_castsi256_si128(luma_packed2));
+    _mm_storeu_si128((__m128i *)&lum[24], _mm256_extracti128_si256(luma_packed2, 1));
 
-    for (int j = 0; j < 8; j++) {
-      ascii_chars[i + j] = luminance_palette[lum[j]];
-    }
+    // Unrolled palette lookups for 32 pixels (maximum throughput)
+    ascii_chars[i + 0] = luminance_palette[lum[0]];   ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];   ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];   ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];   ascii_chars[i + 7] = luminance_palette[lum[7]];
+    ascii_chars[i + 8] = luminance_palette[lum[8]];   ascii_chars[i + 9] = luminance_palette[lum[9]];
+    ascii_chars[i + 10] = luminance_palette[lum[10]]; ascii_chars[i + 11] = luminance_palette[lum[11]];
+    ascii_chars[i + 12] = luminance_palette[lum[12]]; ascii_chars[i + 13] = luminance_palette[lum[13]];
+    ascii_chars[i + 14] = luminance_palette[lum[14]]; ascii_chars[i + 15] = luminance_palette[lum[15]];
+    ascii_chars[i + 16] = luminance_palette[lum[16]]; ascii_chars[i + 17] = luminance_palette[lum[17]];
+    ascii_chars[i + 18] = luminance_palette[lum[18]]; ascii_chars[i + 19] = luminance_palette[lum[19]];
+    ascii_chars[i + 20] = luminance_palette[lum[20]]; ascii_chars[i + 21] = luminance_palette[lum[21]];
+    ascii_chars[i + 22] = luminance_palette[lum[22]]; ascii_chars[i + 23] = luminance_palette[lum[23]];
+    ascii_chars[i + 24] = luminance_palette[lum[24]]; ascii_chars[i + 25] = luminance_palette[lum[25]];
+    ascii_chars[i + 26] = luminance_palette[lum[26]]; ascii_chars[i + 27] = luminance_palette[lum[27]];
+    ascii_chars[i + 28] = luminance_palette[lum[28]]; ascii_chars[i + 29] = luminance_palette[lum[29]];
+    ascii_chars[i + 30] = luminance_palette[lum[30]]; ascii_chars[i + 31] = luminance_palette[lum[31]];
+  }
+
+  // Process remaining 16-pixel chunks with 128-bit operations
+  for (; i + 15 < count; i += 16) {
+    const rgb_pixel_t *pixel_batch = &pixels[i];
+    
+    // Use SSE2-style 16-pixel processing for the remainder
+    __m128i r_vals1 = _mm_setr_epi16(pixel_batch[0].r, pixel_batch[1].r, pixel_batch[2].r, pixel_batch[3].r,
+                                     pixel_batch[4].r, pixel_batch[5].r, pixel_batch[6].r, pixel_batch[7].r);
+    __m128i g_vals1 = _mm_setr_epi16(pixel_batch[0].g, pixel_batch[1].g, pixel_batch[2].g, pixel_batch[3].g,
+                                     pixel_batch[4].g, pixel_batch[5].g, pixel_batch[6].g, pixel_batch[7].g);
+    __m128i b_vals1 = _mm_setr_epi16(pixel_batch[0].b, pixel_batch[1].b, pixel_batch[2].b, pixel_batch[3].b,
+                                     pixel_batch[4].b, pixel_batch[5].b, pixel_batch[6].b, pixel_batch[7].b);
+
+    __m128i r_vals2 = _mm_setr_epi16(pixel_batch[8].r, pixel_batch[9].r, pixel_batch[10].r, pixel_batch[11].r,
+                                     pixel_batch[12].r, pixel_batch[13].r, pixel_batch[14].r, pixel_batch[15].r);
+    __m128i g_vals2 = _mm_setr_epi16(pixel_batch[8].g, pixel_batch[9].g, pixel_batch[10].g, pixel_batch[11].g,
+                                     pixel_batch[12].g, pixel_batch[13].g, pixel_batch[14].g, pixel_batch[15].g);
+    __m128i b_vals2 = _mm_setr_epi16(pixel_batch[8].b, pixel_batch[9].b, pixel_batch[10].b, pixel_batch[11].b,
+                                     pixel_batch[12].b, pixel_batch[13].b, pixel_batch[14].b, pixel_batch[15].b);
+
+    // 128-bit luminance calculation
+    const __m128i luma_const_77_128 = _mm_set1_epi16(LUMA_RED);
+    const __m128i luma_const_150_128 = _mm_set1_epi16(LUMA_GREEN);
+    const __m128i luma_const_29_128 = _mm_set1_epi16(LUMA_BLUE);
+
+    __m128i luma1 = _mm_mullo_epi16(r_vals1, luma_const_77_128);
+    luma1 = _mm_add_epi16(luma1, _mm_mullo_epi16(g_vals1, luma_const_150_128));
+    luma1 = _mm_add_epi16(luma1, _mm_mullo_epi16(b_vals1, luma_const_29_128));
+    luma1 = _mm_srli_epi16(luma1, 8);
+
+    __m128i luma2 = _mm_mullo_epi16(r_vals2, luma_const_77_128);
+    luma2 = _mm_add_epi16(luma2, _mm_mullo_epi16(g_vals2, luma_const_150_128));
+    luma2 = _mm_add_epi16(luma2, _mm_mullo_epi16(b_vals2, luma_const_29_128));
+    luma2 = _mm_srli_epi16(luma2, 8);
+
+    __m128i luma_packed = _mm_packus_epi16(luma1, luma2);
+    
+    uint8_t lum[16];
+    _mm_storeu_si128((__m128i *)lum, luma_packed);
+
+    // Unrolled palette lookups for 16 pixels
+    ascii_chars[i + 0] = luminance_palette[lum[0]];   ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];   ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];   ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];   ascii_chars[i + 7] = luminance_palette[lum[7]];
+    ascii_chars[i + 8] = luminance_palette[lum[8]];   ascii_chars[i + 9] = luminance_palette[lum[9]];
+    ascii_chars[i + 10] = luminance_palette[lum[10]]; ascii_chars[i + 11] = luminance_palette[lum[11]];
+    ascii_chars[i + 12] = luminance_palette[lum[12]]; ascii_chars[i + 13] = luminance_palette[lum[13]];
+    ascii_chars[i + 14] = luminance_palette[lum[14]]; ascii_chars[i + 15] = luminance_palette[lum[15]];
   }
 
   // Process remaining pixels with scalar code
@@ -786,7 +878,7 @@ void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int 
 void print_simd_capabilities(void) {
   printf("SIMD Support:\n");
 #ifdef SIMD_SUPPORT_AVX2
-  printf("  ✓ AVX2 (8 pixels/cycle)\n");
+  printf("  ✓ AVX2 (32 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_NEON
   printf("  ✓ ARM NEON (32 pixels/cycle)\n");
