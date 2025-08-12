@@ -855,6 +855,10 @@ static void handle_server_state_packet(const void *data, size_t len) {
 // when actual local video/audio capture functionality is added to clients.
 
 int main(int argc, char *argv[]) {
+  // Parse options first to check for quiet mode
+  options_init(argc, argv);
+
+  // Initialize logging - in quiet mode, still log to file but suppress all console output
   log_init("client.log", LOG_DEBUG);
   atexit(log_destroy);
 
@@ -866,14 +870,15 @@ int main(int argc, char *argv[]) {
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
   log_truncate_if_large(); /* Truncate if log is already too large */
-  log_info("ASCII Chat client starting...");
 
-  // Initialize frame debugging
+  if (!opt_quiet) {
+    log_info("ASCII Chat client starting...");
+  }
+
+  // Initialize frame debugging - disable in quiet mode
   frame_debug_init(&g_client_frame_debug, "Client-FrameReceiver");
-  g_frame_debug_enabled = true; // Enable debugging by default
-  g_frame_debug_verbosity = 2;  // Show issues and warnings
-
-  options_init(argc, argv);
+  g_frame_debug_enabled = !opt_quiet;          // Only enable if not in quiet mode
+  g_frame_debug_verbosity = opt_quiet ? 0 : 2; // Silence frame debug in quiet mode
   char *address = opt_address;
   int port = strtoint(opt_port);
 
@@ -891,7 +896,10 @@ int main(int argc, char *argv[]) {
   // Initialize ASCII output for this connection
   ascii_write_init();
 
-  // Disable terminal log output to prevent flickering with ASCII frame display
+  // Control terminal log output based on quiet flag
+  // Always disable console logging to prevent interference with ASCII frames
+  // In quiet mode: completely suppress all console output (logs only to file)
+  // In normal mode: still disable to prevent flickering with ASCII frame display
   log_set_terminal_output(false);
 
   // Initialize luminance palette for ASCII conversion
