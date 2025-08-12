@@ -1,5 +1,4 @@
-#ifndef ASCII_CHAT_RINGBUFFER_H
-#define ASCII_CHAT_RINGBUFFER_H
+#pragma once
 
 #include "common.h"
 #include <stdatomic.h>
@@ -217,5 +216,3 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
  * @return true if successful, false if buffer is empty
  */
 bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
-
-#endif /* ASCII_CHAT_RINGBUFFER_H */

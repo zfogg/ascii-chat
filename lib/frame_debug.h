@@ -1,5 +1,4 @@
-#ifndef FRAME_DEBUG_H
-#define FRAME_DEBUG_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -58,5 +57,3 @@ double frame_debug_time_diff_ms(const struct timespec *start, const struct times
 // Global debug controls
 extern bool g_frame_debug_enabled;
 extern int g_frame_debug_verbosity; // 0=off, 1=stats only, 2=all frames, 3=verbose
-
-#endif // FRAME_DEBUG_H

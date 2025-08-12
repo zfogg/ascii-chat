@@ -1,5 +1,4 @@
-#ifndef BUFFER_POOL_H
-#define BUFFER_POOL_H
+#pragma once
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -93,5 +92,3 @@ typedef struct {
 void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_detailed_stats_t *stats);
 void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name);
 void buffer_pool_log_global_stats(void); // Log global pool stats
-
-#endif // BUFFER_POOL_H
