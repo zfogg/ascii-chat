@@ -215,7 +215,7 @@ OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/clien
 # Phony Targets
 # =============================================================================
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze cloc
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze cloc todo todo-clean
 
 # =============================================================================
 # Default Target
@@ -320,6 +320,8 @@ help:
 	@echo "  clang-tidy  - Run clang-tidy on sources"
 	@echo "  analyze     - Run static analysis (clang --analyze, cppcheck)"
 	@echo "  cloc        - Count lines of code"
+	@echo "  todo        - Build the ./todo subproject"
+	@echo "  todo-clean  - Clean the ./todo subproject"
 	@echo "  clean       - Remove build artifacts"
 	@echo "  help        - Show this help message"
 	@echo ""
@@ -355,7 +357,7 @@ format-check:
 # Run bear to generate a compile_commands.json file
 compile_commands.json: Makefile
 	@echo "Running bear to generate compile_commands.json..."
-	@make clean && bear -- make debug
+	@make clean && bear -- make debug todo
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
@@ -376,6 +378,32 @@ analyze:
 
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
+
+# =============================================================================
+# Subprojects
+# =============================================================================
+
+todo:
+	@if [ -f todo/Makefile ]; then \
+		$(MAKE) -C todo; \
+  fi
+	@if [ -f todo/Makefile_simd ]; then \
+		$(MAKE) -C todo -f Makefile_simd; \
+  fi
+	@if [ -f todo/Makefile_rate_limiter ]; then \
+		$(MAKE) -C todo -f Makefile_rate_limiter; \
+  fi
+
+todo-clean:
+	@if [ -f todo/Makefile ]; then \
+		$(MAKE) -C todo clean || true; \
+	fi
+	@if [ -f todo/Makefile_simd ]; then \
+		$(MAKE) -C todo -f Makefile_simd clean || true; \
+	fi
+	@if [ -f todo/Makefile_rate_limiter ]; then \
+		$(MAKE) -C todo -f Makefile_rate_limiter clean || true; \
+	fi
 
 # =============================================================================
 # Extra Makefile stuff
