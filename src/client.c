@@ -858,7 +858,7 @@ int main(int argc, char *argv[]) {
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  // atexit(debug_memory_report);
+  atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool

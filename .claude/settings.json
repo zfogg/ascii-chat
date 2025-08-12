@@ -12,8 +12,7 @@
       "Bash(cd:*)",
       "Bash(touch:*)",
       "Bash(clang-tidy:*)",
-      "Bash(grep:*)",
-      "Bash(sed:*)"
+      "Bash(grep:*)"
     ]
   }
 }
