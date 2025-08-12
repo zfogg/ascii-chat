@@ -172,6 +172,10 @@ DEBUG_FLAGS   := -g -O0 -DDEBUG -DDEBUG_MEMORY
 RELEASE_FLAGS := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
 SANITIZE_FLAGS:= -fsanitize=address
 
+# =============================================================================
+# Flag Per Build Profile
+# =============================================================================
+
 # Effective compile flags per configuration
 CFLAGS_DEBUG      := $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
 OBJCFLAGS_DEBUG   := $(BASE_OBJCFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
