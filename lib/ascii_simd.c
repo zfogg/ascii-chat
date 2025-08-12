@@ -7,6 +7,7 @@
 #include "image.h"
 #include "common.h"
 #include "buffer_pool.h"
+#include "webcam.h"
 
 #ifdef SIMD_SUPPORT_NEON
 #include <arm_neon.h>
@@ -751,8 +752,8 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
   int i = 0;
 
-  // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration
-  // Use every NEON register and instruction to push for 2-3x speedup
+  // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration (2 x 16-pixel NEON batches)
+  // NEON has 128-bit registers (16 pixels max per instruction), so we batch 2 operations
   for (; i + 31 < count; i += 32) {
     const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
 
@@ -893,12 +894,12 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
  */
 
 void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-#ifdef SIMD_SUPPORT_AVX2
-  convert_pixels_avx2(pixels, ascii_chars, count);
-#elif defined(SIMD_SUPPORT_NEON)
+#ifdef SIMD_SUPPORT_NEON
   convert_pixels_neon(pixels, ascii_chars, count);
 #elif defined(SIMD_SUPPORT_SSSE3)
   convert_pixels_ssse3(pixels, ascii_chars, count);
+#elif defined(SIMD_SUPPORT_AVX2)
+  convert_pixels_avx2(pixels, ascii_chars, count);
 #elif defined(SIMD_SUPPORT_SSE2)
   convert_pixels_sse2(pixels, ascii_chars, count);
 #else
@@ -912,7 +913,7 @@ void print_simd_capabilities(void) {
   printf("  ✓ AVX2 (32 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_NEON
-  printf("  ✓ ARM NEON (32 pixels/cycle)\n");
+  printf("  ✓ ARM NEON (16 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_SSSE3
   printf("  ✓ SSSE3 (32 pixels/cycle)\n");
@@ -1042,7 +1043,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
   int pixel_count = width * height;
   size_t data_size = pixel_count * sizeof(rgb_pixel_t);
-  
+
   // Estimate output buffer size for colored ASCII (much larger than monochrome)
   // Each pixel can generate ~25 bytes of ANSI escape codes + 1 char
   size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10; // Extra for newlines/reset codes
@@ -1053,16 +1054,54 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   SAFE_MALLOC(test_pixels, data_size, rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, output_buffer_size, char *);
 
-  // Fill with random RGB data
-  srand(12345); // Consistent results
-  for (int i = 0; i < pixel_count; i++) {
-    test_pixels[i].r = rand() % 256;
-    test_pixels[i].g = rand() % 256;
-    test_pixels[i].b = rand() % 256;
+  // Use real webcam data for realistic color coherence testing
+  // This gives much more realistic results than random RGB data
+  webcam_init(0);
+  image_t *webcam_frame = webcam_read();
+  
+  if (webcam_frame && webcam_frame->pixels) {
+    printf("Using real webcam data (%dx%d) for realistic color testing\n", webcam_frame->w, webcam_frame->h);
+    
+    // Resize webcam data to match test dimensions
+    for (int i = 0; i < pixel_count; i++) {
+      // Sample from webcam with wrapping (simple but effective)
+      int src_idx = i % (webcam_frame->w * webcam_frame->h);
+      rgb_t *src_pixel = &webcam_frame->pixels[src_idx];
+      test_pixels[i].r = src_pixel->r;
+      test_pixels[i].g = src_pixel->g;
+      test_pixels[i].b = src_pixel->b;
+    }
+  } else {
+    printf("Webcam unavailable, using coherent gradient data (much more realistic than random)\n");
+    // Generate coherent gradient data instead of random (much more realistic)
+    srand(12345); // For consistent gradient variation
+    for (int i = 0; i < pixel_count; i++) {
+      int x = i % width;
+      int y = i / width;
+      // Create smooth gradients with some variation (mimics real images)
+      int base_r = (x * 255 / width);
+      int base_g = (y * 255 / height);
+      int base_b = ((x + y) * 127 / (width + height));
+      
+      test_pixels[i].r = base_r + (rand() % 16 - 8);  // Less variation than before
+      test_pixels[i].g = base_g + (rand() % 16 - 8);  
+      test_pixels[i].b = base_b + (rand() % 16 - 8);
+      
+      // Clamp to valid range
+      if (test_pixels[i].r < 0) test_pixels[i].r = 0;
+      if (test_pixels[i].r > 255) test_pixels[i].r = 255;
+      if (test_pixels[i].g < 0) test_pixels[i].g = 0; 
+      if (test_pixels[i].g > 255) test_pixels[i].g = 255;
+      if (test_pixels[i].b < 0) test_pixels[i].b = 0;
+      if (test_pixels[i].b > 255) test_pixels[i].b = 255;
+    }
   }
+  
+  webcam_cleanup();
 
   const char *mode_str = background_mode ? "background" : "foreground";
-  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count, iterations);
+  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count,
+         iterations);
 
   // Benchmark scalar color version
   double start = get_time_seconds();
