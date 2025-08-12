@@ -155,26 +155,28 @@ static pthread_mutex_t g_packet_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Register packet data for tracking
 static void register_packet_data(void *data, size_t size) {
-  if (!data) return;
-  
+  if (!data)
+    return;
+
   packet_data_node_t *node;
   SAFE_MALLOC(node, sizeof(packet_data_node_t), packet_data_node_t *);
   node->data = data;
   node->size = size;
   node->thread_id = pthread_self();
-  
+
   pthread_mutex_lock(&g_packet_data_mutex);
   node->next = g_active_packet_data;
   g_active_packet_data = node;
   pthread_mutex_unlock(&g_packet_data_mutex);
-  
+
   // log_debug("Registered packet data %p (%zu bytes) for thread %p", data, size, (void*)pthread_self());
 }
 
 // Unregister packet data when properly freed
 static void unregister_packet_data(void *data) {
-  if (!data) return;
-  
+  if (!data)
+    return;
+
   pthread_mutex_lock(&g_packet_data_mutex);
   packet_data_node_t **current = &g_active_packet_data;
   while (*current) {
@@ -197,7 +199,7 @@ static void unregister_packet_data(void *data) {
     current = &(*current)->next;
   }
   pthread_mutex_unlock(&g_packet_data_mutex);
-  
+
   // If we get here, the data wasn't found - it may have already been cleaned up
   // log_debug("Packet data %p not found for unregistration (already cleaned up?)", data);
 }
@@ -205,38 +207,38 @@ static void unregister_packet_data(void *data) {
 // Emergency cleanup of all tracked packet data (signal-safe)
 static void cleanup_all_packet_data(void) {
   log_warn("Emergency cleanup: freeing all tracked packet data");
-  
+
   // Try to acquire mutex non-blocking to avoid deadlock in signal handler
   if (pthread_mutex_trylock(&g_packet_data_mutex) != 0) {
     log_warn("Emergency cleanup: could not acquire mutex, skipping cleanup to avoid deadlock");
     return;
   }
-  
+
   packet_data_node_t *current = g_active_packet_data;
   int count = 0;
   while (current) {
     packet_data_node_t *next = current->next;
-    
+
     // Mark this data as being cleaned up to prevent double-free
     void *data_to_free = current->data;
     size_t size_to_free = current->size;
     current->data = NULL; // Mark as already freed to prevent double-free
-    
-    log_warn("Emergency cleanup: freeing packet data %p (%zu bytes) from thread %p", 
-             data_to_free, size_to_free, (void*)current->thread_id);
-    
+
+    log_warn("Emergency cleanup: freeing packet data %p (%zu bytes) from thread %p", data_to_free, size_to_free,
+             (void *)current->thread_id);
+
     // Free the data outside the critical section
     pthread_mutex_unlock(&g_packet_data_mutex);
     buffer_pool_free(data_to_free, size_to_free);
     pthread_mutex_lock(&g_packet_data_mutex);
-    
+
     SAFE_FREE(current);
     current = next;
     count++;
   }
   g_active_packet_data = NULL;
   pthread_mutex_unlock(&g_packet_data_mutex);
-  
+
   if (count > 0) {
     log_warn("Emergency cleanup: freed %d orphaned packet data allocations", count);
   }
@@ -1608,7 +1610,7 @@ void *client_receive_thread_func(void *arg) {
   while (!g_should_exit && client->active) {
     // Receive packet from this client
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
-    
+
     // Register packet data for tracking if allocation succeeded
     if (result > 0 && data) {
       register_packet_data(data, len);
