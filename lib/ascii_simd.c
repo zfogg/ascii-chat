@@ -945,12 +945,59 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   SAFE_MALLOC(test_pixels, data_size, rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, pixel_count, char *);
 
-  // Fill with random RGB data
-  srand(12345); // Consistent results
-  for (int i = 0; i < pixel_count; i++) {
-    test_pixels[i].r = rand() % 256;
-    test_pixels[i].g = rand() % 256;
-    test_pixels[i].b = rand() % 256;
+  // Use real webcam data for realistic testing (matches color benchmark approach)
+  webcam_init(0);
+  image_t *webcam_frame = webcam_read();
+
+  if (webcam_frame && webcam_frame->pixels) {
+    printf("Using real webcam data (%dx%d) for realistic testing\n", webcam_frame->w, webcam_frame->h);
+
+    // Resize webcam data to test dimensions
+    if (webcam_frame->w * webcam_frame->h == pixel_count) {
+      // Perfect match - copy directly
+      for (int i = 0; i < pixel_count; i++) {
+        test_pixels[i].r = webcam_frame->pixels[i].r;
+        test_pixels[i].g = webcam_frame->pixels[i].g;
+        test_pixels[i].b = webcam_frame->pixels[i].b;
+      }
+    } else {
+      // Resize/sample webcam data to fit test dimensions
+      float x_scale = (float)webcam_frame->w / width;
+      float y_scale = (float)webcam_frame->h / height;
+
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          int src_x = (int)(x * x_scale);
+          int src_y = (int)(y * y_scale);
+          if (src_x >= webcam_frame->w)
+            src_x = webcam_frame->w - 1;
+          if (src_y >= webcam_frame->h)
+            src_y = webcam_frame->h - 1;
+
+          int src_idx = src_y * webcam_frame->w + src_x;
+          int dst_idx = y * width + x;
+
+          test_pixels[dst_idx].r = webcam_frame->pixels[src_idx].r;
+          test_pixels[dst_idx].g = webcam_frame->pixels[src_idx].g;
+          test_pixels[dst_idx].b = webcam_frame->pixels[src_idx].b;
+        }
+      }
+    }
+
+    image_destroy(webcam_frame);
+    webcam_cleanup();
+  } else {
+    // Fallback to synthetic data if webcam fails
+    printf("Webcam not available, using synthetic test data\n");
+    srand(12345); // Consistent results
+    for (int i = 0; i < pixel_count; i++) {
+      test_pixels[i].r = rand() % 256;
+      test_pixels[i].g = rand() % 256;
+      test_pixels[i].b = rand() % 256;
+    }
+    if (webcam_frame)
+      image_destroy(webcam_frame);
+    webcam_cleanup();
   }
 
   printf("Benchmarking %dx%d (%d pixels) x %d iterations...\n", width, height, pixel_count, iterations);

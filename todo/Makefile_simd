@@ -204,7 +204,15 @@ benchmark-all: benchmark benchmark-ansi-fast
 
 # Clean targets
 clean:
-	rm -f $(ASCII_SIMD_TEST_OBJECTS) $(ANSI_FAST_TEST_OBJECTS) $(ASCII_SIMD_EXECUTABLE) $(ANSI_FAST_EXECUTABLE) $(ASCII_SIMD_EXECUTABLE)_* *.o ../lib/ansi_fast.o
+	rm -f $(ASCII_SIMD_TEST_OBJECTS) \
+	  $(ANSI_FAST_TEST_OBJECTS) \
+	  $(ASCII_SIMD_EXECUTABLE) \
+	  $(ANSI_FAST_EXECUTABLE) \
+	  $(ASCII_SIMD_EXECUTABLE) \
+	  $(COLOR_CORRECTNESS_EXECUTABLE) \
+	  $(COLOR_CORRECTNESS_TEST_OBJECTS) \
+	  *.o \
+	  ../lib/ansi_fast.o
 
 # Show compilation info
 info:

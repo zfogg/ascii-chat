@@ -311,14 +311,14 @@ help:
 format:
 	@echo "Formatting source code..."
 	@find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
-	xargs clang-format -i; \
+    xargs clang-format --Werror -i; \
 	echo "Code formatting complete!"
 
 # Check code formatting
 format-check:
 	@echo "Checking code formatting..."
 	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
-	xargs clang-format --dry-run --Werror
+    xargs clang-format --dry-run --Werror
 
 # Run bear to generate a compile_commands.json file
 compile_commands.json: Makefile
