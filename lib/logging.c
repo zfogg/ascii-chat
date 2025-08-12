@@ -248,11 +248,13 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   char time_buf[32];
   strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_info);
 
-  char time_buf_ms[64];  // Increased size to prevent truncation
+  char time_buf_ms[64]; // Increased size to prevent truncation
   long milliseconds = ts.tv_nsec / 1000000;
   // Clamp milliseconds to valid range (0-999) to ensure format safety
-  if (milliseconds < 0) milliseconds = 0;
-  if (milliseconds > 999) milliseconds = 999;
+  if (milliseconds < 0)
+    milliseconds = 0;
+  if (milliseconds > 999)
+    milliseconds = 999;
   snprintf(time_buf_ms, sizeof(time_buf_ms), "%s.%03ld", time_buf, milliseconds);
 
   /* Check if log rotation is needed */
