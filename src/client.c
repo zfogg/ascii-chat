@@ -992,7 +992,7 @@ int main(int argc, char *argv[]) {
       log_info("CLIENT: Socket connection established (sockfd=%d)", sockfd);
       reconnect_attempt = 0; // Reset reconnection counter on successful connection
 
-      struct sockaddr_in local_addr;
+      struct sockaddr_in local_addr = {0};
       socklen_t addr_len = sizeof(local_addr);
       if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
         perror("getsockname");
