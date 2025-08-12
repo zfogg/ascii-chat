@@ -26,6 +26,11 @@
 #include "hashtable.h"
 #include "frame_debug.h"
 
+#define DEBUG_THREADS
+#define NETWORK_DEBUG
+#define AUDIO_DEBUG
+#define COMPRESSION_DEBUG
+
 /* ============================================================================
  * Global State
  * ============================================================================
@@ -519,6 +524,13 @@ static void *video_broadcast_thread_func(void *arg) {
   int last_connected_count = 0;
 
   while (!g_should_exit) {
+    // LOOP DEBUG - print every few seconds to confirm thread is running
+    static uint32_t loop_counter = 0;
+    loop_counter++;
+    if (loop_counter % 1000 == 0) {  // Every ~1000 iterations
+      printf("BROADCAST_DEBUG: Video broadcast thread alive, iteration %u\n", loop_counter);
+    }
+
     // Rate limiting
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
@@ -543,9 +555,14 @@ static void *video_broadcast_thread_func(void *arg) {
     // Count active clients that are ready to receive video
     int active_client_count = 0;
     for (int i = 0; i < MAX_CLIENTS; i++) {
-      if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0 &&
-          g_client_manager.clients[i].width > 0 && g_client_manager.clients[i].height > 0) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->active && client->socket > 0 && client->width > 0 && client->height > 0) {
         active_client_count++;
+        printf("ACTIVE_DEBUG: SLOT %d IS ACTIVE: client_id=%u, socket=%d, width=%d, height=%d\n", i, 
+               client->client_id, client->socket, client->width, client->height);
+      } else if (client->active || client->socket > 0 || client->client_id != 0) {
+        printf("ACTIVE_DEBUG: SLOT %d NOT ACTIVE: client_id=%u, active=%d, socket=%d, width=%d, height=%d\n", i, 
+               client->client_id, client->active, client->socket, client->width, client->height);
       }
     }
     pthread_mutex_unlock(&g_client_manager_mutex);
@@ -642,8 +659,13 @@ static void *video_broadcast_thread_func(void *arg) {
             create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output,
                                      client_copy.wants_stretch, &client_frame_size);
 
+        printf("VIDEO_DEBUG: Client %u - create_mixed_ascii_frame returned frame=%p, size=%zu\n", 
+               client_copy.client_id, (void*)client_frame, client_frame_size);
+        
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
+          printf("VIDEO_DEBUG: Client %u - skipping because frame=%p, size=%zu\n", 
+                 client_copy.client_id, (void*)client_frame, client_frame_size);
           continue;
         }
 
@@ -720,12 +742,19 @@ static void *video_broadcast_thread_func(void *arg) {
 
         // Queue the complete frame as a single packet
         pthread_mutex_lock(&g_client_manager_mutex);
+        printf("QUEUE_DEBUG: About to check client[%d] - active=%d, video_queue=%p\n", 
+               i, g_client_manager.clients[i].active, (void*)g_client_manager.clients[i].video_queue);
         if (g_client_manager.clients[i].active && g_client_manager.clients[i].video_queue) {
+          printf("QUEUE_DEBUG: Attempting to queue ASCII frame for client %u (slot %d), packet_size=%zu\n", 
+                 client_copy.client_id, i, packet_size);
           int result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_ASCII_FRAME,
                                             packet_buffer, packet_size, 0, true);
           if (result < 0) {
+            printf("QUEUE_DEBUG: FAILED to queue ASCII frame for client %u: result=%d\n", client_copy.client_id, result);
             log_error("Failed to queue ASCII frame for client %u: queue full or shutdown", client_copy.client_id);
           } else {
+            printf("QUEUE_DEBUG: SUCCESS queued ASCII frame for client %u (slot %d), result=%d\n", 
+                   client_copy.client_id, i, result);
             sent_count++;
             static int success_count[MAX_CLIENTS] = {0};
             success_count[i]++;
@@ -734,6 +763,9 @@ static void *video_broadcast_thread_func(void *arg) {
                        client_copy.client_id, i, packet_size);
             }
           }
+        } else {
+          printf("QUEUE_DEBUG: NOT queuing for client %u (slot %d) - active=%d, video_queue=%p\n",
+                 client_copy.client_id, i, g_client_manager.clients[i].active, (void*)g_client_manager.clients[i].video_queue);
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
 
@@ -781,15 +813,19 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   // Collect client image sources
   pthread_mutex_lock(&g_client_manager_mutex);
-  int active_client_count = 0;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active) {
-      active_client_count++;
-    }
-  }
+  /*int active_client_count = 0;               */
+  /*for (int i = 0; i < MAX_CLIENTS; i++) {    */
+  /*  if (g_client_manager.clients[i].active) {*/
+  /*    active_client_count++;                 */
+  /*  }                                        */
+  /*}                                          */
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
+
+    if (client->active && client->is_sending_video) {
+      log_debug("Client %d: active=%d, is_sending_video=%d", i, client->active, client->is_sending_video);
+    }
 
     if (client->active && client->is_sending_video && source_count < MAX_CLIENTS) {
       // PROPER RINGBUFFER USAGE: Read ONE frame (oldest first - FIFO)
@@ -800,6 +836,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       // Try to read ONE frame from buffer (oldest first - proper FIFO)
       if (client->incoming_video_buffer) {
         got_new_frame = framebuffer_read_multi_frame(client->incoming_video_buffer, &current_frame);
+        log_debug("Client %d: framebuffer_read returned got_new_frame=%d", i, got_new_frame);
 
         if (got_new_frame) {
           // Got a new frame - update our cache
@@ -1168,7 +1205,7 @@ int main(int argc, char *argv[]) {
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  atexit(debug_memory_report);
+  // atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool
@@ -1177,62 +1214,39 @@ int main(int argc, char *argv[]) {
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
+  log_info("SERVER: Initializing options...");
   options_init(argc, argv);
   int port = strtoint(opt_port);
+  log_info("SERVER: Port set to %d", port);
 
+  log_info("SERVER: Precalculating luminance palette...");
   precalc_luminance_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+  log_info("SERVER: RGB palettes precalculated");
 
   // Handle terminal resize events
+  log_info("SERVER: Setting up signal handlers...");
   signal(SIGWINCH, sigwinch_handler);
 
-  // Block signals for all threads except main thread in multi-threaded application
-  sigset_t mask, oldmask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGINT);
-  sigaddset(&mask, SIGTERM);
-
-  // Block these signals for all threads created after this point
-  if (pthread_sigmask(SIG_BLOCK, &mask, &oldmask) != 0) {
-    log_error("Failed to block signals: %s", strerror(errno));
-  }
-
-  // Use sigaction for more reliable signal handling in multi-threaded applications
-  struct sigaction sa;
-
+  // Simple signal handling (temporarily disable complex threading signal handling)
+  log_info("SERVER: Setting up simple signal handlers...");
+  
   // Handle Ctrl+C for cleanup
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = sigint_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  if (sigaction(SIGINT, &sa, NULL) == -1) {
-    log_error("Failed to set SIGINT handler: %s", strerror(errno));
-  }
-
-  // Handle SIGTERM for cleanup
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = sigterm_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  if (sigaction(SIGTERM, &sa, NULL) == -1) {
-    log_error("Failed to set SIGTERM handler: %s", strerror(errno));
-  }
-
+  signal(SIGINT, sigint_handler);
+  signal(SIGTERM, sigterm_handler);
+  
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
-
-  // Unblock signals for the main thread only
-  if (pthread_sigmask(SIG_SETMASK, &oldmask, NULL) != 0) {
-    log_error("Failed to unblock signals for main thread: %s", strerror(errno));
-  }
-
+  log_info("SERVER: Signal handling setup complete");
   // Initialize audio mixer if audio is enabled
+  log_info("SERVER: Checking audio initialization (audio_enabled=%s)", opt_audio_enabled ? "true" : "false");
   if (opt_audio_enabled) {
     // Initialize the new advanced audio mixer for multi-user audio mixing
     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
     if (!g_audio_mixer) {
       log_error("Failed to initialize audio mixer");
     } else {
+      log_info("SERVER: Audio mixer initialized successfully");
       // Start audio mixer thread
       if (pthread_create(&g_audio_mixer_thread, NULL, audio_mixer_thread_func, NULL) != 0) {
         log_error("Failed to create audio mixer thread");
@@ -1246,6 +1260,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Start video broadcast thread for mixing and sending frames to all clients
+  log_info("SERVER: Creating video broadcast thread...");
   if (pthread_create(&g_video_broadcast_thread, NULL, video_broadcast_thread_func, NULL) != 0) {
     log_error("Failed to create video broadcast thread");
   } else {
@@ -1253,6 +1268,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Start statistics logging thread for periodic performance monitoring
+  log_info("SERVER: Creating statistics logger thread...");
   if (pthread_create(&g_stats_logger_thread, NULL, stats_logger_thread_func, NULL) != 0) {
     log_error("Failed to create statistics logger thread");
   } else {
@@ -1261,15 +1277,18 @@ int main(int argc, char *argv[]) {
   }
 
   // Network setup
+  log_info("SERVER: Setting up network sockets...");
   struct sockaddr_in serv_addr;
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
 
+  log_info("SERVER: Creating listen socket...");
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
   if (listenfd < 0) {
     log_fatal("Failed to create socket: %s", strerror(errno));
     exit(1);
   }
+  log_info("SERVER: Listen socket created (fd=%d)", listenfd);
 
   log_info("Server listening on port %d", port);
 
@@ -1556,8 +1575,8 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
                                                   client->client_id, 0, timestamp);
       if (stored) {
         client->frames_received++;
-        // log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
-        //           client->frames_received);
+        log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
+                  client->frames_received);
       } else {
         log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
       }
@@ -1598,9 +1617,9 @@ void *client_receive_thread_func(void *arg) {
 
     if (result <= 0) {
       if (result == 0) {
-        log_info("Client %u disconnected", client->client_id);
+        log_info("DISCONNECT: Client %u disconnected (clean close, result=0)", client->client_id);
       } else {
-        log_error("Error receiving from client %u: %s", client->client_id, strerror(errno));
+        log_error("DISCONNECT: Error receiving from client %u (result=%d): %s", client->client_id, result, strerror(errno));
       }
       // Free any data that might have been allocated before the error
       if (data) {
@@ -1737,7 +1756,7 @@ void *client_receive_thread_func(void *arg) {
         const uint16_t *size_data = (const uint16_t *)data;
         client->width = ntohs(size_data[0]);
         client->height = ntohs(size_data[1]);
-        log_info("Client %u updated size to %ux%u", client->client_id, client->width, client->height);
+        log_info("Client %u updated size to %ux%u (active=%d, socket=%d)", client->client_id, client->width, client->height, client->active, client->socket);
       }
       break;
     }
@@ -1783,6 +1802,7 @@ void *client_receive_thread_func(void *arg) {
 
   // Mark client as inactive and stop send thread first to avoid race conditions
   // Set send_thread_running to false to signal send thread to stop
+  log_info("DISCONNECT: Client %u (in slot ?) marked as inactive due to receive thread termination", client->client_id);
   client->active = false;
   client->send_thread_running = false;
 
@@ -1803,6 +1823,7 @@ void *client_send_thread_func(void *arg) {
   }
 
   log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
+  log_debug("SEND_THREAD_DEBUG: Send thread started for client %u", client->client_id);
 
   // Mark thread as running
   client->send_thread_running = true;
@@ -1818,20 +1839,16 @@ void *client_send_thread_func(void *arg) {
     // If no audio packet, try video
     if (!packet && client->video_queue) {
       packet = packet_queue_try_dequeue(client->video_queue);
+      if (packet) {
+        log_debug("SEND_THREAD_DEBUG: Client %u got video packet from queue, type=%d, data_len=%zu", 
+                  client->client_id, packet->header.type, packet->data_len);
+      }
     }
 
-    // If still no packet, wait a bit for one
+    // If still no packet, small sleep to prevent busy waiting
     if (!packet) {
-      // Use blocking dequeue on audio queue with timeout
-      if (client->audio_queue) {
-        // This will block until a packet is available or queue is shutdown
-        packet = packet_queue_dequeue(client->audio_queue);
-      }
-
-      // If audio queue returned NULL (shutdown), check video once more
-      if (!packet && client->video_queue) {
-        packet = packet_queue_try_dequeue(client->video_queue);
-      }
+      log_debug("SEND_THREAD_DEBUG: Client %u no packet found, sleeping briefly", client->client_id);
+      usleep(1000); // 1ms sleep instead of blocking indefinitely
     }
 
     // If we got a packet, send it
@@ -1875,15 +1892,12 @@ void *client_send_thread_func(void *arg) {
       // Free the packet
       packet_queue_free_packet(packet);
     }
-
-    // Small sleep to prevent busy waiting if queues are empty
-    if (!packet) {
-      usleep(1000); // 1ms
-    }
   }
 
   // Mark thread as stopped
   client->send_thread_running = false;
+  log_debug("SEND_THREAD_DEBUG: Client %u send thread exiting (g_should_exit=%d, active=%d, running=%d)",
+            client->client_id, g_should_exit, client->active, client->send_thread_running);
   log_info("Send thread for client %u terminated", client->client_id);
   return NULL;
 }
@@ -1928,6 +1942,7 @@ int add_client(int socket, const char *client_ip, int port) {
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   client->active = true;
+  log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", client->client_id, slot, socket);
   client->connected_at = time(NULL);
   snprintf(client->display_name, sizeof(client->display_name), "Client%u", client->client_id);
 
@@ -1964,7 +1979,7 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   client->video_queue =
-      packet_queue_create_with_pools(30, 60, false); // Max 30 video frames, 60 nodes, NO local buffer pool
+      packet_queue_create_with_pools(500, 1000, false); // Max 500 packets (both image frames in + ASCII frames out), 1000 nodes, NO local buffer pool
   if (!client->video_queue) {
     log_error("Failed to create video queue for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
@@ -1978,6 +1993,8 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
+  log_info("CLIENT COUNT UPDATED: now %d clients (added client_id=%u to slot %d)", 
+           g_client_manager.client_count, client->client_id, slot);
 
   // Add client to hash table for O(1) lookup
   if (!hashtable_insert(g_client_manager.client_hashtable, client->client_id, client)) {
@@ -2004,7 +2021,9 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   // Start send thread for this client
+  log_debug("SEND_THREAD_DEBUG: Creating send thread for client %u", client->client_id);
   if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
+    log_error("SEND_THREAD_DEBUG: FAILED to create send thread for client %u", client->client_id);
     log_error("Failed to create send thread for client %u", client->client_id);
     // Join the receive thread before cleaning up to prevent race conditions
     pthread_join(client->receive_thread, NULL);
@@ -2149,7 +2168,7 @@ int remove_client(uint32_t client_id) {
       }
       g_client_manager.client_count = remaining_count;
 
-      log_info("Removed client %u (%s), remaining clients: %d", client_id, display_name_copy, remaining_count);
+      log_info("CLIENT REMOVED: client_id=%u (%s) removed from slot ?, remaining clients: %d", client_id, display_name_copy, remaining_count);
 
       pthread_mutex_unlock(&g_client_manager_mutex);
       return 0;
