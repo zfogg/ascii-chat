@@ -108,7 +108,7 @@ char *image_print_simd(image_t *image) {
 }
 
 /* ============================================================================
- * SSE2 Implementation (4 pixels at once)
+ * SSE2 Implementation (32 pixels at once with ILP)
  * ============================================================================
  */
 
@@ -116,38 +116,187 @@ char *image_print_simd(image_t *image) {
 void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
   init_palette();
 
-  int i;
+  int i = 0;
 
-  // Process 4 pixels at a time using optimized SSE2 operations
-  for (i = 0; i + 3 < count; i += 4) {
-    // Load 4 RGB pixels using only SSE2 instructions
-    // For maximum compatibility, use scalar loads but process with SIMD arithmetic
-    const uint8_t *pixel_ptr = (const uint8_t *)(pixels + i);
+  // SSE2 constants for luminance calculation
+  const __m128i luma_const_77 = _mm_set1_epi16(LUMA_RED);
+  const __m128i luma_const_150 = _mm_set1_epi16(LUMA_GREEN);
+  const __m128i luma_const_29 = _mm_set1_epi16(LUMA_BLUE);
 
-    // Extract RGB values using SSE2-compatible approach
-    __m128i r_16 = _mm_setr_epi16(pixel_ptr[0], pixel_ptr[3], pixel_ptr[6], pixel_ptr[9], 0, 0, 0, 0);
-    __m128i g_16 = _mm_setr_epi16(pixel_ptr[1], pixel_ptr[4], pixel_ptr[7], pixel_ptr[10], 0, 0, 0, 0);
-    __m128i b_16 = _mm_setr_epi16(pixel_ptr[2], pixel_ptr[5], pixel_ptr[8], pixel_ptr[11], 0, 0, 0, 0);
+  // Process 32-pixel chunks with ILP (like optimized NEON)
+  for (; i + 31 < count; i += 32) {
+    // Convert RGB pixel data to separate R,G,B arrays for easier SIMD processing
+    uint8_t r_vals[32], g_vals[32], b_vals[32];
+    const uint8_t *src = (const uint8_t*)&pixels[i];
+    
+    // Extract RGB components for 32 pixels (96 bytes total)
+    for (int j = 0; j < 32; j++) {
+      r_vals[j] = src[j*3 + 0];
+      g_vals[j] = src[j*3 + 1];
+      b_vals[j] = src[j*3 + 2];
+    }
 
-    // SIMD luminance calculation: (77*r + 150*g + 29*b) >> 8
-    __m128i luma_r = _mm_mullo_epi16(r_16, _mm_set1_epi16(LUMA_RED));
-    __m128i luma_g = _mm_mullo_epi16(g_16, _mm_set1_epi16(LUMA_GREEN));
-    __m128i luma_b = _mm_mullo_epi16(b_16, _mm_set1_epi16(LUMA_BLUE));
+    // Process first 16 pixels (2 SSE2 vectors worth)
+    __m128i r1_lo_16 = _mm_unpacklo_epi8(_mm_loadu_si128((__m128i*)r_vals), _mm_setzero_si128());
+    __m128i r1_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(r_vals + 8)), _mm_setzero_si128());
+    __m128i g1_lo_16 = _mm_unpacklo_epi8(_mm_loadu_si128((__m128i*)g_vals), _mm_setzero_si128());
+    __m128i g1_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(g_vals + 8)), _mm_setzero_si128());
+    __m128i b1_lo_16 = _mm_unpacklo_epi8(_mm_loadu_si128((__m128i*)b_vals), _mm_setzero_si128());
+    __m128i b1_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(b_vals + 8)), _mm_setzero_si128());
 
-    __m128i luminance = _mm_add_epi16(_mm_add_epi16(luma_r, luma_g), luma_b);
-    luminance = _mm_srli_epi16(luminance, 8);
+    // Process second 16 pixels
+    __m128i r2_lo_16 = _mm_unpacklo_epi8(_mm_loadu_si128((__m128i*)(r_vals + 16)), _mm_setzero_si128());
+    __m128i r2_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(r_vals + 24)), _mm_setzero_si128());
+    __m128i g2_lo_16 = _mm_unpacklo_epi8(_mm_loadu_si128((__m128i*)(g_vals + 16)), _mm_setzero_si128());
+    __m128i g2_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(g_vals + 24)), _mm_setzero_si128());
+    __m128i b2_lo_16 = _mm_unpacklo_epi8(_mm_loadu_si128((__m128i*)(b_vals + 16)), _mm_setzero_si128());
+    __m128i b2_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(b_vals + 24)), _mm_setzero_si128());
 
-    // Pack back to 8-bit and store for palette lookup
-    __m128i lum_8 = _mm_packus_epi16(luminance, _mm_setzero_si128());
+    // SIMD luminance calculation: y = (77*r + 150*g + 29*b) >> 8
+    // First chunk: pixels 0-7
+    __m128i luma1_lo = _mm_mullo_epi16(r1_lo_16, luma_const_77);
+    luma1_lo = _mm_add_epi16(luma1_lo, _mm_mullo_epi16(g1_lo_16, luma_const_150));
+    luma1_lo = _mm_add_epi16(luma1_lo, _mm_mullo_epi16(b1_lo_16, luma_const_29));
+    luma1_lo = _mm_srli_epi16(luma1_lo, 8);
 
-    // Extract and convert to ASCII using bulk store + scalar lookup
-    uint8_t lum[4];
-    _mm_storeu_si32(lum, lum_8);
+    // First chunk: pixels 8-15
+    __m128i luma1_hi = _mm_mullo_epi16(r1_hi_16, luma_const_77);
+    luma1_hi = _mm_add_epi16(luma1_hi, _mm_mullo_epi16(g1_hi_16, luma_const_150));
+    luma1_hi = _mm_add_epi16(luma1_hi, _mm_mullo_epi16(b1_hi_16, luma_const_29));
+    luma1_hi = _mm_srli_epi16(luma1_hi, 8);
 
+    // Second chunk: pixels 16-23
+    __m128i luma2_lo = _mm_mullo_epi16(r2_lo_16, luma_const_77);
+    luma2_lo = _mm_add_epi16(luma2_lo, _mm_mullo_epi16(g2_lo_16, luma_const_150));
+    luma2_lo = _mm_add_epi16(luma2_lo, _mm_mullo_epi16(b2_lo_16, luma_const_29));
+    luma2_lo = _mm_srli_epi16(luma2_lo, 8);
+
+    // Second chunk: pixels 24-31
+    __m128i luma2_hi = _mm_mullo_epi16(r2_hi_16, luma_const_77);
+    luma2_hi = _mm_add_epi16(luma2_hi, _mm_mullo_epi16(g2_hi_16, luma_const_150));
+    luma2_hi = _mm_add_epi16(luma2_hi, _mm_mullo_epi16(b2_hi_16, luma_const_29));
+    luma2_hi = _mm_srli_epi16(luma2_hi, 8);
+
+    // Pack luminance values to 8-bit
+    __m128i lum1_packed = _mm_packus_epi16(luma1_lo, luma1_hi);  // 16 pixels
+    __m128i lum2_packed = _mm_packus_epi16(luma2_lo, luma2_hi);  // 16 pixels
+
+    // Store luminance values for palette lookup
+    uint8_t lum1[16], lum2[16];
+    _mm_storeu_si128((__m128i*)lum1, lum1_packed);
+    _mm_storeu_si128((__m128i*)lum2, lum2_packed);
+
+    // Unrolled palette lookups for maximum performance (32 lookups total)
+    ascii_chars[i + 0] = luminance_palette[lum1[0]]; ascii_chars[i + 16] = luminance_palette[lum2[0]];
+    ascii_chars[i + 1] = luminance_palette[lum1[1]]; ascii_chars[i + 17] = luminance_palette[lum2[1]];
+    ascii_chars[i + 2] = luminance_palette[lum1[2]]; ascii_chars[i + 18] = luminance_palette[lum2[2]];
+    ascii_chars[i + 3] = luminance_palette[lum1[3]]; ascii_chars[i + 19] = luminance_palette[lum2[3]];
+    ascii_chars[i + 4] = luminance_palette[lum1[4]]; ascii_chars[i + 20] = luminance_palette[lum2[4]];
+    ascii_chars[i + 5] = luminance_palette[lum1[5]]; ascii_chars[i + 21] = luminance_palette[lum2[5]];
+    ascii_chars[i + 6] = luminance_palette[lum1[6]]; ascii_chars[i + 22] = luminance_palette[lum2[6]];
+    ascii_chars[i + 7] = luminance_palette[lum1[7]]; ascii_chars[i + 23] = luminance_palette[lum2[7]];
+    ascii_chars[i + 8] = luminance_palette[lum1[8]]; ascii_chars[i + 24] = luminance_palette[lum2[8]];
+    ascii_chars[i + 9] = luminance_palette[lum1[9]]; ascii_chars[i + 25] = luminance_palette[lum2[9]];
+    ascii_chars[i + 10] = luminance_palette[lum1[10]]; ascii_chars[i + 26] = luminance_palette[lum2[10]];
+    ascii_chars[i + 11] = luminance_palette[lum1[11]]; ascii_chars[i + 27] = luminance_palette[lum2[11]];
+    ascii_chars[i + 12] = luminance_palette[lum1[12]]; ascii_chars[i + 28] = luminance_palette[lum2[12]];
+    ascii_chars[i + 13] = luminance_palette[lum1[13]]; ascii_chars[i + 29] = luminance_palette[lum2[13]];
+    ascii_chars[i + 14] = luminance_palette[lum1[14]]; ascii_chars[i + 30] = luminance_palette[lum2[14]];
+    ascii_chars[i + 15] = luminance_palette[lum1[15]]; ascii_chars[i + 31] = luminance_palette[lum2[15]];
+  }
+
+  // Process remaining 16-pixel chunks
+  for (; i + 15 < count; i += 16) {
+    uint8_t r_vals[16], g_vals[16], b_vals[16];
+    const uint8_t *src = (const uint8_t*)&pixels[i];
+    
+    // Extract RGB for 16 pixels
+    for (int j = 0; j < 16; j++) {
+      r_vals[j] = src[j*3 + 0];
+      g_vals[j] = src[j*3 + 1];
+      b_vals[j] = src[j*3 + 2];
+    }
+
+    // Load and widen to 16-bit (2 vectors of 8 pixels each)
+    __m128i r_lo_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)r_vals), _mm_setzero_si128());
+    __m128i r_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(r_vals + 8)), _mm_setzero_si128());
+    __m128i g_lo_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)g_vals), _mm_setzero_si128());
+    __m128i g_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(g_vals + 8)), _mm_setzero_si128());
+    __m128i b_lo_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)b_vals), _mm_setzero_si128());
+    __m128i b_hi_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)(b_vals + 8)), _mm_setzero_si128());
+
+    // SIMD luminance calculation for both halves
+    __m128i luma_lo = _mm_mullo_epi16(r_lo_16, luma_const_77);
+    luma_lo = _mm_add_epi16(luma_lo, _mm_mullo_epi16(g_lo_16, luma_const_150));
+    luma_lo = _mm_add_epi16(luma_lo, _mm_mullo_epi16(b_lo_16, luma_const_29));
+    luma_lo = _mm_srli_epi16(luma_lo, 8);
+
+    __m128i luma_hi = _mm_mullo_epi16(r_hi_16, luma_const_77);
+    luma_hi = _mm_add_epi16(luma_hi, _mm_mullo_epi16(g_hi_16, luma_const_150));
+    luma_hi = _mm_add_epi16(luma_hi, _mm_mullo_epi16(b_hi_16, luma_const_29));
+    luma_hi = _mm_srli_epi16(luma_hi, 8);
+
+    // Pack and store
+    __m128i lum_packed = _mm_packus_epi16(luma_lo, luma_hi);
+    uint8_t lum[16];
+    _mm_storeu_si128((__m128i*)lum, lum_packed);
+
+    // Unrolled palette lookups
     ascii_chars[i + 0] = luminance_palette[lum[0]];
     ascii_chars[i + 1] = luminance_palette[lum[1]];
     ascii_chars[i + 2] = luminance_palette[lum[2]];
     ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];
+    ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];
+    ascii_chars[i + 7] = luminance_palette[lum[7]];
+    ascii_chars[i + 8] = luminance_palette[lum[8]];
+    ascii_chars[i + 9] = luminance_palette[lum[9]];
+    ascii_chars[i + 10] = luminance_palette[lum[10]];
+    ascii_chars[i + 11] = luminance_palette[lum[11]];
+    ascii_chars[i + 12] = luminance_palette[lum[12]];
+    ascii_chars[i + 13] = luminance_palette[lum[13]];
+    ascii_chars[i + 14] = luminance_palette[lum[14]];
+    ascii_chars[i + 15] = luminance_palette[lum[15]];
+  }
+
+  // Process remaining 8-pixel chunks
+  for (; i + 7 < count; i += 8) {
+    uint8_t r_vals[8], g_vals[8], b_vals[8];
+    const uint8_t *src = (const uint8_t*)&pixels[i];
+    
+    // Extract RGB for 8 pixels
+    for (int j = 0; j < 8; j++) {
+      r_vals[j] = src[j*3 + 0];
+      g_vals[j] = src[j*3 + 1];
+      b_vals[j] = src[j*3 + 2];
+    }
+
+    // Load and widen to 16-bit
+    __m128i r_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)r_vals), _mm_setzero_si128());
+    __m128i g_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)g_vals), _mm_setzero_si128());
+    __m128i b_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((__m128i*)b_vals), _mm_setzero_si128());
+
+    // SIMD luminance calculation
+    __m128i luma = _mm_mullo_epi16(r_16, luma_const_77);
+    luma = _mm_add_epi16(luma, _mm_mullo_epi16(g_16, luma_const_150));
+    luma = _mm_add_epi16(luma, _mm_mullo_epi16(b_16, luma_const_29));
+    luma = _mm_srli_epi16(luma, 8);
+
+    // Pack and store
+    __m128i lum_8 = _mm_packus_epi16(luma, _mm_setzero_si128());
+    uint8_t lum[8];
+    _mm_storel_epi64((__m128i*)lum, lum_8);
+
+    // Unrolled palette lookups
+    ascii_chars[i + 0] = luminance_palette[lum[0]];
+    ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];
+    ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];
+    ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];
+    ascii_chars[i + 7] = luminance_palette[lum[7]];
   }
 
   // Process remaining pixels with scalar code
@@ -509,10 +658,10 @@ void print_simd_capabilities(void) {
   printf("  ✓ AVX2 (8 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_NEON
-  printf("  ✓ ARM NEON (16 pixels/cycle)\n");
+  printf("  ✓ ARM NEON (32 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_SSE2
-  printf("  ✓ SSE2 (4 pixels/cycle)\n");
+  printf("  ✓ SSE2 (32 pixels/cycle)\n");
 #endif
   printf("  ✓ Scalar fallback\n");
 }
