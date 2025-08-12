@@ -1,5 +1,4 @@
-#ifndef MIXER_H
-#define MIXER_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -140,5 +139,3 @@ void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, in
 // Soft clipping function
 float soft_clip(float sample, float threshold);
 void soft_clip_buffer(float *buffer, int num_samples, float threshold);
-
-#endif // MIXER_H

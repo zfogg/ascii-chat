@@ -1,5 +1,4 @@
-#ifndef PACKET_QUEUE_H
-#define PACKET_QUEUE_H
+#pragma once
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -116,5 +115,3 @@ void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t 
 
 // Validate packet integrity (returns true if valid)
 bool packet_queue_validate_packet(const queued_packet_t *packet);
-
-#endif // PACKET_QUEUE_H

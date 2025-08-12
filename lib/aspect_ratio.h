@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  * Copyright (C) 2006 Christian Stigen Larsen, http://csl.sublevel3.org
  * Distributed under the GNU General Public License (GPL) v2.
