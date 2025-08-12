@@ -128,7 +128,7 @@ int send_ascii_frame_packet(int sockfd, const char *frame_data, size_t frame_siz
   free(packet_data);
   free(compressed_data);
 
-  return result < 0 ? -1 : (use_compression ? compressed_size : frame_size);
+  return result < 0 ? -1 : (use_compression ? (long)compressed_size : (long)frame_size);
 }
 
 // Send image frame using the new unified packet structure
