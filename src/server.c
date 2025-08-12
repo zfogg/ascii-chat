@@ -369,10 +369,9 @@ void *audio_mixer_thread_func(void *arg) {
             mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client->client_id);
 
         if (samples_mixed > 0 || active_audio_clients == 1) {
-          // If only one client, send silence (samples_mixed will be 0)
+          // If only one client, send silence
           if (active_audio_clients == 1) {
             memset(mix_buffer, 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
-            samples_mixed = AUDIO_FRAMES_PER_BUFFER;
           }
 
           // Debug: Check for DEADBEEF
@@ -1591,7 +1590,7 @@ void *client_receive_thread_func(void *arg) {
 
   packet_type_t type;
   uint32_t sender_id;
-  void *data;
+  void *data = NULL; // Initialize to prevent static analyzer warning about uninitialized use
   size_t len;
 
   while (!g_should_exit && client->active) {
@@ -1699,6 +1698,10 @@ void *client_receive_thread_func(void *arg) {
         uint32_t total_samples = ntohl(batch_header->total_samples);
         uint32_t sample_rate = ntohl(batch_header->sample_rate);
         // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
+        
+        // Suppress static analyzer warnings for conditionally used variables
+        (void)batch_count; // Used in DEBUG_AUDIO log
+        (void)sample_rate; // Used in DEBUG_AUDIO log
 
         // Validate batch parameters
         size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));

@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[]) {
 
       char *os_username = getenv("USER");
       char *display_name = os_username;
-      if (strcmp(os_username, "") == 0) {
+      if (!os_username || strcmp(os_username, "") == 0) {
         display_name = ASCIICHAT_DEFAULT_DISPLAY_NAME;
       }
       char my_display_name[MAX_DISPLAY_NAME_LEN];
