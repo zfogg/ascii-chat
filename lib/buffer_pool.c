@@ -257,10 +257,11 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
   // If not from any pool, it was malloc'd
   if (!freed) {
     void *original_ptr = data; // Save pointer before freeing for logging
-    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, original_ptr, __FILE__, __LINE__,
-            (void *)pthread_self());
+    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, original_ptr, __FILE__,
+            __LINE__, (void *)pthread_self());
     SAFE_FREE(data);
-    fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=%p thread=%p\n", size, original_ptr, (void *)pthread_self());
+    fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=%p thread=%p\n", size, original_ptr,
+            (void *)pthread_self());
   }
 }
 

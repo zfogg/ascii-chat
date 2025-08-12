@@ -167,7 +167,9 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 #define calloc(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 
-/* Safe free that nulls the pointer - defined AFTER debug redirections so it uses debug_free() */
+#endif
+
+/* Safe free that nulls the pointer - available in all builds */
 #define SAFE_FREE(ptr)                                                                                                 \
   do {                                                                                                                 \
     if ((ptr) != NULL) {                                                                                               \
@@ -175,7 +177,5 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
       (ptr) = NULL;                                                                                                    \
     }                                                                                                                  \
   } while (0)
-
-#endif
 
 #endif /* ASCII_CHAT_COMMON_H */
