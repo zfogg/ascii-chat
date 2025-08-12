@@ -36,7 +36,7 @@ PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD)
+override CFLAGS   += $(PKG_CFLAGS) -std=$(CSTD) -funroll-loops
 override OBJCFLAGS +=
 
 # Platform-specific flags
@@ -350,8 +350,15 @@ clang-tidy: $(C_FILES) $(C_HEADERS) $(M_FILES)
 	@clang-tidy $^ -- $(CFLAGS)
 
 analyze:
-	clang --analyze $(SOURCES)
-	cppcheck --enable=all $(C_FILES) $(C_HEADERS)
+	@echo "Running clang static analysis (C sources)..."
+	clang --analyze $(CFLAGS) $(C_FILES)
+	@echo "Running clang static analysis (Objective-C sources)..."
+	clang --analyze $(OBJCFLAGS) $(M_FILES)
+	@echo "Running cppcheck..."
+	cppcheck --enable=all --inline-suppr \
+		-I$(LIB_DIR) -I$(SRC_DIR) $(shell pkg-config --cflags-only-I $(PKG_CONFIG_LIBS)) \
+		--suppress=missingIncludeSystem \
+		$(C_FILES) $(C_HEADERS)
 
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .

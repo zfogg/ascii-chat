@@ -79,4 +79,11 @@ void print_simd_capabilities(void);
 char *image_print_simd(image_t *image);
 char *image_print_colored_simd(image_t *image);
 
+// Upper half block renderer for 2x vertical density
+size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, 
+                                   char *dst, size_t cap);
+
+// Half-height image renderer using ▀ blocks
+char *image_print_half_height_blocks(image_t *image);
+
 #endif // ASCII_SIMD_H

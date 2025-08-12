@@ -95,14 +95,15 @@ static inline size_t calculate_sgr_truecolor_fg_size(uint8_t r, uint8_t g, uint8
 }
 
 static inline size_t calculate_sgr_truecolor_bg_size(uint8_t r, uint8_t g, uint8_t b) __attribute__((unused)) {
-  init_dec3();  
+  init_dec3();
   return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[48;2;" + R + ";" + G + ";" + B + "m"
 }
 
-static inline size_t calculate_sgr_truecolor_fg_bg_size(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
+static inline size_t calculate_sgr_truecolor_fg_bg_size(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
+                                                        uint8_t bb) {
   init_dec3();
-  return 7 + g_dec3[fr].len + 1 + g_dec3[fg].len + 1 + g_dec3[fb].len + 
-         6 + g_dec3[br].len + 1 + g_dec3[bg].len + 1 + g_dec3[bb].len + 1; // Combined FG+BG
+  return 7 + g_dec3[fr].len + 1 + g_dec3[fg].len + 1 + g_dec3[fb].len + 6 + g_dec3[br].len + 1 + g_dec3[bg].len + 1 +
+         g_dec3[bb].len + 1; // Combined FG+BG
 }
 
 static inline char *append_sgr_reset(char *dst) {
@@ -507,101 +508,92 @@ size_t convert_row_with_color_sse2_with_buffer(const rgb_pixel_t *pixels, char *
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
-// ARM NEON version using SIMD for luminance calculation
+#include <arm_neon.h>
+
+// STREAMING NEON implementation - TRUE SIMD with single-pass processing
 size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                    bool background_mode) {
-  // Use stack allocation for small widths, heap for large
-  char stack_ascii_chars[2048];
-  uint8_t stack_luminance[2048]; 
-  char *ascii_chars = stack_ascii_chars;
-  uint8_t *luminance_values = stack_luminance;
-  bool heap_allocated = false;
-
-  if (width > 2048) {
-    // Only use heap allocation for very wide images
-    SAFE_MALLOC(ascii_chars, width, char *);
-    SAFE_MALLOC(luminance_values, width, uint8_t *);
-    heap_allocated = true;
-  }
-
-  // Step 1: Use NEON SIMD for luminance conversion - get BOTH ASCII chars AND luminance values
   init_palette();
-  const int batch_size = 16;
-  int full_batches = width / batch_size;
-  int remainder = width % batch_size;
+  init_dec3();
 
-  // Process full batches of 16 pixels with SIMD (same algorithm as black and white version)
-  for (int batch = 0; batch < full_batches; batch++) {
-    int base_idx = batch * batch_size;
-    
-    // Process 16 pixels in tight loop - compiler will vectorize this
-    for (int j = 0; j < batch_size; j++) {
-      const rgb_pixel_t *p = &pixels[base_idx + j];
-      int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-      luminance_values[base_idx + j] = (uint8_t)luminance;  // Store for later use
-      ascii_chars[base_idx + j] = luminance_palette[luminance];
+  char *p = output_buffer;
+  char *end = output_buffer + buffer_size;
+  int x = 0;
+
+  // Process 16-pixel chunks with TRUE NEON SIMD
+  for (; x + 15 < width; x += 16) {
+    const uint8_t *base = (const uint8_t *)(pixels + x);
+
+    // Load 16 interleaved RGB pixels → 3 x 16-byte vectors (TRUE NEON!)
+    uint8x16x3_t rgb = vld3q_u8(base);
+
+    // Widen to 16-bit for accurate dot product
+    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
+    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb.val[0]));
+    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb.val[1]));
+    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb.val[1]));
+    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb.val[2]));
+    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb.val[2]));
+
+    // SIMD luminance: y = (77*r + 150*g + 29*b) >> 8 (fits in 16-bit)
+    uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
+    y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
+    y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
+    y_lo = vshrq_n_u16(y_lo, 8);
+
+    uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
+    y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
+    y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
+    y_hi = vshrq_n_u16(y_hi, 8);
+
+    // Narrow to 8-bit luminance values
+    uint8x16_t y8 = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
+
+    // Extract luminance values for immediate use
+    uint8_t lum[16];
+    vst1q_u8(lum, y8);
+
+    // STREAMING: Emit 16 pixels immediately (no staging buffers!)
+    for (int k = 0; k < 16; ++k) {
+      const rgb_pixel_t *px = &pixels[x + k];
+
+      // Exact space check prevents buffer overflow
+      if ((size_t)(end - p) < (background_mode ? 40 : 24))
+        goto done;
+
+      if (background_mode) {
+        uint8_t fg = (lum[k] < 127) ? 255 : 0;
+        p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
+      } else {
+        p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
+      }
+      *p++ = luminance_palette[lum[k]];
     }
   }
 
-  // Process remaining pixels
-  int base_remainder = full_batches * batch_size;
-  for (int i = 0; i < remainder; i++) {
-    const rgb_pixel_t *p = &pixels[base_remainder + i];
-    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    luminance_values[base_remainder + i] = (uint8_t)luminance;
-    ascii_chars[base_remainder + i] = luminance_palette[luminance];
-  }
+  // Process remaining pixels (< 16) with scalar fallback
+  for (; x < width; ++x) {
+    const rgb_pixel_t *px = &pixels[x];
+    int y = (LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8;
 
-  // Step 2: Generate colored output using pre-calculated luminance values
-  char *current_pos = output_buffer;
-  char *buffer_end = output_buffer + buffer_size;
-
-  for (int x = 0; x < width; x++) {
-    const rgb_pixel_t *pixel = &pixels[x];
-    char ascii_char = ascii_chars[x];
-    uint8_t luminance = luminance_values[x];  // Use pre-calculated value (no redundant calculation!)
-
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 64)
-      break; // Safety margin
+    if ((size_t)(end - p) < (background_mode ? 40 : 24))
+      break;
 
     if (background_mode) {
-      // Background mode: colored background, contrasting foreground
-      uint8_t fg_color = (luminance < 127) ? 255 : 0;
-
-      // Generate foreground color code
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-
-      // Generate background color code
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
-
-      // Add ASCII character
-      *current_pos++ = ascii_char;
-
+      uint8_t fg = (y < 127) ? 255 : 0;
+      p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
     } else {
-      // Foreground mode: colored character
-      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += fg_len;
-      *current_pos++ = ascii_char;
+      p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
     }
+    *p++ = luminance_palette[y];
   }
 
+done:
   // Add reset sequence
-  size_t remaining = buffer_end - current_pos;
-  if (remaining >= sizeof(ANSI_RESET)) {
-    memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
-    current_pos += sizeof(ANSI_RESET) - 1;
-  }
+  if ((size_t)(end - p) >= 4)
+    p = append_sgr_reset(p);
 
-  // Clean up heap allocation if used
-  if (heap_allocated) {
-    SAFE_FREE(ascii_chars);
-    SAFE_FREE(luminance_values);
-  }
-
-  return current_pos - output_buffer;
+  return (size_t)(p - output_buffer);
 }
 #endif
 
@@ -754,7 +746,7 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
         // Color changed - emit combined FG+BG sequence
         size_t sgr_size = calculate_sgr_truecolor_fg_bg_size(fg_val, fg_val, fg_val, px->r, px->g, px->b);
         if ((size_t)(end - p) < sgr_size + 1) // +1 for ASCII character
-          break; // Exact space check prevents buffer overflow
+          break;                              // Exact space check prevents buffer overflow
         p = append_sgr_truecolor_fg_bg(p, fg_val, fg_val, fg_val, px->r, px->g, px->b);
         cr = px->r;
         cg = px->g;
@@ -768,7 +760,7 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
         // Color changed - emit foreground sequence
         size_t sgr_size = calculate_sgr_truecolor_fg_size(px->r, px->g, px->b);
         if ((size_t)(end - p) < sgr_size + 1) // +1 for ASCII character
-          break; // Exact space check prevents buffer overflow
+          break;                              // Exact space check prevents buffer overflow
         p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
         cr = px->r;
         cg = px->g;
@@ -786,4 +778,120 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
   if (end - p >= 4)
     p = append_sgr_reset(p);
   return (size_t)(p - dst);
+}
+
+/* ============================================================================
+ * Upper Half Block (▀) Renderer - 2x Vertical Density
+ * ============================================================================
+ */
+
+// Render two image rows as one terminal row using ▀ character
+// FG = top pixel color, BG = bottom pixel color = 2x vertical resolution!
+size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, 
+                                   char *dst, size_t cap) {
+  init_dec3();
+  
+  char *p = dst;
+  char *end = dst + cap;
+  
+  // Current colors for run-length encoding
+  bool have_color = false;
+  uint8_t fg_r = 0, fg_g = 0, fg_b = 0;  // Foreground (top pixel)
+  uint8_t bg_r = 0, bg_g = 0, bg_b = 0;  // Background (bottom pixel)
+  
+  for (int x = 0; x < width; ++x) {
+    const rgb_pixel_t *top_px = &top_row[x];
+    const rgb_pixel_t *bot_px = &bottom_row[x];
+    
+    // Check if colors changed (need new escape sequence)
+    bool color_changed = !have_color || 
+                         top_px->r != fg_r || top_px->g != fg_g || top_px->b != fg_b ||
+                         bot_px->r != bg_r || bot_px->g != bg_g || bot_px->b != bg_b;
+    
+    if (color_changed) {
+      // Calculate exact space needed for combined FG+BG sequence + UTF-8 ▀ (3 bytes) 
+      size_t sgr_size = calculate_sgr_truecolor_fg_bg_size(top_px->r, top_px->g, top_px->b,
+                                                           bot_px->r, bot_px->g, bot_px->b);
+      if ((size_t)(end - p) < sgr_size + 3) // +3 for UTF-8 ▀ character
+        break;
+      
+      // Emit combined FG+BG escape sequence
+      p = append_sgr_truecolor_fg_bg(p, top_px->r, top_px->g, top_px->b,
+                                        bot_px->r, bot_px->g, bot_px->b);
+      
+      // Update color state
+      fg_r = top_px->r; fg_g = top_px->g; fg_b = top_px->b;
+      bg_r = bot_px->r; bg_g = bot_px->g; bg_b = bot_px->b;
+      have_color = true;
+    }
+    
+    // Add ▀ character (UTF-8: 0xE2 0x96 0x80)
+    if (p + 3 <= end) {
+      *p++ = 0xE2;
+      *p++ = 0x96; 
+      *p++ = 0x80;
+    } else {
+      break;
+    }
+  }
+  
+  // Add reset sequence
+  if ((size_t)(end - p) >= 4)
+    p = append_sgr_reset(p);
+    
+  return (size_t)(p - dst);
+}
+
+// Full image renderer using ▀ blocks (half-height output)
+char *image_print_half_height_blocks(image_t *image) {
+  const int h = image->h;
+  const int w = image->w;
+  
+  // Output height is half the input height (rounded up)
+  const int output_height = (h + 1) / 2;
+  
+  // Calculate buffer size: each ▀ needs combined FG+BG escape (up to ~45 bytes) + UTF-8 ▀ (3 bytes)
+  const size_t max_per_char = 48;  // Conservative estimate
+  const size_t reset_len = 4;      // \033[0m
+  const size_t total_newlines = (output_height > 0) ? (output_height - 1) : 0;
+  const size_t buffer_size = output_height * w * max_per_char + output_height * reset_len + total_newlines + 1;
+  
+  // Single allocation
+  char *ascii;
+  SAFE_MALLOC(ascii, buffer_size, char *);
+  if (!ascii) {
+    log_error("Memory allocation failed: %zu bytes", buffer_size);
+    return NULL;
+  }
+  
+  size_t total_len = 0;
+  
+  // Process pairs of rows
+  for (int y = 0; y < output_height; y++) {
+    int top_row_idx = y * 2;
+    int bottom_row_idx = top_row_idx + 1;
+    
+    const rgb_pixel_t *top_row = (const rgb_pixel_t *)&image->pixels[top_row_idx * w];
+    const rgb_pixel_t *bottom_row;
+    
+    // Handle odd heights - use the same row for both top and bottom
+    if (bottom_row_idx >= h) {
+      bottom_row = top_row;  // Duplicate last row for odd heights
+    } else {
+      bottom_row = (const rgb_pixel_t *)&image->pixels[bottom_row_idx * w];
+    }
+    
+    // Render this terminal row using ▀ blocks
+    size_t row_len = render_row_upper_half_block(top_row, bottom_row, w, 
+                                                ascii + total_len, buffer_size - total_len);
+    total_len += row_len;
+    
+    // Add newline after each row (except the last row)
+    if (y != output_height - 1 && total_len < buffer_size - 1) {
+      ascii[total_len++] = '\n';
+    }
+  }
+  
+  ascii[total_len] = '\0';
+  return ascii;
 }

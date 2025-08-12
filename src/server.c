@@ -137,6 +137,111 @@ static pthread_mutex_t g_frame_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static server_stats_t g_stats = {0};
 
+/* ============================================================================
+ * Global Packet Data Tracking for Signal Safety
+ * ============================================================================
+ */
+
+// Track all active packet data allocations for emergency cleanup
+typedef struct packet_data_node {
+  void *data;
+  size_t size;
+  pthread_t thread_id;
+  struct packet_data_node *next;
+} packet_data_node_t;
+
+static packet_data_node_t *g_active_packet_data = NULL;
+static pthread_mutex_t g_packet_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Register packet data for tracking
+static void register_packet_data(void *data, size_t size) {
+  if (!data) return;
+  
+  packet_data_node_t *node;
+  SAFE_MALLOC(node, sizeof(packet_data_node_t), packet_data_node_t *);
+  node->data = data;
+  node->size = size;
+  node->thread_id = pthread_self();
+  
+  pthread_mutex_lock(&g_packet_data_mutex);
+  node->next = g_active_packet_data;
+  g_active_packet_data = node;
+  pthread_mutex_unlock(&g_packet_data_mutex);
+  
+  log_debug("Registered packet data %p (%zu bytes) for thread %p", data, size, (void*)pthread_self());
+}
+
+// Unregister packet data when properly freed
+static void unregister_packet_data(void *data) {
+  if (!data) return;
+  
+  pthread_mutex_lock(&g_packet_data_mutex);
+  packet_data_node_t **current = &g_active_packet_data;
+  while (*current) {
+    if ((*current)->data == data) {
+      packet_data_node_t *to_remove = *current;
+      *current = (*current)->next;
+      log_debug("Unregistered packet data %p for thread %p", data, (void*)pthread_self());
+      SAFE_FREE(to_remove);
+      pthread_mutex_unlock(&g_packet_data_mutex);
+      return;
+    } else if ((*current)->data == NULL) {
+      // This data was already freed by emergency cleanup, remove the node
+      packet_data_node_t *to_remove = *current;
+      *current = (*current)->next;
+      log_debug("Removed already-freed packet data node for thread %p", (void*)to_remove->thread_id);
+      SAFE_FREE(to_remove);
+      pthread_mutex_unlock(&g_packet_data_mutex);
+      return;
+    }
+    current = &(*current)->next;
+  }
+  pthread_mutex_unlock(&g_packet_data_mutex);
+  
+  // If we get here, the data wasn't found - it may have already been cleaned up
+  log_debug("Packet data %p not found for unregistration (already cleaned up?)", data);
+}
+
+// Emergency cleanup of all tracked packet data (signal-safe)
+static void cleanup_all_packet_data(void) {
+  log_warn("Emergency cleanup: freeing all tracked packet data");
+  
+  // Try to acquire mutex non-blocking to avoid deadlock in signal handler
+  if (pthread_mutex_trylock(&g_packet_data_mutex) != 0) {
+    log_warn("Emergency cleanup: could not acquire mutex, skipping cleanup to avoid deadlock");
+    return;
+  }
+  
+  packet_data_node_t *current = g_active_packet_data;
+  int count = 0;
+  while (current) {
+    packet_data_node_t *next = current->next;
+    
+    // Mark this data as being cleaned up to prevent double-free
+    void *data_to_free = current->data;
+    size_t size_to_free = current->size;
+    current->data = NULL; // Mark as already freed to prevent double-free
+    
+    log_warn("Emergency cleanup: freeing packet data %p (%zu bytes) from thread %p", 
+             data_to_free, size_to_free, (void*)current->thread_id);
+    
+    // Free the data outside the critical section
+    pthread_mutex_unlock(&g_packet_data_mutex);
+    buffer_pool_free(data_to_free, size_to_free);
+    pthread_mutex_lock(&g_packet_data_mutex);
+    
+    SAFE_FREE(current);
+    current = next;
+    count++;
+  }
+  g_active_packet_data = NULL;
+  pthread_mutex_unlock(&g_packet_data_mutex);
+  
+  if (count > 0) {
+    log_warn("Emergency cleanup: freed %d orphaned packet data allocations", count);
+  }
+}
+
 static int listenfd = 0;
 
 /* ============================================================================
@@ -182,6 +287,23 @@ static void sigint_handler(int sigint) {
   (void)(sigint);
   g_should_exit = true;
   log_info("Server shutdown requested");
+
+  // NOTE: Emergency cleanup disabled - let normal shutdown handle cleanup
+  // cleanup_all_packet_data();
+
+  // Close listening socket to interrupt accept()
+  if (listenfd > 0) {
+    close(listenfd);
+  }
+}
+
+static void sigterm_handler(int sigterm) {
+  (void)(sigterm);
+  g_should_exit = true;
+  log_warn("Server received SIGTERM - immediate shutdown");
+
+  // NOTE: Emergency cleanup disabled - let normal shutdown handle cleanup
+  // cleanup_all_packet_data();
 
   // Close listening socket to interrupt accept()
   if (listenfd > 0) {
@@ -376,8 +498,10 @@ void *stats_logger_thread_func(void *arg) {
   log_info("Statistics logger thread started");
 
   while (!g_should_exit) {
-    // Log buffer pool statistics every 30 seconds
-    sleep(30);
+    // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
+    for (int i = 0; i < 3000 && !g_should_exit; i++) {
+      usleep(10000); // 10ms sleep
+    }
 
     if (g_should_exit)
       break;
@@ -755,6 +879,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // Got a new frame - update our cache
           // Free old cached frame data if we had one
           if (client->has_cached_frame && client->last_valid_frame.data) {
+            unregister_packet_data(client->last_valid_frame.data);
             buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
           }
 
@@ -768,6 +893,8 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // Allocate and copy frame data for cache using buffer pool
           client->last_valid_frame.data = buffer_pool_alloc(current_frame.size);
           if (client->last_valid_frame.data) {
+            // Track this allocation for emergency cleanup
+            register_packet_data(client->last_valid_frame.data, current_frame.size);
             memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
             client->has_cached_frame = true;
           }
@@ -1060,7 +1187,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     // Free old cached frame
     if (g_last_valid_frame) {
       free(g_last_valid_frame);
-      g_last_valid_frame = NULL;  // CRITICAL: Prevent double-free
+      g_last_valid_frame = NULL; // CRITICAL: Prevent double-free
       g_last_valid_frame_size = 0;
     }
 
@@ -1093,7 +1220,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
   return ascii_frame;
 }
 
-// Cleanup frame cache on shutdown  
+// Cleanup frame cache on shutdown
 void cleanup_frame_cache() {
   pthread_mutex_lock(&g_frame_cache_mutex);
   if (g_last_valid_frame) {
@@ -1102,7 +1229,7 @@ void cleanup_frame_cache() {
     g_last_valid_frame_size = 0;
     // Reset other cache state to prevent stale data
     g_last_frame_width = 0;
-    g_last_frame_height = 0; 
+    g_last_frame_height = 0;
     g_last_frame_was_color = false;
   }
   pthread_mutex_unlock(&g_frame_cache_mutex);
@@ -1137,6 +1264,8 @@ int main(int argc, char *argv[]) {
   signal(SIGWINCH, sigwinch_handler);
   // Handle Ctrl+C for cleanup
   signal(SIGINT, sigint_handler);
+  // Handle SIGTERM for cleanup
+  signal(SIGTERM, sigterm_handler);
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 
@@ -1321,8 +1450,24 @@ int main(int argc, char *argv[]) {
     log_info("Video broadcast thread stopped");
   }
 
+  // Wait for stats logger thread to finish
+  if (g_stats_logger_thread_created) {
+    log_info("Waiting for stats logger thread to finish...");
+    pthread_join(g_stats_logger_thread, NULL);
+    log_info("Stats logger thread stopped");
+    g_stats_logger_thread_created = false;
+  }
+
   // Cleanup audio mixer if enabled
   if (opt_audio_enabled) {
+    // Wait for audio mixer thread to finish
+    if (g_audio_mixer_thread_created) {
+      log_info("Waiting for audio mixer thread to finish...");
+      pthread_join(g_audio_mixer_thread, NULL);
+      log_info("Audio mixer thread stopped");
+      g_audio_mixer_thread_created = false;
+    }
+
     // Cleanup audio mixer
     if (g_audio_mixer) {
       mixer_destroy(g_audio_mixer);
@@ -1363,6 +1508,10 @@ int main(int argc, char *argv[]) {
     hashtable_destroy(g_client_manager.client_hashtable);
     g_client_manager.client_hashtable = NULL;
   }
+
+  // Clean up any remaining tracked packet data before buffer pool cleanup
+  // This prevents malloc fallback frees after pool is destroyed
+  cleanup_all_packet_data();
 
   // Explicitly clean up global buffer pool before atexit handlers
   // This ensures any malloc fallbacks are freed while pool tracking is still active
@@ -1459,6 +1608,11 @@ void *client_receive_thread_func(void *arg) {
   while (!g_should_exit && client->active) {
     // Receive packet from this client
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+    
+    // Register packet data for tracking if allocation succeeded
+    if (result > 0 && data) {
+      register_packet_data(data, len);
+    }
 
     if (result <= 0) {
       if (result == 0) {
@@ -1468,6 +1622,7 @@ void *client_receive_thread_func(void *arg) {
       }
       // Free any data that might have been allocated before the error
       if (data) {
+        unregister_packet_data(data);
         buffer_pool_free(data, len);
         data = NULL;
       }
@@ -1628,9 +1783,19 @@ void *client_receive_thread_func(void *arg) {
     }
 
     if (data) {
+      unregister_packet_data(data);
       buffer_pool_free(data, len);
       data = NULL;
     }
+  }
+
+  // CRITICAL: Cleanup any remaining allocated packet data if thread exited loop early during shutdown
+  if (data) {
+    log_debug("Client %u receive thread: freeing orphaned packet data %zu bytes during shutdown", client->client_id,
+              len);
+    unregister_packet_data(data);
+    buffer_pool_free(data, len);
+    data = NULL;
   }
 
   // Mark client as inactive and stop send thread first to avoid race conditions
@@ -1908,6 +2073,7 @@ int remove_client(uint32_t client_id) {
 
       // Free cached frame if we have one
       if (client->has_cached_frame && client->last_valid_frame.data) {
+        unregister_packet_data(client->last_valid_frame.data);
         buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
         client->last_valid_frame.data = NULL;
         client->has_cached_frame = false;
