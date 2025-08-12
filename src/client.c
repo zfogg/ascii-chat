@@ -266,7 +266,8 @@ static void shutdown_client() {
 
     g_data_thread_created = false;
 
-    if (opt_audio_enabled) {
+    // Always destroy audio context if it was initialized, regardless of opt_audio_enabled flag
+    if (g_audio_context.initialized) {
       audio_destroy(&g_audio_context);
     }
     log_info("Data reception thread joined and context destroyed");
