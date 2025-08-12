@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <execinfo.h>
+#include <inttypes.h> // For PRIxPTR
 
 /* ============================================================================
  * Internal Buffer Pool Functions
@@ -256,11 +257,12 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
 
   // If not from any pool, it was malloc'd
   if (!freed) {
-    void *original_ptr = data; // Save pointer before freeing for logging
-    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, original_ptr, __FILE__,
+    // Save the pointer address as an integer to avoid static analyzer warnings about use-after-free
+    uintptr_t original_addr = (uintptr_t)data;
+    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, data, __FILE__,
             __LINE__, (void *)pthread_self());
     SAFE_FREE(data);
-    fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=%p thread=%p\n", size, original_ptr,
+    fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=0x%" PRIxPTR " thread=%p\n", size, original_addr,
             (void *)pthread_self());
   }
 }
