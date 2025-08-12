@@ -166,9 +166,9 @@ else
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
-DEBUG_FLAGS   := -g -O0 -DDEBUG -DDEBUG_MEMORY
-RELEASE_FLAGS := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
-SANITIZE_FLAGS:= -fsanitize=address
+DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
+RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
+SANITIZE_FLAGS := -fsanitize=address
 
 # =============================================================================
 # File Discovery
@@ -321,7 +321,7 @@ compile_commands.json: Makefile
 # Run clang-tidy to check code style
 clang-tidy: compile_commands.json
 	@echo "Running clang-tidy with compile_commands.json..."
-	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) -- -I$(LIB_DIR) -I$(SRC_DIR) $(PKG_CFLAGS)
+	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) -- $(CFLAGS)
 
 analyze:
 	@echo "Running clang static analysis (C sources)..."
