@@ -123,7 +123,7 @@ jobs:
 
     - name: Build release
       run: |
-        make CSTD=c2x clean release
+        make CSTD=c2x release
 
     - name: Create release package
       run: |
