@@ -550,6 +550,48 @@ Added a global send mutex (`g_send_mutex`) in the client and created thread-safe
 
 **Important Architecture Note**: The server doesn't have this issue because each client has a dedicated send thread that's the only writer to that client's socket. The server can still send to multiple clients simultaneously.
 
+## Send Thread Blocking Bug Fix (2025-08-12)
+
+**Critical Bug**: Client send threads would get permanently blocked waiting for audio packets in video-only scenarios, preventing ASCII video frames from ever being sent to clients.
+
+### The Problem
+- Send threads check audio queue first (higher priority), then video queue
+- When no packets found, code used blocking `packet_queue_dequeue()` on audio queue
+- In video-only mode, audio queue stays empty forever
+- Send thread blocks indefinitely, never processes queued ASCII video frames
+- Result: Server creates/queues ASCII frames perfectly, but clients never receive them
+
+### The Fix
+**Location**: `src/server.c` in `client_send_thread_func()`
+
+**Before** (blocking):
+```c
+if (!packet) {
+  if (client->audio_queue) {
+    packet = packet_queue_dequeue(client->audio_queue); // BLOCKS FOREVER
+  }
+}
+```
+
+**After** (non-blocking):
+```c
+if (!packet) {
+  usleep(1000); // 1ms sleep instead of blocking indefinitely  
+}
+```
+
+### Why This Works
+- **usleep(1ms)** prevents busy-waiting while allowing continuous queue checking
+- Send thread now processes both audio and video packets efficiently
+- Works for video-only, audio-only, and audio+video scenarios
+- Maintains audio priority when audio packets are present
+- No performance impact (1ms sleep vs indefinite blocking)
+
+### Key Lesson
+**Classic threading anti-pattern**: One blocking call can deadlock an entire threaded system. Sometimes the simplest fix (a tiny sleep) is better than complex synchronization.
+
+**Status**: ✅ FIXED - ASCII video now displays correctly in clients
+
 ## Notes for Future Development
 
 - The packet queue system is CRITICAL for preventing race conditions
