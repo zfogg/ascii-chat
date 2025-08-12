@@ -1462,10 +1462,10 @@ int main(int argc, char *argv[]) {
   int inactive_clients_with_resources = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id != 0) {  // Client slot has been used
-      bool has_resources = (client->audio_queue != NULL || client->video_queue != NULL || 
-                           client->incoming_video_buffer != NULL || client->incoming_audio_buffer != NULL);
-      
+    if (client->client_id != 0) { // Client slot has been used
+      bool has_resources = (client->audio_queue != NULL || client->video_queue != NULL ||
+                            client->incoming_video_buffer != NULL || client->incoming_audio_buffer != NULL);
+
       if (client->active) {
         active_clients_found++;
         log_info("Found active client %u in slot %d during shutdown cleanup", client->client_id, i);
@@ -1482,7 +1482,7 @@ int main(int argc, char *argv[]) {
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
-  log_info("Client cleanup complete - removed %d active clients and %d inactive clients with resources", 
+  log_info("Client cleanup complete - removed %d active clients and %d inactive clients with resources",
            active_clients_found, inactive_clients_with_resources);
 
   // Cleanup resources
