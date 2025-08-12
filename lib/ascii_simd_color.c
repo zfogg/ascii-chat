@@ -822,6 +822,79 @@ size_t convert_row_with_color_avx2_with_buffer(const rgb_pixel_t *pixels, char *
 }
 #endif
 
+#ifdef SIMD_SUPPORT_SSSE3
+#include <tmmintrin.h>
+// SSSE3 version with 32-pixel processing for maximum performance
+size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                    bool background_mode) {
+
+  // Use stack allocation for small widths, heap for large
+  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
+  char *ascii_chars = stack_ascii_chars;
+  bool heap_allocated = false;
+
+  if (width > 2048) {
+    // Only use heap allocation for very wide images
+    SAFE_MALLOC(ascii_chars, width, char *);
+    heap_allocated = true;
+  }
+
+  // Step 1: SIMD luminance conversion with 32-pixel processing
+  convert_pixels_ssse3(pixels, ascii_chars, width);
+
+  // Step 2: Generate colored output
+  char *current_pos = output_buffer;
+  char *buffer_end = output_buffer + buffer_size;
+
+  for (int x = 0; x < width; x++) {
+    const rgb_pixel_t *pixel = &pixels[x];
+    char ascii_char = ascii_chars[x];
+
+    size_t remaining = buffer_end - current_pos;
+    if (remaining < 64)
+      break; // Safety margin
+
+    if (background_mode) {
+      // Background mode: colored background, contrasting foreground
+      uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
+      uint8_t fg_color = (luminance < 127) ? 255 : 0;
+
+      // Generate foreground color code
+      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
+      current_pos += fg_len;
+
+      // Generate background color code
+      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
+      current_pos += bg_len;
+
+      // Add ASCII character
+      *current_pos++ = ascii_char;
+
+    } else {
+      // Foreground mode: colored character
+      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
+      current_pos += fg_len;
+
+      // Add ASCII character
+      *current_pos++ = ascii_char;
+    }
+  }
+
+  // Add reset sequence
+  const int reset_len = 4;
+  if (buffer_end - current_pos >= reset_len) {
+    memcpy(current_pos, "\033[0m", reset_len);
+    current_pos += reset_len;
+  }
+
+  if (heap_allocated) {
+    free(ascii_chars);
+  }
+
+  return (size_t)(current_pos - output_buffer);
+}
+#endif
+
 #ifdef SIMD_SUPPORT_SSE2
 // SSE2 version for older Intel/AMD systems - OPTIMIZED (no buffer pool)
 size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
@@ -1145,6 +1218,8 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
   return convert_row_with_color_neon(pixels, output_buffer, buffer_size, width, background_mode);
 #elif defined(SIMD_SUPPORT_AVX2)
   return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
+#elif defined(SIMD_SUPPORT_SSSE3)
+  return convert_row_with_color_ssse3(pixels, output_buffer, buffer_size, width, background_mode);
 #elif defined(SIMD_SUPPORT_SSE2)
   return convert_row_with_color_sse2(pixels, output_buffer, buffer_size, width, background_mode);
 #else
