@@ -256,9 +256,11 @@ void debug_memory_report(void) {
   fprintf(stderr, "Current usage: %s\n", pretty_current);
   fprintf(stderr, "Peak usage: %s\n", pretty_peak);
   fprintf(stderr, "malloc calls: %zu\n", g_mem.malloc_calls);
-  fprintf(stderr, "free calls: %zu\n", g_mem.free_calls);
   fprintf(stderr, "calloc calls: %zu\n", g_mem.calloc_calls);
   // fprintf(stderr, "realloc calls: %zu\n", g_mem.realloc_calls);
+  fprintf(stderr, "free calls: %zu\n", g_mem.free_calls);
+  size_t diff = (g_mem.malloc_calls + g_mem.calloc_calls) - g_mem.free_calls;
+  fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zd\n", (ssize_t)diff);
 
   if (g_mem.head) {
     fprintf(stderr, "\nCurrent allocations:\n");

@@ -72,7 +72,7 @@ int set_socket_nonblocking(int sockfd) {
   return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 }
 
-bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds) {
+bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds) { // NOLINT(bugprone-easily-swappable-parameters)
   // Set socket to non-blocking mode
   if (set_socket_nonblocking(sockfd) < 0) {
     return false;

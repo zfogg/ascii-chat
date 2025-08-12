@@ -1116,15 +1116,16 @@ void cleanup_frame_cache() {
 int main(int argc, char *argv[]) {
   log_init("server.log", LOG_DEBUG);
   atexit(log_destroy);
+
 #ifdef DEBUG_MEMORY
   atexit(debug_memory_report);
 #endif
-  log_truncate_if_large(); /* Truncate if log is already too large */
-  log_info("ASCII Chat server starting...");
 
   // Initialize global shared buffer pool
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
+  log_truncate_if_large(); /* Truncate if log is already too large */
+  log_info("ASCII Chat server starting...");
 
   options_init(argc, argv);
   int port = strtoint(opt_port);
@@ -1363,6 +1364,10 @@ int main(int argc, char *argv[]) {
     g_client_manager.client_hashtable = NULL;
   }
 
+  // Explicitly clean up global buffer pool before atexit handlers
+  // This ensures any malloc fallbacks are freed while pool tracking is still active
+  data_buffer_pool_cleanup_global();
+
   // Destroy mutexes (do this before log_destroy in case logging uses them)
   pthread_mutex_destroy(&g_stats_mutex);
   pthread_mutex_destroy(&g_socket_mutex);
@@ -1425,7 +1430,12 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
         log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
       }
     } else {
-      log_error("Client %u has no incoming video buffer!", client->client_id);
+      // During shutdown, this is expected - don't spam error logs
+      if (!g_should_exit) {
+        log_error("Client %u has no incoming video buffer!", client->client_id);
+      } else {
+        log_debug("Client %u: ignoring video packet during shutdown", client->client_id);
+      }
     }
   } else {
     log_debug("Ignoring video packet: len=%zu (too small)", len);
@@ -1681,8 +1691,13 @@ void *client_send_thread_func(void *arg) {
       // Send header
       ssize_t sent = send_with_timeout(client->socket, &packet->header, sizeof(packet->header), SEND_TIMEOUT);
       if (sent != sizeof(packet->header)) {
-        log_error("Failed to send packet header to client %u: %zd/%zu bytes", client->client_id, sent,
-                  sizeof(packet->header));
+        // During shutdown, connection errors are expected - don't spam error logs
+        if (!g_should_exit) {
+          log_error("Failed to send packet header to client %u: %zd/%zu bytes", client->client_id, sent,
+                    sizeof(packet->header));
+        } else {
+          log_debug("Client %u: send failed during shutdown", client->client_id);
+        }
         packet_queue_free_packet(packet);
         break; // Socket error, exit thread
       }
@@ -1691,8 +1706,13 @@ void *client_send_thread_func(void *arg) {
       if (packet->data_len > 0 && packet->data) {
         sent = send_with_timeout(client->socket, packet->data, packet->data_len, SEND_TIMEOUT);
         if (sent != (ssize_t)packet->data_len) {
-          log_error("Failed to send packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
-                    packet->data_len);
+          // During shutdown, connection errors are expected - don't spam error logs
+          if (!g_should_exit) {
+            log_error("Failed to send packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
+                      packet->data_len);
+          } else {
+            log_debug("Client %u: payload send failed during shutdown", client->client_id);
+          }
           packet_queue_free_packet(packet);
           break; // Socket error, exit thread
         }
@@ -1917,11 +1937,17 @@ int remove_client(uint32_t client_id) {
         packet_queue_shutdown(client->video_queue);
       }
 
-      // Wait for send thread to exit if it's running
-      if (client->send_thread_running) {
+      // Wait for send thread to exit if it was created
+      // Note: We must join regardless of send_thread_running flag to prevent race condition
+      // where thread sets flag to false just before we check it, causing missed cleanup
+      if (client->send_thread != 0) {
         // The shutdown signal above will cause the send thread to exit
-        pthread_join(client->send_thread, NULL);
-        log_debug("Send thread for client %u has terminated", client_id);
+        int join_result = pthread_join(client->send_thread, NULL);
+        if (join_result == 0) {
+          log_debug("Send thread for client %u has terminated", client_id);
+        } else {
+          log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
+        }
       }
 
       // Now destroy the queues
@@ -1973,6 +1999,11 @@ int remove_client(uint32_t client_id) {
   }
 
   pthread_mutex_unlock(&g_client_manager_mutex);
-  log_error("Client %u not found for removal", client_id);
+  // During shutdown, clients may be removed multiple times - don't spam error logs
+  if (!g_should_exit) {
+    log_error("Client %u not found for removal", client_id);
+  } else {
+    log_debug("Client %u: already removed during shutdown", client_id);
+  }
   return -1;
 }

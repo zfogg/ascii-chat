@@ -844,15 +844,16 @@ static void handle_server_state_packet(const void *data, size_t len) {
 int main(int argc, char *argv[]) {
   log_init("client.log", LOG_DEBUG);
   atexit(log_destroy);
+
 #ifdef DEBUG_MEMORY
   atexit(debug_memory_report);
 #endif
-  log_truncate_if_large(); /* Truncate if log is already too large */
-  log_info("ASCII Chat client starting...");
 
   // Initialize global shared buffer pool
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
+  log_truncate_if_large(); /* Truncate if log is already too large */
+  log_info("ASCII Chat client starting...");
 
   // Initialize frame debugging
   frame_debug_init(&g_client_frame_debug, "Client-FrameReceiver");
