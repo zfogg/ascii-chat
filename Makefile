@@ -39,7 +39,7 @@ PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 BASE_CFLAGS    += -std=$(CSTD)
 BASE_OBJCFLAGS +=
 
-# Platform-specific flags
+# Platform-specific LDFLAGS for webcam library
 ifeq ($(shell uname),Darwin)
     # macOS: Add AVFoundation and CoreMedia frameworks
     PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
@@ -54,11 +54,15 @@ else
     PLATFORM_SOURCES := 
 endif
 
-LDFLAGS_BASE := $(PKG_LDFLAGS) -lm -lpthread $(PLATFORM_LDFLAGS)
+LDFLAGS_BASE := $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) -lm -lpthread
 
-# Always-on C flags used for all compilations (survive external CFLAGS overrides)
-# Include base warnings and standard selection so command-line CFLAGS cannot drop them
-REQUIRED_CFLAGS := $(BASE_FLAGS) $(C_FEATURE_FLAGS) -std=$(CSTD) -I$(LIB_DIR) -I$(SRC_DIR) $(PKG_CFLAGS)
+override LDFLAGS += $(LDFLAGS_BASE) $(ARCH_FLAGS)
+
+# Always-on flags: append to CFLAGS/OBJCFLAGS regardless of command-line overrides
+override CFLAGS    += $(BASE_FLAGS) $(C_FEATURE_FLAGS) -I$(LIB_DIR) -I$(SRC_DIR) $(PKG_CFLAGS)
+override OBJCFLAGS += $(CFLAGS)
+
+override CFLAGS += -std=$(CSTD)
 
 # Only embed Info.plist on macOS
 ifeq ($(shell uname),Darwin)
@@ -176,13 +180,6 @@ DEBUG_FLAGS   := -g -O0 -DDEBUG -DDEBUG_MEMORY
 RELEASE_FLAGS := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
 SANITIZE_FLAGS:= -fsanitize=address
 
-# =============================================================================
-# Flag Per Build Profile
-# =============================================================================
-
-# Per-config flags that must always be applied (separate from user CFLAGS/OBJCFLAGS)
-CONFIG_FLAGS :=
-override LDFLAGS += $(LDFLAGS_BASE) $(ARCH_FLAGS)
 
 # =============================================================================
 # File Discovery
@@ -196,27 +193,21 @@ C_FILES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(LIB_DIR)/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
-C_HEADERS     := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(LIB_DIR)/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(LIB_DIR)/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
 # Object files (binaries)
-OBJS_C    := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
-             $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
-OBJS_M    := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
-             $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
+OBJS_C := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+          $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+          $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
 # All object files for server and client
 OBJS := $(OBJS_C) $(OBJS_M)
 
 # Non-target object files (files without main methods)
 OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/client.o, $(OBJS))
-
-# =============================================================================
-# Phony Targets
-# =============================================================================
-
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze cloc todo todo-clean
 
 # =============================================================================
 # Default Target
@@ -233,15 +224,18 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: CONFIG_FLAGS := $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
+debug: override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
+debug: override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
 debug: $(TARGETS)
 
 # Release build
-release: CONFIG_FLAGS := $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
+release: override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
+release: override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
 release: $(TARGETS)
 
 # Memory sanitizer build (inherits debug flags)
-sanitize: CONFIG_FLAGS := $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+sanitize: override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+sanitize: override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
 sanitize: LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
@@ -256,31 +250,22 @@ $(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET)
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
 
-# Create build directories
-$(BUILD_DIR)/src $(BUILD_DIR)/lib:
-	@mkdir -p $@
-
 # Compile C source files from src/
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(CFLAGS) -c $< 
+	$(CC) -o $@ $(CFLAGS) -c $< 
 
 # Compile C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(CFLAGS) -c $< 
-
-# Compile Objective-C source files from src/
-$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/src
-	@echo "Compiling $<..."
-	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(OBJCFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) -c $< 
 
 # Compile Objective-C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(OBJCFLAGS) -c $<
+	$(CC) -o $@ $(OBJCFLAGS) -c $<
 
-
+# For CI
 c-objs: $(OBJS_C)
 	@echo "C object files:"
 	@echo $(OBJS_C)
@@ -406,3 +391,5 @@ todo-clean:
 # =============================================================================
 
 .PRECIOUS: $(OBJS_NON_TARGET)
+
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze cloc todo todo-clean
