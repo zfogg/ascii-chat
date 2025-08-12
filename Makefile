@@ -355,15 +355,8 @@ cloc:
 # =============================================================================
 
 todo:
-	@if [ -f todo/Makefile ]; then \
-		$(MAKE) -C todo all; \
-  fi
-	@if [ -f todo/Makefile_simd ]; then \
-		$(MAKE) -C todo -f Makefile_simd all; \
-  fi
-	@if [ -f todo/Makefile_rate_limiter ]; then \
-		$(MAKE) -C todo -f Makefile_rate_limiter all; \
-  fi
+	$(MAKE) -C todo -f Makefile_simd all
+	$(MAKE) -C todo -f Makefile_rate_limiter all
 
 todo-clean:
 	@if [ -f todo/Makefile ]; then \
