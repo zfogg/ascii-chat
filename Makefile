@@ -340,8 +340,9 @@ analyze:
 		$(C_FILES) $(C_HEADERS)
 
 scan-build: c-objs
-	export SCANBUILD_CFLAGS="-Wformat -Wformat-security -Werror=format-security"; \
-		scan-build --status-bugs -analyze-headers make CSTD=\"$(CSTD)\" EXTRA_CFLAGS=\"$$SCANBUILD_CFLAGS\" c-objs
+	@echo "Running scan-build with EXTRA_CFLAGS='-Wformat -Wformat-security -Werror=format-security'..."
+	scan-build --status-bugs -analyze-headers make clean
+	scan-build --status-bugs -analyze-headers make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
