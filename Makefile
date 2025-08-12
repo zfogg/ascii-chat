@@ -361,9 +361,9 @@ compile_commands.json: Makefile
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
-clang-tidy: $(C_FILES) $(C_HEADERS) $(M_FILES)
-	@#clang-tidy -header-filter='.*' $^ -- $(BASE_FLAGS) $(FEATURE_FLAGS) $(PKG_CFLAGS)
-	@clang-tidy $^ -- $(CFLAGS)
+clang-tidy: compile_commands.json
+	@echo "Running clang-tidy with compile_commands.json..."
+	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) -- -I$(LIB_DIR) -I$(SRC_DIR) $(PKG_CFLAGS)
 
 analyze:
 	@echo "Running clang static analysis (C sources)..."
