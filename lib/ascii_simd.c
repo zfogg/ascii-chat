@@ -339,10 +339,10 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     // Tight inner loop - compiler can auto-vectorize this efficiently
     for (int j = 0; j < batch_size; j++) {
       const rgb_pixel_t *p = &batch_pixels[j];
-      
+
       // Same calculation as color version - compiler knows how to optimize this
       int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-      
+
       // Direct palette lookup - fast and cache-friendly
       batch_output[j] = luminance_palette[luminance];
     }
