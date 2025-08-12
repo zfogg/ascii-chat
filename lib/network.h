@@ -7,7 +7,7 @@
 // Timeout constants (in seconds)
 #define CONNECT_TIMEOUT 10
 #define SEND_TIMEOUT 10
-#define RECV_TIMEOUT 10
+#define RECV_TIMEOUT 30
 #define ACCEPT_TIMEOUT 10
 
 // Keep-alive settings
