@@ -96,16 +96,16 @@ ifeq ($(SIMD_MODE),auto)
   # Compute SIMD_MODE_AUTO based on OS/arch; Rosetta counts as x86_64.
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_ROSETTA),1)
-      SIMD_MODE_AUTO := sse2
+      SIMD_MODE_AUTO := ssse3
     else ifeq ($(IS_APPLE_SILICON),1)
       SIMD_MODE_AUTO := neon
     else
-      SIMD_MODE_AUTO := sse2
+      SIMD_MODE_AUTO := ssse3
     endif
   else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
     SIMD_MODE_AUTO := neon
   else ifeq ($(UNAME_M),x86_64)
-    SIMD_MODE_AUTO := sse2
+    SIMD_MODE_AUTO := ssse3
   else ifeq ($(UNAME_M),aarch64)
     SIMD_MODE_AUTO := native
   else
@@ -121,6 +121,9 @@ ifneq (,$(filter $(SIMD_MODE_AUTO),off))
 else ifneq (,$(filter $(SIMD_MODE_AUTO),sse2))
   $(info Using SSE2 baseline)
   SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2
+else ifneq (,$(filter $(SIMD_MODE_AUTO),ssse3))
+  $(info Using SSSE3 with 32-pixel processing)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSSE3 -mssse3
 else ifneq (,$(filter $(SIMD_MODE_AUTO),avx2))
   $(info Using AVX2 (ensure target CPUs support it)
   SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_AVX2 -mavx2
