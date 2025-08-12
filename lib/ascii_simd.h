@@ -22,10 +22,9 @@
 #include <arm_neon.h>
 #endif
 
-// RGB pixel structure (matches your existing rgb_t)
-typedef struct {
-  uint8_t r, g, b;
-} __attribute__((packed)) rgb_pixel_t;
+// Use the project's existing rgb_t for consistency
+#include "image.h"
+typedef rgb_t rgb_pixel_t;
 
 // SIMD-optimized functions
 #ifdef SIMD_SUPPORT_AVX2
