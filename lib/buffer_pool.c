@@ -257,13 +257,7 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
 
   // If not from any pool, it was malloc'd
   if (!freed) {
-    // Save the pointer address as an integer to avoid static analyzer warnings about use-after-free
-    uintptr_t original_addr = (uintptr_t)data;
-    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, data, __FILE__, __LINE__,
-            (void *)pthread_self());
     SAFE_FREE(data);
-    fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=0x%" PRIxPTR " thread=%p\n", size, original_addr,
-            (void *)pthread_self());
   }
 }
 
@@ -352,10 +346,7 @@ void buffer_pool_free(void *data, size_t size) {
 
   // No global pool - this memory must have been malloc'd
   // (unless it's from a pool that was already destroyed, in which case we leak)
-  fprintf(stderr, "MALLOC FALLBACK FREE (global pool destroyed): size=%zu ptr=%p at %s:%d\n", size, data, __FILE__,
-          __LINE__);
   SAFE_FREE(data);
-  fprintf(stderr, "MALLOC FALLBACK FREE (global pool destroyed) COMPLETE: size=%zu ptr=%p\n", size, data);
 }
 
 /* ============================================================================
