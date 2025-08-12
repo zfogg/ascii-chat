@@ -452,14 +452,14 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
 
   // AVX2 constants for 16-bit arithmetic (matches SSSE3 approach)
   const __m256i luma_const_77 = _mm256_set1_epi16(LUMA_RED);
-  const __m256i luma_const_150 = _mm256_set1_epi16(LUMA_GREEN);  
+  const __m256i luma_const_150 = _mm256_set1_epi16(LUMA_GREEN);
   const __m256i luma_const_29 = _mm256_set1_epi16(LUMA_BLUE);
 
   // Process 32-pixel chunks using dual 16-pixel AVX2 operations for maximum throughput
   for (; i + 31 < count; i += 32) {
     // Process first 16 pixels using direct 16-bit arithmetic (proven fastest approach)
     const rgb_pixel_t *pixel_batch1 = &pixels[i];
-    
+
     // Extract RGB for first 16 pixels using two 8-pixel AVX2 vectors
     __m256i r_vals1 = _mm256_setr_epi16(pixel_batch1[0].r, pixel_batch1[1].r, pixel_batch1[2].r, pixel_batch1[3].r,
                                         pixel_batch1[4].r, pixel_batch1[5].r, pixel_batch1[6].r, pixel_batch1[7].r,
@@ -476,7 +476,7 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
 
     // Process second 16 pixels
     const rgb_pixel_t *pixel_batch2 = &pixels[i + 16];
-    
+
     __m256i r_vals2 = _mm256_setr_epi16(pixel_batch2[0].r, pixel_batch2[1].r, pixel_batch2[2].r, pixel_batch2[3].r,
                                         pixel_batch2[4].r, pixel_batch2[5].r, pixel_batch2[6].r, pixel_batch2[7].r,
                                         pixel_batch2[8].r, pixel_batch2[9].r, pixel_batch2[10].r, pixel_batch2[11].r,
@@ -501,41 +501,61 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
     luma2 = _mm256_add_epi16(luma2, _mm256_mullo_epi16(b_vals2, luma_const_29));
     luma2 = _mm256_srli_epi16(luma2, 8);
 
-    // Pack to 8-bit and store both 16-pixel results
-    __m256i luma_packed1 = _mm256_packus_epi16(luma1, _mm256_setzero_si256());
-    __m256i luma_packed2 = _mm256_packus_epi16(luma2, _mm256_setzero_si256());
+    // Convert to 8-bit using proper lane management
+    // Split each 16-pixel chunk into two 8-pixel chunks for proper packing
+    __m128i luma1_lo = _mm256_castsi256_si128(luma1);      // First 8 pixels of chunk 1
+    __m128i luma1_hi = _mm256_extracti128_si256(luma1, 1); // Second 8 pixels of chunk 1
+    __m128i luma2_lo = _mm256_castsi256_si128(luma2);      // First 8 pixels of chunk 2
+    __m128i luma2_hi = _mm256_extracti128_si256(luma2, 1); // Second 8 pixels of chunk 2
 
-    // Store luminance for palette lookup (32 pixels total)
+    // Pack to 8-bit using 128-bit operations (more reliable than AVX2 packing)
+    __m128i luma_packed_1_2 = _mm_packus_epi16(luma1_lo, luma1_hi); // First 16 pixels
+    __m128i luma_packed_3_4 = _mm_packus_epi16(luma2_lo, luma2_hi); // Second 16 pixels
+
+    // Store luminance for palette lookup (32 pixels total, correct order guaranteed)
     uint8_t lum[32];
-    // AVX2 stores in weird lane order, so we handle the first 16 properly
-    _mm_storeu_si128((__m128i *)&lum[0], _mm256_castsi256_si128(luma_packed1));
-    _mm_storeu_si128((__m128i *)&lum[8], _mm256_extracti128_si256(luma_packed1, 1));
-    _mm_storeu_si128((__m128i *)&lum[16], _mm256_castsi256_si128(luma_packed2));
-    _mm_storeu_si128((__m128i *)&lum[24], _mm256_extracti128_si256(luma_packed2, 1));
+    _mm_storeu_si128((__m128i *)&lum[0], luma_packed_1_2);
+    _mm_storeu_si128((__m128i *)&lum[16], luma_packed_3_4);
 
     // Unrolled palette lookups for 32 pixels (maximum throughput)
-    ascii_chars[i + 0] = luminance_palette[lum[0]];   ascii_chars[i + 1] = luminance_palette[lum[1]];
-    ascii_chars[i + 2] = luminance_palette[lum[2]];   ascii_chars[i + 3] = luminance_palette[lum[3]];
-    ascii_chars[i + 4] = luminance_palette[lum[4]];   ascii_chars[i + 5] = luminance_palette[lum[5]];
-    ascii_chars[i + 6] = luminance_palette[lum[6]];   ascii_chars[i + 7] = luminance_palette[lum[7]];
-    ascii_chars[i + 8] = luminance_palette[lum[8]];   ascii_chars[i + 9] = luminance_palette[lum[9]];
-    ascii_chars[i + 10] = luminance_palette[lum[10]]; ascii_chars[i + 11] = luminance_palette[lum[11]];
-    ascii_chars[i + 12] = luminance_palette[lum[12]]; ascii_chars[i + 13] = luminance_palette[lum[13]];
-    ascii_chars[i + 14] = luminance_palette[lum[14]]; ascii_chars[i + 15] = luminance_palette[lum[15]];
-    ascii_chars[i + 16] = luminance_palette[lum[16]]; ascii_chars[i + 17] = luminance_palette[lum[17]];
-    ascii_chars[i + 18] = luminance_palette[lum[18]]; ascii_chars[i + 19] = luminance_palette[lum[19]];
-    ascii_chars[i + 20] = luminance_palette[lum[20]]; ascii_chars[i + 21] = luminance_palette[lum[21]];
-    ascii_chars[i + 22] = luminance_palette[lum[22]]; ascii_chars[i + 23] = luminance_palette[lum[23]];
-    ascii_chars[i + 24] = luminance_palette[lum[24]]; ascii_chars[i + 25] = luminance_palette[lum[25]];
-    ascii_chars[i + 26] = luminance_palette[lum[26]]; ascii_chars[i + 27] = luminance_palette[lum[27]];
-    ascii_chars[i + 28] = luminance_palette[lum[28]]; ascii_chars[i + 29] = luminance_palette[lum[29]];
-    ascii_chars[i + 30] = luminance_palette[lum[30]]; ascii_chars[i + 31] = luminance_palette[lum[31]];
+    ascii_chars[i + 0] = luminance_palette[lum[0]];
+    ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];
+    ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];
+    ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];
+    ascii_chars[i + 7] = luminance_palette[lum[7]];
+    ascii_chars[i + 8] = luminance_palette[lum[8]];
+    ascii_chars[i + 9] = luminance_palette[lum[9]];
+    ascii_chars[i + 10] = luminance_palette[lum[10]];
+    ascii_chars[i + 11] = luminance_palette[lum[11]];
+    ascii_chars[i + 12] = luminance_palette[lum[12]];
+    ascii_chars[i + 13] = luminance_palette[lum[13]];
+    ascii_chars[i + 14] = luminance_palette[lum[14]];
+    ascii_chars[i + 15] = luminance_palette[lum[15]];
+    ascii_chars[i + 16] = luminance_palette[lum[16]];
+    ascii_chars[i + 17] = luminance_palette[lum[17]];
+    ascii_chars[i + 18] = luminance_palette[lum[18]];
+    ascii_chars[i + 19] = luminance_palette[lum[19]];
+    ascii_chars[i + 20] = luminance_palette[lum[20]];
+    ascii_chars[i + 21] = luminance_palette[lum[21]];
+    ascii_chars[i + 22] = luminance_palette[lum[22]];
+    ascii_chars[i + 23] = luminance_palette[lum[23]];
+    ascii_chars[i + 24] = luminance_palette[lum[24]];
+    ascii_chars[i + 25] = luminance_palette[lum[25]];
+    ascii_chars[i + 26] = luminance_palette[lum[26]];
+    ascii_chars[i + 27] = luminance_palette[lum[27]];
+    ascii_chars[i + 28] = luminance_palette[lum[28]];
+    ascii_chars[i + 29] = luminance_palette[lum[29]];
+    ascii_chars[i + 30] = luminance_palette[lum[30]];
+    ascii_chars[i + 31] = luminance_palette[lum[31]];
   }
 
   // Process remaining 16-pixel chunks with 128-bit operations
   for (; i + 15 < count; i += 16) {
     const rgb_pixel_t *pixel_batch = &pixels[i];
-    
+
     // Use SSE2-style 16-pixel processing for the remainder
     __m128i r_vals1 = _mm_setr_epi16(pixel_batch[0].r, pixel_batch[1].r, pixel_batch[2].r, pixel_batch[3].r,
                                      pixel_batch[4].r, pixel_batch[5].r, pixel_batch[6].r, pixel_batch[7].r);
@@ -567,19 +587,27 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
     luma2 = _mm_srli_epi16(luma2, 8);
 
     __m128i luma_packed = _mm_packus_epi16(luma1, luma2);
-    
+
     uint8_t lum[16];
     _mm_storeu_si128((__m128i *)lum, luma_packed);
 
     // Unrolled palette lookups for 16 pixels
-    ascii_chars[i + 0] = luminance_palette[lum[0]];   ascii_chars[i + 1] = luminance_palette[lum[1]];
-    ascii_chars[i + 2] = luminance_palette[lum[2]];   ascii_chars[i + 3] = luminance_palette[lum[3]];
-    ascii_chars[i + 4] = luminance_palette[lum[4]];   ascii_chars[i + 5] = luminance_palette[lum[5]];
-    ascii_chars[i + 6] = luminance_palette[lum[6]];   ascii_chars[i + 7] = luminance_palette[lum[7]];
-    ascii_chars[i + 8] = luminance_palette[lum[8]];   ascii_chars[i + 9] = luminance_palette[lum[9]];
-    ascii_chars[i + 10] = luminance_palette[lum[10]]; ascii_chars[i + 11] = luminance_palette[lum[11]];
-    ascii_chars[i + 12] = luminance_palette[lum[12]]; ascii_chars[i + 13] = luminance_palette[lum[13]];
-    ascii_chars[i + 14] = luminance_palette[lum[14]]; ascii_chars[i + 15] = luminance_palette[lum[15]];
+    ascii_chars[i + 0] = luminance_palette[lum[0]];
+    ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];
+    ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];
+    ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];
+    ascii_chars[i + 7] = luminance_palette[lum[7]];
+    ascii_chars[i + 8] = luminance_palette[lum[8]];
+    ascii_chars[i + 9] = luminance_palette[lum[9]];
+    ascii_chars[i + 10] = luminance_palette[lum[10]];
+    ascii_chars[i + 11] = luminance_palette[lum[11]];
+    ascii_chars[i + 12] = luminance_palette[lum[12]];
+    ascii_chars[i + 13] = luminance_palette[lum[13]];
+    ascii_chars[i + 14] = luminance_palette[lum[14]];
+    ascii_chars[i + 15] = luminance_palette[lum[15]];
   }
 
   // Process remaining pixels with scalar code
