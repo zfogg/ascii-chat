@@ -331,6 +331,45 @@ Before committing any changes:
 9. [ ] No crashes over 1+ minute runtime
 10. [ ] Check with AddressSanitizer if changed memory handling (`make clean && make sanitize`)
 
+## Development Principles 
+
+### No Emergency Cleanup Code
+**NEVER** write "emergency cleanup" or "force cleanup" code. This is a code smell indicating improper resource management design.
+
+**Problems with Emergency Cleanup:**
+- Masks underlying synchronization bugs
+- Creates complex error-prone code paths  
+- Indicates lack of understanding of timing issues
+- Makes debugging harder by hiding root causes
+- Often leads to double-free or use-after-free bugs
+
+**Instead, Code Properly From Start:**
+- Assume threads and networks have **irregular, unpredictable timing**
+- Design resource ownership to be **unambiguous** (single owner per resource)
+- Use **deterministic cleanup sequences** that work regardless of timing
+- **Wait for threads properly** before cleaning up their resources
+- Use **reference counting** or **RAII patterns** for complex resource lifetimes
+- **Test timing edge cases** explicitly (add delays, stress test)
+
+**Example - Wrong Approach:**
+```c
+// BAD: Emergency cleanup for "missed" resources
+if (remaining_clients > 0) {
+    log_error("EMERGENCY: Force cleaning %d clients", remaining_clients);
+    force_cleanup_clients(); // ❌ This shouldn't be needed!
+}
+```
+
+**Example - Right Approach:**
+```c
+// GOOD: Proper synchronization ensures deterministic cleanup
+wait_for_all_client_threads_to_finish();  // Block until threads done
+cleanup_all_clients();                    // Now safe to cleanup
+assert(remaining_clients == 0);           // Should always be true
+```
+
+**Key Insight**: If you need emergency cleanup, the **design is wrong**. Fix the design, don't code around it.
+
 ## Important Files to Understand
 
 1. **network.h**: Defines ALL packet types and protocol structures
