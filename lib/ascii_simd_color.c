@@ -787,58 +787,60 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 
 // Render two image rows as one terminal row using ▀ character
 // FG = top pixel color, BG = bottom pixel color = 2x vertical resolution!
-size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, 
-                                   char *dst, size_t cap) {
+size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, char *dst,
+                                   size_t cap) {
   init_dec3();
-  
+
   char *p = dst;
   char *end = dst + cap;
-  
+
   // Current colors for run-length encoding
   bool have_color = false;
-  uint8_t fg_r = 0, fg_g = 0, fg_b = 0;  // Foreground (top pixel)
-  uint8_t bg_r = 0, bg_g = 0, bg_b = 0;  // Background (bottom pixel)
-  
+  uint8_t fg_r = 0, fg_g = 0, fg_b = 0; // Foreground (top pixel)
+  uint8_t bg_r = 0, bg_g = 0, bg_b = 0; // Background (bottom pixel)
+
   for (int x = 0; x < width; ++x) {
     const rgb_pixel_t *top_px = &top_row[x];
     const rgb_pixel_t *bot_px = &bottom_row[x];
-    
+
     // Check if colors changed (need new escape sequence)
-    bool color_changed = !have_color || 
-                         top_px->r != fg_r || top_px->g != fg_g || top_px->b != fg_b ||
+    bool color_changed = !have_color || top_px->r != fg_r || top_px->g != fg_g || top_px->b != fg_b ||
                          bot_px->r != bg_r || bot_px->g != bg_g || bot_px->b != bg_b;
-    
+
     if (color_changed) {
-      // Calculate exact space needed for combined FG+BG sequence + UTF-8 ▀ (3 bytes) 
-      size_t sgr_size = calculate_sgr_truecolor_fg_bg_size(top_px->r, top_px->g, top_px->b,
-                                                           bot_px->r, bot_px->g, bot_px->b);
+      // Calculate exact space needed for combined FG+BG sequence + UTF-8 ▀ (3 bytes)
+      size_t sgr_size =
+          calculate_sgr_truecolor_fg_bg_size(top_px->r, top_px->g, top_px->b, bot_px->r, bot_px->g, bot_px->b);
       if ((size_t)(end - p) < sgr_size + 3) // +3 for UTF-8 ▀ character
         break;
-      
+
       // Emit combined FG+BG escape sequence
-      p = append_sgr_truecolor_fg_bg(p, top_px->r, top_px->g, top_px->b,
-                                        bot_px->r, bot_px->g, bot_px->b);
-      
+      p = append_sgr_truecolor_fg_bg(p, top_px->r, top_px->g, top_px->b, bot_px->r, bot_px->g, bot_px->b);
+
       // Update color state
-      fg_r = top_px->r; fg_g = top_px->g; fg_b = top_px->b;
-      bg_r = bot_px->r; bg_g = bot_px->g; bg_b = bot_px->b;
+      fg_r = top_px->r;
+      fg_g = top_px->g;
+      fg_b = top_px->b;
+      bg_r = bot_px->r;
+      bg_g = bot_px->g;
+      bg_b = bot_px->b;
       have_color = true;
     }
-    
+
     // Add ▀ character (UTF-8: 0xE2 0x96 0x80)
     if (p + 3 <= end) {
       *p++ = 0xE2;
-      *p++ = 0x96; 
+      *p++ = 0x96;
       *p++ = 0x80;
     } else {
       break;
     }
   }
-  
+
   // Add reset sequence
   if ((size_t)(end - p) >= 4)
     p = append_sgr_reset(p);
-    
+
   return (size_t)(p - dst);
 }
 
@@ -846,16 +848,16 @@ size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t
 char *image_print_half_height_blocks(image_t *image) {
   const int h = image->h;
   const int w = image->w;
-  
+
   // Output height is half the input height (rounded up)
   const int output_height = (h + 1) / 2;
-  
+
   // Calculate buffer size: each ▀ needs combined FG+BG escape (up to ~45 bytes) + UTF-8 ▀ (3 bytes)
-  const size_t max_per_char = 48;  // Conservative estimate
-  const size_t reset_len = 4;      // \033[0m
+  const size_t max_per_char = 48; // Conservative estimate
+  const size_t reset_len = 4;     // \033[0m
   const size_t total_newlines = (output_height > 0) ? (output_height - 1) : 0;
   const size_t buffer_size = output_height * w * max_per_char + output_height * reset_len + total_newlines + 1;
-  
+
   // Single allocation
   char *ascii;
   SAFE_MALLOC(ascii, buffer_size, char *);
@@ -863,35 +865,34 @@ char *image_print_half_height_blocks(image_t *image) {
     log_error("Memory allocation failed: %zu bytes", buffer_size);
     return NULL;
   }
-  
+
   size_t total_len = 0;
-  
+
   // Process pairs of rows
   for (int y = 0; y < output_height; y++) {
     int top_row_idx = y * 2;
     int bottom_row_idx = top_row_idx + 1;
-    
+
     const rgb_pixel_t *top_row = (const rgb_pixel_t *)&image->pixels[top_row_idx * w];
     const rgb_pixel_t *bottom_row;
-    
+
     // Handle odd heights - use the same row for both top and bottom
     if (bottom_row_idx >= h) {
-      bottom_row = top_row;  // Duplicate last row for odd heights
+      bottom_row = top_row; // Duplicate last row for odd heights
     } else {
       bottom_row = (const rgb_pixel_t *)&image->pixels[bottom_row_idx * w];
     }
-    
+
     // Render this terminal row using ▀ blocks
-    size_t row_len = render_row_upper_half_block(top_row, bottom_row, w, 
-                                                ascii + total_len, buffer_size - total_len);
+    size_t row_len = render_row_upper_half_block(top_row, bottom_row, w, ascii + total_len, buffer_size - total_len);
     total_len += row_len;
-    
+
     // Add newline after each row (except the last row)
     if (y != output_height - 1 && total_len < buffer_size - 1) {
       ascii[total_len++] = '\n';
     }
   }
-  
+
   ascii[total_len] = '\0';
   return ascii;
 }
