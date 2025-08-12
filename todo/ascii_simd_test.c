@@ -227,6 +227,83 @@ void test_performance(void) {
         printf("  Best:      %s\n\n",
                benchmark.best_method);
     }
+
+    // NEW: Test color conversion performance
+    printf("\n--- COLOR ASCII Performance Tests ---\n");
+
+    for (int i = 0; i < num_sizes; i++) {
+        int w = sizes[i][0];
+        int h = sizes[i][1];
+        int iterations = (w * h < 50000) ? 100 : 50; // Fewer iterations for color (slower)
+
+        printf("Testing COLOR %dx%d (%d pixels):\n", w, h, w * h);
+
+        // Test foreground color mode
+        simd_benchmark_t fg_benchmark = benchmark_simd_color_conversion(w, h, iterations, false);
+
+        printf("  FOREGROUND MODE:\n");
+        printf("    Scalar:    %.3f ms/frame\n", fg_benchmark.scalar_time * 1000 / iterations);
+
+        if (fg_benchmark.sse2_time > 0) {
+            double speedup = fg_benchmark.scalar_time / fg_benchmark.sse2_time;
+            printf("    SSE2:      %.3f ms/frame (%.1fx speedup)\n",
+                   fg_benchmark.sse2_time * 1000 / iterations, speedup);
+        }
+
+        if (fg_benchmark.ssse3_time > 0) {
+            double speedup = fg_benchmark.scalar_time / fg_benchmark.ssse3_time;
+            printf("    SSSE3:     %.3f ms/frame (%.1fx speedup)\n",
+                   fg_benchmark.ssse3_time * 1000 / iterations, speedup);
+        }
+
+        if (fg_benchmark.avx2_time > 0) {
+            double speedup = fg_benchmark.scalar_time / fg_benchmark.avx2_time;
+            printf("    AVX2:      %.3f ms/frame (%.1fx speedup)\n",
+                   fg_benchmark.avx2_time * 1000 / iterations, speedup);
+        }
+
+        if (fg_benchmark.neon_time > 0) {
+            double speedup = fg_benchmark.scalar_time / fg_benchmark.neon_time;
+            printf("    NEON:      %.3f ms/frame (%.1fx speedup)\n",
+                   fg_benchmark.neon_time * 1000 / iterations, speedup);
+        }
+
+        printf("    Best:      %s\n",
+               fg_benchmark.best_method);
+
+        // Test background color mode
+        simd_benchmark_t bg_benchmark = benchmark_simd_color_conversion(w, h, iterations, true);
+
+        printf("  BACKGROUND MODE:\n");
+        printf("    Scalar:    %.3f ms/frame\n", bg_benchmark.scalar_time * 1000 / iterations);
+
+        if (bg_benchmark.sse2_time > 0) {
+            double speedup = bg_benchmark.scalar_time / bg_benchmark.sse2_time;
+            printf("    SSE2:      %.3f ms/frame (%.1fx speedup)\n",
+                   bg_benchmark.sse2_time * 1000 / iterations, speedup);
+        }
+
+        if (bg_benchmark.ssse3_time > 0) {
+            double speedup = bg_benchmark.scalar_time / bg_benchmark.ssse3_time;
+            printf("    SSSE3:     %.3f ms/frame (%.1fx speedup)\n",
+                   bg_benchmark.ssse3_time * 1000 / iterations, speedup);
+        }
+
+        if (bg_benchmark.avx2_time > 0) {
+            double speedup = bg_benchmark.scalar_time / bg_benchmark.avx2_time;
+            printf("    AVX2:      %.3f ms/frame (%.1fx speedup)\n",
+                   bg_benchmark.avx2_time * 1000 / iterations, speedup);
+        }
+
+        if (bg_benchmark.neon_time > 0) {
+            double speedup = bg_benchmark.scalar_time / bg_benchmark.neon_time;
+            printf("    NEON:      %.3f ms/frame (%.1fx speedup)\n",
+                   bg_benchmark.neon_time * 1000 / iterations, speedup);
+        }
+
+        printf("    Best:      %s\n\n",
+               bg_benchmark.best_method);
+    }
 }
 
 // Test 4: Integration example - NEW OPTIMIZED VERSION
