@@ -1,6 +1,6 @@
 # Makefile for SIMD ASCII Optimization
 CC = clang
-BASE_CFLAGS = -Wall -Wextra -O3 -std=c99 -I../lib -D_GNU_SOURCE
+BASE_CFLAGS = -Wall -Wextra -O3 -std=c23 -I../lib -D_GNU_SOURCE
 
 # Detect CPU capabilities and set appropriate flags (matching main project Makefile)
 UNAME_M := $(shell uname -m)
