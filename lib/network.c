@@ -1,6 +1,5 @@
 #include "network.h"
 #include "common.h"
-#include "compression.h"
 #include "buffer_pool.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -34,6 +33,15 @@ int set_socket_keepalive(int sockfd) {
   if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0) {
     return -1;
   }
+
+#ifdef __APPLE__
+  /* macOS: TCP_KEEPALIVE sets the idle time (in seconds) before sending probes */
+  {
+    int keepalive_idle = KEEPALIVE_IDLE;
+    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &keepalive_idle, sizeof(keepalive_idle));
+    /* Interval/count tuning is not available via setsockopt on macOS; client/server PINGs handle liveness. */
+  }
+#endif
 
 #ifdef TCP_KEEPIDLE
   int keepidle = KEEPALIVE_IDLE;
