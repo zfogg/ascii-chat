@@ -31,6 +31,9 @@ unsigned short int opt_audio_enabled = 0;
 // Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
 unsigned short int opt_stretch = 0;
 
+// Disable console logging when set via -q/--quiet (logs only to file)
+unsigned short int opt_quiet = 0;
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;
@@ -66,6 +69,7 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"background-color", no_argument, NULL, 'b'},
                                        {"audio", no_argument, NULL, 'A'},
                                        {"stretch", no_argument, NULL, 's'},
+                                       {"quiet", no_argument, NULL, 'q'},
                                        {"help", optional_argument, NULL, 'h'},
                                        {0, 0, 0, 0}};
 
@@ -143,7 +147,7 @@ void options_init(int argc, char **argv) {
   update_dimensions_to_terminal_size();
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsh", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsqh", long_options, &index);
     if (c == -1)
       break;
 
@@ -198,6 +202,10 @@ void options_init(int argc, char **argv) {
       opt_audio_enabled = 1;
       break;
 
+    case 'q':
+      opt_quiet = 1;
+      break;
+
     case '?':
       fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr);
@@ -234,5 +242,6 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -b --background-color (server|client) \t enable background color for ASCII output\n");
   fprintf(desc, "\t\t -A --audio        (server|client) \t enable audio capture and playback\n");
   fprintf(desc, "\t\t -s --stretch          (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
+  fprintf(desc, "\t\t -q --quiet        (client) \t     disable console logging (logs only to file)\n");
   fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }

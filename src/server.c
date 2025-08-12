@@ -32,8 +32,33 @@
  */
 
 static volatile bool g_should_exit = false;
+
+// No emergency socket tracking needed - main shutdown sequence handles socket closure
 static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Shutdown signaling for fast thread cleanup
+static pthread_mutex_t g_shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_shutdown_cond = PTHREAD_COND_INITIALIZER;
+
+/* Interruptible sleep that respects shutdown signal */
+static void interruptible_usleep(useconds_t usec) {
+  if (g_should_exit) return;
+  
+  pthread_mutex_lock(&g_shutdown_mutex);
+  if (!g_should_exit) {
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += usec / 1000000;
+    timeout.tv_nsec += (usec % 1000000) * 1000;
+    if (timeout.tv_nsec >= 1000000000) {
+      timeout.tv_sec++;
+      timeout.tv_nsec -= 1000000000;
+    }
+    pthread_cond_timedwait(&g_shutdown_cond, &g_shutdown_mutex, &timeout);
+  }
+  pthread_mutex_unlock(&g_shutdown_mutex);
+}
 
 /* Performance statistics */
 typedef struct {
@@ -186,6 +211,17 @@ static void sigint_handler(int sigint) {
   const char msg[] = "SIGINT received - shutting down server...\n";
   write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 
+  // Wake up all sleeping threads immediately
+  pthread_cond_broadcast(&g_shutdown_cond);
+
+  // Close all client sockets to interrupt blocking receive threads (signal-safe)
+  // Note: This is done without mutex locking since signal handlers should be minimal
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (g_client_manager.clients[i].socket > 0) {
+      close(g_client_manager.clients[i].socket);
+    }
+  }
+
   // Close listening socket to interrupt accept() - this is signal-safe
   if (listenfd > 0) {
     close(listenfd);
@@ -198,44 +234,22 @@ static void sigint_handler(int sigint) {
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   g_should_exit = true;
-  log_warn("Server received SIGTERM - immediate shutdown");
-
-  // NOTE: Emergency cleanup disabled - let normal shutdown handle cleanup
-  // cleanup_all_packet_data();
-
-  // Close listening socket to interrupt accept()
+  
+  // Signal-safe logging - avoid log_warn() which may not be signal-safe
+  const char msg[] = "SIGTERM received - shutting down server...\n";
+  write(STDERR_FILENO, msg, sizeof(msg) - 1);
+  
+  // Wake up all sleeping threads immediately - signal-safe operation
+  pthread_cond_broadcast(&g_shutdown_cond);
+  
+  // Close listening socket to interrupt accept() - signal-safe
   if (listenfd > 0) {
     close(listenfd);
   }
 
-  // Close all client sockets to interrupt receive threads
-  pthread_mutex_lock(&g_client_manager_mutex);
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (client->active && client->socket > 0) {
-      // Shutdown the socket to force immediate close
-      shutdown(client->socket, SHUT_RDWR);
-      close(client->socket);
-      client->socket = 0; // Mark as closed
-      log_debug("Closed socket for client %u to interrupt receive thread", client->client_id);
-    }
-  }
-  pthread_mutex_unlock(&g_client_manager_mutex);
-
-  // Cancel all receive threads to force immediate exit
-  pthread_mutex_lock(&g_client_manager_mutex);
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-    if (client->active && client->receive_thread != 0) {
-      int cancel_result = pthread_cancel(client->receive_thread);
-      if (cancel_result == 0) {
-        log_debug("Cancelled receive thread for client %u", client->client_id);
-      } else {
-        log_warn("Failed to cancel receive thread for client %u: %d", client->client_id, cancel_result);
-      }
-    }
-  }
-  pthread_mutex_unlock(&g_client_manager_mutex);
+  // NOTE: Client socket closure handled by main shutdown sequence (not signal handler)
+  // Signal handler should be minimal - just set flag and wake threads
+  // Main thread will properly close client sockets with mutex protection
 }
 
 /* ============================================================================
@@ -343,7 +357,7 @@ void *audio_mixer_thread_func(void *arg) {
 
   while (!g_should_exit) {
     if (!g_audio_mixer) {
-      usleep(10000); // 10ms - wait for mixer initialization
+      interruptible_usleep(10000); // 10ms - wait for mixer initialization
       continue;
     }
 
@@ -407,7 +421,7 @@ void *audio_mixer_thread_func(void *arg) {
 
     // Audio mixing rate - process every ~5.8ms to match buffer size
     // 256 samples at 44100 Hz = 5.8ms
-    usleep(5800); // 5.8ms
+    interruptible_usleep(5800); // 5.8ms
   }
 
   log_info("Audio mixer thread stopped");
@@ -426,7 +440,7 @@ void *stats_logger_thread_func(void *arg) {
   while (!g_should_exit) {
     // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
     for (int i = 0; i < 3000 && !g_should_exit; i++) {
-      usleep(10000); // 10ms sleep
+      interruptible_usleep(10000); // 10ms sleep - can be interrupted by shutdown
     }
 
     if (g_should_exit)
@@ -509,9 +523,12 @@ static void *video_broadcast_thread_func(void *arg) {
   log_info("Video broadcast thread started");
   g_video_broadcast_running = true;
 
-  // Frame rate control - use a reasonable rate that matches client capabilities
-  // 15 FPS gives clients time to send frames and reduces buffer starvation
-  const int frame_interval_ms = 1000 / 30; // 15 FPS instead of 120
+  // Dynamic frame rate control based on buffer occupancy
+  // Base rates: 30 FPS normal, up to 60 FPS when draining buffers
+  const int base_frame_interval_ms = 1000 / 30; // 30 FPS base rate
+  const int fast_frame_interval_ms = 1000 / 60; // 60 FPS when draining
+  const int max_frame_interval_ms = 1000 / 15;  // 15 FPS when idle
+
   struct timespec last_broadcast_time;
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
 
@@ -519,15 +536,56 @@ static void *video_broadcast_thread_func(void *arg) {
   int last_connected_count = 0;
 
   while (!g_should_exit) {
-    // Rate limiting
+    // Dynamic rate limiting based on buffer occupancy
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
     long elapsed_ms = (current_time.tv_sec - last_broadcast_time.tv_sec) * 1000 +
                       (current_time.tv_nsec - last_broadcast_time.tv_nsec) / 1000000;
 
+    // Check buffer occupancy across all clients to determine processing speed
+    int total_buffer_occupancy = 0;
+    int total_buffer_capacity = 0;
+    int active_buffer_count = 0;
+
+    pthread_mutex_lock(&g_client_manager_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      client_info_t *client = &g_client_manager.clients[i];
+      if (client->active && client->is_sending_video && client->incoming_video_buffer) {
+        size_t occupancy = ringbuffer_size(client->incoming_video_buffer->rb);
+        size_t capacity = client->incoming_video_buffer->rb->capacity;
+        total_buffer_occupancy += (int)occupancy;
+        total_buffer_capacity += (int)capacity;
+        active_buffer_count++;
+      }
+    }
+    pthread_mutex_unlock(&g_client_manager_mutex);
+
+    // Calculate dynamic frame interval based on buffer occupancy
+    int frame_interval_ms = base_frame_interval_ms;
+
+    if (active_buffer_count > 0) {
+      double occupancy_ratio = (double)total_buffer_occupancy / (double)total_buffer_capacity;
+
+      if (occupancy_ratio > 0.3) {
+        // ANY significant occupancy: speed up to 60 FPS to minimize lag
+        frame_interval_ms = fast_frame_interval_ms;
+        log_info("AGGRESSIVE MODE TRIGGERED: occupancy %.1f%% > 30%%, switching to 60 FPS", occupancy_ratio * 100.0);
+      } else {
+        // Low occupancy: normal 30 FPS (still responsive)
+        frame_interval_ms = base_frame_interval_ms;
+      }
+
+      // Log dynamic rate changes occasionally
+      static int rate_log_counter = 0;
+      if (++rate_log_counter % 300 == 0) { // Every 10 seconds at 30 FPS
+        log_info("Dynamic processing: %d buffers, occupancy %.1f%%, rate %.1f FPS", active_buffer_count,
+                 occupancy_ratio * 100.0, 1000.0 / frame_interval_ms);
+      }
+    }
+
     if (elapsed_ms < frame_interval_ms) {
-      usleep((frame_interval_ms - elapsed_ms) * 1000);
+      interruptible_usleep((frame_interval_ms - elapsed_ms) * 1000);
       continue;
     }
 
@@ -552,7 +610,7 @@ static void *video_broadcast_thread_func(void *arg) {
 
     if (client_count == 0) {
       // log_debug("Broadcast thread: No clients connected");
-      usleep(100000); // 100ms sleep when no clients
+      interruptible_usleep(100000); // 100ms sleep when no clients - can be interrupted by shutdown
       last_connected_count = 0;
       continue;
     }
@@ -629,6 +687,48 @@ static void *video_broadcast_thread_func(void *arg) {
       }
 
       if (client_copy.active && client_copy.socket > 0) {
+        // Skip clients who haven't started sending video yet - prevents blank frames
+        if (!client_copy.is_sending_video) {
+          continue;
+        }
+
+        // Additional check: Skip if no video sources have sent actual image data yet
+        // This prevents blank frames when clients just started streaming
+        // We require at least one client to have either:
+        // 1. A cached frame from previous processing, OR
+        // 2. Actual image data waiting in their buffer
+        bool has_actual_video_data = false;
+        pthread_mutex_lock(&g_client_manager_mutex);
+        for (int j = 0; j < MAX_CLIENTS; j++) {
+          client_info_t *src_client = &g_client_manager.clients[j];
+          if (src_client->active && src_client->is_sending_video) {
+            // Check if this client has processed at least one frame (has_cached_frame)
+            // OR has pending image data in buffer to process now
+            bool has_cached = src_client->has_cached_frame;
+            bool has_pending = (src_client->incoming_video_buffer && 
+                               ringbuffer_size(src_client->incoming_video_buffer->rb) > 0);
+            
+            if (has_cached || has_pending) {
+              has_actual_video_data = true;
+              
+              // Debug log when we first detect real video data
+              static bool first_video_detected[MAX_CLIENTS] = {false};
+              if (!first_video_detected[j]) {
+                log_info("FIRST VIDEO DATA: Client %u now has %s - starting frame generation",
+                        src_client->client_id, has_cached ? "cached frame" : "pending data");
+                first_video_detected[j] = true;
+              }
+              break;
+            }
+          }
+        }
+        pthread_mutex_unlock(&g_client_manager_mutex);
+        
+        if (!has_actual_video_data) {
+          // Skip frame generation until we have real video data to work with
+          continue; 
+        }
+
         // Create a custom-sized frame for THIS client's terminal dimensions
         size_t client_frame_size = 0;
 
@@ -798,16 +898,70 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     }
 
     if (client->active && client->is_sending_video && source_count < MAX_CLIENTS) {
-      // PROPER RINGBUFFER USAGE: Read ONE frame (oldest first - FIFO)
-      // Use cached frame if buffer is empty
+      // Skip clients who haven't sent their first real frame yet to avoid blank frames
+      if (!client->has_cached_frame && client->incoming_video_buffer) {
+        size_t occupancy = ringbuffer_size(client->incoming_video_buffer->rb);
+        if (occupancy == 0) {
+          // No frames available and no cached frame - skip this client for now
+          continue;
+        }
+      }
+      // ENHANCED RINGBUFFER USAGE: Dynamic frame reading based on buffer occupancy
+      // - Normal mode: Read ONE frame (oldest first - FIFO)
+      // - High occupancy mode: Read multiple frames to drain buffer quickly
+      // - Always use cached frame if buffer is empty
       multi_source_frame_t current_frame = {0};
       bool got_new_frame = false;
+      int frames_to_read = 1;
 
-      // Try to read ONE frame from buffer (oldest first - proper FIFO)
+      // Check buffer occupancy to determine reading strategy
       if (client->incoming_video_buffer) {
-        got_new_frame = framebuffer_read_multi_frame(client->incoming_video_buffer, &current_frame);
+        size_t occupancy = ringbuffer_size(client->incoming_video_buffer->rb);
+        size_t capacity = client->incoming_video_buffer->rb->capacity;
+        double occupancy_ratio = (double)occupancy / (double)capacity;
+
+        if (occupancy_ratio > 0.3) {
+          // AGGRESSIVE: Skip to latest frame for ANY significant occupancy
+          // The goal is MINIMAL LAG - ringbuffers are for network problems, not normal operation
+          frames_to_read = (int)occupancy - 1; // Read all but keep latest
+          if (frames_to_read > 20) frames_to_read = 20; // Cap to avoid excessive processing
+          if (frames_to_read < 1) frames_to_read = 1;   // Always read at least 1
+        }
+        // else: Normal mode when buffer is nearly empty (< 30% occupancy)
+
+        // Read frames (potentially multiple to drain buffer)
+        multi_source_frame_t discard_frame = {0};
+        for (int read_count = 0; read_count < frames_to_read; read_count++) {
+          bool frame_available = framebuffer_read_multi_frame(
+              client->incoming_video_buffer, (read_count == frames_to_read - 1) ? &current_frame : &discard_frame);
+          if (!frame_available) {
+            break; // No more frames available
+          }
+
+          if (read_count == frames_to_read - 1) {
+            // This is the frame we'll use
+            got_new_frame = true;
+          } else {
+            // This is a frame we're discarding to catch up
+            if (discard_frame.data) {
+              free(discard_frame.data);
+              discard_frame.data = NULL;
+            }
+          }
+        }
+
+        // Log buffer draining activity
+        if (frames_to_read > 1) {
+          static int drain_log_counter = 0;
+          if (++drain_log_counter % 30 == 0) { // Log every 30 drain events
+            log_info("Buffer draining: client %u, occupancy %.1f%%, read %d frames", client->client_id,
+                     occupancy_ratio * 100.0, frames_to_read);
+          }
+        }
+
 #ifdef DEBUG_THREADS
-        log_debug("Client %d: framebuffer_read returned got_new_frame=%d", i, got_new_frame);
+        log_debug("Client %d: occupancy=%.1f%%, read %d frames, got_new_frame=%d", i, occupancy_ratio * 100.0,
+                  frames_to_read, got_new_frame);
 #endif
 
         if (got_new_frame) {
@@ -1404,6 +1558,22 @@ int main(int argc, char *argv[]) {
   log_info("Server shutting down...");
   g_should_exit = true;
 
+  // Wake up all sleeping threads before waiting for them
+  pthread_cond_broadcast(&g_shutdown_cond);
+
+  // CRITICAL: Close all client sockets to interrupt blocking receive_packet() calls
+  log_info("Closing all client sockets to interrupt blocking I/O...");
+  pthread_mutex_lock(&g_client_manager_mutex);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0) {
+      log_debug("Closing socket for client %u to interrupt receive thread", g_client_manager.clients[i].client_id);
+      shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
+      close(g_client_manager.clients[i].socket);
+      g_client_manager.clients[i].socket = -1;
+    }
+  }
+  pthread_mutex_unlock(&g_client_manager_mutex);
+
   // Wait for video broadcast thread to finish
   if (g_video_broadcast_running) {
     log_info("Waiting for video broadcast thread to finish...");
@@ -1846,7 +2016,7 @@ void *client_send_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
       log_debug("SEND_THREAD_DEBUG: Client %u no packet found, sleeping briefly", client->client_id);
 #endif
-      usleep(1000); // 1ms sleep instead of blocking indefinitely
+      interruptible_usleep(1000); // 1ms sleep instead of blocking indefinitely
     }
 
     // If we got a packet, send it
