@@ -168,7 +168,7 @@ static void register_packet_data(void *data, size_t size) {
   g_active_packet_data = node;
   pthread_mutex_unlock(&g_packet_data_mutex);
   
-  log_debug("Registered packet data %p (%zu bytes) for thread %p", data, size, (void*)pthread_self());
+  // log_debug("Registered packet data %p (%zu bytes) for thread %p", data, size, (void*)pthread_self());
 }
 
 // Unregister packet data when properly freed
@@ -181,7 +181,7 @@ static void unregister_packet_data(void *data) {
     if ((*current)->data == data) {
       packet_data_node_t *to_remove = *current;
       *current = (*current)->next;
-      log_debug("Unregistered packet data %p for thread %p", data, (void*)pthread_self());
+      // log_debug("Unregistered packet data %p for thread %p", data, (void*)pthread_self());
       SAFE_FREE(to_remove);
       pthread_mutex_unlock(&g_packet_data_mutex);
       return;
@@ -189,7 +189,7 @@ static void unregister_packet_data(void *data) {
       // This data was already freed by emergency cleanup, remove the node
       packet_data_node_t *to_remove = *current;
       *current = (*current)->next;
-      log_debug("Removed already-freed packet data node for thread %p", (void*)to_remove->thread_id);
+      // log_debug("Removed already-freed packet data node for thread %p", (void*)to_remove->thread_id);
       SAFE_FREE(to_remove);
       pthread_mutex_unlock(&g_packet_data_mutex);
       return;
@@ -199,7 +199,7 @@ static void unregister_packet_data(void *data) {
   pthread_mutex_unlock(&g_packet_data_mutex);
   
   // If we get here, the data wasn't found - it may have already been cleaned up
-  log_debug("Packet data %p not found for unregistration (already cleaned up?)", data);
+  // log_debug("Packet data %p not found for unregistration (already cleaned up?)", data);
 }
 
 // Emergency cleanup of all tracked packet data (signal-safe)
