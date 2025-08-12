@@ -259,8 +259,8 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
   if (!freed) {
     // Save the pointer address as an integer to avoid static analyzer warnings about use-after-free
     uintptr_t original_addr = (uintptr_t)data;
-    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, data, __FILE__,
-            __LINE__, (void *)pthread_self());
+    fprintf(stderr, "MALLOC FALLBACK FREE: size=%zu ptr=%p at %s:%d thread=%p\n", size, data, __FILE__, __LINE__,
+            (void *)pthread_self());
     SAFE_FREE(data);
     fprintf(stderr, "MALLOC FALLBACK FREE COMPLETE: size=%zu ptr=0x%" PRIxPTR " thread=%p\n", size, original_addr,
             (void *)pthread_self());
