@@ -527,7 +527,7 @@ static void *video_broadcast_thread_func(void *arg) {
     // LOOP DEBUG - print every few seconds to confirm thread is running
     static uint32_t loop_counter = 0;
     loop_counter++;
-    if (loop_counter % 1000 == 0) {  // Every ~1000 iterations
+    if (loop_counter % 1000 == 0) { // Every ~1000 iterations
       printf("BROADCAST_DEBUG: Video broadcast thread alive, iteration %u\n", loop_counter);
     }
 
@@ -558,10 +558,10 @@ static void *video_broadcast_thread_func(void *arg) {
       client_info_t *client = &g_client_manager.clients[i];
       if (client->active && client->socket > 0 && client->width > 0 && client->height > 0) {
         active_client_count++;
-        printf("ACTIVE_DEBUG: SLOT %d IS ACTIVE: client_id=%u, socket=%d, width=%d, height=%d\n", i, 
-               client->client_id, client->socket, client->width, client->height);
+        printf("ACTIVE_DEBUG: SLOT %d IS ACTIVE: client_id=%u, socket=%d, width=%d, height=%d\n", i, client->client_id,
+               client->socket, client->width, client->height);
       } else if (client->active || client->socket > 0 || client->client_id != 0) {
-        printf("ACTIVE_DEBUG: SLOT %d NOT ACTIVE: client_id=%u, active=%d, socket=%d, width=%d, height=%d\n", i, 
+        printf("ACTIVE_DEBUG: SLOT %d NOT ACTIVE: client_id=%u, active=%d, socket=%d, width=%d, height=%d\n", i,
                client->client_id, client->active, client->socket, client->width, client->height);
       }
     }
@@ -659,13 +659,13 @@ static void *video_broadcast_thread_func(void *arg) {
             create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output,
                                      client_copy.wants_stretch, &client_frame_size);
 
-        printf("VIDEO_DEBUG: Client %u - create_mixed_ascii_frame returned frame=%p, size=%zu\n", 
-               client_copy.client_id, (void*)client_frame, client_frame_size);
-        
+        printf("VIDEO_DEBUG: Client %u - create_mixed_ascii_frame returned frame=%p, size=%zu\n", client_copy.client_id,
+               (void *)client_frame, client_frame_size);
+
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
-          printf("VIDEO_DEBUG: Client %u - skipping because frame=%p, size=%zu\n", 
-                 client_copy.client_id, (void*)client_frame, client_frame_size);
+          printf("VIDEO_DEBUG: Client %u - skipping because frame=%p, size=%zu\n", client_copy.client_id,
+                 (void *)client_frame, client_frame_size);
           continue;
         }
 
@@ -742,18 +742,19 @@ static void *video_broadcast_thread_func(void *arg) {
 
         // Queue the complete frame as a single packet
         pthread_mutex_lock(&g_client_manager_mutex);
-        printf("QUEUE_DEBUG: About to check client[%d] - active=%d, video_queue=%p\n", 
-               i, g_client_manager.clients[i].active, (void*)g_client_manager.clients[i].video_queue);
+        printf("QUEUE_DEBUG: About to check client[%d] - active=%d, video_queue=%p\n", i,
+               g_client_manager.clients[i].active, (void *)g_client_manager.clients[i].video_queue);
         if (g_client_manager.clients[i].active && g_client_manager.clients[i].video_queue) {
-          printf("QUEUE_DEBUG: Attempting to queue ASCII frame for client %u (slot %d), packet_size=%zu\n", 
+          printf("QUEUE_DEBUG: Attempting to queue ASCII frame for client %u (slot %d), packet_size=%zu\n",
                  client_copy.client_id, i, packet_size);
           int result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_ASCII_FRAME,
                                             packet_buffer, packet_size, 0, true);
           if (result < 0) {
-            printf("QUEUE_DEBUG: FAILED to queue ASCII frame for client %u: result=%d\n", client_copy.client_id, result);
+            printf("QUEUE_DEBUG: FAILED to queue ASCII frame for client %u: result=%d\n", client_copy.client_id,
+                   result);
             log_error("Failed to queue ASCII frame for client %u: queue full or shutdown", client_copy.client_id);
           } else {
-            printf("QUEUE_DEBUG: SUCCESS queued ASCII frame for client %u (slot %d), result=%d\n", 
+            printf("QUEUE_DEBUG: SUCCESS queued ASCII frame for client %u (slot %d), result=%d\n",
                    client_copy.client_id, i, result);
             sent_count++;
             static int success_count[MAX_CLIENTS] = {0};
@@ -765,7 +766,8 @@ static void *video_broadcast_thread_func(void *arg) {
           }
         } else {
           printf("QUEUE_DEBUG: NOT queuing for client %u (slot %d) - active=%d, video_queue=%p\n",
-                 client_copy.client_id, i, g_client_manager.clients[i].active, (void*)g_client_manager.clients[i].video_queue);
+                 client_copy.client_id, i, g_client_manager.clients[i].active,
+                 (void *)g_client_manager.clients[i].video_queue);
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
 
@@ -1230,11 +1232,11 @@ int main(int argc, char *argv[]) {
 
   // Simple signal handling (temporarily disable complex threading signal handling)
   log_info("SERVER: Setting up simple signal handlers...");
-  
+
   // Handle Ctrl+C for cleanup
   signal(SIGINT, sigint_handler);
   signal(SIGTERM, sigterm_handler);
-  
+
   // Ignore SIGPIPE
   signal(SIGPIPE, SIG_IGN);
   log_info("SERVER: Signal handling setup complete");
@@ -1619,7 +1621,8 @@ void *client_receive_thread_func(void *arg) {
       if (result == 0) {
         log_info("DISCONNECT: Client %u disconnected (clean close, result=0)", client->client_id);
       } else {
-        log_error("DISCONNECT: Error receiving from client %u (result=%d): %s", client->client_id, result, strerror(errno));
+        log_error("DISCONNECT: Error receiving from client %u (result=%d): %s", client->client_id, result,
+                  strerror(errno));
       }
       // Free any data that might have been allocated before the error
       if (data) {
@@ -1756,7 +1759,8 @@ void *client_receive_thread_func(void *arg) {
         const uint16_t *size_data = (const uint16_t *)data;
         client->width = ntohs(size_data[0]);
         client->height = ntohs(size_data[1]);
-        log_info("Client %u updated size to %ux%u (active=%d, socket=%d)", client->client_id, client->width, client->height, client->active, client->socket);
+        log_info("Client %u updated size to %ux%u (active=%d, socket=%d)", client->client_id, client->width,
+                 client->height, client->active, client->socket);
       }
       break;
     }
@@ -1840,8 +1844,8 @@ void *client_send_thread_func(void *arg) {
     if (!packet && client->video_queue) {
       packet = packet_queue_try_dequeue(client->video_queue);
       if (packet) {
-        log_debug("SEND_THREAD_DEBUG: Client %u got video packet from queue, type=%d, data_len=%zu", 
-                  client->client_id, packet->header.type, packet->data_len);
+        log_debug("SEND_THREAD_DEBUG: Client %u got video packet from queue, type=%d, data_len=%zu", client->client_id,
+                  packet->header.type, packet->data_len);
       }
     }
 
@@ -1978,8 +1982,8 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  client->video_queue =
-      packet_queue_create_with_pools(500, 1000, false); // Max 500 packets (both image frames in + ASCII frames out), 1000 nodes, NO local buffer pool
+  client->video_queue = packet_queue_create_with_pools(
+      500, 1000, false); // Max 500 packets (both image frames in + ASCII frames out), 1000 nodes, NO local buffer pool
   if (!client->video_queue) {
     log_error("Failed to create video queue for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
@@ -1993,8 +1997,8 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
-  log_info("CLIENT COUNT UPDATED: now %d clients (added client_id=%u to slot %d)", 
-           g_client_manager.client_count, client->client_id, slot);
+  log_info("CLIENT COUNT UPDATED: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
+           client->client_id, slot);
 
   // Add client to hash table for O(1) lookup
   if (!hashtable_insert(g_client_manager.client_hashtable, client->client_id, client)) {
@@ -2168,7 +2172,8 @@ int remove_client(uint32_t client_id) {
       }
       g_client_manager.client_count = remaining_count;
 
-      log_info("CLIENT REMOVED: client_id=%u (%s) removed from slot ?, remaining clients: %d", client_id, display_name_copy, remaining_count);
+      log_info("CLIENT REMOVED: client_id=%u (%s) removed from slot ?, remaining clients: %d", client_id,
+               display_name_copy, remaining_count);
 
       pthread_mutex_unlock(&g_client_manager_mutex);
       return 0;
