@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Compilers
-override CC  := clang
+CC  := clang
 
 # Package dependencies
 PKG_CONFIG_LIBS := zlib portaudio-2.0
@@ -16,6 +16,8 @@ BUILD_DIR := build
 SRC_DIR   := src
 LIB_DIR   := lib
 
+override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
+
 # =============================================================================
 # Compiler Flags
 # =============================================================================
@@ -23,45 +25,30 @@ LIB_DIR   := lib
 CSTD := c23
 
 # Base flags
-BASE_FLAGS := -Wall -Wextra
+override CFLAGS += -Wall -Wextra
 
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
-C_FEATURE_FLAGS := -D_GNU_SOURCE
-
-BASE_CFLAGS    := $(BASE_FLAGS) $(C_FEATURE_FLAGS) -I$(LIB_DIR)
-BASE_OBJCFLAGS := $(BASE_FLAGS)
+override CFLAGS += -D_GNU_SOURCE
 
 # Get package-specific flags
-PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
-
-PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
-
-BASE_CFLAGS    += -std=$(CSTD)
-BASE_OBJCFLAGS +=
+override CFLAGS  += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+override LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
 # Platform-specific LDFLAGS for webcam library
 ifeq ($(shell uname),Darwin)
     # macOS: Add AVFoundation and CoreMedia frameworks
-    PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
-    PLATFORM_SOURCES := webcam_avfoundation.m
+    override LDFLAGS += -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
 else ifeq ($(shell uname),Linux)
     # Linux: No additional frameworks needed for V4L2
-    PLATFORM_LDFLAGS := 
-    PLATFORM_SOURCES := webcam_v4l2.c
-else
-    # Other platforms: Use fallback
-    PLATFORM_LDFLAGS := 
-    PLATFORM_SOURCES := 
 endif
 
-LDFLAGS_BASE := $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) -lm -lpthread
+override LDFLAGS += -lm -lpthread
 
-override LDFLAGS += $(LDFLAGS_BASE) $(ARCH_FLAGS)
+# Avoid leading space from '+=' when LDFLAGS is initially empty
+override LDFLAGS += $(ARCH_FLAGS)
 
-# Always-on flags: append to CFLAGS/OBJCFLAGS regardless of command-line overrides
-override CFLAGS    += $(BASE_FLAGS) $(C_FEATURE_FLAGS) -I$(LIB_DIR) -I$(SRC_DIR) $(PKG_CFLAGS)
+# NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
-
 override CFLAGS += -std=$(CSTD)
 
 # Only embed Info.plist on macOS
@@ -143,6 +130,9 @@ else
   SIMD_CFLAGS := 
 endif
 
+override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS)
+override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS)
+
 # =============================================================================
 # CPU-aware Optimization Flags
 # =============================================================================
@@ -180,7 +170,6 @@ DEBUG_FLAGS   := -g -O0 -DDEBUG -DDEBUG_MEMORY
 RELEASE_FLAGS := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
 SANITIZE_FLAGS:= -fsanitize=address
 
-
 # =============================================================================
 # File Discovery
 # =============================================================================
@@ -210,12 +199,6 @@ OBJS := $(OBJS_C) $(OBJS_M)
 OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/client.o, $(OBJS))
 
 # =============================================================================
-# Default Target
-# =============================================================================
-
-.DEFAULT_GOAL := debug
-
-# =============================================================================
 # Build Rules
 # =============================================================================
 
@@ -224,19 +207,19 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
-debug: override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
+debug: override CFLAGS    += $(DEBUG_FLAGS)
+debug: override OBJCFLAGS += $(DEBUG_FLAGS)
 debug: $(TARGETS)
 
 # Release build
-release: override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
-release: override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
+release: override CFLAGS    += $(RELEASE_FLAGS)
+release: override OBJCFLAGS += $(RELEASE_FLAGS)
 release: $(TARGETS)
 
 # Memory sanitizer build (inherits debug flags)
-sanitize: override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
-sanitize: override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
-sanitize: LDFLAGS += $(SANITIZE_FLAGS)
+sanitize: override CFLAGS    += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+sanitize: override OBJCFLAGS += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+sanitize: override LDFLAGS   +=                $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
 # Build executables
@@ -293,30 +276,24 @@ clean:
 # Show help information
 help:
 	@echo "Available targets:"
-	@echo "  all/default - Build all targets with default flags"
-	@echo "  debug       - Build with debug symbols and no optimization"
-	@echo "  release     - Build with optimizations enabled"
-	@echo "  format      - Format source code using clang-format"
-	@echo "  format-check- Check code formatting without modifying files"
-	@echo "  clang-tidy  - Run clang-tidy on sources"
-	@echo "  analyze     - Run static analysis (clang --analyze, cppcheck)"
-	@echo "  cloc        - Count lines of code"
-	@echo "  todo        - Build the ./todo subproject"
-	@echo "  todo-clean  - Clean the ./todo subproject"
-	@echo "  clean       - Remove build artifacts"
-	@echo "  help        - Show this help message"
+	@echo "  all/default     - Build all targets with default flags"
+	@echo "  debug           - Build with debug symbols and no optimization"
+	@echo "  release         - Build with optimizations enabled"
+	@echo "  format          - Format source code using clang-format"
+	@echo "  format-check    - Check code formatting without modifying files"
+	@echo "  clang-tidy      - Run clang-tidy on sources"
+	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
+	@echo "  cloc            - Count lines of code"
+	@echo "  todo            - Build the ./todo subproject"
+	@echo "  todo-clean      - Clean the ./todo subproject"
+	@echo "  clean           - Remove build artifacts"
+	@echo "  help            - Show this help message"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  CC=$(CC)"
-	@echo "  BIN_DIR=$(BIN_DIR)"
-	@echo "  BUILD_DIR=$(BUILD_DIR)"
 	@echo "  PKG_CONFIG_LIBS=$(PKG_CONFIG_LIBS)"
-	@echo ""
-	@echo "New files included:"
-	@echo "  - common.h, logging.c       - Logging and error handling"
-	@echo "  - ringbuffer.h, ringbuffer.c - Lock-free frame buffering"
-	@echo "  - protocol.h                - Protocol definitions"
-	@echo "  - network.c, network.h      - Network timeouts and utilities"
+	@echo "  CFLAGS=$(CFLAGS)"
+	@echo "  LDFLAGS=$(LDFLAGS)"
 
 # =============================================================================
 # Code Formatting
@@ -325,14 +302,14 @@ help:
 # Format source code
 format:
 	@echo "Formatting source code..."
-	@find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
+	@find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
 	xargs clang-format -i; \
 	echo "Code formatting complete!"
 
 # Check code formatting
 format-check:
 	@echo "Checking code formatting..."
-	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" -o -name "*.hpp" | \
+	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
 	xargs clang-format --dry-run --Werror
 
 # Run bear to generate a compile_commands.json file
@@ -389,6 +366,8 @@ todo-clean:
 # =============================================================================
 # Extra Makefile stuff
 # =============================================================================
+
+.DEFAULT_GOAL := debug
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
