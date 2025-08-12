@@ -124,13 +124,8 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev pkg-config
 
-    - name: Build with format security warnings
-      run: |
-        CFLAGS="-Wformat -Wformat-security -Werror=format-security"
-        make CSTD=c2x CFLAGS="$CFLAGS" debug
-
     - name: Run static security analysis
       run: |
-        make clean
         # Use clang static analyzer for security issues
-        scan-build --status-bugs make CSTD=c2x c-objs
+        CFLAGS="-Wformat -Wformat-security -Werror=format-security"
+        scan-build --status-bugs make CSTD=c2x CFLAGS="$CFLAGS" c-objs
