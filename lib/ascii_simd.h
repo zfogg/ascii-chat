@@ -85,6 +85,7 @@ typedef struct {
 } simd_benchmark_t;
 
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations);
+simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode);
 void print_simd_capabilities(void);
 
 char *image_print_simd(image_t *image);
