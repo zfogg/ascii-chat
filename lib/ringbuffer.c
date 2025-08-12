@@ -217,18 +217,18 @@ void framebuffer_destroy(framebuffer_t *fb) {
     return;
 
   log_debug("Destroying framebuffer %p", fb);
-  
+
   // Add magic number check to detect double-free using rb pointer
   if (fb->rb == (ringbuffer_t *)0xDEADBEEF) {
     log_error("DOUBLE-FREE DETECTED: framebuffer %p already destroyed!", fb);
     return;
   }
-  
+
   // Use framebuffer_clear to properly clean up all frames
   framebuffer_clear(fb);
 
   ringbuffer_destroy(fb->rb);
-  
+
   // Mark as destroyed before freeing
   fb->rb = (ringbuffer_t *)0xDEADBEEF;
   SAFE_FREE(fb);
