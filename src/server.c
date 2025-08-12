@@ -26,11 +26,6 @@
 #include "hashtable.h"
 #include "frame_debug.h"
 
-#define DEBUG_THREADS
-#define NETWORK_DEBUG
-#define AUDIO_DEBUG
-#define COMPRESSION_DEBUG
-
 /* ============================================================================
  * Global State
  * ============================================================================
@@ -524,13 +519,6 @@ static void *video_broadcast_thread_func(void *arg) {
   int last_connected_count = 0;
 
   while (!g_should_exit) {
-    // LOOP DEBUG - print every few seconds to confirm thread is running
-    static uint32_t loop_counter = 0;
-    loop_counter++;
-    if (loop_counter % 1000 == 0) { // Every ~1000 iterations
-      printf("BROADCAST_DEBUG: Video broadcast thread alive, iteration %u\n", loop_counter);
-    }
-
     // Rate limiting
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
@@ -558,11 +546,6 @@ static void *video_broadcast_thread_func(void *arg) {
       client_info_t *client = &g_client_manager.clients[i];
       if (client->active && client->socket > 0 && client->width > 0 && client->height > 0) {
         active_client_count++;
-        printf("ACTIVE_DEBUG: SLOT %d IS ACTIVE: client_id=%u, socket=%d, width=%d, height=%d\n", i, client->client_id,
-               client->socket, client->width, client->height);
-      } else if (client->active || client->socket > 0 || client->client_id != 0) {
-        printf("ACTIVE_DEBUG: SLOT %d NOT ACTIVE: client_id=%u, active=%d, socket=%d, width=%d, height=%d\n", i,
-               client->client_id, client->active, client->socket, client->width, client->height);
       }
     }
     pthread_mutex_unlock(&g_client_manager_mutex);
@@ -659,13 +642,8 @@ static void *video_broadcast_thread_func(void *arg) {
             create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output,
                                      client_copy.wants_stretch, &client_frame_size);
 
-        printf("VIDEO_DEBUG: Client %u - create_mixed_ascii_frame returned frame=%p, size=%zu\n", client_copy.client_id,
-               (void *)client_frame, client_frame_size);
-
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
-          printf("VIDEO_DEBUG: Client %u - skipping because frame=%p, size=%zu\n", client_copy.client_id,
-                 (void *)client_frame, client_frame_size);
           continue;
         }
 
@@ -742,20 +720,12 @@ static void *video_broadcast_thread_func(void *arg) {
 
         // Queue the complete frame as a single packet
         pthread_mutex_lock(&g_client_manager_mutex);
-        printf("QUEUE_DEBUG: About to check client[%d] - active=%d, video_queue=%p\n", i,
-               g_client_manager.clients[i].active, (void *)g_client_manager.clients[i].video_queue);
         if (g_client_manager.clients[i].active && g_client_manager.clients[i].video_queue) {
-          printf("QUEUE_DEBUG: Attempting to queue ASCII frame for client %u (slot %d), packet_size=%zu\n",
-                 client_copy.client_id, i, packet_size);
           int result = packet_queue_enqueue(g_client_manager.clients[i].video_queue, PACKET_TYPE_ASCII_FRAME,
                                             packet_buffer, packet_size, 0, true);
           if (result < 0) {
-            printf("QUEUE_DEBUG: FAILED to queue ASCII frame for client %u: result=%d\n", client_copy.client_id,
-                   result);
             log_error("Failed to queue ASCII frame for client %u: queue full or shutdown", client_copy.client_id);
           } else {
-            printf("QUEUE_DEBUG: SUCCESS queued ASCII frame for client %u (slot %d), result=%d\n",
-                   client_copy.client_id, i, result);
             sent_count++;
             static int success_count[MAX_CLIENTS] = {0};
             success_count[i]++;
@@ -764,10 +734,6 @@ static void *video_broadcast_thread_func(void *arg) {
                        client_copy.client_id, i, packet_size);
             }
           }
-        } else {
-          printf("QUEUE_DEBUG: NOT queuing for client %u (slot %d) - active=%d, video_queue=%p\n",
-                 client_copy.client_id, i, g_client_manager.clients[i].active,
-                 (void *)g_client_manager.clients[i].video_queue);
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
 
@@ -826,7 +792,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     client_info_t *client = &g_client_manager.clients[i];
 
     if (client->active && client->is_sending_video) {
+#ifdef DEBUG_THREADS
       log_debug("Client %d: active=%d, is_sending_video=%d", i, client->active, client->is_sending_video);
+#endif
     }
 
     if (client->active && client->is_sending_video && source_count < MAX_CLIENTS) {
@@ -838,7 +806,9 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
       // Try to read ONE frame from buffer (oldest first - proper FIFO)
       if (client->incoming_video_buffer) {
         got_new_frame = framebuffer_read_multi_frame(client->incoming_video_buffer, &current_frame);
+#ifdef DEBUG_THREADS
         log_debug("Client %d: framebuffer_read returned got_new_frame=%d", i, got_new_frame);
+#endif
 
         if (got_new_frame) {
           // Got a new frame - update our cache
@@ -1207,7 +1177,7 @@ int main(int argc, char *argv[]) {
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  // atexit(debug_memory_report);
+  atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool
@@ -1577,8 +1547,10 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
                                                   client->client_id, 0, timestamp);
       if (stored) {
         client->frames_received++;
+#ifdef DEBUG_THREADS
         log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
                   client->frames_received);
+#endif
       } else {
         log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
       }
@@ -1844,14 +1816,18 @@ void *client_send_thread_func(void *arg) {
     if (!packet && client->video_queue) {
       packet = packet_queue_try_dequeue(client->video_queue);
       if (packet) {
+#ifdef DEBUG_THREADS
         log_debug("SEND_THREAD_DEBUG: Client %u got video packet from queue, type=%d, data_len=%zu", client->client_id,
                   packet->header.type, packet->data_len);
+#endif
       }
     }
 
     // If still no packet, small sleep to prevent busy waiting
     if (!packet) {
+#ifdef DEBUG_THREADS
       log_debug("SEND_THREAD_DEBUG: Client %u no packet found, sleeping briefly", client->client_id);
+#endif
       usleep(1000); // 1ms sleep instead of blocking indefinitely
     }
 
