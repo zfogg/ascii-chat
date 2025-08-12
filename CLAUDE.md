@@ -7,6 +7,8 @@
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 - Use clang instead of gcc.
 - Don't use `git add .`, add all files individually.
+- Use AdrressSanitizer (ASan) and memory reports from common.c for memory 
+debugging. `make clean && make sanitize`
 
 ## Project Overview
 ASCII-Chat is a terminal-based video chat application that converts webcam 
