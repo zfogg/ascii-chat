@@ -5,6 +5,8 @@
 - Format code with `make format` after you edit it
 - Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
+- Use clang instead of gcc.
+- Don't use `git add .`, add all files individually.
 
 ## Project Overview
 ASCII-Chat is a terminal-based video chat application that converts webcam 
@@ -1052,3 +1054,41 @@ The original ChatGPT optimization roadmap predicted this exact outcome:
 > "Expect SIMD to finally outperform scalar once string bottleneck is removed"
 
 **Both predictions came true.** SIMD-optimized ASCII video chat is now a reality! 🚀
+
+## Critical C Programming Pattern: Integer Overflow Prevention
+
+### The Problem: Multiplication Overflow Before Type Conversion
+**This has come up multiple times and must be remembered:**
+
+```c
+// WRONG - can overflow 'int' before conversion to size_t
+const size_t buffer_size = output_height * w * max_per_char + extra;
+
+// RIGHT - cast to larger type BEFORE multiplication  
+const size_t buffer_size = (size_t)output_height * (size_t)w * max_per_char + extra;
+```
+
+### Why This Matters
+1. **CodeQL Analysis**: Will fail builds if multiplication can overflow `int`
+2. **Security**: Integer overflow can lead to buffer underallocation  
+3. **Large Images**: Modern webcam resolutions (1920×1080+) easily overflow 32-bit integers
+4. **Subtle Bugs**: May work fine in testing, fail catastrophically in production
+
+### When to Apply This Pattern
+- **Any buffer size calculation** involving width × height
+- **Memory allocation sizes** based on image dimensions  
+- **Loop bounds** that multiply image dimensions
+- **Whenever CodeQL warns** about "Multiplication result converted to larger type"
+
+### Fixed Examples in This Codebase
+```c
+// Fixed in ascii_simd_color.c:859
+const size_t buffer_size = (size_t)output_height * (size_t)w * max_per_char + (size_t)output_height * reset_len + total_newlines + 1;
+
+// Pattern for other buffer calculations
+const size_t total_pixels = (size_t)width * (size_t)height;
+const size_t buffer_len = total_pixels * (size_t)bytes_per_pixel;
+```
+
+### Remember: Cast Early, Cast Often
+**Always cast to the target type BEFORE performing arithmetic that might overflow.**
