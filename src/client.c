@@ -530,7 +530,8 @@ static void *data_reception_thread_func(void *arg) {
     buffer_pool_free(data, len);
   }
 
-  log_info("CLIENT: Data reception thread stopped (g_should_exit=%d, g_connection_lost=%d)", g_should_exit, g_connection_lost);
+  log_info("CLIENT: Data reception thread stopped (g_should_exit=%d, g_connection_lost=%d)", g_should_exit,
+           g_connection_lost);
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread stopped");
 #endif
