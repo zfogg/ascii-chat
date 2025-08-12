@@ -128,10 +128,10 @@ void test_correctness(void) {
     const int test_size = 100;
     rgb_pixel_t *test_pixels;
     SAFE_MALLOC(test_pixels, test_size * sizeof(rgb_pixel_t), rgb_pixel_t *);
-    
+
     char *scalar_result;
     SAFE_MALLOC(scalar_result, test_size, char *);
-    
+
     char *simd_result;
     SAFE_MALLOC(simd_result, test_size, char *);
 
@@ -233,7 +233,7 @@ void test_animation(void) {
 
     rgb_pixel_t *full_image;
     SAFE_MALLOC(full_image, TEST_PIXELS * sizeof(rgb_pixel_t), rgb_pixel_t *);
-    
+
     rgb_pixel_t *small_image;
     SAFE_MALLOC(small_image, ASCII_WIDTH * ASCII_HEIGHT * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
@@ -255,7 +255,7 @@ void test_animation(void) {
             .w = ASCII_WIDTH,
             .h = ASCII_HEIGHT
         };
-        
+
         char *ascii_output = image_print_simd(&test_image);
         if (ascii_output) {
             // Display
@@ -289,16 +289,16 @@ void test_integration(void) {
     printf("// 2. Direct processing into final buffer - no copying\n");
     printf("// 3. Fixed newline formatting consistency with non-SIMD\n");
     printf("// 4. Eliminated memory allocation churn\n\n");
-    
+
     printf("// NEW INTEGRATION (much simpler):\n");
     printf("// Replace calls to image_to_ascii() with:\n");
     printf("char *ascii_output = image_print_simd(&image);\n");
     printf("// That's it! Single function call, optimized implementation\n\n");
-    
+
     printf("// For colored ASCII, replace image_to_ascii_color() with:\n");
     printf("char *colored_ascii = image_print_colored_simd(&image);\n");
     printf("// Handles both foreground and background modes automatically\n\n");
-    
+
     printf("// Key benefits:\n");
     printf("// - No more malloc/free per row\n");
     printf("// - No more buffer pool contention\n");
@@ -309,10 +309,10 @@ void test_integration(void) {
     printf("Performance test on your 203x64 terminal:\n");
     simd_benchmark_t bench = benchmark_simd_conversion(203, 64, 1000);
     printf("- Scalar: %.2f ms per frame\n", bench.scalar_time * 1000 / 1000);
-    
+
     double simd_time = 0;
     const char *simd_method = "Unknown";
-    
+
 #ifdef SIMD_SUPPORT_NEON
     if (bench.neon_time > 0) {
         simd_time = bench.neon_time;
@@ -381,31 +381,7 @@ int main(void) {
     test_memory_usage();
     test_integration();
 
-    // Skip animation test for automated testing
-    printf("\n(Skipping animation demo for automated testing)\n");
-
-    printf("\n=== NEW OPTIMIZED Summary ===\n");
-    printf("The optimized SIMD implementation NOW provides:\n");
-    printf("1. Single allocation - eliminated buffer pool overhead\n");
-    printf("2. Direct processing - no memory copying\n");
-    printf("3. Fixed newline formatting - consistent with scalar\n");
-    printf("4. Eliminated allocation churn - much faster\n");
-    printf("5. SIMD should now be FASTER than scalar (not slower!)\n");
-    printf("6. Drop-in replacement functions for existing code\n\n");
-
-    printf("Key fixes implemented:\n");
-    printf("1. image_print_simd() - single SAFE_MALLOC, direct processing\n");
-    printf("2. image_print_colored_simd() - same optimizations for color\n");
-    printf("3. Fixed newline bug that caused formatting inconsistencies\n");
-    printf("4. Removed all buffer pool usage from hot paths\n");
-    printf("5. Performance should now match expectations\n\n");
-
-    printf("Integration is now simple:\n");
-    printf("- Replace image_to_ascii() calls with image_print_simd()\n");
-    printf("- Replace image_to_ascii_color() calls with image_print_colored_simd()\n");
-    printf("- No other changes needed!\n");
-
     log_destroy();
-    
+
     return 0;
 }
