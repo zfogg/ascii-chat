@@ -119,7 +119,14 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
     (ptr) = (cast)(tmp_ptr);                                                                                           \
   } while (0)
 
-/* Safe free moved after debug redirections - see bottom of file */
+/* Safe free that nulls the pointer - available in all builds */
+#define SAFE_FREE(ptr)                                                                                                 \
+  do {                                                                                                                 \
+    if ((ptr) != NULL) {                                                                                               \
+      free((ptr));                                                                                                     \
+      (ptr) = NULL;                                                                                                    \
+    }                                                                                                                  \
+  } while (0)
 
 /* Safe string copy */
 #define SAFE_STRNCPY(dst, src, size)                                                                                   \
@@ -168,14 +175,5 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 #define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 
 #endif
-
-/* Safe free that nulls the pointer - available in all builds */
-#define SAFE_FREE(ptr)                                                                                                 \
-  do {                                                                                                                 \
-    if ((ptr) != NULL) {                                                                                               \
-      free((ptr));                                                                                                     \
-      (ptr) = NULL;                                                                                                    \
-    }                                                                                                                  \
-  } while (0)
 
 #endif /* ASCII_CHAT_COMMON_H */

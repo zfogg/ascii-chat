@@ -14,7 +14,7 @@
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60
 #define KEEPALIVE_INTERVAL 10
-#define KEEPALIVE_COUNT 3
+#define KEEPALIVE_COUNT 8
 
 // Network utility functions
 int set_socket_timeout(int sockfd, int timeout_seconds);
