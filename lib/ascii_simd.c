@@ -755,11 +755,11 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
   // Use every NEON register and instruction to push for 2-3x speedup
   for (; i + 31 < count; i += 32) {
     const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
-    
+
     // Load 96 bytes (32 RGB pixels) using two interleaved loads
     uint8x16x3_t rgb_batch1 = vld3q_u8(rgb_data);      // Pixels 0-15
     uint8x16x3_t rgb_batch2 = vld3q_u8(rgb_data + 48); // Pixels 16-31
-    
+
     // Process batch 1 (pixels 0-15)
     uint16x8_t r1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[0]));
     uint16x8_t r1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[0]));
@@ -767,51 +767,51 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     uint16x8_t g1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[1]));
     uint16x8_t b1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[2]));
     uint16x8_t b1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[2]));
-    
-    // Process batch 2 (pixels 16-31) 
+
+    // Process batch 2 (pixels 16-31)
     uint16x8_t r2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[0]));
     uint16x8_t r2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[0]));
     uint16x8_t g2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[1]));
     uint16x8_t g2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[1]));
     uint16x8_t b2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[2]));
     uint16x8_t b2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[2]));
-    
+
     // Parallel luminance computation on 4 NEON vectors (32 pixels total)
     uint16x8_t luma1_lo = vmulq_n_u16(r1_lo, LUMA_RED);
     luma1_lo = vmlaq_n_u16(luma1_lo, g1_lo, LUMA_GREEN);
     luma1_lo = vmlaq_n_u16(luma1_lo, b1_lo, LUMA_BLUE);
     luma1_lo = vshrq_n_u16(luma1_lo, 8);
-    
+
     uint16x8_t luma1_hi = vmulq_n_u16(r1_hi, LUMA_RED);
     luma1_hi = vmlaq_n_u16(luma1_hi, g1_hi, LUMA_GREEN);
     luma1_hi = vmlaq_n_u16(luma1_hi, b1_hi, LUMA_BLUE);
     luma1_hi = vshrq_n_u16(luma1_hi, 8);
-    
+
     uint16x8_t luma2_lo = vmulq_n_u16(r2_lo, LUMA_RED);
     luma2_lo = vmlaq_n_u16(luma2_lo, g2_lo, LUMA_GREEN);
     luma2_lo = vmlaq_n_u16(luma2_lo, b2_lo, LUMA_BLUE);
     luma2_lo = vshrq_n_u16(luma2_lo, 8);
-    
+
     uint16x8_t luma2_hi = vmulq_n_u16(r2_hi, LUMA_RED);
     luma2_hi = vmlaq_n_u16(luma2_hi, g2_hi, LUMA_GREEN);
     luma2_hi = vmlaq_n_u16(luma2_hi, b2_hi, LUMA_BLUE);
     luma2_hi = vshrq_n_u16(luma2_hi, 8);
-    
+
     // Pack luminance results into two 16-byte vectors
     uint8x16_t luma_vec1 = vcombine_u8(vqmovn_u16(luma1_lo), vqmovn_u16(luma1_hi));
     uint8x16_t luma_vec2 = vcombine_u8(vqmovn_u16(luma2_lo), vqmovn_u16(luma2_hi));
-    
+
     // PROPER NEON PALETTE LOOKUP using the real 24-character ASCII palette
     // Palette: "   ...',;:clodxkO0KXNWM" (24 chars)
     //
     // Strategy: Use hybrid approach - NEON arithmetic + optimized scalar lookups
     // NEON excels at parallel arithmetic; scalar excels at small table lookups
-    
+
     // Store NEON-computed luminance values for efficient palette lookup
     uint8_t luma_batch[32] __attribute__((aligned(16)));
     vst1q_u8(&luma_batch[0], luma_vec1);
     vst1q_u8(&luma_batch[16], luma_vec2);
-    
+
     // Optimized unrolled palette lookups - compiler will vectorize this efficiently
     ascii_chars[i + 0] = luminance_palette[luma_batch[0]];
     ascii_chars[i + 1] = luminance_palette[luma_batch[1]];
@@ -846,33 +846,33 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     ascii_chars[i + 30] = luminance_palette[luma_batch[30]];
     ascii_chars[i + 31] = luminance_palette[luma_batch[31]];
   }
-  
-  // Handle remaining 16 pixels  
+
+  // Handle remaining 16 pixels
   for (; i + 15 < count; i += 16) {
     const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
     uint8x16x3_t rgb_vectors = vld3q_u8(rgb_data);
-    
+
     uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[0]));
     uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[0]));
     uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[1]));
     uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[1]));
     uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[2]));
     uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[2]));
-    
+
     uint16x8_t luma_lo = vmulq_n_u16(r_lo, LUMA_RED);
     luma_lo = vmlaq_n_u16(luma_lo, g_lo, LUMA_GREEN);
     luma_lo = vmlaq_n_u16(luma_lo, b_lo, LUMA_BLUE);
     luma_lo = vshrq_n_u16(luma_lo, 8);
-    
+
     uint16x8_t luma_hi = vmulq_n_u16(r_hi, LUMA_RED);
     luma_hi = vmlaq_n_u16(luma_hi, g_hi, LUMA_GREEN);
     luma_hi = vmlaq_n_u16(luma_hi, b_hi, LUMA_BLUE);
     luma_hi = vshrq_n_u16(luma_hi, 8);
-    
+
     uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
     uint8_t luma_values[16] __attribute__((aligned(16)));
     vst1q_u8(luma_values, luma_vec);
-    
+
     for (int j = 0; j < 16; j++) {
       ascii_chars[i + j] = luminance_palette[luma_values[j]];
     }
@@ -993,6 +993,116 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     convert_pixels_neon(test_pixels, output_buffer, pixel_count);
+  }
+  result.neon_time = get_time_seconds() - start;
+#endif
+
+  // Find best method
+  double best_time = result.scalar_time;
+  result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_SSE2
+  if (result.sse2_time > 0 && result.sse2_time < best_time) {
+    best_time = result.sse2_time;
+    result.best_method = "SSE2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
+    best_time = result.ssse3_time;
+    result.best_method = "SSSE3";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  if (result.avx2_time > 0 && result.avx2_time < best_time) {
+    best_time = result.avx2_time;
+    result.best_method = "AVX2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+  if (result.neon_time > 0 && result.neon_time < best_time) {
+    best_time = result.neon_time;
+    result.best_method = "NEON";
+  }
+#endif
+
+  result.speedup_best = result.scalar_time / best_time;
+
+  free(test_pixels);
+  free(output_buffer);
+
+  return result;
+}
+
+simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode) {
+  simd_benchmark_t result = {0};
+
+  int pixel_count = width * height;
+  size_t data_size = pixel_count * sizeof(rgb_pixel_t);
+  
+  // Estimate output buffer size for colored ASCII (much larger than monochrome)
+  // Each pixel can generate ~25 bytes of ANSI escape codes + 1 char
+  size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10; // Extra for newlines/reset codes
+
+  // Generate test data
+  rgb_pixel_t *test_pixels;
+  char *output_buffer;
+  SAFE_MALLOC(test_pixels, data_size, rgb_pixel_t *);
+  SAFE_MALLOC(output_buffer, output_buffer_size, char *);
+
+  // Fill with random RGB data
+  srand(12345); // Consistent results
+  for (int i = 0; i < pixel_count; i++) {
+    test_pixels[i].r = rand() % 256;
+    test_pixels[i].g = rand() % 256;
+    test_pixels[i].b = rand() % 256;
+  }
+
+  const char *mode_str = background_mode ? "background" : "foreground";
+  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count, iterations);
+
+  // Benchmark scalar color version
+  double start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.scalar_time = get_time_seconds() - start;
+
+#ifdef SIMD_SUPPORT_SSE2
+  // Benchmark SSE2 color
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_sse2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.sse2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  // Benchmark SSSE3 color
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_ssse3(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.ssse3_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  // Benchmark AVX2 color
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_avx2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.avx2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+  // Benchmark NEON color
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_neon(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
