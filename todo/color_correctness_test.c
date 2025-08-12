@@ -50,8 +50,8 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         printf("✅ SIMD implementation: %zu bytes of colored ASCII output\n", simd_len);
         
         // Basic sanity checks
-        bool scalar_has_content = (scalar_len > pixel_count); // Should have ANSI + ASCII chars
-        bool simd_has_content = (simd_len > pixel_count);
+        bool scalar_has_content = (scalar_len > (size_t)pixel_count); // Should have ANSI + ASCII chars
+        bool simd_has_content = (simd_len > (size_t)pixel_count);
         bool scalar_has_colors = strstr(scalar_output, "\033[") != NULL;
         bool simd_has_colors = strstr(simd_output, "\033[") != NULL;
         
