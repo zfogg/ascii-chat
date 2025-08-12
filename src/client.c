@@ -27,6 +27,10 @@
 #include "buffer_pool.h"
 #include "frame_debug.h"
 
+#define NETWORK_DEBUG
+#define AUDIO_DEBUG
+#define COMPRESSION_DEBUG
+
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
 static volatile bool g_first_connection = true;
@@ -458,12 +462,15 @@ static void *data_reception_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread started");
 #endif
+  log_info("CLIENT: Data reception thread started");
 
   while (!g_should_exit) {
     if (sockfd == 0) {
+      log_debug("CLIENT: Waiting for socket connection (sockfd=0)");
       usleep(10 * 1000);
       continue;
     }
+    log_debug("CLIENT: About to receive packet from server (sockfd=%d)", sockfd);
 
     packet_type_t type;
     void *data;
@@ -471,18 +478,21 @@ static void *data_reception_thread_func(void *arg) {
 
     int result = receive_packet(sockfd, &type, &data, &len);
     if (result < 0) {
-      log_error("Failed to receive packet");
+      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
       g_connection_lost = true;
       break;
     } else if (result == 0) {
-      log_info("Server closed connection");
+      log_info("CLIENT: Server closed connection");
       g_connection_lost = true;
       break;
     }
 
+    log_debug("CLIENT: Received packet type=%d, len=%zu", type, len);
+
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
       // Unified frame packet from server
+      log_debug("CLIENT: Processing ASCII frame packet (len=%zu)", len);
       handle_ascii_frame_packet(data, len);
       break;
 
@@ -520,6 +530,7 @@ static void *data_reception_thread_func(void *arg) {
     buffer_pool_free(data, len);
   }
 
+  log_info("CLIENT: Data reception thread stopped (g_should_exit=%d, g_connection_lost=%d)", g_should_exit, g_connection_lost);
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread stopped");
 #endif
@@ -590,13 +601,13 @@ static void *webcam_capture_thread_func(void *arg) {
     // Capture raw image from webcam
     image_t *image = webcam_read();
     if (!image) {
-      log_debug("No frame available from webcam yet");
+      log_info("No frame available from webcam yet (webcam_read returned NULL)");
       usleep(10000); // 10ms delay before retry
       continue;
     }
 
-    // log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
-    //          (float)image->w / (float)image->h);
+    log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
+             (float)image->w / (float)image->h);
 
     // Resize image to a reasonable size for network transmission
     // We want to send images large enough for the server to resize for any client
@@ -679,7 +690,7 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Send image data to server via IMAGE_FRAME packet
-    // log_debug("[CLIENT SEND] Sending frame: %dx%d, size=%zu bytes", image->w, image->h, packet_size);
+    log_info("[CLIENT SEND] Sending frame: %dx%d, size=%zu bytes", image->w, image->h, packet_size);
     if (send_packet(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
       log_error("Failed to send video frame to server: %s", strerror(errno));
       // This is likely why we're disconnecting - set connection lost
@@ -846,7 +857,7 @@ int main(int argc, char *argv[]) {
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  atexit(debug_memory_report);
+  // atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool
@@ -976,6 +987,7 @@ int main(int argc, char *argv[]) {
 
       // Connection successful!
       log_info("Connected to server %s:%d", address, port);
+      log_info("CLIENT: Socket connection established (sockfd=%d)", sockfd);
       reconnect_attempt = 0; // Reset reconnection counter on successful connection
 
       struct sockaddr_in local_addr;

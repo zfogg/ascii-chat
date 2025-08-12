@@ -2,13 +2,16 @@
 
 ## Essential First Steps
 - **ALWAYS** read and understand the `README.md` and `Makefile` files first
-- Format code with `make format` after you edit it
+- Format code with `make format` after you edit it.
 - Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 - Use clang instead of gcc.
 - Don't use `git add .`, add all files individually.
 - Use AdrressSanitizer (ASan) and memory reports from common.c for memory 
-debugging. `make clean && make sanitize`
+debugging. `make clean && make sanitize`.
+- Use log_*() from logging.c and common.h for logging instead of printf().
+- When debugging and testing, make a test_whatever.sh and use that so you don't 
+bother the developer by requesting to run commands over and over.
 
 ## Project Overview
 ASCII-Chat is a terminal-based video chat application that converts webcam 
