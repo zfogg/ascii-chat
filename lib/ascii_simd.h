@@ -77,6 +77,7 @@ size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buf
 typedef struct {
   double scalar_time;
   double sse2_time;
+  double ssse3_time;
   double avx2_time;
   double neon_time;
   double speedup_best;

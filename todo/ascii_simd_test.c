@@ -206,6 +206,12 @@ void test_performance(void) {
                    benchmark.sse2_time * 1000 / iterations, speedup);
         }
 
+        if (benchmark.ssse3_time > 0) {
+            double speedup = benchmark.scalar_time / benchmark.ssse3_time;
+            printf("  SSSE3:     %.3f ms/frame (%.1fx speedup)\n",
+                   benchmark.ssse3_time * 1000 / iterations, speedup);
+        }
+
         if (benchmark.avx2_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.avx2_time;
             printf("  AVX2:      %.3f ms/frame (%.1fx speedup)\n",
@@ -244,6 +250,12 @@ void test_integration(void) {
     if (bench.avx2_time > 0) {
         simd_time = bench.avx2_time;
         simd_method = "AVX2";
+    }
+#endif
+#ifdef SIMD_SUPPORT_SSSE3
+    if (bench.ssse3_time > 0) {
+        simd_time = bench.ssse3_time;
+        simd_method = "SSSE3";
     }
 #endif
 #ifdef SIMD_SUPPORT_SSE2
