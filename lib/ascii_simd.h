@@ -87,6 +87,6 @@ size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t
 char *image_print_half_height_blocks(image_t *image);
 
 // Quality vs speed control for 256-color mode (optimization #4)
-void set_color_quality_mode(bool high_quality);  // true = 24-bit truecolor, false = 256-color
+void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
 
 #endif // ASCII_SIMD_H
