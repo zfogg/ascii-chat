@@ -1,5 +1,4 @@
-#ifndef ANSI_FAST_H
-#define ANSI_FAST_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -72,5 +71,3 @@ ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, in
 void ansi_fast_init_256color(void);
 char *append_256color_fg(char *dst, uint8_t color_index);
 uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b);
-
-#endif // ANSI_FAST_H

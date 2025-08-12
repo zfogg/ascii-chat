@@ -1,5 +1,4 @@
-#ifndef NETWORK_H
-#define NETWORK_H
+#pragma once
 
 #include <netinet/in.h>
 #include <stdbool.h>
@@ -216,5 +215,3 @@ int send_pong_packet(int sockfd);
 // Console control functions
 int send_clear_console_packet(int sockfd);
 int send_server_state_packet(int sockfd, const server_state_packet_t *state);
-
-#endif // NETWORK_H

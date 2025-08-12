@@ -1,5 +1,4 @@
-#ifndef ASCII_SIMD_H
-#define ASCII_SIMD_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -88,5 +87,3 @@ char *image_print_half_height_blocks(image_t *image);
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
-
-#endif // ASCII_SIMD_H

@@ -1,5 +1,4 @@
-#ifndef HASHTABLE_H
-#define HASHTABLE_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -68,5 +67,3 @@ void hashtable_read_lock(hashtable_t *ht);
 void hashtable_read_unlock(hashtable_t *ht);
 void hashtable_write_lock(hashtable_t *ht);
 void hashtable_write_unlock(hashtable_t *ht);
-
-#endif // HASHTABLE_H
