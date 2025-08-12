@@ -21,10 +21,10 @@
 #define BUFFER_POOL_XLARGE_SIZE 1310720 // Extra large frames (1.25MB)
 
 // Number of buffers to pre-allocate per size class
-#define BUFFER_POOL_SMALL_COUNT 128 // 128KB total for audio
-#define BUFFER_POOL_MEDIUM_COUNT 32 // 2MB total for small frames
-#define BUFFER_POOL_LARGE_COUNT 16  // 4MB total for large frames
-#define BUFFER_POOL_XLARGE_COUNT 32 // Pre-allocate 32 × 1.25MB = 40MB for large frames
+#define BUFFER_POOL_SMALL_COUNT 128  // 128KB total for audio
+#define BUFFER_POOL_MEDIUM_COUNT 128 // 8MB total for small frames
+#define BUFFER_POOL_LARGE_COUNT 16   // 4MB total for large frames
+#define BUFFER_POOL_XLARGE_COUNT 32  // Pre-allocate 32 × 1.25MB = 40MB for large frames
 
 // Single buffer in the pool
 typedef struct buffer_node {
