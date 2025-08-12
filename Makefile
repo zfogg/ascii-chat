@@ -36,7 +36,7 @@ PKG_CFLAGS := $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
 PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-BASE_CFLAGS    += $(PKG_CFLAGS) -std=$(CSTD)
+BASE_CFLAGS    += -std=$(CSTD)
 BASE_OBJCFLAGS +=
 
 # Platform-specific flags
@@ -55,6 +55,10 @@ else
 endif
 
 LDFLAGS_BASE := $(PKG_LDFLAGS) -lm -lpthread $(PLATFORM_LDFLAGS)
+
+# Always-on C flags used for all compilations (survive external CFLAGS overrides)
+# Include base warnings and standard selection so command-line CFLAGS cannot drop them
+REQUIRED_CFLAGS := $(BASE_FLAGS) $(C_FEATURE_FLAGS) -std=$(CSTD) -I$(LIB_DIR) -I$(SRC_DIR) $(PKG_CFLAGS)
 
 # Only embed Info.plist on macOS
 ifeq ($(shell uname),Darwin)
@@ -176,12 +180,9 @@ SANITIZE_FLAGS:= -fsanitize=address
 # Flag Per Build Profile
 # =============================================================================
 
-# Effective compile flags per configuration
-CFLAGS_DEBUG      := $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
-OBJCFLAGS_DEBUG   := $(BASE_OBJCFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
-CFLAGS_RELEASE    := $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
-OBJCFLAGS_RELEASE := $(BASE_OBJCFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
-LDFLAGS_EFFECTIVE := $(LDFLAGS_BASE) $(ARCH_FLAGS)
+# Per-config flags that must always be applied (separate from user CFLAGS/OBJCFLAGS)
+CONFIG_FLAGS :=
+override LDFLAGS += $(LDFLAGS_BASE) $(ARCH_FLAGS)
 
 # =============================================================================
 # File Discovery
@@ -232,22 +233,17 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: CFLAGS := $(CFLAGS_DEBUG)
-debug: OBJCFLAGS := $(OBJCFLAGS_DEBUG)
-debug: LDFLAGS := $(LDFLAGS_EFFECTIVE)
+debug: CONFIG_FLAGS := $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS)
 debug: $(TARGETS)
 
-# Memory sanitizer build (inherits debug flags)
-sanitize: CFLAGS := $(CFLAGS_DEBUG) $(SANITIZE_FLAGS)
-sanitize: OBJCFLAGS := $(OBJCFLAGS_DEBUG) $(SANITIZE_FLAGS)
-sanitize: LDFLAGS := $(LDFLAGS_EFFECTIVE) $(SANITIZE_FLAGS)
-sanitize: $(TARGETS)
-
 # Release build
-release: CFLAGS := $(CFLAGS_RELEASE)
-release: OBJCFLAGS := $(OBJCFLAGS_RELEASE)
-release: LDFLAGS := $(LDFLAGS_EFFECTIVE)
+release: CONFIG_FLAGS := $(ARCH_FLAGS) $(SIMD_CFLAGS) $(RELEASE_FLAGS)
 release: $(TARGETS)
+
+# Memory sanitizer build (inherits debug flags)
+sanitize: CONFIG_FLAGS := $(ARCH_FLAGS) $(SIMD_CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+sanitize: LDFLAGS += $(SANITIZE_FLAGS)
+sanitize: $(TARGETS)
 
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET)
@@ -267,22 +263,22 @@ $(BUILD_DIR)/src $(BUILD_DIR)/lib:
 # Compile C source files from src/
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(CFLAGS) -c $< 
+	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(CFLAGS) -c $< 
 
 # Compile C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(CFLAGS) -c $< 
+	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(CFLAGS) -c $< 
 
 # Compile Objective-C source files from src/
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(OBJCFLAGS) -c $<
+	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(OBJCFLAGS) -c $<
 
 # Compile Objective-C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(OBJCFLAGS) -c $<
+	$(CC) -o $@ $(REQUIRED_CFLAGS) $(CONFIG_FLAGS) $(OBJCFLAGS) -c $<
 
 
 c-objs: $(OBJS_C)

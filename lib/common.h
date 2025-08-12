@@ -1,5 +1,4 @@
-#ifndef ASCII_CHAT_COMMON_H
-#define ASCII_CHAT_COMMON_H
+#pragma once
 
 /* Feature test macros for POSIX functions */
 #include <stdlib.h>
@@ -173,7 +172,4 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 #define free(ptr) debug_free(ptr, __FILE__, __LINE__)
 #define calloc(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
-
-#endif
-
-#endif /* ASCII_CHAT_COMMON_H */
+#endif /* DEBUG_MEMORY */
