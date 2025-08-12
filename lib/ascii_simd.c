@@ -131,20 +131,14 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
   for (; i + 15 < count; i += 16) {
     // Use simple approach: extract RGB manually for 16 pixels but process with SIMD arithmetic
     const rgb_pixel_t *pixel_batch = &pixels[i];
-    
+
     // Extract R, G, B values for first 8 pixels
-    __m128i r_vals_8 = _mm_setr_epi16(
-      pixel_batch[0].r, pixel_batch[1].r, pixel_batch[2].r, pixel_batch[3].r,
-      pixel_batch[4].r, pixel_batch[5].r, pixel_batch[6].r, pixel_batch[7].r
-    );
-    __m128i g_vals_8 = _mm_setr_epi16(
-      pixel_batch[0].g, pixel_batch[1].g, pixel_batch[2].g, pixel_batch[3].g,
-      pixel_batch[4].g, pixel_batch[5].g, pixel_batch[6].g, pixel_batch[7].g
-    );
-    __m128i b_vals_8 = _mm_setr_epi16(
-      pixel_batch[0].b, pixel_batch[1].b, pixel_batch[2].b, pixel_batch[3].b,
-      pixel_batch[4].b, pixel_batch[5].b, pixel_batch[6].b, pixel_batch[7].b
-    );
+    __m128i r_vals_8 = _mm_setr_epi16(pixel_batch[0].r, pixel_batch[1].r, pixel_batch[2].r, pixel_batch[3].r,
+                                      pixel_batch[4].r, pixel_batch[5].r, pixel_batch[6].r, pixel_batch[7].r);
+    __m128i g_vals_8 = _mm_setr_epi16(pixel_batch[0].g, pixel_batch[1].g, pixel_batch[2].g, pixel_batch[3].g,
+                                      pixel_batch[4].g, pixel_batch[5].g, pixel_batch[6].g, pixel_batch[7].g);
+    __m128i b_vals_8 = _mm_setr_epi16(pixel_batch[0].b, pixel_batch[1].b, pixel_batch[2].b, pixel_batch[3].b,
+                                      pixel_batch[4].b, pixel_batch[5].b, pixel_batch[6].b, pixel_batch[7].b);
 
     // SIMD luminance calculation for first 8 pixels: y = (77*r + 150*g + 29*b) >> 8
     __m128i luma_8_1 = _mm_mullo_epi16(r_vals_8, luma_const_77);
@@ -153,18 +147,12 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
     luma_8_1 = _mm_srli_epi16(luma_8_1, 8);
 
     // Extract R, G, B values for second 8 pixels
-    __m128i r_vals_8_2 = _mm_setr_epi16(
-      pixel_batch[8].r, pixel_batch[9].r, pixel_batch[10].r, pixel_batch[11].r,
-      pixel_batch[12].r, pixel_batch[13].r, pixel_batch[14].r, pixel_batch[15].r
-    );
-    __m128i g_vals_8_2 = _mm_setr_epi16(
-      pixel_batch[8].g, pixel_batch[9].g, pixel_batch[10].g, pixel_batch[11].g,
-      pixel_batch[12].g, pixel_batch[13].g, pixel_batch[14].g, pixel_batch[15].g
-    );
-    __m128i b_vals_8_2 = _mm_setr_epi16(
-      pixel_batch[8].b, pixel_batch[9].b, pixel_batch[10].b, pixel_batch[11].b,
-      pixel_batch[12].b, pixel_batch[13].b, pixel_batch[14].b, pixel_batch[15].b
-    );
+    __m128i r_vals_8_2 = _mm_setr_epi16(pixel_batch[8].r, pixel_batch[9].r, pixel_batch[10].r, pixel_batch[11].r,
+                                        pixel_batch[12].r, pixel_batch[13].r, pixel_batch[14].r, pixel_batch[15].r);
+    __m128i g_vals_8_2 = _mm_setr_epi16(pixel_batch[8].g, pixel_batch[9].g, pixel_batch[10].g, pixel_batch[11].g,
+                                        pixel_batch[12].g, pixel_batch[13].g, pixel_batch[14].g, pixel_batch[15].g);
+    __m128i b_vals_8_2 = _mm_setr_epi16(pixel_batch[8].b, pixel_batch[9].b, pixel_batch[10].b, pixel_batch[11].b,
+                                        pixel_batch[12].b, pixel_batch[13].b, pixel_batch[14].b, pixel_batch[15].b);
 
     // SIMD luminance calculation for second 8 pixels
     __m128i luma_8_2 = _mm_mullo_epi16(r_vals_8_2, luma_const_77);
@@ -195,7 +183,6 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
     ascii_chars[i + 14] = luminance_palette[lum[14]];
     ascii_chars[i + 15] = luminance_palette[lum[15]];
   }
-
 
   // Process remaining 8-pixel chunks
   for (; i + 7 < count; i += 8) {
@@ -267,7 +254,7 @@ void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int coun
   for (; i + 31 < count; i += 32) {
     // Process first 16-pixel chunk with SSSE3 shuffle-based RGB deinterleaving
     const uint8_t *src1 = (const uint8_t *)&pixels[i];
-    
+
     // Load 48 bytes of RGB data for first 16 pixels using 3 loads (16 bytes each)
     __m128i chunk0_1 = _mm_loadu_si128((const __m128i *)(src1 + 0));  // RGBRGBRGBRGBRGBR (bytes 0-15)
     __m128i chunk1_1 = _mm_loadu_si128((const __m128i *)(src1 + 16)); // GBRGBRGBRGBRGBRG (bytes 16-31)
@@ -277,53 +264,47 @@ void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int coun
     const __m128i mask_r_0 = _mm_setr_epi8(0, 3, 6, 9, 12, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
     const __m128i mask_r_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, 2, 5, 8, 11, 14, -1, -1, -1, -1, -1);
     const __m128i mask_r_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 4, 7, 10, 13);
-    
-    __m128i r_vec1 = _mm_or_si128(_mm_or_si128(
-      _mm_shuffle_epi8(chunk0_1, mask_r_0),
-      _mm_shuffle_epi8(chunk1_1, mask_r_1)),
-      _mm_shuffle_epi8(chunk2_1, mask_r_2));
+
+    __m128i r_vec1 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_1, mask_r_0), _mm_shuffle_epi8(chunk1_1, mask_r_1)),
+                     _mm_shuffle_epi8(chunk2_1, mask_r_2));
 
     const __m128i mask_g_0 = _mm_setr_epi8(1, 4, 7, 10, 13, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
     const __m128i mask_g_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, 0, 3, 6, 9, 12, 15, -1, -1, -1, -1, -1);
     const __m128i mask_g_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2, 5, 8, 11, 14);
-    
-    __m128i g_vec1 = _mm_or_si128(_mm_or_si128(
-      _mm_shuffle_epi8(chunk0_1, mask_g_0),
-      _mm_shuffle_epi8(chunk1_1, mask_g_1)),
-      _mm_shuffle_epi8(chunk2_1, mask_g_2));
+
+    __m128i g_vec1 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_1, mask_g_0), _mm_shuffle_epi8(chunk1_1, mask_g_1)),
+                     _mm_shuffle_epi8(chunk2_1, mask_g_2));
 
     const __m128i mask_b_0 = _mm_setr_epi8(2, 5, 8, 11, 14, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
     const __m128i mask_b_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, 1, 4, 7, 10, 13, -1, -1, -1, -1, -1, -1);
     const __m128i mask_b_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 3, 6, 9, 12, 15);
-    
-    __m128i b_vec1 = _mm_or_si128(_mm_or_si128(
-      _mm_shuffle_epi8(chunk0_1, mask_b_0),
-      _mm_shuffle_epi8(chunk1_1, mask_b_1)),
-      _mm_shuffle_epi8(chunk2_1, mask_b_2));
+
+    __m128i b_vec1 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_1, mask_b_0), _mm_shuffle_epi8(chunk1_1, mask_b_1)),
+                     _mm_shuffle_epi8(chunk2_1, mask_b_2));
 
     // Process second 16-pixel chunk (pixels i+16 through i+31)
     const uint8_t *src2 = (const uint8_t *)&pixels[i + 16];
-    
+
     // Load 48 bytes of RGB data for second 16 pixels
     __m128i chunk0_2 = _mm_loadu_si128((const __m128i *)(src2 + 0));
     __m128i chunk1_2 = _mm_loadu_si128((const __m128i *)(src2 + 16));
     __m128i chunk2_2 = _mm_loadu_si128((const __m128i *)(src2 + 32));
 
     // Deinterleave RGB data for second 16 pixels using same masks
-    __m128i r_vec2 = _mm_or_si128(_mm_or_si128(
-      _mm_shuffle_epi8(chunk0_2, mask_r_0),
-      _mm_shuffle_epi8(chunk1_2, mask_r_1)),
-      _mm_shuffle_epi8(chunk2_2, mask_r_2));
+    __m128i r_vec2 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_2, mask_r_0), _mm_shuffle_epi8(chunk1_2, mask_r_1)),
+                     _mm_shuffle_epi8(chunk2_2, mask_r_2));
 
-    __m128i g_vec2 = _mm_or_si128(_mm_or_si128(
-      _mm_shuffle_epi8(chunk0_2, mask_g_0),
-      _mm_shuffle_epi8(chunk1_2, mask_g_1)),
-      _mm_shuffle_epi8(chunk2_2, mask_g_2));
+    __m128i g_vec2 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_2, mask_g_0), _mm_shuffle_epi8(chunk1_2, mask_g_1)),
+                     _mm_shuffle_epi8(chunk2_2, mask_g_2));
 
-    __m128i b_vec2 = _mm_or_si128(_mm_or_si128(
-      _mm_shuffle_epi8(chunk0_2, mask_b_0),
-      _mm_shuffle_epi8(chunk1_2, mask_b_1)),
-      _mm_shuffle_epi8(chunk2_2, mask_b_2));
+    __m128i b_vec2 =
+        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_2, mask_b_0), _mm_shuffle_epi8(chunk1_2, mask_b_1)),
+                     _mm_shuffle_epi8(chunk2_2, mask_b_2));
 
     // Widen to 16-bit for accurate arithmetic - first 16 pixels
     __m128i r_lo1 = _mm_unpacklo_epi8(r_vec1, _mm_setzero_si128());
@@ -412,12 +393,12 @@ void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int coun
   for (; i + 7 < count; i += 8) {
     uint8_t r_vals[8], g_vals[8], b_vals[8];
     const uint8_t *src = (const uint8_t *)&pixels[i];
-    
+
     // Extract RGB for 8 pixels
     for (int j = 0; j < 8; j++) {
-      r_vals[j] = src[j*3 + 0];
-      g_vals[j] = src[j*3 + 1];
-      b_vals[j] = src[j*3 + 2];
+      r_vals[j] = src[j * 3 + 0];
+      g_vals[j] = src[j * 3 + 1];
+      b_vals[j] = src[j * 3 + 2];
     }
 
     // Load and widen to 16-bit
@@ -793,6 +774,8 @@ void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int 
   convert_pixels_avx2(pixels, ascii_chars, count);
 #elif defined(SIMD_SUPPORT_NEON)
   convert_pixels_neon(pixels, ascii_chars, count);
+#elif defined(SIMD_SUPPORT_SSSE3)
+  convert_pixels_ssse3(pixels, ascii_chars, count);
 #elif defined(SIMD_SUPPORT_SSE2)
   convert_pixels_sse2(pixels, ascii_chars, count);
 #else
@@ -807,6 +790,9 @@ void print_simd_capabilities(void) {
 #endif
 #ifdef SIMD_SUPPORT_NEON
   printf("  ✓ ARM NEON (32 pixels/cycle)\n");
+#endif
+#ifdef SIMD_SUPPORT_SSSE3
+  printf("  ✓ SSSE3 (32 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_SSE2
   printf("  ✓ SSE2 (16 pixels/cycle)\n");
