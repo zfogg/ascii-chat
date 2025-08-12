@@ -365,8 +365,13 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
     // Split luminance into high and low parts for table lookup
     // High 4 bits = table index (0-15), Low 4 bits = index within table (0-15)
+    // These are prepared for advanced NEON table lookup but not currently used
     uint8x8_t table_indices = vshrn_n_u16(lum_16, 4);               // luminance >> 4 (table number)
     uint8x8_t within_indices = vand_s8(luminance, vdup_n_u8(0x0F)); // luminance & 0x0F (index in table)
+    
+    // Suppress warnings - these are prepared for future NEON table lookup optimization
+    (void)table_indices;
+    (void)within_indices;
 
     // For now, use direct array access since building 16 NEON tables is complex
     // This still benefits from NEON luminance calculation above

@@ -278,7 +278,8 @@ ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, in
         } else {
           // Handle odd height case
           const uint8_t *top_pixel = &pixels[top_idx * 3];
-          ansi_rle_add_pixel(&rle_ctx, top_pixel[0], top_pixel[1], top_pixel[2], ascii_chars[top_idx]);
+          char ascii_char = (top_idx < pixel_count) ? ascii_chars[top_idx] : ' '; // Bounds check
+          ansi_rle_add_pixel(&rle_ctx, top_pixel[0], top_pixel[1], top_pixel[2], ascii_char);
         }
       }
 
@@ -294,7 +295,8 @@ ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, in
         int idx = y * width + x;
         const uint8_t *pixel = &pixels[idx * 3];
 
-        ansi_rle_add_pixel(&rle_ctx, pixel[0], pixel[1], pixel[2], ascii_chars[idx]);
+        char ascii_char = (idx < pixel_count) ? ascii_chars[idx] : ' '; // Bounds check
+        ansi_rle_add_pixel(&rle_ctx, pixel[0], pixel[1], pixel[2], ascii_char);
       }
 
       // Add newline (except for last row)
