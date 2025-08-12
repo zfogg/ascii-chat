@@ -1,5 +1,4 @@
-#ifndef COMPRESSION_H
-#define COMPRESSION_H
+#pragma once
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,5 +17,3 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
 
 // Note: compressed_frame_header_t has been removed in favor of
 // ascii_frame_packet_t and image_frame_packet_t in network.h
-
-#endif // COMPRESSION_H
