@@ -1032,58 +1032,212 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
   char *end = output_buffer + buffer_size;
   int x = 0;
 
-  // Process 16-pixel chunks with TRUE NEON SIMD
-  for (; x + 15 < width; x += 16) {
-    const uint8_t *base = (const uint8_t *)(pixels + x);
+  // OPTIMIZED NEON - Process 32 pixels per iteration (2 x 16-pixel NEON batches)
+  // NEON has 128-bit registers (16 pixels max per instruction), so we batch 2 operations
+  for (; x + 31 < width; x += 32) {
+    const uint8_t *rgb_data = (const uint8_t *)&pixels[x];
 
-    // Load 16 interleaved RGB pixels → 3 x 16-byte vectors (TRUE NEON!)
-    uint8x16x3_t rgb = vld3q_u8(base);
+    // Load 96 bytes (32 RGB pixels) using two interleaved loads
+    uint8x16x3_t rgb_batch1 = vld3q_u8(rgb_data);      // Pixels 0-15
+    uint8x16x3_t rgb_batch2 = vld3q_u8(rgb_data + 48); // Pixels 16-31
 
-    // Widen to 16-bit for accurate dot product
-    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
-    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb.val[0]));
-    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb.val[1]));
-    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb.val[1]));
-    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb.val[2]));
-    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb.val[2]));
+    // Process batch 1 (pixels 0-15)
+    uint16x8_t r1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[0]));
+    uint16x8_t r1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[0]));
+    uint16x8_t g1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[1]));
+    uint16x8_t g1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[1]));
+    uint16x8_t b1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[2]));
+    uint16x8_t b1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[2]));
 
-    // SIMD luminance: y = (77*r + 150*g + 29*b) >> 8 (fits in 16-bit)
-    uint16x8_t y_lo = vmulq_n_u16(r_lo, LUMA_RED);
-    y_lo = vmlaq_n_u16(y_lo, g_lo, LUMA_GREEN);
-    y_lo = vmlaq_n_u16(y_lo, b_lo, LUMA_BLUE);
-    y_lo = vshrq_n_u16(y_lo, 8);
+    // Process batch 2 (pixels 16-31)
+    uint16x8_t r2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[0]));
+    uint16x8_t r2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[0]));
+    uint16x8_t g2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[1]));
+    uint16x8_t g2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[1]));
+    uint16x8_t b2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[2]));
+    uint16x8_t b2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[2]));
 
-    uint16x8_t y_hi = vmulq_n_u16(r_hi, LUMA_RED);
-    y_hi = vmlaq_n_u16(y_hi, g_hi, LUMA_GREEN);
-    y_hi = vmlaq_n_u16(y_hi, b_hi, LUMA_BLUE);
-    y_hi = vshrq_n_u16(y_hi, 8);
+    // Parallel luminance computation on 4 NEON vectors (32 pixels total)
+    uint16x8_t luma1_lo = vmulq_n_u16(r1_lo, LUMA_RED);
+    luma1_lo = vmlaq_n_u16(luma1_lo, g1_lo, LUMA_GREEN);
+    luma1_lo = vmlaq_n_u16(luma1_lo, b1_lo, LUMA_BLUE);
+    luma1_lo = vshrq_n_u16(luma1_lo, 8);
 
-    // Narrow to 8-bit luminance values
-    uint8x16_t y8 = vcombine_u8(vqmovn_u16(y_lo), vqmovn_u16(y_hi));
+    uint16x8_t luma1_hi = vmulq_n_u16(r1_hi, LUMA_RED);
+    luma1_hi = vmlaq_n_u16(luma1_hi, g1_hi, LUMA_GREEN);
+    luma1_hi = vmlaq_n_u16(luma1_hi, b1_hi, LUMA_BLUE);
+    luma1_hi = vshrq_n_u16(luma1_hi, 8);
 
-    // Extract luminance values for immediate use
-    uint8_t lum[16];
-    vst1q_u8(lum, y8);
+    uint16x8_t luma2_lo = vmulq_n_u16(r2_lo, LUMA_RED);
+    luma2_lo = vmlaq_n_u16(luma2_lo, g2_lo, LUMA_GREEN);
+    luma2_lo = vmlaq_n_u16(luma2_lo, b2_lo, LUMA_BLUE);
+    luma2_lo = vshrq_n_u16(luma2_lo, 8);
 
-    // STREAMING: Emit 16 pixels immediately (no staging buffers!)
-    for (int k = 0; k < 16; ++k) {
+    uint16x8_t luma2_hi = vmulq_n_u16(r2_hi, LUMA_RED);
+    luma2_hi = vmlaq_n_u16(luma2_hi, g2_hi, LUMA_GREEN);
+    luma2_hi = vmlaq_n_u16(luma2_hi, b2_hi, LUMA_BLUE);
+    luma2_hi = vshrq_n_u16(luma2_hi, 8);
+
+    // Pack luminance results into two 16-byte vectors
+    uint8x16_t luma_vec1 = vcombine_u8(vqmovn_u16(luma1_lo), vqmovn_u16(luma1_hi));
+    uint8x16_t luma_vec2 = vcombine_u8(vqmovn_u16(luma2_lo), vqmovn_u16(luma2_hi));
+
+    // Store NEON-computed luminance values for efficient processing
+    uint8_t luma_batch[32] __attribute__((aligned(16)));
+    vst1q_u8(&luma_batch[0], luma_vec1);
+    vst1q_u8(&luma_batch[16], luma_vec2);
+
+    // ADVANCED RUN-LENGTH ENCODING: Look ahead for consecutive pixels with same colors
+    static uint8_t last_fg_r = 255, last_fg_g = 255, last_fg_b = 255;
+    static uint8_t last_bg_r = 255, last_bg_g = 255, last_bg_b = 255;
+    
+    int k = 0;
+    while (k < 32) {
       const rgb_pixel_t *px = &pixels[x + k];
-
+      
       // Exact space check prevents buffer overflow
       if ((size_t)(end - p) < (background_mode ? 40 : 24))
         goto done;
 
+      // Calculate current color values
+      uint8_t curr_fg_r, curr_fg_g, curr_fg_b, curr_bg_r, curr_bg_g, curr_bg_b;
+      
       if (background_mode) {
-        uint8_t fg = (lum[k] < 127) ? 255 : 0;
-        p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
+        uint8_t fg = (luma_batch[k] < 127) ? 255 : 0;
+        curr_fg_r = curr_fg_g = curr_fg_b = fg;
+        curr_bg_r = px->r; curr_bg_g = px->g; curr_bg_b = px->b;
       } else {
-        p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
+        curr_fg_r = px->r; curr_fg_g = px->g; curr_fg_b = px->b;
+        curr_bg_r = curr_bg_g = curr_bg_b = 0; // Not used in foreground mode
       }
-      *p++ = luminance_palette[lum[k]];
+      
+      // Check if color changed from previous pixel
+      bool color_changed = false;
+      if (background_mode) {
+        color_changed = (curr_fg_r != last_fg_r || curr_fg_g != last_fg_g || curr_fg_b != last_fg_b ||
+                        curr_bg_r != last_bg_r || curr_bg_g != last_bg_g || curr_bg_b != last_bg_b);
+      } else {
+        color_changed = (curr_fg_r != last_fg_r || curr_fg_g != last_fg_g || curr_fg_b != last_fg_b);
+      }
+      
+      // Look ahead to count consecutive pixels with same color
+      int run_length = 1;
+      int lookahead_limit = (32 - k < width - x) ? 32 - k : width - x;
+      
+      for (int j = k + 1; j < lookahead_limit; j++) {
+        const rgb_pixel_t *next_px = &pixels[x + j];
+        uint8_t next_fg_r, next_fg_g, next_fg_b, next_bg_r, next_bg_g, next_bg_b;
+        
+        if (background_mode) {
+          uint8_t next_fg = (luma_batch[j] < 127) ? 255 : 0;
+          next_fg_r = next_fg_g = next_fg_b = next_fg;
+          next_bg_r = next_px->r; next_bg_g = next_px->g; next_bg_b = next_px->b;
+          
+          if (next_fg_r != curr_fg_r || next_fg_g != curr_fg_g || next_fg_b != curr_fg_b ||
+              next_bg_r != curr_bg_r || next_bg_g != curr_bg_g || next_bg_b != curr_bg_b) {
+            break; // Color changed, end of run
+          }
+        } else {
+          next_fg_r = next_px->r; next_fg_g = next_px->g; next_fg_b = next_px->b;
+          
+          if (next_fg_r != curr_fg_r || next_fg_g != curr_fg_g || next_fg_b != curr_fg_b) {
+            break; // Color changed, end of run
+          }
+        }
+        run_length++;
+      }
+      
+      // Emit color code only if changed
+      if (color_changed) {
+        if (background_mode) {
+          p = append_sgr_truecolor_fg_bg(p, curr_fg_r, curr_fg_g, curr_fg_b, curr_bg_r, curr_bg_g, curr_bg_b);
+        } else {
+          p = append_sgr_truecolor_fg(p, curr_fg_r, curr_fg_g, curr_fg_b);
+        }
+        
+        // Update last colors
+        last_fg_r = curr_fg_r; last_fg_g = curr_fg_g; last_fg_b = curr_fg_b;
+        last_bg_r = curr_bg_r; last_bg_g = curr_bg_g; last_bg_b = curr_bg_b;
+      }
+      
+      // Emit all consecutive characters with same color
+      for (int j = 0; j < run_length; j++) {
+        if ((size_t)(end - p) < 1) goto done;
+        *p++ = luminance_palette[luma_batch[k + j]];
+      }
+      
+      k += run_length; // Skip processed pixels
     }
   }
 
-  // Process remaining pixels (< 16) with scalar fallback
+  // Handle remaining 16 pixels with single NEON batch
+  if (x + 15 < width) {
+    const uint8_t *rgb_data = (const uint8_t *)&pixels[x];
+    uint8x16x3_t rgb_batch = vld3q_u8(rgb_data);
+
+    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb_batch.val[0]));
+    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb_batch.val[0]));
+    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb_batch.val[1]));
+    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb_batch.val[1]));
+    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb_batch.val[2]));
+    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb_batch.val[2]));
+
+    uint16x8_t luma_lo = vmulq_n_u16(r_lo, LUMA_RED);
+    luma_lo = vmlaq_n_u16(luma_lo, g_lo, LUMA_GREEN);
+    luma_lo = vmlaq_n_u16(luma_lo, b_lo, LUMA_BLUE);
+    luma_lo = vshrq_n_u16(luma_lo, 8);
+
+    uint16x8_t luma_hi = vmulq_n_u16(r_hi, LUMA_RED);
+    luma_hi = vmlaq_n_u16(luma_hi, g_hi, LUMA_GREEN);
+    luma_hi = vmlaq_n_u16(luma_hi, b_hi, LUMA_BLUE);
+    luma_hi = vshrq_n_u16(luma_hi, 8);
+
+    uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
+    uint8_t luma_values[16] __attribute__((aligned(16)));
+    vst1q_u8(luma_values, luma_vec);
+
+    for (int k = 0; k < 16; ++k) {
+      const rgb_pixel_t *px = &pixels[x + k];
+
+      if ((size_t)(end - p) < (background_mode ? 40 : 24))
+        goto done;
+
+      bool color_changed = false;
+      
+      if (background_mode) {
+        uint8_t fg = (luma_values[k] < 127) ? 255 : 0;
+        static uint8_t last_fg_r = 255, last_fg_g = 255, last_fg_b = 255;
+        static uint8_t last_bg_r = 255, last_bg_g = 255, last_bg_b = 255;
+        
+        if (fg != last_fg_r || fg != last_fg_g || fg != last_fg_b ||
+            px->r != last_bg_r || px->g != last_bg_g || px->b != last_bg_b) {
+          color_changed = true;
+          last_fg_r = last_fg_g = last_fg_b = fg;
+          last_bg_r = px->r; last_bg_g = px->g; last_bg_b = px->b;
+        }
+        
+        if (color_changed) {
+          p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
+        }
+      } else {
+        static uint8_t last_r = 255, last_g = 255, last_b = 255;
+        
+        if (px->r != last_r || px->g != last_g || px->b != last_b) {
+          color_changed = true;
+          last_r = px->r; last_g = px->g; last_b = px->b;
+        }
+        
+        if (color_changed) {
+          p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
+        }
+      }
+      
+      *p++ = luminance_palette[luma_values[k]];
+    }
+    x += 16;
+  }
+
+  // Process remaining pixels (< 16) with scalar fallback + run-length encoding
   for (; x < width; ++x) {
     const rgb_pixel_t *px = &pixels[x];
     int y = (LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8;
@@ -1091,12 +1245,36 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
     if ((size_t)(end - p) < (background_mode ? 40 : 24))
       break;
 
+    bool color_changed = false;
+    
     if (background_mode) {
       uint8_t fg = (y < 127) ? 255 : 0;
-      p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
+      static uint8_t last_fg_r = 255, last_fg_g = 255, last_fg_b = 255;
+      static uint8_t last_bg_r = 255, last_bg_g = 255, last_bg_b = 255;
+      
+      if (fg != last_fg_r || fg != last_fg_g || fg != last_fg_b ||
+          px->r != last_bg_r || px->g != last_bg_g || px->b != last_bg_b) {
+        color_changed = true;
+        last_fg_r = last_fg_g = last_fg_b = fg;
+        last_bg_r = px->r; last_bg_g = px->g; last_bg_b = px->b;
+      }
+      
+      if (color_changed) {
+        p = append_sgr_truecolor_fg_bg(p, fg, fg, fg, px->r, px->g, px->b);
+      }
     } else {
-      p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
+      static uint8_t last_r = 255, last_g = 255, last_b = 255;
+      
+      if (px->r != last_r || px->g != last_g || px->b != last_b) {
+        color_changed = true;
+        last_r = px->r; last_g = px->g; last_b = px->b;
+      }
+      
+      if (color_changed) {
+        p = append_sgr_truecolor_fg(p, px->r, px->g, px->b);
+      }
     }
+    
     *p++ = luminance_palette[y];
   }
 
@@ -1216,10 +1394,10 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
                                         bool background_mode) {
 #ifdef SIMD_SUPPORT_NEON
   return convert_row_with_color_neon(pixels, output_buffer, buffer_size, width, background_mode);
-#elif defined(SIMD_SUPPORT_AVX2)
-  return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
 #elif defined(SIMD_SUPPORT_SSSE3)
   return convert_row_with_color_ssse3(pixels, output_buffer, buffer_size, width, background_mode);
+#elif defined(SIMD_SUPPORT_AVX2)
+  return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
 #elif defined(SIMD_SUPPORT_SSE2)
   return convert_row_with_color_sse2(pixels, output_buffer, buffer_size, width, background_mode);
 #else
