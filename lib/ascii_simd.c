@@ -116,11 +116,11 @@ char *image_print_simd(image_t *image) {
 void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
   init_palette();
 
-  int simd_count = (count / 4) * 4;
   int i;
 
   // Process 4 pixels at a time using SSE2-compatible operations
-  for (i = 0; i < simd_count; i += 4) {
+  for (i = 0; i + 3 < count; i += 4) {
+    // Explicit bounds check: ensure we can safely access pixels[i+3]
     // Load 4 RGB pixels and convert to 16-bit for SSE2 compatibility
     // SSE2 doesn't have _mm_mullo_epi32, so we use 16-bit arithmetic
 
@@ -171,7 +171,6 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
 void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
   init_palette();
 
-  int simd_count = (count / 8) * 8;
   int i;
 
   // AVX2 constants
@@ -180,8 +179,8 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
   const __m256i luma_b_vec = _mm256_set1_epi32(LUMA_BLUE);
   const __m256i clamp_255 = _mm256_set1_epi32(255);
 
-  // Process 8 pixels at a time
-  for (i = 0; i < simd_count; i += 8) {
+  // Process 8 pixels at a time with explicit bounds checking
+  for (i = 0; i + 7 < count; i += 8) {
     // Load 8 RGB pixels into separate vectors
     __m256i r_vals = _mm256_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, pixels[i + 4].r,
                                        pixels[i + 5].r, pixels[i + 6].r, pixels[i + 7].r);
@@ -232,12 +231,10 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
   char *current_pos = output_buffer;
   char *buffer_end = output_buffer + buffer_size;
   int pixel_count = width; // Assuming single row for this example
-
-  // Process 8 pixels at a time for luminance calculation
-  int simd_count = (pixel_count / 8) * 8;
   int i;
 
-  for (i = 0; i < simd_count; i += 8) {
+  // Process 8 pixels at a time for luminance calculation with explicit bounds checking  
+  for (i = 0; i + 7 < pixel_count; i += 8) {
     // Calculate luminance for 8 pixels (same as above)
     __m256i r_vals = _mm256_setr_epi32(pixels[i].r, pixels[i + 1].r, pixels[i + 2].r, pixels[i + 3].r, pixels[i + 4].r,
                                        pixels[i + 5].r, pixels[i + 6].r, pixels[i + 7].r);
@@ -326,16 +323,16 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
   // Prepare NEON table for palette lookup - convert palette to uint8x16_t chunks
   uint8x16_t palette_table_0, palette_table_1;
-  
+
   // Fill first 16 entries of luminance palette
   uint8_t palette_bytes[32];
   for (int j = 0; j < 16; j++) {
-    palette_bytes[j] = (uint8_t)luminance_palette[j * 16];  // Sample every 16th entry for first table
+    palette_bytes[j] = (uint8_t)luminance_palette[j * 16]; // Sample every 16th entry for first table
   }
   for (int j = 0; j < 16; j++) {
-    palette_bytes[j + 16] = (uint8_t)luminance_palette[j * 16 + 8];  // Offset sampling for second table
+    palette_bytes[j + 16] = (uint8_t)luminance_palette[j * 16 + 8]; // Offset sampling for second table
   }
-  
+
   palette_table_0 = vld1q_u8(palette_bytes);
   palette_table_1 = vld1q_u8(palette_bytes + 16);
 
@@ -398,22 +395,38 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     vst1q_u8(lum2, y8_2);
 
     // Optimized bulk palette lookup - unrolled for maximum performance
-    ascii_chars[i+0] = luminance_palette[lum1[0]];   ascii_chars[i+16] = luminance_palette[lum2[0]];
-    ascii_chars[i+1] = luminance_palette[lum1[1]];   ascii_chars[i+17] = luminance_palette[lum2[1]];
-    ascii_chars[i+2] = luminance_palette[lum1[2]];   ascii_chars[i+18] = luminance_palette[lum2[2]];
-    ascii_chars[i+3] = luminance_palette[lum1[3]];   ascii_chars[i+19] = luminance_palette[lum2[3]];
-    ascii_chars[i+4] = luminance_palette[lum1[4]];   ascii_chars[i+20] = luminance_palette[lum2[4]];
-    ascii_chars[i+5] = luminance_palette[lum1[5]];   ascii_chars[i+21] = luminance_palette[lum2[5]];
-    ascii_chars[i+6] = luminance_palette[lum1[6]];   ascii_chars[i+22] = luminance_palette[lum2[6]];
-    ascii_chars[i+7] = luminance_palette[lum1[7]];   ascii_chars[i+23] = luminance_palette[lum2[7]];
-    ascii_chars[i+8] = luminance_palette[lum1[8]];   ascii_chars[i+24] = luminance_palette[lum2[8]];
-    ascii_chars[i+9] = luminance_palette[lum1[9]];   ascii_chars[i+25] = luminance_palette[lum2[9]];
-    ascii_chars[i+10] = luminance_palette[lum1[10]]; ascii_chars[i+26] = luminance_palette[lum2[10]];
-    ascii_chars[i+11] = luminance_palette[lum1[11]]; ascii_chars[i+27] = luminance_palette[lum2[11]];
-    ascii_chars[i+12] = luminance_palette[lum1[12]]; ascii_chars[i+28] = luminance_palette[lum2[12]];
-    ascii_chars[i+13] = luminance_palette[lum1[13]]; ascii_chars[i+29] = luminance_palette[lum2[13]];
-    ascii_chars[i+14] = luminance_palette[lum1[14]]; ascii_chars[i+30] = luminance_palette[lum2[14]];
-    ascii_chars[i+15] = luminance_palette[lum1[15]]; ascii_chars[i+31] = luminance_palette[lum2[15]];
+    ascii_chars[i + 0] = luminance_palette[lum1[0]];
+    ascii_chars[i + 16] = luminance_palette[lum2[0]];
+    ascii_chars[i + 1] = luminance_palette[lum1[1]];
+    ascii_chars[i + 17] = luminance_palette[lum2[1]];
+    ascii_chars[i + 2] = luminance_palette[lum1[2]];
+    ascii_chars[i + 18] = luminance_palette[lum2[2]];
+    ascii_chars[i + 3] = luminance_palette[lum1[3]];
+    ascii_chars[i + 19] = luminance_palette[lum2[3]];
+    ascii_chars[i + 4] = luminance_palette[lum1[4]];
+    ascii_chars[i + 20] = luminance_palette[lum2[4]];
+    ascii_chars[i + 5] = luminance_palette[lum1[5]];
+    ascii_chars[i + 21] = luminance_palette[lum2[5]];
+    ascii_chars[i + 6] = luminance_palette[lum1[6]];
+    ascii_chars[i + 22] = luminance_palette[lum2[6]];
+    ascii_chars[i + 7] = luminance_palette[lum1[7]];
+    ascii_chars[i + 23] = luminance_palette[lum2[7]];
+    ascii_chars[i + 8] = luminance_palette[lum1[8]];
+    ascii_chars[i + 24] = luminance_palette[lum2[8]];
+    ascii_chars[i + 9] = luminance_palette[lum1[9]];
+    ascii_chars[i + 25] = luminance_palette[lum2[9]];
+    ascii_chars[i + 10] = luminance_palette[lum1[10]];
+    ascii_chars[i + 26] = luminance_palette[lum2[10]];
+    ascii_chars[i + 11] = luminance_palette[lum1[11]];
+    ascii_chars[i + 27] = luminance_palette[lum2[11]];
+    ascii_chars[i + 12] = luminance_palette[lum1[12]];
+    ascii_chars[i + 28] = luminance_palette[lum2[12]];
+    ascii_chars[i + 13] = luminance_palette[lum1[13]];
+    ascii_chars[i + 29] = luminance_palette[lum2[13]];
+    ascii_chars[i + 14] = luminance_palette[lum1[14]];
+    ascii_chars[i + 30] = luminance_palette[lum2[14]];
+    ascii_chars[i + 15] = luminance_palette[lum1[15]];
+    ascii_chars[i + 31] = luminance_palette[lum2[15]];
   }
 
   // Process remaining 16-pixel chunks
@@ -447,22 +460,22 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     vst1q_u8(lum, y8);
 
     // Unrolled palette conversion
-    ascii_chars[i+0] = luminance_palette[lum[0]];
-    ascii_chars[i+1] = luminance_palette[lum[1]];
-    ascii_chars[i+2] = luminance_palette[lum[2]];
-    ascii_chars[i+3] = luminance_palette[lum[3]];
-    ascii_chars[i+4] = luminance_palette[lum[4]];
-    ascii_chars[i+5] = luminance_palette[lum[5]];
-    ascii_chars[i+6] = luminance_palette[lum[6]];
-    ascii_chars[i+7] = luminance_palette[lum[7]];
-    ascii_chars[i+8] = luminance_palette[lum[8]];
-    ascii_chars[i+9] = luminance_palette[lum[9]];
-    ascii_chars[i+10] = luminance_palette[lum[10]];
-    ascii_chars[i+11] = luminance_palette[lum[11]];
-    ascii_chars[i+12] = luminance_palette[lum[12]];
-    ascii_chars[i+13] = luminance_palette[lum[13]];
-    ascii_chars[i+14] = luminance_palette[lum[14]];
-    ascii_chars[i+15] = luminance_palette[lum[15]];
+    ascii_chars[i + 0] = luminance_palette[lum[0]];
+    ascii_chars[i + 1] = luminance_palette[lum[1]];
+    ascii_chars[i + 2] = luminance_palette[lum[2]];
+    ascii_chars[i + 3] = luminance_palette[lum[3]];
+    ascii_chars[i + 4] = luminance_palette[lum[4]];
+    ascii_chars[i + 5] = luminance_palette[lum[5]];
+    ascii_chars[i + 6] = luminance_palette[lum[6]];
+    ascii_chars[i + 7] = luminance_palette[lum[7]];
+    ascii_chars[i + 8] = luminance_palette[lum[8]];
+    ascii_chars[i + 9] = luminance_palette[lum[9]];
+    ascii_chars[i + 10] = luminance_palette[lum[10]];
+    ascii_chars[i + 11] = luminance_palette[lum[11]];
+    ascii_chars[i + 12] = luminance_palette[lum[12]];
+    ascii_chars[i + 13] = luminance_palette[lum[13]];
+    ascii_chars[i + 14] = luminance_palette[lum[14]];
+    ascii_chars[i + 15] = luminance_palette[lum[15]];
   }
 
   // Process remaining pixels (< 16) with scalar fallback
