@@ -528,6 +528,13 @@ void packet_queue_free_packet(queued_packet_t *packet) {
   if (!packet)
     return;
 
+  // Check if packet was already freed (detect double-free)
+  if (packet->header.magic != htonl(PACKET_MAGIC)) {
+    log_warn("Attempted double-free of packet (magic=0x%x, expected=0x%x)", 
+             ntohl(packet->header.magic), PACKET_MAGIC);
+    return;
+  }
+
   if (packet->owns_data && packet->data) {
     // Return to appropriate pool or free
     if (packet->buffer_pool) {
@@ -537,6 +544,9 @@ void packet_queue_free_packet(queued_packet_t *packet) {
       buffer_pool_free(packet->data, packet->data_len);
     }
   }
+  
+  // Mark as freed to detect future double-free attempts
+  packet->header.magic = 0xDEADBEEF; // Use different magic to indicate freed packet
   free(packet);
 }
 

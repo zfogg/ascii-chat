@@ -76,6 +76,18 @@ ifeq ($(UNAME_S),Darwin)
   IS_ROSETTA       := $(shell sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
 endif
 
+# Force arm64 when building natively on Apple Silicon (not under Rosetta)
+ifeq ($(UNAME_S),Darwin)
+  ifeq ($(IS_APPLE_SILICON),1)
+    ifneq ($(IS_ROSETTA),1)
+      override CFLAGS    += -arch arm64
+      override OBJCFLAGS += -arch arm64
+      override LDFLAGS   += -arch arm64
+      $(info Forcing arm64 build on Apple Silicon)
+    endif
+  endif
+endif
+
 # User override controls
 # SIMD_MODE can be one of: auto, off, sse2, avx2, neon, native
 SIMD_MODE ?= auto
@@ -131,12 +143,14 @@ endif
 
 # CPU-aware optimization flags for all platforms
 ifeq ($(UNAME_S),Darwin)
-    # macOS: Apple Silicon gets specific optimizations, Intel gets generic -O3
-    ifeq ($(IS_APPLE_SILICON),1)
-        CPU_OPT_FLAGS := -O3 -mcpu=apple-m1 -ffast-math
+    # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use generic flags on Apple Silicon
+    ifeq ($(IS_ROSETTA),1)
+        CPU_OPT_FLAGS := -O3 -march=native
+        $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
+    else ifeq ($(IS_APPLE_SILICON),1)
+        CPU_OPT_FLAGS := -O3 -ffast-math
         $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
-        # Intel Mac
         CPU_OPT_FLAGS := -O3 -march=native
         $(info Using Intel Mac optimizations: $(CPU_OPT_FLAGS))
     endif
@@ -289,6 +303,9 @@ help:
 	@echo "  release     - Build with optimizations enabled"
 	@echo "  format      - Format source code using clang-format"
 	@echo "  format-check- Check code formatting without modifying files"
+	@echo "  clang-tidy  - Run clang-tidy on sources"
+	@echo "  analyze     - Run static analysis (clang --analyze, cppcheck)"
+	@echo "  cloc        - Count lines of code"
 	@echo "  clean       - Remove build artifacts"
 	@echo "  help        - Show this help message"
 	@echo ""

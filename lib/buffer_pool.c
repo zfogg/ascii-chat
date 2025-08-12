@@ -2,6 +2,7 @@
 #include "common.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* ============================================================================
  * Internal Buffer Pool Functions
@@ -48,9 +49,9 @@ static void buffer_pool_destroy_single(buffer_pool_t *pool) {
     return;
   }
 
-  free(pool->memory_block);
-  free(pool->nodes);
-  free(pool);
+  SAFE_FREE(pool->memory_block);
+  SAFE_FREE(pool->nodes);
+  SAFE_FREE(pool);
 }
 
 static void *buffer_pool_alloc_single(buffer_pool_t *pool, size_t size) {
@@ -125,6 +126,7 @@ data_buffer_pool_t *data_buffer_pool_create(void) {
   pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
   pool->medium_pool = buffer_pool_create_single(BUFFER_POOL_MEDIUM_SIZE, BUFFER_POOL_MEDIUM_COUNT);
   pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
+  pool->xlarge_pool = buffer_pool_create_single(BUFFER_POOL_XLARGE_SIZE, BUFFER_POOL_XLARGE_COUNT);
 
   pthread_mutex_init(&pool->pool_mutex, NULL);
 
@@ -132,10 +134,11 @@ data_buffer_pool_t *data_buffer_pool_create(void) {
   pool->pool_hits = 0;
   pool->malloc_fallbacks = 0;
 
-  log_info("Created data buffer pool: %zu KB small, %zu KB medium, %zu KB large",
+  log_info("Created data buffer pool: %zu KB small, %zu KB medium, %zu KB large, %zu KB xlarge",
            (BUFFER_POOL_SMALL_SIZE * BUFFER_POOL_SMALL_COUNT) / 1024,
            (BUFFER_POOL_MEDIUM_SIZE * BUFFER_POOL_MEDIUM_COUNT) / 1024,
-           (BUFFER_POOL_LARGE_SIZE * BUFFER_POOL_LARGE_COUNT) / 1024);
+           (BUFFER_POOL_LARGE_SIZE * BUFFER_POOL_LARGE_COUNT) / 1024,
+           (BUFFER_POOL_XLARGE_SIZE * BUFFER_POOL_XLARGE_COUNT) / 1024);
 
   return pool;
 }
@@ -148,14 +151,16 @@ void data_buffer_pool_destroy(data_buffer_pool_t *pool) {
   buffer_pool_destroy_single(pool->small_pool);
   buffer_pool_destroy_single(pool->medium_pool);
   buffer_pool_destroy_single(pool->large_pool);
+  buffer_pool_destroy_single(pool->xlarge_pool);
 
   pthread_mutex_destroy(&pool->pool_mutex);
-  free(pool);
+  SAFE_FREE(pool);
 }
 
 void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
   if (!pool) {
     // No pool, fallback to malloc
+    log_warn("MALLOC FALLBACK (no pool): size=%zu at %s:%d", size, __FILE__, __LINE__);
     void *data;
     SAFE_MALLOC(data, size, void *);
     return data;
@@ -173,6 +178,8 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     buffer = buffer_pool_alloc_single(pool->medium_pool, size);
   } else if (size <= BUFFER_POOL_LARGE_SIZE) {
     buffer = buffer_pool_alloc_single(pool->large_pool, size);
+  } else if (size <= BUFFER_POOL_XLARGE_SIZE) {
+    buffer = buffer_pool_alloc_single(pool->xlarge_pool, size);
   }
 
   if (buffer) {
@@ -186,6 +193,7 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
 
   // If no buffer from pool, use malloc
   if (!buffer) {
+    log_warn("MALLOC FALLBACK: size=%zu at %s:%d", size, __FILE__, __LINE__);
     SAFE_MALLOC(buffer, size, void *);
   }
 
@@ -199,7 +207,8 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
 
   if (!pool) {
     // No pool, must have been malloc'd directly
-    free(data);
+    log_warn("MALLOC FALLBACK FREE (no pool): size=%zu at %s:%d", size, __FILE__, __LINE__);
+    SAFE_FREE(data);
     return;
   }
 
@@ -214,13 +223,16 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
     freed = buffer_pool_free_single(pool->medium_pool, data);
   } else if (size <= BUFFER_POOL_LARGE_SIZE) {
     freed = buffer_pool_free_single(pool->large_pool, data);
+  } else if (size <= BUFFER_POOL_XLARGE_SIZE) {
+    freed = buffer_pool_free_single(pool->xlarge_pool, data);
   }
 
   pthread_mutex_unlock(&pool->pool_mutex);
 
   // If not from any pool, it was malloc'd
   if (!freed) {
-    free(data);
+    log_warn("MALLOC FALLBACK FREE: size=%zu at %s:%d", size, __FILE__, __LINE__);
+    SAFE_FREE(data);
   }
 }
 
@@ -274,6 +286,8 @@ void data_buffer_pool_cleanup_global(void) {
     data_buffer_pool_destroy(g_global_buffer_pool);
     g_global_buffer_pool = NULL;
     log_info("Cleaned up global shared buffer pool");
+  } else {
+    log_debug("Global buffer pool already cleaned up - skipping");
   }
   pthread_mutex_unlock(&g_global_pool_mutex);
 }
@@ -286,6 +300,7 @@ data_buffer_pool_t *data_buffer_pool_get_global(void) {
 void *buffer_pool_alloc(size_t size) {
   if (!g_global_buffer_pool) {
     // If global pool not initialized, fall back to regular malloc
+    log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
     void *data;
     SAFE_MALLOC(data, size, void *);
     return data;
@@ -306,7 +321,8 @@ void buffer_pool_free(void *data, size_t size) {
 
   // No global pool - this memory must have been malloc'd
   // (unless it's from a pool that was already destroyed, in which case we leak)
-  free(data);
+  log_warn("MALLOC FALLBACK FREE (global pool destroyed): size=%zu at %s:%d", size, __FILE__, __LINE__);
+  SAFE_FREE(data);
 }
 
 /* ============================================================================
@@ -349,13 +365,22 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
     stats->large_bytes = pool->large_pool->total_bytes_allocated;
   }
 
+  // Extra large pool stats
+  if (pool->xlarge_pool) {
+    stats->xlarge_hits = pool->xlarge_pool->hits;
+    stats->xlarge_misses = pool->xlarge_pool->misses;
+    stats->xlarge_returns = pool->xlarge_pool->returns;
+    stats->xlarge_peak_used = pool->xlarge_pool->peak_used;
+    stats->xlarge_bytes = pool->xlarge_pool->total_bytes_allocated;
+  }
+
   // Calculate totals
-  stats->total_allocations = stats->small_hits + stats->medium_hits + stats->large_hits + stats->small_misses +
-                             stats->medium_misses + stats->large_misses;
-  stats->total_bytes = stats->small_bytes + stats->medium_bytes + stats->large_bytes;
+  stats->total_allocations = stats->small_hits + stats->medium_hits + stats->large_hits + stats->xlarge_hits + 
+                             stats->small_misses + stats->medium_misses + stats->large_misses + stats->xlarge_misses;
+  stats->total_bytes = stats->small_bytes + stats->medium_bytes + stats->large_bytes + stats->xlarge_bytes;
 
   // Calculate pool usage efficiency
-  uint64_t total_hits = stats->small_hits + stats->medium_hits + stats->large_hits;
+  uint64_t total_hits = stats->small_hits + stats->medium_hits + stats->large_hits + stats->xlarge_hits;
   if (stats->total_allocations > 0) {
     stats->total_pool_usage_percent = (total_hits * 100) / stats->total_allocations;
   }
@@ -398,6 +423,14 @@ void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name)
              (double)stats.large_hits * 100.0 / (stats.large_hits + stats.large_misses),
              (unsigned long long)stats.large_peak_used, BUFFER_POOL_LARGE_COUNT,
              (double)stats.large_bytes / (1024.0 * 1024.0));
+  }
+
+  if (stats.xlarge_hits + stats.xlarge_misses > 0) {
+    log_info("  XLarge (1.25MB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+             (unsigned long long)stats.xlarge_hits, (unsigned long long)stats.xlarge_misses,
+             (double)stats.xlarge_hits * 100.0 / (stats.xlarge_hits + stats.xlarge_misses),
+             (unsigned long long)stats.xlarge_peak_used, BUFFER_POOL_XLARGE_COUNT,
+             (double)stats.xlarge_bytes / (1024.0 * 1024.0));
   }
 }
 
