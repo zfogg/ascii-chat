@@ -1,6 +1,6 @@
 # Makefile for Rate Limiter Example
-CC = gcc
-CFLAGS = -Wall -Wextra -O2
+CC = clang
+CFLAGS = -Wall -Wextra -O3 -std=c23 -I../lib -D_GNU_SOURCE
 LDFLAGS = -lm
 
 SOURCES = rate_limiter.c rate_limiter_example.c
