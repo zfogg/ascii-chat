@@ -156,7 +156,7 @@ void frame_debug_detect_issues(frame_debug_tracker_t *tracker) {
   double slow_rate = (double)tracker->slow_frames * 100.0 / tracker->total_frames;
 
   // Issue detection thresholds
-  const double DUPLICATE_THRESHOLD = 10.0; // 10% duplicates = problem
+  const double DUPLICATE_THRESHOLD = 50.0; // 50% duplicates = problem
   const double SLOW_THRESHOLD = 5.0;       // 5% slow frames = problem
 
   bool has_issues = false;
