@@ -51,6 +51,11 @@ override LDFLAGS += $(ARCH_FLAGS)
 override OBJCFLAGS += $(CFLAGS)
 override CFLAGS += -std=$(CSTD)
 
+# Allow external tools (e.g., scan-build) to inject additional flags without
+# fighting our override-based layout. Use EXTRA_CFLAGS for safe augmentation.
+EXTRA_CFLAGS ?=
+override CFLAGS += $(EXTRA_CFLAGS)
+
 # Only embed Info.plist on macOS
 ifeq ($(shell uname),Darwin)
     INFO_PLIST_FLAGS := -sectcreate __TEXT __info_plist Info.plist
@@ -336,7 +341,7 @@ analyze:
 
 scan-build: c-objs
 	export SCANBUILD_CFLAGS="-Wformat -Wformat-security -Werror=format-security"; \
-		scan-build --status-bugs -analyze-headers make CSTD=\"$(CSTD)\" CFLAGS=\"$$SCANBUILD_CFLAGS\" c-objs
+		scan-build --status-bugs -analyze-headers make CSTD=\"$(CSTD)\" EXTRA_CFLAGS=\"$$SCANBUILD_CFLAGS\" c-objs
 
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
