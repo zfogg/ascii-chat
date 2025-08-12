@@ -43,8 +43,9 @@ static pthread_cond_t g_shutdown_cond = PTHREAD_COND_INITIALIZER;
 
 /* Interruptible sleep that respects shutdown signal */
 static void interruptible_usleep(useconds_t usec) {
-  if (g_should_exit) return;
-  
+  if (g_should_exit)
+    return;
+
   pthread_mutex_lock(&g_shutdown_mutex);
   if (!g_should_exit) {
     struct timespec timeout;
@@ -234,14 +235,14 @@ static void sigint_handler(int sigint) {
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   g_should_exit = true;
-  
+
   // Signal-safe logging - avoid log_warn() which may not be signal-safe
   const char msg[] = "SIGTERM received - shutting down server...\n";
   write(STDERR_FILENO, msg, sizeof(msg) - 1);
-  
+
   // Wake up all sleeping threads immediately - signal-safe operation
   pthread_cond_broadcast(&g_shutdown_cond);
-  
+
   // Close listening socket to interrupt accept() - signal-safe
   if (listenfd > 0) {
     close(listenfd);
@@ -705,17 +706,17 @@ static void *video_broadcast_thread_func(void *arg) {
             // Check if this client has processed at least one frame (has_cached_frame)
             // OR has pending image data in buffer to process now
             bool has_cached = src_client->has_cached_frame;
-            bool has_pending = (src_client->incoming_video_buffer && 
-                               ringbuffer_size(src_client->incoming_video_buffer->rb) > 0);
-            
+            bool has_pending =
+                (src_client->incoming_video_buffer && ringbuffer_size(src_client->incoming_video_buffer->rb) > 0);
+
             if (has_cached || has_pending) {
               has_actual_video_data = true;
-              
+
               // Debug log when we first detect real video data
               static bool first_video_detected[MAX_CLIENTS] = {false};
               if (!first_video_detected[j]) {
-                log_info("FIRST VIDEO DATA: Client %u now has %s - starting frame generation",
-                        src_client->client_id, has_cached ? "cached frame" : "pending data");
+                log_info("FIRST VIDEO DATA: Client %u now has %s - starting frame generation", src_client->client_id,
+                         has_cached ? "cached frame" : "pending data");
                 first_video_detected[j] = true;
               }
               break;
@@ -723,10 +724,10 @@ static void *video_broadcast_thread_func(void *arg) {
           }
         }
         pthread_mutex_unlock(&g_client_manager_mutex);
-        
+
         if (!has_actual_video_data) {
           // Skip frame generation until we have real video data to work with
-          continue; 
+          continue;
         }
 
         // Create a custom-sized frame for THIS client's terminal dimensions
@@ -924,8 +925,10 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           // AGGRESSIVE: Skip to latest frame for ANY significant occupancy
           // The goal is MINIMAL LAG - ringbuffers are for network problems, not normal operation
           frames_to_read = (int)occupancy - 1; // Read all but keep latest
-          if (frames_to_read > 20) frames_to_read = 20; // Cap to avoid excessive processing
-          if (frames_to_read < 1) frames_to_read = 1;   // Always read at least 1
+          if (frames_to_read > 20)
+            frames_to_read = 20; // Cap to avoid excessive processing
+          if (frames_to_read < 1)
+            frames_to_read = 1; // Always read at least 1
         }
         // else: Normal mode when buffer is nearly empty (< 30% occupancy)
 
