@@ -1,5 +1,6 @@
 #include "audio.h"
 #include "common.h"
+#include "buffer_pool.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -45,11 +46,11 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
 }
 
 audio_ring_buffer_t *audio_ring_buffer_create(void) {
-  audio_ring_buffer_t *rb;
-  SAFE_MALLOC(rb, sizeof(audio_ring_buffer_t), audio_ring_buffer_t *);
+  size_t rb_size = sizeof(audio_ring_buffer_t);
+  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_pool_alloc(rb_size);
 
   if (!rb) {
-    log_error("Failed to allocate audio ring buffer");
+    log_error("Failed to allocate audio ring buffer from buffer pool");
     return NULL;
   }
 
@@ -59,7 +60,7 @@ audio_ring_buffer_t *audio_ring_buffer_create(void) {
 
   if (pthread_mutex_init(&rb->mutex, NULL) != 0) {
     log_error("Failed to initialize audio ring buffer mutex");
-    free(rb);
+    buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
     return NULL;
   }
 
@@ -71,7 +72,7 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
     return;
 
   pthread_mutex_destroy(&rb->mutex);
-  free(rb);
+  buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
 }
 
 int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples) {
