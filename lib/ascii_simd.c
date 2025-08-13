@@ -1227,3 +1227,201 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
   return result;
 }
+
+// Enhanced benchmark function with image source support
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, const image_t *source_image) {
+  simd_benchmark_t result = {0};
+
+  int pixel_count = width * height;
+
+  // Generate test data
+  rgb_pixel_t *test_pixels;
+  char *output_buffer;
+  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+  SAFE_MALLOC(output_buffer, pixel_count, char *);
+
+  if (source_image && source_image->pixels) {
+    printf("Using provided image data (%dx%d) for testing\n", source_image->w, source_image->h);
+    
+    // Resize source image to test dimensions if needed
+    if (source_image->w == width && source_image->h == height) {
+      // Direct copy
+      for (int i = 0; i < pixel_count; i++) {
+        test_pixels[i].r = source_image->pixels[i].r;
+        test_pixels[i].g = source_image->pixels[i].g;
+        test_pixels[i].b = source_image->pixels[i].b;
+      }
+    } else {
+      // Simple nearest-neighbor resize
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          int src_x = (x * source_image->w) / width;
+          int src_y = (y * source_image->h) / height;
+          int src_idx = src_y * source_image->w + src_x;
+          int dst_idx = y * width + x;
+          
+          if (src_idx < source_image->w * source_image->h) {
+            test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
+            test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
+            test_pixels[dst_idx].b = source_image->pixels[src_idx].b;
+          }
+        }
+      }
+      printf("Resized image data from %dx%d to %dx%d\n", source_image->w, source_image->h, width, height);
+    }
+  } else {
+    // Fall back to synthetic gradient data  
+    printf("No source image provided, using synthetic gradient data\n");
+    srand(12345);
+    for (int i = 0; i < pixel_count; i++) {
+      int x = i % width;
+      int y = i / width;
+      int base_r = (x * 255 / width);
+      int base_g = (y * 255 / height);
+      int base_b = ((x + y) * 127 / (width + height));
+      
+      int temp_r = base_r + (rand() % 16 - 8);
+      int temp_g = base_g + (rand() % 16 - 8);
+      int temp_b = base_b + (rand() % 16 - 8);
+      
+      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
+      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
+      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
+    }
+  }
+
+  printf("Benchmarking %dx%d (%d pixels) x %d iterations...\n", width, height, pixel_count, iterations);
+
+  // Benchmark all available SIMD variants... (implementation continues)
+  double start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_scalar(test_pixels, output_buffer, pixel_count);
+  }
+  result.scalar_time = get_time_seconds() - start;
+
+#ifdef SIMD_SUPPORT_NEON
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_neon(test_pixels, output_buffer, pixel_count);
+  }
+  result.neon_time = get_time_seconds() - start;
+#endif
+
+  // Find best method
+  double best_time = result.scalar_time;
+  result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_NEON
+  if (result.neon_time > 0 && result.neon_time < best_time) {
+    best_time = result.neon_time;
+    result.best_method = "NEON";
+  }
+#endif
+
+  result.speedup_best = result.scalar_time / best_time;
+
+  free(test_pixels);
+  free(output_buffer);
+
+  return result;
+}
+
+// Enhanced color benchmark function with image source support  
+simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations, bool background_mode, const image_t *source_image) {
+  simd_benchmark_t result = {0};
+
+  int pixel_count = width * height;
+  size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;
+
+  // Generate test data
+  rgb_pixel_t *test_pixels;
+  char *output_buffer;
+  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+  SAFE_MALLOC(output_buffer, output_buffer_size, char *);
+
+  if (source_image && source_image->pixels) {
+    printf("Using provided image data (%dx%d) for color testing\n", source_image->w, source_image->h);
+    
+    // Resize source image to test dimensions if needed  
+    if (source_image->w == width && source_image->h == height) {
+      // Direct copy
+      for (int i = 0; i < pixel_count; i++) {
+        test_pixels[i].r = source_image->pixels[i].r;
+        test_pixels[i].g = source_image->pixels[i].g;
+        test_pixels[i].b = source_image->pixels[i].b;
+      }
+    } else {
+      // Simple nearest-neighbor resize
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          int src_x = (x * source_image->w) / width;
+          int src_y = (y * source_image->h) / height;
+          int src_idx = src_y * source_image->w + src_x;
+          int dst_idx = y * width + x;
+          
+          if (src_idx < source_image->w * source_image->h) {
+            test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
+            test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
+            test_pixels[dst_idx].b = source_image->pixels[src_idx].b;
+          }
+        }
+      }
+      printf("Resized color image data from %dx%d to %dx%d\n", source_image->w, source_image->h, width, height);
+    }
+  } else {
+    // Fall back to synthetic gradient data
+    printf("No source image provided, using coherent gradient data\n");
+    srand(12345);
+    for (int i = 0; i < pixel_count; i++) {
+      int x = i % width;
+      int y = i / width;
+      int base_r = (x * 255 / width);
+      int base_g = (y * 255 / height);
+      int base_b = ((x + y) * 127 / (width + height));
+      
+      int temp_r = base_r + (rand() % 16 - 8);
+      int temp_g = base_g + (rand() % 16 - 8);
+      int temp_b = base_b + (rand() % 16 - 8);
+      
+      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
+      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
+      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
+    }
+  }
+
+  const char *mode_str = background_mode ? "background" : "foreground";
+  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count, iterations);
+
+  // Benchmark scalar
+  double start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.scalar_time = get_time_seconds() - start;
+
+#ifdef SIMD_SUPPORT_NEON
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_neon(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.neon_time = get_time_seconds() - start;
+#endif
+
+  // Find best method
+  double best_time = result.scalar_time;
+  result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_NEON
+  if (result.neon_time > 0 && result.neon_time < best_time) {
+    best_time = result.neon_time;
+    result.best_method = "NEON";
+  }
+#endif
+
+  result.speedup_best = result.scalar_time / best_time;
+
+  free(test_pixels);
+  free(output_buffer);
+
+  return result;
+}
