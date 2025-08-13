@@ -34,6 +34,21 @@ unsigned short int opt_stretch = 0;
 // Disable console logging when set via -q/--quiet (logs only to file)
 unsigned short int opt_quiet = 0;
 
+// Enable snapshot mode when set via --snapshot (client only - capture one frame and exit)
+unsigned short int opt_snapshot_mode = 0;
+
+// Snapshot delay in seconds (float) - default 3.0 for webcam warmup
+#if defined(__APPLE__)
+// their macbook webcams shows pure black first then fade up into a real color image over a few seconds
+#define SNAPSHOT_DELAY_DEFAULT 5.0f
+#else
+#define SNAPSHOT_DELAY_DEFAULT 3.0f
+#endif
+float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+
+// Log file path for file logging (empty string means no file logging)
+char opt_log_file[OPTIONS_BUFF_SIZE] = "";
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;
@@ -70,6 +85,9 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"audio", no_argument, NULL, 'A'},
                                        {"stretch", no_argument, NULL, 's'},
                                        {"quiet", no_argument, NULL, 'q'},
+                                       {"snapshot", no_argument, NULL, 'S'},
+                                       {"snapshot-delay", required_argument, NULL, 'D'},
+                                       {"log-file", required_argument, NULL, 'L'},
                                        {"help", optional_argument, NULL, 'h'},
                                        {0, 0, 0, 0}};
 
@@ -147,7 +165,7 @@ void options_init(int argc, char **argv) {
   update_dimensions_to_terminal_size();
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsqh", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsqSD:L:h", long_options, &index);
     if (c == -1)
       break;
 
@@ -206,6 +224,22 @@ void options_init(int argc, char **argv) {
       opt_quiet = 1;
       break;
 
+    case 'S':
+      opt_snapshot_mode = 1;
+      break;
+
+    case 'D':
+      opt_snapshot_delay = atof(optarg);
+      if (opt_snapshot_delay < 0.0f) {
+        fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
+        exit(EXIT_FAILURE);
+      }
+      break;
+
+    case 'L':
+      snprintf(opt_log_file, OPTIONS_BUFF_SIZE, "%s", optarg);
+      break;
+
     case '?':
       fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr);
@@ -243,5 +277,8 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -A --audio        (server|client) \t enable audio capture and playback\n");
   fprintf(desc, "\t\t -s --stretch          (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
   fprintf(desc, "\t\t -q --quiet        (client) \t     disable console logging (logs only to file)\n");
+  fprintf(desc, "\t\t -S --snapshot     (client) \t     capture single frame and exit\n");
+  fprintf(desc, "\t\t -D --snapshot-delay SECONDS (client) \t delay before snapshot (default: 3.0)\n");
+  fprintf(desc, "\t\t -L --log-file     (server|client) \t redirect logs to file\n");
   fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }

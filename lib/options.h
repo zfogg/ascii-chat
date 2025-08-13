@@ -26,6 +26,15 @@ extern unsigned short int opt_stretch;
 // If non-zero, disable console logging (quiet mode)
 extern unsigned short int opt_quiet;
 
+// If non-zero, enable snapshot mode (client only - capture one frame and exit)
+extern unsigned short int opt_snapshot_mode;
+
+// Snapshot delay in seconds (float) - default 3.0 for webcam warmup
+extern float opt_snapshot_delay;
+
+// Log file path for file logging (empty string means no file logging)
+extern char opt_log_file[OPTIONS_BUFF_SIZE];
+
 // Default weights; must add up to 1.0
 extern const float weight_red;
 extern const float weight_green;

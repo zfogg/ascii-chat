@@ -143,8 +143,8 @@ else ifneq (,$(filter $(SIMD_MODE_AUTO),avx2))
   $(info Using AVX2 + SSSE3 + SSE2 (best x86_64 performance))
   SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -DSIMD_SUPPORT_SSSE3 -DSIMD_SUPPORT_AVX2 -msse2 -mssse3 -mavx2
 else ifneq (,$(filter $(SIMD_MODE_AUTO),neon))
-  $(info Using ARM NEON)
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON
+  $(info Using ARM NEON + CRC32 hardware acceleration)
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON -DHAVE_CRC32_HW
 else ifneq (,$(filter $(SIMD_MODE_AUTO),native))
   $(info Using -march=native (build-host only))
   SIMD_CFLAGS := -DSIMD_SUPPORT -march=native
