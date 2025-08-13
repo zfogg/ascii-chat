@@ -1403,6 +1403,11 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
     // Create temp image with desired dimensions
     image_t *resized_frame = image_new(width, height);
+    if (!resized_frame) {
+      printf("Warning: Failed to allocate resized_frame for webcam frame %d during color benchmarking\n", i);
+      image_destroy(webcam_frame);
+      continue;
+    }
 
     // Use image_resize to resize webcam frame to test dimensions
     image_resize(webcam_frame, resized_frame);
