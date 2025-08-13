@@ -1229,7 +1229,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 }
 
 // Enhanced benchmark function with image source support
-simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, const image_t *source_image) {
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations,
+                                                       const image_t *source_image) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -1242,7 +1243,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
   if (source_image && source_image->pixels) {
     printf("Using provided image data (%dx%d) for testing\n", source_image->w, source_image->h);
-    
+
     // Resize source image to test dimensions if needed
     if (source_image->w == width && source_image->h == height) {
       // Direct copy
@@ -1259,7 +1260,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
           int src_y = (y * source_image->h) / height;
           int src_idx = src_y * source_image->w + src_x;
           int dst_idx = y * width + x;
-          
+
           if (src_idx < source_image->w * source_image->h) {
             test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
             test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
@@ -1270,7 +1271,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
       printf("Resized image data from %dx%d to %dx%d\n", source_image->w, source_image->h, width, height);
     }
   } else {
-    // Fall back to synthetic gradient data  
+    // Fall back to synthetic gradient data
     printf("No source image provided, using synthetic gradient data\n");
     srand(12345);
     for (int i = 0; i < pixel_count; i++) {
@@ -1279,11 +1280,11 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
       int base_r = (x * 255 / width);
       int base_g = (y * 255 / height);
       int base_b = ((x + y) * 127 / (width + height));
-      
+
       int temp_r = base_r + (rand() % 16 - 8);
       int temp_g = base_g + (rand() % 16 - 8);
       int temp_b = base_b + (rand() % 16 - 8);
-      
+
       test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
       test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
       test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
@@ -1299,6 +1300,30 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   }
   result.scalar_time = get_time_seconds() - start;
 
+#ifdef SIMD_SUPPORT_SSE2
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_sse2(test_pixels, output_buffer, pixel_count);
+  }
+  result.sse2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_ssse3(test_pixels, output_buffer, pixel_count);
+  }
+  result.ssse3_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_pixels_avx2(test_pixels, output_buffer, pixel_count);
+  }
+  result.avx2_time = get_time_seconds() - start;
+#endif
+
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
@@ -1310,6 +1335,27 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   // Find best method
   double best_time = result.scalar_time;
   result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_SSE2
+  if (result.sse2_time > 0 && result.sse2_time < best_time) {
+    best_time = result.sse2_time;
+    result.best_method = "SSE2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
+    best_time = result.ssse3_time;
+    result.best_method = "SSSE3";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  if (result.avx2_time > 0 && result.avx2_time < best_time) {
+    best_time = result.avx2_time;
+    result.best_method = "AVX2";
+  }
+#endif
 
 #ifdef SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
@@ -1326,8 +1372,9 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   return result;
 }
 
-// Enhanced color benchmark function with image source support  
-simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations, bool background_mode, const image_t *source_image) {
+// Enhanced color benchmark function with image source support
+simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
+                                                             bool background_mode, const image_t *source_image) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -1341,8 +1388,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
   if (source_image && source_image->pixels) {
     printf("Using provided image data (%dx%d) for color testing\n", source_image->w, source_image->h);
-    
-    // Resize source image to test dimensions if needed  
+
+    // Resize source image to test dimensions if needed
     if (source_image->w == width && source_image->h == height) {
       // Direct copy
       for (int i = 0; i < pixel_count; i++) {
@@ -1358,7 +1405,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
           int src_y = (y * source_image->h) / height;
           int src_idx = src_y * source_image->w + src_x;
           int dst_idx = y * width + x;
-          
+
           if (src_idx < source_image->w * source_image->h) {
             test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
             test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
@@ -1378,11 +1425,11 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       int base_r = (x * 255 / width);
       int base_g = (y * 255 / height);
       int base_b = ((x + y) * 127 / (width + height));
-      
+
       int temp_r = base_r + (rand() % 16 - 8);
       int temp_g = base_g + (rand() % 16 - 8);
       int temp_b = base_b + (rand() % 16 - 8);
-      
+
       test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
       test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
       test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
@@ -1390,7 +1437,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   }
 
   const char *mode_str = background_mode ? "background" : "foreground";
-  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count, iterations);
+  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count,
+         iterations);
 
   // Benchmark scalar
   double start = get_time_seconds();
@@ -1398,6 +1446,30 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
   }
   result.scalar_time = get_time_seconds() - start;
+
+#ifdef SIMD_SUPPORT_SSE2
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_sse2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.sse2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_ssse3(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.ssse3_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    convert_row_with_color_avx2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.avx2_time = get_time_seconds() - start;
+#endif
 
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
@@ -1410,6 +1482,27 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   // Find best method
   double best_time = result.scalar_time;
   result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_SSE2
+  if (result.sse2_time > 0 && result.sse2_time < best_time) {
+    best_time = result.sse2_time;
+    result.best_method = "SSE2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
+    best_time = result.ssse3_time;
+    result.best_method = "SSSE3";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  if (result.avx2_time > 0 && result.avx2_time < best_time) {
+    best_time = result.avx2_time;
+    result.best_method = "AVX2";
+  }
+#endif
 
 #ifdef SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
