@@ -103,7 +103,15 @@ COMMON_MAIN_OBJECTS = \
 
 # Webcam objects (core + platform backends)
 WEBCAM_CORE_OBJECTS := ../build/lib/webcam.o ../build/lib/webcam_platform.o
-WEBCAM_BACKEND_OBJECTS := $(wildcard ../build/lib/webcam_avfoundation.o ../build/lib/webcam_v4l2.o)
+
+# Platform-specific webcam backends (explicitly include based on OS)
+ifeq ($(UNAME_S),Darwin)
+  WEBCAM_BACKEND_OBJECTS := ../build/lib/webcam_avfoundation.o
+else ifeq ($(UNAME_S),Linux)
+  WEBCAM_BACKEND_OBJECTS := ../build/lib/webcam_v4l2.o
+else
+  WEBCAM_BACKEND_OBJECTS :=
+endif
 
 # Link webcam core/backends into ascii_simd_test only (ansi_fast_test has no webcam deps)
 MAIN_PROJECT_OBJECTS = $(COMMON_MAIN_OBJECTS)
