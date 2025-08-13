@@ -528,7 +528,6 @@ static void *video_broadcast_thread_func(void *arg) {
   // Base rates: 30 FPS normal, up to 60 FPS when draining buffers
   const int base_frame_interval_ms = 1000 / 30; // 30 FPS base rate
   const int fast_frame_interval_ms = 1000 / 60; // 60 FPS when draining
-  const int max_frame_interval_ms = 1000 / 15;  // 15 FPS when idle
 
   struct timespec last_broadcast_time;
   clock_gettime(CLOCK_MONOTONIC, &last_broadcast_time);
