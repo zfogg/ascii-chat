@@ -252,7 +252,7 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
 // -------- ultra-fast SGR builders with size calculation --------
 
 // Calculate exact size needed for SGR sequences (for security)
-//static inline size_t calculate_sgr_truecolor_fg_size(uint8_t r, uint8_t g, uint8_t b) {
+// static inline size_t calculate_sgr_truecolor_fg_size(uint8_t r, uint8_t g, uint8_t b) {
 //  init_dec3();
 //  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[38;2;" + R + ";" + G + ";" + B + "m"
 //}
@@ -262,7 +262,7 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
 //  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[48;2;" + R + ";" + G + ";" + B + "m"
 //}
 //
-//static inline size_t calculate_sgr_truecolor_fg_bg_size(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
+// static inline size_t calculate_sgr_truecolor_fg_bg_size(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
 //                                                        uint8_t bb) {
 //  init_dec3();
 //  return 7 + g_dec3[fr].len + 1 + g_dec3[fg].len + 1 + g_dec3[fb].len + 6 + g_dec3[br].len + 1 + g_dec3[bg].len + 1 +
@@ -672,7 +672,7 @@ char *image_print_colored_simd(image_t *image) {
   size_t total_len = 0;
   for (int y = 0; y < h; y++) {
     // Debug assertion: ensure we have enough space
-    const size_t row_max = w * per_px + reset_len;
+    const size_t row_max __attribute__((unused)) = w * per_px + reset_len;
     assert(total_len + row_max <= lines_size);
 
     // Use the NEW optimized run-length encoding function with combined SGR sequences
