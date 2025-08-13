@@ -3,10 +3,8 @@
 #include <string.h>
 #include <time.h>
 #include "ascii_simd.h"
-#include "options.h"
 #include "image.h"
 #include "common.h"
-#include "buffer_pool.h"
 #include "webcam.h"
 
 #ifdef SIMD_SUPPORT_NEON
@@ -1374,7 +1372,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 // Enhanced color benchmark function with image source support
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
-                                                             bool background_mode, const image_t *source_image) {
+                                                             bool background_mode, const image_t *source_image __attribute__((unused))) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -1391,8 +1389,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
   // Pre-capture all webcam frames
   rgb_pixel_t **frame_data;
-  SAFE_CALLOC(frame_data, iterations, sizeof(rgb_pixel_t*), rgb_pixel_t **);
-  
+  SAFE_CALLOC(frame_data, iterations, sizeof(rgb_pixel_t *), rgb_pixel_t **);
+
   int captured_frames = 0;
   for (int i = 0; i < iterations; i++) {
     // Capture fresh webcam frame
@@ -1401,13 +1399,13 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       printf("Warning: Failed to capture webcam frame %d during color benchmarking\n", i);
       continue;
     }
-    
+
     // Create temp image with desired dimensions
     image_t *resized_frame = image_new(width, height);
-    
+
     // Use image_resize to resize webcam frame to test dimensions
     image_resize(webcam_frame, resized_frame);
-    
+
     // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
     SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
     for (int j = 0; j < pixel_count; j++) {
@@ -1415,12 +1413,12 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       frame_data[captured_frames][j].g = resized_frame->pixels[j].g;
       frame_data[captured_frames][j].b = resized_frame->pixels[j].b;
     }
-    
+
     image_destroy(resized_frame);
     image_destroy(webcam_frame);
     captured_frames++;
   }
-  
+
   if (captured_frames == 0) {
     printf("No webcam frames captured for color test, using synthetic data\n");
     // Fall back to synthetic data like the original implementation
@@ -1441,8 +1439,9 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
     }
   }
-  
-  printf("Benchmarking COLOR %s pure conversion (%d frames)...\n", mode_str, captured_frames > 0 ? captured_frames : iterations);
+
+  printf("Benchmarking COLOR %s pure conversion (%d frames)...\n", mode_str,
+         captured_frames > 0 ? captured_frames : iterations);
 
   // Benchmark scalar color conversion (pure conversion, no I/O)
   double start = get_time_seconds();
