@@ -125,8 +125,8 @@ COLOR_CORRECTNESS_EXECUTABLE = color_correctness_test
 
 # First ensure main project objects are built
 ensure-main-objects:
-	@echo "Ensuring main project objects are built..."
-	@cd .. && $(MAKE) debug
+	@echo "Ensuring main project objects are built (clean, isolated flags)..."
+	@cd .. && $(MAKE) clean && $(MAKE) release CFLAGS= OBJCFLAGS=
 
 # Targets
 all: ensure-main-objects $(ASCII_SIMD_EXECUTABLE) $(ANSI_FAST_EXECUTABLE) $(COLOR_CORRECTNESS_EXECUTABLE)

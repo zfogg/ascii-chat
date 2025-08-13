@@ -47,6 +47,9 @@ override LDFLAGS += -lm -lpthread
 # Avoid leading space from '+=' when LDFLAGS is initially empty
 override LDFLAGS += $(ARCH_FLAGS)
 
+# Deduplicate common libs to avoid linker warnings (e.g., duplicate -lm)
+override LDFLAGS := $(strip $(filter-out -lm,$(LDFLAGS)) -lm)
+
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
 override CFLAGS += -std=$(CSTD)
