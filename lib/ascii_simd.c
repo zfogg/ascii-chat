@@ -1372,7 +1372,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 // Enhanced color benchmark function with image source support
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
-                                                             bool background_mode, const image_t *source_image __attribute__((unused))) {
+                                                             bool background_mode,
+                                                             const image_t *source_image __attribute__((unused))) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
