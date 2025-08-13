@@ -1338,14 +1338,14 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
 // ACTUAL SIMD-optimized color conversion - uses SIMD for luminance, then fast ANSI generation
 size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                         bool background_mode) {
-#ifdef SIMD_SUPPORT_NEON
-  return convert_row_with_color_neon(pixels, output_buffer, buffer_size, width, background_mode);
+#ifdef SIMD_SUPPORT_AVX2
+  return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
 #elif defined(SIMD_SUPPORT_SSSE3)
   return convert_row_with_color_ssse3(pixels, output_buffer, buffer_size, width, background_mode);
-#elif defined(SIMD_SUPPORT_AVX2)
-  return convert_row_with_color_avx2(pixels, output_buffer, buffer_size, width, background_mode);
 #elif defined(SIMD_SUPPORT_SSE2)
   return convert_row_with_color_sse2(pixels, output_buffer, buffer_size, width, background_mode);
+#elif defined(SIMD_SUPPORT_NEON)
+  return convert_row_with_color_neon(pixels, output_buffer, buffer_size, width, background_mode);
 #else
   return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
 #endif

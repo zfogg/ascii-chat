@@ -894,14 +894,14 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
  */
 
 void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-#ifdef SIMD_SUPPORT_NEON
-  convert_pixels_neon(pixels, ascii_chars, count);
+#ifdef SIMD_SUPPORT_AVX2
+  convert_pixels_avx2(pixels, ascii_chars, count);
 #elif defined(SIMD_SUPPORT_SSSE3)
   convert_pixels_ssse3(pixels, ascii_chars, count);
-#elif defined(SIMD_SUPPORT_AVX2)
-  convert_pixels_avx2(pixels, ascii_chars, count);
 #elif defined(SIMD_SUPPORT_SSE2)
   convert_pixels_sse2(pixels, ascii_chars, count);
+#elif defined(SIMD_SUPPORT_NEON)
+  convert_pixels_neon(pixels, ascii_chars, count);
 #else
   convert_pixels_scalar(pixels, ascii_chars, count);
 #endif
