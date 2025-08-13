@@ -937,12 +937,11 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
-  size_t data_size = pixel_count * sizeof(rgb_pixel_t);
 
   // Generate test data
   rgb_pixel_t *test_pixels;
   char *output_buffer;
-  SAFE_MALLOC(test_pixels, data_size, rgb_pixel_t *);
+  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, pixel_count, char *);
 
   // Use real webcam data for realistic testing (matches color benchmark approach)
@@ -1089,7 +1088,6 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
-  size_t data_size = pixel_count * sizeof(rgb_pixel_t);
 
   // Estimate output buffer size for colored ASCII (much larger than monochrome)
   // Each pixel can generate ~25 bytes of ANSI escape codes + 1 char
@@ -1098,7 +1096,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Generate test data
   rgb_pixel_t *test_pixels;
   char *output_buffer;
-  SAFE_MALLOC(test_pixels, data_size, rgb_pixel_t *);
+  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, output_buffer_size, char *);
 
   // Use real webcam data for realistic color coherence testing
@@ -1130,23 +1128,14 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
       int base_g = (y * 255 / height);
       int base_b = ((x + y) * 127 / (width + height));
 
-      test_pixels[i].r = base_r + (rand() % 16 - 8); // Less variation than before
-      test_pixels[i].g = base_g + (rand() % 16 - 8);
-      test_pixels[i].b = base_b + (rand() % 16 - 8);
+      // Clamp to valid range during assignment
+      int temp_r = base_r + (rand() % 16 - 8);
+      int temp_g = base_g + (rand() % 16 - 8);
+      int temp_b = base_b + (rand() % 16 - 8);
 
-      // Clamp to valid range
-      if (test_pixels[i].r < 0)
-        test_pixels[i].r = 0;
-      if (test_pixels[i].r > 255)
-        test_pixels[i].r = 255;
-      if (test_pixels[i].g < 0)
-        test_pixels[i].g = 0;
-      if (test_pixels[i].g > 255)
-        test_pixels[i].g = 255;
-      if (test_pixels[i].b < 0)
-        test_pixels[i].b = 0;
-      if (test_pixels[i].b > 255)
-        test_pixels[i].b = 255;
+      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
+      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
+      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
     }
   }
 
