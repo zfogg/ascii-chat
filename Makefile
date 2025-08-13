@@ -108,7 +108,19 @@ ifeq ($(SIMD_MODE),auto)
   else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
     SIMD_MODE_AUTO := neon
   else ifeq ($(UNAME_M),x86_64)
-    SIMD_MODE_AUTO := ssse3
+    # Check for x86_64 SIMD support in priority order: AVX2 > SSSE3 > SSE2
+    HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_AVX2),1)
+      SIMD_MODE_AUTO := avx2
+    else ifeq ($(HAS_SSSE3),1)
+      SIMD_MODE_AUTO := ssse3
+    else ifeq ($(HAS_SSE2),1)
+      SIMD_MODE_AUTO := sse2
+    else
+      SIMD_MODE_AUTO := off
+    endif
   else ifeq ($(UNAME_M),aarch64)
     SIMD_MODE_AUTO := native
   else
@@ -126,10 +138,10 @@ else ifneq (,$(filter $(SIMD_MODE_AUTO),sse2))
   SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2
 else ifneq (,$(filter $(SIMD_MODE_AUTO),ssse3))
   $(info Using SSSE3 with 32-pixel processing)
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSSE3 -mssse3
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -DSIMD_SUPPORT_SSSE3 -msse2 -mssse3
 else ifneq (,$(filter $(SIMD_MODE_AUTO),avx2))
-  $(info Using AVX2 (ensure target CPUs support it)
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_AVX2 -mavx2
+  $(info Using AVX2 + SSSE3 + SSE2 (best x86_64 performance))
+  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -DSIMD_SUPPORT_SSSE3 -DSIMD_SUPPORT_AVX2 -msse2 -mssse3 -mavx2
 else ifneq (,$(filter $(SIMD_MODE_AUTO),neon))
   $(info Using ARM NEON)
   SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON
