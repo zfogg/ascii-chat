@@ -1380,44 +1380,50 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   int pixel_count = width * height;
   size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;
 
-  // Generate test data
+  // Allocate buffers for benchmarking
   rgb_pixel_t *test_pixels;
   char *output_buffer;
   SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, output_buffer_size, char *);
 
-  if (source_image && source_image->pixels) {
-    printf("Using provided image data (%dx%d) for color testing\n", source_image->w, source_image->h);
+  const char *mode_str = background_mode ? "background" : "foreground";
+  printf("Pre-capturing %d webcam frames for COLOR %s %dx%d...\n", iterations, mode_str, width, height);
 
-    // Resize source image to test dimensions if needed
-    if (source_image->w == width && source_image->h == height) {
-      // Direct copy
-      for (int i = 0; i < pixel_count; i++) {
-        test_pixels[i].r = source_image->pixels[i].r;
-        test_pixels[i].g = source_image->pixels[i].g;
-        test_pixels[i].b = source_image->pixels[i].b;
-      }
-    } else {
-      // Simple nearest-neighbor resize
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          int src_x = (x * source_image->w) / width;
-          int src_y = (y * source_image->h) / height;
-          int src_idx = src_y * source_image->w + src_x;
-          int dst_idx = y * width + x;
-
-          if (src_idx < source_image->w * source_image->h) {
-            test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
-            test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
-            test_pixels[dst_idx].b = source_image->pixels[src_idx].b;
-          }
-        }
-      }
-      printf("Resized color image data from %dx%d to %dx%d\n", source_image->w, source_image->h, width, height);
+  // Pre-capture all webcam frames
+  rgb_pixel_t **frame_data;
+  SAFE_CALLOC(frame_data, iterations, sizeof(rgb_pixel_t*), rgb_pixel_t **);
+  
+  int captured_frames = 0;
+  for (int i = 0; i < iterations; i++) {
+    // Capture fresh webcam frame
+    image_t *webcam_frame = webcam_read();
+    if (!webcam_frame) {
+      printf("Warning: Failed to capture webcam frame %d during color benchmarking\n", i);
+      continue;
     }
-  } else {
-    // Fall back to synthetic gradient data
-    printf("No source image provided, using coherent gradient data\n");
+    
+    // Create temp image with desired dimensions
+    image_t *resized_frame = image_new(width, height);
+    
+    // Use image_resize to resize webcam frame to test dimensions
+    image_resize(webcam_frame, resized_frame);
+    
+    // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
+    SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+    for (int j = 0; j < pixel_count; j++) {
+      frame_data[captured_frames][j].r = resized_frame->pixels[j].r;
+      frame_data[captured_frames][j].g = resized_frame->pixels[j].g;
+      frame_data[captured_frames][j].b = resized_frame->pixels[j].b;
+    }
+    
+    image_destroy(resized_frame);
+    image_destroy(webcam_frame);
+    captured_frames++;
+  }
+  
+  if (captured_frames == 0) {
+    printf("No webcam frames captured for color test, using synthetic data\n");
+    // Fall back to synthetic data like the original implementation
     srand(12345);
     for (int i = 0; i < pixel_count; i++) {
       int x = i % width;
@@ -1435,46 +1441,74 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
     }
   }
+  
+  printf("Benchmarking COLOR %s pure conversion (%d frames)...\n", mode_str, captured_frames > 0 ? captured_frames : iterations);
 
-  const char *mode_str = background_mode ? "background" : "foreground";
-  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count,
-         iterations);
-
-  // Benchmark scalar
+  // Benchmark scalar color conversion (pure conversion, no I/O)
   double start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  if (captured_frames > 0) {
+    for (int i = 0; i < captured_frames; i++) {
+      convert_row_with_color_scalar(frame_data[i], output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
+  } else {
+    for (int i = 0; i < iterations; i++) {
+      convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
   }
   result.scalar_time = get_time_seconds() - start;
 
 #ifdef SIMD_SUPPORT_SSE2
   start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    convert_row_with_color_sse2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  if (captured_frames > 0) {
+    for (int i = 0; i < captured_frames; i++) {
+      convert_row_with_color_sse2(frame_data[i], output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
+  } else {
+    for (int i = 0; i < iterations; i++) {
+      convert_row_with_color_sse2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
   }
   result.sse2_time = get_time_seconds() - start;
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    convert_row_with_color_ssse3(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  if (captured_frames > 0) {
+    for (int i = 0; i < captured_frames; i++) {
+      convert_row_with_color_ssse3(frame_data[i], output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
+  } else {
+    for (int i = 0; i < iterations; i++) {
+      convert_row_with_color_ssse3(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
   }
   result.ssse3_time = get_time_seconds() - start;
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    convert_row_with_color_avx2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  if (captured_frames > 0) {
+    for (int i = 0; i < captured_frames; i++) {
+      convert_row_with_color_avx2(frame_data[i], output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
+  } else {
+    for (int i = 0; i < iterations; i++) {
+      convert_row_with_color_avx2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
   }
   result.avx2_time = get_time_seconds() - start;
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    convert_row_with_color_neon(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  if (captured_frames > 0) {
+    for (int i = 0; i < captured_frames; i++) {
+      convert_row_with_color_neon(frame_data[i], output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
+  } else {
+    for (int i = 0; i < iterations; i++) {
+      convert_row_with_color_neon(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    }
   }
   result.neon_time = get_time_seconds() - start;
 #endif
@@ -1512,7 +1546,13 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #endif
 
   result.speedup_best = result.scalar_time / best_time;
-
+  // Clean up pre-captured frame data - no memory leaks!
+  if (captured_frames > 0) {
+    for (int i = 0; i < captured_frames; i++) {
+      free(frame_data[i]);
+    }
+  }
+  free(frame_data);
   free(test_pixels);
   free(output_buffer);
 

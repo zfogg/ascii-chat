@@ -698,20 +698,20 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
     int pixel_count = width * height;
     
     // Allocate buffers for benchmarking
-    rgb_pixel_t *test_pixels;
+    rgb_pixel_t **frame_data; // Array of pre-captured frame data
     char *output_buffer;
-    SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+    SAFE_CALLOC(frame_data, iterations, sizeof(rgb_pixel_t*), rgb_pixel_t **);
     SAFE_MALLOC(output_buffer, pixel_count, char *);
     
-    printf("Benchmarking with live webcam capture (%d iterations)\n", iterations);
+    printf("Pre-capturing %d webcam frames at %dx%d...\n", iterations, width, height);
     
-    // Benchmark scalar conversion with webcam frames
-    clock_t start_time = clock();
+    // Pre-capture and resize all webcam frames
+    int captured_frames = 0;
     for (int iter = 0; iter < iterations; iter++) {
-        // Capture fresh webcam frame for each iteration
+        // Capture webcam frame
         image_t *webcam_frame = webcam_read();
         if (!webcam_frame) {
-            printf("Warning: Failed to capture webcam frame during benchmarking (iteration %d)\n", iter);
+            printf("Warning: Failed to capture webcam frame %d\n", iter);
             continue;
         }
         
@@ -721,51 +721,40 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
         // Use image_resize to resize webcam frame to test dimensions
         image_resize(webcam_frame, resized_frame);
         
-        // Copy resized data to test_pixels buffer (convert rgb_t to rgb_pixel_t)
+        // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
+        SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
         for (int i = 0; i < pixel_count; i++) {
-            test_pixels[i].r = resized_frame->pixels[i].r;
-            test_pixels[i].g = resized_frame->pixels[i].g;
-            test_pixels[i].b = resized_frame->pixels[i].b;
+            frame_data[captured_frames][i].r = resized_frame->pixels[i].r;
+            frame_data[captured_frames][i].g = resized_frame->pixels[i].g;
+            frame_data[captured_frames][i].b = resized_frame->pixels[i].b;
         }
         
         image_destroy(resized_frame);
-        
-        // Perform scalar conversion
-        convert_pixels_scalar(test_pixels, output_buffer, pixel_count);
-        
         image_destroy(webcam_frame);
+        captured_frames++;
+    }
+    
+    if (captured_frames == 0) {
+        printf("Error: No webcam frames captured!\n");
+        free(frame_data);
+        free(output_buffer);
+        return result;
+    }
+    
+    printf("Captured %d frames, benchmarking pure conversion performance...\n", captured_frames);
+    
+    // Benchmark scalar conversion (pure conversion, no I/O)
+    clock_t start_time = clock();
+    for (int iter = 0; iter < captured_frames; iter++) {
+        convert_pixels_scalar(frame_data[iter], output_buffer, pixel_count);
     }
     clock_t end_time = clock();
     result.scalar_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
     
-    // Benchmark optimized conversion with webcam frames 
+    // Benchmark optimized conversion (pure conversion, no I/O)
     start_time = clock();
-    for (int iter = 0; iter < iterations; iter++) {
-        // Capture fresh webcam frame for each iteration
-        image_t *webcam_frame = webcam_read();
-        if (!webcam_frame) {
-            continue;
-        }
-        
-        // Create temp image with desired dimensions
-        image_t *resized_frame = image_new(width, height);
-        
-        // Use image_resize to resize webcam frame to test dimensions
-        image_resize(webcam_frame, resized_frame);
-        
-        // Copy resized data to test_pixels buffer (convert rgb_t to rgb_pixel_t)
-        for (int i = 0; i < pixel_count; i++) {
-            test_pixels[i].r = resized_frame->pixels[i].r;
-            test_pixels[i].g = resized_frame->pixels[i].g;
-            test_pixels[i].b = resized_frame->pixels[i].b;
-        }
-        
-        image_destroy(resized_frame);
-        
-        // Perform optimized conversion
-        convert_pixels_optimized(test_pixels, output_buffer, pixel_count);
-        
-        image_destroy(webcam_frame);
+    for (int iter = 0; iter < captured_frames; iter++) {
+        convert_pixels_optimized(frame_data[iter], output_buffer, pixel_count);
     }
     end_time = clock();
     
@@ -801,7 +790,11 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
         result.speedup_best = result.scalar_time / optimized_time;
     }
     
-    free(test_pixels);
+    // Clean up pre-captured frame data
+    for (int i = 0; i < captured_frames; i++) {
+        free(frame_data[i]);
+    }
+    free(frame_data);
     free(output_buffer);
     
     return result;
