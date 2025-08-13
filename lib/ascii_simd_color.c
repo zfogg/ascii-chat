@@ -252,10 +252,22 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
 // -------- ultra-fast SGR builders with size calculation --------
 
 // Calculate exact size needed for SGR sequences (for security)
-__attribute__((unused)) static inline size_t calculate_sgr_truecolor_bg_size(uint8_t r, uint8_t g, uint8_t b) {
-  init_dec3();
-  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[48;2;" + R + ";" + G + ";" + B + "m"
-}
+//static inline size_t calculate_sgr_truecolor_fg_size(uint8_t r, uint8_t g, uint8_t b) {
+//  init_dec3();
+//  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[38;2;" + R + ";" + G + ";" + B + "m"
+//}
+//
+//__attribute__((unused)) static inline size_t calculate_sgr_truecolor_bg_size(uint8_t r, uint8_t g, uint8_t b) {
+//  init_dec3();
+//  return 7 + g_dec3[r].len + 1 + g_dec3[g].len + 1 + g_dec3[b].len + 1; // "\033[48;2;" + R + ";" + G + ";" + B + "m"
+//}
+//
+//static inline size_t calculate_sgr_truecolor_fg_bg_size(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
+//                                                        uint8_t bb) {
+//  init_dec3();
+//  return 7 + g_dec3[fr].len + 1 + g_dec3[fg].len + 1 + g_dec3[fb].len + 6 + g_dec3[br].len + 1 + g_dec3[bg].len + 1 +
+//         g_dec3[bb].len + 1; // Combined FG+BG
+//}
 
 static inline char *append_sgr_reset(char *dst) {
   // "\x1b[0m"
@@ -284,6 +296,23 @@ static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uin
 }
 
 // \x1b[48;2;R;G;Bm
+static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  init_dec3();
+  static const char PFX[] = "\033[48;2;";
+  memcpy(dst, PFX, sizeof(PFX) - 1);
+  dst += sizeof(PFX) - 1;
+
+  memcpy(dst, g_dec3[r].s, g_dec3[r].len);
+  dst += g_dec3[r].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[g].s, g_dec3[g].len);
+  dst += g_dec3[g].len;
+  *dst++ = ';';
+  memcpy(dst, g_dec3[b].s, g_dec3[b].len);
+  dst += g_dec3[b].len;
+  *dst++ = 'm';
+  return dst;
+}
 
 // \x1b[38;2;R;G;B;48;2;r;g;bm   (one sequence for both FG and BG)
 static inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
@@ -324,6 +353,10 @@ static inline int generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
   return (int)(result - dst);
 }
 
+static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
+  char *result = append_sgr_truecolor_bg(dst, r, g, b);
+  return (int)(result - dst);
+}
 
 /* ============================================================================
  * OPTIMIZATION #4: Fast 256-color implementations (defined after SGR functions)
