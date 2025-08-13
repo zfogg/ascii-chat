@@ -687,47 +687,8 @@ static void *video_broadcast_thread_func(void *arg) {
       }
 
       if (client_copy.active && client_copy.socket > 0) {
-        // Skip clients who haven't started sending video yet - prevents blank frames
-        if (!client_copy.is_sending_video) {
-          continue;
-        }
-
-        // Additional check: Skip if no video sources have sent actual image data yet
-        // This prevents blank frames when clients just started streaming
-        // We require at least one client to have either:
-        // 1. A cached frame from previous processing, OR
-        // 2. Actual image data waiting in their buffer
-        bool has_actual_video_data = false;
-        pthread_mutex_lock(&g_client_manager_mutex);
-        for (int j = 0; j < MAX_CLIENTS; j++) {
-          client_info_t *src_client = &g_client_manager.clients[j];
-          if (src_client->active && src_client->is_sending_video) {
-            // Check if this client has processed at least one frame (has_cached_frame)
-            // OR has pending image data in buffer to process now
-            bool has_cached = src_client->has_cached_frame;
-            bool has_pending =
-                (src_client->incoming_video_buffer && ringbuffer_size(src_client->incoming_video_buffer->rb) > 0);
-
-            if (has_cached || has_pending) {
-              has_actual_video_data = true;
-
-              // Debug log when we first detect real video data
-              static bool first_video_detected[MAX_CLIENTS] = {false};
-              if (!first_video_detected[j]) {
-                log_info("FIRST VIDEO DATA: Client %u now has %s - starting frame generation", src_client->client_id,
-                         has_cached ? "cached frame" : "pending data");
-                first_video_detected[j] = true;
-              }
-              break;
-            }
-          }
-        }
-        pthread_mutex_unlock(&g_client_manager_mutex);
-
-        if (!has_actual_video_data) {
-          // Skip frame generation until we have real video data to work with
-          continue;
-        }
+        // Allow all connected clients to receive frames immediately
+        // This enables single clients to see their own video (like in video chat apps)
 
         // Create a custom-sized frame for THIS client's terminal dimensions
         size_t client_frame_size = 0;
@@ -772,11 +733,11 @@ static void *video_broadcast_thread_func(void *arg) {
         is_blank_frame = (non_whitespace_count < 10 || non_ws_ratio < 0.01);
 
         if (is_blank_frame) {
-          g_blank_frames_sent++;
-          log_warn("BLANK FRAME DETECTED: Sending blank frame #%llu to client %u - size=%zu, non-ws=%zu/%zu (%.1f%%), "
-                   "sample: '%.20s'",
-                   (unsigned long long)g_blank_frames_sent, client_copy.client_id, client_frame_size,
-                   non_whitespace_count, printable_chars, non_ws_ratio * 100.0, client_frame);
+          // Don't send blank frames - just skip this client
+          log_debug("Skipping blank frame for client %u - size=%zu, non-ws=%zu/%zu (%.1f%%)", client_copy.client_id,
+                    client_frame_size, non_whitespace_count, printable_chars, non_ws_ratio * 100.0);
+          free(client_frame);
+          continue;
         } else if (frame_counter % (MAX_FPS * 3) == 0) { // Log every 3 seconds for non-blank frames
           // Calculate expected size for verification
           size_t expected_size =
@@ -946,7 +907,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
           } else {
             // This is a frame we're discarding to catch up
             if (discard_frame.data) {
-              free(discard_frame.data);
+              buffer_pool_free(discard_frame.data, discard_frame.size);
               discard_frame.data = NULL;
             }
           }
@@ -1009,7 +970,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
                     img_width, img_height);
           // Don't free cached frame, just skip this client
           if (got_new_frame) {
-            free(current_frame.data);
+            buffer_pool_free(current_frame.data, current_frame.size);
           }
           continue;
         }
@@ -1021,7 +982,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
                     frame_to_use->size, expected_size, img_width, img_height);
           // Don't free cached frame, just skip this client
           if (got_new_frame) {
-            free(current_frame.data);
+            buffer_pool_free(current_frame.data, current_frame.size);
           }
           continue;
         }
@@ -1049,52 +1010,15 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
         // Free the current frame data if we got a new one (cached frame persists)
         if (got_new_frame) {
-          free(current_frame.data);
+          buffer_pool_free(current_frame.data, current_frame.size);
         }
       }
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
 
-  // FLICKERING FIX: When no active video sources, use cached frame or generate placeholder
-  // to maintain consistent frame delivery and prevent flickering
+  // No active video sources - don't generate placeholder frames
   if (source_count == 0) {
-    pthread_mutex_lock(&g_frame_cache_mutex);
-
-    // Try to reuse last valid frame if dimensions and color mode match
-    if (g_last_valid_frame && g_last_valid_frame_size > 0 && g_last_frame_width == width &&
-        g_last_frame_height == height && g_last_frame_was_color == wants_color) {
-
-      // Return a copy of the cached frame
-      char *cached_copy;
-      SAFE_MALLOC(cached_copy, g_last_valid_frame_size, char *);
-      if (cached_copy) {
-        memcpy(cached_copy, g_last_valid_frame, g_last_valid_frame_size);
-        *out_size = g_last_valid_frame_size;
-        pthread_mutex_unlock(&g_frame_cache_mutex);
-        return cached_copy;
-      }
-    }
-    pthread_mutex_unlock(&g_frame_cache_mutex);
-
-    // Generate a simple "No Video" placeholder frame to maintain consistent delivery
-    size_t placeholder_size = width * height + height + 1; // +height for newlines, +1 for null
-    char *placeholder;
-    SAFE_MALLOC(placeholder, placeholder_size, char *);
-    if (placeholder) {
-      // Fill with spaces and newlines to create a blank but valid frame
-      for (int row = 0; row < height; row++) {
-        for (int col = 0; col < width; col++) {
-          placeholder[row * (width + 1) + col] = ' ';
-        }
-        placeholder[row * (width + 1) + width] = '\n';
-      }
-      placeholder[placeholder_size - 1] = '\0';
-      *out_size = placeholder_size - 1;
-      return placeholder;
-    }
-
-    // Last resort: return NULL (original behavior)
     *out_size = 0;
     return NULL;
   }
@@ -1329,7 +1253,11 @@ void cleanup_frame_cache() {
  */
 
 int main(int argc, char *argv[]) {
-  log_init("server.log", LOG_DEBUG);
+  options_init(argc, argv);
+
+  // Initialize logging - use specified log file or default
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
+  log_init(log_filename, LOG_DEBUG);
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
@@ -1342,8 +1270,7 @@ int main(int argc, char *argv[]) {
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
-  log_info("SERVER: Initializing options...");
-  options_init(argc, argv);
+  log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = strtoint(opt_port);
   log_info("SERVER: Port set to %d", port);
 
@@ -1728,6 +1655,37 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
     }
 
     // log_debug("Received image from client %u: %ux%u", client->client_id, img_width, img_height);
+
+    // DEBUG: Analyze image brightness to understand webcam startup behavior
+    if (len > sizeof(uint32_t) * 2) {
+      const rgb_t *pixels = (const rgb_t *)(data + sizeof(uint32_t) * 2);
+      size_t pixel_count = (size_t)img_width * (size_t)img_height;
+
+      // Sample brightness from first 100 pixels or all pixels if fewer
+      size_t sample_size = (pixel_count < 100) ? pixel_count : 100;
+      uint32_t total_brightness = 0;
+      uint32_t black_pixels = 0;
+
+      for (size_t i = 0; i < sample_size; i++) {
+        uint32_t brightness = (uint32_t)pixels[i].r + (uint32_t)pixels[i].g + (uint32_t)pixels[i].b;
+        total_brightness += brightness;
+        if (brightness < 10)
+          black_pixels++; // Very dark pixels
+      }
+
+      double avg_brightness = (double)total_brightness / (sample_size * 3.0 * 255.0) * 100.0;
+      double black_percentage = (double)black_pixels / sample_size * 100.0;
+
+      // Log every 10th frame to track webcam warmup
+      static int frame_debug_counter[MAX_CLIENTS] = {0};
+      frame_debug_counter[client->client_id % MAX_CLIENTS]++;
+
+      if (frame_debug_counter[client->client_id % MAX_CLIENTS] % 10 == 1) {
+        log_info("WEBCAM WARMUP DEBUG: Client %u frame #%d - avg_brightness=%.1f%%, black_pixels=%.1f%% (%zu/%zu)",
+                 client->client_id, frame_debug_counter[client->client_id % MAX_CLIENTS], avg_brightness,
+                 black_percentage, black_pixels, sample_size);
+      }
+    }
 
     // Store the entire packet (including dimensions) in the buffer
     // The mixing function will parse it
