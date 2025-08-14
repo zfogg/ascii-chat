@@ -95,38 +95,38 @@ image_t* load_ppm_file(const char* filename) {
         printf("Error: Cannot open file '%s'\n", filename);
         return NULL;
     }
-    
+
     char magic[3];
     int w, h, maxval;
-    
+
     // Read PPM header: P3\n640 480\n255\n
     if (fscanf(fp, "%2s\n%d %d\n%d\n", magic, &w, &h, &maxval) != 4) {
         printf("Error: Invalid PPM header in '%s'\n", filename);
         fclose(fp);
         return NULL;
     }
-    
+
     if (strcmp(magic, "P3") != 0) {
         printf("Error: Only P3 (ASCII) PPM format supported, got '%s'\n", magic);
         fclose(fp);
         return NULL;
     }
-    
+
     if (maxval != 255) {
         printf("Error: Only 8-bit PPM supported (maxval=255), got maxval=%d\n", maxval);
         fclose(fp);
         return NULL;
     }
-    
+
     printf("Loading PPM: %dx%d, maxval=%d\n", w, h, maxval);
-    
+
     image_t *img = image_new(w, h);
     if (!img) {
         printf("Error: Failed to create image buffer\n");
         fclose(fp);
         return NULL;
     }
-    
+
     // Read RGB values: "255 128 64 ..."
     for (int i = 0; i < w * h; i++) {
         int r, g, b;
@@ -136,17 +136,17 @@ image_t* load_ppm_file(const char* filename) {
             fclose(fp);
             return NULL;
         }
-        
+
         // Clamp to valid range
         if (r < 0) r = 0; if (r > 255) r = 255;
         if (g < 0) g = 0; if (g > 255) g = 255;
         if (b < 0) b = 0; if (b > 255) b = 255;
-        
+
         img->pixels[i].r = r;
         img->pixels[i].g = g;
         img->pixels[i].b = b;
     }
-    
+
     fclose(fp);
     printf("Successfully loaded %dx%d PPM image (%d pixels)\n", w, h, w * h);
     return img;
@@ -198,11 +198,11 @@ image_t* load_ppm_from_directory(const char* directory, int width, int height) {
         printf("Error: No directory specified\n");
         exit(1);
     }
-    
+
     // Try primary naming convention first
     char filepath[512];
     snprintf(filepath, sizeof(filepath), "%s/test-%dx%d.ppm", directory, width, height);
-    
+
     // Check if file exists before trying to open it
     FILE *test_fp = fopen(filepath, "r");
     if (!test_fp) {
@@ -211,21 +211,21 @@ image_t* load_ppm_from_directory(const char* directory, int width, int height) {
         exit(1);
     }
     fclose(test_fp);
-    
+
     // Now load the file (we know it exists)
     image_t *img = load_ppm_file(filepath);
     if (!img) {
         printf("Error: Failed to load PPM file '%s'\n", filepath);
         exit(1);
     }
-    
+
     if (img->w != width || img->h != height) {
         printf("Error: Image dimensions mismatch in '%s'\n", filepath);
         printf("Expected: %dx%d, Got: %dx%d\n", width, height, img->w, img->h);
         image_destroy(img);
         exit(1);
     }
-    
+
     printf("Loaded native resolution image: %s (%dx%d)\n", filepath, width, height);
     return img;
 }
@@ -239,10 +239,10 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
                 generate_test_image(pixels, width, height, 0);
                 return;
             }
-            
+
             image_t *file_img = load_ppm_from_directory(g_img_files_dir, width, height);
             // load_ppm_from_directory exits on error, so file_img is guaranteed to be valid
-            
+
             // Direct copy (already exact resolution)
             for (int i = 0; i < width * height; i++) {
                 pixels[i].r = file_img->pixels[i].r;
@@ -253,7 +253,7 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
             image_destroy(file_img);
             break;
         }
-        
+
         case IMAGE_SOURCE_FILE: {
             if (!g_image_filename) {
                 printf("Error: No filename specified for file source\n");
@@ -261,14 +261,14 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
                 generate_test_image(pixels, width, height, 0);
                 return;
             }
-            
+
             image_t *file_img = load_ppm_file(g_image_filename);
             if (!file_img) {
                 printf("Warning: Failed to load file, falling back to synthetic data\n");
                 generate_test_image(pixels, width, height, 0);
                 return;
             }
-            
+
             // Convert from rgb_t to rgb_pixel_t and resize if needed
             if (file_img->w == width && file_img->h == height) {
                 // Direct copy
@@ -282,30 +282,30 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
                 // Need to resize - convert to rgb_pixel_t format first
                 rgb_pixel_t *file_pixels;
                 SAFE_MALLOC_SIMD(file_pixels, file_img->w * file_img->h * sizeof(rgb_pixel_t), rgb_pixel_t *);
-                
+
                 for (int i = 0; i < file_img->w * file_img->h; i++) {
                     file_pixels[i].r = file_img->pixels[i].r;
                     file_pixels[i].g = file_img->pixels[i].g;
                     file_pixels[i].b = file_img->pixels[i].b;
                 }
-                
+
                 resize_image(file_pixels, file_img->w, file_img->h, pixels, width, height);
                 printf("Resized file data from %dx%d to %dx%d\n", file_img->w, file_img->h, width, height);
-                
+
                 free(file_pixels);
             }
-            
+
             image_destroy(file_img);
             break;
         }
-        
+
         case IMAGE_SOURCE_WEBCAM: {
             // Use actual webcam data - this test program is linked with webcam support
             printf("Using webcam data for realistic testing\n");
-            
+
             // Initialize webcam with index 0 (default camera)
             webcam_init(0);
-            
+
             // Read a frame from the webcam
             image_t *webcam_frame = webcam_read();
             if (!webcam_frame) {
@@ -314,7 +314,7 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
                 generate_test_image(pixels, width, height, 0);
                 break;
             }
-            
+
             // Convert and resize webcam data if needed
             if (webcam_frame->w == width && webcam_frame->h == height) {
                 // Direct copy - dimensions match
@@ -334,14 +334,14 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
                     for (int x = 0; x < width; x++) {
                         int src_x = (int)(x * x_ratio);
                         int src_y = (int)(y * y_ratio);
-                        
+
                         // Clamp to source bounds
                         if (src_x >= webcam_frame->w) src_x = webcam_frame->w - 1;
                         if (src_y >= webcam_frame->h) src_y = webcam_frame->h - 1;
-                        
+
                         int src_idx = src_y * webcam_frame->w + src_x;
                         int dst_idx = y * width + x;
-                        
+
                         pixels[dst_idx].r = webcam_frame->pixels[src_idx].r;
                         pixels[dst_idx].g = webcam_frame->pixels[src_idx].g;
                         pixels[dst_idx].b = webcam_frame->pixels[src_idx].b;
@@ -349,12 +349,12 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
                 }
                 printf("Resized webcam data from %dx%d to %dx%d\n", webcam_frame->w, webcam_frame->h, width, height);
             }
-            
+
             image_destroy(webcam_frame);
             webcam_cleanup();
             break;
         }
-        
+
         case IMAGE_SOURCE_SYNTHETIC:
         default:
             generate_test_image(pixels, width, height, 0);
@@ -428,7 +428,7 @@ void test_performance(void) {
 
     print_simd_capabilities();
     printf("\n");
-    
+
     // Create source image early for both monochrome and color testing
     image_t *source_image = NULL;
     if (g_image_source == IMAGE_SOURCE_SYNTHETIC) {
@@ -440,21 +440,21 @@ void test_performance(void) {
             for (int y = 0; y < source_image->h; y++) {
                 for (int x = 0; x < source_image->w; x++) {
                     int idx = y * source_image->w + x;
-                    
+
                     // Create colorful gradient with some randomization
                     int base_r = (x * 255 / source_image->w);
                     int base_g = (y * 255 / source_image->h);
                     int base_b = ((x + y) * 127 / (source_image->w + source_image->h));
-                    
+
                     // Add some noise for variety
                     int noise_r = rand() % 32 - 16;
                     int noise_g = rand() % 32 - 16;
                     int noise_b = rand() % 32 - 16;
-                    
+
                     int r = base_r + noise_r;
                     int g = base_g + noise_g;
                     int b = base_b + noise_b;
-                    
+
                     // Clamp to valid range
                     source_image->pixels[idx].r = (r < 0) ? 0 : (r > 255) ? 255 : r;
                     source_image->pixels[idx].g = (g < 0) ? 0 : (g > 255) ? 255 : g;
@@ -550,7 +550,7 @@ void test_performance(void) {
 
         printf("  Best:      %s\n\n",
                benchmark.best_method);
-               
+
         // Clean up resolution-specific image if we loaded it
         if (resolution_specific_image && resolution_specific_image != source_image) {
             image_destroy(resolution_specific_image);
@@ -642,18 +642,18 @@ void test_performance(void) {
 
         printf("    Best:      %s\n\n",
                bg_benchmark.best_method);
-               
+
         // Clean up color resolution-specific image if we loaded it
         if (color_resolution_image && color_resolution_image != source_image) {
             image_destroy(color_resolution_image);
         }
     }
-    
+
     // Clean up resources
     if (source_image) {
         image_destroy(source_image);
     }
-    
+
     // Clean up webcam if it was initialized
     if (g_image_source == IMAGE_SOURCE_WEBCAM) {
         webcam_cleanup();
@@ -673,8 +673,11 @@ void test_integration(void) {
             printf("Using loaded PPM file for terminal test\n");
         }
     } else if (g_image_source == IMAGE_SOURCE_IMG_FILES && g_img_files_dir) {
-        source_image = load_ppm_from_directory(g_img_files_dir, 203, 64);
         // load_ppm_from_directory exits on error, so source_image is guaranteed to be valid
+        printf("Using directory image for terminal test (203x64)\n");
+    }
+    if (!source_image) {
+        source_image = load_ppm_from_directory("imgs", 203, 64);
         printf("Using directory image for terminal test (203x64)\n");
     }
 
@@ -717,7 +720,7 @@ void test_integration(void) {
     printf("- Best method: %s\n", bench.best_method);
     printf("- At 60 FPS: %.1f%% CPU time saved\n",
            100.0 * (1.0 - 1.0/bench.speedup_best));
-    
+
     // Clean up loaded image
     if (source_image) {
         image_destroy(source_image);
@@ -729,15 +732,15 @@ void test_integration(void) {
 simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iterations) {
     simd_benchmark_t result = {0};
     int pixel_count = width * height;
-    
+
     // Allocate buffers for benchmarking
     rgb_pixel_t **frame_data; // Array of pre-captured frame data
     char *output_buffer;
     SAFE_CALLOC(frame_data, iterations, sizeof(rgb_pixel_t*), rgb_pixel_t **);
     SAFE_MALLOC(output_buffer, pixel_count, char *);
-    
+
     printf("Pre-capturing %d webcam frames at %dx%d...\n", iterations, width, height);
-    
+
     // Pre-capture and resize all webcam frames
     int captured_frames = 0;
     for (int iter = 0; iter < iterations; iter++) {
@@ -748,13 +751,13 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
             printf("Warning: Failed to capture webcam frame %d\n", iter);
             continue;
         }
-        
+
         // Create temp image with desired dimensions
         image_t *resized_frame = image_new(width, height);
-        
+
         // Use image_resize to resize webcam frame to test dimensions
         image_resize(webcam_frame, resized_frame);
-        
+
         // Allocate and copy resized data (convert rgb_t to rgb_pixel_t) with SIMD alignment
         SAFE_CALLOC_SIMD(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
         for (int i = 0; i < pixel_count; i++) {
@@ -762,21 +765,21 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
             frame_data[captured_frames][i].g = resized_frame->pixels[i].g;
             frame_data[captured_frames][i].b = resized_frame->pixels[i].b;
         }
-        
+
         image_destroy(resized_frame);
         image_destroy(webcam_frame);
         captured_frames++;
     }
-    
+
     if (captured_frames == 0) {
         printf("Error: No webcam frames captured!\n");
         free(frame_data);
         free(output_buffer);
         return result;
     }
-    
+
     printf("Captured %d frames, benchmarking pure conversion performance...\n", captured_frames);
-    
+
     // Benchmark scalar conversion (pure conversion, no I/O)
     clock_t start_time = clock();
     for (int iter = 0; iter < captured_frames; iter++) {
@@ -784,17 +787,17 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
     }
     clock_t end_time = clock();
     result.scalar_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    
+
     // Benchmark optimized conversion (pure conversion, no I/O)
     start_time = clock();
     for (int iter = 0; iter < captured_frames; iter++) {
         convert_pixels_optimized(frame_data[iter], output_buffer, pixel_count);
     }
     end_time = clock();
-    
+
     // Calculate best performance metric
     double optimized_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    
+
 #ifdef SIMD_SUPPORT_NEON
     result.neon_time = optimized_time;
 #elif defined(SIMD_SUPPORT_AVX2)
@@ -804,7 +807,7 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
 #elif defined(SIMD_SUPPORT_SSE2)
     result.sse2_time = optimized_time;
 #endif
-    
+
     // Find the actual best method by comparing times
     if (result.scalar_time <= optimized_time) {
         result.best_method = "Scalar (Webcam)";
@@ -823,14 +826,14 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
 #endif
         result.speedup_best = result.scalar_time / optimized_time;
     }
-    
+
     // Clean up pre-captured frame data
     for (int i = 0; i < captured_frames; i++) {
         free(frame_data[i]);
     }
     free(frame_data);
     free(output_buffer);
-    
+
     return result;
 }
 
@@ -840,7 +843,7 @@ void print_usage(const char* program_name) {
     printf("\nImage source options (pick one):\n");
     printf("  --img-files <dir>   Load PPM files from directory (requires all resolutions)\n");
     printf("  --file <filename>   Load single PPM image file for testing\n");
-    printf("  --webcam           Use webcam for realistic data (default)\n");  
+    printf("  --webcam           Use webcam for realistic data (default)\n");
     printf("  --synthetic        Use synthetic test patterns\n");
     printf("\nExamples:\n");
     printf("  %s --img-files imgs/                    # Load test-WxH.ppm files\n", program_name);
