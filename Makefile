@@ -105,7 +105,9 @@ SIMD_MODE ?= auto
 ENABLE_SIMD_SSE2 =
 ENABLE_SIMD_SSSE3 =
 ENABLE_SIMD_AVX2 =
+ENABLE_SIMD_AVX512 =
 ENABLE_SIMD_NEON =
+ENABLE_SIMD_SVE =
 
 # Check for user-specified SIMD mode
 ifeq ($(SIMD_MODE),sse2)
@@ -117,8 +119,14 @@ endif
 ifeq ($(SIMD_MODE),avx2)
   ENABLE_SIMD_AVX2 = yes
 endif
+ifeq ($(SIMD_MODE),avx512)
+  ENABLE_SIMD_AVX512 = yes
+endif
 ifeq ($(SIMD_MODE),neon)
   ENABLE_SIMD_NEON = yes
+endif
+ifeq ($(SIMD_MODE),sve)
+  ENABLE_SIMD_SVE = yes
 endif
 
 # Auto-detect SIMD capabilities
@@ -136,16 +144,27 @@ ifeq ($(SIMD_MODE),auto)
   
   # Linux ARM64 detection
   ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
-    ENABLE_SIMD_NEON = yes
+    # Check for SVE support first (newer and more capable than NEON)
+    HAS_SVE := $(shell grep -q sve /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_SVE),1)
+      ENABLE_SIMD_SVE = yes
+    else
+      ENABLE_SIMD_NEON = yes
+    endif
   endif
   
-  # x86_64 feature detection
+  # x86_64 feature detection (prefer newer SIMD instructions)
   ifeq ($(UNAME_M),x86_64)
+    HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     
-    ifeq ($(HAS_AVX2),1)
+    # AVX-512 requires both AVX512F (foundation) and AVX512BW (byte/word operations)
+    ifeq ($(HAS_AVX512F)$(HAS_AVX512BW),11)
+      ENABLE_SIMD_AVX512 = yes
+    else ifeq ($(HAS_AVX2),1)
       ENABLE_SIMD_AVX2 = yes
     else ifeq ($(HAS_SSSE3),1)
       ENABLE_SIMD_SSSE3 = yes
@@ -155,7 +174,7 @@ ifeq ($(SIMD_MODE),auto)
   endif
 endif
 
-ifneq ($(or $(ENABLE_SIMD_AVX2),$(ENABLE_SIMD_SSSE3),$(ENABLE_SIMD_SSE2),$(ENABLE_SIMD_NEON)),)
+ifneq ($(or $(ENABLE_SIMD_AVX512),$(ENABLE_SIMD_AVX2),$(ENABLE_SIMD_SSSE3),$(ENABLE_SIMD_SSE2),$(ENABLE_SIMD_SVE),$(ENABLE_SIMD_NEON)),)
   SIMD_CFLAGS := -DSIMD_SUPPORT
 endif
 
@@ -169,12 +188,20 @@ ifdef ENABLE_SIMD_SSSE3
   SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
 endif
 ifdef ENABLE_SIMD_AVX2
-  $(info Using AVX2 + SSSE3 + SSE2 (best x86_64 performance))
+  $(info Using AVX2 + SSSE3 + SSE2 (32-pixel processing x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
+endif
+ifdef ENABLE_SIMD_AVX512
+  $(info Using AVX-512 (64-pixel processing - fastest x86_64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_AVX512 -mavx512f -mavx512bw
 endif
 ifdef ENABLE_SIMD_NEON
   $(info Using ARM NEON (Apple Silicon/ARM64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_NEON
+endif
+ifdef ENABLE_SIMD_SVE
+  $(info Using ARM SVE (Scalable Vector Extensions - next-gen ARM64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_SVE -march=armv8-a+sve
 endif
 
 # =============================================================================
