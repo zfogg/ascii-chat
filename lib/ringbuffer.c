@@ -1,5 +1,6 @@
 #include "ringbuffer.h"
 #include "common.h"
+#include "buffer_pool.h"
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -258,21 +259,24 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     }
   }
 
-  // Allocate a copy of the frame data that will be owned by the ringbuffer
-  char *frame_copy;
-  SAFE_MALLOC(frame_copy, frame_size + 1, char *);
+  // Allocate a copy of the frame data using buffer pool for better performance
+  char *frame_copy = (char *)buffer_pool_alloc(frame_size + 1);
+  if (!frame_copy) {
+    log_error("Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
+    return false;
+  }
 
   memcpy(frame_copy, frame_data, frame_size);
   frame_copy[frame_size] = '\0'; // Ensure null termination
 
-  // Create a frame_t struct with the copy
-  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size, .data = frame_copy};
+  // Create a frame_t struct with the copy (store allocated size for proper cleanup)
+  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
 
   bool result = ringbuffer_write(fb->rb, &frame);
 
   if (!result) {
-    // If we still couldn't write to ringbuffer, free the copy
-    SAFE_FREE(frame_copy);
+    // If we still couldn't write to ringbuffer, return the buffer to pool
+    buffer_pool_free(frame_copy, frame_size + 1);
     log_error("Failed to write frame to ringbuffer even after dropping oldest");
   }
 
@@ -339,7 +343,7 @@ void framebuffer_clear(framebuffer_t *fb) {
     while (ringbuffer_read(fb->rb, &multi_frame)) {
       if (multi_frame.magic == FRAME_MAGIC && multi_frame.data) {
         multi_frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
-        SAFE_FREE(multi_frame.data);
+        buffer_pool_free(multi_frame.data, multi_frame.size);
       } else if (multi_frame.magic != FRAME_MAGIC && multi_frame.magic != 0) {
         log_error("CORRUPTION: Invalid multi-source frame magic 0x%x during clear", multi_frame.magic);
       }
@@ -350,7 +354,7 @@ void framebuffer_clear(framebuffer_t *fb) {
     while (ringbuffer_read(fb->rb, &frame)) {
       if (frame.magic == FRAME_MAGIC && frame.data) {
         frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
-        SAFE_FREE(frame.data);
+        buffer_pool_free(frame.data, frame.size);
       } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
         log_error("CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
       }
@@ -376,11 +380,10 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
     return false;
   }
 
-  // Allocate memory for frame data (caller will free it when reading)
-  char *data_copy;
-  SAFE_MALLOC(data_copy, frame_size, char *);
+  // Allocate memory for frame data using buffer pool for better performance
+  char *data_copy = (char *)buffer_pool_alloc(frame_size);
   if (!data_copy) {
-    log_error("Failed to allocate %zu bytes for multi-source frame", frame_size);
+    log_error("Failed to allocate %zu bytes from buffer pool for multi-source frame", frame_size);
     return false;
   }
 
@@ -398,8 +401,8 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   // Try to write to ring buffer
   bool success = ringbuffer_write(fb->rb, &multi_frame);
   if (!success) {
-    // Buffer full, free the allocated memory
-    SAFE_FREE(data_copy);
+    // Buffer full, return the buffer to pool
+    buffer_pool_free(data_copy, frame_size);
     log_debug("Frame buffer full, dropping multi-source frame from client %u", source_client_id);
   }
 

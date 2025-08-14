@@ -53,6 +53,7 @@ char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
 char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
 char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;

@@ -188,7 +188,8 @@ int send_audio_data(int sockfd, const float *samples, int num_samples);
 int receive_audio_data(int sockfd, float *samples, int max_samples);
 
 /* Packet protocol functions */
-uint32_t asciichat_crc32(const void *data, size_t len);
+// CRC32 function moved to crc32_hw.h for hardware acceleration
+#include "crc32_hw.h"
 
 int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
 int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);

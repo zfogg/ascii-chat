@@ -371,6 +371,7 @@ ifdef ENABLE_AES_HW
   else
     $(info Enabling AES hardware acceleration (generic))
   endif
+
 else
   $(info AES hardware acceleration disabled)
   AES_CFLAGS :=

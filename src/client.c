@@ -455,6 +455,25 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   frame_debug_record_frame(&g_client_frame_debug, frame_data, header.original_size);
 
   free(frame_data);
+
+  // In snapshot mode, wait for delay period then exit
+  if (opt_snapshot_mode) {
+    static time_t first_frame_time = 0;
+    if (first_frame_time == 0) {
+      // Record time of first frame
+      first_frame_time = time(NULL);
+      log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...", opt_snapshot_delay);
+    } else {
+      // Check if delay period has elapsed
+      time_t current_time = time(NULL);
+      double elapsed = difftime(current_time, first_frame_time);
+      if (elapsed >= opt_snapshot_delay) {
+        log_info("Snapshot captured after %.1f seconds!", elapsed);
+        g_should_exit = true;
+        return;
+      }
+    }
+  }
 }
 
 static void *data_reception_thread_func(void *arg) {
@@ -858,8 +877,9 @@ int main(int argc, char *argv[]) {
   // Parse options first to check for quiet mode
   options_init(argc, argv);
 
-  // Initialize logging - in quiet mode, still log to file but suppress all console output
-  log_init("client.log", LOG_DEBUG);
+  // Initialize logging - use specified log file or default
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
+  log_init(log_filename, LOG_DEBUG);
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
