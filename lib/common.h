@@ -118,6 +118,42 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
     (ptr) = (cast)(tmp_ptr);                                                                                           \
   } while (0)
 
+/* SIMD-aligned memory allocation macros for optimal NEON/AVX performance */
+#ifdef __APPLE__
+/* macOS uses posix_memalign() for aligned allocation */
+#define SAFE_MALLOC_ALIGNED(ptr, size, alignment, cast)                                                                   \
+  do {                                                                                                                     \
+    int result = posix_memalign((void **)&(ptr), (alignment), (size));                                                    \
+    if (result != 0 || !(ptr)) {                                                                                          \
+      log_error("Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size), (size_t)(alignment));     \
+      exit(ASCIICHAT_ERR_MALLOC);                                                                                          \
+    }                                                                                                                      \
+    (ptr) = (cast)(ptr);                                                                                                   \
+  } while (0)
+#else
+/* Linux/other platforms use aligned_alloc() (C11) */
+#define SAFE_MALLOC_ALIGNED(ptr, size, alignment, cast)                                                                   \
+  do {                                                                                                                     \
+    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                      \
+    (ptr) = (cast)aligned_alloc((alignment), aligned_size);                                                               \
+    if (!(ptr)) {                                                                                                          \
+      log_error("Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size, (size_t)(alignment));       \
+      exit(ASCIICHAT_ERR_MALLOC);                                                                                          \
+    }                                                                                                                      \
+  } while (0)
+#endif
+
+/* 16-byte aligned allocation for SIMD operations */
+#define SAFE_MALLOC_SIMD(ptr, size, cast) SAFE_MALLOC_ALIGNED(ptr, size, 16, cast)
+
+/* 16-byte aligned zero-initialized allocation */
+#define SAFE_CALLOC_SIMD(ptr, count, size, cast)                                                                          \
+  do {                                                                                                                     \
+    size_t total_size = (count) * (size);                                                                                 \
+    SAFE_MALLOC_SIMD(ptr, total_size, cast);                                                                              \
+    memset((ptr), 0, total_size);                                                                                         \
+  } while (0)
+
 /* Safe free that nulls the pointer - available in all builds */
 #define SAFE_FREE(ptr)                                                                                                 \
   do {                                                                                                                 \

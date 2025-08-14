@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Compilers
-CC  := clang
+CC := clang
 
 # Package dependencies
 PKG_CONFIG_LIBS := zlib portaudio-2.0
@@ -15,6 +15,12 @@ BIN_DIR   := bin
 BUILD_DIR := build
 SRC_DIR   := src
 LIB_DIR   := lib
+
+ifeq ($(shell uname),Darwin)
+  SDKROOT := $(shell xcrun --sdk macosx --show-sdk-path)
+  CLANG_RESOURCE_DIR := $(shell $(CC) -print-resource-dir)
+  override CFLAGS += -isysroot $(SDKROOT) -isystem $(CLANG_RESOURCE_DIR)/include
+endif
 
 override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
 
@@ -497,6 +503,16 @@ $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(OBJCFLAGS) -c $<
 
+# Ensure build and bin directories exist
+$(BUILD_DIR)/src:
+	@mkdir -p $@
+
+$(BUILD_DIR)/lib:
+	@mkdir -p $@
+
+$(BIN_DIR):
+	@mkdir -p $@
+
 # For CI
 c-objs: $(OBJS_C)
 	@echo "C object files:"
@@ -563,8 +579,8 @@ format-check:
 
 # Run bear to generate a compile_commands.json file
 compile_commands.json: Makefile
-	@echo "Running bear to generate compile_commands.json..."
-	@make clean && bear -- make debug todo
+	@echo "Running bear to generate compile_commands.json (main project only)..."
+	@make clean todo-clean && bear -- make debug
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
@@ -619,4 +635,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc todo todo-clean
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc todo todo-clean compile_commands.json
