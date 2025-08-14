@@ -41,10 +41,9 @@ static bool palette_initialized = false;
 
 // NEON vtbl lookup table for ASCII mapping optimization (Priority 3)
 // Contains ASCII palette padded to 32 bytes for efficient vtbl2q_u8() access
-static const uint8_t ascii_vtbl_table[32] __attribute__((aligned(16))) = {
-  ' ', ' ', ' ', '.', '.', '.', '\'', ',', ';', ':', 'c', 'l', 'o', 'd', 'x', 'k',
-  'O', '0', 'K', 'X', 'N', 'W', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'
-};
+static const uint8_t ascii_vtbl_table[32]
+    __attribute__((aligned(16))) = {' ', ' ', ' ', '.', '.', '.', '\'', ',', ';', ':', 'c', 'l', 'o', 'd', 'x', 'k',
+                                    'O', '0', 'K', 'X', 'N', 'W', 'M',  'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'};
 
 static void init_palette(void) {
   if (palette_initialized)
@@ -838,36 +837,52 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
     // PRIORITY 3 OPTIMIZATION: Hybrid approach using existing luminance_palette with vectorized stores
     // This maintains 100% correctness while getting SIMD benefits from batch processing and vectorized stores
-    
+
     // Store NEON-computed luminance values for ASCII character lookup
     uint8_t luma_batch[32] __attribute__((aligned(16)));
-    vst1q_u8(&luma_batch[0], luma_vec1);   // Store first 16 luminance values  
-    vst1q_u8(&luma_batch[16], luma_vec2);  // Store second 16 luminance values
-    
+    vst1q_u8(&luma_batch[0], luma_vec1);  // Store first 16 luminance values
+    vst1q_u8(&luma_batch[16], luma_vec2); // Store second 16 luminance values
+
     // Create ASCII result vectors using existing luminance_palette (guaranteed correct)
     uint8_t ascii_batch[32] __attribute__((aligned(16)));
-    
-    // Optimized unrolled ASCII lookups using existing luminance_palette (guaranteed correct)
-    ascii_batch[0] = luminance_palette[luma_batch[0]];   ascii_batch[1] = luminance_palette[luma_batch[1]];
-    ascii_batch[2] = luminance_palette[luma_batch[2]];   ascii_batch[3] = luminance_palette[luma_batch[3]];
-    ascii_batch[4] = luminance_palette[luma_batch[4]];   ascii_batch[5] = luminance_palette[luma_batch[5]];
-    ascii_batch[6] = luminance_palette[luma_batch[6]];   ascii_batch[7] = luminance_palette[luma_batch[7]];
-    ascii_batch[8] = luminance_palette[luma_batch[8]];   ascii_batch[9] = luminance_palette[luma_batch[9]];
-    ascii_batch[10] = luminance_palette[luma_batch[10]]; ascii_batch[11] = luminance_palette[luma_batch[11]];
-    ascii_batch[12] = luminance_palette[luma_batch[12]]; ascii_batch[13] = luminance_palette[luma_batch[13]];
-    ascii_batch[14] = luminance_palette[luma_batch[14]]; ascii_batch[15] = luminance_palette[luma_batch[15]];
-    ascii_batch[16] = luminance_palette[luma_batch[16]]; ascii_batch[17] = luminance_palette[luma_batch[17]];
-    ascii_batch[18] = luminance_palette[luma_batch[18]]; ascii_batch[19] = luminance_palette[luma_batch[19]];
-    ascii_batch[20] = luminance_palette[luma_batch[20]]; ascii_batch[21] = luminance_palette[luma_batch[21]];
-    ascii_batch[22] = luminance_palette[luma_batch[22]]; ascii_batch[23] = luminance_palette[luma_batch[23]];
-    ascii_batch[24] = luminance_palette[luma_batch[24]]; ascii_batch[25] = luminance_palette[luma_batch[25]];
-    ascii_batch[26] = luminance_palette[luma_batch[26]]; ascii_batch[27] = luminance_palette[luma_batch[27]];
-    ascii_batch[28] = luminance_palette[luma_batch[28]]; ascii_batch[29] = luminance_palette[luma_batch[29]];
-    ascii_batch[30] = luminance_palette[luma_batch[30]]; ascii_batch[31] = luminance_palette[luma_batch[31]];
 
-    // SIMD vectorized store: 32 ASCII characters with 2 NEON operations  
-    uint8x16_t ascii_result1 = vld1q_u8(&ascii_batch[0]);   // Load first 16 ASCII chars
-    uint8x16_t ascii_result2 = vld1q_u8(&ascii_batch[16]);  // Load second 16 ASCII chars
+    // Optimized unrolled ASCII lookups using existing luminance_palette (guaranteed correct)
+    ascii_batch[0] = luminance_palette[luma_batch[0]];
+    ascii_batch[1] = luminance_palette[luma_batch[1]];
+    ascii_batch[2] = luminance_palette[luma_batch[2]];
+    ascii_batch[3] = luminance_palette[luma_batch[3]];
+    ascii_batch[4] = luminance_palette[luma_batch[4]];
+    ascii_batch[5] = luminance_palette[luma_batch[5]];
+    ascii_batch[6] = luminance_palette[luma_batch[6]];
+    ascii_batch[7] = luminance_palette[luma_batch[7]];
+    ascii_batch[8] = luminance_palette[luma_batch[8]];
+    ascii_batch[9] = luminance_palette[luma_batch[9]];
+    ascii_batch[10] = luminance_palette[luma_batch[10]];
+    ascii_batch[11] = luminance_palette[luma_batch[11]];
+    ascii_batch[12] = luminance_palette[luma_batch[12]];
+    ascii_batch[13] = luminance_palette[luma_batch[13]];
+    ascii_batch[14] = luminance_palette[luma_batch[14]];
+    ascii_batch[15] = luminance_palette[luma_batch[15]];
+    ascii_batch[16] = luminance_palette[luma_batch[16]];
+    ascii_batch[17] = luminance_palette[luma_batch[17]];
+    ascii_batch[18] = luminance_palette[luma_batch[18]];
+    ascii_batch[19] = luminance_palette[luma_batch[19]];
+    ascii_batch[20] = luminance_palette[luma_batch[20]];
+    ascii_batch[21] = luminance_palette[luma_batch[21]];
+    ascii_batch[22] = luminance_palette[luma_batch[22]];
+    ascii_batch[23] = luminance_palette[luma_batch[23]];
+    ascii_batch[24] = luminance_palette[luma_batch[24]];
+    ascii_batch[25] = luminance_palette[luma_batch[25]];
+    ascii_batch[26] = luminance_palette[luma_batch[26]];
+    ascii_batch[27] = luminance_palette[luma_batch[27]];
+    ascii_batch[28] = luminance_palette[luma_batch[28]];
+    ascii_batch[29] = luminance_palette[luma_batch[29]];
+    ascii_batch[30] = luminance_palette[luma_batch[30]];
+    ascii_batch[31] = luminance_palette[luma_batch[31]];
+
+    // SIMD vectorized store: 32 ASCII characters with 2 NEON operations
+    uint8x16_t ascii_result1 = vld1q_u8(&ascii_batch[0]);     // Load first 16 ASCII chars
+    uint8x16_t ascii_result2 = vld1q_u8(&ascii_batch[16]);    // Load second 16 ASCII chars
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii_result1);      // Store first 16 characters
     vst1q_u8((uint8_t *)&ascii_chars[i + 16], ascii_result2); // Store second 16 characters
   }
@@ -902,16 +917,24 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
     // Use the same optimized scalar lookups with vectorized store
     uint8_t ascii_result_16[16] __attribute__((aligned(16)));
-    
+
     // Optimized unrolled ASCII lookups using existing luminance_palette
-    ascii_result_16[0] = luminance_palette[luma_values[0]];   ascii_result_16[1] = luminance_palette[luma_values[1]];
-    ascii_result_16[2] = luminance_palette[luma_values[2]];   ascii_result_16[3] = luminance_palette[luma_values[3]];
-    ascii_result_16[4] = luminance_palette[luma_values[4]];   ascii_result_16[5] = luminance_palette[luma_values[5]];
-    ascii_result_16[6] = luminance_palette[luma_values[6]];   ascii_result_16[7] = luminance_palette[luma_values[7]];
-    ascii_result_16[8] = luminance_palette[luma_values[8]];   ascii_result_16[9] = luminance_palette[luma_values[9]];
-    ascii_result_16[10] = luminance_palette[luma_values[10]]; ascii_result_16[11] = luminance_palette[luma_values[11]];
-    ascii_result_16[12] = luminance_palette[luma_values[12]]; ascii_result_16[13] = luminance_palette[luma_values[13]];
-    ascii_result_16[14] = luminance_palette[luma_values[14]]; ascii_result_16[15] = luminance_palette[luma_values[15]];
+    ascii_result_16[0] = luminance_palette[luma_values[0]];
+    ascii_result_16[1] = luminance_palette[luma_values[1]];
+    ascii_result_16[2] = luminance_palette[luma_values[2]];
+    ascii_result_16[3] = luminance_palette[luma_values[3]];
+    ascii_result_16[4] = luminance_palette[luma_values[4]];
+    ascii_result_16[5] = luminance_palette[luma_values[5]];
+    ascii_result_16[6] = luminance_palette[luma_values[6]];
+    ascii_result_16[7] = luminance_palette[luma_values[7]];
+    ascii_result_16[8] = luminance_palette[luma_values[8]];
+    ascii_result_16[9] = luminance_palette[luma_values[9]];
+    ascii_result_16[10] = luminance_palette[luma_values[10]];
+    ascii_result_16[11] = luminance_palette[luma_values[11]];
+    ascii_result_16[12] = luminance_palette[luma_values[12]];
+    ascii_result_16[13] = luminance_palette[luma_values[13]];
+    ascii_result_16[14] = luminance_palette[luma_values[14]];
+    ascii_result_16[15] = luminance_palette[luma_values[15]];
 
     // SIMD vectorized store: 16 ASCII characters with 1 NEON operation
     uint8x16_t ascii_result = vld1q_u8(ascii_result_16);
@@ -977,20 +1000,20 @@ static double get_time_seconds(void) {
 static int calculate_adaptive_iterations(int pixel_count, double __attribute__((unused)) target_duration_ms) {
   // Base iterations: scale with image size for consistent measurement accuracy
   int base_iterations = 100; // Minimum iterations for good statistics
-  
+
   // For very small images, use more iterations for better timing resolution
   if (pixel_count < 5000) {
     base_iterations = 100; // 80×24 = 1,920 pixels -> 100 iterations (was 1000 - too slow!)
   } else if (pixel_count < 50000) {
-    base_iterations = 50;  // 160×48 = 7,680 pixels -> 50 iterations  
+    base_iterations = 50; // 160×48 = 7,680 pixels -> 50 iterations
   } else if (pixel_count < 200000) {
-    base_iterations = 20;  // 320×240 = 76,800 pixels -> 20 iterations
+    base_iterations = 20; // 320×240 = 76,800 pixels -> 20 iterations
   } else if (pixel_count < 500000) {
-    base_iterations = 100;  // 640×480 = 307,200 pixels -> 100 iterations
+    base_iterations = 100; // 640×480 = 307,200 pixels -> 100 iterations
   } else {
-    base_iterations = 50;   // 1280×720 = 921,600 pixels -> 50 iterations
+    base_iterations = 50; // 1280×720 = 921,600 pixels -> 50 iterations
   }
-  
+
   // Ensure we have at least the minimum for reliable timing
   const int minimum_iterations = 10;
   return (base_iterations > minimum_iterations) ? base_iterations : minimum_iterations;
@@ -998,40 +1021,40 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
 
 // Measure execution time with adaptive iteration count for accuracy
 // Returns average time per operation in seconds
-static double measure_function_time(void (*func)(const rgb_pixel_t*, char*, int), 
-                                   const rgb_pixel_t *pixels, char *output, int pixel_count) {
+static double measure_function_time(void (*func)(const rgb_pixel_t *, char *, int), const rgb_pixel_t *pixels,
+                                    char *output, int pixel_count) {
   int iterations = calculate_adaptive_iterations(pixel_count, 10.0); // Target 10ms minimum
-  
+
   // Warmup run to stabilize CPU frequency scaling and caches
   func(pixels, output, pixel_count);
-  
+
   // Actual measurement with multiple iterations
   double start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     func(pixels, output, pixel_count);
   }
   double total_time = get_time_seconds() - start;
-  
+
   return total_time / iterations; // Return average time per iteration
 }
 
 // Color conversion timing function with adaptive iterations
-// Returns average time per operation in seconds  
-static double measure_color_function_time(void (*func)(const rgb_pixel_t*, char*, size_t, int, bool), 
-                                         const rgb_pixel_t *pixels, char *output, size_t output_size, 
-                                         int pixel_count, bool background_mode) {
+// Returns average time per operation in seconds
+static double measure_color_function_time(void (*func)(const rgb_pixel_t *, char *, size_t, int, bool),
+                                          const rgb_pixel_t *pixels, char *output, size_t output_size, int pixel_count,
+                                          bool background_mode) {
   int iterations = calculate_adaptive_iterations(pixel_count, 10.0); // Target 10ms minimum
-  
+
   // Warmup run to stabilize CPU frequency scaling and caches
   func(pixels, output, output_size, pixel_count, background_mode);
-  
+
   // Actual measurement with multiple iterations
   double start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     func(pixels, output, output_size, pixel_count, background_mode);
   }
   double total_time = get_time_seconds() - start;
-  
+
   return total_time / iterations; // Return average time per iteration
 }
 
@@ -1103,8 +1126,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", 
-         width, height, pixel_count, adaptive_iterations);
+  printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
+         pixel_count, adaptive_iterations);
 
   // Benchmark scalar version with adaptive timing
   result.scalar_time = measure_function_time(convert_pixels_scalar, test_pixels, output_buffer, pixel_count);
@@ -1378,8 +1401,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", 
-         width, height, pixel_count, adaptive_iterations);
+  printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
+         pixel_count, adaptive_iterations);
 
   // Benchmark all available SIMD variants with adaptive timing
   result.scalar_time = measure_function_time(convert_pixels_scalar, test_pixels, output_buffer, pixel_count);
@@ -1441,9 +1464,9 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 }
 
 // Enhanced color benchmark function with image source support
-simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int __attribute__((unused)) iterations,
-                                                             bool background_mode,
-                                                             const image_t *source_image) {
+simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height,
+                                                             int __attribute__((unused)) iterations,
+                                                             bool background_mode, const image_t *source_image) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -1457,16 +1480,16 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
   // Calculate adaptive iterations for color benchmarking (ignore passed iterations)
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  
+
   const char *mode_str = background_mode ? "background" : "foreground";
-  
+
   // Variables for webcam capture cleanup
   rgb_pixel_t **frame_data = NULL;
   int captured_frames = 0;
-  
+
   if (source_image) {
-    printf("Using provided source image data for COLOR %s %dx%d benchmarking with %d iterations...\n", 
-           mode_str, width, height, adaptive_iterations);
+    printf("Using provided source image data for COLOR %s %dx%d benchmarking with %d iterations...\n", mode_str, width,
+           height, adaptive_iterations);
 
     // Use provided source image - resize if needed
     if (source_image->w == width && source_image->h == height) {
@@ -1480,19 +1503,21 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       // Resize source image to target dimensions
       float x_ratio = (float)source_image->w / width;
       float y_ratio = (float)source_image->h / height;
-      
+
       for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
           int src_x = (int)(x * x_ratio);
           int src_y = (int)(y * y_ratio);
-          
+
           // Bounds check
-          if (src_x >= source_image->w) src_x = source_image->w - 1;
-          if (src_y >= source_image->h) src_y = source_image->h - 1;
-          
+          if (src_x >= source_image->w)
+            src_x = source_image->w - 1;
+          if (src_y >= source_image->h)
+            src_y = source_image->h - 1;
+
           int src_idx = src_y * source_image->w + src_x;
           int dst_idx = y * width + x;
-          
+
           test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
           test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
           test_pixels[dst_idx].b = source_image->pixels[src_idx].b;
@@ -1500,7 +1525,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       }
     }
   } else {
-    printf("Pre-capturing %d adaptive webcam frames for COLOR %s %dx%d (ignoring passed iterations)...\n", 
+    printf("Pre-capturing %d adaptive webcam frames for COLOR %s %dx%d (ignoring passed iterations)...\n",
            adaptive_iterations, mode_str, width, height);
 
     // Pre-capture adaptive number of webcam frames
@@ -1508,34 +1533,34 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     for (int i = 0; i < adaptive_iterations; i++) {
       // Capture fresh webcam frame
       image_t *webcam_frame = webcam_read();
-    if (!webcam_frame) {
-      printf("Warning: Failed to capture webcam frame %d during color benchmarking\n", i);
-      continue;
-    }
+      if (!webcam_frame) {
+        printf("Warning: Failed to capture webcam frame %d during color benchmarking\n", i);
+        continue;
+      }
 
-    // Create temp image with desired dimensions
-    image_t *resized_frame = image_new(width, height);
-    if (!resized_frame) {
-      printf("Warning: Failed to allocate resized_frame for webcam frame %d during color benchmarking\n", i);
+      // Create temp image with desired dimensions
+      image_t *resized_frame = image_new(width, height);
+      if (!resized_frame) {
+        printf("Warning: Failed to allocate resized_frame for webcam frame %d during color benchmarking\n", i);
+        image_destroy(webcam_frame);
+        continue;
+      }
+
+      // Use image_resize to resize webcam frame to test dimensions
+      image_resize(webcam_frame, resized_frame);
+
+      // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
+      SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+      for (int j = 0; j < pixel_count; j++) {
+        frame_data[captured_frames][j].r = resized_frame->pixels[j].r;
+        frame_data[captured_frames][j].g = resized_frame->pixels[j].g;
+        frame_data[captured_frames][j].b = resized_frame->pixels[j].b;
+      }
+
+      image_destroy(resized_frame);
       image_destroy(webcam_frame);
-      continue;
+      captured_frames++;
     }
-
-    // Use image_resize to resize webcam frame to test dimensions
-    image_resize(webcam_frame, resized_frame);
-
-    // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
-    SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
-    for (int j = 0; j < pixel_count; j++) {
-      frame_data[captured_frames][j].r = resized_frame->pixels[j].r;
-      frame_data[captured_frames][j].g = resized_frame->pixels[j].g;
-      frame_data[captured_frames][j].b = resized_frame->pixels[j].b;
-    }
-
-    image_destroy(resized_frame);
-    image_destroy(webcam_frame);
-    captured_frames++;
-  }
 
     if (captured_frames == 0) {
       printf("No webcam frames captured for color test, using synthetic data\n");
@@ -1647,26 +1672,34 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
   // Normalize timing results by iteration count to get per-frame times
   result.scalar_time /= adaptive_iterations;
-  if (result.sse2_time > 0) result.sse2_time /= adaptive_iterations;
-  if (result.ssse3_time > 0) result.ssse3_time /= adaptive_iterations;
-  if (result.avx2_time > 0) result.avx2_time /= adaptive_iterations;
-  if (result.neon_time > 0) result.neon_time /= adaptive_iterations;
-  
+  if (result.sse2_time > 0)
+    result.sse2_time /= adaptive_iterations;
+  if (result.ssse3_time > 0)
+    result.ssse3_time /= adaptive_iterations;
+  if (result.avx2_time > 0)
+    result.avx2_time /= adaptive_iterations;
+  if (result.neon_time > 0)
+    result.neon_time /= adaptive_iterations;
+
   // Recalculate best time after normalization
   best_time = result.scalar_time;
 #ifdef SIMD_SUPPORT_SSE2
-  if (result.sse2_time > 0 && result.sse2_time < best_time) best_time = result.sse2_time;
+  if (result.sse2_time > 0 && result.sse2_time < best_time)
+    best_time = result.sse2_time;
 #endif
 #ifdef SIMD_SUPPORT_SSSE3
-  if (result.ssse3_time > 0 && result.ssse3_time < best_time) best_time = result.ssse3_time;
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time)
+    best_time = result.ssse3_time;
 #endif
 #ifdef SIMD_SUPPORT_AVX2
-  if (result.avx2_time > 0 && result.avx2_time < best_time) best_time = result.avx2_time;
+  if (result.avx2_time > 0 && result.avx2_time < best_time)
+    best_time = result.avx2_time;
 #endif
 #ifdef SIMD_SUPPORT_NEON
-  if (result.neon_time > 0 && result.neon_time < best_time) best_time = result.neon_time;
+  if (result.neon_time > 0 && result.neon_time < best_time)
+    best_time = result.neon_time;
 #endif
-  
+
   result.speedup_best = result.scalar_time / best_time;
   // Frame data already cleaned up in webcam capture section
   free(test_pixels);

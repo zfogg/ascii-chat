@@ -806,12 +806,14 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
 
   int x = 0;
 
+  // Declare bg_indices array for SIMD processing (available to all paths)
+  uint8_t bg_indices[16];
+
   // SIMD optimization: process 16-pixel chunks when possible
 #ifdef SIMD_SUPPORT_NEON
   if (width >= 16 && background_mode) {
     // Process 16-pixel SIMD chunks for background mode
     while (x <= width - 16) {
-      uint8_t bg_indices[16];
       rgb_to_ansi256_neon(&row[x], bg_indices);
 #else
   if (false) { // SIMD not available, skip this path
@@ -2082,22 +2084,22 @@ static size_t convert_row_mono_avx512(const rgb_pixel_t *pixels, char *output_bu
   // - Implement luminance calculation with _mm512_maddubs_epi16
   // - Use gather/scatter operations for ASCII lookup
   // - Expected performance: 2-4x faster than AVX2 implementation
-  
+
   // Fallback to scalar implementation for now
   return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
 }
 
-// TODO: Implement AVX-512 64-pixel parallel colored ASCII conversion  
+// TODO: Implement AVX-512 64-pixel parallel colored ASCII conversion
 static size_t convert_row_colored_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                        bool background_mode) {
+                                         bool background_mode) {
   // FUTURE IMPLEMENTATION:
-  // - Process 64 RGB pixels per iteration 
+  // - Process 64 RGB pixels per iteration
   // - Use __m512i for 64x 8-bit RGB values
   // - Vectorized luminance: (77*R + 150*G + 29*B) >> 8 for 64 pixels
   // - Parallel ASCII character lookup with _mm512_shuffle_epi8
   // - Vectorized ANSI color code generation
   // - Use masked stores to handle variable-width output
-  
+
   // Fallback to scalar implementation for now
   return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
 }
@@ -2113,12 +2115,12 @@ static size_t convert_row_colored_avx512(const rgb_pixel_t *pixels, char *output
 
 // Forward declarations for SVE functions
 static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                     bool background_mode);
+                                      bool background_mode);
 static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
 
 // ARM SVE dispatch function
 size_t convert_row_with_color_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                 bool background_mode) {
+                                  bool background_mode) {
   if (opt_color_output || background_mode) {
     return convert_row_colored_sve(pixels, output_buffer, buffer_size, width, background_mode);
   } else {
@@ -2136,14 +2138,14 @@ static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffe
   // - Use svtbl_u8 for ASCII character lookup
   // - Vectorized stores with svst1_u8
   // - Adaptive to different ARM implementations (256-2048 bit vectors)
-  
+
   // Fallback to scalar implementation for now
   return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
 }
 
 // TODO: Implement ARM SVE scalable vector colored ASCII conversion
 static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                     bool background_mode) {
+                                      bool background_mode) {
   // FUTURE IMPLEMENTATION:
   // - Query vector length and process accordingly
   // - Use predicated operations for handling partial vectors
@@ -2152,7 +2154,7 @@ static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_bu
   // - Vectorized ANSI color sequence generation
   // - Use SVE gather-scatter for non-contiguous memory access
   // - Performance scales with vector width (future-proof)
-  
+
   // Fallback to scalar implementation for now
   return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
 }
