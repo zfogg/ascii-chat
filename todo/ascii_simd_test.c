@@ -281,7 +281,7 @@ void generate_test_pixels(rgb_pixel_t *pixels, int width, int height) {
             } else {
                 // Need to resize - convert to rgb_pixel_t format first
                 rgb_pixel_t *file_pixels;
-                SAFE_MALLOC(file_pixels, file_img->w * file_img->h * sizeof(rgb_pixel_t), rgb_pixel_t *);
+                SAFE_MALLOC_SIMD(file_pixels, file_img->w * file_img->h * sizeof(rgb_pixel_t), rgb_pixel_t *);
                 
                 for (int i = 0; i < file_img->w * file_img->h; i++) {
                     file_pixels[i].r = file_img->pixels[i].r;
@@ -378,7 +378,7 @@ void test_correctness(void) {
 
     const int test_size = 100;
     rgb_pixel_t *test_pixels;
-    SAFE_MALLOC(test_pixels, test_size * sizeof(rgb_pixel_t), rgb_pixel_t *);
+    SAFE_MALLOC_SIMD(test_pixels, test_size * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
     char *scalar_result;
     SAFE_MALLOC(scalar_result, test_size, char *);
@@ -721,8 +721,8 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
         // Use image_resize to resize webcam frame to test dimensions
         image_resize(webcam_frame, resized_frame);
         
-        // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
-        SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+        // Allocate and copy resized data (convert rgb_t to rgb_pixel_t) with SIMD alignment
+        SAFE_CALLOC_SIMD(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
         for (int i = 0; i < pixel_count; i++) {
             frame_data[captured_frames][i].r = resized_frame->pixels[i].r;
             frame_data[captured_frames][i].g = resized_frame->pixels[i].g;

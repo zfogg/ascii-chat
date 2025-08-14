@@ -52,13 +52,18 @@ static void init_palette(void) {
   palette_initialized = true;
 }
 
+// Constructor initialization to eliminate hot path init calls
+__attribute__((constructor))
+static void ascii_mono_ctor(void) {
+  init_palette();
+}
+
 /* ============================================================================
  * Scalar Implementation (Baseline)
  * ============================================================================
  */
 
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-  init_palette();
 
   for (int i = 0; i < count; i++) {
     const rgb_pixel_t *p = &pixels[i];
@@ -117,7 +122,6 @@ char *image_print_simd(image_t *image) {
 
 #ifdef SIMD_SUPPORT_SSE2
 void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-  init_palette();
 
   int i = 0;
 
@@ -240,7 +244,6 @@ void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count
 
 #ifdef SIMD_SUPPORT_SSSE3
 void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-  init_palette();
 
   int i = 0;
 
@@ -445,7 +448,6 @@ void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int coun
 
 #ifdef SIMD_SUPPORT_AVX2
 void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-  init_palette();
 
   int i = 0;
 
@@ -653,7 +655,6 @@ void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count
 // More advanced version with ANSI color output
 void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                     bool background_mode) {
-  init_palette();
 
   char *current_pos = output_buffer;
   char *buffer_end = output_buffer + buffer_size;
@@ -746,18 +747,43 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
 #ifdef SIMD_SUPPORT_NEON
 // Ultra-simple NEON implementation - just do the arithmetic, skip complex palette
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
-  init_palette();
 
   int i = 0;
 
-  // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration (2 x 16-pixel NEON batches)
-  // NEON has 128-bit registers (16 pixels max per instruction), so we batch 2 operations
+  // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration with PIPELINE OPTIMIZATION
+  // Pre-load next batch while processing current batch to eliminate memory stalls
+  uint8x16x3_t rgb_batch1_next, rgb_batch2_next;
+  bool prefetch_valid = false;
+  
   for (; i + 31 < count; i += 32) {
     const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
 
-    // Load 96 bytes (32 RGB pixels) using two interleaved loads
-    uint8x16x3_t rgb_batch1 = vld3q_u8(rgb_data);      // Pixels 0-15
-    uint8x16x3_t rgb_batch2 = vld3q_u8(rgb_data + 48); // Pixels 16-31
+    // Load current batch (or use pre-loaded data from previous iteration)
+    uint8x16x3_t rgb_batch1, rgb_batch2;
+    if (!prefetch_valid) {
+      rgb_batch1 = vld3q_u8(rgb_data);      // Pixels 0-15 (first iteration)
+      rgb_batch2 = vld3q_u8(rgb_data + 48); // Pixels 16-31 (first iteration)
+    } else {
+      rgb_batch1 = rgb_batch1_next;         // Use pre-loaded data
+      rgb_batch2 = rgb_batch2_next;         // Use pre-loaded data
+    }
+
+    // PRE-LOAD NEXT ITERATION while processing current (pipeline optimization)
+    // This overlaps memory access with computation, eliminating memory stalls
+    if (i + 63 < count) {
+      const uint8_t *next_rgb_data = (const uint8_t *)&pixels[i + 32];
+      
+      // Optional: Add prefetch hint for data beyond next iteration
+      if (i + 95 < count) {
+        __builtin_prefetch(&pixels[i + 64], 0, 3); // Prefetch 2 iterations ahead
+      }
+      
+      rgb_batch1_next = vld3q_u8(next_rgb_data);      // Pre-load next batch 1
+      rgb_batch2_next = vld3q_u8(next_rgb_data + 48); // Pre-load next batch 2
+      prefetch_valid = true;
+    } else {
+      prefetch_valid = false;
+    }
 
     // Process batch 1 (pixels 0-15)
     uint16x8_t r1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[0]));
@@ -939,7 +965,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
   // Generate test data
   rgb_pixel_t *test_pixels;
   char *output_buffer;
-  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+  SAFE_CALLOC_SIMD(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, pixel_count, char *);
 
   // Use real webcam data for realistic testing (matches color benchmark approach)
@@ -1094,7 +1120,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Generate test data
   rgb_pixel_t *test_pixels;
   char *output_buffer;
-  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+  SAFE_CALLOC_SIMD(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, output_buffer_size, char *);
 
   // Use real webcam data for realistic color coherence testing
@@ -1236,7 +1262,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   // Generate test data
   rgb_pixel_t *test_pixels;
   char *output_buffer;
-  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+  SAFE_CALLOC_SIMD(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, pixel_count, char *);
 
   if (source_image && source_image->pixels) {
@@ -1382,7 +1408,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   // Allocate buffers for benchmarking
   rgb_pixel_t *test_pixels;
   char *output_buffer;
-  SAFE_CALLOC(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
+  SAFE_CALLOC_SIMD(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
   SAFE_MALLOC(output_buffer, output_buffer_size, char *);
 
   const char *mode_str = background_mode ? "background" : "foreground";
