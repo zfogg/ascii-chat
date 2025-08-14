@@ -16,6 +16,14 @@
 #endif
 #endif
 
+#if defined(SIMD_SUPPORT_AVX512) && defined(__AVX512F__) && defined(__AVX512BW__)
+#include <immintrin.h>
+#endif
+
+#if defined(SIMD_SUPPORT_SVE) && defined(__ARM_FEATURE_SVE)
+#include <arm_sve.h>
+#endif
+
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation
  *
@@ -40,26 +48,24 @@ typedef struct {
 struct __attribute__((aligned(64))) ascii_color_cache {
   // Hot path #1: Character lookup (accessed every pixel)
   char luminance_palette[256];
-  
-  // Hot path #2: Decimal string lookup (accessed when colors change)  
+
+  // Hot path #2: Decimal string lookup (accessed when colors change)
   dec3_t dec3_table[256];
-  
+
   // Hot path #3: Initialization flags (checked frequently)
   bool palette_initialized;
   bool dec3_initialized;
-  
+
   // Cold data: Constants (accessed once during init)
-  const char ascii_chars[24];  // "   ...',;:clodxkO0KXNWM"
+  const char ascii_chars[24]; // "   ...',;:clodxkO0KXNWM"
   int palette_len;
 } __attribute__((aligned(64)));
 
 // Single cache-friendly structure instead of scattered static variables
-static struct ascii_color_cache g_ascii_cache = {
-  .ascii_chars = "   ...',;:clodxkO0KXNWM",
-  .palette_len = 21,  // sizeof("   ...',;:clodxkO0KXNWM") - 2
-  .palette_initialized = false,
-  .dec3_initialized = false
-};
+static struct ascii_color_cache g_ascii_cache = {.ascii_chars = "   ...',;:clodxkO0KXNWM",
+                                                 .palette_len = 21, // sizeof("   ...',;:clodxkO0KXNWM") - 2
+                                                 .palette_initialized = false,
+                                                 .dec3_initialized = false};
 
 static void init_palette(void) {
   if (g_ascii_cache.palette_initialized)
@@ -78,23 +84,23 @@ static void init_palette(void) {
 // CHATGPT OPTIMIZATION: Vectorized ASCII lookup using vqtbl2q_u8
 // This processes 16 pixels at once instead of scalar loop
 static inline uint8x16_t luma_to_ascii_vectorized(uint8x16_t luma_vec) {
-  // Create 32-entry ASCII lookup table split across two vectors  
+  // Create 32-entry ASCII lookup table split across two vectors
   // Our palette: "   ...',;:clodxkO0KXNWM" (22 chars) -> spread across 32 slots
   static const uint8_t ascii_lut_0[16] = {
-    ' ', ' ', ' ', '.', '.', '.', '\'', '\'',  // Entries 0-7
-    ',', ';', ':', 'c', 'l', 'o', 'd', 'x'    // Entries 8-15  
+      ' ', ' ', ' ', '.', '.', '.', '\'', '\'', // Entries 0-7
+      ',', ';', ':', 'c', 'l', 'o', 'd',  'x'   // Entries 8-15
   };
   static const uint8_t ascii_lut_1[16] = {
-    'k', 'O', '0', 'K', 'X', 'N', 'W', 'M',   // Entries 16-23
-    'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'    // Entries 24-31 (repeat densest)
+      'k', 'O', '0', 'K', 'X', 'N', 'W', 'M', // Entries 16-23
+      'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'  // Entries 24-31 (repeat densest)
   };
-  
+
   const uint8x16_t lut0 = vld1q_u8(ascii_lut_0);
   const uint8x16_t lut1 = vld1q_u8(ascii_lut_1);
-  
+
   // Map luma 0-255 to index 0-31 (top 5 bits)
-  uint8x16_t indices = vshrq_n_u8(luma_vec, 3);  // Divide by 8: 256→32 bins
-  
+  uint8x16_t indices = vshrq_n_u8(luma_vec, 3); // Divide by 8: 256→32 bins
+
   // Vector table lookup: 16 ASCII characters computed in parallel!
   uint8x16x2_t combined_lut = {lut0, lut1};
   return vqtbl2q_u8(combined_lut, indices);
@@ -139,78 +145,96 @@ static void init_dec3(void) {
 }
 
 // **HIGH-IMPACT FIX 2**: Remove init guards from hot path - use constructor
-__attribute__((constructor))
-static void ascii_ctor(void) {
+__attribute__((constructor)) static void ascii_ctor(void) {
   init_palette();
   init_dec3();
 }
 
 /* ============================================================================
  * BREAKTHROUGH OPTIMIZATION: Vectorized ANSI Sequence Generation
- * 
+ *
  * This is the final piece - batch-generate multiple ANSI sequences using NEON
  * instead of 32 individual scalar function calls. This should provide massive
  * performance improvements since ANSI generation was the remaining bottleneck.
  * ============================================================================ */
 
 // Vectorized ANSI generation for 4 pixels at once using NEON string operations
-static inline char* generate_ansi_batch_4px_fg(char* p, const uint8_t* r_vals, const uint8_t* g_vals, const uint8_t* b_vals, const char* ascii_chars) {
+static inline char *generate_ansi_batch_4px_fg(char *p, const uint8_t *r_vals, const uint8_t *g_vals,
+                                               const uint8_t *b_vals, const char *ascii_chars) {
   // NEON-accelerated batch ANSI sequence generation
   // Process 4 foreground color sequences: \033[38;2;R;G;Bm + ASCII char
-  
+
   for (int i = 0; i < 4; i++) {
     // Fast ANSI prefix copy
     memcpy(p, "\033[38;2;", 7);
     p += 7;
-    
+
     // Vectorized decimal conversion using precomputed lookup
-    const dec3_t* r_dec = &g_ascii_cache.dec3_table[r_vals[i]];
-    const dec3_t* g_dec = &g_ascii_cache.dec3_table[g_vals[i]]; 
-    const dec3_t* b_dec = &g_ascii_cache.dec3_table[b_vals[i]];
-    
+    const dec3_t *r_dec = &g_ascii_cache.dec3_table[r_vals[i]];
+    const dec3_t *g_dec = &g_ascii_cache.dec3_table[g_vals[i]];
+    const dec3_t *b_dec = &g_ascii_cache.dec3_table[b_vals[i]];
+
     // Batch copy decimal strings
-    memcpy(p, r_dec->s, r_dec->len); p += r_dec->len; *p++ = ';';
-    memcpy(p, g_dec->s, g_dec->len); p += g_dec->len; *p++ = ';';
-    memcpy(p, b_dec->s, b_dec->len); p += b_dec->len; *p++ = 'm';
-    
+    memcpy(p, r_dec->s, r_dec->len);
+    p += r_dec->len;
+    *p++ = ';';
+    memcpy(p, g_dec->s, g_dec->len);
+    p += g_dec->len;
+    *p++ = ';';
+    memcpy(p, b_dec->s, b_dec->len);
+    p += b_dec->len;
+    *p++ = 'm';
+
     // Add ASCII character
     *p++ = ascii_chars[i];
   }
-  
+
   return p;
 }
 
 // Vectorized ANSI generation for 4 pixels (background mode)
-static inline char* generate_ansi_batch_4px_fg_bg(char* p, const uint8_t* fg_vals, const uint8_t* bg_r, const uint8_t* bg_g, const uint8_t* bg_b, const char* ascii_chars) {
+static inline char *generate_ansi_batch_4px_fg_bg(char *p, const uint8_t *fg_vals, const uint8_t *bg_r,
+                                                  const uint8_t *bg_g, const uint8_t *bg_b, const char *ascii_chars) {
   // Process 4 FG+BG sequences: \033[38;2;FG;FG;FG;48;2;R;G;Bm + ASCII
-  
+
   for (int i = 0; i < 4; i++) {
-    // Fast ANSI FG prefix 
+    // Fast ANSI FG prefix
     memcpy(p, "\033[38;2;", 7);
     p += 7;
-    
+
     // Foreground grayscale (fg_vals[i] for R,G,B)
-    const dec3_t* fg_dec = &g_ascii_cache.dec3_table[fg_vals[i]];
-    memcpy(p, fg_dec->s, fg_dec->len); p += fg_dec->len; *p++ = ';';
-    memcpy(p, fg_dec->s, fg_dec->len); p += fg_dec->len; *p++ = ';'; 
-    memcpy(p, fg_dec->s, fg_dec->len); p += fg_dec->len;
-    
-    // Background color sequence ;48;2;R;G;B  
+    const dec3_t *fg_dec = &g_ascii_cache.dec3_table[fg_vals[i]];
+    memcpy(p, fg_dec->s, fg_dec->len);
+    p += fg_dec->len;
+    *p++ = ';';
+    memcpy(p, fg_dec->s, fg_dec->len);
+    p += fg_dec->len;
+    *p++ = ';';
+    memcpy(p, fg_dec->s, fg_dec->len);
+    p += fg_dec->len;
+
+    // Background color sequence ;48;2;R;G;B
     memcpy(p, ";48;2;", 6);
     p += 6;
-    
-    const dec3_t* r_dec = &g_ascii_cache.dec3_table[bg_r[i]];
-    const dec3_t* g_dec = &g_ascii_cache.dec3_table[bg_g[i]];
-    const dec3_t* b_dec = &g_ascii_cache.dec3_table[bg_b[i]];
-    
-    memcpy(p, r_dec->s, r_dec->len); p += r_dec->len; *p++ = ';';
-    memcpy(p, g_dec->s, g_dec->len); p += g_dec->len; *p++ = ';';
-    memcpy(p, b_dec->s, b_dec->len); p += b_dec->len; *p++ = 'm';
-    
+
+    const dec3_t *r_dec = &g_ascii_cache.dec3_table[bg_r[i]];
+    const dec3_t *g_dec = &g_ascii_cache.dec3_table[bg_g[i]];
+    const dec3_t *b_dec = &g_ascii_cache.dec3_table[bg_b[i]];
+
+    memcpy(p, r_dec->s, r_dec->len);
+    p += r_dec->len;
+    *p++ = ';';
+    memcpy(p, g_dec->s, g_dec->len);
+    p += g_dec->len;
+    *p++ = ';';
+    memcpy(p, b_dec->s, b_dec->len);
+    p += b_dec->len;
+    *p++ = 'm';
+
     // Add ASCII character
     *p++ = ascii_chars[i];
   }
-  
+
   return p;
 }
 
@@ -258,8 +282,8 @@ static inline uint8x16_t quant6_neon(uint8x16_t x) {
   uint32x4_t tl1 = vmull_n_u16(vget_high_u16(tl), 257);
   uint32x4_t th0 = vmull_n_u16(vget_low_u16(th), 257);
   uint32x4_t th1 = vmull_n_u16(vget_high_u16(th), 257);
-  uint16x8_t ql = vcombine_u16(vshrn_n_u32(tl0,16), vshrn_n_u32(tl1,16));
-  uint16x8_t qh = vcombine_u16(vshrn_n_u32(th0,16), vshrn_n_u32(th1,16));
+  uint16x8_t ql = vcombine_u16(vshrn_n_u32(tl0, 16), vshrn_n_u32(tl1, 16));
+  uint16x8_t qh = vcombine_u16(vshrn_n_u32(th0, 16), vshrn_n_u32(th1, 16));
   return vcombine_u8(vqmovn_u16(ql), vqmovn_u16(qh)); // 0..5
 }
 
@@ -271,8 +295,8 @@ static inline uint8x16_t cube216_index_neon(uint8x16_t r6, uint8x16_t g6, uint8x
   uint16x8_t gh = vmovl_u8(vget_high_u8(g6));
   uint16x8_t bl = vmovl_u8(vget_low_u8(b6));
   uint16x8_t bh = vmovl_u8(vget_high_u8(b6));
-  uint16x8_t il = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rl,36), gl, 6), bl, 1);
-  uint16x8_t ih = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rh,36), gh, 6), bh, 1);
+  uint16x8_t il = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rl, 36), gl, 6), bl, 1);
+  uint16x8_t ih = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rh, 36), gh, 6), bh, 1);
   return vcombine_u8(vqmovn_u16(il), vqmovn_u16(ih)); // 0..215
 }
 
@@ -281,15 +305,15 @@ static inline void rgb_to_ansi256_neon(const rgb_pixel_t *pixels, uint8_t *indic
   // Load 16 RGB pixels (48 bytes) as 3 separate vectors
   uint8x16x3_t rgb = vld3q_u8((const uint8_t *)pixels);
   uint8x16_t r = rgb.val[0], g = rgb.val[1], b = rgb.val[2];
-  
+
   // Calculate grayscale: gray = (r+g+b)/3 (rounded)
   uint8x16_t gray = vrhaddq_u8(vrhaddq_u8(r, g), b);
-  
+
   // Quantize each channel to 0-5 using proper ANSI formula
   uint8x16_t r6 = quant6_neon(r);
-  uint8x16_t g6 = quant6_neon(g); 
+  uint8x16_t g6 = quant6_neon(g);
   uint8x16_t b6 = quant6_neon(b);
-  
+
   // Convert cube coords back to 0..255: cr*255/5 = cr*51
   uint16x8_t rl = vmovl_u8(vget_low_u8(r6));
   uint16x8_t rh = vmovl_u8(vget_high_u8(r6));
@@ -297,58 +321,60 @@ static inline void rgb_to_ansi256_neon(const rgb_pixel_t *pixels, uint8_t *indic
   uint16x8_t gh = vmovl_u8(vget_high_u8(g6));
   uint16x8_t bl = vmovl_u8(vget_low_u8(b6));
   uint16x8_t bh = vmovl_u8(vget_high_u8(b6));
-  
+
   uint16x8_t cube_rl = vmulq_n_u16(rl, 51);
   uint16x8_t cube_rh = vmulq_n_u16(rh, 51);
   uint16x8_t cube_gl = vmulq_n_u16(gl, 51);
   uint16x8_t cube_gh = vmulq_n_u16(gh, 51);
   uint16x8_t cube_bl = vmulq_n_u16(bl, 51);
   uint16x8_t cube_bh = vmulq_n_u16(bh, 51);
-  
+
   uint8x16_t cube_r = vcombine_u8(vqmovn_u16(cube_rl), vqmovn_u16(cube_rh));
   uint8x16_t cube_g = vcombine_u8(vqmovn_u16(cube_gl), vqmovn_u16(cube_gh));
   uint8x16_t cube_b = vcombine_u8(vqmovn_u16(cube_bl), vqmovn_u16(cube_bh));
-  
+
   // Calculate cube distance: |r - cube_r| + |g - cube_g| + |b - cube_b|
-  uint16x8_t cube_dist_l = vaddq_u16(vaddq_u16(vabdl_u8(vget_low_u8(r), vget_low_u8(cube_r)),
-                                               vabdl_u8(vget_low_u8(g), vget_low_u8(cube_g))),
-                                    vabdl_u8(vget_low_u8(b), vget_low_u8(cube_b)));
-  uint16x8_t cube_dist_h = vaddq_u16(vaddq_u16(vabdl_u8(vget_high_u8(r), vget_high_u8(cube_r)),
-                                               vabdl_u8(vget_high_u8(g), vget_high_u8(cube_g))),
-                                    vabdl_u8(vget_high_u8(b), vget_high_u8(cube_b)));
-  
+  uint16x8_t cube_dist_l =
+      vaddq_u16(vaddq_u16(vabdl_u8(vget_low_u8(r), vget_low_u8(cube_r)), vabdl_u8(vget_low_u8(g), vget_low_u8(cube_g))),
+                vabdl_u8(vget_low_u8(b), vget_low_u8(cube_b)));
+  uint16x8_t cube_dist_h = vaddq_u16(
+      vaddq_u16(vabdl_u8(vget_high_u8(r), vget_high_u8(cube_r)), vabdl_u8(vget_high_u8(g), vget_high_u8(cube_g))),
+      vabdl_u8(vget_high_u8(b), vget_high_u8(cube_b)));
+
   // Calculate gray index: 232 + round(gray*23/255)
   uint16x8_t gray_l = vmovl_u8(vget_low_u8(gray));
   uint16x8_t gray_h = vmovl_u8(vget_high_u8(gray));
   uint16x8_t gray_t_l = vaddq_u16(vmulq_n_u16(gray_l, 23), vdupq_n_u16(127));
   uint16x8_t gray_t_h = vaddq_u16(vmulq_n_u16(gray_h, 23), vdupq_n_u16(127));
-  
+
   uint32x4_t gray_t_l0 = vmull_n_u16(vget_low_u16(gray_t_l), 257);
   uint32x4_t gray_t_l1 = vmull_n_u16(vget_high_u16(gray_t_l), 257);
   uint32x4_t gray_t_h0 = vmull_n_u16(vget_low_u16(gray_t_h), 257);
   uint32x4_t gray_t_h1 = vmull_n_u16(vget_high_u16(gray_t_h), 257);
-  
-  uint16x8_t gray_idx_l = vaddq_u16(vcombine_u16(vshrn_n_u32(gray_t_l0, 16), vshrn_n_u32(gray_t_l1, 16)), vdupq_n_u16(232));
-  uint16x8_t gray_idx_h = vaddq_u16(vcombine_u16(vshrn_n_u32(gray_t_h0, 16), vshrn_n_u32(gray_t_h1, 16)), vdupq_n_u16(232));
-  
+
+  uint16x8_t gray_idx_l =
+      vaddq_u16(vcombine_u16(vshrn_n_u32(gray_t_l0, 16), vshrn_n_u32(gray_t_l1, 16)), vdupq_n_u16(232));
+  uint16x8_t gray_idx_h =
+      vaddq_u16(vcombine_u16(vshrn_n_u32(gray_t_h0, 16), vshrn_n_u32(gray_t_h1, 16)), vdupq_n_u16(232));
+
   // Calculate gray level: 8 + (idx-232)*10
   uint16x8_t gray_level_l = vaddq_u16(vmulq_n_u16(vsubq_u16(gray_idx_l, vdupq_n_u16(232)), 10), vdupq_n_u16(8));
   uint16x8_t gray_level_h = vaddq_u16(vmulq_n_u16(vsubq_u16(gray_idx_h, vdupq_n_u16(232)), 10), vdupq_n_u16(8));
-  
+
   // Calculate gray distance: |gray - gray_level|
   uint16x8_t gray_dist_l = vabdq_u16(gray_l, gray_level_l);
   uint16x8_t gray_dist_h = vabdq_u16(gray_h, gray_level_h);
-  
+
   // Choose gray if gray_dist < cube_dist
   uint8x16_t cube_idx = vaddq_u8(cube216_index_neon(r6, g6, b6), vdupq_n_u8(16));
   uint8x16_t gray_idx_u8 = vcombine_u8(vqmovn_u16(gray_idx_l), vqmovn_u16(gray_idx_h));
-  
+
   uint16x8_t use_gray_l = vcltq_u16(gray_dist_l, cube_dist_l);
   uint16x8_t use_gray_h = vcltq_u16(gray_dist_h, cube_dist_h);
   uint8x16_t use_gray_mask = vcombine_u8(vmovn_u16(use_gray_l), vmovn_u16(use_gray_h));
-  
+
   uint8x16_t final_idx = vbslq_u8(use_gray_mask, gray_idx_u8, cube_idx);
-  
+
   // Store the result
   vst1q_u8(indices, final_idx);
 }
@@ -510,40 +536,61 @@ static inline char *append_sgr_reset(char *dst) {
   return dst + (sizeof(RESET) - 1);
 }
 
-// OPTIMIZATION 9: Direct writes instead of memcpy - \x1b[38;2;R;G;Bm  
+// OPTIMIZATION 9: Direct writes instead of memcpy - \x1b[38;2;R;G;Bm
 static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  
+
   // Direct character writes (compiler will optimize to word operations)
-  *dst++ = '\033'; *dst++ = '['; *dst++ = '3'; *dst++ = '8'; *dst++ = ';'; *dst++ = '2'; *dst++ = ';';
+  *dst++ = '\033';
+  *dst++ = '[';
+  *dst++ = '3';
+  *dst++ = '8';
+  *dst++ = ';';
+  *dst++ = '2';
+  *dst++ = ';';
 
   // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
   const dec3_t *rd = &g_ascii_cache.dec3_table[r];
   if (rd->len == 1) {
     *dst++ = rd->s[0];
   } else if (rd->len == 2) {
-    dst[0] = rd->s[0]; dst[1] = rd->s[1]; dst += 2;
+    dst[0] = rd->s[0];
+    dst[1] = rd->s[1];
+    dst += 2;
   } else {
-    dst[0] = rd->s[0]; dst[1] = rd->s[1]; dst[2] = rd->s[2]; dst += 3;
+    dst[0] = rd->s[0];
+    dst[1] = rd->s[1];
+    dst[2] = rd->s[2];
+    dst += 3;
   }
   *dst++ = ';';
-  
+
   const dec3_t *gd = &g_ascii_cache.dec3_table[g];
   if (gd->len == 1) {
     *dst++ = gd->s[0];
   } else if (gd->len == 2) {
-    dst[0] = gd->s[0]; dst[1] = gd->s[1]; dst += 2;
+    dst[0] = gd->s[0];
+    dst[1] = gd->s[1];
+    dst += 2;
   } else {
-    dst[0] = gd->s[0]; dst[1] = gd->s[1]; dst[2] = gd->s[2]; dst += 3;
+    dst[0] = gd->s[0];
+    dst[1] = gd->s[1];
+    dst[2] = gd->s[2];
+    dst += 3;
   }
   *dst++ = ';';
-  
+
   const dec3_t *bd = &g_ascii_cache.dec3_table[b];
   if (bd->len == 1) {
     *dst++ = bd->s[0];
   } else if (bd->len == 2) {
-    dst[0] = bd->s[0]; dst[1] = bd->s[1]; dst += 2;
+    dst[0] = bd->s[0];
+    dst[1] = bd->s[1];
+    dst += 2;
   } else {
-    dst[0] = bd->s[0]; dst[1] = bd->s[1]; dst[2] = bd->s[2]; dst += 3;
+    dst[0] = bd->s[0];
+    dst[1] = bd->s[1];
+    dst[2] = bd->s[2];
+    dst += 3;
   }
   *dst++ = 'm';
   return dst;
@@ -551,38 +598,59 @@ static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uin
 
 // OPTIMIZATION 9: Direct writes - \x1b[48;2;R;G;Bm
 static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  
+
   // Direct character writes for "\033[48;2;"
-  *dst++ = '\033'; *dst++ = '['; *dst++ = '4'; *dst++ = '8'; *dst++ = ';'; *dst++ = '2'; *dst++ = ';';
+  *dst++ = '\033';
+  *dst++ = '[';
+  *dst++ = '4';
+  *dst++ = '8';
+  *dst++ = ';';
+  *dst++ = '2';
+  *dst++ = ';';
 
   // Optimized digit copying
   const dec3_t *rd = &g_ascii_cache.dec3_table[r];
   if (rd->len == 1) {
     *dst++ = rd->s[0];
   } else if (rd->len == 2) {
-    dst[0] = rd->s[0]; dst[1] = rd->s[1]; dst += 2;
+    dst[0] = rd->s[0];
+    dst[1] = rd->s[1];
+    dst += 2;
   } else {
-    dst[0] = rd->s[0]; dst[1] = rd->s[1]; dst[2] = rd->s[2]; dst += 3;
+    dst[0] = rd->s[0];
+    dst[1] = rd->s[1];
+    dst[2] = rd->s[2];
+    dst += 3;
   }
   *dst++ = ';';
-  
+
   const dec3_t *gd = &g_ascii_cache.dec3_table[g];
   if (gd->len == 1) {
     *dst++ = gd->s[0];
   } else if (gd->len == 2) {
-    dst[0] = gd->s[0]; dst[1] = gd->s[1]; dst += 2;
+    dst[0] = gd->s[0];
+    dst[1] = gd->s[1];
+    dst += 2;
   } else {
-    dst[0] = gd->s[0]; dst[1] = gd->s[1]; dst[2] = gd->s[2]; dst += 3;
+    dst[0] = gd->s[0];
+    dst[1] = gd->s[1];
+    dst[2] = gd->s[2];
+    dst += 3;
   }
   *dst++ = ';';
-  
+
   const dec3_t *bd = &g_ascii_cache.dec3_table[b];
   if (bd->len == 1) {
     *dst++ = bd->s[0];
   } else if (bd->len == 2) {
-    dst[0] = bd->s[0]; dst[1] = bd->s[1]; dst += 2;
+    dst[0] = bd->s[0];
+    dst[1] = bd->s[1];
+    dst += 2;
   } else {
-    dst[0] = bd->s[0]; dst[1] = bd->s[1]; dst[2] = bd->s[2]; dst += 3;
+    dst[0] = bd->s[0];
+    dst[1] = bd->s[1];
+    dst[2] = bd->s[2];
+    dst += 3;
   }
   *dst++ = 'm';
   return dst;
@@ -591,49 +659,114 @@ static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uin
 // OPTIMIZATION 9: Optimized FG+BG - \x1b[38;2;R;G;B;48;2;r;g;bm (eliminate all memcpy calls)
 static inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
                                                uint8_t bb) {
-  
+
   // Write "\033[38;2;" directly (7 chars)
-  *dst++ = '\033'; *dst++ = '['; *dst++ = '3'; *dst++ = '8'; *dst++ = ';'; *dst++ = '2'; *dst++ = ';';
+  *dst++ = '\033';
+  *dst++ = '[';
+  *dst++ = '3';
+  *dst++ = '8';
+  *dst++ = ';';
+  *dst++ = '2';
+  *dst++ = ';';
 
   // Foreground RGB digits
   const dec3_t *d = &g_ascii_cache.dec3_table[fr];
-  if (d->len == 1) { *dst++ = d->s[0]; } 
-  else if (d->len == 2) { dst[0] = d->s[0]; dst[1] = d->s[1]; dst += 2; }
-  else { dst[0] = d->s[0]; dst[1] = d->s[1]; dst[2] = d->s[2]; dst += 3; }
+  if (d->len == 1) {
+    *dst++ = d->s[0];
+  } else if (d->len == 2) {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst += 2;
+  } else {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst[2] = d->s[2];
+    dst += 3;
+  }
   *dst++ = ';';
-  
+
   d = &g_ascii_cache.dec3_table[fg];
-  if (d->len == 1) { *dst++ = d->s[0]; } 
-  else if (d->len == 2) { dst[0] = d->s[0]; dst[1] = d->s[1]; dst += 2; }
-  else { dst[0] = d->s[0]; dst[1] = d->s[1]; dst[2] = d->s[2]; dst += 3; }
+  if (d->len == 1) {
+    *dst++ = d->s[0];
+  } else if (d->len == 2) {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst += 2;
+  } else {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst[2] = d->s[2];
+    dst += 3;
+  }
   *dst++ = ';';
-  
+
   d = &g_ascii_cache.dec3_table[fb];
-  if (d->len == 1) { *dst++ = d->s[0]; } 
-  else if (d->len == 2) { dst[0] = d->s[0]; dst[1] = d->s[1]; dst += 2; }
-  else { dst[0] = d->s[0]; dst[1] = d->s[1]; dst[2] = d->s[2]; dst += 3; }
+  if (d->len == 1) {
+    *dst++ = d->s[0];
+  } else if (d->len == 2) {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst += 2;
+  } else {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst[2] = d->s[2];
+    dst += 3;
+  }
 
   // Write ";48;2;" directly (6 chars)
-  *dst++ = ';'; *dst++ = '4'; *dst++ = '8'; *dst++ = ';'; *dst++ = '2'; *dst++ = ';';
-  
+  *dst++ = ';';
+  *dst++ = '4';
+  *dst++ = '8';
+  *dst++ = ';';
+  *dst++ = '2';
+  *dst++ = ';';
+
   // Background RGB digits
   d = &g_ascii_cache.dec3_table[br];
-  if (d->len == 1) { *dst++ = d->s[0]; } 
-  else if (d->len == 2) { dst[0] = d->s[0]; dst[1] = d->s[1]; dst += 2; }
-  else { dst[0] = d->s[0]; dst[1] = d->s[1]; dst[2] = d->s[2]; dst += 3; }
+  if (d->len == 1) {
+    *dst++ = d->s[0];
+  } else if (d->len == 2) {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst += 2;
+  } else {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst[2] = d->s[2];
+    dst += 3;
+  }
   *dst++ = ';';
-  
+
   d = &g_ascii_cache.dec3_table[bg];
-  if (d->len == 1) { *dst++ = d->s[0]; } 
-  else if (d->len == 2) { dst[0] = d->s[0]; dst[1] = d->s[1]; dst += 2; }
-  else { dst[0] = d->s[0]; dst[1] = d->s[1]; dst[2] = d->s[2]; dst += 3; }
+  if (d->len == 1) {
+    *dst++ = d->s[0];
+  } else if (d->len == 2) {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst += 2;
+  } else {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst[2] = d->s[2];
+    dst += 3;
+  }
   *dst++ = ';';
-  
+
   d = &g_ascii_cache.dec3_table[bb];
-  if (d->len == 1) { *dst++ = d->s[0]; } 
-  else if (d->len == 2) { dst[0] = d->s[0]; dst[1] = d->s[1]; dst += 2; }
-  else { dst[0] = d->s[0]; dst[1] = d->s[1]; dst[2] = d->s[2]; dst += 3; }
-  
+  if (d->len == 1) {
+    *dst++ = d->s[0];
+  } else if (d->len == 2) {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst += 2;
+  } else {
+    dst[0] = d->s[0];
+    dst[1] = d->s[1];
+    dst[2] = d->s[2];
+    dst += 3;
+  }
+
   *dst++ = 'm';
   return dst;
 }
@@ -669,10 +802,10 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
   uint8_t fg_idx = 0, bg_idx = 0; // 256-color indices
 
   // FG hysteresis state for background mode (110/145 thresholds)
-  uint8_t last_fg = 255;  // Start with white for consistency
-  
+  uint8_t last_fg = 255; // Start with white for consistency
+
   int x = 0;
-  
+
   // SIMD optimization: process 16-pixel chunks when possible
 #ifdef SIMD_SUPPORT_NEON
   if (width >= 16 && background_mode) {
@@ -683,19 +816,21 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
 #else
   if (false) { // SIMD not available, skip this path
 #endif
-      
+
       // Process each pixel in the chunk
       for (int i = 0; i < 16 && (x + i) < width; i++) {
         const rgb_pixel_t *px = &row[x + i];
         int y = (LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8;
-        
+
         // FG hysteresis
-        if (y < 110) last_fg = 255;        
-        else if (y > 145) last_fg = 0;     
-        
+        if (y < 110)
+          last_fg = 255;
+        else if (y > 145)
+          last_fg = 0;
+
         uint8_t current_fg = last_fg;
-        uint8_t current_bg = bg_indices[i];  // Use SIMD-computed value
-        
+        uint8_t current_bg = bg_indices[i]; // Use SIMD-computed value
+
         // Simple per-pixel emission for now (can be optimized further)
         if (!have_color || current_fg != fg_idx || current_bg != bg_idx) {
           p = append_sgr256_fg_bg(p, current_fg, current_bg);
@@ -703,73 +838,80 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
           bg_idx = current_bg;
           have_color = true;
         }
-        
+
         if (p >= row_end - 30) {
-          if (p >= row_end) goto row_complete;
+          if (p >= row_end)
+            goto row_complete;
         }
-        
+
         // ASCII character
         char ch = luminance_palette[y];
         *p++ = ch;
       }
-      
+
       x += 16;
     }
   }
-  
+
   // Process remaining pixels with scalar run-length encoding
   while (x < width) {
     const rgb_pixel_t *px = &row[x];
 
     // Calculate luminance for ASCII character selection
     int y = (LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8;
-    
+
     uint8_t current_fg, current_bg;
-    
+
     if (background_mode) {
       // FG hysteresis (Schmitt trigger) - same as truecolor path
-      if (y < 110) last_fg = 255;        // White on dark
-      else if (y > 145) last_fg = 0;     // Black on light
+      if (y < 110)
+        last_fg = 255; // White on dark
+      else if (y > 145)
+        last_fg = 0; // Black on light
       // else keep last_fg (hysteresis prevents flickering)
-      
+
       current_fg = last_fg;
       current_bg = rgb_to_ansi256(px->r, px->g, px->b);
     } else {
       current_fg = rgb_to_ansi256(px->r, px->g, px->b);
       current_bg = 0; // Not used for FG mode
     }
-    
+
     // Find run length - how many consecutive pixels have same colors
     int run = 1;
-    uint8_t run_fg = last_fg;  // Track hysteresis state during look-ahead
-    
+    uint8_t run_fg = last_fg; // Track hysteresis state during look-ahead
+
     while (x + run < width) {
       const rgb_pixel_t *next_px = &row[x + run];
       int next_y = (LUMA_RED * next_px->r + LUMA_GREEN * next_px->g + LUMA_BLUE * next_px->b) >> 8;
-      
+
       uint8_t next_fg, next_bg;
-      
+
       if (background_mode) {
         // Apply hysteresis to next pixel - continue the state properly
-        if (next_y < 110) run_fg = 255;
-        else if (next_y > 145) run_fg = 0;
+        if (next_y < 110)
+          run_fg = 255;
+        else if (next_y > 145)
+          run_fg = 0;
         // else keep run_fg (hysteresis)
-        
+
         next_fg = run_fg;
         next_bg = rgb_to_ansi256(next_px->r, next_px->g, next_px->b);
-        
-        if (next_fg != current_fg || next_bg != current_bg) break;
+
+        if (next_fg != current_fg || next_bg != current_bg)
+          break;
       } else {
         next_fg = rgb_to_ansi256(next_px->r, next_px->g, next_px->b);
-        if (next_fg != current_fg) break;
+        if (next_fg != current_fg)
+          break;
       }
-      
+
       run++;
     }
-    
+
     // Update the hysteresis state after processing the run
     if (background_mode) {
-      last_fg = run_fg;  // Update to final state after the run
+      last_fg = run_fg; // Update to final state after the run
     }
 
     // Emit SGR sequence once per run
@@ -797,7 +939,7 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
       char ch = luminance_palette[run_y];
       *p++ = ch;
     }
-    
+
     x += run;
   }
 
@@ -1091,7 +1233,7 @@ size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffe
   // OPTIMIZATION 15: Pre-allocated static buffer eliminates malloc/free in hot path
   // 8K characters handles up to 8K horizontal resolution
   static char large_ascii_buffer[8192] __attribute__((aligned(64)));
-  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths  
+  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
   char *ascii_chars = (width > 2048) ? large_ascii_buffer : stack_ascii_chars;
   bool heap_allocated = false; // Never needed now!
 
@@ -1211,7 +1353,7 @@ size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buff
   // OPTIMIZATION 15: Pre-allocated static buffer eliminates malloc/free in hot path
   // 8K characters handles up to 8K horizontal resolution
   static char large_ascii_buffer[8192] __attribute__((aligned(64)));
-  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths  
+  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
   char *ascii_chars = (width > 2048) ? large_ascii_buffer : stack_ascii_chars;
   bool heap_allocated = false; // Never needed now!
 
@@ -1280,7 +1422,7 @@ size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffe
   // OPTIMIZATION 15: Pre-allocated static buffer eliminates malloc/free in hot path
   // 8K characters handles up to 8K horizontal resolution
   static char large_ascii_buffer[8192] __attribute__((aligned(64)));
-  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths  
+  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
   char *ascii_chars = (width > 2048) ? large_ascii_buffer : stack_ascii_chars;
   bool heap_allocated = false; // Never needed now!
 
@@ -1395,7 +1537,8 @@ size_t convert_row_with_color_sse2_with_buffer(const rgb_pixel_t *pixels, char *
 
 // CHATGPT OPTIMIZATION 1: Specialized functions eliminate per-pixel branching
 static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
-static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width, bool background_mode);
+static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                       bool background_mode);
 
 // Top-level dispatch - no per-pixel color branches inside hot loops
 size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
@@ -1410,7 +1553,7 @@ size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffe
 
 // OPTIMIZED MONOCHROME NEON: No color code at all - pure ASCII generation
 static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
-  
+
   char *p = output_buffer;
   char *end = output_buffer + buffer_size;
   int x = 0;
@@ -1418,10 +1561,10 @@ static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buff
   // CHATGPT OPTIMIZATION 2: Vectorized stores - process 16 pixels at once with st1
   for (; x + 15 < width && (end - p) >= 16; x += 16) {
     const uint8_t *rgb_data = (const uint8_t *)&pixels[x];
-    
+
     // Load 16 RGB pixels
     uint8x16x3_t rgb_batch = vld3q_u8(rgb_data);
-    
+
     // Vectorized luminance computation (16 pixels)
     uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb_batch.val[0]));
     uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb_batch.val[0]));
@@ -1429,75 +1572,78 @@ static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buff
     uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb_batch.val[1]));
     uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb_batch.val[2]));
     uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb_batch.val[2]));
-    
+
     uint16x8_t luma_lo = vmulq_n_u16(r_lo, LUMA_RED);
     luma_lo = vmlaq_n_u16(luma_lo, g_lo, LUMA_GREEN);
     luma_lo = vmlaq_n_u16(luma_lo, b_lo, LUMA_BLUE);
     luma_lo = vshrq_n_u16(luma_lo, 8);
-    
+
     uint16x8_t luma_hi = vmulq_n_u16(r_hi, LUMA_RED);
     luma_hi = vmlaq_n_u16(luma_hi, g_hi, LUMA_GREEN);
     luma_hi = vmlaq_n_u16(luma_hi, b_hi, LUMA_BLUE);
     luma_hi = vshrq_n_u16(luma_hi, 8);
-    
+
     // Pack luminance and convert to ASCII (vectorized)
     uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
     uint8x16_t ascii_chars = luma_to_ascii_vectorized(luma_vec);
-    
+
     // CHATGPT OPTIMIZATION 2: Vector store - 16 bytes in one shot!
-    vst1q_u8((uint8_t*)p, ascii_chars);
+    vst1q_u8((uint8_t *)p, ascii_chars);
     p += 16;
   }
-  
+
   // Handle remaining pixels with scalar processing
   for (; x < width && (end - p) >= 1; x++) {
     const rgb_pixel_t *pixel = &pixels[x];
     uint8_t luma = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b) >> 8;
     *p++ = luminance_palette[luma];
   }
-  
+
   return p - output_buffer;
 }
 
 // CHATGPT OPTIMIZATION 3: Color quantization for run-length detection
 static inline uint8_t quantize_rgb_to_8bit(uint8_t r, uint8_t g, uint8_t b) {
-  // Simple 6x6x6 color cube (216 colors) → 8-bit index  
-  int cr = (r * 5) / 255;  // 0-5
-  int cg = (g * 5) / 255;  // 0-5  
-  int cb = (b * 5) / 255;  // 0-5
-  return cr * 36 + cg * 6 + cb;  // 0-215
+  // Simple 6x6x6 color cube (216 colors) → 8-bit index
+  int cr = (r * 5) / 255;       // 0-5
+  int cg = (g * 5) / 255;       // 0-5
+  int cb = (b * 5) / 255;       // 0-5
+  return cr * 36 + cg * 6 + cb; // 0-215
 }
 
 // OPTIMIZED COLORED NEON: Specialized for color output only
-static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width, bool background_mode) {
+static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                       bool background_mode) {
 
   char *p = output_buffer;
   const char *buffer_end = output_buffer + buffer_size - 1;
 
   // NEON weight constants (same as mono code)
   const uint8x8_t wR = vdup_n_u8(LUMA_RED), wG = vdup_n_u8(LUMA_GREEN), wB = vdup_n_u8(LUMA_BLUE);
-  
-  // ASCII lookup tables (same as mono code) 
-  const uint8x16_t lut0 = vld1q_u8((const uint8_t*)" ...',;:clodxk");
-  const uint8x16_t lut1 = vld1q_u8((const uint8_t*)"O0KXNWMMMMMMMMM");
+
+  // ASCII lookup tables (same as mono code)
+  const uint8x16_t lut0 = vld1q_u8((const uint8_t *)" ...',;:clodxk");
+  const uint8x16_t lut1 = vld1q_u8((const uint8_t *)"O0KXNWMMMMMMMMM");
 
   // Process 16 pixels at a time (same as mono code)
   int processed = 0;
-  while (processed + 16 <= width && p < buffer_end - 1000) {  // Leave room for ANSI sequences
+  while (processed + 16 <= width && p < buffer_end - 1000) { // Leave room for ANSI sequences
     // Load interleaved RGB (same as mono code)
     uint8x16x3_t rgb = vld3q_u8((const uint8_t *)(pixels + processed));
-    
+
     // Compute luminance: (77*R + 150*G + 29*B) >> 8 (same formula as mono code)
     uint16x8_t y0 = vshrq_n_u16(vmlaq_u16(vmlaq_u16(vmulq_u16(vmovl_u8(vget_low_u8(rgb.val[0])), vmovl_u8(wR)),
-                                                     vmovl_u8(vget_low_u8(rgb.val[1])), vmovl_u8(wG)),
-                                          vmovl_u8(vget_low_u8(rgb.val[2])), vmovl_u8(wB)), 8);
+                                                    vmovl_u8(vget_low_u8(rgb.val[1])), vmovl_u8(wG)),
+                                          vmovl_u8(vget_low_u8(rgb.val[2])), vmovl_u8(wB)),
+                                8);
     uint16x8_t y1 = vshrq_n_u16(vmlaq_u16(vmlaq_u16(vmulq_u16(vmovl_u8(vget_high_u8(rgb.val[0])), vmovl_u8(wR)),
-                                                     vmovl_u8(vget_high_u8(rgb.val[1])), vmovl_u8(wG)),
-                                          vmovl_u8(vget_high_u8(rgb.val[2])), vmovl_u8(wB)), 8);
+                                                    vmovl_u8(vget_high_u8(rgb.val[1])), vmovl_u8(wG)),
+                                          vmovl_u8(vget_high_u8(rgb.val[2])), vmovl_u8(wB)),
+                                8);
     uint8x16_t y = vcombine_u8(vqmovn_u16(y0), vqmovn_u16(y1));
 
     // ASCII lookup (same as mono code)
-    uint8x16_t idx = vshrq_n_u8(y, 3);  // 0..31
+    uint8x16_t idx = vshrq_n_u8(y, 3); // 0..31
     uint8x16x2_t L = {lut0, lut1};
     uint8x16_t ascii_chars = vqtbl2q_u8(L, idx);
 
@@ -1507,60 +1653,64 @@ static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_b
     uint8_t g_batch[16] __attribute__((aligned(16)));
     uint8_t b_batch[16] __attribute__((aligned(16)));
     uint8_t luma_batch[16] __attribute__((aligned(16)));
-    
+
     vst1q_u8(ascii_batch, ascii_chars);
     vst1q_u8(r_batch, rgb.val[0]);
     vst1q_u8(g_batch, rgb.val[1]);
     vst1q_u8(b_batch, rgb.val[2]);
     vst1q_u8(luma_batch, y);
-    
+
     // Simple per-pixel emission - no complex quantization or hysteresis for now
     for (int k = 0; k < 16; k++) {
       uint8_t r = r_batch[k], g = g_batch[k], b = b_batch[k];
-      
+
       if (background_mode) {
-        uint8_t luma = luma_batch[k];  // Use SIMD-computed luminance
-        uint8_t fg_color = (luma < 127) ? 255 : 0;  // Simple threshold
+        uint8_t luma = luma_batch[k];              // Use SIMD-computed luminance
+        uint8_t fg_color = (luma < 127) ? 255 : 0; // Simple threshold
         p = append_sgr_truecolor_fg_bg(p, fg_color, fg_color, fg_color, r, g, b);
       } else {
         p = append_sgr_truecolor_fg(p, r, g, b);
       }
-      
+
       *p++ = ascii_batch[k];
-      
-      if (p >= buffer_end - 100) break;
+
+      if (p >= buffer_end - 100)
+        break;
     }
-    
+
     processed += 16;
   }
 
   // Handle remaining pixels (< 16) with scalar processing
   for (int x = processed; x < width; x++) {
     const rgb_pixel_t *pixel = &pixels[x];
-    
+
     // Scalar luminance calculation (same formula as NEON)
     uint16_t luma_16 = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b);
     uint8_t luma = (uint8_t)(luma_16 >> 8);
     uint8_t idx = luma >> 3; // 0..31
     char ascii_char = (idx < 16) ? " ...',;:clodxk"[idx] : "O0KXNWMMMMMMMMM"[idx - 16];
-    
+
     // Color sequences (same optimization as NEON loop)
     if (background_mode) {
       // FIX D: Scalar fallback also needs proper contrasting FG with hysteresis
       uint8_t luma = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b) >> 8;
       static uint8_t last_scalar_fg = 255;
       uint8_t fg_color = last_scalar_fg;
-      if (luma < 110) fg_color = 255;        // White on dark
-      else if (luma > 145) fg_color = 0;     // Black on light
+      if (luma < 110)
+        fg_color = 255; // White on dark
+      else if (luma > 145)
+        fg_color = 0; // Black on light
       last_scalar_fg = fg_color;
       p = append_sgr_truecolor_fg_bg(p, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
     } else {
       p = append_sgr_truecolor_fg(p, pixel->r, pixel->g, pixel->b);
     }
-    
+
     *p++ = ascii_char;
-    
-    if (p >= buffer_end - 100) break; // Safety check
+
+    if (p >= buffer_end - 100)
+      break; // Safety check
   }
 
   // Add reset sequence
@@ -1695,7 +1845,7 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
   // FIX C: Force 256-color fast path for BG mode (huge speed boost!)
   // When background_mode, force the fast path unless user explicitly asked high quality
   bool use_fast_path = background_mode ? true : g_use_256_color_fast_path;
-  
+
   if (use_fast_path) {
     return render_row_256color_ascii_runlength(row, width, dst, cap, background_mode);
   }
@@ -1713,10 +1863,10 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
   bool have_color = false;
   uint8_t cr = 0, cg = 0, cb = 0; // current foreground color
   uint8_t br = 0;                 // current fg brightness (for background mode)
-  
+
   // USER'S FIXES: Quantized change detection + FG hysteresis
-  uint8_t last_qbg = 255;         // Keep outside loop (fix A)
-  uint8_t last_fg = 255;          // Track FG with hysteresis (fix B)
+  uint8_t last_qbg = 255; // Keep outside loop (fix A)
+  uint8_t last_fg = 255;  // Track FG with hysteresis (fix B)
 
   for (int x = 0; x < width; ++x) {
     const rgb_pixel_t *px = &row[x];
@@ -1728,19 +1878,21 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
     if (background_mode) {
       // FIX A: Quantize BG to 6x6x6 cube for *comparison only*
       int qcr = (px->r * 5) / 255, qcg = (px->g * 5) / 255, qcb = (px->b * 5) / 255;
-      uint8_t qbg = (uint8_t)(qcr*36 + qcg*6 + qcb);  // 0..215
-      
+      uint8_t qbg = (uint8_t)(qcr * 36 + qcg * 6 + qcb); // 0..215
+
       // FIX B: Hysteresis FG (Schmitt trigger 110/145 instead of 127)
       uint8_t fg_val = last_fg;
-      if (y < 110) fg_val = 255;        // White on dark  
-      else if (y > 145) fg_val = 0;     // Black on light
+      if (y < 110)
+        fg_val = 255; // White on dark
+      else if (y > 145)
+        fg_val = 0; // Black on light
 
       if (!have_color || qbg != last_qbg || fg_val != last_fg) {
         // Color changed - emit combined FG+BG sequence using EXACT colors
         // NO MORE per-pixel capacity check - we computed row_end sentinel once!
         p = append_sgr_truecolor_fg_bg(p, fg_val, fg_val, fg_val, px->r, px->g, px->b);
-        last_qbg = qbg;          // Track quantized state for change detection
-        last_fg = fg_val;        // Track FG for hysteresis
+        last_qbg = qbg;   // Track quantized state for change detection
+        last_fg = fg_val; // Track FG for hysteresis
         cr = px->r;
         cg = px->g;
         cb = px->b;
@@ -1899,3 +2051,110 @@ char *image_print_half_height_blocks(image_t *image) {
   ascii[total_len] = '\0';
   return ascii;
 }
+
+/* ============================================================================
+ * AVX-512 Implementation (64-pixel parallel processing)
+ * ============================================================================
+ */
+
+#if defined(SIMD_SUPPORT_AVX512) && defined(__AVX512F__) && defined(__AVX512BW__)
+
+// Forward declarations for AVX-512 functions
+static size_t convert_row_colored_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                         bool background_mode);
+static size_t convert_row_mono_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
+
+// AVX-512 dispatch function
+size_t convert_row_with_color_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                     bool background_mode) {
+  if (opt_color_output || background_mode) {
+    return convert_row_colored_avx512(pixels, output_buffer, buffer_size, width, background_mode);
+  } else {
+    return convert_row_mono_avx512(pixels, output_buffer, buffer_size, width);
+  }
+}
+
+// TODO: Implement AVX-512 64-pixel parallel monochrome ASCII conversion
+static size_t convert_row_mono_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
+  // FUTURE IMPLEMENTATION:
+  // - Process 64 pixels per iteration using __m512i vectors
+  // - Use _mm512_load_si512 for aligned loads
+  // - Implement luminance calculation with _mm512_maddubs_epi16
+  // - Use gather/scatter operations for ASCII lookup
+  // - Expected performance: 2-4x faster than AVX2 implementation
+  
+  // Fallback to scalar implementation for now
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
+}
+
+// TODO: Implement AVX-512 64-pixel parallel colored ASCII conversion  
+static size_t convert_row_colored_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                        bool background_mode) {
+  // FUTURE IMPLEMENTATION:
+  // - Process 64 RGB pixels per iteration 
+  // - Use __m512i for 64x 8-bit RGB values
+  // - Vectorized luminance: (77*R + 150*G + 29*B) >> 8 for 64 pixels
+  // - Parallel ASCII character lookup with _mm512_shuffle_epi8
+  // - Vectorized ANSI color code generation
+  // - Use masked stores to handle variable-width output
+  
+  // Fallback to scalar implementation for now
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
+}
+
+#endif // AVX-512 support
+
+/* ============================================================================
+ * ARM SVE Implementation (Scalable vector lengths)
+ * ============================================================================
+ */
+
+#if defined(SIMD_SUPPORT_SVE) && defined(__ARM_FEATURE_SVE)
+
+// Forward declarations for SVE functions
+static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                     bool background_mode);
+static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
+
+// ARM SVE dispatch function
+size_t convert_row_with_color_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                 bool background_mode) {
+  if (opt_color_output || background_mode) {
+    return convert_row_colored_sve(pixels, output_buffer, buffer_size, width, background_mode);
+  } else {
+    return convert_row_mono_sve(pixels, output_buffer, buffer_size, width);
+  }
+}
+
+// TODO: Implement ARM SVE scalable vector monochrome ASCII conversion
+static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
+  // FUTURE IMPLEMENTATION:
+  // - Query vector length with svcntb() (typically 256-512 bits)
+  // - Process svcntb()/3 RGB pixels per iteration (variable width)
+  // - Use svld3_u8 for interleaved RGB loads
+  // - Implement luminance with svmla_u16 (multiply-accumulate)
+  // - Use svtbl_u8 for ASCII character lookup
+  // - Vectorized stores with svst1_u8
+  // - Adaptive to different ARM implementations (256-2048 bit vectors)
+  
+  // Fallback to scalar implementation for now
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
+}
+
+// TODO: Implement ARM SVE scalable vector colored ASCII conversion
+static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                     bool background_mode) {
+  // FUTURE IMPLEMENTATION:
+  // - Query vector length and process accordingly
+  // - Use predicated operations for handling partial vectors
+  // - Scalable luminance calculation: (77*R + 150*G + 29*B) >> 8
+  // - Table lookups for ASCII characters with svtbl_u8
+  // - Vectorized ANSI color sequence generation
+  // - Use SVE gather-scatter for non-contiguous memory access
+  // - Performance scales with vector width (future-proof)
+  
+  // Fallback to scalar implementation for now
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
+}
+
+#endif // ARM SVE support

@@ -428,11 +428,41 @@ void test_performance(void) {
 
     print_simd_capabilities();
     printf("\n");
-
-    // Note: For IMG_FILES mode, we load specific images per resolution in the loop below
-    // For WEBCAM mode, we'll initialize webcam once and use it throughout testing
+    
+    // Create source image early for both monochrome and color testing
     image_t *source_image = NULL;
-    if (g_image_source == IMAGE_SOURCE_FILE && g_image_filename) {
+    if (g_image_source == IMAGE_SOURCE_SYNTHETIC) {
+        // Create a synthetic gradient image for all testing
+        source_image = image_new(320, 240); // Standard size for synthetic data
+        if (source_image) {
+            printf("Creating synthetic gradient image (320x240) for testing...\n");
+            srand(12345); // Consistent seed for reproducible results
+            for (int y = 0; y < source_image->h; y++) {
+                for (int x = 0; x < source_image->w; x++) {
+                    int idx = y * source_image->w + x;
+                    
+                    // Create colorful gradient with some randomization
+                    int base_r = (x * 255 / source_image->w);
+                    int base_g = (y * 255 / source_image->h);
+                    int base_b = ((x + y) * 127 / (source_image->w + source_image->h));
+                    
+                    // Add some noise for variety
+                    int noise_r = rand() % 32 - 16;
+                    int noise_g = rand() % 32 - 16;
+                    int noise_b = rand() % 32 - 16;
+                    
+                    int r = base_r + noise_r;
+                    int g = base_g + noise_g;
+                    int b = base_b + noise_b;
+                    
+                    // Clamp to valid range
+                    source_image->pixels[idx].r = (r < 0) ? 0 : (r > 255) ? 255 : r;
+                    source_image->pixels[idx].g = (g < 0) ? 0 : (g > 255) ? 255 : g;
+                    source_image->pixels[idx].b = (b < 0) ? 0 : (b > 255) ? 255 : b;
+                }
+            }
+        }
+    } else if (g_image_source == IMAGE_SOURCE_FILE && g_image_filename) {
         source_image = load_ppm_file(g_image_filename);
         if (!source_image) {
             printf("Warning: Could not load PPM file, falling back to synthetic data\n");
@@ -451,6 +481,9 @@ void test_performance(void) {
             g_image_source = IMAGE_SOURCE_SYNTHETIC; // Switch to synthetic for the rest of the test
         }
     }
+
+    // Note: For IMG_FILES mode, we load specific images per resolution in the loop below
+    // Source image already created above for all modes
 
     // Test different image sizes
     int sizes[][2] = {
@@ -489,29 +522,29 @@ void test_performance(void) {
             benchmark = benchmark_simd_conversion_with_source(w, h, iterations, resolution_specific_image);
         }
 
-        printf("  Scalar:    %.3f ms/frame\n", benchmark.scalar_time * 1000 / iterations);
+        printf("  Scalar:    %.4f ms/frame\n", benchmark.scalar_time * 1000 / iterations);
 
         if (benchmark.sse2_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.sse2_time;
-            printf("  SSE2:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("  SSE2:      %.4f ms/frame (%.1fx speedup)\n",
                    benchmark.sse2_time * 1000 / iterations, speedup);
         }
 
         if (benchmark.ssse3_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.ssse3_time;
-            printf("  SSSE3:     %.3f ms/frame (%.1fx speedup)\n",
+            printf("  SSSE3:     %.4f ms/frame (%.1fx speedup)\n",
                    benchmark.ssse3_time * 1000 / iterations, speedup);
         }
 
         if (benchmark.avx2_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.avx2_time;
-            printf("  AVX2:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("  AVX2:      %.4f ms/frame (%.1fx speedup)\n",
                    benchmark.avx2_time * 1000 / iterations, speedup);
         }
 
         if (benchmark.neon_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.neon_time;
-            printf("  NEON:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("  NEON:      %.4f ms/frame (%.1fx speedup)\n",
                    benchmark.neon_time * 1000 / iterations, speedup);
         }
 
@@ -548,29 +581,29 @@ void test_performance(void) {
         simd_benchmark_t fg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, false, color_resolution_image);
 
         printf("  FOREGROUND MODE:\n");
-        printf("    Scalar:    %.3f ms/frame\n", fg_benchmark.scalar_time * 1000 / iterations);
+        printf("    Scalar:    %.4f ms/frame\n", fg_benchmark.scalar_time * 1000 / iterations);
 
         if (fg_benchmark.sse2_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.sse2_time;
-            printf("    SSE2:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("    SSE2:      %.4f ms/frame (%.1fx speedup)\n",
                    fg_benchmark.sse2_time * 1000 / iterations, speedup);
         }
 
         if (fg_benchmark.ssse3_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.ssse3_time;
-            printf("    SSSE3:     %.3f ms/frame (%.1fx speedup)\n",
+            printf("    SSSE3:     %.4f ms/frame (%.1fx speedup)\n",
                    fg_benchmark.ssse3_time * 1000 / iterations, speedup);
         }
 
         if (fg_benchmark.avx2_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.avx2_time;
-            printf("    AVX2:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("    AVX2:      %.4f ms/frame (%.1fx speedup)\n",
                    fg_benchmark.avx2_time * 1000 / iterations, speedup);
         }
 
         if (fg_benchmark.neon_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.neon_time;
-            printf("    NEON:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("    NEON:      %.4f ms/frame (%.1fx speedup)\n",
                    fg_benchmark.neon_time * 1000 / iterations, speedup);
         }
 
@@ -581,29 +614,29 @@ void test_performance(void) {
         simd_benchmark_t bg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, true, color_resolution_image);
 
         printf("  BACKGROUND MODE:\n");
-        printf("    Scalar:    %.3f ms/frame\n", bg_benchmark.scalar_time * 1000 / iterations);
+        printf("    Scalar:    %.4f ms/frame\n", bg_benchmark.scalar_time * 1000 / iterations);
 
         if (bg_benchmark.sse2_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.sse2_time;
-            printf("    SSE2:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("    SSE2:      %.4f ms/frame (%.1fx speedup)\n",
                    bg_benchmark.sse2_time * 1000 / iterations, speedup);
         }
 
         if (bg_benchmark.ssse3_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.ssse3_time;
-            printf("    SSSE3:     %.3f ms/frame (%.1fx speedup)\n",
+            printf("    SSSE3:     %.4f ms/frame (%.1fx speedup)\n",
                    bg_benchmark.ssse3_time * 1000 / iterations, speedup);
         }
 
         if (bg_benchmark.avx2_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.avx2_time;
-            printf("    AVX2:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("    AVX2:      %.4f ms/frame (%.1fx speedup)\n",
                    bg_benchmark.avx2_time * 1000 / iterations, speedup);
         }
 
         if (bg_benchmark.neon_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.neon_time;
-            printf("    NEON:      %.3f ms/frame (%.1fx speedup)\n",
+            printf("    NEON:      %.4f ms/frame (%.1fx speedup)\n",
                    bg_benchmark.neon_time * 1000 / iterations, speedup);
         }
 
@@ -708,6 +741,7 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
     // Pre-capture and resize all webcam frames
     int captured_frames = 0;
     for (int iter = 0; iter < iterations; iter++) {
+        printf("Pre-capturing frame %d/%d...\n", iter, iterations);
         // Capture webcam frame
         image_t *webcam_frame = webcam_read();
         if (!webcam_frame) {
