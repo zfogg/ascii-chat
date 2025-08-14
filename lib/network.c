@@ -1,6 +1,7 @@
 #include "network.h"
 #include "common.h"
 #include "buffer_pool.h"
+#include "crc32_hw.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
@@ -372,24 +373,7 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
  * ============================================================================
  */
 
-// Simple CRC32 implementation
-uint32_t asciichat_crc32(const void *data, size_t len) {
-  const uint8_t *bytes = (const uint8_t *)data;
-  uint32_t crc = 0xFFFFFFFF;
-
-  for (size_t i = 0; i < len; i++) {
-    crc ^= bytes[i];
-    for (int j = 0; j < 8; j++) {
-      if (crc & 1) {
-        crc = (crc >> 1) ^ 0xEDB88320;
-      } else {
-        crc >>= 1;
-      }
-    }
-  }
-
-  return ~crc;
-}
+// CRC32 implementation moved to crc32_hw.c for hardware acceleration
 
 int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
   if (len > MAX_PACKET_SIZE) {
