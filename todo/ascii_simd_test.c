@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include "../lib/common.h"
 #include "../lib/ascii_simd.h"
+#include "../lib/ascii_simd_neon.h"
 #include "../lib/options.h"
 #include "../lib/image.h"
 #include "../lib/webcam.h"
@@ -422,6 +423,124 @@ void test_correctness(void) {
     free(simd_result);
 }
 
+#ifdef SIMD_SUPPORT_NEON
+// Test 2.5: NEON Renderer-Specific Performance Testing 
+void test_neon_renderers(void) {
+    printf("\n=== Test 2.5: NEON Renderer Performance Testing ===\n");
+
+    // Test different image sizes
+    int sizes[][2] = {
+        {203, 64},     // Terminal size  
+        {320, 240},    // Small webcam
+        {640, 480},    // Standard webcam
+        {1280, 720},   // HD webcam
+    };
+    int num_sizes = sizeof(sizes) / sizeof(sizes[0]);
+
+    for (int i = 0; i < num_sizes; i++) {
+        int width = sizes[i][0];
+        int height = sizes[i][1];
+        int pixel_count = width * height;
+        const int iterations = 100; // More iterations for accurate timing
+
+        printf("\nTesting NEON renderers at %dx%d (%d pixels):\n", width, height, pixel_count);
+
+        // Allocate test data
+        rgb_pixel_t *test_pixels;
+        SAFE_MALLOC_SIMD(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
+        
+        // Generate realistic test data
+        srand(42); // Consistent seed for reproducible results
+        generate_test_pixels(test_pixels, width, height);
+
+        // Allocate output buffer (generous size for any renderer)
+        size_t buffer_size = pixel_count * 64; // 64 bytes per pixel should be more than enough
+        char *output_buffer;
+        SAFE_MALLOC(output_buffer, buffer_size, char *);
+
+        // Renderer 1: 256-color Background (UTF-8 blocks)
+        printf("  256-color BG (UTF-8 blocks): ");
+        fflush(stdout);
+        
+        clock_t start = clock();
+        size_t total_bytes = 0;
+        for (int iter = 0; iter < iterations; iter++) {
+            total_bytes += render_row_neon_256_bg_block_rep(test_pixels, width, output_buffer, buffer_size);
+        }
+        clock_t end = clock();
+        double bg_256_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
+        printf("%.4f ms/frame (%.1f MB output)\n", bg_256_time * 1000, total_bytes / 1024.0 / 1024.0 / iterations);
+
+        // Renderer 2: 256-color Foreground (ASCII chars)
+        printf("  256-color FG (ASCII chars):  ");
+        fflush(stdout);
+        
+        start = clock();
+        total_bytes = 0;
+        for (int iter = 0; iter < iterations; iter++) {
+            total_bytes += render_row_neon_256_fg_rep(test_pixels, width, output_buffer, buffer_size);
+        }
+        end = clock();
+        double fg_256_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
+        printf("%.4f ms/frame (%.1f MB output)\n", fg_256_time * 1000, total_bytes / 1024.0 / 1024.0 / iterations);
+
+        // Renderer 3: Truecolor Background (UTF-8 blocks)
+        printf("  Truecolor BG (UTF-8 blocks):  ");
+        fflush(stdout);
+        
+        start = clock();
+        total_bytes = 0;
+        for (int iter = 0; iter < iterations; iter++) {
+            total_bytes += render_row_neon_truecolor_bg_block_rep(test_pixels, width, output_buffer, buffer_size);
+        }
+        end = clock();
+        double bg_true_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
+        printf("%.4f ms/frame (%.1f MB output)\n", bg_true_time * 1000, total_bytes / 1024.0 / 1024.0 / iterations);
+
+        // Renderer 4: Truecolor Foreground (ASCII chars)
+        printf("  Truecolor FG (ASCII chars):   ");
+        fflush(stdout);
+        
+        start = clock();
+        total_bytes = 0;
+        for (int iter = 0; iter < iterations; iter++) {
+            total_bytes += render_row_neon_truecolor_fg_rep(test_pixels, width, output_buffer, buffer_size);
+        }
+        end = clock();
+        double fg_true_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
+        printf("%.4f ms/frame (%.1f MB output)\n", fg_true_time * 1000, total_bytes / 1024.0 / 1024.0 / iterations);
+
+        // Performance Analysis
+        printf("  Performance comparison:\n");
+        
+        // Find fastest renderer
+        double min_time = bg_256_time;
+        const char *fastest = "256-color BG";
+        
+        if (fg_256_time < min_time) { min_time = fg_256_time; fastest = "256-color FG"; }
+        if (bg_true_time < min_time) { min_time = bg_true_time; fastest = "Truecolor BG"; }
+        if (fg_true_time < min_time) { min_time = fg_true_time; fastest = "Truecolor FG"; }
+        
+        printf("    Fastest: %s (%.4f ms)\n", fastest, min_time * 1000);
+        printf("    256-color vs Truecolor BG: %.1fx (%s faster)\n", 
+               bg_true_time / bg_256_time,
+               (bg_256_time < bg_true_time) ? "256-color" : "truecolor");
+        printf("    256-color vs Truecolor FG: %.1fx (%s faster)\n", 
+               fg_true_time / fg_256_time,
+               (fg_256_time < fg_true_time) ? "256-color" : "truecolor");
+        printf("    BG vs FG (256-color): %.1fx (%s faster)\n", 
+               fg_256_time / bg_256_time,
+               (bg_256_time < fg_256_time) ? "background" : "foreground");
+        printf("    BG vs FG (truecolor): %.1fx (%s faster)\n", 
+               fg_true_time / bg_true_time,
+               (bg_true_time < fg_true_time) ? "background" : "foreground");
+
+        free(test_pixels);
+        free(output_buffer);
+    }
+}
+#endif
+
 // Test 2: Performance benchmarking
 void test_performance(void) {
     printf("\n=== Test 2: Performance Benchmarking ===\n");
@@ -522,30 +641,30 @@ void test_performance(void) {
             benchmark = benchmark_simd_conversion_with_source(w, h, iterations, resolution_specific_image);
         }
 
-        printf("  Scalar:    %.4f ms/frame\n", benchmark.scalar_time * 1000 / iterations);
+        printf("  Scalar:    %.4f ms/frame\n", benchmark.scalar_time * 100 / iterations);
 
         if (benchmark.sse2_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.sse2_time;
             printf("  SSE2:      %.4f ms/frame (%.1fx speedup)\n",
-                   benchmark.sse2_time * 1000 / iterations, speedup);
+                   benchmark.sse2_time * 100 / iterations, speedup);
         }
 
         if (benchmark.ssse3_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.ssse3_time;
             printf("  SSSE3:     %.4f ms/frame (%.1fx speedup)\n",
-                   benchmark.ssse3_time * 1000 / iterations, speedup);
+                   benchmark.ssse3_time * 100 / iterations, speedup);
         }
 
         if (benchmark.avx2_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.avx2_time;
             printf("  AVX2:      %.4f ms/frame (%.1fx speedup)\n",
-                   benchmark.avx2_time * 1000 / iterations, speedup);
+                   benchmark.avx2_time * 100 / iterations, speedup);
         }
 
         if (benchmark.neon_time > 0) {
             double speedup = benchmark.scalar_time / benchmark.neon_time;
             printf("  NEON:      %.4f ms/frame (%.1fx speedup)\n",
-                   benchmark.neon_time * 1000 / iterations, speedup);
+                   benchmark.neon_time * 100 / iterations, speedup);
         }
 
         printf("  Best:      %s\n\n",
@@ -581,30 +700,30 @@ void test_performance(void) {
         simd_benchmark_t fg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, false, color_resolution_image);
 
         printf("  FOREGROUND MODE:\n");
-        printf("    Scalar:    %.4f ms/frame\n", fg_benchmark.scalar_time * 1000 / iterations);
+        printf("    Scalar:    %.4f ms/frame\n", fg_benchmark.scalar_time * 100 / iterations);
 
         if (fg_benchmark.sse2_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.sse2_time;
             printf("    SSE2:      %.4f ms/frame (%.1fx speedup)\n",
-                   fg_benchmark.sse2_time * 1000 / iterations, speedup);
+                   fg_benchmark.sse2_time * 100 / iterations, speedup);
         }
 
         if (fg_benchmark.ssse3_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.ssse3_time;
             printf("    SSSE3:     %.4f ms/frame (%.1fx speedup)\n",
-                   fg_benchmark.ssse3_time * 1000 / iterations, speedup);
+                   fg_benchmark.ssse3_time * 100 / iterations, speedup);
         }
 
         if (fg_benchmark.avx2_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.avx2_time;
             printf("    AVX2:      %.4f ms/frame (%.1fx speedup)\n",
-                   fg_benchmark.avx2_time * 1000 / iterations, speedup);
+                   fg_benchmark.avx2_time * 100 / iterations, speedup);
         }
 
         if (fg_benchmark.neon_time > 0) {
             double speedup = fg_benchmark.scalar_time / fg_benchmark.neon_time;
             printf("    NEON:      %.4f ms/frame (%.1fx speedup)\n",
-                   fg_benchmark.neon_time * 1000 / iterations, speedup);
+                   fg_benchmark.neon_time * 100 / iterations, speedup);
         }
 
         printf("    Best:      %s\n",
@@ -614,30 +733,30 @@ void test_performance(void) {
         simd_benchmark_t bg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, true, color_resolution_image);
 
         printf("  BACKGROUND MODE:\n");
-        printf("    Scalar:    %.4f ms/frame\n", bg_benchmark.scalar_time * 1000 / iterations);
+        printf("    Scalar:    %.4f ms/frame\n", bg_benchmark.scalar_time * 100 / iterations);
 
         if (bg_benchmark.sse2_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.sse2_time;
             printf("    SSE2:      %.4f ms/frame (%.1fx speedup)\n",
-                   bg_benchmark.sse2_time * 1000 / iterations, speedup);
+                   bg_benchmark.sse2_time * 100 / iterations, speedup);
         }
 
         if (bg_benchmark.ssse3_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.ssse3_time;
             printf("    SSSE3:     %.4f ms/frame (%.1fx speedup)\n",
-                   bg_benchmark.ssse3_time * 1000 / iterations, speedup);
+                   bg_benchmark.ssse3_time * 100 / iterations, speedup);
         }
 
         if (bg_benchmark.avx2_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.avx2_time;
             printf("    AVX2:      %.4f ms/frame (%.1fx speedup)\n",
-                   bg_benchmark.avx2_time * 1000 / iterations, speedup);
+                   bg_benchmark.avx2_time * 100 / iterations, speedup);
         }
 
         if (bg_benchmark.neon_time > 0) {
             double speedup = bg_benchmark.scalar_time / bg_benchmark.neon_time;
             printf("    NEON:      %.4f ms/frame (%.1fx speedup)\n",
-                   bg_benchmark.neon_time * 1000 / iterations, speedup);
+                   bg_benchmark.neon_time * 100 / iterations, speedup);
         }
 
         printf("    Best:      %s\n\n",
@@ -683,7 +802,7 @@ void test_integration(void) {
 
     printf("Performance test on your 203x64 terminal:\n");
     simd_benchmark_t bench = benchmark_simd_conversion_with_source(203, 64, 1, source_image);
-    printf("- Scalar: %.2f ms per frame\n", bench.scalar_time * 1000 / 1);
+    printf("- Scalar: %.2f ms per frame\n", bench.scalar_time * 100 / 1);
 
     double simd_time = 0;
     const char *simd_method = "Unknown";
@@ -715,7 +834,7 @@ void test_integration(void) {
 
     if (simd_time > 0) {
         printf("- SIMD (%s): %.2f ms per frame (%.1fx faster)\n",
-               simd_method, simd_time * 1000 / 1, bench.scalar_time / simd_time);
+               simd_method, simd_time * 100 / 1, bench.scalar_time / simd_time);
     }
     printf("- Best method: %s\n", bench.best_method);
     printf("- At 60 FPS: %.1f%% CPU time saved\n",
@@ -926,6 +1045,9 @@ int main(int argc, char *argv[]) {
     // Run all tests
     test_correctness();
     test_performance();
+#ifdef SIMD_SUPPORT_NEON
+    test_neon_renderers();
+#endif
     test_integration();
 
     log_destroy();
