@@ -699,16 +699,15 @@ static void *video_broadcast_thread_func(void *arg) {
                    client_copy.width, client_copy.height, (client_copy.wants_color && opt_color_output) ? "yes" : "no");
         }
 
-        log_debug("DEBUG: About to create ASCII frame for client %u - size %ux%u, color=%d", 
-                  client_copy.client_id, client_copy.width, client_copy.height, 
-                  client_copy.wants_color && opt_color_output);
-                  
+        log_debug("DEBUG: About to create ASCII frame for client %u - size %ux%u, color=%d", client_copy.client_id,
+                  client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output);
+
         char *client_frame =
             create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output,
                                      client_copy.wants_stretch, &client_frame_size);
-                                     
-        log_debug("DEBUG: ASCII frame created for client %u - result=%p, size=%zu", 
-                  client_copy.client_id, (void*)client_frame, client_frame_size);
+
+        log_debug("DEBUG: ASCII frame created for client %u - result=%p, size=%zu", client_copy.client_id,
+                  (void *)client_frame, client_frame_size);
 
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
@@ -1454,7 +1453,8 @@ int main(int argc, char *argv[]) {
     log_debug("Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
     int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
     int saved_errno = errno; // Capture errno immediately to prevent corruption
-    log_debug("accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno, client_sock < 0 ? strerror(saved_errno) : "success");
+    log_debug("accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
+              client_sock < 0 ? strerror(saved_errno) : "success");
     if (client_sock < 0) {
       if (saved_errno == ETIMEDOUT) {
         // Timeout is normal, just continue

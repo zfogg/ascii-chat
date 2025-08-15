@@ -697,7 +697,7 @@ void test_performance(void) {
         }
 
         // Test foreground color mode
-        simd_benchmark_t fg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, false, color_resolution_image);
+        simd_benchmark_t fg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, false, color_resolution_image, true);
 
         printf("  FOREGROUND MODE:\n");
         printf("    Scalar:    %.4f ms/frame\n", fg_benchmark.scalar_time * 100 / iterations);
@@ -730,7 +730,7 @@ void test_performance(void) {
                fg_benchmark.best_method);
 
         // Test background color mode (use same image source)
-        simd_benchmark_t bg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, true, color_resolution_image);
+        simd_benchmark_t bg_benchmark = benchmark_simd_color_conversion_with_source(w, h, iterations, true, color_resolution_image, true);
 
         printf("  BACKGROUND MODE:\n");
         printf("    Scalar:    %.4f ms/frame\n", bg_benchmark.scalar_time * 100 / iterations);
@@ -1042,12 +1042,12 @@ int main(int argc, char *argv[]) {
     // Initialize logging (required by SAFE_MALLOC)
     log_init(NULL, LOG_ERROR);
 
-    // Run all tests
-    test_correctness();
-    test_performance();
 #ifdef SIMD_SUPPORT_NEON
     test_neon_renderers();
 #endif
+    // Run all tests
+    test_correctness();
+    test_performance();
     test_integration();
 
     log_destroy();

@@ -148,7 +148,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations,
                                                        const image_t *source_image);
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
-                                                             bool background_mode, const image_t *source_image);
+                                                             bool background_mode, const image_t *source_image,
+                                                             bool use_fast_path);
 void print_simd_capabilities(void);
 
 char *image_print_simd(image_t *image);
@@ -163,7 +164,7 @@ char *image_print_half_height_blocks(image_t *image);
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
-bool get_256_color_fast_path(void); // Query current quality mode setting
+bool get_256_color_fast_path(void);             // Query current quality mode setting
 
 // FIX #5: Cache prewarming functions for benchmarks (prevents first-frame penalty)
 void prewarm_sgr256_fg_cache(void);
@@ -174,16 +175,23 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out);
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
 
 // Enhanced REP compression writer (declared in NEON file, used by scalar fallbacks)
-size_t write_row_rep_from_arrays_enhanced(
-    const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
-    const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
-    const uint8_t *fg_idx, const uint8_t *bg_idx,
-    const char *ascii_chars,
-    int width, char *dst, size_t cap,
-    bool utf8_block_mode, bool use_256color, bool is_truecolor);
+size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
+                                          const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
+                                          const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
+                                          int width, char *dst, size_t cap, bool utf8_block_mode, bool use_256color,
+                                          bool is_truecolor);
 
 // Scalar unified REP implementations (for NEON dispatcher fallback)
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
 size_t render_row_truecolor_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
 size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
 size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
+
+// Unified NEON + scalar REP dispatcher
+size_t render_row_color_ascii_dispatch(
+    const rgb_pixel_t *row,
+    int width,
+    char *dst,
+    size_t cap,
+    bool background_mode,
+    bool use_fast_path);

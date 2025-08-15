@@ -88,9 +88,6 @@ void rgb_to_ansi256_neon(const rgb_pixel_t *pixels, uint8_t *indices);
 // NEON palette quantization with ordered dithering
 uint8x16_t palette256_index_dithered(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);
 
-// New streaming row renderer - no heap allocation, direct output to dst
-size_t convert_row_with_color_neon_streaming(const rgb_pixel_t *px, char *dst, size_t cap, int width, bool bg);
-
 // NEON helper: Process remaining pixels (< 16) efficiently for scalar fallback
 void process_remaining_pixels_neon(const rgb_pixel_t *pixels, int count, uint8_t *luminance, char *glyphs);
 
@@ -100,17 +97,10 @@ size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *ds
 size_t render_row_neon_truecolor_bg_block_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
 size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
 
-// Unified NEON + scalar REP dispatcher
-size_t render_row_ascii_rep_dispatch_neon(
-    const rgb_pixel_t *row,
-    int width,
-    char *dst,
-    size_t cap,
-    bool background_mode,
-    bool use_fast_path);
+// Unified NEON dispatcher function
+size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, char *dst, size_t cap,
+                                          bool background_mode, bool use_fast_path);
 
 // ARM NEON version for Apple Silicon
 void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode);
 #endif

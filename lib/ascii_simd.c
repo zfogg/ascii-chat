@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -24,10 +25,6 @@
 #include <immintrin.h>
 #endif
 
-// ASCII palette (matches your existing one)
-// static const char ascii_palette2[] = " .,:;ox%#@";
-static const char ascii_palette2[] = "   ...',;:clodxkO0KXNWM";
-static const int palette_len = sizeof(ascii_palette2) - 2; // -1 for null, -1 for indexing
 
 // Luminance calculation constants (matches your existing RED, GREEN, BLUE arrays)
 // These are based on the standard NTSC weights: 0.299*R + 0.587*G + 0.114*B
@@ -769,212 +766,6 @@ void convert_pixels_with_color_avx2(const rgb_pixel_t *pixels, char *output_buff
 #endif
 
 /* ============================================================================
- * ARM NEON Implementation (for Apple Silicon Macs)
- * ============================================================================
- */
-
-#ifdef SIMD_SUPPORT_NEON
-// Ultra-simple NEON implementation - just do the arithmetic, skip complex palette
-void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
-
-  int i = 0;
-
-  // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration with PIPELINE OPTIMIZATION
-  // Pre-load next batch while processing current batch to eliminate memory stalls
-  uint8x16x3_t rgb_batch1_next, rgb_batch2_next;
-  bool prefetch_valid = false;
-
-  for (; i + 31 < count; i += 32) {
-    const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
-
-    // Load current batch (or use pre-loaded data from previous iteration)
-    uint8x16x3_t rgb_batch1, rgb_batch2;
-    if (!prefetch_valid) {
-      rgb_batch1 = vld3q_u8(rgb_data);      // Pixels 0-15 (first iteration)
-      rgb_batch2 = vld3q_u8(rgb_data + 48); // Pixels 16-31 (first iteration)
-    } else {
-      rgb_batch1 = rgb_batch1_next; // Use pre-loaded data
-      rgb_batch2 = rgb_batch2_next; // Use pre-loaded data
-    }
-
-    // PRE-LOAD NEXT ITERATION while processing current (pipeline optimization)
-    // This overlaps memory access with computation, eliminating memory stalls
-    if (i + 63 < count) {
-      const uint8_t *next_rgb_data = (const uint8_t *)&pixels[i + 32];
-
-      // Optional: Add prefetch hint for data beyond next iteration
-      if (i + 95 < count) {
-        __builtin_prefetch(&pixels[i + 64], 0, 3); // Prefetch 2 iterations ahead
-      }
-
-      rgb_batch1_next = vld3q_u8(next_rgb_data);      // Pre-load next batch 1
-      rgb_batch2_next = vld3q_u8(next_rgb_data + 48); // Pre-load next batch 2
-      prefetch_valid = true;
-    } else {
-      prefetch_valid = false;
-    }
-
-    // Process batch 1 (pixels 0-15)
-    uint16x8_t r1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[0]));
-    uint16x8_t r1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[0]));
-    uint16x8_t g1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[1]));
-    uint16x8_t g1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[1]));
-    uint16x8_t b1_lo = vmovl_u8(vget_low_u8(rgb_batch1.val[2]));
-    uint16x8_t b1_hi = vmovl_u8(vget_high_u8(rgb_batch1.val[2]));
-
-    // Process batch 2 (pixels 16-31)
-    uint16x8_t r2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[0]));
-    uint16x8_t r2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[0]));
-    uint16x8_t g2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[1]));
-    uint16x8_t g2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[1]));
-    uint16x8_t b2_lo = vmovl_u8(vget_low_u8(rgb_batch2.val[2]));
-    uint16x8_t b2_hi = vmovl_u8(vget_high_u8(rgb_batch2.val[2]));
-
-    // Parallel luminance computation on 4 NEON vectors (32 pixels total)
-    uint16x8_t luma1_lo = vmulq_n_u16(r1_lo, LUMA_RED);
-    luma1_lo = vmlaq_n_u16(luma1_lo, g1_lo, LUMA_GREEN);
-    luma1_lo = vmlaq_n_u16(luma1_lo, b1_lo, LUMA_BLUE);
-    luma1_lo = vshrq_n_u16(luma1_lo, 8);
-
-    uint16x8_t luma1_hi = vmulq_n_u16(r1_hi, LUMA_RED);
-    luma1_hi = vmlaq_n_u16(luma1_hi, g1_hi, LUMA_GREEN);
-    luma1_hi = vmlaq_n_u16(luma1_hi, b1_hi, LUMA_BLUE);
-    luma1_hi = vshrq_n_u16(luma1_hi, 8);
-
-    uint16x8_t luma2_lo = vmulq_n_u16(r2_lo, LUMA_RED);
-    luma2_lo = vmlaq_n_u16(luma2_lo, g2_lo, LUMA_GREEN);
-    luma2_lo = vmlaq_n_u16(luma2_lo, b2_lo, LUMA_BLUE);
-    luma2_lo = vshrq_n_u16(luma2_lo, 8);
-
-    uint16x8_t luma2_hi = vmulq_n_u16(r2_hi, LUMA_RED);
-    luma2_hi = vmlaq_n_u16(luma2_hi, g2_hi, LUMA_GREEN);
-    luma2_hi = vmlaq_n_u16(luma2_hi, b2_hi, LUMA_BLUE);
-    luma2_hi = vshrq_n_u16(luma2_hi, 8);
-
-    // Pack luminance results into two 16-byte vectors
-    uint8x16_t luma_vec1 = vcombine_u8(vqmovn_u16(luma1_lo), vqmovn_u16(luma1_hi));
-    uint8x16_t luma_vec2 = vcombine_u8(vqmovn_u16(luma2_lo), vqmovn_u16(luma2_hi));
-
-    // PRIORITY 3: ASCII MAPPING OPTIMIZATION with vtbl4_u8() - 16-way parallel lookup
-    // Use NEON table lookup to convert 16 luminance values to ASCII characters simultaneously
-    // This eliminates 32 scalar array lookups with just 2 NEON vtbl operations
-
-    // PRIORITY 3 OPTIMIZATION: Hybrid approach using existing luminance_palette with vectorized stores
-    // This maintains 100% correctness while getting SIMD benefits from batch processing and vectorized stores
-
-    // Store NEON-computed luminance values for ASCII character lookup
-    uint8_t luma_batch[32] __attribute__((aligned(16)));
-    vst1q_u8(&luma_batch[0], luma_vec1);  // Store first 16 luminance values
-    vst1q_u8(&luma_batch[16], luma_vec2); // Store second 16 luminance values
-
-    // Create ASCII result vectors using existing luminance_palette (guaranteed correct)
-    uint8_t ascii_batch[32] __attribute__((aligned(16)));
-
-    // Optimized unrolled ASCII lookups using existing luminance_palette (guaranteed correct)
-    ascii_batch[0] = luminance_palette[luma_batch[0]];
-    ascii_batch[1] = luminance_palette[luma_batch[1]];
-    ascii_batch[2] = luminance_palette[luma_batch[2]];
-    ascii_batch[3] = luminance_palette[luma_batch[3]];
-    ascii_batch[4] = luminance_palette[luma_batch[4]];
-    ascii_batch[5] = luminance_palette[luma_batch[5]];
-    ascii_batch[6] = luminance_palette[luma_batch[6]];
-    ascii_batch[7] = luminance_palette[luma_batch[7]];
-    ascii_batch[8] = luminance_palette[luma_batch[8]];
-    ascii_batch[9] = luminance_palette[luma_batch[9]];
-    ascii_batch[10] = luminance_palette[luma_batch[10]];
-    ascii_batch[11] = luminance_palette[luma_batch[11]];
-    ascii_batch[12] = luminance_palette[luma_batch[12]];
-    ascii_batch[13] = luminance_palette[luma_batch[13]];
-    ascii_batch[14] = luminance_palette[luma_batch[14]];
-    ascii_batch[15] = luminance_palette[luma_batch[15]];
-    ascii_batch[16] = luminance_palette[luma_batch[16]];
-    ascii_batch[17] = luminance_palette[luma_batch[17]];
-    ascii_batch[18] = luminance_palette[luma_batch[18]];
-    ascii_batch[19] = luminance_palette[luma_batch[19]];
-    ascii_batch[20] = luminance_palette[luma_batch[20]];
-    ascii_batch[21] = luminance_palette[luma_batch[21]];
-    ascii_batch[22] = luminance_palette[luma_batch[22]];
-    ascii_batch[23] = luminance_palette[luma_batch[23]];
-    ascii_batch[24] = luminance_palette[luma_batch[24]];
-    ascii_batch[25] = luminance_palette[luma_batch[25]];
-    ascii_batch[26] = luminance_palette[luma_batch[26]];
-    ascii_batch[27] = luminance_palette[luma_batch[27]];
-    ascii_batch[28] = luminance_palette[luma_batch[28]];
-    ascii_batch[29] = luminance_palette[luma_batch[29]];
-    ascii_batch[30] = luminance_palette[luma_batch[30]];
-    ascii_batch[31] = luminance_palette[luma_batch[31]];
-
-    // SIMD vectorized store: 32 ASCII characters with 2 NEON operations
-    uint8x16_t ascii_result1 = vld1q_u8(&ascii_batch[0]);     // Load first 16 ASCII chars
-    uint8x16_t ascii_result2 = vld1q_u8(&ascii_batch[16]);    // Load second 16 ASCII chars
-    vst1q_u8((uint8_t *)&ascii_chars[i], ascii_result1);      // Store first 16 characters
-    vst1q_u8((uint8_t *)&ascii_chars[i + 16], ascii_result2); // Store second 16 characters
-  }
-
-  // Handle remaining 16 pixels
-  for (; i + 15 < count; i += 16) {
-    const uint8_t *rgb_data = (const uint8_t *)&pixels[i];
-    uint8x16x3_t rgb_vectors = vld3q_u8(rgb_data);
-
-    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[0]));
-    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[0]));
-    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[1]));
-    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[1]));
-    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb_vectors.val[2]));
-    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb_vectors.val[2]));
-
-    uint16x8_t luma_lo = vmulq_n_u16(r_lo, LUMA_RED);
-    luma_lo = vmlaq_n_u16(luma_lo, g_lo, LUMA_GREEN);
-    luma_lo = vmlaq_n_u16(luma_lo, b_lo, LUMA_BLUE);
-    luma_lo = vshrq_n_u16(luma_lo, 8);
-
-    uint16x8_t luma_hi = vmulq_n_u16(r_hi, LUMA_RED);
-    luma_hi = vmlaq_n_u16(luma_hi, g_hi, LUMA_GREEN);
-    luma_hi = vmlaq_n_u16(luma_hi, b_hi, LUMA_BLUE);
-    luma_hi = vshrq_n_u16(luma_hi, 8);
-
-    uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
-
-    // Store NEON-computed luminance values for ASCII character lookup
-    uint8_t luma_values[16] __attribute__((aligned(16)));
-    vst1q_u8(luma_values, luma_vec);
-
-    // Use the same optimized scalar lookups with vectorized store
-    uint8_t ascii_result_16[16] __attribute__((aligned(16)));
-
-    // Optimized unrolled ASCII lookups using existing luminance_palette
-    ascii_result_16[0] = luminance_palette[luma_values[0]];
-    ascii_result_16[1] = luminance_palette[luma_values[1]];
-    ascii_result_16[2] = luminance_palette[luma_values[2]];
-    ascii_result_16[3] = luminance_palette[luma_values[3]];
-    ascii_result_16[4] = luminance_palette[luma_values[4]];
-    ascii_result_16[5] = luminance_palette[luma_values[5]];
-    ascii_result_16[6] = luminance_palette[luma_values[6]];
-    ascii_result_16[7] = luminance_palette[luma_values[7]];
-    ascii_result_16[8] = luminance_palette[luma_values[8]];
-    ascii_result_16[9] = luminance_palette[luma_values[9]];
-    ascii_result_16[10] = luminance_palette[luma_values[10]];
-    ascii_result_16[11] = luminance_palette[luma_values[11]];
-    ascii_result_16[12] = luminance_palette[luma_values[12]];
-    ascii_result_16[13] = luminance_palette[luma_values[13]];
-    ascii_result_16[14] = luminance_palette[luma_values[14]];
-    ascii_result_16[15] = luminance_palette[luma_values[15]];
-
-    // SIMD vectorized store: 16 ASCII characters with 1 NEON operation
-    uint8x16_t ascii_result = vld1q_u8(ascii_result_16);
-    vst1q_u8((uint8_t *)&ascii_chars[i], ascii_result);
-  }
-
-  // Process remaining pixels with scalar fallback
-  for (; i < count; i++) {
-    const rgb_pixel_t *p = &pixels[i];
-    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    ascii_chars[i] = luminance_palette[luminance];
-  }
-}
-#endif
-
-/* ============================================================================
  * Auto-dispatch and Benchmarking
  * ============================================================================
  */
@@ -1315,7 +1106,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark NEON color
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode, true);
+    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode,
+                                       true);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
@@ -1490,7 +1282,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 // Enhanced color benchmark function with image source support
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height,
                                                              int __attribute__((unused)) iterations,
-                                                             bool background_mode, const image_t *source_image) {
+                                                             bool background_mode, const image_t *source_image,
+                                                             bool use_fast_path) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -1640,7 +1433,6 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   double best_time = result.scalar_time;
   result.best_method = "scalar";
 
-
 #ifdef SIMD_SUPPORT_SSE2
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
@@ -1668,7 +1460,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode, true);
+    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode,
+                                       true);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
