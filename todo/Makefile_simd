@@ -94,6 +94,7 @@ endif
 COMMON_MAIN_OBJECTS = \
   ../build/lib/ascii_simd.o \
   ../build/lib/ascii_simd_color.o \
+  ../build/lib/ascii_simd_neon.o \
   ../build/lib/ansi_fast.o \
   ../build/lib/logging.o \
   ../build/lib/buffer_pool.o \

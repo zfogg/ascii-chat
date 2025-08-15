@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include "ascii_simd.h"
+#include "ascii_simd_neon.h"
 #include "image.h"
 #include "common.h"
 #include "webcam.h"
@@ -35,33 +36,56 @@ static const int palette_len = sizeof(ascii_palette2) - 2; // -1 for null, -1 fo
 #define LUMA_GREEN 150 // 0.587 * 256
 #define LUMA_BLUE 29   // 0.114 * 256
 
-// Pre-calculated luminance palette
-static char luminance_palette[256];
-static bool palette_initialized = false;
+void init_palette(void) {
+  if (g_ascii_cache.palette_initialized)
+    return;
+
+  for (int i = 0; i < 256; i++) {
+    int palette_index = (i * g_ascii_cache.palette_len) / 255;
+    if (palette_index > g_ascii_cache.palette_len)
+      palette_index = g_ascii_cache.palette_len;
+    luminance_palette[i] = g_ascii_cache.ascii_chars[palette_index];
+  }
+  g_ascii_cache.palette_initialized = true;
+}
+
+void init_dec3(void) {
+  if (g_ascii_cache.dec3_initialized)
+    return;
+  for (int v = 0; v < 256; ++v) {
+    int d2 = v / 100;     // 0..2
+    int r = v - d2 * 100; // 0..99
+    int d1 = r / 10;      // 0..9
+    int d0 = r - d1 * 10; // 0..9
+
+    if (d2) {
+      g_ascii_cache.dec3_table[v].len = 3;
+      g_ascii_cache.dec3_table[v].s[0] = '0' + d2;
+      g_ascii_cache.dec3_table[v].s[1] = '0' + d1;
+      g_ascii_cache.dec3_table[v].s[2] = '0' + d0;
+    } else if (d1) {
+      g_ascii_cache.dec3_table[v].len = 2;
+      g_ascii_cache.dec3_table[v].s[0] = '0' + d1;
+      g_ascii_cache.dec3_table[v].s[1] = '0' + d0;
+    } else {
+      g_ascii_cache.dec3_table[v].len = 1;
+      g_ascii_cache.dec3_table[v].s[0] = '0' + d0;
+    }
+  }
+  g_ascii_cache.dec3_initialized = true;
+}
+
+// **HIGH-IMPACT FIX 2**: Remove init guards from hot path - use constructor
+__attribute__((constructor)) static void ascii_ctor(void) {
+  init_palette();
+  init_dec3();
+}
 
 // NEON vtbl lookup table for ASCII mapping optimization (Priority 3)
 // Contains ASCII palette padded to 32 bytes for efficient vtbl2q_u8() access
 static const uint8_t ascii_vtbl_table[32]
     __attribute__((aligned(16))) = {' ', ' ', ' ', '.', '.', '.', '\'', ',', ';', ':', 'c', 'l', 'o', 'd', 'x', 'k',
                                     'O', '0', 'K', 'X', 'N', 'W', 'M',  'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'};
-
-static void init_palette(void) {
-  if (palette_initialized)
-    return;
-
-  for (int i = 0; i < 256; i++) {
-    int palette_index = (i * palette_len) / 255;
-    if (palette_index > palette_len)
-      palette_index = palette_len;
-    luminance_palette[i] = ascii_palette2[palette_index];
-  }
-  palette_initialized = true;
-}
-
-// Constructor initialization to eliminate hot path init calls
-__attribute__((constructor)) static void ascii_mono_ctor(void) {
-  init_palette();
-}
 
 /* ============================================================================
  * Scalar Implementation (Baseline)
@@ -1291,7 +1315,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark NEON color
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    convert_row_with_color_neon(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode, true);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
@@ -1599,12 +1623,23 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
   printf("Benchmarking COLOR %s conversion using %d iterations...\n", mode_str, adaptive_iterations);
 
+  // FIX #5: Prewarm 256-color caches to avoid first-frame penalty (~1.5-2MB cache build)
+  printf("Prewarming SGR256 caches...\n");
+  prewarm_sgr256_fg_cache(); // Warmup 256-entry FG cache
+  prewarm_sgr256_cache();    // Warmup 65,536-entry FG+BG cache
+  printf("Cache prewarming complete.\n");
+
   // Benchmark scalar color conversion (pure conversion, no I/O)
   double start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
   }
   result.scalar_time = get_time_seconds() - start;
+
+  // Find best method -- default to scalar and let simd beat it.
+  double best_time = result.scalar_time;
+  result.best_method = "scalar";
+
 
 #ifdef SIMD_SUPPORT_SSE2
   start = get_time_seconds();
@@ -1633,14 +1668,10 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    convert_row_with_color_neon(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode, true);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
-
-  // Find best method
-  double best_time = result.scalar_time;
-  result.best_method = "scalar";
 
 #ifdef SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
@@ -1680,9 +1711,9 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     result.avx2_time /= adaptive_iterations;
   if (result.neon_time > 0)
     result.neon_time /= adaptive_iterations;
-
   // Recalculate best time after normalization
   best_time = result.scalar_time;
+
 #ifdef SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time)
     best_time = result.sse2_time;

@@ -42,7 +42,7 @@ char *get_lum_palette(void);
 #define ASCII_SLEEP_NS 50000L
 
 // ANSI color codes
-#define ANSI_RESET "\033[0m"
+// #define ANSI_RESET "\033[0m"
 #define ANSI_FG_PREFIX "\033[38;2;"
 #define ANSI_BG_PREFIX "\033[48;2;"
 #define ANSI_COLOR_SUFFIX "m"
