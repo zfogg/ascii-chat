@@ -35,6 +35,10 @@ extern float opt_snapshot_delay;
 // Log file path for file logging (empty string means no file logging)
 extern char opt_log_file[OPTIONS_BUFF_SIZE];
 
+// Encryption options
+extern unsigned short int opt_encrypt_enabled;      // Enable AES encryption
+extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // Encryption key from --key
+extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE]; // Key file path from --keyfile
 // Default weights; must add up to 1.0
 extern const float weight_red;
 extern const float weight_green;

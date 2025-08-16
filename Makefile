@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Compilers
-CC  := clang
+CC := clang
 
 # Package dependencies
 PKG_CONFIG_LIBS := zlib portaudio-2.0
@@ -15,6 +15,12 @@ BIN_DIR   := bin
 BUILD_DIR := build
 SRC_DIR   := src
 LIB_DIR   := lib
+
+ifeq ($(shell uname),Darwin)
+  SDKROOT := $(shell xcrun --sdk macosx --show-sdk-path)
+  CLANG_RESOURCE_DIR := $(shell $(CC) -print-resource-dir)
+  override CFLAGS += -isysroot $(SDKROOT) -isystem $(CLANG_RESOURCE_DIR)/include
+endif
 
 override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
 
@@ -67,7 +73,7 @@ else
 endif
 
 # =============================================================================
-# SIMD Flags
+# Hardware Acceleration Detection and Flags
 # =============================================================================
 # Detect CPU/OS for reasonable defaults (build-host only)
 UNAME_M := $(shell uname -m)
@@ -89,72 +95,328 @@ ifeq ($(UNAME_S),Darwin)
   endif
 endif
 
+# =============================================================================
+# SIMD Configuration
+# =============================================================================
 # User override controls
-# SIMD_MODE can be one of: auto, off, sse2, avx2, neon, native
 SIMD_MODE ?= auto
 
-# Decide an effective mode: either user-provided or autodetected
-# Autodetect chooses a conservative baseline suitable for distribution.
+# Multiple checks for SIMD mode detection
+ENABLE_SIMD_SSE2 =
+ENABLE_SIMD_SSSE3 =
+ENABLE_SIMD_AVX2 =
+ENABLE_SIMD_AVX512 =
+ENABLE_SIMD_NEON =
+ENABLE_SIMD_SVE =
+
+# Check for user-specified SIMD mode
+ifeq ($(SIMD_MODE),sse2)
+  ENABLE_SIMD_SSE2 = yes
+endif
+ifeq ($(SIMD_MODE),ssse3)
+  ENABLE_SIMD_SSSE3 = yes
+endif
+ifeq ($(SIMD_MODE),avx2)
+  ENABLE_SIMD_AVX2 = yes
+endif
+ifeq ($(SIMD_MODE),avx512)
+  ENABLE_SIMD_AVX512 = yes
+endif
+ifeq ($(SIMD_MODE),neon)
+  ENABLE_SIMD_NEON = yes
+endif
+ifeq ($(SIMD_MODE),sve)
+  ENABLE_SIMD_SVE = yes
+endif
+
+# Auto-detect SIMD capabilities
 ifeq ($(SIMD_MODE),auto)
-  # Compute SIMD_MODE_AUTO based on OS/arch; Rosetta counts as x86_64.
+  # Apple Silicon detection
   ifeq ($(UNAME_S),Darwin)
-    ifeq ($(IS_ROSETTA),1)
-      SIMD_MODE_AUTO := ssse3
-    else ifeq ($(IS_APPLE_SILICON),1)
-      SIMD_MODE_AUTO := neon
+    ifeq ($(IS_APPLE_SILICON),1)
+      ENABLE_SIMD_NEON = yes
+    else ifeq ($(IS_ROSETTA),1)
+      ENABLE_SIMD_SSSE3 = yes
     else
-      SIMD_MODE_AUTO := ssse3
+      ENABLE_SIMD_SSSE3 = yes
     endif
-  else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
-    SIMD_MODE_AUTO := neon
-  else ifeq ($(UNAME_M),x86_64)
-    # Check for x86_64 SIMD support in priority order: AVX2 > SSSE3 > SSE2
+  endif
+  
+  # Linux ARM64 detection
+  ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+    # Check for SVE support first (newer and more capable than NEON)
+    HAS_SVE := $(shell grep -q sve /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_SVE),1)
+      ENABLE_SIMD_SVE = yes
+    else
+      ENABLE_SIMD_NEON = yes
+    endif
+  endif
+  
+  # x86_64 feature detection (prefer newer SIMD instructions)
+  ifeq ($(UNAME_M),x86_64)
+    HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    ifeq ($(HAS_AVX2),1)
-      SIMD_MODE_AUTO := avx2
+    
+    # AVX-512 requires both AVX512F (foundation) and AVX512BW (byte/word operations)
+    ifeq ($(HAS_AVX512F)$(HAS_AVX512BW),11)
+      ENABLE_SIMD_AVX512 = yes
+    else ifeq ($(HAS_AVX2),1)
+      ENABLE_SIMD_AVX2 = yes
     else ifeq ($(HAS_SSSE3),1)
-      SIMD_MODE_AUTO := ssse3
+      ENABLE_SIMD_SSSE3 = yes
     else ifeq ($(HAS_SSE2),1)
-      SIMD_MODE_AUTO := sse2
-    else
-      SIMD_MODE_AUTO := off
+      ENABLE_SIMD_SSE2 = yes
     endif
-  else ifeq ($(UNAME_M),aarch64)
-    SIMD_MODE_AUTO := native
-  else
-    SIMD_MODE_AUTO := off
+  endif
+endif
+
+ifneq ($(or $(ENABLE_SIMD_AVX512),$(ENABLE_SIMD_AVX2),$(ENABLE_SIMD_SSSE3),$(ENABLE_SIMD_SSE2),$(ENABLE_SIMD_SVE),$(ENABLE_SIMD_NEON)),)
+  SIMD_CFLAGS := -DSIMD_SUPPORT
+endif
+
+# Apply SIMD flags based on detection
+ifdef ENABLE_SIMD_SSE2
+  $(info Using SSE2 baseline (x86_64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
+endif
+ifdef ENABLE_SIMD_SSSE3
+  $(info Using SSSE3 with 32-pixel processing (x86_64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
+endif
+ifdef ENABLE_SIMD_AVX2
+  $(info Using AVX2 + SSSE3 + SSE2 (32-pixel processing x86_64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
+endif
+ifdef ENABLE_SIMD_AVX512
+  $(info Using AVX-512 (64-pixel processing - fastest x86_64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_AVX512 -mavx512f -mavx512bw
+endif
+ifdef ENABLE_SIMD_NEON
+  $(info Using ARM NEON (Apple Silicon/ARM64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_NEON
+endif
+ifdef ENABLE_SIMD_SVE
+  $(info Using ARM SVE (Scalable Vector Extensions - next-gen ARM64))
+  SIMD_CFLAGS += -DSIMD_SUPPORT_SVE -march=armv8-a+sve
+endif
+
+# =============================================================================
+# CRC32 Hardware Acceleration Configuration
+# =============================================================================
+CRC32_HW ?= auto
+
+# Multiple checks for CRC32 hardware detection
+ENABLE_CRC32_HW =
+
+# User override
+ifeq ($(CRC32_HW),on)
+  ENABLE_CRC32_HW = yes
+endif
+
+# Auto-detect CRC32 capabilities
+ifeq ($(CRC32_HW),auto)
+  # Apple Silicon always has CRC32
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_APPLE_SILICON),1)
+      ENABLE_CRC32_HW = yes
+    else
+      ENABLE_CRC32_HW = yes  # Intel Mac
+    endif
+  endif
+  
+  # Linux ARM64 detection
+  ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+    ENABLE_CRC32_HW = yes
+  endif
+  
+  # x86_64 SSE4.2 detection (includes CRC32)
+  ifeq ($(UNAME_M),x86_64)
+    HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_SSE42),1)
+      ENABLE_CRC32_HW = yes
+    endif
+  endif
+  
+  # Rosetta detection
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_ROSETTA),1)
+      HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      ifeq ($(HAS_SSE42),1)
+        ENABLE_CRC32_HW = yes
+      endif
+    endif
+  endif
+endif
+
+# Apply CRC32 flags based on detection
+ifdef ENABLE_CRC32_HW
+  CRC32_CFLAGS := -DHAVE_CRC32_HW
+  
+  # Add architecture-specific flags
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_APPLE_SILICON),1)
+      $(info Enabling ARM CRC32 hardware acceleration (Apple Silicon))
+    else
+      $(info Enabling Intel CRC32 hardware acceleration (SSE4.2))
+      CRC32_CFLAGS += -msse4.2
+    endif
+  else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+    $(info Enabling ARM CRC32 hardware acceleration (Linux ARM64))
+  else ifeq ($(UNAME_M),x86_64)
+    $(info Enabling Intel CRC32 hardware acceleration (SSE4.2))
+    CRC32_CFLAGS += -msse4.2
   endif
 else
-  SIMD_MODE_AUTO := $(SIMD_MODE)
+  $(info CRC32 hardware acceleration disabled)
+  CRC32_CFLAGS :=
 endif
 
-# Map the effective mode to compiler flags (single table)
-ifneq (,$(filter $(SIMD_MODE_AUTO),off))
-  $(info Building without SIMD (scalar))
-else ifneq (,$(filter $(SIMD_MODE_AUTO),sse2))
-  $(info Using SSE2 baseline)
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2
-else ifneq (,$(filter $(SIMD_MODE_AUTO),ssse3))
-  $(info Using SSSE3 with 32-pixel processing)
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -DSIMD_SUPPORT_SSSE3 -msse2 -mssse3
-else ifneq (,$(filter $(SIMD_MODE_AUTO),avx2))
-  $(info Using AVX2 + SSSE3 + SSE2 (best x86_64 performance))
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -DSIMD_SUPPORT_SSSE3 -DSIMD_SUPPORT_AVX2 -msse2 -mssse3 -mavx2
-else ifneq (,$(filter $(SIMD_MODE_AUTO),neon))
-  $(info Using ARM NEON + CRC32 hardware acceleration)
-  SIMD_CFLAGS := -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON -DHAVE_CRC32_HW
-else ifneq (,$(filter $(SIMD_MODE_AUTO),native))
-  $(info Using -march=native (build-host only))
-  SIMD_CFLAGS := -DSIMD_SUPPORT -march=native
+# =============================================================================
+# AES Hardware Acceleration Configuration
+# =============================================================================
+AES_HW ?= auto
+
+# Multiple checks for AES hardware detection
+ENABLE_AES_HW =
+
+# User override
+ifeq ($(AES_HW),on)
+  ENABLE_AES_HW = yes
+endif
+
+# Auto-detect AES capabilities
+ifeq ($(AES_HW),auto)
+  # Apple Silicon always has AES
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_APPLE_SILICON),1)
+      ENABLE_AES_HW = yes
+    else
+      # Intel/AMD Mac - check for AES-NI support
+      HAS_AES := $(shell sysctl -n machdep.cpu.features 2>/dev/null | grep -i aes >/dev/null && echo 1 || echo 0)
+      ifeq ($(HAS_AES),1)
+        ENABLE_AES_HW = yes
+      endif
+    endif
+  endif
+  
+  # Linux ARM64 detection (more robust)
+  ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+    # Check for ARM Crypto Extensions in /proc/cpuinfo
+    HAS_ARM_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_ARM_AES),1)
+      ENABLE_AES_HW = yes
+    else
+      # Fallback: assume modern ARM64 systems have AES
+      ENABLE_AES_HW = yes
+    endif
+  endif
+  
+  # x86_64 AES-NI detection (Intel + AMD)
+  ifeq ($(UNAME_M),x86_64)
+    HAS_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_AES),1)
+      ENABLE_AES_HW = yes
+      # Detect processor vendor for enhanced info
+      CPU_VENDOR := $(shell grep -m1 'vendor_id' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | tr -d ' ' || echo unknown)
+    endif
+  endif
+  
+  # AMD-specific x86_64 detection (additional check)
+  ifeq ($(UNAME_M),x86_64)
+    HAS_AMD_AES := $(shell grep -q AuthenticAMD /proc/cpuinfo 2>/dev/null && grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_AMD_AES),1)
+      ENABLE_AES_HW = yes
+    endif
+  endif
+  
+  # Other x86 variants (i686, i386 with AES)
+  ifneq (,$(filter i%86,$(UNAME_M)))
+    HAS_X86_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_X86_AES),1)
+      ENABLE_AES_HW = yes
+    endif
+  endif
+  
+  # PowerPC with crypto extensions (POWER8+)
+  ifneq (,$(filter ppc64% powerpc64%,$(UNAME_M)))
+    HAS_PPC_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_PPC_AES),1)
+      ENABLE_AES_HW = yes
+    endif
+  endif
+  
+  # RISC-V with crypto extensions (future-proofing)
+  ifneq (,$(filter riscv64,$(UNAME_M)))
+    HAS_RISCV_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    ifeq ($(HAS_RISCV_AES),1)
+      ENABLE_AES_HW = yes
+    endif
+  endif
+  
+  # Rosetta detection (Intel/AMD under ARM macOS)
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_ROSETTA),1)
+      HAS_AES := $(shell sysctl -n machdep.cpu.features 2>/dev/null | grep -i aes >/dev/null && echo 1 || echo 0)
+      ifeq ($(HAS_AES),1)
+        ENABLE_AES_HW = yes
+      endif
+    endif
+  endif
+endif
+
+# Apply AES flags based on detection
+ifdef ENABLE_AES_HW
+  AES_CFLAGS := -DHAVE_AES_HW
+  
+  # Add architecture-specific flags and messaging
+  ifeq ($(UNAME_S),Darwin)
+    ifeq ($(IS_APPLE_SILICON),1)
+      $(info Enabling ARM AES hardware acceleration (Apple Silicon))
+    else
+      $(info Enabling AES-NI hardware acceleration (Intel/AMD Mac))
+      AES_CFLAGS += -maes
+    endif
+  else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
+    $(info Enabling ARM Crypto Extensions AES acceleration (ARM64 Linux))
+  else ifeq ($(UNAME_M),x86_64)
+    # Enhanced messaging based on CPU vendor
+    ifeq ($(CPU_VENDOR),AuthenticAMD)
+      $(info Enabling AES-NI hardware acceleration (AMD x86_64))
+    else ifeq ($(CPU_VENDOR),GenuineIntel)
+      $(info Enabling AES-NI hardware acceleration (Intel x86_64))
+    else
+      $(info Enabling AES-NI hardware acceleration (x86_64))
+    endif
+    AES_CFLAGS += -maes
+  else ifneq (,$(filter i%86,$(UNAME_M)))
+    $(info Enabling AES-NI hardware acceleration (32-bit x86))
+    AES_CFLAGS += -maes
+  else ifneq (,$(filter ppc64% powerpc64%,$(UNAME_M)))
+    $(info Enabling PowerPC AES hardware acceleration (POWER8+))
+    # PowerPC might need specific flags in the future
+  else ifneq (,$(filter riscv64,$(UNAME_M)))
+    $(info Enabling RISC-V AES hardware acceleration (experimental))
+    # RISC-V might need specific flags in the future
+  else
+    $(info Enabling AES hardware acceleration (generic))
+  endif
+
 else
-  $(info Unknown architecture $(UNAME_M); building without SIMD)
-  SIMD_CFLAGS := 
+  $(info AES hardware acceleration disabled)
+  AES_CFLAGS :=
 endif
 
-override CFLAGS    += $(ARCH_FLAGS) $(SIMD_CFLAGS)
-override OBJCFLAGS += $(ARCH_FLAGS) $(SIMD_CFLAGS)
+# =============================================================================
+# Combine All Hardware Acceleration Flags
+# =============================================================================
+HW_ACCEL_CFLAGS := $(SIMD_CFLAGS) $(CRC32_CFLAGS) $(AES_CFLAGS)
+
+override CFLAGS += $(ARCH_FLAGS) $(HW_ACCEL_CFLAGS)
+# NOTE: OBJCFLAGS already inherits CFLAGS at line 54, so no need to add HW_ACCEL_CFLAGS again
 
 # =============================================================================
 # CPU-aware Optimization Flags
@@ -167,7 +429,7 @@ ifeq ($(UNAME_S),Darwin)
         CPU_OPT_FLAGS := -O3 -march=native
         $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
-        CPU_OPT_FLAGS := -O3 -ffast-math
+        CPU_OPT_FLAGS := -O3 -mcpu=native -ffast-math
         $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native
@@ -179,7 +441,7 @@ else ifeq ($(UNAME_S),Linux)
         CPU_OPT_FLAGS := -O3 -mcpu=native
         $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
     else
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native 
         $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
     endif
 else
@@ -190,7 +452,7 @@ endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
 DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
-RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops
+RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fno-exceptions -fno-rtti
 SANITIZE_FLAGS := -fsanitize=address
 
 # =============================================================================
@@ -230,18 +492,15 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: override CFLAGS    += $(DEBUG_FLAGS)
-debug: override OBJCFLAGS += $(DEBUG_FLAGS)
+debug: override CFLAGS += $(DEBUG_FLAGS)
 debug: $(TARGETS)
 
 # Release build
-release: override CFLAGS    += $(RELEASE_FLAGS)
-release: override OBJCFLAGS += $(RELEASE_FLAGS)
+release: override CFLAGS += $(RELEASE_FLAGS)
 release: $(TARGETS)
 
 # Memory sanitizer build (inherits debug flags)
-sanitize: override CFLAGS    += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
-sanitize: override OBJCFLAGS += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+sanitize: override CFLAGS += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
 sanitize: override LDFLAGS   +=                $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
@@ -270,6 +529,16 @@ $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(OBJCFLAGS) -c $<
+
+# Ensure build and bin directories exist
+$(BUILD_DIR)/src:
+	@mkdir -p $@
+
+$(BUILD_DIR)/lib:
+	@mkdir -p $@
+
+$(BIN_DIR):
+	@mkdir -p $@
 
 # For CI
 c-objs: $(OBJS_C)
@@ -337,8 +606,8 @@ format-check:
 
 # Run bear to generate a compile_commands.json file
 compile_commands.json: Makefile
-	@echo "Running bear to generate compile_commands.json..."
-	@make clean && bear -- make debug todo
+	@echo "Running bear to generate compile_commands.json (main project only)..."
+	@make clean todo-clean && bear -- make debug
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
@@ -393,4 +662,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc todo todo-clean
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc todo todo-clean compile_commands.json
