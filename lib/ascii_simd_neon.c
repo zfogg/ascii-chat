@@ -25,6 +25,40 @@
 // Forward declarations
 static inline size_t write_rgb_triplet(uint8_t value, char *dst);
 
+// Thread-local reusable scratch buffers to avoid per-row malloc/free
+static __thread uint8_t *tls_u8_a = NULL;
+static __thread uint8_t *tls_u8_b = NULL;
+static __thread uint8_t *tls_u8_c = NULL;
+static __thread uint8_t *tls_u8_d = NULL;
+static __thread uint8_t *tls_u8_e = NULL;
+static __thread uint8_t *tls_u8_f = NULL;
+static __thread size_t tls_cap = 0;
+
+static inline void ensure_tls_cap(size_t need) {
+  if (need <= tls_cap)
+    return;
+  size_t ncap = tls_cap ? tls_cap : 1024;
+  while (ncap < need)
+    ncap = (ncap * 3) / 2 + 64;
+  uint8_t *na = (uint8_t *)realloc(tls_u8_a, ncap);
+  uint8_t *nb = (uint8_t *)realloc(tls_u8_b, ncap);
+  uint8_t *nc = (uint8_t *)realloc(tls_u8_c, ncap);
+  uint8_t *nd = (uint8_t *)realloc(tls_u8_d, ncap);
+  uint8_t *ne = (uint8_t *)realloc(tls_u8_e, ncap);
+  uint8_t *nf = (uint8_t *)realloc(tls_u8_f, ncap);
+  if (!na || !nb || !nc || !nd || !ne || !nf) {
+    fprintf(stderr, "OOM in ensure_tls_cap\n");
+    exit(1);
+  }
+  tls_u8_a = na;
+  tls_u8_b = nb;
+  tls_u8_c = nc;
+  tls_u8_d = nd;
+  tls_u8_e = ne;
+  tls_u8_f = nf;
+  tls_cap = ncap;
+}
+
 void str_init(Str *s) {
   s->data = NULL;
   s->len = 0;
@@ -115,19 +149,33 @@ static inline uint8x16_t luma_to_idx_nibble(uint8x16_t y) {
 
 // Emit ANSI SGR for truecolor FG/BG - use fast manual builder
 static inline void emit_sgr(Str *out, int fr, int fg, int fb, int br, int bg, int bb) {
-  // Manual fast build: "\x1b[38;2;R;G;Bm\x1b[48;2;R;G;Bm"
-  str_reserve(out, out->len + 40); // Max size for 2 SGR sequences
+  // Fast truecolor FG+BG SGR without sprintf
+  // Builds: "\x1b[38;2;FR;FG;FB;48;2;BR;BG;BBm"
+  str_reserve(out, out->len + 40);
   char *p = out->data + out->len;
 
-  // FG sequence: "\x1b[38;2;R;G;Bm"
+  // FG prefix
   memcpy(p, "\x1b[38;2;", 7);
   p += 7;
-  p += sprintf(p, "%d;%d;%dm", fr, fg, fb);
+  p += write_rgb_triplet((uint8_t)fr, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)fg, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)fb, p);
 
-  // BG sequence: "\x1b[48;2;R;G;Bm"
-  memcpy(p, "\x1b[48;2;", 7);
-  p += 7;
-  p += sprintf(p, "%d;%d;%dm", br, bg, bb);
+  // BG prefix
+  *p++ = ';';
+  *p++ = '4';
+  *p++ = '8';
+  *p++ = ';';
+  *p++ = '2';
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)br, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)bg, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)bb, p);
+  *p++ = 'm';
 
   out->len = (size_t)(p - out->data);
 }
@@ -209,6 +257,36 @@ static inline char *emit_run_rep_utf8_block(char *p, int run_len) {
       *p++ = 0x80;
     }
   }
+  return p;
+}
+
+// Local fast SGR builder for truecolor FG+BG that writes into a char* buffer
+static inline char *append_sgr_truecolor_fg_bg_ptr(char *p, int fr, int fg, int fb, int br, int bg, int bb) {
+  // "\033[38;2;FR;FG;FB;48;2;BR;BG;BBm"
+  *p++ = '\033';
+  *p++ = '[';
+  *p++ = '3';
+  *p++ = '8';
+  *p++ = ';';
+  *p++ = '2';
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)fr, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)fg, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)fb, p);
+  *p++ = ';';
+  *p++ = '4';
+  *p++ = '8';
+  *p++ = ';';
+  *p++ = '2';
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)br, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)bg, p);
+  *p++ = ';';
+  p += write_rgb_triplet((uint8_t)bb, p);
+  *p++ = 'm';
   return p;
 }
 
@@ -493,82 +571,120 @@ void rle_flush(Str *out, RLEState *st, int FR, int FG, int FB, int BR, int BG, i
 void render_halfblock_truecolor(const ImageRGB *img, Str *out) {
   const int W = img->w;
   const int H = img->h & ~1; // even
-  const uint8_t *p = img->pixels;
+  const uint8_t *base = img->pixels;
+
+  // Reserve generously: worst case many color switches, but typical is small
+  str_reserve(out, out->len + (size_t)W * 32 + 16);
+  char *p = out->data + out->len;
+  char *row_end_sentinel = out->data + out->cap - 64;
+
+  int cur_fr = -2, cur_fg = -2, cur_fb = -2;
+  int cur_br = -2, cur_bg = -2, cur_bb = -2;
+  int seeded = 0;
+
+  static const unsigned char glyph[] = {0xE2, 0x96, 0x80}; // ▀
 
   for (int y = 0; y < H; y += 2) {
-    const uint8_t *rowT = p + (size_t)y * (size_t)W * 3u;
-    const uint8_t *rowB = p + (size_t)(y + 1) * (size_t)W * 3u;
-
-    RLEState st;
-    rle_init(&st);
+    const uint8_t *rowT = base + (size_t)y * (size_t)W * 3u;
+    const uint8_t *rowB = base + (size_t)(y + 1) * (size_t)W * 3u;
 
     int x = 0;
     while (x + 16 <= W) {
       uint8x16x3_t T = vld3q_u8(rowT + (size_t)x * 3u);
       uint8x16x3_t B = vld3q_u8(rowB + (size_t)x * 3u);
 
-      // Move lanes to scalars for span finding (SIMD loads/stores, scalar run accounting)
-      uint8_t rT[16], gT[16], bT[16], rB[16], gB[16], bB[16];
-      vst1q_u8(rT, T.val[0]);
-      vst1q_u8(gT, T.val[1]);
-      vst1q_u8(bT, T.val[2]);
-      vst1q_u8(rB, B.val[0]);
-      vst1q_u8(gB, B.val[1]);
-      vst1q_u8(bB, B.val[2]);
+      // Compare to previous lane (lane0 compares to current run color)
+      uint8x16_t prev_tr = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_fr : 255)), T.val[0], 15);
+      uint8x16_t prev_tg = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_fg : 255)), T.val[1], 15);
+      uint8x16_t prev_tb = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_fb : 255)), T.val[2], 15);
+      uint8x16_t prev_br = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_br : 255)), B.val[0], 15);
+      uint8x16_t prev_bg = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_bg : 255)), B.val[1], 15);
+      uint8x16_t prev_bb = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_bb : 255)), B.val[2], 15);
 
+      uint8x16_t eq_t = vandq_u8(vceqq_u8(T.val[0], prev_tr), vandq_u8(vceqq_u8(T.val[1], prev_tg), vceqq_u8(T.val[2], prev_tb)));
+      uint8x16_t eq_b = vandq_u8(vceqq_u8(B.val[0], prev_br), vandq_u8(vceqq_u8(B.val[1], prev_bg), vceqq_u8(B.val[2], prev_bb)));
+      uint8x16_t same = vandq_u8(eq_t, eq_b);
+      uint8x16_t boundary = vmvnq_u8(same); // 0xFF where new color starts
+
+      // Materialize lane data needed for span starts and boundary scan
+      uint8_t t_r[16], t_g[16], t_b[16];
+      uint8_t b_r[16], b_g[16], b_b[16];
+      uint8_t bmask[16];
+      vst1q_u8(t_r, T.val[0]);
+      vst1q_u8(t_g, T.val[1]);
+      vst1q_u8(t_b, T.val[2]);
+      vst1q_u8(b_r, B.val[0]);
+      vst1q_u8(b_g, B.val[1]);
+      vst1q_u8(b_b, B.val[2]);
+      vst1q_u8(bmask, boundary);
+
+      // Iterate spans using boundary mask
       int i = 0;
       while (i < 16) {
-        int FR = rT[i], FG = gT[i], FB = bT[i];
-        int BR = rB[i], BG = gB[i], BB = bB[i];
-        // grow span while colors match
+        // Read current colors at i
+        uint8_t fr = t_r[i];
+        uint8_t fg = t_g[i];
+        uint8_t fb = t_b[i];
+        uint8_t br = b_r[i];
+        uint8_t bg = b_g[i];
+        uint8_t bb = b_b[i];
+
         int j = i + 1;
-        while (j < 16 && rT[j] == FR && gT[j] == FG && bT[j] == FB && rB[j] == BR && gB[j] == BG && bB[j] == BB) {
-          ++j;
+        while (j < 16 && bmask[j] == 0) ++j;
+
+        // Color change?
+        if (!seeded || fr != cur_fr || fg != cur_fg || fb != cur_fb || br != cur_br || bg != cur_bg || bb != cur_bb) {
+          p = append_sgr_truecolor_fg_bg_ptr(p, fr, fg, fb, br, bg, bb);
+          cur_fr = fr; cur_fg = fg; cur_fb = fb;
+          cur_br = br; cur_bg = bg; cur_bb = bb;
+          seeded = 1;
         }
-        // if current run's color differs from this span's color, flush it first
-        if (st.runLen > 0 &&
-            (FR != st.cFR || FG != st.cFG || FB != st.cFB || BR != st.cBR || BG != st.cBG || BB != st.cBB)) {
-          rle_flush(out, &st, st.cFR, st.cFG, st.cFB, st.cBR, st.cBG, st.cBB);
-        }
-        // add span to run using this color
-        st.cFR = FR;
-        st.cFG = FG;
-        st.cFB = FB;
-        st.cBR = BR;
-        st.cBG = BG;
-        st.cBB = BB;
-        st.seeded = 1;
-        st.runLen += (j - i);
-        // Don't flush here - let runs accumulate for proper RLE compression
+
+        int run = j - i;
+        p = emit_run_rep_utf8_block(p, run);
         i = j;
+
+        if (p >= row_end_sentinel) {
+          // ensure we have space; grow and recompute pointers
+          size_t offset = (size_t)(p - out->data);
+          str_reserve(out, out->cap + W * 16);
+          p = out->data + offset;
+          row_end_sentinel = out->data + out->cap - 64;
+        }
       }
       x += 16;
     }
 
-    // tail
+    // tail (scalar)
     while (x < W) {
-      int FR = rowT[3 * (size_t)x + 0], FG = rowT[3 * (size_t)x + 1], FB = rowT[3 * (size_t)x + 2];
-      int BR = rowB[3 * (size_t)x + 0], BG = rowB[3 * (size_t)x + 1], BB = rowB[3 * (size_t)x + 2];
-      if (st.runLen > 0 &&
-          (FR != st.cFR || FG != st.cFG || FB != st.cFB || BR != st.cBR || BG != st.cBG || BB != st.cBB)) {
-        rle_flush(out, &st, st.cFR, st.cFG, st.cFB, st.cBR, st.cBG, st.cBB);
+      int idx = (int)x * 3;
+      int fr = rowT[idx + 0], fg = rowT[idx + 1], fb = rowT[idx + 2];
+      int br = rowB[idx + 0], bg = rowB[idx + 1], bb = rowB[idx + 2];
+      if (!seeded || fr != cur_fr || fg != cur_fg || fb != cur_fb || br != cur_br || bg != cur_bg || bb != cur_bb) {
+        p = append_sgr_truecolor_fg_bg_ptr(p, fr, fg, fb, br, bg, bb);
+        cur_fr = fr; cur_fg = fg; cur_fb = fb;
+        cur_br = br; cur_bg = bg; cur_bb = bb;
+        seeded = 1;
       }
-      st.cFR = FR;
-      st.cFG = FG;
-      st.cFB = FB;
-      st.cBR = BR;
-      st.cBG = BG;
-      st.cBB = BB;
-      st.seeded = 1;
-      st.runLen += 1;
-      ++x;
+      // Count scalar run
+      int run = 1;
+      while (x + run < W) {
+        int jdx = (int)(x + run) * 3;
+        if (rowT[jdx + 0] != fr || rowT[jdx + 1] != fg || rowT[jdx + 2] != fb ||
+            rowB[jdx + 0] != br || rowB[jdx + 1] != bg || rowB[jdx + 2] != bb)
+          break;
+        ++run;
+      }
+      p = emit_run_rep_utf8_block(p, run);
+      x += run;
     }
 
-    // flush line + reset
-    rle_flush(out, &st, st.cFR, st.cFG, st.cFB, st.cBR, st.cBG, st.cBB);
-    emit_reset(out);
-    str_append_c(out, '\n');
+    // Reset and newline per row pair
+    memcpy(p, "\033[0m\n", 5);
+    p += 5;
   }
+
+  out->len = (size_t)(p - out->data);
 }
 
 // ===== add near emit helpers =====
@@ -613,28 +729,17 @@ static const uint8_t dither4x4[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15
 
 // Apply ordered dithering to reduce color variations (creates longer runs)
 static inline uint8x16_t apply_ordered_dither(uint8x16_t color, int pixel_offset, uint8_t dither_strength) {
-  if (dither_strength == 0)
-    return color;
-
-  // Create dither pattern for 16 pixels based on position
-  uint8_t dither_vals[16];
-  for (int i = 0; i < 16; i++) {
-    int x = (pixel_offset + i) & 3;        // x position in 4x4 pattern
-    int y = ((pixel_offset + i) >> 2) & 3; // y position in 4x4 pattern
-    uint8_t dither = dither4x4[y * 4 + x];
-    // Scale dither to strength: 0-15 -> 0-strength
-    dither_vals[i] = (dither * dither_strength) >> 4;
-  }
-
-  uint8x16_t dither_v = vld1q_u8(dither_vals);
-  return vqsubq_u8(color, dither_v); // Subtract dither (clamp to 0)
+  // Speed mode: disable dithering to reduce color variation and CPU
+  (void)pixel_offset;
+  (void)dither_strength;
+  return color;
 }
 
 uint8x16_t palette256_index_dithered(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset) {
-  // Apply light ordered dithering to create longer runs (strength = 8)
-  r = apply_ordered_dither(r, pixel_offset, 8);
-  g = apply_ordered_dither(g, pixel_offset + 1, 8);
-  b = apply_ordered_dither(b, pixel_offset + 2, 8);
+  // Dithering disabled in speed mode (no-op)
+  r = apply_ordered_dither(r, pixel_offset, 0);
+  g = apply_ordered_dither(g, pixel_offset + 1, 0);
+  b = apply_ordered_dither(b, pixel_offset + 2, 0);
 
   // cube index
   uint8x16_t R6 = q6_from_u8(r);
@@ -989,7 +1094,7 @@ void rgb_to_ansi256_neon(const rgb_pixel_t *pixels, uint8_t *indices) {
   // Check if we have 3-byte RGB or 4-byte RGBx pixels
   uint8x16_t r, g, b;
   // Load 16 RGB pixels (48 bytes) as 3 separate vectors
-    uint8x16x3_t rgb = vld3q_u8((const uint8_t *)pixels);
+  uint8x16x3_t rgb = vld3q_u8((const uint8_t *)pixels);
   r = rgb.val[0];
   g = rgb.val[1];
   b = rgb.val[2];
@@ -1168,7 +1273,7 @@ size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *ds
     const rgb_pixel_t *px = &pixels[x];
     fg_idx[x] = rgb_to_ansi256(px->r, px->g, px->b);
     uint8_t luma = (77 * px->r + 150 * px->g + 29 * px->b) >> 8;
-    ascii_chars[x] = ascii_ramp16()[luma >> 4];  // Map 0-255 to 0-15
+    ascii_chars[x] = ascii_ramp16()[luma >> 4]; // Map 0-255 to 0-15
   }
 
   // Use REP compression (FG only, with ASCII chars)
@@ -1187,14 +1292,14 @@ static inline size_t write_rgb_triplet(uint8_t value, char *dst) {
 size_t render_row_neon_truecolor_bg_block_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap) {
   init_palette();
   // Use bulk array processing instead of manual pixel-by-pixel
-  // Allocate arrays for RGB values (background colors)
-  uint8_t *bg_r, *bg_g, *bg_b, *fg_r, *fg_g, *fg_b;
-  SAFE_MALLOC(bg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(bg_g, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(bg_b, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_g, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_b, (size_t)width * sizeof(uint8_t), uint8_t *);
+  // Reuse thread-local arrays to avoid per-row allocation
+  ensure_tls_cap((size_t)width);
+  uint8_t *bg_r = tls_u8_a;
+  uint8_t *bg_g = tls_u8_b;
+  uint8_t *bg_b = tls_u8_c;
+  uint8_t *fg_r = tls_u8_d;
+  uint8_t *fg_g = tls_u8_e;
+  uint8_t *fg_b = tls_u8_f;
 
   // Process pixels in NEON chunks and fill arrays
   int i = 0;
@@ -1256,13 +1361,6 @@ size_t render_row_neon_truecolor_bg_block_rep(const rgb_pixel_t *pixels, int wid
   size_t result = write_row_rep_from_arrays_enhanced(fg_r, fg_g, fg_b, bg_r, bg_g, bg_b, NULL, NULL, NULL, width, dst,
                                                      cap, true, false, true);
 
-  SAFE_FREE(bg_r);
-  SAFE_FREE(bg_g);
-  SAFE_FREE(bg_b);
-  SAFE_FREE(fg_r);
-  SAFE_FREE(fg_g);
-  SAFE_FREE(fg_b);
-
   return result;
 }
 
@@ -1272,14 +1370,26 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
 
   // Use bulk array processing instead of manual pixel-by-pixel
   // Allocate arrays for RGB and ASCII values
-  uint8_t *fg_r, *fg_g, *fg_b;
-  char *ascii_chars;
-  SAFE_MALLOC(fg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_g, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_b, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(ascii_chars, (size_t)width * sizeof(char), char *);
+  ensure_tls_cap((size_t)width);
+  uint8_t *fg_r = tls_u8_a;
+  uint8_t *fg_g = tls_u8_b;
+  uint8_t *fg_b = tls_u8_c;
+  char *ascii_chars = (char *)tls_u8_d; // reuse as char buffer
 
   // Process pixels in NEON chunks and fill arrays
+  // Build 32-entry ASCII LUT from current palette once (0..palette_len padded)
+  extern struct ascii_color_cache g_ascii_cache;
+  uint8_t lut32[32];
+  int plen = g_ascii_cache.palette_len;
+  for (int t = 0; t < 32; ++t) {
+    lut32[t] = (uint8_t)g_ascii_cache.ascii_chars[(t <= plen) ? t : plen];
+  }
+  const uint8x16_t lut0 = vld1q_u8(&lut32[0]);
+  const uint8x16_t lut1 = vld1q_u8(&lut32[16]);
+  const uint8x16x2_t lut = {lut0, lut1};
+
+  const uint8x16_t plen_u8 = vdupq_n_u8((uint8_t)plen);
+
   int i = 0;
   for (; i + 16 <= width; i += 16) {
     // Load 16 RGB pixels at once
@@ -1305,12 +1415,18 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
     vst1q_u8(fg_g + i, rgb.val[1]);
     vst1q_u8(fg_b + i, rgb.val[2]);
 
-    // Convert luminance to ASCII characters using vectorized lookup
-    uint8_t luma_vals[16];
-    vst1q_u8(luma_vals, luma);
-    for (int j = 0; j < 16; j++) {
-      ascii_chars[i + j] = luminance_palette[luma_vals[j]];
-    }
+    // Compute idx = floor(luma * plen / 255) using exact 1/255 trick
+    uint8x8_t l_lo = vget_low_u8(luma);
+    uint8x8_t l_hi = vget_high_u8(luma);
+    uint16x8_t prod_lo = vmull_u8(l_lo, vget_low_u8(plen_u8));
+    uint16x8_t prod_hi = vmull_u8(l_hi, vget_high_u8(plen_u8));
+    uint16x8_t q_lo = vaddq_u16(vaddq_u16(prod_lo, vshrq_n_u16(prod_lo, 8)), vdupq_n_u16(1));
+    uint16x8_t q_hi = vaddq_u16(vaddq_u16(prod_hi, vshrq_n_u16(prod_hi, 8)), vdupq_n_u16(1));
+    uint8x16_t idx_vec = vcombine_u8(vqmovn_u16(vshrq_n_u16(q_lo, 8)), vqmovn_u16(vshrq_n_u16(q_hi, 8)));
+
+    // Lookup ASCII chars via 32-entry table
+    uint8x16_t ascii_vec = vqtbl2q_u8(lut, idx_vec);
+    vst1q_u8((uint8_t *)&ascii_chars[i], ascii_vec);
   }
 
   // Handle remaining pixels with NEON chunks
@@ -1336,12 +1452,17 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
 
     uint8x16_t luma = vcombine_u8(vshrn_n_u16(luma_lo, 8), vshrn_n_u16(luma_hi, 8));
 
-    // Store luminance values temporarily and convert to ASCII characters
-    uint8_t luma_values[16];
-    vst1q_u8(luma_values, luma);
-    for (int j = 0; j < 16 && i + j < width; j++) {
-      ascii_chars[i + j] = luminance_palette[luma_values[j]];
-    }
+    // Compute idx = floor(luma * plen / 255) and vtbl lookup
+    uint8x8_t l_lo2 = vget_low_u8(luma);
+    uint8x8_t l_hi2 = vget_high_u8(luma);
+    uint16x8_t prod_lo2 = vmull_u8(l_lo2, vget_low_u8(plen_u8));
+    uint16x8_t prod_hi2 = vmull_u8(l_hi2, vget_high_u8(plen_u8));
+    uint16x8_t q_lo2 = vaddq_u16(vaddq_u16(prod_lo2, vshrq_n_u16(prod_lo2, 8)), vdupq_n_u16(1));
+    uint16x8_t q_hi2 = vaddq_u16(vaddq_u16(prod_hi2, vshrq_n_u16(prod_hi2, 8)), vdupq_n_u16(1));
+    uint8x16_t idx_vec2 = vcombine_u8(vqmovn_u16(vshrq_n_u16(q_lo2, 8)), vqmovn_u16(vshrq_n_u16(q_hi2, 8)));
+
+    uint8x16_t ascii_vec2 = vqtbl2q_u8(lut, idx_vec2);
+    vst1q_u8((uint8_t *)&ascii_chars[i], ascii_vec2);
 
     i += 16;
   }
@@ -1360,11 +1481,6 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
   // Use unified REP compression with truecolor RGB arrays and ASCII chars
   size_t result = write_row_rep_from_arrays_enhanced(fg_r, fg_g, fg_b, NULL, NULL, NULL, NULL, NULL, ascii_chars, width,
                                                      dst, cap, false, false, true);
-
-  SAFE_FREE(fg_r);
-  SAFE_FREE(fg_g);
-  SAFE_FREE(fg_b);
-  SAFE_FREE(ascii_chars);
 
   return result;
 }
@@ -1483,7 +1599,8 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     uint8x16_t idx_vec2 = vcombine_u8(vqmovn_u16(idx16_lo_2), vqmovn_u16(idx16_hi_2));
 
     // Lookup ASCII characters via 32-byte table (padded palette)
-    const uint8x16x2_t ascii_tbl = {vld1q_u8((const uint8_t *)&luminance_palette[0]), vld1q_u8((const uint8_t *)&luminance_palette[16])};
+    const uint8x16x2_t ascii_tbl = {vld1q_u8((const uint8_t *)&luminance_palette[0]),
+                                    vld1q_u8((const uint8_t *)&luminance_palette[16])};
     uint8x16_t ascii1 = vqtbl2q_u8(ascii_tbl, idx_vec1);
     uint8x16_t ascii2 = vqtbl2q_u8(ascii_tbl, idx_vec2);
 
@@ -1526,7 +1643,8 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     uint16x8_t idx16_hi = vshrq_n_u16(vaddq_u16(vaddq_u16(prod_hi, vshrq_n_u16(prod_hi, 8)), vdupq_n_u16(1)), 8);
     uint8x16_t idx = vcombine_u8(vqmovn_u16(idx16_lo), vqmovn_u16(idx16_hi));
 
-    const uint8x16x2_t tbl = {vld1q_u8((const uint8_t *)&luminance_palette[0]), vld1q_u8((const uint8_t *)&luminance_palette[16])};
+    const uint8x16x2_t tbl = {vld1q_u8((const uint8_t *)&luminance_palette[0]),
+                              vld1q_u8((const uint8_t *)&luminance_palette[16])};
     uint8x16_t ascii_vec = vqtbl2q_u8(tbl, idx);
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii_vec);
   }

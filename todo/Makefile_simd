@@ -74,7 +74,7 @@ else ifneq (,$(filter $(SIMD_MODE_AUTO),native))
   SIMD_CFLAGS := -DSIMD_SUPPORT -march=native
 else
   $(info Unknown architecture $(UNAME_M); building without SIMD)
-  SIMD_CFLAGS := 
+  SIMD_CFLAGS :=
 endif
 
 override CFLAGS += $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS)
@@ -134,8 +134,8 @@ COLOR_CORRECTNESS_EXECUTABLE = color_correctness_test
 
 # First ensure main project objects are built
 ensure-main-objects:
-	@echo "Ensuring main project objects are built (clean, isolated flags)..."
-	@cd .. && $(MAKE) clean && $(MAKE) release CFLAGS= OBJCFLAGS=
+	@echo "Ensuring main project objects are built (clean, isolated flags, NEON-friendly)..."
+	@cd .. && $(MAKE) clean && $(MAKE) release SIMD_MODE=$(SIMD_MODE_AUTO) CRC32_HW=$(CRC32_HW) AES_HW=$(AES_HW) CFLAGS= OBJCFLAGS=
 
 # Targets
 all: ensure-main-objects $(ASCII_SIMD_EXECUTABLE) $(ANSI_FAST_EXECUTABLE) $(COLOR_CORRECTNESS_EXECUTABLE)

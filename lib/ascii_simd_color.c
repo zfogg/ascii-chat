@@ -593,7 +593,7 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
     }
 
     // OPTIMIZATION #5: Use REP compression for runs >= 3 ▀ blocks (saves more due to 3-byte UTF-8)
-    if (false && run_length >= 3) { // DEBUGGING: Disable REP compression temporarily
+    if (run_length >= 3) {
       // Use CSI n b (REP) to repeat ▀: \x1b[%db followed by ▀
       *p++ = '\x1b';
       *p++ = '[';
@@ -793,7 +793,7 @@ char *image_print_colored_simd(image_t *image) {
     assert(total_len + row_max <= lines_size);
 
     // Use the NEW optimized run-length encoding function with combined SGR sequences
-#ifdef SIMD_SUPPORT_NEON
+#ifdef SIMD_SUPPORT_NEON_DISABLED_FOR_TESTING
     size_t row_len =
         render_row_ascii_rep_dispatch_neon((const rgb_pixel_t *)&image->pixels[y * w], w, ascii + total_len,
                                            lines_size - total_len, opt_background_color, true);
@@ -1922,7 +1922,8 @@ size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int w
   return result;
 }
 
-// Auto-dispatch optimized color function - calls best available SIMD implementation. plan to support more than just NEON in the future.
+// Auto-dispatch optimized color function - calls best available SIMD implementation. plan to support more than just
+// NEON in the future.
 size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                         bool background_mode) {
 #ifdef SIMD_SUPPORT_NEON
@@ -1939,8 +1940,8 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
  * Dispatcher
  */
 // Unified SIMD + scalar REP dispatcher. will support more than just NEON in the future.
-size_t render_row_color_ascii_dispatch(const rgb_pixel_t *row, int width, char *dst, size_t cap,
-                                          bool background_mode, bool use_fast_path) {
+size_t render_row_color_ascii_dispatch(const rgb_pixel_t *row, int width, char *dst, size_t cap, bool background_mode,
+                                       bool use_fast_path) {
 #ifdef SIMD_SUPPORT_NEON
   // Use NEON SIMD REP versions when available
   if (background_mode) {

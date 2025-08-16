@@ -188,10 +188,5 @@ size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int wi
 size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
 
 // Unified NEON + scalar REP dispatcher
-size_t render_row_color_ascii_dispatch(
-    const rgb_pixel_t *row,
-    int width,
-    char *dst,
-    size_t cap,
-    bool background_mode,
-    bool use_fast_path);
+size_t render_row_color_ascii_dispatch(const rgb_pixel_t *row, int width, char *dst, size_t cap, bool background_mode,
+                                       bool use_fast_path);

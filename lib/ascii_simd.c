@@ -25,7 +25,6 @@
 #include <immintrin.h>
 #endif
 
-
 // Luminance calculation constants (matches your existing RED, GREEN, BLUE arrays)
 // These are based on the standard NTSC weights: 0.299*R + 0.587*G + 0.114*B
 // Scaled to integers for faster computation
@@ -852,6 +851,22 @@ static double measure_function_time(void (*func)(const rgb_pixel_t *, char *, in
 
   return total_time / iterations; // Return average time per iteration
 }
+static double measure_function_time2(size_t (*func)(const rgb_pixel_t *, int, char *, size_t, bool, bool), const rgb_pixel_t *row,
+                                    int width, char *dst, size_t cap, bool background_mode, bool use_fast_path) {
+  int iterations = calculate_adaptive_iterations(width, 10.0); // Target 10ms minimum
+
+  // Warmup run to stabilize CPU frequency scaling and caches
+  func(row, width, dst, cap, background_mode, use_fast_path);
+
+  // Actual measurement with multiple iterations
+  double start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    func(row, width, dst, cap, background_mode, use_fast_path);
+  }
+  double total_time = get_time_seconds() - start;
+
+  return total_time / iterations; // Return average time per iteration
+}
 
 // Color conversion timing function with adaptive iterations
 // Returns average time per operation in seconds
@@ -1162,8 +1177,9 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   // Generate test data
   rgb_pixel_t *test_pixels;
   char *output_buffer;
+  const size_t output_buffer_size = pixel_count*16;
   SAFE_CALLOC_SIMD(test_pixels, pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
-  SAFE_MALLOC(output_buffer, pixel_count, char *);
+  SAFE_MALLOC(output_buffer, output_buffer_size, char *);
 
   if (source_image && source_image->pixels) {
     printf("Using provided image data (%dx%d) for testing\n", source_image->w, source_image->h);
@@ -1460,8 +1476,10 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode,
-                                       true);
+    /*render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode,*/
+    /*                                   true);                                                                       */
+    measure_function_time2(render_row_ascii_rep_dispatch_neon, test_pixels, width, output_buffer,
+        output_buffer_size, background_mode, true);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
