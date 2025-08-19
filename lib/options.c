@@ -49,6 +49,11 @@ float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
 // Log file path for file logging (empty string means no file logging)
 char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
+// Encryption options
+unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
+char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
+char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;
@@ -88,6 +93,9 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"snapshot", no_argument, NULL, 'S'},
                                        {"snapshot-delay", required_argument, NULL, 'D'},
                                        {"log-file", required_argument, NULL, 'L'},
+                                       {"encrypt", no_argument, NULL, 'E'},
+                                       {"key", required_argument, NULL, 'K'},
+                                       {"keyfile", required_argument, NULL, 'F'},
                                        {"help", optional_argument, NULL, 'h'},
                                        {0, 0, 0, 0}};
 
@@ -165,7 +173,7 @@ void options_init(int argc, char **argv) {
   update_dimensions_to_terminal_size();
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsqSD:L:h", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsqSD:L:EK:F:h", long_options, &index);
     if (c == -1)
       break;
 
@@ -240,6 +248,20 @@ void options_init(int argc, char **argv) {
       snprintf(opt_log_file, OPTIONS_BUFF_SIZE, "%s", optarg);
       break;
 
+    case 'E':
+      opt_encrypt_enabled = 1;
+      break;
+
+    case 'K':
+      snprintf(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", optarg);
+      opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+      break;
+
+    case 'F':
+      snprintf(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", optarg);
+      opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
+      break;
+
     case '?':
       fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr);
@@ -274,11 +296,14 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -C --color        (server|client) \t enable colored "
                 "ASCII output\n");
   fprintf(desc, "\t\t -b --background-color (server|client) \t enable background color for ASCII output\n");
-  fprintf(desc, "\t\t -A --audio        (server|client) \t enable audio capture and playback\n");
+  fprintf(desc, "\t\t -A --audio        (server|client) \t enable audio capture and playbook\n");
   fprintf(desc, "\t\t -s --stretch          (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
   fprintf(desc, "\t\t -q --quiet        (client) \t     disable console logging (logs only to file)\n");
   fprintf(desc, "\t\t -S --snapshot     (client) \t     capture single frame and exit\n");
   fprintf(desc, "\t\t -D --snapshot-delay SECONDS (client) \t delay before snapshot (default: 3.0)\n");
   fprintf(desc, "\t\t -L --log-file     (server|client) \t redirect logs to file\n");
+  fprintf(desc, "\t\t -E --encrypt      (server|client) \t enable AES packet encryption\n");
+  fprintf(desc, "\t\t -K --key PASSWORD (server|client) \t encryption passphrase (implies --encrypt)\n");
+  fprintf(desc, "\t\t -F --keyfile FILE (server|client) \t read encryption key from file (implies --encrypt)\n");
   fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
 }

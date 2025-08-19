@@ -6,7 +6,13 @@
 
 typedef struct rgb_t {
   uint8_t r, g, b;
-} rgb_t;
+} __attribute__((packed)) rgb_t;
+
+// SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
+typedef struct rgb_pixel_simd_t {
+  uint8_t r, g, b;
+  uint8_t padding; // Align to 4-byte boundary for efficient SIMD access
+} __attribute__((aligned(16))) rgb_pixel_simd_t;
 
 typedef struct image_t {
   int w, h;
@@ -27,7 +33,6 @@ void quantize_color(int *r, int *g, int *b, int levels);
 void image_resize(const image_t *, image_t *);
 void image_resize_interpolation(const image_t *source, image_t *dest);
 
-void precalc_luminance_palette(void);
 void precalc_rgb_palettes(const float, const float, const float);
 
 // Color support functions

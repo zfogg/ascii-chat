@@ -14,6 +14,7 @@
 
 #include "image.h"
 #include "ascii.h"
+#include "ascii_simd.h"
 #include "common.h"
 #include "network.h"
 #include "options.h"
@@ -1019,6 +1020,7 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
 
   // No active video sources - don't generate placeholder frames
   if (source_count == 0) {
+    log_debug("DEBUG: No video sources available - returning NULL frame");
     *out_size = 0;
     return NULL;
   }
@@ -1274,8 +1276,8 @@ int main(int argc, char *argv[]) {
   int port = strtoint(opt_port);
   log_info("SERVER: Port set to %d", port);
 
-  log_info("SERVER: Precalculating luminance palette...");
-  precalc_luminance_palette();
+  log_info("SERVER: Initializing luminance palette...");
+  init_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
   log_info("SERVER: RGB palettes precalculated");
 
@@ -1440,16 +1442,21 @@ int main(int argc, char *argv[]) {
     pthread_mutex_unlock(&g_client_manager_mutex);
 
     // Accept network connection with timeout
+    log_debug("Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
     int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
+    int saved_errno = errno; // Capture errno immediately to prevent corruption
+    log_debug("accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
+              client_sock < 0 ? strerror(saved_errno) : "success");
     if (client_sock < 0) {
-      if (errno == ETIMEDOUT) {
+      if (saved_errno == ETIMEDOUT) {
         // Timeout is normal, just continue
+        log_debug("Accept timed out after %d seconds, continuing loop", ACCEPT_TIMEOUT);
 #ifdef DEBUG_MEMORY
         // debug_memory_report();
 #endif
         continue;
       }
-      if (errno == EINTR) {
+      if (saved_errno == EINTR) {
         // Interrupted by signal - check if we should exit
         log_debug("accept() interrupted by signal");
         if (g_should_exit) {
@@ -1457,7 +1464,7 @@ int main(int argc, char *argv[]) {
         }
         continue;
       }
-      log_error("Network accept failed: %s", network_error_string(errno));
+      log_error("Network accept failed: %s", network_error_string(saved_errno));
       continue;
     }
 
@@ -1680,7 +1687,7 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
       static int frame_debug_counter[MAX_CLIENTS] = {0};
       frame_debug_counter[client->client_id % MAX_CLIENTS]++;
 
-      if (frame_debug_counter[client->client_id % MAX_CLIENTS] % 10 == 1) {
+      if (frame_debug_counter[client->client_id % MAX_CLIENTS] % 100 == 0) {
         log_info("WEBCAM WARMUP DEBUG: Client %u frame #%d - avg_brightness=%.1f%%, black_pixels=%.1f%% (%zu/%zu)",
                  client->client_id, frame_debug_counter[client->client_id % MAX_CLIENTS], avg_brightness,
                  black_percentage, black_pixels, sample_size);

@@ -922,9 +922,6 @@ int main(int argc, char *argv[]) {
   // In normal mode: still disable to prevent flickering with ASCII frame display
   log_set_terminal_output(false);
 
-  // Initialize luminance palette for ASCII conversion
-  precalc_luminance_palette();
-
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
   if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
