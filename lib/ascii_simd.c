@@ -81,11 +81,6 @@ __attribute__((constructor)) static void ascii_ctor(void) {
   init_dec3();
 }
 
-// NEON vtbl lookup table for ASCII mapping optimization (Priority 3)
-// Contains ASCII palette padded to 32 bytes for efficient vtbl2q_u8() access
-static const uint8_t ascii_vtbl_table[32]
-    __attribute__((aligned(16))) = {' ', ' ', ' ', '.', '.', '.', '\'', ',', ';', ':', 'c', 'l', 'o', 'd', 'x', 'k',
-                                    'O', '0', 'K', 'X', 'N', 'W', 'M',  'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'};
 
 /* ============================================================================
  * Scalar Implementation (Baseline)
