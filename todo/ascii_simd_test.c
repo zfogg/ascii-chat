@@ -880,7 +880,7 @@ void test_integration(void) {
 
     printf("Performance test on your 203x64 terminal:\n");
     simd_benchmark_t bench = benchmark_simd_conversion_with_source(203, 64, 1, source_image);
-    printf("- Scalar: %.2f ms per frame\n", bench.scalar_time * 100 / 1);
+    printf("- Scalar: %.5f ms per frame\n", bench.scalar_time * 100 / 1);
 
     double simd_time = 0;
     const char *simd_method = "Unknown";
@@ -911,11 +911,11 @@ void test_integration(void) {
 #endif
 
     if (simd_time > 0) {
-        printf("- SIMD (%s): %.2f ms per frame (%.1fx faster)\n",
+        printf("- SIMD (%s): %.5f ms per frame (%.1fx faster)\n",
                simd_method, simd_time * 100 / 1, bench.scalar_time / simd_time);
     }
     printf("- Best method: %s\n", bench.best_method);
-    printf("- At 60 FPS: %.1f%% CPU time saved\n",
+    printf("- At 60 FPS: %.2f%% CPU time saved\n",
            100.0 * (1.0 - 1.0/bench.speedup_best));
 
     // Clean up loaded image

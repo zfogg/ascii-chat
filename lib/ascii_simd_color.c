@@ -704,90 +704,6 @@ char *image_print_colored_simd(image_t *image) {
   // The run-length encoding implementation is now the primary optimized path
   // Future: streaming NEON can be added here for very large images
 
-  // OPTIMIZATION #8: Parallelize across rows for memory bandwidth
-  // For large images, use threading to process multiple rows simultaneously
-  bool use_threading = false; // DEBUGGING: Disable threading temporarily
-
-  if (use_threading) {
-    // Parallel processing for large images - improves memory bandwidth utilization
-    // We'll pre-compute row pointers and sizes, then assemble in order
-
-    // Allocate task array
-    row_task_t *tasks;
-    SAFE_MALLOC(tasks, h * sizeof(row_task_t), row_task_t *);
-
-    // Pre-calculate row output positions
-    size_t current_pos = 0;
-    for (int y = 0; y < h; y++) {
-      tasks[y].row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
-      tasks[y].row_output = ascii + current_pos;
-      tasks[y].row_capacity = lines_size - current_pos;
-      tasks[y].width = w;
-      tasks[y].background_mode = opt_background_color;
-      tasks[y].row_length = 0;
-
-      // Reserve space for this row + newline
-      const size_t row_max = w * per_px + reset_len;
-      current_pos += row_max + 1; // +1 for newline
-
-      if (current_pos >= lines_size) {
-        // Safety fallback
-        free(tasks);
-        use_threading = false;
-        break;
-      }
-    }
-
-    if (use_threading) {
-      // Process rows in parallel using pthread worker threads
-      // For memory-bound workloads, use number of cores to maximize memory bandwidth
-      const int num_threads = 4; // Conservative for Apple Silicon (4-8 performance cores)
-      const int rows_per_thread = (h + num_threads - 1) / num_threads;
-
-      pthread_t threads[num_threads];
-      thread_data_t thread_data[num_threads];
-
-      // Launch worker threads
-      for (int t = 0; t < num_threads; t++) {
-        thread_data[t].tasks = tasks;
-        thread_data[t].start_row = t * rows_per_thread;
-        thread_data[t].end_row = (t + 1) * rows_per_thread;
-        if (thread_data[t].end_row > h)
-          thread_data[t].end_row = h;
-
-        if (thread_data[t].start_row < h) {
-          pthread_create(&threads[t], NULL, row_worker, &thread_data[t]);
-        }
-      }
-
-      // Wait for all threads to complete
-      for (int t = 0; t < num_threads; t++) {
-        if (thread_data[t].start_row < h) {
-          pthread_join(threads[t], NULL);
-        }
-      }
-
-      // Assemble final output by shifting rows to correct positions
-      size_t total_len = 0;
-      for (int y = 0; y < h; y++) {
-        // Move row data to correct position if needed
-        if (tasks[y].row_output != ascii + total_len) {
-          memmove(ascii + total_len, tasks[y].row_output, tasks[y].row_length);
-        }
-        total_len += tasks[y].row_length;
-
-        // Add newline after each row (except the last row)
-        if (y != h - 1 && total_len < lines_size - 1) {
-          ascii[total_len++] = '\n';
-        }
-      }
-
-      free(tasks);
-      ascii[total_len] = '\0';
-      return ascii;
-    }
-  }
-
   // Serial processing fallback (for small images or if threading setup failed)
   size_t total_len = 0;
   for (int y = 0; y < h; y++) {
@@ -796,14 +712,8 @@ char *image_print_colored_simd(image_t *image) {
     assert(total_len + row_max <= lines_size);
 
     // Use the NEW optimized run-length encoding function with combined SGR sequences
-#ifdef SIMD_SUPPORT_NEON_DISABLED_FOR_TESTING
-    size_t row_len =
-        render_row_ascii_rep_dispatch_neon((const rgb_pixel_t *)&image->pixels[y * w], w, ascii + total_len,
-                                           lines_size - total_len, opt_background_color, true);
-#else
-    size_t row_len = render_row_truecolor_ascii_runlength(
-        (const rgb_pixel_t *)&image->pixels[y * w], w, ascii + total_len, lines_size - total_len, opt_background_color);
-#endif
+    size_t row_len = convert_row_with_color_optimized((const rgb_pixel_t *)&image->pixels[y * w], ascii + total_len,
+                                                      lines_size - total_len, w, opt_background_color);
     total_len += row_len;
 
     // Add newline after each row (except the last row)
@@ -1768,13 +1678,13 @@ static inline uint8_t palette256_index_scalar(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
+#ifdef SIMD_SUPPORT_NEON
   init_dec3();
 
   uint8_t *bg_idx;
   SAFE_MALLOC(bg_idx, (size_t)width * sizeof(uint8_t), uint8_t *);
 
   // Convert RGB to 256-color indices using NEON where possible
-#ifdef SIMD_SUPPORT_NEON
   int i = 0;
   // Process 16-pixel chunks with NEON
   for (; i + 16 <= width; i += 16) {
@@ -1786,7 +1696,6 @@ size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int wi
   for (; i < width; i++) {
     bg_idx[i] = palette256_index_scalar(row[i].r, row[i].g, row[i].b);
   }
-#endif
 
   // Use unified REP compression (UTF-8 block mode, 256-color)
   size_t result = write_row_rep_from_arrays_enhanced(
@@ -1798,9 +1707,14 @@ size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int wi
 
   SAFE_FREE(bg_idx);
   return result;
+#else
+  // Fallback for non-NEON platforms - use scalar implementation
+  return convert_row_with_color_scalar(row, dst, cap, width, true);
+#endif
 }
 
 size_t render_row_truecolor_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
+#ifdef SIMD_SUPPORT_NEON
   uint8_t *bg_r, *bg_g, *bg_b;
   uint8_t *fg_r, *fg_g, *fg_b;
   SAFE_MALLOC(bg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
@@ -1837,9 +1751,14 @@ size_t render_row_truecolor_background_rep_unified(const rgb_pixel_t *row, int w
   SAFE_FREE(fg_b);
 
   return result;
+#else
+  // Fallback for non-NEON platforms - use scalar implementation
+  return convert_row_with_color_scalar(row, dst, cap, width, true);
+#endif
 }
 
 size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
+#ifdef SIMD_SUPPORT_NEON
   init_palette();
   init_dec3();
 
@@ -1896,9 +1815,14 @@ size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int wi
   SAFE_FREE(fg_idx);
   SAFE_FREE(ascii_chars);
   return result;
+#else
+  // Fallback for non-NEON platforms - use scalar implementation
+  return convert_row_with_color_scalar(row, dst, cap, width, false);
+#endif
 }
 
 size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
+#ifdef SIMD_SUPPORT_NEON
   init_palette();
 
   uint8_t *fg_r, *fg_g, *fg_b;
@@ -1928,19 +1852,9 @@ size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int w
   SAFE_FREE(ascii_chars);
 
   return result;
-}
-
-// Auto-dispatch optimized color function - calls best available SIMD implementation. plan to support more than just
-// NEON in the future.
-size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                        bool background_mode) {
-#ifdef SIMD_SUPPORT_NEON
-  // Use NEON optimized renderer
-  bool use_fast_path = get_256_color_fast_path(); // Get quality setting
-  return render_row_ascii_rep_dispatch_neon(pixels, width, output_buffer, buffer_size, background_mode, use_fast_path);
 #else
-  // Fallback to scalar implementation
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
+  // Fallback for non-NEON platforms - use scalar implementation
+  return convert_row_with_color_scalar(row, dst, cap, width, false);
 #endif
 }
 
@@ -1948,28 +1862,16 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
  * Dispatcher
  */
 // Unified SIMD + scalar REP dispatcher. will support more than just NEON in the future.
-size_t render_row_color_ascii_dispatch(const rgb_pixel_t *row, int width, char *dst, size_t cap, bool background_mode,
-                                       bool use_fast_path) {
+// Auto-dispatch optimized color function - calls best available SIMD implementation. plan to support more than just
+// NEON in the future.
+size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                        bool background_mode) {
+  bool use_fast_path = get_256_color_fast_path(); // Get quality setting
+
 #ifdef SIMD_SUPPORT_NEON
-  // Use NEON SIMD REP versions when available
-  if (background_mode) {
-    if (use_fast_path) {
-      // 256-color background (▀)
-      return render_row_neon_256_bg_block_rep(row, width, dst, cap);
-    } else {
-      // Truecolor background (▀)
-      return render_row_neon_truecolor_bg_block_rep(row, width, dst, cap);
-    }
-  } else {
-    if (use_fast_path) {
-      // 256-color foreground ASCII
-      return render_row_neon_256_fg_rep(row, width, dst, cap);
-    } else {
-      // Truecolor foreground ASCII
-      return render_row_neon_truecolor_fg_rep(row, width, dst, cap);
-    }
-  }
-#endif
+  // Use NEON optimized renderer
+  return render_row_ascii_rep_dispatch_neon(pixels, width, output_buffer, buffer_size, background_mode, use_fast_path);
+#else
 
   // Scalar fallback (scalar REP code)
   if (background_mode) {
@@ -1985,4 +1887,7 @@ size_t render_row_color_ascii_dispatch(const rgb_pixel_t *row, int width, char *
       return render_row_truecolor_foreground_rep_unified(row, width, dst, cap);
     }
   }
+  // Fallback to scalar implementation
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
+#endif
 }

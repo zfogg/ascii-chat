@@ -1501,17 +1501,6 @@ extern size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row
 
 // Ultra-simple monochrome NEON implementation - just do the arithmetic, skip complex palette
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
-  log_debug("NEON: Starting conversion of %d pixels", count);
-
-  // Debug: Check if palette is initialized
-  if (!g_ascii_cache.palette_initialized) {
-    log_error("NEON: Palette not initialized!");
-    return;
-  }
-
-  log_debug("NEON: Using palette with %d chars, first='%c', last='%c'", g_ascii_cache.palette_len,
-            g_ascii_cache.ascii_chars[0], g_ascii_cache.ascii_chars[g_ascii_cache.palette_len - 1]);
-
   int i = 0;
 
   // MAXIMUM PERFORMANCE NEON - Process 32 pixels per iteration with PIPELINE OPTIMIZATION
@@ -1632,16 +1621,6 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     // Store 32 ASCII characters
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii1);
     vst1q_u8((uint8_t *)&ascii_chars[i + 16], ascii2);
-
-    // Debug: Extract first few luminance and index values
-    if (i == 0) {
-      uint8_t luma_debug[4], idx_debug[4];
-      vst1_u8(luma_debug, vget_low_u8(luma_vec1));
-      vst1_u8(idx_debug, vget_low_u8(idx_vec1));
-      log_debug("NEON: First 4 pixels - luma=[%d,%d,%d,%d], idx=[%d,%d,%d,%d], chars=['%c','%c','%c','%c']",
-                luma_debug[0], luma_debug[1], luma_debug[2], luma_debug[3], idx_debug[0], idx_debug[1], idx_debug[2],
-                idx_debug[3], ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
-    }
   }
 
   // Handle remaining 16 pixels
@@ -1695,28 +1674,7 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     // Vectorized table lookup: 16 character indices → 16 ASCII characters
     uint8x16_t ascii_vec = vqtbl2q_u8(ascii_tbl, char_idx);
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii_vec);
-
-    // Debug: Extract and log first few values to verify conversion
-    if (i == 0) {
-      uint8_t debug_luma[4], debug_idx[4];
-      vst1_u8(debug_luma, vget_low_u8(luma_vec));
-      vst1_u8(debug_idx, vget_low_u8(char_idx));
-      log_debug("NEON debug: First 4 - luma=[%d,%d,%d,%d], idx=[%d,%d,%d,%d], chars=['%c','%c','%c','%c']",
-                debug_luma[0], debug_luma[1], debug_luma[2], debug_luma[3], debug_idx[0], debug_idx[1], debug_idx[2],
-                debug_idx[3], ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
-    }
   }
-
-  // Process remaining pixels with scalar fallback
-  for (; i < count; i++) {
-    const rgb_pixel_t *p = &pixels[i];
-    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    ascii_chars[i] = g_ascii_cache.luminance_palette[luminance];
-  }
-
-  log_debug("NEON: Completed conversion of %d pixels, final result[0-5]: '%c%c%c%c%c'", count,
-            count > 0 ? ascii_chars[0] : '?', count > 1 ? ascii_chars[1] : '?', count > 2 ? ascii_chars[2] : '?',
-            count > 3 ? ascii_chars[3] : '?', count > 4 ? ascii_chars[4] : '?');
 }
 
 #endif // main block of code endif
