@@ -1667,12 +1667,7 @@ static inline uint8_t palette256_index_scalar(uint8_t r, uint8_t g, uint8_t b) {
   uint8_t cb = (b * 5) >> 8; // 0..5
 
   // Clamp to valid range
-  if (cr > 5)
-    cr = 5;
-  if (cg > 5)
-    cg = 5;
-  if (cb > 5)
-    cb = 5;
+  // No clamping needed: cr, cg, cb are always in 0..4 with current calculation
 
   return 16 + cr * 36 + cg * 6 + cb; // 16..231 (216 colors)
 }
