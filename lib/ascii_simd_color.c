@@ -38,6 +38,11 @@
 // Definitions are in ascii_simd.h - just use them
 #define luminance_palette g_ascii_cache.luminance_palette
 
+// Background ASCII luminance threshold - same as NEON version
+#ifndef BGASCII_LUMA_THRESHOLD
+#define BGASCII_LUMA_THRESHOLD 128 // Y >= 128 -> black text; else white text
+#endif
+
 #ifdef SIMD_SUPPORT_NEON
 // CHATGPT OPTIMIZATION: Vectorized ASCII lookup using vqtbl2q_u8
 // This processes 16 pixels at once instead of scalar loop
@@ -1421,7 +1426,12 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 
   if (use_fast_path) {
     // Use the NEON SIMD implementation instead of the broken scalar function
+#ifdef SIMD_SUPPORT_NEON
     return render_row_ascii_rep_dispatch_neon(row, width, dst, cap, background_mode, true);
+#else
+    // Fallback for non-NEON platforms - use truecolor mode
+    use_fast_path = false;
+#endif
   }
 
   // Fallback to truecolor for high quality mode
