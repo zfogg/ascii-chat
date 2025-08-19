@@ -38,14 +38,11 @@ struct __attribute__((aligned(64))) ascii_color_cache {
 // #define luminance_palette g_ascii_cache.luminance_palette
 
 // Pre-calculated luminance palette
-static bool palette_initialized = false;
+// REMOVED: static bool palette_initialized = false;
 
-// Single cache-friendly structure instead of scattered static variables
-static struct ascii_color_cache g_ascii_cache = {.ascii_chars = "   ...',;:clodxkO0KXNWM",
-                                                 .palette_len = 21, // sizeof("   ...',;:clodxkO0KXNWM") - 2
-                                                 .palette_initialized = false,
-                                                 .dec3_initialized = false};
-static char luminance_palette[256];
+// Global cache declaration - defined in ascii_simd.c
+extern struct ascii_color_cache g_ascii_cache;
+// REMOVED: static char luminance_palette[256];
 
 void init_palette(void);
 
@@ -115,6 +112,11 @@ size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffe
 void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int count);
 size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                     bool background_mode);
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+// Process 16 pixels at once with NEON
+void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
 #endif
 
 // Fallback scalar version

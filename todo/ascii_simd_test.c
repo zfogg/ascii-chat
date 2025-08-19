@@ -461,8 +461,8 @@ void test_neon_renderers(void) {
         SAFE_MALLOC_SIMD(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
         // Generate realistic test data
-            srand(42); // Consistent seed for reproducible results
-            generate_test_pixels(test_pixels, width, height);
+        srand(42); // Consistent seed for reproducible results
+        generate_test_pixels(test_pixels, width, height);
 
         // Allocate output buffer (generous size for any renderer)
         size_t buffer_size = pixel_count * 64; // 64 bytes per pixel should be more than enough
@@ -610,6 +610,7 @@ void test_performance(void) {
             webcam_cleanup();
             g_image_source = IMAGE_SOURCE_SYNTHETIC; // Switch to synthetic for the rest of the test
         }
+        webcam_cleanup();
     }
 
     // Note: For IMG_FILES mode, we load specific images per resolution in the loop below
@@ -626,6 +627,67 @@ void test_performance(void) {
 
     int num_sizes = sizeof(sizes) / sizeof(sizes[0]);
 
+    for (int i = 0; i < num_sizes; i++) {
+        int w = sizes[i][0];
+        int h = sizes[i][1];
+        int iterations = 1; // Single iteration like other benchmarks
+
+        // Prewarm caches before each resolution to avoid skew
+        prewarm_sgr256_cache();
+        prewarm_sgr256_fg_cache();
+
+        printf("Testing %dx%d (%d pixels):\n", w, h, w * h);
+
+        // For IMG_FILES mode, load specific image for this resolution
+        // For WEBCAM mode, we'll pass NULL to trigger webcam capture during benchmarking
+        image_t *resolution_specific_image = source_image;
+        if (g_image_source == IMAGE_SOURCE_IMG_FILES && g_img_files_dir) {
+            resolution_specific_image = load_ppm_from_directory(g_img_files_dir, w, h);
+            // load_ppm_from_directory exits on error, so resolution_specific_image is guaranteed to be valid
+        } else if (g_image_source == IMAGE_SOURCE_WEBCAM) {
+            resolution_specific_image = NULL; // Signal to benchmark function to use webcam
+        }
+
+        simd_benchmark_t benchmark;
+        printf("BENCHMARK_SIMD_CONVERSION %dx%d (%d pixels):\n", w, h, w * h);
+        benchmark = benchmark_simd_conversion(w, h, iterations);
+
+        printf("  Scalar:    %.5f ms/frame\n", benchmark.scalar_time * 100 / iterations);
+
+        if (benchmark.sse2_time > 0) {
+            double speedup = benchmark.scalar_time / benchmark.sse2_time;
+            printf("  SSE2:      %.5f ms/frame (%.1fx speedup)\n",
+                   benchmark.sse2_time * 100 / iterations, speedup);
+        }
+
+        if (benchmark.ssse3_time > 0) {
+            double speedup = benchmark.scalar_time / benchmark.ssse3_time;
+            printf("  SSSE3:     %.5f ms/frame (%.1fx speedup)\n",
+                   benchmark.ssse3_time * 100 / iterations, speedup);
+        }
+
+        if (benchmark.avx2_time > 0) {
+            double speedup = benchmark.scalar_time / benchmark.avx2_time;
+            printf("  AVX2:      %.5f ms/frame (%.1fx speedup)\n",
+                   benchmark.avx2_time * 100 / iterations, speedup);
+        }
+
+        if (benchmark.neon_time > 0) {
+            double speedup = benchmark.scalar_time / benchmark.neon_time;
+            printf("  NEON:      %.5f ms/frame (%.1fx speedup)\n",
+                   benchmark.neon_time * 100 / iterations, speedup);
+        }
+
+        printf("  Best:      %s\n\n",
+               benchmark.best_method);
+
+        // Clean up resolution-specific image if we loaded it
+        if (resolution_specific_image && resolution_specific_image != source_image) {
+            image_destroy(resolution_specific_image);
+        }
+    }
+
+    webcam_init(0);
     for (int i = 0; i < num_sizes; i++) {
         int w = sizes[i][0];
         int h = sizes[i][1];
@@ -690,6 +752,7 @@ void test_performance(void) {
             image_destroy(resolution_specific_image);
         }
     }
+    webcam_cleanup();
 
     // NEW: Test color conversion performance
     printf("\n--- COLOR ASCII Performance Tests ---\n");
@@ -875,6 +938,7 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
 
     printf("Pre-capturing %d webcam frames at %dx%d...\n", iterations, width, height);
 
+    webcam_init(0);
     // Pre-capture and resize all webcam frames
     int captured_frames = 0;
     for (int iter = 0; iter < iterations; iter++) {
@@ -903,6 +967,7 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
         image_destroy(webcam_frame);
         captured_frames++;
     }
+    webcam_cleanup();
 
     if (captured_frames == 0) {
         printf("Error: No webcam frames captured!\n");
@@ -977,6 +1042,8 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
     }
     free(frame_data);
     free(output_buffer);
+
+    webcam_cleanup();
 
     return result;
 }
@@ -1066,6 +1133,10 @@ int main(int argc, char *argv[]) {
 
     // Initialize logging (required by SAFE_MALLOC)
     log_init(NULL, LOG_ERROR);
+
+    // Initialize SIMD palette (CRITICAL!)
+    init_palette();
+    printf("SIMD palette initialized successfully\n\n");
 
 #ifdef SIMD_SUPPORT_NEON
     test_neon_renderers();

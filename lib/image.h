@@ -33,7 +33,6 @@ void quantize_color(int *r, int *g, int *b, int levels);
 void image_resize(const image_t *, image_t *);
 void image_resize_interpolation(const image_t *source, image_t *dest);
 
-void precalc_luminance_palette(void);
 void precalc_rgb_palettes(const float, const float, const float);
 
 // Color support functions

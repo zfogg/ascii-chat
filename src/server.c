@@ -14,6 +14,7 @@
 
 #include "image.h"
 #include "ascii.h"
+#include "ascii_simd.h"
 #include "common.h"
 #include "network.h"
 #include "options.h"
@@ -699,15 +700,9 @@ static void *video_broadcast_thread_func(void *arg) {
                    client_copy.width, client_copy.height, (client_copy.wants_color && opt_color_output) ? "yes" : "no");
         }
 
-        log_debug("DEBUG: About to create ASCII frame for client %u - size %ux%u, color=%d", client_copy.client_id,
-                  client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output);
-
         char *client_frame =
             create_mixed_ascii_frame(client_copy.width, client_copy.height, client_copy.wants_color && opt_color_output,
                                      client_copy.wants_stretch, &client_frame_size);
-
-        log_debug("DEBUG: ASCII frame created for client %u - result=%p, size=%zu", client_copy.client_id,
-                  (void *)client_frame, client_frame_size);
 
         if (!client_frame || client_frame_size == 0) {
           // No frame available for this client, skip
@@ -847,7 +842,6 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
   int source_count = 0;
 
   // Collect client image sources
-  log_debug("DEBUG: create_mixed_ascii_frame called - target size %ux%u, color=%d", width, height, wants_color);
   pthread_mutex_lock(&g_client_manager_mutex);
   /*int active_client_count = 0;               */
   /*for (int i = 0; i < MAX_CLIENTS; i++) {    */
@@ -1023,8 +1017,6 @@ char *create_mixed_ascii_frame(unsigned short width, unsigned short height, bool
     }
   }
   pthread_mutex_unlock(&g_client_manager_mutex);
-
-  log_debug("DEBUG: Found %d video sources for frame mixing", source_count);
 
   // No active video sources - don't generate placeholder frames
   if (source_count == 0) {
@@ -1284,8 +1276,8 @@ int main(int argc, char *argv[]) {
   int port = strtoint(opt_port);
   log_info("SERVER: Port set to %d", port);
 
-  log_info("SERVER: Precalculating luminance palette...");
-  precalc_luminance_palette();
+  log_info("SERVER: Initializing luminance palette...");
+  init_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
   log_info("SERVER: RGB palettes precalculated");
 
@@ -1695,7 +1687,7 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
       static int frame_debug_counter[MAX_CLIENTS] = {0};
       frame_debug_counter[client->client_id % MAX_CLIENTS]++;
 
-      if (frame_debug_counter[client->client_id % MAX_CLIENTS] % 10 == 1) {
+      if (frame_debug_counter[client->client_id % MAX_CLIENTS] % 100 == 0) {
         log_info("WEBCAM WARMUP DEBUG: Client %u frame #%d - avg_brightness=%.1f%%, black_pixels=%.1f%% (%zu/%zu)",
                  client->client_id, frame_debug_counter[client->client_id % MAX_CLIENTS], avg_brightness,
                  black_percentage, black_pixels, sample_size);
