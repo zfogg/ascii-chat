@@ -594,29 +594,27 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
 
     // OPTIMIZATION #5: Use REP compression for runs >= 3 ▀ blocks (saves more due to 3-byte UTF-8)
     if (run_length >= 3) {
-      // Use CSI n b (REP) to repeat ▀: \x1b[%db followed by ▀
-      *p++ = '\x1b';
-      *p++ = '[';
-
-      // Convert run_length to decimal string manually (faster than snprintf)
-      if (run_length >= 100) {
-        *p++ = '0' + (run_length / 100);
-        run_length %= 100;
-        *p++ = '0' + (run_length / 10);
-        *p++ = '0' + (run_length % 10);
-      } else if (run_length >= 10) {
-        *p++ = '0' + (run_length / 10);
-        *p++ = '0' + (run_length % 10);
-      } else {
-        *p++ = '0' + run_length;
-      }
-
-      *p++ = 'b'; // REP command
-
-      // Add single ▀ character (UTF-8: 0xE2 0x96 0x80) - REP will repeat it
+      // Print one ▀, then use REP to repeat the preceding glyph (run_length - 1) times
       *p++ = 0xE2;
       *p++ = 0x96;
       *p++ = 0x80;
+      int rep = run_length - 1;
+      *p++ = '\x1b';
+      *p++ = '[';
+
+      if (rep >= 100) {
+        *p++ = '0' + (rep / 100);
+        rep %= 100;
+        *p++ = '0' + (rep / 10);
+        *p++ = '0' + (rep % 10);
+      } else if (rep >= 10) {
+        *p++ = '0' + (rep / 10);
+        *p++ = '0' + (rep % 10);
+      } else {
+        *p++ = '0' + rep;
+      }
+
+      *p++ = 'b'; // REP command
     } else {
       // Short run: write ▀ characters normally (more efficient than REP overhead)
       for (int i = 0; i < run_length; i++) {

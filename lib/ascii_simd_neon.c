@@ -22,6 +22,9 @@
 
 #ifdef SIMD_SUPPORT_NEON // main block of code ifdef
 
+// Definitions are in ascii_simd.h - just use them
+// REMOVED: #define luminance_palette g_ascii_cache.luminance_palette (causes macro expansion issues)
+
 // Forward declarations
 static inline size_t write_rgb_triplet(uint8_t value, char *dst);
 
@@ -202,61 +205,57 @@ static inline char *append_sgr256_fg(char *dst, uint8_t fg) {
 
 // REP compression helper for single-byte characters
 static inline char *emit_run_rep(char *p, int run_len, char ch) {
-  if (run_len >= 3) {
-    // Use REP sequence: \x1b[<count>b<char>
-    *p++ = '\x1b';
-    *p++ = '[';
-    if (run_len >= 100) {
-      *p++ = '0' + (run_len / 100);
-      run_len %= 100;
-      *p++ = '0' + (run_len / 10);
-      *p++ = '0' + (run_len % 10);
-    } else if (run_len >= 10) {
-      *p++ = '0' + (run_len / 10);
-      *p++ = '0' + (run_len % 10);
-    } else {
-      *p++ = '0' + run_len;
-    }
-    *p++ = 'b';
+  if (run_len <= 0)
+    return p;
+  if (run_len == 1) {
     *p++ = ch;
-  } else {
-    // Short runs: direct repetition (avoids REP overhead)
-    for (int r = 0; r < run_len; r++) {
-      *p++ = ch;
-    }
+    return p;
   }
+  // Print one, then repeat (run_len - 1) via REP (CSI n b)
+  *p++ = ch;
+  int rep = run_len - 1;
+  *p++ = '\x1b';
+  *p++ = '[';
+  if (rep >= 100) {
+    *p++ = '0' + (rep / 100);
+    rep %= 100;
+    *p++ = '0' + (rep / 10);
+    *p++ = '0' + (rep % 10);
+  } else if (rep >= 10) {
+    *p++ = '0' + (rep / 10);
+    *p++ = '0' + (rep % 10);
+  } else {
+    *p++ = '0' + rep;
+  }
+  *p++ = 'b';
   return p;
 }
 
 // REP compression helper for UTF-8 ▀ block characters
 static inline char *emit_run_rep_utf8_block(char *p, int run_len) {
-  if (run_len >= 3) {
-    // Use REP sequence: \x1b[<count>b + single ▀
-    *p++ = '\x1b';
-    *p++ = '[';
-    if (run_len >= 100) {
-      *p++ = '0' + (run_len / 100);
-      run_len %= 100;
-      *p++ = '0' + (run_len / 10);
-      *p++ = '0' + (run_len % 10);
-    } else if (run_len >= 10) {
-      *p++ = '0' + (run_len / 10);
-      *p++ = '0' + (run_len % 10);
-    } else {
-      *p++ = '0' + run_len;
-    }
-    *p++ = 'b';
-    *p++ = 0xE2; // ▀ UTF-8 sequence
-    *p++ = 0x96;
-    *p++ = 0x80;
+  if (run_len <= 0)
+    return p;
+  // Always write first glyph, then REP for the remainder
+  *p++ = 0xE2;
+  *p++ = 0x96;
+  *p++ = 0x80;
+  if (run_len == 1)
+    return p;
+  int rep = run_len - 1;
+  *p++ = '\x1b';
+  *p++ = '[';
+  if (rep >= 100) {
+    *p++ = '0' + (rep / 100);
+    rep %= 100;
+    *p++ = '0' + (rep / 10);
+    *p++ = '0' + (rep % 10);
+  } else if (rep >= 10) {
+    *p++ = '0' + (rep / 10);
+    *p++ = '0' + (rep % 10);
   } else {
-    // Short runs: direct UTF-8 repetition
-    for (int r = 0; r < run_len; r++) {
-      *p++ = 0xE2;
-      *p++ = 0x96;
-      *p++ = 0x80;
-    }
+    *p++ = '0' + rep;
   }
+  *p++ = 'b';
   return p;
 }
 
@@ -601,8 +600,10 @@ void render_halfblock_truecolor(const ImageRGB *img, Str *out) {
       uint8x16_t prev_bg = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_bg : 255)), B.val[1], 15);
       uint8x16_t prev_bb = vextq_u8(vdupq_n_u8((uint8_t)(seeded ? cur_bb : 255)), B.val[2], 15);
 
-      uint8x16_t eq_t = vandq_u8(vceqq_u8(T.val[0], prev_tr), vandq_u8(vceqq_u8(T.val[1], prev_tg), vceqq_u8(T.val[2], prev_tb)));
-      uint8x16_t eq_b = vandq_u8(vceqq_u8(B.val[0], prev_br), vandq_u8(vceqq_u8(B.val[1], prev_bg), vceqq_u8(B.val[2], prev_bb)));
+      uint8x16_t eq_t =
+          vandq_u8(vceqq_u8(T.val[0], prev_tr), vandq_u8(vceqq_u8(T.val[1], prev_tg), vceqq_u8(T.val[2], prev_tb)));
+      uint8x16_t eq_b =
+          vandq_u8(vceqq_u8(B.val[0], prev_br), vandq_u8(vceqq_u8(B.val[1], prev_bg), vceqq_u8(B.val[2], prev_bb)));
       uint8x16_t same = vandq_u8(eq_t, eq_b);
       uint8x16_t boundary = vmvnq_u8(same); // 0xFF where new color starts
 
@@ -630,13 +631,18 @@ void render_halfblock_truecolor(const ImageRGB *img, Str *out) {
         uint8_t bb = b_b[i];
 
         int j = i + 1;
-        while (j < 16 && bmask[j] == 0) ++j;
+        while (j < 16 && bmask[j] == 0)
+          ++j;
 
         // Color change?
         if (!seeded || fr != cur_fr || fg != cur_fg || fb != cur_fb || br != cur_br || bg != cur_bg || bb != cur_bb) {
           p = append_sgr_truecolor_fg_bg_ptr(p, fr, fg, fb, br, bg, bb);
-          cur_fr = fr; cur_fg = fg; cur_fb = fb;
-          cur_br = br; cur_bg = bg; cur_bb = bb;
+          cur_fr = fr;
+          cur_fg = fg;
+          cur_fb = fb;
+          cur_br = br;
+          cur_bg = bg;
+          cur_bb = bb;
           seeded = 1;
         }
 
@@ -662,16 +668,20 @@ void render_halfblock_truecolor(const ImageRGB *img, Str *out) {
       int br = rowB[idx + 0], bg = rowB[idx + 1], bb = rowB[idx + 2];
       if (!seeded || fr != cur_fr || fg != cur_fg || fb != cur_fb || br != cur_br || bg != cur_bg || bb != cur_bb) {
         p = append_sgr_truecolor_fg_bg_ptr(p, fr, fg, fb, br, bg, bb);
-        cur_fr = fr; cur_fg = fg; cur_fb = fb;
-        cur_br = br; cur_bg = bg; cur_bb = bb;
+        cur_fr = fr;
+        cur_fg = fg;
+        cur_fb = fb;
+        cur_br = br;
+        cur_bg = bg;
+        cur_bb = bb;
         seeded = 1;
       }
       // Count scalar run
       int run = 1;
       while (x + run < W) {
         int jdx = (int)(x + run) * 3;
-        if (rowT[jdx + 0] != fr || rowT[jdx + 1] != fg || rowT[jdx + 2] != fb ||
-            rowB[jdx + 0] != br || rowB[jdx + 1] != bg || rowB[jdx + 2] != bb)
+        if (rowT[jdx + 0] != fr || rowT[jdx + 1] != fg || rowT[jdx + 2] != fb || rowB[jdx + 0] != br ||
+            rowB[jdx + 1] != bg || rowB[jdx + 2] != bb)
           break;
         ++run;
       }
@@ -1282,7 +1292,6 @@ size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *ds
 
 // Helper: write decimal RGB triplet using dec3 cache
 static inline size_t write_rgb_triplet(uint8_t value, char *dst) {
-  extern struct ascii_color_cache g_ascii_cache; // Import from ascii_simd.c
   const dec3_t *d = &g_ascii_cache.dec3_table[value];
   memcpy(dst, d->s, d->len);
   return d->len;
@@ -1378,7 +1387,6 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
 
   // Process pixels in NEON chunks and fill arrays
   // Build 32-entry ASCII LUT from current palette once (0..palette_len padded)
-  extern struct ascii_color_cache g_ascii_cache;
   uint8_t lut32[32];
   int plen = g_ascii_cache.palette_len;
   for (int t = 0; t < 32; ++t) {
@@ -1475,7 +1483,7 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
     fg_b[i] = px->b;
 
     uint8_t luma = (uint8_t)((LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8);
-    ascii_chars[i] = luminance_palette[luma];
+    ascii_chars[i] = g_ascii_cache.luminance_palette[luma];
   }
 
   // Use unified REP compression with truecolor RGB arrays and ASCII chars
@@ -1493,6 +1501,18 @@ extern size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row
 
 // Ultra-simple monochrome NEON implementation - just do the arithmetic, skip complex palette
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
+  log_debug("NEON: Starting conversion of %d pixels", count);
+  
+  // Debug: Check if palette is initialized
+  if (!g_ascii_cache.palette_initialized) {
+    log_error("NEON: Palette not initialized!");
+    return;
+  }
+  
+  log_debug("NEON: Using palette with %d chars, first='%c', last='%c'", 
+            g_ascii_cache.palette_len,
+            g_ascii_cache.ascii_chars[0], 
+            g_ascii_cache.ascii_chars[g_ascii_cache.palette_len-1]);
 
   int i = 0;
 
@@ -1598,15 +1618,34 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     uint16x8_t idx16_hi_2 = vshrq_n_u16(vaddq_u16(vaddq_u16(prod_hi_2, vshrq_n_u16(prod_hi_2, 8)), vdupq_n_u16(1)), 8);
     uint8x16_t idx_vec2 = vcombine_u8(vqmovn_u16(idx16_lo_2), vqmovn_u16(idx16_hi_2));
 
-    // Lookup ASCII characters via 32-byte table (padded palette)
-    const uint8x16x2_t ascii_tbl = {vld1q_u8((const uint8_t *)&luminance_palette[0]),
-                                    vld1q_u8((const uint8_t *)&luminance_palette[16])};
+    // Lookup ASCII characters via 32-byte table (padded palette) 
+    extern struct ascii_color_cache g_ascii_cache;
+    
+    // Create padded 32-byte table from ascii_chars (only 21 valid characters)
+    uint8_t padded_ascii_table[32];
+    memcpy(padded_ascii_table, g_ascii_cache.ascii_chars, g_ascii_cache.palette_len);
+    // Fill remaining bytes with spaces to handle out-of-bounds indices gracefully
+    memset(padded_ascii_table + g_ascii_cache.palette_len, ' ', 32 - g_ascii_cache.palette_len);
+    
+    const uint8x16x2_t ascii_tbl = {vld1q_u8(&padded_ascii_table[0]),
+                                    vld1q_u8(&padded_ascii_table[16])};
     uint8x16_t ascii1 = vqtbl2q_u8(ascii_tbl, idx_vec1);
     uint8x16_t ascii2 = vqtbl2q_u8(ascii_tbl, idx_vec2);
 
     // Store 32 ASCII characters
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii1);
     vst1q_u8((uint8_t *)&ascii_chars[i + 16], ascii2);
+    
+    // Debug: Extract first few luminance and index values
+    if (i == 0) {
+      uint8_t luma_debug[4], idx_debug[4];
+      vst1_u8(luma_debug, vget_low_u8(luma_vec1));
+      vst1_u8(idx_debug, vget_low_u8(idx_vec1));
+      log_debug("NEON: First 4 pixels - luma=[%d,%d,%d,%d], idx=[%d,%d,%d,%d], chars=['%c','%c','%c','%c']",
+                luma_debug[0], luma_debug[1], luma_debug[2], luma_debug[3],
+                idx_debug[0], idx_debug[1], idx_debug[2], idx_debug[3],
+                ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
+    }
   }
 
   // Handle remaining 16 pixels
@@ -1633,28 +1672,60 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
     uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
 
-    // Vectorized exact palette index and table lookup for 16 pixels: floor(l*pl/255)
+    // SIMD table lookup: map luminance (0-255) to ASCII character index (0-20)
+    // Formula: char_idx = (luminance * palette_len) / 256
     const uint8x16_t pl_u8 = vdupq_n_u8((uint8_t)g_ascii_cache.palette_len);
+    
+    // Multiply luminance by palette_len (21) to get indices in range 0-5355
     uint8x8_t l_lo = vget_low_u8(luma_vec);
     uint8x8_t l_hi = vget_high_u8(luma_vec);
     uint16x8_t prod_lo = vmull_u8(l_lo, vget_low_u8(pl_u8));
     uint16x8_t prod_hi = vmull_u8(l_hi, vget_high_u8(pl_u8));
-    uint16x8_t idx16_lo = vshrq_n_u16(vaddq_u16(vaddq_u16(prod_lo, vshrq_n_u16(prod_lo, 8)), vdupq_n_u16(1)), 8);
-    uint16x8_t idx16_hi = vshrq_n_u16(vaddq_u16(vaddq_u16(prod_hi, vshrq_n_u16(prod_hi, 8)), vdupq_n_u16(1)), 8);
-    uint8x16_t idx = vcombine_u8(vqmovn_u16(idx16_lo), vqmovn_u16(idx16_hi));
-
-    const uint8x16x2_t tbl = {vld1q_u8((const uint8_t *)&luminance_palette[0]),
-                              vld1q_u8((const uint8_t *)&luminance_palette[16])};
-    uint8x16_t ascii_vec = vqtbl2q_u8(tbl, idx);
+    
+    // Divide by 256 to get final character indices (0-20)
+    uint8x8_t idx_lo = vshrn_n_u16(prod_lo, 8);
+    uint8x8_t idx_hi = vshrn_n_u16(prod_hi, 8);
+    uint8x16_t char_idx = vcombine_u8(idx_lo, idx_hi);
+    
+    // Build NEON table with the actual ASCII characters (21 chars + 11 padding)
+    uint8x16x2_t ascii_tbl;
+    ascii_tbl.val[0] = vld1q_u8((const uint8_t*)g_ascii_cache.ascii_chars);      // chars 0-15
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[16], vdupq_n_u8(0), 0);  // char 16 + padding
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[17], ascii_tbl.val[1], 1);  // char 17
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[18], ascii_tbl.val[1], 2);  // char 18
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[19], ascii_tbl.val[1], 3);  // char 19
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[20], ascii_tbl.val[1], 4);  // char 20
+    
+    // Vectorized table lookup: 16 character indices → 16 ASCII characters
+    uint8x16_t ascii_vec = vqtbl2q_u8(ascii_tbl, char_idx);
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii_vec);
+    
+    // Debug: Extract and log first few values to verify conversion
+    if (i == 0) {
+      uint8_t debug_luma[4], debug_idx[4];
+      vst1_u8(debug_luma, vget_low_u8(luma_vec));
+      vst1_u8(debug_idx, vget_low_u8(char_idx));
+      log_debug("NEON debug: First 4 - luma=[%d,%d,%d,%d], idx=[%d,%d,%d,%d], chars=['%c','%c','%c','%c']",
+                debug_luma[0], debug_luma[1], debug_luma[2], debug_luma[3],
+                debug_idx[0], debug_idx[1], debug_idx[2], debug_idx[3],
+                ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
+    }
   }
 
   // Process remaining pixels with scalar fallback
   for (; i < count; i++) {
     const rgb_pixel_t *p = &pixels[i];
     int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    ascii_chars[i] = luminance_palette[luminance];
+    ascii_chars[i] = g_ascii_cache.luminance_palette[luminance];
   }
+  
+  log_debug("NEON: Completed conversion of %d pixels, final result[0-5]: '%c%c%c%c%c'", 
+            count, 
+            count > 0 ? ascii_chars[0] : '?',
+            count > 1 ? ascii_chars[1] : '?',
+            count > 2 ? ascii_chars[2] : '?',
+            count > 3 ? ascii_chars[3] : '?', 
+            count > 4 ? ascii_chars[4] : '?');
 }
 
 #endif // main block of code endif

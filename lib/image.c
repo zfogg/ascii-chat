@@ -9,9 +9,17 @@
 
 #include "image.h"
 #include "ascii.h"
+#include "ascii_simd.h"
 #include "options.h"
 #include "round.h"
-#include "ansi_fast.h"
+
+// Use the global SIMD-optimized palette
+#define luminance_palette g_ascii_cache.luminance_palette
+
+// Forward declarations for ansi_fast functions
+extern void ansi_fast_init(void);
+extern char *append_truecolor_fg(char *dst, int r, int g, int b);
+extern char *append_truecolor_fg_bg(char *dst, int fr, int fg, int fb, int br, int bg, int bb);
 
 image_t *image_new(size_t width, size_t height) {
   image_t *p;
@@ -119,15 +127,7 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
   }
 }
 
-// Optimized palette generation with caching
-static char luminance_palette[ASCII_LUMINANCE_LEVELS * sizeof(char)];
-
-void precalc_luminance_palette() {
-  const int palette_len = strlen(ascii_palette) - 1;
-  for (int n = 0; n < ASCII_LUMINANCE_LEVELS; n++) {
-    luminance_palette[n] = ascii_palette[ROUND((float)palette_len * (float)n / (ASCII_LUMINANCE_LEVELS - 1))];
-  }
-}
+// Note: luminance_palette is now handled by ascii_simd.c via g_ascii_cache.luminance_palette
 
 void precalc_rgb_palettes(const float red, const float green, const float blue) {
   for (int n = 0; n < ASCII_LUMINANCE_LEVELS; ++n) {
@@ -140,6 +140,8 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 
 // Optimized image printing with better memory access patterns
 char *image_print(const image_t *p) {
+  init_palette();  // Ensure palette is initialized
+  
   if (!p || !p->pixels) {
     log_error("image_print: p is NULL");
     return NULL;
@@ -230,12 +232,15 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  *       during string construction (should never happen with correct calculation).
  */
 char *image_print_colored(const image_t *p) {
+  init_palette();  // Ensure palette is initialized
+  
   if (!p || !p->pixels) {
     log_error("p or p->pixels is NULL");
     return NULL;
   }
 
-  // Initialize ansi_fast lookup tables
+  // Initialize SIMD lookup tables
+  init_dec3();
   ansi_fast_init();
 
   const int h = p->h;

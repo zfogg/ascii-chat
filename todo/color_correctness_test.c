@@ -6,6 +6,20 @@
 #include "../lib/common.h"
 #include "../lib/webcam.h"
 
+static bool has_visible_chars(const char *buf, size_t n) {
+    if (!buf || n == 0) return false;
+    for (size_t i = 0; i < n; ++i) {
+        unsigned char c = (unsigned char)buf[i];
+        // Basic heuristic: any printable ASCII (space..~) counts as visible
+        // (SGR/CSI sequences start with ESC (0x1B), which is < 0x20)
+        if (c >= 0x20 && c <= 0x7E) return true;
+        // Or UTF-8 upper-half block character "▀" (E2 96 80)
+        if (i + 2 < n && (unsigned char)buf[i] == 0xE2 && (unsigned char)buf[i+1] == 0x96 && (unsigned char)buf[i+2] == 0x80)
+            return true;
+    }
+    return false;
+}
+
 // Run color correctness test with provided pixel data
 void run_color_test(const rgb_pixel_t *test_pixels, int width, int height, 
                    char *scalar_output, char *simd_output, size_t buffer_size) {
@@ -50,8 +64,9 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         printf("✅ SIMD implementation: %zu bytes of colored ASCII output\n", simd_len);
         
         // Basic sanity checks
-        bool scalar_has_content = (scalar_len > (size_t)pixel_count); // Should have ANSI + ASCII chars
-        bool simd_has_content = (simd_len > (size_t)pixel_count);
+        // Visible content may be far smaller than pixel count when using REP compression
+        bool scalar_has_content = has_visible_chars(scalar_output, scalar_len);
+        bool simd_has_content = has_visible_chars(simd_output, simd_len);
         bool scalar_has_colors = strstr(scalar_output, "\033[") != NULL;
         bool simd_has_colors = strstr(simd_output, "\033[") != NULL;
         
