@@ -93,6 +93,22 @@ make clean && make sanitize
 # or check options.c/h
 ```
 
+```sh
+# --log-file will help you debug! (you often pipe like >/tmp/file.txt 2>&1 and it doesn't always work, so you get frustrated. so i made you this command line argument flag). also we have --snapshot + --snapshot-delay to use now... use them to debug the server and client. it will just print out ascii until snapshot delay and then it ends leaving you with a snapshot of the ascii and program terminated.
+./bin/server --log-file $TMPDIR/server-claude-test12.log
+./bin/client --log-file $TMPDIR/client-claude-test42.log
+
+```
+
+```sh
+# --snapshot will also really help you debug!
+./bin/client --snapshot
+# view the printed ascii frame as long as you like
+./bin/client --snapshot --snapshot-delay 10
+# it will just print out ascii until --snapshot-delay which ends leaving you 
+# with a snapshot of the ascii and program terminated.
+```
+
 ### Testing Video Display
 ```bash
 # Test if server is outputting ASCII frames
@@ -593,3 +609,4 @@ const size_t buffer_len = total_pixels * (size_t)bytes_per_pixel;
 
 ### Remember: Cast Early, Cast Often
 **Always cast to the target type BEFORE performing arithmetic that might overflow.**
+
