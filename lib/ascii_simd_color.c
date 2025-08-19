@@ -643,38 +643,9 @@ size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rg
 size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                             bool background_mode);
 
-// Thread worker data structures for OPTIMIZATION #8
-typedef struct {
-  const rgb_pixel_t *row_pixels;
-  char *row_output;
-  size_t row_capacity;
-  int width;
-  bool background_mode;
-  size_t row_length; // Output from thread
-} row_task_t;
-
-typedef struct {
-  row_task_t *tasks;
-  int start_row;
-  int end_row;
-} thread_data_t;
-
-// Thread worker function for parallel row processing
-static void *row_worker(void *arg) {
-  thread_data_t *data = (thread_data_t *)arg;
-  for (int y = data->start_row; y < data->end_row; y++) {
-    data->tasks[y].row_length =
-        render_row_truecolor_ascii_runlength(data->tasks[y].row_pixels, data->tasks[y].width, data->tasks[y].row_output,
-                                             data->tasks[y].row_capacity, data->tasks[y].background_mode);
-  }
-  return NULL;
-}
-
 // ----------------
 char *image_print_colored_simd(image_t *image) {
   // Ensure all caches are initialized before any processing
-  init_palette();
-  init_dec3();
 
   // Calculate exact maximum buffer size with precise per-pixel bounds
   const int h = image->h;
@@ -1093,7 +1064,6 @@ static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buff
   for (; x < width && (end - p) >= 1; x++) {
     const rgb_pixel_t *pixel = &pixels[x];
     uint8_t luma = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b) >> 8;
-    init_palette(); // Ensure palette is initialized
     *p++ = luminance_palette[luma];
   }
 
@@ -1367,7 +1337,6 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 
     // Calculate luminance for ASCII character selection
     int y = (LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8;
-    init_palette(); // Ensure palette is initialized
     char ch = luminance_palette[y];
 
     if (background_mode) {
@@ -1659,6 +1628,7 @@ static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_bu
 // ============================================================================
 
 // Scalar version for fallback use (palette256_index equivalent)
+// TODO: use me in scalar implementation
 static inline uint8_t palette256_index_scalar(uint8_t r, uint8_t g, uint8_t b) {
   // Simple 6x6x6 cube quantization: (r/51)*36 + (g/51)*6 + (b/51) + 16
   // Use fast multiply-shift instead of division: /51 ≈ *5 >> 8
@@ -1673,184 +1643,23 @@ static inline uint8_t palette256_index_scalar(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
-#ifdef SIMD_SUPPORT_NEON
-  init_dec3();
-
-  uint8_t *bg_idx;
-  SAFE_MALLOC(bg_idx, (size_t)width * sizeof(uint8_t), uint8_t *);
-
-  // Convert RGB to 256-color indices using NEON where possible
-  int i = 0;
-  // Process 16-pixel chunks with NEON
-  for (; i + 16 <= width; i += 16) {
-    uint8x16x3_t rgb = vld3q_u8((const uint8_t *)&row[i]);
-    uint8x16_t indices = palette256_index_dithered(rgb.val[0], rgb.val[1], rgb.val[2], i);
-    vst1q_u8(&bg_idx[i], indices);
-  }
-  // Handle remaining pixels with scalar fallback
-  for (; i < width; i++) {
-    bg_idx[i] = palette256_index_scalar(row[i].r, row[i].g, row[i].b);
-  }
-
-  // Use unified REP compression (UTF-8 block mode, 256-color)
-  size_t result = write_row_rep_from_arrays_enhanced(
-      NULL, NULL, NULL,                    // No FG RGB (background mode uses fixed FG)
-      NULL, NULL, NULL,                    // No BG RGB (using indices)
-      NULL, bg_idx,                        // 256-color BG indices
-      NULL,                                // UTF-8 block mode (no ASCII chars)
-      width, dst, cap, true, true, false); // utf8_block_mode=true, use_256color=true, is_truecolor=false
-
-  SAFE_FREE(bg_idx);
-  return result;
-#else
-  // Fallback for non-NEON platforms - use scalar implementation
+  // TODO: implement me for scalar -- using old method
   return convert_row_with_color_scalar(row, dst, cap, width, true);
-#endif
 }
 
 size_t render_row_truecolor_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
-#ifdef SIMD_SUPPORT_NEON
-  uint8_t *bg_r, *bg_g, *bg_b;
-  uint8_t *fg_r, *fg_g, *fg_b;
-  SAFE_MALLOC(bg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(bg_g, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(bg_b, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_g, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_b, (size_t)width * sizeof(uint8_t), uint8_t *);
-
-  // Fill arrays with pixel data and determine FG text color based on luminance
-  for (int i = 0; i < width; i++) {
-    bg_r[i] = row[i].r;
-    bg_g[i] = row[i].g;
-    bg_b[i] = row[i].b;
-
-    uint8_t luma = (uint8_t)((LUMA_RED * row[i].r + LUMA_GREEN * row[i].g + LUMA_BLUE * row[i].b) >> 8);
-    bool use_black_text = (luma >= BGASCII_LUMA_THRESHOLD);
-    uint8_t text_color = use_black_text ? 0 : 255;
-
-    fg_r[i] = text_color;
-    fg_g[i] = text_color;
-    fg_b[i] = text_color;
-  }
-
-  // Use unified REP compression with truecolor RGB arrays
-  size_t result = write_row_rep_from_arrays_enhanced(fg_r, fg_g, fg_b, bg_r, bg_g, bg_b, NULL, NULL, NULL, width, dst,
-                                                     cap, true, false, true);
-
-  SAFE_FREE(bg_r);
-  SAFE_FREE(bg_g);
-  SAFE_FREE(bg_b);
-  SAFE_FREE(fg_r);
-  SAFE_FREE(fg_g);
-  SAFE_FREE(fg_b);
-
-  return result;
-#else
-  // Fallback for non-NEON platforms - use scalar implementation
+  // TODO: implement me for scalar -- using old method
   return convert_row_with_color_scalar(row, dst, cap, width, true);
-#endif
 }
 
 size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
-#ifdef SIMD_SUPPORT_NEON
-  init_palette();
-  init_dec3();
-
-  uint8_t *fg_idx;
-  char *ascii_chars;
-  SAFE_MALLOC(fg_idx, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(ascii_chars, (size_t)width * sizeof(char), char *);
-
-  // Convert RGB to 256-color indices and ASCII characters using NEON where possible
-#ifdef SIMD_SUPPORT_NEON
-  int i = 0;
-  // Process 16-pixel chunks with NEON
-  for (; i + 16 <= width; i += 16) {
-    uint8x16x3_t rgb = vld3q_u8((const uint8_t *)&row[i]);
-    uint8x16_t indices = palette256_index_dithered(rgb.val[0], rgb.val[1], rgb.val[2], i);
-    vst1q_u8(&fg_idx[i], indices);
-
-    // Calculate luminance for ASCII characters: Y = (77R + 150G + 29B) >> 8
-    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
-    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb.val[0]));
-    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb.val[1]));
-    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb.val[1]));
-    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb.val[2]));
-    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb.val[2]));
-
-    uint16x8_t luma_lo = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(r_lo, LUMA_RED), g_lo, LUMA_GREEN), b_lo, LUMA_BLUE);
-    uint16x8_t luma_hi = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(r_hi, LUMA_RED), g_hi, LUMA_GREEN), b_hi, LUMA_BLUE);
-
-    uint8x16_t luma = vcombine_u8(vshrn_n_u16(luma_lo, 8), vshrn_n_u16(luma_hi, 8));
-
-    // Store luminance values temporarily and convert to ASCII characters
-    uint8_t luma_values[16];
-    vst1q_u8(luma_values, luma);
-    for (int j = 0; j < 16 && i + j < width; j++) {
-      ascii_chars[i + j] = luminance_palette[luma_values[j]];
-    }
-  }
-  // Handle remaining pixels with scalar fallback
-  for (; i < width; i++) {
-    fg_idx[i] = palette256_index_scalar(row[i].r, row[i].g, row[i].b);
-    uint8_t luma = (uint8_t)((LUMA_RED * row[i].r + LUMA_GREEN * row[i].g + LUMA_BLUE * row[i].b) >> 8);
-    ascii_chars[i] = luminance_palette[luma];
-  }
-#endif
-
-  // Use unified REP compression (FG 256-color + ASCII chars)
-  size_t result = write_row_rep_from_arrays_enhanced(
-      NULL, NULL, NULL,                     // No truecolor FG RGB
-      NULL, NULL, NULL,                     // No BG RGB
-      fg_idx, NULL,                         // 256-color FG indices
-      ascii_chars,                          // ASCII characters
-      width, dst, cap, false, true, false); // utf8_block_mode=false, use_256color=true, is_truecolor=false
-
-  SAFE_FREE(fg_idx);
-  SAFE_FREE(ascii_chars);
-  return result;
-#else
-  // Fallback for non-NEON platforms - use scalar implementation
+  // TODO: implement me for scalar -- using old method
   return convert_row_with_color_scalar(row, dst, cap, width, false);
-#endif
 }
 
 size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
-#ifdef SIMD_SUPPORT_NEON
-  init_palette();
-
-  uint8_t *fg_r, *fg_g, *fg_b;
-  char *ascii_chars;
-  SAFE_MALLOC(fg_r, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_g, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(fg_b, (size_t)width * sizeof(uint8_t), uint8_t *);
-  SAFE_MALLOC(ascii_chars, (size_t)width * sizeof(char), char *);
-
-  // Fill arrays with pixel data and ASCII characters
-  for (int i = 0; i < width; i++) {
-    fg_r[i] = row[i].r;
-    fg_g[i] = row[i].g;
-    fg_b[i] = row[i].b;
-
-    uint8_t luma = (uint8_t)((LUMA_RED * row[i].r + LUMA_GREEN * row[i].g + LUMA_BLUE * row[i].b) >> 8);
-    ascii_chars[i] = luminance_palette[luma];
-  }
-
-  // Use unified REP compression with truecolor RGB arrays and ASCII chars
-  size_t result = write_row_rep_from_arrays_enhanced(fg_r, fg_g, fg_b, NULL, NULL, NULL, NULL, NULL, ascii_chars, width,
-                                                     dst, cap, false, false, true);
-
-  SAFE_FREE(fg_r);
-  SAFE_FREE(fg_g);
-  SAFE_FREE(fg_b);
-  SAFE_FREE(ascii_chars);
-
-  return result;
-#else
-  // Fallback for non-NEON platforms - use scalar implementation
+  // TODO: implement me for scalar -- using old method
   return convert_row_with_color_scalar(row, dst, cap, width, false);
-#endif
 }
 
 /*
@@ -1882,7 +1691,5 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
       return render_row_truecolor_foreground_rep_unified(pixels, width, output_buffer, buffer_size);
     }
   }
-  // Fallback to scalar implementation
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
 #endif
 }
