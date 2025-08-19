@@ -1502,17 +1502,15 @@ extern size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row
 // Ultra-simple monochrome NEON implementation - just do the arithmetic, skip complex palette
 void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict ascii_chars, int count) {
   log_debug("NEON: Starting conversion of %d pixels", count);
-  
+
   // Debug: Check if palette is initialized
   if (!g_ascii_cache.palette_initialized) {
     log_error("NEON: Palette not initialized!");
     return;
   }
-  
-  log_debug("NEON: Using palette with %d chars, first='%c', last='%c'", 
-            g_ascii_cache.palette_len,
-            g_ascii_cache.ascii_chars[0], 
-            g_ascii_cache.ascii_chars[g_ascii_cache.palette_len-1]);
+
+  log_debug("NEON: Using palette with %d chars, first='%c', last='%c'", g_ascii_cache.palette_len,
+            g_ascii_cache.ascii_chars[0], g_ascii_cache.ascii_chars[g_ascii_cache.palette_len - 1]);
 
   int i = 0;
 
@@ -1618,33 +1616,31 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     uint16x8_t idx16_hi_2 = vshrq_n_u16(vaddq_u16(vaddq_u16(prod_hi_2, vshrq_n_u16(prod_hi_2, 8)), vdupq_n_u16(1)), 8);
     uint8x16_t idx_vec2 = vcombine_u8(vqmovn_u16(idx16_lo_2), vqmovn_u16(idx16_hi_2));
 
-    // Lookup ASCII characters via 32-byte table (padded palette) 
+    // Lookup ASCII characters via 32-byte table (padded palette)
     extern struct ascii_color_cache g_ascii_cache;
-    
+
     // Create padded 32-byte table from ascii_chars (only 21 valid characters)
     uint8_t padded_ascii_table[32];
     memcpy(padded_ascii_table, g_ascii_cache.ascii_chars, g_ascii_cache.palette_len);
     // Fill remaining bytes with spaces to handle out-of-bounds indices gracefully
     memset(padded_ascii_table + g_ascii_cache.palette_len, ' ', 32 - g_ascii_cache.palette_len);
-    
-    const uint8x16x2_t ascii_tbl = {vld1q_u8(&padded_ascii_table[0]),
-                                    vld1q_u8(&padded_ascii_table[16])};
+
+    const uint8x16x2_t ascii_tbl = {vld1q_u8(&padded_ascii_table[0]), vld1q_u8(&padded_ascii_table[16])};
     uint8x16_t ascii1 = vqtbl2q_u8(ascii_tbl, idx_vec1);
     uint8x16_t ascii2 = vqtbl2q_u8(ascii_tbl, idx_vec2);
 
     // Store 32 ASCII characters
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii1);
     vst1q_u8((uint8_t *)&ascii_chars[i + 16], ascii2);
-    
+
     // Debug: Extract first few luminance and index values
     if (i == 0) {
       uint8_t luma_debug[4], idx_debug[4];
       vst1_u8(luma_debug, vget_low_u8(luma_vec1));
       vst1_u8(idx_debug, vget_low_u8(idx_vec1));
       log_debug("NEON: First 4 pixels - luma=[%d,%d,%d,%d], idx=[%d,%d,%d,%d], chars=['%c','%c','%c','%c']",
-                luma_debug[0], luma_debug[1], luma_debug[2], luma_debug[3],
-                idx_debug[0], idx_debug[1], idx_debug[2], idx_debug[3],
-                ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
+                luma_debug[0], luma_debug[1], luma_debug[2], luma_debug[3], idx_debug[0], idx_debug[1], idx_debug[2],
+                idx_debug[3], ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
     }
   }
 
@@ -1675,40 +1671,39 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     // SIMD table lookup: map luminance (0-255) to ASCII character index (0-20)
     // Formula: char_idx = (luminance * palette_len) / 256
     const uint8x16_t pl_u8 = vdupq_n_u8((uint8_t)g_ascii_cache.palette_len);
-    
+
     // Multiply luminance by palette_len (21) to get indices in range 0-5355
     uint8x8_t l_lo = vget_low_u8(luma_vec);
     uint8x8_t l_hi = vget_high_u8(luma_vec);
     uint16x8_t prod_lo = vmull_u8(l_lo, vget_low_u8(pl_u8));
     uint16x8_t prod_hi = vmull_u8(l_hi, vget_high_u8(pl_u8));
-    
+
     // Divide by 256 to get final character indices (0-20)
     uint8x8_t idx_lo = vshrn_n_u16(prod_lo, 8);
     uint8x8_t idx_hi = vshrn_n_u16(prod_hi, 8);
     uint8x16_t char_idx = vcombine_u8(idx_lo, idx_hi);
-    
+
     // Build NEON table with the actual ASCII characters (21 chars + 11 padding)
     uint8x16x2_t ascii_tbl;
-    ascii_tbl.val[0] = vld1q_u8((const uint8_t*)g_ascii_cache.ascii_chars);      // chars 0-15
-    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[16], vdupq_n_u8(0), 0);  // char 16 + padding
-    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[17], ascii_tbl.val[1], 1);  // char 17
-    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[18], ascii_tbl.val[1], 2);  // char 18
-    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[19], ascii_tbl.val[1], 3);  // char 19
-    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[20], ascii_tbl.val[1], 4);  // char 20
-    
+    ascii_tbl.val[0] = vld1q_u8((const uint8_t *)g_ascii_cache.ascii_chars);              // chars 0-15
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[16], vdupq_n_u8(0), 0);    // char 16 + padding
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[17], ascii_tbl.val[1], 1); // char 17
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[18], ascii_tbl.val[1], 2); // char 18
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[19], ascii_tbl.val[1], 3); // char 19
+    ascii_tbl.val[1] = vsetq_lane_u8(g_ascii_cache.ascii_chars[20], ascii_tbl.val[1], 4); // char 20
+
     // Vectorized table lookup: 16 character indices → 16 ASCII characters
     uint8x16_t ascii_vec = vqtbl2q_u8(ascii_tbl, char_idx);
     vst1q_u8((uint8_t *)&ascii_chars[i], ascii_vec);
-    
+
     // Debug: Extract and log first few values to verify conversion
     if (i == 0) {
       uint8_t debug_luma[4], debug_idx[4];
       vst1_u8(debug_luma, vget_low_u8(luma_vec));
       vst1_u8(debug_idx, vget_low_u8(char_idx));
       log_debug("NEON debug: First 4 - luma=[%d,%d,%d,%d], idx=[%d,%d,%d,%d], chars=['%c','%c','%c','%c']",
-                debug_luma[0], debug_luma[1], debug_luma[2], debug_luma[3],
-                debug_idx[0], debug_idx[1], debug_idx[2], debug_idx[3],
-                ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
+                debug_luma[0], debug_luma[1], debug_luma[2], debug_luma[3], debug_idx[0], debug_idx[1], debug_idx[2],
+                debug_idx[3], ascii_chars[0], ascii_chars[1], ascii_chars[2], ascii_chars[3]);
     }
   }
 
@@ -1718,14 +1713,10 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
     int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
     ascii_chars[i] = g_ascii_cache.luminance_palette[luminance];
   }
-  
-  log_debug("NEON: Completed conversion of %d pixels, final result[0-5]: '%c%c%c%c%c'", 
-            count, 
-            count > 0 ? ascii_chars[0] : '?',
-            count > 1 ? ascii_chars[1] : '?',
-            count > 2 ? ascii_chars[2] : '?',
-            count > 3 ? ascii_chars[3] : '?', 
-            count > 4 ? ascii_chars[4] : '?');
+
+  log_debug("NEON: Completed conversion of %d pixels, final result[0-5]: '%c%c%c%c%c'", count,
+            count > 0 ? ascii_chars[0] : '?', count > 1 ? ascii_chars[1] : '?', count > 2 ? ascii_chars[2] : '?',
+            count > 3 ? ascii_chars[3] : '?', count > 4 ? ascii_chars[4] : '?');
 }
 
 #endif // main block of code endif
