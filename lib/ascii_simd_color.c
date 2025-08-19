@@ -1876,15 +1876,15 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
   // Scalar fallback (scalar REP code)
   if (background_mode) {
     if (use_fast_path) {
-      return render_row_256color_background_rep_unified(row, width, dst, cap);
+      return render_row_256color_background_rep_unified(pixels, width, output_buffer, buffer_size);
     } else {
-      return render_row_truecolor_background_rep_unified(row, width, dst, cap);
+      return render_row_truecolor_background_rep_unified(pixels, width, output_buffer, buffer_size);
     }
   } else {
     if (use_fast_path) {
-      return render_row_256color_foreground_rep_unified(row, width, dst, cap);
+      return render_row_256color_foreground_rep_unified(pixels, width, output_buffer, buffer_size);
     } else {
-      return render_row_truecolor_foreground_rep_unified(row, width, dst, cap);
+      return render_row_truecolor_foreground_rep_unified(pixels, width, output_buffer, buffer_size);
     }
   }
   // Fallback to scalar implementation
