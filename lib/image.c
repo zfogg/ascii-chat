@@ -235,10 +235,6 @@ char *image_print_colored(const image_t *p) {
     return NULL;
   }
 
-  // Initialize SIMD lookup tables
-  init_dec3();
-  ansi_fast_init();
-
   const int h = p->h;
   const int w = p->w;
 

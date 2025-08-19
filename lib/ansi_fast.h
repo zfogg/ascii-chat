@@ -1,17 +1,12 @@
 #pragma once
 
+#include "ascii_simd.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 // Fast ANSI escape sequence generation using precomputed lookup tables
 // Based on ChatGPT's optimization recommendations
-
-// Decimal string representation for 0-255
-typedef struct {
-  uint8_t len; // String length (1-3)
-  char s[3];   // Decimal digits (no null terminator needed)
-} dec3_t;
 
 // Access to internal lookup table for testing
 extern dec3_t dec3[256];

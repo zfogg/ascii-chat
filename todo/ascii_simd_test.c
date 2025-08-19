@@ -1135,8 +1135,7 @@ int main(int argc, char *argv[]) {
     log_init(NULL, LOG_ERROR);
 
     // Initialize SIMD palette (CRITICAL!)
-    init_palette();
-    init_dec3();
+    ascii_simd_init();
     printf("SIMD palette initialized successfully\n\n");
 
 #ifdef SIMD_SUPPORT_NEON

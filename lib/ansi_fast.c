@@ -1,5 +1,6 @@
-#include "ansi_fast.h"
 #include "common.h"
+#include "ascii_simd.h"
+#include "ansi_fast.h"
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
