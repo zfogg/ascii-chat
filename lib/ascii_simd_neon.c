@@ -1203,8 +1203,6 @@ size_t render_row_neon_256_bg_block_rep(const rgb_pixel_t *pixels, int width, ch
   uint8_t fg_idx[width];
   uint8_t bg_idx[width];
 
-  init_palette();
-
   int x = 0;
   // NEON processing (16 pixels at a time)
   while (x + 15 < width) {
@@ -1278,7 +1276,6 @@ size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *ds
   }
 
   // Scalar processing for remaining pixels
-  init_palette();
   for (; x < width; x++) {
     const rgb_pixel_t *px = &pixels[x];
     fg_idx[x] = rgb_to_ansi256(px->r, px->g, px->b);
@@ -1299,7 +1296,6 @@ static inline size_t write_rgb_triplet(uint8_t value, char *dst) {
 
 // NEON Truecolor Background Renderer with REP compression - OPTIMIZED
 size_t render_row_neon_truecolor_bg_block_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap) {
-  init_palette();
   // Use bulk array processing instead of manual pixel-by-pixel
   // Reuse thread-local arrays to avoid per-row allocation
   ensure_tls_cap((size_t)width);
@@ -1375,8 +1371,6 @@ size_t render_row_neon_truecolor_bg_block_rep(const rgb_pixel_t *pixels, int wid
 
 // NEON Truecolor Foreground Renderer with REP compression - OPTIMIZED
 size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap) {
-  init_palette();
-
   // Use bulk array processing instead of manual pixel-by-pixel
   // Allocate arrays for RGB and ASCII values
   ensure_tls_cap((size_t)width);

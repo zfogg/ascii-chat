@@ -87,7 +87,6 @@ __attribute__((constructor)) static void ascii_ctor(void) {
  */
 
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-
   for (int i = 0; i < count; i++) {
     const rgb_pixel_t *p = &pixels[i];
 
