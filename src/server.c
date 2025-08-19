@@ -1277,7 +1277,6 @@ int main(int argc, char *argv[]) {
   log_info("SERVER: Port set to %d", port);
 
   log_info("SERVER: Initializing luminance palette...");
-  init_palette();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
   log_info("SERVER: RGB palettes precalculated");
 

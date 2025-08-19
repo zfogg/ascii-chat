@@ -44,8 +44,6 @@ struct __attribute__((aligned(64))) ascii_color_cache {
 extern struct ascii_color_cache g_ascii_cache;
 // REMOVED: static char luminance_palette[256];
 
-void init_palette(void);
-
 // Pre-computed ANSI escape code templates
 // static const char ANSI_FG_PREFIX[] = "\033[38;2;";  // Unused, replaced by inline constants
 // static const char ANSI_BG_PREFIX[] = "\033[48;2;";  // Unused, replaced by inline constants
@@ -53,6 +51,7 @@ void init_palette(void);
 static const char ANSI_RESET[] = "\033[0m";
 
 void init_dec3(void);
+void init_palette(void);
 
 typedef struct {
   char *data; // pointer to allocated buffer
