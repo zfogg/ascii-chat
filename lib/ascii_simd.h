@@ -52,6 +52,7 @@ static const char ANSI_RESET[] = "\033[0m";
 
 void init_dec3(void);
 void init_palette(void);
+void ascii_simd_init(void);
 
 typedef struct {
   char *data; // pointer to allocated buffer
