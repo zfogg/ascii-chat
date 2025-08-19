@@ -114,29 +114,20 @@ char *image_print_simd(image_t *image) {
   const int h = image->h;
   const int w = image->w;
 
-  log_debug("SIMD: Processing image %dx%d", w, h);
-
   // Calculate exact buffer size (matching non-SIMD version)
   const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
 
   // Single allocation - no buffer pool overhead
   char *ascii;
   SAFE_MALLOC(ascii, len * sizeof(char), char *);
-  if (!ascii) {
-    log_error("Failed to allocate ASCII buffer");
-    return NULL;
-  }
 
   // Process directly into final buffer - no copying!
   char *pos = ascii;
-
-  log_debug("SIMD: Palette initialized, length=%d", g_ascii_cache.palette_len);
 
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
 
     // Use SIMD to convert this row directly into final buffer
-    char *row_start = pos;
     convert_pixels_optimized(row_pixels, pos, w);
     pos += w;
 
@@ -144,18 +135,8 @@ char *image_print_simd(image_t *image) {
     if (y != h - 1) {
       *pos++ = '\n';
     }
-
-    // Debug: Log progress every 10 rows or first/last row
-    if (y == 0 || y == h - 1 || y % 10 == 0) {
-      size_t row_chars = pos - row_start;
-      size_t total_chars = pos - ascii;
-      log_debug("SIMD: Row %d/%d processed, row_chars=%zu, total_chars=%zu", y + 1, h, row_chars, total_chars);
-    }
   }
   *pos = '\0';
-
-  size_t final_len = strlen(ascii);
-  log_debug("SIMD: Final string length=%zu, expected=%zd", final_len, len);
 
   return ascii;
 }
@@ -838,6 +819,38 @@ void print_simd_capabilities(void) {
 #endif
   printf("  ✓ Scalar fallback\n");
 }
+
+// Scalar fallback implementation for platforms without write_row_rep_from_arrays_enhanced
+#ifndef SIMD_SUPPORT_NEON
+size_t write_row_rep_from_arrays_enhanced(
+    const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b, // Truecolor FG RGB (NULL if using indices)
+    const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b, // Truecolor BG RGB (NULL if using indices)
+    const uint8_t *fg_idx, const uint8_t *bg_idx,                  // 256-color indices (NULL if using RGB)
+    const char *ascii_chars,                                       // ASCII chars (NULL if UTF-8 block mode)
+    int width, char *dst, size_t cap, bool utf8_block_mode, bool use_256color, bool is_truecolor) {
+
+  // Simple scalar fallback - just return empty for now
+  // This is a placeholder that should be replaced with proper scalar implementation
+  // For now it prevents linking errors in non-NEON builds
+  (void)fg_r;
+  (void)fg_g;
+  (void)fg_b;
+  (void)bg_r;
+  (void)bg_g;
+  (void)bg_b;
+  (void)fg_idx;
+  (void)bg_idx;
+  (void)ascii_chars;
+  (void)width;
+  (void)cap;
+  (void)utf8_block_mode;
+  (void)use_256color;
+  (void)is_truecolor;
+
+  dst[0] = '\0';
+  return 0;
+}
+#endif
 
 static double get_time_seconds(void) {
   struct timespec ts;
