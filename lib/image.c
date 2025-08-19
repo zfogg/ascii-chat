@@ -140,8 +140,6 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 
 // Optimized image printing with better memory access patterns
 char *image_print(const image_t *p) {
-  init_palette(); // Ensure palette is initialized
-
   if (!p || !p->pixels) {
     log_error("image_print: p is NULL");
     return NULL;
@@ -232,16 +230,10 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  *       during string construction (should never happen with correct calculation).
  */
 char *image_print_colored(const image_t *p) {
-  init_palette(); // Ensure palette is initialized
-
   if (!p || !p->pixels) {
     log_error("p or p->pixels is NULL");
     return NULL;
   }
-
-  // Initialize SIMD lookup tables
-  init_dec3();
-  ansi_fast_init();
 
   const int h = p->h;
   const int w = p->w;

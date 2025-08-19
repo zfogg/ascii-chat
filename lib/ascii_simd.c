@@ -8,6 +8,7 @@
 #include "image.h"
 #include "common.h"
 #include "webcam.h"
+#include "ansi_fast.h"
 
 #ifdef SIMD_SUPPORT_NEON
 #include <arm_neon.h>
@@ -79,6 +80,11 @@ void init_dec3(void) {
 __attribute__((constructor)) static void ascii_ctor(void) {
   init_palette();
   init_dec3();
+  ansi_fast_init();
+}
+
+void ascii_simd_init(void) {
+  ascii_ctor();
 }
 
 /* ============================================================================
@@ -87,7 +93,6 @@ __attribute__((constructor)) static void ascii_ctor(void) {
  */
 
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
-
   for (int i = 0; i < count; i++) {
     const rgb_pixel_t *p = &pixels[i];
 
