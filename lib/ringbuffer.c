@@ -419,7 +419,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
 
   // Thread-safe access to framebuffer
   pthread_mutex_lock(&fb->mutex);
-  
+
   // Try to write to ring buffer
   bool success = ringbuffer_write(fb->rb, &multi_frame);
   if (!success) {
@@ -439,7 +439,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 
   // Thread-safe access to framebuffer
   pthread_mutex_lock(&fb->mutex);
-  
+
   bool result = ringbuffer_read(fb->rb, frame);
 
   if (result) {
