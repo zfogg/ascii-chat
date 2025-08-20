@@ -210,7 +210,6 @@ int create_client_render_threads(client_info_t *client);
 int destroy_client_render_threads(client_info_t *client);
 
 // PERFORMANCE OPTIMIZATION: Global client list change counter for cache invalidation
-static volatile uint64_t g_client_list_version = 0;
 
 // Fast client lookup functions using hash table
 client_info_t *find_client_by_id(uint32_t client_id);
