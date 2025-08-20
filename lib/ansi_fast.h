@@ -58,10 +58,6 @@ void ansi_rle_finish(ansi_rle_context_t *ctx);
 char *append_half_block_pixels(char *dst, uint8_t top_r, uint8_t top_g, uint8_t top_b, uint8_t bot_r, uint8_t bot_g,
                                uint8_t bot_b);
 
-// Complete optimized frame generation with timing breakdown
-ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
-                                            size_t buffer_capacity, ansi_color_mode_t mode, bool use_half_blocks);
-
 // 256-color mode (optional - trades color fidelity for maximum speed)
 void ansi_fast_init_256color(void);
 char *append_256color_fg(char *dst, uint8_t color_index);
