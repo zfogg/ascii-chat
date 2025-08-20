@@ -22,14 +22,13 @@ static inline int find_first_set_bit(uint64_t mask) {
 #else
   // Portable fallback using De Bruijn multiplication (production-tested)
   // This is O(1) with ~4-5 CPU cycles - very fast and reliable
-  static const int debruijn_table[64] = {
-      0, 1, 2, 53, 3, 7, 54, 27, 4, 38, 41, 8, 34, 55, 48, 28,
-      62, 5, 39, 46, 44, 42, 22, 9, 24, 35, 59, 56, 49, 18, 29, 11,
-      63, 52, 6, 26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10,
-      51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12
-  };
+  static const int debruijn_table[64] = {0,  1,  2,  53, 3,  7,  54, 27, 4,  38, 41, 8,  34, 55, 48, 28,
+                                         62, 5,  39, 46, 44, 42, 22, 9,  24, 35, 59, 56, 49, 18, 29, 11,
+                                         63, 52, 6,  26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10,
+                                         51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12};
 
-  if (mask == 0) return 64; // No bits set
+  if (mask == 0)
+    return 64; // No bits set
 
   // De Bruijn sequence method: isolate rightmost bit and hash
   return debruijn_table[((mask & -mask) * 0x022fdd63cc95386dULL) >> 58];
@@ -214,7 +213,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   memset(mixer->source_active, 0, max_sources * sizeof(bool));
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
-  mixer->active_sources_mask = 0ULL;  // No sources active initially
+  mixer->active_sources_mask = 0ULL;                                          // No sources active initially
   memset(mixer->source_id_to_index, 0xFF, sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
 
   // OPTIMIZATION 2: Initialize reader-writer lock
@@ -294,7 +293,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);              // Set bit for this slot
+  mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
   mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
 
   pthread_rwlock_unlock(&mixer->source_lock);
@@ -318,8 +317,8 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i);             // Clear bit for this slot
-      mixer->source_id_to_index[client_id & 0xFF] = 0xFF;      // Mark as invalid in hash table
+      mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
+      mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
 
       // Reset ducking state for this source
       mixer->ducking.envelope[i] = 0.0f;
@@ -348,9 +347,9 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
 
       // OPTIMIZATION 1: Update bitset for active state change
       if (active) {
-        mixer->active_sources_mask |= (1ULL << i);   // Set bit
+        mixer->active_sources_mask |= (1ULL << i); // Set bit
       } else {
-        mixer->active_sources_mask &= ~(1ULL << i);  // Clear bit
+        mixer->active_sources_mask &= ~(1ULL << i); // Clear bit
       }
 
       pthread_rwlock_unlock(&mixer->source_lock);

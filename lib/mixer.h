@@ -82,11 +82,11 @@ typedef struct {
   bool *source_active;                  // Whether each source is active
 
   // OPTIMIZATION 1: Bitset-based source exclusion (O(1) vs O(n))
-  uint64_t active_sources_mask;         // Bitset of active sources (bit i = source i active)
-  uint8_t source_id_to_index[256];      // Hash table: client_id → mixer source index
+  uint64_t active_sources_mask;    // Bitset of active sources (bit i = source i active)
+  uint8_t source_id_to_index[256]; // Hash table: client_id → mixer source index
 
   // OPTIMIZATION 2: Reader-writer synchronization
-  pthread_rwlock_t source_lock;         // Protects source arrays and bitset
+  pthread_rwlock_t source_lock; // Protects source arrays and bitset
 
   // Crowd scaling (loud with few, quiet with many)
   float crowd_alpha; // Scale ~ 1 / active^alpha (typically 0.5)

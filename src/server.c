@@ -450,7 +450,6 @@ void *stats_logger_thread_func(void *arg) {
  * ============================================================================
  */
 
-
 // Cleanup frame cache on shutdown
 void cleanup_frame_cache() {
   pthread_mutex_lock(&g_frame_cache_mutex);
@@ -548,7 +547,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         if (got_new_frame) {
           // CONCURRENCY FIX: Lock only THIS client's cached frame data
           pthread_mutex_lock(&client->cached_frame_mutex);
-          
+
           // Got a new frame - update our cache
           // Free old cached frame data if we had one
           if (client->has_cached_frame && client->last_valid_frame.data) {
@@ -568,7 +567,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
             client->has_cached_frame = true;
           }
-          
+
           pthread_mutex_unlock(&client->cached_frame_mutex);
         }
       }
@@ -638,7 +637,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           buffer_pool_free(current_frame.data, current_frame.size);
         }
       }
-      
+
       // CONCURRENCY FIX: Unlock cached frame mutex if we were using cached data
       if (using_cached_frame) {
         pthread_mutex_unlock(&client->cached_frame_mutex);
@@ -988,10 +987,10 @@ int main(int argc, char *argv[]) {
       uint32_t client_id;
       pthread_t receive_thread;
     } cleanup_task_t;
-    
+
     cleanup_task_t cleanup_tasks[MAX_CLIENTS];
     int cleanup_count = 0;
-    
+
     pthread_rwlock_rdlock(&g_client_manager_rwlock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
@@ -1001,13 +1000,13 @@ int main(int argc, char *argv[]) {
         cleanup_tasks[cleanup_count].client_id = client->client_id;
         cleanup_tasks[cleanup_count].receive_thread = client->receive_thread;
         cleanup_count++;
-        
+
         // Clear the thread handle immediately to avoid double-join
         client->receive_thread = 0;
       }
     }
     pthread_rwlock_unlock(&g_client_manager_rwlock);
-    
+
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
       log_info("Cleaning up disconnected client %u", cleanup_tasks[i].client_id);
@@ -1116,12 +1115,12 @@ int main(int argc, char *argv[]) {
   // Now clean up client resources
   log_info("Scanning for clients to clean up (active or with allocated resources)...");
   // SAFETY FIX: Collect client IDs under lock, then process without lock to prevent infinite loops
-  
+
   uint32_t active_clients_to_remove[MAX_CLIENTS];
   uint32_t inactive_clients_to_remove[MAX_CLIENTS];
   int active_clients_found = 0;
   int inactive_clients_with_resources = 0;
-  
+
   pthread_rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
@@ -1139,13 +1138,13 @@ int main(int argc, char *argv[]) {
     }
   }
   pthread_rwlock_unlock(&g_client_manager_rwlock);
-  
+
   // Process removals without holding lock (prevents infinite loops and lock contention)
   for (int i = 0; i < active_clients_found; i++) {
     log_info("Found active client %u during shutdown cleanup", active_clients_to_remove[i]);
     remove_client(active_clients_to_remove[i]);
   }
-  
+
   for (int i = 0; i < inactive_clients_with_resources; i++) {
     log_info("Found inactive client %u with allocated resources - cleaning up", inactive_clients_to_remove[i]);
     remove_client(inactive_clients_to_remove[i]);

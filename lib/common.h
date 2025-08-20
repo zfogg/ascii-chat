@@ -5,13 +5,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough.
 #ifndef UINT8_MAX
-typedef unsigned char      uint8_t;
-typedef unsigned short     uint16_t;
-typedef unsigned int       uint32_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 #endif
 
