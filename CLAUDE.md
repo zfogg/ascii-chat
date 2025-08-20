@@ -7,15 +7,15 @@
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 - Use `clang` instead of `gcc`.
 - Don't use `git add .`, add all files individually.
-- Use AdrressSanitizer (ASan) and memory reports from common.c for memory 
+- Use AdrressSanitizer (ASan) and memory reports from common.c for memory
 debugging. `make clean && make sanitize`.
 - Use log_*() from logging.c and common.h for logging instead of printf().
-- When debugging and testing, make a test_whatever.sh and use that so you don't 
+- When debugging and testing, make a test_whatever.sh and use that so you don't
 bother the developer by requesting to run commands over and over.
 
 ## Project Overview
-ASCII-Chat is a terminal-based video chat application that converts webcam 
-video to ASCII art in real-time. It supports multiple clients connecting to a 
+ASCII-Chat is a terminal-based video chat application that converts webcam
+video to ASCII art in real-time. It supports multiple clients connecting to a
 single server, with video mixing and audio streaming capabilities.
 
 **Key Features:**
@@ -105,7 +105,7 @@ make clean && make sanitize
 ./bin/client --snapshot
 # view the printed ascii frame as long as you like
 ./bin/client --snapshot --snapshot-delay 10
-# it will just print out ascii until --snapshot-delay which ends leaving you 
+# it will just print out ascii until --snapshot-delay which ends leaving you
 # with a snapshot of the ascii and program terminated.
 ```
 
@@ -308,6 +308,58 @@ Fixes #issue-number
 
 ## Architecture Notes
 
+### Per-Client Threading Architecture (January 2025)
+ASCII-Chat uses a high-performance per-client threading model:
+- **Each client gets 2 dedicated threads**: 1 video render (60 FPS) + 1 audio render (172 FPS)
+- **Linear performance scaling**: No shared bottlenecks, scales to 9+ clients
+- **Thread-safe design**: Proper synchronization eliminates race conditions
+- **Real-time performance**: 60 FPS video + 172 FPS audio maintained per client
+
+**See `notes/per-client-threading-architecture.md` for complete technical details.**
+
+### Critical Synchronization Rules
+
+#### ALWAYS Use Per-Client Mutex Protection
+```c
+// ✅ CORRECT: Mutex-protected client state access
+pthread_mutex_lock(&client->client_state_mutex);
+uint32_t client_id_snapshot = client->client_id;
+bool active_snapshot = client->active;
+bool has_video_snapshot = client->has_video;
+pthread_mutex_unlock(&client->client_state_mutex);
+
+// Use snapshot data for processing (never direct access)
+if (active_snapshot && has_video_snapshot) {
+  process_client(client_id_snapshot);
+}
+```
+
+```c
+// ❌ RACE CONDITION: Direct access to client fields
+if (client->active && client->has_video) {  // DANGEROUS!
+  process_client(client->client_id);        // DANGEROUS!
+}
+```
+
+#### Lock Ordering Protocol (CRITICAL - Prevents Deadlocks)
+**Always acquire locks in this exact order:**
+1. **Global RWLock** (`g_client_manager_rwlock`)
+2. **Per-Client Mutex** (`client_state_mutex`)
+3. **Specialized Mutexes** (`g_stats_mutex`, `g_frame_cache_mutex`, etc.)
+
+```c
+// ✅ CORRECT: Global → Per-Client
+pthread_rwlock_rdlock(&g_client_manager_rwlock);
+pthread_mutex_lock(&client->client_state_mutex);
+// ... process
+pthread_mutex_unlock(&client->client_state_mutex);
+pthread_rwlock_unlock(&g_client_manager_rwlock);
+
+// ❌ DEADLOCK RISK: Per-Client → Global
+pthread_mutex_lock(&client->client_state_mutex);
+pthread_rwlock_wrlock(&g_client_manager_rwlock); // DEADLOCK POTENTIAL!
+```
+
 ### Per-Client Packet Queues
 - Each client has dedicated audio and video queues
 - Audio queue: 100 packets max (prioritizes low latency)
@@ -337,7 +389,7 @@ Fixes #issue-number
    malloc() and realloc() and calloc() (they're in common.h)
 2. Framebuffer owns its data - don't free it
 3. Packet queues copy data if owns_data=true
-4. Check for NULL before freeing when necessary but the developer doesn't like 
+4. Check for NULL before freeing when necessary but the developer doesn't like
    unnecessary null checks
 5. Set pointers to NULL after freeing (this helps catch bugs)
 
@@ -355,14 +407,14 @@ Before committing any changes:
 9. [ ] No crashes over 1+ minute runtime
 10. [ ] Check with AddressSanitizer if changed memory handling (`make clean && make sanitize`)
 
-## Development Principles 
+## Development Principles
 
 ### No Emergency Cleanup Code
 **NEVER** write "emergency cleanup" or "force cleanup" code. This is a code smell indicating improper resource management design.
 
 **Problems with Emergency Cleanup:**
 - Masks underlying synchronization bugs
-- Creates complex error-prone code paths  
+- Creates complex error-prone code paths
 - Indicates lack of understanding of timing issues
 - Makes debugging harder by hiding root causes
 - Often leads to double-free or use-after-free bugs
@@ -406,12 +458,12 @@ assert(remaining_clients == 0);           // Should always be true
 5. **client.c**:
    - `handle_ascii_frame_packet`: Processes received video
    - `video_capture_thread_func`: Captures and sends webcam
-6. **ascii.c**: Functions for working with ascii from images (ascii_*). Grid 
+6. **ascii.c**: Functions for working with ascii from images (ascii_*). Grid
    layout functions (ascii_grid_*)
 7. **mixer.c**: Multi-client audio sample mixing logic. Ducking and compression
-8. **ringbuffer.c**: Framebuffer code lives here (data structure for 
+8. **ringbuffer.c**: Framebuffer code lives here (data structure for
    multi-frame storage with metadata)
-9. **packet_queue.c**: Thread-safe per-client queue implementation for the 
+9. **packet_queue.c**: Thread-safe per-client queue implementation for the
    network protcol and its packets. It has node pools and uses buffer_pool.c/h
 
 ## SIMD Optimization: The Complete Journey (January 2025)
@@ -427,7 +479,7 @@ We implemented comprehensive SIMD optimizations for ASCII art generation and dis
 **Problem**: NEON color implementation had nested loops creating O(n²) complexity due to run-length encoding lookahead logic.
 **Solution**: Simplified to match scalar's O(n) approach - process pixels sequentially without complex lookahead.
 
-#### Phase 2: Optimize String Generation Bottleneck  
+#### Phase 2: Optimize String Generation Bottleneck
 **Problem**: `snprintf()` dominated execution time (90%+ vs 5% pixel processing).
 **Solution**: Precomputed decimal lookup tables eliminated divisions and format parsing.
 
@@ -444,7 +496,7 @@ We implemented comprehensive SIMD optimizations for ASCII art generation and dis
 
 #### What Actually Worked
 1. **16-pixel NEON processing** with `vld3q_u8()` interleaved loads
-2. **16-bit precision math** (`vmlaq_n_u16`) - sufficient for luminance, 2x wider than 32-bit  
+2. **16-bit precision math** (`vmlaq_n_u16`) - sufficient for luminance, 2x wider than 32-bit
 3. **Eliminated O(n²) algorithmic complexity** from run-length encoding
 4. **Precomputed decimal lookup tables** for RGB→string conversion
 5. **Combined FG+BG ANSI sequences** to reduce escape sequence overhead
@@ -461,7 +513,7 @@ We implemented comprehensive SIMD optimizations for ASCII art generation and dis
 - **Before**: String generation dominated (90%+ of time), masking SIMD potential
 - **After**: Balanced workload where SIMD pixel processing shows true performance
 
-#### ✅ Algorithmic Optimization First  
+#### ✅ Algorithmic Optimization First
 - **Wrong approach**: Add SIMD to existing O(n²) algorithm
 - **Right approach**: Fix algorithm complexity THEN apply SIMD to clean O(n) code
 
@@ -478,10 +530,10 @@ We implemented comprehensive SIMD optimizations for ASCII art generation and dis
 snprintf(buffer, remaining, "\033[38;2;%d;%d;%dm", r, g, b);
 // Cost: ~200 cycles per pixel (format parsing + division)
 
-// After: Precomputed lookup tables  
+// After: Precomputed lookup tables
 memcpy(p, "\033[38;2;", 7); p += 7;
 p += write_rgb_triplet(r, p); *p++ = ';';    // dec3[r] lookup
-p += write_rgb_triplet(g, p); *p++ = ';';    // dec3[g] lookup 
+p += write_rgb_triplet(g, p); *p++ = ';';    // dec3[g] lookup
 p += write_rgb_triplet(b, p); *p++ = 'm';    // dec3[b] lookup
 // Cost: ~50 cycles per pixel (no divisions, no format parsing)
 ```
@@ -495,24 +547,24 @@ uint16x8_t luma_hi = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(r_hi, 77), g_hi, 150), 
 // Process 16 pixels per iteration with 16-bit precision
 ```
 
-### Key Architectural Insights  
+### Key Architectural Insights
 
 #### When SIMD Actually Works
 - **After algorithmic fixes**: Clean O(n) code without nested loops
-- **Appropriate data width**: 16 pixels/iteration vs 4 pixels  
+- **Appropriate data width**: 16 pixels/iteration vs 4 pixels
 - **Right precision**: 16-bit math (sufficient, 2x wider than 32-bit)
 - **When string bottleneck is eliminated**: Pixel processing becomes worthwhile to optimize
 
 #### The Auto-Vectorization Lesson
 **Critical discovery**: "Scalar" code was already vectorized by modern Clang!
 - **Compiler advantages**: Automatic optimization with 8-16 pixel processing
-- **Manual SIMD value**: Cross-platform consistency and specialized algorithms  
+- **Manual SIMD value**: Cross-platform consistency and specialized algorithms
 - **When to use manual SIMD**: Complex algorithms compilers can't auto-vectorize
 
 ### Current Architecture Status ✅
 
 #### Production Performance (January 2025)
-- **Terminal 203×64**: 0.131ms/frame (FG), 0.189ms/frame (BG) 
+- **Terminal 203×64**: 0.131ms/frame (FG), 0.189ms/frame (BG)
 - **SIMD actively outperforming scalar** after both phases optimized
 - **10.5x string generation speedup** eliminates the major bottleneck
 - **Security hardened** with exact buffer overflow protection
@@ -520,7 +572,7 @@ uint16x8_t luma_hi = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(r_hi, 77), g_hi, 150), 
 
 **Important Note**: Scalar still outperforms NEON for large images in foreground color mode:
 - **320×240**: Scalar 0.371ms vs NEON 0.391ms (0.9x speedup)
-- **640×480**: Scalar 1.495ms vs NEON 1.584ms (0.9x speedup)  
+- **640×480**: Scalar 1.495ms vs NEON 1.584ms (0.9x speedup)
 - **1280×720**: Scalar 4.531ms vs NEON 4.812ms (0.9x speedup)
 
 This suggests debug build overhead or remaining static variable dependencies that prevent full SIMD optimization in larger workloads. Background mode shows NEON winning for large images, indicating the issue is specific to foreground processing patterns.
@@ -528,20 +580,20 @@ This suggests debug build overhead or remaining static variable dependencies tha
 ### Essential SIMD Lessons Learned
 
 1. **Profile end-to-end pipeline** - Don't optimize 5% while ignoring 95%
-2. **Fix algorithmic complexity first** (O(n²) → O(n)) before adding SIMD  
+2. **Fix algorithmic complexity first** (O(n²) → O(n)) before adding SIMD
 3. **Compiler auto-vectorization** often beats manual SIMD for simple loops
 4. **Two-phase optimization required**: Both pixel processing AND string generation
 5. **Use appropriate SIMD width**: 16 pixels/iteration vs 4 pixels
 6. **Choose right precision**: 16-bit math (sufficient, 2x wider than 32-bit)
 
-#### When Manual SIMD Actually Works  
+#### When Manual SIMD Actually Works
 - **After algorithmic fixes**: Clean O(n) code without nested loops
 - **Complex algorithms**: Compilers can't auto-vectorize
 - **Cross-platform consistency**: Explicit intrinsics vs compiler variance
 - **When string bottlenecks eliminated**: Pixel processing becomes optimization target
 
 #### The Two-Phase Success Formula ✅
-1. **Phase 1**: Fix algorithmic complexity (O(n²) → O(n))  
+1. **Phase 1**: Fix algorithmic complexity (O(n²) → O(n))
 2. **Phase 2**: Optimize string generation (snprintf → lookup tables)
 3. **Result**: SIMD pixel processing finally shows true performance potential
 
@@ -552,7 +604,7 @@ This suggests debug build overhead or remaining static variable dependencies tha
 **Additional Performance Opportunities:**
 1. **Run-length encoding**: Skip SGR when colors don't change (2-50x fewer sequences)
 2. **Combined FG+BG ANSI**: Single `\033[38;2;R;G;B;48;2;r;g;bm` sequence
-3. **Two pixels per cell**: Use ▀ character (halves terminal cells and sequences)  
+3. **Two pixels per cell**: Use ▀ character (halves terminal cells and sequences)
 4. **256-color mode**: Pre-computed strings eliminate runtime integer conversion
 5. **Batched terminal writing**: Single `write()` call eliminates syscall overhead
 
@@ -563,12 +615,12 @@ timer_start(&pixel_timer);
 convert_to_ascii(pixels, ascii_chars, count);        // Phase 1: Pixel processing
 pixel_time = timer_stop(&pixel_timer);
 
-timer_start(&string_timer);  
+timer_start(&string_timer);
 generate_ansi_output(ascii_chars, colors, buffer);   // Phase 2: String generation
 string_time = timer_stop(&string_timer);
 
 timer_start(&output_timer);
-write(STDOUT_FILENO, buffer, buffer_length);        // Phase 3: Terminal output  
+write(STDOUT_FILENO, buffer, buffer_length);        // Phase 3: Terminal output
 output_time = timer_stop(&output_timer);
 ```
 
@@ -581,19 +633,19 @@ output_time = timer_stop(&output_timer);
 // WRONG - can overflow 'int' before conversion to size_t
 const size_t buffer_size = output_height * w * max_per_char + extra;
 
-// RIGHT - cast to larger type BEFORE multiplication  
+// RIGHT - cast to larger type BEFORE multiplication
 const size_t buffer_size = (size_t)output_height * (size_t)w * max_per_char + extra;
 ```
 
 ### Why This Matters
 1. **CodeQL Analysis**: Will fail builds if multiplication can overflow `int`
-2. **Security**: Integer overflow can lead to buffer underallocation  
+2. **Security**: Integer overflow can lead to buffer underallocation
 3. **Large Images**: Modern webcam resolutions (1920×1080+) easily overflow 32-bit integers
 4. **Subtle Bugs**: May work fine in testing, fail catastrophically in production
 
 ### When to Apply This Pattern
 - **Any buffer size calculation** involving width × height
-- **Memory allocation sizes** based on image dimensions  
+- **Memory allocation sizes** based on image dimensions
 - **Loop bounds** that multiply image dimensions
 - **Whenever CodeQL warns** about "Multiplication result converted to larger type"
 
