@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 // Include ringbuffer.h to get the audio_ring_buffer_t type
 #include "ringbuffer.h"
@@ -79,6 +80,13 @@ typedef struct {
   audio_ring_buffer_t **source_buffers; // Array of pointers to client audio buffers
   uint32_t *source_ids;                 // Client IDs for each source
   bool *source_active;                  // Whether each source is active
+
+  // OPTIMIZATION 1: Bitset-based source exclusion (O(1) vs O(n))
+  uint64_t active_sources_mask;         // Bitset of active sources (bit i = source i active)
+  uint8_t source_id_to_index[256];      // Hash table: client_id → mixer source index
+
+  // OPTIMIZATION 2: Reader-writer synchronization
+  pthread_rwlock_t source_lock;         // Protects source arrays and bitset
 
   // Crowd scaling (loud with few, quiet with many)
   float crowd_alpha; // Scale ~ 1 / active^alpha (typically 0.5)

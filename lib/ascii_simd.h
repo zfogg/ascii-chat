@@ -1,9 +1,8 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-
+#include "common.h"
 #include "image.h"
 
 // Luminance calculation constants (matches ascii_simd.c)

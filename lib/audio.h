@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <stdint.h>
 #include <pthread.h>
 #include <portaudio.h>
 
