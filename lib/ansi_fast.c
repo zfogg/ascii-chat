@@ -202,33 +202,11 @@ char *append_half_block_pixels(char *dst, uint8_t top_r, uint8_t top_g, uint8_t 
   return dst;
 }
 
-// Get current time in seconds (high precision)
-static double get_time_seconds(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-    return ts.tv_sec + ts.tv_nsec / 1e9;
-  }
-  // Fallback to lower precision
-  return (double)clock() / CLOCKS_PER_SEC;
-}
-
-// Complete optimized frame generation with detailed timing
-ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
-                                            size_t buffer_capacity, ansi_color_mode_t mode, bool use_half_blocks) {
-  ansi_timing_t timing = {0};
-  double start_time = get_time_seconds();
-
-  // Phase 1: Pixel processing (luminance, ASCII conversion)
-  double pixel_start = get_time_seconds();
-
+// Complete optimized frame generation
+size_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
+                                     size_t buffer_capacity, ansi_color_mode_t mode, bool use_half_blocks) {
   // ASCII palette (matching existing implementation)
-  static const char ascii_palette[] = "   ...',;:clodxkO0KXNWM";
-  static const int palette_len = sizeof(ascii_palette) - 2;
-
-// Luminance weights (NTSC standard)
-#define LUMA_RED 77
-#define LUMA_GREEN 150
-#define LUMA_BLUE 29
+  const int palette_len = g_ascii_cache.palette_len - 1;
 
   int pixel_count = width * height;
   char *ascii_chars;
@@ -245,13 +223,8 @@ ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, in
     int palette_index = (luminance * palette_len) / 255;
     if (palette_index >= palette_len)
       palette_index = palette_len - 1;
-    ascii_chars[i] = ascii_palette[palette_index];
+    ascii_chars[i] = g_ascii_cache.ascii_chars[palette_index];
   }
-
-  timing.pixel_time = get_time_seconds() - pixel_start;
-
-  // Phase 2: String generation (ANSI escape sequences)
-  double string_start = get_time_seconds();
 
   ansi_rle_context_t rle_ctx;
   ansi_rle_init(&rle_ctx, output_buffer, buffer_capacity, mode);
@@ -308,17 +281,9 @@ ansi_timing_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, in
   }
 
   ansi_rle_finish(&rle_ctx);
-  timing.string_time = get_time_seconds() - string_start;
-
-  // Phase 3: Terminal output (single write)
-  double output_start = get_time_seconds();
-  write(STDOUT_FILENO, output_buffer, rle_ctx.length);
-  timing.output_time = get_time_seconds() - output_start;
-
-  timing.total_time = get_time_seconds() - start_time;
 
   free(ascii_chars);
-  return timing;
+  return rle_ctx.length;
 }
 
 // 256-color mode initialization (optional high-speed mode)

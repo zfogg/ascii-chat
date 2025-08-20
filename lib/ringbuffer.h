@@ -143,6 +143,7 @@ typedef struct {
 
 typedef struct {
   ringbuffer_t *rb;
+  pthread_mutex_t mutex; /* Thread-safe access to framebuffer operations */
 } framebuffer_t;
 
 /**

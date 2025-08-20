@@ -141,7 +141,7 @@ ifeq ($(SIMD_MODE),auto)
       ENABLE_SIMD_SSSE3 = yes
     endif
   endif
-  
+
   # Linux ARM64 detection
   ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
     # Check for SVE support first (newer and more capable than NEON)
@@ -152,7 +152,7 @@ ifeq ($(SIMD_MODE),auto)
       ENABLE_SIMD_NEON = yes
     endif
   endif
-  
+
   # x86_64 feature detection (prefer newer SIMD instructions)
   ifeq ($(UNAME_M),x86_64)
     HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -160,7 +160,7 @@ ifeq ($(SIMD_MODE),auto)
     HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    
+
     # AVX-512 requires both AVX512F (foundation) and AVX512BW (byte/word operations)
     ifeq ($(HAS_AVX512F)$(HAS_AVX512BW),11)
       ENABLE_SIMD_AVX512 = yes
@@ -227,12 +227,12 @@ ifeq ($(CRC32_HW),auto)
       ENABLE_CRC32_HW = yes  # Intel Mac
     endif
   endif
-  
+
   # Linux ARM64 detection
   ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
     ENABLE_CRC32_HW = yes
   endif
-  
+
   # x86_64 SSE4.2 detection (includes CRC32)
   ifeq ($(UNAME_M),x86_64)
     HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -240,7 +240,7 @@ ifeq ($(CRC32_HW),auto)
       ENABLE_CRC32_HW = yes
     endif
   endif
-  
+
   # Rosetta detection
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_ROSETTA),1)
@@ -255,7 +255,7 @@ endif
 # Apply CRC32 flags based on detection
 ifdef ENABLE_CRC32_HW
   CRC32_CFLAGS := -DHAVE_CRC32_HW
-  
+
   # Add architecture-specific flags
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_APPLE_SILICON),1)
@@ -302,7 +302,7 @@ ifeq ($(AES_HW),auto)
       endif
     endif
   endif
-  
+
   # Linux ARM64 detection (more robust)
   ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
     # Check for ARM Crypto Extensions in /proc/cpuinfo
@@ -314,7 +314,7 @@ ifeq ($(AES_HW),auto)
       ENABLE_AES_HW = yes
     endif
   endif
-  
+
   # x86_64 AES-NI detection (Intel + AMD)
   ifeq ($(UNAME_M),x86_64)
     HAS_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -324,7 +324,7 @@ ifeq ($(AES_HW),auto)
       CPU_VENDOR := $(shell grep -m1 'vendor_id' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | tr -d ' ' || echo unknown)
     endif
   endif
-  
+
   # AMD-specific x86_64 detection (additional check)
   ifeq ($(UNAME_M),x86_64)
     HAS_AMD_AES := $(shell grep -q AuthenticAMD /proc/cpuinfo 2>/dev/null && grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -332,7 +332,7 @@ ifeq ($(AES_HW),auto)
       ENABLE_AES_HW = yes
     endif
   endif
-  
+
   # Other x86 variants (i686, i386 with AES)
   ifneq (,$(filter i%86,$(UNAME_M)))
     HAS_X86_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -340,7 +340,7 @@ ifeq ($(AES_HW),auto)
       ENABLE_AES_HW = yes
     endif
   endif
-  
+
   # PowerPC with crypto extensions (POWER8+)
   ifneq (,$(filter ppc64% powerpc64%,$(UNAME_M)))
     HAS_PPC_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -348,7 +348,7 @@ ifeq ($(AES_HW),auto)
       ENABLE_AES_HW = yes
     endif
   endif
-  
+
   # RISC-V with crypto extensions (future-proofing)
   ifneq (,$(filter riscv64,$(UNAME_M)))
     HAS_RISCV_AES := $(shell grep -q aes /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
@@ -356,7 +356,7 @@ ifeq ($(AES_HW),auto)
       ENABLE_AES_HW = yes
     endif
   endif
-  
+
   # Rosetta detection (Intel/AMD under ARM macOS)
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_ROSETTA),1)
@@ -371,7 +371,7 @@ endif
 # Apply AES flags based on detection
 ifdef ENABLE_AES_HW
   AES_CFLAGS := -DHAVE_AES_HW
-  
+
   # Add architecture-specific flags and messaging
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_APPLE_SILICON),1)
@@ -441,7 +441,7 @@ else ifeq ($(UNAME_S),Linux)
         CPU_OPT_FLAGS := -O3 -mcpu=native
         $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
     else
-        CPU_OPT_FLAGS := -O3 -march=native 
+        CPU_OPT_FLAGS := -O3 -march=native
         $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
     endif
 else
@@ -518,17 +518,20 @@ $(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET)
 # Compile C source files from src/
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(CFLAGS) -c $< 
+	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
-	$(CC) -o $@ $(CFLAGS) -c $< 
+	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile Objective-C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(OBJCFLAGS) -c $<
+
+# Build all object files without linking (useful for tooling like Bear/clangd)
+objs: $(OBJS)
 
 # Ensure build and bin directories exist
 $(BUILD_DIR)/src:
@@ -604,10 +607,10 @@ format-check:
 	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
     xargs clang-format --dry-run --Werror
 
-# Run bear to generate a compile_commands.json file
+# Run bear to generate a compile_commands.json file (compile-only, no linking)
 compile_commands.json: Makefile
-	@echo "Running bear to generate compile_commands.json (main project only)..."
-	@make clean todo-clean && bear -- make debug
+	@echo "Running bear to generate compile_commands.json (objects only)..."
+	@make clean todo-clean && bear -- make -j objs
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
