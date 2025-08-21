@@ -549,7 +549,7 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
       return render_ascii_image_truecolor_fg_rep_safe(image);
     }
   }
-  
+
   // Fall through to row-by-row processing for background mode
 #endif
 

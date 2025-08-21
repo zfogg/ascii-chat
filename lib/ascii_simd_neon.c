@@ -319,14 +319,14 @@ static inline uint8_t rgb_to_ansi256(uint8_t r, uint8_t g, uint8_t b) {
 // Enhanced REP compression writer that supports both 256-color indices and truecolor RGB
 // Signature matches your optimized examples: (fg_r, fg_g, fg_b, bg_r, bg_g, bg_b, fg_idx, bg_idx, ascii_chars, ...)
 // Unified buffer safety macro - ensures adequate space before writing escape sequences
-#define ENSURE_SPACE(ptr, end, needed) \
-  do { \
-    if ((ptr) + (needed) > (end)) { \
-      log_debug("BUFFER GUARD: Insufficient space at %s:%d - need %d bytes, have %ld", \
-                __FILE__, __LINE__, (needed), (long)((end) - (ptr))); \
-      goto buffer_full; \
-    } \
-  } while(0)
+#define ENSURE_SPACE(ptr, end, needed)                                                                                 \
+  do {                                                                                                                 \
+    if ((ptr) + (needed) > (end)) {                                                                                    \
+      log_debug("BUFFER GUARD: Insufficient space at %s:%d - need %d bytes, have %ld", __FILE__, __LINE__, (needed),   \
+                (long)((end) - (ptr)));                                                                                \
+      goto buffer_full;                                                                                                \
+    }                                                                                                                  \
+  } while (0)
 
 size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g,
                                           const uint8_t *fg_b, // Truecolor FG RGB (NULL if using indices)
@@ -336,7 +336,8 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           const uint8_t *bg_idx,   // 256-color indices (NULL if using RGB)
                                           const char *ascii_chars, // ASCII characters for traditional ASCII art
                                           int width, char *dst, size_t cap, bool use_256color, bool is_truecolor) {
-  //log_debug("CORRUPTION DEBUG: Starting write_row_rep_from_arrays_enhanced - width=%d, cap=%zu, is_truecolor=%d", width, cap, is_truecolor);
+  // log_debug("CORRUPTION DEBUG: Starting write_row_rep_from_arrays_enhanced - width=%d, cap=%zu, is_truecolor=%d",
+  // width, cap, is_truecolor);
 
   char *p = dst;
   char *row_end = dst + cap - 100; // Conservative safety margin for all escape sequences
@@ -347,12 +348,13 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
   char last_char = 0;
   int run_len = 0;
 
-  //log_debug("CORRUPTION DEBUG: Buffer setup - dst=%p, p=%p, row_end=%p, safety_margin=%ld", dst, p, row_end, (long)(row_end - dst));
+  // log_debug("CORRUPTION DEBUG: Buffer setup - dst=%p, p=%p, row_end=%p, safety_margin=%ld", dst, p, row_end,
+  // (long)(row_end - dst));
 
   for (int x = 0; x < width; x++) {
     char ch = ascii_chars[x];
     bool color_changed = false;
-    
+
     // Declare color variables outside scope so they can be used later
     uint8_t curr_fg_r = 0, curr_fg_g = 0, curr_fg_b = 0;
     uint8_t curr_bg_r = 0, curr_bg_g = 0, curr_bg_b = 0;
@@ -379,10 +381,12 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
     if (color_changed) {
       // CRITICAL FIX: Check buffer space BEFORE generating escape sequences to prevent corruption
       // Truecolor sequences can be up to ~30 bytes, 256-color ~15 bytes, REP sequences ~7 bytes
-      //log_debug("CORRUPTION DEBUG: Color changed at x=%d, ch='%c', buffer_remaining=%ld", x, ch, (long)(row_end - p));
+      // log_debug("CORRUPTION DEBUG: Color changed at x=%d, ch='%c', buffer_remaining=%ld", x, ch, (long)(row_end -
+      // p));
 
       if (p >= row_end) {
-        //log_debug("CORRUPTION DEBUG: EMERGENCY BREAK - insufficient buffer space, remaining: %ld", (long)(row_end - p));
+        // log_debug("CORRUPTION DEBUG: EMERGENCY BREAK - insufficient buffer space, remaining: %ld", (long)(row_end -
+        // p));
         break; // Not enough space for complete escape sequence - stop here
       }
 
@@ -394,10 +398,10 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
         } else {
           // Multiple characters - use REP sequence: char + \033[<count-1>b
           *p++ = last_char;
-          ENSURE_SPACE(p, row_end, 10);  // Space for REP sequence
+          ENSURE_SPACE(p, row_end, 10); // Space for REP sequence
           memcpy(p, "\033[", 2);
           p += 2;
-          p += write_decimal(run_len - 1, p);  // REP repeats the previous char
+          p += write_decimal(run_len - 1, p); // REP repeats the previous char
           *p++ = 'b';
         }
         run_len = 0;
@@ -476,10 +480,10 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
       // Character changed (but not color), flush any pending run first
       if (run_len > 1) {
         // Use REP compression for remaining characters
-        ENSURE_SPACE(p, row_end, 10);  // Space for REP sequence
+        ENSURE_SPACE(p, row_end, 10); // Space for REP sequence
         memcpy(p, "\033[", 2);
         p += 2;
-        p += write_decimal(run_len - 1, p);  // REP repeats the previous char
+        p += write_decimal(run_len - 1, p); // REP repeats the previous char
         *p++ = 'b';
       }
 
@@ -494,20 +498,20 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
     }
   }
 
-  //log_debug("CORRUPTION DEBUG: Finished processing %d characters, final buffer pos %ld", width, (long)(p - dst));
+  // log_debug("CORRUPTION DEBUG: Finished processing %d characters, final buffer pos %ld", width, (long)(p - dst));
 
   // CRITICAL FIX: Check buffer space BEFORE flushing final run and reset
   // We've already reserved space with our safety margin
   if (p < row_end) {
-    //log_debug("CORRUPTION DEBUG: Final flush - run_len=%d, buffer_remaining=%ld", run_len, (long)(row_end - p));
+    // log_debug("CORRUPTION DEBUG: Final flush - run_len=%d, buffer_remaining=%ld", run_len, (long)(row_end - p));
 
     // Flush final run with REP compression
     if (run_len > 1) {
       // Use REP compression for remaining characters
-      ENSURE_SPACE(p, row_end, 10);  // Space for REP sequence
+      ENSURE_SPACE(p, row_end, 10); // Space for REP sequence
       memcpy(p, "\033[", 2);
       p += 2;
-      p += write_decimal(run_len - 1, p);  // REP repeats the previous char
+      p += write_decimal(run_len - 1, p); // REP repeats the previous char
       *p++ = 'b';
     }
 
@@ -517,7 +521,8 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
     p += 5;
     // log_debug("CORRUPTION DEBUG: Reset sequence added %ld bytes", (long)(p - reset_start));
   } else {
-    // log_debug("CORRUPTION DEBUG: EMERGENCY - No space for final run/reset, truncating, remaining: %ld", (long)(row_end - p));
+    // log_debug("CORRUPTION DEBUG: EMERGENCY - No space for final run/reset, truncating, remaining: %ld",
+    // (long)(row_end - p));
   }
 
   size_t total_bytes = p - dst;
@@ -1447,95 +1452,137 @@ void convert_pixels_neon(const rgb_pixel_t *__restrict pixels, char *__restrict 
 
 static inline uint8_t luminance_u8_neon(uint8_t r, uint8_t g, uint8_t b) {
   // same weights: (77R + 150G + 29B) >> 8
-  unsigned y = 77u*r + 150u*g + 29u*b;
+  unsigned y = 77u * r + 150u * g + 29u * b;
   return (uint8_t)(y >> 8);
 }
 
 // fast 256-color FG mapping (cube vs. gray) – same math as existing code
 static inline uint8_t rgb_to_ansi256_fg_neon(uint8_t r, uint8_t g, uint8_t b) {
+  // Convert to 6-level cube coordinates (0-5)
   int cr = (r * 5 + 127) / 255;
   int cg = (g * 5 + 127) / 255;
   int cb = (b * 5 + 127) / 255;
 
-  int gray = (r + g + b) / 3;
-  int gray_idx = 232 + (gray * 23) / 255;
-  int gray_level = 8 + (gray_idx - 232) * 10;
-  int gray_dist = abs(gray - gray_level);
-
+  // Calculate 6x6x6 cube color values
   int cube_r = (cr * 255) / 5;
   int cube_g = (cg * 255) / 5;
   int cube_b = (cb * 255) / 5;
-  int cube_dist = abs((int)r - cube_r) + abs((int)g - cube_g) + abs((int)b - cube_b);
 
-  return (uint8_t)(gray_dist < cube_dist ? gray_idx : (16 + cr * 36 + cg * 6 + cb));
+  // Check if it's closer to a gray level (colors 232-255: 24 grays)
+  int gray = (r + g + b) / 3;
+  int closest_gray_idx = 232 + (gray * 23) / 255;
+  int gray_level = 8 + (closest_gray_idx - 232) * 10;
+
+  // Use proper Euclidean distance for fair comparison
+  int gray_dist_sq = (r - gray_level) * (r - gray_level) + 
+                     (g - gray_level) * (g - gray_level) + 
+                     (b - gray_level) * (b - gray_level);
+  
+  int cube_dist_sq = (r - cube_r) * (r - cube_r) + 
+                     (g - cube_g) * (g - cube_g) + 
+                     (b - cube_b) * (b - cube_b);
+
+  // Add bias toward color cube to prevent grayscale dominance
+  // Only use grayscale if it's significantly better (20% threshold)
+  if (gray_dist_sq * 5 < cube_dist_sq * 4) {
+    return (uint8_t)closest_gray_idx;
+  } else {
+    return (uint8_t)(16 + cr * 36 + cg * 6 + cb);
+  }
 }
 
 static inline void append_rep_sequence(char **pos, char *end, int repeat_minus_one) {
   // emits "\x1b[" <n> "b"
-  if (*pos + 16 >= end) return; // safety check
-  
-  **pos = '\x1b'; (*pos)++;
-  **pos = '['; (*pos)++;
+  if (*pos + 16 >= end)
+    return; // safety check
+
+  **pos = '\x1b';
+  (*pos)++;
+  **pos = '[';
+  (*pos)++;
 
   // decimal conversion
   int v = repeat_minus_one;
   char tmp[10];
   int t = 0;
-  while (v > 0) { tmp[t++] = (char)('0' + (v % 10)); v /= 10; }
-  if (t == 0) tmp[t++] = '0';
-  for (int i = t-1; i >= 0; --i) {
-    **pos = tmp[i]; (*pos)++;
+  while (v > 0) {
+    tmp[t++] = (char)('0' + (v % 10));
+    v /= 10;
+  }
+  if (t == 0)
+    tmp[t++] = '0';
+  for (int i = t - 1; i >= 0; --i) {
+    **pos = tmp[i];
+    (*pos)++;
   }
 
-  **pos = 'b'; (*pos)++;
+  **pos = 'b';
+  (*pos)++;
 }
 
 static inline void append_sgr256_fg_simple(char **pos, char *end, uint8_t idx) {
   // Simple SGR: \x1b[38;5;<idx>m
-  if (*pos + 16 >= end) return; // safety check
-  
-  **pos = '\x1b'; (*pos)++;
-  **pos = '['; (*pos)++;
-  **pos = '3'; (*pos)++;
-  **pos = '8'; (*pos)++;
-  **pos = ';'; (*pos)++;
-  **pos = '5'; (*pos)++;
-  **pos = ';'; (*pos)++;
+  if (*pos + 16 >= end)
+    return; // safety check
+
+  **pos = '\x1b';
+  (*pos)++;
+  **pos = '[';
+  (*pos)++;
+  **pos = '3';
+  (*pos)++;
+  **pos = '8';
+  (*pos)++;
+  **pos = ';';
+  (*pos)++;
+  **pos = '5';
+  (*pos)++;
+  **pos = ';';
+  (*pos)++;
 
   // Convert idx to decimal
   if (idx >= 100) {
-    **pos = '0' + (idx / 100); (*pos)++;
+    **pos = '0' + (idx / 100);
+    (*pos)++;
     idx %= 100;
   }
   if (idx >= 10) {
-    **pos = '0' + (idx / 10); (*pos)++;
+    **pos = '0' + (idx / 10);
+    (*pos)++;
     idx %= 10;
   }
-  **pos = '0' + idx; (*pos)++;
-  **pos = 'm'; (*pos)++;
+  **pos = '0' + idx;
+  (*pos)++;
+  **pos = 'm';
+  (*pos)++;
 }
 
 // One-pixel ASCII+color encoder for 256-FG mode
-typedef struct { char glyph; uint8_t fg_idx; } Enc256;
+typedef struct {
+  char glyph;
+  uint8_t fg_idx;
+} Enc256;
 static inline Enc256 encode_pixel_256fg_neon(uint8_t r, uint8_t g, uint8_t b) {
   uint8_t y = luminance_u8_neon(r, g, b);
-  // Use existing ASCII palette - map luminance to character index
-  char ch = g_ascii_cache.ascii_chars[y >> 4]; // Use upper 4 bits for 16-level mapping
+  // Use correct luminance palette with full 8-bit luminance
+  char ch = g_ascii_cache.luminance_palette[y];
   uint8_t idx = rgb_to_ansi256_fg_neon(r, g, b);
-  Enc256 e = { ch, idx };
+  Enc256 e = {ch, idx};
   return e;
 }
 
 // Flush the current run EXACTLY ONCE (never across newlines)
 static inline void flush_run_safe(char **pos, char *end, char last_ch, int run_len) {
-  if (run_len <= 0) return;
-  if (*pos >= end) return; // safety check
-  
-  if (run_len == 1) {
-    **pos = last_ch; (*pos)++;
-  } else {
-    **pos = last_ch; (*pos)++;
-    append_rep_sequence(pos, end, run_len - 1); // REP repeats the *previously printed* char
+  if (run_len <= 0)
+    return;
+  if (*pos >= end)
+    return; // safety check
+
+  // CRITICAL FIX: Don't use REP sequences - many terminals don't support them
+  // Instead, just output the character repeatedly for maximum compatibility
+  for (int i = 0; i < run_len && *pos < end; i++) {
+    **pos = last_ch;
+    (*pos)++;
   }
 }
 
@@ -1548,10 +1595,10 @@ char *render_ascii_image_256fg_rep_safe(const image_t *image) {
   // Heuristic reserve: worst-case per glyph: SGR(<=15) + char(1)
   // Reserve generously to avoid reallocs
   const size_t buffer_size = (size_t)H * ((size_t)W * 16u + 8u) + 32u;
-  
+
   char *output;
   SAFE_MALLOC(output, buffer_size, char *);
-  
+
   char *pos = output;
   char *end = output + buffer_size - 32; // safety margin
 
@@ -1600,8 +1647,8 @@ char *render_ascii_image_256fg_rep_safe(const image_t *image) {
     // End of row: flush the final run for this line
     flush_run_safe(&pos, end, last_ch, run_len);
 
-    // Newline terminates the line; REP must not cross it
-    if (pos < end) {
+    // Add newline only if this is NOT the final row
+    if (y < H - 1 && pos < end) {
       *pos++ = '\n';
     }
 
@@ -1624,29 +1671,40 @@ char *render_ascii_image_256fg_rep_safe(const image_t *image) {
 
 // Helper function for truecolor run flushing
 static inline void flush_run_truecolor_safe(char **pos, char *end, char ch, int run_len, int r, int g, int b) {
-  if (*pos >= end - 50) return; // Safety check
+  if (*pos >= end - 50)
+    return; // Safety check
 
   // Emit truecolor FG SGR: \033[38;2;R;G;Bm
-  **pos = '\033'; (*pos)++;
-  **pos = '['; (*pos)++;
-  **pos = '3'; (*pos)++;
-  **pos = '8'; (*pos)++;
-  **pos = ';'; (*pos)++;
-  **pos = '2'; (*pos)++;
-  **pos = ';'; (*pos)++;
-  
-  // Write RGB values using decimal conversion
-  *pos += write_decimal(r, *pos); **pos = ';'; (*pos)++;
-  *pos += write_decimal(g, *pos); **pos = ';'; (*pos)++;
-  *pos += write_decimal(b, *pos); **pos = 'm'; (*pos)++;
+  **pos = '\033';
+  (*pos)++;
+  **pos = '[';
+  (*pos)++;
+  **pos = '3';
+  (*pos)++;
+  **pos = '8';
+  (*pos)++;
+  **pos = ';';
+  (*pos)++;
+  **pos = '2';
+  (*pos)++;
+  **pos = ';';
+  (*pos)++;
 
-  // Emit the character(s)
-  if (run_len == 1) {
-    **pos = ch; (*pos)++;
-  } else {
-    **pos = ch; (*pos)++;
-    // REP sequence for additional characters
-    append_rep_sequence(pos, end, run_len - 1);
+  // Write RGB values using decimal conversion
+  *pos += write_decimal(r, *pos);
+  **pos = ';';
+  (*pos)++;
+  *pos += write_decimal(g, *pos);
+  **pos = ';';
+  (*pos)++;
+  *pos += write_decimal(b, *pos);
+  **pos = 'm';
+  (*pos)++;
+
+  // Emit the character(s) - don't use REP sequences for compatibility
+  for (int i = 0; i < run_len && *pos < end; i++) {
+    **pos = ch;
+    (*pos)++;
   }
 }
 
@@ -1659,11 +1717,11 @@ char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image) {
 
   const int w = image->w;
   const int h = image->h;
-  
+
   // Conservative buffer size calculation for truecolor (20 bytes per pixel max)
   const size_t max_per_pixel = 20; // \033[38;2;255;255;255m + char = ~20 bytes
   const size_t buffer_size = (size_t)h * (size_t)w * max_per_pixel + (size_t)h * 10 + 1000;
-  
+
   char *output;
   SAFE_MALLOC(output, buffer_size, char *);
   if (!output) {
@@ -1679,7 +1737,7 @@ char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image) {
 
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row = &image->pixels[y * w];
-    
+
     // RLE state for this row (reset each row to prevent REP crossing newlines)
     char last_ch = '\0';
     int run_len = 0;
@@ -1687,21 +1745,18 @@ char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image) {
 
     for (int x = 0; x < w; x++) {
       const rgb_pixel_t *px = &row[x];
-      
+
       // Convert pixel to ASCII character
       uint8_t luma = luminance_u8_neon(px->r, px->g, px->b);
       char ch = g_ascii_cache.luminance_palette[luma];
-      
+
       // Use truecolor RGB values directly (no quantization)
       curr_fg_r = px->r;
-      curr_fg_g = px->g; 
+      curr_fg_g = px->g;
       curr_fg_b = px->b;
 
       // Check if we can extend the current run
-      bool can_extend = (ch == last_ch && 
-                        curr_fg_r == last_fg_r && 
-                        curr_fg_g == last_fg_g && 
-                        curr_fg_b == last_fg_b);
+      bool can_extend = (ch == last_ch && curr_fg_r == last_fg_r && curr_fg_g == last_fg_g && curr_fg_b == last_fg_b);
 
       if (can_extend && run_len > 0) {
         run_len++;
@@ -1710,7 +1765,7 @@ char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image) {
         if (run_len > 0) {
           flush_run_truecolor_safe(&pos, end, last_ch, run_len, last_fg_r, last_fg_g, last_fg_b);
         }
-        
+
         // Start new run
         last_ch = ch;
         run_len = 1;
@@ -1723,8 +1778,8 @@ char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image) {
     // End of row: flush the final run for this line
     flush_run_truecolor_safe(&pos, end, last_ch, run_len, last_fg_r, last_fg_g, last_fg_b);
 
-    // Newline terminates the line; REP must not cross it
-    if (pos < end) {
+    // Add newline only if this is NOT the final row
+    if (y < h - 1 && pos < end) {
       *pos++ = '\n';
     }
 

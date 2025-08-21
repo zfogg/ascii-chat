@@ -129,7 +129,7 @@ char *image_print_simd(image_t *image) {
 
   // Process directly into final buffer - no copying!
   char *pos = ascii;
-  
+
   // Add reset sequence to clear any previous terminal colors
   memcpy(pos, "\033[0m", 4);
   pos += 4;

@@ -455,7 +455,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     int debug_len = (header.original_size < 100) ? header.original_size : 100;
     char hex_debug[401]; // 100 bytes * 4 chars per byte + null terminator
     char *hex_ptr = hex_debug;
-    
+
     for (int i = 0; i < debug_len; i++) {
       unsigned char byte = (unsigned char)frame_data[i];
       if (byte == 0x1b) {
@@ -472,7 +472,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     *hex_ptr = '\0';
     log_debug("CLIENT RECEIVED: First %d bytes as hex: %s", debug_len, hex_debug);
   }
-  
+
   printf("\033[H%s", frame_data);
   fflush(stdout);
 
