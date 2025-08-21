@@ -1270,6 +1270,49 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
   }
 }
 
+// Handles batched audio samples from client (new efficient format)
+static void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len) {
+  if (client->is_sending_audio && data && len >= sizeof(audio_batch_packet_t)) {
+    // Parse batch header
+    const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+    uint32_t batch_count = ntohl(batch_header->batch_count);
+    uint32_t total_samples = ntohl(batch_header->total_samples);
+    uint32_t sample_rate = ntohl(batch_header->sample_rate);
+    // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
+
+    // Suppress static analyzer warnings for conditionally used variables
+    (void)batch_count; // Used in DEBUG_AUDIO log
+    (void)sample_rate; // Used in DEBUG_AUDIO log
+
+    // Validate batch parameters
+    size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));
+    if (len != expected_size) {
+      log_error("Invalid audio batch size from client %u: got %zu, expected %zu", client->client_id, len,
+                expected_size);
+      return;
+    }
+
+    if (total_samples > AUDIO_BATCH_SAMPLES * 2) { // Sanity check
+      log_error("Audio batch too large from client %u: %u samples", client->client_id, total_samples);
+      return;
+    }
+
+    // Extract samples (they follow the header)
+    const float *samples = (const float *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+
+    // Write all samples to the ring buffer
+    if (client->incoming_audio_buffer) {
+      int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+      // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
+      (void)written;
+#ifdef DEBUG_AUDIO
+      log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
+                total_samples, sample_rate);
+#endif
+    }
+  }
+}
+
 void *client_receive_thread_func(void *arg) {
   client_info_t *client = (client_info_t *)arg;
   if (!client || client->socket <= 0) {
@@ -1385,46 +1428,7 @@ void *client_receive_thread_func(void *arg) {
     }
 
     case PACKET_TYPE_AUDIO_BATCH: {
-      // Handle batched audio samples from client (new efficient format)
-      if (client->is_sending_audio && data && len >= sizeof(audio_batch_packet_t)) {
-        // Parse batch header
-        const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-        uint32_t batch_count = ntohl(batch_header->batch_count);
-        uint32_t total_samples = ntohl(batch_header->total_samples);
-        uint32_t sample_rate = ntohl(batch_header->sample_rate);
-        // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
-
-        // Suppress static analyzer warnings for conditionally used variables
-        (void)batch_count; // Used in DEBUG_AUDIO log
-        (void)sample_rate; // Used in DEBUG_AUDIO log
-
-        // Validate batch parameters
-        size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));
-        if (len != expected_size) {
-          log_error("Invalid audio batch size from client %u: got %zu, expected %zu", client->client_id, len,
-                    expected_size);
-          break;
-        }
-
-        if (total_samples > AUDIO_BATCH_SAMPLES * 2) { // Sanity check
-          log_error("Audio batch too large from client %u: %u samples", client->client_id, total_samples);
-          break;
-        }
-
-        // Extract samples (they follow the header)
-        const float *samples = (const float *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
-
-        // Write all samples to the ring buffer
-        if (client->incoming_audio_buffer) {
-          int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
-          // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
-          (void)written;
-#ifdef DEBUG_AUDIO
-          log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
-                    total_samples, sample_rate);
-#endif
-        }
-      }
+      handle_audio_batch_packet(client, data, len);
       break;
     }
 
