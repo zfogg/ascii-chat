@@ -554,11 +554,12 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
     // log_debug("CORRUPTION DEBUG: Final output preview (first %d bytes as hex): %s", preview_len, hex_preview);
   }
 
+  return total_bytes;
+
 buffer_full:
   // Buffer capacity exceeded - return partial result
-  size_t partial_bytes = p - dst;
-  log_debug("BUFFER GUARD: Buffer capacity exceeded, returning partial result: %zu bytes", partial_bytes);
-  return partial_bytes;
+  log_debug("BUFFER GUARD: Buffer capacity exceeded, returning partial result: %zu bytes", (size_t)(p - dst));
+  return (size_t)(p - dst);
 }
 
 // Legacy wrapper for existing 256-color code
