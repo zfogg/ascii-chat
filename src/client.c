@@ -25,7 +25,7 @@
 #include "webcam.h"
 #include "aspect_ratio.h"
 #include "buffer_pool.h"
-#include "frame_debug.h"
+#include "terminal_detect.h"
 
 #define NETWORK_DEBUG
 #define AUDIO_DEBUG
@@ -38,9 +38,6 @@ static volatile bool g_should_reconnect = false;
 static volatile bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
-
-// Frame debugging tracker
-static frame_debug_tracker_t g_client_frame_debug;
 
 static pthread_t g_data_thread;
 static bool g_data_thread_created = false;
@@ -110,7 +107,7 @@ static void *audio_capture_thread_func(void *arg);
 #define send_packet safe_send_packet
 #define send_audio_packet safe_send_audio_packet
 #define send_audio_batch_packet safe_send_audio_batch_packet
-#define send_size_packet safe_send_size_packet
+#define send_terminal_size_with_auto_detect safe_send_terminal_size_with_auto_detect
 #define send_pong_packet safe_send_pong_packet
 #define send_ping_packet safe_send_ping_packet
 #define send_stream_start_packet safe_send_stream_start_packet
@@ -147,12 +144,12 @@ static int safe_send_audio_batch_packet(int sockfd, const float *samples, int nu
   return result;
 }
 
-// Thread-safe wrapper for network.h send_size_packet
-static int safe_send_size_packet(int sockfd, unsigned short width, unsigned short height) {
+// Thread-safe wrapper for network.h send_terminal_size_with_auto_detect
+static int safe_send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsigned short height) {
   pthread_mutex_lock(&g_send_mutex);
-#undef send_size_packet
-  int result = send_size_packet(sockfd, width, height);
-#define send_size_packet safe_send_size_packet
+#undef send_terminal_size_with_auto_detect
+  int result = send_terminal_size_with_auto_detect(sockfd, width, height);
+#define send_terminal_size_with_auto_detect safe_send_terminal_size_with_auto_detect
   pthread_mutex_unlock(&g_send_mutex);
   return result;
 }
@@ -289,11 +286,15 @@ static void sigint_handler(int sigint) {
   sigint_count++;
 
   if (sigint_count > 1) {
-    printf("\nForce quit!\n");
+    if (!opt_quiet) {
+      printf("\nForce quit!\n");
+    }
     _exit(1); // Force immediate exit
   }
 
-  printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
+  if (!opt_quiet) {
+    printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
+  }
   g_should_exit = true;
   g_connection_lost = true; // Signal all threads to exit
 
@@ -312,10 +313,10 @@ static void sigwinch_handler(int sigwinch) {
 
   // Send new size to server if connected
   if (sockfd > 0) {
-    if (send_size_packet(sockfd, opt_width, opt_height) < 0) {
-      log_warn("Failed to send size update to server: %s", network_error_string(errno));
+    if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
+      log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
     } else {
-      log_debug("Sent size update to server: %ux%u", opt_width, opt_height);
+      log_debug("Sent terminal capabilities to server: %ux%u", opt_width, opt_height);
     }
   }
 }
@@ -450,9 +451,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Position cursor at top-left and display frame (preserve last frame instead of clearing)
   printf("\033[H%s", frame_data);
   fflush(stdout);
-
-  // Record frame for debugging (track client-side frame reception)
-  frame_debug_record_frame(&g_client_frame_debug, frame_data, header.original_size);
 
   free(frame_data);
 
@@ -877,9 +875,25 @@ int main(int argc, char *argv[]) {
   // Parse options first to check for quiet mode
   options_init(argc, argv);
 
+  // Handle --show-capabilities flag (exit after showing capabilities)
+  if (opt_show_capabilities) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    // Apply color mode override to show what would actually be sent to server
+    caps = apply_color_mode_override(caps);
+    print_terminal_capabilities(&caps);
+    return 0;
+  }
+
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
+
+  // Handle quiet mode - disable terminal output when opt_quiet is enabled
+  log_set_terminal_output(!opt_quiet);
+#ifdef DEBUG_MEMORY
+  debug_memory_set_quiet_mode(opt_quiet);
+#endif
+
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
@@ -891,14 +905,7 @@ int main(int argc, char *argv[]) {
   atexit(data_buffer_pool_cleanup_global);
   log_truncate_if_large(); /* Truncate if log is already too large */
 
-  if (!opt_quiet) {
-    log_info("ASCII Chat client starting...");
-  }
-
   // Initialize frame debugging - disable in quiet mode
-  frame_debug_init(&g_client_frame_debug, "Client-FrameReceiver");
-  g_frame_debug_enabled = !opt_quiet;          // Only enable if not in quiet mode
-  g_frame_debug_verbosity = opt_quiet ? 0 : 2; // Silence frame debug in quiet mode
   char *address = opt_address;
   int port = strtoint(opt_port);
 
@@ -1028,13 +1035,13 @@ int main(int argc, char *argv[]) {
 
       g_my_client_id = local_port;
 
-      // Send initial terminal size to server
-      if (send_size_packet(sockfd, opt_width, opt_height) < 0) {
-        log_error("Failed to send initial size to server: %s", network_error_string(errno));
+      // Send initial terminal capabilities to server
+      if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
+        log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
         g_should_reconnect = true;
         continue; // try to connect again
       }
-      log_info("Sent initial size to server: %ux%u", opt_width, opt_height);
+      log_info("Sent initial terminal capabilities to server: %ux%u", opt_width, opt_height);
 
       // Send client join packet for multi-user support
       uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
@@ -1187,6 +1194,12 @@ int main(int argc, char *argv[]) {
       g_audio_capture_thread_created = false;
     }
   }
+
+#ifdef DEBUG_MEMORY
+  if (!opt_quiet) {
+    printf("\n");
+  }
+#endif
 
   shutdown_client();
   return 0;

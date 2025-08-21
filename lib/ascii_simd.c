@@ -28,7 +28,7 @@
 
 // Global cache definition - shared across all compilation units
 struct ascii_color_cache g_ascii_cache = {.ascii_chars = "   ...',;:clodxkO0KXNWM",
-                                          .palette_len = 21, // sizeof("   ...',;:clodxkO0KXNWM") - 1
+                                          .palette_len = 23, // strlen("   ...',;:clodxkO0KXNWM") = 23
                                           .palette_initialized = false,
                                           .dec3_initialized = false};
 
@@ -852,38 +852,14 @@ static inline char *emit_run_rep_scalar(char *p, int run_len, char ch) {
   return p;
 }
 
-// Simple helper to emit run-length encoded UTF-8 block characters
-static inline char *emit_run_rep_utf8_block_scalar(char *p, int run_len) {
-  if (run_len <= 0)
-    return p;
-  // Always write first glyph (U+2580 upper half block), then REP for remainder
-  *p++ = 0xE2;
-  *p++ = 0x96;
-  *p++ = 0x80;
-  if (run_len == 1)
-    return p;
-  int rep = run_len - 1;
-  *p++ = '\x1b';
-  *p++ = '[';
-  if (rep >= 100) {
-    *p++ = '0' + (rep / 100);
-    rep %= 100;
-  }
-  if (rep >= 10) {
-    *p++ = '0' + (rep / 10);
-    rep %= 10;
-  }
-  *p++ = '0' + rep;
-  *p++ = 'b';
-  return p;
-}
-
-size_t write_row_rep_from_arrays_enhanced(
-    const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b, // Truecolor FG RGB (NULL if using indices)
-    const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b, // Truecolor BG RGB (NULL if using indices)
-    const uint8_t *fg_idx, const uint8_t *bg_idx,                  // 256-color indices (NULL if using RGB)
-    const char *ascii_chars,                                       // ASCII chars (NULL if UTF-8 block mode)
-    int width, char *dst, size_t cap, bool utf8_block_mode, bool use_256color, bool is_truecolor) {
+size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g,
+                                          const uint8_t *fg_b, // Truecolor FG RGB (NULL if using indices)
+                                          const uint8_t *bg_r, const uint8_t *bg_g,
+                                          const uint8_t *bg_b, // Truecolor BG RGB (NULL if using indices)
+                                          const uint8_t *fg_idx,
+                                          const uint8_t *bg_idx,   // 256-color indices (NULL if using RGB)
+                                          const char *ascii_chars, // ASCII characters for traditional ASCII art
+                                          int width, char *dst, size_t cap, bool use_256color, bool is_truecolor) {
 
   char *p = dst;
   char *row_end = dst + cap - 64; // safety margin for ANSI sequences
@@ -895,7 +871,7 @@ size_t write_row_rep_from_arrays_enhanced(
   int run_len = 0;
 
   for (int x = 0; x < width; x++) {
-    char ch = utf8_block_mode ? 0 : ascii_chars[x];
+    char ch = ascii_chars[x];
     bool color_changed = false;
 
     if (is_truecolor) {
@@ -919,7 +895,7 @@ size_t write_row_rep_from_arrays_enhanced(
     if (color_changed) {
       // Flush any pending run
       if (run_len > 0) {
-        p = utf8_block_mode ? emit_run_rep_utf8_block_scalar(p, run_len) : emit_run_rep_scalar(p, run_len, last_char);
+        p = emit_run_rep_scalar(p, run_len, last_char);
         run_len = 0;
       }
 
@@ -983,7 +959,7 @@ size_t write_row_rep_from_arrays_enhanced(
       last_char = ch;
       run_len = 1;
 
-    } else if (!utf8_block_mode && ch != last_char) {
+    } else if (ch != last_char) {
       // ASCII mode: character changed, flush run
       if (run_len > 0) {
         p = emit_run_rep_scalar(p, run_len, last_char);
@@ -1001,7 +977,7 @@ size_t write_row_rep_from_arrays_enhanced(
 
   // Flush final run
   if (run_len > 0) {
-    p = utf8_block_mode ? emit_run_rep_utf8_block_scalar(p, run_len) : emit_run_rep_scalar(p, run_len, last_char);
+    p = emit_run_rep_scalar(p, run_len, last_char);
   }
 
   // Reset sequence

@@ -54,11 +54,31 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
 // Finish RLE sequence (adds reset and null terminator)
 void ansi_rle_finish(ansi_rle_context_t *ctx);
 
-// Two-pixels-per-cell using ▀ (U+2580) - halves output size
-char *append_half_block_pixels(char *dst, uint8_t top_r, uint8_t top_g, uint8_t top_b, uint8_t bot_r, uint8_t bot_g,
-                               uint8_t bot_b);
-
 // 256-color mode (optional - trades color fidelity for maximum speed)
 void ansi_fast_init_256color(void);
 char *append_256color_fg(char *dst, uint8_t color_index);
 uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b);
+
+// 16-color mode (basic ANSI colors)
+void ansi_fast_init_16color(void);
+char *append_16color_fg(char *dst, uint8_t color_index);
+char *append_16color_bg(char *dst, uint8_t color_index);
+uint8_t rgb_to_16color(uint8_t r, uint8_t g, uint8_t b);
+
+// Dithering support for improved color approximation
+typedef struct {
+  int r, g, b; // Signed integers to handle error propagation
+} rgb_error_t;
+
+// Get the actual RGB values for a 16-color ANSI index
+void get_16color_rgb(uint8_t color_index, uint8_t *r, uint8_t *g, uint8_t *b);
+
+// Floyd-Steinberg dithering for 16-color terminals
+uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, int height, rgb_error_t *error_buffer);
+
+// Terminal capability-aware color functions
+// Use the enum from options.h
+#include "options.h"
+typedef terminal_color_mode_t color_mode_t;
+
+char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color_mode_t mode);

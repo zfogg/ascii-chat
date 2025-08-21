@@ -126,7 +126,7 @@ void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int 
 
 // Complete colored ASCII conversion with SIMD + optimized ANSI generation
 size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                        bool background_mode);
+                                        bool background_mode, bool use_fast_path);
 
 size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                      bool background_mode);
@@ -154,14 +154,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 void print_simd_capabilities(void);
 
 char *image_print_simd(image_t *image);
-char *image_print_colored_simd(image_t *image);
-
-// Upper half block renderer for 2x vertical density
-size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, char *dst,
-                                   size_t cap);
-
-// Half-height image renderer using ▀ blocks
-char *image_print_half_height_blocks(image_t *image);
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path);
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
@@ -179,8 +172,7 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
 size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
                                           const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
                                           const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
-                                          int width, char *dst, size_t cap, bool utf8_block_mode, bool use_256color,
-                                          bool is_truecolor);
+                                          int width, char *dst, size_t cap, bool use_256color, bool is_truecolor);
 
 // Scalar unified REP implementations (for NEON dispatcher fallback)
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);

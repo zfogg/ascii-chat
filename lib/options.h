@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdio.h>
+#include "terminal_detect.h"
 
 #define OPTIONS_BUFF_SIZE 256
 
@@ -16,7 +17,26 @@ extern unsigned short int opt_webcam_flip;
 
 extern unsigned short int opt_color_output;
 
-extern unsigned short int opt_background_color;
+// Terminal color mode override (client only)
+typedef enum {
+  COLOR_MODE_AUTO = 0,      // Auto-detect terminal capabilities (default)
+  COLOR_MODE_MONO = 1,      // Force monochrome/grayscale
+  COLOR_MODE_16_COLOR = 2,  // Force 16-color ANSI
+  COLOR_MODE_256_COLOR = 3, // Force 256-color palette
+  COLOR_MODE_TRUECOLOR = 4  // Force 24-bit truecolor
+} terminal_color_mode_t;
+
+// Background rendering mode (client only)
+typedef enum {
+  BACKGROUND_MODE_AUTO = 0,       // Auto-detect or use default (foreground)
+  BACKGROUND_MODE_FOREGROUND = 1, // Use foreground colors only (default)
+  BACKGROUND_MODE_BACKGROUND = 2  // Use background colors with contrasting foreground
+} background_mode_t;
+
+extern terminal_color_mode_t opt_color_mode;     // Color mode override
+extern background_mode_t opt_background_mode;    // Background mode override
+extern unsigned short int opt_show_capabilities; // Show detected capabilities and exit
+extern unsigned short int opt_force_utf8;        // Force enable UTF-8 support via --utf8
 
 extern unsigned short int opt_audio_enabled;
 
@@ -50,7 +70,6 @@ void options_init(int, char **);
 
 void usage(FILE *out_stream);
 
-// Terminal size detection functions
-int get_terminal_size(unsigned short int *width, unsigned short int *height);
+// Terminal size detection functions (get_terminal_size moved to terminal_detect.h)
 void update_dimensions_for_full_height(void);
 void update_dimensions_to_terminal_size(void);
