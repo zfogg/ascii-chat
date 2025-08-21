@@ -476,7 +476,7 @@ void test_neon_renderers(void) {
         clock_t start = clock();
         size_t total_bytes = 0;
         for (int iter = 0; iter < iterations; iter++) {
-            total_bytes += render_row_neon_256_bg_block_rep(test_pixels, width, output_buffer, buffer_size);
+            total_bytes += render_row_256color_background_rep_unified(test_pixels, width, output_buffer, buffer_size);
         }
         clock_t end = clock();
         double bg_256_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
@@ -502,7 +502,7 @@ void test_neon_renderers(void) {
         start = clock();
         total_bytes = 0;
         for (int iter = 0; iter < iterations; iter++) {
-            total_bytes += render_row_neon_truecolor_bg_block_rep(test_pixels, width, output_buffer, buffer_size);
+            total_bytes += render_row_truecolor_background_rep_unified(test_pixels, width, output_buffer, buffer_size);
         }
         end = clock();
         double bg_true_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;

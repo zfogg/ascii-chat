@@ -46,14 +46,8 @@ void str_printf(Str *s, const char *fmt, ...);
 
 // ASCII rendering functions
 void render_ascii_grayscale(const ImageRGB *img, Str *out);
-void render_halfblock_truecolor(const ImageRGB *img, Str *out);
 void render_ascii_bgcolor(const ImageRGB *img, Str *out);
 void render_ascii_bgcolor_256(const ImageRGB *img, Str *out);
-void render_halfblock_256(const ImageRGB *img, Str *out);
-
-// RLE state management
-void rle_init(RLEState *st);
-void rle_flush(Str *out, RLEState *st, int FR, int FG, int FB, int BR, int BG, int BB);
 
 // NEON: cr=(r*5+127)/255  (nearest of 0..5)
 static inline uint8x16_t quant6_neon(uint8x16_t x) {
@@ -92,9 +86,7 @@ uint8x16_t palette256_index_dithered(uint8x16_t r, uint8x16_t g, uint8x16_t b, i
 void process_remaining_pixels_neon(const rgb_pixel_t *pixels, int count, uint8_t *luminance, char *glyphs);
 
 // Individual NEON renderer functions for direct benchmarking
-size_t render_row_neon_256_bg_block_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
 size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
-size_t render_row_neon_truecolor_bg_block_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
 size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
 
 // Unified NEON dispatcher function
@@ -103,4 +95,8 @@ size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, cha
 
 // ARM NEON version for Apple Silicon
 void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
+
+// REP-safe image renderer that handles newlines internally
+char *render_ascii_image_256fg_rep_safe(const image_t *image);
+char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image);
 #endif

@@ -21,7 +21,7 @@ jobs:
   memory-profiling:
     name: Memory Usage Analysis
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -33,14 +33,14 @@ jobs:
 
     - name: Build with debug symbols
       run: |
-        make CSTD=c2x debug
+        make -j CSTD=c2x debug
 
     - name: Run memory leak detection
       run: |
         echo "Testing server memory usage..."
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
           ./bin/server --help > valgrind_server.log 2>&1 || true
-        
+
         echo "Testing client memory usage..."
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
           ./bin/client --help > valgrind_client.log 2>&1 || true
@@ -54,7 +54,7 @@ jobs:
         else
           echo "✅ No memory leaks detected in server"
         fi
-        
+
         echo "=== Client Memory Analysis ==="
         if grep -q "definitely lost" valgrind_client.log; then
           echo "❌ Memory leaks detected in client"
@@ -75,7 +75,7 @@ jobs:
   build-optimization:
     name: Build Size and Performance
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -88,42 +88,42 @@ jobs:
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
-        make CSTD=c2x debug
+        make -j CSTD=c2x debug
         DEBUG_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
         DEBUG_CLIENT_SIZE=$(stat -f%z bin/client 2>/dev/null || stat -c%s bin/client)
-        
+
         make CSTD=c2x clean
 
         echo "Building release version..."
-        make CSTD=c2x release
+        make -j CSTD=c2x release
         RELEASE_SERVER_SIZE=$(stat -f%z bin/server 2>/dev/null || stat -c%s bin/server)
         RELEASE_CLIENT_SIZE=$(stat -f%z bin/client 2>/dev/null || stat -c%s bin/client)
-        
+
         echo "=== Binary Size Comparison ==="
         echo "Server - Debug: $(($DEBUG_SERVER_SIZE / 1024))KB, Release: $(($RELEASE_SERVER_SIZE / 1024))KB"
         echo "Client - Debug: $(($DEBUG_CLIENT_SIZE / 1024))KB, Release: $(($RELEASE_CLIENT_SIZE / 1024))KB"
-        
+
         # Calculate optimization savings
         SERVER_SAVINGS=$((($DEBUG_SERVER_SIZE - $RELEASE_SERVER_SIZE) * 100 / $DEBUG_SERVER_SIZE))
         CLIENT_SAVINGS=$((($DEBUG_CLIENT_SIZE - $RELEASE_CLIENT_SIZE) * 100 / $DEBUG_CLIENT_SIZE))
-        
+
         echo "Space savings - Server: ${SERVER_SAVINGS}%, Client: ${CLIENT_SAVINGS}%"
 
     - name: Test startup performance
       run: |
         echo "Testing binary startup time..."
-        
+
         # Test help command performance (safe to run without dependencies)
         echo "Server help startup time:"
         time ./bin/server --help
-        
+
         echo "Client help startup time:"
         time ./bin/client --help
 
   code-metrics:
     name: Code Quality Metrics
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -137,14 +137,14 @@ jobs:
       run: |
         echo "=== Lines of Code Analysis ==="
         cloc --exclude-dir=ext,build,bin,.github,.claude,.cursor .
-        
+
         echo "=== Detailed File Analysis ==="
         wc -l *.c *.h *.m 2>/dev/null | sort -n || true
-        
+
         echo "=== Function Count ==="
         echo "C functions:"
         grep -c "^[a-zA-Z_][a-zA-Z0-9_]*.*(" *.c 2>/dev/null | head -10 || true
-        
+
         echo "Header declarations:"
         grep -c "^[a-zA-Z_][a-zA-Z0-9_]*.*(" *.h 2>/dev/null | head -10 || true
 

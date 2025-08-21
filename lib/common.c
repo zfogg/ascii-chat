@@ -29,6 +29,7 @@ static struct {
   size_t calloc_calls;
   size_t realloc_calls;
   pthread_mutex_t mutex;
+  bool quiet_mode; /* Control stderr output for memory report */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
            .total_freed = 0,
@@ -38,7 +39,8 @@ static struct {
            .free_calls = 0,
            .calloc_calls = 0,
            .realloc_calls = 0,
-           .mutex = PTHREAD_MUTEX_INITIALIZER};
+           .mutex = PTHREAD_MUTEX_INITIALIZER,
+           .quiet_mode = false};
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
 #undef malloc
@@ -236,44 +238,52 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   return new_ptr;
 }
 
-void debug_memory_report(void) {
+void debug_memory_set_quiet_mode(bool quiet) {
   pthread_mutex_lock(&g_mem.mutex);
-
-  /* Write directly to stderr in case logging is already destroyed at exit */
-  fprintf(stderr, "\n=== Memory Report ===\n");
-
-  char pretty_total[64];
-  char pretty_freed[64];
-  char pretty_current[64];
-  char pretty_peak[64];
-  format_bytes_pretty(g_mem.total_allocated, pretty_total, sizeof(pretty_total));
-  format_bytes_pretty(g_mem.total_freed, pretty_freed, sizeof(pretty_freed));
-  format_bytes_pretty(g_mem.current_usage, pretty_current, sizeof(pretty_current));
-  format_bytes_pretty(g_mem.peak_usage, pretty_peak, sizeof(pretty_peak));
-
-  fprintf(stderr, "Total allocated: %s\n", pretty_total);
-  fprintf(stderr, "Total freed: %s\n", pretty_freed);
-  fprintf(stderr, "Current usage: %s\n", pretty_current);
-  fprintf(stderr, "Peak usage: %s\n", pretty_peak);
-  fprintf(stderr, "malloc calls: %zu\n", g_mem.malloc_calls);
-  fprintf(stderr, "calloc calls: %zu\n", g_mem.calloc_calls);
-  // fprintf(stderr, "realloc calls: %zu\n", g_mem.realloc_calls);
-  fprintf(stderr, "free calls: %zu\n", g_mem.free_calls);
-  size_t diff = (g_mem.malloc_calls + g_mem.calloc_calls) - g_mem.free_calls;
-  fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zd\n", (ssize_t)diff);
-
-  if (g_mem.head) {
-    fprintf(stderr, "\nCurrent allocations:\n");
-    mem_block_t *curr = g_mem.head;
-    while (curr) {
-      char pretty_size[64];
-      format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-      fprintf(stderr, "  - %s:%d - %s\n", curr->file, curr->line, pretty_size);
-      curr = curr->next;
-    }
-  }
-
+  g_mem.quiet_mode = quiet;
   pthread_mutex_unlock(&g_mem.mutex);
+}
+
+void debug_memory_report(void) {
+  bool quiet = g_mem.quiet_mode;
+  if (!quiet) {
+    pthread_mutex_lock(&g_mem.mutex);
+    // NOTE: Write directly to stderr in case logging is already destroyed at exit
+    fprintf(stderr, "\n=== Memory Report ===\n");
+
+    char pretty_total[64];
+    char pretty_freed[64];
+    char pretty_current[64];
+    char pretty_peak[64];
+    format_bytes_pretty(g_mem.total_allocated, pretty_total, sizeof(pretty_total));
+    format_bytes_pretty(g_mem.total_freed, pretty_freed, sizeof(pretty_freed));
+    format_bytes_pretty(g_mem.current_usage, pretty_current, sizeof(pretty_current));
+    format_bytes_pretty(g_mem.peak_usage, pretty_peak, sizeof(pretty_peak));
+
+    fprintf(stderr, "Total allocated: %s\n", pretty_total);
+    fprintf(stderr, "Total freed: %s\n", pretty_freed);
+    fprintf(stderr, "Current usage: %s\n", pretty_current);
+    fprintf(stderr, "Peak usage: %s\n", pretty_peak);
+    fprintf(stderr, "malloc calls: %zu\n", g_mem.malloc_calls);
+    fprintf(stderr, "calloc calls: %zu\n", g_mem.calloc_calls);
+    // fprintf(stderr, "realloc calls: %zu\n", g_mem.realloc_calls);
+    fprintf(stderr, "free calls: %zu\n", g_mem.free_calls);
+    size_t diff = (g_mem.malloc_calls + g_mem.calloc_calls) - g_mem.free_calls;
+    fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zd\n", (ssize_t)diff);
+
+    if (g_mem.head) {
+      fprintf(stderr, "\nCurrent allocations:\n");
+      mem_block_t *curr = g_mem.head;
+      while (curr) {
+        char pretty_size[64];
+        format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
+        fprintf(stderr, "  - %s:%d - %s\n", curr->file, curr->line, pretty_size);
+        curr = curr->next;
+      }
+    }
+
+    pthread_mutex_unlock(&g_mem.mutex);
+  }
 }
 
 #endif /* DEBUG_MEMORY */

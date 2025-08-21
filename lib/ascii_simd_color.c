@@ -218,19 +218,6 @@ static inline char *append_sgr256_fg(char *dst, uint8_t fg) {
   return dst + sgr->len;
 }
 
-// Quality vs speed trade-off flag (will move fast path functions after append_sgr_reset)
-static bool g_use_256_color_fast_path = false; // DEBUGGING: Use truecolor path that was working
-
-// API to control quality vs speed
-void set_color_quality_mode(bool high_quality) {
-  g_use_256_color_fast_path = !high_quality;
-}
-
-// API to query current quality mode
-bool get_256_color_fast_path(void) {
-  return g_use_256_color_fast_path;
-}
-
 // FIX #5: Public cache prewarming functions for benchmarks
 void prewarm_sgr256_fg_cache(void) {
   init_sgr256_fg_cache();
@@ -245,6 +232,10 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
   init_sgr256_fg_cache();
   const sgr256_t *sgr = &g_sgr256_fg[fg];
   *len_out = sgr->len;
+  // DEBUG: Log what string we're returning
+  if (sgr->len > 0) {
+    log_debug("DEBUG get_sgr256_fg_string: fg=%d len=%d string=[%.*s]", fg, sgr->len, sgr->len, sgr->str);
+  }
   return (char *)sgr->str;
 }
 
@@ -252,14 +243,16 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   init_sgr256_cache();
   const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
   *len_out = sgr->len;
+  // DEBUG: Log what string we're returning
+  if (sgr->len > 0) {
+    log_debug("DEBUG get_sgr256_fg_bg_string: fg=%d bg=%d len=%d string=[%.*s]", fg, bg, sgr->len, sgr->len, sgr->str);
+  }
   return (char *)sgr->str;
 }
 
 // Forward declarations for fast path functions (defined after append_sgr_reset)
 size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                            bool background_mode);
-size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width,
-                                            char *dst, size_t cap);
 
 // -------- ultra-fast SGR builders with size calculation --------
 
@@ -539,109 +532,27 @@ static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
  * ============================================================================
  */
 
-// Fast 256-color upper half block renderer with OPTIMIZATION #5: REP compression
-size_t render_row_upper_half_block_256color(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width,
-                                            char *dst, size_t cap) {
-  char *p = dst;
-
-  // OPTIMIZATION #3: Compute per-row sentinel once
-  const size_t max_per_pixel = 22 + 3;                   // Max 256-color FG+BG SGR + UTF-8 ▀
-  const size_t row_max_size = width * max_per_pixel + 4; // +4 for reset
-  char *row_end = dst + ((cap < row_max_size) ? cap : row_max_size);
-
-  // Current colors for run-length encoding
-  bool have_color = false;
-  uint8_t fg_idx = 0, bg_idx = 0; // 256-color indices
-
-  int x = 0;
-  while (x < width) {
-    const rgb_pixel_t *top_px = &top_row[x];
-    const rgb_pixel_t *bot_px = &bottom_row[x];
-
-    // Convert to 256-color indices
-    uint8_t run_fg_idx = rgb_to_ansi256(top_px->r, top_px->g, top_px->b);
-    uint8_t run_bg_idx = rgb_to_ansi256(bot_px->r, bot_px->g, bot_px->b);
-
-    // OPTIMIZATION #5: Look ahead for identical consecutive ▀ blocks
-    int run_length = 1;
-
-    // Count consecutive ▀ blocks with same FG+BG color combination
-    while (x + run_length < width) {
-      const rgb_pixel_t *next_top_px = &top_row[x + run_length];
-      const rgb_pixel_t *next_bot_px = &bottom_row[x + run_length];
-
-      uint8_t next_fg_idx = rgb_to_ansi256(next_top_px->r, next_top_px->g, next_top_px->b);
-      uint8_t next_bg_idx = rgb_to_ansi256(next_bot_px->r, next_bot_px->g, next_bot_px->b);
-
-      if (next_fg_idx != run_fg_idx || next_bg_idx != run_bg_idx)
-        break; // Different colors
-
-      run_length++;
-    }
-
-    // Set color if it changed
-    if (!have_color || run_fg_idx != fg_idx || run_bg_idx != bg_idx) {
-      // OPTIMIZATION #4: Single memcpy instead of expensive snprintf!
-      p = append_sgr256_fg_bg(p, run_fg_idx, run_bg_idx);
-      fg_idx = run_fg_idx;
-      bg_idx = run_bg_idx;
-      have_color = true;
-    }
-
-    // Simple bounds check only when approaching row boundary
-    if (p >= row_end - 30) {
-      if (p >= row_end)
-        break;
-    }
-
-    // OPTIMIZATION #5: Use REP compression for runs >= 3 ▀ blocks (saves more due to 3-byte UTF-8)
-    if (run_length >= 3) {
-      // Print one ▀, then use REP to repeat the preceding glyph (run_length - 1) times
-      *p++ = 0xE2;
-      *p++ = 0x96;
-      *p++ = 0x80;
-      int rep = run_length - 1;
-      *p++ = '\x1b';
-      *p++ = '[';
-
-      if (rep >= 100) {
-        *p++ = '0' + (rep / 100);
-        rep %= 100;
-        *p++ = '0' + (rep / 10);
-        *p++ = '0' + (rep % 10);
-      } else if (rep >= 10) {
-        *p++ = '0' + (rep / 10);
-        *p++ = '0' + (rep % 10);
-      } else {
-        *p++ = '0' + rep;
-      }
-
-      *p++ = 'b'; // REP command
-    } else {
-      // Short run: write ▀ characters normally (more efficient than REP overhead)
-      for (int i = 0; i < run_length; i++) {
-        *p++ = 0xE2;
-        *p++ = 0x96;
-        *p++ = 0x80;
-      }
-    }
-
-    x += run_length;
-  }
-
-  // Add reset sequence
-  if (row_end - p >= 4)
-    p = append_sgr_reset(p);
-
-  return (size_t)(p - dst);
-}
-
 // Optimized row renderer with run-length encoding and FG+BG combined sequences
 size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                             bool background_mode);
 
 // ----------------
-char *image_print_colored_simd(image_t *image) {
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path) {
+#ifdef SIMD_SUPPORT_NEON
+  // Use REP-safe renderers that handle newlines internally when supported
+  if (!use_background_mode) { // Foreground mode only for now
+    if (use_fast_path) {
+      // 256-color mode - use existing REP-safe renderer
+      return render_ascii_image_256fg_rep_safe(image);
+    } else {
+      // Truecolor mode - use new truecolor REP-safe renderer
+      return render_ascii_image_truecolor_fg_rep_safe(image);
+    }
+  }
+
+  // Fall through to row-by-row processing for background mode
+#endif
+
   // Ensure all caches are initialized before any processing
 
   // Calculate exact maximum buffer size with precise per-pixel bounds
@@ -649,8 +560,8 @@ char *image_print_colored_simd(image_t *image) {
   const int w = image->w;
 
   // Exact per-pixel maximums (with run-length encoding this will be much smaller in practice)
-  const size_t per_px = opt_background_color ? 39 : 20; // Worst case per pixel
-  const size_t reset_len = 4;                           // \033[0m
+  const size_t per_px = use_background_mode ? 39 : 20; // Worst case per pixel
+  const size_t reset_len = 4;                          // \033[0m
 
   const size_t h_sz = (size_t)h;
   const size_t w_sz = (size_t)w;
@@ -680,8 +591,9 @@ char *image_print_colored_simd(image_t *image) {
     assert(total_len + row_max <= lines_size);
 
     // Use the NEW optimized run-length encoding function with combined SGR sequences
+    bool use_background = use_background_mode;
     size_t row_len = convert_row_with_color_optimized((const rgb_pixel_t *)&image->pixels[y * w], ascii + total_len,
-                                                      lines_size - total_len, w, opt_background_color);
+                                                      lines_size - total_len, w, use_background, use_fast_path);
     total_len += row_len;
 
     // Add newline after each row (except the last row)
@@ -1155,8 +1067,8 @@ static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_b
     // Scalar luminance calculation (same formula as NEON)
     uint16_t luma_16 = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b);
     uint8_t luma = (uint8_t)(luma_16 >> 8);
-    uint8_t idx = luma >> 3; // 0..31
-    char ascii_char = (idx < 16) ? " ...',;:clodxk"[idx] : "O0KXNWMMMMMMMMM"[idx - 16];
+    // Use global ASCII cache like other parts of the codebase
+    char ascii_char = luminance_palette[luma];
 
     // Color sequences (same optimization as NEON loop)
     if (background_mode) {
@@ -1198,9 +1110,8 @@ size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buf
     if (luminance > 255)
       luminance = 255;
 
-    // Get ASCII character - FIXED: Use same palette as SIMD implementation
-    static const char palette[] = "   ...',;:clodxkO0KXNWM";
-    char ascii_char = palette[luminance * (sizeof(palette) - 2) / 255];
+    // Get ASCII character - Use global luminance palette like all other functions
+    char ascii_char = luminance_palette[luminance];
 
     size_t remaining = buffer_end - current_pos;
     if (remaining < 64)
@@ -1243,9 +1154,8 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
     if (luminance > 255)
       luminance = 255;
 
-    // Get ASCII character - FIXED: Use same palette as SIMD implementation
-    static const char palette[] = "   ...',;:clodxkO0KXNWM";
-    ascii_chars[x] = palette[luminance * (sizeof(palette) - 2) / 255];
+    // Get ASCII character - Use global luminance palette like all other functions
+    ascii_chars[x] = luminance_palette[luminance];
   }
 
   // Step 2: Generate colored output
@@ -1296,23 +1206,6 @@ size_t convert_row_with_color_scalar_with_buffer(const rgb_pixel_t *pixels, char
 // Build one colored ASCII row with FG only or FG+BG, run-length colors.
 size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, char *dst, size_t cap,
                                             bool background_mode) {
-
-  // FIX C: Make 256-color path truly configurable (ChatGPT Issue #2)
-  // CRITICAL: Force 256-color path for background mode (40x+ speedup!)
-  bool use_fast_path = background_mode ? true : g_use_256_color_fast_path;
-
-  if (use_fast_path) {
-    // Use the NEON SIMD implementation instead of the broken scalar function
-#ifdef SIMD_SUPPORT_NEON
-    return render_row_ascii_rep_dispatch_neon(row, width, dst, cap, background_mode, true);
-#else
-    // Fallback for non-NEON platforms - use truecolor mode
-    use_fast_path = false;
-#endif
-  }
-
-  // Fallback to truecolor for high quality mode
-
   char *p = dst;
 
   // OPTIMIZATION #3: Compute per-row sentinel once (kill per-pixel capacity checks)
@@ -1385,132 +1278,6 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
   if (row_end - p >= 4)
     p = append_sgr_reset(p);
   return (size_t)(p - dst);
-}
-
-/* ============================================================================
- * Upper Half Block (▀) Renderer - 2x Vertical Density
- * ============================================================================
- */
-
-// Render two image rows as one terminal row using ▀ character
-// FG = top pixel color, BG = bottom pixel color = 2x vertical resolution!
-size_t render_row_upper_half_block(const rgb_pixel_t *top_row, const rgb_pixel_t *bottom_row, int width, char *dst,
-                                   size_t cap) {
-
-  // OPTIMIZATION #4: Use 256-color fast path by default (huge speed boost!)
-  if (g_use_256_color_fast_path) {
-    return render_row_upper_half_block_256color(top_row, bottom_row, width, dst, cap);
-  }
-
-  // Fallback to truecolor for high quality mode
-
-  char *p = dst;
-
-  // OPTIMIZATION #3: Compute per-row sentinel once (kill per-pixel capacity checks)
-  // Worst case: every pixel changes FG+BG color + has ▀ UTF-8 char (3 bytes)
-  const size_t max_per_pixel = 39 + 3;                   // Max FG+BG SGR + UTF-8 ▀
-  const size_t row_max_size = width * max_per_pixel + 4; // +4 for reset
-  char *row_end = dst + ((cap < row_max_size) ? cap : row_max_size);
-
-  // Current colors for run-length encoding
-  bool have_color = false;
-  uint8_t fg_r = 0, fg_g = 0, fg_b = 0; // Foreground (top pixel)
-  uint8_t bg_r = 0, bg_g = 0, bg_b = 0; // Background (bottom pixel)
-
-  for (int x = 0; x < width; ++x) {
-    const rgb_pixel_t *top_px = &top_row[x];
-    const rgb_pixel_t *bot_px = &bottom_row[x];
-
-    // Check if colors changed (need new escape sequence)
-    bool color_changed = !have_color || top_px->r != fg_r || top_px->g != fg_g || top_px->b != fg_b ||
-                         bot_px->r != bg_r || bot_px->g != bg_g || bot_px->b != bg_b;
-
-    if (color_changed) {
-      // NO MORE per-pixel capacity check - we computed row_end sentinel once!
-      // Emit combined FG+BG escape sequence
-      p = append_sgr_truecolor_fg_bg(p, top_px->r, top_px->g, top_px->b, bot_px->r, bot_px->g, bot_px->b);
-
-      // Update color state
-      fg_r = top_px->r;
-      fg_g = top_px->g;
-      fg_b = top_px->b;
-      bg_r = bot_px->r;
-      bg_g = bot_px->g;
-      bg_b = bot_px->b;
-      have_color = true;
-    }
-
-    // Simple bounds check only when approaching row boundary
-    if (p >= row_end - 50) { // 50 byte safety margin
-      if (p >= row_end)
-        break;
-    }
-
-    // Add ▀ character (UTF-8: 0xE2 0x96 0x80)
-    *p++ = 0xE2;
-    *p++ = 0x96;
-    *p++ = 0x80;
-  }
-
-  // Add reset sequence
-  if (row_end - p >= 4)
-    p = append_sgr_reset(p);
-
-  return (size_t)(p - dst);
-}
-
-// Full image renderer using ▀ blocks (half-height output)
-char *image_print_half_height_blocks(image_t *image) {
-  const int h = image->h;
-  const int w = image->w;
-
-  // Output height is half the input height (rounded up)
-  const int output_height = (h + 1) / 2;
-
-  // Calculate buffer size: each ▀ needs combined FG+BG escape (up to ~45 bytes) + UTF-8 ▀ (3 bytes)
-  const size_t max_per_char = 48; // Conservative estimate
-  const size_t reset_len = 4;     // \033[0m
-  const size_t total_newlines = (output_height > 0) ? (output_height - 1) : 0;
-  const size_t buffer_size =
-      (size_t)output_height * (size_t)w * max_per_char + (size_t)output_height * reset_len + total_newlines + 1;
-
-  // Single allocation
-  char *ascii;
-  SAFE_MALLOC(ascii, buffer_size, char *);
-  if (!ascii) {
-    log_error("Memory allocation failed: %zu bytes", buffer_size);
-    return NULL;
-  }
-
-  size_t total_len = 0;
-
-  // Process pairs of rows
-  for (int y = 0; y < output_height; y++) {
-    int top_row_idx = y * 2;
-    int bottom_row_idx = top_row_idx + 1;
-
-    const rgb_pixel_t *top_row = (const rgb_pixel_t *)&image->pixels[top_row_idx * w];
-    const rgb_pixel_t *bottom_row;
-
-    // Handle odd heights - use the same row for both top and bottom
-    if (bottom_row_idx >= h) {
-      bottom_row = top_row; // Duplicate last row for odd heights
-    } else {
-      bottom_row = (const rgb_pixel_t *)&image->pixels[bottom_row_idx * w];
-    }
-
-    // Render this terminal row using ▀ blocks
-    size_t row_len = render_row_upper_half_block(top_row, bottom_row, w, ascii + total_len, buffer_size - total_len);
-    total_len += row_len;
-
-    // Add newline after each row (except the last row)
-    if (y != output_height - 1 && total_len < buffer_size - 1) {
-      ascii[total_len++] = '\n';
-    }
-  }
-
-  ascii[total_len] = '\0';
-  return ascii;
 }
 
 /* ============================================================================
@@ -1666,8 +1433,7 @@ size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int w
 // Auto-dispatch optimized color function - calls best available SIMD implementation. plan to support more than just
 // NEON in the future.
 size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                        bool background_mode) {
-  bool use_fast_path = get_256_color_fast_path(); // Get quality setting
+                                        bool background_mode, bool use_fast_path) {
 
 #ifdef SIMD_SUPPORT_NEON
   // Use NEON optimized renderer

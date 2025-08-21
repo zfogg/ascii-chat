@@ -10,16 +10,14 @@
 #include "image.h"
 #include "ascii.h"
 #include "ascii_simd.h"
+#include "ansi_fast.h"
 #include "options.h"
 #include "round.h"
 
 // Use the global SIMD-optimized palette
 #define luminance_palette g_ascii_cache.luminance_palette
 
-// Forward declarations for ansi_fast functions
-extern void ansi_fast_init(void);
-extern char *append_truecolor_fg(char *dst, int r, int g, int b);
-extern char *append_truecolor_fg_bg(char *dst, int fr, int fg, int fb, int br, int bg, int bb);
+// ansi_fast functions are declared in ansi_fast.h (already included)
 
 image_t *image_new(size_t width, size_t height) {
   image_t *p;
@@ -229,7 +227,7 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  * @note Exits with ASCIICHAT_ERR_BUFFER_ACCESS if buffer overflow is detected
  *       during string construction (should never happen with correct calculation).
  */
-char *image_print_colored(const image_t *p) {
+char *image_print_color(const image_t *p) {
   if (!p || !p->pixels) {
     log_error("p or p->pixels is NULL");
     return NULL;
@@ -253,7 +251,7 @@ char *image_print_colored(const image_t *p) {
   }
 
   const size_t total_pixels = h_sz * w_sz;
-  const size_t bytes_per_pixel = 1 + max_fg_ansi + (opt_background_color ? max_bg_ansi : 0);
+  const size_t bytes_per_pixel = 1 + max_fg_ansi + max_bg_ansi; // Conservative estimate for max possible
 
   // Ensure total_pixels * bytes_per_pixel won't overflow
   if (total_pixels > SIZE_MAX / bytes_per_pixel) {
@@ -280,9 +278,16 @@ char *image_print_colored(const image_t *p) {
   SAFE_MALLOC(lines, lines_size, char *);
 
   const rgb_t *pix = p->pixels;
-  char *current_pos = lines;
-  const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
+  // char *current_pos = lines;
+  // const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
 
+  // Initialize the optimized RLE context for color sequence caching
+  // Note: This function should be called via image_print_with_capabilities() for proper per-client rendering
+  ansi_rle_context_t rle_ctx;
+  ansi_color_mode_t color_mode = ANSI_MODE_FOREGROUND; // Default to foreground-only for legacy usage
+  ansi_rle_init(&rle_ctx, lines, lines_size, color_mode);
+
+  // Process each pixel using the optimized RLE context
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
 
@@ -292,42 +297,21 @@ char *image_print_colored(const image_t *p) {
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
       const char ascii_char = luminance_palette[luminance];
 
-      const size_t remaining = buffer_end - current_pos;
-      if (remaining < 64) {
-        log_error("Buffer overflow prevented in pixel write");
-        exit(ASCIICHAT_ERR_BUFFER_ACCESS);
-      }
-
-      if (opt_background_color) {
-        int fg_r = (luminance < 127) ? 0 : 255;
-        int fg_g = fg_r, fg_b = fg_r;
-
-        // Use ansi_fast.c for 10x speedup - no snprintf!
-        current_pos = append_truecolor_fg_bg(current_pos, fg_r, fg_g, fg_b, r, g, b);
-        *current_pos++ = ascii_char;
-      } else {
-        // Use ansi_fast.c for 10x speedup - no snprintf!
-        current_pos = append_truecolor_fg(current_pos, r, g, b);
-        *current_pos++ = ascii_char;
-      }
+      // Legacy function - always use foreground mode with RLE optimization
+      // For proper per-client background support, use image_print_with_capabilities() instead
+      ansi_rle_add_pixel(&rle_ctx, r, g, b, ascii_char);
     }
 
-    // Write reset + optional newline
-    const size_t remaining = buffer_end - current_pos;
-    if (remaining < 8) {
-      log_error("Buffer overflow during reset");
-      exit(ASCIICHAT_ERR_BUFFER_ACCESS);
-    }
-
-    memcpy(current_pos, "\033[0m", reset_len);
-    current_pos += reset_len;
-
+    // Add newline between rows (except last row)
     if (y != h - 1) {
-      *current_pos++ = '\n';
+      if (rle_ctx.length < rle_ctx.capacity - 1) {
+        rle_ctx.buffer[rle_ctx.length++] = '\n';
+      }
     }
   }
 
-  *current_pos = '\0';
+  // Finalize the RLE output with reset sequence
+  ansi_rle_finish(&rle_ctx);
   return lines;
 }
 
@@ -363,4 +347,282 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
     *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
   }
   *bg_code = *fg_code; // Same logic for background
+}
+
+// Capability-aware image printing function
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps) {
+  if (!image || !image->pixels || !caps) {
+    log_error("Invalid parameters for image_print_with_capabilities");
+    return NULL;
+  }
+
+  // Check if client wants background rendering
+  bool use_background_mode = (caps->capabilities & TERM_CAP_BACKGROUND) != 0;
+
+  // TODO: Eventually refactor printing functions to accept background mode as parameter
+  // For now, we handle background mode in the capability system but legacy functions use foreground-only
+
+  char *result = NULL;
+
+  // Choose the appropriate printing method based on terminal capabilities
+  switch (caps->color_level) {
+  case TERM_COLOR_TRUECOLOR:
+    // Use existing truecolor printing function
+#ifdef SIMD_SUPPORT
+    result = image_print_color_simd((image_t *)image, use_background_mode, false);
+#else
+    result = image_print_color(image);
+#endif
+    break;
+
+  case TERM_COLOR_256:
+#ifdef SIMD_SUPPORT
+    result = image_print_color_simd((image_t *)image, use_background_mode, true);
+#else
+    // Use 256-color conversion
+    result = image_print_256color(image);
+#endif
+    break;
+
+  case TERM_COLOR_16:
+    // Use 16-color conversion with Floyd-Steinberg dithering for better quality
+    result = image_print_16color_dithered_with_background(image, use_background_mode);
+    break;
+
+  case TERM_COLOR_NONE:
+  default:
+    // Use grayscale/monochrome conversion
+#ifdef SIMD_SUPPORT
+    result = image_print_simd((image_t *)image);
+#else
+    result = image_print(image);
+#endif
+    break;
+  }
+
+  // Note: Background mode is now handled via capabilities rather than global state
+  return result;
+}
+
+// 256-color image printing function using existing SIMD optimized code
+char *image_print_256color(const image_t *p) {
+  if (!p || !p->pixels) {
+    log_error("image_print_256color: p or p->pixels is NULL");
+    return NULL;
+  }
+
+  // Use the existing optimized SIMD colored printing (no background for 256-color mode)
+#ifdef SIMD_SUPPORT
+  char *result = image_print_color_simd((image_t *)p, false, true);
+#else
+  char *result = image_print_color(p);
+#endif
+
+  return result;
+}
+
+// 16-color image printing function using ansi_fast color conversion
+char *image_print_16color(const image_t *p) {
+  if (!p || !p->pixels) {
+    log_error("image_print_16color: p or p->pixels is NULL");
+    return NULL;
+  }
+
+  int h = p->h;
+  int w = p->w;
+
+  if (h <= 0 || w <= 0) {
+    log_error("image_print_16color: invalid dimensions h=%d, w=%d", h, w);
+    return NULL;
+  }
+
+  // Initialize 16-color lookup table
+  ansi_fast_init_16color();
+
+  // Calculate buffer size (smaller than 256-color due to shorter ANSI sequences)
+  size_t buffer_size = (size_t)h * (size_t)w * 12 + (size_t)h; // Space for ANSI codes + newlines
+  char *buffer;
+  SAFE_MALLOC(buffer, buffer_size, char *);
+  if (!buffer) {
+    log_error("image_print_16color: failed to allocate buffer");
+    return NULL;
+  }
+
+  char *ptr = buffer;
+  const char *reset_code = "\033[0m";
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      rgb_t pixel = p->pixels[y * w + x];
+
+      // Convert RGB to 16-color index and generate ANSI sequence
+      uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
+      ptr = append_16color_fg(ptr, color_index);
+
+      // Calculate luminance for ASCII character selection
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
+      // Use the global SIMD ASCII cache luminance palette
+      *ptr++ = luminance_palette[luminance];
+    }
+
+    // Add reset and newline at end of each row
+    strcpy(ptr, reset_code);
+    ptr += strlen(reset_code);
+    if (y < h - 1) {
+      *ptr++ = '\n';
+    }
+  }
+
+  *ptr = '\0';
+  return buffer;
+}
+
+// 16-color image printing with Floyd-Steinberg dithering
+char *image_print_16color_dithered(const image_t *p) {
+  if (!p || !p->pixels) {
+    log_error("image_print_16color_dithered: p or p->pixels is NULL");
+    return NULL;
+  }
+
+  int h = p->h;
+  int w = p->w;
+
+  if (h <= 0 || w <= 0) {
+    log_error("image_print_16color_dithered: invalid dimensions h=%d, w=%d", h, w);
+    return NULL;
+  }
+
+  // Initialize 16-color lookup table
+  ansi_fast_init_16color();
+
+  // Allocate error buffer for Floyd-Steinberg dithering
+  size_t pixel_count = (size_t)h * (size_t)w;
+  rgb_error_t *error_buffer;
+  SAFE_CALLOC(error_buffer, pixel_count, sizeof(rgb_error_t), rgb_error_t *);
+  if (!error_buffer) {
+    log_error("image_print_16color_dithered: failed to allocate error buffer");
+    return NULL;
+  }
+
+  // Calculate buffer size (same as non-dithered version)
+  size_t buffer_size = (size_t)h * (size_t)w * 12 + (size_t)h; // Space for ANSI codes + newlines
+  char *buffer;
+  SAFE_MALLOC(buffer, buffer_size, char *);
+  if (!buffer) {
+    log_error("image_print_16color_dithered: failed to allocate buffer");
+    free(error_buffer);
+    return NULL;
+  }
+
+  char *ptr = buffer;
+  const char *reset_code = "\033[0m";
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      rgb_t pixel = p->pixels[y * w + x];
+
+      // Convert RGB to 16-color index using dithering
+      uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
+      ptr = append_16color_fg(ptr, color_index);
+
+      // Calculate luminance for ASCII character selection (same as non-dithered)
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
+      // Use the global SIMD ASCII cache luminance palette
+      *ptr++ = luminance_palette[luminance];
+    }
+
+    // Add reset and newline at end of each row
+    strcpy(ptr, reset_code);
+    ptr += strlen(reset_code);
+    if (y < h - 1) {
+      *ptr++ = '\n';
+    }
+  }
+
+  *ptr = '\0';
+  free(error_buffer); // Clean up error buffer
+  return buffer;
+}
+
+// 16-color image printing with Floyd-Steinberg dithering and background mode support
+char *image_print_16color_dithered_with_background(const image_t *p, bool use_background) {
+  if (!p || !p->pixels) {
+    log_error("image_print_16color_dithered_with_background: p or p->pixels is NULL");
+    return NULL;
+  }
+
+  int h = p->h;
+  int w = p->w;
+
+  if (h <= 0 || w <= 0) {
+    log_error("image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d", h, w);
+    return NULL;
+  }
+
+  // Initialize 16-color lookup table
+  ansi_fast_init_16color();
+
+  // Allocate error buffer for Floyd-Steinberg dithering
+  size_t pixel_count = (size_t)h * (size_t)w;
+  rgb_error_t *error_buffer;
+  SAFE_CALLOC(error_buffer, pixel_count, sizeof(rgb_error_t), rgb_error_t *);
+  if (!error_buffer) {
+    log_error("image_print_16color_dithered_with_background: failed to allocate error buffer");
+    return NULL;
+  }
+
+  // Calculate buffer size (larger for background mode due to more ANSI sequences)
+  size_t buffer_size =
+      (size_t)h * (size_t)w * (use_background ? 24 : 12) + (size_t)h; // Space for ANSI codes + newlines
+  char *buffer;
+  SAFE_MALLOC(buffer, buffer_size, char *);
+  if (!buffer) {
+    log_error("image_print_16color_dithered_with_background: failed to allocate buffer");
+    free(error_buffer);
+    return NULL;
+  }
+
+  char *ptr = buffer;
+  const char *reset_code = "\033[0m";
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      rgb_t pixel = p->pixels[y * w + x];
+
+      // Convert RGB to 16-color index using dithering
+      uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
+
+      if (use_background) {
+        // Background mode: use contrasting foreground on background color
+        uint8_t bg_r, bg_g, bg_b;
+        get_16color_rgb(color_index, &bg_r, &bg_g, &bg_b);
+
+        // Calculate luminance to choose contrasting foreground
+        int bg_luminance = (bg_r * 77 + bg_g * 150 + bg_b * 29) / 256;
+        uint8_t fg_color = (bg_luminance < 127) ? 15 : 0; // White on dark, black on bright
+
+        ptr = append_16color_bg(ptr, color_index); // Set background to pixel color
+        ptr = append_16color_fg(ptr, fg_color);    // Set contrasting foreground
+      } else {
+        // Foreground mode: set foreground to pixel color
+        ptr = append_16color_fg(ptr, color_index);
+      }
+
+      // Calculate luminance for ASCII character selection
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
+      // Use the global SIMD ASCII cache luminance palette
+      *ptr++ = luminance_palette[luminance];
+    }
+
+    // Add reset and newline at end of each row
+    strcpy(ptr, reset_code);
+    ptr += strlen(reset_code);
+    if (y < h - 1) {
+      *ptr++ = '\n';
+    }
+  }
+
+  *ptr = '\0';
+  free(error_buffer); // Clean up error buffer
+  return buffer;
 }

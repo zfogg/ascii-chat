@@ -22,10 +22,10 @@
 #include "buffer_pool.h"
 #include "ringbuffer.h"
 #include "audio.h"
+#include "terminal_detect.h"
 #include "aspect_ratio.h"
 #include "mixer.h"
 #include "hashtable.h"
-#include "frame_debug.h"
 
 /* ============================================================================
  * Global State
@@ -94,6 +94,10 @@ typedef struct {
   bool is_sending_video;
   bool is_sending_audio;
 
+  // Terminal capabilities (for rendering appropriate ASCII frames)
+  terminal_capabilities_t terminal_caps;
+  bool has_terminal_caps; // Whether we've received terminal capabilities from this client
+
   // Stream dimensions
   unsigned short width, height;
 
@@ -161,9 +165,6 @@ static mixer_t *g_audio_mixer = NULL;
 // Statistics logging thread
 static pthread_t g_stats_logger_thread;
 static bool g_stats_logger_thread_created = false;
-
-// Frame debugging trackers
-static frame_debug_tracker_t g_server_frame_debug;
 
 // Blank frame statistics
 static uint64_t g_blank_frames_sent = 0;
@@ -259,9 +260,8 @@ static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   g_should_exit = true;
 
-  // Signal-safe logging - avoid log_warn() which may not be signal-safe
-  const char msg[] = "SIGTERM received - shutting down server...\n";
-  write(STDERR_FILENO, msg, sizeof(msg) - 1);
+  // Use log system in signal handler - it has its own safety mechanisms
+  log_info("SIGTERM received - shutting down server...");
 
   // Wake up all sleeping threads immediately - signal-safe operation
   pthread_cond_broadcast(&g_shutdown_cond);
@@ -312,57 +312,6 @@ client_info_t *find_client_by_id(uint32_t client_id) {
  * Old server audio capture removed - clients capture and send their own audio
  * ============================================================================
  */
-
-/* ============================================================================
- * Client Size Handling
- * ============================================================================
- */
-
-int receive_client_size(int sockfd, unsigned short *width, unsigned short *height) {
-  // Try to peek for a packet header to see if there's a size packet
-  packet_header_t header;
-  ssize_t peeked = recv(sockfd, &header, sizeof(header), MSG_PEEK | MSG_DONTWAIT);
-  if (peeked <= 0) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      return 0; // No data available (non-blocking)
-    }
-    return -1; // Error or connection closed
-  }
-
-  if (peeked < (ssize_t)sizeof(header)) {
-    return 0; // Not enough data for a complete header
-  }
-
-  // Check if this is a size packet
-  uint32_t magic = ntohl(header.magic);
-  uint16_t type = ntohs(header.type);
-
-  if (magic != PACKET_MAGIC || type != PACKET_TYPE_SIZE) {
-    return 0; // Not a size packet
-  }
-
-  // Receive the complete packet
-  packet_type_t pkt_type;
-  void *data;
-  size_t len;
-
-  int result = receive_packet(sockfd, &pkt_type, &data, &len);
-  if (result <= 0) {
-    return result; // Error or connection closed
-  }
-
-  if (pkt_type != PACKET_TYPE_SIZE || len != 4) {
-    buffer_pool_free(data, len);
-    return 0; // Invalid size packet
-  }
-
-  const uint16_t *size_data = (const uint16_t *)data;
-  *width = ntohs(size_data[0]);
-  *height = ntohs(size_data[1]);
-
-  buffer_pool_free(data, len);
-  return 1; // Successfully parsed size packet
-}
 
 /* ============================================================================
  * Statistics Logging Thread
@@ -657,7 +606,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   image_t *composite = NULL;
 
   if (source_count == 1 && sources[0].image) {
-    // Single source - calculate proper dimensions for display
+    // Single source - use original fit dimensions logic from master
     int display_width_chars, display_height_chars;
     calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
                                    &display_height_chars);
@@ -677,7 +626,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     image_resize(sources[0].image, composite);
   } else if (source_count > 1) {
     // Multiple sources - create grid layout (same grid logic as global version)
-    composite = image_new(width, height * 2);
+    int composite_width_px = width;
+    int composite_height_px = height * 2;
+
+    composite = image_new(composite_width_px, composite_height_px);
     if (!composite) {
       log_error("Per-client %u: Failed to create composite image", target_client_id);
       *out_size = 0;
@@ -693,25 +645,28 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     int grid_cols = (source_count == 2) ? 2 : (source_count <= 4) ? 2 : 3;
     int grid_rows = (source_count + grid_cols - 1) / grid_cols;
 
-    // Calculate cell dimensions in characters
-    int cell_width = width / grid_cols;
-    int cell_height = height / grid_rows;
+    // Calculate cell dimensions in characters (for layout)
+    int cell_width_chars = width / grid_cols;
+    int cell_height_chars = height / grid_rows;
 
-    // Place each source in the grid (same grid placement logic)
+    // Convert cell dimensions to pixels for image operations
+    int cell_width_px = cell_width_chars;       // 1:1 mapping
+    int cell_height_px = cell_height_chars * 2; // 2:1 mapping to match composite dimensions
+
+    // Place each source in the grid
     for (int i = 0; i < source_count && i < 9; i++) { // Max 9 sources in 3x3 grid
       if (!sources[i].image)
         continue;
 
       int row = i / grid_cols;
       int col = i % grid_cols;
-      int cell_x_offset = col * cell_width;
-      int cell_y_offset = row * cell_height;
+
+      // Calculate cell position in pixels
+      int cell_x_offset_px = col * cell_width_px;
+      int cell_y_offset_px = row * cell_height_px;
 
       float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
-      float cell_aspect = (float)cell_width / (float)cell_height;
-
-      int cell_width_px = cell_width;
-      int cell_height_px = cell_height * 2; // Convert chars to pixels
+      float cell_aspect = (float)cell_width_px / (float)cell_height_px;
 
       int target_width_px, target_height_px;
       if (src_aspect > cell_aspect) {
@@ -724,28 +679,35 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         target_width_px = (int)(cell_height_px * src_aspect + 0.5f);
       }
 
-      // Create resized image with pixel dimensions
+      // Ensure target dimensions don't exceed cell dimensions
+      if (target_width_px > cell_width_px)
+        target_width_px = cell_width_px;
+      if (target_height_px > cell_height_px)
+        target_height_px = cell_height_px;
+
+      // Create resized image
       image_t *resized = image_new(target_width_px, target_height_px);
       if (resized) {
         image_resize(sources[i].image, resized);
 
-        // Center the image in the cell
-        int target_width_chars = target_width_px;
-        int target_height_chars = target_height_px / 2; // Convert pixels to chars
+        // Center the resized image within the cell (pixel coordinates)
+        int x_padding_px = (cell_width_px - target_width_px) / 2;
+        int y_padding_px = (cell_height_px - target_height_px) / 2;
 
-        int x_padding = (cell_width - target_width_chars) / 2;
-        int y_padding = (cell_height - target_height_chars) / 2;
-
-        // Copy resized image to composite (in pixel space)
+        // Copy resized image to composite with proper bounds checking
         for (int y = 0; y < target_height_px; y++) {
           for (int x = 0; x < target_width_px; x++) {
             int src_idx = y * target_width_px + x;
-            int dst_x = cell_x_offset + x_padding + x;
-            int dst_y = (cell_y_offset + y_padding) * 2 + y; // Convert char offset to pixel offset
-            int dst_idx = dst_y * width + dst_x;
+            int dst_x = cell_x_offset_px + x_padding_px + x;
+            int dst_y = cell_y_offset_px + y_padding_px + y;
 
-            if (src_idx < resized->w * resized->h && dst_idx < composite->w * composite->h &&
-                dst_x < (cell_x_offset + cell_width) && dst_y < ((cell_y_offset + cell_height) * 2)) {
+            // CRITICAL FIX: Use correct stride for composite image
+            int dst_idx = dst_y * composite_width_px + dst_x;
+
+            // Bounds checking with correct composite dimensions
+            if (src_idx >= 0 && src_idx < resized->w * resized->h && dst_idx >= 0 &&
+                dst_idx < composite->w * composite->h && dst_x >= 0 && dst_x < composite_width_px && dst_y >= 0 &&
+                dst_y < composite_height_px) {
               composite->pixels[dst_idx] = resized->pixels[src_idx];
             }
           }
@@ -756,7 +718,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
   } else {
     // No sources, create empty composite
-    composite = image_new(width, height);
+    composite = image_new(width, height * 2);
     if (!composite) {
       log_error("Per-client %u: Failed to create empty image", target_client_id);
       *out_size = 0;
@@ -765,8 +727,23 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     image_clear(composite);
   }
 
-  // Convert to ASCII with target client's preferences
-  char *ascii_frame = ascii_convert(composite, width, height, wants_color, true, false);
+  // Find the target client to get their terminal capabilities
+  client_info_t *target_client = find_client_by_id_fast(target_client_id);
+  char *ascii_frame = NULL;
+
+  if (target_client && target_client->has_terminal_caps) {
+    // Use capability-aware ASCII conversion for better terminal compatibility
+    pthread_mutex_lock(&target_client->client_state_mutex);
+    terminal_capabilities_t caps_snapshot = target_client->terminal_caps;
+    pthread_mutex_unlock(&target_client->client_state_mutex);
+
+    ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false);
+  } else {
+    // Don't send frames until we receive client capabilities - saves bandwidth and CPU
+    log_debug("Per-client %u: Waiting for terminal capabilities before sending frames (no capabilities received yet)",
+              target_client_id);
+    ascii_frame = NULL;
+  }
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
@@ -807,8 +784,7 @@ int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame,
                                        .original_size = htonl((uint32_t)frame_size),
                                        .compressed_size = htonl(0), // Not using compression for per-client frames yet
                                        .checksum = htonl(asciichat_crc32(ascii_frame, frame_size)),
-                                       .flags =
-                                           htonl((client->wants_color && opt_color_output) ? FRAME_FLAG_HAS_COLOR : 0)};
+                                       .flags = htonl(client->wants_color ? FRAME_FLAG_HAS_COLOR : 0)};
 
   // Allocate buffer for complete packet (header + data)
   size_t packet_size = sizeof(ascii_frame_packet_t) + frame_size;
@@ -847,10 +823,17 @@ int main(int argc, char *argv[]) {
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   log_init(log_filename, LOG_DEBUG);
+
+  // Handle quiet mode - disable terminal output when opt_quiet is enabled
+  log_set_terminal_output(!opt_quiet);
+#ifdef DEBUG_MEMORY
+  debug_memory_set_quiet_mode(opt_quiet);
+#endif
+
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  atexit(debug_memory_report);
+  // atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool
@@ -952,11 +935,6 @@ int main(int argc, char *argv[]) {
     log_fatal("Failed to create client hash table");
     exit(1);
   }
-
-  // Initialize frame debugging
-  g_frame_debug_enabled = true; // Enable by default for debugging
-  g_frame_debug_verbosity = 2;  // Show warnings and stats
-  frame_debug_init(&g_server_frame_debug, "Server-VideoGeneration");
 
   // Initialize audio mixer if audio is enabled
   if (opt_audio_enabled) {
@@ -1170,7 +1148,7 @@ int main(int argc, char *argv[]) {
     log_info("Audio mixer cleanup complete");
   }
 
-  printf("Server shutdown complete.\n");
+  log_info("Server shutdown complete");
 
   // Cleanup client manager resources
   if (g_client_manager.client_hashtable) {
@@ -1255,6 +1233,49 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
     }
   } else {
     log_debug("Ignoring video packet: len=%zu (too small)", len);
+  }
+}
+
+// Handles batched audio samples from client (new efficient format)
+static void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len) {
+  if (client->is_sending_audio && data && len >= sizeof(audio_batch_packet_t)) {
+    // Parse batch header
+    const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+    uint32_t batch_count = ntohl(batch_header->batch_count);
+    uint32_t total_samples = ntohl(batch_header->total_samples);
+    uint32_t sample_rate = ntohl(batch_header->sample_rate);
+    // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
+
+    // Suppress static analyzer warnings for conditionally used variables
+    (void)batch_count; // Used in DEBUG_AUDIO log
+    (void)sample_rate; // Used in DEBUG_AUDIO log
+
+    // Validate batch parameters
+    size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));
+    if (len != expected_size) {
+      log_error("Invalid audio batch size from client %u: got %zu, expected %zu", client->client_id, len,
+                expected_size);
+      return;
+    }
+
+    if (total_samples > AUDIO_BATCH_SAMPLES * 2) { // Sanity check
+      log_error("Audio batch too large from client %u: %u samples", client->client_id, total_samples);
+      return;
+    }
+
+    // Extract samples (they follow the header)
+    const float *samples = (const float *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+
+    // Write all samples to the ring buffer
+    if (client->incoming_audio_buffer) {
+      int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+      // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
+      (void)written;
+#ifdef DEBUG_AUDIO
+      log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
+                total_samples, sample_rate);
+#endif
+    }
   }
 }
 
@@ -1373,57 +1394,51 @@ void *client_receive_thread_func(void *arg) {
     }
 
     case PACKET_TYPE_AUDIO_BATCH: {
-      // Handle batched audio samples from client (new efficient format)
-      if (client->is_sending_audio && data && len >= sizeof(audio_batch_packet_t)) {
-        // Parse batch header
-        const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-        uint32_t batch_count = ntohl(batch_header->batch_count);
-        uint32_t total_samples = ntohl(batch_header->total_samples);
-        uint32_t sample_rate = ntohl(batch_header->sample_rate);
-        // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
-
-        // Suppress static analyzer warnings for conditionally used variables
-        (void)batch_count; // Used in DEBUG_AUDIO log
-        (void)sample_rate; // Used in DEBUG_AUDIO log
-
-        // Validate batch parameters
-        size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));
-        if (len != expected_size) {
-          log_error("Invalid audio batch size from client %u: got %zu, expected %zu", client->client_id, len,
-                    expected_size);
-          break;
-        }
-
-        if (total_samples > AUDIO_BATCH_SAMPLES * 2) { // Sanity check
-          log_error("Audio batch too large from client %u: %u samples", client->client_id, total_samples);
-          break;
-        }
-
-        // Extract samples (they follow the header)
-        const float *samples = (const float *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
-
-        // Write all samples to the ring buffer
-        if (client->incoming_audio_buffer) {
-          int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
-          // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
-          (void)written;
-#ifdef DEBUG_AUDIO
-          log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", client->client_id, batch_count,
-                    total_samples, sample_rate);
-#endif
-        }
-      }
+      handle_audio_batch_packet(client, data, len);
       break;
     }
 
-    case PACKET_TYPE_SIZE: {
-      // Handle size update from client
-      if (len == 4) {
-        const uint16_t *size_data = (const uint16_t *)data;
-        client->width = ntohs(size_data[0]);
-        client->height = ntohs(size_data[1]);
-        log_info("Client %u updated size to %ux%u (active=%d, socket=%d)", client->client_id, client->width,
-                 client->height, client->active, client->socket);
+    case PACKET_TYPE_CLIENT_CAPABILITIES: {
+      // Handle terminal capabilities from client
+      if (len == sizeof(terminal_capabilities_packet_t)) {
+        const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
+
+        pthread_mutex_lock(&client->client_state_mutex);
+
+        // Convert from network byte order and store dimensions
+        client->width = ntohs(caps->width);
+        client->height = ntohs(caps->height);
+
+        // Store terminal capabilities
+        client->terminal_caps.capabilities = ntohl(caps->capabilities);
+        client->terminal_caps.color_level = ntohl(caps->color_level);
+        client->terminal_caps.color_count = ntohl(caps->color_count);
+        client->terminal_caps.detection_reliable = caps->detection_reliable;
+
+        // Copy terminal type strings safely
+        strncpy(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type) - 1);
+        client->terminal_caps.term_type[sizeof(client->terminal_caps.term_type) - 1] = '\0';
+
+        strncpy(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm) - 1);
+        client->terminal_caps.colorterm[sizeof(client->terminal_caps.colorterm) - 1] = '\0';
+
+        // Mark that we have received capabilities for this client
+        client->has_terminal_caps = true;
+
+        // Update legacy wants_color field based on color capabilities
+        client->wants_color = (client->terminal_caps.color_level > TERM_COLOR_NONE);
+
+        pthread_mutex_unlock(&client->client_state_mutex);
+
+        log_info(
+            "Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, reliable=%s",
+            client->client_id, client->width, client->height,
+            terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
+            client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
+            client->terminal_caps.detection_reliable ? "yes" : "no");
+      } else {
+        log_error("Invalid client capabilities packet size: %u, expected %zu", len,
+                  sizeof(terminal_capabilities_packet_t));
       }
       break;
     }
@@ -1625,8 +1640,7 @@ void *client_video_render_thread_func(void *arg) {
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
-                                                            wants_color_snapshot && opt_color_output,
-                                                            wants_stretch_snapshot, &frame_size);
+                                                            wants_color_snapshot, wants_stretch_snapshot, &frame_size);
 
     // Phase 2 IMPLEMENTED: Queue frame for this specific client
     if (ascii_frame && frame_size > 0) {
