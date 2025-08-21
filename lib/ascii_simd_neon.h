@@ -95,4 +95,8 @@ size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, cha
 
 // ARM NEON version for Apple Silicon
 void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
+
+// REP-safe image renderer that handles newlines internally
+char *render_ascii_image_256fg_rep_safe(const image_t *image);
+char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image);
 #endif

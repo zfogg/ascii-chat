@@ -16,6 +16,7 @@
 #include <termios.h>
 
 #include "ascii.h"
+#include "ascii_simd.h"
 #include "common.h"
 #include "mixer.h"
 #include "network.h"
@@ -449,6 +450,29 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // Position cursor at top-left and display frame (preserve last frame instead of clearing)
+  // Debug: Log first 100 bytes of received frame data as hex
+  if (header.original_size > 0) {
+    int debug_len = (header.original_size < 100) ? header.original_size : 100;
+    char hex_debug[401]; // 100 bytes * 4 chars per byte + null terminator
+    char *hex_ptr = hex_debug;
+    
+    for (int i = 0; i < debug_len; i++) {
+      unsigned char byte = (unsigned char)frame_data[i];
+      if (byte == 0x1b) {
+        strcpy(hex_ptr, "ESC ");
+        hex_ptr += 4;
+      } else if (byte >= 32 && byte <= 126) {
+        *hex_ptr++ = byte;
+        *hex_ptr++ = ' ';
+      } else {
+        sprintf(hex_ptr, "%02x ", byte);
+        hex_ptr += 3;
+      }
+    }
+    *hex_ptr = '\0';
+    log_debug("CLIENT RECEIVED: First %d bytes as hex: %s", debug_len, hex_debug);
+  }
+  
   printf("\033[H%s", frame_data);
   fflush(stdout);
 
@@ -887,6 +911,10 @@ int main(int argc, char *argv[]) {
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
+
+  // CRITICAL FIX: Initialize ASCII SIMD cache (missing from client!)
+  // This initializes g_ascii_cache.dec3_table needed for NEON truecolor/256-color RGB output
+  ascii_simd_init();
 
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
   log_set_terminal_output(!opt_quiet);

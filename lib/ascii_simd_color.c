@@ -232,6 +232,10 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
   init_sgr256_fg_cache();
   const sgr256_t *sgr = &g_sgr256_fg[fg];
   *len_out = sgr->len;
+  // DEBUG: Log what string we're returning
+  if (sgr->len > 0) {
+    log_debug("DEBUG get_sgr256_fg_string: fg=%d len=%d string=[%.*s]", fg, sgr->len, sgr->len, sgr->str);
+  }
   return (char *)sgr->str;
 }
 
@@ -239,6 +243,10 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   init_sgr256_cache();
   const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
   *len_out = sgr->len;
+  // DEBUG: Log what string we're returning
+  if (sgr->len > 0) {
+    log_debug("DEBUG get_sgr256_fg_bg_string: fg=%d bg=%d len=%d string=[%.*s]", fg, bg, sgr->len, sgr->len, sgr->str);
+  }
   return (char *)sgr->str;
 }
 
@@ -530,6 +538,21 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 
 // ----------------
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path) {
+#ifdef SIMD_SUPPORT_NEON
+  // Use REP-safe renderers that handle newlines internally when supported
+  if (!use_background_mode) { // Foreground mode only for now
+    if (use_fast_path) {
+      // 256-color mode - use existing REP-safe renderer
+      return render_ascii_image_256fg_rep_safe(image);
+    } else {
+      // Truecolor mode - use new truecolor REP-safe renderer
+      return render_ascii_image_truecolor_fg_rep_safe(image);
+    }
+  }
+  
+  // Fall through to row-by-row processing for background mode
+#endif
+
   // Ensure all caches are initialized before any processing
 
   // Calculate exact maximum buffer size with precise per-pixel bounds
