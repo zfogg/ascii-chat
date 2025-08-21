@@ -1474,13 +1474,10 @@ static inline uint8_t rgb_to_ansi256_fg_neon(uint8_t r, uint8_t g, uint8_t b) {
   int gray_level = 8 + (closest_gray_idx - 232) * 10;
 
   // Use proper Euclidean distance for fair comparison
-  int gray_dist_sq = (r - gray_level) * (r - gray_level) + 
-                     (g - gray_level) * (g - gray_level) + 
-                     (b - gray_level) * (b - gray_level);
-  
-  int cube_dist_sq = (r - cube_r) * (r - cube_r) + 
-                     (g - cube_g) * (g - cube_g) + 
-                     (b - cube_b) * (b - cube_b);
+  int gray_dist_sq =
+      (r - gray_level) * (r - gray_level) + (g - gray_level) * (g - gray_level) + (b - gray_level) * (b - gray_level);
+
+  int cube_dist_sq = (r - cube_r) * (r - cube_r) + (g - cube_g) * (g - cube_g) + (b - cube_b) * (b - cube_b);
 
   // Add bias toward color cube to prevent grayscale dominance
   // Only use grayscale if it's significantly better (20% threshold)
