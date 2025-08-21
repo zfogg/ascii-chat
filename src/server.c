@@ -606,12 +606,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   image_t *composite = NULL;
 
   if (source_count == 1 && sources[0].image) {
-    // Single source - use consistent pixel dimensions like multi-client case
-    // This ensures all composite images use the same coordinate system
-    int composite_width_px = width;       // Character width maps to pixel width 1:1
-    int composite_height_px = height * 2; // Character height maps to pixel height 2:1
+    // Single source - use original fit dimensions logic from master
+    int display_width_chars, display_height_chars;
+    calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
+                                   &display_height_chars);
 
-    composite = image_new(composite_width_px, composite_height_px);
+    // Create composite at exactly the display size in pixels
+    composite = image_new(display_width_chars, display_height_chars);
     if (!composite) {
       log_error("Per-client %u: Failed to create composite image", target_client_id);
       *out_size = 0;
@@ -622,45 +623,11 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
 
     image_clear(composite);
-
-    // Calculate proper fit dimensions for the source image within our pixel space
-    int display_width_px, display_height_px;
-    calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, composite_width_px, composite_height_px,
-                                   &display_width_px, &display_height_px);
-
-    // Create resized image and center it in the composite
-    image_t *resized = image_new(display_width_px, display_height_px);
-    if (resized) {
-      image_resize(sources[0].image, resized);
-
-      // Center the resized image in the composite
-      int x_offset = (composite_width_px - display_width_px) / 2;
-      int y_offset = (composite_height_px - display_height_px) / 2;
-
-      // Copy resized image to composite with proper positioning
-      for (int y = 0; y < display_height_px; y++) {
-        for (int x = 0; x < display_width_px; x++) {
-          int src_idx = y * display_width_px + x;
-          int dst_x = x_offset + x;
-          int dst_y = y_offset + y;
-          int dst_idx = dst_y * composite_width_px + dst_x;
-
-          if (src_idx >= 0 && src_idx < resized->w * resized->h && dst_idx >= 0 &&
-              dst_idx < composite->w * composite->h && dst_x >= 0 && dst_x < composite_width_px && dst_y >= 0 &&
-              dst_y < composite_height_px) {
-            composite->pixels[dst_idx] = resized->pixels[src_idx];
-          }
-        }
-      }
-
-      image_destroy(resized);
-    }
+    image_resize(sources[0].image, composite);
   } else if (source_count > 1) {
-    // Multiple sources - create grid layout
-    // CRITICAL FIX: Create composite with consistent pixel dimensions
-    // Use height*2 to convert character height to pixel height for proper aspect ratio
-    int composite_width_px = width;       // Character width maps to pixel width 1:1
-    int composite_height_px = height * 2; // Character height maps to pixel height 2:1
+    // Multiple sources - create grid layout (same grid logic as global version)
+    int composite_width_px = width;
+    int composite_height_px = height * 2;
 
     composite = image_new(composite_width_px, composite_height_px);
     if (!composite) {
@@ -684,7 +651,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
     // Convert cell dimensions to pixels for image operations
     int cell_width_px = cell_width_chars;       // 1:1 mapping
-    int cell_height_px = cell_height_chars * 2; // 2:1 mapping
+    int cell_height_px = cell_height_chars * 2; // 2:1 mapping to match composite dimensions
 
     // Place each source in the grid
     for (int i = 0; i < source_count && i < 9; i++) { // Max 9 sources in 3x3 grid
@@ -751,7 +718,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
   } else {
     // No sources, create empty composite
-    // Use consistent pixel dimensions like multi-client case
     composite = image_new(width, height * 2);
     if (!composite) {
       log_error("Per-client %u: Failed to create empty image", target_client_id);
@@ -867,7 +833,7 @@ int main(int argc, char *argv[]) {
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  atexit(debug_memory_report);
+  // atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool

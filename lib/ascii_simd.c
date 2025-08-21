@@ -110,11 +110,18 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
 char *image_print_simd(image_t *image) {
+#ifdef SIMD_SUPPORT_NEON
+  // Use REP-safe renderer that handles newlines internally
+  // This eliminates the inefficient row-by-row loop and manual newline insertion
+  return render_ascii_image_256fg_rep_safe(image);
+#else
+  // Fallback for non-NEON platforms: original inefficient approach
   const int h = image->h;
   const int w = image->w;
 
   // Calculate exact buffer size (matching non-SIMD version)
-  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
+  // Add extra space for reset sequence at the beginning
+  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1) + 4;
 
   // Single allocation - no buffer pool overhead
   char *ascii;
@@ -122,6 +129,10 @@ char *image_print_simd(image_t *image) {
 
   // Process directly into final buffer - no copying!
   char *pos = ascii;
+  
+  // Add reset sequence to clear any previous terminal colors
+  memcpy(pos, "\033[0m", 4);
+  pos += 4;
 
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
@@ -138,6 +149,7 @@ char *image_print_simd(image_t *image) {
   *pos = '\0';
 
   return ascii;
+#endif
 }
 
 // Scalar version for remaining pixels.
@@ -819,173 +831,7 @@ void print_simd_capabilities(void) {
   printf("  ✓ Scalar fallback\n");
 }
 
-// Scalar fallback implementation for platforms without write_row_rep_from_arrays_enhanced
-#ifndef SIMD_SUPPORT_NEON
-// Simple helper to write RGB triplet using snprintf (slower than dec3 but simpler)
-static inline size_t write_rgb_triplet_scalar(uint8_t value, char *dst) {
-  return (size_t)snprintf(dst, 4, "%u", value); // Max 3 digits + null terminator
-}
-
-// Simple helper to emit run-length encoded ASCII characters
-static inline char *emit_run_rep_scalar(char *p, int run_len, char ch) {
-  if (run_len <= 0)
-    return p;
-  if (run_len == 1) {
-    *p++ = ch;
-    return p;
-  }
-  // Print one, then repeat (run_len - 1) via REP (CSI n b)
-  *p++ = ch;
-  int rep = run_len - 1;
-  *p++ = '\x1b';
-  *p++ = '[';
-  if (rep >= 100) {
-    *p++ = '0' + (rep / 100);
-    rep %= 100;
-  }
-  if (rep >= 10) {
-    *p++ = '0' + (rep / 10);
-    rep %= 10;
-  }
-  *p++ = '0' + rep;
-  *p++ = 'b';
-  return p;
-}
-
-size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g,
-                                          const uint8_t *fg_b, // Truecolor FG RGB (NULL if using indices)
-                                          const uint8_t *bg_r, const uint8_t *bg_g,
-                                          const uint8_t *bg_b, // Truecolor BG RGB (NULL if using indices)
-                                          const uint8_t *fg_idx,
-                                          const uint8_t *bg_idx,   // 256-color indices (NULL if using RGB)
-                                          const char *ascii_chars, // ASCII characters for traditional ASCII art
-                                          int width, char *dst, size_t cap, bool use_256color, bool is_truecolor) {
-
-  char *p = dst;
-  char *row_end = dst + cap - 64; // safety margin for ANSI sequences
-  bool have_color = false;
-  uint8_t last_fg_r = 0, last_fg_g = 0, last_fg_b = 0;
-  uint8_t last_bg_r = 0, last_bg_g = 0, last_bg_b = 0;
-  uint8_t last_fg_idx = 0, last_bg_idx = 0;
-  char last_char = 0;
-  int run_len = 0;
-
-  for (int x = 0; x < width; x++) {
-    char ch = ascii_chars[x];
-    bool color_changed = false;
-
-    if (is_truecolor) {
-      // Compare RGB values for truecolor mode
-      uint8_t curr_fg_r = fg_r ? fg_r[x] : 0;
-      uint8_t curr_fg_g = fg_g ? fg_g[x] : 0;
-      uint8_t curr_fg_b = fg_b ? fg_b[x] : 0;
-      uint8_t curr_bg_r = bg_r ? bg_r[x] : 0;
-      uint8_t curr_bg_g = bg_g ? bg_g[x] : 0;
-      uint8_t curr_bg_b = bg_b ? bg_b[x] : 0;
-
-      color_changed = (!have_color || curr_fg_r != last_fg_r || curr_fg_g != last_fg_g || curr_fg_b != last_fg_b ||
-                       (bg_r && (curr_bg_r != last_bg_r || curr_bg_g != last_bg_g || curr_bg_b != last_bg_b)));
-    } else if (use_256color) {
-      // Compare indices for 256-color mode
-      uint8_t fg = fg_idx[x];
-      uint8_t bg = bg_idx ? bg_idx[x] : 0;
-      color_changed = (!have_color || fg != last_fg_idx || (bg_idx && bg != last_bg_idx));
-    }
-
-    if (color_changed) {
-      // Flush any pending run
-      if (run_len > 0) {
-        p = emit_run_rep_scalar(p, run_len, last_char);
-        run_len = 0;
-      }
-
-      // Emit new color sequence
-      if (is_truecolor) {
-        // Truecolor mode: use RGB values
-        uint8_t fg_r_val = fg_r ? fg_r[x] : 0, fg_g_val = fg_g ? fg_g[x] : 0, fg_b_val = fg_b ? fg_b[x] : 0;
-        uint8_t bg_r_val = bg_r ? bg_r[x] : 0, bg_g_val = bg_g ? bg_g[x] : 0, bg_b_val = bg_b ? bg_b[x] : 0;
-
-        if (bg_r) {
-          // Background mode: FG+BG truecolor
-          memcpy(p, "\033[38;2;", 7);
-          p += 7;
-          p += write_rgb_triplet_scalar(fg_r_val, p);
-          *p++ = ';';
-          p += write_rgb_triplet_scalar(fg_g_val, p);
-          *p++ = ';';
-          p += write_rgb_triplet_scalar(fg_b_val, p);
-          memcpy(p, ";48;2;", 6);
-          p += 6;
-          p += write_rgb_triplet_scalar(bg_r_val, p);
-          *p++ = ';';
-          p += write_rgb_triplet_scalar(bg_g_val, p);
-          *p++ = ';';
-          p += write_rgb_triplet_scalar(bg_b_val, p);
-          *p++ = 'm';
-        } else {
-          // Foreground mode: FG truecolor only
-          memcpy(p, "\033[38;2;", 7);
-          p += 7;
-          p += write_rgb_triplet_scalar(fg_r_val, p);
-          *p++ = ';';
-          p += write_rgb_triplet_scalar(fg_g_val, p);
-          *p++ = ';';
-          p += write_rgb_triplet_scalar(fg_b_val, p);
-          *p++ = 'm';
-        }
-
-        last_fg_r = fg_r_val;
-        last_fg_g = fg_g_val;
-        last_fg_b = fg_b_val;
-        last_bg_r = bg_r_val;
-        last_bg_g = bg_g_val;
-        last_bg_b = bg_b_val;
-      } else if (use_256color) {
-        // 256-color mode: use simple sprintf approach
-        uint8_t fg = fg_idx[x];
-        uint8_t bg = bg_idx ? bg_idx[x] : 0;
-
-        if (bg_idx) {
-          p += snprintf(p, row_end - p, "\033[38;5;%u;48;5;%um", fg, bg);
-        } else {
-          p += snprintf(p, row_end - p, "\033[38;5;%um", fg);
-        }
-
-        last_fg_idx = fg;
-        last_bg_idx = bg;
-      }
-
-      have_color = true;
-      last_char = ch;
-      run_len = 1;
-
-    } else if (ch != last_char) {
-      // ASCII mode: character changed, flush run
-      if (run_len > 0) {
-        p = emit_run_rep_scalar(p, run_len, last_char);
-      }
-      last_char = ch;
-      run_len = 1;
-
-    } else {
-      run_len++;
-    }
-
-    if (p >= row_end - 32)
-      break; // safety check
-  }
-
-  // Flush final run
-  if (run_len > 0) {
-    p = emit_run_rep_scalar(p, run_len, last_char);
-  }
-
-  // Reset sequence
-  memcpy(p, "\033[0m", 4);
-  p += 4;
-  return (size_t)(p - dst);
-}
-#endif
+// Scalar fallback implementation removed - NEON implementation is the primary one
 
 static double get_time_seconds(void) {
   struct timespec ts;

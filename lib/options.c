@@ -306,24 +306,22 @@ void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "\t\t -c --webcam-index            (server) \t     webcam device index (0-based)\n");
   fprintf(desc, "\t\t -f --webcam-flip             (server) \t     horizontally flip the "
                 "image (usually desirable)\n");
-  fprintf(
-      desc,
-      "\t\t    --color-mode              (client) \t     color mode: auto, mono, 16, 256, truecolor (default: auto)\n");
-  fprintf(desc, "\t\t    --show-capabilities       (client) \t show detected terminal capabilities and exit\n");
+  fprintf(desc, "\t\t    --color-mode              (client) \t     color mode: auto, mono, 16, 256, truecolor "
+                "(default: auto)\n");
+  fprintf(desc, "\t\t    --show-capabilities       (client) \t     show detected terminal capabilities and exit\n");
   fprintf(desc, "\t\t    --utf8                    (client) \t     force enable UTF-8/Unicode support\n");
-  fprintf(desc, "\t\t -M --background-mode                   (client) \t     background rendering: auto, foreground, "
+  fprintf(desc, "\t\t -M --background-mode         (client) \t     background rendering: auto, foreground, "
                 "background (default: auto)\n");
   fprintf(desc, "\t\t -A --audio                   (server|client) \t enable audio capture and playbook\n");
-  fprintf(
-      desc,
-      "\t\t -s --stretch                 (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
+  fprintf(desc, "\t\t -s --stretch                 (server|client) \t allow stretching and shrinking "
+                "(ignore aspect ratio)\n");
   fprintf(desc, "\t\t -q --quiet                   (client) \t     disable console logging (logs only to file)\n");
   fprintf(desc, "\t\t -S --snapshot                (client) \t     capture single frame and exit\n");
-  fprintf(desc, "\t\t -D --snapshot-delay SECONDS  (client) \t delay before snapshot (default: 3.0)\n");
+  fprintf(desc, "\t\t -D --snapshot-delay SECONDS  (client) \t     delay before snapshot (default: 3.0)\n");
   fprintf(desc, "\t\t -L --log-file                (server|client) \t redirect logs to file\n");
   fprintf(desc, "\t\t -E --encrypt                 (server|client) \t enable AES packet encryption\n");
   fprintf(desc, "\t\t -K --key PASSWORD            (server|client) \t encryption passphrase (implies --encrypt)\n");
-  fprintf(desc,
-          "\t\t -F --keyfile FILE            (server|client) \t read encryption key from file (implies --encrypt)\n");
+  fprintf(desc, "\t\t -F --keyfile FILE            (server|client) \t read encryption key from file "
+                "(implies --encrypt)\n");
   fprintf(desc, "\t\t -h --help                    (server|client) \t print this help\n");
 }
