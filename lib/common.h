@@ -211,6 +211,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 void *debug_malloc(size_t size, const char *file, int line);
 void debug_free(void *ptr, const char *file, int line);
 void debug_memory_report(void);
+void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
 void *debug_calloc(size_t count, size_t size, const char *file, int line);
 void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 

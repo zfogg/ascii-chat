@@ -14,6 +14,12 @@ asciichat_error_t ascii_write_init(void);
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
                     const bool aspect_ratio, const bool stretch);
+
+// Capability-aware ASCII conversion using terminal detection
+#include "terminal_detect.h"
+char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
+                                      const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                      const bool stretch);
 asciichat_error_t ascii_write(const char *);
 
 void ascii_read_destroy(void);

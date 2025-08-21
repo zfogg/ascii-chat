@@ -84,9 +84,10 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   if (color) {
 #ifdef SIMD_SUPPORT
     // Allocate buffer for SIMD colored ASCII output
-    ascii = image_print_colored_simd(resized);
+    bool use_background = (opt_background_mode == BACKGROUND_MODE_BACKGROUND);
+    ascii = image_print_color_simd(resized, use_background, false);
 #else
-    ascii = image_print_colored(resized);
+    ascii = image_print_color(resized);
 #endif
   } else {
 #ifdef SIMD_SUPPORT
@@ -118,6 +119,80 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   free(ascii_width_padded);
 
   // Only destroy resized if we allocated it (not when using original directly)
+  image_destroy(resized);
+
+  return ascii_padded;
+}
+
+// Capability-aware ASCII conversion using terminal capabilities
+char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
+                                      const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                      const bool stretch) {
+  if (original == NULL || caps == NULL) {
+    log_error("Invalid parameters for ascii_convert_with_capabilities");
+    return NULL;
+  }
+
+  // Start with the target dimensions requested by the user
+  ssize_t resized_width = width;
+  ssize_t resized_height = height;
+
+  // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
+  if (use_aspect_ratio) {
+    aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
+  }
+
+  // Calculate padding for centering
+  size_t pad_width = 0;
+  size_t pad_height = 0;
+
+  if (use_aspect_ratio) {
+    ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
+    pad_width = (size_t)pad_width_ss;
+
+    ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
+    pad_height = (size_t)pad_height_ss;
+  }
+
+  // Resize the captured frame to the aspect-correct dimensions
+  if (resized_width <= 0 || resized_height <= 0) {
+    log_error("Invalid dimensions for resize: width=%zd, height=%zd", resized_width, resized_height);
+    return NULL;
+  }
+
+  image_t *resized = image_new((int)resized_width, (int)resized_height);
+  if (!resized) {
+    log_error("Failed to allocate resized image");
+    return NULL;
+  }
+
+  image_clear(resized);
+  image_resize(original, resized);
+
+  // Use the new capability-aware image printing function
+  char *ascii = image_print_with_capabilities(resized, caps);
+
+  if (!ascii) {
+    log_error("Failed to convert image to ASCII using terminal capabilities");
+    image_destroy(resized);
+    return NULL;
+  }
+
+  size_t ascii_len = strlen(ascii);
+  if (ascii_len == 0) {
+    log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w,
+              resized->h);
+    free(ascii);
+    image_destroy(resized);
+    return NULL;
+  }
+
+  char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
+  free(ascii);
+
+  char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
+  free(ascii_width_padded);
+
   image_destroy(resized);
 
   return ascii_padded;
