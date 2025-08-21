@@ -1810,6 +1810,7 @@ size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, cha
       return render_row_truecolor_background_rep_unified(row, width, dst, cap);
     }
   } else {
+#ifdef SIMD_SUPPORT_NEON
     if (use_fast_path) {
       // 256-color foreground ASCII
       return render_row_neon_256_fg_rep(row, width, dst, cap);
@@ -1817,5 +1818,13 @@ size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, cha
       // Truecolor foreground ASCII
       return render_row_neon_truecolor_fg_rep(row, width, dst, cap);
     }
+#else
+    // Fallback for non-NEON platforms
+    if (use_fast_path) {
+      return render_row_256color_foreground_rep_unified(row, width, dst, cap);
+    } else {
+      return render_row_truecolor_foreground_rep_unified(row, width, dst, cap);
+    }
+#endif
   }
 }
