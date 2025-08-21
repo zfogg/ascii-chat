@@ -2,6 +2,9 @@
 #include "common.h"
 #include "buffer_pool.h"
 #include "crc32_hw.h"
+#include "terminal_detect.h"
+#include <stdint.h>
+#include <limits.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
@@ -12,6 +15,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <unistd.h>
+#include "options.h"
 
 int set_socket_timeout(int sockfd, int timeout_seconds) {
   struct timeval timeout;
@@ -482,12 +486,6 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
-  case PACKET_TYPE_SIZE:
-    if (pkt_len != 4) { // width + height as uint16_t each
-      log_error("Invalid size packet size: %u, expected 4", pkt_len);
-      return -1;
-    }
-    break;
   case PACKET_TYPE_PING:
   case PACKET_TYPE_PONG:
     if (pkt_len > 64) { // Ping/pong shouldn't be large
@@ -529,14 +527,22 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
+  case PACKET_TYPE_CLIENT_CAPABILITIES:
+    // Terminal capabilities packet has fixed size
+    if (pkt_len != sizeof(terminal_capabilities_packet_t)) {
+      log_error("Invalid terminal capabilities packet size: %u, expected %zu", pkt_len,
+                sizeof(terminal_capabilities_packet_t));
+      return -1;
+    }
+    break;
   default:
     log_error("Unknown packet type: %u", pkt_type);
     return -1;
   }
 
   // Additional safety: don't allow zero-sized allocations for types that should have data
-  if (pkt_len == 0 &&
-      (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_SIZE || pkt_type == PACKET_TYPE_AUDIO_BATCH)) {
+  if (pkt_len == 0 && (pkt_type == PACKET_TYPE_AUDIO || pkt_type == PACKET_TYPE_CLIENT_CAPABILITIES ||
+                       pkt_type == PACKET_TYPE_AUDIO_BATCH)) {
     log_error("Zero-sized packet for type that requires data: %u", pkt_type);
     return -1;
   }
@@ -547,7 +553,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   // Allocate and read payload
   if (pkt_len > 0) {
     // Additional safety check before allocation (uint32_t max is safe)
-    if (pkt_len > UINT32_MAX / 2) {
+    if (pkt_len > 0xFFFFFFFFU / 2) {
       log_error("Packet size too large for safe allocation: %u", pkt_len);
       return -1;
     }
@@ -655,15 +661,6 @@ int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, i
   int result = send_packet(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size);
   free(buffer);
   return result;
-}
-
-int send_size_packet(int sockfd, unsigned short width, unsigned short height) {
-  struct {
-    uint16_t width;
-    uint16_t height;
-  } size_data = {.width = htons(width), .height = htons(height)};
-
-  return send_packet(sockfd, PACKET_TYPE_SIZE, &size_data, sizeof(size_data));
 }
 
 // Multi-user protocol functions implementation
@@ -835,4 +832,69 @@ int send_server_state_packet(int sockfd, const server_state_packet_t *state) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state));
+}
+
+int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_packet_t *caps) {
+  if (!caps) {
+    return -1;
+  }
+
+  // Convert to network byte order
+  terminal_capabilities_packet_t net_caps;
+  net_caps.capabilities = htonl(caps->capabilities);
+  net_caps.color_level = htonl(caps->color_level);
+  net_caps.color_count = htonl(caps->color_count);
+  net_caps.width = htons(caps->width);
+  net_caps.height = htons(caps->height);
+
+  // Copy strings directly (no byte order conversion needed)
+  memcpy(net_caps.term_type, caps->term_type, sizeof(net_caps.term_type));
+  memcpy(net_caps.colorterm, caps->colorterm, sizeof(net_caps.colorterm));
+
+  net_caps.detection_reliable = caps->detection_reliable;
+  memset(net_caps.reserved, 0, sizeof(net_caps.reserved));
+
+  return send_packet(sockfd, PACKET_TYPE_CLIENT_CAPABILITIES, &net_caps, sizeof(net_caps));
+}
+
+// Convenience function that sends terminal capabilities with auto-detection
+// This provides a drop-in replacement for send_size_packet
+int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsigned short height) {
+  // Detect terminal capabilities automatically
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+
+  // Apply user's color mode override
+  caps = apply_color_mode_override(caps);
+
+  // Check if detection was reliable, use fallback if not
+  if (!caps.detection_reliable) {
+    log_warn("Terminal capability detection not reliable, using fallback");
+    // Use minimal fallback capabilities
+    memset(&caps, 0, sizeof(caps));
+    caps.color_level = TERM_COLOR_NONE;
+    caps.color_count = 2;
+    caps.capabilities = 0; // No special capabilities
+    strncpy(caps.term_type, "unknown", sizeof(caps.term_type) - 1);
+    strncpy(caps.colorterm, "", sizeof(caps.colorterm) - 1);
+    caps.detection_reliable = 0; // Not reliable
+  }
+
+  // Convert to network packet format
+  terminal_capabilities_packet_t net_packet;
+  net_packet.capabilities = caps.capabilities;
+  net_packet.color_level = caps.color_level;
+  net_packet.color_count = caps.color_count;
+  net_packet.width = width;
+  net_packet.height = height;
+
+  strncpy(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type) - 1);
+  net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
+
+  strncpy(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm) - 1);
+  net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
+
+  net_packet.detection_reliable = caps.detection_reliable;
+  memset(net_packet.reserved, 0, sizeof(net_packet.reserved));
+
+  return send_terminal_capabilities_packet(sockfd, &net_packet);
 }

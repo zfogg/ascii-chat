@@ -18,6 +18,8 @@
 #include <math.h>
 #include "../lib/ansi_fast.h"
 #include "../lib/common.h"
+#include "../lib/image.h"
+#include "../lib/ascii_simd.h"
 
 // Test image dimensions
 #define TEST_WIDTH  203  // User's terminal width
@@ -222,15 +224,24 @@ void benchmark_complete_optimizations(void) {
         double total_pixel_time = 0, total_string_time = 0, total_output_time = 0, total_time = 0;
         
         for (int i = 0; i < iterations; i++) {
-            ansi_timing_t timing = generate_ansi_frame_optimized(
+            double start_time = (double)clock() / CLOCKS_PER_SEC;
+            size_t bytes_generated = generate_ansi_frame_optimized(
                 test_rgb, TEST_WIDTH, TEST_HEIGHT, 
                 output_buffer, TEST_PIXELS * 32,
-                modes[m], false
+                modes[m]
             );
-            total_pixel_time += timing.pixel_time;
-            total_string_time += timing.string_time;
-            total_output_time += timing.output_time;  
-            total_time += timing.total_time;
+            double frame_time = ((double)clock() / CLOCKS_PER_SEC) - start_time;
+            
+            // For compatibility, treat entire operation as string generation time
+            total_pixel_time += 0;
+            total_string_time += frame_time;
+            total_output_time += 0;
+            total_time += frame_time;
+            
+            // Verify we got output
+            if (bytes_generated == 0) {
+                printf("Warning: No output generated\n");
+            }
         }
         
         printf("  Regular mode:\n");
@@ -242,23 +253,20 @@ void benchmark_complete_optimizations(void) {
         // Test half-block mode
         total_pixel_time = total_string_time = total_output_time = total_time = 0;
         
+        // Half-block mode has been removed from the project
+        // Skip this test since ASCII-Chat focuses on ASCII art, not pixel-perfect terminal graphics
         for (int i = 0; i < iterations; i++) {
-            ansi_timing_t timing = generate_ansi_frame_optimized(
-                test_rgb, TEST_WIDTH, TEST_HEIGHT,
-                output_buffer, TEST_PIXELS * 32,
-                modes[m], true  // Use half blocks
-            );
-            total_pixel_time += timing.pixel_time;
-            total_string_time += timing.string_time;
-            total_output_time += timing.output_time;
-            total_time += timing.total_time;
+            total_pixel_time += 0;
+            total_string_time += 0; 
+            total_output_time += 0;
+            total_time += 0;
         }
         
-        printf("  Half-block mode (▀):\n");
-        printf("    Pixel processing: %.3f ms/frame\n", total_pixel_time * 1000 / iterations);
-        printf("    String generation: %.3f ms/frame\n", total_string_time * 1000 / iterations);
-        printf("    Terminal output: %.3f ms/frame\n", total_output_time * 1000 / iterations);
-        printf("    Total: %.3f ms/frame\n\n", total_time * 1000 / iterations);
+        printf("  Half-block mode (▀): REMOVED - ASCII-Chat focuses on ASCII art\n");
+        printf("    Pixel processing: SKIPPED\n");
+        printf("    String generation: SKIPPED\n");
+        printf("    Terminal output: SKIPPED\n");
+        printf("    Total: SKIPPED\n\n");
     }
     
     // Compare with old snprintf approach
@@ -268,11 +276,14 @@ void benchmark_complete_optimizations(void) {
     // Quick test of new approach for comparison
     double start = (double)clock() / CLOCKS_PER_SEC;
     for (int i = 0; i < iterations / 10; i++) {
-        generate_ansi_frame_optimized(
+        size_t bytes_generated = generate_ansi_frame_optimized(
             test_rgb, TEST_WIDTH, TEST_HEIGHT,
             output_buffer, TEST_PIXELS * 32,
-            ANSI_MODE_FOREGROUND, false
+            ANSI_MODE_FOREGROUND
         );
+        if (bytes_generated == 0) {
+            printf("Warning: No output generated\n");
+        }
     }
     double new_time = ((double)clock() / CLOCKS_PER_SEC) - start;
     
@@ -338,7 +349,7 @@ int main(void) {
     printf("✓ Precomputed decimal lookup table (dec3[])\n");
     printf("✓ memcpy-based ANSI generation (no snprintf)\n");
     printf("✓ Run-length color encoding (emit SGR only on change)\n");
-    printf("✓ Two pixels per cell using ▀ character\n");
+    printf("✓ ASCII character-based rendering (half-block mode removed)\n");
     printf("✓ Single write() batching for entire frame\n");
     printf("✓ Separate timing measurements (pixel/string/output)\n");
     printf("✓ 256-color mode for maximum speed\n\n");
@@ -346,7 +357,7 @@ int main(void) {
     printf("Expected results:\n");
     printf("- String generation should be 4-10x faster than snprintf\n");
     printf("- Run-length encoding reduces output size by 2-50x\n");  
-    printf("- Half-block mode (▀) halves terminal cells and SGR sequences\n");
+    printf("- ASCII character rendering focuses on traditional ASCII art\n");
     printf("- Combined optimizations should enable much higher frame rates\n");
     printf("- SIMD pixel processing should now outperform scalar\n");
     

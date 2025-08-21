@@ -20,7 +20,7 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -33,9 +33,9 @@ jobs:
         else
           TAG="${{ github.ref_name }}"
         fi
-        
+
         echo "TAG=$TAG" >> $GITHUB_OUTPUT
-        
+
         # Generate changelog from commit messages since last tag
         LAST_TAG=$(git tag --sort=-version:refname | head -n 2 | tail -n 1)
         if [[ -n "$LAST_TAG" ]]; then
@@ -58,43 +58,43 @@ jobs:
         release_name: ASCII Chat ${{ steps.release_notes.outputs.TAG }}
         body: |
           # ASCII Chat Release ${{ steps.release_notes.outputs.TAG }}
-          
+
           ASCII video chat - probably the first command line video chat program!
-          
+
           ## Installation
-          
+
           **Linux (Ubuntu/Debian):**
           ```bash
           sudo apt-get install libv4l-dev zlib1g-dev portaudio19-dev pkg-config
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
           tar -xzf ascii-chat-Linux-release.tar.gz
           ```
-          
+
           **macOS:**
           ```bash
           brew install opencv@4 zlib portaudio
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-macOS-release.tar.gz
           tar -xzf ascii-chat-macOS-release.tar.gz
           ```
-          
+
           ## Usage
-          
+
           Start the server:
           ```bash
           ./bin/server -p 90001
           ```
-          
+
           Connect with a client:
           ```bash
           ./bin/client -p 90001 -a 127.0.0.1
           ```
-          
+
           Enable color mode:
           ```bash
           ./bin/server --color
           ./bin/client --color
           ```
-          
+
           ${{ steps.release_notes.outputs.CHANGELOG }}
         draft: false
         prerelease: false
@@ -105,7 +105,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
 
     - name: Build release
       run: |
-        make CSTD=c2x release
+        make -j CSTD=c2x release
 
     - name: Create release package
       run: |

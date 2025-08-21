@@ -44,8 +44,12 @@ override LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 ifeq ($(shell uname),Darwin)
     # macOS: Add AVFoundation and CoreMedia frameworks
     override LDFLAGS += -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
+    # macOS: Add ncurses for terminal capability detection
+    override LDFLAGS += -lncurses
 else ifeq ($(shell uname),Linux)
     # Linux: No additional frameworks needed for V4L2
+    # Linux: Add ncurses for terminal capability detection  
+    override LDFLAGS += -lncurses
 endif
 
 override LDFLAGS += -lm -lpthread

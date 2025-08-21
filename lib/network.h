@@ -3,6 +3,9 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include "common.h"
+#include "terminal_detect.h"
+#include "crc32_hw.h"
 
 // Timeout constants (in seconds)
 #define CONNECT_TIMEOUT 10
@@ -63,7 +66,7 @@ typedef enum {
 
   // Audio and control
   PACKET_TYPE_AUDIO = 3,
-  PACKET_TYPE_SIZE = 4,
+  PACKET_TYPE_CLIENT_CAPABILITIES = 4, // Client reports terminal capabilities
   PACKET_TYPE_PING = 5,
   PACKET_TYPE_PONG = 6,
 
@@ -74,7 +77,7 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
-  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
+  PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
 } packet_type_t;
 
 typedef struct {
@@ -114,6 +117,18 @@ typedef struct {
   uint32_t reserved[6];            // Reserved for future use
 } __attribute__((packed)) server_state_packet_t;
 
+// Terminal capabilities packet - sent by client to inform server of capabilities
+typedef struct {
+  uint32_t capabilities;      // Bitmask of TERM_CAP_* flags
+  uint32_t color_level;       // terminal_color_level_t enum value
+  uint32_t color_count;       // Actual color count (16, 256, 16777216)
+  uint16_t width, height;     // Terminal dimensions
+  char term_type[32];         // $TERM value for debugging
+  char colorterm[32];         // $COLORTERM value for debugging
+  uint8_t detection_reliable; // True if detection methods were reliable
+  uint8_t reserved[3];        // Padding for alignment
+} __attribute__((packed)) terminal_capabilities_packet_t;
+
 // ============================================================================
 // Unified Frame Packet Structures
 // ============================================================================
@@ -149,9 +164,10 @@ typedef struct {
 } __attribute__((packed)) image_frame_packet_t;
 
 // Frame flags for ascii_frame_packet_t
-#define FRAME_FLAG_HAS_COLOR 0x01     // Frame includes ANSI color codes
-#define FRAME_FLAG_IS_COMPRESSED 0x02 // Frame data is zlib compressed
-#define FRAME_FLAG_IS_STRETCHED 0x04  // Frame was stretched (aspect adjusted)
+#define FRAME_FLAG_HAS_COLOR 0x01      // Frame includes ANSI color codes
+#define FRAME_FLAG_IS_COMPRESSED 0x02  // Frame data is zlib compressed
+#define FRAME_FLAG_RLE_COMPRESSED 0x04 // Frame data is RLE compressed (new)
+#define FRAME_FLAG_IS_STRETCHED 0x04   // Frame was stretched (aspect adjusted)
 
 // Pixel formats for image_frame_packet_t
 #define PIXEL_FORMAT_RGB 0
@@ -187,16 +203,11 @@ typedef struct {
 int send_audio_data(int sockfd, const float *samples, int num_samples);
 int receive_audio_data(int sockfd, float *samples, int max_samples);
 
-/* Packet protocol functions */
-// CRC32 function moved to crc32_hw.h for hardware acceleration
-#include "crc32_hw.h"
-
 int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
 int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);
 
 int send_audio_packet(int sockfd, const float *samples, int num_samples);
 int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count);
-int send_size_packet(int sockfd, unsigned short width, unsigned short height);
 
 // Multi-user protocol functions
 int send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities);
@@ -216,3 +227,6 @@ int send_pong_packet(int sockfd);
 // Console control functions
 int send_clear_console_packet(int sockfd);
 int send_server_state_packet(int sockfd, const server_state_packet_t *state);
+int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_packet_t *caps);
+int send_terminal_size_with_auto_detect(int sockfd, unsigned short width,
+                                        unsigned short height); // Convenience function with auto-detection

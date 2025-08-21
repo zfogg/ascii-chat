@@ -10,6 +10,7 @@
 #include "ascii.h"
 #include "options.h"
 #include "common.h"
+#include "terminal_detect.h"
 
 static const unsigned short default_width = 110, default_height = 70;
 unsigned short int opt_width = default_width, opt_height = default_height,
@@ -24,7 +25,11 @@ unsigned short int opt_webcam_flip = 1;
 
 unsigned short int opt_color_output = 0;
 
-unsigned short int opt_background_color = 0;
+// Terminal color mode and capability options
+terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO;       // Auto-detect by default
+background_mode_t opt_background_mode = BACKGROUND_MODE_AUTO; // Auto/foreground by default
+unsigned short int opt_show_capabilities = 0;                 // Don't show capabilities by default
+unsigned short int opt_force_utf8 = 0;                        // Don't force UTF-8 by default
 
 unsigned short int opt_audio_enabled = 0;
 
@@ -85,8 +90,10 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"height", optional_argument, NULL, 'y'},
                                        {"webcam-index", required_argument, NULL, 'c'},
                                        {"webcam-flip", optional_argument, NULL, 'f'},
-                                       {"color", no_argument, NULL, 'C'},
-                                       {"background-color", no_argument, NULL, 'b'},
+                                       {"color-mode", required_argument, NULL, 1000},     // New option
+                                       {"show-capabilities", no_argument, NULL, 1001},    // New option
+                                       {"utf8", no_argument, NULL, 1002},                 // UTF-8 override
+                                       {"background-mode", required_argument, NULL, 'M'}, // Background mode
                                        {"audio", no_argument, NULL, 'A'},
                                        {"stretch", no_argument, NULL, 's'},
                                        {"quiet", no_argument, NULL, 'q'},
@@ -99,30 +106,7 @@ static struct option long_options[] = {{"address", required_argument, NULL, 'a'}
                                        {"help", optional_argument, NULL, 'h'},
                                        {0, 0, 0, 0}};
 
-// Terminal size detection functions
-int get_terminal_size(unsigned short int *width, unsigned short int *height) {
-  struct winsize w;
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
-    // Fallback to environment variables
-    char *cols_str = getenv("COLUMNS");
-    char *lines_str = getenv("LINES");
-
-    if (cols_str && lines_str) {
-      *width = strtoint(cols_str);
-      *height = strtoint(lines_str);
-      return 0;
-    }
-
-    // Final fallback to default values
-    *width = default_width;
-    *height = default_height;
-    return -1;
-  }
-
-  *width = w.ws_col;
-  *height = w.ws_row;
-  return 0;
-}
+// Terminal size detection functions moved to terminal_detect.c
 
 void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
@@ -173,7 +157,7 @@ void options_init(int argc, char **argv) {
   update_dimensions_to_terminal_size();
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::CbAsqSD:L:EK:F:h", long_options, &index);
+    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::AsqSD:L:EK:F:h", long_options, &index);
     if (c == -1)
       break;
 
@@ -212,16 +196,45 @@ void options_init(int argc, char **argv) {
       opt_webcam_flip = strtoint(argbuf);
       break;
 
-    case 'C':
-      opt_color_output = 1;
+    case 1000: // --color-mode
+      if (strcmp(optarg, "auto") == 0) {
+        opt_color_mode = COLOR_MODE_AUTO;
+      } else if (strcmp(optarg, "mono") == 0 || strcmp(optarg, "monochrome") == 0) {
+        opt_color_mode = COLOR_MODE_MONO;
+      } else if (strcmp(optarg, "16") == 0 || strcmp(optarg, "16color") == 0) {
+        opt_color_mode = COLOR_MODE_16_COLOR;
+      } else if (strcmp(optarg, "256") == 0 || strcmp(optarg, "256color") == 0) {
+        opt_color_mode = COLOR_MODE_256_COLOR;
+      } else if (strcmp(optarg, "truecolor") == 0 || strcmp(optarg, "24bit") == 0) {
+        opt_color_mode = COLOR_MODE_TRUECOLOR;
+      } else {
+        log_error("Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor", optarg);
+        exit(1);
+      }
+      break;
+
+    case 1001: // --show-capabilities
+      opt_show_capabilities = 1;
+      break;
+    case 1002: // --utf8
+      opt_force_utf8 = 1;
+      break;
+
+    case 'M': // --background-mode
+      if (strcmp(optarg, "auto") == 0) {
+        opt_background_mode = BACKGROUND_MODE_AUTO;
+      } else if (strcmp(optarg, "foreground") == 0 || strcmp(optarg, "fg") == 0) {
+        opt_background_mode = BACKGROUND_MODE_FOREGROUND;
+      } else if (strcmp(optarg, "background") == 0 || strcmp(optarg, "bg") == 0) {
+        opt_background_mode = BACKGROUND_MODE_BACKGROUND;
+      } else {
+        log_error("Error: Invalid background mode '%s'. Valid modes: auto, foreground, background", optarg);
+        exit(1);
+      }
       break;
 
     case 's':
       opt_stretch = 1;
-      break;
-
-    case 'b':
-      opt_background_color = 1;
       break;
 
     case 'A':
@@ -239,7 +252,7 @@ void options_init(int argc, char **argv) {
     case 'D':
       opt_snapshot_delay = atof(optarg);
       if (opt_snapshot_delay < 0.0f) {
-        fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
+        log_error("Snapshot delay must be non-negative (got %.2f)", opt_snapshot_delay);
         exit(EXIT_FAILURE);
       }
       break;
@@ -263,7 +276,7 @@ void options_init(int argc, char **argv) {
       break;
 
     case '?':
-      fprintf(stderr, "Unknown option %c\n", optopt);
+      log_error("Unknown option %c", optopt);
       usage(stderr);
       exit(EXIT_FAILURE);
       break;
@@ -286,24 +299,29 @@ void options_init(int argc, char **argv) {
 void usage(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "ascii-chat\n");
   fprintf(desc, "\toptions:\n");
-  fprintf(desc, "\t\t -a --address      (server|client) \t IPv4 address\n");
-  fprintf(desc, "\t\t -p --port         (server|client) \t TCP port\n");
-  fprintf(desc, "\t\t -x --width        (client) \t     render width\n");
-  fprintf(desc, "\t\t -y --height       (client) \t     render height\n");
-  fprintf(desc, "\t\t -c --webcam-index (server) \t     webcam device index (0-based)\n");
-  fprintf(desc, "\t\t -f --webcam-flip  (server) \t     horizontally flip the "
+  fprintf(desc, "\t\t -a --address                 (server|client) \t IPv4 address\n");
+  fprintf(desc, "\t\t -p --port                    (server|client) \t TCP port\n");
+  fprintf(desc, "\t\t -x --width                   (client) \t     render width\n");
+  fprintf(desc, "\t\t -y --height                  (client) \t     render height\n");
+  fprintf(desc, "\t\t -c --webcam-index            (server) \t     webcam device index (0-based)\n");
+  fprintf(desc, "\t\t -f --webcam-flip             (server) \t     horizontally flip the "
                 "image (usually desirable)\n");
-  fprintf(desc, "\t\t -C --color        (server|client) \t enable colored "
-                "ASCII output\n");
-  fprintf(desc, "\t\t -b --background-color (server|client) \t enable background color for ASCII output\n");
-  fprintf(desc, "\t\t -A --audio        (server|client) \t enable audio capture and playbook\n");
-  fprintf(desc, "\t\t -s --stretch          (server|client) \t allow stretching and shrinking (ignore aspect ratio)\n");
-  fprintf(desc, "\t\t -q --quiet        (client) \t     disable console logging (logs only to file)\n");
-  fprintf(desc, "\t\t -S --snapshot     (client) \t     capture single frame and exit\n");
-  fprintf(desc, "\t\t -D --snapshot-delay SECONDS (client) \t delay before snapshot (default: 3.0)\n");
-  fprintf(desc, "\t\t -L --log-file     (server|client) \t redirect logs to file\n");
-  fprintf(desc, "\t\t -E --encrypt      (server|client) \t enable AES packet encryption\n");
-  fprintf(desc, "\t\t -K --key PASSWORD (server|client) \t encryption passphrase (implies --encrypt)\n");
-  fprintf(desc, "\t\t -F --keyfile FILE (server|client) \t read encryption key from file (implies --encrypt)\n");
-  fprintf(desc, "\t\t -h --help         (server|client) \t print this help\n");
+  fprintf(desc, "\t\t    --color-mode              (client) \t     color mode: auto, mono, 16, 256, truecolor "
+                "(default: auto)\n");
+  fprintf(desc, "\t\t    --show-capabilities       (client) \t     show detected terminal capabilities and exit\n");
+  fprintf(desc, "\t\t    --utf8                    (client) \t     force enable UTF-8/Unicode support\n");
+  fprintf(desc, "\t\t -M --background-mode         (client) \t     background rendering: auto, foreground, "
+                "background (default: auto)\n");
+  fprintf(desc, "\t\t -A --audio                   (server|client) \t enable audio capture and playbook\n");
+  fprintf(desc, "\t\t -s --stretch                 (server|client) \t allow stretching and shrinking "
+                "(ignore aspect ratio)\n");
+  fprintf(desc, "\t\t -q --quiet                   (client) \t     disable console logging (logs only to file)\n");
+  fprintf(desc, "\t\t -S --snapshot                (client) \t     capture single frame and exit\n");
+  fprintf(desc, "\t\t -D --snapshot-delay SECONDS  (client) \t     delay before snapshot (default: 3.0)\n");
+  fprintf(desc, "\t\t -L --log-file                (server|client) \t redirect logs to file\n");
+  fprintf(desc, "\t\t -E --encrypt                 (server|client) \t enable AES packet encryption\n");
+  fprintf(desc, "\t\t -K --key PASSWORD            (server|client) \t encryption passphrase (implies --encrypt)\n");
+  fprintf(desc, "\t\t -F --keyfile FILE            (server|client) \t read encryption key from file "
+                "(implies --encrypt)\n");
+  fprintf(desc, "\t\t -h --help                    (server|client) \t print this help\n");
 }

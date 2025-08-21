@@ -28,7 +28,18 @@ image_t *image_new(size_t, size_t);
 void image_destroy(image_t *);
 void image_clear(image_t *);
 char *image_print(const image_t *);
-char *image_print_colored(const image_t *);
+char *image_print_color(const image_t *);
+
+// Capability-aware image printing functions
+#include "terminal_detect.h"
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps);
+char *image_print_256color(const image_t *image);
+char *image_print_16color(const image_t *image);
+char *image_print_16color_dithered(const image_t *image);
+
+// Background-aware printing functions that respect client capabilities
+char *image_print_16color_dithered_with_background(const image_t *image, bool use_background);
+
 void quantize_color(int *r, int *g, int *b, int levels);
 void image_resize(const image_t *, image_t *);
 void image_resize_interpolation(const image_t *source, image_t *dest);
