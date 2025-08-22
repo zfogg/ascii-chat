@@ -650,7 +650,13 @@ void test_performance(void) {
 
         simd_benchmark_t benchmark;
         printf("BENCHMARK_SIMD_CONVERSION %dx%d (%d pixels):\n", w, h, w * h);
-        benchmark = benchmark_simd_conversion(w, h, iterations);
+        if (g_image_source == IMAGE_SOURCE_WEBCAM && resolution_specific_image == NULL) {
+            // Use webcam-specific benchmarking that captures fresh frames
+            benchmark = benchmark_simd_conversion(w, h, iterations);
+        } else {
+            // Use standard benchmarking with static image data
+            benchmark = benchmark_simd_conversion_with_source(w, h, iterations, resolution_specific_image);
+        }
 
         printf("  Scalar:    %.5f ms/frame\n", benchmark.scalar_time * 100 / iterations);
 
@@ -687,7 +693,11 @@ void test_performance(void) {
         }
     }
 
-    webcam_init(0);
+    // Only initialize webcam if we're using webcam source
+    if (g_image_source == IMAGE_SOURCE_WEBCAM) {
+        webcam_init(0);
+    }
+    
     for (int i = 0; i < num_sizes; i++) {
         int w = sizes[i][0];
         int h = sizes[i][1];
@@ -752,7 +762,11 @@ void test_performance(void) {
             image_destroy(resolution_specific_image);
         }
     }
-    webcam_cleanup();
+    
+    // Only cleanup webcam if we initialized it
+    if (g_image_source == IMAGE_SOURCE_WEBCAM) {
+        webcam_cleanup();
+    }
 
     // NEW: Test color conversion performance
     printf("\n--- COLOR ASCII Performance Tests ---\n");
