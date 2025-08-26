@@ -18,9 +18,9 @@ Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audi
 
 Dependencies
 ==========
-- Most people: `apt-get install build-essential clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev`
-- ArchLinux masterrace: `pacman -S clang pkg-config v4l-utils zlib portaudio`
-- macOS: `brew install pkg-config zlib portaudio`
+- Most people: `apt-get install build-essential clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev`
+- ArchLinux masterrace: `pacman -S clang pkg-config v4l-utils zlib portaudio libsodium`
+- macOS: `brew install pkg-config zlib portaudio libsodium`
 
 **Note:** OpenCV is no longer required! The project now uses native platform APIs:
 - **Linux**: V4L2 (Video4Linux2)
@@ -54,7 +54,7 @@ Command line flags
 NOTE: run `./bin/server -h` to see these options
 
 - `-a --address`: IPv4 address (default: 0.0.0.0)
-- `-p --port`: TCP port (default: 90001)  
+- `-p --port`: TCP port (default: 90001)
 - `-x --width`: Render width (default: 110) NOTE: unused right now, auto-calculated
 - `-y --height`: Render height (default: 70) NOTE: unused right now, auto-calculated
 - `-c --webcam-index`: Webcam device index (0-based, server only, default: 0)
