@@ -325,7 +325,7 @@ data_buffer_pool_t *data_buffer_pool_get_global(void) {
 void *buffer_pool_alloc(size_t size) {
   if (!g_global_buffer_pool) {
     // If global pool not initialized, fall back to regular malloc
-    log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
+    //log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
     void *data;
     SAFE_MALLOC(data, size, void *);
     return data;
