@@ -76,7 +76,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config bear
+        sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config bear
 
     - name: Run static analysis
       run: |
