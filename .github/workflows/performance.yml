@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev pkg-config valgrind
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config valgrind
 
     - name: Build with debug symbols
       run: |
@@ -83,7 +83,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev pkg-config
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
 
     - name: Build different optimization levels
       run: |

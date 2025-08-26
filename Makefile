@@ -367,7 +367,7 @@ OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/clien
 # Test files - exclude problematic tests for now
 TEST_C_FILES_ALL := $(wildcard $(TEST_DIR)/unit/*.c) $(wildcard $(TEST_DIR)/integration/*.c) $(wildcard $(TEST_DIR)/performance/*.c)
 # Exclude tests with API mismatches that prevent compilation
-TEST_C_FILES_EXCLUDE := $(TEST_DIR)/unit/ascii_simd_test.c $(TEST_DIR)/unit/network_test.c $(TEST_DIR)/integration/server_multiclient_test.c $(TEST_DIR)/integration/video_pipeline_test.c $(TEST_DIR)/performance/benchmark_test.c
+TEST_C_FILES_EXCLUDE := $(TEST_DIR)/unit/ascii_simd_test.c $(TEST_DIR)/integration/server_multiclient_test.c $(TEST_DIR)/integration/video_pipeline_test.c $(TEST_DIR)/performance/benchmark_test.c
 TEST_C_FILES := $(filter-out $(TEST_C_FILES_EXCLUDE), $(TEST_C_FILES_ALL))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/%.o, $(TEST_C_FILES))
 # Transform test file paths to executable names with flattened structure
