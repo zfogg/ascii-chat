@@ -200,7 +200,7 @@ void *stats_logger_thread_func(void *arg);
 
 // Per-client video mixing functions
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
-                                          bool wants_color, bool wants_stretch, size_t *out_size);
+                                          bool wants_stretch, size_t *out_size);
 int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame, size_t frame_size);
 
 // Client management functions
@@ -417,7 +417,7 @@ void cleanup_frame_cache() {
 // NEW: Per-client frame generation function
 // Generates an ASCII frame specifically for one target client with their preferences
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
-                                          bool wants_color, bool wants_stretch, size_t *out_size) {
+                                          bool wants_stretch, size_t *out_size) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
   if (!out_size || width == 0 || height == 0) {
     log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
@@ -818,7 +818,7 @@ int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame,
  */
 
 int main(int argc, char *argv[]) {
-  options_init(argc, argv);
+  options_init(argc, argv, false);
 
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
@@ -833,7 +833,7 @@ int main(int argc, char *argv[]) {
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  // atexit(debug_memory_report);
+  atexit(debug_memory_report);
 #endif
 
   // Initialize global shared buffer pool
@@ -995,17 +995,17 @@ int main(int argc, char *argv[]) {
     }
 
     // Accept network connection with timeout
-    log_debug("Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
+    // log_debug("Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
     int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
     int saved_errno = errno; // Capture errno immediately to prevent corruption
-    log_debug("accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
-              client_sock < 0 ? strerror(saved_errno) : "success");
+    // log_debug("accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
+    //           client_sock < 0 ? strerror(saved_errno) : "success");
     if (client_sock < 0) {
       if (saved_errno == ETIMEDOUT) {
         // Timeout is normal, just continue
-        log_debug("Accept timed out after %d seconds, continuing loop", ACCEPT_TIMEOUT);
+        // log_debug("Accept timed out after %d seconds, continuing loop", ACCEPT_TIMEOUT);
 #ifdef DEBUG_MEMORY
-        debug_memory_report();
+        // debug_memory_report();
 #endif
         continue;
       }
@@ -1017,7 +1017,7 @@ int main(int argc, char *argv[]) {
         }
         continue;
       }
-      log_error("Network accept failed: %s", network_error_string(saved_errno));
+      // log_error("Network accept failed: %s", network_error_string(saved_errno));
       continue;
     }
 
@@ -1627,7 +1627,6 @@ void *client_video_render_thread_func(void *arg) {
     uint32_t client_id_snapshot = client->client_id;
     unsigned short width_snapshot = client->width;
     unsigned short height_snapshot = client->height;
-    bool wants_color_snapshot = client->wants_color;
     bool wants_stretch_snapshot = client->wants_stretch;
     bool active_snapshot = client->active;
     pthread_mutex_unlock(&client->client_state_mutex);
@@ -1640,7 +1639,7 @@ void *client_video_render_thread_func(void *arg) {
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
-                                                            wants_color_snapshot, wants_stretch_snapshot, &frame_size);
+                                                            wants_stretch_snapshot, &frame_size);
 
     // Phase 2 IMPLEMENTED: Queue frame for this specific client
     if (ascii_frame && frame_size > 0) {

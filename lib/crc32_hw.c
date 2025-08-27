@@ -30,7 +30,7 @@ static void check_crc32_hw_support(void) {
   // For now, assume available (can be made more sophisticated)
   crc32_hw_available = true;
 #endif
-  log_debug("ARM CRC32 hardware acceleration: %s", crc32_hw_available ? "enabled" : "disabled");
+  // log_debug("ARM CRC32 hardware acceleration: %s", crc32_hw_available ? "enabled" : "disabled");
 #elif defined(ARCH_X86_64)
   // Check for SSE4.2 support (includes CRC32 instruction)
   unsigned int eax, ebx, ecx, edx;
@@ -39,10 +39,10 @@ static void check_crc32_hw_support(void) {
   } else {
     crc32_hw_available = false;
   }
-  log_debug("Intel CRC32 hardware acceleration (SSE4.2): %s", crc32_hw_available ? "enabled" : "disabled");
+  // log_debug("Intel CRC32 hardware acceleration (SSE4.2): %s", crc32_hw_available ? "enabled" : "disabled");
 #else
   crc32_hw_available = false;
-  log_debug("No hardware CRC32 acceleration available for this architecture");
+  // log_debug("No hardware CRC32 acceleration available for this architecture");
 #endif
 
   crc32_hw_checked = true;
