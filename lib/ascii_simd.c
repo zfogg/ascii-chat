@@ -1519,17 +1519,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     }
     SAFE_FREE(frame_data);
     frame_data = NULL;
-    captured_frames = 0;
     webcam_cleanup();
   }
 
   printf("Benchmarking COLOR %s conversion using %d iterations...\n", mode_str, adaptive_iterations);
 
   // FIX #5: Prewarm 256-color caches to avoid first-frame penalty (~1.5-2MB cache build)
-  printf("Prewarming SGR256 caches...\n");
   prewarm_sgr256_fg_cache(); // Warmup 256-entry FG cache
   prewarm_sgr256_cache();    // Warmup 65,536-entry FG+BG cache
-  printf("Cache prewarming complete.\n");
 
   // Benchmark scalar color conversion (pure conversion, no I/O)
   double start = get_time_seconds();
@@ -1570,7 +1567,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     render_row_ascii_rep_dispatch_neon(test_pixels, pixel_count, output_buffer, output_buffer_size, background_mode,
-                                       true);
+                                       use_fast_path);
     /*measure_function_time2(render_row_ascii_rep_dispatch_neon, test_pixels, width, output_buffer,
      * output_buffer_size,*/
     /*                       background_mode, true); */
@@ -1594,14 +1591,12 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
 #ifdef SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time) {
-    best_time = result.avx2_time;
     result.best_method = "AVX2";
   }
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
-    best_time = result.neon_time;
     result.best_method = "NEON";
   }
 #endif
@@ -1637,6 +1632,20 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #endif
 
   result.speedup_best = result.scalar_time / best_time;
+
+  printf("------------\n");
+  printf("scalar: %f\n", result.scalar_time);
+  if (result.sse2_time > 0)
+    printf("SSE2: %f\n", result.sse2_time);
+  if (result.ssse3_time > 0)
+    printf("SSSE3: %f\n", result.ssse3_time);
+  if (result.avx2_time > 0)
+    printf("avx2: %f\n", result.avx2_time);
+  if (result.neon_time > 0)
+    printf("neon: %f\n", result.neon_time);
+  printf("Best method: %s, time: %f (%.2fx speedup)\n", result.best_method, best_time, result.speedup_best);
+  printf("------------\n");
+
   // Frame data already cleaned up in webcam capture section
   free(test_pixels);
   free(output_buffer);

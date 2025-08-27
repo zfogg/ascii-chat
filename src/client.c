@@ -955,7 +955,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
   const server_state_packet_t *state = (const server_state_packet_t *)data;
 
   // Convert from network byte order
-  //uint32_t connected_count = ntohl(state->connected_client_count);
+  // uint32_t connected_count = ntohl(state->connected_client_count);
   uint32_t active_count = ntohl(state->active_client_count);
 
   // Check if connected count changed - if so, clear console

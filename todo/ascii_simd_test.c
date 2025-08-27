@@ -778,63 +778,98 @@ void test_performance(void) {
       color_resolution_image = NULL; // Signal to benchmark function to use webcam
     }
 
-    // Test foreground color mode
+    // Test foreground color 256 mode
     simd_benchmark_t fg_benchmark =
         benchmark_simd_color_conversion_with_source(w, h, iterations, false, color_resolution_image, true);
-
-    printf("  FOREGROUND MODE:\n");
+    printf("  FOREGROUND MODE (256-color):\n");
     printf("    Scalar:    %.5f ms/frame\n", fg_benchmark.scalar_time * 100 / iterations);
-
     if (fg_benchmark.sse2_time > 0) {
       double speedup = fg_benchmark.scalar_time / fg_benchmark.sse2_time;
       printf("    SSE2:      %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.sse2_time * 100 / iterations, speedup);
     }
-
     if (fg_benchmark.ssse3_time > 0) {
       double speedup = fg_benchmark.scalar_time / fg_benchmark.ssse3_time;
       printf("    SSSE3:     %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.ssse3_time * 100 / iterations, speedup);
     }
-
     if (fg_benchmark.avx2_time > 0) {
       double speedup = fg_benchmark.scalar_time / fg_benchmark.avx2_time;
       printf("    AVX2:      %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.avx2_time * 100 / iterations, speedup);
     }
-
     if (fg_benchmark.neon_time > 0) {
       double speedup = fg_benchmark.scalar_time / fg_benchmark.neon_time;
       printf("    NEON:      %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.neon_time * 100 / iterations, speedup);
     }
-
     printf("    Best:      %s\n", fg_benchmark.best_method);
 
-    // Test background color mode (use same image source)
+    // Test foreground color truecolor mode
+    simd_benchmark_t fg_benchmark_truecolor =
+        benchmark_simd_color_conversion_with_source(w, h, iterations, false, color_resolution_image, false);
+    printf("  FOREGROUND MODE (truecolor):\n");
+    printf("    Scalar:    %.5f ms/frame\n", fg_benchmark_truecolor.scalar_time * 100 / iterations);
+    if (fg_benchmark_truecolor.sse2_time > 0) {
+      double speedup = fg_benchmark_truecolor.scalar_time / fg_benchmark_truecolor.sse2_time;
+      printf("    SSE2:      %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.sse2_time * 100 / iterations, speedup);
+    }
+    if (fg_benchmark_truecolor.ssse3_time > 0) {
+      double speedup = fg_benchmark_truecolor.scalar_time / fg_benchmark_truecolor.ssse3_time;
+      printf("    SSSE3:     %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.ssse3_time * 100 / iterations, speedup);
+    }
+    if (fg_benchmark_truecolor.avx2_time > 0) {
+      double speedup = fg_benchmark_truecolor.scalar_time / fg_benchmark_truecolor.avx2_time;
+      printf("    AVX2:      %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.avx2_time * 100 / iterations, speedup);
+    }
+    if (fg_benchmark_truecolor.neon_time > 0) {
+      double speedup = fg_benchmark_truecolor.scalar_time / fg_benchmark_truecolor.neon_time;
+      printf("    NEON:      %.5f ms/frame (%.1fx speedup)\n", fg_benchmark.neon_time * 100 / iterations, speedup);
+    }
+    printf("    Best:      %s\n", fg_benchmark_truecolor.best_method);
+
+
+    // Test background color 256-color mode (use same image source)
     simd_benchmark_t bg_benchmark =
         benchmark_simd_color_conversion_with_source(w, h, iterations, true, color_resolution_image, true);
-
-    printf("  BACKGROUND MODE:\n");
+    printf("  BACKGROUND MODE (256-color):\n");
     printf("    Scalar:    %.5f ms/frame\n", bg_benchmark.scalar_time * 100 / iterations);
-
     if (bg_benchmark.sse2_time > 0) {
       double speedup = bg_benchmark.scalar_time / bg_benchmark.sse2_time;
       printf("    SSE2:      %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.sse2_time * 100 / iterations, speedup);
     }
-
     if (bg_benchmark.ssse3_time > 0) {
       double speedup = bg_benchmark.scalar_time / bg_benchmark.ssse3_time;
       printf("    SSSE3:     %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.ssse3_time * 100 / iterations, speedup);
     }
-
     if (bg_benchmark.avx2_time > 0) {
       double speedup = bg_benchmark.scalar_time / bg_benchmark.avx2_time;
       printf("    AVX2:      %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.avx2_time * 100 / iterations, speedup);
     }
-
     if (bg_benchmark.neon_time > 0) {
       double speedup = bg_benchmark.scalar_time / bg_benchmark.neon_time;
       printf("    NEON:      %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.neon_time * 100 / iterations, speedup);
     }
-
     printf("    Best:      %s\n\n", bg_benchmark.best_method);
+
+    // Test background color truecolor mode (use same image source)
+    simd_benchmark_t bg_benchmark_truecolor =
+        benchmark_simd_color_conversion_with_source(w, h, iterations, true, color_resolution_image, false);
+    printf("  BACKGROUND MODE (truecolor):\n");
+    printf("    Scalar:    %.5f ms/frame\n", bg_benchmark_truecolor.scalar_time * 100 / iterations);
+    if (bg_benchmark_truecolor.sse2_time > 0) {
+      double speedup = bg_benchmark_truecolor.scalar_time / bg_benchmark_truecolor.sse2_time;
+      printf("    SSE2:      %.5f ms/frame (%.1fx speedup)\n", bg_benchmark_truecolor.sse2_time * 100 / iterations, speedup);
+    }
+    if (bg_benchmark_truecolor.ssse3_time > 0) {
+      double speedup = bg_benchmark_truecolor.scalar_time / bg_benchmark_truecolor.ssse3_time;
+      printf("    SSSE3:     %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.ssse3_time * 100 / iterations, speedup);
+    }
+    if (bg_benchmark_truecolor.avx2_time > 0) {
+      double speedup = bg_benchmark_truecolor.scalar_time / bg_benchmark_truecolor.avx2_time;
+      printf("    AVX2:      %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.avx2_time * 100 / iterations, speedup);
+    }
+    if (bg_benchmark_truecolor.neon_time > 0) {
+      double speedup = bg_benchmark_truecolor.scalar_time / bg_benchmark_truecolor.neon_time;
+      printf("    NEON:      %.5f ms/frame (%.1fx speedup)\n", bg_benchmark.neon_time * 100 / iterations, speedup);
+    }
+    printf("    Best:      %s\n\n", bg_benchmark_truecolor.best_method);
 
     // Clean up color resolution-specific image if we loaded it
     if (color_resolution_image && color_resolution_image != source_image) {
@@ -929,8 +964,6 @@ simd_benchmark_t benchmark_simd_with_webcam(int width, int height, int iteration
   char *output_buffer;
   SAFE_CALLOC(frame_data, iterations, sizeof(rgb_pixel_t *), rgb_pixel_t **);
   SAFE_MALLOC(output_buffer, pixel_count, char *);
-
-  printf("Pre-capturing %d webcam frames at %dx%d...\n", iterations, width, height);
 
   webcam_init(0);
   // Pre-capture and resize all webcam frames
