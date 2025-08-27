@@ -165,6 +165,13 @@ sleep 10
 kill $SERVER_PID
 ```
 
+```bash
+# Use the files in ./todo/
+cd todo && make
+# Make ascii_simd_test
+cd todo && make -f Makefile_simd ascii_simd_test
+```
+
 ## Debugging Techniques
 
 ### 1. Enable Debug Logging
