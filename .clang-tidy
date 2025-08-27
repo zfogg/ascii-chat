@@ -3,7 +3,8 @@
 # Based on Makefile configuration and desired check categories
 
 # Enable specific check categories while disabling all others
-Checks: '-*,readability-*,performance-*,portability-*,bugprone-*'
+# Suppress false positives from Intel CET system headers
+Checks: '-*,readability-*,performance-*,portability-*,bugprone-*,-clang-analyzer-core.uninitialized.Assign,-clang-analyzer-core.CallAndMessage,-clang-analyzer-core.NonNullParamChecker'
 
 # Filter headers to check (only project headers, not system/external headers)
 HeaderFilterRegex: '.*ascii-chat/.*\.(h|hpp)$'

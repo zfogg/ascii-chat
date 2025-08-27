@@ -616,8 +616,9 @@ analyze:
 
 scan-build: c-objs
 	@echo "Running scan-build with EXTRA_CFLAGS='-Wformat -Wformat-security -Werror=format-security'..."
-	scan-build --status-bugs -analyze-headers make clean
-	scan-build --status-bugs -analyze-headers make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
+	@echo "Excluding system headers to avoid CET intrinsic false positives..."
+	scan-build --status-bugs make clean
+	scan-build --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
