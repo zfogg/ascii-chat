@@ -31,7 +31,7 @@ override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
 # Compiler Flags
 # =============================================================================
 
-CSTD := c23
+CSTD ?= c23
 
 # Base flags
 override CFLAGS += -Wall -Wextra
