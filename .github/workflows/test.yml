@@ -45,7 +45,7 @@ jobs:
     - name: Build test suite (${{ matrix.build_type }})
       run: |
         make -j CSTD=c2x ${{ matrix.build_type }}
-        make -j tests
+        make -j CSTD=c2x tests
 
     - name: Run unit tests
       run: |
@@ -92,7 +92,7 @@ jobs:
     - name: Build performance tests
       run: |
         make -j CSTD=c2x debug
-        make -j tests
+        make -j CSTD=c2x tests
 
     - name: Run performance tests
       run: |
@@ -114,7 +114,7 @@ jobs:
     - name: Build with AddressSanitizer
       run: |
         make -j CSTD=c2x sanitize
-        make -j tests
+        make -j CSTD=c2x tests
 
     - name: Run tests with AddressSanitizer
       run: |
