@@ -160,7 +160,7 @@ Test(packet_queue, basic_enqueue_dequeue) {
     char test_data[] = "Hello, World!";
 
     // Enqueue a packet
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, test_data, strlen(test_data), 123, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, test_data, strlen(test_data) + 1, 123, true);
     cr_assert_eq(result, 0, "Enqueue should succeed");
     cr_assert_eq(packet_queue_size(queue), 1, "Queue size should be 1");
     cr_assert(packet_queue_is_empty(queue) == false, "Queue should not be empty");
@@ -170,7 +170,7 @@ Test(packet_queue, basic_enqueue_dequeue) {
     cr_assert_not_null(packet, "Dequeue should return packet");
     cr_assert_eq(ntohs(packet->header.type), PACKET_TYPE_AUDIO, "Packet type should match");
     cr_assert_eq(ntohl(packet->header.client_id), 123, "Client ID should match");
-    cr_assert_eq(packet->data_len, strlen(test_data), "Data length should match");
+    cr_assert_eq(packet->data_len, strlen(test_data) + 1, "Data length should match");
     cr_assert_str_eq((char *)packet->data, test_data, "Data should match");
 
     packet_queue_free_packet(packet);
@@ -189,7 +189,7 @@ Test(packet_queue, multiple_packets) {
         char data[32];
         snprintf(data, sizeof(data), "Packet %d", i);
 
-        int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, strlen(data), i, true);
+        int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, strlen(data) + 1, i, true);
         cr_assert_eq(result, 0, "Enqueue %d should succeed", i);
     }
 
@@ -252,7 +252,7 @@ Test(packet_queue, try_dequeue) {
 
     // Enqueue a packet
     char test_data[] = "Test data";
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_PING, test_data, strlen(test_data), 789, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_PING, test_data, strlen(test_data) + 1, 789, true);
     cr_assert_eq(result, 0, "Enqueue should succeed");
 
     // Try dequeue should succeed
