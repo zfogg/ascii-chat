@@ -17,7 +17,7 @@ unsigned short int opt_width = default_width, opt_height = default_height,
 
                    auto_width = 1, auto_height = 1;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "90001";
+char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -26,10 +26,10 @@ unsigned short int opt_webcam_flip = 1;
 unsigned short int opt_color_output = 0;
 
 // Terminal color mode and capability options
-terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO;       // Auto-detect by default
-background_mode_t opt_background_mode = BACKGROUND_MODE_AUTO; // Auto/foreground by default
-unsigned short int opt_show_capabilities = 0;                 // Don't show capabilities by default
-unsigned short int opt_force_utf8 = 0;                        // Don't force UTF-8 by default
+terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO;             // Auto-detect by default
+background_mode_t opt_background_mode = BACKGROUND_MODE_FOREGROUND; // Foreground by default
+unsigned short int opt_show_capabilities = 0;                       // Don't show capabilities by default
+unsigned short int opt_force_utf8 = 0;                              // Don't force UTF-8 by default
 
 unsigned short int opt_audio_enabled = 0;
 
@@ -84,27 +84,39 @@ char ascii_palette[] = "   ...',;:clodxkO0KXNWM";
 unsigned short int RED[ASCII_LUMINANCE_LEVELS], GREEN[ASCII_LUMINANCE_LEVELS], BLUE[ASCII_LUMINANCE_LEVELS],
     GRAY[ASCII_LUMINANCE_LEVELS];
 
-static struct option long_options[] = {{"address", required_argument, NULL, 'a'},
-                                       {"port", required_argument, NULL, 'p'},
-                                       {"width", optional_argument, NULL, 'x'},
-                                       {"height", optional_argument, NULL, 'y'},
-                                       {"webcam-index", required_argument, NULL, 'c'},
-                                       {"webcam-flip", optional_argument, NULL, 'f'},
-                                       {"color-mode", required_argument, NULL, 1000},     // New option
-                                       {"show-capabilities", no_argument, NULL, 1001},    // New option
-                                       {"utf8", no_argument, NULL, 1002},                 // UTF-8 override
-                                       {"background-mode", required_argument, NULL, 'M'}, // Background mode
-                                       {"audio", no_argument, NULL, 'A'},
-                                       {"stretch", no_argument, NULL, 's'},
-                                       {"quiet", no_argument, NULL, 'q'},
-                                       {"snapshot", no_argument, NULL, 'S'},
-                                       {"snapshot-delay", required_argument, NULL, 'D'},
-                                       {"log-file", required_argument, NULL, 'L'},
-                                       {"encrypt", no_argument, NULL, 'E'},
-                                       {"key", required_argument, NULL, 'K'},
-                                       {"keyfile", required_argument, NULL, 'F'},
-                                       {"help", optional_argument, NULL, 'h'},
-                                       {0, 0, 0, 0}};
+// Client-only options
+static struct option client_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"port", required_argument, NULL, 'p'},
+                                         {"width", required_argument, NULL, 'x'},
+                                         {"height", required_argument, NULL, 'y'},
+                                         {"webcam-index", required_argument, NULL, 'c'},
+                                         {"webcam-flip", optional_argument, NULL, 'f'},
+                                         {"color-mode", required_argument, NULL, 1000},
+                                         {"show-capabilities", no_argument, NULL, 1001},
+                                         {"utf8", no_argument, NULL, 1002},
+                                         {"background-mode", required_argument, NULL, 'M'},
+                                         {"audio", no_argument, NULL, 'A'},
+                                         {"stretch", no_argument, NULL, 's'},
+                                         {"quiet", no_argument, NULL, 'q'},
+                                         {"snapshot", no_argument, NULL, 'S'},
+                                         {"snapshot-delay", required_argument, NULL, 'D'},
+                                         {"log-file", required_argument, NULL, 'L'},
+                                         {"encrypt", no_argument, NULL, 'E'},
+                                         {"key", required_argument, NULL, 'K'},
+                                         {"keyfile", required_argument, NULL, 'F'},
+                                         {"help", optional_argument, NULL, 'h'},
+                                         {0, 0, 0, 0}};
+
+// Server-only options
+static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"port", required_argument, NULL, 'p'},
+                                         {"audio", no_argument, NULL, 'A'},
+                                         {"log-file", required_argument, NULL, 'L'},
+                                         {"encrypt", no_argument, NULL, 'E'},
+                                         {"key", required_argument, NULL, 'K'},
+                                         {"keyfile", required_argument, NULL, 'F'},
+                                         {"help", optional_argument, NULL, 'h'},
+                                         {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 
@@ -138,26 +150,93 @@ void update_dimensions_for_full_height(void) {
 
 void update_dimensions_to_terminal_size(void) {
   unsigned short int term_width, term_height;
-  // Get current terminal size
-  if (get_terminal_size(&term_width, &term_height) == 0) {
-    log_debug("Initial terminal size: %dx%d", term_width, term_height);
+  // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
+  int terminal_result = get_terminal_size(&term_width, &term_height);
+  if (terminal_result == 0) {
+    log_debug("Terminal size detected: %dx%d", term_width, term_height);
     if (auto_width) {
+      log_debug("Setting opt_width from %u to %u", opt_width, term_width);
       opt_width = term_width;
     }
     if (auto_height) {
+      log_debug("Setting opt_height from %u to %u", opt_height, term_height);
       opt_height = term_height;
     }
-    log_debug("After initial update: opt_width=%d, opt_height=%d", opt_width, opt_height);
+    log_debug("After update_dimensions_to_terminal_size: opt_width=%d, opt_height=%d", opt_width, opt_height);
   } else {
-    log_debug("Failed to get initial terminal size");
+    log_debug("Failed to get terminal size in update_dimensions_to_terminal_size");
   }
 }
 
-void options_init(int argc, char **argv) {
-  update_dimensions_to_terminal_size();
+// Helper function to strip equals sign from optarg if present
+static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer_size) {
+  if (!optarg)
+    return NULL;
+
+  snprintf(buffer, buffer_size, "%s", optarg);
+  char *value_str = buffer;
+  if (value_str[0] == '=') {
+    value_str++; // Skip the equals sign
+  }
+  return value_str;
+}
+
+// Helper function to validate IPv4 address format
+static int is_valid_ipv4(const char *ip) {
+  if (!ip)
+    return 0;
+
+  // int octets[4];
+  int count = 0;
+  char temp[15 + 1]; // Maximum IPv4 length is 15 characters + null terminator
+
+  // Copy to temp buffer to avoid modifying original
+  if (strlen(ip) >= sizeof(temp))
+    return 0;
+  strncpy(temp, ip, sizeof(temp) - 1);
+  temp[sizeof(temp) - 1] = '\0';
+
+  char *saveptr;
+  char *token = strtok_r(temp, ".", &saveptr);
+  while (token != NULL && count < 4) {
+    char *endptr;
+    long octet = strtol(token, &endptr, 10);
+
+    // Check if conversion was successful and entire token was consumed
+    if (*endptr != '\0' || token == endptr)
+      return 0;
+
+    // Check octet range (0-255)
+    if (octet < 0 || octet > 255)
+      return 0;
+
+    // octets[count] = (int)octet;
+    token = strtok_r(NULL, ".", &saveptr);
+    count++; // Increment count for each valid octet
+  }
+
+  // Must have exactly 4 octets and no remaining tokens
+  return (count == 4 && token == NULL);
+}
+
+void options_init(int argc, char **argv, bool is_client) {
+  // Parse arguments first, then update dimensions (moved below)
+
+  // Use different option sets for client vs server
+  const char *optstring;
+  struct option *options;
+
+  if (is_client) {
+    optstring = "a:p:x:y:c:f::M:AsqSD:L:EK:F:h";
+    options = client_options;
+  } else {
+    optstring = "a:p:AL:EK:F:h";
+    options = server_options;
+  }
 
   while (1) {
-    int index = 0, c = getopt_long(argc, argv, "a:p:x:y:c:f::AsqSD:L:EK:F:h", long_options, &index);
+    int index = 0;
+    int c = getopt_long(argc, argv, optstring, options, &index);
     if (c == -1)
       break;
 
@@ -166,52 +245,95 @@ void options_init(int argc, char **argv) {
     case 0:
       break;
 
-    case 'a':
-      snprintf(opt_address, OPTIONS_BUFF_SIZE, "%s", optarg);
+    case 'a': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (!is_valid_ipv4(value_str)) {
+        log_error("Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      snprintf(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
+    }
 
-    case 'p':
-      snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", optarg);
+    case 'p': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      // Validate port is a number between 1 and 65535
+      char *endptr;
+      long port_num = strtol(value_str, &endptr, 10);
+      if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
+        log_error("Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
+    }
 
-    case 'x':
-      snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
-      opt_width = strtoint(argbuf);
-      auto_width = 0; // Mark as manually set
+    case 'x': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (value_str) {
+        opt_width = strtoint(value_str);
+        if (opt_width == 0) {
+          log_error("Invalid width value '%s'. Width must be a positive integer.", value_str);
+          exit(EXIT_FAILURE);
+        }
+        auto_width = 0; // Mark as manually set
+      }
       break;
+    }
 
-    case 'y':
-      snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
-      opt_height = strtoint(argbuf);
-      auto_height = 0; // Mark as manually set
+    case 'y': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (value_str) {
+        opt_height = strtoint(value_str);
+        if (opt_height == 0) {
+          log_error("Invalid height value '%s'. Height must be a positive integer.", value_str);
+          exit(EXIT_FAILURE);
+        }
+        auto_height = 0; // Mark as manually set
+      }
       break;
+    }
 
-    case 'c':
-      snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
-      opt_webcam_index = strtoint(argbuf);
+    case 'c': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      int parsed_index = strtoint(value_str);
+      if (parsed_index < 0) {
+        log_error("Invalid webcam index value '%s'. Webcam index must be a non-negative integer.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      opt_webcam_index = (unsigned short int)parsed_index;
       break;
+    }
 
-    case 'f':
-      snprintf(argbuf, OPTIONS_BUFF_SIZE, "%s", optarg);
-      opt_webcam_flip = strtoint(argbuf);
+    case 'f': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      int parsed_flip = strtoint(value_str);
+      if (parsed_flip < 0 || parsed_flip > 1) {
+        log_error("Invalid webcam flip value '%s'. Webcam flip must be 0 or 1.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      opt_webcam_flip = (unsigned short int)parsed_flip;
       break;
+    }
 
-    case 1000: // --color-mode
-      if (strcmp(optarg, "auto") == 0) {
+    case 1000: { // --color-mode
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strcmp(value_str, "auto") == 0) {
         opt_color_mode = COLOR_MODE_AUTO;
-      } else if (strcmp(optarg, "mono") == 0 || strcmp(optarg, "monochrome") == 0) {
+      } else if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
         opt_color_mode = COLOR_MODE_MONO;
-      } else if (strcmp(optarg, "16") == 0 || strcmp(optarg, "16color") == 0) {
+      } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
         opt_color_mode = COLOR_MODE_16_COLOR;
-      } else if (strcmp(optarg, "256") == 0 || strcmp(optarg, "256color") == 0) {
+      } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
         opt_color_mode = COLOR_MODE_256_COLOR;
-      } else if (strcmp(optarg, "truecolor") == 0 || strcmp(optarg, "24bit") == 0) {
+      } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
         opt_color_mode = COLOR_MODE_TRUECOLOR;
       } else {
-        log_error("Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor", optarg);
+        log_error("Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor", value_str);
         exit(1);
       }
       break;
+    }
 
     case 1001: // --show-capabilities
       opt_show_capabilities = 1;
@@ -220,18 +342,18 @@ void options_init(int argc, char **argv) {
       opt_force_utf8 = 1;
       break;
 
-    case 'M': // --background-mode
-      if (strcmp(optarg, "auto") == 0) {
-        opt_background_mode = BACKGROUND_MODE_AUTO;
-      } else if (strcmp(optarg, "foreground") == 0 || strcmp(optarg, "fg") == 0) {
+    case 'M': { // --background-mode
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
         opt_background_mode = BACKGROUND_MODE_FOREGROUND;
-      } else if (strcmp(optarg, "background") == 0 || strcmp(optarg, "bg") == 0) {
+      } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
         opt_background_mode = BACKGROUND_MODE_BACKGROUND;
       } else {
-        log_error("Error: Invalid background mode '%s'. Valid modes: auto, foreground, background", optarg);
+        log_error("Error: Invalid background mode '%s'. Valid modes: foreground, background", value_str);
         exit(1);
       }
       break;
+    }
 
     case 's':
       opt_stretch = 1;
@@ -249,40 +371,65 @@ void options_init(int argc, char **argv) {
       opt_snapshot_mode = 1;
       break;
 
-    case 'D':
-      opt_snapshot_delay = atof(optarg);
+    case 'D': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      char *endptr;
+      opt_snapshot_delay = strtof(value_str, &endptr);
+      if (*endptr != '\0' || value_str == endptr) {
+        log_error("Invalid snapshot delay value '%s'. Snapshot delay must be a number.", value_str);
+        exit(EXIT_FAILURE);
+      }
       if (opt_snapshot_delay < 0.0f) {
         log_error("Snapshot delay must be non-negative (got %.2f)", opt_snapshot_delay);
         exit(EXIT_FAILURE);
       }
       break;
+    }
 
-    case 'L':
-      snprintf(opt_log_file, OPTIONS_BUFF_SIZE, "%s", optarg);
+    case 'L': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strlen(value_str) == 0) {
+        log_error("Invalid log file value '%s'. Log file path cannot be empty.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      snprintf(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
+    }
 
     case 'E':
       opt_encrypt_enabled = 1;
       break;
 
-    case 'K':
-      snprintf(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", optarg);
+    case 'K': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strlen(value_str) == 0) {
+        log_error("Invalid encryption key value '%s'. Encryption key cannot be empty.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      snprintf(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
       break;
+    }
 
-    case 'F':
-      snprintf(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", optarg);
+    case 'F': {
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strlen(value_str) == 0) {
+        log_error("Invalid keyfile value '%s'. Keyfile path cannot be empty.", value_str);
+        exit(EXIT_FAILURE);
+      }
+      snprintf(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
       break;
+    }
 
     case '?':
       log_error("Unknown option %c", optopt);
-      usage(stderr);
+      usage(stderr, is_client);
       exit(EXIT_FAILURE);
       break;
 
     case 'h':
-      usage(stdout);
+      usage(stdout, is_client);
       exit(EXIT_SUCCESS);
       break;
 
@@ -291,37 +438,81 @@ void options_init(int argc, char **argv) {
     }
   }
 
-  // After parsing command line options, update dimensions for full terminal
-  // usage
+  // After parsing command line options, update dimensions
+  // First set any auto dimensions to terminal size, then apply full height logic
+  update_dimensions_to_terminal_size();
   update_dimensions_for_full_height();
+
+  // Auto-enable color output based on terminal capabilities (unless explicitly disabled)
+  if (!opt_color_output && opt_color_mode == COLOR_MODE_AUTO) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    if (caps.color_level > TERM_COLOR_NONE) {
+      opt_color_output = 1;
+      log_debug("Auto-enabled color output based on terminal capabilities: %s",
+                terminal_color_level_name(caps.color_level));
+    }
+  }
 }
 
-void usage(FILE *desc /* stdout|stderr*/) {
-  fprintf(desc, "ascii-chat\n");
-  fprintf(desc, "\toptions:\n");
-  fprintf(desc, "\t\t -a --address                 (server|client) \t IPv4 address\n");
-  fprintf(desc, "\t\t -p --port                    (server|client) \t TCP port\n");
-  fprintf(desc, "\t\t -x --width                   (client) \t     render width\n");
-  fprintf(desc, "\t\t -y --height                  (client) \t     render height\n");
-  fprintf(desc, "\t\t -c --webcam-index            (server) \t     webcam device index (0-based)\n");
-  fprintf(desc, "\t\t -f --webcam-flip             (server) \t     horizontally flip the "
-                "image (usually desirable)\n");
-  fprintf(desc, "\t\t    --color-mode              (client) \t     color mode: auto, mono, 16, 256, truecolor "
-                "(default: auto)\n");
-  fprintf(desc, "\t\t    --show-capabilities       (client) \t     show detected terminal capabilities and exit\n");
-  fprintf(desc, "\t\t    --utf8                    (client) \t     force enable UTF-8/Unicode support\n");
-  fprintf(desc, "\t\t -M --background-mode         (client) \t     background rendering: auto, foreground, "
-                "background (default: auto)\n");
-  fprintf(desc, "\t\t -A --audio                   (server|client) \t enable audio capture and playbook\n");
-  fprintf(desc, "\t\t -s --stretch                 (server|client) \t allow stretching and shrinking "
-                "(ignore aspect ratio)\n");
-  fprintf(desc, "\t\t -q --quiet                   (client) \t     disable console logging (logs only to file)\n");
-  fprintf(desc, "\t\t -S --snapshot                (client) \t     capture single frame and exit\n");
-  fprintf(desc, "\t\t -D --snapshot-delay SECONDS  (client) \t     delay before snapshot (default: 3.0)\n");
-  fprintf(desc, "\t\t -L --log-file                (server|client) \t redirect logs to file\n");
-  fprintf(desc, "\t\t -E --encrypt                 (server|client) \t enable AES packet encryption\n");
-  fprintf(desc, "\t\t -K --key PASSWORD            (server|client) \t encryption passphrase (implies --encrypt)\n");
-  fprintf(desc, "\t\t -F --keyfile FILE            (server|client) \t read encryption key from file "
-                "(implies --encrypt)\n");
-  fprintf(desc, "\t\t -h --help                    (server|client) \t print this help\n");
+#define USAGE_INDENT "    "
+
+void usage_client(FILE *desc /* stdout|stderr*/) {
+  fprintf(desc, "ascii-chat - client options\n");
+  fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
+  fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 0.0.0.0)\n");
+  fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
+  fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
+  fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
+  fprintf(desc,
+          USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT "webcam device index (0-based) (default: 0)\n");
+  fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "horizontally flip the webcam "
+                             "image (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
+                             "(default: auto)\n");
+  fprintf(desc,
+          USAGE_INDENT "   --show-capabilities       " USAGE_INDENT "show detected terminal capabilities and exit\n");
+  fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
+  fprintf(desc, USAGE_INDENT "-M --background-mode         " USAGE_INDENT "background rendering: foreground, "
+                             "background (default: foreground)\n");
+  fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
+                             "enable audio capture and playback (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
+                             "(ignore aspect ratio) (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
+                             "disable console logging (log only to file) (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
+                             "capture single frame and exit (default: [unset])\n");
+  fprintf(desc,
+          USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
+          SNAPSHOT_DELAY_DEFAULT);
+  fprintf(desc, USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
+  fprintf(desc,
+          USAGE_INDENT "-E --encrypt                 " USAGE_INDENT "enable packet encryption (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-K --key PASSWORD            " USAGE_INDENT
+                             "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
+                             "(implies --encrypt) (default: [unset])\n");
+}
+
+void usage_server(FILE *desc /* stdout|stderr*/) {
+  fprintf(desc, "ascii-chat - server options\n");
+  fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
+  fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
+  fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
+  fprintf(desc,
+          USAGE_INDENT "-A --audio           " USAGE_INDENT "enable audio streaming to clients (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-K --key PASSWORD    " USAGE_INDENT
+                             "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
+                             "(implies --encrypt) (default: [unset])\n");
+}
+
+void usage(FILE *desc /* stdout|stderr*/, bool is_client) {
+  if (is_client) {
+    usage_client(desc);
+  } else {
+    usage_server(desc);
+  }
 }

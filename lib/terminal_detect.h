@@ -57,3 +57,5 @@ void test_terminal_output_modes(void);
 
 // Color mode override function for terminal capabilities
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
+
+int is_valid_tty_path(const char *path);

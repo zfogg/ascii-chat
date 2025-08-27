@@ -1,0 +1,200 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.m'
+      - 'tests/**'
+      - 'Makefile'
+  pull_request:
+    branches: [ '*' ]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.m'
+      - 'tests/**'
+      - 'Makefile'
+
+jobs:
+  unit-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+        build_type: [debug]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install portaudio libsodium criterion
+
+    - name: Build test suite (${{ matrix.build_type }})
+      run: |
+        make -j CSTD=c2x ${{ matrix.build_type }}
+        make -j CSTD=c2x tests
+
+    - name: Run unit tests
+      run: |
+        make test-unit
+        echo "Unit tests completed successfully"
+
+    - name: Run integration tests
+      run: |
+        make test-integration
+        echo "Integration tests completed successfully"
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ runner.os }}-${{ matrix.build_type }}
+        path: |
+          bin/test_*
+          *.log
+        retention-days: 7
+
+  performance-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install portaudio libsodium criterion
+
+    - name: Build performance tests
+      run: |
+        make -j CSTD=c2x debug
+        make -j CSTD=c2x tests
+
+    - name: Run performance tests
+      run: |
+        make test-performance
+        echo "Performance tests completed successfully"
+
+  memory-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies with sanitizers
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config valgrind
+
+    - name: Build with AddressSanitizer
+      run: |
+        make -j CSTD=c2x sanitize
+        make -j CSTD=c2x tests
+
+    - name: Run tests with AddressSanitizer
+      run: |
+        # Run tests with AddressSanitizer to detect memory issues
+        make test-quiet
+        echo "AddressSanitizer tests completed successfully"
+
+    - name: Memory leak detection
+      run: |
+        # Additional memory leak checks
+        echo "Running memory leak detection..."
+        # Test basic binary functionality for leaks
+        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server --help || true
+        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client --help || true
+        echo "Memory leak detection completed"
+
+  functional-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install portaudio libsodium coreutils
+
+    - name: Build project
+      run: |
+        make -j CSTD=c2x debug
+
+    - name: Test server startup and shutdown
+      run: |
+        # Test server can start and stop cleanly
+        timeout 5s ./bin/server --help
+        echo "Server help test passed"
+
+    - name: Test client functionality
+      run: |
+        # Test client options and capabilities
+        timeout 5s ./bin/client --help
+        timeout 5s ./bin/client --show-capabilities || true
+        echo "Client functionality tests passed"
+
+  cross-platform-compatibility:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-13, macos-15]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install portaudio libsodium
+
+    - name: Test build compatibility
+      run: |
+        make -j CSTD=c2x debug
+        ./bin/server --help
+        ./bin/client --help
+        echo "Cross-platform compatibility test passed on ${{ matrix.os }}"

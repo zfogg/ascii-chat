@@ -10,7 +10,7 @@ extern char ascii_palette[];
 typedef struct image_t image_t;
 
 asciichat_error_t ascii_read_init(unsigned short int webcam_index);
-asciichat_error_t ascii_write_init(void);
+asciichat_error_t ascii_write_init(int fd);
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
                     const bool aspect_ratio, const bool stretch);
@@ -23,7 +23,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 asciichat_error_t ascii_write(const char *);
 
 void ascii_read_destroy(void);
-void ascii_write_destroy(void);
+void ascii_write_destroy(int fd);
 
 // Utility to add leading spaces (left-padding) to each line of a frame.
 // Caller owns the returned buffer and must free it with free().
@@ -55,14 +55,20 @@ char *get_lum_palette(void);
 
 #define print(s) fwrite(s, 1, sizeof(s) / sizeof(s[0]), stdout)
 
-#define console_clear() print("\e[1;1H\e[2J")
+#define console_clear(fd) write(fd, "\e[1;1H\e[2J", 10)
 
 // #define cursor_reset() print("\033[0;0H")
-#define cursor_reset() print("\033[H")
+#define cursor_reset(fd) write(fd, "\033[H", 3)
 
-#define cursor_hide() print("\e[?25l")
+#define cursor_hide(fd) write(fd, "\e[?25l", 6)
 
-#define cursor_show() print("\e[?25h")
+#define cursor_show(fd) write(fd, "\e[?25h", 6)
+
+#define terminal_reset(fd) write(fd, "\033c", 2)
+
+#define terminal_clear_scrollback(fd) write(fd, "\033[3J", 4)
+
+#define terminal_clear_screen(fd) write(fd, "\033[2J", 4)
 
 static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
                              ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};

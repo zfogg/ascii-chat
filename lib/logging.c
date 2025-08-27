@@ -137,7 +137,7 @@ static void rotate_log_if_needed(void) {
       {
         char log_msg[256];
         int log_msg_len = snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
-                                   "1970-01-01 00:00:00.000", new_size);
+                                   "00:00:00.000000", new_size);
         if (log_msg_len > 0) {
           ssize_t written = write(g_log.file, log_msg, (size_t)log_msg_len);
           (void)written; // suppress unused warning
@@ -246,16 +246,16 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   gmtime_r(&ts.tv_sec, &tm_info); /* UTC time; gmtime_r is thread-safe */
 
   char time_buf[32];
-  strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_info);
+  strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_info);
 
   char time_buf_ms[64]; // Increased size to prevent truncation
-  long milliseconds = ts.tv_nsec / 1000000;
-  // Clamp milliseconds to valid range (0-999) to ensure format safety
-  if (milliseconds < 0)
-    milliseconds = 0;
-  if (milliseconds > 999)
-    milliseconds = 999;
-  snprintf(time_buf_ms, sizeof(time_buf_ms), "%s.%03ld", time_buf, milliseconds);
+  long microseconds = ts.tv_nsec / 1000;
+  // Clamp microseconds to valid range (0-999999) to ensure format safety
+  if (microseconds < 0)
+    microseconds = 0;
+  if (microseconds > 999999)
+    microseconds = 999999;
+  snprintf(time_buf_ms, sizeof(time_buf_ms), "%s.%06ld", time_buf, microseconds);
 
   /* Check if log rotation is needed */
   rotate_log_if_needed();

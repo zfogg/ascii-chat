@@ -32,27 +32,62 @@ single server, with video mixing and audio streaming capabilities.
 
 ```
 ascii-chat/
-├── bin/                        # Compiled binaries (server, client)
-├── build/                      # Object files (.o)
-├── notes/                      # Text about the project, things I want to learn or do or remember.
-├── todo/                       # Example code that I want to include eventually, usually from you and ChatGPT.
-├── common.c/h                  # Code that all files tend to use. Macros, logging, memory debugging, protocol definitions, errors, constants.
-├── src/server.c                # Server main - handles multiple clients
-├── src/client.c                # Client main - captures/displays video
-├── lib/network.c/h             # Network protocol and packet handling
-├── lib/packet_queue.c/h        # Per-client packet queue system
-├── lib/compression.c/h         # Frame compression with zlib
-├── lib/mixer.c/h               # Audio mixing for multiple clients
-├── lib/ascii.c/h               # ASCII art conversion and grid layout
-├── lib/webcam.c/h              # Webcam capture abstraction
-├── lib/webcam_avfoundation.m   # macOS webcam implementation (Objective-C file)
-├── lib/webcam_v4l2.c           # Linux webcam implementation (v4l2 API)
-├── lib/audio.c/h               # Audio capture/playback (PortAudio)
-├── lib/framebuffer.c/h         # Multi-producer frame buffering
-├── lib/ringbuffer.c/h          # Lock-free ring buffer
-├── lib/ascii_simd*.c/h         # SIMD implementions of IMAGE to ASCII conversions. Black-and-whiteh and color versions.
-├── lib/ansifast.c/h            # Build optimized ANSI strings fast for SIMD image to ascii conversion.
-└── Makefile                    # Build configuration
+├── bin/                        # Compiled binaries (server, client, tests)
+├── build/                      # Object files (.o) and build artifacts
+├── notes/                      # Development notes and documentation
+├── todo/                       # Experimental code and future features
+├── tests/                      # Comprehensive test suite using Criterion
+│   ├── unit/                   # Unit tests for individual components
+│   │   ├── audio_test.c        # Audio system and ringbuffer tests
+│   │   ├── buffer_pool_test.c  # Memory buffer pool tests
+│   │   ├── packet_queue_test.c # Packet queue and node pool tests
+│   │   ├── hashtable_test.c    # Hash table implementation tests
+│   │   ├── crypto_test.c       # Cryptographic functions tests
+│   │   ├── common_test.c       # Common utilities tests
+│   │   ├── logging_test.c      # Logging system tests
+│   │   ├── network_test.c      # Network protocol tests
+│   │   └── ascii_simd_test.c   # SIMD optimization tests
+│   ├── integration/            # Multi-component integration tests
+│   │   ├── crypto_network_test.c     # Crypto + network integration
+│   │   ├── server_multiclient_test.c # Multi-client scenarios
+│   │   └── video_pipeline_test.c     # End-to-end video pipeline
+│   ├── performance/            # Performance and stress tests
+│   │   └── benchmark_test.c    # Performance benchmarking
+│   ├── fixtures/               # Test data and fixtures
+│   └── test_runner.sh          # Test execution script
+├── src/                        # Main application entry points
+│   ├── server.c                # Server main - handles multiple clients
+│   └── client.c                # Client main - captures/displays video
+├── lib/                        # Core library components
+│   ├── common.c/h              # Shared utilities, macros, memory debugging, constants
+│   ├── logging.c               # Logging system implementation
+│   ├── options.c/h             # Command-line argument parsing
+│   ├── network.c/h             # Network protocol and packet handling
+│   ├── packet_queue.c/h        # Thread-safe per-client packet queues
+│   ├── buffer_pool.c/h         # Memory buffer pool system for efficient allocation
+│   ├── hashtable.c/h           # Hash table implementation for client ID lookup
+│   ├── ringbuffer.c/h          # Lock-free ring buffer implementation
+│   ├── compression.c/h         # Frame compression with zlib
+│   ├── crypto.c/h              # Cryptographic operations using libsodium
+│   ├── crc32_hw.c/h            # Hardware-accelerated CRC32 checksums
+│   ├── mixer.c/h               # Audio mixing for multiple clients
+│   ├── audio.c/h               # Audio capture/playback (PortAudio)
+│   ├── image.c/h               # Image processing and manipulation
+│   ├── aspect_ratio.c/h        # Aspect ratio calculations
+│   ├── ascii.c/h               # ASCII art conversion and grid layout
+│   ├── ascii_simd.c/h          # SIMD-optimized ASCII conversion (cross-platform)
+│   ├── ascii_simd_color.c      # SIMD color ASCII conversion implementation
+│   ├── ascii_simd_neon.c/h     # ARM NEON-specific SIMD optimizations
+│   ├── ansi_fast.c/h           # Optimized ANSI escape sequence generation
+│   ├── terminal_detect.c/h     # Terminal capability detection
+│   ├── webcam.c/h              # Webcam capture abstraction layer
+│   ├── webcam_platform.c/h     # Platform-specific webcam detection
+│   ├── webcam_avfoundation.m   # macOS webcam implementation (AVFoundation)
+│   ├── webcam_v4l2.c           # Linux webcam implementation (Video4Linux2)
+│   └── round.h                 # Rounding utilities
+├── Makefile                    # Build configuration with test support
+├── Info.plist                  # macOS application metadata
+└── CLAUDE.md                   # Development guide (this file)
 ```
 
 ## Building and Running
@@ -218,14 +253,13 @@ ps -eLf | grep server  # Linux
 
 ### Packet Structure
 ```c
-packet_header_t {
-  uint32_t magic;     // 0xDEADBEEF for validation
+typedef struct {
+  uint32_t magic;     // PACKET_MAGIC (0xDEADBEEF) for validation
   uint16_t type;      // packet_type_t enum value
   uint32_t length;    // payload length
-  uint32_t sequence;  // for ordering/duplicate detection
   uint32_t crc32;     // payload checksum
-  uint32_t client_id; // which client sent this
-}
+  uint32_t client_id; // which client sent this (0 = server)
+} __attribute__((packed)) packet_header_t;
 ```
 
 ### Packet Types (CRITICAL - these must match in receive_packet validation)
@@ -236,10 +270,10 @@ typedef enum {
   PACKET_TYPE_IMAGE_FRAME = 2, // Client->Server - Complete RGB image with dimensions
 
   // Audio and control
-  PACKET_TYPE_AUDIO = 3, // Audio data
-  PACKET_TYPE_SIZE = 4, // Terminal dimensions
-  PACKET_TYPE_PING = 5, // Keepalive
-  PACKET_TYPE_PONG = 6, // Keepalive response
+  PACKET_TYPE_AUDIO = 3,               // Audio data
+  PACKET_TYPE_CLIENT_CAPABILITIES = 4, // Client reports terminal capabilities
+  PACKET_TYPE_PING = 5,                // Keepalive
+  PACKET_TYPE_PONG = 6,                // Keepalive response
 
   // Multi-user protocol extensions
   PACKET_TYPE_CLIENT_JOIN = 7,    // Client announces capability to send media
@@ -248,8 +282,8 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
+  PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
 } packet_type_t;
-// ... and more types to be added as the protocol evolves
 ```
 
 ### Primary Functionality (ASCII "video") Packet Flow
@@ -393,19 +427,92 @@ pthread_rwlock_wrlock(&g_client_manager_rwlock); // DEADLOCK POTENTIAL!
    unnecessary null checks
 5. Set pointers to NULL after freeing (this helps catch bugs)
 
-## Testing Checklist
+## Testing Framework and Guidelines
+
+### Comprehensive Test Suite
+
+ASCII-Chat uses the **Criterion testing framework** for comprehensive unit testing of all core components:
+
+#### Core Data Structures (All Fully Tested)
+- **Ringbuffers**: `tests/unit/audio_test.c` - Audio ringbuffer operations, wrap-around, overflow handling
+- **Buffer Pools**: `tests/unit/buffer_pool_test.c` - Pool management, allocation/deallocation, statistics
+- **Packet Queues**: `tests/unit/packet_queue_test.c` - FIFO operations, capacity limits, thread safety
+- **Hashtables**: `tests/unit/hashtable_test.c` - Insert/lookup/remove, collision handling, statistics
+
+#### Test Organization
+```
+tests/
+├── unit/           # Unit tests for individual components
+├── integration/    # Multi-component interaction tests
+└── performance/    # Performance and stress tests
+```
+
+### Running Tests
+
+```bash
+# Build all tests
+make tests
+
+# Run specific test suites
+./bin/test_unit_buffer_pool_test
+./bin/test_unit_packet_queue_test
+./bin/test_unit_hashtable_test
+./bin/test_unit_audio_test
+
+# Run with filtering
+./bin/test_unit_buffer_pool_test --filter="creation_and_destruction"
+
+# List available tests
+./bin/test_unit_buffer_pool_test --list
+
+# Run with detailed output
+./bin/test_unit_buffer_pool_test --verbose
+```
+
+### Test Coverage Features
+
+Each test suite provides:
+- **API Coverage**: All public functions tested
+- **Edge Cases**: NULL pointers, boundary conditions, invalid inputs
+- **Error Scenarios**: Pool exhaustion, capacity limits, failure modes
+- **Statistics Validation**: Counter tracking and metrics verification
+- **Memory Safety**: Proper `SAFE_MALLOC()` patterns and cleanup
+- **Performance Testing**: Stress testing and efficiency validation
+- **Thread Safety**: Concurrent access simulation where applicable
+
+### Writing New Tests
+
+Follow the established patterns:
+```c
+#include <criterion/criterion.h>
+#include <criterion/new/assert.h>
+#include "common.h"
+#include "your_module.h"
+
+TestSuite(your_module, .init = setup_logging, .fini = restore_logging);
+
+Test(your_module, basic_functionality) {
+    // Use SAFE_MALLOC() for allocations
+    // Use cr_assert_* macros for assertions
+    // Test both success and failure cases
+}
+```
+
+### Manual Testing Checklist
 
 Before committing any changes:
 1. [ ] `make clean && make debug` - check that it builds without warnings or errors
 2. [ ] `make format` - code is properly formatted
-3. [ ] Start server, connect 2+ clients
-4. [ ] Video displays in correct grid layout
-5. [ ] No "DEADBEEF" or "Unknown packet type" errors
-6. [ ] No CRC checksum mismatches
-7. [ ] Audio works (if testing audio changes)
-8. [ ] Clients can disconnect/reconnect cleanly
-9. [ ] No crashes over 1+ minute runtime
-10. [ ] Check with AddressSanitizer if changed memory handling (`make clean && make sanitize`)
+3. [ ] **Run relevant unit tests** - `./bin/test_unit_*` for changed components
+4. [ ] Start server, connect 2+ clients
+5. [ ] Video displays in correct grid layout
+6. [ ] No "DEADBEEF" or "Unknown packet type" errors
+7. [ ] No CRC checksum mismatches
+8. [ ] Audio works (if testing audio changes)
+9. [ ] Clients can disconnect/reconnect cleanly
+10. [ ] No crashes over 1+ minute runtime
+11. [ ] Check with AddressSanitizer if changed memory handling (`make clean && make sanitize`)
+12. [ ] **Verify test coverage** - Add tests for new functionality
 
 ## Development Principles
 
@@ -464,7 +571,9 @@ assert(remaining_clients == 0);           // Should always be true
 8. **ringbuffer.c**: Framebuffer code lives here (data structure for
    multi-frame storage with metadata)
 9. **packet_queue.c**: Thread-safe per-client queue implementation for the
-   network protcol and its packets. It has node pools and uses buffer_pool.c/h
+   network protocol and its packets. It has node pools and uses buffer_pool.c/h
+10. **buffer_pool.c/h**: Memory buffer pool system for efficient allocation
+11. **hashtable.c/h**: Hash table implementation for client ID lookup
 
 ## SIMD Optimization: The Complete Journey (January 2025)
 
