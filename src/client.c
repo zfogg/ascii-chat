@@ -36,14 +36,15 @@
 #define AUDIO_DEBUG
 #define COMPRESSION_DEBUG
 
-static void full_terminal_reset(void) {
+static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
-    terminal_reset();
-    // terminal_clear_scrollback();
-    terminal_clear_screen();
-    cursor_reset();
-    fflush(stdout);
+    terminal_reset(fd);
+    // terminal_clear_scrollback(fd);
+    terminal_clear_screen(fd);
+    cursor_reset(fd);
+    // Force output to terminal immediately
+    fsync(fd);
   }
 }
 
@@ -302,7 +303,7 @@ static void shutdown_client() {
   }
 
   // Clean up webcam
-  ascii_write_destroy();
+  ascii_write_destroy(tty_info_g.fd);
 
   log_info("Client shutdown complete");
   log_destroy(); // Destroy logging last
@@ -351,7 +352,7 @@ static void sigwinch_handler(int sigwinch) {
       if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
         log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
       } else {
-        full_terminal_reset();
+        full_terminal_reset(tty_info_g.fd);
         // log_debug("Sent terminal capabilities to server: %ux%u", opt_width, opt_height);
       }
     }
@@ -413,7 +414,6 @@ tty_info_t get_current_tty(void) {
     result.path = NULL;
   }
 
-  // Method 2: Fall back to ttyname() for stdin/stdout/stderr
   if (isatty(STDIN_FILENO)) {
     result.fd = STDIN_FILENO;
   } else if (isatty(STDOUT_FILENO)) {
@@ -422,9 +422,9 @@ tty_info_t get_current_tty(void) {
     result.fd = STDERR_FILENO;
   }
   if (result.fd != -1) {
-    result.path = ttyname(result.fd); // Returns something like "/dev/pts/1" or "/dev/tty1"
-    result.owns_fd = true;
-    return result; // Returns something like "/dev/pts/1" or "/dev/tty1"
+    result.path = ttyname(result.fd);
+    result.owns_fd = false;
+    return result;
   }
 
   // Method 3: Try /dev/tty (most reliable for controlling terminal)
@@ -438,16 +438,14 @@ tty_info_t get_current_tty(void) {
   return result; // Not running in a TTY
 }
 
-static bool is_a_tty_g = false;
+static bool has_a_tty_g = false;
 
 void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
   if (use_direct_tty) {
     // Direct TTY for interactive use
     if (tty_info_g.fd >= 0) {
-      // Skip cursor reset in snapshot mode - just print raw ASCII
-      if (!opt_snapshot_mode) {
-        write(tty_info_g.fd, "\033[H", 3);
-      }
+      // Always position cursor for TTY output (even in snapshot mode)
+      cursor_reset(tty_info_g.fd);
       write(tty_info_g.fd, frame_data, strlen(frame_data));
     } else {
       log_error("Failed to open TTY: %s", tty_info_g.path ? tty_info_g.path : "unknown");
@@ -456,10 +454,10 @@ void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
     // stdout for pipes/redirection/testing
     // Skip cursor reset in snapshot mode - just print raw ASCII
     if (!opt_snapshot_mode) {
-      write(STDOUT_FILENO, "\033[H", 3);
+      cursor_reset(STDOUT_FILENO);
     }
-    fputs(frame_data, stdout);
-    fflush(stdout);
+    write(STDOUT_FILENO, frame_data, strlen(frame_data));
+    fsync(STDOUT_FILENO);
   }
 }
 
@@ -550,30 +548,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
   }
 
-  // Position cursor at top-left and display frame (preserve last frame instead of clearing)
-  // Debug: Log first 100 bytes of received frame data as hex
-  // if (header.original_size > 0) {
-  //   int debug_len = (header.original_size < 100) ? header.original_size : 100;
-  //   char hex_debug[401]; // 100 bytes * 4 chars per byte + null terminator
-  //   char *hex_ptr = hex_debug;
-
-  //   for (int i = 0; i < debug_len; i++) {
-  //     unsigned char byte = (unsigned char)frame_data[i];
-  //     if (byte == 0x1b) {
-  //       strcpy(hex_ptr, "ESC ");
-  //       hex_ptr += 4;
-  //     } else if (byte >= 32 && byte <= 126) {
-  //       *hex_ptr++ = byte;
-  //       *hex_ptr++ = ' ';
-  //     } else {
-  //       sprintf(hex_ptr, "%02x ", byte);
-  //       hex_ptr += 3;
-  //     }
-  //   }
-  //   *hex_ptr = '\0';
-  //   log_debug("CLIENT RECEIVED: First %d bytes as hex: %s", debug_len, hex_debug);
-  // }
-
   // In snapshot mode, wait for delay period then exit
   bool take_snapshot = false;
   if (opt_snapshot_mode) {
@@ -596,14 +570,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // For terminal: print every frame until final snapshot
   // For non-terminal: only print the final snapshot frame
-  if (is_a_tty_g || (!is_a_tty_g && opt_snapshot_mode && take_snapshot)) {
+  if (has_a_tty_g || (!has_a_tty_g && opt_snapshot_mode && take_snapshot)) {
     if (take_snapshot) {
       // Write the final frame to the terminal as well, not just to stdout.
       write_frame_to_output(frame_data, true);
     }
 
     // The real ascii data frame write call:
-    write_frame_to_output(frame_data, is_a_tty_g && !take_snapshot);
+    write_frame_to_output(frame_data, has_a_tty_g && !take_snapshot);
 
     if (opt_snapshot_mode && take_snapshot) {
       // A newline at the end of the snapshot of ascii art to end the file.
@@ -671,7 +645,7 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_CLEAR_CONSOLE:
       // Server requested console clear
-      full_terminal_reset();
+      full_terminal_reset(tty_info_g.fd);
       log_info("Console cleared by server");
       break;
 
@@ -988,7 +962,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
   if (g_server_state_initialized) {
     if (g_last_active_count != active_count) {
       log_info("Active client count changed from %u to %u - clearing console", g_last_active_count, active_count);
-      full_terminal_reset();
+      full_terminal_reset(tty_info_g.fd);
     }
   } else {
     // First state packet received
@@ -1027,7 +1001,7 @@ int main(int argc, char *argv[]) {
   // Additional TTY validation: if stdout is redirected but we have a controlling TTY,
   // we can still show interactive output on the terminal
   if (tty_info_g.fd >= 0) {
-    is_a_tty_g |= isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
+    has_a_tty_g |= isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
   }
 
   // Initialize logging - use specified log file or default
@@ -1039,7 +1013,7 @@ int main(int argc, char *argv[]) {
   // In normal mode: still disable to prevent flickering with ASCII frame display
   // log_set_terminal_output(false);
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
-  log_set_terminal_output(is_a_tty_g && !opt_quiet && !opt_snapshot_mode);
+  log_set_terminal_output(has_a_tty_g && !opt_quiet && !opt_snapshot_mode);
 
   // CRITICAL FIX: Initialize ASCII SIMD cache (missing from client!)
   // This initializes g_ascii_cache.dec3_table needed for NEON truecolor/256-color RGB output
@@ -1077,7 +1051,7 @@ int main(int argc, char *argv[]) {
   signal(SIGPIPE, SIG_IGN);
 
   // Initialize ASCII output for this connection
-  ascii_write_init();
+  ascii_write_init(tty_info_g.fd);
 
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
@@ -1088,21 +1062,21 @@ int main(int argc, char *argv[]) {
   if (opt_audio_enabled) {
     if (audio_init(&g_audio_context) != 0) {
       log_fatal("Failed to initialize audio system");
-      ascii_write_destroy();
+      ascii_write_destroy(tty_info_g.fd);
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
     if (audio_start_playback(&g_audio_context) != 0) {
       log_error("Failed to start audio playback");
       audio_destroy(&g_audio_context);
-      ascii_write_destroy();
+      ascii_write_destroy(tty_info_g.fd);
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
     if (audio_start_capture(&g_audio_context) != 0) {
       log_error("Failed to start audio capture");
       audio_destroy(&g_audio_context);
-      ascii_write_destroy();
+      ascii_write_destroy(tty_info_g.fd);
       exit(ASCIICHAT_ERR_AUDIO);
     }
   }
@@ -1112,7 +1086,7 @@ int main(int argc, char *argv[]) {
 
   if (g_first_connection && !opt_snapshot_mode) {
     // Complete terminal reset: clear screen, scrollback, and reset all attributes
-    full_terminal_reset();
+    full_terminal_reset(tty_info_g.fd);
   }
 
   while (!g_should_exit) {
@@ -1121,7 +1095,7 @@ int main(int argc, char *argv[]) {
       log_info("Connection terminated, preparing to reconnect...");
       if (reconnect_attempt == 0) {
         log_info("CLEARING CONSOLE FOR RECONNECTION");
-        full_terminal_reset();
+        full_terminal_reset(tty_info_g.fd);
       }
       reconnect_attempt++;
     }
@@ -1129,7 +1103,7 @@ int main(int argc, char *argv[]) {
     if (g_first_connection || g_should_reconnect) {
       // Close any existing socket before attempting new connection
       if (0 > (sockfd = close_socket(sockfd))) {
-        ascii_write_destroy();
+        ascii_write_destroy(tty_info_g.fd);
         exit(ASCIICHAT_ERR_NETWORK);
       }
 
@@ -1178,7 +1152,7 @@ int main(int argc, char *argv[]) {
       socklen_t addr_len = sizeof(local_addr);
       if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
         perror("getsockname");
-        ascii_write_destroy();
+        ascii_write_destroy(tty_info_g.fd);
         exit(ASCIICHAT_ERR_NETWORK);
       }
       int local_port = ntohs(local_addr.sin_port);

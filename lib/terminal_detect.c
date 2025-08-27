@@ -449,17 +449,11 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 int is_valid_tty_path(const char *path) {
   if (!path || strlen(path) < 6)
     return 0; // Too short to be /dev/x
-  if (strncmp(path, "/dev/", 5) != 0)
-    return 0;
-  if (strstr(path, "..") != NULL)
-    return 0;
-  if (strchr(path, '\0'))
-    return 0; // Explicit check in case
-  // Optionally enforce allowlist, e.g. /dev/tty* or /dev/pts/*
   if (strncmp(path, "/dev/tty", 8) == 0)
     return 1;
   if (strncmp(path, "/dev/pts/", 9) == 0)
     return 1;
-  // Extend to other known TTY devices as needed
+  if (strstr(path, "/dev/") != NULL)
+    return 1;
   return 0;
 }

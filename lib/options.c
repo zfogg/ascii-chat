@@ -441,6 +441,16 @@ void options_init(int argc, char **argv, bool is_client) {
   // First set any auto dimensions to terminal size, then apply full height logic
   update_dimensions_to_terminal_size();
   update_dimensions_for_full_height();
+
+  // Auto-enable color output based on terminal capabilities (unless explicitly disabled)
+  if (!opt_color_output && opt_color_mode == COLOR_MODE_AUTO) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    if (caps.color_level > TERM_COLOR_NONE) {
+      opt_color_output = 1;
+      log_debug("Auto-enabled color output based on terminal capabilities: %s", 
+                terminal_color_level_name(caps.color_level));
+    }
+  }
 }
 
 #define USAGE_INDENT "    "
