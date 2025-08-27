@@ -447,7 +447,7 @@ void options_init(int argc, char **argv, bool is_client) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     if (caps.color_level > TERM_COLOR_NONE) {
       opt_color_output = 1;
-      log_debug("Auto-enabled color output based on terminal capabilities: %s", 
+      log_debug("Auto-enabled color output based on terminal capabilities: %s",
                 terminal_color_level_name(caps.color_level));
     }
   }
