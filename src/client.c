@@ -7,10 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <pthread.h>
+#include <zconf.h>
 #include <zlib.h>
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -31,6 +35,27 @@
 #define NETWORK_DEBUG
 #define AUDIO_DEBUG
 #define COMPRESSION_DEBUG
+
+static void full_terminal_reset(void) {
+  // Skip terminal control sequences in snapshot mode - just print raw ASCII
+  if (!opt_snapshot_mode) {
+    terminal_reset();
+    terminal_clear_scrollback();
+    terminal_clear_screen();
+    cursor_reset();
+    fflush(stdout);
+  }
+}
+
+// ------ TTY INFO ------
+typedef struct {
+  int fd;
+  char *path;
+  bool owns_fd;
+} tty_info_t;
+
+static tty_info_t tty_info_g;
+// ------
 
 static int sockfd = 0;
 static volatile bool g_should_exit = false;
@@ -223,6 +248,11 @@ static void shutdown_client() {
   }
   sockfd = 0;
 
+  // Close the controlling terminal if we opened it
+  if (tty_info_g.owns_fd) {
+    close(tty_info_g.fd);
+  }
+
   // Clean up data reception thread
   if (g_data_thread_created) {
     log_info("Waiting for data reception thread to finish...");
@@ -272,9 +302,8 @@ static void shutdown_client() {
   }
 
   // Clean up webcam
-  ascii_read_destroy();
-
   ascii_write_destroy();
+
   log_info("Client shutdown complete");
   log_destroy(); // Destroy logging last
 }
@@ -309,15 +338,22 @@ static void sigint_handler(int sigint) {
 
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
-  // Terminal was resized, update dimensions and recalculate aspect ratio
-  update_dimensions_to_terminal_size();
+  // log_debug("SIGWINCH HANDLER CALLED: auto_width=%u, auto_height=%u, current opt_width=%u, opt_height=%u",
+  // auto_width,
+  //           auto_height, opt_width, opt_height);
 
-  // Send new size to server if connected
-  if (sockfd > 0) {
-    if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
-      log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
-    } else {
-      log_debug("Sent terminal capabilities to server: %ux%u", opt_width, opt_height);
+  // Terminal was resized, update dimensions and recalculate aspect ratio
+  // ONLY if both width and height are auto (not manually set)
+  if (auto_width && auto_height) {
+    update_dimensions_to_terminal_size();
+    // Send new size to server if connected
+    if (sockfd > 0) {
+      if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
+        log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
+      } else {
+        full_terminal_reset();
+        // log_debug("Sent terminal capabilities to server: %ux%u", opt_width, opt_height);
+      }
     }
   }
 }
@@ -364,10 +400,75 @@ static void handle_audio_packet(const void *data, size_t len) {
 #endif
 }
 
-// Removed maybe_size_update - clients control their own size
+tty_info_t get_current_tty(void) {
+  tty_info_t result = {-1, NULL, false};
+
+  // Method 1: Check $TTY environment variable first (most specific on macOS)
+  result.path = getenv("TTY");
+  if (result.path && strlen(result.path) > 0) {
+    result.fd = open(result.path, O_WRONLY);
+    result.owns_fd = true;
+    return result;
+  } else {
+    result.path = NULL;
+  }
+
+  // Method 2: Fall back to ttyname() for stdin/stdout/stderr
+  if (isatty(STDIN_FILENO)) {
+    result.fd = STDIN_FILENO;
+  } else if (isatty(STDOUT_FILENO)) {
+    result.fd = STDOUT_FILENO;
+  } else if (isatty(STDERR_FILENO)) {
+    result.fd = STDERR_FILENO;
+  }
+  if (result.fd != -1) {
+    result.path = ttyname(result.fd); // Returns something like "/dev/pts/1" or "/dev/tty1"
+    result.owns_fd = true;
+    return result; // Returns something like "/dev/pts/1" or "/dev/tty1"
+  }
+
+  // Method 3: Try /dev/tty (most reliable for controlling terminal)
+  result.fd = open("/dev/tty", O_WRONLY);
+  if (result.fd >= 0) {
+    result.path = "/dev/tty";
+    result.owns_fd = true;
+    return result;
+  }
+
+  return result; // Not running in a TTY
+}
+
+static bool is_a_tty_g = false;
+
+void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
+  if (use_direct_tty) {
+    // Direct TTY for interactive use
+    if (tty_info_g.fd >= 0) {
+      // Skip cursor reset in snapshot mode - just print raw ASCII
+      if (!opt_snapshot_mode) {
+        write(tty_info_g.fd, "\033[H", 3);
+      }
+      write(tty_info_g.fd, frame_data, strlen(frame_data));
+    } else {
+      log_error("Failed to open TTY: %s", tty_info_g.path ? tty_info_g.path : "unknown");
+    }
+  } else {
+    // stdout for pipes/redirection/testing
+    // Skip cursor reset in snapshot mode - just print raw ASCII
+    if (!opt_snapshot_mode) {
+      write(STDOUT_FILENO, "\033[H", 3);
+    }
+    fputs(frame_data, stdout);
+    fflush(stdout);
+  }
+}
 
 // Handle the new unified ASCII frame packet (server sends this now)
 static void handle_ascii_frame_packet(const void *data, size_t len) {
+  if (g_should_exit) {
+    return;
+  }
+
   if (!data || len < sizeof(ascii_frame_packet_t)) {
     log_warn("Invalid ASCII frame packet size: %zu", len);
     return;
@@ -443,7 +544,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Check if frame dimensions have changed
   if (header.width > 0 && header.height > 0) {
     if (header.width != last_width || header.height != last_height) {
-      log_info("Frame size changed from %ux%u to %ux%u", last_width, last_height, header.width, header.height);
+      // log_info("Frame size changed from %ux%u to %ux%u", last_width, last_height, header.width, header.height);
       last_width = header.width;
       last_height = header.height;
     }
@@ -451,34 +552,30 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Position cursor at top-left and display frame (preserve last frame instead of clearing)
   // Debug: Log first 100 bytes of received frame data as hex
-  if (header.original_size > 0) {
-    int debug_len = (header.original_size < 100) ? header.original_size : 100;
-    char hex_debug[401]; // 100 bytes * 4 chars per byte + null terminator
-    char *hex_ptr = hex_debug;
+  // if (header.original_size > 0) {
+  //   int debug_len = (header.original_size < 100) ? header.original_size : 100;
+  //   char hex_debug[401]; // 100 bytes * 4 chars per byte + null terminator
+  //   char *hex_ptr = hex_debug;
 
-    for (int i = 0; i < debug_len; i++) {
-      unsigned char byte = (unsigned char)frame_data[i];
-      if (byte == 0x1b) {
-        strcpy(hex_ptr, "ESC ");
-        hex_ptr += 4;
-      } else if (byte >= 32 && byte <= 126) {
-        *hex_ptr++ = byte;
-        *hex_ptr++ = ' ';
-      } else {
-        sprintf(hex_ptr, "%02x ", byte);
-        hex_ptr += 3;
-      }
-    }
-    *hex_ptr = '\0';
-    log_debug("CLIENT RECEIVED: First %d bytes as hex: %s", debug_len, hex_debug);
-  }
-
-  printf("\033[H%s", frame_data);
-  fflush(stdout);
-
-  free(frame_data);
+  //   for (int i = 0; i < debug_len; i++) {
+  //     unsigned char byte = (unsigned char)frame_data[i];
+  //     if (byte == 0x1b) {
+  //       strcpy(hex_ptr, "ESC ");
+  //       hex_ptr += 4;
+  //     } else if (byte >= 32 && byte <= 126) {
+  //       *hex_ptr++ = byte;
+  //       *hex_ptr++ = ' ';
+  //     } else {
+  //       sprintf(hex_ptr, "%02x ", byte);
+  //       hex_ptr += 3;
+  //     }
+  //   }
+  //   *hex_ptr = '\0';
+  //   log_debug("CLIENT RECEIVED: First %d bytes as hex: %s", debug_len, hex_debug);
+  // }
 
   // In snapshot mode, wait for delay period then exit
+  bool take_snapshot = false;
   if (opt_snapshot_mode) {
     static time_t first_frame_time = 0;
     if (first_frame_time == 0) {
@@ -491,11 +588,30 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       double elapsed = difftime(current_time, first_frame_time);
       if (elapsed >= opt_snapshot_delay) {
         log_info("Snapshot captured after %.1f seconds!", elapsed);
+        take_snapshot = true;
         g_should_exit = true;
-        return;
       }
     }
   }
+
+  // For terminal: print every frame until final snapshot
+  // For non-terminal: only print the final snapshot frame
+  if (is_a_tty_g || (!is_a_tty_g && opt_snapshot_mode && take_snapshot)) {
+    if (take_snapshot) {
+      // Write the final frame to the terminal as well, not just to stdout.
+      write_frame_to_output(frame_data, true);
+    }
+
+    // The real ascii data frame write call:
+    write_frame_to_output(frame_data, is_a_tty_g && !take_snapshot);
+
+    if (opt_snapshot_mode && take_snapshot) {
+      // A newline at the end of the snapshot of ascii art to end the file.
+      printf("\n");
+    }
+  }
+
+  free(frame_data);
 }
 
 static void *data_reception_thread_func(void *arg) {
@@ -504,7 +620,6 @@ static void *data_reception_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread started");
 #endif
-  log_info("CLIENT: Data reception thread started");
 
   while (!g_should_exit) {
     if (sockfd == 0) {
@@ -512,7 +627,7 @@ static void *data_reception_thread_func(void *arg) {
       usleep(10 * 1000);
       continue;
     }
-    log_debug("CLIENT: About to receive packet from server (sockfd=%d)", sockfd);
+    // log_debug("CLIENT: About to receive packet from server (sockfd=%d)", sockfd);
 
     packet_type_t type;
     void *data;
@@ -529,12 +644,12 @@ static void *data_reception_thread_func(void *arg) {
       break;
     }
 
-    log_debug("CLIENT: Received packet type=%d, len=%zu", type, len);
+    // log_debug("CLIENT: Received packet type=%d, len=%zu", type, len);
 
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
       // Unified frame packet from server
-      log_debug("CLIENT: Processing ASCII frame packet (len=%zu)", len);
+      // log_debug("CLIENT: Processing ASCII frame packet (len=%zu)", len);
       handle_ascii_frame_packet(data, len);
       break;
 
@@ -556,7 +671,7 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_CLEAR_CONSOLE:
       // Server requested console clear
-      console_clear();
+      full_terminal_reset();
       log_info("Console cleared by server");
       break;
 
@@ -569,11 +684,12 @@ static void *data_reception_thread_func(void *arg) {
       break;
     }
 
-    buffer_pool_free(data, len);
+    // Only free buffer if we actually allocated one (len > 0 means data was allocated)
+    if (data && len > 0) {
+      buffer_pool_free(data, len);
+    }
   }
 
-  log_info("CLIENT: Data reception thread stopped (g_should_exit=%d, g_connection_lost=%d)", g_should_exit,
-           g_connection_lost);
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread stopped");
 #endif
@@ -621,8 +737,6 @@ static void *webcam_capture_thread_func(void *arg) {
 
   struct timespec last_capture_time = {0, 0};
 
-  log_info("Webcam capture thread started");
-
   while (!g_should_exit && !g_connection_lost) {
     if (sockfd <= 0) {
       usleep(100 * 1000); // Wait for connection
@@ -649,8 +763,8 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
-             (float)image->w / (float)image->h);
+    // log_info("[CLIENT CAPTURE] Webcam frame: %dx%d, aspect: %.3f", image->w, image->h,
+    //          (float)image->w / (float)image->h);
 
     // Resize image to a reasonable size for network transmission
     // We want to send images large enough for the server to resize for any client
@@ -733,7 +847,7 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Send image data to server via IMAGE_FRAME packet
-    log_info("[CLIENT SEND] Sending frame: %dx%d, size=%zu bytes", image->w, image->h, packet_size);
+    // log_info("[CLIENT SEND] Sending frame: %dx%d, size=%zu bytes", image->w, image->h, packet_size);
     if (send_packet(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
       log_error("Failed to send video frame to server: %s", strerror(errno));
       // This is likely why we're disconnecting - set connection lost
@@ -870,18 +984,16 @@ static void handle_server_state_packet(const void *data, size_t len) {
   uint32_t connected_count = ntohl(state->connected_client_count);
   uint32_t active_count = ntohl(state->active_client_count);
 
-  log_info("Server state: %u connected clients, %u active clients", connected_count, active_count);
-
   // Check if connected count changed - if so, clear console
   if (g_server_state_initialized) {
     if (g_last_active_count != active_count) {
       log_info("Active client count changed from %u to %u - clearing console", g_last_active_count, active_count);
-      console_clear();
+      full_terminal_reset();
     }
   } else {
     // First state packet received
     g_server_state_initialized = true;
-    log_info("Initial server state received: %u connected clients", connected_count);
+    // log_info("Initial server state received: %u connected clients", connected_count);
   }
 
   g_last_active_count = active_count;
@@ -897,7 +1009,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
 
 int main(int argc, char *argv[]) {
   // Parse options first to check for quiet mode
-  options_init(argc, argv);
+  options_init(argc, argv, true);
 
   // Handle --show-capabilities flag (exit after showing capabilities)
   if (opt_show_capabilities) {
@@ -908,24 +1020,41 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  // Get TTY info for direct terminal access (if needed for interactive mode)
+  tty_info_g = get_current_tty();
+  // Determine if we should use interactive TTY output
+  // For output routing: only consider stdout status (not controlling terminal)
+  // Additional TTY validation: if stdout is redirected but we have a controlling TTY,
+  // we can still show interactive output on the terminal
+  if (tty_info_g.fd >= 0) {
+    is_a_tty_g |= isatty(tty_info_g.fd) != 0;  // We have a valid controlling terminal
+  }
+
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
+  // Control terminal log output based on quiet flag
+  // Always disable console logging to prevent interference with ASCII frames
+  // In quiet mode: completely suppress all console output (logs only to file)
+  // In normal mode: still disable to prevent flickering with ASCII frame display
+  // log_set_terminal_output(false);
+  // Handle quiet mode - disable terminal output when opt_quiet is enabled
+  log_set_terminal_output(is_a_tty_g && !opt_quiet && !opt_snapshot_mode);
 
   // CRITICAL FIX: Initialize ASCII SIMD cache (missing from client!)
   // This initializes g_ascii_cache.dec3_table needed for NEON truecolor/256-color RGB output
   ascii_simd_init();
 
-  // Handle quiet mode - disable terminal output when opt_quiet is enabled
-  log_set_terminal_output(!opt_quiet);
 #ifdef DEBUG_MEMORY
-  debug_memory_set_quiet_mode(opt_quiet);
+  debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
 #endif
 
   atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
-  atexit(debug_memory_report);
+  if (!opt_snapshot_mode) {
+    atexit(debug_memory_report);
+  }
 #endif
 
   // Initialize global shared buffer pool
@@ -933,7 +1062,6 @@ int main(int argc, char *argv[]) {
   atexit(data_buffer_pool_cleanup_global);
   log_truncate_if_large(); /* Truncate if log is already too large */
 
-  // Initialize frame debugging - disable in quiet mode
   char *address = opt_address;
   int port = strtoint(opt_port);
 
@@ -951,20 +1079,10 @@ int main(int argc, char *argv[]) {
   // Initialize ASCII output for this connection
   ascii_write_init();
 
-  // Control terminal log output based on quiet flag
-  // Always disable console logging to prevent interference with ASCII frames
-  // In quiet mode: completely suppress all console output (logs only to file)
-  // In normal mode: still disable to prevent flickering with ASCII frame display
-  log_set_terminal_output(false);
-
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
-  if (ascii_read_init(webcam_index) != ASCIICHAT_OK) {
-    log_fatal("Failed to initialize webcam capture");
-    ascii_write_destroy();
-    exit(ASCIICHAT_ERR_WEBCAM);
+  if (webcam_init(webcam_index) != 0) {
   }
-  log_info("Webcam initialized successfully");
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
@@ -987,19 +1105,23 @@ int main(int argc, char *argv[]) {
       ascii_write_destroy();
       exit(ASCIICHAT_ERR_AUDIO);
     }
-
-    log_info("Audio system initialized with capture and playback");
   }
 
   /* Connection and reconnection loop */
   int reconnect_attempt = 0;
+
+  if (g_first_connection && !opt_snapshot_mode) {
+    // Complete terminal reset: clear screen, scrollback, and reset all attributes
+    full_terminal_reset();
+  }
 
   while (!g_should_exit) {
     if (g_should_reconnect) {
       // Connection broken - will loop back to reconnection logic
       log_info("Connection terminated, preparing to reconnect...");
       if (reconnect_attempt == 0) {
-        console_clear();
+        log_info("CLEARING CONSOLE FOR RECONNECTION");
+        full_terminal_reset();
       }
       reconnect_attempt++;
     }
@@ -1007,6 +1129,7 @@ int main(int argc, char *argv[]) {
     if (g_first_connection || g_should_reconnect) {
       // Close any existing socket before attempting new connection
       if (0 > (sockfd = close_socket(sockfd))) {
+        ascii_write_destroy();
         exit(ASCIICHAT_ERR_NETWORK);
       }
 
@@ -1049,17 +1172,17 @@ int main(int argc, char *argv[]) {
 
       // Connection successful!
       log_info("Connected to server %s:%d", address, port);
-      log_info("CLIENT: Socket connection established (sockfd=%d)", sockfd);
       reconnect_attempt = 0; // Reset reconnection counter on successful connection
 
       struct sockaddr_in local_addr = {0};
       socklen_t addr_len = sizeof(local_addr);
       if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
         perror("getsockname");
-        exit(1);
+        ascii_write_destroy();
+        exit(ASCIICHAT_ERR_NETWORK);
       }
       int local_port = ntohs(local_addr.sin_port);
-      log_info("Local port: %d", local_port);
+      // log_info("Local port: %d", local_port);
 
       g_my_client_id = local_port;
 
@@ -1069,7 +1192,6 @@ int main(int argc, char *argv[]) {
         g_should_reconnect = true;
         continue; // try to connect again
       }
-      log_info("Sent initial terminal capabilities to server: %ux%u", opt_width, opt_height);
 
       // Send client join packet for multi-user support
       uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
@@ -1097,10 +1219,6 @@ int main(int argc, char *argv[]) {
         g_should_reconnect = true;
         continue; // try to connect again
       }
-      log_info("Sent client join packet with display name: %s, capabilities: video=%s, audio=%s, color=%s, stretch=%s",
-               my_display_name, (my_capabilities & CLIENT_CAP_VIDEO) ? "yes" : "no",
-               (my_capabilities & CLIENT_CAP_AUDIO) ? "yes" : "no", (my_capabilities & CLIENT_CAP_COLOR) ? "yes" : "no",
-               (my_capabilities & CLIENT_CAP_STRETCH) ? "yes" : "no");
 
       // Set socket keepalive to detect broken connections
       if (set_socket_keepalive(sockfd) < 0) {
@@ -1142,7 +1260,6 @@ int main(int argc, char *argv[]) {
         continue;
       } else {
         g_capture_thread_created = true;
-        log_info("Webcam capture thread started");
 
         // Notify server we're starting to send video
         if (send_stream_start_packet(sockfd, STREAM_TYPE_VIDEO) < 0) {
@@ -1158,7 +1275,6 @@ int main(int argc, char *argv[]) {
           // Non-fatal, continue without audio
         } else {
           g_audio_capture_thread_created = true;
-          log_info("Audio capture thread started");
 
           // Notify server we're starting to send audio
           (void)safe_send_stream_stop_packet; // unused function - stop the compiler warning with this void
@@ -1224,7 +1340,7 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef DEBUG_MEMORY
-  if (!opt_quiet) {
+  if (!opt_quiet && !opt_snapshot_mode) {
     printf("\n");
   }
 #endif

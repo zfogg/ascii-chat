@@ -28,9 +28,8 @@ typedef enum {
 
 // Background rendering mode (client only)
 typedef enum {
-  BACKGROUND_MODE_AUTO = 0,       // Auto-detect or use default (foreground)
-  BACKGROUND_MODE_FOREGROUND = 1, // Use foreground colors only (default)
-  BACKGROUND_MODE_BACKGROUND = 2  // Use background colors with contrasting foreground
+  BACKGROUND_MODE_FOREGROUND = 0, // Use foreground colors only (default)
+  BACKGROUND_MODE_BACKGROUND = 1  // Use background colors with contrasting foreground
 } background_mode_t;
 
 extern terminal_color_mode_t opt_color_mode;     // Color mode override
@@ -66,9 +65,11 @@ extern const float weight_blue;
 
 extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
-void options_init(int, char **);
+void options_init(int argc, char **argv, bool is_client);
 
-void usage(FILE *out_stream);
+void usage(FILE *out_stream, bool is_client);
+void usage_client(FILE *out_stream);
+void usage_server(FILE *out_stream);
 
 // Terminal size detection functions (get_terminal_size moved to terminal_detect.h)
 void update_dimensions_for_full_height(void);

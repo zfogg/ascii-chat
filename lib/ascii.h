@@ -64,6 +64,12 @@ char *get_lum_palette(void);
 
 #define cursor_show() print("\e[?25h")
 
+#define terminal_reset() print("\033c")
+
+#define terminal_clear_scrollback() print("\033[3J")
+
+#define terminal_clear_screen() print("\033[2J")
+
 static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
                              ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};
 

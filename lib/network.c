@@ -4,7 +4,6 @@
 #include "crc32_hw.h"
 #include "terminal_detect.h"
 #include <stdint.h>
-#include <limits.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
@@ -886,6 +885,8 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.color_count = caps.color_count;
   net_packet.width = width;
   net_packet.height = height;
+
+  // log_debug("NETWORK DEBUG: About to send capabilities packet with width=%u, height=%u", width, height);
 
   strncpy(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type) - 1);
   net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';

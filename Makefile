@@ -593,7 +593,7 @@ format-check:
 # Run bear to generate a compile_commands.json file (compile-only, no linking)
 compile_commands.json: Makefile
 	@echo "Running bear to generate compile_commands.json (objects only)..."
-	@make clean todo-clean && bear -- make -j objs
+	@make clean todo-clean && bear -- make -j debug objs
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
