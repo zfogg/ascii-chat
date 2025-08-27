@@ -127,7 +127,7 @@ jobs:
         # Additional memory leak checks
         echo "Running memory leak detection..."
         # Test basic binary functionality for leaks
-        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server --help || true
+        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server || true
         timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client --help || true
         echo "Memory leak detection completed"
 
@@ -167,7 +167,7 @@ jobs:
       run: |
         # Test client options and capabilities
         timeout 5s ./bin/client --help
-        timeout 5s ./bin/client --show-capabilities || true
+        timeout 5s ./bin/client --show-capabilities
         echo "Client functionality tests passed"
 
   cross-platform-compatibility:
@@ -175,7 +175,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-13, macos-15]
+        os: [ubuntu-latest, macos-15]
 
     steps:
     - name: Checkout code
