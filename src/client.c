@@ -36,24 +36,11 @@
 #define AUDIO_DEBUG
 #define COMPRESSION_DEBUG
 
-
-// Validate that the given path is a safe TTY device under /dev/
-static int is_valid_tty_path(const char *path) {
-    if (!path || strlen(path) < 6) return 0; // Too short to be /dev/x
-    if (strncmp(path, "/dev/", 5) != 0) return 0;
-    if (strstr(path, "..") != NULL) return 0;
-    if (strchr(path, '\0')) return 0; // Explicit check in case
-    // Optionally enforce allowlist, e.g. /dev/tty* or /dev/pts/*
-    if (strncmp(path, "/dev/tty", 8) == 0) return 1;
-    if (strncmp(path, "/dev/pts/", 9) == 0) return 1;
-    // Extend to other known TTY devices as needed
-    return 0;
-}
-
+static void full_terminal_reset(void) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
     terminal_reset();
-    terminal_clear_scrollback();
+    // terminal_clear_scrollback();
     terminal_clear_screen();
     cursor_reset();
     fflush(stdout);
@@ -1040,7 +1027,7 @@ int main(int argc, char *argv[]) {
   // Additional TTY validation: if stdout is redirected but we have a controlling TTY,
   // we can still show interactive output on the terminal
   if (tty_info_g.fd >= 0) {
-    is_a_tty_g |= isatty(tty_info_g.fd) != 0;  // We have a valid controlling terminal
+    is_a_tty_g |= isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
   }
 
   // Initialize logging - use specified log file or default

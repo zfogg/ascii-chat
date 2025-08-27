@@ -33,7 +33,7 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
   // ioctl failed - likely because stdout is redirected
   // Try to get terminal size via $TTY (preferred) or /dev/tty (fallback)
   char *tty_path = getenv("TTY");
-  if (tty_path && strlen(tty_path) > 0) {
+  if (tty_path && strlen(tty_path) > 0 && is_valid_tty_path(tty_path)) {
     int tty_fd = open(tty_path, O_RDONLY);
     if (tty_fd >= 0) {
       if (ioctl(tty_fd, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
@@ -46,7 +46,7 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       close(tty_fd);
     }
   }
-  
+
   // Fallback to /dev/tty if $TTY not available or failed
   int tty_fd = open("/dev/tty", O_RDONLY);
   if (tty_fd >= 0) {
@@ -187,7 +187,7 @@ bool detect_256color_support(void) {
 
   // Method 2: Check TERM variable
   char *term = getenv("TERM");
-  return (term && strstr(term,  "256")) != 0;
+  return (term && strstr(term, "256")) != 0;
 }
 
 bool detect_16color_support(void) {
@@ -443,4 +443,23 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   }
 
   return caps;
+}
+
+// Validate that the given path is a safe TTY device under /dev/
+int is_valid_tty_path(const char *path) {
+  if (!path || strlen(path) < 6)
+    return 0; // Too short to be /dev/x
+  if (strncmp(path, "/dev/", 5) != 0)
+    return 0;
+  if (strstr(path, "..") != NULL)
+    return 0;
+  if (strchr(path, '\0'))
+    return 0; // Explicit check in case
+  // Optionally enforce allowlist, e.g. /dev/tty* or /dev/pts/*
+  if (strncmp(path, "/dev/tty", 8) == 0)
+    return 1;
+  if (strncmp(path, "/dev/pts/", 9) == 0)
+    return 1;
+  // Extend to other known TTY devices as needed
+  return 0;
 }

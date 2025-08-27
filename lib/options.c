@@ -450,10 +450,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
   fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 0.0.0.0)\n");
   fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
-  fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT
-                             "render width (default: [auto-set])\n");
-  fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT
-                             "render height (default: [auto-set])\n");
+  fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
+  fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
   fprintf(desc,
           USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT "webcam device index (0-based) (default: 0)\n");
   fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "horizontally flip the webcam "
@@ -471,9 +469,10 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                              "(ignore aspect ratio) (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
                              "disable console logging (log only to file) (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
+                             "capture single frame and exit (default: [unset])\n");
   fprintf(desc,
-          USAGE_INDENT "-S --snapshot                " USAGE_INDENT "capture single frame and exit (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
+          USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
           SNAPSHOT_DELAY_DEFAULT);
   fprintf(desc, USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   fprintf(desc,
@@ -489,7 +488,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
   fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
   fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
-  fprintf(desc, USAGE_INDENT "-A --audio           " USAGE_INDENT "enable audio streaming to clients (default: [unset])\n");
+  fprintf(desc,
+          USAGE_INDENT "-A --audio           " USAGE_INDENT "enable audio streaming to clients (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-K --key PASSWORD    " USAGE_INDENT
