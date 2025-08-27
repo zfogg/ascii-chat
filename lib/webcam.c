@@ -15,7 +15,7 @@ int webcam_init(unsigned short int webcam_index) {
   log_info("Attempting to open webcam with index %d using %s...", webcam_index, webcam_platform_name(platform));
 
   int result = -1;
-  if (result = webcam_platform_init(&global_webcam_ctx, webcam_index) != 0) {
+  if ((result = webcam_platform_init(&global_webcam_ctx, webcam_index)) != 0) {
     log_error("Failed to connect to webcam");
 
     // Platform-specific error messages

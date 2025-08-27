@@ -193,7 +193,8 @@ static int is_valid_ipv4(const char *ip) {
   // Copy to temp buffer to avoid modifying original
   if (strlen(ip) >= sizeof(temp))
     return 0;
-  strlcpy(temp, ip, sizeof(temp));
+  strncpy(temp, ip, sizeof(temp) - 1);
+  temp[sizeof(temp) - 1] = '\0';
 
   char *saveptr;
   char *token = strtok_r(temp, ".", &saveptr);
