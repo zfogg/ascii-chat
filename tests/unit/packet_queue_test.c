@@ -352,7 +352,7 @@ Test(packet_queue, packet_validation) {
 
     // Test length mismatch
     queued_packet_t invalid_length = valid_packet;
-    invalid_length.header.length = 20; // Doesn't match data_len
+    invalid_length.header.length = htonl(20); // Doesn't match data_len
     result = packet_queue_validate_packet(&invalid_length);
     cr_assert(result == false, "Length mismatch should fail validation");
 
