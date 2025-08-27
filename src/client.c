@@ -36,7 +36,20 @@
 #define AUDIO_DEBUG
 #define COMPRESSION_DEBUG
 
-static void full_terminal_reset(void) {
+
+// Validate that the given path is a safe TTY device under /dev/
+static int is_valid_tty_path(const char *path) {
+    if (!path || strlen(path) < 6) return 0; // Too short to be /dev/x
+    if (strncmp(path, "/dev/", 5) != 0) return 0;
+    if (strstr(path, "..") != NULL) return 0;
+    if (strchr(path, '\0')) return 0; // Explicit check in case
+    // Optionally enforce allowlist, e.g. /dev/tty* or /dev/pts/*
+    if (strncmp(path, "/dev/tty", 8) == 0) return 1;
+    if (strncmp(path, "/dev/pts/", 9) == 0) return 1;
+    // Extend to other known TTY devices as needed
+    return 0;
+}
+
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
     terminal_reset();
@@ -405,7 +418,7 @@ tty_info_t get_current_tty(void) {
 
   // Method 1: Check $TTY environment variable first (most specific on macOS)
   result.path = getenv("TTY");
-  if (result.path && strlen(result.path) > 0) {
+  if (result.path && strlen(result.path) > 0 && is_valid_tty_path(result.path)) {
     result.fd = open(result.path, O_WRONLY);
     result.owns_fd = true;
     return result;
