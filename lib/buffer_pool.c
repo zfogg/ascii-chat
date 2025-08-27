@@ -304,15 +304,12 @@ void data_buffer_pool_cleanup_global(void) {
     uint64_t hits, misses;
     data_buffer_pool_get_stats(g_global_buffer_pool, &hits, &misses);
     if (hits + misses > 0) {
-      log_info("Global buffer pool final stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
-               (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
+      log_debug("Global buffer pool final stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
+                (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
     }
 
     data_buffer_pool_destroy(g_global_buffer_pool);
     g_global_buffer_pool = NULL;
-    log_info("Cleaned up global shared buffer pool");
-  } else {
-    log_debug("Global buffer pool already cleaned up - skipping");
   }
   pthread_mutex_unlock(&g_global_pool_mutex);
 }
@@ -325,7 +322,7 @@ data_buffer_pool_t *data_buffer_pool_get_global(void) {
 void *buffer_pool_alloc(size_t size) {
   if (!g_global_buffer_pool) {
     // If global pool not initialized, fall back to regular malloc
-    log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
+    // log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
     void *data;
     SAFE_MALLOC(data, size, void *);
     return data;
@@ -335,6 +332,7 @@ void *buffer_pool_alloc(size_t size) {
 
 void buffer_pool_free(void *data, size_t size) {
   if (!data) {
+    log_warn("BUFFER POOL FREE but no data: size=%zu", size);
     return;
   }
 

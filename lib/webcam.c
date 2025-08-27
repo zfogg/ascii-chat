@@ -8,13 +8,14 @@
 
 static webcam_context_t *global_webcam_ctx = NULL;
 
-void webcam_init(unsigned short int webcam_index) {
+int webcam_init(unsigned short int webcam_index) {
   webcam_platform_type_t platform = webcam_get_platform();
 
   log_info("Initializing webcam with %s", webcam_platform_name(platform));
   log_info("Attempting to open webcam with index %d using %s...", webcam_index, webcam_platform_name(platform));
 
-  if (webcam_platform_init(&global_webcam_ctx, webcam_index) != 0) {
+  int result = -1;
+  if ((result = webcam_platform_init(&global_webcam_ctx, webcam_index)) != 0) {
     log_error("Failed to connect to webcam");
 
     // Platform-specific error messages
@@ -33,7 +34,7 @@ void webcam_init(unsigned short int webcam_index) {
       log_error("   Then just run this program again.");
     }
 
-    exit(1);
+    exit(ASCIICHAT_ERR_WEBCAM);
   }
 
   // Get and store image dimensions for aspect ratio calculations
@@ -46,6 +47,8 @@ void webcam_init(unsigned short int webcam_index) {
   } else {
     log_error("Webcam opened but failed to get dimensions");
   }
+
+  return result;
 }
 
 image_t *webcam_read(void) {
@@ -88,7 +91,7 @@ void webcam_cleanup(void) {
   if (global_webcam_ctx) {
     webcam_platform_cleanup(global_webcam_ctx);
     global_webcam_ctx = NULL;
-    log_info("Webcam resources released");
+    // log_info("Webcam resources released");
   } else {
     log_info("Webcam was not opened, nothing to release");
   }

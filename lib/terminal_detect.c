@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <langinfo.h>
 
@@ -20,29 +21,87 @@
 // Terminal size detection (moved from options.c)
 int get_terminal_size(unsigned short int *width, unsigned short int *height) {
   struct winsize w;
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
-    // Fallback to environment variables
-    char *cols_str = getenv("COLUMNS");
-    char *lines_str = getenv("LINES");
 
-    if (cols_str && lines_str) {
-      *width = (unsigned short int)atoi(cols_str);
-      *height = (unsigned short int)atoi(lines_str);
-      log_debug("Terminal size from env: %dx%d", *width, *height);
+  // First try ioctl - this works when stdout is a terminal
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
+    *width = w.ws_col;
+    *height = w.ws_row;
+    // log_debug("Terminal size from ioctl: %dx%d", *width, *height);
+    return 0;
+  }
+
+  // ioctl failed - likely because stdout is redirected
+  // Try to get terminal size via $TTY (preferred) or /dev/tty (fallback)
+  char *tty_path = getenv("TTY");
+  if (tty_path && strlen(tty_path) > 0 && is_valid_tty_path(tty_path)) {
+    int tty_fd = open(tty_path, O_RDONLY);
+    if (tty_fd >= 0) {
+      if (ioctl(tty_fd, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
+        *width = w.ws_col;
+        *height = w.ws_row;
+        close(tty_fd);
+        log_debug("Terminal size from $TTY (%s): %dx%d", tty_path, *width, *height);
+        return 0;
+      }
+      close(tty_fd);
+    }
+  }
+
+  // Fallback to /dev/tty if $TTY not available or failed
+  int tty_fd = open("/dev/tty", O_RDONLY);
+  if (tty_fd >= 0) {
+    if (ioctl(tty_fd, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
+      *width = w.ws_col;
+      *height = w.ws_row;
+      close(tty_fd);
+      log_debug("Terminal size from /dev/tty: %dx%d", *width, *height);
       return 0;
     }
+    close(tty_fd);
+  }
 
-    // Final fallback to reasonable defaults
+  // Only fall back to environment variables if we're not in a real terminal
+  if (isatty(STDOUT_FILENO)) {
+    // We're connected to a terminal but ioctl failed - use defaults
     *width = 80;
     *height = 24;
-    log_debug("Terminal size fallback: %dx%d", *width, *height);
+    // log_debug("Terminal fallback (ioctl failed but isatty): %dx%d", *width, *height);
     return -1;
   }
 
-  *width = w.ws_col;
-  *height = w.ws_row;
-  log_debug("Terminal size from ioctl: %dx%d", *width, *height);
-  return 0;
+  // stdout is redirected - try environment variables as fallback
+  char *cols_str = getenv("COLUMNS");
+  char *lines_str = getenv("LINES");
+
+  // Try to use environment variables, but validate each one individually
+  bool used_env = false;
+  *width = 80;  // Default width
+  *height = 24; // Default height
+
+  if (cols_str) {
+    int env_width = atoi(cols_str);
+    if (env_width > 0) {
+      *width = (unsigned short int)env_width;
+      used_env = true;
+    }
+  }
+
+  if (lines_str) {
+    int env_height = atoi(lines_str);
+    if (env_height > 0) {
+      *height = (unsigned short int)env_height;
+      used_env = true;
+    }
+  }
+
+  if (used_env) {
+    // log_debug("Terminal size from environment: %dx%d", *width, *height);
+    return 0;
+  }
+
+  // Final fallback to reasonable defaults when output is redirected
+  // log_debug("Terminal size fallback (redirected output): %dx%d", *width, *height);
+  return -1;
 }
 
 // Environment variable based detection
@@ -51,8 +110,6 @@ bool check_colorterm_variable(void) {
   if (!colorterm) {
     return false;
   }
-
-  log_debug("COLORTERM=%s", colorterm);
 
   // Check for explicit truecolor support
   if (strcmp(colorterm, "truecolor") == 0 || strcmp(colorterm, "24bit") == 0) {
@@ -68,7 +125,7 @@ bool check_term_variable_for_colors(void) {
     return false;
   }
 
-  log_debug("TERM=%s", term);
+  // log_debug("TERM=%s", term);
 
   // Check for color support indicators in TERM
   if (strstr(term, "256") || strstr(term, "color")) {
@@ -86,7 +143,7 @@ int get_terminfo_color_count(void) {
   int result = setupterm(NULL, STDOUT_FILENO, NULL);
   if (result == 0) { // setupterm returns 0 on success
     colors = tigetnum("colors");
-    log_debug("Terminfo colors: %d", colors);
+    // log_debug("Terminfo colors: %d", colors);
   } else {
     log_debug("Failed to setup terminfo");
   }
@@ -99,14 +156,12 @@ int get_terminfo_color_count(void) {
 bool detect_truecolor_support(void) {
   // Method 1: Check COLORTERM environment variable
   if (check_colorterm_variable()) {
-    log_debug("Truecolor detected via COLORTERM");
     return true;
   }
 
   // Method 2: Check terminfo for very high color count
   int colors = get_terminfo_color_count();
   if (colors >= 16777216) {
-    log_debug("Truecolor detected via terminfo (%d colors)", colors);
     return true;
   }
 
@@ -116,7 +171,6 @@ bool detect_truecolor_support(void) {
     // Common terminals with truecolor support
     if (strstr(term, "iterm") || strstr(term, "konsole") || strstr(term, "gnome") || strstr(term, "xfce4-terminal") ||
         strstr(term, "alacritty") || strstr(term, "kitty")) {
-      log_debug("Truecolor detected via terminal type: %s", term);
       return true;
     }
   }
@@ -128,38 +182,29 @@ bool detect_256color_support(void) {
   // Method 1: Check terminfo
   int colors = get_terminfo_color_count();
   if (colors >= 256) {
-    log_debug("256-color detected via terminfo (%d colors)", colors);
     return true;
   }
 
   // Method 2: Check TERM variable
   char *term = getenv("TERM");
-  if (term && strstr(term, "256")) {
-    log_debug("256-color detected via TERM: %s", term);
-    return true;
-  }
-
-  return false;
+  return (term && strstr(term, "256")) != 0;
 }
 
 bool detect_16color_support(void) {
   // Method 1: Check terminfo
   int colors = get_terminfo_color_count();
   if (colors >= 16) {
-    log_debug("16-color detected via terminfo (%d colors)", colors);
     return true;
   }
 
   // Method 2: Check for basic color support in TERM
   char *term = getenv("TERM");
   if (term && (strstr(term, "color") || strstr(term, "ansi"))) {
-    log_debug("16-color detected via TERM: %s", term);
     return true;
   }
 
   // Method 3: Most terminals support at least 16 colors
   if (term && strcmp(term, "dumb") != 0) {
-    log_debug("16-color assumed for non-dumb terminal: %s", term);
     return true;
   }
 
@@ -185,7 +230,7 @@ bool detect_utf8_support(void) {
   char const *encoding = nl_langinfo(CODESET);
 
   if (encoding) {
-    log_debug("Locale encoding: %s", encoding);
+    // log_debug("Locale encoding: %s", encoding);
 
     if (strcasecmp(encoding, "utf8") == 0 || strcasecmp(encoding, "utf-8") == 0) {
       return true;
@@ -200,7 +245,7 @@ bool detect_utf8_support(void) {
   // Check for UTF-8 in any of these variables
   if ((lang && strstr(lang, "UTF-8")) || (lc_all && strstr(lc_all, "UTF-8")) ||
       (lc_ctype && strstr(lc_ctype, "UTF-8"))) {
-    log_debug("UTF-8 detected via environment variables");
+    // log_debug("UTF-8 detected via environment variables");
     return true;
   }
 
@@ -266,8 +311,8 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   strncpy(caps.term_type, term ? term : "unknown", sizeof(caps.term_type) - 1);
   strncpy(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm) - 1);
 
-  log_debug("Terminal capabilities detected: color_level=%d, capabilities=0x%x, term=%s, colorterm=%s",
-            caps.color_level, caps.capabilities, caps.term_type, caps.colorterm);
+  // log_debug("Terminal capabilities detected: color_level=%d, capabilities=0x%x, term=%s, colorterm=%s",
+  //           caps.color_level, caps.capabilities, caps.term_type, caps.colorterm);
 
   return caps;
 }
@@ -379,7 +424,6 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 
   // Handle background mode overrides
   switch (opt_background_mode) {
-  case BACKGROUND_MODE_AUTO:
   case BACKGROUND_MODE_FOREGROUND:
     // Default to foreground-only mode (disable background)
     // Background mode should be opt-in, not auto-detected
@@ -399,4 +443,17 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   }
 
   return caps;
+}
+
+// Validate that the given path is a safe TTY device under /dev/
+int is_valid_tty_path(const char *path) {
+  if (!path || strlen(path) < 6)
+    return 0; // Too short to be /dev/x
+  if (strncmp(path, "/dev/tty", 8) == 0)
+    return 1;
+  if (strncmp(path, "/dev/pts/", 9) == 0)
+    return 1;
+  if (strstr(path, "/dev/") != NULL)
+    return 1;
+  return 0;
 }
