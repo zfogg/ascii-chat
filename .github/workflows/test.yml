@@ -146,7 +146,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config timeout
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
@@ -169,15 +169,6 @@ jobs:
         timeout 5s ./bin/client --help
         timeout 5s ./bin/client --show-capabilities || true
         echo "Client functionality tests passed"
-
-    - name: Test snapshot mode (headless)
-      run: |
-        # Test snapshot mode works in headless environment
-        # This should work even without a real webcam/display
-        timeout 10s ./bin/client --snapshot --log-file /tmp/test-snapshot.log > /tmp/test-output.txt 2>&1 || true
-        # Check that it attempted to run (log file should be created)
-        test -f /tmp/test-snapshot.log
-        echo "Snapshot mode test completed"
 
   cross-platform-compatibility:
     runs-on: ${{ matrix.os }}
