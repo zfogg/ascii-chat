@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>
 
 #include "ascii.h"
 #include "ascii_simd.h"
@@ -23,12 +24,12 @@ asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ascii_write_init(void) {
+asciichat_error_t ascii_write_init(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
-    console_clear();
-    cursor_reset();
-    cursor_hide();
+    console_clear(fd);
+    cursor_reset(fd);
+    cursor_hide(fd);
   }
   log_debug("ASCII writer initialized");
   return ASCIICHAT_OK;
@@ -209,7 +210,7 @@ asciichat_error_t ascii_write(const char *frame) {
 
   // Skip cursor reset in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
-    cursor_reset();
+    cursor_reset(STDOUT_FILENO);
   }
 
   size_t frame_len = strlen(frame);
@@ -221,12 +222,12 @@ asciichat_error_t ascii_write(const char *frame) {
   return ASCIICHAT_OK;
 }
 
-void ascii_write_destroy(void) {
-  // console_clear();
-  // cursor_reset();
+void ascii_write_destroy(int fd) {
+  // console_clear(fd);
+  // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
   if (!opt_snapshot_mode) {
-    cursor_show();
+    cursor_show(fd);
   }
   log_debug("ASCII writer destroyed");
 }
