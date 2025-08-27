@@ -440,6 +440,8 @@ $(BIN_DIR):
 # =============================================================================
 
 # Test targets
+tests: $(TEST_EXECUTABLES)
+
 test: $(TEST_EXECUTABLES)
 	@echo "Running all tests..."
 	@for test in $(TEST_EXECUTABLES); do \
@@ -648,4 +650,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json
