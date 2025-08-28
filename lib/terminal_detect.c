@@ -139,13 +139,19 @@ int get_terminfo_color_count(void) {
   int colors = -1;
 
 #if defined(__linux__) || defined(__APPLE__)
-  // Try to initialize terminfo
-  int result = setupterm(NULL, STDOUT_FILENO, NULL);
-  if (result == 0) { // setupterm returns 0 on success
-    colors = tigetnum("colors");
-    // log_debug("Terminfo colors: %d", colors);
+  // Check if TERM is set before calling setupterm to avoid ncurses error message
+  char *term_env = getenv("TERM");
+  if (term_env) {
+    // Try to initialize terminfo
+    int result = setupterm(NULL, STDOUT_FILENO, NULL);
+    if (result == 0) { // setupterm returns 0 on success
+      colors = tigetnum("colors");
+      // log_debug("Terminfo colors: %d", colors);
+    } else {
+      log_debug("Failed to setup terminfo");
+    }
   } else {
-    log_debug("Failed to setup terminfo");
+    log_debug("TERM environment variable not set, skipping terminfo detection");
   }
 #endif
 
