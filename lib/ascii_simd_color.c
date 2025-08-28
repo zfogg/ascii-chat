@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "ascii_simd.h"
-#include "ascii_simd_neon.h"
 #include "options.h"
 #include "common.h"
 #include "image.h"

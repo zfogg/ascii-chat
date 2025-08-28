@@ -4,28 +4,14 @@
 #include <string.h>
 #include <time.h>
 #include "ascii_simd.h"
-#include "ascii_simd_neon.h"
 #include "image.h"
 #include "common.h"
 #include "webcam.h"
 #include "ansi_fast.h"
 #include "ascii.h"
 
-#ifdef SIMD_SUPPORT_NEON
-#include <arm_neon.h>
-#endif
-
-#ifdef SIMD_SUPPORT_SSE2
-#include <emmintrin.h>
-#endif
-
-#ifdef SIMD_SUPPORT_SSSE3
-#include <tmmintrin.h>
-#endif
-
-#ifdef SIMD_SUPPORT_AVX2
-#include <immintrin.h>
-#endif
+// Architecture-specific implementations are now in separate files
+// included via ascii_simd.h
 
 // Global cache definition - shared across all compilation units
 struct ascii_color_cache g_ascii_cache = {.ascii_chars = "   ...',;:clodxkO0KXNWM",
@@ -1439,122 +1425,124 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       break;
     }
     memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-    ascii_convert(test_image, width, height, false, false, false);
-    // convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
-    result.scalar_time = get_time_seconds() - start;
-
-    // Find best method -- default to scalar and let simd beat it.
-    double best_time = result.scalar_time;
-    result.best_method = "scalar";
-
-#ifdef SIMD_SUPPORT_SSE2
-    start = get_time_seconds();
-    for (int i = 0; i < adaptive_iterations; i++) {
-      convert_row_with_color_sse2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
-    }
-    result.sse2_time = get_time_seconds() - start;
-#endif
-
-#ifdef SIMD_SUPPORT_SSSE3
-    start = get_time_seconds();
-    for (int i = 0; i < adaptive_iterations; i++) {
-      convert_row_with_color_ssse3(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
-    }
-    result.ssse3_time = get_time_seconds() - start;
-#endif
-
-#ifdef SIMD_SUPPORT_AVX2
-    start = get_time_seconds();
-    for (int i = 0; i < adaptive_iterations; i++) {
-      convert_row_with_color_avx2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
-    }
-    result.avx2_time = get_time_seconds() - start;
-#endif
-
-#ifdef SIMD_SUPPORT_NEON
-    start = get_time_seconds();
-    for (int i = 0; i < adaptive_iterations; i++) {
-      render_row_ascii_rep_dispatch_neon_color(test_pixels, pixel_count, output_buffer, output_buffer_size,
-                                               background_mode, use_fast_path);
-    }
-    result.neon_time = get_time_seconds() - start;
-#endif
-
-#ifdef SIMD_SUPPORT_SSE2
-    if (result.sse2_time > 0 && result.sse2_time < best_time) {
-      best_time = result.sse2_time;
-      result.best_method = "SSE2";
-    }
-#endif
-
-#ifdef SIMD_SUPPORT_SSSE3
-    if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
-      best_time = result.ssse3_time;
-      result.best_method = "SSSE3";
-    }
-#endif
-
-#ifdef SIMD_SUPPORT_AVX2
-    if (result.avx2_time > 0 && result.avx2_time < best_time) {
-      result.best_method = "AVX2";
-    }
-#endif
-
-#ifdef SIMD_SUPPORT_NEON
-    if (result.neon_time > 0 && result.neon_time < best_time) {
-      result.best_method = "NEON";
-    }
-#endif
-
-    // Normalize timing results by iteration count to get per-frame times
-    result.scalar_time /= adaptive_iterations;
-    if (result.sse2_time > 0)
-      result.sse2_time /= adaptive_iterations;
-    if (result.ssse3_time > 0)
-      result.ssse3_time /= adaptive_iterations;
-    if (result.avx2_time > 0)
-      result.avx2_time /= adaptive_iterations;
-    if (result.neon_time > 0)
-      result.neon_time /= adaptive_iterations;
-    // Recalculate best time after normalization
-    best_time = result.scalar_time;
-
-#ifdef SIMD_SUPPORT_SSE2
-    if (result.sse2_time > 0 && result.sse2_time < best_time)
-      best_time = result.sse2_time;
-#endif
-#ifdef SIMD_SUPPORT_SSSE3
-    if (result.ssse3_time > 0 && result.ssse3_time < best_time)
-      best_time = result.ssse3_time;
-#endif
-#ifdef SIMD_SUPPORT_AVX2
-    if (result.avx2_time > 0 && result.avx2_time < best_time)
-      best_time = result.avx2_time;
-#endif
-#ifdef SIMD_SUPPORT_NEON
-    if (result.neon_time > 0 && result.neon_time < best_time)
-      best_time = result.neon_time;
-#endif
-
-    result.speedup_best = result.scalar_time / best_time;
-
-    printf("------------\n");
-    printf("scalar: %f\n", result.scalar_time);
-    if (result.sse2_time > 0)
-      printf("SSE2: %f\n", result.sse2_time);
-    if (result.ssse3_time > 0)
-      printf("SSSE3: %f\n", result.ssse3_time);
-    if (result.avx2_time > 0)
-      printf("avx2: %f\n", result.avx2_time);
-    if (result.neon_time > 0)
-      printf("neon: %f\n", result.neon_time);
-    printf("Best method: %s, time: %f (%.2fx speedup)\n", result.best_method, best_time, result.speedup_best);
-    printf("------------\n");
-
-    // Frame data already cleaned up in webcam capture section
-    free(test_pixels);
-    free(output_buffer);
-
-    return result;
+    char *result_ascii = ascii_convert(test_image, width, height, false, false, false);
+    if (result_ascii)
+      free(result_ascii);
+    image_destroy(test_image);
   }
+  result.scalar_time = get_time_seconds() - start;
+
+  // Find best method -- default to scalar and let simd beat it.
+  double best_time = result.scalar_time;
+  result.best_method = "scalar";
+
+#ifdef SIMD_SUPPORT_SSE2
+  start = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    convert_row_with_color_sse2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.sse2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  start = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    convert_row_with_color_ssse3(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.ssse3_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  start = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    convert_row_with_color_avx2(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
+  }
+  result.avx2_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+  start = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    render_row_ascii_rep_dispatch_neon_color(test_pixels, pixel_count, output_buffer, output_buffer_size,
+                                             background_mode, use_fast_path);
+  }
+  result.neon_time = get_time_seconds() - start;
+#endif
+
+#ifdef SIMD_SUPPORT_SSE2
+  if (result.sse2_time > 0 && result.sse2_time < best_time) {
+    best_time = result.sse2_time;
+    result.best_method = "SSE2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_SSSE3
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
+    best_time = result.ssse3_time;
+    result.best_method = "SSSE3";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_AVX2
+  if (result.avx2_time > 0 && result.avx2_time < best_time) {
+    result.best_method = "AVX2";
+  }
+#endif
+
+#ifdef SIMD_SUPPORT_NEON
+  if (result.neon_time > 0 && result.neon_time < best_time) {
+    result.best_method = "NEON";
+  }
+#endif
+
+  // Normalize timing results by iteration count to get per-frame times
+  result.scalar_time /= adaptive_iterations;
+  if (result.sse2_time > 0)
+    result.sse2_time /= adaptive_iterations;
+  if (result.ssse3_time > 0)
+    result.ssse3_time /= adaptive_iterations;
+  if (result.avx2_time > 0)
+    result.avx2_time /= adaptive_iterations;
+  if (result.neon_time > 0)
+    result.neon_time /= adaptive_iterations;
+  // Recalculate best time after normalization
+  best_time = result.scalar_time;
+
+#ifdef SIMD_SUPPORT_SSE2
+  if (result.sse2_time > 0 && result.sse2_time < best_time)
+    best_time = result.sse2_time;
+#endif
+#ifdef SIMD_SUPPORT_SSSE3
+  if (result.ssse3_time > 0 && result.ssse3_time < best_time)
+    best_time = result.ssse3_time;
+#endif
+#ifdef SIMD_SUPPORT_AVX2
+  if (result.avx2_time > 0 && result.avx2_time < best_time)
+    best_time = result.avx2_time;
+#endif
+#ifdef SIMD_SUPPORT_NEON
+  if (result.neon_time > 0 && result.neon_time < best_time)
+    best_time = result.neon_time;
+#endif
+
+  result.speedup_best = result.scalar_time / best_time;
+
+  printf("------------\n");
+  printf("scalar: %f\n", result.scalar_time);
+  if (result.sse2_time > 0)
+    printf("SSE2: %f\n", result.sse2_time);
+  if (result.ssse3_time > 0)
+    printf("SSSE3: %f\n", result.ssse3_time);
+  if (result.avx2_time > 0)
+    printf("avx2: %f\n", result.avx2_time);
+  if (result.neon_time > 0)
+    printf("neon: %f\n", result.neon_time);
+  printf("Best method: %s, time: %f (%.2fx speedup)\n", result.best_method, best_time, result.speedup_best);
+  printf("------------\n");
+
+  // Frame data already cleaned up in webcam capture section
+  free(test_pixels);
+  free(output_buffer);
+
+  return result;
 }
