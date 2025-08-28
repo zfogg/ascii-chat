@@ -78,7 +78,7 @@ void test_ascii_correctness(void) {
     }
 
     // Generate deterministic pattern
-    srand(42);
+    srand(12);
     for (int y = 0; y < img_height; y++) {
         for (int x = 0; x < img_width; x++) {
             int idx = y * img_width + x;
@@ -418,7 +418,7 @@ void test_integration(void) {
     if (strcmp(bench.best_method, "NEON") == 0) {
         best_simd_time = bench.neon_time;
     } else if (strcmp(bench.best_method, "AVX2") == 0) {
-        best_simd_time = bench.avx2_time;  
+        best_simd_time = bench.avx2_time;
     } else if (strcmp(bench.best_method, "SSSE3") == 0) {
         best_simd_time = bench.ssse3_time;
     } else if (strcmp(bench.best_method, "SSE2") == 0) {
@@ -434,14 +434,14 @@ void test_integration(void) {
     printf("  CPU Saved:  %.1f%% at 60 FPS\n", 100.0 * (1.0 - 1.0 / bench.speedup_best));
 
     // Show actual ASCII output sample
-    char *ascii_output = ascii_convert(source_image, 40, 12, false, false, false);
+    char *ascii_output = ascii_convert(source_image, 40, 10, true, true, false);
     if (ascii_output) {
-        printf("\nSample ASCII output (40x12):\n");
+        printf("\nSample ASCII output (40x10):\n");
         printf("┌────────────────────────────────────────┐\n");
         char *line = ascii_output;
         char *next_line;
         int line_count = 0;
-        while (line && line_count < 12) {
+        while (line && line_count < 10) {
             next_line = strchr(line, '\n');
             if (next_line) {
                 *next_line = '\0';
