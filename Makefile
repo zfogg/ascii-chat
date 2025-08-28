@@ -399,12 +399,12 @@ sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
 # Build executables
-$(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET)
+$(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking $@..."
 	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET)
+$(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking $@..."
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
@@ -415,8 +415,9 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile SIMD source files from src/image2ascii/simd/
-$(BUILD_DIR)/src/image2ascii/simd/%.o: $(SRC_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/src/image2ascii/simd
+$(BUILD_DIR)/src/image2ascii/simd/%.o: $(SRC_DIR)/image2ascii/simd/%.c $(C_HEADERS)
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile C source files from lib/
@@ -444,6 +445,9 @@ $(BUILD_DIR)/lib:
 
 $(BIN_DIR):
 	@mkdir -p $@
+
+# Create all build directories at once
+create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib $(BIN_DIR)
 
 # =============================================================================
 # Test Rules
