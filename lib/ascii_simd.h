@@ -94,33 +94,6 @@ typedef struct {
 #include "image.h"
 typedef rgb_t rgb_pixel_t;
 
-// SIMD-optimized functions
-#ifdef SIMD_SUPPORT_AVX2
-// Process 8 pixels at once with AVX2
-void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode);
-#endif
-
-#ifdef SIMD_SUPPORT_SSE2
-// Process 4 pixels at once with SSE2
-void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode);
-#endif
-
-#ifdef SIMD_SUPPORT_SSSE3
-// Process 32 pixels at once with SSSE3
-void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                    bool background_mode);
-#endif
-
-#ifdef SIMD_SUPPORT_NEON
-// Process 16 pixels at once with NEON
-void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-#endif
-
 // Fallback scalar version
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count);
 
@@ -161,10 +134,6 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
 
 // NEON-specific implementations
 #ifdef SIMD_SUPPORT_NEON
-char *render_ascii_image_monochrome_neon(const image_t *image);
-char *render_truecolor_ascii_neon_optimized(const image_t *image);
-char *render_256color_ascii_neon_optimized(const image_t *image);
-char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color);
 #endif
 
 // Quality vs speed control for 256-color mode (optimization #4)

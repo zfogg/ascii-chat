@@ -114,4 +114,9 @@ void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count
 // REP-safe image renderer that handles newlines internally
 char *render_ascii_image_256fg_rep_safe(const image_t *image);
 char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image);
+
+char *render_ascii_image_monochrome_neon(const image_t *image);
+char *render_truecolor_ascii_neon_optimized(const image_t *image);
+char *render_256color_ascii_neon_optimized(const image_t *image);
+char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color);
 #endif
