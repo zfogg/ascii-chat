@@ -462,7 +462,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
     char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, true);
-    if (result) free(result);
+    if (result)
+      free(result);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
@@ -839,7 +840,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
     char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, use_fast_path);
-    if (result) free(result);
+    if (result)
+      free(result);
   }
   result.neon_time = get_time_seconds() - start;
 #endif

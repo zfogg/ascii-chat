@@ -161,7 +161,6 @@ static inline void emit_reset(Str *out) {
     }                                                                                                                  \
   } while (0)
 
-
 // ------------------------------------------------------------
 // SIMD luminance: Y = (77R + 150G + 29B) >> 8
 static inline uint8x16_t simd_luma(uint8x16_t r, uint8x16_t g, uint8x16_t b) {
