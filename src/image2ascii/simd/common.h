@@ -47,3 +47,9 @@ bool has_ssse3_support(void);
 bool has_avx2_support(void);
 bool has_neon_support(void);
 bool has_sve_support(void);
+
+// ANSI color sequence generation functions (defined in ascii_simd_color.c)
+char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b);
+char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
+char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb);
+char *append_sgr_reset(char *dst);

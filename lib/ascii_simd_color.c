@@ -227,7 +227,7 @@ size_t render_row_256color_ascii_runlength(const rgb_pixel_t *row, int width, ch
 //         g_dec3[bb].len + 1; // Combined FG+BG
 //}
 
-static inline char *append_sgr_reset(char *dst) {
+inline char *append_sgr_reset(char *dst) {
   // "\x1b[0m"
   static const char RESET[] = "\033[0m";
   memcpy(dst, RESET, sizeof(RESET) - 1);
@@ -235,7 +235,7 @@ static inline char *append_sgr_reset(char *dst) {
 }
 
 // OPTIMIZATION 9: Direct writes instead of memcpy - \x1b[38;2;R;G;Bm
-static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
   // Constructor ensures initialization
 
   // Direct character writes (compiler will optimize to word operations)
@@ -296,7 +296,7 @@ static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uin
 }
 
 // OPTIMIZATION 9: Direct writes - \x1b[48;2;R;G;Bm
-static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
   // Constructor ensures initialization
 
   // Direct character writes for "\033[48;2;"
@@ -357,7 +357,7 @@ static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uin
 }
 
 // OPTIMIZATION 9: Optimized FG+BG - \x1b[38;2;R;G;B;48;2;r;g;bm (eliminate all memcpy calls)
-static inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
+inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
                                                uint8_t bb) {
   // Constructor ensures initialization
 

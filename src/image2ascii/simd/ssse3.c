@@ -1,6 +1,7 @@
 #include "ssse3.h"
 #include "ascii_simd.h"
 #include "options.h"
+#include <string.h>
 
 #ifdef SIMD_SUPPORT_SSSE3
 #include <tmmintrin.h>
@@ -234,21 +235,15 @@ size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buff
       uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
       uint8_t fg_color = (luminance < 127) ? 15 : 0; // FIX #6: use 15 not 255!
 
-      // Generate foreground color code
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-
-      // Generate background color code
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
+      // Generate combined FG+BG color code
+      current_pos = append_sgr_truecolor_fg_bg(current_pos, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
 
       // Add ASCII character
       *current_pos++ = ascii_char;
 
     } else {
       // Foreground mode: colored character
-      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += fg_len;
+      current_pos = append_sgr_truecolor_fg(current_pos, pixel->r, pixel->g, pixel->b);
 
       // Add ASCII character
       *current_pos++ = ascii_char;
