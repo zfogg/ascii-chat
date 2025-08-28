@@ -57,7 +57,15 @@ ascii-chat/
 │   └── test_runner.sh          # Test execution script
 ├── src/                        # Main application entry points
 │   ├── server.c                # Server main - handles multiple clients
-│   └── client.c                # Client main - captures/displays video
+│   ├── client.c                # Client main - captures/displays video
+│   └── image2ascii/            # ASCII conversion subsystem
+│       └── simd/               # Architecture-specific SIMD optimizations
+│           ├── common.h        # Shared SIMD interface definitions
+│           ├── neon.c/h        # ARM NEON optimizations (16 pixels/cycle)
+│           ├── sse2.c/h        # Intel SSE2 optimizations (16 pixels/cycle)
+│           ├── ssse3.c/h       # Intel SSSE3 optimizations (32 pixels/cycle)
+│           ├── avx2.c/h        # Intel AVX2 optimizations (32 pixels/cycle)
+│           └── sve.c/h         # ARM SVE optimizations (scalable vectors)
 ├── lib/                        # Core library components
 │   ├── common.c/h              # Shared utilities, macros, memory debugging, constants
 │   ├── logging.c               # Logging system implementation
@@ -75,9 +83,9 @@ ascii-chat/
 │   ├── image.c/h               # Image processing and manipulation
 │   ├── aspect_ratio.c/h        # Aspect ratio calculations
 │   ├── ascii.c/h               # ASCII art conversion and grid layout
-│   ├── ascii_simd.c/h          # SIMD-optimized ASCII conversion (cross-platform)
+│   ├── ascii_simd.c/h          # SIMD dispatch and common cache management
 │   ├── ascii_simd_color.c      # SIMD color ASCII conversion implementation
-│   ├── ascii_simd_neon.c/h     # ARM NEON-specific SIMD optimizations
+│   │                           # Note: ascii_simd_neon.* moved to src/image2ascii/simd/neon.*
 │   ├── ansi_fast.c/h           # Optimized ANSI escape sequence generation
 │   ├── terminal_detect.c/h     # Terminal capability detection
 │   ├── webcam.c/h              # Webcam capture abstraction layer
