@@ -406,7 +406,7 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
     }
   }
 
-#ifdef NETWORK_DEBUG
+#ifdef DEBUG_NETWORK
   log_debug("Sent packet type=%d, len=%zu", type, len);
 #endif
   return 0;
@@ -604,7 +604,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     *data = NULL;
   }
 
-#ifdef NETWORK_DEBUG
+#ifdef DEBUG_NETWORK
   log_debug("Received packet type=%d, len=%zu", *type, *len);
 #endif
   return 1;
@@ -619,7 +619,7 @@ int send_audio_packet(int sockfd, const float *samples, int num_samples) {
   size_t data_size = num_samples * sizeof(float);
 
 // Debug: log CRC of audio data being sent
-#ifdef AUDIO_DEBUG
+#ifdef DEBUG_AUDIO
   uint32_t crc = asciichat_crc32(samples, data_size);
   log_debug("Sending audio packet: %d samples, %zu bytes, CRC=0x%x", num_samples, data_size, crc);
 #endif
@@ -653,7 +653,7 @@ int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, i
   memcpy(buffer, &header, header_size);
   memcpy(buffer + header_size, samples, samples_size);
 
-#ifdef AUDIO_DEBUG
+#ifdef DEBUG_AUDIO
   log_debug("Sending audio batch: %d chunks, %d total samples, %zu bytes", batch_count, num_samples, total_size);
 #endif
 

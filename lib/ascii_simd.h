@@ -156,6 +156,14 @@ void print_simd_capabilities(void);
 char *image_print_simd(image_t *image);
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path);
 
+// NEON-specific implementations
+#ifdef SIMD_SUPPORT_NEON
+char *render_ascii_image_monochrome_neon(const image_t *image);
+char *render_truecolor_ascii_neon_optimized(const image_t *image);
+char *render_256color_ascii_neon_optimized(const image_t *image);
+char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color);
+#endif
+
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
 bool get_256_color_fast_path(void);             // Query current quality mode setting
@@ -172,7 +180,7 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
 size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
                                           const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
                                           const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
-                                          int width, char *dst, size_t cap, bool use_256color, bool is_truecolor);
+                                          int width, char *dst, size_t cap, bool is_truecolor);
 
 // Scalar unified REP implementations (for NEON dispatcher fallback)
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);

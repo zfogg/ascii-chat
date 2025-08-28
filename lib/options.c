@@ -472,8 +472,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc,
           USAGE_INDENT "   --show-capabilities       " USAGE_INDENT "show detected terminal capabilities and exit\n");
   fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
-  fprintf(desc, USAGE_INDENT "-M --background-mode         " USAGE_INDENT "background rendering: foreground, "
-                             "background (default: foreground)\n");
+  fprintf(desc, USAGE_INDENT "-M --background-mode         " USAGE_INDENT "Render colors for glyphs or cells: "
+                             "foreground, background (default: foreground)\n");
   fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
                              "enable audio capture and playback (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "

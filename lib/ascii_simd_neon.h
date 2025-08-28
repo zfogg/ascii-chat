@@ -49,6 +49,18 @@ void render_ascii_grayscale(const ImageRGB *img, Str *out);
 void render_ascii_bgcolor(const ImageRGB *img, Str *out);
 void render_ascii_bgcolor_256(const ImageRGB *img, Str *out);
 
+// Simple monochrome ASCII function that matches scalar image_print()
+char *render_ascii_image_monochrome_neon(const image_t *image);
+
+// Optimized NEON truecolor converter (based on ChatGPT reference)
+char *render_truecolor_ascii_neon_optimized(const image_t *image);
+
+// Optimized NEON 256-color converter (based on ChatGPT reference)
+char *render_256color_ascii_neon_optimized(const image_t *image);
+
+// Unified optimized NEON converter (foreground/background + 256-color/truecolor)
+char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color);
+
 // NEON: cr=(r*5+127)/255  (nearest of 0..5)
 static inline uint8x16_t quant6_neon(uint8x16_t x) {
   uint16x8_t xl = vmovl_u8(vget_low_u8(x));
@@ -90,8 +102,8 @@ size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *ds
 size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
 
 // Unified NEON dispatcher function
-size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, char *dst, size_t cap,
-                                          bool background_mode, bool use_fast_path);
+size_t render_row_ascii_rep_dispatch_neon_color(const rgb_pixel_t *row, int width, char *dst, size_t cap,
+                                                bool background_mode, bool use_fast_path);
 
 // ARM NEON version for Apple Silicon
 void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
