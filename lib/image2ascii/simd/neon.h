@@ -19,11 +19,14 @@ ImageRGB alloc_image(int w, int h);
 
 // Types defined in ascii_simd.h: Str, RLEState
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
-
-// NEON intrinsics
+#if (defined(SIMD_SUPPORT_NEON) || defined(__ARM_NEON) || defined(__aarch64__))
 #include <arm_neon.h>
+#endif // SIMD_SUPPORT_NEON || __ARM_NEON || __aarch64__
 
+#if (defined(__ARM_NEON) || defined(__aarch64__))
+#ifndef SIMD_SUPPORT_NEON
+#define SIMD_SUPPORT_NEON 1
+#endif
 #endif // __ARM_NEON || __aarch64__
 
 #ifdef SIMD_SUPPORT_NEON
