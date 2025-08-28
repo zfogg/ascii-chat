@@ -510,16 +510,19 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
 
 // Scalar Unified REP Implementations (for NEON dispatcher fallback)
 // ============================================================================
-static int unified_neon_color(const rgb_pixel_t *row, int width, int height, char *dst, size_t cap, bool background_mode, bool use_256color) {
+#ifdef SIMD_SUPPORT_NEON
+static int unified_neon_color(const rgb_pixel_t *row, int width, int height, char *dst, size_t cap,
+                              bool background_mode, bool use_256color) {
   image_t image = {.pixels = (rgb_pixel_t *)row, .w = width, .h = height};
   char *result = render_ascii_neon_unified_optimized(&image, background_mode, use_256color);
   size_t result_len = strlen(result);
   size_t bytes_to_copy = (result_len < cap - 1) ? result_len : cap - 1;
   memcpy(dst, result, bytes_to_copy);
-  dst[bytes_to_copy] = '\0';  // Null terminate
+  dst[bytes_to_copy] = '\0'; // Null terminate
   free(result);
-  return bytes_to_copy;  // Return actual bytes written
+  return bytes_to_copy; // Return actual bytes written
 }
+#endif
 
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
 #ifdef SIMD_SUPPORT_NEON
