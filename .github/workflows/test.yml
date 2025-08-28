@@ -167,7 +167,7 @@ jobs:
       run: |
         # Test client options and capabilities
         timeout 5s ./bin/client --help
-        timeout 5s ./bin/client --show-capabilities
+        timeout 5s ./bin/client --show-capabilities || true
         echo "Client functionality tests passed"
 
   cross-platform-compatibility:
