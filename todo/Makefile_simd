@@ -96,11 +96,11 @@ endif
 COMMON_MAIN_OBJECTS = \
   ../build/lib/ascii_simd.o \
   ../build/lib/ascii_simd_color.o \
-  ../build/src/image2ascii/simd/sse2.o \
-  ../build/src/image2ascii/simd/ssse3.o \
-  ../build/src/image2ascii/simd/avx2.o \
-  ../build/src/image2ascii/simd/sve.o \
-  ../build/src/image2ascii/simd/neon.o \
+  ../build/lib/image2ascii/simd/sse2.o \
+  ../build/lib/image2ascii/simd/ssse3.o \
+  ../build/lib/image2ascii/simd/avx2.o \
+  ../build/lib/image2ascii/simd/sve.o \
+  ../build/lib/image2ascii/simd/neon.o \
   ../build/lib/ansi_fast.o \
   ../build/lib/logging.o \
   ../build/lib/buffer_pool.o \
