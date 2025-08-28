@@ -37,13 +37,16 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         memset(scalar_output, 0, buffer_size);
         memset(simd_output, 0, buffer_size);
 
-        // Generate scalar output - OLD per-pixel path
-        size_t scalar_len = convert_row_with_color_scalar(
-            test_pixels, scalar_output, buffer_size, pixel_count, background_mode);
-
-        // Generate SIMD output - NEW run-length optimized path
-        size_t simd_len = convert_row_with_color_optimized(
-            test_pixels, simd_output, buffer_size, pixel_count, background_mode, false);
+        // Create test image for proper function calls
+        image_t test_image = {.pixels = test_pixels, .w = pixel_count, .h = 1};
+        
+        // Generate scalar output using image function
+        char *scalar_result = image_print_color(&test_image);
+        size_t scalar_len = scalar_result ? strlen(scalar_result) : 0;
+        
+        // Generate SIMD output using optimized unified function
+        char *simd_result = image_print_color_simd(&test_image, background_mode, false);
+        size_t simd_len = simd_result ? strlen(simd_result) : 0;
 
         printf("Scalar output length: %zu bytes\n", scalar_len);
         printf("SIMD output length:   %zu bytes\n", simd_len);
