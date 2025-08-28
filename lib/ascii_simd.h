@@ -100,10 +100,6 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
 // Auto-dispatch function (chooses best available SIMD)
 void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count);
 
-// Complete colored ASCII conversion with SIMD + optimized ANSI generation
-size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                        bool background_mode, bool use_fast_path);
-
 size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                      bool background_mode);
 
@@ -153,9 +149,3 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
                                           const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
                                           int width, char *dst, size_t cap, bool is_truecolor);
-
-// Scalar unified REP implementations (for NEON dispatcher fallback)
-size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
-size_t render_row_truecolor_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
-size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
-size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);

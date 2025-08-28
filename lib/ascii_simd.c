@@ -459,8 +459,10 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark NEON color
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    render_row_ascii_rep_dispatch_neon_color(test_pixels, pixel_count, output_buffer, output_buffer_size,
-                                             background_mode, true);
+    // Create temporary image for unified function
+    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
+    char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, true);
+    if (result) free(result);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
@@ -834,8 +836,10 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_NEON
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    render_row_ascii_rep_dispatch_neon_color(test_pixels, pixel_count, output_buffer, output_buffer_size,
-                                             background_mode, use_fast_path);
+    // Create temporary image for unified function
+    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
+    char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, use_fast_path);
+    if (result) free(result);
   }
   result.neon_time = get_time_seconds() - start;
 #endif

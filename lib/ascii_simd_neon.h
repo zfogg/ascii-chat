@@ -97,18 +97,6 @@ uint8x16_t palette256_index_dithered(uint8x16_t r, uint8x16_t g, uint8x16_t b, i
 // NEON helper: Process remaining pixels (< 16) efficiently for scalar fallback
 void process_remaining_pixels_neon(const rgb_pixel_t *pixels, int count, uint8_t *luminance, char *glyphs);
 
-// Individual NEON renderer functions for direct benchmarking
-size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
-size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
-
-// Unified NEON dispatcher function
-size_t render_row_ascii_rep_dispatch_neon_color(const rgb_pixel_t *row, int width, char *dst, size_t cap,
-                                                bool background_mode, bool use_fast_path);
-
 // ARM NEON version for Apple Silicon
 void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-
-// REP-safe image renderer that handles newlines internally
-char *render_ascii_image_256fg_rep_safe(const image_t *image);
-char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image);
 #endif
