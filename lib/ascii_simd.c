@@ -1434,10 +1434,13 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   double start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
+    if (test_image == NULL) {
+      fprintf(stderr, "Failed to allocate test_image in benchmark. Aborting loop.\n");
+      break;
+    }
     memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
     ascii_convert(test_image, width, height, false, false, false);
     // convert_row_with_color_scalar(test_pixels, output_buffer, output_buffer_size, pixel_count, background_mode);
-  }
   result.scalar_time = get_time_seconds() - start;
 
   // Find best method -- default to scalar and let simd beat it.
