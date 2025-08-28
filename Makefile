@@ -412,12 +412,12 @@ $(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 # Compile C source files from src/
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile SIMD source files from src/image2ascii/simd/
-$(BUILD_DIR)/src/image2ascii/simd/%.o: $(SRC_DIR)/image2ascii/simd/%.c $(C_HEADERS)
+$(BUILD_DIR)/src/image2ascii/simd/%.o: $(SRC_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/src/image2ascii/simd
 	@echo "Compiling $<..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile C source files from lib/

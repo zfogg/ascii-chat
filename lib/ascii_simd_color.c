@@ -358,7 +358,7 @@ inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b)
 
 // OPTIMIZATION 9: Optimized FG+BG - \x1b[38;2;R;G;B;48;2;r;g;bm (eliminate all memcpy calls)
 inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
-                                               uint8_t bb) {
+                                        uint8_t bb) {
   // Constructor ensures initialization
 
   // Write "\033[38;2;" directly (7 chars)
