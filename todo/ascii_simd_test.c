@@ -450,8 +450,8 @@ void test_integration(void) {
     }
 
     if (simd_time > 0) {
-        printf("  SIMD (%s):  %8.3f ms/frame (%4.1fx faster)\n",
-               simd_method, simd_time * 1000, bench.scalar_time / simd_time);
+        printf("  Best SIMD:  %8.3f ms/frame (%4.1fx faster)\n",
+               simd_time * 1000, bench.scalar_time / simd_time);
     }
 
     printf("  Winner:     %s\n", bench.best_method);
