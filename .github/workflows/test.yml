@@ -229,4 +229,13 @@ jobs:
     - name: Run benchmarks
       run: |
         cd todo
-        ./ascii_simd_test --img-files imgs
+        ./ascii_simd_test --img-files imgs | tee output.log
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-simd-results-${{ runner.os }}-${{ matrix.build_type }}
+        path: |
+          todo/output.log
+        retention-days: 7
