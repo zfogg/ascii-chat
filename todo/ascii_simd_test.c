@@ -413,45 +413,21 @@ void test_integration(void) {
     printf("Terminal Performance (203x64):\n");
     printf("  Scalar:     %8.3f ms/frame\n", bench.scalar_time * 1000);
 
-    // Find the fastest SIMD method from benchmark results
-    double simd_time = 1e9; // Start with very large time
-    const char *simd_method = "None";
-
-    // Check all available SIMD methods and pick the fastest
-#ifdef SIMD_SUPPORT_AVX2
-    if (bench.avx2_time > 0 && bench.avx2_time < simd_time) {
-        simd_time = bench.avx2_time;
-        simd_method = "AVX2";
-    }
-#endif
-#ifdef SIMD_SUPPORT_SSSE3
-    if (bench.ssse3_time > 0 && bench.ssse3_time < simd_time) {
-        simd_time = bench.ssse3_time;
-        simd_method = "SSSE3";
-    }
-#endif
-#ifdef SIMD_SUPPORT_SSE2
-    if (bench.sse2_time > 0 && bench.sse2_time < simd_time) {
-        simd_time = bench.sse2_time;
-        simd_method = "SSE2";
-    }
-#endif
-#ifdef SIMD_SUPPORT_NEON
-    if (bench.neon_time > 0 && bench.neon_time < simd_time) {
-        simd_time = bench.neon_time;
-        simd_method = "NEON";
-    }
-#endif
-
-    // Reset to 0 if no SIMD was actually faster
-    if (simd_time >= 1e9) {
-        simd_time = 0;
-        simd_method = "None";
+    // Use the benchmark's determination of the best method and time
+    double best_simd_time = 0;
+    if (strcmp(bench.best_method, "NEON") == 0) {
+        best_simd_time = bench.neon_time;
+    } else if (strcmp(bench.best_method, "AVX2") == 0) {
+        best_simd_time = bench.avx2_time;  
+    } else if (strcmp(bench.best_method, "SSSE3") == 0) {
+        best_simd_time = bench.ssse3_time;
+    } else if (strcmp(bench.best_method, "SSE2") == 0) {
+        best_simd_time = bench.sse2_time;
     }
 
-    if (simd_time > 0) {
+    if (best_simd_time > 0 && strcmp(bench.best_method, "scalar") != 0) {
         printf("  Best SIMD:  %8.3f ms/frame (%4.1fx faster)\n",
-               simd_time * 1000, bench.scalar_time / simd_time);
+               best_simd_time * 1000, bench.scalar_time / best_simd_time);
     }
 
     printf("  Winner:     %s\n", bench.best_method);
