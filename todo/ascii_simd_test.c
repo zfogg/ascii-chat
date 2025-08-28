@@ -413,30 +413,41 @@ void test_integration(void) {
     printf("Terminal Performance (203x64):\n");
     printf("  Scalar:     %8.3f ms/frame\n", bench.scalar_time * 1000);
 
-    double simd_time = 0;
+    // Find the fastest SIMD method from benchmark results
+    double simd_time = 1e9; // Start with very large time
     const char *simd_method = "None";
 
-#ifdef SIMD_SUPPORT_NEON
-    if (bench.neon_time > 0) {
-        simd_time = bench.neon_time;
-        simd_method = "NEON";
-    }
-#elif defined(SIMD_SUPPORT_AVX2)
-    if (bench.avx2_time > 0) {
+    // Check all available SIMD methods and pick the fastest
+#ifdef SIMD_SUPPORT_AVX2
+    if (bench.avx2_time > 0 && bench.avx2_time < simd_time) {
         simd_time = bench.avx2_time;
         simd_method = "AVX2";
     }
-#elif defined(SIMD_SUPPORT_SSSE3)
-    if (bench.ssse3_time > 0) {
+#endif
+#ifdef SIMD_SUPPORT_SSSE3
+    if (bench.ssse3_time > 0 && bench.ssse3_time < simd_time) {
         simd_time = bench.ssse3_time;
         simd_method = "SSSE3";
     }
-#elif defined(SIMD_SUPPORT_SSE2)
-    if (bench.sse2_time > 0) {
+#endif
+#ifdef SIMD_SUPPORT_SSE2
+    if (bench.sse2_time > 0 && bench.sse2_time < simd_time) {
         simd_time = bench.sse2_time;
         simd_method = "SSE2";
     }
 #endif
+#ifdef SIMD_SUPPORT_NEON
+    if (bench.neon_time > 0 && bench.neon_time < simd_time) {
+        simd_time = bench.neon_time;
+        simd_method = "NEON";
+    }
+#endif
+
+    // Reset to 0 if no SIMD was actually faster
+    if (simd_time >= 1e9) {
+        simd_time = 0;
+        simd_method = "None";
+    }
 
     if (simd_time > 0) {
         printf("  SIMD (%s):  %8.3f ms/frame (%4.1fx faster)\n",
