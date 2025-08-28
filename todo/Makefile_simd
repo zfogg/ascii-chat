@@ -1,6 +1,8 @@
 # Makefile for SIMD ASCII Optimization
 CC = clang
-BASE_CFLAGS = -Wall -Wextra -O3 -std=c23 -I../lib -D_GNU_SOURCE
+# Use CSTD parameter if provided, otherwise default to c2x for compatibility
+CSTD ?= c23
+BASE_CFLAGS = -Wall -Wextra -O3 -std=$(CSTD) -I../lib -D_GNU_SOURCE
 
 # =============================================================================
 # SIMD Flags
@@ -94,13 +96,19 @@ endif
 COMMON_MAIN_OBJECTS = \
   ../build/lib/ascii_simd.o \
   ../build/lib/ascii_simd_color.o \
-  ../build/lib/ascii_simd_neon.o \
+  ../build/lib/image2ascii/simd/sse2.o \
+  ../build/lib/image2ascii/simd/ssse3.o \
+  ../build/lib/image2ascii/simd/avx2.o \
+  ../build/lib/image2ascii/simd/sve.o \
+  ../build/lib/image2ascii/simd/neon.o \
   ../build/lib/ansi_fast.o \
   ../build/lib/logging.o \
   ../build/lib/buffer_pool.o \
   ../build/lib/common.o \
   ../build/lib/options.o \
-  ../build/lib/image.o
+  ../build/lib/image.o \
+  ../build/lib/ascii.o \
+  ../build/lib/aspect_ratio.o
 
 # Webcam objects (core + platform backends)
 WEBCAM_CORE_OBJECTS := ../build/lib/webcam.o ../build/lib/webcam_platform.o

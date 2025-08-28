@@ -8,7 +8,6 @@
 
 #include "common.h"
 #include "ascii_simd.h"
-#include "ascii_simd_color.h"
 #include "network.h"
 #include "audio.h"
 #include "mixer.h"

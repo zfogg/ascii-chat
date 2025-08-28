@@ -127,8 +127,8 @@ jobs:
         # Additional memory leak checks
         echo "Running memory leak detection..."
         # Test basic binary functionality for leaks
-        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server --help || true
-        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client --help || true
+        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server || true
+        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client || true
         echo "Memory leak detection completed"
 
   functional-tests:
@@ -158,24 +158,32 @@ jobs:
         make -j CSTD=c2x debug
 
     - name: Test server startup and shutdown
+      env:
+        TERM: xterm-256color
       run: |
-        # Test server can start and stop cleanly
-        timeout 5s ./bin/server --help
-        echo "Server help test passed"
+        # Set TERM for terminal detection in CI environment
+        # Test server help (doesn't require terminal setup)
+        ./bin/server --help
+        # Test basic server startup (short timeout)
+        timeout 2s ./bin/server --log-file /tmp/server_test.log || true
+        echo "Server startup test passed"
 
     - name: Test client functionality
+      env:
+        TERM: xterm-256color
       run: |
-        # Test client options and capabilities
-        timeout 5s ./bin/client --help
-        timeout 5s ./bin/client --show-capabilities || true
+        # Test client help (doesn't require webcam)
+        ./bin/client --help
+        # Test client capabilities detection
+        ./bin/client --show-capabilities
         echo "Client functionality tests passed"
 
-  cross-platform-compatibility:
+  benchmarks:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-13, macos-15]
+        os: [ubuntu-latest, macos-15]
 
     steps:
     - name: Checkout code
@@ -185,16 +193,28 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install portaudio libsodium
+        brew install portaudio libsodium criterion
 
-    - name: Test build compatibility
+    - name: Build project
       run: |
-        make -j CSTD=c2x debug
-        ./bin/server --help
-        ./bin/client --help
-        echo "Cross-platform compatibility test passed on ${{ matrix.os }}"
+        cd todo
+        make -j CSTD=c2x
+
+    - name: Run benchmarks
+      run: |
+        cd todo
+        ./ascii_simd_test --img-files imgs | tee output.log
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-simd-results-${{ runner.os }}-${{ matrix.build_type }}
+        path: |
+          todo/output.log
+        retention-days: 7

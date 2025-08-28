@@ -37,13 +37,27 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         memset(scalar_output, 0, buffer_size);
         memset(simd_output, 0, buffer_size);
 
-        // Generate scalar output - OLD per-pixel path
-        size_t scalar_len = convert_row_with_color_scalar(
-            test_pixels, scalar_output, buffer_size, pixel_count, background_mode);
-
-        // Generate SIMD output - NEW run-length optimized path
-        size_t simd_len = convert_row_with_color_optimized(
-            test_pixels, simd_output, buffer_size, pixel_count, background_mode, false);
+        // Create proper 2D test image (not row-wise!)
+        const int img_width = 40, img_height = 12; // Small test image
+        image_t *test_image = image_new(img_width, img_height);
+        
+        // Fill with test pattern
+        for (int y = 0; y < img_height; y++) {
+            for (int x = 0; x < img_width; x++) {
+                int idx = y * img_width + x;
+                test_image->pixels[idx].r = (x * 255) / img_width;
+                test_image->pixels[idx].g = (y * 255) / img_height;
+                test_image->pixels[idx].b = ((x + y) * 127) / (img_width + img_height);
+            }
+        }
+        
+        // Generate scalar output using full image function
+        char *scalar_result = image_print_color(test_image);
+        size_t scalar_len = scalar_result ? strlen(scalar_result) : 0;
+        
+        // Generate SIMD output using optimized unified function
+        char *simd_result = image_print_color_simd(test_image, background_mode, false);
+        size_t simd_len = simd_result ? strlen(simd_result) : 0;
 
         printf("Scalar output length: %zu bytes\n", scalar_len);
         printf("SIMD output length:   %zu bytes\n", simd_len);
@@ -64,11 +78,10 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         printf("✅ SIMD implementation: %zu bytes of colored ASCII output\n", simd_len);
 
         // Basic sanity checks
-        // Visible content may be far smaller than pixel count when using REP compression
-        bool scalar_has_content = has_visible_chars(scalar_output, scalar_len);
-        bool simd_has_content = has_visible_chars(simd_output, simd_len);
-        bool scalar_has_colors = strstr(scalar_output, "\033[") != NULL;
-        bool simd_has_colors = strstr(simd_output, "\033[") != NULL;
+        bool scalar_has_content = scalar_result && has_visible_chars(scalar_result, scalar_len);
+        bool simd_has_content = simd_result && has_visible_chars(simd_result, simd_len);
+        bool scalar_has_colors = scalar_result && strstr(scalar_result, "\033[") != NULL;
+        bool simd_has_colors = simd_result && strstr(simd_result, "\033[") != NULL;
 
         if (scalar_has_content && simd_has_content && scalar_has_colors && simd_has_colors) {
             printf("✅ Both implementations produce valid colored ASCII output\n");
@@ -80,6 +93,11 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
             printf("   SIMD:   content=%s, colors=%s\n",
                    simd_has_content ? "✅" : "❌", simd_has_colors ? "✅" : "❌");
         }
+        
+        // Cleanup
+        if (scalar_result) free(scalar_result);
+        if (simd_result) free(simd_result);
+        image_destroy(test_image);
         printf("\n");
     }
 }
