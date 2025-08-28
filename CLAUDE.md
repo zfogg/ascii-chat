@@ -57,7 +57,15 @@ ascii-chat/
 │   └── test_runner.sh          # Test execution script
 ├── src/                        # Main application entry points
 │   ├── server.c                # Server main - handles multiple clients
-│   └── client.c                # Client main - captures/displays video
+│   ├── client.c                # Client main - captures/displays video
+│   └── image2ascii/            # ASCII conversion subsystem
+│       └── simd/               # Architecture-specific SIMD optimizations
+│           ├── common.h        # Shared SIMD interface definitions
+│           ├── neon.c/h        # ARM NEON optimizations (16 pixels/cycle)
+│           ├── sse2.c/h        # Intel SSE2 optimizations (16 pixels/cycle)
+│           ├── ssse3.c/h       # Intel SSSE3 optimizations (32 pixels/cycle)
+│           ├── avx2.c/h        # Intel AVX2 optimizations (32 pixels/cycle)
+│           └── sve.c/h         # ARM SVE optimizations (scalable vectors)
 ├── lib/                        # Core library components
 │   ├── common.c/h              # Shared utilities, macros, memory debugging, constants
 │   ├── logging.c               # Logging system implementation
@@ -75,9 +83,9 @@ ascii-chat/
 │   ├── image.c/h               # Image processing and manipulation
 │   ├── aspect_ratio.c/h        # Aspect ratio calculations
 │   ├── ascii.c/h               # ASCII art conversion and grid layout
-│   ├── ascii_simd.c/h          # SIMD-optimized ASCII conversion (cross-platform)
+│   ├── ascii_simd.c/h          # SIMD dispatch and common cache management
 │   ├── ascii_simd_color.c      # SIMD color ASCII conversion implementation
-│   ├── ascii_simd_neon.c/h     # ARM NEON-specific SIMD optimizations
+│   │                           # Note: ascii_simd_neon.* moved to src/image2ascii/simd/neon.*
 │   ├── ansi_fast.c/h           # Optimized ANSI escape sequence generation
 │   ├── terminal_detect.c/h     # Terminal capability detection
 │   ├── webcam.c/h              # Webcam capture abstraction layer
@@ -165,16 +173,25 @@ sleep 10
 kill $SERVER_PID
 ```
 
+```bash
+# Use the files in ./todo/
+cd todo && make
+# Make ascii_simd_test
+cd todo && make -f Makefile_simd ascii_simd_test
+```
+
 ## Debugging Techniques
 
 ### 1. Enable Debug Logging
 Add these defines to see detailed logs:
 ```c
-#define NETWORK_DEBUG      // Network packet details
-#define COMPRESSION_DEBUG  // Compression statistics
-#define AUDIO_DEBUG       // Audio packet info
-#define DEBUG_THREADS     // Thread lifecycle
-#define MIXER_DEBUG       // Audio mixing details
+/*#define DEBUG_MEMORY*/     // Memory debugging is enabled by default with make
+#define DEBUG_NETWORK        // Network packet details
+#define DEBUG_COMPRESSION    // Compression statistics
+#define DEBUG_AUDIO          // Audio packet info
+#define DEBUG_THREADS        // Thread lifecycle
+#define DEBUG_MIXER          // Audio mixing details
+#define DEBUG_SOMETHING_ELSE // A feature or concept we need to debug.
 // When you make new logs, try to put them under those categories. Make a new
 // category if you need to and it will help the developer and you work and debug.
 ```
@@ -193,9 +210,7 @@ Add these defines to see detailed logs:
 
 **Video not displaying:**
 - Check if server is sending PACKET_TYPE_ASCII_FRAME (type 1)
-- Verify client handle_ascii_frame_packet() is being called
 - Check for CRC checksum mismatches in logs
-- Use `log_debug()` to trace packet flow
 
 **Memory crashes:**
 - Always use SAFE_MALLOC() macro instead of malloc()

@@ -19,11 +19,14 @@ ImageRGB alloc_image(int w, int h);
 
 // Types defined in ascii_simd.h: Str, RLEState
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
-
-// NEON intrinsics
+#if (defined(SIMD_SUPPORT_NEON) || defined(__ARM_NEON) || defined(__aarch64__))
 #include <arm_neon.h>
+#endif // SIMD_SUPPORT_NEON || __ARM_NEON || __aarch64__
 
+#if (defined(__ARM_NEON) || defined(__aarch64__))
+#ifndef SIMD_SUPPORT_NEON
+#define SIMD_SUPPORT_NEON 1
+#endif
 #endif // __ARM_NEON || __aarch64__
 
 #ifdef SIMD_SUPPORT_NEON
@@ -97,6 +100,23 @@ uint8x16_t palette256_index_dithered(uint8x16_t r, uint8x16_t g, uint8x16_t b, i
 // NEON helper: Process remaining pixels (< 16) efficiently for scalar fallback
 void process_remaining_pixels_neon(const rgb_pixel_t *pixels, int count, uint8_t *luminance, char *glyphs);
 
+// Individual NEON renderer functions for direct benchmarking
+size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
+size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap);
+
+// Unified NEON dispatcher function
+size_t render_row_ascii_rep_dispatch_neon_color(const rgb_pixel_t *row, int width, char *dst, size_t cap,
+                                                bool background_mode, bool use_fast_path);
+
 // ARM NEON version for Apple Silicon
 void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
+
+// REP-safe image renderer that handles newlines internally
+char *render_ascii_image_256fg_rep_safe(const image_t *image);
+char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image);
+
+char *render_ascii_image_monochrome_neon(const image_t *image);
+char *render_truecolor_ascii_neon_optimized(const image_t *image);
+char *render_256color_ascii_neon_optimized(const image_t *image);
+char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color);
 #endif

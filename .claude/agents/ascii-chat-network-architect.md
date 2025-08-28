@@ -46,7 +46,7 @@ integration.
 
 **Debugging Approach:**
 - Use network packet tracing: `tcpdump -i lo0 port 8080 -X`
-- Enable NETWORK_DEBUG for detailed packet analysis
+- Enable DEBUG_NETWORK for detailed packet analysis
 - Check socket timeouts and keepalive settings
 - Verify thread synchronization in client_thread_func and broadcast threads
 - Test with multiple clients to validate queue behavior

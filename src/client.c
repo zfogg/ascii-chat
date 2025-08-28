@@ -32,8 +32,8 @@
 #include "buffer_pool.h"
 #include "terminal_detect.h"
 
-#define NETWORK_DEBUG
-#define AUDIO_DEBUG
+#define DEBUG_NETWORK
+#define DEBUG_AUDIO
 #define COMPRESSION_DEBUG
 
 static void full_terminal_reset(int fd) {
@@ -396,7 +396,7 @@ static void handle_audio_packet(const void *data, size_t len) {
   }
 
   audio_write_samples(&g_audio_context, audio_buffer, num_samples);
-#ifdef AUDIO_DEBUG
+#ifdef DEBUG_AUDIO
   log_debug("Processed %d audio samples", num_samples);
 #endif
 }
@@ -906,7 +906,7 @@ static void *audio_capture_thread_func(void *arg) {
             log_debug("Failed to send audio batch to server");
             // Don't set g_connection_lost here as receive thread will detect it
           }
-#ifdef AUDIO_DEBUG
+#ifdef DEBUG_AUDIO
           else {
             log_debug("Sent audio batch: %d chunks, %d total samples (gate: %s)", batch_chunks_collected,
                       batch_samples_collected, noise_gate_is_open(&noise_gate) ? "open" : "closed");
@@ -921,7 +921,7 @@ static void *audio_capture_thread_func(void *arg) {
         if (send_audio_batch_packet(sockfd, batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
           log_debug("Failed to send final audio batch to server");
         }
-#ifdef AUDIO_DEBUG
+#ifdef DEBUG_AUDIO
         else {
           log_debug("Sent final audio batch before silence: %d chunks, %d samples", batch_chunks_collected,
                     batch_samples_collected);
@@ -955,7 +955,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
   const server_state_packet_t *state = (const server_state_packet_t *)data;
 
   // Convert from network byte order
-  uint32_t connected_count = ntohl(state->connected_client_count);
+  // uint32_t connected_count = ntohl(state->connected_client_count);
   uint32_t active_count = ntohl(state->active_client_count);
 
   // Check if connected count changed - if so, clear console

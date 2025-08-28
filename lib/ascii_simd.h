@@ -66,67 +66,39 @@ typedef struct {
   int seeded;
 } RLEState;
 
-// Check for SIMD support
+// Check for SIMD support and include architecture-specific headers
 #ifdef __AVX2__
 #define SIMD_SUPPORT_AVX2 1
-#include <immintrin.h>
 #endif
 
 #ifdef __SSE2__
 #define SIMD_SUPPORT_SSE2 1
-#include <emmintrin.h>
 #endif
 
 #ifdef __SSSE3__
 #define SIMD_SUPPORT_SSSE3 1
-#include <tmmintrin.h>
 #endif
 
 #ifdef __ARM_NEON
 #define SIMD_SUPPORT_NEON 1
-#include <arm_neon.h>
 #endif
+
+// Include architecture-specific implementations
+#include "image2ascii/simd/sse2.h"
+#include "image2ascii/simd/ssse3.h"
+#include "image2ascii/simd/avx2.h"
+#include "image2ascii/simd/sve.h"
+#include "image2ascii/simd/neon.h"
 
 // Use the project's existing rgb_t for consistency
 #include "image.h"
 typedef rgb_t rgb_pixel_t;
-
-// SIMD-optimized functions
-#ifdef SIMD_SUPPORT_AVX2
-// Process 8 pixels at once with AVX2
-void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode);
-#endif
-
-#ifdef SIMD_SUPPORT_SSE2
-// Process 4 pixels at once with SSE2
-void convert_pixels_sse2(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_sse2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode);
-#endif
-
-#ifdef SIMD_SUPPORT_SSSE3
-// Process 32 pixels at once with SSSE3
-void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                    bool background_mode);
-#endif
-
-#ifdef SIMD_SUPPORT_NEON
-// Process 16 pixels at once with NEON
-void convert_pixels_neon(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-#endif
 
 // Fallback scalar version
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count);
 
 // Auto-dispatch function (chooses best available SIMD)
 void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-
-// Complete colored ASCII conversion with SIMD + optimized ANSI generation
-size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                        bool background_mode, bool use_fast_path);
 
 size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
                                      bool background_mode);
@@ -156,6 +128,10 @@ void print_simd_capabilities(void);
 char *image_print_simd(image_t *image);
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path);
 
+// NEON-specific implementations
+#ifdef SIMD_SUPPORT_NEON
+#endif
+
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
 bool get_256_color_fast_path(void);             // Query current quality mode setting
@@ -172,10 +148,4 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
 size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
                                           const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
                                           const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
-                                          int width, char *dst, size_t cap, bool use_256color, bool is_truecolor);
-
-// Scalar unified REP implementations (for NEON dispatcher fallback)
-size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
-size_t render_row_truecolor_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
-size_t render_row_256color_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
-size_t render_row_truecolor_foreground_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap);
+                                          int width, char *dst, size_t cap, bool is_truecolor);

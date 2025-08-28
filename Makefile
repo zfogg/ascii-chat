@@ -344,11 +344,13 @@ SANITIZE_FLAGS := -fsanitize=address
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(LIB_DIR)/*.c)
+LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
-# Header files
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(wildcard $(LIB_DIR)/*.h)
+# Header files  
+LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
@@ -397,18 +399,24 @@ sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
 # Build executables
-$(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET)
+$(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking $@..."
 	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET)
+$(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking $@..."
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
 
 # Compile C source files from src/
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
+	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) -c $<
+
+# Compile SIMD source files from lib/image2ascii/simd/
+$(BUILD_DIR)/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii/simd
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $<
 
@@ -429,11 +437,17 @@ objs: $(OBJS) $(TEST_OBJS)
 $(BUILD_DIR)/src:
 	@mkdir -p $@
 
+$(BUILD_DIR)/lib/image2ascii/simd:
+	@mkdir -p $@
+
 $(BUILD_DIR)/lib:
 	@mkdir -p $@
 
 $(BIN_DIR):
 	@mkdir -p $@
+
+# Create all build directories at once
+create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib $(BIN_DIR)
 
 # =============================================================================
 # Test Rules
@@ -469,10 +483,15 @@ test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 
 test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 	@echo "Running performance benchmarks..."
-	@for test in $^; do \
-		echo "Running $$test..."; \
-		$$test; \
-	done
+	@if [ -z "$^" ]; then \
+		echo "Note: Main performance tests are in todo/ascii_simd_test"; \
+		echo "Run: cd todo && make -f Makefile_simd ascii_simd_test && ./ascii_simd_test"; \
+	else \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			$$test; \
+		done; \
+	fi
 
 test-quiet: $(TEST_EXECUTABLES)
 	@echo "Running all tests (quiet mode)..."
@@ -562,7 +581,7 @@ help:
 	@echo "  test            - Run all tests (unit + integration + performance)"
 	@echo "  test-unit       - Run only unit tests (quiet mode)"
 	@echo "  test-integration - Run only integration tests"
-	@echo "  test-performance - Run performance benchmarks"
+	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
 	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
 	@echo "  todo            - Build the ./todo subproject"
 	@echo "  todo-clean      - Clean the ./todo subproject"
@@ -616,8 +635,9 @@ analyze:
 
 scan-build: c-objs
 	@echo "Running scan-build with EXTRA_CFLAGS='-Wformat -Wformat-security -Werror=format-security'..."
-	scan-build --status-bugs -analyze-headers make clean
-	scan-build --status-bugs -analyze-headers make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
+	@echo "Excluding system headers to avoid CET intrinsic false positives..."
+	scan-build --status-bugs make clean
+	scan-build --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
 	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
