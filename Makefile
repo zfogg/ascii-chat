@@ -414,6 +414,11 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $<
 
+# Compile SIMD source files from src/image2ascii/simd/
+$(BUILD_DIR)/src/image2ascii/simd/%.o: $(SRC_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/src/image2ascii/simd
+	@echo "Compiling $<..."
+	$(CC) -o $@ $(CFLAGS) -c $<
+
 # Compile C source files from lib/
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
 	@echo "Compiling $<..."
@@ -429,6 +434,9 @@ objs: $(OBJS) $(TEST_OBJS)
 
 # Ensure build and bin directories exist
 $(BUILD_DIR)/src:
+	@mkdir -p $@
+
+$(BUILD_DIR)/src/image2ascii/simd:
 	@mkdir -p $@
 
 $(BUILD_DIR)/lib:
