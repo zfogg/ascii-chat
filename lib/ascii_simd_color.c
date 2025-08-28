@@ -75,34 +75,6 @@ static inline uint8x16_t luma_to_ascii_vectorized(uint8x16_t luma_vec) {
  * ============================================================================
  */
 
-// RGB to ANSI 256-color conversion (6×6×6 cube + grays)
-static inline uint8_t rgb_to_ansi256(uint8_t r, uint8_t g, uint8_t b) {
-  // Convert to 6-level cube coordinates (0-5)
-  int cr = (r * 5 + 127) / 255; // Round to nearest
-  int cg = (g * 5 + 127) / 255;
-  int cb = (b * 5 + 127) / 255;
-
-  // Check if it's closer to a gray level (colors 232-255: 24 grays)
-  int gray = (r + g + b) / 3;
-  int closest_gray_idx = 232 + (gray * 23) / 255; // 232-255 range
-
-  // Calculate actual gray value for this index
-  int gray_level = 8 + (closest_gray_idx - 232) * 10; // 8 to 238
-  int gray_dist = abs(gray - gray_level);
-
-  // Calculate 6x6x6 cube color distance
-  int cube_r = (cr * 255) / 5;
-  int cube_g = (cg * 255) / 5;
-  int cube_b = (cb * 255) / 5;
-  int cube_dist = abs(r - cube_r) + abs(g - cube_g) + abs(b - cube_b);
-
-  if (gray_dist < cube_dist) {
-    return (uint8_t)closest_gray_idx;
-  } else {
-    return (uint8_t)(16 + cr * 36 + cg * 6 + cb); // 6x6x6 cube
-  }
-}
-
 // Precomputed 256-color SGR strings - ~1.5-2MB total but HUGE speed win
 typedef struct {
   char str[32]; // Max: "\e[38;5;255;48;5;255m" = 20 chars
@@ -167,14 +139,6 @@ static void init_sgr256_cache(void) {
   g_sgr256_initialized = true;
 }
 
-// Fast 256-color FG+BG sequence emission (single memcpy!)
-static inline char *append_sgr256_fg_bg(char *dst, uint8_t fg, uint8_t bg) {
-  init_sgr256_cache();
-  const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
-  memcpy(dst, sgr->str, sgr->len);
-  return dst + sgr->len;
-}
-
 // Fast 256-color FG-only sequences
 static sgr256_t g_sgr256_fg[256];
 static bool g_sgr256_fg_initialized = false;
@@ -209,13 +173,6 @@ static void init_sgr256_fg_cache(void) {
   }
 
   g_sgr256_fg_initialized = true;
-}
-
-static inline char *append_sgr256_fg(char *dst, uint8_t fg) {
-  init_sgr256_fg_cache();
-  const sgr256_t *sgr = &g_sgr256_fg[fg];
-  memcpy(dst, sgr->str, sgr->len);
-  return dst + sgr->len;
 }
 
 // FIX #5: Public cache prewarming functions for benchmarks
@@ -292,67 +249,6 @@ static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uin
   *dst++ = ';';
 
   // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
-  const dec3_t *rd = &g_ascii_cache.dec3_table[r];
-  if (rd->len == 1) {
-    *dst++ = rd->s[0];
-  } else if (rd->len == 2) {
-    dst[0] = rd->s[0];
-    dst[1] = rd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = rd->s[0];
-    dst[1] = rd->s[1];
-    dst[2] = rd->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  const dec3_t *gd = &g_ascii_cache.dec3_table[g];
-  if (gd->len == 1) {
-    *dst++ = gd->s[0];
-  } else if (gd->len == 2) {
-    dst[0] = gd->s[0];
-    dst[1] = gd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = gd->s[0];
-    dst[1] = gd->s[1];
-    dst[2] = gd->s[2];
-    dst += 3;
-  }
-  *dst++ = ';';
-
-  const dec3_t *bd = &g_ascii_cache.dec3_table[b];
-  if (bd->len == 1) {
-    *dst++ = bd->s[0];
-  } else if (bd->len == 2) {
-    dst[0] = bd->s[0];
-    dst[1] = bd->s[1];
-    dst += 2;
-  } else {
-    dst[0] = bd->s[0];
-    dst[1] = bd->s[1];
-    dst[2] = bd->s[2];
-    dst += 3;
-  }
-  *dst++ = 'm';
-  return dst;
-}
-
-// OPTIMIZATION 9: Direct writes - \x1b[48;2;R;G;Bm
-static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  // Constructor ensures initialization
-
-  // Direct character writes for "\033[48;2;"
-  *dst++ = '\033';
-  *dst++ = '[';
-  *dst++ = '4';
-  *dst++ = '8';
-  *dst++ = ';';
-  *dst++ = '2';
-  *dst++ = ';';
-
-  // Optimized digit copying
   const dec3_t *rd = &g_ascii_cache.dec3_table[r];
   if (rd->len == 1) {
     *dst++ = rd->s[0];
@@ -522,10 +418,13 @@ static inline int generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
   return (int)(result - dst);
 }
 
+#if defined(SIMD_SUPPORT_SSE2) || defined(SIMD_SUPPORT_SSSE3) || defined(SIMD_SUPPORT_AVX2) ||                         \
+    defined(SIMD_SUPPORT_AVX512) || defined(SIMD_SUPPORT_SVE)
 static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
   char *result = append_sgr_truecolor_bg(dst, r, g, b);
   return (int)(result - dst);
 }
+#endif
 
 /* ============================================================================
  * OPTIMIZATION #4: Fast 256-color implementations (defined after SGR functions)
@@ -539,18 +438,8 @@ size_t render_row_truecolor_ascii_runlength(const rgb_pixel_t *row, int width, c
 // ----------------
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path) {
 #ifdef SIMD_SUPPORT_NEON
-  // Use REP-safe renderers that handle newlines internally when supported
-  if (!use_background_mode) { // Foreground mode only for now
-    if (use_fast_path) {
-      // 256-color mode - use existing REP-safe renderer
-      return render_ascii_image_256fg_rep_safe(image);
-    } else {
-      // Truecolor mode - use new truecolor REP-safe renderer
-      return render_ascii_image_truecolor_fg_rep_safe(image);
-    }
-  }
-
-  // Fall through to row-by-row processing for background mode
+  // Use unified optimized NEON converter for all modes
+  return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path);
 #endif
 
   // Ensure all caches are initialized before any processing
@@ -1391,21 +1280,6 @@ static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_bu
 // Scalar Unified REP Implementations (for NEON dispatcher fallback)
 // ============================================================================
 
-// Scalar version for fallback use (palette256_index equivalent)
-// TODO: use me in scalar implementation
-static inline uint8_t palette256_index_scalar(uint8_t r, uint8_t g, uint8_t b) {
-  // Simple 6x6x6 cube quantization: (r/51)*36 + (g/51)*6 + (b/51) + 16
-  // Use fast multiply-shift instead of division: /51 ≈ *5 >> 8
-  uint8_t cr = (r * 5) >> 8; // 0..5
-  uint8_t cg = (g * 5) >> 8; // 0..5
-  uint8_t cb = (b * 5) >> 8; // 0..5
-
-  // Clamp to valid range
-  // No clamping needed: cr, cg, cb are always in 0..4 with current calculation
-
-  return 16 + cr * 36 + cg * 6 + cb; // 16..231 (216 colors)
-}
-
 size_t render_row_256color_background_rep_unified(const rgb_pixel_t *row, int width, char *dst, size_t cap) {
   // TODO: implement me for scalar -- using old method
   return convert_row_with_color_scalar(row, dst, cap, width, true);
@@ -1437,7 +1311,8 @@ size_t convert_row_with_color_optimized(const rgb_pixel_t *pixels, char *output_
 
 #ifdef SIMD_SUPPORT_NEON
   // Use NEON optimized renderer
-  return render_row_ascii_rep_dispatch_neon(pixels, width, output_buffer, buffer_size, background_mode, use_fast_path);
+  return render_row_ascii_rep_dispatch_neon_color(pixels, width, output_buffer, buffer_size, background_mode,
+                                                  use_fast_path);
 #else
 
   // Scalar fallback (scalar REP code)

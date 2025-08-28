@@ -1188,9 +1188,11 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
     // Log periodically to confirm we're receiving frames
     static int frame_count[MAX_CLIENTS] = {0};
     frame_count[client->client_id % MAX_CLIENTS]++;
-    if (frame_count[client->client_id % MAX_CLIENTS] % 100 == 0) {
-      log_debug("Client %u has sent %d IMAGE_FRAME packets", client->client_id,
-                frame_count[client->client_id % MAX_CLIENTS]);
+    if (frame_count[client->client_id % MAX_CLIENTS] % 25000 == 0) {
+      char pretty[64];
+      format_bytes_pretty(len, pretty, sizeof(pretty));
+      log_debug("Client %u has sent %d IMAGE_FRAME packets (%s)", client->client_id,
+                frame_count[client->client_id % MAX_CLIENTS], pretty);
     }
   }
   if (data && len > sizeof(uint32_t) * 2) {
@@ -1451,7 +1453,9 @@ void *client_receive_thread_func(void *arg) {
         if (result < 0) {
           log_debug("Failed to queue PONG response for client %u", client->client_id);
         } else {
+#ifdef DEBUG_NETWORK
           log_debug("Queued PONG response for client %u", client->client_id);
+#endif
         }
       }
       break;
@@ -1568,7 +1572,7 @@ void *client_send_thread_func(void *arg) {
       }
 
 // Successfully sent packet
-#ifdef NETWORK_DEBUG
+#ifdef DEBUG_NETWORK
       uint16_t pkt_type = ntohs(packet->header.type);
       log_debug("Sent packet type=%d to client %u (len=%zu)", pkt_type, client->client_id, packet->data_len);
 #endif
@@ -1648,9 +1652,11 @@ void *client_video_render_thread_func(void *arg) {
         // Successfully queued frame - log occasionally for monitoring
         static int success_count = 0;
         success_count++;
-        if (success_count == 1 || success_count % 240 == 0) { // Log every ~4 seconds at 60fps
-          log_info("Per-client render: Successfully queued %d ASCII frames for client %u (%ux%u, %zu bytes)",
-                   success_count, client->client_id, client->width, client->height, frame_size);
+        if (success_count == 1 || success_count % (30 * 60) == 0) { // Log every ~4 seconds at 60fps
+          char pretty_size[64];
+          format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
+          log_info("Per-client render: Successfully queued %d ASCII frames for client %u (%ux%u, %s)", success_count,
+                   client->client_id, client->width, client->height, pretty_size);
         }
       }
       free(ascii_frame);
@@ -1824,7 +1830,9 @@ int destroy_client_render_threads(client_info_t *client) {
   if (client->video_render_thread) {
     int result = pthread_join(client->video_render_thread, NULL);
     if (result == 0) {
+#ifdef DEBUG_THREADS
       log_debug("Video render thread joined for client %u", client->client_id);
+#endif
     } else {
       log_error("Failed to join video render thread for client %u: %s", client->client_id, strerror(result));
     }
@@ -1834,7 +1842,9 @@ int destroy_client_render_threads(client_info_t *client) {
   if (client->audio_render_thread) {
     int result = pthread_join(client->audio_render_thread, NULL);
     if (result == 0) {
+#ifdef DEBUG_THREADS
       log_debug("Audio render thread joined for client %u", client->client_id);
+#endif
     } else {
       log_error("Failed to join audio render thread for client %u: %s", client->client_id, strerror(result));
     }
@@ -1953,7 +1963,9 @@ int add_client(int socket, const char *client_ip, int port) {
     if (mixer_add_source(g_audio_mixer, client->client_id, client->incoming_audio_buffer) < 0) {
       log_warn("Failed to add client %u to audio mixer", client->client_id);
     } else {
+#ifdef DEBUG_AUDIO
       log_debug("Added client %u to audio mixer", client->client_id);
+#endif
     }
   }
 
@@ -1967,9 +1979,7 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   // Start send thread for this client
-  log_debug("SEND_THREAD_DEBUG: Creating send thread for client %u", client->client_id);
   if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
-    log_error("SEND_THREAD_DEBUG: FAILED to create send thread for client %u", client->client_id);
     log_error("Failed to create send thread for client %u", client->client_id);
     // Join the receive thread before cleaning up to prevent race conditions
     pthread_join(client->receive_thread, NULL);
@@ -1977,8 +1987,6 @@ int add_client(int socket, const char *client_ip, int port) {
     remove_client(client->client_id);
     return -1;
   }
-
-  log_info("Client %u initialized with dedicated send thread", client->client_id);
 
   // Queue initial server state to the new client
   server_state_packet_t state;
@@ -1995,8 +2003,10 @@ int add_client(int socket, const char *client_ip, int port) {
   if (packet_queue_enqueue(client->video_queue, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state), 0, true) < 0) {
     log_warn("Failed to queue initial server state for client %u", client->client_id);
   } else {
+#ifdef DEBUG_NETWORK
     log_info("Queued initial server state for client %u: %u connected clients", client->client_id,
              state.connected_client_count);
+#endif
   }
 
   // NEW: Create per-client rendering threads
@@ -2006,7 +2016,6 @@ int add_client(int socket, const char *client_ip, int port) {
     return -1;
   }
 
-  log_info("Added client %u from %s:%d with render threads", client->client_id, client_ip, port);
   return client->client_id;
 }
 
@@ -2099,7 +2108,9 @@ int remove_client(uint32_t client_id) {
       // Remove from audio mixer before clearing client data
       if (g_audio_mixer) {
         mixer_remove_source(g_audio_mixer, client_id);
+#ifdef DEBUG_AUDIO
         log_debug("Removed client %u from audio mixer", client_id);
+#endif
       }
 
       // Remove from hash table
@@ -2139,11 +2150,7 @@ int remove_client(uint32_t client_id) {
   }
 
   pthread_rwlock_unlock(&g_client_manager_rwlock);
-  // During shutdown, clients may be removed multiple times - don't spam error logs
-  if (!g_should_exit) {
-    log_error("Client %u not found for removal", client_id);
-  } else {
-    log_debug("Client %u: already removed during shutdown", client_id);
-  }
+
+  log_error("Client %u not found for removal", client_id);
   return -1;
 }

@@ -177,11 +177,13 @@ cd todo && make -f Makefile_simd ascii_simd_test
 ### 1. Enable Debug Logging
 Add these defines to see detailed logs:
 ```c
-#define NETWORK_DEBUG      // Network packet details
-#define COMPRESSION_DEBUG  // Compression statistics
-#define AUDIO_DEBUG       // Audio packet info
-#define DEBUG_THREADS     // Thread lifecycle
-#define MIXER_DEBUG       // Audio mixing details
+/*#define DEBUG_MEMORY*/     // Memory debugging is enabled by default with make
+#define DEBUG_NETWORK        // Network packet details
+#define DEBUG_COMPRESSION    // Compression statistics
+#define DEBUG_AUDIO          // Audio packet info
+#define DEBUG_THREADS        // Thread lifecycle
+#define DEBUG_MIXER          // Audio mixing details
+#define DEBUG_SOMETHING_ELSE // A feature or concept we need to debug.
 // When you make new logs, try to put them under those categories. Make a new
 // category if you need to and it will help the developer and you work and debug.
 ```
@@ -200,9 +202,7 @@ Add these defines to see detailed logs:
 
 **Video not displaying:**
 - Check if server is sending PACKET_TYPE_ASCII_FRAME (type 1)
-- Verify client handle_ascii_frame_packet() is being called
 - Check for CRC checksum mismatches in logs
-- Use `log_debug()` to trace packet flow
 
 **Memory crashes:**
 - Always use SAFE_MALLOC() macro instead of malloc()

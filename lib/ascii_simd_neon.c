@@ -183,13 +183,6 @@ static inline void emit_reset(Str *out) {
   str_append_bytes(out, "\x1b[0m", 4);
 }
 
-// Direct SGR string builders for our streaming function
-static inline char *append_sgr_reset(char *dst) {
-  static const char RESET[] = "\033[0m";
-  memcpy(dst, RESET, sizeof(RESET) - 1);
-  return dst + (sizeof(RESET) - 1);
-}
-
 // Fast 256-color SGR builders
 static inline char *append_sgr256_fg(char *dst, uint8_t fg) {
   uint8_t len;
@@ -198,89 +191,7 @@ static inline char *append_sgr256_fg(char *dst, uint8_t fg) {
   return dst + len;
 }
 
-// REP compression helper for single-byte characters
-// CRITICAL: This function can write up to 7 bytes (char + \x1b + [ + 3 digits + b)
-// Caller MUST ensure buffer has space for at least 7 bytes before calling
-static inline char *emit_run_rep(char *p, int run_len, char ch) {
-  if (run_len <= 0)
-    return p;
-  if (run_len == 1) {
-    *p++ = ch;
-    return p;
-  }
-  // Print one, then repeat (run_len - 1) via REP (CSI n b)
-  *p++ = ch;
-  int rep = run_len - 1;
-  *p++ = '\x1b';
-  *p++ = '[';
-  if (rep >= 100) {
-    *p++ = '0' + (rep / 100);
-    rep %= 100;
-    *p++ = '0' + (rep / 10);
-    *p++ = '0' + (rep % 10);
-  } else if (rep >= 10) {
-    *p++ = '0' + (rep / 10);
-    *p++ = '0' + (rep % 10);
-  } else {
-    *p++ = '0' + rep;
-  }
-  *p++ = 'b';
-  return p;
-}
-
-// REP compression helper that only emits the repeat sequence (character already emitted)
-static inline char *emit_rep_only(char *p, int rep_count) {
-  if (rep_count <= 0)
-    return p;
-  *p++ = '\x1b';
-  *p++ = '[';
-  if (rep_count >= 100) {
-    *p++ = '0' + (rep_count / 100);
-    rep_count %= 100;
-    *p++ = '0' + (rep_count / 10);
-    *p++ = '0' + (rep_count % 10);
-  } else if (rep_count >= 10) {
-    *p++ = '0' + (rep_count / 10);
-    *p++ = '0' + (rep_count % 10);
-  } else {
-    *p++ = '0' + rep_count;
-  }
-  *p++ = 'b';
-  return p;
-}
-
-// REP compression helper functions
-
 // Local fast SGR builder for truecolor FG+BG that writes into a char* buffer
-static inline char *append_sgr_truecolor_fg_bg_ptr(char *p, int fr, int fg, int fb, int br, int bg, int bb) {
-  // "\033[38;2;FR;FG;FB;48;2;BR;BG;BBm"
-  *p++ = '\033';
-  *p++ = '[';
-  *p++ = '3';
-  *p++ = '8';
-  *p++ = ';';
-  *p++ = '2';
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)fr, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)fg, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)fb, p);
-  *p++ = ';';
-  *p++ = '4';
-  *p++ = '8';
-  *p++ = ';';
-  *p++ = '2';
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)br, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)bg, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)bb, p);
-  *p++ = 'm';
-  return p;
-}
-
 static inline char *append_sgr256_fg_bg(char *dst, uint8_t fg, uint8_t bg) {
   uint8_t len;
   char *sgr_str = get_sgr256_fg_bg_string(fg, bg, &len);
@@ -335,7 +246,7 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           const uint8_t *fg_idx,
                                           const uint8_t *bg_idx,   // 256-color indices (NULL if using RGB)
                                           const char *ascii_chars, // ASCII characters for traditional ASCII art
-                                          int width, char *dst, size_t cap, bool use_256color, bool is_truecolor) {
+                                          int width, char *dst, size_t cap, bool is_truecolor) {
   // log_debug("CORRUPTION DEBUG: Starting write_row_rep_from_arrays_enhanced - width=%d, cap=%zu, is_truecolor=%d",
   // width, cap, is_truecolor);
 
@@ -566,13 +477,12 @@ buffer_full:
 static size_t write_row_rep_from_arrays(const uint8_t *fg_idx,
                                         const uint8_t *bg_idx,   // NULL if FG-only
                                         const char *ascii_chars, // ASCII characters for traditional ASCII art
-                                        int width, char *dst, size_t cap, bool use_256color) {
-  return write_row_rep_from_arrays_enhanced(NULL, NULL, NULL, // No truecolor FG RGB
-                                            NULL, NULL, NULL, // No truecolor BG RGB
-                                            fg_idx, bg_idx,   // 256-color indices
-                                            ascii_chars,      // ASCII characters
-                                            width, dst, cap, use_256color,
-                                            false); // Not truecolor mode
+                                        int width, char *dst, size_t cap) {
+  return write_row_rep_from_arrays_enhanced(NULL, NULL, NULL,        // No truecolor FG RGB
+                                            NULL, NULL, NULL,        // No truecolor BG RGB
+                                            fg_idx, bg_idx,          // 256-color indices
+                                            ascii_chars,             // ASCII characters
+                                            width, dst, cap, false); // Not truecolor mode
 }
 
 // ------------------------------------------------------------
@@ -677,9 +587,6 @@ static inline uint8x16_t q6_from_u8(uint8x16_t x) {
 #define CUBE_GRAY_THRESHOLD 10
 #endif
 
-// Ordered dither matrix for reducing color variation and extending runs
-static const uint8_t dither4x4[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
-
 // Apply ordered dithering to reduce color variations (creates longer runs)
 static inline uint8x16_t apply_ordered_dither(uint8x16_t color, int pixel_offset, uint8_t dither_strength) {
   // Speed mode: disable dithering to reduce color variation and CPU
@@ -743,31 +650,6 @@ uint8x16_t palette256_index_dithered(uint8x16_t r, uint8x16_t g, uint8x16_t b, i
   return vbslq_u8(is_gray, idx_gray, idx_cube);
 }
 
-// ULTRA-FAST emergency fix - just use luminance for color approximation
-static inline uint8x16_t palette256_index(uint8x16_t r, uint8x16_t g, uint8x16_t b) {
-  // EMERGENCY FIX: Ultra-simple - just map luminance to 16-255 color range
-  // This is incorrect color-wise but extremely fast
-  uint8x16_t luma = simd_luma(r, g, b);
-
-  // Map luminance 0-255 -> color indices 16-255 (240 colors)
-  // idx = 16 + (luma * 240) / 256 = 16 + (luma * 15) / 16
-  uint16x8_t luma_lo = vmovl_u8(vget_low_u8(luma));
-  uint16x8_t luma_hi = vmovl_u8(vget_high_u8(luma));
-
-  // Multiply by 15, then shift by 4 (divide by 16)
-  uint16x8_t scaled_lo = vshrq_n_u16(vmulq_n_u16(luma_lo, 15), 4);
-  uint16x8_t scaled_hi = vshrq_n_u16(vmulq_n_u16(luma_hi, 15), 4);
-
-  // Add base offset 16
-  uint16x8_t idx_lo = vaddq_u16(scaled_lo, vdupq_n_u16(16));
-  uint16x8_t idx_hi = vaddq_u16(scaled_hi, vdupq_n_u16(16));
-
-  return vcombine_u8(vqmovn_u16(idx_lo), vqmovn_u16(idx_hi));
-}
-
-// ===== add with the other declarations =====
-
-// ===== paste alongside other renderers =====
 // Background-colored ASCII: BG = pixel color, FG ∈ {white, black} chosen by luma.
 // ANSI RLE: groups spans where (FG,BG) stays constant; glyphs may vary within the run.
 void render_ascii_bgcolor(const ImageRGB *img, Str *out) {
@@ -1135,7 +1017,7 @@ size_t render_row_neon_256_fg_rep(const rgb_pixel_t *pixels, int width, char *ds
   }
 
   // Use REP compression (FG only, with ASCII chars)
-  size_t result = write_row_rep_from_arrays(fg_idx, NULL, ascii_chars, width, dst, cap, true);
+  size_t result = write_row_rep_from_arrays(fg_idx, NULL, ascii_chars, width, dst, cap);
 
   // DEBUG: Log output result
   log_debug("NEON 256: Generated %zu bytes of output", result);
@@ -1180,28 +1062,18 @@ static inline size_t write_decimal(int value, char *dst) {
   return pos;
 }
 
-// NEON Truecolor Foreground Renderer with REP compression - OPTIMIZED
+// NEON Truecolor Foreground Renderer - SIMPLIFIED APPROACH (NO RLE)
+// Matches scalar performance by using NEON only for luma conversion,
+// then simple per-pixel output like the fast scalar version
 size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, char *dst, size_t cap) {
-  log_debug("NEON TRUECOLOR: Processing row with width=%d, cap=%zu", width, cap);
-
-  // Use bulk array processing instead of manual pixel-by-pixel
-  // Allocate arrays for RGB and ASCII values
-  ensure_tls_cap((size_t)width);
-  uint8_t *fg_r = tls_u8_a;
-  uint8_t *fg_g = tls_u8_b;
-  uint8_t *fg_b = tls_u8_c;
-  char *ascii_chars = (char *)tls_u8_d; // reuse as char buffer
+  char *current_pos = dst;
+  char *buffer_end = dst + cap;
 
   int i = 0;
-  // Process pixels in NEON chunks of 16
-  while (i + 16 <= width) {
-    // Load 16 RGB pixels at once
-    uint8x16x3_t rgb = vld3q_u8((const uint8_t *)(pixels + i));
 
-    // Store RGB arrays directly
-    vst1q_u8(&fg_r[i], rgb.val[0]);
-    vst1q_u8(&fg_g[i], rgb.val[1]);
-    vst1q_u8(&fg_b[i], rgb.val[2]);
+  // Process 16 pixels at a time with NEON for luma + color generation
+  while (i + 16 <= width && current_pos + 1024 < buffer_end) { // Conservative buffer check
+    uint8x16x3_t rgb = vld3q_u8((const uint8_t *)(pixels + i));
 
     // Calculate luminance: Y = (77R + 150G + 29B) >> 8
     uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb.val[0]));
@@ -1216,55 +1088,78 @@ size_t render_row_neon_truecolor_fg_rep(const rgb_pixel_t *pixels, int width, ch
 
     uint8x16_t luma = vcombine_u8(vshrn_n_u16(luma_lo, 8), vshrn_n_u16(luma_hi, 8));
 
-    // CRITICAL FIX: Use scalar lookup like the rest of the codebase
-    // The luminance_palette is already a 256-entry direct lookup table
-    uint8_t luma_array[16];
-    vst1q_u8(luma_array, luma);
-    for (int j = 0; j < 16; j++) {
-      ascii_chars[i + j] = g_ascii_cache.luminance_palette[luma_array[j]];
-    }
+    // Extract RGB and luma values for scalar processing
+    uint8_t r_vals[16], g_vals[16], b_vals[16], luma_vals[16];
+    vst1q_u8(r_vals, rgb.val[0]);
+    vst1q_u8(g_vals, rgb.val[1]);
+    vst1q_u8(b_vals, rgb.val[2]);
+    vst1q_u8(luma_vals, luma);
 
-    // DEBUG: Log first NEON chunk processing
-    if (i == 0) {
-      log_debug("NEON TRUECOLOR: First chunk luminance: %d %d %d %d", luma_array[0], luma_array[1], luma_array[2],
-                luma_array[3]);
-      log_debug("NEON TRUECOLOR: First chunk ASCII: '%c' '%c' '%c' '%c'", ascii_chars[0], ascii_chars[1],
-                ascii_chars[2], ascii_chars[3]);
+    // Process each pixel in the 16-pixel chunk
+    for (int j = 0; j < 16; j++) {
+      // Get ASCII character from luma
+      char ascii_char = g_ascii_cache.luminance_palette[luma_vals[j]];
+
+      // Generate ANSI foreground color sequence: \033[38;2;R;G;Bm
+      size_t remaining = buffer_end - current_pos;
+      if (remaining < 64)
+        break; // Safety check
+
+      // Use optimized color generation
+      memcpy(current_pos, "\033[38;2;", 7);
+      current_pos += 7;
+      current_pos += write_rgb_triplet(r_vals[j], current_pos);
+      *current_pos++ = ';';
+      current_pos += write_rgb_triplet(g_vals[j], current_pos);
+      *current_pos++ = ';';
+      current_pos += write_rgb_triplet(b_vals[j], current_pos);
+      *current_pos++ = 'm';
+
+      // Write ASCII character
+      *current_pos++ = ascii_char;
     }
 
     i += 16;
   }
 
-  // Handle final few pixels (< 16) with scalar processing if needed
+  // Handle remaining pixels with scalar processing (matches scalar implementation exactly)
   for (; i < width; i++) {
-    const rgb_pixel_t *px = &pixels[i];
-    fg_r[i] = px->r;
-    fg_g[i] = px->g;
-    fg_b[i] = px->b;
+    const rgb_pixel_t *pixel = &pixels[i];
 
-    uint8_t luma = (uint8_t)((LUMA_RED * px->r + LUMA_GREEN * px->g + LUMA_BLUE * px->b) >> 8);
-    ascii_chars[i] = g_ascii_cache.luminance_palette[luma];
+    // Calculate luminance (scalar)
+    int luminance = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b) >> 8;
+    if (luminance > 255)
+      luminance = 255;
+
+    // Get ASCII character - Use global luminance palette
+    char ascii_char = g_ascii_cache.luminance_palette[luminance];
+
+    size_t remaining = buffer_end - current_pos;
+    if (remaining < 64)
+      break; // Safety check
+
+    // Generate ANSI foreground color (matches scalar exactly)
+    memcpy(current_pos, "\033[38;2;", 7);
+    current_pos += 7;
+    current_pos += write_rgb_triplet(pixel->r, current_pos);
+    *current_pos++ = ';';
+    current_pos += write_rgb_triplet(pixel->g, current_pos);
+    *current_pos++ = ';';
+    current_pos += write_rgb_triplet(pixel->b, current_pos);
+    *current_pos++ = 'm';
+
+    // Write ASCII character
+    *current_pos++ = ascii_char;
   }
 
-  // DEBUG: Log final ASCII characters before compression
-  if (width >= 10) {
-    log_debug("NEON TRUECOLOR: Final ASCII chars: '%.10s'", ascii_chars);
+  // Reset sequence (matches scalar)
+  size_t remaining = buffer_end - current_pos;
+  if (remaining >= 5) { // \033[0m\n
+    memcpy(current_pos, "\033[0m\n", 5);
+    current_pos += 5;
   }
 
-  // Use unified REP compression with truecolor RGB arrays and ASCII chars
-  size_t result = write_row_rep_from_arrays_enhanced(fg_r, fg_g, fg_b, NULL, NULL, NULL, NULL, NULL, ascii_chars, width,
-                                                     dst, cap, false, true);
-
-  // DEBUG: Log output result
-  log_debug("NEON TRUECOLOR: Generated %zu bytes of output", result);
-  if (result > 0 && result < 100) {
-    char debug_output[101];
-    memcpy(debug_output, dst, (result > 100) ? 100 : result);
-    debug_output[(result > 100) ? 100 : result] = '\0';
-    log_debug("NEON TRUECOLOR: Output preview: '%.50s'", debug_output);
-  }
-
-  return result;
+  return current_pos - dst;
 }
 
 // Forward declarations for scalar unified REP functions (implemented in ascii_simd_color.c)
@@ -1487,35 +1382,6 @@ static inline uint8_t rgb_to_ansi256_fg_neon(uint8_t r, uint8_t g, uint8_t b) {
   } else {
     return (uint8_t)(16 + cr * 36 + cg * 6 + cb);
   }
-}
-
-static inline void append_rep_sequence(char **pos, char *end, int repeat_minus_one) {
-  // emits "\x1b[" <n> "b"
-  if (*pos + 16 >= end)
-    return; // safety check
-
-  **pos = '\x1b';
-  (*pos)++;
-  **pos = '[';
-  (*pos)++;
-
-  // decimal conversion
-  int v = repeat_minus_one;
-  char tmp[10];
-  int t = 0;
-  while (v > 0) {
-    tmp[t++] = (char)('0' + (v % 10));
-    v /= 10;
-  }
-  if (t == 0)
-    tmp[t++] = '0';
-  for (int i = t - 1; i >= 0; --i) {
-    **pos = tmp[i];
-    (*pos)++;
-  }
-
-  **pos = 'b';
-  (*pos)++;
 }
 
 static inline void append_sgr256_fg_simple(char **pos, char *end, uint8_t idx) {
@@ -1801,8 +1667,8 @@ char *render_ascii_image_truecolor_fg_rep_safe(const image_t *image) {
 #endif // main block of code endif
 
 // Unified NEON + scalar REP dispatcher
-size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, char *dst, size_t cap,
-                                          bool background_mode, bool use_fast_path) {
+size_t render_row_ascii_rep_dispatch_neon_color(const rgb_pixel_t *row, int width, char *dst, size_t cap,
+                                                bool background_mode, bool use_fast_path) {
   if (background_mode) {
     if (use_fast_path) {
       return render_row_256color_background_rep_unified(row, width, dst, cap);
@@ -1827,4 +1693,834 @@ size_t render_row_ascii_rep_dispatch_neon(const rgb_pixel_t *row, int width, cha
     }
 #endif
   }
+}
+
+//=============================================================================
+// Simple Monochrome ASCII Function (matches scalar image_print performance)
+//=============================================================================
+char *render_ascii_image_monochrome_neon(const image_t *image) {
+  if (!image || !image->pixels) {
+    return NULL;
+  }
+
+  const int h = image->h;
+  const int w = image->w;
+
+  if (h <= 0 || w <= 0) {
+    return NULL;
+  }
+
+  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
+  const size_t len = (size_t)h * ((size_t)w + 1);
+
+  char *output;
+  SAFE_MALLOC(output, len, char *);
+
+  char *pos = output;
+  const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
+
+  // Pure NEON processing - no scalar fallbacks
+  for (int y = 0; y < h; y++) {
+    const rgb_pixel_t *row = &pixels[y * w];
+    int x = 0;
+
+    // Process 16 pixels at a time with NEON
+    for (; x + 15 < w; x += 16) {
+      // Load 16 RGB pixels (48 bytes)
+      uint8x16x3_t rgb = vld3q_u8((const uint8_t *)(row + x));
+
+      // Calculate luminance for all 16 pixels: (77*R + 150*G + 29*B + 128) >> 8
+      uint16x8_t luma_lo = vmull_u8(vget_low_u8(rgb.val[0]), vdup_n_u8(77)); // R * 77
+      luma_lo = vmlal_u8(luma_lo, vget_low_u8(rgb.val[1]), vdup_n_u8(150));  // + G * 150
+      luma_lo = vmlal_u8(luma_lo, vget_low_u8(rgb.val[2]), vdup_n_u8(29));   // + B * 29
+      luma_lo = vaddq_u16(luma_lo, vdupq_n_u16(128));                        // + 128 (rounding)
+      luma_lo = vshrq_n_u16(luma_lo, 8);                                     // >> 8
+
+      uint16x8_t luma_hi = vmull_u8(vget_high_u8(rgb.val[0]), vdup_n_u8(77));
+      luma_hi = vmlal_u8(luma_hi, vget_high_u8(rgb.val[1]), vdup_n_u8(150));
+      luma_hi = vmlal_u8(luma_hi, vget_high_u8(rgb.val[2]), vdup_n_u8(29));
+      luma_hi = vaddq_u16(luma_hi, vdupq_n_u16(128));
+      luma_hi = vshrq_n_u16(luma_hi, 8);
+
+      // Convert 16-bit luminance back to 8-bit
+      uint8x16_t luminance = vcombine_u8(vmovn_u16(luma_lo), vmovn_u16(luma_hi));
+
+      // Store luminance values and convert to ASCII characters
+      uint8_t luma_array[16];
+      vst1q_u8(luma_array, luminance);
+
+      // Convert luminance to ASCII characters using palette lookup
+      for (int i = 0; i < 16; i++) {
+        pos[i] = g_ascii_cache.luminance_palette[luma_array[i]];
+      }
+      pos += 16;
+    }
+
+    // Handle remaining pixels with scalar code
+    for (; x < w; x++) {
+      const rgb_pixel_t pixel = row[x];
+      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      *pos++ = g_ascii_cache.luminance_palette[luminance];
+    }
+
+    // Add newline (except for last row)
+    if (y < h - 1) {
+      *pos++ = '\n';
+    }
+  }
+
+  // Null terminate
+  *pos = '\0';
+
+  return output;
+}
+
+//=============================================================================
+// Optimized NEON Truecolor Converter (based on ChatGPT reference)
+//=============================================================================
+
+// Dynamic output buffer (auto-expanding)
+typedef struct {
+  char *buf;
+  size_t len;
+  size_t cap;
+} neon_outbuf_t;
+
+static inline void ob_reserve(neon_outbuf_t *ob, size_t need) {
+  if (ob->len + need <= ob->cap)
+    return;
+  size_t ncap = ob->cap ? ob->cap : 4096;
+  while (ncap < ob->len + need)
+    ncap = (ncap * 3) / 2;
+  char *nbuf = (char *)realloc(ob->buf, ncap);
+  if (!nbuf) {
+    abort();
+  }
+  ob->buf = nbuf;
+  ob->cap = ncap;
+}
+
+static inline void ob_putc(neon_outbuf_t *ob, char c) {
+  ob_reserve(ob, 1);
+  ob->buf[ob->len++] = c;
+}
+
+static inline void ob_write(neon_outbuf_t *ob, const char *s, size_t n) {
+  ob_reserve(ob, n);
+  memcpy(ob->buf + ob->len, s, n);
+  ob->len += n;
+}
+
+static inline void ob_term(neon_outbuf_t *ob) {
+  ob_putc(ob, '\0');
+}
+
+// Fast decimal for uint8_t (0..255)
+static inline void ob_u8(neon_outbuf_t *ob, uint8_t v) {
+  if (v >= 100) {
+    uint8_t d0 = v / 100;
+    uint8_t r = v % 100;
+    uint8_t d1 = r / 10;
+    uint8_t d2 = r % 10;
+    ob_putc(ob, '0' + d0);
+    ob_putc(ob, '0' + d1);
+    ob_putc(ob, '0' + d2);
+  } else if (v >= 10) {
+    uint8_t d1 = v / 10;
+    uint8_t d2 = v % 10;
+    ob_putc(ob, '0' + d1);
+    ob_putc(ob, '0' + d2);
+  } else {
+    ob_putc(ob, '0' + v);
+  }
+}
+
+// Fast decimal for REP counts
+static inline int digits_u32(uint32_t v) {
+  if (v >= 1000000000u)
+    return 10;
+  if (v >= 100000000u)
+    return 9;
+  if (v >= 10000000u)
+    return 8;
+  if (v >= 1000000u)
+    return 7;
+  if (v >= 100000u)
+    return 6;
+  if (v >= 10000u)
+    return 5;
+  if (v >= 1000u)
+    return 4;
+  if (v >= 100u)
+    return 3;
+  if (v >= 10u)
+    return 2;
+  return 1;
+}
+
+static inline void ob_u32(neon_outbuf_t *ob, uint32_t v) {
+  char tmp[10];
+  int i = 0;
+  do {
+    tmp[i++] = '0' + (v % 10u);
+    v /= 10u;
+  } while (v);
+  ob_reserve(ob, (size_t)i);
+  while (i--)
+    ob->buf[ob->len++] = tmp[i];
+}
+
+#define RAMP64_SIZE 64
+
+static void build_ramp64(uint8_t ramp64[RAMP64_SIZE]) {
+  // Use the project's ASCII character palette from g_ascii_cache
+  const char *ascii_chars = g_ascii_cache.ascii_chars; // "   ...',;:clodxkO0KXNWM"
+  const int L = strlen(ascii_chars);                   // 24 chars
+
+  for (int i = 0; i < RAMP64_SIZE; i++) {
+    // Map 0-63 to 0-23 (project's 24-char palette)
+    int idx = (i * (L - 1) + (RAMP64_SIZE - 1) / 2) / (RAMP64_SIZE - 1); // rounded
+    ramp64[i] = (uint8_t)ascii_chars[idx];
+  }
+}
+
+// Truecolor SGR emission (foreground)
+static inline void emit_set_truecolor_fg(neon_outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
+  // ESC[38;2;R;G;Bm
+  ob_putc(ob, 0x1b);
+  ob_putc(ob, '[');
+  ob_write(ob, "38;2;", 5);
+  ob_u8(ob, r);
+  ob_putc(ob, ';');
+  ob_u8(ob, g);
+  ob_putc(ob, ';');
+  ob_u8(ob, b);
+  ob_putc(ob, 'm');
+}
+
+// Truecolor SGR emission (background)
+static inline void emit_set_truecolor_bg(neon_outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
+  // ESC[48;2;R;G;Bm
+  ob_putc(ob, 0x1b);
+  ob_putc(ob, '[');
+  ob_write(ob, "48;2;", 5);
+  ob_u8(ob, r);
+  ob_putc(ob, ';');
+  ob_u8(ob, g);
+  ob_putc(ob, ';');
+  ob_u8(ob, b);
+  ob_putc(ob, 'm');
+}
+
+static inline void emit_reset_neon(neon_outbuf_t *ob) {
+  ob_putc(ob, 0x1b);
+  ob_putc(ob, '[');
+  ob_putc(ob, '0');
+  ob_putc(ob, 'm');
+}
+
+// REP profitability calculation
+static inline bool rep_is_profitable(uint32_t runlen) {
+  if (runlen <= 1)
+    return false;
+  uint32_t k = runlen - 1;
+  return k > (uint32_t)(digits_u32(k) + 3);
+}
+
+static inline void emit_rep(neon_outbuf_t *ob, uint32_t extra) {
+  // ESC [ extra b
+  ob_putc(ob, 0x1b);
+  ob_putc(ob, '[');
+  ob_u32(ob, extra);
+  ob_putc(ob, 'b');
+}
+
+// Optimized NEON truecolor converter based on ChatGPT reference
+char *render_truecolor_ascii_neon_optimized(const image_t *image) {
+  if (!image || !image->pixels) {
+    return NULL;
+  }
+
+  const int width = image->w;
+  const int height = image->h;
+
+  if (width <= 0 || height <= 0) {
+    char *empty;
+    SAFE_MALLOC(empty, 1, char *);
+    empty[0] = '\0';
+    return empty;
+  }
+
+  neon_outbuf_t ob = {0};
+  // Estimate buffer size: ~8 bytes per pixel + overhead
+  ob.cap = (size_t)height * (size_t)width * 8u + (size_t)height * 16u + 64u;
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf)
+    return NULL;
+
+  // Build 64-entry glyph LUT for vqtbl4q_u8
+  uint8_t ramp64[RAMP64_SIZE];
+  build_ramp64(ramp64);
+
+  uint8x16x4_t tbl; // 4 * 16 = 64 entries
+  tbl.val[0] = vld1q_u8(&ramp64[0]);
+  tbl.val[1] = vld1q_u8(&ramp64[16]);
+  tbl.val[2] = vld1q_u8(&ramp64[32]);
+  tbl.val[3] = vld1q_u8(&ramp64[48]);
+
+  // Track current SGR color to avoid redundant escapes
+  int curR = -1, curG = -1, curB = -1;
+
+  for (int y = 0; y < height; y++) {
+    const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
+    int x = 0;
+
+    // Process 16-pixel chunks with NEON
+    while (x + 16 <= width) {
+      // Load 16 pixels: R,G,B interleaved
+      const uint8_t *p = (const uint8_t *)(row + x);
+      uint8x16x3_t pix = vld3q_u8(p); // 48 bytes
+
+      // Vector luminance: Y ≈ (77*R + 150*G + 29*B + 128) >> 8
+      uint16x8_t ylo = vmull_u8(vget_low_u8(pix.val[0]), vdup_n_u8(77));
+      ylo = vmlal_u8(ylo, vget_low_u8(pix.val[1]), vdup_n_u8(150));
+      ylo = vmlal_u8(ylo, vget_low_u8(pix.val[2]), vdup_n_u8(29));
+      ylo = vaddq_u16(ylo, vdupq_n_u16(128));
+      ylo = vshrq_n_u16(ylo, 8);
+
+      uint16x8_t yhi = vmull_u8(vget_high_u8(pix.val[0]), vdup_n_u8(77));
+      yhi = vmlal_u8(yhi, vget_high_u8(pix.val[1]), vdup_n_u8(150));
+      yhi = vmlal_u8(yhi, vget_high_u8(pix.val[2]), vdup_n_u8(29));
+      yhi = vaddq_u16(yhi, vdupq_n_u16(128));
+      yhi = vshrq_n_u16(yhi, 8);
+
+      uint8x16_t y8 = vcombine_u8(vmovn_u16(ylo), vmovn_u16(yhi));
+      uint8x16_t idx = vshrq_n_u8(y8, 2); // 0..63
+
+      // 64-entry glyph lookup using vqtbl4q_u8
+      uint8x16_t glyph = vqtbl4q_u8(tbl, idx);
+
+      // Spill to arrays for RLE + ANSI emission
+      uint8_t gbuf[16], rbuf[16], gbuf_green[16], bbuf[16];
+      vst1q_u8(gbuf, glyph);
+      vst1q_u8(rbuf, pix.val[0]);
+      vst1q_u8(gbuf_green, pix.val[1]);
+      vst1q_u8(bbuf, pix.val[2]);
+
+      // Emit with RLE on (glyph, color) runs
+      for (int i = 0; i < 16;) {
+        const uint8_t ch = gbuf[i];
+        const uint8_t r = rbuf[i];
+        const uint8_t g = gbuf_green[i];
+        const uint8_t b = bbuf[i];
+
+        int j = i + 1;
+        // Find run of identical (glyph, color)
+        while (j < 16 && gbuf[j] == ch && rbuf[j] == r && gbuf_green[j] == g && bbuf[j] == b) {
+          j++;
+        }
+        const uint32_t run = (uint32_t)(j - i);
+
+        // Set color if changed
+        if (r != curR || g != curG || b != curB) {
+          emit_set_truecolor_fg(&ob, r, g, b);
+          curR = r;
+          curG = g;
+          curB = b;
+        }
+
+        // Emit character
+        ob_putc(&ob, (char)ch);
+
+        // Use REP if profitable
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
+        } else {
+          for (uint32_t k = 1; k < run; k++) {
+            ob_putc(&ob, (char)ch);
+          }
+        }
+        i = j;
+      }
+      x += 16;
+    }
+
+    // Scalar tail for remaining pixels
+    for (; x < width;) {
+      const rgb_pixel_t *p = &row[x];
+      // Luminance calculation (matches NEON)
+      uint32_t R = p->r, G = p->g, B = p->b;
+      uint8_t Y = (uint8_t)((77u * R + 150u * G + 29u * B + 128u) >> 8);
+      uint8_t ch = ramp64[Y >> 2];
+
+      // Find run of identical (glyph, color)
+      int j = x + 1;
+      while (j < width) {
+        const rgb_pixel_t *q = &row[j];
+        uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
+        uint8_t Y2 = (uint8_t)((77u * R2 + 150u * G2 + 29u * B2 + 128u) >> 8);
+        if (((Y2 >> 2) != (Y >> 2)) || R2 != R || G2 != G || B2 != B)
+          break;
+        j++;
+      }
+      uint32_t run = (uint32_t)(j - x);
+
+      // Set color if changed
+      if ((int)R != curR || (int)G != curG || (int)B != curB) {
+        emit_set_truecolor_fg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+        curR = (int)R;
+        curG = (int)G;
+        curB = (int)B;
+      }
+
+      // Emit character
+      ob_putc(&ob, (char)ch);
+
+      // Use REP if profitable
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_putc(&ob, (char)ch);
+        }
+      }
+      x = j;
+    }
+
+    // End row: reset SGR, newline, invalidate color cache
+    emit_reset_neon(&ob);
+    ob_putc(&ob, '\n');
+    curR = curG = curB = -1;
+  }
+
+  ob_term(&ob);
+  return ob.buf;
+}
+
+// 256-color palette mapping (RGB to ANSI 256 color index)
+static inline uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
+  // Use existing project function for consistency
+  return (uint8_t)(16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51));
+}
+
+// 256-color SGR emission (foreground)
+static inline void emit_set_256_color_fg(neon_outbuf_t *ob, uint8_t color_idx) {
+  // ESC[38;5;Nm
+  ob_putc(ob, 0x1b);
+  ob_putc(ob, '[');
+  ob_write(ob, "38;5;", 5);
+  ob_u8(ob, color_idx);
+  ob_putc(ob, 'm');
+}
+
+// 256-color SGR emission (background)
+static inline void emit_set_256_color_bg(neon_outbuf_t *ob, uint8_t color_idx) {
+  // ESC[48;5;Nm
+  ob_putc(ob, 0x1b);
+  ob_putc(ob, '[');
+  ob_write(ob, "48;5;", 5);
+  ob_u8(ob, color_idx);
+  ob_putc(ob, 'm');
+}
+
+// Optimized NEON 256-color converter (based on ChatGPT reference)
+char *render_256color_ascii_neon_optimized(const image_t *image) {
+  if (!image || !image->pixels) {
+    return NULL;
+  }
+
+  const int width = image->w;
+  const int height = image->h;
+
+  if (width <= 0 || height <= 0) {
+    char *empty;
+    SAFE_MALLOC(empty, 1, char *);
+    empty[0] = '\0';
+    return empty;
+  }
+
+  neon_outbuf_t ob = {0};
+  // 256-color uses shorter escape sequences than truecolor
+  ob.cap = (size_t)height * (size_t)width * 6u + (size_t)height * 12u + 64u;
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf)
+    return NULL;
+
+  // Build 64-entry glyph LUT for vqtbl4q_u8 (reuse same function)
+  uint8_t ramp64[RAMP64_SIZE];
+  build_ramp64(ramp64);
+
+  uint8x16x4_t tbl; // 4 * 16 = 64 entries
+  tbl.val[0] = vld1q_u8(&ramp64[0]);
+  tbl.val[1] = vld1q_u8(&ramp64[16]);
+  tbl.val[2] = vld1q_u8(&ramp64[32]);
+  tbl.val[3] = vld1q_u8(&ramp64[48]);
+
+  // Track current SGR 256-color index to avoid redundant escapes
+  int cur_color_idx = -1;
+
+  for (int y = 0; y < height; y++) {
+    const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
+    int x = 0;
+
+    // Process 16-pixel chunks with NEON
+    while (x + 16 <= width) {
+      // Load 16 pixels: R,G,B interleaved
+      const uint8_t *p = (const uint8_t *)(row + x);
+      uint8x16x3_t pix = vld3q_u8(p); // 48 bytes
+
+      // Vector luminance: Y ≈ (77*R + 150*G + 29*B + 128) >> 8
+      uint16x8_t ylo = vmull_u8(vget_low_u8(pix.val[0]), vdup_n_u8(77));
+      ylo = vmlal_u8(ylo, vget_low_u8(pix.val[1]), vdup_n_u8(150));
+      ylo = vmlal_u8(ylo, vget_low_u8(pix.val[2]), vdup_n_u8(29));
+      ylo = vaddq_u16(ylo, vdupq_n_u16(128));
+      ylo = vshrq_n_u16(ylo, 8);
+
+      uint16x8_t yhi = vmull_u8(vget_high_u8(pix.val[0]), vdup_n_u8(77));
+      yhi = vmlal_u8(yhi, vget_high_u8(pix.val[1]), vdup_n_u8(150));
+      yhi = vmlal_u8(yhi, vget_high_u8(pix.val[2]), vdup_n_u8(29));
+      yhi = vaddq_u16(yhi, vdupq_n_u16(128));
+      yhi = vshrq_n_u16(yhi, 8);
+
+      uint8x16_t y8 = vcombine_u8(vmovn_u16(ylo), vmovn_u16(yhi));
+      uint8x16_t idx = vshrq_n_u8(y8, 2); // 0..63
+
+      // 64-entry glyph lookup using vqtbl4q_u8
+      uint8x16_t glyph = vqtbl4q_u8(tbl, idx);
+
+      // Spill to arrays for RLE + ANSI emission
+      uint8_t gbuf[16], rbuf[16], gbuf_green[16], bbuf[16];
+      vst1q_u8(gbuf, glyph);
+      vst1q_u8(rbuf, pix.val[0]);
+      vst1q_u8(gbuf_green, pix.val[1]);
+      vst1q_u8(bbuf, pix.val[2]);
+
+      // Convert RGB to 256-color indices
+      uint8_t color_indices[16];
+      for (int i = 0; i < 16; i++) {
+        color_indices[i] = rgb_to_256color(rbuf[i], gbuf_green[i], bbuf[i]);
+      }
+
+      // Emit with RLE on (glyph, color) runs
+      for (int i = 0; i < 16;) {
+        const uint8_t ch = gbuf[i];
+        const uint8_t color_idx = color_indices[i];
+
+        int j = i + 1;
+        // Find run of identical (glyph, color)
+        while (j < 16 && gbuf[j] == ch && color_indices[j] == color_idx) {
+          j++;
+        }
+        const uint32_t run = (uint32_t)(j - i);
+
+        // Set color if changed
+        if (color_idx != cur_color_idx) {
+          emit_set_256_color_fg(&ob, color_idx);
+          cur_color_idx = color_idx;
+        }
+
+        // Emit character
+        ob_putc(&ob, (char)ch);
+
+        // Use REP if profitable
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
+        } else {
+          for (uint32_t k = 1; k < run; k++) {
+            ob_putc(&ob, (char)ch);
+          }
+        }
+        i = j;
+      }
+      x += 16;
+    }
+
+    // Scalar tail for remaining pixels
+    for (; x < width;) {
+      const rgb_pixel_t *p = &row[x];
+      // Luminance calculation (matches NEON)
+      uint32_t R = p->r, G = p->g, B = p->b;
+      uint8_t Y = (uint8_t)((77u * R + 150u * G + 29u * B + 128u) >> 8);
+      uint8_t ch = ramp64[Y >> 2];
+      uint8_t color_idx = rgb_to_256color((uint8_t)R, (uint8_t)G, (uint8_t)B);
+
+      // Find run of identical (glyph, color)
+      int j = x + 1;
+      while (j < width) {
+        const rgb_pixel_t *q = &row[j];
+        uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
+        uint8_t Y2 = (uint8_t)((77u * R2 + 150u * G2 + 29u * B2 + 128u) >> 8);
+        uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
+        if (((Y2 >> 2) != (Y >> 2)) || color_idx2 != color_idx)
+          break;
+        j++;
+      }
+      uint32_t run = (uint32_t)(j - x);
+
+      // Set color if changed
+      if (color_idx != cur_color_idx) {
+        emit_set_256_color_fg(&ob, color_idx);
+        cur_color_idx = color_idx;
+      }
+
+      // Emit character
+      ob_putc(&ob, (char)ch);
+
+      // Use REP if profitable
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_putc(&ob, (char)ch);
+        }
+      }
+      x = j;
+    }
+
+    // End row: reset SGR, newline, invalidate color cache
+    emit_reset_neon(&ob);
+    ob_putc(&ob, '\n');
+    cur_color_idx = -1;
+  }
+
+  ob_term(&ob);
+  return ob.buf;
+}
+
+// Unified optimized NEON converter (foreground/background + 256-color/truecolor)
+char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color) {
+  if (!image || !image->pixels) {
+    return NULL;
+  }
+
+  const int width = image->w;
+  const int height = image->h;
+
+  if (width <= 0 || height <= 0) {
+    char *empty;
+    SAFE_MALLOC(empty, 1, char *);
+    empty[0] = '\0';
+    return empty;
+  }
+
+  neon_outbuf_t ob = {0};
+  // Estimate buffer size based on mode
+  size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
+  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 64u;
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf)
+    return NULL;
+
+  // Build 64-entry glyph LUT for vqtbl4q_u8
+  uint8_t ramp64[RAMP64_SIZE];
+  build_ramp64(ramp64);
+
+  uint8x16x4_t tbl; // 4 * 16 = 64 entries
+  tbl.val[0] = vld1q_u8(&ramp64[0]);
+  tbl.val[1] = vld1q_u8(&ramp64[16]);
+  tbl.val[2] = vld1q_u8(&ramp64[32]);
+  tbl.val[3] = vld1q_u8(&ramp64[48]);
+
+  // Track current color state
+  int curR = -1, curG = -1, curB = -1;
+  int cur_color_idx = -1;
+
+  for (int y = 0; y < height; y++) {
+    const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
+    int x = 0;
+
+    // Process 16-pixel chunks with NEON
+    while (x + 16 <= width) {
+      // Load 16 pixels: R,G,B interleaved
+      const uint8_t *p = (const uint8_t *)(row + x);
+      uint8x16x3_t pix = vld3q_u8(p); // 48 bytes
+
+      // Vector luminance: Y ≈ (77*R + 150*G + 29*B + 128) >> 8
+      uint16x8_t ylo = vmull_u8(vget_low_u8(pix.val[0]), vdup_n_u8(77));
+      ylo = vmlal_u8(ylo, vget_low_u8(pix.val[1]), vdup_n_u8(150));
+      ylo = vmlal_u8(ylo, vget_low_u8(pix.val[2]), vdup_n_u8(29));
+      ylo = vaddq_u16(ylo, vdupq_n_u16(128));
+      ylo = vshrq_n_u16(ylo, 8);
+
+      uint16x8_t yhi = vmull_u8(vget_high_u8(pix.val[0]), vdup_n_u8(77));
+      yhi = vmlal_u8(yhi, vget_high_u8(pix.val[1]), vdup_n_u8(150));
+      yhi = vmlal_u8(yhi, vget_high_u8(pix.val[2]), vdup_n_u8(29));
+      yhi = vaddq_u16(yhi, vdupq_n_u16(128));
+      yhi = vshrq_n_u16(yhi, 8);
+
+      uint8x16_t y8 = vcombine_u8(vmovn_u16(ylo), vmovn_u16(yhi));
+      uint8x16_t idx = vshrq_n_u8(y8, 2); // 0..63
+
+      // 64-entry glyph lookup using vqtbl4q_u8
+      uint8x16_t glyph = vqtbl4q_u8(tbl, idx);
+
+      // Spill to arrays for RLE + ANSI emission
+      uint8_t gbuf[16], rbuf[16], gbuf_green[16], bbuf[16];
+      vst1q_u8(gbuf, glyph);
+      vst1q_u8(rbuf, pix.val[0]);
+      vst1q_u8(gbuf_green, pix.val[1]);
+      vst1q_u8(bbuf, pix.val[2]);
+
+      if (use_256color) {
+        // 256-color mode processing
+        uint8_t color_indices[16];
+        for (int i = 0; i < 16; i++) {
+          color_indices[i] = rgb_to_256color(rbuf[i], gbuf_green[i], bbuf[i]);
+        }
+
+        // Emit with RLE on (glyph, color) runs
+        for (int i = 0; i < 16;) {
+          const uint8_t ch = gbuf[i];
+          const uint8_t color_idx = color_indices[i];
+
+          int j = i + 1;
+          while (j < 16 && gbuf[j] == ch && color_indices[j] == color_idx) {
+            j++;
+          }
+          const uint32_t run = (uint32_t)(j - i);
+
+          if (color_idx != cur_color_idx) {
+            if (use_background) {
+              emit_set_256_color_bg(&ob, color_idx);
+            } else {
+              emit_set_256_color_fg(&ob, color_idx);
+            }
+            cur_color_idx = color_idx;
+          }
+
+          ob_putc(&ob, (char)ch);
+          if (rep_is_profitable(run)) {
+            emit_rep(&ob, run - 1);
+          } else {
+            for (uint32_t k = 1; k < run; k++) {
+              ob_putc(&ob, (char)ch);
+            }
+          }
+          i = j;
+        }
+      } else {
+        // Truecolor mode processing
+        for (int i = 0; i < 16;) {
+          const uint8_t ch = gbuf[i];
+          const uint8_t r = rbuf[i];
+          const uint8_t g = gbuf_green[i];
+          const uint8_t b = bbuf[i];
+
+          int j = i + 1;
+          while (j < 16 && gbuf[j] == ch && rbuf[j] == r && gbuf_green[j] == g && bbuf[j] == b) {
+            j++;
+          }
+          const uint32_t run = (uint32_t)(j - i);
+
+          if (r != curR || g != curG || b != curB) {
+            if (use_background) {
+              emit_set_truecolor_bg(&ob, r, g, b);
+            } else {
+              emit_set_truecolor_fg(&ob, r, g, b);
+            }
+            curR = r;
+            curG = g;
+            curB = b;
+          }
+
+          ob_putc(&ob, (char)ch);
+          if (rep_is_profitable(run)) {
+            emit_rep(&ob, run - 1);
+          } else {
+            for (uint32_t k = 1; k < run; k++) {
+              ob_putc(&ob, (char)ch);
+            }
+          }
+          i = j;
+        }
+      }
+      x += 16;
+    }
+
+    // Scalar tail for remaining pixels
+    for (; x < width;) {
+      const rgb_pixel_t *p = &row[x];
+      uint32_t R = p->r, G = p->g, B = p->b;
+      uint8_t Y = (uint8_t)((77u * R + 150u * G + 29u * B + 128u) >> 8);
+      uint8_t ch = ramp64[Y >> 2];
+
+      if (use_256color) {
+        // 256-color scalar tail
+        uint8_t color_idx = rgb_to_256color((uint8_t)R, (uint8_t)G, (uint8_t)B);
+
+        int j = x + 1;
+        while (j < width) {
+          const rgb_pixel_t *q = &row[j];
+          uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
+          uint8_t Y2 = (uint8_t)((77u * R2 + 150u * G2 + 29u * B2 + 128u) >> 8);
+          uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
+          if (((Y2 >> 2) != (Y >> 2)) || color_idx2 != color_idx)
+            break;
+          j++;
+        }
+        uint32_t run = (uint32_t)(j - x);
+
+        if (color_idx != cur_color_idx) {
+          if (use_background) {
+            emit_set_256_color_bg(&ob, color_idx);
+          } else {
+            emit_set_256_color_fg(&ob, color_idx);
+          }
+          cur_color_idx = color_idx;
+        }
+
+        ob_putc(&ob, (char)ch);
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
+        } else {
+          for (uint32_t k = 1; k < run; k++) {
+            ob_putc(&ob, (char)ch);
+          }
+        }
+        x = j;
+      } else {
+        // Truecolor scalar tail
+        int j = x + 1;
+        while (j < width) {
+          const rgb_pixel_t *q = &row[j];
+          uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
+          uint8_t Y2 = (uint8_t)((77u * R2 + 150u * G2 + 29u * B2 + 128u) >> 8);
+          if (((Y2 >> 2) != (Y >> 2)) || R2 != R || G2 != G || B2 != B)
+            break;
+          j++;
+        }
+        uint32_t run = (uint32_t)(j - x);
+
+        if ((int)R != curR || (int)G != curG || (int)B != curB) {
+          if (use_background) {
+            emit_set_truecolor_bg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+          } else {
+            emit_set_truecolor_fg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+          }
+          curR = (int)R;
+          curG = (int)G;
+          curB = (int)B;
+        }
+
+        ob_putc(&ob, (char)ch);
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
+        } else {
+          for (uint32_t k = 1; k < run; k++) {
+            ob_putc(&ob, (char)ch);
+          }
+        }
+        x = j;
+      }
+    }
+
+    // End row: reset SGR, newline, invalidate color cache
+    emit_reset_neon(&ob);
+    ob_putc(&ob, '\n');
+    curR = curG = curB = -1;
+    cur_color_idx = -1;
+  }
+
+  ob_term(&ob);
+  return ob.buf;
 }

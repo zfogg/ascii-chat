@@ -100,7 +100,9 @@ COMMON_MAIN_OBJECTS = \
   ../build/lib/buffer_pool.o \
   ../build/lib/common.o \
   ../build/lib/options.o \
-  ../build/lib/image.o
+  ../build/lib/image.o \
+  ../build/lib/ascii.o \
+  ../build/lib/aspect_ratio.o
 
 # Webcam objects (core + platform backends)
 WEBCAM_CORE_OBJECTS := ../build/lib/webcam.o ../build/lib/webcam_platform.o

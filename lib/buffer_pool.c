@@ -4,7 +4,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <execinfo.h>
-#include <inttypes.h> // For PRIxPTR
 
 /* ============================================================================
  * Internal Buffer Pool Functions
@@ -136,11 +135,16 @@ data_buffer_pool_t *data_buffer_pool_create(void) {
   pool->pool_hits = 0;
   pool->malloc_fallbacks = 0;
 
-  log_info("Created data buffer pool: %zu KB small, %zu KB medium, %zu KB large, %zu KB xlarge",
-           (BUFFER_POOL_SMALL_SIZE * BUFFER_POOL_SMALL_COUNT) / 1024,
-           (BUFFER_POOL_MEDIUM_SIZE * BUFFER_POOL_MEDIUM_COUNT) / 1024,
-           (BUFFER_POOL_LARGE_SIZE * BUFFER_POOL_LARGE_COUNT) / 1024,
-           (BUFFER_POOL_XLARGE_SIZE * BUFFER_POOL_XLARGE_COUNT) / 1024);
+  char pretty_small[64];
+  char pretty_medium[64];
+  char pretty_large[64];
+  char pretty_xlarge[64];
+  format_bytes_pretty(BUFFER_POOL_SMALL_SIZE * BUFFER_POOL_SMALL_COUNT, pretty_small, sizeof(pretty_small));
+  format_bytes_pretty(BUFFER_POOL_MEDIUM_SIZE * BUFFER_POOL_MEDIUM_COUNT, pretty_medium, sizeof(pretty_medium));
+  format_bytes_pretty(BUFFER_POOL_LARGE_SIZE * BUFFER_POOL_LARGE_COUNT, pretty_large, sizeof(pretty_large));
+  format_bytes_pretty(BUFFER_POOL_XLARGE_SIZE * BUFFER_POOL_XLARGE_COUNT, pretty_xlarge, sizeof(pretty_xlarge));
+  log_info("Created data buffer pool: %s small, %s medium, %s large, %s xlarge", pretty_small, pretty_medium,
+           pretty_large, pretty_xlarge);
 
   return pool;
 }
@@ -419,40 +423,46 @@ void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name)
   data_buffer_pool_get_detailed_stats(pool, &stats);
 
   log_info("=== Buffer Pool Stats: %s ===", pool_name ? pool_name : "Unknown");
-  log_info("Total allocations: %llu, Pool hit rate: %llu%%, Total bytes: %.2f MB",
+  char pretty_total[64];
+  format_bytes_pretty(stats.total_bytes, pretty_total, sizeof(pretty_total));
+  log_info("Total allocations: %llu, Pool hit rate: %llu%%, Total bytes: %s",
            (unsigned long long)stats.total_allocations, (unsigned long long)stats.total_pool_usage_percent,
-           (double)stats.total_bytes / (1024.0 * 1024.0));
+           pretty_total);
 
   if (stats.small_hits + stats.small_misses > 0) {
-    log_info("  Small (1KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
-             (unsigned long long)stats.small_hits, (unsigned long long)stats.small_misses,
+    char pretty_small[64];
+    format_bytes_pretty(stats.small_bytes, pretty_small, sizeof(pretty_small));
+    log_info("  Small (1KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s", (unsigned long long)stats.small_hits,
+             (unsigned long long)stats.small_misses,
              (double)stats.small_hits * 100.0 / (stats.small_hits + stats.small_misses),
-             (unsigned long long)stats.small_peak_used, BUFFER_POOL_SMALL_COUNT,
-             (double)stats.small_bytes / (1024.0 * 1024.0));
+             (unsigned long long)stats.small_peak_used, BUFFER_POOL_SMALL_COUNT, pretty_small);
   }
 
   if (stats.medium_hits + stats.medium_misses > 0) {
-    log_info("  Medium (64KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+    char pretty_medium[64];
+    format_bytes_pretty(stats.medium_bytes, pretty_medium, sizeof(pretty_medium));
+    log_info("  Medium (64KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
              (unsigned long long)stats.medium_hits, (unsigned long long)stats.medium_misses,
              (double)stats.medium_hits * 100.0 / (stats.medium_hits + stats.medium_misses),
-             (unsigned long long)stats.medium_peak_used, BUFFER_POOL_MEDIUM_COUNT,
-             (double)stats.medium_bytes / (1024.0 * 1024.0));
+             (unsigned long long)stats.medium_peak_used, BUFFER_POOL_MEDIUM_COUNT, pretty_medium);
   }
 
   if (stats.large_hits + stats.large_misses > 0) {
-    log_info("  Large (256KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+    char pretty_large[64];
+    format_bytes_pretty(stats.large_bytes, pretty_large, sizeof(pretty_large));
+    log_info("  Large (256KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
              (unsigned long long)stats.large_hits, (unsigned long long)stats.large_misses,
              (double)stats.large_hits * 100.0 / (stats.large_hits + stats.large_misses),
-             (unsigned long long)stats.large_peak_used, BUFFER_POOL_LARGE_COUNT,
-             (double)stats.large_bytes / (1024.0 * 1024.0));
+             (unsigned long long)stats.large_peak_used, BUFFER_POOL_LARGE_COUNT, pretty_large);
   }
 
   if (stats.xlarge_hits + stats.xlarge_misses > 0) {
-    log_info("  XLarge (1.25MB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %.2f MB",
+    char pretty_xlarge[64];
+    format_bytes_pretty(stats.xlarge_bytes, pretty_xlarge, sizeof(pretty_xlarge));
+    log_info("  XLarge (1.25MB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
              (unsigned long long)stats.xlarge_hits, (unsigned long long)stats.xlarge_misses,
              (double)stats.xlarge_hits * 100.0 / (stats.xlarge_hits + stats.xlarge_misses),
-             (unsigned long long)stats.xlarge_peak_used, BUFFER_POOL_XLARGE_COUNT,
-             (double)stats.xlarge_bytes / (1024.0 * 1024.0));
+             (unsigned long long)stats.xlarge_peak_used, BUFFER_POOL_XLARGE_COUNT, pretty_xlarge);
   }
 }
 

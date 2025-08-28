@@ -206,6 +206,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 #define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
+void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
+
 /* Memory debugging (only in debug builds) */
 #ifdef DEBUG_MEMORY
 void *debug_malloc(size_t size, const char *file, int line);
