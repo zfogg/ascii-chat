@@ -567,62 +567,62 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
 // Only dispatcher and common functions remain in this file
 
 #ifdef SIMD_SUPPORT_NEON
-  // 8K characters handles up to 8K horizontal resolution
-  static char large_ascii_buffer[8192] __attribute__((aligned(64)));
-  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
-  char *ascii_chars = (width > 2048) ? large_ascii_buffer : stack_ascii_chars;
-  bool heap_allocated = false; // Never needed now!
+// 8K characters handles up to 8K horizontal resolution
+static char large_ascii_buffer[8192] __attribute__((aligned(64)));
+char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
+char *ascii_chars = (width > 2048) ? large_ascii_buffer : stack_ascii_chars;
+bool heap_allocated = false; // Never needed now!
 
-  // Step 1: SIMD luminance conversion - NO BUFFER POOL!
-  convert_pixels_avx2(pixels, ascii_chars, width);
+// Step 1: SIMD luminance conversion - NO BUFFER POOL!
+convert_pixels_avx2(pixels, ascii_chars, width);
 
-  // Step 2: Generate colored output
-  char *current_pos = output_buffer;
-  char *buffer_end = output_buffer + buffer_size;
+// Step 2: Generate colored output
+char *current_pos = output_buffer;
+char *buffer_end = output_buffer + buffer_size;
 
-  for (int x = 0; x < width; x++) {
-    const rgb_pixel_t *pixel = &pixels[x];
-    char ascii_char = ascii_chars[x];
+for (int x = 0; x < width; x++) {
+  const rgb_pixel_t *pixel = &pixels[x];
+  char ascii_char = ascii_chars[x];
 
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 64)
-      break; // Safety margin
-
-    if (background_mode) {
-      // Background mode: colored background, contrasting foreground
-      uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
-      uint8_t fg_color = (luminance < 127) ? 15 : 0; // FIX #6: use 15 not 255!
-
-      // Generate foreground color code
-      int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
-      current_pos += fg_len;
-
-      // Generate background color code
-      int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += bg_len;
-
-      // Add ASCII character
-      *current_pos++ = ascii_char;
-
-    } else {
-      // Foreground mode: colored character
-      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += fg_len;
-      *current_pos++ = ascii_char;
-    }
-  }
-
-  // Add reset sequence
   size_t remaining = buffer_end - current_pos;
-  if (remaining >= sizeof(ANSI_RESET)) {
-    memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
-    current_pos += sizeof(ANSI_RESET) - 1;
+  if (remaining < 64)
+    break; // Safety margin
+
+  if (background_mode) {
+    // Background mode: colored background, contrasting foreground
+    uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
+    uint8_t fg_color = (luminance < 127) ? 15 : 0; // FIX #6: use 15 not 255!
+
+    // Generate foreground color code
+    int fg_len = generate_ansi_fg(fg_color, fg_color, fg_color, current_pos);
+    current_pos += fg_len;
+
+    // Generate background color code
+    int bg_len = generate_ansi_bg(pixel->r, pixel->g, pixel->b, current_pos);
+    current_pos += bg_len;
+
+    // Add ASCII character
+    *current_pos++ = ascii_char;
+
+  } else {
+    // Foreground mode: colored character
+    int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
+    current_pos += fg_len;
+    *current_pos++ = ascii_char;
   }
+}
 
-  // OPTIMIZATION 15: No heap cleanup needed - using static/stack buffers only!
-  (void)heap_allocated; // Suppress unused variable warning
+// Add reset sequence
+size_t remaining = buffer_end - current_pos;
+if (remaining >= sizeof(ANSI_RESET)) {
+  memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
+  current_pos += sizeof(ANSI_RESET) - 1;
+}
 
-  return current_pos - output_buffer;
+// OPTIMIZATION 15: No heap cleanup needed - using static/stack buffers only!
+(void)heap_allocated; // Suppress unused variable warning
+
+return current_pos - output_buffer;
 }
 
 // AVX2 version with pre-allocated buffer to reduce buffer pool contention
@@ -679,11 +679,7 @@ size_t convert_row_with_color_avx2_with_buffer(const rgb_pixel_t *pixels, char *
 }
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
-#include <tmmintrin.h>
-// SSSE3 version with 32-pixel processing for maximum performance
-size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                    bool background_mode) {
+// SSSE3 implementations moved to lib/image2ascii/simd/ssse3.c
 
   // Use stack allocation for small widths, heap for large
   // OPTIMIZATION 15: Pre-allocated static buffer eliminates malloc/free in hot path
