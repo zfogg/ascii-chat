@@ -469,10 +469,15 @@ test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 
 test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 	@echo "Running performance benchmarks..."
-	@for test in $^; do \
-		echo "Running $$test..."; \
-		$$test; \
-	done
+	@if [ -z "$^" ]; then \
+		echo "Note: Main performance tests are in todo/ascii_simd_test"; \
+		echo "Run: cd todo && make -f Makefile_simd ascii_simd_test && ./ascii_simd_test"; \
+	else \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			$$test; \
+		done; \
+	fi
 
 test-quiet: $(TEST_EXECUTABLES)
 	@echo "Running all tests (quiet mode)..."
@@ -562,7 +567,7 @@ help:
 	@echo "  test            - Run all tests (unit + integration + performance)"
 	@echo "  test-unit       - Run only unit tests (quiet mode)"
 	@echo "  test-integration - Run only integration tests"
-	@echo "  test-performance - Run performance benchmarks"
+	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
 	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
 	@echo "  todo            - Build the ./todo subproject"
 	@echo "  todo-clean      - Clean the ./todo subproject"
