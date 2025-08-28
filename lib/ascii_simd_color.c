@@ -296,6 +296,67 @@ static inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uin
   return dst;
 }
 
+// OPTIMIZATION 9: Direct writes - \x1b[48;2;R;G;Bm
+static inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
+  // Constructor ensures initialization
+
+  // Direct character writes for "\033[48;2;"
+  *dst++ = '\033';
+  *dst++ = '[';
+  *dst++ = '4';
+  *dst++ = '8';
+  *dst++ = ';';
+  *dst++ = '2';
+  *dst++ = ';';
+
+  // Optimized digit copying
+  const dec3_t *rd = &g_ascii_cache.dec3_table[r];
+  if (rd->len == 1) {
+    *dst++ = rd->s[0];
+  } else if (rd->len == 2) {
+    dst[0] = rd->s[0];
+    dst[1] = rd->s[1];
+    dst += 2;
+  } else {
+    dst[0] = rd->s[0];
+    dst[1] = rd->s[1];
+    dst[2] = rd->s[2];
+    dst += 3;
+  }
+  *dst++ = ';';
+
+  const dec3_t *gd = &g_ascii_cache.dec3_table[g];
+  if (gd->len == 1) {
+    *dst++ = gd->s[0];
+  } else if (gd->len == 2) {
+    dst[0] = gd->s[0];
+    dst[1] = gd->s[1];
+    dst += 2;
+  } else {
+    dst[0] = gd->s[0];
+    dst[1] = gd->s[1];
+    dst[2] = gd->s[2];
+    dst += 3;
+  }
+  *dst++ = ';';
+
+  const dec3_t *bd = &g_ascii_cache.dec3_table[b];
+  if (bd->len == 1) {
+    *dst++ = bd->s[0];
+  } else if (bd->len == 2) {
+    dst[0] = bd->s[0];
+    dst[1] = bd->s[1];
+    dst += 2;
+  } else {
+    dst[0] = bd->s[0];
+    dst[1] = bd->s[1];
+    dst[2] = bd->s[2];
+    dst += 3;
+  }
+  *dst++ = 'm';
+  return dst;
+}
+
 // OPTIMIZATION 9: Optimized FG+BG - \x1b[38;2;R;G;B;48;2;r;g;bm (eliminate all memcpy calls)
 static inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg,
                                                uint8_t bb) {

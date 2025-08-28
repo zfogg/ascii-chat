@@ -1697,6 +1697,7 @@ size_t render_row_ascii_rep_dispatch_neon_color(const rgb_pixel_t *row, int widt
 
 //=============================================================================
 // Simple Monochrome ASCII Function (matches scalar image_print performance)
+#ifdef SIMD_SUPPORT_NEON
 //=============================================================================
 char *render_ascii_image_monochrome_neon(const image_t *image) {
   if (!image || !image->pixels) {
@@ -2524,3 +2525,5 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   ob_term(&ob);
   return ob.buf;
 }
+
+#endif // SIMD_SUPPORT_NEON
