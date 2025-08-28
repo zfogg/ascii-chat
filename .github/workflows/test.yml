@@ -214,12 +214,12 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install portaudio libsodium
+        brew install portaudio libsodium criterion
 
     - name: Build project
       run: |
