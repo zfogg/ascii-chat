@@ -85,7 +85,7 @@ typedef struct {
 
 // Include architecture-specific implementations
 #include "image2ascii/simd/sse2.h"
-#include "image2ascii/simd/ssse3.h"  
+#include "image2ascii/simd/ssse3.h"
 #include "image2ascii/simd/avx2.h"
 #include "image2ascii/simd/sve.h"
 #include "image2ascii/simd/neon.h"
