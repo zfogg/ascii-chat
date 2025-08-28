@@ -66,26 +66,30 @@ typedef struct {
   int seeded;
 } RLEState;
 
-// Check for SIMD support
+// Check for SIMD support and include architecture-specific headers
 #ifdef __AVX2__
 #define SIMD_SUPPORT_AVX2 1
-#include <immintrin.h>
 #endif
 
 #ifdef __SSE2__
 #define SIMD_SUPPORT_SSE2 1
-#include <emmintrin.h>
 #endif
 
 #ifdef __SSSE3__
 #define SIMD_SUPPORT_SSSE3 1
-#include <tmmintrin.h>
 #endif
 
 #ifdef __ARM_NEON
 #define SIMD_SUPPORT_NEON 1
-#include <arm_neon.h>
 #endif
+
+// Include architecture-specific implementations
+// Architecture-specific implementations
+#include "../src/image2ascii/simd/sse2.h"
+#include "../src/image2ascii/simd/ssse3.h"
+#include "../src/image2ascii/simd/avx2.h"
+#include "../src/image2ascii/simd/sve.h"
+#include "../src/image2ascii/simd/neon.h"
 
 // Use the project's existing rgb_t for consistency
 #include "image.h"

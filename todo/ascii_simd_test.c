@@ -18,7 +18,6 @@
 #include <ctype.h>
 #include "../lib/common.h"
 #include "../lib/ascii_simd.h"
-#include "../lib/ascii_simd_neon.h"
 #include "../lib/options.h"
 #include "../lib/ascii.h"
 #include "../lib/image.h"
