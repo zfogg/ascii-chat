@@ -469,17 +469,17 @@ void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int coun
  * ============================================================================
  */
 
-#ifdef SIMD_SUPPORT_AVX2
-void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+/* ============================================================================
+ * Architecture-specific implementations moved to src/image2ascii/simd/
+ * Only dispatcher and common code remains in this file
+ * ============================================================================
+ */
 
-  int i = 0;
+ * Auto-dispatch and Benchmarking
+ * ============================================================================
+ */
 
-  // AVX2 constants for 16-bit arithmetic (matches SSSE3 approach)
-  const __m256i luma_const_77 = _mm256_set1_epi16(LUMA_RED);
-  const __m256i luma_const_150 = _mm256_set1_epi16(LUMA_GREEN);
-  const __m256i luma_const_29 = _mm256_set1_epi16(LUMA_BLUE);
-
-  // Process 32-pixel chunks using optimized bulk memory operations for maximum throughput
+void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
   for (; i + 31 < count; i += 32) {
     // Load RGB data in bulk using AVX2 memory operations (no scalar extraction!)
     const uint8_t *src1 = (const uint8_t *)&pixels[i];      // First 16 pixels (48 bytes RGB)

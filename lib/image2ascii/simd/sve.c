@@ -4,6 +4,12 @@
 
 #if defined(SIMD_SUPPORT_SVE) && defined(__ARM_FEATURE_SVE)
 #include <arm_sve.h>
+#ifndef SIMD_SUPPORT_SVE
+#define SIMD_SUPPORT_SVE 1
+#endif
+#endif
+
+#ifdef SIMD_SUPPORT_SVE // main block of code ifdef
 
 // Forward declarations for SVE functions
 static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,

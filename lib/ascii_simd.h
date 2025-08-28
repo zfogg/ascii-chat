@@ -84,12 +84,11 @@ typedef struct {
 #endif
 
 // Include architecture-specific implementations
-// Architecture-specific implementations
-#include "../src/image2ascii/simd/sse2.h"
-#include "../src/image2ascii/simd/ssse3.h"
-#include "../src/image2ascii/simd/avx2.h"
-#include "../src/image2ascii/simd/sve.h"
-#include "../src/image2ascii/simd/neon.h"
+#include "image2ascii/simd/sse2.h"
+#include "image2ascii/simd/ssse3.h"  
+#include "image2ascii/simd/avx2.h"
+#include "image2ascii/simd/sve.h"
+#include "image2ascii/simd/neon.h"
 
 // Use the project's existing rgb_t for consistency
 #include "image.h"
