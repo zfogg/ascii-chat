@@ -1,6 +1,8 @@
 # Makefile for SIMD ASCII Optimization
 CC = clang
-BASE_CFLAGS = -Wall -Wextra -O3 -std=c23 -I../lib -D_GNU_SOURCE
+# Use CSTD parameter if provided, otherwise default to c2x for compatibility
+CSTD ?= c23
+BASE_CFLAGS = -Wall -Wextra -O3 -std=$(CSTD) -I../lib -D_GNU_SOURCE
 
 # =============================================================================
 # SIMD Flags
