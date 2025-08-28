@@ -2526,4 +2526,197 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   return ob.buf;
 }
 
+// CHATGPT OPTIMIZATION: Vectorized ASCII lookup using vqtbl2q_u8
+// This processes 16 pixels at once instead of scalar loop
+static inline uint8x16_t luma_to_ascii_vectorized(uint8x16_t luma_vec) {
+  // Create 32-entry ASCII lookup table split across two vectors
+  // Our palette: "   ...',;:clodxkO0KXNWM" (22 chars) -> spread across 32 slots
+  static const uint8_t ascii_lut_0[16] = {
+      ' ', ' ', ' ', '.', '.', '.', '\'', '\'', // Entries 0-7
+      ',', ';', ':', 'c', 'l', 'o', 'd',  'x'   // Entries 8-15
+  };
+  static const uint8_t ascii_lut_1[16] = {
+      'k', 'O', '0', 'K', 'X', 'N', 'W', 'M', // Entries 16-23
+      'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M'  // Entries 24-31 (repeat densest)
+  };
+
+  const uint8x16_t lut0 = vld1q_u8(ascii_lut_0);
+  const uint8x16_t lut1 = vld1q_u8(ascii_lut_1);
+
+  // Map luma 0-255 to index 0-31 (top 5 bits)
+  uint8x16_t indices = vshrq_n_u8(luma_vec, 3); // Divide by 8: 256→32 bins
+
+  // Vector table lookup: 16 ASCII characters computed in parallel!
+  uint8x16x2_t combined_lut = {lut0, lut1};
+  return vqtbl2q_u8(combined_lut, indices);
+}
+
+// CHATGPT OPTIMIZATION 1: Specialized functions eliminate per-pixel branching
+static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
+
+// OPTIMIZED MONOCHROME NEON: No color code at all - pure ASCII generation
+static size_t convert_row_mono_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
+
+  char *p = output_buffer;
+  char *end = output_buffer + buffer_size;
+  int x = 0;
+
+  // CHATGPT OPTIMIZATION 2: Vectorized stores - process 16 pixels at once with st1
+  for (; x + 15 < width && (end - p) >= 16; x += 16) {
+    const uint8_t *rgb_data = (const uint8_t *)&pixels[x];
+
+    // Load 16 RGB pixels
+    uint8x16x3_t rgb_batch = vld3q_u8(rgb_data);
+
+    // Vectorized luminance computation (16 pixels)
+    uint16x8_t r_lo = vmovl_u8(vget_low_u8(rgb_batch.val[0]));
+    uint16x8_t r_hi = vmovl_u8(vget_high_u8(rgb_batch.val[0]));
+    uint16x8_t g_lo = vmovl_u8(vget_low_u8(rgb_batch.val[1]));
+    uint16x8_t g_hi = vmovl_u8(vget_high_u8(rgb_batch.val[1]));
+    uint16x8_t b_lo = vmovl_u8(vget_low_u8(rgb_batch.val[2]));
+    uint16x8_t b_hi = vmovl_u8(vget_high_u8(rgb_batch.val[2]));
+
+    uint16x8_t luma_lo = vmulq_n_u16(r_lo, LUMA_RED);
+    luma_lo = vmlaq_n_u16(luma_lo, g_lo, LUMA_GREEN);
+    luma_lo = vmlaq_n_u16(luma_lo, b_lo, LUMA_BLUE);
+    luma_lo = vshrq_n_u16(luma_lo, 8);
+
+    uint16x8_t luma_hi = vmulq_n_u16(r_hi, LUMA_RED);
+    luma_hi = vmlaq_n_u16(luma_hi, g_hi, LUMA_GREEN);
+    luma_hi = vmlaq_n_u16(luma_hi, b_hi, LUMA_BLUE);
+    luma_hi = vshrq_n_u16(luma_hi, 8);
+
+    // Pack luminance and convert to ASCII (vectorized)
+    uint8x16_t luma_vec = vcombine_u8(vqmovn_u16(luma_lo), vqmovn_u16(luma_hi));
+    uint8x16_t ascii_chars = luma_to_ascii_vectorized(luma_vec);
+
+    // CHATGPT OPTIMIZATION 2: Vector store - 16 bytes in one shot!
+    vst1q_u8((uint8_t *)p, ascii_chars);
+    p += 16;
+  }
+
+  // Handle remaining pixels with scalar processing
+  for (; x < width && (end - p) >= 1; x++) {
+    const rgb_pixel_t *pixel = &pixels[x];
+    uint8_t luma = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b) >> 8;
+    *p++ = g_ascii_cache.luminance_palette[luma];
+  }
+
+  return p - output_buffer;
+}
+
+// Forward declaration for colored NEON
+static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                       bool background_mode);
+
+// Top-level dispatch - no per-pixel color branches inside hot loops
+size_t convert_row_with_color_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                   bool background_mode) {
+  // CHATGPT INSIGHT: Duplicate 150-250 bytes of code is cheap compared to branch mispredicts
+  if (opt_color_output || background_mode) {
+    return convert_row_colored_neon(pixels, output_buffer, buffer_size, width, background_mode);
+  } else {
+    return convert_row_mono_neon(pixels, output_buffer, buffer_size, width);
+  }
+}
+
+// OPTIMIZED COLORED NEON: Specialized for color output only
+static size_t convert_row_colored_neon(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                       bool background_mode) {
+
+  char *p = output_buffer;
+  const char *buffer_end = output_buffer + buffer_size - 1;
+
+  // NEON weight constants (same as mono code)
+  const uint8x8_t wR = vdup_n_u8(LUMA_RED), wG = vdup_n_u8(LUMA_GREEN), wB = vdup_n_u8(LUMA_BLUE);
+
+  // ASCII lookup tables (same as mono code)
+  const uint8x16_t lut0 = vld1q_u8((const uint8_t *)" ...',;:clodxk");
+  const uint8x16_t lut1 = vld1q_u8((const uint8_t *)"O0KXNWMMMMMMMMM");
+
+  // Process 16 pixels at a time (same as mono code)
+  int processed = 0;
+  while (processed + 16 <= width && p < buffer_end - 1000) { // Leave room for ANSI sequences
+
+    // Load interleaved RGB (same as mono code)
+    uint8x16x3_t rgb = vld3q_u8((const uint8_t *)(pixels + processed));
+
+    // Compute luminance: (77*R + 150*G + 29*B) >> 8 (same formula as mono code)
+    uint16x8_t y0 = vshrq_n_u16(vmlaq_u16(vmlaq_u16(vmulq_u16(vmovl_u8(vget_low_u8(rgb.val[0])), vmovl_u8(wR)),
+                                                    vmovl_u8(vget_low_u8(rgb.val[1])), vmovl_u8(wG)),
+                                          vmovl_u8(vget_low_u8(rgb.val[2])), vmovl_u8(wB)),
+                                8);
+    uint16x8_t y1 = vshrq_n_u16(vmlaq_u16(vmlaq_u16(vmulq_u16(vmovl_u8(vget_high_u8(rgb.val[0])), vmovl_u8(wR)),
+                                                    vmovl_u8(vget_high_u8(rgb.val[1])), vmovl_u8(wG)),
+                                          vmovl_u8(vget_high_u8(rgb.val[2])), vmovl_u8(wB)),
+                                8);
+    uint8x16_t y = vcombine_u8(vqmovn_u16(y0), vqmovn_u16(y1));
+
+    // ASCII lookup (same as mono code)
+    uint8x16_t idx = vshrq_n_u8(y, 3); // 0..31
+    uint8x16x2_t L = {lut0, lut1};
+    uint8x16_t ascii_chars = vqtbl2q_u8(L, idx);
+
+    // PERFORMANCE FIX: Store SIMD results and emit per-pixel (simplest approach)
+    uint8_t ascii_batch[16] __attribute__((aligned(16)));
+    uint8_t r_batch[16] __attribute__((aligned(16)));
+    uint8_t g_batch[16] __attribute__((aligned(16)));
+    uint8_t b_batch[16] __attribute__((aligned(16)));
+    uint8_t luma_batch[16] __attribute__((aligned(16)));
+
+    vst1q_u8(ascii_batch, ascii_chars);
+    vst1q_u8(r_batch, rgb.val[0]);
+    vst1q_u8(g_batch, rgb.val[1]);
+    vst1q_u8(b_batch, rgb.val[2]);
+    vst1q_u8(luma_batch, y);
+
+    // Simple per-pixel emission - no complex quantization or hysteresis for now
+    for (int k = 0; k < 16; k++) {
+      uint8_t r = r_batch[k], g = g_batch[k], b = b_batch[k];
+      if (background_mode) {
+        uint8_t luma = luma_batch[k];              // Use SIMD-computed luminance
+        uint8_t fg_color = (luma < 127) ? 255 : 0; // Simple threshold
+        p = append_sgr_truecolor_fg_bg(p, fg_color, fg_color, fg_color, r, g, b);
+      } else {
+        p = append_sgr_truecolor_fg(p, r, g, b);
+      }
+      *p++ = ascii_batch[k];
+      if (p >= buffer_end - 100)
+        break;
+    }
+    processed += 16;
+  }
+
+  // Handle remaining pixels (< 16) with scalar processing
+  for (int x = processed; x < width; x++) {
+    const rgb_pixel_t *pixel = &pixels[x];
+    // Scalar luminance calculation (same formula as NEON)
+    uint16_t luma_16 = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b);
+    uint8_t luma = (uint8_t)(luma_16 >> 8);
+    // Use global ASCII cache like other parts of the codebase
+    char ascii_char = g_ascii_cache.luminance_palette[luma];
+
+    // Color sequences (same optimization as NEON loop)
+    if (background_mode) {
+      // FIX D: Scalar fallback also needs proper contrasting FG with hysteresis
+      uint8_t luma = (LUMA_RED * pixel->r + LUMA_GREEN * pixel->g + LUMA_BLUE * pixel->b) >> 8;
+      static uint8_t last_scalar_fg = 255;
+      uint8_t fg_color = last_scalar_fg;
+      if (luma < 110)
+        fg_color = 255; // White on dark
+      else if (luma > 145)
+        fg_color = 0; // Black on light
+      // else keep last_scalar_fg (hysteresis prevents flickering)
+      last_scalar_fg = fg_color;
+      p = append_sgr_truecolor_fg_bg(p, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
+    } else {
+      p = append_sgr_truecolor_fg(p, pixel->r, pixel->g, pixel->b);
+    }
+    *p++ = ascii_char;
+    if (p >= buffer_end - 100)
+      break;
+  }
+
+  return p - output_buffer;
+}
 #endif // SIMD_SUPPORT_NEON

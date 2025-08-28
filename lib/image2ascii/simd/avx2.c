@@ -316,4 +316,47 @@ size_t convert_row_with_color_avx2_with_buffer(const rgb_pixel_t *pixels, char *
   return current_pos - output_buffer;
 }
 
+// Forward declarations for AVX-512 functions
+static size_t convert_row_colored_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                         bool background_mode);
+static size_t convert_row_mono_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
+
+// AVX-512 dispatch function
+size_t convert_row_with_color_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                     bool background_mode) {
+  if (opt_color_output || background_mode) {
+    return convert_row_colored_avx512(pixels, output_buffer, buffer_size, width, background_mode);
+  } else {
+    return convert_row_mono_avx512(pixels, output_buffer, buffer_size, width);
+  }
+}
+
+// TODO: Implement AVX-512 64-pixel parallel monochrome ASCII conversion
+static size_t convert_row_mono_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
+  // FUTURE IMPLEMENTATION:
+  // - Process 64 pixels per iteration using __m512i vectors
+  // - Use _mm512_load_si512 for aligned loads
+  // - Implement luminance calculation with _mm512_maddubs_epi16
+  // - Use gather/scatter operations for ASCII lookup
+  // - Expected performance: 2-4x faster than AVX2 implementation
+
+  // Fallback to scalar implementation for now
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
+}
+
+// TODO: Implement AVX-512 64-pixel parallel colored ASCII conversion
+static size_t convert_row_colored_avx512(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
+                                         bool background_mode) {
+  // FUTURE IMPLEMENTATION:
+  // - Process 64 RGB pixels per iteration
+  // - Use __m512i for 64x 8-bit RGB values
+  // - Vectorized luminance: (77*R + 150*G + 29*B) >> 8 for 64 pixels
+  // - Parallel ASCII character lookup with _mm512_shuffle_epi8
+  // - Vectorized ANSI color code generation
+  // - Use masked stores to handle variable-width output
+
+  // Fallback to scalar implementation for now
+  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
+}
+
 #endif /* SIMD_SUPPORT_AVX2 */
