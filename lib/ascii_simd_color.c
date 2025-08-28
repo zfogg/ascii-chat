@@ -563,13 +563,10 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
 // Note: All the old slow convert_row_with_color_* functions have been removed.
 // We now use the optimized render_row_truecolor_ascii_runlength() function instead.
 
-#ifdef SIMD_SUPPORT_AVX2
-// Process entire row with SIMD luminance + optimized color generation - OPTIMIZED (no buffer pool)
-size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode) {
+// Architecture-specific implementations moved to lib/image2ascii/simd/
+// Only dispatcher and common functions remain in this file
 
-  // Use stack allocation for small widths, heap for large
-  // OPTIMIZATION 15: Pre-allocated static buffer eliminates malloc/free in hot path
+#ifdef SIMD_SUPPORT_NEON
   // 8K characters handles up to 8K horizontal resolution
   static char large_ascii_buffer[8192] __attribute__((aligned(64)));
   char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths

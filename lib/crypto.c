@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <time.h>
+#include <inttypes.h>
 
 // Static initialization flag for libsodium
 static bool g_libsodium_initialized = false;
@@ -384,7 +385,7 @@ void crypto_get_status(const crypto_context_t *ctx, char *status_buffer, size_t 
 
   snprintf(status_buffer, buffer_size,
            "Initialized: %s, Password: %s, Key Exchange: %s, Ready: %s, "
-           "Encrypted: %llu bytes, Decrypted: %llu bytes, Nonce: %llu",
+           "Encrypted: %" PRIu64 " bytes, Decrypted: %" PRIu64 " bytes, Nonce: %" PRIu64,
            ctx->initialized ? "yes" : "no", ctx->has_password ? "yes" : "no",
            ctx->key_exchange_complete ? "complete" : "incomplete", crypto_is_ready(ctx) ? "yes" : "no",
            ctx->bytes_encrypted, ctx->bytes_decrypted, ctx->nonce_counter);
