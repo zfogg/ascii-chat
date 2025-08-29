@@ -4,7 +4,6 @@
 #include <stddef.h>
 
 #include "image.h"
-#include "ascii_simd.h"
 
 #if (defined(SIMD_SUPPORT_NEON) || defined(__ARM_NEON) || defined(__aarch64__))
 #include <arm_neon.h>
@@ -17,14 +16,6 @@
 #endif // __ARM_NEON || __aarch64__
 
 #ifdef SIMD_SUPPORT_NEON
-// Configuration constants
-#ifndef BGASCII_LUMA_THRESHOLD
-#define BGASCII_LUMA_THRESHOLD 128 // Y >= 128 -> black text; else white text
-#endif
-
-#ifndef CUBE_GRAY_THRESHOLD
-#define CUBE_GRAY_THRESHOLD 10
-#endif
 
 // NEON palette quantization with ordered dithering
 uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);

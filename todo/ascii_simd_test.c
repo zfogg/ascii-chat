@@ -408,7 +408,7 @@ void test_integration(void) {
     }
 
     // Test realistic terminal conversion
-    simd_benchmark_t bench = benchmark_simd_conversion_with_source(203, 64, 1, source_image);
+    simd_benchmark_t bench = benchmark_simd_conversion_with_source(203, 64, 1, false, source_image, true);
 
     printf("Terminal Performance (203x64):\n");
     printf("  Scalar:     %8.3f ms/frame\n", bench.scalar_time * 1000);

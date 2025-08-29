@@ -27,6 +27,10 @@
 #define BGASCII_LUMA_THRESHOLD 128 // Y >= 128 -> black text; else white text
 #endif
 
+#ifndef CUBE_GRAY_THRESHOLD
+#define CUBE_GRAY_THRESHOLD 10
+#endif
+
 /* ============================================================================
  * OPTIMIZATION #4: 256-Color Mode with Precomputed FG+BG Strings (~1.5MB cache)
  * ============================================================================
@@ -146,7 +150,6 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
   init_sgr256_fg_cache();
   const sgr256_t *sgr = &g_sgr256_fg[fg];
   *len_out = sgr->len;
-  // DEBUG: Log what string we're returning
   return (char *)sgr->str;
 }
 
@@ -154,7 +157,6 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   init_sgr256_cache();
   const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
   *len_out = sgr->len;
-  // DEBUG: Log what string we're returning
   return (char *)sgr->str;
 }
 
@@ -429,6 +431,12 @@ static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path) {
 #ifdef SIMD_SUPPORT_NEON
   return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path);
+#elif SIMD_SUPPORT_SSE2
+  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_fast_path);
+#elif SIMD_SUPPORT_SSSE3
+  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_fast_path);
+#elif SIMD_SUPPORT_AVX2
+  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_fast_path);
 #else
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds

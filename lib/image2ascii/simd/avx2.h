@@ -5,9 +5,6 @@
 #ifdef SIMD_SUPPORT_AVX2
 #include <immintrin.h>
 
-// AVX2-specific function declarations
-void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-
 // NEW: Image-based API (matching NEON architecture)
 char *render_ascii_image_monochrome_avx2(const image_t *image);
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color);
