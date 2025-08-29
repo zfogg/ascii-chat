@@ -182,7 +182,19 @@ cd todo && make -f Makefile_simd ascii_simd_test
 
 ## Debugging Techniques
 
-### 1. Enable Debug Logging
+### 1. Environment Variables
+
+**Supported Environment Variables:**
+- `$TERM` - Terminal type detection for capability negotiation (required for UTF-8 support detection)
+- `$LANG`, `$LC_ALL`, `$LC_CTYPE` - Locale settings for UTF-8 support detection
+- `$LINES`, `$COLUMNS` - Terminal dimensions when auto-detection fails
+- `$COLORTERM` - Enhanced color capability detection
+- `$TTY` - TTY device path detection
+- `$USER` - User identification for logging and debugging
+
+**IMPORTANT**: The project does NOT support `WEBCAM_DISABLED=1` or any other method to disable webcam. Currently, **there is no way to test without a webcam** - the application requires an active webcam device to function. Use `--snapshot` mode to minimize webcam usage during testing, but a webcam must still be available and functional.
+
+### 2. Enable Debug Logging
 Add these defines to see detailed logs:
 ```c
 /*#define DEBUG_MEMORY*/     // Memory debugging is enabled by default with make
@@ -196,7 +208,7 @@ Add these defines to see detailed logs:
 // category if you need to and it will help the developer and you work and debug.
 ```
 
-### 2. Common Issues and Solutions
+### 3. Common Issues and Solutions
 
 **"Unknown packet type" errors:**
 - Check packet type enum values in network.h

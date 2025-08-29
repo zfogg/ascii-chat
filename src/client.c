@@ -28,13 +28,9 @@
 #include "audio.h"
 #include "image.h"
 #include "webcam.h"
-#include "aspect_ratio.h"
 #include "buffer_pool.h"
 #include "terminal_detect.h"
-
-#define DEBUG_NETWORK
-#define DEBUG_AUDIO
-#define COMPRESSION_DEBUG
+#include "palette.h"
 
 static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
@@ -43,6 +39,9 @@ static void full_terminal_reset(int fd) {
     // terminal_clear_scrollback(fd);
     terminal_clear_screen(fd);
     cursor_reset(fd);
+    // FIXME: cursor_hide() and cursor_show() don't work with write()
+    // cursor_hide(fd);
+    printf("\e[?25l");
     // Force output to terminal immediately
     fsync(fd);
   }
@@ -985,6 +984,13 @@ int main(int argc, char *argv[]) {
   // Parse options first to check for quiet mode
   options_init(argc, argv, true);
 
+  // Initialize palette based on command line options
+  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
+  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
+    log_error("Failed to apply palette configuration");
+    return 1;
+  }
+
   // Handle --show-capabilities flag (exit after showing capabilities)
   if (opt_show_capabilities) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
@@ -1004,12 +1010,6 @@ int main(int argc, char *argv[]) {
     has_a_tty_g |= isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
   }
 
-  // Disable echo for the terminal
-  struct termios t;
-  tcgetattr(tty_info_g.fd, &t);
-  t.c_lflag &= ~ECHO;
-  tcsetattr(tty_info_g.fd, TCSANOW, &t);
-
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
@@ -1020,6 +1020,7 @@ int main(int argc, char *argv[]) {
   // log_set_terminal_output(false);
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
   log_set_terminal_output(has_a_tty_g && !opt_quiet && !opt_snapshot_mode);
+  log_truncate_if_large(); /* Truncate if log is already too large */
 
   // CRITICAL FIX: Initialize ASCII SIMD cache (missing from client!)
   // This initializes g_ascii_cache.dec3_table needed for NEON truecolor/256-color RGB output
@@ -1028,8 +1029,6 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUG_MEMORY
   debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
 #endif
-
-  atexit(log_destroy);
 
 #ifdef DEBUG_MEMORY
   if (!opt_snapshot_mode) {
@@ -1040,7 +1039,9 @@ int main(int argc, char *argv[]) {
   // Initialize global shared buffer pool
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
-  log_truncate_if_large(); /* Truncate if log is already too large */
+
+  // Cleanup nicely on exit
+  atexit(shutdown_client);
 
   char *address = opt_address;
   int port = strtoint(opt_port);
@@ -1062,6 +1063,8 @@ int main(int argc, char *argv[]) {
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
   if (webcam_init(webcam_index) != 0) {
+    log_fatal("Failed to initialize webcam");
+    exit(ASCIICHAT_ERR_WEBCAM);
   }
   atexit(webcam_cleanup);
 
@@ -1069,21 +1072,16 @@ int main(int argc, char *argv[]) {
   if (opt_audio_enabled) {
     if (audio_init(&g_audio_context) != 0) {
       log_fatal("Failed to initialize audio system");
-      ascii_write_destroy(tty_info_g.fd);
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
     if (audio_start_playback(&g_audio_context) != 0) {
       log_error("Failed to start audio playback");
-      audio_destroy(&g_audio_context);
-      ascii_write_destroy(tty_info_g.fd);
       exit(ASCIICHAT_ERR_AUDIO);
     }
 
     if (audio_start_capture(&g_audio_context) != 0) {
       log_error("Failed to start audio capture");
-      audio_destroy(&g_audio_context);
-      ascii_write_destroy(tty_info_g.fd);
       exit(ASCIICHAT_ERR_AUDIO);
     }
   }
@@ -1110,7 +1108,6 @@ int main(int argc, char *argv[]) {
     if (g_first_connection || g_should_reconnect) {
       // Close any existing socket before attempting new connection
       if (0 > (sockfd = close_socket(sockfd))) {
-        ascii_write_destroy(tty_info_g.fd);
         exit(ASCIICHAT_ERR_NETWORK);
       }
 
@@ -1159,7 +1156,6 @@ int main(int argc, char *argv[]) {
       socklen_t addr_len = sizeof(local_addr);
       if (getsockname(sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
         perror("getsockname");
-        ascii_write_destroy(tty_info_g.fd);
         exit(ASCIICHAT_ERR_NETWORK);
       }
       int local_port = ntohs(local_addr.sin_port);
@@ -1320,12 +1316,5 @@ int main(int argc, char *argv[]) {
     }
   }
 
-#ifdef DEBUG_MEMORY
-  if (!opt_quiet && !opt_snapshot_mode) {
-    printf("\n");
-  }
-#endif
-
-  shutdown_client();
   return 0;
 }

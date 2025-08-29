@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <math.h>
 #include <unistd.h>
+#include <termios.h>
+
+#include "curses.h"
 
 #include "ascii.h"
 #include "ascii_simd.h"
@@ -29,16 +33,30 @@ asciichat_error_t ascii_write_init(int fd) {
   if (!opt_snapshot_mode) {
     console_clear(fd);
     cursor_reset(fd);
-    cursor_hide(fd);
+
+    struct termios termios;
+    tcgetattr(fd, &termios);
+    termios.c_lflag &= ~ECHO;
+    tcsetattr(fd, TCSANOW, &termios);
+    // Disable blink for the terminal cursor
+    if (curs_set(0) == ERR) {
+      log_warn("Failed to DISable cursor blink with curs_set(0)");
+    }
+
+    // FIXME: make cursor_hide() work
+    // cursor_hide(fd); // this doesn't work
+    printf("\e[?25l"); // this works
   }
   log_debug("ASCII writer initialized");
   return ASCIICHAT_OK;
 }
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
-                    const bool _aspect_ratio, const bool stretch) {
-  if (original == NULL) {
-    exit(ASCIICHAT_ERR_WEBCAM);
+                    const bool _aspect_ratio, const bool stretch, const char *palette_chars,
+                    const char luminance_palette[256]) {
+  if (original == NULL || !palette_chars || !luminance_palette) {
+    log_error("ascii_convert: invalid parameters");
+    exit(ASCIICHAT_ERR_INVALID_PARAM);
   }
 
   // Start with the target dimensions requested by the user (or detected from
@@ -101,17 +119,17 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 #ifdef SIMD_SUPPORT
       // Standard color modes (foreground/background)
       bool use_background = (opt_render_mode == RENDER_MODE_BACKGROUND);
-      ascii = image_print_color_simd(resized, use_background, false);
+      ascii = image_print_color_simd(resized, use_background, false, palette_chars);
 #else
-      ascii = image_print_color(resized);
+      ascii = image_print_color(resized, palette_chars);
 #endif
     }
   } else {
+    // Use grayscale/monochrome conversion with client's palette
 #ifdef SIMD_SUPPORT
-    // Allocate buffer for grayscale ASCII output
-    ascii = image_print_simd(resized);
+    ascii = image_print_simd(resized, luminance_palette);
 #else
-    ascii = image_print(resized);
+    ascii = image_print(resized, palette_chars);
 #endif
   }
 
@@ -144,7 +162,8 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 // Capability-aware ASCII conversion using terminal capabilities
 char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                      const bool stretch) {
+                                      const bool stretch, const char *palette_chars,
+                                      const char luminance_palette[256]) {
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -190,8 +209,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   image_clear(resized);
   image_resize(original, resized);
 
-  // Use the new capability-aware image printing function
-  char *ascii = image_print_with_capabilities(resized, caps);
+  // Use the capability-aware image printing function with client's palette
+  char *ascii = image_print_with_capabilities(resized, caps, palette_chars, luminance_palette);
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII using terminal capabilities");
@@ -219,6 +238,9 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   return ascii_padded;
 }
 
+// NOTE: ascii_convert_with_custom_palette removed - use ascii_convert_with_capabilities() with enhanced
+// terminal_capabilities_t
+
 asciichat_error_t ascii_write(const char *frame) {
   if (frame == NULL) {
     log_warn("Attempted to write NULL frame");
@@ -244,7 +266,18 @@ void ascii_write_destroy(int fd) {
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
   if (!opt_snapshot_mode) {
-    cursor_show(fd);
+    // FIXME: make cursor_show() work
+    // cursor_show(fd); // this doesn't work
+    printf("\033[?25h"); // this works
+
+    struct termios termios;
+    tcgetattr(fd, &termios);
+    termios.c_lflag |= ECHO;
+    tcsetattr(fd, TCSANOW, &termios);
+    // Enable blink for the terminal cursor
+    if (curs_set(1) == ERR) {
+      log_warn("Failed to ENable cursor blink with curs_set(1)");
+    }
   }
   log_debug("ASCII writer destroyed");
 }

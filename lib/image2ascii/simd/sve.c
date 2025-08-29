@@ -13,7 +13,7 @@
 //=============================================================================
 
 // Simple monochrome ASCII function (matches scalar image_print performance)
-char *render_ascii_image_monochrome_sve(const image_t *image) {
+char *render_ascii_image_monochrome_sve(const image_t *image, const char luminance_palette[256]) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -70,10 +70,10 @@ char *render_ascii_image_monochrome_sve(const image_t *image) {
       svuint16_t b_16 = svunpklo_u16(b_vec);
 
       // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
-      svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, 77);
-      luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, 150);
-      luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, 29);
-      luma = svadd_n_u16_x(svptrue_b16(), luma, 128);
+      svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, LUMA_RED);
+      luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, LUMA_GREEN);
+      luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, LUMA_BLUE);
+      luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
 
       // Pack back to 8-bit
@@ -85,7 +85,7 @@ char *render_ascii_image_monochrome_sve(const image_t *image) {
 
       for (int j = 0; j < process_count; j++) {
         if (x + j < w) {
-          pos[j] = g_ascii_cache.luminance_palette[luma_array[j]];
+          pos[j] = luminance_palette[luma_array[j]];
         }
       }
       pos += process_count;
@@ -110,7 +110,8 @@ static inline uint8_t rgb_to_256color_sve(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 // Unified SVE function for all color modes (full implementation like NEON)
-char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color) {
+char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+                                         const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -140,7 +141,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 
   // Build 64-entry glyph LUT (copied from NEON approach)
   uint8_t ramp64[RAMP64_SIZE];
-  build_ramp64(ramp64);
+  build_ramp64(ramp64, ascii_chars);
 
   // Track current color state (copied from NEON)
   int curR = -1, curG = -1, curB = -1;
@@ -178,10 +179,10 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       svuint16_t b_16 = svunpklo_u16(b_vec);
 
       // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
-      svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, 77);
-      luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, 150);
-      luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, 29);
-      luma = svadd_n_u16_x(svptrue_b16(), luma, 128);
+      svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, LUMA_RED);
+      luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, LUMA_GREEN);
+      luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, LUMA_BLUE);
+      luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
 
       // Pack back to 8-bit and store
@@ -275,7 +276,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
     for (; x < width;) {
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
-      uint8_t Y = (uint8_t)((77 * R + 150 * G + 29 * B + 128u) >> 8);
+      uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + LUMA_THRESHOLD) >> 8);
       uint8_t ch = ramp64[Y >> 2];
 
       if (use_256color) {
@@ -286,7 +287,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
         while (j < width) {
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
-          uint8_t Y2 = (uint8_t)((77 * R2 + 150 * G2 + 29 * B2 + 128u) >> 8);
+          uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
           uint8_t color_idx2 = rgb_to_256color_sve((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
           if (((Y2 >> 2) != (Y >> 2)) || color_idx2 != color_idx)
             break;

@@ -26,6 +26,7 @@
 #include "aspect_ratio.h"
 #include "mixer.h"
 #include "hashtable.h"
+#include "palette.h"
 
 /* ============================================================================
  * Global State
@@ -97,6 +98,13 @@ typedef struct {
   // Terminal capabilities (for rendering appropriate ASCII frames)
   terminal_capabilities_t terminal_caps;
   bool has_terminal_caps; // Whether we've received terminal capabilities from this client
+
+  // NEW: Per-client palette cache
+  char client_palette_chars[256];     // Client's palette characters
+  size_t client_palette_len;          // Length of client's palette
+  char client_luminance_palette[256]; // Client's luminance-to-character mapping
+  palette_type_t client_palette_type; // Client's palette type
+  bool client_palette_initialized;    // Whether client's palette is set up
 
   // Stream dimensions
   unsigned short width, height;
@@ -801,12 +809,33 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     terminal_capabilities_t caps_snapshot = target_client->terminal_caps;
     pthread_mutex_unlock(&target_client->client_state_mutex);
 
-    // For half-block mode only, pass doubled height to get 2x resolution
-    if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
-      ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false);
+    if (target_client->client_palette_initialized) {
+      // Render with client's custom palette using enhanced capabilities
+      if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
+        ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false,
+                                                      target_client->client_palette_chars,
+                                                      target_client->client_luminance_palette);
+      } else {
+        ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
+                                                      target_client->client_palette_chars,
+                                                      target_client->client_luminance_palette);
+      }
     } else {
-      // Normal modes use standard dimensions
-      ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false);
+      // Fall back to server's default palette
+      log_debug("Client %u palette not initialized, using server default", target_client_id);
+
+      // Initialize default palette if needed
+      init_default_luminance_palette();
+
+      // For half-block mode only, pass doubled height to get 2x resolution
+      if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
+        ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false,
+                                                      DEFAULT_ASCII_PALETTE, g_default_luminance_palette);
+      } else {
+        // Normal modes use standard dimensions
+        ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
+                                                      DEFAULT_ASCII_PALETTE, g_default_luminance_palette);
+      }
     }
   } else {
     // Don't send frames until we receive client capabilities - saves bandwidth and CPU
@@ -893,6 +922,13 @@ int main(int argc, char *argv[]) {
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   log_init(log_filename, LOG_DEBUG);
+
+  // Initialize palette based on command line options
+  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
+  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
+    log_error("Failed to apply palette configuration");
+    return 1;
+  }
 
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
   log_set_terminal_output(!opt_quiet);
@@ -1494,6 +1530,31 @@ void *client_receive_thread_func(void *arg) {
 
         strncpy(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm) - 1);
         client->terminal_caps.colorterm[sizeof(client->terminal_caps.colorterm) - 1] = '\0';
+
+        // NEW: Store client's palette preferences
+        client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
+        client->terminal_caps.palette_type = ntohl(caps->palette_type);
+        strncpy(client->terminal_caps.palette_custom, caps->palette_custom,
+                sizeof(client->terminal_caps.palette_custom) - 1);
+        client->terminal_caps.palette_custom[sizeof(client->terminal_caps.palette_custom) - 1] = '\0';
+
+        // Initialize client's per-client palette cache
+        const char *custom_chars =
+            (client->terminal_caps.palette_type == PALETTE_CUSTOM && client->terminal_caps.palette_custom[0])
+                ? client->terminal_caps.palette_custom
+                : NULL;
+
+        if (initialize_client_palette((palette_type_t)client->terminal_caps.palette_type, custom_chars,
+                                      client->client_palette_chars, &client->client_palette_len,
+                                      client->client_luminance_palette) == 0) {
+          client->client_palette_type = (palette_type_t)client->terminal_caps.palette_type;
+          client->client_palette_initialized = true;
+          log_info("Client %d palette initialized: type=%u, %zu chars, utf8=%u", client->client_id,
+                   client->terminal_caps.palette_type, client->client_palette_len, client->terminal_caps.utf8_support);
+        } else {
+          log_error("Failed to initialize palette for client %d, using server default", client->client_id);
+          client->client_palette_initialized = false;
+        }
 
         // Mark that we have received capabilities for this client
         client->has_terminal_caps = true;

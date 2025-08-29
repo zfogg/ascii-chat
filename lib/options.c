@@ -59,6 +59,11 @@ unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via -
 char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
 char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
 
+// Palette options
+palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
+char opt_palette_custom[256] = "";                  // Custom palette characters
+bool opt_palette_custom_set = false;                // True if custom palette was set
+
 // Global variables to store last known image dimensions for aspect ratio
 // recalculation
 unsigned short int last_image_width = 0, last_image_height = 0;
@@ -95,6 +100,8 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"show-capabilities", no_argument, NULL, 1001},
                                          {"utf8", no_argument, NULL, 1002},
                                          {"render-mode", required_argument, NULL, 'M'},
+                                         {"palette", required_argument, NULL, 'P'},
+                                         {"palette-chars", required_argument, NULL, 'C'},
                                          {"audio", no_argument, NULL, 'A'},
                                          {"stretch", no_argument, NULL, 's'},
                                          {"quiet", no_argument, NULL, 'q'},
@@ -110,6 +117,8 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
 // Server-only options
 static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
                                          {"port", required_argument, NULL, 'p'},
+                                         {"palette", required_argument, NULL, 'P'},
+                                         {"palette-chars", required_argument, NULL, 'C'},
                                          {"audio", no_argument, NULL, 'A'},
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
@@ -227,10 +236,10 @@ void options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = "a:p:x:y:c:f::M:AsqSD:L:EK:F:h";
+    optstring = "a:p:x:y:c:f::M:P:C:AsqSD:L:EK:F:h";
     options = client_options;
   } else {
-    optstring = "a:p:AL:EK:F:h";
+    optstring = "a:p:P:C:AL:EK:F:h";
     options = server_options;
   }
 
@@ -357,6 +366,45 @@ void options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
+    case 'P': { // --palette
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strcmp(value_str, "standard") == 0) {
+        opt_palette_type = PALETTE_STANDARD;
+      } else if (strcmp(value_str, "blocks") == 0) {
+        opt_palette_type = PALETTE_BLOCKS;
+      } else if (strcmp(value_str, "digital") == 0) {
+        opt_palette_type = PALETTE_DIGITAL;
+      } else if (strcmp(value_str, "minimal") == 0) {
+        opt_palette_type = PALETTE_MINIMAL;
+      } else if (strcmp(value_str, "cool") == 0) {
+        opt_palette_type = PALETTE_COOL;
+      } else if (strcmp(value_str, "custom") == 0) {
+        opt_palette_type = PALETTE_CUSTOM;
+      } else {
+        log_error("Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom", value_str);
+        exit(EXIT_FAILURE);
+      }
+      break;
+    }
+
+    case 'C': { // --palette-chars
+      char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      if (strlen(value_str) == 0) {
+        log_error("Invalid palette-chars: cannot be empty");
+        exit(EXIT_FAILURE);
+      }
+      if (strlen(value_str) >= sizeof(opt_palette_custom)) {
+        log_error("Invalid palette-chars: too long (%zu chars, max %zu)", strlen(value_str),
+                  sizeof(opt_palette_custom) - 1);
+        exit(EXIT_FAILURE);
+      }
+      strncpy(opt_palette_custom, value_str, sizeof(opt_palette_custom) - 1);
+      opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
+      opt_palette_custom_set = true;
+      opt_palette_type = PALETTE_CUSTOM; // Automatically set to custom
+      break;
+    }
+
     case 's':
       opt_stretch = 1;
       break;
@@ -476,6 +524,11 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
   fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
                              "foreground, background, half-block (default: foreground)\n");
+  fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
+                             "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
+  fprintf(desc,
+          USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT "Custom palette characters for --palette=custom "
+                       "(implies --palette=custom)\n");
   fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
                              "enable audio capture and playback (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
@@ -501,6 +554,10 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
   fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
   fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
+  fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
+                             "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
+  fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS " USAGE_INDENT "Custom palette characters for --palette=custom "
+                             "(implies --palette=custom)\n");
   fprintf(desc,
           USAGE_INDENT "-A --audio           " USAGE_INDENT "enable audio streaming to clients (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");

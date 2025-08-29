@@ -28,7 +28,7 @@ void ob_u8(outbuf_t *ob, uint8_t v);
 void ob_u32(outbuf_t *ob, uint32_t v);
 
 #define RAMP64_SIZE 64
-void build_ramp64(uint8_t ramp64[RAMP64_SIZE]);
+void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars);
 
 // ANSI escape sequence emission
 void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
@@ -60,7 +60,7 @@ char *append_sgr_reset(char *dst);
 
 // Helper: write decimal RGB triplet using dec3 cache
 static inline size_t write_rgb_triplet(uint8_t value, char *dst) {
-  const dec3_t *d = &g_ascii_cache.dec3_table[value];
+  const dec3_t *d = &g_dec3_cache.dec3_table[value];
   memcpy(dst, d->s, d->len);
   return d->len;
 }
