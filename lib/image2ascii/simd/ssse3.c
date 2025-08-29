@@ -48,34 +48,34 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image) {
         g_array[j] = row[x + j].g;
         b_array[j] = row[x + j].b;
       }
-      
+
       // Load into SSSE3 registers
       __m128i r_vec = _mm_loadl_epi64((__m128i *)r_array);
       __m128i g_vec = _mm_loadl_epi64((__m128i *)g_array);
       __m128i b_vec = _mm_loadl_epi64((__m128i *)b_array);
-      
+
       // Convert to 16-bit for arithmetic
       __m128i r_16 = _mm_unpacklo_epi8(r_vec, _mm_setzero_si128());
       __m128i g_16 = _mm_unpacklo_epi8(g_vec, _mm_setzero_si128());
       __m128i b_16 = _mm_unpacklo_epi8(b_vec, _mm_setzero_si128());
-      
+
       // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
       __m128i luma_r = _mm_mullo_epi16(r_16, _mm_set1_epi16(77));
       __m128i luma_g = _mm_mullo_epi16(g_16, _mm_set1_epi16(150));
       __m128i luma_b = _mm_mullo_epi16(b_16, _mm_set1_epi16(29));
-      
+
       __m128i luma_sum = _mm_add_epi16(luma_r, luma_g);
       luma_sum = _mm_add_epi16(luma_sum, luma_b);
       luma_sum = _mm_add_epi16(luma_sum, _mm_set1_epi16(128)); // Add rounding
       luma_sum = _mm_srli_epi16(luma_sum, 8);
-      
+
       // Pack back to 8-bit
       __m128i luminance = _mm_packus_epi16(luma_sum, _mm_setzero_si128());
-      
+
       // Store and convert to ASCII characters
       uint8_t luma_array[8];
       _mm_storel_epi64((__m128i *)luma_array, luminance);
-      
+
       for (int j = 0; j < 8; j++) {
         pos[j] = g_ascii_cache.luminance_palette[luma_array[j]];
       }
@@ -156,27 +156,27 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
         g_array[j] = row[x + j].g;
         b_array[j] = row[x + j].b;
       }
-      
+
       // Load into SSSE3 registers
       __m128i r_vec = _mm_loadl_epi64((__m128i *)r_array);
       __m128i g_vec = _mm_loadl_epi64((__m128i *)g_array);
       __m128i b_vec = _mm_loadl_epi64((__m128i *)b_array);
-      
+
       // Convert to 16-bit for arithmetic
       __m128i r_16 = _mm_unpacklo_epi8(r_vec, _mm_setzero_si128());
       __m128i g_16 = _mm_unpacklo_epi8(g_vec, _mm_setzero_si128());
       __m128i b_16 = _mm_unpacklo_epi8(b_vec, _mm_setzero_si128());
-      
+
       // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
       __m128i luma_r = _mm_mullo_epi16(r_16, _mm_set1_epi16(77));
       __m128i luma_g = _mm_mullo_epi16(g_16, _mm_set1_epi16(150));
       __m128i luma_b = _mm_mullo_epi16(b_16, _mm_set1_epi16(29));
-      
+
       __m128i luma_sum = _mm_add_epi16(luma_r, luma_g);
       luma_sum = _mm_add_epi16(luma_sum, luma_b);
       luma_sum = _mm_add_epi16(luma_sum, _mm_set1_epi16(128));
       luma_sum = _mm_srli_epi16(luma_sum, 8);
-      
+
       // Pack back to 8-bit and store
       __m128i luminance = _mm_packus_epi16(luma_sum, _mm_setzero_si128());
       uint8_t luma_array[8];

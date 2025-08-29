@@ -674,9 +674,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 }
 
 // Enhanced benchmark function with image source support
-simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations,
-                                                       bool background_mode, const image_t *source_image,
-                                                       bool use_fast_path) {
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
+                                                       const image_t *source_image, bool use_fast_path) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -753,44 +752,44 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using unified optimized renderer
   if (use_fast_path) {
-    result.sse2_time = measure_image_function_time_color(render_ascii_image_monochrome_sse2, frame, background_mode,
-                                                         use_fast_path);
+    result.sse2_time =
+        measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode, use_fast_path);
   } else {
-    result.sse2_time = measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode,
-                                                         use_fast_path);
+    result.sse2_time =
+        measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode, use_fast_path);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using unified optimized renderer
   if (use_fast_path) {
-    result.ssse3_time = measure_image_function_time_color(render_ascii_image_monochrome_ssse3, frame, background_mode,
-                                                         use_fast_path);
+    result.ssse3_time =
+        measure_image_function_time_color(render_ascii_image_monochrome_ssse3, frame, background_mode, use_fast_path);
   } else {
-    result.ssse3_time = measure_image_function_time_color(render_ascii_ssse3_unified_optimized, frame, background_mode,
-                                                         use_fast_path);
+    result.ssse3_time =
+        measure_image_function_time_color(render_ascii_ssse3_unified_optimized, frame, background_mode, use_fast_path);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using unified optimized renderer
   if (use_fast_path) {
-    result.avx2_time = measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode,
-                                                         use_fast_path);
+    result.avx2_time =
+        measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode, use_fast_path);
   } else {
-    result.avx2_time = measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode,
-                                                         use_fast_path);
+    result.avx2_time =
+        measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode, use_fast_path);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
   // Benchmark NEON using unified optimized renderer
   if (use_fast_path) {
-    result.neon_time = measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode,
-                                                         use_fast_path);
+    result.neon_time =
+        measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode, use_fast_path);
   } else {
-    result.neon_time = measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode,
-                                                         use_fast_path);
+    result.neon_time =
+        measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode, use_fast_path);
   }
 #endif
 
