@@ -15,7 +15,9 @@ Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audi
 
 ![Animated demonstration: monochrome](http://i.imgur.com/E4OuqvX.gif)
 
-![Animated demonstration: color](https://i.imgur.com/IL8fSkA.gif)
+![Animated demonstration: color](https://github.com/user-attachments/assets/3bbaaad0-2e62-46e8-9653-bd5201c4b7df)
+
+
 
 Dependencies
 ==========
