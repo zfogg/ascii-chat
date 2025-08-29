@@ -359,59 +359,25 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
     return result;
   }
 
-  // Use real webcam data for realistic testing (matches color benchmark approach)
-  webcam_init(0);
-  image_t *webcam_frame = webcam_read();
-
-  if (webcam_frame && webcam_frame->pixels) {
-    printf("Using real webcam data (%dx%d) for realistic testing\n", webcam_frame->w, webcam_frame->h);
-
-    // Resize webcam data to test dimensions
-    if (webcam_frame->w * webcam_frame->h == pixel_count) {
-      // Perfect match - copy directly
-      for (int i = 0; i < pixel_count; i++) {
-        test_pixels[i].r = webcam_frame->pixels[i].r;
-        test_pixels[i].g = webcam_frame->pixels[i].g;
-        test_pixels[i].b = webcam_frame->pixels[i].b;
-      }
-    } else {
-      // Resize/sample webcam data to fit test dimensions
-      float x_scale = (float)webcam_frame->w / width;
-      float y_scale = (float)webcam_frame->h / height;
-
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          int src_x = (int)(x * x_scale);
-          int src_y = (int)(y * y_scale);
-          if (src_x >= webcam_frame->w)
-            src_x = webcam_frame->w - 1;
-          if (src_y >= webcam_frame->h)
-            src_y = webcam_frame->h - 1;
-
-          int src_idx = src_y * webcam_frame->w + src_x;
-          int dst_idx = y * width + x;
-
-          test_pixels[dst_idx].r = webcam_frame->pixels[src_idx].r;
-          test_pixels[dst_idx].g = webcam_frame->pixels[src_idx].g;
-          test_pixels[dst_idx].b = webcam_frame->pixels[src_idx].b;
-        }
-      }
-    }
-
-    image_destroy(webcam_frame);
-    webcam_cleanup();
-  } else {
-    // Fallback to synthetic data if webcam fails
-    printf("Webcam not available, using synthetic test data\n");
-    srand(12345); // Consistent results
-    for (int i = 0; i < pixel_count; i++) {
-      test_pixels[i].r = rand() % 256;
-      test_pixels[i].g = rand() % 256;
-      test_pixels[i].b = rand() % 256;
-    }
-    if (webcam_frame)
-      image_destroy(webcam_frame);
-    webcam_cleanup();
+  // Use synthetic data for consistent cross-platform testing
+  printf("Using synthetic gradient data for consistent benchmarking\n");
+  srand(12345); // Consistent results across runs
+  for (int i = 0; i < pixel_count; i++) {
+    int x = i % width;
+    int y = i / width;
+    // Create realistic gradient pattern with some variation
+    int base_r = (x * 255) / width;
+    int base_g = (y * 255) / height;
+    int base_b = ((x + y) * 127) / (width + height);
+    
+    // Add small random variation to make it realistic
+    int temp_r = base_r + (rand() % 32 - 16);
+    int temp_g = base_g + (rand() % 32 - 16);
+    int temp_b = base_b + (rand() % 32 - 16);
+    
+    test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
+    test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
+    test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
   }
 
   // Copy test data to test image pixels
@@ -522,47 +488,26 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
     return result;
   }
 
-  // Use real webcam data for realistic color coherence testing
-  // This gives much more realistic results than random RGB data
-  webcam_init(0);
-  image_t *webcam_frame = webcam_read();
+  // Use synthetic gradient data for consistent cross-platform benchmarking
+  printf("Using coherent gradient data for realistic color testing\n");
+  srand(12345); // For consistent gradient variation across runs
+  for (int i = 0; i < pixel_count; i++) {
+    int x = i % width;
+    int y = i / width;
+    // Create smooth gradients with some variation (mimics real images)
+    int base_r = (x * 255) / width;
+    int base_g = (y * 255) / height;
+    int base_b = ((x + y) * 127) / (width + height);
 
-  if (webcam_frame && webcam_frame->pixels) {
-    printf("Using real webcam data (%dx%d) for realistic color testing\n", webcam_frame->w, webcam_frame->h);
+    // Add realistic variation
+    int temp_r = base_r + (rand() % 32 - 16);
+    int temp_g = base_g + (rand() % 32 - 16);
+    int temp_b = base_b + (rand() % 32 - 16);
 
-    // Resize webcam data to match test dimensions
-    for (int i = 0; i < pixel_count; i++) {
-      // Sample from webcam with wrapping (simple but effective)
-      int src_idx = i % (webcam_frame->w * webcam_frame->h);
-      rgb_t *src_pixel = &webcam_frame->pixels[src_idx];
-      test_pixels[i].r = src_pixel->r;
-      test_pixels[i].g = src_pixel->g;
-      test_pixels[i].b = src_pixel->b;
-    }
-  } else {
-    printf("Webcam unavailable, using coherent gradient data (much more realistic than random)\n");
-    // Generate coherent gradient data instead of random (much more realistic)
-    srand(12345); // For consistent gradient variation
-    for (int i = 0; i < pixel_count; i++) {
-      int x = i % width;
-      int y = i / width;
-      // Create smooth gradients with some variation (mimics real images)
-      int base_r = (x * 255 / width);
-      int base_g = (y * 255 / height);
-      int base_b = ((x + y) * 127 / (width + height));
-
-      // Clamp to valid range during assignment
-      int temp_r = base_r + (rand() % 16 - 8);
-      int temp_g = base_g + (rand() % 16 - 8);
-      int temp_b = base_b + (rand() % 16 - 8);
-
-      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
-      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
-      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
-    }
+    test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
+    test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
+    test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
   }
-
-  webcam_cleanup();
 
   // Populate test image with same data as test_pixels
   frame->pixels = test_pixels;
@@ -886,83 +831,26 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       }
     }
   } else {
-    // No source image provided: try to capture real webcam frames for realistic color testing
-    webcam_init(0);
-    printf("Pre-capturing %d adaptive webcam frames for COLOR %s %dx%d (ignoring passed iterations)...\n",
-           adaptive_iterations, mode_str, width, height);
+    // No source image provided: use synthetic gradient data for consistent testing
+    printf("Using synthetic gradient data for COLOR %s %dx%d benchmarking with %d iterations...\n",
+           mode_str, width, height, adaptive_iterations);
+    
+    srand(12345); // Consistent results across runs
+    for (int i = 0; i < pixel_count; i++) {
+      int x = i % width;
+      int y = i / width;
+      int base_r = (x * 255) / width;
+      int base_g = (y * 255) / height;
+      int base_b = ((x + y) * 127) / (width + height);
 
-    // Pre-capture adaptive number of webcam frames
-    SAFE_CALLOC(frame_data, adaptive_iterations, sizeof(rgb_pixel_t *), rgb_pixel_t **);
-    for (int i = 0; i < adaptive_iterations; i++) {
-      // Capture fresh webcam frame
-      image_t *webcam_frame = webcam_read();
-      if (!webcam_frame) {
-        printf("Warning: Failed to capture webcam frame %d during color benchmarking\n", i);
-        continue;
-      }
+      int temp_r = base_r + (rand() % 32 - 16);
+      int temp_g = base_g + (rand() % 32 - 16);
+      int temp_b = base_b + (rand() % 32 - 16);
 
-      // Create temp image with desired dimensions
-      image_t *resized_frame = image_new(width, height);
-      if (!resized_frame) {
-        printf("Warning: Failed to allocate resized_frame for webcam frame %d during color benchmarking\n", i);
-        if (webcam_frame) {
-          image_destroy(webcam_frame);
-          webcam_frame = NULL;
-        }
-        continue;
-      }
-
-      // Use image_resize to resize webcam frame to test dimensions
-      image_resize(webcam_frame, resized_frame);
-
-      // Allocate and copy resized data (convert rgb_t to rgb_pixel_t)
-      SAFE_CALLOC(frame_data[captured_frames], pixel_count, sizeof(rgb_pixel_t), rgb_pixel_t *);
-      for (int j = 0; j < pixel_count; j++) {
-        frame_data[captured_frames][j].r = resized_frame->pixels[j].r;
-        frame_data[captured_frames][j].g = resized_frame->pixels[j].g;
-        frame_data[captured_frames][j].b = resized_frame->pixels[j].b;
-      }
-
-      image_destroy(resized_frame);
-      resized_frame = NULL;
-      image_destroy(webcam_frame);
-      webcam_frame = NULL;
-      captured_frames++;
+      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
+      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
+      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
     }
-
-    if (captured_frames == 0) {
-      printf("No webcam frames captured for color test, using synthetic data\n");
-      // Fall back to synthetic data like the original implementation
-      srand(12345);
-      for (int i = 0; i < pixel_count; i++) {
-        int x = i % width;
-        int y = i / width;
-        int base_r = (x * 255 / width);
-        int base_g = (y * 255 / height);
-        int base_b = ((x + y) * 127 / (width + height));
-
-        int temp_r = base_r + (rand() % 16 - 8);
-        int temp_g = base_g + (rand() % 16 - 8);
-        int temp_b = base_b + (rand() % 16 - 8);
-
-        test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
-        test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
-        test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
-      }
-    } else {
-      // Use first frame for all iterations
-      for (int i = 0; i < pixel_count; i++) {
-        test_pixels[i] = frame_data[0][i];
-      }
-    }
-
-    // Cleanup frame data after copying to test_pixels
-    for (int i = 0; i < captured_frames; i++) {
-      SAFE_FREE(frame_data[i]);
-    }
-    SAFE_FREE(frame_data);
-    frame_data = NULL;
-    webcam_cleanup();
   }
 
   printf("Benchmarking COLOR %s conversion using %d iterations...\n", mode_str, adaptive_iterations);
