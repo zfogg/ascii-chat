@@ -125,7 +125,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
                                                              bool use_fast_path);
 void print_simd_capabilities(void);
 
-char *image_print_simd(image_t *image, const char luminance_palette[256]);
+char *image_print_simd(image_t *image, const char *ascii_chars);
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars);
 
 // Quality vs speed control for 256-color mode (optimization #4)

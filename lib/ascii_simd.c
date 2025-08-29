@@ -198,16 +198,19 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
 
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
-char *image_print_simd(image_t *image, const char luminance_palette[256]) {
+char *image_print_simd(image_t *image, const char *ascii_chars) {
 #ifdef SIMD_SUPPORT_NEON
-  return render_ascii_image_monochrome_neon(image, luminance_palette);
+  return render_ascii_image_monochrome_neon(image, ascii_chars);
 #elif SIMD_SUPPORT_SSE2
-  return render_ascii_image_monochrome_sse2(image, luminance_palette);
+  return render_ascii_image_monochrome_sse2(image, ascii_chars);
 #elif SIMD_SUPPORT_SSSE3
-  return render_ascii_image_monochrome_ssse3(image, luminance_palette);
+  return render_ascii_image_monochrome_ssse3(image, ascii_chars);
 #elif SIMD_SUPPORT_AVX2
-  return render_ascii_image_monochrome_avx2(image, luminance_palette);
+  return render_ascii_image_monochrome_avx2(image, ascii_chars);
 #else
+  // Build luminance palette from ascii_chars for scalar version
+  char luminance_palette[256];
+  build_client_luminance_palette(ascii_chars, strlen(ascii_chars), luminance_palette);
   return convert_pixels_scalar_with_newlines(image, luminance_palette);
 #endif
 }

@@ -202,8 +202,8 @@ uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t
 // Simple Monochrome ASCII Function (matches scalar image_print performance)
 //=============================================================================
 
-char *render_ascii_image_monochrome_neon(const image_t *image, const char luminance_palette[256]) {
-  if (!image || !image->pixels || !luminance_palette) {
+char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii_chars) {
+  if (!image || !image->pixels || !ascii_chars) {
     return NULL;
   }
 
@@ -214,8 +214,66 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char lumina
     return NULL;
   }
 
-  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
-  const size_t len = (size_t)h * ((size_t)w + 1);
+  // Build UTF-8 aware character cache (same as color renderer)
+  typedef struct {
+    char utf8_bytes[4];  // Up to 4 bytes for UTF-8 character
+    uint8_t byte_len;    // Actual length (1-4 bytes)
+  } utf8_char_t;
+  
+  utf8_char_t utf8_char_cache[256];  // 256-entry UTF-8 character cache for direct luminance lookup
+  
+  // Parse the ASCII characters into UTF-8 aware character boundaries
+  int char_count = 0;
+  const char *p = ascii_chars;
+  
+  // Character info for building luminance mapping
+  typedef struct {
+    const char *start;
+    int byte_len;
+  } char_info_t;
+  
+  char_info_t char_infos[256];
+  
+  while (*p && char_count < 255) {
+    char_infos[char_count].start = p;
+    
+    // Determine UTF-8 character length
+    if ((*p & 0x80) == 0) {
+      char_infos[char_count].byte_len = 1;
+      p++;
+    } else if ((*p & 0xE0) == 0xC0) {
+      char_infos[char_count].byte_len = 2;
+      p += 2;
+    } else if ((*p & 0xF0) == 0xE0) {
+      char_infos[char_count].byte_len = 3;
+      p += 3;
+    } else if ((*p & 0xF8) == 0xF0) {
+      char_infos[char_count].byte_len = 4;
+      p += 4;
+    } else {
+      char_infos[char_count].byte_len = 1;
+      p++;
+    }
+    char_count++;
+  }
+  
+  // Build 256-entry UTF-8 cache for direct luminance->character mapping
+  for (int i = 0; i < 256; i++) {
+    // Map luminance 0-255 to character 0-(char_count-1)
+    int char_idx = char_count > 1 ? (i * (char_count - 1) + 127) / 255 : 0;
+    if (char_idx >= char_count) char_idx = char_count - 1;
+    
+    // Cache UTF-8 character
+    utf8_char_cache[i].byte_len = char_infos[char_idx].byte_len;
+    memcpy(utf8_char_cache[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
+    if (utf8_char_cache[i].byte_len < 4) {
+      utf8_char_cache[i].utf8_bytes[utf8_char_cache[i].byte_len] = '\0';
+    }
+  }
+
+  // Estimate output buffer size for UTF-8 characters
+  const size_t max_char_bytes = 4;  // Max UTF-8 character size
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   char *output;
   SAFE_MALLOC(output, len, char *);
@@ -253,18 +311,21 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char lumina
       uint8_t luma_array[16];
       vst1q_u8(luma_array, luminance);
 
-      // Convert luminance to ASCII characters using custom palette lookup
+      // Convert luminance to UTF-8 characters using UTF-8 cache
       for (int i = 0; i < 16; i++) {
-        pos[i] = luminance_palette[luma_array[i]];
+        const utf8_char_t *char_info = &utf8_char_cache[luma_array[i]];
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
       }
-      pos += 16;
     }
 
     // Handle remaining pixels with scalar code
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      *pos++ = luminance_palette[luminance];
+      const utf8_char_t *char_info = &utf8_char_cache[luminance];
+      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+      pos += char_info->byte_len;
     }
 
     // Add newline (except for last row)
