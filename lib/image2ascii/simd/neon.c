@@ -534,7 +534,6 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 //=============================================================================
 char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes) {
   /* Main: half-block renderer. Returns NUL-terminated malloc'd string; caller free(). */
-  printf("HALF-BLOCK DEBUG: Input %dx%d, will output %d lines\n", width, height, (height + 1) / 2);
   if (width <= 0 || height <= 0)
     return strdup("");
   if (stride_bytes <= 0)

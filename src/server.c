@@ -517,6 +517,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           if (client->last_valid_frame.data) {
             memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
             client->has_cached_frame = true;
+          } else {
+            log_error("Failed to allocate cache buffer for client %u", client->client_id);
+            client->has_cached_frame = false;
           }
 
           pthread_mutex_unlock(&client->cached_frame_mutex);
@@ -573,8 +576,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         // Extract pixel data
         rgb_t *pixels = (rgb_t *)(frame_to_use->data + sizeof(uint32_t) * 2);
 
-        // Create an image_t structure
-        image_t *img = image_new(img_width, img_height);
+        // Create image from buffer pool for consistent video pipeline management
+        image_t *img = image_new_from_pool(img_width, img_height);
         if (img) {
           memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
           sources[source_count].image = img;
@@ -626,13 +629,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                      &composite_height_px);
     }
 
-    // Create composite with appropriate dimensions
-    composite = image_new(composite_width_px, composite_height_px);
+    // Create composite from buffer pool for consistent memory management
+    composite = image_new_from_pool(composite_width_px, composite_height_px);
     if (!composite) {
       log_error("Per-client %u: Failed to create composite image", target_client_id);
       *out_size = 0;
       for (int i = 0; i < source_count; i++) {
-        image_destroy(sources[i].image);
+        image_destroy_to_pool(sources[i].image);
       }
       return NULL;
     }
@@ -659,8 +662,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       int x_offset = (composite_width_px - fitted_width) / 2;
       int y_offset = (composite_height_px - fitted_height) / 2;
 
-      // Create fitted image and center it in composite
-      image_t *fitted = image_new(fitted_width, fitted_height);
+      // Create fitted image from buffer pool
+      image_t *fitted = image_new_from_pool(fitted_width, fitted_height);
       if (fitted) {
         image_resize(sources[0].image, fitted);
 
@@ -677,7 +680,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             }
           }
         }
-        image_destroy(fitted);
+        image_destroy_to_pool(fitted);
       }
     } else {
       // Normal modes: simple resize to fit calculated dimensions
@@ -692,12 +695,12 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     int composite_width_px = width;
     int composite_height_px = use_half_block_multi ? height * 2 : height;
 
-    composite = image_new(composite_width_px, composite_height_px);
+    composite = image_new_from_pool(composite_width_px, composite_height_px);
     if (!composite) {
       log_error("Per-client %u: Failed to create composite image", target_client_id);
       *out_size = 0;
       for (int i = 0; i < source_count; i++) {
-        image_destroy(sources[i].image);
+        image_destroy_to_pool(sources[i].image);
       }
       return NULL;
     }
@@ -748,8 +751,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       if (target_height_px > cell_height_px)
         target_height_px = cell_height_px;
 
-      // Create resized image
-      image_t *resized = image_new(target_width_px, target_height_px);
+      // Create resized image with standard allocation
+      image_t *resized = image_new_from_pool(target_width_px, target_height_px);
       if (resized) {
         image_resize(sources[i].image, resized);
 
@@ -776,12 +779,12 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           }
         }
 
-        image_destroy(resized);
+        image_destroy_to_pool(resized);
       }
     }
   } else {
-    // No sources, create empty composite
-    composite = image_new(width, height * 2);
+    // No sources, create empty composite with standard allocation
+    composite = image_new_from_pool(width, height * 2);
     if (!composite) {
       log_error("Per-client %u: Failed to create empty image", target_client_id);
       *out_size = 0;
@@ -823,11 +826,11 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     *out_size = 0;
   }
 
-  // Clean up
-  image_destroy(composite);
+  // Clean up using standard deallocation
+  image_destroy_to_pool(composite);
   for (int i = 0; i < source_count; i++) {
     if (sources[i].image) {
-      image_destroy(sources[i].image);
+      image_destroy_to_pool(sources[i].image);
     }
   }
 
