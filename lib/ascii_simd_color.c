@@ -27,6 +27,10 @@
 #define BGASCII_LUMA_THRESHOLD 128 // Y >= 128 -> black text; else white text
 #endif
 
+#ifndef CUBE_GRAY_THRESHOLD
+#define CUBE_GRAY_THRESHOLD 10
+#endif
+
 /* ============================================================================
  * OPTIMIZATION #4: 256-Color Mode with Precomputed FG+BG Strings (~1.5MB cache)
  * ============================================================================
@@ -146,7 +150,6 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
   init_sgr256_fg_cache();
   const sgr256_t *sgr = &g_sgr256_fg[fg];
   *len_out = sgr->len;
-  // DEBUG: Log what string we're returning
   return (char *)sgr->str;
 }
 
@@ -154,7 +157,6 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
   init_sgr256_cache();
   const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
   *len_out = sgr->len;
-  // DEBUG: Log what string we're returning
   return (char *)sgr->str;
 }
 
@@ -419,49 +421,7 @@ static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
  * ============================================================================
  */
 
-// Scalar version for comparison
-size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                     bool background_mode) {
-
-  char *current_pos = output_buffer;
-  char *buffer_end = output_buffer + buffer_size;
-
-  for (int x = 0; x < width; x++) {
-    const rgb_pixel_t *pixel = &pixels[x];
-
-    // Calculate luminance (scalar)
-    int luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
-    if (luminance > 255)
-      luminance = 255;
-
-    // Get ASCII character - Use global luminance palette like all other functions
-    char ascii_char = luminance_palette[luminance];
-
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 64)
-      break;
-
-    if (background_mode) {
-      uint8_t fg_color = (luminance < 127) ? 15 : 0; // FIX #6: use 15 not 255!
-      // FIXED: Use combined FG+BG sequence like SIMD implementation
-      current_pos = append_sgr_truecolor_fg_bg(current_pos, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
-      *current_pos++ = ascii_char;
-    } else {
-      int fg_len = generate_ansi_fg(pixel->r, pixel->g, pixel->b, current_pos);
-      current_pos += fg_len;
-      *current_pos++ = ascii_char;
-    }
-  }
-
-  // Reset sequence
-  size_t remaining = buffer_end - current_pos;
-  if (remaining >= sizeof(ANSI_RESET)) {
-    memcpy(current_pos, ANSI_RESET, sizeof(ANSI_RESET) - 1);
-    current_pos += sizeof(ANSI_RESET) - 1;
-  }
-
-  return current_pos - output_buffer;
-}
+// Row-based scalar function removed - use image_print_color() instead
 
 /* ============================================================================
  * OPTIMIZATION #4: Fast 256-color implementations (defined after SGR functions)
@@ -471,6 +431,12 @@ size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buf
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path) {
 #ifdef SIMD_SUPPORT_NEON
   return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path);
+#elif SIMD_SUPPORT_SSE2
+  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_fast_path);
+#elif SIMD_SUPPORT_SSSE3
+  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_fast_path);
+#elif SIMD_SUPPORT_AVX2
+  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_fast_path);
 #else
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds
@@ -495,26 +461,8 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
     return NULL;
   }
 
-  // Serial processing fallback (for small images or if threading setup failed)
-  size_t total_len = 0;
-  for (int y = 0; y < h; y++) {
-    // Debug assertion: ensure we have enough space
-    const size_t row_max __attribute__((unused)) = (size_t)w * (size_t)per_px + reset_len;
-    assert(total_len + row_max <= lines_size);
-
-    bool use_background = use_background_mode;
-    char *ascii_row = &ascii[total_len]; // assume squarish images i guess for now
-    size_t row_len = convert_row_with_color_scalar((const rgb_pixel_t *)&image->pixels[(size_t)y * (size_t)w],
-                                                   ascii_row, lines_size - total_len, w, use_background);
-    total_len += row_len;
-
-    // Add newline after each row (except the last row)
-    if (y != h - 1 && total_len < lines_size - 1) {
-      ascii[total_len++] = '\n';
-    }
-  }
-  ascii[total_len] = '\0';
-
-  return ascii;
+  // Use scalar image function instead of row-based processing
+  free(ascii); // Free the allocated buffer since we're using image function's output
+  return image_print_color(image);
 #endif
 }

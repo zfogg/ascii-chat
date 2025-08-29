@@ -26,10 +26,10 @@ unsigned short int opt_webcam_flip = 1;
 unsigned short int opt_color_output = 0;
 
 // Terminal color mode and capability options
-terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO;             // Auto-detect by default
-background_mode_t opt_background_mode = BACKGROUND_MODE_FOREGROUND; // Foreground by default
-unsigned short int opt_show_capabilities = 0;                       // Don't show capabilities by default
-unsigned short int opt_force_utf8 = 0;                              // Don't force UTF-8 by default
+terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
+render_mode_t opt_render_mode = RENDER_MODE_FOREGROUND; // Foreground by default
+unsigned short int opt_show_capabilities = 0;           // Don't show capabilities by default
+unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
 
 unsigned short int opt_audio_enabled = 0;
 
@@ -94,7 +94,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"color-mode", required_argument, NULL, 1000},
                                          {"show-capabilities", no_argument, NULL, 1001},
                                          {"utf8", no_argument, NULL, 1002},
-                                         {"background-mode", required_argument, NULL, 'M'},
+                                         {"render-mode", required_argument, NULL, 'M'},
                                          {"audio", no_argument, NULL, 'A'},
                                          {"stretch", no_argument, NULL, 's'},
                                          {"quiet", no_argument, NULL, 'q'},
@@ -342,14 +342,16 @@ void options_init(int argc, char **argv, bool is_client) {
       opt_force_utf8 = 1;
       break;
 
-    case 'M': { // --background-mode
+    case 'M': { // --render-mode
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
-        opt_background_mode = BACKGROUND_MODE_FOREGROUND;
+        opt_render_mode = RENDER_MODE_FOREGROUND;
       } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
-        opt_background_mode = BACKGROUND_MODE_BACKGROUND;
+        opt_render_mode = RENDER_MODE_BACKGROUND;
+      } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
+        opt_render_mode = RENDER_MODE_HALF_BLOCK;
       } else {
-        log_error("Error: Invalid background mode '%s'. Valid modes: foreground, background", value_str);
+        log_error("Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
         exit(1);
       }
       break;
@@ -472,8 +474,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc,
           USAGE_INDENT "   --show-capabilities       " USAGE_INDENT "show detected terminal capabilities and exit\n");
   fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
-  fprintf(desc, USAGE_INDENT "-M --background-mode         " USAGE_INDENT "Render colors for glyphs or cells: "
-                             "foreground, background (default: foreground)\n");
+  fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
+                             "foreground, background, half-block (default: foreground)\n");
   fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
                              "enable audio capture and playback (default: [unset])\n");
   fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "

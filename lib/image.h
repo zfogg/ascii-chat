@@ -24,8 +24,13 @@ typedef struct image_t {
 #define IMAGE_MAX_HEIGHT 2160
 #define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
 
+// Standard allocation (malloc/free)
 image_t *image_new(size_t, size_t);
 void image_destroy(image_t *);
+
+// Buffer pool allocation (for video pipeline - consistent memory management)
+image_t *image_new_from_pool(size_t width, size_t height);
+void image_destroy_to_pool(image_t *image);
 void image_clear(image_t *);
 char *image_print(const image_t *);
 char *image_print_color(const image_t *);

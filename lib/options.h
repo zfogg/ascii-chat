@@ -26,14 +26,10 @@ typedef enum {
   COLOR_MODE_TRUECOLOR = 4  // Force 24-bit truecolor
 } terminal_color_mode_t;
 
-// Background rendering mode (client only)
-typedef enum {
-  BACKGROUND_MODE_FOREGROUND = 0, // Use foreground colors only (default)
-  BACKGROUND_MODE_BACKGROUND = 1  // Use background colors with contrasting foreground
-} background_mode_t;
+// Render mode is now defined in terminal_detect.h
 
 extern terminal_color_mode_t opt_color_mode;     // Color mode override
-extern background_mode_t opt_background_mode;    // Background mode override
+extern render_mode_t opt_render_mode;            // Render mode override
 extern unsigned short int opt_show_capabilities; // Show detected capabilities and exit
 extern unsigned short int opt_force_utf8;        // Force enable UTF-8 support via --utf8
 
