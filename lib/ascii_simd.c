@@ -773,6 +773,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
   result.speedup_best = result.scalar_time / best_time;
 
+  image_destroy(frame);
   free(test_pixels);
   free(output_buffer);
 
