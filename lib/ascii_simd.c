@@ -405,17 +405,38 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using new image-based timing function
-  result.sse2_time = measure_image_function_time(render_ascii_image_monochrome_sse2, test_image);
+  // Benchmark SSE2 monochrome rendering
+  ensure_default_palette_ready();
+  double start_sse2 = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    char *result_str = render_ascii_image_monochrome_sse2(test_image, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.sse2_time = (get_time_seconds() - start_sse2) / adaptive_iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using new image-based timing function
-  result.ssse3_time = measure_image_function_time(render_ascii_image_monochrome_ssse3, test_image);
+  // Benchmark SSSE3 monochrome rendering
+  ensure_default_palette_ready();
+  double start_ssse3 = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    char *result_str = render_ascii_image_monochrome_ssse3(test_image, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.ssse3_time = (get_time_seconds() - start_ssse3) / adaptive_iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using new image-based timing function
-  result.avx2_time = measure_image_function_time(render_ascii_image_monochrome_avx2, test_image);
+  // Benchmark AVX2 monochrome rendering
+  ensure_default_palette_ready();
+  double start_avx2 = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    char *result_str = render_ascii_image_monochrome_avx2(test_image, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.avx2_time = (get_time_seconds() - start_avx2) / adaptive_iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
@@ -550,7 +571,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark SSE2 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result = render_ascii_sse2_unified_optimized(frame, background_mode, true);
+    char *result = render_ascii_sse2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (result)
       free(result);
   }
@@ -561,7 +582,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark SSSE3 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result = render_ascii_ssse3_unified_optimized(frame, background_mode, true);
+    char *result = render_ascii_ssse3_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (result)
       free(result);
   }
@@ -572,7 +593,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark AVX2 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result = render_ascii_avx2_unified_optimized(frame, background_mode, true);
+    char *result = render_ascii_avx2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (result)
       free(result);
   }
@@ -720,20 +741,38 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using unified optimized renderer
-  result.sse2_time =
-      measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode, use_fast_path);
+  // Benchmark SSE2 color rendering
+  ensure_default_palette_ready();
+  double start_sse2_color = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result_str = render_ascii_sse2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.sse2_time = (get_time_seconds() - start_sse2_color) / iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using unified optimized renderer
-  result.ssse3_time =
-      measure_image_function_time_color(render_ascii_ssse3_unified_optimized, frame, background_mode, use_fast_path);
+  // Benchmark SSSE3 color rendering
+  ensure_default_palette_ready();
+  double start_ssse3_color = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result_str = render_ascii_ssse3_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.ssse3_time = (get_time_seconds() - start_ssse3_color) / iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using unified optimized renderer
-  result.avx2_time =
-      measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode, use_fast_path);
+  // Benchmark AVX2 color rendering
+  ensure_default_palette_ready();
+  double start_avx2_color = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result_str = render_ascii_avx2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.avx2_time = (get_time_seconds() - start_avx2_color) / iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
@@ -752,8 +791,14 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 #ifdef SIMD_SUPPORT_SVE
   // Benchmark SVE using unified optimized renderer
-  result.sve_time = result.sve_time =
-      measure_image_function_time_color(render_ascii_sve_unified_optimized, frame, background_mode, use_fast_path);
+  // Benchmark SVE color rendering
+  ensure_default_palette_ready();
+  double start_sve_color = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result_str = render_ascii_sve_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str) free(result_str);
+  }
+  result.sve_time = (get_time_seconds() - start_sve_color) / iterations;
 #endif
 
   // Find best method

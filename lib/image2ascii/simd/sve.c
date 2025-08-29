@@ -195,12 +195,17 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       uint8_t luma_array[64];
       svst1_u8(pg_active, luma_array, luminance);
 
-      // Convert to ASCII glyphs using ramp64 (like NEON)
-      uint8_t gbuf[64];
-      for (int i = 0; i < process_count; i++) {
-        const uint8_t luma_idx = luma_array[i] >> 2;  // 0-63 index
-        gbuf[i] = luma_idx;  // Store character index for cache lookup
-      }
+      // FAST: Use svtbl_u8 to get character indices from the ramp (SVE advantage)
+      // Convert luminance to 0-63 indices
+      svuint8_t luma_vec = svld1_u8(pg_active, luma_array);  // Load luminance values
+      svuint8_t luma_idx_vec = svlsr_n_u8_x(svptrue_b8(), luma_vec, 2);  // >> 2 for 0-63
+      
+      // Use svtbl_u8 for fast character index lookup (scalable!)
+      svuint8_t char_lut_vec = svld1_u8(svptrue_b8(), utf8_cache->char_index_ramp);
+      svuint8_t char_indices_vec = svtbl_u8(char_lut_vec, luma_idx_vec);
+      
+      uint8_t gbuf[64];  // Reuse gbuf name for compatibility
+      svst1_u8(pg_active, gbuf, char_indices_vec);
 
       if (use_256color) {
         // 256-color mode processing (copied from NEON logic)
@@ -211,7 +216,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 
         // Emit with RLE on (glyph, color) runs (copied from NEON)
         for (int i = 0; i < process_count;) {
-          const uint8_t char_idx = gbuf[i];  // This is now the character index
+          const uint8_t char_idx = gbuf[i]; // This is now the character index
           const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
@@ -237,7 +242,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           } else {
             for (uint32_t k = 1; k < run; k++) {
               // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -245,7 +250,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       } else {
         // Truecolor mode processing (copied from NEON logic)
         for (int i = 0; i < process_count;) {
-          const uint8_t char_idx = gbuf[i];  // This is now the character index
+          const uint8_t char_idx = gbuf[i]; // This is now the character index
           const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = r_array[i];
           const uint8_t g = g_array[i];
@@ -275,7 +280,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           } else {
             for (uint32_t k = 1; k < run; k++) {
               // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -323,7 +328,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
         } else {
           for (uint32_t k = 1; k < run; k++) {
             // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -357,7 +362,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
         } else {
           for (uint32_t k = 1; k < run; k++) {
             // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
