@@ -198,17 +198,17 @@ char *image_print_simd(image_t *image) {
   // Non-NEON fallback: process pixels row by row with newlines
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
-    
+
     // Convert this row of pixels to ASCII characters
     convert_pixels_scalar(row_pixels, pos, w);
     pos += w;
-    
+
     // Add newline (except for last row)
     if (y != h - 1) {
       *pos++ = '\n';
     }
   }
-  
+
   *pos = '\0';
   return ascii;
 #endif
