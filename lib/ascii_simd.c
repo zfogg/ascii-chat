@@ -747,17 +747,20 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using unified optimized renderer
-  result.sse2_time = measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode, use_fast_path);
+  result.sse2_time =
+      measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode, use_fast_path);
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using unified optimized renderer
-  result.ssse3_time = measure_image_function_time_color(render_ascii_ssse3_unified_optimized, frame, background_mode, use_fast_path);
+  result.ssse3_time =
+      measure_image_function_time_color(render_ascii_ssse3_unified_optimized, frame, background_mode, use_fast_path);
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using unified optimized renderer
-  result.avx2_time = measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode, use_fast_path);
+  result.avx2_time =
+      measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode, use_fast_path);
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
@@ -768,8 +771,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 #ifdef SIMD_SUPPORT_SVE
   // Benchmark SVE using unified optimized renderer
-  result.sve_time =
-      result.sve_time = measure_image_function_time_color(render_ascii_sve_unified_optimized, frame, background_mode, use_fast_path);
+  result.sve_time = result.sve_time =
+      measure_image_function_time_color(render_ascii_sve_unified_optimized, frame, background_mode, use_fast_path);
 #endif
 
   // Find best method
