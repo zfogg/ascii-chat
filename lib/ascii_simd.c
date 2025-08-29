@@ -199,27 +199,7 @@ char *convert_pixels_scalar_with_newlines(image_t *image) {
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
 char *image_print_simd(image_t *image) {
-  const int h = image->h;
-  const int w = image->w;
-
-  // Calculate exact buffer size (matching non-SIMD version)
-  // Add extra space for reset sequence at the beginning
-  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1) + 4;
-
-  // Single allocation - no buffer pool overhead
-  char *ascii;
-  SAFE_MALLOC(ascii, len * sizeof(char), char *);
-
-  // Process directly into final buffer - no copying!
-  char *pos = ascii;
-
-  // Add reset sequence to clear any previous terminal colors
-  memcpy(pos, "\033[0m", 4);
-  pos += 4;
-
 #ifdef SIMD_SUPPORT_NEON
-  // Use monochrome NEON function directly - it already handles newlines correctly
-  free(ascii); // Free the allocated buffer since we're using NEON's output
   return render_ascii_image_monochrome_neon(image);
 #elif SIMD_SUPPORT_SSE2
   return render_ascii_image_monochrome_sse2(image);
