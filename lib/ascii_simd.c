@@ -195,23 +195,23 @@ char *image_print_simd(image_t *image) {
   free(ascii); // Free the allocated buffer since we're using NEON's output
   return render_ascii_image_monochrome_neon(image);
 #else
+  // Non-NEON fallback: process pixels row by row with newlines
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
-
-    // Use SIMD to convert this row directly into final buffer
-    convert_pixels_optimized(row_pixels, pos, w);
+    
+    // Convert this row of pixels to ASCII characters
+    convert_pixels_scalar(row_pixels, pos, w);
     pos += w;
-
+    
     // Add newline (except for last row)
     if (y != h - 1) {
       *pos++ = '\n';
     }
   }
-#endif
-
+  
   *pos = '\0';
-
   return ascii;
+#endif
 }
 
 /* ============================================================================
