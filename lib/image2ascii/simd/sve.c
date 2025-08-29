@@ -41,14 +41,14 @@ char *render_ascii_image_monochrome_sve(const image_t *image) {
 
     // Process pixels with SVE (scalable vector length - typically 128, 256, or 512 bits)
     svuint8_t pg = svptrue_b8(); // Predicate for all lanes
-    
+
     while (x < w) {
       // Calculate how many pixels we can process in this iteration
       int remaining = w - x;
       svuint8_t pg_active = svwhilelt_b8_s32(x, w);
       int vec_len = svcntb_pat(SV_ALL) / 3; // Vector length in RGB pixels (3 bytes per pixel)
       int process_count = (remaining < vec_len) ? remaining : vec_len;
-      
+
       // Manual deinterleave RGB components (SVE limitation vs NEON's vld3)
       uint8_t r_array[64], g_array[64], b_array[64]; // Max SVE vector size
       for (int j = 0; j < process_count; j++) {
@@ -58,31 +58,31 @@ char *render_ascii_image_monochrome_sve(const image_t *image) {
           b_array[j] = row[x + j].b;
         }
       }
-      
+
       // Load into SVE vectors
       svuint8_t r_vec = svld1_u8(pg_active, r_array);
       svuint8_t g_vec = svld1_u8(pg_active, g_array);
       svuint8_t b_vec = svld1_u8(pg_active, b_array);
-      
+
       // Convert to 16-bit for arithmetic
       svuint16_t r_16 = svunpklo_u16(r_vec);
       svuint16_t g_16 = svunpklo_u16(g_vec);
       svuint16_t b_16 = svunpklo_u16(b_vec);
-      
+
       // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
       svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, 77);
       luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, 150);
       luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, 29);
       luma = svadd_n_u16_x(svptrue_b16(), luma, 128);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
-      
+
       // Pack back to 8-bit
       svuint8_t luminance = svqxtnb_u8(luma);
-      
+
       // Store and convert to ASCII characters
       uint8_t luma_array[64];
       svst1_u8(pg_active, luma_array, luminance);
-      
+
       for (int j = 0; j < process_count; j++) {
         if (x + j < w) {
           pos[j] = g_ascii_cache.luminance_palette[luma_array[j]];
@@ -156,7 +156,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       int vec_len = svcntb_pat(SV_ALL) / 3; // Vector length in RGB pixels
       int remaining = width - x;
       int process_count = (remaining < vec_len) ? remaining : vec_len;
-      
+
       // Manual deinterleave RGB components (SVE limitation vs NEON's vld3)
       uint8_t r_array[64], g_array[64], b_array[64]; // Max SVE vector size
       for (int j = 0; j < process_count; j++) {
@@ -166,24 +166,24 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           b_array[j] = row[x + j].b;
         }
       }
-      
+
       // Load into SVE vectors
       svuint8_t r_vec = svld1_u8(pg_active, r_array);
       svuint8_t g_vec = svld1_u8(pg_active, g_array);
       svuint8_t b_vec = svld1_u8(pg_active, b_array);
-      
+
       // Convert to 16-bit for arithmetic
       svuint16_t r_16 = svunpklo_u16(r_vec);
       svuint16_t g_16 = svunpklo_u16(g_vec);
       svuint16_t b_16 = svunpklo_u16(b_vec);
-      
+
       // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
       svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, 77);
       luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, 150);
       luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, 29);
       luma = svadd_n_u16_x(svptrue_b16(), luma, 128);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
-      
+
       // Pack back to 8-bit and store
       svuint8_t luminance = svqxtnb_u8(luma);
       uint8_t luma_array[64];

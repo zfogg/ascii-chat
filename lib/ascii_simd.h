@@ -131,9 +131,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
 simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode);
 
 // Enhanced benchmark functions with image source support
-simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations,
-                                                       bool background_mode, const image_t *source_image,
-                                                       bool use_fast_path);
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
+                                                       const image_t *source_image, bool use_fast_path);
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
                                                              bool use_fast_path);
