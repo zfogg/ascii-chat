@@ -13,6 +13,7 @@
 #include "ansi_fast.h"
 #include "options.h"
 #include "round.h"
+#include "buffer_pool.h" // For buffer pool allocation functions
 
 // Use the global SIMD-optimized palette
 #define luminance_palette g_ascii_cache.luminance_palette
@@ -65,6 +66,57 @@ void image_destroy(image_t *p) {
 
   free(p->pixels);
   free(p);
+}
+
+// Buffer pool allocation for video pipeline (consistent memory management)
+image_t *image_new_from_pool(size_t width, size_t height) {
+  if (width == 0 || height == 0) {
+    log_error("image_new_from_pool: invalid dimensions %zux%zu", width, height);
+    return NULL;
+  }
+
+  if (width > IMAGE_MAX_WIDTH || height > IMAGE_MAX_HEIGHT) {
+    log_error("image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u", width, height, IMAGE_MAX_WIDTH,
+              IMAGE_MAX_HEIGHT);
+    return NULL;
+  }
+
+  // Calculate total allocation size (structure + pixel data in single buffer)
+  size_t pixel_count = width * height;
+  size_t pixels_size = pixel_count * sizeof(rgb_t);
+  size_t total_size = sizeof(image_t) + pixels_size;
+
+  // Allocate from buffer pool as single contiguous block
+  void *buffer = buffer_pool_alloc(total_size);
+  if (!buffer) {
+    log_error("image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size, width, height);
+    return NULL;
+  }
+
+  // Set up image structure at start of buffer
+  image_t *image = (image_t *)buffer;
+  image->w = (int)width;
+  image->h = (int)height;
+  // Pixel data immediately follows the image structure
+  image->pixels = (rgb_t *)((uint8_t *)buffer + sizeof(image_t));
+
+  return image;
+}
+
+void image_destroy_to_pool(image_t *image) {
+  if (!image) {
+    log_error("image_destroy_to_pool: image is NULL");
+    return;
+  }
+
+  // Calculate original allocation size for proper buffer pool free
+  size_t pixel_count = (size_t)image->w * (size_t)image->h;
+  size_t pixels_size = pixel_count * sizeof(rgb_t);
+  size_t total_size = sizeof(image_t) + pixels_size;
+
+  // Free the entire contiguous buffer back to pool
+  buffer_pool_free(image, total_size);
+  // Note: Don't set image = NULL here since caller owns the pointer
 }
 
 void image_clear(image_t *p) {
@@ -356,11 +408,20 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return NULL;
   }
 
-  // Check if client wants background rendering
-  bool use_background_mode = (caps->capabilities & TERM_CAP_BACKGROUND) != 0;
+  // Handle half-block mode first (requires NEON)
+  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+#ifdef SIMD_SUPPORT_NEON
+    // Use NEON half-block renderer
+    const uint8_t *rgb_data = (const uint8_t *)image->pixels;
+    return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
+#else
+    log_error("Half-block mode requires NEON support (ARM architecture)");
+    return NULL;
+#endif
+  }
 
-  // TODO: Eventually refactor printing functions to accept background mode as parameter
-  // For now, we handle background mode in the capability system but legacy functions use foreground-only
+  // Standard color modes
+  bool use_background_mode = (caps->render_mode == RENDER_MODE_BACKGROUND);
 
   char *result = NULL;
 

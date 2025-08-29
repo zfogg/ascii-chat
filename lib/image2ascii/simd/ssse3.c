@@ -1,267 +1,374 @@
-#include "ssse3.h"
-#include "ascii_simd.h"
-#include "options.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include "ssse3.h"
+#include "common.h"
 
 #ifdef SIMD_SUPPORT_SSSE3
 #include <tmmintrin.h>
 
-void convert_pixels_ssse3(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+//=============================================================================
+// Image-based API (matches NEON architecture)
+//=============================================================================
 
-  int i = 0;
-
-  // SSSE3 constants for luminance calculation
-  const __m128i luma_const_77 = _mm_set1_epi16(LUMA_RED);
-  const __m128i luma_const_150 = _mm_set1_epi16(LUMA_GREEN);
-  const __m128i luma_const_29 = _mm_set1_epi16(LUMA_BLUE);
-
-  // Process 32-pixel chunks with dual 16-pixel SSSE3 processing for maximum throughput
-  for (; i + 31 < count; i += 32) {
-    // Process first 16-pixel chunk with SSSE3 shuffle-based RGB deinterleaving
-    const uint8_t *src1 = (const uint8_t *)&pixels[i];
-
-    // Load 48 bytes of RGB data for first 16 pixels using 3 loads (16 bytes each)
-    __m128i chunk0_1 = _mm_loadu_si128((const __m128i *)(src1 + 0));  // RGBRGBRGBRGBRGBR (bytes 0-15)
-    __m128i chunk1_1 = _mm_loadu_si128((const __m128i *)(src1 + 16)); // GBRGBRGBRGBRGBRG (bytes 16-31)
-    __m128i chunk2_1 = _mm_loadu_si128((const __m128i *)(src1 + 32)); // BRGBRGBRGBRGBRGB (bytes 32-47)
-
-    // Use SSSE3 shuffle to deinterleave RGB data efficiently for first 16 pixels
-    const __m128i mask_r_0 = _mm_setr_epi8(0, 3, 6, 9, 12, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-    const __m128i mask_r_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, 2, 5, 8, 11, 14, -1, -1, -1, -1, -1);
-    const __m128i mask_r_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 4, 7, 10, 13);
-
-    __m128i r_vec1 =
-        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_1, mask_r_0), _mm_shuffle_epi8(chunk1_1, mask_r_1)),
-                     _mm_shuffle_epi8(chunk2_1, mask_r_2));
-
-    const __m128i mask_g_0 = _mm_setr_epi8(1, 4, 7, 10, 13, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-    const __m128i mask_g_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, 0, 3, 6, 9, 12, 15, -1, -1, -1, -1, -1);
-    const __m128i mask_g_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2, 5, 8, 11, 14);
-
-    __m128i g_vec1 =
-        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_1, mask_g_0), _mm_shuffle_epi8(chunk1_1, mask_g_1)),
-                     _mm_shuffle_epi8(chunk2_1, mask_g_2));
-
-    const __m128i mask_b_0 = _mm_setr_epi8(2, 5, 8, 11, 14, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-    const __m128i mask_b_1 = _mm_setr_epi8(-1, -1, -1, -1, -1, 1, 4, 7, 10, 13, -1, -1, -1, -1, -1, -1);
-    const __m128i mask_b_2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 3, 6, 9, 12, 15);
-
-    __m128i b_vec1 =
-        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_1, mask_b_0), _mm_shuffle_epi8(chunk1_1, mask_b_1)),
-                     _mm_shuffle_epi8(chunk2_1, mask_b_2));
-
-    // Process second 16-pixel chunk (pixels i+16 through i+31)
-    const uint8_t *src2 = (const uint8_t *)&pixels[i + 16];
-
-    // Load 48 bytes of RGB data for second 16 pixels
-    __m128i chunk0_2 = _mm_loadu_si128((const __m128i *)(src2 + 0));
-    __m128i chunk1_2 = _mm_loadu_si128((const __m128i *)(src2 + 16));
-    __m128i chunk2_2 = _mm_loadu_si128((const __m128i *)(src2 + 32));
-
-    // Deinterleave RGB data for second 16 pixels using same masks
-    __m128i r_vec2 =
-        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_2, mask_r_0), _mm_shuffle_epi8(chunk1_2, mask_r_1)),
-                     _mm_shuffle_epi8(chunk2_2, mask_r_2));
-
-    __m128i g_vec2 =
-        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_2, mask_g_0), _mm_shuffle_epi8(chunk1_2, mask_g_1)),
-                     _mm_shuffle_epi8(chunk2_2, mask_g_2));
-
-    __m128i b_vec2 =
-        _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(chunk0_2, mask_b_0), _mm_shuffle_epi8(chunk1_2, mask_b_1)),
-                     _mm_shuffle_epi8(chunk2_2, mask_b_2));
-
-    // Widen to 16-bit for accurate arithmetic - first 16 pixels
-    __m128i r_lo1 = _mm_unpacklo_epi8(r_vec1, _mm_setzero_si128());
-    __m128i r_hi1 = _mm_unpackhi_epi8(r_vec1, _mm_setzero_si128());
-    __m128i g_lo1 = _mm_unpacklo_epi8(g_vec1, _mm_setzero_si128());
-    __m128i g_hi1 = _mm_unpackhi_epi8(g_vec1, _mm_setzero_si128());
-    __m128i b_lo1 = _mm_unpacklo_epi8(b_vec1, _mm_setzero_si128());
-    __m128i b_hi1 = _mm_unpackhi_epi8(b_vec1, _mm_setzero_si128());
-
-    // Widen to 16-bit for accurate arithmetic - second 16 pixels
-    __m128i r_lo2 = _mm_unpacklo_epi8(r_vec2, _mm_setzero_si128());
-    __m128i r_hi2 = _mm_unpackhi_epi8(r_vec2, _mm_setzero_si128());
-    __m128i g_lo2 = _mm_unpacklo_epi8(g_vec2, _mm_setzero_si128());
-    __m128i g_hi2 = _mm_unpackhi_epi8(g_vec2, _mm_setzero_si128());
-    __m128i b_lo2 = _mm_unpacklo_epi8(b_vec2, _mm_setzero_si128());
-    __m128i b_hi2 = _mm_unpackhi_epi8(b_vec2, _mm_setzero_si128());
-
-    // SIMD luminance calculation: y = (77*r + 150*g + 29*b) >> 8
-    // Process first chunk (4 x 8-pixel groups)
-    __m128i luma_lo1 = _mm_mullo_epi16(r_lo1, luma_const_77);
-    luma_lo1 = _mm_add_epi16(luma_lo1, _mm_mullo_epi16(g_lo1, luma_const_150));
-    luma_lo1 = _mm_add_epi16(luma_lo1, _mm_mullo_epi16(b_lo1, luma_const_29));
-    luma_lo1 = _mm_srli_epi16(luma_lo1, 8);
-
-    __m128i luma_hi1 = _mm_mullo_epi16(r_hi1, luma_const_77);
-    luma_hi1 = _mm_add_epi16(luma_hi1, _mm_mullo_epi16(g_hi1, luma_const_150));
-    luma_hi1 = _mm_add_epi16(luma_hi1, _mm_mullo_epi16(b_hi1, luma_const_29));
-    luma_hi1 = _mm_srli_epi16(luma_hi1, 8);
-
-    // Process second chunk (4 x 8-pixel groups)
-    __m128i luma_lo2 = _mm_mullo_epi16(r_lo2, luma_const_77);
-    luma_lo2 = _mm_add_epi16(luma_lo2, _mm_mullo_epi16(g_lo2, luma_const_150));
-    luma_lo2 = _mm_add_epi16(luma_lo2, _mm_mullo_epi16(b_lo2, luma_const_29));
-    luma_lo2 = _mm_srli_epi16(luma_lo2, 8);
-
-    __m128i luma_hi2 = _mm_mullo_epi16(r_hi2, luma_const_77);
-    luma_hi2 = _mm_add_epi16(luma_hi2, _mm_mullo_epi16(g_hi2, luma_const_150));
-    luma_hi2 = _mm_add_epi16(luma_hi2, _mm_mullo_epi16(b_hi2, luma_const_29));
-    luma_hi2 = _mm_srli_epi16(luma_hi2, 8);
-
-    // Pack luminance to 8-bit for both chunks
-    __m128i lum_packed1 = _mm_packus_epi16(luma_lo1, luma_hi1);
-    __m128i lum_packed2 = _mm_packus_epi16(luma_lo2, luma_hi2);
-
-    // Store luminance for palette lookup (32 pixels total)
-    uint8_t lum[32];
-    _mm_storeu_si128((__m128i *)&lum[0], lum_packed1);
-    _mm_storeu_si128((__m128i *)&lum[16], lum_packed2);
-
-    // Unrolled palette lookups for 32 pixels
-    ascii_chars[i + 0] = g_ascii_cache.luminance_palette[lum[0]];
-    ascii_chars[i + 1] = g_ascii_cache.luminance_palette[lum[1]];
-    ascii_chars[i + 2] = g_ascii_cache.luminance_palette[lum[2]];
-    ascii_chars[i + 3] = g_ascii_cache.luminance_palette[lum[3]];
-    ascii_chars[i + 4] = g_ascii_cache.luminance_palette[lum[4]];
-    ascii_chars[i + 5] = g_ascii_cache.luminance_palette[lum[5]];
-    ascii_chars[i + 6] = g_ascii_cache.luminance_palette[lum[6]];
-    ascii_chars[i + 7] = g_ascii_cache.luminance_palette[lum[7]];
-    ascii_chars[i + 8] = g_ascii_cache.luminance_palette[lum[8]];
-    ascii_chars[i + 9] = g_ascii_cache.luminance_palette[lum[9]];
-    ascii_chars[i + 10] = g_ascii_cache.luminance_palette[lum[10]];
-    ascii_chars[i + 11] = g_ascii_cache.luminance_palette[lum[11]];
-    ascii_chars[i + 12] = g_ascii_cache.luminance_palette[lum[12]];
-    ascii_chars[i + 13] = g_ascii_cache.luminance_palette[lum[13]];
-    ascii_chars[i + 14] = g_ascii_cache.luminance_palette[lum[14]];
-    ascii_chars[i + 15] = g_ascii_cache.luminance_palette[lum[15]];
-    ascii_chars[i + 16] = g_ascii_cache.luminance_palette[lum[16]];
-    ascii_chars[i + 17] = g_ascii_cache.luminance_palette[lum[17]];
-    ascii_chars[i + 18] = g_ascii_cache.luminance_palette[lum[18]];
-    ascii_chars[i + 19] = g_ascii_cache.luminance_palette[lum[19]];
-    ascii_chars[i + 20] = g_ascii_cache.luminance_palette[lum[20]];
-    ascii_chars[i + 21] = g_ascii_cache.luminance_palette[lum[21]];
-    ascii_chars[i + 22] = g_ascii_cache.luminance_palette[lum[22]];
-    ascii_chars[i + 23] = g_ascii_cache.luminance_palette[lum[23]];
-    ascii_chars[i + 24] = g_ascii_cache.luminance_palette[lum[24]];
-    ascii_chars[i + 25] = g_ascii_cache.luminance_palette[lum[25]];
-    ascii_chars[i + 26] = g_ascii_cache.luminance_palette[lum[26]];
-    ascii_chars[i + 27] = g_ascii_cache.luminance_palette[lum[27]];
-    ascii_chars[i + 28] = g_ascii_cache.luminance_palette[lum[28]];
-    ascii_chars[i + 29] = g_ascii_cache.luminance_palette[lum[29]];
-    ascii_chars[i + 30] = g_ascii_cache.luminance_palette[lum[30]];
-    ascii_chars[i + 31] = g_ascii_cache.luminance_palette[lum[31]];
+// Simple monochrome ASCII function (matches scalar image_print performance)
+char *render_ascii_image_monochrome_ssse3(const image_t *image) {
+  if (!image || !image->pixels) {
+    return NULL;
   }
 
-  // Process remaining 8-pixel chunks using SSE2 fallback
-  for (; i + 7 < count; i += 8) {
-    uint8_t r_vals[8], g_vals[8], b_vals[8];
-    const uint8_t *src = (const uint8_t *)&pixels[i];
+  const int h = image->h;
+  const int w = image->w;
 
-    // Extract RGB for 8 pixels
-    for (int j = 0; j < 8; j++) {
-      r_vals[j] = src[j * 3 + 0];
-      g_vals[j] = src[j * 3 + 1];
-      b_vals[j] = src[j * 3 + 2];
+  if (h <= 0 || w <= 0) {
+    return NULL;
+  }
+
+  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
+  const size_t len = (size_t)h * ((size_t)w + 1);
+
+  char *output;
+  SAFE_MALLOC(output, len, char *);
+
+  char *pos = output;
+  const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
+
+  // Pure SSSE3 processing - matches NEON approach
+  for (int y = 0; y < h; y++) {
+    const rgb_pixel_t *row = &pixels[y * w];
+    int x = 0;
+
+    // Process 16 pixels at a time with SSSE3 (full 128-bit register capacity)
+    for (; x + 15 < w; x += 16) {
+      // Manual deinterleave RGB components (SSSE3 limitation vs NEON's vld3q_u8)
+      uint8_t r_array[16], g_array[16], b_array[16];
+      for (int j = 0; j < 16; j++) {
+        r_array[j] = row[x + j].r;
+        g_array[j] = row[x + j].g;
+        b_array[j] = row[x + j].b;
+      }
+
+      // Process 16 pixels in two 8-pixel SSSE3 batches (same as SSE2 approach)
+      __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0));
+      __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8));
+      __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
+      __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
+      __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
+      __m128i b_vec_hi = _mm_loadl_epi64((__m128i *)(b_array + 8));
+
+      // Process first 8 pixels
+      __m128i r_16_lo = _mm_unpacklo_epi8(r_vec_lo, _mm_setzero_si128());
+      __m128i g_16_lo = _mm_unpacklo_epi8(g_vec_lo, _mm_setzero_si128());
+      __m128i b_16_lo = _mm_unpacklo_epi8(b_vec_lo, _mm_setzero_si128());
+
+      __m128i luma_r_lo = _mm_mullo_epi16(r_16_lo, _mm_set1_epi16(77));
+      __m128i luma_g_lo = _mm_mullo_epi16(g_16_lo, _mm_set1_epi16(150));
+      __m128i luma_b_lo = _mm_mullo_epi16(b_16_lo, _mm_set1_epi16(29));
+
+      __m128i luma_sum_lo = _mm_add_epi16(luma_r_lo, luma_g_lo);
+      luma_sum_lo = _mm_add_epi16(luma_sum_lo, luma_b_lo);
+      luma_sum_lo = _mm_add_epi16(luma_sum_lo, _mm_set1_epi16(128));
+      luma_sum_lo = _mm_srli_epi16(luma_sum_lo, 8);
+
+      // Process second 8 pixels
+      __m128i r_16_hi = _mm_unpacklo_epi8(r_vec_hi, _mm_setzero_si128());
+      __m128i g_16_hi = _mm_unpacklo_epi8(g_vec_hi, _mm_setzero_si128());
+      __m128i b_16_hi = _mm_unpacklo_epi8(b_vec_hi, _mm_setzero_si128());
+
+      __m128i luma_r_hi = _mm_mullo_epi16(r_16_hi, _mm_set1_epi16(77));
+      __m128i luma_g_hi = _mm_mullo_epi16(g_16_hi, _mm_set1_epi16(150));
+      __m128i luma_b_hi = _mm_mullo_epi16(b_16_hi, _mm_set1_epi16(29));
+
+      __m128i luma_sum_hi = _mm_add_epi16(luma_r_hi, luma_g_hi);
+      luma_sum_hi = _mm_add_epi16(luma_sum_hi, luma_b_hi);
+      luma_sum_hi = _mm_add_epi16(luma_sum_hi, _mm_set1_epi16(128));
+      luma_sum_hi = _mm_srli_epi16(luma_sum_hi, 8);
+
+      // Pack and store
+      __m128i luminance_lo = _mm_packus_epi16(luma_sum_lo, _mm_setzero_si128());
+      __m128i luminance_hi = _mm_packus_epi16(luma_sum_hi, _mm_setzero_si128());
+
+      uint8_t luma_array[16];
+      _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
+      _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
+
+      for (int j = 0; j < 16; j++) {
+        pos[j] = g_ascii_cache.luminance_palette[luma_array[j]];
+      }
+      pos += 16;
     }
 
-    // Load and widen to 16-bit
-    __m128i r_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)r_vals), _mm_setzero_si128());
-    __m128i g_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)g_vals), _mm_setzero_si128());
-    __m128i b_16 = _mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)b_vals), _mm_setzero_si128());
+    // Handle remaining pixels with scalar code
+    for (; x < w; x++) {
+      const rgb_pixel_t pixel = row[x];
+      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      *pos++ = g_ascii_cache.luminance_palette[luminance];
+    }
 
-    // SIMD luminance calculation
-    __m128i luma = _mm_mullo_epi16(r_16, luma_const_77);
-    luma = _mm_add_epi16(luma, _mm_mullo_epi16(g_16, luma_const_150));
-    luma = _mm_add_epi16(luma, _mm_mullo_epi16(b_16, luma_const_29));
-    luma = _mm_srli_epi16(luma, 8);
-
-    // Pack and store
-    __m128i lum_8 = _mm_packus_epi16(luma, _mm_setzero_si128());
-    uint8_t lum[8];
-    _mm_storel_epi64((__m128i *)lum, lum_8);
-
-    // Unrolled palette lookups
-    ascii_chars[i + 0] = g_ascii_cache.luminance_palette[lum[0]];
-    ascii_chars[i + 1] = g_ascii_cache.luminance_palette[lum[1]];
-    ascii_chars[i + 2] = g_ascii_cache.luminance_palette[lum[2]];
-    ascii_chars[i + 3] = g_ascii_cache.luminance_palette[lum[3]];
-    ascii_chars[i + 4] = g_ascii_cache.luminance_palette[lum[4]];
-    ascii_chars[i + 5] = g_ascii_cache.luminance_palette[lum[5]];
-    ascii_chars[i + 6] = g_ascii_cache.luminance_palette[lum[6]];
-    ascii_chars[i + 7] = g_ascii_cache.luminance_palette[lum[7]];
+    // Add newline (except for last row)
+    if (y < h - 1) {
+      *pos++ = '\n';
+    }
   }
 
-  // Process remaining pixels with scalar code
-  for (; i < count; i++) {
-    const rgb_pixel_t *p = &pixels[i];
-    int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-    if (luminance > 255)
-      luminance = 255;
-    ascii_chars[i] = g_ascii_cache.luminance_palette[luminance];
-  }
+  // Null terminate
+  *pos = '\0';
+
+  return output;
 }
 
-// SSSE3 version with 32-pixel processing for maximum performance
-size_t convert_row_with_color_ssse3(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                    bool background_mode) {
+// 256-color palette mapping (RGB to ANSI 256 color index) - copied from NEON
+static inline uint8_t rgb_to_256color_ssse3(uint8_t r, uint8_t g, uint8_t b) {
+  return (uint8_t)(16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51));
+}
 
-  // Use stack allocation for small widths, heap for large
-  // OPTIMIZATION 15: Pre-allocated static buffer eliminates malloc/free in hot path
-  // 8K characters handles up to 8K horizontal resolution
-  static char large_ascii_buffer[8192] __attribute__((aligned(64)));
-  char stack_ascii_chars[2048]; // Stack buffer for typical terminal widths
-  char *ascii_chars = (width > 2048) ? large_ascii_buffer : stack_ascii_chars;
-  bool heap_allocated = false; // Never needed now!
+// Unified SSSE3 function for all color modes (full implementation like NEON)
+char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_background, bool use_256color) {
+  if (!image || !image->pixels) {
+    return NULL;
+  }
 
-  // Step 1: SIMD luminance conversion with 32-pixel processing
-  convert_pixels_ssse3(pixels, ascii_chars, width);
+  const int width = image->w;
+  const int height = image->h;
 
-  // Step 2: Generate colored output
-  char *current_pos = output_buffer;
-  char *buffer_end = output_buffer + buffer_size;
+  if (width <= 0 || height <= 0) {
+    char *empty;
+    SAFE_MALLOC(empty, 1, char *);
+    empty[0] = '\0';
+    return empty;
+  }
 
-  for (int x = 0; x < width; x++) {
-    const rgb_pixel_t *pixel = &pixels[x];
-    char ascii_char = ascii_chars[x];
+  // Use monochrome optimization for simple case
+  if (!use_background && !use_256color) {
+    return render_ascii_image_monochrome_ssse3(image);
+  }
 
-    size_t remaining = buffer_end - current_pos;
-    if (remaining < 64)
-      break; // Safety margin
+  outbuf_t ob = {0};
+  // Estimate buffer size based on mode (copied from NEON)
+  size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
+  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 64u;
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf)
+    return NULL;
 
-    if (background_mode) {
-      // Background mode: colored background, contrasting foreground
-      uint8_t luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b) >> 8;
-      uint8_t fg_color = (luminance < 127) ? 15 : 0; // FIX #6: use 15 not 255!
+  // Build 64-entry glyph LUT (copied from NEON approach)
+  uint8_t ramp64[RAMP64_SIZE];
+  build_ramp64(ramp64);
 
-      // Generate combined FG+BG color code
-      current_pos = append_sgr_truecolor_fg_bg(current_pos, fg_color, fg_color, fg_color, pixel->r, pixel->g, pixel->b);
+  // Track current color state (copied from NEON)
+  int curR = -1, curG = -1, curB = -1;
+  int cur_color_idx = -1;
 
-      // Add ASCII character
-      *current_pos++ = ascii_char;
+  for (int y = 0; y < height; y++) {
+    const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
+    int x = 0;
 
-    } else {
-      // Foreground mode: colored character
-      current_pos = append_sgr_truecolor_fg(current_pos, pixel->r, pixel->g, pixel->b);
+    // Process 16-pixel chunks with SSSE3 (full 128-bit register capacity)
+    while (x + 16 <= width) {
+      // Manual deinterleave RGB components (SSSE3 limitation vs NEON's vld3q_u8)
+      uint8_t r_array[16], g_array[16], b_array[16];
+      for (int j = 0; j < 16; j++) {
+        r_array[j] = row[x + j].r;
+        g_array[j] = row[x + j].g;
+        b_array[j] = row[x + j].b;
+      }
 
-      // Add ASCII character
-      *current_pos++ = ascii_char;
+      // Load into SSSE3 registers
+      __m128i r_vec = _mm_loadl_epi64((__m128i *)r_array);
+      __m128i g_vec = _mm_loadl_epi64((__m128i *)g_array);
+      __m128i b_vec = _mm_loadl_epi64((__m128i *)b_array);
+
+      // Convert to 16-bit for arithmetic
+      __m128i r_16 = _mm_unpacklo_epi8(r_vec, _mm_setzero_si128());
+      __m128i g_16 = _mm_unpacklo_epi8(g_vec, _mm_setzero_si128());
+      __m128i b_16 = _mm_unpacklo_epi8(b_vec, _mm_setzero_si128());
+
+      // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
+      __m128i luma_r = _mm_mullo_epi16(r_16, _mm_set1_epi16(77));
+      __m128i luma_g = _mm_mullo_epi16(g_16, _mm_set1_epi16(150));
+      __m128i luma_b = _mm_mullo_epi16(b_16, _mm_set1_epi16(29));
+
+      __m128i luma_sum = _mm_add_epi16(luma_r, luma_g);
+      luma_sum = _mm_add_epi16(luma_sum, luma_b);
+      luma_sum = _mm_add_epi16(luma_sum, _mm_set1_epi16(128));
+      luma_sum = _mm_srli_epi16(luma_sum, 8);
+
+      // Pack back to 8-bit and store
+      __m128i luminance = _mm_packus_epi16(luma_sum, _mm_setzero_si128());
+      uint8_t luma_array[8];
+      _mm_storel_epi64((__m128i *)luma_array, luminance);
+
+      // Convert to ASCII glyphs using ramp64 (like NEON)
+      uint8_t gbuf[8];
+      for (int i = 0; i < 8; i++) {
+        gbuf[i] = ramp64[luma_array[i] >> 2]; // Use same index calculation as NEON
+      }
+
+      if (use_256color) {
+        // 256-color mode processing (copied from NEON logic)
+        uint8_t color_indices[8];
+        for (int i = 0; i < 8; i++) {
+          color_indices[i] = rgb_to_256color_ssse3(r_array[i], g_array[i], b_array[i]);
+        }
+
+        // Emit with RLE on (glyph, color) runs (copied from NEON)
+        for (int i = 0; i < 8;) {
+          const uint8_t ch = gbuf[i];
+          const uint8_t color_idx = color_indices[i];
+
+          int j = i + 1;
+          while (j < 8 && gbuf[j] == ch && color_indices[j] == color_idx) {
+            j++;
+          }
+          const uint32_t run = (uint32_t)(j - i);
+
+          if (color_idx != cur_color_idx) {
+            if (use_background) {
+              emit_set_256_color_bg(&ob, color_idx);
+            } else {
+              emit_set_256_color_fg(&ob, color_idx);
+            }
+            cur_color_idx = color_idx;
+          }
+
+          ob_putc(&ob, (char)ch);
+          if (rep_is_profitable(run)) {
+            emit_rep(&ob, run - 1);
+          } else {
+            for (uint32_t k = 1; k < run; k++) {
+              ob_putc(&ob, (char)ch);
+            }
+          }
+          i = j;
+        }
+      } else {
+        // Truecolor mode processing (copied from NEON logic)
+        for (int i = 0; i < 8;) {
+          const uint8_t ch = gbuf[i];
+          const uint8_t r = r_array[i];
+          const uint8_t g = g_array[i];
+          const uint8_t b = b_array[i];
+
+          int j = i + 1;
+          while (j < 8 && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
+            j++;
+          }
+          const uint32_t run = (uint32_t)(j - i);
+
+          if (r != curR || g != curG || b != curB) {
+            if (use_background) {
+              emit_set_truecolor_bg(&ob, r, g, b);
+            } else {
+              emit_set_truecolor_fg(&ob, r, g, b);
+            }
+            curR = r;
+            curG = g;
+            curB = b;
+          }
+
+          ob_putc(&ob, (char)ch);
+          if (rep_is_profitable(run)) {
+            emit_rep(&ob, run - 1);
+          } else {
+            for (uint32_t k = 1; k < run; k++) {
+              ob_putc(&ob, (char)ch);
+            }
+          }
+          i = j;
+        }
+      }
+      x += 16;
     }
+
+    // Scalar tail for remaining pixels (copied from NEON logic)
+    for (; x < width;) {
+      const rgb_pixel_t *p = &row[x];
+      uint32_t R = p->r, G = p->g, B = p->b;
+      uint8_t Y = (uint8_t)((77 * R + 150 * G + 29 * B + 128u) >> 8);
+      uint8_t ch = ramp64[Y >> 2];
+
+      if (use_256color) {
+        // 256-color scalar tail
+        uint8_t color_idx = rgb_to_256color_ssse3((uint8_t)R, (uint8_t)G, (uint8_t)B);
+
+        int j = x + 1;
+        while (j < width) {
+          const rgb_pixel_t *q = &row[j];
+          uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
+          uint8_t Y2 = (uint8_t)((77 * R2 + 150 * G2 + 29 * B2 + 128u) >> 8);
+          uint8_t color_idx2 = rgb_to_256color_ssse3((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
+          if (((Y2 >> 2) != (Y >> 2)) || color_idx2 != color_idx)
+            break;
+          j++;
+        }
+        uint32_t run = (uint32_t)(j - x);
+
+        if (color_idx != cur_color_idx) {
+          if (use_background) {
+            emit_set_256_color_bg(&ob, color_idx);
+          } else {
+            emit_set_256_color_fg(&ob, color_idx);
+          }
+          cur_color_idx = color_idx;
+        }
+
+        ob_putc(&ob, (char)ch);
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
+        } else {
+          for (uint32_t k = 1; k < run; k++) {
+            ob_putc(&ob, (char)ch);
+          }
+        }
+        x = j;
+      } else {
+        // Truecolor scalar tail
+        int j = x + 1;
+        while (j < width) {
+          const rgb_pixel_t *q = &row[j];
+          uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
+          uint8_t Y2 = (uint8_t)((77u * R2 + 150u * G2 + 29u * B2 + 128u) >> 8);
+          if (((Y2 >> 2) != (Y >> 2)) || R2 != R || G2 != G || B2 != B)
+            break;
+          j++;
+        }
+        uint32_t run = (uint32_t)(j - x);
+
+        if ((int)R != curR || (int)G != curG || (int)B != curB) {
+          if (use_background) {
+            emit_set_truecolor_bg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+          } else {
+            emit_set_truecolor_fg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+          }
+          curR = (int)R;
+          curG = (int)G;
+          curB = (int)B;
+        }
+
+        ob_putc(&ob, (char)ch);
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
+        } else {
+          for (uint32_t k = 1; k < run; k++) {
+            ob_putc(&ob, (char)ch);
+          }
+        }
+        x = j;
+      }
+    }
+
+    // End row: reset SGR, add newline (except for last row) (copied from NEON)
+    emit_reset(&ob);
+    if (y < height - 1) {
+      ob_putc(&ob, '\n');
+    }
+    curR = curG = curB = -1;
+    cur_color_idx = -1;
   }
 
-  // Add reset sequence
-  const int reset_len = 4;
-  if (buffer_end - current_pos >= reset_len) {
-    memcpy(current_pos, "\033[0m", reset_len);
-    current_pos += reset_len;
-  }
-
-  if (heap_allocated) {
-    free(ascii_chars);
-  }
-
-  return (size_t)(current_pos - output_buffer);
+  ob_term(&ob);
+  return ob.buf;
 }
 
 #endif /* SIMD_SUPPORT_SSSE3 */

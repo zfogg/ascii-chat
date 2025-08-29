@@ -309,66 +309,61 @@ void test_performance_benchmarks(void) {
             }
         }
 
-        // Test Monochrome ASCII
-        printf("  Monochrome ASCII:\n");
-
-        // Time scalar version
-        clock_t start = clock();
-        for (int iter = 0; iter < iterations; iter++) {
-            char *result = image_print(test_image);
-            if (result) free(result);
+        // Use the same benchmark function as integration test for consistency
+        printf("  Detailed SIMD Architecture Performance:\n");
+        
+        simd_benchmark_t mono_bench = benchmark_simd_conversion(test_image->w, test_image->h, iterations);
+        
+        printf("    Scalar:  %8.4f ms/frame\n", mono_bench.scalar_time * 1000);
+        if (mono_bench.sse2_time > 0) {
+            printf("    SSE2:    %8.4f ms/frame (%4.2fx speedup)\n",
+                   mono_bench.sse2_time * 1000, mono_bench.scalar_time / mono_bench.sse2_time);
         }
-        clock_t end = clock();
-        double scalar_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
-
-        // Time SIMD version
-        start = clock();
-        for (int iter = 0; iter < iterations; iter++) {
-            char *result = image_print_simd(test_image);
-            if (result) free(result);
+        if (mono_bench.ssse3_time > 0) {
+            printf("    SSSE3:   %8.4f ms/frame (%4.2fx speedup)\n",
+                   mono_bench.ssse3_time * 1000, mono_bench.scalar_time / mono_bench.ssse3_time);
         }
-        end = clock();
-        double simd_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
-
-        printf("    Scalar:  %8.4f ms/frame\n", scalar_time * 1000);
-        printf("    SIMD:    %8.4f ms/frame (%4.2fx speedup)\n",
-               simd_time * 1000, scalar_time / simd_time);
-
-        // Test Color ASCII
-        printf("  Color ASCII:\n");
-
-        // Time scalar color version
-        start = clock();
-        for (int iter = 0; iter < iterations; iter++) {
-            char *result = image_print_color(test_image);
-            if (result) free(result);
+        if (mono_bench.avx2_time > 0) {
+            printf("    AVX2:    %8.4f ms/frame (%4.2fx speedup)\n",
+                   mono_bench.avx2_time * 1000, mono_bench.scalar_time / mono_bench.avx2_time);
         }
-        end = clock();
-        double color_scalar_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
-
-        // Time SIMD color version (foreground mode, fast path)
-        start = clock();
-        for (int iter = 0; iter < iterations; iter++) {
-            char *result = image_print_color_simd(test_image, false, true);
-            if (result) free(result);
+        if (mono_bench.neon_time > 0) {
+            printf("    NEON:    %8.4f ms/frame (%4.2fx speedup)\n",
+                   mono_bench.neon_time * 1000, mono_bench.scalar_time / mono_bench.neon_time);
         }
-        end = clock();
-        double color_simd_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
-
-        printf("    Scalar:  %8.4f ms/frame\n", color_scalar_time * 1000);
-        printf("    SIMD:    %8.4f ms/frame (%4.2fx speedup)\n",
-               color_simd_time * 1000, color_scalar_time / color_simd_time);
-
-        // Test SIMD color background mode
-        start = clock();
-        for (int iter = 0; iter < iterations; iter++) {
-            char *result = image_print_color_simd(test_image, true, true);
-            if (result) free(result);
+        if (mono_bench.sve_time > 0) {
+            printf("    SVE:     %8.4f ms/frame (%4.2fx speedup)\n",
+                   mono_bench.sve_time * 1000, mono_bench.scalar_time / mono_bench.sve_time);
         }
-        end = clock();
-        double color_bg_simd_time = ((double)(end - start)) / CLOCKS_PER_SEC / iterations;
+        printf("    Winner:  %s\n", mono_bench.best_method);
 
-        printf("    BG Mode: %8.4f ms/frame\n", color_bg_simd_time * 1000);
+        // Test Color ASCII with detailed breakdown
+        printf("  Color ASCII (detailed):\n");
+        
+        simd_benchmark_t color_bench = benchmark_simd_color_conversion(test_image->w, test_image->h, iterations, false);
+        
+        printf("    Scalar:  %8.4f ms/frame\n", color_bench.scalar_time * 1000);
+        if (color_bench.sse2_time > 0) {
+            printf("    SSE2:    %8.4f ms/frame (%4.2fx speedup)\n",
+                   color_bench.sse2_time * 1000, color_bench.scalar_time / color_bench.sse2_time);
+        }
+        if (color_bench.ssse3_time > 0) {
+            printf("    SSSE3:   %8.4f ms/frame (%4.2fx speedup)\n",
+                   color_bench.ssse3_time * 1000, color_bench.scalar_time / color_bench.ssse3_time);
+        }
+        if (color_bench.avx2_time > 0) {
+            printf("    AVX2:    %8.4f ms/frame (%4.2fx speedup)\n",
+                   color_bench.avx2_time * 1000, color_bench.scalar_time / color_bench.avx2_time);
+        }
+        if (color_bench.neon_time > 0) {
+            printf("    NEON:    %8.4f ms/frame (%4.2fx speedup)\n",
+                   color_bench.neon_time * 1000, color_bench.scalar_time / color_bench.neon_time);
+        }
+        if (color_bench.sve_time > 0) {
+            printf("    SVE:     %8.4f ms/frame (%4.2fx speedup)\n",
+                   color_bench.sve_time * 1000, color_bench.scalar_time / color_bench.sve_time);
+        }
+        printf("    Winner:  %s\n", color_bench.best_method);
 
         image_destroy(test_image);
         printf("\n");
@@ -408,29 +403,38 @@ void test_integration(void) {
     }
 
     // Test realistic terminal conversion
-    simd_benchmark_t bench = benchmark_simd_conversion_with_source(203, 64, 1, source_image);
+    simd_benchmark_t bench = benchmark_simd_conversion_with_source(203, 64, 1, false, source_image, true);
 
     printf("Terminal Performance (203x64):\n");
     printf("  Scalar:     %8.3f ms/frame\n", bench.scalar_time * 1000);
 
-    // Use the benchmark's determination of the best method and time
-    double best_simd_time = 0;
-    if (strcmp(bench.best_method, "NEON") == 0) {
-        best_simd_time = bench.neon_time;
-    } else if (strcmp(bench.best_method, "AVX2") == 0) {
-        best_simd_time = bench.avx2_time;
-    } else if (strcmp(bench.best_method, "SSSE3") == 0) {
-        best_simd_time = bench.ssse3_time;
-    } else if (strcmp(bench.best_method, "SSE2") == 0) {
-        best_simd_time = bench.sse2_time;
+    // Show all available SIMD architecture results
+    if (bench.sse2_time > 0) {
+        printf("  SSE2:       %8.3f ms/frame (%4.1fx faster)\n",
+               bench.sse2_time * 1000, bench.scalar_time / bench.sse2_time);
+    }
+    if (bench.ssse3_time > 0) {
+        printf("  SSSE3:      %8.3f ms/frame (%4.1fx faster)\n",
+               bench.ssse3_time * 1000, bench.scalar_time / bench.ssse3_time);
+    }
+    if (bench.avx2_time > 0) {
+        printf("  AVX2:       %8.3f ms/frame (%4.1fx faster)\n",
+               bench.avx2_time * 1000, bench.scalar_time / bench.avx2_time);
+    }
+    if (bench.neon_time > 0) {
+        printf("  NEON:       %8.3f ms/frame (%4.1fx faster)\n",
+               bench.neon_time * 1000, bench.scalar_time / bench.neon_time);
+    }
+    if (bench.sve_time > 0) {
+        printf("  SVE:        %8.3f ms/frame (%4.1fx faster)\n",
+               bench.sve_time * 1000, bench.scalar_time / bench.sve_time);
     }
 
-    if (best_simd_time > 0 && strcmp(bench.best_method, "scalar") != 0) {
-        printf("  Best SIMD:  %8.3f ms/frame (%4.1fx faster)\n",
-               best_simd_time * 1000, bench.scalar_time / best_simd_time);
+    printf("  Winner:     %s", bench.best_method);
+    if (strcmp(bench.best_method, "scalar") != 0) {
+        printf(" (%.1fx faster)", bench.speedup_best);
     }
-
-    printf("  Winner:     %s\n", bench.best_method);
+    printf("\n");
     printf("  CPU Saved:  %.1f%% at 60 FPS\n", 100.0 * (1.0 - 1.0 / bench.speedup_best));
 
     // Show actual ASCII output sample

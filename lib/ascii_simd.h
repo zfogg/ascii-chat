@@ -5,7 +5,31 @@
 #include "common.h"
 #include "image.h"
 
-// Luminance calculation constants (matches ascii_simd.c)
+// Use the project's existing rgb_t for consistency
+#include "image.h"
+
+// Check for SIMD support and include architecture-specific headers
+#ifdef __ARM_FEATURE_SVE
+#define SIMD_SUPPORT_SVE 1
+#endif
+
+#ifdef __AVX2__
+#define SIMD_SUPPORT_AVX2 1
+#endif
+
+#ifdef __SSE2__
+#define SIMD_SUPPORT_SSE2 1
+#endif
+
+#ifdef __SSSE3__
+#define SIMD_SUPPORT_SSSE3 1
+#endif
+
+#ifdef __ARM_NEON
+#define SIMD_SUPPORT_NEON 1
+#endif
+
+// Luminance calculation constants (shared across all files)
 #define LUMA_RED 77    // 0.299 * 256
 #define LUMA_GREEN 150 // 0.587 * 256
 #define LUMA_BLUE 29   // 0.114 * 256
@@ -59,6 +83,14 @@ typedef struct {
   size_t cap; // total bytes allocated
 } Str;
 
+// String utility functions
+void str_init(Str *s);
+void str_free(Str *s);
+void str_reserve(Str *s, size_t need);
+void str_append_bytes(Str *s, const void *src, size_t n);
+void str_append_c(Str *s, char c);
+void str_printf(Str *s, const char *fmt, ...);
+
 // RLE state for ANSI color optimization (used by NEON renderer)
 typedef struct {
   int cFR, cFG, cFB, cBR, cBG, cBB;
@@ -66,42 +98,23 @@ typedef struct {
   int seeded;
 } RLEState;
 
-// Check for SIMD support and include architecture-specific headers
-#ifdef __AVX2__
-#define SIMD_SUPPORT_AVX2 1
-#endif
-
-#ifdef __SSE2__
-#define SIMD_SUPPORT_SSE2 1
-#endif
-
-#ifdef __SSSE3__
-#define SIMD_SUPPORT_SSSE3 1
-#endif
-
-#ifdef __ARM_NEON
-#define SIMD_SUPPORT_NEON 1
-#endif
-
-// Include architecture-specific implementations
-#include "image2ascii/simd/sse2.h"
-#include "image2ascii/simd/ssse3.h"
-#include "image2ascii/simd/avx2.h"
-#include "image2ascii/simd/sve.h"
-#include "image2ascii/simd/neon.h"
-
-// Use the project's existing rgb_t for consistency
-#include "image.h"
 typedef rgb_t rgb_pixel_t;
+
+// ImageRGB structure for NEON renderers
+// Based on usage in ascii_simd_neon.c where img->w, img->h, img->pixels are accessed
+typedef struct {
+  int w, h;
+  uint8_t *pixels; // RGB data: w * h * 3 bytes
+} ImageRGB;
+
+// Allocate a new ImageRGB (RGB8), abort on OOM
+ImageRGB alloc_image(int w, int h);
 
 // Fallback scalar version
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count);
+char *convert_pixels_scalar_with_newlines(image_t *image);
 
-// Auto-dispatch function (chooses best available SIMD)
-void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-
-size_t convert_row_with_color_scalar(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                     bool background_mode);
+// Row-based functions removed - use image_print_color() instead
 
 // Benchmark functions
 typedef struct {
@@ -110,6 +123,7 @@ typedef struct {
   double ssse3_time;
   double avx2_time;
   double neon_time;
+  double sve_time;
   double speedup_best;
   const char *best_method;
 } simd_benchmark_t;
@@ -118,8 +132,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
 simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode);
 
 // Enhanced benchmark functions with image source support
-simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations,
-                                                       const image_t *source_image);
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
+                                                       const image_t *source_image, bool use_fast_path);
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
                                                              bool use_fast_path);
@@ -127,10 +141,6 @@ void print_simd_capabilities(void);
 
 char *image_print_simd(image_t *image);
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path);
-
-// NEON-specific implementations
-#ifdef SIMD_SUPPORT_NEON
-#endif
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
@@ -149,3 +159,10 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,
                                           const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
                                           int width, char *dst, size_t cap, bool is_truecolor);
+
+// Include architecture-specific implementations
+#include "image2ascii/simd/sse2.h"
+#include "image2ascii/simd/ssse3.h"
+#include "image2ascii/simd/avx2.h"
+#include "image2ascii/simd/sve.h"
+#include "image2ascii/simd/neon.h"
