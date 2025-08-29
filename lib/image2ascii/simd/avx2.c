@@ -109,7 +109,9 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + LUMA_THRESHOLD) >> 8;
-      *pos++ = luminance_palette[luminance];
+      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+      pos += char_info->byte_len;
     }
 
     // Add newline (except for last row)
@@ -148,7 +150,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   // Use monochrome optimization for simple case
   if (!use_background && !use_256color) {
-    return render_ascii_image_monochrome_avx2(image);
+    return render_ascii_image_monochrome_avx2(image, ascii_chars);
   }
 
   // Get cached UTF-8 character mappings for color rendering
@@ -167,7 +169,8 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
     return NULL;
 
   // Build AVX2 lookup table for _mm256_shuffle_epi8 (uses character indices)
-  __m256i char_lut = _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp));  // Broadcast to 256-bit
+  __m256i char_lut =
+      _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp)); // Broadcast to 256-bit
 
   // AVX2 uses UTF-8 cache system - no need for old ramp64
 
@@ -229,13 +232,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
       // FAST: Use _mm256_shuffle_epi8 to get character indices from the ramp (AVX2 advantage)
       // Convert luminance to 0-63 indices
-      __m256i luma_vec = _mm256_loadu_si256((__m256i *)luma_array);  // Load 32 luminance values
-      __m256i luma_idx_vec = _mm256_srli_epi16(_mm256_unpacklo_epi8(luma_vec, _mm256_setzero_si256()), 2); // >> 2 for 0-63
+      __m256i luma_vec = _mm256_loadu_si256((__m256i *)luma_array); // Load 32 luminance values
+      __m256i luma_idx_vec =
+          _mm256_srli_epi16(_mm256_unpacklo_epi8(luma_vec, _mm256_setzero_si256()), 2);  // >> 2 for 0-63
       __m256i luma_idx_8bit = _mm256_packus_epi16(luma_idx_vec, _mm256_setzero_si256()); // Pack back to 8-bit
-      
+
       // Use _mm256_shuffle_epi8 for fast character index lookup (32 characters at once!)
       __m256i char_indices_vec = _mm256_shuffle_epi8(char_lut, luma_idx_8bit);
-      
+
       uint8_t char_indices[32];
       _mm256_storeu_si256((__m256i *)char_indices, char_indices_vec);
 
@@ -274,7 +278,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           } else {
             for (uint32_t k = 1; k < run; k++) {
               // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -312,7 +316,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           } else {
             for (uint32_t k = 1; k < run; k++) {
               // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -361,7 +365,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         } else {
           for (uint32_t k = 1; k < run; k++) {
             // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -396,7 +400,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         } else {
           for (uint32_t k = 1; k < run; k++) {
             // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;

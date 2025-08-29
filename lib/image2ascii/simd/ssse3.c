@@ -113,7 +113,9 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *asci
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + LUMA_THRESHOLD) >> 8;
-      *pos++ = luminance_palette[luminance];
+      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+      pos += char_info->byte_len;
     }
 
     // Add newline (except for last row)
@@ -152,7 +154,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
 
   // Use monochrome optimization for simple case
   if (!use_background && !use_256color) {
-    return render_ascii_image_monochrome_ssse3(image);
+    return render_ascii_image_monochrome_ssse3(image, ascii_chars);
   }
 
   // Get cached UTF-8 character mappings for color rendering
@@ -171,7 +173,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
     return NULL;
 
   // Build SSSE3 lookup table for _mm_shuffle_epi8 (uses character indices)
-  __m128i char_lut = _mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp);  // Load first 16 indices
+  __m128i char_lut = _mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp); // Load first 16 indices
 
   // Track current color state (copied from NEON)
   int curR = -1, curG = -1, curB = -1;
@@ -217,13 +219,13 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
       _mm_storel_epi64((__m128i *)luma_array, luminance);
 
       // FAST: Use _mm_shuffle_epi8 to get character indices from the ramp (SSSE3 advantage)
-      __m128i luma_vec = _mm_loadl_epi64((__m128i *)luma_array);  // Load 8 luminance values
+      __m128i luma_vec = _mm_loadl_epi64((__m128i *)luma_array); // Load 8 luminance values
       __m128i luma_idx_vec = _mm_srli_epi16(_mm_unpacklo_epi8(luma_vec, _mm_setzero_si128()), 2); // >> 2 for 0-63
-      __m128i luma_idx_8bit = _mm_packus_epi16(luma_idx_vec, _mm_setzero_si128()); // Pack back to 8-bit
-      
+      __m128i luma_idx_8bit = _mm_packus_epi16(luma_idx_vec, _mm_setzero_si128());                // Pack back to 8-bit
+
       // Use _mm_shuffle_epi8 for fast character index lookup
       __m128i char_indices_vec = _mm_shuffle_epi8(char_lut, luma_idx_8bit);
-      
+
       uint8_t char_indices[8];
       _mm_storel_epi64((__m128i *)char_indices, char_indices_vec);
 
@@ -262,7 +264,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
           } else {
             for (uint32_t k = 1; k < run; k++) {
               // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -300,7 +302,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
           } else {
             for (uint32_t k = 1; k < run; k++) {
               // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -349,7 +351,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
         } else {
           for (uint32_t k = 1; k < run; k++) {
             // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -384,7 +386,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
         } else {
           for (uint32_t k = 1; k < run; k++) {
             // Emit UTF-8 character from cache
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;

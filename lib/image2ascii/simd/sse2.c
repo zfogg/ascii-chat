@@ -155,7 +155,7 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
 
   // Use monochrome optimization for simple case
   if (!use_background && !use_256color) {
-    return render_ascii_image_monochrome_sse2(image);
+    return render_ascii_image_monochrome_sse2(image, ascii_chars);
   }
 
   outbuf_t ob = {0};
@@ -222,8 +222,8 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
       // Convert to UTF-8 character indices using cached mappings
       uint8_t char_indices[8];
       for (int i = 0; i < 8; i++) {
-        const uint8_t luma_idx = luma_array[i] >> 2;  // 0-63 index
-        char_indices[i] = luma_idx;  // Direct index into cache64
+        const uint8_t luma_idx = luma_array[i] >> 2; // 0-63 index
+        char_indices[i] = luma_idx;                  // Direct index into cache64
       }
 
       if (use_256color) {
@@ -234,7 +234,7 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
         }
 
         // Emit with RLE on (UTF-8 character, color) runs
-        for (int i = 0; i < 8;) {  // SSE2 processes 8 pixels, not 16
+        for (int i = 0; i < 8;) { // SSE2 processes 8 pixels, not 16
           const uint8_t char_idx = char_indices[i];
           const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
@@ -267,7 +267,7 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
         }
       } else {
         // Truecolor mode processing with UTF-8 characters
-        for (int i = 0; i < 8;) {  // SSE2 processes 8 pixels
+        for (int i = 0; i < 8;) { // SSE2 processes 8 pixels
           const uint8_t char_idx = char_indices[i];
           const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = r_array[i];
