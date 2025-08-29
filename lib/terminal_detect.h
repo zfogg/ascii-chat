@@ -19,12 +19,15 @@ typedef enum {
 #define TERM_CAP_UTF8 0x08       // UTF-8/Unicode support
 #define TERM_CAP_BACKGROUND 0x10 // Background color support
 
+// Render mode is defined in common.h
+
 // Terminal capability detection results
 typedef struct {
   uint32_t capabilities;              // Bitmask of TERM_CAP_* flags
   terminal_color_level_t color_level; // Highest supported color level
   uint32_t color_count;               // Actual color count (16, 256, 16777216)
   bool utf8_support;                  // UTF-8/Unicode character support
+  render_mode_t render_mode;          // Client's preferred render mode
   char term_type[32];                 // $TERM value for debugging
   char colorterm[32];                 // $COLORTERM value for debugging
   bool detection_reliable;            // True if detection methods were reliable

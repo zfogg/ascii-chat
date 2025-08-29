@@ -420,8 +420,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                           bool wants_stretch, size_t *out_size) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
   if (!out_size || width == 0 || height == 0) {
-    log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
-              height, out_size);
+    char pretty_out_size[64];
+    format_bytes_pretty(*out_size, pretty_out_size, sizeof(pretty_out_size));
+    log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%s", width,
+              height, pretty_out_size);
     return NULL;
   }
 
@@ -582,8 +584,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
         // Free the current frame data if we got a new one (cached frame persists)
         // The framebuffer allocates this data via buffer_pool_alloc() and we must free it
-        if (got_new_frame) {
+        if (got_new_frame && current_frame.data) {
           buffer_pool_free(current_frame.data, current_frame.size);
+          current_frame.data = NULL; // Prevent double-free
         }
       }
 
@@ -606,13 +609,25 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   image_t *composite = NULL;
 
   if (source_count == 1 && sources[0].image) {
-    // Single source - use original fit dimensions logic from master
-    int display_width_chars, display_height_chars;
-    calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &display_width_chars,
-                                   &display_height_chars);
+    // Single source - check if target client wants half-block mode for 2x resolution
+    client_info_t *target_client = find_client_by_id_fast(target_client_id);
+    bool use_half_block = target_client && target_client->has_terminal_caps &&
+                          target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
 
-    // Create composite at exactly the display size in pixels
-    composite = image_new(display_width_chars, display_height_chars);
+    int composite_width_px, composite_height_px;
+
+    if (use_half_block) {
+      // Half-block mode: use full terminal dimensions for 2x resolution
+      composite_width_px = width;
+      composite_height_px = height * 2;
+    } else {
+      // Normal modes: use aspect-ratio fitted dimensions
+      calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &composite_width_px,
+                                     &composite_height_px);
+    }
+
+    // Create composite with appropriate dimensions
+    composite = image_new(composite_width_px, composite_height_px);
     if (!composite) {
       log_error("Per-client %u: Failed to create composite image", target_client_id);
       *out_size = 0;
@@ -623,11 +638,59 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
 
     image_clear(composite);
-    image_resize(sources[0].image, composite);
+
+    if (use_half_block) {
+      // Half-block mode: manual aspect ratio and centering to preserve 2x resolution
+      float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
+      float target_aspect = (float)composite_width_px / (float)composite_height_px;
+
+      int fitted_width, fitted_height;
+      if (src_aspect > target_aspect) {
+        // Source is wider - fit to width
+        fitted_width = composite_width_px;
+        fitted_height = (int)(composite_width_px / src_aspect);
+      } else {
+        // Source is taller - fit to height
+        fitted_height = composite_height_px;
+        fitted_width = (int)(composite_height_px * src_aspect);
+      }
+
+      // Calculate centering offsets
+      int x_offset = (composite_width_px - fitted_width) / 2;
+      int y_offset = (composite_height_px - fitted_height) / 2;
+
+      // Create fitted image and center it in composite
+      image_t *fitted = image_new(fitted_width, fitted_height);
+      if (fitted) {
+        image_resize(sources[0].image, fitted);
+
+        // Copy fitted image to center of composite
+        for (int y = 0; y < fitted_height; y++) {
+          for (int x = 0; x < fitted_width; x++) {
+            int src_idx = y * fitted_width + x;
+            int dst_x = x_offset + x;
+            int dst_y = y_offset + y;
+            int dst_idx = dst_y * composite_width_px + dst_x;
+
+            if (dst_x >= 0 && dst_x < composite_width_px && dst_y >= 0 && dst_y < composite_height_px) {
+              composite->pixels[dst_idx] = fitted->pixels[src_idx];
+            }
+          }
+        }
+        image_destroy(fitted);
+      }
+    } else {
+      // Normal modes: simple resize to fit calculated dimensions
+      image_resize(sources[0].image, composite);
+    }
   } else if (source_count > 1) {
-    // Multiple sources - create grid layout (same grid logic as global version)
+    // Multiple sources - create grid layout
+    client_info_t *target_client = find_client_by_id_fast(target_client_id);
+    bool use_half_block_multi = target_client && target_client->has_terminal_caps &&
+                                target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
+
     int composite_width_px = width;
-    int composite_height_px = height * 2;
+    int composite_height_px = use_half_block_multi ? height * 2 : height;
 
     composite = image_new(composite_width_px, composite_height_px);
     if (!composite) {
@@ -737,7 +800,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     terminal_capabilities_t caps_snapshot = target_client->terminal_caps;
     pthread_mutex_unlock(&target_client->client_state_mutex);
 
-    ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false);
+    // For half-block mode only, pass doubled height to get 2x resolution
+    if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
+      ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false);
+    } else {
+      // Normal modes use standard dimensions
+      ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false);
+    }
   } else {
     // Don't send frames until we receive client capabilities - saves bandwidth and CPU
     log_debug("Per-client %u: Waiting for terminal capabilities before sending frames (no capabilities received yet)",
@@ -1415,6 +1484,7 @@ void *client_receive_thread_func(void *arg) {
         client->terminal_caps.capabilities = ntohl(caps->capabilities);
         client->terminal_caps.color_level = ntohl(caps->color_level);
         client->terminal_caps.color_count = ntohl(caps->color_count);
+        client->terminal_caps.render_mode = ntohl(caps->render_mode);
         client->terminal_caps.detection_reliable = caps->detection_reliable;
 
         // Copy terminal type strings safely
@@ -1432,12 +1502,15 @@ void *client_receive_thread_func(void *arg) {
 
         pthread_mutex_unlock(&client->client_state_mutex);
 
-        log_info(
-            "Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, reliable=%s",
-            client->client_id, client->width, client->height,
-            terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
-            client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
-            client->terminal_caps.detection_reliable ? "yes" : "no");
+        log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
+                 "render_mode=%s, reliable=%s",
+                 client->client_id, client->width, client->height,
+                 terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
+                 client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
+                 (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+                      ? "half-block"
+                      : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
+                 client->terminal_caps.detection_reliable ? "yes" : "no");
       } else {
         log_error("Invalid client capabilities packet size: %u, expected %zu", len,
                   sizeof(terminal_capabilities_packet_t));

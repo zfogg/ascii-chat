@@ -122,6 +122,7 @@ typedef struct {
   uint32_t capabilities;      // Bitmask of TERM_CAP_* flags
   uint32_t color_level;       // terminal_color_level_t enum value
   uint32_t color_count;       // Actual color count (16, 256, 16777216)
+  uint32_t render_mode;       // render_mode_t enum value (foreground/background/half-block)
   uint16_t width, height;     // Terminal dimensions
   char term_type[32];         // $TERM value for debugging
   char colorterm[32];         // $COLORTERM value for debugging

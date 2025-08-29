@@ -355,6 +355,10 @@ void print_terminal_capabilities(const terminal_capabilities_t *caps) {
   printf("  Max Colors: %d\n", caps->color_count);
   printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
   printf("  Background Colors: %s\n", (caps->capabilities & TERM_CAP_BACKGROUND) ? "Yes" : "No");
+  printf("  Render Mode: %s\n", caps->render_mode == RENDER_MODE_FOREGROUND   ? "foreground"
+                                : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
+                                : caps->render_mode == RENDER_MODE_HALF_BLOCK ? "half-block"
+                                                                              : "unknown");
   printf("  TERM: %s\n", caps->term_type);
   printf("  COLORTERM: %s\n", caps->colorterm);
   printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
@@ -428,17 +432,22 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
     break;
   }
 
-  // Handle background mode overrides
-  switch (opt_background_mode) {
-  case BACKGROUND_MODE_FOREGROUND:
+  // Handle render mode overrides
+  switch (opt_render_mode) {
+  case RENDER_MODE_FOREGROUND:
     // Default to foreground-only mode (disable background)
     // Background mode should be opt-in, not auto-detected
     caps.capabilities &= ~TERM_CAP_BACKGROUND;
     break;
 
-  case BACKGROUND_MODE_BACKGROUND:
+  case RENDER_MODE_BACKGROUND:
     // Explicitly enable background rendering capability
     caps.capabilities |= TERM_CAP_BACKGROUND;
+    break;
+
+  case RENDER_MODE_HALF_BLOCK:
+    // Enable UTF-8 and background capabilities for half-block mode
+    caps.capabilities |= TERM_CAP_UTF8 | TERM_CAP_BACKGROUND;
     break;
   }
 
@@ -447,6 +456,9 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
     caps.utf8_support = true;
     caps.capabilities |= TERM_CAP_UTF8;
   }
+
+  // Include client's render mode preference
+  caps.render_mode = opt_render_mode;
 
   return caps;
 }

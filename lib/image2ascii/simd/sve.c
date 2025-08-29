@@ -1,106 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
 #include "sve.h"
-#include "ascii_simd.h"
-#include "options.h"
+#include "common.h"
 
-#if defined(SIMD_SUPPORT_SVE) && defined(__ARM_FEATURE_SVE)
+#ifdef SIMD_SUPPORT_SVE
 #include <arm_sve.h>
-#ifndef SIMD_SUPPORT_SVE
-#define SIMD_SUPPORT_SVE 1
-#endif
-#endif
 
-#ifdef SIMD_SUPPORT_SVE // main block of code ifdef
-
-// Forward declarations for SVE functions
-static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                      bool background_mode);
-static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
-
-// ARM SVE dispatch function
-size_t convert_row_with_color_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                  bool background_mode) {
-  if (opt_color_output || background_mode) {
-    return convert_row_colored_sve(pixels, output_buffer, buffer_size, width, background_mode);
-  } else {
-    return convert_row_mono_sve(pixels, output_buffer, buffer_size, width);
+// SVE-accelerated pixel-to-ASCII conversion (scalable vector length)
+void convert_pixels_sve(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+  // TODO: Implement ARM SVE scalable vector processing
+  // For now, fall back to scalar until SVE implementation is added
+  for (int i = 0; i < count; i++) {
+    const rgb_pixel_t *pixel = &pixels[i];
+    int luminance = (77 * pixel->r + 150 * pixel->g + 29 * pixel->b + 128) >> 8;
+    if (luminance > 255)
+      luminance = 255;
+    ascii_chars[i] = g_ascii_cache.luminance_palette[luminance];
   }
 }
 
-// TODO: Implement ARM SVE scalable vector monochrome ASCII conversion
-static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
-  // FUTURE IMPLEMENTATION:
-  // - Query vector length with svcntb() (typically 256-512 bits)
-  // - Process svcntb()/3 RGB pixels per iteration (variable width)
-  // - Use svld3_u8 for interleaved RGB loads
-  // - Implement luminance with svmla_u16 (multiply-accumulate)
-  // - Use svtbl_u8 for ASCII character lookup
-  // - Vectorized stores with svst1_u8
-  // - Adaptive to different ARM implementations (256-2048 bit vectors)
+//=============================================================================
+// Image-based API (matches NEON architecture)
+//=============================================================================
 
-  // Fallback to scalar implementation for now
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
-}
-
-// TODO: Implement ARM SVE scalable vector colored ASCII conversion
-static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                      bool background_mode) {
-  // FUTURE IMPLEMENTATION:
-  // - Query vector length and process accordingly
-  // - Use predicated operations for handling partial vectors
-  // - Scalable luminance calculation: (77*R + 150*G + 29*B) >> 8
-  // - Table lookups for ASCII characters with svtbl_u8
-  // - Vectorized ANSI color sequence generation
-  // - Use SVE gather-scatter for non-contiguous memory access
-  // - Performance scales with vector width (future-proof)
-
-  // Fallback to scalar implementation for now
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
-}
-
-// Forward declarations for SVE functions
-static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                      bool background_mode);
-static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width);
-
-// ARM SVE dispatch function
-size_t convert_row_with_color_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                  bool background_mode) {
-  if (opt_color_output || background_mode) {
-    return convert_row_colored_sve(pixels, output_buffer, buffer_size, width, background_mode);
-  } else {
-    return convert_row_mono_sve(pixels, output_buffer, buffer_size, width);
+// Simple monochrome ASCII function (matches scalar image_print performance)
+char *render_ascii_image_monochrome_sve(const image_t *image) {
+  if (!image || !image->pixels) {
+    return NULL;
   }
+
+  const int h = image->h;
+  const int w = image->w;
+
+  if (h <= 0 || w <= 0) {
+    return NULL;
+  }
+
+  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
+  const size_t len = (size_t)h * ((size_t)w + 1);
+
+  char *output;
+  SAFE_MALLOC(output, len, char *);
+
+  char *pos = output;
+  const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
+
+  // Process rows with SVE optimization
+  for (int y = 0; y < h; y++) {
+    const rgb_pixel_t *row = &pixels[y * w];
+
+    // Use existing SVE function to convert this row
+    convert_pixels_sve(row, pos, w);
+    pos += w;
+
+    // Add newline (except for last row)
+    if (y < h - 1) {
+      *pos++ = '\n';
+    }
+  }
+
+  // Null terminate
+  *pos = '\0';
+
+  return output;
 }
 
-// TODO: Implement ARM SVE scalable vector monochrome ASCII conversion
-static size_t convert_row_mono_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width) {
-  // FUTURE IMPLEMENTATION:
-  // - Query vector length with svcntb() (typically 256-512 bits)
-  // - Process svcntb()/3 RGB pixels per iteration (variable width)
-  // - Use svld3_u8 for interleaved RGB loads
-  // - Implement luminance with svmla_u16 (multiply-accumulate)
-  // - Use svtbl_u8 for ASCII character lookup
-  // - Vectorized stores with svst1_u8
-  // - Adaptive to different ARM implementations (256-2048 bit vectors)
-
-  // Fallback to scalar implementation for now
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, false);
+// Unified SVE function for all color modes (placeholder - will implement full ChatGPT approach)
+char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color) {
+  // For now, fall back to monochrome until full implementation
+  (void)use_background;
+  (void)use_256color;
+  return render_ascii_image_monochrome_sve(image);
 }
 
-// TODO: Implement ARM SVE scalable vector colored ASCII conversion
-static size_t convert_row_colored_sve(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                      bool background_mode) {
-  // FUTURE IMPLEMENTATION:
-  // - Query vector length and process accordingly
-  // - Use predicated operations for handling partial vectors
-  // - Scalable luminance calculation: (77*R + 150*G + 29*B) >> 8
-  // - Table lookups for ASCII characters with svtbl_u8
-  // - Vectorized ANSI color sequence generation
-  // - Use SVE gather-scatter for non-contiguous memory access
-  // - Performance scales with vector width (future-proof)
-
-  // Fallback to scalar implementation for now
-  return convert_row_with_color_scalar(pixels, output_buffer, buffer_size, width, background_mode);
-}
-
-#endif /* SIMD_SUPPORT_SVE && __ARM_FEATURE_SVE */
+#endif /* SIMD_SUPPORT_SVE */

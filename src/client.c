@@ -1004,6 +1004,12 @@ int main(int argc, char *argv[]) {
     has_a_tty_g |= isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
   }
 
+  // Disable echo for the terminal
+  struct termios t;
+  tcgetattr(tty_info_g.fd, &t);
+  t.c_lflag &= ~ECHO;
+  tcsetattr(tty_info_g.fd, TCSANOW, &t);
+
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);

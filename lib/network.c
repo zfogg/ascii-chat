@@ -843,6 +843,7 @@ int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_pa
   net_caps.capabilities = htonl(caps->capabilities);
   net_caps.color_level = htonl(caps->color_level);
   net_caps.color_count = htonl(caps->color_count);
+  net_caps.render_mode = htonl(caps->render_mode);
   net_caps.width = htons(caps->width);
   net_caps.height = htons(caps->height);
 
@@ -861,6 +862,8 @@ int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_pa
 int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsigned short height) {
   // Detect terminal capabilities automatically
   terminal_capabilities_t caps = detect_terminal_capabilities();
+
+  printf("DEBUG: Client detected render_mode=%d, sending to server\n", caps.render_mode);
 
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
@@ -883,6 +886,7 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.capabilities = caps.capabilities;
   net_packet.color_level = caps.color_level;
   net_packet.color_count = caps.color_count;
+  net_packet.render_mode = caps.render_mode; // CRITICAL: Include render mode!
   net_packet.width = width;
   net_packet.height = height;
 
