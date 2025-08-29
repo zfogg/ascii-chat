@@ -22,7 +22,7 @@ uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t
 
 // {{{ NEW
 // Simple monochrome ASCII function that matches scalar image_print()
-char *render_ascii_image_monochrome_neon(const image_t *image, const char luminance_palette[256]);
+char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii_chars);
 
 // Unified optimized NEON converter (foreground/background + 256-color/truecolor)
 char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color,

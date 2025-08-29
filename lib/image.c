@@ -461,13 +461,13 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 
   case TERM_COLOR_NONE:
   default:
-    // Use grayscale/monochrome conversion (TODO: add per-client palette support)
-    init_default_luminance_palette();
+    // Use grayscale/monochrome conversion with client's custom palette
 #ifdef SIMD_SUPPORT
-    result = image_print_simd((image_t *)image, luminance_palette);
+    result = image_print_simd((image_t *)image, palette);
 #else
-    result = image_print(image);
+    result = image_print(image, palette);
 #endif
+    log_debug("MONOCHROME rendering with palette='%s'", palette);
     break;
   }
 
