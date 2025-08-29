@@ -734,7 +734,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   if (!test_image) {
     exit(1);
   }
-  test_image->pixels = test_pixels;
+  memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
   result.neon_time = measure_image_function_time(render_ascii_image_monochrome_neon, test_image);
   image_destroy(test_image);
 #endif
@@ -862,7 +862,10 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       image_t *resized_frame = image_new(width, height);
       if (!resized_frame) {
         printf("Warning: Failed to allocate resized_frame for webcam frame %d during color benchmarking\n", i);
-        image_destroy(webcam_frame);
+        if (webcam_frame) {
+          image_destroy(webcam_frame);
+          webcam_frame = NULL;
+        }
         continue;
       }
 
@@ -878,7 +881,9 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       }
 
       image_destroy(resized_frame);
+      resized_frame = NULL;
       image_destroy(webcam_frame);
+      webcam_frame = NULL;
       captured_frames++;
     }
 
