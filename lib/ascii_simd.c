@@ -169,6 +169,32 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
   }
 }
 
+char *convert_pixels_scalar_with_newlines(image_t *image) {
+  const int h = image->h;
+  const int w = image->w;
+
+  char *ascii;
+  // -1 because we don't add the last newline, +1 for the null terminator
+  SAFE_MALLOC(ascii, (size_t)h * ((size_t)w + 1) - 1 + 1, char *);
+  char *pos = ascii;
+
+  for (int y = 0; y < h; y++) {
+    const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
+
+    // Convert this row of pixels to ASCII characters
+    convert_pixels_scalar(row_pixels, pos, w);
+    pos += w;
+
+    // Add newline (except for last row)
+    if (y != h - 1) {
+      *pos++ = '\n';
+    }
+  }
+
+  *pos = '\0';
+  return ascii;
+}
+
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
 char *image_print_simd(image_t *image) {
@@ -194,23 +220,14 @@ char *image_print_simd(image_t *image) {
   // Use monochrome NEON function directly - it already handles newlines correctly
   free(ascii); // Free the allocated buffer since we're using NEON's output
   return render_ascii_image_monochrome_neon(image);
+#elif SIMD_SUPPORT_SSE2
+  return render_ascii_image_monochrome_sse2(image);
+#elif SIMD_SUPPORT_SSSE3
+  return render_ascii_image_monochrome_ssse3(image);
+#elif SIMD_SUPPORT_AVX2
+  return render_ascii_image_monochrome_avx2(image);
 #else
-  // Non-NEON fallback: process pixels row by row with newlines
-  for (int y = 0; y < h; y++) {
-    const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
-
-    // Convert this row of pixels to ASCII characters
-    convert_pixels_scalar(row_pixels, pos, w);
-    pos += w;
-
-    // Add newline (except for last row)
-    if (y != h - 1) {
-      *pos++ = '\n';
-    }
-  }
-
-  *pos = '\0';
-  return ascii;
+  return convert_pixels_scalar_with_newlines(image);
 #endif
 }
 
@@ -316,6 +333,29 @@ static double measure_image_function_time(char *(*func)(const image_t *), const 
   return total_time / iterations; // Return average time per iteration
 }
 
+// Measure execution time for color functions with background mode
+static double measure_image_function_time_color(char *(*func)(const image_t *, bool, bool), const image_t *test_image,
+                                                bool background_mode, bool use_256color) {
+  int pixel_count = test_image->w * test_image->h;
+  int iterations = calculate_adaptive_iterations(pixel_count, 10.0);
+
+  // Warmup run
+  char *result = func(test_image, background_mode, true); // Use 256color mode for consistency
+  if (result)
+    free(result);
+
+  // Actual measurement with multiple iterations
+  double start = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = func(test_image, background_mode, true);
+    if (result)
+      free(result);
+  }
+  double total_time = get_time_seconds() - start;
+
+  return total_time / iterations;
+}
+
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
   simd_benchmark_t result = {0};
 
@@ -398,8 +438,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
          pixel_count, adaptive_iterations);
 
-  // Benchmark scalar version with adaptive timing (keep using old API for now)
-  result.scalar_time = measure_function_time(convert_pixels_scalar, test_pixels, output_buffer, pixel_count);
+  // Benchmark scalar using image-based API
+  result.scalar_time = measure_image_function_time(image_print, test_image);
 
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using new image-based timing function
@@ -634,8 +674,9 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 }
 
 // Enhanced benchmark function with image source support
-simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int __attribute__((unused)) iterations,
-                                                       const image_t *source_image) {
+simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations,
+                                                       bool background_mode, const image_t *source_image,
+                                                       bool use_fast_path) {
   simd_benchmark_t result = {0};
 
   int pixel_count = width * height;
@@ -702,41 +743,55 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
          pixel_count, adaptive_iterations);
 
-  // Benchmark all available SIMD variants with adaptive timing
-  // result.scalar_time = measure_function_time(convert_pixels_scalar, test_pixels, output_buffer, pixel_count);
+  // Benchmark all available SIMD variants using unified image-based API
   image_t *frame = image_new(width, height);
   memcpy(frame->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-  // Actual measurement with multiple iterations
-  double start = get_time_seconds();
-  int scalar_iterations = calculate_adaptive_iterations(pixel_count, 10.0); // Target 10ms minimum
-  for (int i = 0; i < scalar_iterations; i++) {
-    char *output = ascii_convert(frame, width, height, false, false, false);
-    free(output);
-  }
-  double total_time = get_time_seconds() - start;
-  result.scalar_time = total_time / iterations; // Return average time per iteration
+
+  // Benchmark scalar using color conversion
+  result.scalar_time = measure_image_function_time(image_print_color, frame);
 
 #ifdef SIMD_SUPPORT_SSE2
-  result.sse2_time = measure_function_time(convert_pixels_sse2, test_pixels, output_buffer, pixel_count);
+  // Benchmark SSE2 using unified optimized renderer
+  if (use_fast_path) {
+    result.sse2_time = measure_image_function_time_color(render_ascii_image_monochrome_sse2, frame, background_mode,
+                                                         use_fast_path);
+  } else {
+    result.sse2_time = measure_image_function_time_color(render_ascii_sse2_unified_optimized, frame, background_mode,
+                                                         use_fast_path);
+  }
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
-  result.ssse3_time = measure_function_time(convert_pixels_ssse3, test_pixels, output_buffer, pixel_count);
+  // Benchmark SSSE3 using unified optimized renderer
+  if (use_fast_path) {
+    result.ssse3_time = measure_image_function_time_color(render_ascii_image_monochrome_ssse3, frame, background_mode,
+                                                         use_fast_path);
+  } else {
+    result.ssse3_time = measure_image_function_time_color(render_ascii_ssse3_unified_optimized, frame, background_mode,
+                                                         use_fast_path);
+  }
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
-  result.avx2_time = measure_function_time(convert_pixels_avx2, test_pixels, output_buffer, pixel_count);
+  // Benchmark AVX2 using unified optimized renderer
+  if (use_fast_path) {
+    result.avx2_time = measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode,
+                                                         use_fast_path);
+  } else {
+    result.avx2_time = measure_image_function_time_color(render_ascii_avx2_unified_optimized, frame, background_mode,
+                                                         use_fast_path);
+  }
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
-  // Benchmark NEON using new image-based timing function
-  image_t *test_image = image_new(width, height);
-  if (!test_image) {
-    exit(1);
+  // Benchmark NEON using unified optimized renderer
+  if (use_fast_path) {
+    result.neon_time = measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode,
+                                                         use_fast_path);
+  } else {
+    result.neon_time = measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode,
+                                                         use_fast_path);
   }
-  memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-  result.neon_time = measure_image_function_time(render_ascii_image_monochrome_neon, test_image);
-  image_destroy(test_image);
 #endif
 
   // Find best method

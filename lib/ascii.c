@@ -86,10 +86,8 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 
   char *ascii;
   if (color) {
-    printf("DEBUG: color=true, opt_render_mode=%d (HALF_BLOCK=%d)\n", opt_render_mode, RENDER_MODE_HALF_BLOCK);
     // Check for half-block mode first (requires NEON)
     if (opt_render_mode == RENDER_MODE_HALF_BLOCK) {
-      printf("DEBUG: Taking half-block path!\n");
 #ifdef SIMD_SUPPORT_NEON
       // Use NEON half-block renderer
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
@@ -100,7 +98,6 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
       return NULL;
 #endif
     } else {
-      printf("DEBUG: Taking standard color path, use_background=%d\n", opt_render_mode == RENDER_MODE_BACKGROUND);
 #ifdef SIMD_SUPPORT
       // Standard color modes (foreground/background)
       bool use_background = (opt_render_mode == RENDER_MODE_BACKGROUND);

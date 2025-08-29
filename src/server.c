@@ -420,10 +420,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                           bool wants_stretch, size_t *out_size) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
   if (!out_size || width == 0 || height == 0) {
-    char pretty_out_size[64];
-    format_bytes_pretty(*out_size, pretty_out_size, sizeof(pretty_out_size));
-    log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%s", width,
-              height, pretty_out_size);
+    log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
+              height, out_size);
     return NULL;
   }
 
