@@ -390,8 +390,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
     webcam_cleanup();
   }
 
-  // Fill test image with the same data as test_pixels
-  test_image->pixels = test_pixels;
+  // Copy test data to test image pixels
+  memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
@@ -455,8 +455,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   result.speedup_best = result.scalar_time / best_time;
 
-  // Cleanup - note: test_pixels is owned by test_image now
-  test_image->pixels = NULL; // Don't double-free
+  // Cleanup
   image_destroy(test_image);
   free(test_pixels);
   free(output_buffer);
