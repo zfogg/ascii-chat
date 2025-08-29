@@ -356,11 +356,21 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return NULL;
   }
 
-  // Check if client wants background rendering
-  bool use_background_mode = (caps->capabilities & TERM_CAP_BACKGROUND) != 0;
+  // Handle half-block mode first (requires NEON)
+  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+#ifdef SIMD_SUPPORT_NEON
+    printf("DEBUG: image_print_with_capabilities calling half-block with image %dx%d\n", image->w, image->h);
+    // Use NEON half-block renderer
+    const uint8_t *rgb_data = (const uint8_t *)image->pixels;
+    return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
+#else
+    log_error("Half-block mode requires NEON support (ARM architecture)");
+    return NULL;
+#endif
+  }
 
-  // TODO: Eventually refactor printing functions to accept background mode as parameter
-  // For now, we handle background mode in the capability system but legacy functions use foreground-only
+  // Standard color modes
+  bool use_background_mode = (caps->render_mode == RENDER_MODE_BACKGROUND);
 
   char *result = NULL;
 

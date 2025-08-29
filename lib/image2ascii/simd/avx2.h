@@ -7,9 +7,11 @@
 
 // AVX2-specific function declarations
 void convert_pixels_avx2(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-size_t convert_row_with_color_avx2(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size, int width,
-                                   bool background_mode);
-size_t convert_row_with_color_avx2_with_buffer(const rgb_pixel_t *pixels, char *output_buffer, size_t buffer_size,
-                                               int width, bool background_mode, char *ascii_chars);
+
+// NEW: Image-based API (matching NEON architecture)
+char *render_ascii_image_monochrome_avx2(const image_t *image);
+char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color);
+
+// Legacy row-based functions removed - use image-based API above
 
 #endif /* SIMD_SUPPORT_AVX2 */

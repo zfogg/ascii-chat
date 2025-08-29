@@ -86,13 +86,29 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 
   char *ascii;
   if (color) {
-#ifdef SIMD_SUPPORT
-    // Allocate buffer for SIMD colored ASCII output
-    bool use_background = (opt_background_mode == BACKGROUND_MODE_BACKGROUND);
-    ascii = image_print_color_simd(resized, use_background, false);
+    printf("DEBUG: color=true, opt_render_mode=%d (HALF_BLOCK=%d)\n", opt_render_mode, RENDER_MODE_HALF_BLOCK);
+    // Check for half-block mode first (requires NEON)
+    if (opt_render_mode == RENDER_MODE_HALF_BLOCK) {
+      printf("DEBUG: Taking half-block path!\n");
+#ifdef SIMD_SUPPORT_NEON
+      // Use NEON half-block renderer
+      const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
+      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
 #else
-    ascii = image_print_color(resized);
+      log_error("Half-block mode requires NEON support (ARM architecture)");
+      image_destroy(resized);
+      return NULL;
 #endif
+    } else {
+      printf("DEBUG: Taking standard color path, use_background=%d\n", opt_render_mode == RENDER_MODE_BACKGROUND);
+#ifdef SIMD_SUPPORT
+      // Standard color modes (foreground/background)
+      bool use_background = (opt_render_mode == RENDER_MODE_BACKGROUND);
+      ascii = image_print_color_simd(resized, use_background, false);
+#else
+      ascii = image_print_color(resized);
+#endif
+    }
   } else {
 #ifdef SIMD_SUPPORT
     // Allocate buffer for grayscale ASCII output
@@ -141,10 +157,14 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   ssize_t resized_width = width;
   ssize_t resized_height = height;
 
+  // Height doubling for half-block mode is now handled by the server
+
   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
-  if (use_aspect_ratio) {
+  if (use_aspect_ratio && caps->render_mode != RENDER_MODE_HALF_BLOCK) {
+    // Normal modes: apply aspect ratio correction
     aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
   }
+  // Half-block mode: skip aspect ratio to preserve full doubled dimensions for 2x resolution
 
   // Calculate padding for centering
   size_t pad_width = 0;

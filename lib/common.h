@@ -16,6 +16,14 @@ typedef unsigned long long uint64_t;
 
 #include <stdlib.h>
 #include <sys/types.h>
+
+// Render mode enum (defined here to avoid circular dependencies)
+typedef enum {
+  RENDER_MODE_FOREGROUND = 0, // Use foreground colors only (default)
+  RENDER_MODE_BACKGROUND = 1, // Use background colors with contrasting foreground
+  RENDER_MODE_HALF_BLOCK = 2  // Use UTF-8 half-blocks (▀ █) for 2x vertical resolution
+} render_mode_t;
+
 #include "options.h"
 
 /* ============================================================================
