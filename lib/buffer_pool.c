@@ -41,6 +41,8 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
   pool->hits = 0;
   pool->misses = 0;
   pool->returns = 0;
+  pool->peak_used = 0;
+  pool->total_bytes_allocated = 0;
 
   return pool;
 }
