@@ -30,11 +30,6 @@ static inline uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
 // Definitions are in ascii_simd.h - just use them
 // REMOVED: #define luminance_palette g_ascii_cache.luminance_palette (causes macro expansion issues)
 
-// ===== add near top (config) =====
-#ifndef BGASCII_LUMA_THRESHOLD
-#define BGASCII_LUMA_THRESHOLD 128 // Y >= 128 -> black text; else white text
-#endif
-
 // ------------------------------------------------------------
 // Map luminance [0..255] → 4-bit index [0..15] using top nibble
 static inline uint8x16_t luma_to_idx_nibble_neon(uint8x16_t y) {
@@ -44,7 +39,7 @@ static inline uint8x16_t luma_to_idx_nibble_neon(uint8x16_t y) {
 // SIMD luma and helpers:
 
 // SIMD luminance: Y = (77R + 150G + 29B) >> 8
-static inline uint8x16_t simd_luma(uint8x16_t r, uint8x16_t g, uint8x16_t b) {
+static inline uint8x16_t simd_luma_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b) {
   uint16x8_t rl = vmovl_u8(vget_low_u8(r));
   uint16x8_t rh = vmovl_u8(vget_high_u8(r));
   uint16x8_t gl = vmovl_u8(vget_low_u8(g));
@@ -185,7 +180,7 @@ uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t
   uint8x16_t is_gray = vcltq_u8(diff, thr);
 
   // gray idx = 232 + round(Y*23/255)
-  uint8x16_t Y = simd_luma(r, g, b);
+  uint8x16_t Y = simd_luma_neon(r, g, b);
   // q23 ≈ round(Y*23/255) = (Y*23 + 128)>>8
   uint16x8_t Yl = vmovl_u8(vget_low_u8(Y));
   uint16x8_t Yh = vmovl_u8(vget_high_u8(Y));

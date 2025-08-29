@@ -39,47 +39,64 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image) {
     const rgb_pixel_t *row = &pixels[y * w];
     int x = 0;
 
-    // Process 8 pixels at a time with SSSE3
-    for (; x + 7 < w; x += 8) {
+    // Process 16 pixels at a time with SSSE3 (full 128-bit register capacity)
+    for (; x + 15 < w; x += 16) {
       // Manual deinterleave RGB components (SSSE3 limitation vs NEON's vld3q_u8)
-      uint8_t r_array[8], g_array[8], b_array[8];
-      for (int j = 0; j < 8; j++) {
+      uint8_t r_array[16], g_array[16], b_array[16];
+      for (int j = 0; j < 16; j++) {
         r_array[j] = row[x + j].r;
         g_array[j] = row[x + j].g;
         b_array[j] = row[x + j].b;
       }
 
-      // Load into SSSE3 registers
-      __m128i r_vec = _mm_loadl_epi64((__m128i *)r_array);
-      __m128i g_vec = _mm_loadl_epi64((__m128i *)g_array);
-      __m128i b_vec = _mm_loadl_epi64((__m128i *)b_array);
+      // Process 16 pixels in two 8-pixel SSSE3 batches (same as SSE2 approach)
+      __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0));
+      __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8));
+      __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
+      __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
+      __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
+      __m128i b_vec_hi = _mm_loadl_epi64((__m128i *)(b_array + 8));
 
-      // Convert to 16-bit for arithmetic
-      __m128i r_16 = _mm_unpacklo_epi8(r_vec, _mm_setzero_si128());
-      __m128i g_16 = _mm_unpacklo_epi8(g_vec, _mm_setzero_si128());
-      __m128i b_16 = _mm_unpacklo_epi8(b_vec, _mm_setzero_si128());
+      // Process first 8 pixels
+      __m128i r_16_lo = _mm_unpacklo_epi8(r_vec_lo, _mm_setzero_si128());
+      __m128i g_16_lo = _mm_unpacklo_epi8(g_vec_lo, _mm_setzero_si128());
+      __m128i b_16_lo = _mm_unpacklo_epi8(b_vec_lo, _mm_setzero_si128());
 
-      // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
-      __m128i luma_r = _mm_mullo_epi16(r_16, _mm_set1_epi16(77));
-      __m128i luma_g = _mm_mullo_epi16(g_16, _mm_set1_epi16(150));
-      __m128i luma_b = _mm_mullo_epi16(b_16, _mm_set1_epi16(29));
+      __m128i luma_r_lo = _mm_mullo_epi16(r_16_lo, _mm_set1_epi16(77));
+      __m128i luma_g_lo = _mm_mullo_epi16(g_16_lo, _mm_set1_epi16(150));
+      __m128i luma_b_lo = _mm_mullo_epi16(b_16_lo, _mm_set1_epi16(29));
 
-      __m128i luma_sum = _mm_add_epi16(luma_r, luma_g);
-      luma_sum = _mm_add_epi16(luma_sum, luma_b);
-      luma_sum = _mm_add_epi16(luma_sum, _mm_set1_epi16(128)); // Add rounding
-      luma_sum = _mm_srli_epi16(luma_sum, 8);
+      __m128i luma_sum_lo = _mm_add_epi16(luma_r_lo, luma_g_lo);
+      luma_sum_lo = _mm_add_epi16(luma_sum_lo, luma_b_lo);
+      luma_sum_lo = _mm_add_epi16(luma_sum_lo, _mm_set1_epi16(128));
+      luma_sum_lo = _mm_srli_epi16(luma_sum_lo, 8);
 
-      // Pack back to 8-bit
-      __m128i luminance = _mm_packus_epi16(luma_sum, _mm_setzero_si128());
+      // Process second 8 pixels
+      __m128i r_16_hi = _mm_unpacklo_epi8(r_vec_hi, _mm_setzero_si128());
+      __m128i g_16_hi = _mm_unpacklo_epi8(g_vec_hi, _mm_setzero_si128());
+      __m128i b_16_hi = _mm_unpacklo_epi8(b_vec_hi, _mm_setzero_si128());
 
-      // Store and convert to ASCII characters
-      uint8_t luma_array[8];
-      _mm_storel_epi64((__m128i *)luma_array, luminance);
+      __m128i luma_r_hi = _mm_mullo_epi16(r_16_hi, _mm_set1_epi16(77));
+      __m128i luma_g_hi = _mm_mullo_epi16(g_16_hi, _mm_set1_epi16(150));
+      __m128i luma_b_hi = _mm_mullo_epi16(b_16_hi, _mm_set1_epi16(29));
 
-      for (int j = 0; j < 8; j++) {
+      __m128i luma_sum_hi = _mm_add_epi16(luma_r_hi, luma_g_hi);
+      luma_sum_hi = _mm_add_epi16(luma_sum_hi, luma_b_hi);
+      luma_sum_hi = _mm_add_epi16(luma_sum_hi, _mm_set1_epi16(128));
+      luma_sum_hi = _mm_srli_epi16(luma_sum_hi, 8);
+
+      // Pack and store
+      __m128i luminance_lo = _mm_packus_epi16(luma_sum_lo, _mm_setzero_si128());
+      __m128i luminance_hi = _mm_packus_epi16(luma_sum_hi, _mm_setzero_si128());
+
+      uint8_t luma_array[16];
+      _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
+      _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
+
+      for (int j = 0; j < 16; j++) {
         pos[j] = g_ascii_cache.luminance_palette[luma_array[j]];
       }
-      pos += 8;
+      pos += 16;
     }
 
     // Handle remaining pixels with scalar code
@@ -147,11 +164,11 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
     const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
     int x = 0;
 
-    // Process 8-pixel chunks with SSSE3 (same as SSE2 but could be optimized more)
-    while (x + 8 <= width) {
+    // Process 16-pixel chunks with SSSE3 (full 128-bit register capacity)
+    while (x + 16 <= width) {
       // Manual deinterleave RGB components (SSSE3 limitation vs NEON's vld3q_u8)
-      uint8_t r_array[8], g_array[8], b_array[8];
-      for (int j = 0; j < 8; j++) {
+      uint8_t r_array[16], g_array[16], b_array[16];
+      for (int j = 0; j < 16; j++) {
         r_array[j] = row[x + j].r;
         g_array[j] = row[x + j].g;
         b_array[j] = row[x + j].b;
@@ -261,7 +278,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
           i = j;
         }
       }
-      x += 8;
+      x += 16;
     }
 
     // Scalar tail for remaining pixels (copied from NEON logic)

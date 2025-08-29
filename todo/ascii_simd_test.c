@@ -423,6 +423,8 @@ void test_integration(void) {
         best_simd_time = bench.ssse3_time;
     } else if (strcmp(bench.best_method, "SSE2") == 0) {
         best_simd_time = bench.sse2_time;
+    } else if (strcmp(bench.best_method, "SVE") == 0) {
+        best_simd_time = bench.sve_time;
     }
 
     if (best_simd_time > 0 && strcmp(bench.best_method, "scalar") != 0) {
