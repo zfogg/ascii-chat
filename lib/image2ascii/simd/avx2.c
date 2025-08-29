@@ -98,7 +98,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image) {
     // Handle remaining pixels with scalar code
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
-      const int luminance = (LUM_RED * pixel.r + LUM_GREEN * pixel.g + LUM_BLUE * pixel.b + 128) >> 8;
+      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
       *pos++ = g_ascii_cache.luminance_palette[luminance];
     }
 
