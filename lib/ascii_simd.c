@@ -946,9 +946,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_SSE2
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    char *result_str = render_ascii_sse2_unified_optimized(test_image, background_mode, use_fast_path);
-    if (result_str)
-      free(result_str);
+    image_t *test_image = image_new(width, height);
+    if (test_image) {
+      memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
+      char *result_str = render_ascii_sse2_unified_optimized(test_image, background_mode, use_fast_path);
+      if (result_str)
+        free(result_str);
+      image_destroy(test_image);
+    }
   }
   result.sse2_time = get_time_seconds() - start;
 #endif
@@ -956,9 +961,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_SSSE3
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    char *result_str = render_ascii_ssse3_unified_optimized(test_image, background_mode, use_fast_path);
-    if (result_str)
-      free(result_str);
+    image_t *test_image = image_new(width, height);
+    if (test_image) {
+      memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
+      char *result_str = render_ascii_ssse3_unified_optimized(test_image, background_mode, use_fast_path);
+      if (result_str)
+        free(result_str);
+      image_destroy(test_image);
+    }
   }
   result.ssse3_time = get_time_seconds() - start;
 #endif
@@ -966,9 +976,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 #ifdef SIMD_SUPPORT_AVX2
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    char *result_str = render_ascii_avx2_unified_optimized(test_image, background_mode, use_fast_path);
-    if (result_str)
-      free(result_str);
+    image_t *test_image = image_new(width, height);
+    if (test_image) {
+      memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
+      char *result_str = render_ascii_avx2_unified_optimized(test_image, background_mode, use_fast_path);
+      if (result_str)
+        free(result_str);
+      image_destroy(test_image);
+    }
   }
   result.avx2_time = get_time_seconds() - start;
 #endif

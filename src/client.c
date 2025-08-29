@@ -1063,6 +1063,7 @@ int main(int argc, char *argv[]) {
   int webcam_index = opt_webcam_index;
   if (webcam_init(webcam_index) != 0) {
   }
+  atexit(webcam_cleanup);
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
