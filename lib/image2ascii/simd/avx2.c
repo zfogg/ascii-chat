@@ -39,11 +39,11 @@ char *render_ascii_image_monochrome_avx2(const image_t *image) {
     const rgb_pixel_t *row = &pixels[y * w];
     int x = 0;
 
-    // Process 16 pixels at a time with AVX2 (AVX2 has 256-bit registers)
-    for (; x + 15 < w; x += 16) {
+    // Process 32 pixels at a time with AVX2 (AVX2 has 256-bit registers - double SSE2's capacity)
+    for (; x + 31 < w; x += 32) {
       // Manual deinterleave RGB components (AVX2 limitation vs NEON's vld3q_u8)
-      uint8_t r_array[16], g_array[16], b_array[16];
-      for (int j = 0; j < 16; j++) {
+      uint8_t r_array[32], g_array[32], b_array[32];
+      for (int j = 0; j < 32; j++) {
         r_array[j] = row[x + j].r;
         g_array[j] = row[x + j].g;
         b_array[j] = row[x + j].b;
@@ -54,38 +54,51 @@ char *render_ascii_image_monochrome_avx2(const image_t *image) {
       __m256i g_vec = _mm256_loadu_si256((__m256i *)g_array);
       __m256i b_vec = _mm256_loadu_si256((__m256i *)b_array);
 
-      // Convert to 16-bit for arithmetic (low and high halves)
-      __m256i r_16 = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256());
-      __m256i g_16 = _mm256_unpacklo_epi8(g_vec, _mm256_setzero_si256());
-      __m256i b_16 = _mm256_unpacklo_epi8(b_vec, _mm256_setzero_si256());
+      // Convert to 16-bit for arithmetic (process both low and high halves for full 32 pixels)
+      __m256i r_16_lo = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256()); // First 16 pixels
+      __m256i r_16_hi = _mm256_unpackhi_epi8(r_vec, _mm256_setzero_si256()); // Second 16 pixels
+      __m256i g_16_lo = _mm256_unpacklo_epi8(g_vec, _mm256_setzero_si256());
+      __m256i g_16_hi = _mm256_unpackhi_epi8(g_vec, _mm256_setzero_si256());
+      __m256i b_16_lo = _mm256_unpacklo_epi8(b_vec, _mm256_setzero_si256());
+      __m256i b_16_hi = _mm256_unpackhi_epi8(b_vec, _mm256_setzero_si256());
 
-      // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
-      __m256i luma_r = _mm256_mullo_epi16(r_16, _mm256_set1_epi16(77));
-      __m256i luma_g = _mm256_mullo_epi16(g_16, _mm256_set1_epi16(150));
-      __m256i luma_b = _mm256_mullo_epi16(b_16, _mm256_set1_epi16(29));
+      // Calculate luminance for low half: (77*R + 150*G + 29*B + 128) >> 8
+      __m256i luma_r_lo = _mm256_mullo_epi16(r_16_lo, _mm256_set1_epi16(77));
+      __m256i luma_g_lo = _mm256_mullo_epi16(g_16_lo, _mm256_set1_epi16(150));
+      __m256i luma_b_lo = _mm256_mullo_epi16(b_16_lo, _mm256_set1_epi16(29));
 
-      __m256i luma_sum = _mm256_add_epi16(luma_r, luma_g);
-      luma_sum = _mm256_add_epi16(luma_sum, luma_b);
-      luma_sum = _mm256_add_epi16(luma_sum, _mm256_set1_epi16(128));
-      luma_sum = _mm256_srli_epi16(luma_sum, 8);
+      __m256i luma_sum_lo = _mm256_add_epi16(luma_r_lo, luma_g_lo);
+      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, luma_b_lo);
+      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, _mm256_set1_epi16(128));
+      luma_sum_lo = _mm256_srli_epi16(luma_sum_lo, 8);
 
-      // Pack back to 8-bit
-      __m256i luminance = _mm256_packus_epi16(luma_sum, _mm256_setzero_si256());
+      // Calculate luminance for high half
+      __m256i luma_r_hi = _mm256_mullo_epi16(r_16_hi, _mm256_set1_epi16(77));
+      __m256i luma_g_hi = _mm256_mullo_epi16(g_16_hi, _mm256_set1_epi16(150));
+      __m256i luma_b_hi = _mm256_mullo_epi16(b_16_hi, _mm256_set1_epi16(29));
+
+      __m256i luma_sum_hi = _mm256_add_epi16(luma_r_hi, luma_g_hi);
+      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, luma_b_hi);
+      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, _mm256_set1_epi16(128));
+      luma_sum_hi = _mm256_srli_epi16(luma_sum_hi, 8);
+
+      // Pack back to 8-bit (combines both halves into 32 8-bit values)
+      __m256i luminance = _mm256_packus_epi16(luma_sum_lo, luma_sum_hi);
 
       // Store and convert to ASCII characters
-      uint8_t luma_array[16];
+      uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
-      for (int j = 0; j < 16; j++) {
+      for (int j = 0; j < 32; j++) {
         pos[j] = g_ascii_cache.luminance_palette[luma_array[j]];
       }
-      pos += 16;
+      pos += 32;
     }
 
     // Handle remaining pixels with scalar code
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
-      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+      const int luminance = (LUM_RED * pixel.r + LUM_GREEN * pixel.g + LUM_BLUE * pixel.b + 128) >> 8;
       *pos++ = g_ascii_cache.luminance_palette[luminance];
     }
 
@@ -147,11 +160,11 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
     const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
     int x = 0;
 
-    // Process 16-pixel chunks with AVX2 (full 256-bit register width)
-    while (x + 16 <= width) {
+    // Process 32-pixel chunks with AVX2 (full 256-bit register width)
+    while (x + 32 <= width) {
       // Manual deinterleave RGB components (AVX2 limitation vs NEON's vld3q_u8)
-      uint8_t r_array[16], g_array[16], b_array[16];
-      for (int j = 0; j < 16; j++) {
+      uint8_t r_array[32], g_array[32], b_array[32];
+      for (int j = 0; j < 32; j++) {
         r_array[j] = row[x + j].r;
         g_array[j] = row[x + j].g;
         b_array[j] = row[x + j].b;
@@ -162,29 +175,42 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       __m256i g_vec = _mm256_loadu_si256((__m256i *)g_array);
       __m256i b_vec = _mm256_loadu_si256((__m256i *)b_array);
 
-      // Convert to 16-bit for arithmetic
-      __m256i r_16 = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256());
-      __m256i g_16 = _mm256_unpacklo_epi8(g_vec, _mm256_setzero_si256());
-      __m256i b_16 = _mm256_unpacklo_epi8(b_vec, _mm256_setzero_si256());
+      // Convert to 16-bit for arithmetic (process both low and high halves for full 32 pixels)
+      __m256i r_16_lo = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256());
+      __m256i r_16_hi = _mm256_unpackhi_epi8(r_vec, _mm256_setzero_si256());
+      __m256i g_16_lo = _mm256_unpacklo_epi8(g_vec, _mm256_setzero_si256());
+      __m256i g_16_hi = _mm256_unpackhi_epi8(g_vec, _mm256_setzero_si256());
+      __m256i b_16_lo = _mm256_unpacklo_epi8(b_vec, _mm256_setzero_si256());
+      __m256i b_16_hi = _mm256_unpackhi_epi8(b_vec, _mm256_setzero_si256());
 
-      // Calculate luminance: (77*R + 150*G + 29*B + 128) >> 8
-      __m256i luma_r = _mm256_mullo_epi16(r_16, _mm256_set1_epi16(77));
-      __m256i luma_g = _mm256_mullo_epi16(g_16, _mm256_set1_epi16(150));
-      __m256i luma_b = _mm256_mullo_epi16(b_16, _mm256_set1_epi16(29));
+      // Calculate luminance for low half: (77*R + 150*G + 29*B + 128) >> 8
+      __m256i luma_r_lo = _mm256_mullo_epi16(r_16_lo, _mm256_set1_epi16(77));
+      __m256i luma_g_lo = _mm256_mullo_epi16(g_16_lo, _mm256_set1_epi16(150));
+      __m256i luma_b_lo = _mm256_mullo_epi16(b_16_lo, _mm256_set1_epi16(29));
 
-      __m256i luma_sum = _mm256_add_epi16(luma_r, luma_g);
-      luma_sum = _mm256_add_epi16(luma_sum, luma_b);
-      luma_sum = _mm256_add_epi16(luma_sum, _mm256_set1_epi16(128));
-      luma_sum = _mm256_srli_epi16(luma_sum, 8);
+      __m256i luma_sum_lo = _mm256_add_epi16(luma_r_lo, luma_g_lo);
+      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, luma_b_lo);
+      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, _mm256_set1_epi16(128));
+      luma_sum_lo = _mm256_srli_epi16(luma_sum_lo, 8);
 
-      // Pack back to 8-bit and store
-      __m256i luminance = _mm256_packus_epi16(luma_sum, _mm256_setzero_si256());
-      uint8_t luma_array[16];
+      // Calculate luminance for high half
+      __m256i luma_r_hi = _mm256_mullo_epi16(r_16_hi, _mm256_set1_epi16(77));
+      __m256i luma_g_hi = _mm256_mullo_epi16(g_16_hi, _mm256_set1_epi16(150));
+      __m256i luma_b_hi = _mm256_mullo_epi16(b_16_hi, _mm256_set1_epi16(29));
+
+      __m256i luma_sum_hi = _mm256_add_epi16(luma_r_hi, luma_g_hi);
+      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, luma_b_hi);
+      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, _mm256_set1_epi16(128));
+      luma_sum_hi = _mm256_srli_epi16(luma_sum_hi, 8);
+
+      // Pack back to 8-bit and store (combines both halves into 32 8-bit values)
+      __m256i luminance = _mm256_packus_epi16(luma_sum_lo, luma_sum_hi);
+      uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
       // Convert to ASCII glyphs using ramp64 (like NEON)
-      uint8_t gbuf[16];
-      for (int i = 0; i < 16; i++) {
+      uint8_t gbuf[32];
+      for (int i = 0; i < 32; i++) {
         gbuf[i] = ramp64[luma_array[i] >> 2]; // Use same index calculation as NEON
       }
 
@@ -201,7 +227,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
-          while (j < 16 && gbuf[j] == ch && color_indices[j] == color_idx) {
+          while (j < 32 && gbuf[j] == ch && color_indices[j] == color_idx) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -227,14 +253,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         }
       } else {
         // Truecolor mode processing (copied from NEON logic)
-        for (int i = 0; i < 16;) {
+        for (int i = 0; i < 32;) {
           const uint8_t ch = gbuf[i];
           const uint8_t r = r_array[i];
           const uint8_t g = g_array[i];
           const uint8_t b = b_array[i];
 
           int j = i + 1;
-          while (j < 16 && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
+          while (j < 32 && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -261,7 +287,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           i = j;
         }
       }
-      x += 16;
+      x += 32;
     }
 
     // Scalar tail for remaining pixels (copied from NEON logic)

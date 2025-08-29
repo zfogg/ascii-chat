@@ -8,6 +8,7 @@
 #include "image.h"
 #include "common.h"
 #include "image2ascii/simd/neon.h"
+#include "image2ascii/simd/sve.h"
 #include "webcam.h"
 #include "ansi_fast.h"
 #include "ascii.h"
@@ -244,8 +245,11 @@ void print_simd_capabilities(void) {
 #ifdef SIMD_SUPPORT_NEON
   printf("  ✓ ARM NEON (16 pixels/cycle)\n");
 #endif
+#ifdef SIMD_SUPPORT_SVE
+  printf("  ✓ ARM SVE (scalable pixels/cycle)\n");
+#endif
 #ifdef SIMD_SUPPORT_SSSE3
-  printf("  ✓ SSSE3 (32 pixels/cycle)\n");
+  printf("  ✓ SSSE3 (16 pixels/cycle)\n");
 #endif
 #ifdef SIMD_SUPPORT_SSE2
   printf("  ✓ SSE2 (16 pixels/cycle)\n");
@@ -461,6 +465,11 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   result.neon_time = measure_image_function_time(render_ascii_image_monochrome_neon, test_image);
 #endif
 
+#ifdef SIMD_SUPPORT_SVE
+  // Benchmark SVE using new image-based timing function
+  result.sve_time = measure_image_function_time(render_ascii_image_monochrome_sve, test_image);
+#endif
+
   // Find best method
   double best_time = result.scalar_time;
   result.best_method = "scalar";
@@ -494,6 +503,13 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 #endif
 
   result.speedup_best = result.scalar_time / best_time;
+
+#ifdef SIMD_SUPPORT_SVE
+  if (result.sve_time > 0 && result.sve_time < best_time) {
+    best_time = result.sve_time;
+    result.best_method = "SVE";
+  }
+#endif
 
   // Cleanup
   image_destroy(test_image);
@@ -770,6 +786,12 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
       measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode, use_fast_path);
 #endif
 
+#ifdef SIMD_SUPPORT_SVE
+  // Benchmark SVE using unified optimized renderer
+  result.sve_time =
+      measure_image_function_time_color(render_ascii_sve_unified_optimized, frame, background_mode, use_fast_path);
+#endif
+
   // Find best method
   double best_time = result.scalar_time;
   result.best_method = "scalar";
@@ -803,6 +825,13 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 #endif
 
   result.speedup_best = result.scalar_time / best_time;
+
+#ifdef SIMD_SUPPORT_SVE
+  if (result.sve_time > 0 && result.sve_time < best_time) {
+    best_time = result.sve_time;
+    result.best_method = "SVE";
+  }
+#endif
 
   image_destroy(frame);
   free(test_pixels);
@@ -1038,6 +1067,18 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   result.neon_time = get_time_seconds() - start;
 #endif
 
+#ifdef SIMD_SUPPORT_SVE
+  start = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    // Create temporary image for unified function
+    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
+    char *result = render_ascii_sve_unified_optimized(&temp_image, background_mode, use_fast_path);
+    if (result)
+      free(result);
+  }
+  result.sve_time = get_time_seconds() - start;
+#endif
+
 #ifdef SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
     best_time = result.sse2_time;
@@ -1093,6 +1134,10 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   if (result.neon_time > 0 && result.neon_time < best_time)
     best_time = result.neon_time;
 #endif
+#ifdef SIMD_SUPPORT_SVE
+  if (result.sve_time > 0 && result.sve_time < best_time)
+    best_time = result.sve_time;
+#endif
 
   result.speedup_best = result.scalar_time / best_time;
 
@@ -1106,6 +1151,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     printf("avx2: %f\n", result.avx2_time);
   if (result.neon_time > 0)
     printf("neon: %f\n", result.neon_time);
+  if (result.sve_time > 0)
+    printf("sve: %f\n", result.sve_time);
   printf("Best method: %s, time: %f (%.2fx speedup)\n", result.best_method, best_time, result.speedup_best);
   printf("------------\n");
 

@@ -123,6 +123,7 @@ typedef struct {
   double ssse3_time;
   double avx2_time;
   double neon_time;
+  double sve_time;
   double speedup_best;
   const char *best_method;
 } simd_benchmark_t;
