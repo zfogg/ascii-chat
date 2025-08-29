@@ -113,9 +113,6 @@ ImageRGB alloc_image(int w, int h);
 // Fallback scalar version
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count);
 
-// Auto-dispatch function (chooses best available SIMD)
-void convert_pixels_optimized(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-
 // Row-based functions removed - use image_print_color() instead
 
 // Benchmark functions
