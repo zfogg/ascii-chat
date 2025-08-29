@@ -30,6 +30,25 @@ void ob_u32(outbuf_t *ob, uint32_t v);
 #define RAMP64_SIZE 64
 void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars);
 
+// UTF-8 character cache system for SIMD renderers
+typedef struct {
+  char utf8_bytes[4]; // Up to 4 bytes for UTF-8 character
+  uint8_t byte_len;   // Actual length (1-4 bytes)
+} utf8_char_t;
+
+typedef struct {
+  utf8_char_t cache[256];      // 256-entry cache for direct luminance lookup (monochrome)
+  utf8_char_t cache64[64];     // 64-entry cache for SIMD color lookup
+  uint8_t char_index_ramp[64]; // Character indices for vqtbl4q_u8 lookup
+  char palette_hash[64];       // Hash of palette for cache validation
+  bool is_valid;               // Whether cache is valid
+} utf8_palette_cache_t;
+
+// UTF-8 palette cache functions
+utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
+void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]);
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]);
+
 // ANSI escape sequence emission
 void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
 void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);

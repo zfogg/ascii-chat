@@ -1,6 +1,7 @@
 #include "common.h"
 #include "image2ascii/simd/common.h"
-#include "ascii_simd.h"
+#include "hashtable.h"
+#include "crc32_hw.h"
 
 // Build 64-entry glyph LUT for vqtbl4q_u8 and other architecture's instrinsics (UTF-8 aware)
 void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
@@ -60,6 +61,165 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
     // Get the first byte of the character at this character index
     int byte_offset = char_starts[char_idx];
     ramp64[i] = (uint8_t)ascii_chars[byte_offset];
+  }
+}
+
+// UTF-8 palette cache system
+static hashtable_t *g_utf8_cache_table = NULL;
+static pthread_mutex_t g_utf8_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Initialize UTF-8 cache system
+static void init_utf8_cache_system(void) {
+  if (!g_utf8_cache_table) {
+    g_utf8_cache_table = hashtable_create();
+  }
+}
+
+// Get or create UTF-8 palette cache for a given palette
+utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
+  if (!ascii_chars)
+    return NULL;
+
+  pthread_mutex_lock(&g_utf8_cache_mutex);
+
+  init_utf8_cache_system();
+
+  // Create hash of palette for cache key
+  uint32_t palette_hash = asciichat_crc32(ascii_chars, strlen(ascii_chars));
+
+  // Look for existing cache
+  utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
+
+  if (!cache) {
+    // Create new cache
+    SAFE_MALLOC(cache, sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
+    memset(cache, 0, sizeof(utf8_palette_cache_t));
+
+    // Build both cache types
+    build_utf8_luminance_cache(ascii_chars, cache->cache);
+    build_utf8_ramp64_cache(ascii_chars, cache->cache64, cache->char_index_ramp);
+
+    // Store palette hash for validation
+    strncpy(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash) - 1);
+    cache->palette_hash[sizeof(cache->palette_hash) - 1] = '\0';
+    cache->is_valid = true;
+
+    // Store in hashtable
+    hashtable_insert(g_utf8_cache_table, palette_hash, cache);
+
+    log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
+  }
+
+  pthread_mutex_unlock(&g_utf8_cache_mutex);
+  return cache;
+}
+
+// Build 256-entry UTF-8 cache for direct luminance lookup (monochrome renderers)
+void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]) {
+  if (!ascii_chars || !cache)
+    return;
+
+  // Parse characters
+  typedef struct {
+    const char *start;
+    int byte_len;
+  } char_info_t;
+
+  char_info_t char_infos[256];
+  int char_count = 0;
+  const char *p = ascii_chars;
+
+  while (*p && char_count < 255) {
+    char_infos[char_count].start = p;
+
+    if ((*p & 0x80) == 0) {
+      char_infos[char_count].byte_len = 1;
+      p++;
+    } else if ((*p & 0xE0) == 0xC0) {
+      char_infos[char_count].byte_len = 2;
+      p += 2;
+    } else if ((*p & 0xF0) == 0xE0) {
+      char_infos[char_count].byte_len = 3;
+      p += 3;
+    } else if ((*p & 0xF8) == 0xF0) {
+      char_infos[char_count].byte_len = 4;
+      p += 4;
+    } else {
+      char_infos[char_count].byte_len = 1;
+      p++;
+    }
+    char_count++;
+  }
+
+  // Build 256-entry cache
+  for (int i = 0; i < 256; i++) {
+    int char_idx = char_count > 1 ? (i * (char_count - 1) + 127) / 255 : 0;
+    if (char_idx >= char_count)
+      char_idx = char_count - 1;
+
+    cache[i].byte_len = char_infos[char_idx].byte_len;
+    memcpy(cache[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
+    if (cache[i].byte_len < 4) {
+      cache[i].utf8_bytes[cache[i].byte_len] = '\0';
+    }
+  }
+}
+
+// Build 64-entry UTF-8 cache for SIMD color lookup
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]) {
+  if (!ascii_chars || !cache64 || !char_index_ramp)
+    return;
+
+  // Reuse the luminance cache building logic but for 64 entries
+  // (Same UTF-8 parsing as above, but map to 64 entries instead of 256)
+
+  // Parse characters (same as above)
+  typedef struct {
+    const char *start;
+    int byte_len;
+  } char_info_t;
+
+  char_info_t char_infos[256];
+  int char_count = 0;
+  const char *p = ascii_chars;
+
+  while (*p && char_count < 255) {
+    char_infos[char_count].start = p;
+
+    if ((*p & 0x80) == 0) {
+      char_infos[char_count].byte_len = 1;
+      p++;
+    } else if ((*p & 0xE0) == 0xC0) {
+      char_infos[char_count].byte_len = 2;
+      p += 2;
+    } else if ((*p & 0xF0) == 0xE0) {
+      char_infos[char_count].byte_len = 3;
+      p += 3;
+    } else if ((*p & 0xF8) == 0xF0) {
+      char_infos[char_count].byte_len = 4;
+      p += 4;
+    } else {
+      char_infos[char_count].byte_len = 1;
+      p++;
+    }
+    char_count++;
+  }
+
+  // Build 64-entry cache and index ramp
+  for (int i = 0; i < 64; i++) {
+    int char_idx = char_count > 1 ? (i * (char_count - 1) + 31) / 63 : 0;
+    if (char_idx >= char_count)
+      char_idx = char_count - 1;
+
+    // Store cache index for SIMD lookup
+    char_index_ramp[i] = (uint8_t)i;
+
+    // Cache UTF-8 character
+    cache64[i].byte_len = char_infos[char_idx].byte_len;
+    memcpy(cache64[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
+    if (cache64[i].byte_len < 4) {
+      cache64[i].utf8_bytes[cache64[i].byte_len] = '\0';
+    }
   }
 }
 
