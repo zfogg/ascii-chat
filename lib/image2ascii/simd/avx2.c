@@ -13,8 +13,8 @@
 //=============================================================================
 
 // Simple monochrome ASCII function (matches scalar image_print performance)
-char *render_ascii_image_monochrome_avx2(const image_t *image, const char luminance_palette[256]) {
-  if (!image || !image->pixels) {
+char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars) {
+  if (!image || !image->pixels || !ascii_chars) {
     return NULL;
   }
 
@@ -25,8 +25,16 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char lumina
     return NULL;
   }
 
-  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
-  const size_t len = (size_t)h * ((size_t)w + 1);
+  // Get cached UTF-8 character mappings
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache");
+    return NULL;
+  }
+
+  // Buffer size for UTF-8 characters
+  const size_t max_char_bytes = 4;
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   char *output;
   SAFE_MALLOC(output, len, char *);
@@ -90,7 +98,9 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char lumina
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
       for (int j = 0; j < 32; j++) {
-        pos[j] = luminance_palette[luma_array[j]];
+        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
       }
       pos += 32;
     }
@@ -141,6 +151,13 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
     return render_ascii_image_monochrome_avx2(image);
   }
 
+  // Get cached UTF-8 character mappings for color rendering
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for AVX2 color");
+    return NULL;
+  }
+
   outbuf_t ob = {0};
   // Estimate buffer size based on mode (copied from NEON)
   size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
@@ -149,9 +166,10 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   if (!ob.buf)
     return NULL;
 
-  // Build 64-entry glyph LUT (copied from NEON approach)
-  uint8_t ramp64[RAMP64_SIZE];
-  build_ramp64(ramp64);
+  // Build AVX2 lookup table for _mm256_shuffle_epi8 (uses character indices)
+  __m256i char_lut = _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp));  // Broadcast to 256-bit
+
+  // AVX2 uses UTF-8 cache system - no need for old ramp64
 
   // Track current color state (copied from NEON)
   int curR = -1, curG = -1, curB = -1;
@@ -209,11 +227,17 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
-      // Convert to ASCII glyphs using ramp64 (like NEON)
-      uint8_t gbuf[32];
-      for (int i = 0; i < 32; i++) {
-        gbuf[i] = ramp64[luma_array[i] >> 2]; // Use same index calculation as NEON
-      }
+      // FAST: Use _mm256_shuffle_epi8 to get character indices from the ramp (AVX2 advantage)
+      // Convert luminance to 0-63 indices
+      __m256i luma_vec = _mm256_loadu_si256((__m256i *)luma_array);  // Load 32 luminance values
+      __m256i luma_idx_vec = _mm256_srli_epi16(_mm256_unpacklo_epi8(luma_vec, _mm256_setzero_si256()), 2); // >> 2 for 0-63
+      __m256i luma_idx_8bit = _mm256_packus_epi16(luma_idx_vec, _mm256_setzero_si256()); // Pack back to 8-bit
+      
+      // Use _mm256_shuffle_epi8 for fast character index lookup (32 characters at once!)
+      __m256i char_indices_vec = _mm256_shuffle_epi8(char_lut, luma_idx_8bit);
+      
+      uint8_t char_indices[32];
+      _mm256_storeu_si256((__m256i *)char_indices, char_indices_vec);
 
       if (use_256color) {
         // 256-color mode processing (copied from NEON logic)
@@ -224,11 +248,12 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
         // Emit with RLE on (glyph, color) runs (copied from NEON)
         for (int i = 0; i < 16;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = char_indices[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
-          while (j < 32 && gbuf[j] == ch && color_indices[j] == color_idx) {
+          while (j < 32 && char_indices[j] == char_idx && color_indices[j] == color_idx) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -242,12 +267,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
             cur_color_idx = color_idx;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -255,13 +282,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       } else {
         // Truecolor mode processing (copied from NEON logic)
         for (int i = 0; i < 32;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = char_indices[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = r_array[i];
           const uint8_t g = g_array[i];
           const uint8_t b = b_array[i];
 
           int j = i + 1;
-          while (j < 32 && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
+          while (j < 32 && char_indices[j] == char_idx && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -277,12 +305,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
             curB = b;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -296,7 +326,8 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
       uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + LUMA_THRESHOLD) >> 8);
-      uint8_t ch = ramp64[Y >> 2];
+      uint8_t luma_idx = Y >> 2;
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (use_256color) {
         // 256-color scalar tail
@@ -323,12 +354,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           cur_color_idx = color_idx;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -356,12 +389,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           curB = (int)B;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;

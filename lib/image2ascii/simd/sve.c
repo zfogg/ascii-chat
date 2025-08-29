@@ -13,7 +13,7 @@
 //=============================================================================
 
 // Simple monochrome ASCII function (matches scalar image_print performance)
-char *render_ascii_image_monochrome_sve(const image_t *image, const char luminance_palette[256]) {
+char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -85,7 +85,9 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char luminan
 
       for (int j = 0; j < process_count; j++) {
         if (x + j < w) {
-          pos[j] = luminance_palette[luma_array[j]];
+          const utf8_char_t *char_info = &utf8_char_cache[luma_array[j]];
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
         }
       }
       pos += process_count;
@@ -139,9 +141,12 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
   if (!ob.buf)
     return NULL;
 
-  // Build 64-entry glyph LUT (copied from NEON approach)
-  uint8_t ramp64[RAMP64_SIZE];
-  build_ramp64(ramp64, ascii_chars);
+  // Get cached UTF-8 character mappings for color rendering
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for SVE color");
+    return NULL;
+  }
 
   // Track current color state (copied from NEON)
   int curR = -1, curG = -1, curB = -1;
@@ -193,7 +198,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       // Convert to ASCII glyphs using ramp64 (like NEON)
       uint8_t gbuf[64];
       for (int i = 0; i < process_count; i++) {
-        gbuf[i] = ramp64[luma_array[i] >> 2]; // Use same index calculation as NEON
+        const uint8_t luma_idx = luma_array[i] >> 2;  // 0-63 index
+        gbuf[i] = luma_idx;  // Store character index for cache lookup
       }
 
       if (use_256color) {
@@ -205,11 +211,12 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 
         // Emit with RLE on (glyph, color) runs (copied from NEON)
         for (int i = 0; i < process_count;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = gbuf[i];  // This is now the character index
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
-          while (j < process_count && gbuf[j] == ch && color_indices[j] == color_idx) {
+          while (j < process_count && gbuf[j] == char_idx && color_indices[j] == color_idx) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -223,12 +230,14 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
             cur_color_idx = color_idx;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -236,13 +245,14 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       } else {
         // Truecolor mode processing (copied from NEON logic)
         for (int i = 0; i < process_count;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = gbuf[i];  // This is now the character index
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = r_array[i];
           const uint8_t g = g_array[i];
           const uint8_t b = b_array[i];
 
           int j = i + 1;
-          while (j < process_count && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
+          while (j < process_count && gbuf[j] == char_idx && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -258,12 +268,14 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
             curB = b;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -277,7 +289,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
       uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + LUMA_THRESHOLD) >> 8);
-      uint8_t ch = ramp64[Y >> 2];
+      uint8_t luma_idx = Y >> 2;
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (use_256color) {
         // 256-color scalar tail
@@ -309,7 +322,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -342,7 +356,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;

@@ -13,8 +13,8 @@
 //=============================================================================
 
 // Simple monochrome ASCII function (matches scalar image_print performance)
-char *render_ascii_image_monochrome_sse2(const image_t *image, const char luminance_palette[256]) {
-  if (!image || !image->pixels) {
+char *render_ascii_image_monochrome_sse2(const image_t *image, const char *ascii_chars) {
+  if (!image || !image->pixels || !ascii_chars) {
     return NULL;
   }
 
@@ -25,8 +25,16 @@ char *render_ascii_image_monochrome_sse2(const image_t *image, const char lumina
     return NULL;
   }
 
-  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
-  const size_t len = (size_t)h * ((size_t)w + 1);
+  // Get cached UTF-8 character mappings
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache");
+    return NULL;
+  }
+
+  // Buffer size for UTF-8 characters
+  const size_t max_char_bytes = 4;
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   char *output;
   SAFE_MALLOC(output, len, char *);
@@ -94,17 +102,21 @@ char *render_ascii_image_monochrome_sse2(const image_t *image, const char lumina
       _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
       _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
 
+      // Convert luminance to UTF-8 characters using cached mappings
       for (int j = 0; j < 16; j++) {
-        pos[j] = luminance_palette[luma_array[j]];
+        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
       }
-      pos += 16;
     }
 
     // Handle remaining pixels with scalar code
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + LUMA_THRESHOLD) >> 8;
-      *pos++ = luminance_palette[luminance];
+      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+      pos += char_info->byte_len;
     }
 
     // Add newline (except for last row)
@@ -154,9 +166,15 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
   if (!ob.buf)
     return NULL;
 
-  // Build 64-entry glyph LUT (copied from NEON approach)
-  uint8_t ramp64[RAMP64_SIZE];
-  build_ramp64(ramp64, ascii_chars);
+  // Get cached UTF-8 character mappings for color rendering
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for SSE2 color");
+    return NULL;
+  }
+
+  // SSE2 doesn't have _mm_shuffle_epi8 (introduced in SSSE3), so use scalar UTF-8 cache lookup
+  // This is still much faster than the old approach since UTF-8 parsing is cached
 
   // Track current color state (copied from NEON)
   int curR = -1, curG = -1, curB = -1;
@@ -201,10 +219,11 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
       uint8_t luma_array[8];
       _mm_storel_epi64((__m128i *)luma_array, luminance);
 
-      // Convert to ASCII glyphs using ramp64 (like NEON)
-      uint8_t gbuf[8];
+      // Convert to UTF-8 character indices using cached mappings
+      uint8_t char_indices[8];
       for (int i = 0; i < 8; i++) {
-        gbuf[i] = ramp64[luma_array[i] >> 2]; // Use same index calculation as NEON
+        const uint8_t luma_idx = luma_array[i] >> 2;  // 0-63 index
+        char_indices[i] = luma_idx;  // Direct index into cache64
       }
 
       if (use_256color) {
@@ -214,13 +233,14 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
           color_indices[i] = rgb_to_256color_sse2(r_array[i], g_array[i], b_array[i]);
         }
 
-        // Emit with RLE on (glyph, color) runs (copied from NEON)
-        for (int i = 0; i < 16;) {
-          const uint8_t ch = gbuf[i];
+        // Emit with RLE on (UTF-8 character, color) runs
+        for (int i = 0; i < 8;) {  // SSE2 processes 8 pixels, not 16
+          const uint8_t char_idx = char_indices[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
-          while (j < 16 && gbuf[j] == ch && color_indices[j] == color_idx) {
+          while (j < 8 && char_indices[j] == char_idx && color_indices[j] == color_idx) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -234,26 +254,28 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
             cur_color_idx = color_idx;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
         }
       } else {
-        // Truecolor mode processing (copied from NEON logic)
-        for (int i = 0; i < 16;) {
-          const uint8_t ch = gbuf[i];
+        // Truecolor mode processing with UTF-8 characters
+        for (int i = 0; i < 8;) {  // SSE2 processes 8 pixels
+          const uint8_t char_idx = char_indices[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = r_array[i];
           const uint8_t g = g_array[i];
           const uint8_t b = b_array[i];
 
           int j = i + 1;
-          while (j < 16 && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
+          while (j < 8 && char_indices[j] == char_idx && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -269,12 +291,13 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
             curB = b;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -288,10 +311,11 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
       uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + LUMA_THRESHOLD) >> 8);
-      uint8_t ch = ramp64[Y >> 2];
+      uint8_t luma_idx = Y >> 2;
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (use_256color) {
-        // 256-color scalar tail
+        // 256-color scalar tail with UTF-8
         uint8_t color_idx = rgb_to_256color_sse2((uint8_t)R, (uint8_t)G, (uint8_t)B);
 
         int j = x + 1;
@@ -299,8 +323,9 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
+          uint8_t luma_idx2 = Y2 >> 2;
           uint8_t color_idx2 = rgb_to_256color_sse2((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
-          if (((Y2 >> 2) != (Y >> 2)) || color_idx2 != color_idx)
+          if (luma_idx2 != luma_idx || color_idx2 != color_idx)
             break;
           j++;
         }
@@ -315,23 +340,25 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
           cur_color_idx = color_idx;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
       } else {
-        // Truecolor scalar tail
+        // Truecolor scalar tail with UTF-8
         int j = x + 1;
         while (j < width) {
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
-          if (((Y2 >> 2) != (Y >> 2)) || R2 != R || G2 != G || B2 != B)
+          uint8_t luma_idx2 = Y2 >> 2;
+          if (luma_idx2 != luma_idx || R2 != R || G2 != G || B2 != B)
             break;
           j++;
         }
@@ -348,12 +375,13 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
           curB = (int)B;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;

@@ -13,8 +13,8 @@
 //=============================================================================
 
 // Simple monochrome ASCII function (matches scalar image_print performance)
-char *render_ascii_image_monochrome_ssse3(const image_t *image, const char luminance_palette[256]) {
-  if (!image || !image->pixels) {
+char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *ascii_chars) {
+  if (!image || !image->pixels || !ascii_chars) {
     return NULL;
   }
 
@@ -25,8 +25,16 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char lumin
     return NULL;
   }
 
-  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
-  const size_t len = (size_t)h * ((size_t)w + 1);
+  // Get cached UTF-8 character mappings
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache");
+    return NULL;
+  }
+
+  // Buffer size for UTF-8 characters
+  const size_t max_char_bytes = 4;
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   char *output;
   SAFE_MALLOC(output, len, char *);
@@ -94,7 +102,9 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char lumin
       _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
 
       for (int j = 0; j < 16; j++) {
-        pos[j] = luminance_palette[luma_array[j]];
+        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
       }
       pos += 16;
     }
@@ -145,6 +155,13 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
     return render_ascii_image_monochrome_ssse3(image);
   }
 
+  // Get cached UTF-8 character mappings for color rendering
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for SSSE3 color");
+    return NULL;
+  }
+
   outbuf_t ob = {0};
   // Estimate buffer size based on mode (copied from NEON)
   size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
@@ -153,9 +170,8 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
   if (!ob.buf)
     return NULL;
 
-  // Build 64-entry glyph LUT (copied from NEON approach)
-  uint8_t ramp64[RAMP64_SIZE];
-  build_ramp64(ramp64, ascii_chars);
+  // Build SSSE3 lookup table for _mm_shuffle_epi8 (uses character indices)
+  __m128i char_lut = _mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp);  // Load first 16 indices
 
   // Track current color state (copied from NEON)
   int curR = -1, curG = -1, curB = -1;
@@ -200,11 +216,16 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
       uint8_t luma_array[8];
       _mm_storel_epi64((__m128i *)luma_array, luminance);
 
-      // Convert to ASCII glyphs using ramp64 (like NEON)
-      uint8_t gbuf[8];
-      for (int i = 0; i < 8; i++) {
-        gbuf[i] = ramp64[luma_array[i] >> 2]; // Use same index calculation as NEON
-      }
+      // FAST: Use _mm_shuffle_epi8 to get character indices from the ramp (SSSE3 advantage)
+      __m128i luma_vec = _mm_loadl_epi64((__m128i *)luma_array);  // Load 8 luminance values
+      __m128i luma_idx_vec = _mm_srli_epi16(_mm_unpacklo_epi8(luma_vec, _mm_setzero_si128()), 2); // >> 2 for 0-63
+      __m128i luma_idx_8bit = _mm_packus_epi16(luma_idx_vec, _mm_setzero_si128()); // Pack back to 8-bit
+      
+      // Use _mm_shuffle_epi8 for fast character index lookup
+      __m128i char_indices_vec = _mm_shuffle_epi8(char_lut, luma_idx_8bit);
+      
+      uint8_t char_indices[8];
+      _mm_storel_epi64((__m128i *)char_indices, char_indices_vec);
 
       if (use_256color) {
         // 256-color mode processing (copied from NEON logic)
@@ -215,11 +236,12 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
 
         // Emit with RLE on (glyph, color) runs (copied from NEON)
         for (int i = 0; i < 8;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = char_indices[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
-          while (j < 8 && gbuf[j] == ch && color_indices[j] == color_idx) {
+          while (j < 8 && char_indices[j] == char_idx && color_indices[j] == color_idx) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -233,12 +255,14 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
             cur_color_idx = color_idx;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -246,13 +270,14 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
       } else {
         // Truecolor mode processing (copied from NEON logic)
         for (int i = 0; i < 8;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = char_indices[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = r_array[i];
           const uint8_t g = g_array[i];
           const uint8_t b = b_array[i];
 
           int j = i + 1;
-          while (j < 8 && gbuf[j] == ch && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
+          while (j < 8 && char_indices[j] == char_idx && r_array[j] == r && g_array[j] == g && b_array[j] == b) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -268,12 +293,14 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
             curB = b;
           }
 
-          ob_putc(&ob, (char)ch);
+          // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -287,7 +314,8 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
       uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + LUMA_THRESHOLD) >> 8);
-      uint8_t ch = ramp64[Y >> 2];
+      uint8_t luma_idx = Y >> 2;
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (use_256color) {
         // 256-color scalar tail
@@ -314,12 +342,14 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
           cur_color_idx = color_idx;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
@@ -347,12 +377,14 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
           curB = (int)B;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            // Emit UTF-8 character from cache
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
