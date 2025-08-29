@@ -50,8 +50,8 @@ char *render_ascii_image_monochrome_sse2(const image_t *image) {
       }
 
       // Load full 16 bytes into SSE2 registers (process in two 8-pixel batches)
-      __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0));   // First 8 pixels
-      __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8));   // Second 8 pixels
+      __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0)); // First 8 pixels
+      __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8)); // Second 8 pixels
       __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
       __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
       __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
