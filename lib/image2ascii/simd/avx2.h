@@ -6,7 +6,7 @@
 #include <immintrin.h>
 
 // NEW: Image-based API (matching NEON architecture)
-char *render_ascii_image_monochrome_avx2(const image_t *image, const char luminance_palette[256]);
+char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars);
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
 
