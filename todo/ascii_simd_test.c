@@ -413,26 +413,33 @@ void test_integration(void) {
     printf("Terminal Performance (203x64):\n");
     printf("  Scalar:     %8.3f ms/frame\n", bench.scalar_time * 1000);
 
-    // Use the benchmark's determination of the best method and time
-    double best_simd_time = 0;
-    if (strcmp(bench.best_method, "NEON") == 0) {
-        best_simd_time = bench.neon_time;
-    } else if (strcmp(bench.best_method, "AVX2") == 0) {
-        best_simd_time = bench.avx2_time;
-    } else if (strcmp(bench.best_method, "SSSE3") == 0) {
-        best_simd_time = bench.ssse3_time;
-    } else if (strcmp(bench.best_method, "SSE2") == 0) {
-        best_simd_time = bench.sse2_time;
-    } else if (strcmp(bench.best_method, "SVE") == 0) {
-        best_simd_time = bench.sve_time;
+    // Show all available SIMD architecture results
+    if (bench.sse2_time > 0) {
+        printf("  SSE2:       %8.3f ms/frame (%4.1fx faster)\n",
+               bench.sse2_time * 1000, bench.scalar_time / bench.sse2_time);
+    }
+    if (bench.ssse3_time > 0) {
+        printf("  SSSE3:      %8.3f ms/frame (%4.1fx faster)\n",
+               bench.ssse3_time * 1000, bench.scalar_time / bench.ssse3_time);
+    }
+    if (bench.avx2_time > 0) {
+        printf("  AVX2:       %8.3f ms/frame (%4.1fx faster)\n",
+               bench.avx2_time * 1000, bench.scalar_time / bench.avx2_time);
+    }
+    if (bench.neon_time > 0) {
+        printf("  NEON:       %8.3f ms/frame (%4.1fx faster)\n",
+               bench.neon_time * 1000, bench.scalar_time / bench.neon_time);
+    }
+    if (bench.sve_time > 0) {
+        printf("  SVE:        %8.3f ms/frame (%4.1fx faster)\n",
+               bench.sve_time * 1000, bench.scalar_time / bench.sve_time);
     }
 
-    if (best_simd_time > 0 && strcmp(bench.best_method, "scalar") != 0) {
-        printf("  Best SIMD:  %8.3f ms/frame (%4.1fx faster)\n",
-               best_simd_time * 1000, bench.scalar_time / best_simd_time);
+    printf("  Winner:     %s", bench.best_method);
+    if (strcmp(bench.best_method, "scalar") != 0) {
+        printf(" (%.1fx faster)", bench.speedup_best);
     }
-
-    printf("  Winner:     %s\n", bench.best_method);
+    printf("\n");
     printf("  CPU Saved:  %.1f%% at 60 FPS\n", 100.0 * (1.0 - 1.0 / bench.speedup_best));
 
     // Show actual ASCII output sample
