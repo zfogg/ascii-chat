@@ -13,8 +13,9 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audio streaming is now supported via PortAudio!
 
-![Animated demonstration](http://i.imgur.com/E4OuqvX.gif)
+![Animated demonstration: monochrome](http://i.imgur.com/E4OuqvX.gif)
 
+![Animated demonstration: color](https://i.imgur.com/IL8fSkA.gif)
 
 Dependencies
 ==========
