@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "image.h"
 #include "ascii.h"
 #include "ascii_simd.h"
@@ -14,9 +15,9 @@
 #include "options.h"
 #include "round.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
+#include "palette.h"
 
-// Use the global SIMD-optimized palette
-#define luminance_palette g_ascii_cache.luminance_palette
+// NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 
 // ansi_fast functions are declared in ansi_fast.h (already included)
 
@@ -189,9 +190,10 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 }
 
 // Optimized image printing with better memory access patterns
-char *image_print(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print: p is NULL");
+char *image_print(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -221,7 +223,10 @@ char *image_print(const image_t *p) {
     for (int x = 0; x < w; x++) {
       const rgb_t pixel = pix[row_offset + x];
       const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-      lines[out_idx++] = luminance_palette[luminance];
+      // Use default ASCII palette (TODO: add per-client palette support)
+      // Use imported default palette constant
+      int palette_index = (luminance > 255) ? 22 : (luminance * 22) / 255;
+      lines[out_idx++] = palette[palette_index];
     }
     if (y != h - 1) {
       lines[out_idx++] = '\n';
@@ -279,9 +284,10 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  * @note Exits with ASCIICHAT_ERR_BUFFER_ACCESS if buffer overflow is detected
  *       during string construction (should never happen with correct calculation).
  */
-char *image_print_color(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("p or p->pixels is NULL");
+char *image_print_color(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -347,7 +353,8 @@ char *image_print_color(const image_t *p) {
       const rgb_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
-      const char ascii_char = luminance_palette[luminance];
+      int palette_index = (luminance > 255) ? 22 : (luminance * 22) / 255;
+      const char ascii_char = palette[palette_index];
 
       // Legacy function - always use foreground mode with RLE optimization
       // For proper per-client background support, use image_print_with_capabilities() instead
@@ -402,9 +409,11 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 }
 
 // Capability-aware image printing function
-char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps) {
-  if (!image || !image->pixels || !caps) {
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
+                                    const char luminance_palette[256]) {
+  if (!image || !image->pixels || !caps || !palette) {
     log_error("Invalid parameters for image_print_with_capabilities");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -428,33 +437,34 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   // Choose the appropriate printing method based on terminal capabilities
   switch (caps->color_level) {
   case TERM_COLOR_TRUECOLOR:
-    // Use existing truecolor printing function
+    // Use existing truecolor printing function with client's palette
 #ifdef SIMD_SUPPORT
-    result = image_print_color_simd((image_t *)image, use_background_mode, false);
+    result = image_print_color_simd((image_t *)image, use_background_mode, false, palette);
 #else
-    result = image_print_color(image);
+    result = image_print_color(image, palette);
 #endif
     break;
 
   case TERM_COLOR_256:
 #ifdef SIMD_SUPPORT
-    result = image_print_color_simd((image_t *)image, use_background_mode, true);
+    result = image_print_color_simd((image_t *)image, use_background_mode, true, palette);
 #else
     // Use 256-color conversion
-    result = image_print_256color(image);
+    result = image_print_256color(image, palette);
 #endif
     break;
 
   case TERM_COLOR_16:
     // Use 16-color conversion with Floyd-Steinberg dithering for better quality
-    result = image_print_16color_dithered_with_background(image, use_background_mode);
+    result = image_print_16color_dithered_with_background(image, use_background_mode, palette);
     break;
 
   case TERM_COLOR_NONE:
   default:
-    // Use grayscale/monochrome conversion
+    // Use grayscale/monochrome conversion (TODO: add per-client palette support)
+    init_default_luminance_palette();
 #ifdef SIMD_SUPPORT
-    result = image_print_simd((image_t *)image);
+    result = image_print_simd((image_t *)image, luminance_palette);
 #else
     result = image_print(image);
 #endif
@@ -466,26 +476,28 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 }
 
 // 256-color image printing function using existing SIMD optimized code
-char *image_print_256color(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print_256color: p or p->pixels is NULL");
+char *image_print_256color(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_256color: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
   // Use the existing optimized SIMD colored printing (no background for 256-color mode)
 #ifdef SIMD_SUPPORT
-  char *result = image_print_color_simd((image_t *)p, false, true);
+  char *result = image_print_color_simd((image_t *)p, false, true, palette);
 #else
-  char *result = image_print_color(p);
+  char *result = image_print_color(p, palette);
 #endif
 
   return result;
 }
 
 // 16-color image printing function using ansi_fast color conversion
-char *image_print_16color(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print_16color: p or p->pixels is NULL");
+char *image_print_16color(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_16color: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -522,8 +534,10 @@ char *image_print_16color(const image_t *p) {
 
       // Calculate luminance for ASCII character selection
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use the global SIMD ASCII cache luminance palette
-      *ptr++ = luminance_palette[luminance];
+      // Use default ASCII palette for 16-color mode (TODO: add per-client palette support)
+      // Use imported default palette constant
+      int palette_index = (luminance * 22) / 255; // Map to 23 chars (0-22)
+      *ptr++ = palette[palette_index];
     }
 
     // Add reset and newline at end of each row
@@ -539,9 +553,10 @@ char *image_print_16color(const image_t *p) {
 }
 
 // 16-color image printing with Floyd-Steinberg dithering
-char *image_print_16color_dithered(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print_16color_dithered: p or p->pixels is NULL");
+char *image_print_16color_dithered(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_16color_dithered: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -588,8 +603,10 @@ char *image_print_16color_dithered(const image_t *p) {
 
       // Calculate luminance for ASCII character selection (same as non-dithered)
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use the global SIMD ASCII cache luminance palette
-      *ptr++ = luminance_palette[luminance];
+      // Use default ASCII palette for 16-color mode (TODO: add per-client palette support)
+      // Use imported default palette constant
+      int palette_index = (luminance * 22) / 255; // Map to 23 chars (0-22)
+      *ptr++ = palette[palette_index];
     }
 
     // Add reset and newline at end of each row
@@ -606,9 +623,10 @@ char *image_print_16color_dithered(const image_t *p) {
 }
 
 // 16-color image printing with Floyd-Steinberg dithering and background mode support
-char *image_print_16color_dithered_with_background(const image_t *p, bool use_background) {
-  if (!p || !p->pixels) {
-    log_error("image_print_16color_dithered_with_background: p or p->pixels is NULL");
+char *image_print_16color_dithered_with_background(const image_t *p, bool use_background, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_16color_dithered_with_background: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -671,8 +689,10 @@ char *image_print_16color_dithered_with_background(const image_t *p, bool use_ba
 
       // Calculate luminance for ASCII character selection
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use the global SIMD ASCII cache luminance palette
-      *ptr++ = luminance_palette[luminance];
+      // Use default ASCII palette for 16-color mode (TODO: add per-client palette support)
+      // Use imported default palette constant
+      int palette_index = (luminance * 22) / 255; // Map to 23 chars (0-22)
+      *ptr++ = palette[palette_index];
     }
 
     // Add reset and newline at end of each row

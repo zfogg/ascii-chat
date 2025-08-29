@@ -6,12 +6,6 @@
 #include <time.h>
 #include <assert.h>
 #include <pthread.h>
-#include <math.h>
-#include "neon.h"
-#include "ascii_simd.h"
-#include "common.h"
-#include "image.h"
-#include "common.h"
 
 #if defined(__ARM_NEON) || defined(__aarch64__)
 #include <arm_neon.h>
@@ -19,6 +13,11 @@
 #define SIMD_SUPPORT_NEON 1
 #endif
 #endif
+
+#include "common.h"
+#include "neon.h"
+#include "ascii_simd.h"
+#include "image.h"
 
 #ifdef SIMD_SUPPORT_NEON // main block of code ifdef
 
@@ -203,8 +202,8 @@ uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t
 // Simple Monochrome ASCII Function (matches scalar image_print performance)
 //=============================================================================
 
-char *render_ascii_image_monochrome_neon(const image_t *image) {
-  if (!image || !image->pixels) {
+char *render_ascii_image_monochrome_neon(const image_t *image, const char luminance_palette[256]) {
+  if (!image || !image->pixels || !luminance_palette) {
     return NULL;
   }
 
@@ -254,9 +253,9 @@ char *render_ascii_image_monochrome_neon(const image_t *image) {
       uint8_t luma_array[16];
       vst1q_u8(luma_array, luminance);
 
-      // Convert luminance to ASCII characters using palette lookup
+      // Convert luminance to ASCII characters using custom palette lookup
       for (int i = 0; i < 16; i++) {
-        pos[i] = g_ascii_cache.luminance_palette[luma_array[i]];
+        pos[i] = luminance_palette[luma_array[i]];
       }
       pos += 16;
     }
@@ -265,7 +264,7 @@ char *render_ascii_image_monochrome_neon(const image_t *image) {
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      *pos++ = g_ascii_cache.luminance_palette[luminance];
+      *pos++ = luminance_palette[luminance];
     }
 
     // Add newline (except for last row)
@@ -285,7 +284,8 @@ char *render_ascii_image_monochrome_neon(const image_t *image) {
 //=============================================================================
 
 // Unified optimized NEON converter (foreground/background + 256-color/truecolor)
-char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color) {
+char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+                                          const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }
@@ -308,15 +308,80 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   if (!ob.buf)
     return NULL;
 
-  // Build 64-entry glyph LUT for vqtbl4q_u8
-  uint8_t ramp64[RAMP64_SIZE];
-  build_ramp64(ramp64);
+  // Build UTF-8 aware character cache for fast SIMD lookup
+  typedef struct {
+    char utf8_bytes[4]; // Up to 4 bytes for UTF-8 character
+    uint8_t byte_len;   // Actual length (1-4 bytes)
+  } utf8_char_t;
 
+  utf8_char_t utf8_char_cache[64]; // 64-entry UTF-8 character cache
+  uint8_t char_index_ramp[64];     // Character indices for vqtbl4q_u8 lookup
+
+  // Parse the ASCII characters into UTF-8 aware character boundaries
+  int char_count = 0;
+  const char *p = ascii_chars;
+
+  // First pass: count characters and store their positions
+  typedef struct {
+    const char *start;
+    int byte_len;
+  } char_info_t;
+
+  char_info_t char_infos[256]; // More than enough
+
+  while (*p && char_count < 255) {
+    char_infos[char_count].start = p;
+
+    // Determine UTF-8 character length
+    if ((*p & 0x80) == 0) {
+      // ASCII character (1 byte)
+      char_infos[char_count].byte_len = 1;
+      p++;
+    } else if ((*p & 0xE0) == 0xC0) {
+      // 2-byte UTF-8 character
+      char_infos[char_count].byte_len = 2;
+      p += 2;
+    } else if ((*p & 0xF0) == 0xE0) {
+      // 3-byte UTF-8 character
+      char_infos[char_count].byte_len = 3;
+      p += 3;
+    } else if ((*p & 0xF8) == 0xF0) {
+      // 4-byte UTF-8 character
+      char_infos[char_count].byte_len = 4;
+      p += 4;
+    } else {
+      // Invalid UTF-8, treat as 1 byte
+      char_infos[char_count].byte_len = 1;
+      p++;
+    }
+    char_count++;
+  }
+
+  // Build character index ramp for vqtbl4q_u8 AND UTF-8 character cache
+  for (int i = 0; i < 64; i++) {
+    // Map 0-63 to 0-(char_count-1) with proper rounding
+    int char_idx = char_count > 1 ? (i * (char_count - 1) + 31) / 63 : 0; // Add 31 for proper rounding
+    if (char_idx >= char_count)
+      char_idx = char_count - 1;
+
+    // Store cache index for SIMD lookup (direct mapping i -> i)
+    char_index_ramp[i] = (uint8_t)i;
+
+    // Cache UTF-8 character for fast emission - store at index i, not char_idx!
+    utf8_char_cache[i].byte_len = char_infos[char_idx].byte_len;
+    memcpy(utf8_char_cache[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
+    // Null terminate for safety
+    if (utf8_char_cache[i].byte_len < 4) {
+      utf8_char_cache[i].utf8_bytes[utf8_char_cache[i].byte_len] = '\0';
+    }
+  }
+
+  // Build SIMD lookup table for vqtbl4q_u8 (uses character indices)
   uint8x16x4_t tbl; // 4 * 16 = 64 entries
-  tbl.val[0] = vld1q_u8(&ramp64[0]);
-  tbl.val[1] = vld1q_u8(&ramp64[16]);
-  tbl.val[2] = vld1q_u8(&ramp64[32]);
-  tbl.val[3] = vld1q_u8(&ramp64[48]);
+  tbl.val[0] = vld1q_u8(&char_index_ramp[0]);
+  tbl.val[1] = vld1q_u8(&char_index_ramp[16]);
+  tbl.val[2] = vld1q_u8(&char_index_ramp[32]);
+  tbl.val[3] = vld1q_u8(&char_index_ramp[48]);
 
   // Track current color state
   int curR = -1, curG = -1, curB = -1;
@@ -336,24 +401,24 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       uint16x8_t ylo = vmull_u8(vget_low_u8(pix.val[0]), vdup_n_u8(LUMA_RED));
       ylo = vmlal_u8(ylo, vget_low_u8(pix.val[1]), vdup_n_u8(LUMA_GREEN));
       ylo = vmlal_u8(ylo, vget_low_u8(pix.val[2]), vdup_n_u8(LUMA_BLUE));
-      ylo = vaddq_u16(ylo, vdupq_n_u16(128));
+      ylo = vaddq_u16(ylo, vdupq_n_u16(LUMA_THRESHOLD));
       ylo = vshrq_n_u16(ylo, 8);
 
       uint16x8_t yhi = vmull_u8(vget_high_u8(pix.val[0]), vdup_n_u8(LUMA_RED));
       yhi = vmlal_u8(yhi, vget_high_u8(pix.val[1]), vdup_n_u8(LUMA_GREEN));
       yhi = vmlal_u8(yhi, vget_high_u8(pix.val[2]), vdup_n_u8(LUMA_BLUE));
-      yhi = vaddq_u16(yhi, vdupq_n_u16(128));
+      yhi = vaddq_u16(yhi, vdupq_n_u16(LUMA_THRESHOLD));
       yhi = vshrq_n_u16(yhi, 8);
 
       uint8x16_t y8 = vcombine_u8(vmovn_u16(ylo), vmovn_u16(yhi));
       uint8x16_t idx = vshrq_n_u8(y8, 2); // 0..63
 
-      // 64-entry glyph lookup using vqtbl4q_u8
-      uint8x16_t glyph = vqtbl4q_u8(tbl, idx);
+      // FAST: Use vqtbl4q_u8 to get character indices from the ramp
+      uint8x16_t char_indices = vqtbl4q_u8(tbl, idx);
 
       // Spill to arrays for RLE + ANSI emission
-      uint8_t gbuf[16], rbuf[16], gbuf_green[16], bbuf[16];
-      vst1q_u8(gbuf, glyph);
+      uint8_t char_idx_buf[16], rbuf[16], gbuf_green[16], bbuf[16];
+      vst1q_u8(char_idx_buf, char_indices); // Character indices from SIMD lookup
       vst1q_u8(rbuf, pix.val[0]);
       vst1q_u8(gbuf_green, pix.val[1]);
       vst1q_u8(bbuf, pix.val[2]);
@@ -365,13 +430,14 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           color_indices[i] = rgb_to_256color(rbuf[i], gbuf_green[i], bbuf[i]);
         }
 
-        // Emit with RLE on (glyph, color) runs
+        // Emit with RLE on (UTF-8 character, color) runs using SIMD-derived indices
         for (int i = 0; i < 16;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = char_idx_buf[i]; // From vqtbl4q_u8 lookup
+          const utf8_char_t *char_info = &utf8_char_cache[char_idx];
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
-          while (j < 16 && gbuf[j] == ch && color_indices[j] == color_idx) {
+          while (j < 16 && char_idx_buf[j] == char_idx && color_indices[j] == color_idx) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -385,26 +451,27 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
             cur_color_idx = color_idx;
           }
 
-          ob_putc(&ob, (char)ch);
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
         }
       } else {
-        // Truecolor mode processing
+        // Truecolor mode processing with UTF-8 characters using SIMD-derived indices
         for (int i = 0; i < 16;) {
-          const uint8_t ch = gbuf[i];
+          const uint8_t char_idx = char_idx_buf[i]; // From vqtbl4q_u8 lookup
+          const utf8_char_t *char_info = &utf8_char_cache[char_idx];
           const uint8_t r = rbuf[i];
           const uint8_t g = gbuf_green[i];
           const uint8_t b = bbuf[i];
 
           int j = i + 1;
-          while (j < 16 && gbuf[j] == ch && rbuf[j] == r && gbuf_green[j] == g && bbuf[j] == b) {
+          while (j < 16 && char_idx_buf[j] == char_idx && rbuf[j] == r && gbuf_green[j] == g && bbuf[j] == b) {
             j++;
           }
           const uint32_t run = (uint32_t)(j - i);
@@ -420,12 +487,12 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
             curB = b;
           }
 
-          ob_putc(&ob, (char)ch);
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           if (rep_is_profitable(run)) {
             emit_rep(&ob, run - 1);
           } else {
             for (uint32_t k = 1; k < run; k++) {
-              ob_putc(&ob, (char)ch);
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
           i = j;
@@ -439,7 +506,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
       uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128u) >> 8);
-      uint8_t ch = ramp64[Y >> 2];
+      uint8_t luma_idx = Y >> 2;                    // 0-63 index
+      uint8_t char_idx = char_index_ramp[luma_idx]; // Map to character index
+      const utf8_char_t *char_info = &utf8_char_cache[char_idx];
 
       if (use_256color) {
         // 256-color scalar tail
@@ -450,8 +519,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + 128u) >> 8);
+          uint8_t char_idx2 = char_index_ramp[Y2 >> 2];
           uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
-          if (((Y2 >> 2) != (Y >> 2)) || color_idx2 != color_idx)
+          if (char_idx2 != char_idx || color_idx2 != color_idx)
             break;
           j++;
         }
@@ -466,23 +536,25 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           cur_color_idx = color_idx;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;
       } else {
-        // Truecolor scalar tail
+        // Truecolor scalar tail with UTF-8 characters using cached lookups
         int j = x + 1;
         while (j < width) {
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
-          uint8_t Y2 = (uint8_t)((77u * R2 + 150u * G2 + 29u * B2 + 128u) >> 8);
-          if (((Y2 >> 2) != (Y >> 2)) || R2 != R || G2 != G || B2 != B)
+          uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
+          uint8_t char_idx2 = char_index_ramp[Y2 >> 2];
+          if (char_idx2 != char_idx || R2 != R || G2 != G || B2 != B)
             break;
           j++;
         }
@@ -499,12 +571,13 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           curB = (int)B;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
           for (uint32_t k = 1; k < run; k++) {
-            ob_putc(&ob, (char)ch);
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
         x = j;

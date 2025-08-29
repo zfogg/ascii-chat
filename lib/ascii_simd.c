@@ -1,43 +1,44 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
-#include "ascii_simd.h"
-#include "image.h"
+
 #include "common.h"
-#include "image2ascii/simd/neon.h"
-#include "image2ascii/simd/sve.h"
-#include "webcam.h"
-#include "ansi_fast.h"
+#include "ascii_simd.h"
+#include "palette.h"
 #include "ascii.h"
 
-// Global cache definition - shared across all compilation units
-struct ascii_color_cache g_ascii_cache = {.ascii_chars = "   ...',;:clodxkO0KXNWM",
-                                          .palette_len = 23, // strlen("   ...',;:clodxkO0KXNWM") = 23
-                                          .palette_initialized = false,
-                                          .dec3_initialized = false};
+global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 
-// Luminance calculation constants (matches your existing RED, GREEN, BLUE arrays)
-// These are based on the standard NTSC weights: 0.299*R + 0.587*G + 0.114*B
-// Scaled to integers for faster computation
-#define LUMA_RED 77    // 0.299 * 256
-#define LUMA_GREEN 150 // 0.587 * 256
-#define LUMA_BLUE 29   // 0.114 * 256
+// Default luminance palette for legacy functions
+char g_default_luminance_palette[256];
+static bool g_default_palette_initialized = false;
 
-void init_palette(void) {
+// Initialize default luminance palette
+void init_default_luminance_palette(void) {
+  if (g_default_palette_initialized)
+    return;
+
+  // Build default luminance mapping using standard palette
+  const size_t len = DEFAULT_ASCII_PALETTE_LEN;
   for (int i = 0; i < 256; i++) {
-    int palette_index = (i * g_ascii_cache.palette_len) / 255;
-    if (palette_index >= g_ascii_cache.palette_len)
-      palette_index = g_ascii_cache.palette_len - 1;
-    g_ascii_cache.luminance_palette[i] = g_ascii_cache.ascii_chars[palette_index];
+    size_t palette_index = (i * (len - 1) + 127) / 255;
+    if (palette_index >= len) {
+      palette_index = len - 1;
+    }
+    g_default_luminance_palette[i] = DEFAULT_ASCII_PALETTE[palette_index];
   }
-  g_ascii_cache.palette_initialized = true;
+  g_default_palette_initialized = true;
+}
+
+// Helper function for benchmarks and fallback cases
+static void ensure_default_palette_ready(void) {
+  init_default_luminance_palette();
 }
 
 void init_dec3(void) {
-  if (g_ascii_cache.dec3_initialized)
+  if (g_dec3_cache.dec3_initialized)
     return;
   for (int v = 0; v < 256; ++v) {
     int d2 = v / 100;     // 0..2
@@ -46,27 +47,26 @@ void init_dec3(void) {
     int d0 = r - d1 * 10; // 0..9
 
     if (d2) {
-      g_ascii_cache.dec3_table[v].len = 3;
-      g_ascii_cache.dec3_table[v].s[0] = '0' + d2;
-      g_ascii_cache.dec3_table[v].s[1] = '0' + d1;
-      g_ascii_cache.dec3_table[v].s[2] = '0' + d0;
+      g_dec3_cache.dec3_table[v].len = 3;
+      g_dec3_cache.dec3_table[v].s[0] = '0' + d2;
+      g_dec3_cache.dec3_table[v].s[1] = '0' + d1;
+      g_dec3_cache.dec3_table[v].s[2] = '0' + d0;
     } else if (d1) {
-      g_ascii_cache.dec3_table[v].len = 2;
-      g_ascii_cache.dec3_table[v].s[0] = '0' + d1;
-      g_ascii_cache.dec3_table[v].s[1] = '0' + d0;
+      g_dec3_cache.dec3_table[v].len = 2;
+      g_dec3_cache.dec3_table[v].s[0] = '0' + d1;
+      g_dec3_cache.dec3_table[v].s[1] = '0' + d0;
     } else {
-      g_ascii_cache.dec3_table[v].len = 1;
-      g_ascii_cache.dec3_table[v].s[0] = '0' + d0;
+      g_dec3_cache.dec3_table[v].len = 1;
+      g_dec3_cache.dec3_table[v].s[0] = '0' + d0;
     }
   }
-  g_ascii_cache.dec3_initialized = true;
+  g_dec3_cache.dec3_initialized = true;
 }
 
 // **HIGH-IMPACT FIX 2**: Remove init guards from hot path - use constructor
 __attribute__((constructor)) static void ascii_ctor(void) {
-  init_palette();
   init_dec3();
-  ansi_fast_init();
+  init_default_luminance_palette();
 }
 
 void ascii_simd_init(void) {
@@ -155,7 +155,7 @@ void str_printf(Str *s, const char *fmt, ...) {
  * ============================================================================
  */
 
-void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count) {
+void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count, const char luminance_palette[256]) {
   for (int i = 0; i < count; i++) {
     const rgb_pixel_t *p = &pixels[i];
 
@@ -166,11 +166,11 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
     if (luminance > 255)
       luminance = 255;
 
-    ascii_chars[i] = g_ascii_cache.luminance_palette[luminance];
+    ascii_chars[i] = luminance_palette[luminance];
   }
 }
 
-char *convert_pixels_scalar_with_newlines(image_t *image) {
+char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_palette[256]) {
   const int h = image->h;
   const int w = image->w;
 
@@ -183,7 +183,7 @@ char *convert_pixels_scalar_with_newlines(image_t *image) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
 
     // Convert this row of pixels to ASCII characters
-    convert_pixels_scalar(row_pixels, pos, w);
+    convert_pixels_scalar(row_pixels, pos, w, luminance_palette);
     pos += w;
 
     // Add newline (except for last row)
@@ -198,19 +198,21 @@ char *convert_pixels_scalar_with_newlines(image_t *image) {
 
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
-char *image_print_simd(image_t *image) {
+char *image_print_simd(image_t *image, const char luminance_palette[256]) {
 #ifdef SIMD_SUPPORT_NEON
-  return render_ascii_image_monochrome_neon(image);
+  return render_ascii_image_monochrome_neon(image, luminance_palette);
 #elif SIMD_SUPPORT_SSE2
-  return render_ascii_image_monochrome_sse2(image);
+  return render_ascii_image_monochrome_sse2(image, luminance_palette);
 #elif SIMD_SUPPORT_SSSE3
-  return render_ascii_image_monochrome_ssse3(image);
+  return render_ascii_image_monochrome_ssse3(image, luminance_palette);
 #elif SIMD_SUPPORT_AVX2
-  return render_ascii_image_monochrome_avx2(image);
+  return render_ascii_image_monochrome_avx2(image, luminance_palette);
 #else
-  return convert_pixels_scalar_with_newlines(image);
+  return convert_pixels_scalar_with_newlines(image, luminance_palette);
 #endif
 }
+
+// NOTE: image_print_simd_with_palette is now redundant - use image_print_simd() directly
 
 /* ============================================================================
  * Auto-dispatch and any helpers
@@ -369,12 +371,12 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
     int base_r = (x * 255) / width;
     int base_g = (y * 255) / height;
     int base_b = ((x + y) * 127) / (width + height);
-    
+
     // Add small random variation to make it realistic
     int temp_r = base_r + (rand() % 32 - 16);
     int temp_g = base_g + (rand() % 32 - 16);
     int temp_b = base_b + (rand() % 32 - 16);
-    
+
     test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
     test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
     test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
@@ -389,7 +391,14 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
          pixel_count, adaptive_iterations);
 
   // Benchmark scalar using image-based API
-  result.scalar_time = measure_image_function_time(image_print, test_image);
+  ensure_default_palette_ready();
+  double start_mono = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    char *result_str = image_print(test_image, DEFAULT_ASCII_PALETTE);
+    if (result_str)
+      free(result_str);
+  }
+  result.scalar_time = (get_time_seconds() - start_mono) / adaptive_iterations;
 
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using new image-based timing function
@@ -408,7 +417,16 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
 #ifdef SIMD_SUPPORT_NEON
   // Benchmark NEON using new image-based timing function
-  result.neon_time = measure_image_function_time(render_ascii_image_monochrome_neon, test_image);
+  // TODO: Update benchmark to use custom palette testing
+  // Benchmark NEON monochrome rendering
+  ensure_default_palette_ready();
+  double start_neon = get_time_seconds();
+  for (int i = 0; i < adaptive_iterations; i++) {
+    char *result_str = render_ascii_image_monochrome_neon(test_image, g_default_luminance_palette);
+    if (result_str)
+      free(result_str);
+  }
+  result.neon_time = (get_time_seconds() - start_neon) / adaptive_iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_SVE
@@ -519,7 +537,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark scalar color version
   double start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str = image_print_color(frame);
+    char *result_str = image_print_color(frame, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -564,7 +582,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   for (int i = 0; i < iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
-    char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, true);
+    char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (result)
       free(result);
   }
@@ -688,7 +706,14 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   memcpy(frame->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
 
   // Benchmark scalar using color conversion
-  result.scalar_time = measure_image_function_time(image_print_color, frame);
+  ensure_default_palette_ready();
+  double start_scalar = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result_str = image_print_color(frame, DEFAULT_ASCII_PALETTE);
+    if (result_str)
+      free(result_str);
+  }
+  result.scalar_time = (get_time_seconds() - start_scalar) / iterations;
 
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using unified optimized renderer
@@ -710,8 +735,16 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
 #ifdef SIMD_SUPPORT_NEON
   // Benchmark NEON using unified optimized renderer
-  result.neon_time =
-      measure_image_function_time_color(render_ascii_neon_unified_optimized, frame, background_mode, use_fast_path);
+  // Benchmark NEON color rendering
+  ensure_default_palette_ready();
+  double start_neon_color = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result_str =
+        render_ascii_neon_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str)
+      free(result_str);
+  }
+  result.neon_time = (get_time_seconds() - start_neon_color) / iterations;
 #endif
 
 #ifdef SIMD_SUPPORT_SVE
@@ -832,9 +865,9 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     }
   } else {
     // No source image provided: use synthetic gradient data for consistent testing
-    printf("Using synthetic gradient data for COLOR %s %dx%d benchmarking with %d iterations...\n",
-           mode_str, width, height, adaptive_iterations);
-    
+    printf("Using synthetic gradient data for COLOR %s %dx%d benchmarking with %d iterations...\n", mode_str, width,
+           height, adaptive_iterations);
+
     srand(12345); // Consistent results across runs
     for (int i = 0; i < pixel_count; i++) {
       int x = i % width;
@@ -870,7 +903,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       exit(1);
     }
     memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-    char *result_ascii = ascii_convert(test_image, width, height, false, false, false);
+    char *result_ascii = ascii_convert(test_image, width, height, false, false, false, DEFAULT_ASCII_PALETTE,
+                                       g_default_luminance_palette);
     if (result_ascii)
       free(result_ascii);
     image_destroy(test_image);
@@ -887,7 +921,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     image_t *test_image = image_new(width, height);
     if (test_image) {
       memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-      char *result_str = render_ascii_sse2_unified_optimized(test_image, background_mode, use_fast_path);
+      char *result_str =
+          render_ascii_sse2_unified_optimized(test_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
       if (result_str)
         free(result_str);
       image_destroy(test_image);
@@ -902,7 +937,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     image_t *test_image = image_new(width, height);
     if (test_image) {
       memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-      char *result_str = render_ascii_ssse3_unified_optimized(test_image, background_mode, use_fast_path);
+      char *result_str =
+          render_ascii_ssse3_unified_optimized(test_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
       if (result_str)
         free(result_str);
       image_destroy(test_image);
@@ -917,7 +953,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     image_t *test_image = image_new(width, height);
     if (test_image) {
       memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
-      char *result_str = render_ascii_avx2_unified_optimized(test_image, background_mode, use_fast_path);
+      char *result_str =
+          render_ascii_avx2_unified_optimized(test_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
       if (result_str)
         free(result_str);
       image_destroy(test_image);
@@ -931,7 +968,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
-    char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, use_fast_path);
+    char *result =
+        render_ascii_neon_unified_optimized(&temp_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
     if (result)
       free(result);
   }
