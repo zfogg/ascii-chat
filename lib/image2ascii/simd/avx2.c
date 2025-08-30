@@ -17,38 +17,37 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     return NULL;
   }
 
-  const int height = image->h;
-  const int width = image->w;
+  const int h = image->h;
+  const int w = image->w;
 
-  if (height <= 0 || width <= 0) {
+  if (h <= 0 || w <= 0) {
     return NULL;
   }
 
-  // EXACT COPY: Get cached UTF-8 character mappings (like color SIMD)
+  // EXACT COPY FROM NEON: Get cached UTF-8 character mappings
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
   if (!utf8_cache) {
     log_error("Failed to get UTF-8 palette cache");
     return NULL;
   }
 
-  // EXACT COPY: outbuf_t pattern (like color SIMD)
-  outbuf_t ob = {0};
-  // Simple monochrome: 1 char per pixel + newlines + safety margin
-  ob.cap = (size_t)height * ((size_t)width + 1) + 64;
-  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
-  if (!ob.buf)
-    return NULL;
+  // EXACT COPY FROM NEON: Buffer size for UTF-8 characters
+  const size_t max_char_bytes = 4; // Max UTF-8 character size
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
-  // EXACT COPY: Build AVX2 lookup table (like color SIMD)
-  __m256i char_lut = _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp));
+  char *output;
+  SAFE_MALLOC(output, len, char *);
 
-  // EXACT COPY: Processing loop structure (like color SIMD)
-  for (int y = 0; y < height; y++) {
-    const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
+  char *pos = output;
+  const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
+
+  // EXACT COPY FROM NEON: Pure AVX2 processing
+  for (int y = 0; y < h; y++) {
+    const rgb_pixel_t *row = &pixels[y * w];
     int x = 0;
 
-    // EXACT COPY: Process 32-pixel chunks with AVX2 (like color SIMD)
-    while (x + 32 <= width) {
+    // Process 32 pixels at a time with AVX2 (scaled up from NEON's 16-pixel approach)
+    for (; x + 31 < w; x += 32) {
       // Deinterleave RGB (keeping existing approach for now)
       uint8_t r_array[32], g_array[32], b_array[32];
       for (int j = 0; j < 32; j++) {
@@ -89,41 +88,18 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
-      // EXACT COPY: Character index calculation (like color SIMD truecolor path)
-      __m256i luma_div4 = _mm256_srli_epi16(_mm256_unpacklo_epi8(luminance, _mm256_setzero_si256()), 2);
-      __m256i char_indices_vec = _mm256_packus_epi16(luma_div4, _mm256_setzero_si256());
-
-      uint8_t char_indices[32];
-      _mm256_storeu_si256((__m256i *)char_indices, char_indices_vec);
-
-      // EXACT COPY: Monochrome processing (color SIMD truecolor without color codes)
-      for (int i = 0; i < 32;) {
-        const uint8_t char_idx = char_indices[i];
-        const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-
-        // EXACT COPY: Find run length of identical characters (like color SIMD)
-        int j = i + 1;
-        while (j < 32 && char_indices[j] == char_idx) {
-          j++;
-        }
-        const uint32_t run = (uint32_t)(j - i);
-
-        // SKIP COLOR: No color codes for monochrome
-        // (Lines 299-308 from color SIMD removed)
-
-        // EXACT COPY: Emit UTF-8 character from cache (like color SIMD)
-        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
+      // EXACT COPY FROM NEON: Convert luminance to UTF-8 characters using cached mappings
+      for (int i = 0; i < 32; i++) {
+        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[i]];
+        // EXACT COPY FROM NEON: Optimized for single-byte ASCII characters
+        if (char_info->byte_len == 1) {
+          *pos++ = char_info->utf8_bytes[0];
         } else {
-          for (uint32_t k = 1; k < run; k++) {
-            // Emit UTF-8 character from cache
-            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-          }
+          // Fallback to full memcpy for multi-byte UTF-8
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
         }
-        i = j;
       }
-      x += 32;
     }
 
     // EXACT COPY: Scalar tail (like color SIMD truecolor without color codes)
