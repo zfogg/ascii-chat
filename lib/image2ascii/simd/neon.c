@@ -7,13 +7,6 @@
 #include <assert.h>
 #include <pthread.h>
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
-#include <arm_neon.h>
-#ifndef SIMD_SUPPORT_NEON
-#define SIMD_SUPPORT_NEON 1
-#endif
-#endif
-
 #include "common.h"
 #include "neon.h"
 #include "ascii_simd.h"

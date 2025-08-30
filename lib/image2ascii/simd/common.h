@@ -8,24 +8,10 @@
 #include "common.h"
 #include "image.h"
 #include "ascii_simd.h"
+#include "image2ascii/output_buffer.h"
 
 // Forward declarations for architecture-specific implementations
 typedef rgb_t rgb_pixel_t;
-
-// Dynamic output buffer (auto-expanding)
-typedef struct {
-  char *buf;
-  size_t len;
-  size_t cap;
-} outbuf_t;
-
-// Buffer management functions
-void ob_reserve(outbuf_t *ob, size_t need);
-void ob_putc(outbuf_t *ob, char c);
-void ob_write(outbuf_t *ob, const char *s, size_t n);
-void ob_term(outbuf_t *ob);
-void ob_u8(outbuf_t *ob, uint8_t v);
-void ob_u32(outbuf_t *ob, uint32_t v);
 
 #define RAMP64_SIZE 64
 void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars);
@@ -49,17 +35,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
 void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]);
 void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]);
 
-// ANSI escape sequence emission
-void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
-void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
-// rgb_to_256color is now static in common.c
-void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx);
-void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx);
-void emit_reset(outbuf_t *ob);
-bool rep_is_profitable(uint32_t runlen);
-void emit_rep(outbuf_t *ob, uint32_t extra);
-void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
-void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
+// ANSI escape sequence emission functions now in output_buffer.h
 
 // Row-based functions removed - use image-based API instead
 // See individual architecture headers (sse2.h, ssse3.h, avx2.h, neon.h) for new image-based functions
@@ -141,25 +117,4 @@ static inline size_t write_decimal(int value, char *dst) {
   return pos;
 }
 
-// Fast decimal for REP counts
-static inline int digits_u32(uint32_t v) {
-  if (v >= 1000000000u)
-    return 10;
-  if (v >= 100000000u)
-    return 9;
-  if (v >= 10000000u)
-    return 8;
-  if (v >= 1000000u)
-    return 7;
-  if (v >= 100000u)
-    return 6;
-  if (v >= 10000u)
-    return 5;
-  if (v >= 1000u)
-    return 4;
-  if (v >= 100u)
-    return 3;
-  if (v >= 10u)
-    return 2;
-  return 1;
-}
+// Fast decimal for REP counts - now in output_buffer.h

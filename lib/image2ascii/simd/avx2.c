@@ -24,26 +24,29 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     return NULL;
   }
 
-  // EXACT COPY FROM NEON: Get cached UTF-8 character mappings
+  // Get UTF-8 character cache
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
   if (!utf8_cache) {
     log_error("Failed to get UTF-8 palette cache");
     return NULL;
   }
 
-  // EXACT COPY FROM NEON: Buffer size for UTF-8 characters
-  const size_t max_char_bytes = 4; // Max UTF-8 character size
-  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
+  // Use outbuf_t for efficient RLE like scalar does
+  outbuf_t ob = {0};
+  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes + newlines
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf) {
+    log_error("Failed to allocate output buffer");
+    return NULL;
+  }
 
-  char *output;
-  SAFE_MALLOC(output, len, char *);
-
-  char *pos = output;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
-  // EXACT COPY FROM NEON: Pure AVX2 processing
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row = &pixels[y * w];
+
+    // PHASE 1: Pure SIMD - convert entire row to luminance array
+    uint8_t *row_luminance = alloca(w * sizeof(uint8_t)); // Stack allocation
     int x = 0;
 
     // Process 32 pixels at a time with AVX2 (scaled up from NEON's 16-pixel approach)
@@ -85,48 +88,49 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 
       __m256i luminance = _mm256_packus_epi16(luma_sum_lo, luma_sum_hi);
 
-      uint8_t luma_array[32];
-      _mm256_storeu_si256((__m256i *)luma_array, luminance);
-
-      // EXACT COPY FROM NEON: Convert luminance to UTF-8 characters using cached mappings
-      for (int i = 0; i < 32; i++) {
-        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[i]];
-        // EXACT COPY FROM NEON: Optimized for single-byte ASCII characters
-        if (char_info->byte_len == 1) {
-          *pos++ = char_info->utf8_bytes[0];
-        } else {
-          // Fallback to full memcpy for multi-byte UTF-8
-          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-          pos += char_info->byte_len;
-        }
-      }
+      // Store 32 luminance values directly to row array (no character conversion yet)
+      _mm256_storeu_si256((__m256i *)&row_luminance[x], luminance);
     }
 
-    // EXACT COPY FROM NEON: Handle remaining pixels with optimized scalar code
+    // Handle remaining pixels with scalar luminance calculation
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
-      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-      // EXACT COPY FROM NEON: Optimized for single-byte ASCII characters
-      if (char_info->byte_len == 1) {
-        *pos++ = char_info->utf8_bytes[0];
-      } else {
-        // Fallback to full memcpy for multi-byte UTF-8
-        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-        pos += char_info->byte_len;
-      }
+      row_luminance[x] = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
     }
 
-    // EXACT COPY FROM NEON: Add newline (except for last row)
+    // PHASE 2: Pure RLE - compress entire row luminance to characters (EXACTLY like scalar)
+    for (int x = 0; x < w;) {
+      const uint8_t luma = row_luminance[x];
+      const utf8_char_t *char_info = &utf8_cache->cache[luma];
+
+      // Find run length of identical luminance values (EXACTLY like scalar)
+      int j = x + 1;
+      while (j < w && row_luminance[j] == luma) {
+        j++;
+      }
+      const uint32_t run = (uint32_t)(j - x);
+
+      // Emit UTF-8 character with RLE compression (EXACTLY like scalar)
+      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        }
+      }
+      x = j;
+    }
+
+    // Add newline (except for last row)
     if (y < h - 1) {
-      *pos++ = '\n';
+      ob_write(&ob, "\n", 1);
     }
   }
 
-  // EXACT COPY FROM NEON: Null terminate
-  *pos = '\0';
-
-  return output;
+  // Terminate and return
+  ob_term(&ob);
+  return ob.buf;
 }
 
 // 256-color palette mapping (RGB to ANSI 256 color index) - copied from NEON
