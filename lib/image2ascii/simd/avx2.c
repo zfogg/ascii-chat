@@ -47,20 +47,44 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     const rgb_pixel_t *row = &pixels[y * w];
     int x = 0;
 
-    // Process 32 pixels at a time with AVX2 (AVX2 has 256-bit registers - double SSE2's capacity)
+    // Process 32 pixels at a time with AVX2 - OPTIMIZED RGB deinterleaving
     for (; x + 31 < w; x += 32) {
-      // Manual deinterleave RGB components (AVX2 limitation vs NEON's vld3q_u8)
-      uint8_t r_array[32], g_array[32], b_array[32];
-      for (int j = 0; j < 32; j++) {
-        r_array[j] = row[x + j].r;
-        g_array[j] = row[x + j].g;
-        b_array[j] = row[x + j].b;
-      }
-
-      // Load into AVX2 registers (256-bit)
-      __m256i r_vec = _mm256_loadu_si256((__m256i *)r_array);
-      __m256i g_vec = _mm256_loadu_si256((__m256i *)g_array);
-      __m256i b_vec = _mm256_loadu_si256((__m256i *)b_array);
+      // OPTION 1: Vectorized RGB deinterleaving using AVX2 shuffle instructions
+      // Load 96 bytes of interleaved RGB data (32 pixels × 3 bytes)
+      const uint8_t *rgb_data = (const uint8_t *)(row + x);
+      
+      // Load three 32-byte chunks of RGB data
+      __m256i rgb_chunk1 = _mm256_loadu_si256((__m256i *)(rgb_data +  0)); // Bytes 0-31
+      __m256i rgb_chunk2 = _mm256_loadu_si256((__m256i *)(rgb_data + 32)); // Bytes 32-63
+      __m256i rgb_chunk3 = _mm256_loadu_si256((__m256i *)(rgb_data + 64)); // Bytes 64-95
+      
+      // Use AVX2 shuffle to deinterleave RGB → separate R, G, B vectors
+      // Shuffle masks for extracting R, G, B from RGBRGBRGB... pattern
+      __m256i r_shuffle_mask = _mm256_setr_epi8(
+        0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, -1, -1, -1, -1, -1,  // Extract R from chunk1
+        2, 5, 8, 11, 14, 17, 20, 23, 26, 29, -1, -1, -1, -1, -1, -1  // Extract R from chunk2
+      );
+      __m256i g_shuffle_mask = _mm256_setr_epi8(
+        1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, -1, -1, -1, -1, -1, // Extract G from chunk1  
+        0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, -1, -1, -1, -1, -1   // Extract G from chunk2
+      );
+      __m256i b_shuffle_mask = _mm256_setr_epi8(
+        2, 5, 8, 11, 14, 17, 20, 23, 26, 29, -1, -1, -1, -1, -1, -1, // Extract B from chunk1
+        1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, -1, -1, -1, -1, -1  // Extract B from chunk2
+      );
+      
+      // Extract R, G, B components using vectorized shuffles (replaces 96 scalar ops!)
+      __m256i r_partial1 = _mm256_shuffle_epi8(rgb_chunk1, r_shuffle_mask);
+      __m256i r_partial2 = _mm256_shuffle_epi8(rgb_chunk2, r_shuffle_mask);
+      __m256i g_partial1 = _mm256_shuffle_epi8(rgb_chunk1, g_shuffle_mask);
+      __m256i g_partial2 = _mm256_shuffle_epi8(rgb_chunk2, g_shuffle_mask);
+      __m256i b_partial1 = _mm256_shuffle_epi8(rgb_chunk1, b_shuffle_mask);
+      __m256i b_partial2 = _mm256_shuffle_epi8(rgb_chunk2, b_shuffle_mask);
+      
+      // Combine partial results to get complete 32-element R, G, B vectors
+      __m256i r_vec = _mm256_blend_epi32(r_partial1, r_partial2, 0xF0);
+      __m256i g_vec = _mm256_blend_epi32(g_partial1, g_partial2, 0xF0);
+      __m256i b_vec = _mm256_blend_epi32(b_partial1, b_partial2, 0xF0);
 
       // Convert to 16-bit for arithmetic (process both low and high halves for full 32 pixels)
       __m256i r_16_lo = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256()); // First 16 pixels
@@ -93,17 +117,34 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       // Pack back to 8-bit (combines both halves into 32 8-bit values)
       __m256i luminance = _mm256_packus_epi16(luma_sum_lo, luma_sum_hi);
 
-      // Store and convert to ASCII characters
+      // OPTION 2: Direct ASCII character generation (like color SIMD)
       uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
+      // FAST: Bulk character generation without individual memcpy calls
+      // Most ASCII palettes use single-byte characters, so batch them
+      char ascii_chars[32];
+      int has_multibyte = 0;
+      
+      // First pass: generate all ASCII characters and detect multi-byte
       for (int j = 0; j < 32; j++) {
         const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
-        // Optimized: Use direct assignment for single-byte ASCII characters
         if (char_info->byte_len == 1) {
-          *pos++ = char_info->utf8_bytes[0];
+          ascii_chars[j] = char_info->utf8_bytes[0];
         } else {
-          // Fallback to full memcpy for multi-byte UTF-8
+          has_multibyte = 1;
+          break; // Fall back to individual processing if any multi-byte found
+        }
+      }
+      
+      if (!has_multibyte) {
+        // FAST PATH: Bulk copy 32 ASCII characters in one operation
+        memcpy(pos, ascii_chars, 32);
+        pos += 32;
+      } else {
+        // SLOW PATH: Individual character processing (rare for ASCII palettes)
+        for (int j = 0; j < 32; j++) {
+          const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
           memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
           pos += char_info->byte_len;
         }
