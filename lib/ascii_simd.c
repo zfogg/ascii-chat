@@ -410,7 +410,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   double start_sse2 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_sse2(test_image, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    if (result_str)
+      free(result_str);
   }
   result.sse2_time = (get_time_seconds() - start_sse2) / adaptive_iterations;
 #endif
@@ -422,7 +423,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   double start_ssse3 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_ssse3(test_image, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    if (result_str)
+      free(result_str);
   }
   result.ssse3_time = (get_time_seconds() - start_ssse3) / adaptive_iterations;
 #endif
@@ -434,7 +436,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   double start_avx2 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_avx2(test_image, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    if (result_str)
+      free(result_str);
   }
   result.avx2_time = (get_time_seconds() - start_avx2) / adaptive_iterations;
 #endif
@@ -745,8 +748,10 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_sse2_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str = render_ascii_sse2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    char *result_str =
+        render_ascii_sse2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str)
+      free(result_str);
   }
   result.sse2_time = (get_time_seconds() - start_sse2_color) / iterations;
 #endif
@@ -757,8 +762,10 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_ssse3_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str = render_ascii_ssse3_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    char *result_str =
+        render_ascii_ssse3_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str)
+      free(result_str);
   }
   result.ssse3_time = (get_time_seconds() - start_ssse3_color) / iterations;
 #endif
@@ -769,8 +776,10 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_avx2_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str = render_ascii_avx2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    char *result_str =
+        render_ascii_avx2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    if (result_str)
+      free(result_str);
   }
   result.avx2_time = (get_time_seconds() - start_avx2_color) / iterations;
 #endif
@@ -796,7 +805,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   double start_sve_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     char *result_str = render_ascii_sve_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
-    if (result_str) free(result_str);
+    if (result_str)
+      free(result_str);
   }
   result.sve_time = (get_time_seconds() - start_sve_color) / iterations;
 #endif
