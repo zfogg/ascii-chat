@@ -12,7 +12,6 @@
 // Image-based API (matches NEON architecture)
 //=============================================================================
 
-// Simple monochrome ASCII function (matches scalar image_print performance)
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars) {
   if (!image || !image->pixels || !ascii_chars) {
     return NULL;
@@ -25,31 +24,32 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     return NULL;
   }
 
-  // Get cached UTF-8 character mappings
-  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
-  if (!utf8_cache) {
-    log_error("Failed to get UTF-8 palette cache");
+  // EXACTLY like color SIMD: Use outbuf_t pattern
+  outbuf_t ob = {0};
+  ob.cap = (size_t)h * ((size_t)w + 1) + 64;
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf) {
     return NULL;
   }
 
-  // Buffer size for UTF-8 characters
-  const size_t max_char_bytes = 4;
-  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
+  // EXACTLY like color SIMD: Build UTF-8 character cache
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache");
+    free(ob.buf);
+    return NULL;
+  }
 
-  char *output;
-  SAFE_MALLOC(output, len, char *);
-
-  char *pos = output;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
-  // Pure AVX2 processing - matches NEON approach
+  // Process pixels with AVX2 but use color SIMD string generation
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row = &pixels[y * w];
     int x = 0;
 
-    // Process 32 pixels at a time with AVX2 - MAXIMUM EFFICIENCY
+    // Process 32 pixels at a time with AVX2
     for (; x + 31 < w; x += 32) {
-      // Simple approach: Use scalar deinterleaving but for 32 pixels (half the overhead of old approach)
+      // Deinterleave RGB (keeping existing approach for now)
       uint8_t r_array[32], g_array[32], b_array[32];
       for (int j = 0; j < 32; j++) {
         r_array[j] = row[x + j].r;
@@ -57,100 +57,82 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
         b_array[j] = row[x + j].b;
       }
 
-      // Load into AVX2 registers (full 256-bit capacity)
+      // Load and process with AVX2
       __m256i r_vec = _mm256_loadu_si256((__m256i *)r_array);
       __m256i g_vec = _mm256_loadu_si256((__m256i *)g_array);
       __m256i b_vec = _mm256_loadu_si256((__m256i *)b_array);
 
-      // Convert to 16-bit for arithmetic (process both low and high halves for full 32 pixels)
-      __m256i r_16_lo = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256()); // First 16 pixels
-      __m256i r_16_hi = _mm256_unpackhi_epi8(r_vec, _mm256_setzero_si256()); // Second 16 pixels
+      // Calculate luminance (existing AVX2 code)
+      __m256i r_16_lo = _mm256_unpacklo_epi8(r_vec, _mm256_setzero_si256());
+      __m256i r_16_hi = _mm256_unpackhi_epi8(r_vec, _mm256_setzero_si256());
       __m256i g_16_lo = _mm256_unpacklo_epi8(g_vec, _mm256_setzero_si256());
       __m256i g_16_hi = _mm256_unpackhi_epi8(g_vec, _mm256_setzero_si256());
       __m256i b_16_lo = _mm256_unpacklo_epi8(b_vec, _mm256_setzero_si256());
       __m256i b_16_hi = _mm256_unpackhi_epi8(b_vec, _mm256_setzero_si256());
 
-      // Calculate luminance for low half: (77*R + 150*G + 29*B + 128) >> 8
-      __m256i luma_r_lo = _mm256_mullo_epi16(r_16_lo, _mm256_set1_epi16(LUMA_RED));
-      __m256i luma_g_lo = _mm256_mullo_epi16(g_16_lo, _mm256_set1_epi16(LUMA_GREEN));
-      __m256i luma_b_lo = _mm256_mullo_epi16(b_16_lo, _mm256_set1_epi16(LUMA_BLUE));
-
-      __m256i luma_sum_lo = _mm256_add_epi16(luma_r_lo, luma_g_lo);
-      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, luma_b_lo);
-      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, _mm256_set1_epi16(LUMA_THRESHOLD));
+      __m256i luma_r_lo = _mm256_mullo_epi16(r_16_lo, _mm256_set1_epi16(77));
+      __m256i luma_g_lo = _mm256_mullo_epi16(g_16_lo, _mm256_set1_epi16(150));
+      __m256i luma_b_lo = _mm256_mullo_epi16(b_16_lo, _mm256_set1_epi16(29));
+      __m256i luma_sum_lo = _mm256_add_epi16(_mm256_add_epi16(luma_r_lo, luma_g_lo), luma_b_lo);
+      luma_sum_lo = _mm256_add_epi16(luma_sum_lo, _mm256_set1_epi16(128));
       luma_sum_lo = _mm256_srli_epi16(luma_sum_lo, 8);
 
-      // Calculate luminance for high half
-      __m256i luma_r_hi = _mm256_mullo_epi16(r_16_hi, _mm256_set1_epi16(LUMA_RED));
-      __m256i luma_g_hi = _mm256_mullo_epi16(g_16_hi, _mm256_set1_epi16(LUMA_GREEN));
-      __m256i luma_b_hi = _mm256_mullo_epi16(b_16_hi, _mm256_set1_epi16(LUMA_BLUE));
-
-      __m256i luma_sum_hi = _mm256_add_epi16(luma_r_hi, luma_g_hi);
-      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, luma_b_hi);
-      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, _mm256_set1_epi16(LUMA_THRESHOLD));
+      __m256i luma_r_hi = _mm256_mullo_epi16(r_16_hi, _mm256_set1_epi16(77));
+      __m256i luma_g_hi = _mm256_mullo_epi16(g_16_hi, _mm256_set1_epi16(150));
+      __m256i luma_b_hi = _mm256_mullo_epi16(b_16_hi, _mm256_set1_epi16(29));
+      __m256i luma_sum_hi = _mm256_add_epi16(_mm256_add_epi16(luma_r_hi, luma_g_hi), luma_b_hi);
+      luma_sum_hi = _mm256_add_epi16(luma_sum_hi, _mm256_set1_epi16(128));
       luma_sum_hi = _mm256_srli_epi16(luma_sum_hi, 8);
 
-      // Pack back to 8-bit (combines both halves into 32 8-bit values)
       __m256i luminance = _mm256_packus_epi16(luma_sum_lo, luma_sum_hi);
 
-      // OPTION 2: FAST bulk character generation
       uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
-      // Generate all 32 ASCII characters in bulk
-      char ascii_chars[32];
-      int has_multibyte = 0;
-      
-      // First pass: generate all ASCII characters and detect multi-byte
-      for (int j = 0; j < 32; j++) {
-        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
-        if (char_info->byte_len == 1) {
-          ascii_chars[j] = char_info->utf8_bytes[0];
+      // EXACTLY like color SIMD: Use run-length encoding
+      for (int i = 0; i < 32;) {
+        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[i]];
+
+        // Find run length of identical characters (like color SIMD)
+        int j = i + 1;
+        while (j < 32 && luma_array[j] == luma_array[i]) {
+          j++;
+        }
+        const uint32_t run = (uint32_t)(j - i);
+
+        // Write first character
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+
+        // Use run-length encoding for repeated characters (like color SIMD)
+        if (rep_is_profitable(run)) {
+          emit_rep(&ob, run - 1);
         } else {
-          has_multibyte = 1;
-          break; // Fall back to individual processing if any multi-byte found
+          // Write remaining characters individually
+          for (uint32_t k = 1; k < run; k++) {
+            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+          }
         }
-      }
-      
-      if (!has_multibyte) {
-        // FAST PATH: Bulk copy 32 ASCII characters in one operation (32x faster than individual memcpy)
-        memcpy(pos, ascii_chars, 32);
-        pos += 32;
-      } else {
-        // SLOW PATH: Individual character processing (rare for ASCII palettes)
-        for (int j = 0; j < 32; j++) {
-          const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
-          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-          pos += char_info->byte_len;
-        }
+        i = j;
       }
     }
 
-    // Handle remaining pixels with optimized scalar code
+    // Handle remaining pixels (like color SIMD)
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
-      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + LUMA_THRESHOLD) >> 8;
+      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
       const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-      // Optimized: Use direct assignment for single-byte ASCII characters
-      if (char_info->byte_len == 1) {
-        *pos++ = char_info->utf8_bytes[0];
-      } else {
-        // Fallback to full memcpy for multi-byte UTF-8
-        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-        pos += char_info->byte_len;
-      }
+      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
     }
 
-    // Add newline (except for last row)
+    // Add newline (like color SIMD)
     if (y < h - 1) {
-      *pos++ = '\n';
+      ob_write(&ob, "\n", 1);
     }
   }
 
-  // Null terminate
-  *pos = '\0';
-
-  return output;
+  // Null terminate and return (like color SIMD)
+  ob_term(&ob);
+  return ob.buf;
 }
 
 // 256-color palette mapping (RGB to ANSI 256 color index) - copied from NEON
