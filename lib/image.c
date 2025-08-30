@@ -226,8 +226,7 @@ char *image_print(const image_t *p, const char *palette) {
 
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
-  const size_t max_char_bytes = 4; // Max UTF-8 character size
-  ob.cap = (size_t)h * ((size_t)w * max_char_bytes + 1);
+  ob.cap = (size_t)h * ((size_t)w * 4 + 1);  // 4 = max UTF-8 char bytes
   ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
   if (!ob.buf) {
     free(lines);
@@ -242,22 +241,23 @@ char *image_print(const image_t *p, const char *palette) {
     for (int x = 0; x < w;) {
       const rgb_t pixel = pix[row_offset + x];
       const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-      
+
       // Use UTF-8 character cache
       int safe_luminance = (luminance > 255) ? 255 : luminance;
       const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
-      
+
       // Find run length for same character (RLE optimization)
       int j = x + 1;
       while (j < w) {
         const rgb_t next_pixel = pix[row_offset + j];
         const int next_luminance = red_lut[next_pixel.r] + green_lut[next_pixel.g] + blue_lut[next_pixel.b];
         int next_safe_luminance = (next_luminance > 255) ? 255 : next_luminance;
-        if (next_safe_luminance != safe_luminance) break;
+        if (next_safe_luminance != safe_luminance)
+          break;
         j++;
       }
       uint32_t run = (uint32_t)(j - x);
-      
+
       // Emit UTF-8 character with RLE (same as SIMD)
       ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
       if (rep_is_profitable(run)) {
@@ -269,7 +269,7 @@ char *image_print(const image_t *p, const char *palette) {
       }
       x = j;
     }
-    
+
     // Add newline between rows (except last row)
     if (y != h - 1) {
       ob_putc(&ob, '\n');
@@ -277,7 +277,7 @@ char *image_print(const image_t *p, const char *palette) {
   }
 
   ob_term(&ob);
-  free(lines);  // Free the old buffer
+  free(lines); // Free the old buffer
   return ob.buf;
 }
 
@@ -399,16 +399,16 @@ char *image_print_color(const image_t *p, const char *palette) {
       const rgb_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
-      
+
       // Use UTF-8 character cache for proper character selection
       int safe_luminance = (luminance > 255) ? 255 : luminance;
       const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
-      
+
       // For RLE, we need to pass the first byte of the UTF-8 character
       // Note: RLE system may need updates for full UTF-8 support
       const char ascii_char = char_info->utf8_bytes[0];
 
-      // Legacy function - always use foreground mode with RLE optimization  
+      // Legacy function - always use foreground mode with RLE optimization
       // For proper per-client background support, use image_print_with_capabilities() instead
       ansi_rle_add_pixel(&rle_ctx, r, g, b, ascii_char);
     }

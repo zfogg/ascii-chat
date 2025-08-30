@@ -177,7 +177,7 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
   // Get UTF-8 character cache for RLE emission
   // Note: We need to reverse-engineer the palette chars from luminance_palette
   // For now, use a simpler approach with direct luminance lookup
-  
+
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
   const size_t max_char_bytes = 4; // Max UTF-8 character size
@@ -194,25 +194,28 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
 
     for (int x = 0; x < w;) {
       const rgb_pixel_t *p = &row_pixels[x];
-      
+
       // Calculate luminance using integer arithmetic
       int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
-      if (luminance > 255) luminance = 255;
-      
+      if (luminance > 255)
+        luminance = 255;
+
       char current_char = luminance_palette[luminance];
-      
+
       // Find run length for same character (RLE optimization)
       int j = x + 1;
       while (j < w) {
         const rgb_pixel_t *next_p = &row_pixels[j];
         int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b) >> 8;
-        if (next_luminance > 255) next_luminance = 255;
+        if (next_luminance > 255)
+          next_luminance = 255;
         char next_char = luminance_palette[next_luminance];
-        if (next_char != current_char) break;
+        if (next_char != current_char)
+          break;
         j++;
       }
       uint32_t run = (uint32_t)(j - x);
-      
+
       // Emit character with RLE (same as SIMD)
       ob_putc(&ob, current_char);
       if (rep_is_profitable(run)) {
