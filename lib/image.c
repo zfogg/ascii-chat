@@ -226,7 +226,7 @@ char *image_print(const image_t *p, const char *palette) {
 
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
-  ob.cap = (size_t)h * ((size_t)w * 4 + 1);  // 4 = max UTF-8 char bytes
+  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
   ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
   if (!ob.buf) {
     free(lines);
