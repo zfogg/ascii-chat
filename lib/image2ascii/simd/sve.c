@@ -25,8 +25,16 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
     return NULL;
   }
 
-  // Match scalar allocation exactly: h rows * (w chars + 1 newline) + null terminator
-  const size_t len = (size_t)h * ((size_t)w + 1);
+  // Get cached UTF-8 character mappings
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache");
+    return NULL;
+  }
+
+  // Buffer size for UTF-8 characters
+  const size_t max_char_bytes = 4;
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   char *output;
   SAFE_MALLOC(output, len, char *);
@@ -85,12 +93,17 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
 
       for (int j = 0; j < process_count; j++) {
         if (x + j < w) {
-          const utf8_char_t *char_info = &utf8_char_cache[luma_array[j]];
-          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-          pos += char_info->byte_len;
+          const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
+          // Optimized: Use direct assignment for single-byte ASCII characters
+          if (char_info->byte_len == 1) {
+            *pos++ = char_info->utf8_bytes[0];
+          } else {
+            // Fallback to full memcpy for multi-byte UTF-8
+            memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+            pos += char_info->byte_len;
+          }
         }
       }
-      pos += process_count;
       x += process_count;
     }
 
