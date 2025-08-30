@@ -11,6 +11,7 @@
 #include "image.h"
 #include "ascii.h"
 #include "ascii_simd.h"
+#include "image2ascii/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
 #include "round.h"
@@ -586,10 +587,21 @@ char *image_print_16color(const image_t *p, const char *palette) {
 
       // Calculate luminance for ASCII character selection
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use default ASCII palette for 16-color mode (TODO: add per-client palette support)
-      // Use imported default palette constant
-      int palette_index = (luminance * 22) / 255; // Map to 23 chars (0-22)
-      *ptr++ = palette[palette_index];
+
+      // Use UTF-8 character cache for proper multi-byte character handling
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (utf8_cache) {
+        const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+        // Copy UTF-8 character bytes
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        // Fallback to simple ASCII if UTF-8 cache fails
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
     }
 
     // Add reset and newline at end of each row
@@ -653,12 +665,23 @@ char *image_print_16color_dithered(const image_t *p, const char *palette) {
       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
       ptr = append_16color_fg(ptr, color_index);
 
-      // Calculate luminance for ASCII character selection (same as non-dithered)
+      // Calculate luminance for ASCII character selection
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use default ASCII palette for 16-color mode (TODO: add per-client palette support)
-      // Use imported default palette constant
-      int palette_index = (luminance * 22) / 255; // Map to 23 chars (0-22)
-      *ptr++ = palette[palette_index];
+
+      // Use UTF-8 character cache for proper multi-byte character handling
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (utf8_cache) {
+        const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+        // Copy UTF-8 character bytes
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        // Fallback to simple ASCII if UTF-8 cache fails
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
     }
 
     // Add reset and newline at end of each row
@@ -741,10 +764,21 @@ char *image_print_16color_dithered_with_background(const image_t *p, bool use_ba
 
       // Calculate luminance for ASCII character selection
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use default ASCII palette for 16-color mode (TODO: add per-client palette support)
-      // Use imported default palette constant
-      int palette_index = (luminance * 22) / 255; // Map to 23 chars (0-22)
-      *ptr++ = palette[palette_index];
+
+      // Use UTF-8 character cache for proper multi-byte character handling
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (utf8_cache) {
+        const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+        // Copy UTF-8 character bytes
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        // Fallback to simple ASCII if UTF-8 cache fails
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
     }
 
     // Add reset and newline at end of each row

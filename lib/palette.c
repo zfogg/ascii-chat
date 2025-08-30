@@ -86,10 +86,11 @@ bool validate_palette_chars(const char *chars, size_t len) {
       return false;
     }
 
-    // Check character width - must be exactly 1 terminal cell
+    // Check character width - allow width 1 and 2 (for emoji and wide characters)
     int width = wcwidth(wc);
-    if (width != 1) {
-      log_error("Palette validation failed: character at position %zu has width %d (must be 1)", char_count, width);
+    if (width < 0 || width > 2) {
+      log_error("Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)",
+                char_count, width);
       // Restore old locale
       if (old_locale) {
         setlocale(LC_CTYPE, old_locale);

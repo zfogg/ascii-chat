@@ -345,12 +345,12 @@ TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
@@ -415,6 +415,11 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
+# Compile source files from lib/image2ascii/
+$(BUILD_DIR)/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii
+	@echo "Compiling $<..."
+	$(CC) -o $@ $(CFLAGS) -c $<
+
 # Compile SIMD source files from lib/image2ascii/simd/
 $(BUILD_DIR)/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii/simd
 	@echo "Compiling $<..."
@@ -435,6 +440,9 @@ objs: $(OBJS) $(TEST_OBJS)
 
 # Ensure build and bin directories exist
 $(BUILD_DIR)/src:
+	@mkdir -p $@
+
+$(BUILD_DIR)/lib/image2ascii:
 	@mkdir -p $@
 
 $(BUILD_DIR)/lib/image2ascii/simd:

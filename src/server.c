@@ -821,21 +821,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                                       target_client->client_luminance_palette);
       }
     } else {
-      // Fall back to server's default palette
-      log_debug("Client %u palette not initialized, using server default", target_client_id);
-
-      // Initialize default palette if needed
-      init_default_luminance_palette();
-
-      // For half-block mode only, pass doubled height to get 2x resolution
-      if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
-        ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false,
-                                                      DEFAULT_ASCII_PALETTE, g_default_luminance_palette);
-      } else {
-        // Normal modes use standard dimensions
-        ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
-                                                      DEFAULT_ASCII_PALETTE, g_default_luminance_palette);
-      }
+      // Client palette not initialized - this is an error condition
+      log_error("Client %u palette not initialized - cannot render frame", target_client_id);
+      ascii_frame = NULL;
     }
   } else {
     // Don't send frames until we receive client capabilities - saves bandwidth and CPU
