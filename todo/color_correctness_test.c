@@ -52,11 +52,11 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         }
         
         // Generate scalar output using full image function
-        char *scalar_result = image_print_color(test_image);
+        char *scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE);
         size_t scalar_len = scalar_result ? strlen(scalar_result) : 0;
         
         // Generate SIMD output using optimized unified function
-        char *simd_result = image_print_color_simd(test_image, background_mode, false);
+        char *simd_result = image_print_color_simd(test_image, background_mode, false, DEFAULT_ASCII_PALETTE);
         size_t simd_len = simd_result ? strlen(simd_result) : 0;
 
         printf("Scalar output length: %zu bytes\n", scalar_len);
