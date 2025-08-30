@@ -102,30 +102,31 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       }
     }
 
-    // EXACT COPY: Scalar tail (like color SIMD truecolor without color codes)
-    for (; x < width; x++) {
-      const rgb_pixel_t *p = &row[x];
-      uint32_t R = p->r, G = p->g, B = p->b;
-      uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128u) >> 8);
-      uint8_t char_idx = utf8_cache->char_index_ramp[Y >> 2]; // 0-63 index
-      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-
-      // SKIP COLOR: No color codes for monochrome
-      // (Color emission code removed)
-
-      // EXACT COPY: Emit UTF-8 character from cache (like color SIMD)
-      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+    // EXACT COPY FROM NEON: Handle remaining pixels with optimized scalar code
+    for (; x < w; x++) {
+      const rgb_pixel_t pixel = row[x];
+      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
+      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+      // EXACT COPY FROM NEON: Optimized for single-byte ASCII characters
+      if (char_info->byte_len == 1) {
+        *pos++ = char_info->utf8_bytes[0];
+      } else {
+        // Fallback to full memcpy for multi-byte UTF-8
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
+      }
     }
 
-    // EXACT COPY: Add newline (like color SIMD)
-    if (y < height - 1) {
-      ob_write(&ob, "\n", 1);
+    // EXACT COPY FROM NEON: Add newline (except for last row)
+    if (y < h - 1) {
+      *pos++ = '\n';
     }
   }
 
-  // Null terminate and return (like color SIMD)
-  ob_term(&ob);
-  return ob.buf;
+  // EXACT COPY FROM NEON: Null terminate
+  *pos = '\0';
+
+  return output;
 }
 
 // 256-color palette mapping (RGB to ANSI 256 color index) - copied from NEON
