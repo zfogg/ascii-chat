@@ -99,12 +99,18 @@ void test_ascii_correctness(void) {
         char *results[3] = {NULL};
 
         for (int run = 0; run < 3; run++) {
+            // Build default luminance palette for test
+            char test_luminance_palette[256];
+            build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+            
             results[run] = ascii_convert(test_image,
                                        test_configs[cfg_idx].width,
                                        test_configs[cfg_idx].height,
                                        test_configs[cfg_idx].color,
                                        test_configs[cfg_idx].aspect_ratio,
-                                       test_configs[cfg_idx].stretch);
+                                       test_configs[cfg_idx].stretch,
+                                       DEFAULT_ASCII_PALETTE,
+                                       test_luminance_palette);
 
             if (!results[run]) {
                 printf("  ❌ Run %d: ascii_convert returned NULL\n", run + 1);
@@ -205,12 +211,12 @@ void test_color_correctness(void) {
 
             if (test_modes[mode_idx].is_color) {
                 // Test color functions - test 256-color mode (optimized function)
-                scalar_result = image_print_color(test_image);
-                simd_result = image_print_color_simd(test_image, false, true); // FG mode, 256-color (optimized!)
+                scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE);
+                simd_result = image_print_color_simd(test_image, false, true, DEFAULT_ASCII_PALETTE); // FG mode, 256-color (optimized!)
             } else {
                 // Test monochrome functions
-                scalar_result = image_print(test_image);
-                simd_result = image_print_simd(test_image);
+                scalar_result = image_print(test_image, DEFAULT_ASCII_PALETTE);
+                simd_result = image_print_simd(test_image, DEFAULT_ASCII_PALETTE);
             }
 
             if (!scalar_result || !simd_result) {
@@ -438,7 +444,11 @@ void test_integration(void) {
     printf("  CPU Saved:  %.1f%% at 60 FPS\n", 100.0 * (1.0 - 1.0 / bench.speedup_best));
 
     // Show actual ASCII output sample
-    char *ascii_output = ascii_convert(source_image, 40, 10, true, true, false);
+    // Build default luminance palette for test
+    char test_luminance_palette[256];
+    build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+    
+    char *ascii_output = ascii_convert(source_image, 40, 10, true, true, false, DEFAULT_ASCII_PALETTE, test_luminance_palette);
     if (ascii_output) {
         printf("\nSample ASCII output (40x10):\n");
         printf("┌────────────────────────────────────────┐\n");

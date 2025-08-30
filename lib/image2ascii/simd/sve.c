@@ -197,14 +197,14 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 
       // FAST: Use svtbl_u8 to get character indices from the ramp (SVE advantage)
       // Convert luminance to 0-63 indices
-      svuint8_t luma_vec = svld1_u8(pg_active, luma_array);  // Load luminance values
-      svuint8_t luma_idx_vec = svlsr_n_u8_x(svptrue_b8(), luma_vec, 2);  // >> 2 for 0-63
-      
+      svuint8_t luma_vec = svld1_u8(pg_active, luma_array);             // Load luminance values
+      svuint8_t luma_idx_vec = svlsr_n_u8_x(svptrue_b8(), luma_vec, 2); // >> 2 for 0-63
+
       // Use svtbl_u8 for fast character index lookup (scalable!)
       svuint8_t char_lut_vec = svld1_u8(svptrue_b8(), utf8_cache->char_index_ramp);
       svuint8_t char_indices_vec = svtbl_u8(char_lut_vec, luma_idx_vec);
-      
-      uint8_t gbuf[64];  // Reuse gbuf name for compatibility
+
+      uint8_t gbuf[64]; // Reuse gbuf name for compatibility
       svst1_u8(pg_active, gbuf, char_indices_vec);
 
       if (use_256color) {
