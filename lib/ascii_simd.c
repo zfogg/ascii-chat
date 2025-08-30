@@ -432,8 +432,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  printf("Benchmarking MONO %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
-         pixel_count, adaptive_iterations);
+  printf("Benchmarking MONO %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width,
+         height, pixel_count, adaptive_iterations);
 
   // Benchmark scalar using image-based API
   ensure_default_palette_ready();
@@ -1158,7 +1158,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     printf("neon: %f\n", result.neon_time);
   if (result.sve_time > 0)
     printf("sve: %f\n", result.sve_time);
-  printf("Best method: %s, time: %f (%.2fx speedup)\n", result.best_method, best_time, result.speedup_best);
+  printf("Best method: %s, time: %f (%.2fx speedup (<1.0 = bad))\n", result.best_method, best_time,
+         result.speedup_best);
   printf("------------\n");
 
   // Frame data already cleaned up in webcam capture section
