@@ -257,25 +257,37 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
       // Convert 16-bit luminance back to 8-bit
       uint8x16_t luminance = vcombine_u8(vmovn_u16(luma_lo), vmovn_u16(luma_hi));
 
-      // Store luminance values and convert to ASCII characters
+      // Store luminance values and convert to ASCII characters efficiently
       uint8_t luma_array[16];
       vst1q_u8(luma_array, luminance);
 
-      // Convert luminance to UTF-8 characters using cached mappings
+      // Fast direct ASCII character generation (assuming ASCII palette)
       for (int i = 0; i < 16; i++) {
         const utf8_char_t *char_info = &utf8_cache->cache[luma_array[i]];
-        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-        pos += char_info->byte_len;
+        // Optimized: Use bulk memcpy for single-byte ASCII characters
+        if (char_info->byte_len == 1) {
+          *pos++ = char_info->utf8_bytes[0];
+        } else {
+          // Fallback to full memcpy for multi-byte UTF-8
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
+        }
       }
     }
 
-    // Handle remaining pixels with scalar code
+    // Handle remaining pixels with optimized scalar code
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
       const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-      pos += char_info->byte_len;
+      // Optimized: Use direct assignment for single-byte ASCII characters
+      if (char_info->byte_len == 1) {
+        *pos++ = char_info->utf8_bytes[0];
+      } else {
+        // Fallback to full memcpy for multi-byte UTF-8
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
+      }
     }
 
     // Add newline (except for last row)

@@ -99,19 +99,30 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 
       for (int j = 0; j < 32; j++) {
         const utf8_char_t *char_info = &utf8_cache->cache[luma_array[j]];
-        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-        pos += char_info->byte_len;
+        // Optimized: Use direct assignment for single-byte ASCII characters
+        if (char_info->byte_len == 1) {
+          *pos++ = char_info->utf8_bytes[0];
+        } else {
+          // Fallback to full memcpy for multi-byte UTF-8
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
+        }
       }
-      pos += 32;
     }
 
-    // Handle remaining pixels with scalar code
+    // Handle remaining pixels with optimized scalar code
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + LUMA_THRESHOLD) >> 8;
       const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-      pos += char_info->byte_len;
+      // Optimized: Use direct assignment for single-byte ASCII characters
+      if (char_info->byte_len == 1) {
+        *pos++ = char_info->utf8_bytes[0];
+      } else {
+        // Fallback to full memcpy for multi-byte UTF-8
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
+      }
     }
 
     // Add newline (except for last row)
