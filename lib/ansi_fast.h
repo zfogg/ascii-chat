@@ -83,6 +83,7 @@ typedef terminal_color_mode_t color_mode_t;
 
 char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color_mode_t mode);
 
+// REMOVED: generate_ansi_frame_optimized function not implemented  
 // Complete frame generation with optimized ANSI string generation
-size_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
-                                     size_t buffer_capacity, ansi_color_mode_t mode);
+// size_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
+//                                      size_t buffer_capacity, ansi_color_mode_t mode);
