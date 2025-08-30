@@ -2,6 +2,7 @@
 #include "image2ascii/simd/common.h"
 #include "hashtable.h"
 #include "crc32_hw.h"
+#include "ascii_simd.h"
 
 // Build 64-entry glyph LUT for vqtbl4q_u8 and other architecture's instrinsics (UTF-8 aware)
 void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
@@ -240,11 +241,7 @@ void ob_reserve(outbuf_t *ob, size_t need) {
   size_t ncap = ob->cap ? ob->cap : 4096;
   while (ncap < ob->len + need)
     ncap = (ncap * 3) / 2;
-  char *nbuf = (char *)realloc(ob->buf, ncap);
-  if (!nbuf) {
-    abort();
-  }
-  ob->buf = nbuf;
+  SAFE_REALLOC(ob->buf, ncap, char *);
   ob->cap = ncap;
 }
 
