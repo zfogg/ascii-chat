@@ -432,7 +432,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
+  printf("Benchmarking MONO %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
          pixel_count, adaptive_iterations);
 
   // Benchmark scalar using image-based API
@@ -448,7 +448,6 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 #ifdef SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using new image-based timing function
   // Benchmark SSE2 monochrome rendering
-  ensure_default_palette_ready();
   double start_sse2 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_sse2(test_image, DEFAULT_ASCII_PALETTE);
@@ -461,7 +460,6 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 #ifdef SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using new image-based timing function
   // Benchmark SSSE3 monochrome rendering
-  ensure_default_palette_ready();
   double start_ssse3 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_ssse3(test_image, DEFAULT_ASCII_PALETTE);
@@ -474,7 +472,6 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 #ifdef SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using new image-based timing function
   // Benchmark AVX2 monochrome rendering
-  ensure_default_palette_ready();
   double start_avx2 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_avx2(test_image, DEFAULT_ASCII_PALETTE);
@@ -488,10 +485,9 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   // Benchmark NEON using new image-based timing function
   // TODO: Update benchmark to use custom palette testing
   // Benchmark NEON monochrome rendering
-  ensure_default_palette_ready();
   double start_neon = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
-    char *result_str = render_ascii_image_monochrome_neon(test_image, g_default_luminance_palette);
+    char *result_str = render_ascii_image_monochrome_neon(test_image, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
