@@ -174,26 +174,65 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
   const int h = image->h;
   const int w = image->w;
 
-  char *ascii;
-  // -1 because we don't add the last newline, +1 for the null terminator
-  SAFE_MALLOC(ascii, (size_t)h * ((size_t)w + 1) - 1 + 1, char *);
-  char *pos = ascii;
+  // Get UTF-8 character cache for RLE emission
+  // Note: We need to reverse-engineer the palette chars from luminance_palette
+  // For now, use a simpler approach with direct luminance lookup
+  
+  // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
+  outbuf_t ob = {0};
+  const size_t max_char_bytes = 4; // Max UTF-8 character size
+  ob.cap = (size_t)h * ((size_t)w * max_char_bytes + 1);
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf) {
+    log_error("Failed to allocate output buffer for scalar rendering");
+    return NULL;
+  }
 
+  // Process pixels with RLE optimization
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = (const rgb_pixel_t *)&image->pixels[y * w];
 
-    // Convert this row of pixels to ASCII characters
-    convert_pixels_scalar(row_pixels, pos, w, luminance_palette);
-    pos += w;
+    for (int x = 0; x < w;) {
+      const rgb_pixel_t *p = &row_pixels[x];
+      
+      // Calculate luminance using integer arithmetic
+      int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b) >> 8;
+      if (luminance > 255) luminance = 255;
+      
+      char current_char = luminance_palette[luminance];
+      
+      // Find run length for same character (RLE optimization)
+      int j = x + 1;
+      while (j < w) {
+        const rgb_pixel_t *next_p = &row_pixels[j];
+        int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b) >> 8;
+        if (next_luminance > 255) next_luminance = 255;
+        char next_char = luminance_palette[next_luminance];
+        if (next_char != current_char) break;
+        j++;
+      }
+      uint32_t run = (uint32_t)(j - x);
+      
+      // Emit character with RLE (same as SIMD)
+      ob_putc(&ob, current_char);
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_putc(&ob, current_char);
+        }
+      }
+      x = j;
+    }
 
     // Add newline (except for last row)
     if (y != h - 1) {
-      *pos++ = '\n';
+      ob_putc(&ob, '\n');
     }
   }
 
-  *pos = '\0';
-  return ascii;
+  ob_term(&ob);
+  return ob.buf;
 }
 
 // --------------------------------------

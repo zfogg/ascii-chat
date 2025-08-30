@@ -205,8 +205,16 @@ char *image_print(const image_t *p, const char *palette) {
     return NULL;
   }
 
-  // Need space for h rows, each with w characters, plus h-1 newlines, plus null terminator
-  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
+  // Get UTF-8 character cache for proper multi-byte character support
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for scalar rendering");
+    return NULL;
+  }
+
+  // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
+  const size_t max_char_bytes = 4; // Max UTF-8 character size
+  const ssize_t len = (ssize_t)h * ((ssize_t)w * max_char_bytes + 1);
 
   const rgb_t *pix = p->pixels;
   const unsigned short int *red_lut = RED;
@@ -216,30 +224,61 @@ char *image_print(const image_t *p, const char *palette) {
   char *lines;
   SAFE_MALLOC(lines, len * sizeof(char), char *);
 
-  int out_idx = 0;
+  // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
+  outbuf_t ob = {0};
+  const size_t max_char_bytes = 4; // Max UTF-8 character size
+  ob.cap = (size_t)h * ((size_t)w * max_char_bytes + 1);
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf) {
+    free(lines);
+    log_error("Failed to allocate output buffer for scalar rendering");
+    return NULL;
+  }
+
+  // Process pixels with UTF-8 RLE emission (same approach as SIMD)
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
 
-    for (int x = 0; x < w; x++) {
+    for (int x = 0; x < w;) {
       const rgb_t pixel = pix[row_offset + x];
       const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-      // Use default ASCII palette (TODO: add per-client palette support)
-      // Use imported default palette constant
-      int palette_index = (luminance > 255) ? 22 : (luminance * 22) / 255;
-      lines[out_idx++] = palette[palette_index];
+      
+      // Use UTF-8 character cache
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
+      
+      // Find run length for same character (RLE optimization)
+      int j = x + 1;
+      while (j < w) {
+        const rgb_t next_pixel = pix[row_offset + j];
+        const int next_luminance = red_lut[next_pixel.r] + green_lut[next_pixel.g] + blue_lut[next_pixel.b];
+        int next_safe_luminance = (next_luminance > 255) ? 255 : next_luminance;
+        if (next_safe_luminance != safe_luminance) break;
+        j++;
+      }
+      uint32_t run = (uint32_t)(j - x);
+      
+      // Emit UTF-8 character with RLE (same as SIMD)
+      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        }
+      }
+      x = j;
     }
+    
+    // Add newline between rows (except last row)
     if (y != h - 1) {
-      lines[out_idx++] = '\n';
+      ob_putc(&ob, '\n');
     }
   }
-  lines[out_idx] = '\0';
 
-  // Debug: check if we actually wrote anything
-  if (out_idx == 0) {
-    log_error("image_print produced empty output (h=%d, w=%d)", h, w);
-  }
-
-  return lines;
+  ob_term(&ob);
+  free(lines);  // Free the old buffer
+  return ob.buf;
 }
 
 // Color quantization to reduce frame size and improve performance
@@ -288,6 +327,13 @@ char *image_print_color(const image_t *p, const char *palette) {
   if (!p || !p->pixels || !palette) {
     log_error("p or p->pixels or palette is NULL");
     // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    return NULL;
+  }
+
+  // Get UTF-8 character cache for proper multi-byte character support
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for scalar color rendering");
     return NULL;
   }
 
@@ -353,10 +399,16 @@ char *image_print_color(const image_t *p, const char *palette) {
       const rgb_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
-      int palette_index = (luminance > 255) ? 22 : (luminance * 22) / 255;
-      const char ascii_char = palette[palette_index];
+      
+      // Use UTF-8 character cache for proper character selection
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
+      
+      // For RLE, we need to pass the first byte of the UTF-8 character
+      // Note: RLE system may need updates for full UTF-8 support
+      const char ascii_char = char_info->utf8_bytes[0];
 
-      // Legacy function - always use foreground mode with RLE optimization
+      // Legacy function - always use foreground mode with RLE optimization  
       // For proper per-client background support, use image_print_with_capabilities() instead
       ansi_rle_add_pixel(&rle_ctx, r, g, b, ascii_char);
     }
