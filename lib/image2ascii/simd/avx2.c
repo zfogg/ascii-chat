@@ -41,12 +41,14 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 
   // EXACT COPY: Build AVX2 lookup table (like color SIMD)
   __m256i char_lut = _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp));
-  for (int y = 0; y < h; y++) {
-    const rgb_pixel_t *row = &pixels[y * w];
+
+  // EXACT COPY: Processing loop structure (like color SIMD)
+  for (int y = 0; y < height; y++) {
+    const rgb_pixel_t *row = &((const rgb_pixel_t *)image->pixels)[y * width];
     int x = 0;
 
-    // Process 32 pixels at a time with AVX2
-    for (; x + 31 < w; x += 32) {
+    // EXACT COPY: Process 32-pixel chunks with AVX2 (like color SIMD)
+    while (x + 32 <= width) {
       // Deinterleave RGB (keeping existing approach for now)
       uint8_t r_array[32], g_array[32], b_array[32];
       for (int j = 0; j < 32; j++) {
@@ -121,6 +123,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
         }
         i = j;
       }
+      x += 32;
     }
 
     // EXACT COPY: Scalar tail (like color SIMD truecolor without color codes)
