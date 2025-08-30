@@ -17,32 +17,30 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     return NULL;
   }
 
-  const int h = image->h;
-  const int w = image->w;
+  const int height = image->h;
+  const int width = image->w;
 
-  if (h <= 0 || w <= 0) {
+  if (height <= 0 || width <= 0) {
     return NULL;
   }
 
-  // EXACTLY like color SIMD: Use outbuf_t pattern
-  outbuf_t ob = {0};
-  ob.cap = (size_t)h * ((size_t)w + 1) + 64;
-  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
-  if (!ob.buf) {
-    return NULL;
-  }
-
-  // EXACTLY like color SIMD: Build UTF-8 character cache
+  // EXACT COPY: Get cached UTF-8 character mappings (like color SIMD)
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
   if (!utf8_cache) {
     log_error("Failed to get UTF-8 palette cache");
-    free(ob.buf);
     return NULL;
   }
 
-  const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
+  // EXACT COPY: outbuf_t pattern (like color SIMD)
+  outbuf_t ob = {0};
+  // Simple monochrome: 1 char per pixel + newlines + safety margin
+  ob.cap = (size_t)height * ((size_t)width + 1) + 64;
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf)
+    return NULL;
 
-  // Process pixels with AVX2 but use color SIMD string generation
+  // EXACT COPY: Build AVX2 lookup table (like color SIMD)
+  __m256i char_lut = _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i *)utf8_cache->char_index_ramp));
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row = &pixels[y * w];
     int x = 0;
@@ -89,26 +87,35 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       uint8_t luma_array[32];
       _mm256_storeu_si256((__m256i *)luma_array, luminance);
 
-      // EXACTLY like color SIMD: Use run-length encoding
-      for (int i = 0; i < 32;) {
-        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[i]];
+      // EXACT COPY: Character index calculation (like color SIMD truecolor path)
+      __m256i luma_div4 = _mm256_srli_epi16(_mm256_unpacklo_epi8(luminance, _mm256_setzero_si256()), 2);
+      __m256i char_indices_vec = _mm256_packus_epi16(luma_div4, _mm256_setzero_si256());
 
-        // Find run length of identical characters (like color SIMD)
+      uint8_t char_indices[32];
+      _mm256_storeu_si256((__m256i *)char_indices, char_indices_vec);
+
+      // EXACT COPY: Monochrome processing (color SIMD truecolor without color codes)
+      for (int i = 0; i < 32;) {
+        const uint8_t char_idx = char_indices[i];
+        const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+
+        // EXACT COPY: Find run length of identical characters (like color SIMD)
         int j = i + 1;
-        while (j < 32 && luma_array[j] == luma_array[i]) {
+        while (j < 32 && char_indices[j] == char_idx) {
           j++;
         }
         const uint32_t run = (uint32_t)(j - i);
 
-        // Write first character
-        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        // SKIP COLOR: No color codes for monochrome
+        // (Lines 299-308 from color SIMD removed)
 
-        // Use run-length encoding for repeated characters (like color SIMD)
+        // EXACT COPY: Emit UTF-8 character from cache (like color SIMD)
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
-          // Write remaining characters individually
           for (uint32_t k = 1; k < run; k++) {
+            // Emit UTF-8 character from cache
             ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
@@ -116,16 +123,23 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       }
     }
 
-    // Handle remaining pixels (like color SIMD)
-    for (; x < w; x++) {
-      const rgb_pixel_t pixel = row[x];
-      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
-      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+    // EXACT COPY: Scalar tail (like color SIMD truecolor without color codes)
+    for (; x < width; x++) {
+      const rgb_pixel_t *p = &row[x];
+      uint32_t R = p->r, G = p->g, B = p->b;
+      uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128u) >> 8);
+      uint8_t char_idx = utf8_cache->char_index_ramp[Y >> 2]; // 0-63 index
+      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+
+      // SKIP COLOR: No color codes for monochrome
+      // (Color emission code removed)
+
+      // EXACT COPY: Emit UTF-8 character from cache (like color SIMD)
       ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
     }
 
-    // Add newline (like color SIMD)
-    if (y < h - 1) {
+    // EXACT COPY: Add newline (like color SIMD)
+    if (y < height - 1) {
       ob_write(&ob, "\n", 1);
     }
   }
