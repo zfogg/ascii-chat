@@ -109,6 +109,9 @@ COMMON_MAIN_OBJECTS = \
   ../build/lib/options.o \
   ../build/lib/image.o \
   ../build/lib/ascii.o \
+  ../build/lib/crc32_hw.o \
+  ../build/lib/hashtable.o \
+  ../build/lib/palette.o \
   ../build/lib/aspect_ratio.o
 
 # Webcam objects (core + platform backends)
@@ -144,7 +147,7 @@ COLOR_CORRECTNESS_EXECUTABLE = color_correctness_test
 # First ensure main project objects are built
 ensure-main-objects:
 	@echo "Ensuring main project objects are built (clean, isolated flags, NEON-friendly)..."
-	@cd .. && $(MAKE) clean && $(MAKE) release SIMD_MODE=$(SIMD_MODE_AUTO) CRC32_HW=$(CRC32_HW) AES_HW=$(AES_HW) CFLAGS= OBJCFLAGS=
+	@cd .. && $(MAKE) clean && $(MAKE) release SIMD_MODE=$(SIMD_MODE_AUTO) CRC32_HW=$(CRC32_HW) CFLAGS= OBJCFLAGS=
 
 # Targets
 all: ensure-main-objects $(ASCII_SIMD_EXECUTABLE) $(ANSI_FAST_EXECUTABLE) $(COLOR_CORRECTNESS_EXECUTABLE)

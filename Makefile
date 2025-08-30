@@ -310,7 +310,7 @@ ifeq ($(UNAME_S),Darwin)
         CPU_OPT_FLAGS := -O3 -march=native
         $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
-        CPU_OPT_FLAGS := -O3 -mcpu=native -ffast-math
+        CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math
         $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native
@@ -348,7 +348,7 @@ LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/
 C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
-# Header files  
+# Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
 C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
 

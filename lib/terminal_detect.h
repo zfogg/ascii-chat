@@ -31,6 +31,10 @@ typedef struct {
   char term_type[32];                 // $TERM value for debugging
   char colorterm[32];                 // $COLORTERM value for debugging
   bool detection_reliable;            // True if detection methods were reliable
+
+  // NEW: Client palette preferences
+  uint32_t palette_type;   // palette_type_t enum value
+  char palette_custom[64]; // Custom palette chars (if palette_type == PALETTE_CUSTOM)
 } terminal_capabilities_t;
 
 // Terminal size detection functions (moved from options.c)
