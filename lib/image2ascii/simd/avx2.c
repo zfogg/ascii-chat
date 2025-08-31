@@ -42,11 +42,14 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
+  // Allocate row luminance buffer once outside the loop (CodeQL fix)
+  uint8_t *row_luminance;
+  SAFE_MALLOC(row_luminance, (size_t)w * sizeof(uint8_t), uint8_t *);
+
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row = &pixels[y * w];
 
     // PHASE 1: Pure SIMD - convert entire row to luminance array
-    uint8_t *row_luminance = alloca(w * sizeof(uint8_t)); // Stack allocation
     int x = 0;
 
     // Process 32 pixels at a time with AVX2 (scaled up from NEON's 16-pixel approach)
@@ -130,6 +133,10 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 
   // Terminate and return
   ob_term(&ob);
+  
+  // Free the row luminance buffer
+  SAFE_FREE(row_luminance);
+  
   return ob.buf;
 }
 

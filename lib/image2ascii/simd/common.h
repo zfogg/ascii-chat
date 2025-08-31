@@ -8,7 +8,7 @@
 #include "common.h"
 #include "image.h"
 #include "ascii_simd.h"
-#include "image2ascii/output_buffer.h"
+#include "../output_buffer.h"
 
 // Forward declarations for architecture-specific implementations
 typedef rgb_t rgb_pixel_t;
