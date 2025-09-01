@@ -37,9 +37,9 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 
 // Character index ramp cache (shared across SIMD architectures)
 typedef struct {
-  uint8_t char_index_ramp[64];     // Character indices for SIMD lookup
-  char palette_hash[64];           // Hash of source palette for validation
-  bool is_valid;                   // Whether this cache is valid
+  uint8_t char_index_ramp[64]; // Character indices for SIMD lookup
+  char palette_hash[64];       // Hash of source palette for validation
+  bool is_valid;               // Whether this cache is valid
 } char_index_ramp_cache_t;
 
 char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars);
