@@ -16,6 +16,7 @@
 #include "ascii.h"
 #include "ascii_simd.h"
 #include "common.h"
+#include "image2ascii/simd/common.h"
 #include "network.h"
 #include "options.h"
 #include "packet_queue.h"
@@ -1252,6 +1253,9 @@ int main(int argc, char *argv[]) {
 
   // No emergency cleanup needed - proper resource management handles cleanup
 
+  // Clean up SIMD caches before other cleanup
+  simd_caches_destroy_all();
+  
   // Explicitly clean up global buffer pool before atexit handlers
   // This ensures any malloc fallbacks are freed while pool tracking is still active
   data_buffer_pool_cleanup_global();

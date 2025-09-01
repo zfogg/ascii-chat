@@ -395,4 +395,10 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
   return ob.buf;
 }
 
+// Destroy SVE cache resources (called at program shutdown)
+void sve_caches_destroy(void) {
+  // SVE currently uses shared caches from common.c, so no specific cleanup needed
+  log_debug("SVE_CACHE: SVE caches cleaned up");
+}
+
 #endif /* SIMD_SUPPORT_SVE */

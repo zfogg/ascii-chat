@@ -30,5 +30,8 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 
 // Half-blocks
 char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes);
+
+// Cache cleanup
+void neon_caches_destroy(void);
 /// }}} NEW
 #endif

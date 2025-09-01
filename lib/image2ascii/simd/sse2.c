@@ -413,4 +413,10 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
   return ob.buf;
 }
 
+// Destroy SSE2 cache resources (called at program shutdown)
+void sse2_caches_destroy(void) {
+  // SSE2 currently uses shared caches from common.c, so no specific cleanup needed
+  log_debug("SSE2_CACHE: SSE2 caches cleaned up");
+}
+
 #endif /* SIMD_SUPPORT_SSE2 */

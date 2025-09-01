@@ -10,6 +10,9 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
 
+// Cache cleanup
+void avx2_caches_destroy(void);
+
 // Legacy row-based functions removed - use image-based API above
 
 #endif /* SIMD_SUPPORT_AVX2 */

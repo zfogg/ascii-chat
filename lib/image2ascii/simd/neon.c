@@ -11,8 +11,107 @@
 #include "neon.h"
 #include "ascii_simd.h"
 #include "image.h"
+#include "hashtable.h"
+#include "crc32_hw.h"
 
 #ifdef SIMD_SUPPORT_NEON // main block of code ifdef
+#include <arm_neon.h>
+
+// NEON-specific lookup table cache (NEON code only!)
+typedef struct {
+  uint8x16x4_t tbl;                // NEON vqtbl4q_u8 lookup table (4x16 = 64 entries)
+  char palette_hash[64];           // Hash of source palette for validation
+  bool is_valid;                   // Whether this cache is valid
+} neon_tbl_cache_t;
+
+static hashtable_t *g_neon_tbl_cache_table = NULL;
+static pthread_rwlock_t g_neon_tbl_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
+// Get or create cached NEON lookup table
+static neon_tbl_cache_t *get_neon_tbl_cache(const char *ascii_chars) {
+  if (!ascii_chars)
+    return NULL;
+
+  // Create hash of palette for cache key
+  uint32_t palette_hash = asciichat_crc32(ascii_chars, strlen(ascii_chars));
+
+  // Fast path: Try read-only lookup first (most common case)
+  pthread_rwlock_rdlock(&g_neon_tbl_cache_rwlock);
+  if (g_neon_tbl_cache_table) {
+    neon_tbl_cache_t *cache = (neon_tbl_cache_t *)hashtable_lookup(g_neon_tbl_cache_table, palette_hash);
+    if (cache) {
+      pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
+      return cache;
+    }
+  }
+  pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
+
+  // Slow path: Need to create cache entry, acquire write lock
+  pthread_rwlock_wrlock(&g_neon_tbl_cache_rwlock);
+
+  // Initialize cache system if needed
+  if (!g_neon_tbl_cache_table) {
+    g_neon_tbl_cache_table = hashtable_create();
+  }
+
+  // Double-check: another thread might have created the cache
+  neon_tbl_cache_t *cache = (neon_tbl_cache_t *)hashtable_lookup(g_neon_tbl_cache_table, palette_hash);
+  if (!cache) {
+    // Create new cache - need to build the lookup table
+    SAFE_MALLOC(cache, sizeof(neon_tbl_cache_t), neon_tbl_cache_t *);
+    memset(cache, 0, sizeof(neon_tbl_cache_t));
+
+    // Get the character index ramp from common cache
+    char_index_ramp_cache_t *ramp_cache = get_char_index_ramp_cache(ascii_chars);
+    if (!ramp_cache) {
+      SAFE_FREE(cache);
+      pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
+      return NULL;
+    }
+
+    // Build NEON-specific lookup table with cache64 indices (not palette indices)
+    // The lookup table should map luminance_bucket (0-63) -> cache64_index (0-63)
+    uint8_t cache64_indices[64];
+    for (int i = 0; i < 64; i++) {
+      cache64_indices[i] = (uint8_t)i;  // Direct mapping: luminance bucket -> cache64 index
+    }
+    
+    cache->tbl.val[0] = vld1q_u8(&cache64_indices[0]);
+    cache->tbl.val[1] = vld1q_u8(&cache64_indices[16]);
+    cache->tbl.val[2] = vld1q_u8(&cache64_indices[32]);
+    cache->tbl.val[3] = vld1q_u8(&cache64_indices[48]);
+
+    // Store palette hash for validation
+    strncpy(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash) - 1);
+    cache->palette_hash[sizeof(cache->palette_hash) - 1] = '\0';
+    cache->is_valid = true;
+
+    // Store in hashtable
+    hashtable_insert(g_neon_tbl_cache_table, palette_hash, cache);
+
+    log_debug("NEON_TBL_CACHE: Created new NEON lookup table for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
+  }
+
+  pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
+  return cache;
+}
+
+// Destroy NEON cache resources (called at program shutdown)
+void neon_caches_destroy(void) {
+  pthread_rwlock_wrlock(&g_neon_tbl_cache_rwlock);
+  
+  if (g_neon_tbl_cache_table) {
+    // Free all cached NEON lookup tables
+    for (size_t i = 0; i < HASHTABLE_BUCKET_COUNT; i++) {
+      // Note: hashtable_destroy() will handle the cleanup of entries
+    }
+    hashtable_destroy(g_neon_tbl_cache_table);
+    g_neon_tbl_cache_table = NULL;
+    log_debug("NEON_TBL_CACHE: Destroyed NEON lookup table cache");
+  }
+  
+  pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
+}
 
 // 256-color palette mapping (RGB to ANSI 256 color index) - local implementation
 static inline uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
@@ -214,6 +313,16 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
     return NULL;
   }
 
+  // Get cached NEON lookup table for fast character index lookups
+  neon_tbl_cache_t *tbl_cache = get_neon_tbl_cache(ascii_chars);
+  if (!tbl_cache) {
+    log_error("Failed to get NEON lookup table cache");
+    return NULL;
+  }
+  
+  // Use the cached lookup table for vqtbl4q_u8
+  uint8x16x4_t tbl = tbl_cache->tbl;
+
   // Estimate output buffer size for UTF-8 characters
   const size_t max_char_bytes = 4; // Max UTF-8 character size
   const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
@@ -250,13 +359,18 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
       // Convert 16-bit luminance back to 8-bit
       uint8x16_t luminance = vcombine_u8(vmovn_u16(luma_lo), vmovn_u16(luma_hi));
 
-      // Store luminance values and convert to ASCII characters efficiently
-      uint8_t luma_array[16];
-      vst1q_u8(luma_array, luminance);
+      // NEON optimization: Use vqtbl4q_u8 for fast character index lookup
+      uint8x16_t idx = vshrq_n_u8(luminance, 2); // Map 0..255 to 0..63
+      uint8x16_t char_indices = vqtbl4q_u8(tbl, idx); // 16 lookups in 1 instruction!
 
-      // Fast direct ASCII character generation (assuming ASCII palette)
+      // Store character indices for UTF-8 emission
+      uint8_t char_idx_buf[16];
+      vst1q_u8(char_idx_buf, char_indices);
+
+      // Fast UTF-8 character generation using NEON-derived indices
       for (int i = 0; i < 16; i++) {
-        const utf8_char_t *char_info = &utf8_cache->cache[luma_array[i]];
+        const uint8_t char_idx = char_idx_buf[i]; // From vqtbl4q_u8 lookup
+        const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
         // Optimized: Use bulk memcpy for single-byte ASCII characters
         if (char_info->byte_len == 1) {
           *pos++ = char_info->utf8_bytes[0];
@@ -268,11 +382,13 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
       }
     }
 
-    // Handle remaining pixels with optimized scalar code
+    // Handle remaining pixels with optimized scalar code using 64-entry cache
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
-      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+      const uint8_t luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
+      const uint8_t luma_idx = luminance >> 2;  // Map 0..255 to 0..63
+      const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index
+      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
       // Optimized: Use direct assignment for single-byte ASCII characters
       if (char_info->byte_len == 1) {
         *pos++ = char_info->utf8_bytes[0];
@@ -324,80 +440,22 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   if (!ob.buf)
     return NULL;
 
-  // Build UTF-8 aware character cache for fast SIMD lookup
-  typedef struct {
-    char utf8_bytes[4]; // Up to 4 bytes for UTF-8 character
-    uint8_t byte_len;   // Actual length (1-4 bytes)
-  } utf8_char_t;
-
-  utf8_char_t utf8_char_cache[64]; // 64-entry UTF-8 character cache
-  uint8_t char_index_ramp[64];     // Character indices for vqtbl4q_u8 lookup
-
-  // Parse the ASCII characters into UTF-8 aware character boundaries
-  int char_count = 0;
-  const char *p = ascii_chars;
-
-  // First pass: count characters and store their positions
-  typedef struct {
-    const char *start;
-    int byte_len;
-  } char_info_t;
-
-  char_info_t char_infos[256]; // More than enough
-
-  while (*p && char_count < 255) {
-    char_infos[char_count].start = p;
-
-    // Determine UTF-8 character length
-    if ((*p & 0x80) == 0) {
-      // ASCII character (1 byte)
-      char_infos[char_count].byte_len = 1;
-      p++;
-    } else if ((*p & 0xE0) == 0xC0) {
-      // 2-byte UTF-8 character
-      char_infos[char_count].byte_len = 2;
-      p += 2;
-    } else if ((*p & 0xF0) == 0xE0) {
-      // 3-byte UTF-8 character
-      char_infos[char_count].byte_len = 3;
-      p += 3;
-    } else if ((*p & 0xF8) == 0xF0) {
-      // 4-byte UTF-8 character
-      char_infos[char_count].byte_len = 4;
-      p += 4;
-    } else {
-      // Invalid UTF-8, treat as 1 byte
-      char_infos[char_count].byte_len = 1;
-      p++;
-    }
-    char_count++;
+  // Get cached UTF-8 character mappings (like monochrome function does)
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for NEON color");
+    return NULL;
   }
 
-  // Build character index ramp for vqtbl4q_u8 AND UTF-8 character cache
-  for (int i = 0; i < 64; i++) {
-    // Map 0-63 to 0-(char_count-1) with proper rounding
-    int char_idx = char_count > 1 ? (i * (char_count - 1) + 31) / 63 : 0; // Add 31 for proper rounding
-    if (char_idx >= char_count)
-      char_idx = char_count - 1;
-
-    // Store cache index for SIMD lookup (direct mapping i -> i)
-    char_index_ramp[i] = (uint8_t)i;
-
-    // Cache UTF-8 character for fast emission - store at index i, not char_idx!
-    utf8_char_cache[i].byte_len = char_infos[char_idx].byte_len;
-    memcpy(utf8_char_cache[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
-    // Null terminate for safety
-    if (utf8_char_cache[i].byte_len < 4) {
-      utf8_char_cache[i].utf8_bytes[utf8_char_cache[i].byte_len] = '\0';
-    }
+  // Get cached NEON lookup table instead of rebuilding
+  neon_tbl_cache_t *tbl_cache = get_neon_tbl_cache(ascii_chars);
+  if (!tbl_cache) {
+    log_error("Failed to get NEON lookup table cache");
+    return NULL;
   }
-
-  // Build SIMD lookup table for vqtbl4q_u8 (uses character indices)
-  uint8x16x4_t tbl; // 4 * 16 = 64 entries
-  tbl.val[0] = vld1q_u8(&char_index_ramp[0]);
-  tbl.val[1] = vld1q_u8(&char_index_ramp[16]);
-  tbl.val[2] = vld1q_u8(&char_index_ramp[32]);
-  tbl.val[3] = vld1q_u8(&char_index_ramp[48]);
+  
+  // Use the cached lookup table
+  uint8x16x4_t tbl = tbl_cache->tbl;
 
   // Track current color state
   int curR = -1, curG = -1, curB = -1;
@@ -449,7 +507,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
         // Emit with RLE on (UTF-8 character, color) runs using SIMD-derived indices
         for (int i = 0; i < 16;) {
           const uint8_t char_idx = char_idx_buf[i]; // From vqtbl4q_u8 lookup
-          const utf8_char_t *char_info = &utf8_char_cache[char_idx];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
           int j = i + 1;
@@ -481,7 +539,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
         // Truecolor mode processing with UTF-8 characters using SIMD-derived indices
         for (int i = 0; i < 16;) {
           const uint8_t char_idx = char_idx_buf[i]; // From vqtbl4q_u8 lookup
-          const utf8_char_t *char_info = &utf8_char_cache[char_idx];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t r = rbuf[i];
           const uint8_t g = gbuf_green[i];
           const uint8_t b = bbuf[i];
@@ -523,8 +581,8 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       uint32_t R = p->r, G = p->g, B = p->b;
       uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128u) >> 8);
       uint8_t luma_idx = Y >> 2;                    // 0-63 index
-      uint8_t char_idx = char_index_ramp[luma_idx]; // Map to character index
-      const utf8_char_t *char_info = &utf8_char_cache[char_idx];
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index
+      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
 
       if (use_256color) {
         // 256-color scalar tail
@@ -535,7 +593,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + 128u) >> 8);
-          uint8_t char_idx2 = char_index_ramp[Y2 >> 2];
+          uint8_t char_idx2 = utf8_cache->char_index_ramp[Y2 >> 2];
           uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
           if (char_idx2 != char_idx || color_idx2 != color_idx)
             break;
@@ -569,7 +627,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
-          uint8_t char_idx2 = char_index_ramp[Y2 >> 2];
+          uint8_t char_idx2 = utf8_cache->char_index_ramp[Y2 >> 2];
           if (char_idx2 != char_idx || R2 != R || G2 != G || B2 != B)
             break;
           j++;
