@@ -292,7 +292,7 @@ char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars) {
 
     // Build character index ramp (same logic as NEON uses)
     size_t palette_len = strlen(ascii_chars);
-    
+
     for (int i = 0; i < 64; i++) {
       int char_idx = palette_len > 1 ? (i * ((int)palette_len - 1) + 31) / 63 : 0;
       if (char_idx >= (int)palette_len) {
@@ -319,7 +319,7 @@ char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars) {
 // Central cleanup function for all SIMD caches
 void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
-  
+
   // Destroy shared character index ramp cache
   pthread_rwlock_wrlock(&g_char_ramp_cache_rwlock);
   if (g_char_ramp_cache_table) {
@@ -328,7 +328,7 @@ void simd_caches_destroy_all(void) {
     log_debug("CHAR_RAMP_CACHE: Destroyed shared character index ramp cache");
   }
   pthread_rwlock_unlock(&g_char_ramp_cache_rwlock);
-  
+
   // Destroy shared UTF-8 palette cache
   pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {

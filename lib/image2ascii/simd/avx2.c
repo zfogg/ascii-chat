@@ -41,13 +41,13 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   // Direct processing like NEON (but use scalar since AVX2 deinterleaving is complex)
   for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row = &pixels[y * w];
-    
+
     // Just do what scalar does but ensure it's efficient
     for (int x = 0; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
       const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-      
+
       // Fast character emission
       if (char_info->byte_len == 1) {
         *pos++ = char_info->utf8_bytes[0];
@@ -105,12 +105,12 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   for (int y = 0; y < height; y++) {
     const rgb_pixel_t *row = &pixels_data[y * width];
-    
+
     for (int x = 0; x < width; x++) {
       const rgb_pixel_t pixel = row[x];
       const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
       const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-      
+
       // Add color codes using output buffer system
       if (use_256color) {
         uint8_t color_idx = (uint8_t)(16 + 36 * (pixel.r / 51) + 6 * (pixel.g / 51) + (pixel.b / 51));
@@ -118,7 +118,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       } else {
         emit_set_truecolor_fg(&ob, pixel.r, pixel.g, pixel.b);
       }
-      
+
       // Add character
       ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
     }
