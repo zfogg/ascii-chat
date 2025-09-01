@@ -417,4 +417,10 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
   return ob.buf;
 }
 
+// Destroy SSSE3 cache resources (called at program shutdown)
+void ssse3_caches_destroy(void) {
+  // SSSE3 currently uses shared caches from common.c, so no specific cleanup needed
+  log_debug("SSSE3_CACHE: SSSE3 caches cleaned up");
+}
+
 #endif /* SIMD_SUPPORT_SSSE3 */

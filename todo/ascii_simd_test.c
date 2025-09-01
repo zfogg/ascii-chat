@@ -22,6 +22,7 @@
 #include "../lib/ascii.h"
 #include "../lib/image.h"
 #include "../lib/webcam.h"
+#include "../lib/terminal_detect.h"
 
 // Image source options
 typedef enum {
@@ -98,10 +99,11 @@ void test_ascii_correctness(void) {
         bool config_passed = true;
         char *results[3] = {NULL};
 
+        // Build default luminance palette for test (move outside loop)
+        char test_luminance_palette[256];
+        build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+        
         for (int run = 0; run < 3; run++) {
-            // Build default luminance palette for test
-            char test_luminance_palette[256];
-            build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
 
             results[run] = ascii_convert(test_image,
                                        test_configs[cfg_idx].width,
@@ -187,6 +189,10 @@ void test_color_correctness(void) {
             printf("Testing: %s (%dx%d)\n", test_modes[mode_idx].name, width, height);
             total++;
 
+            // Build default luminance palette for this test
+            char test_luminance_palette[256];
+            build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+
             // Create test image
             image_t *test_image = image_new(width, height);
             if (!test_image) {
@@ -209,14 +215,29 @@ void test_color_correctness(void) {
             char *simd_result = NULL;
             bool test_passed = false;
 
+            // Benchmark actual scalar functions vs SIMD functions (proper comparison)
             if (test_modes[mode_idx].is_color) {
-                // Test color functions - test 256-color mode (optimized function)
-                scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE);
-                simd_result = image_print_color_simd(test_image, false, true, DEFAULT_ASCII_PALETTE); // FG mode, 256-color (optimized!)
+                // Test color functions
+                scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE); // Pure scalar
+                
+                // SIMD with same capabilities as scalar
+                terminal_capabilities_t caps = {0};
+                caps.color_level = TERM_COLOR_TRUECOLOR;
+                caps.color_count = 16777216;
+                caps.render_mode = RENDER_MODE_FOREGROUND;
+                caps.capabilities = TERM_CAP_COLOR_TRUE;
+                simd_result = image_print_with_capabilities(test_image, &caps, DEFAULT_ASCII_PALETTE, test_luminance_palette);
             } else {
-                // Test monochrome functions
-                scalar_result = image_print(test_image, DEFAULT_ASCII_PALETTE);
-                simd_result = image_print_simd(test_image, DEFAULT_ASCII_PALETTE);
+                // Test monochrome functions  
+                scalar_result = image_print(test_image, DEFAULT_ASCII_PALETTE); // Pure scalar
+                
+                // SIMD with same capabilities as scalar
+                terminal_capabilities_t caps = {0};
+                caps.color_level = TERM_COLOR_NONE;
+                caps.color_count = 2;
+                caps.render_mode = RENDER_MODE_FOREGROUND;
+                caps.capabilities = 0;
+                simd_result = image_print_with_capabilities(test_image, &caps, DEFAULT_ASCII_PALETTE, test_luminance_palette);
             }
 
             if (!scalar_result || !simd_result) {

@@ -10,4 +10,7 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
 char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                          const char *ascii_chars);
 
+// Cache cleanup
+void sve_caches_destroy(void);
+
 #endif /* SIMD_SUPPORT_SVE */
