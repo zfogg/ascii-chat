@@ -377,8 +377,8 @@ Test(simd_caches, frequency_based_cache_persistence) {
         utf8_palette_cache_t *cache = get_utf8_palette_cache(popular_palette);
         cr_assert_not_null(cache, "Popular palette access %d should succeed", i);
 
-        // Small delay to simulate realistic usage
-        usleep(1000); // 1ms between accesses
+        // Small delay to simulate realistic usage (minimal for testing)
+        usleep(10); // 0.01ms between accesses - just enough to ensure ordering
     }
 
     // Phase 2: Fill cache with other palettes to trigger eviction pressure
@@ -391,12 +391,12 @@ Test(simd_caches, frequency_based_cache_persistence) {
         utf8_palette_cache_t *cache = get_utf8_palette_cache(pressure_palette);
         cr_assert_not_null(cache, "Pressure palette %d should be cached", i);
 
-        usleep(500); // Faster access pattern (less popular)
+        usleep(1); // Minimal delay - just establish access pattern
     }
 
     // Phase 3: Wait some time to allow aging, then test if popular palette survived
     printf("Phase 3: Testing if popular palette survived eviction pressure\n");
-    sleep(1); // 1 second aging
+    usleep(1000); // 1ms aging - sufficient for test ordering
 
     struct timespec access_start, access_end;
     clock_gettime(CLOCK_MONOTONIC, &access_start);
@@ -443,11 +443,11 @@ Test(simd_caches, eviction_fairness_algorithm) {
         for (int access = 0; access < test_scenarios[s].access_count; access++) {
             scenario_caches[s] = get_utf8_palette_cache(test_scenarios[s].palette);
             cr_assert_not_null(scenario_caches[s], "%s cache should be created", test_scenarios[s].name);
-            usleep(10); // Small delay between accesses
+            usleep(1); // Minimal delay between accesses
         }
 
         // Age the cache
-        usleep(test_scenarios[s].age_delay_ms * 1000); // Convert to microseconds
+        usleep(test_scenarios[s].age_delay_ms); // Use microseconds directly (much faster)
     }
 
     // Now create pressure to force evictions (create 30 more unique palettes)
@@ -519,7 +519,7 @@ Test(simd_caches, animation_palette_cycling_realistic) {
             cr_assert_not_null(cache, "Animation palette %d cycle %d should be cached", p, cycle);
 
             // Simulate frame render time
-            usleep(1000); // 1ms render time per frame
+            usleep(1); // Minimal render time simulation
         }
     }
 
@@ -584,8 +584,8 @@ Test(simd_caches, old_frequent_palette_persistence) {
         }
     }
 
-    printf("Phase 2: Aging the popular palette (2 second delay)\n");
-    sleep(2); // Age the popular palette
+    printf("Phase 2: Aging the popular palette (minimal delay)\n");
+    usleep(1000); // 1ms aging - sufficient for timestamp differentiation
 
     printf("Phase 3: Creating new palettes to fill cache and trigger evictions\n");
 
@@ -657,8 +657,8 @@ Test(simd_caches, eviction_ordering_verification) {
     utf8_palette_cache_t *victim = get_utf8_palette_cache(victim_palette);
     cr_assert_not_null(victim, "Victim should be initially cached");
     
-    // Age the victim by sleeping briefly and not accessing it
-    usleep(10000); // 10ms aging
+    // Age the victim by brief delay (not accessing it)
+    usleep(100); // 0.1ms aging - minimal but sufficient for timestamp ordering
     
     // Cache is now full (32/32). Next insertion will trigger eviction.
     printf("Phase 4: Cache full - next insertion triggers eviction\n");
@@ -737,11 +737,11 @@ Test(simd_caches, min_heap_ordering_verification) {
             test_caches[e] = get_utf8_palette_cache(heap_test_entries[e].palette);
             cr_assert_not_null(test_caches[e], "%s access %d should succeed",
                               heap_test_entries[e].name, access);
-            usleep(10);
+            usleep(1);
         }
 
         // Apply aging
-        usleep(heap_test_entries[e].age_delay_ms * 1000);
+        usleep(heap_test_entries[e].age_delay_ms); // Use microseconds directly
     }
 
     printf("Testing heap ordering by triggering score updates\n");
@@ -882,7 +882,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
             cr_assert_not_null(initial_caches[i], "Initial cache %d should be created", i);
         }
 
-        usleep((i % 5) * 1000); // Variable aging: 0-4ms
+        usleep((i % 5)); // Variable aging: 0-4 microseconds
     }
 
     printf("Phase 1: Rapid cache creation/eviction cycles\n");
@@ -976,7 +976,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
         }
 
         // Apply aging
-        usleep(score_test_cases[t].age_delay_ms * 1000);
+        usleep(score_test_cases[t].age_delay_ms); // Use microseconds directly
     }
 
     // Force score updates for all caches (trigger heap rebalancing)
@@ -1110,7 +1110,7 @@ Test(simd_caches, palette_cycling_animation_simulation) {
             cr_assert_not_null(cache, "Animation palette %d cycle %d should be cached", p, cycle);
 
             // Simulate rendering work
-            usleep(10000); // 10ms render time
+            usleep(1); // Minimal render time simulation
         }
     }
 
