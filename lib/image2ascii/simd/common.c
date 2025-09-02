@@ -92,8 +92,8 @@ uint64_t get_current_time_ns(void) {
   return now.tv_sec * 1000000000ULL + now.tv_nsec;
 }
 
-double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count,
-                                      uint64_t creation_time, uint64_t current_time) {
+double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
+                                      uint64_t current_time) {
   uint64_t age_seconds = (current_time - last_access_time) / 1000000000ULL;
   uint64_t total_age_seconds = (current_time - creation_time) / 1000000000ULL;
 
@@ -116,7 +116,8 @@ double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access
 // Palette hash cache temporarily disabled
 uint32_t get_palette_hash_cached(const char *palette) {
   // Simple fallback: just compute CRC32 directly (optimize later)
-  if (!palette || strlen(palette) == 0) return 0;
+  if (!palette || strlen(palette) == 0)
+    return 0;
   return asciichat_crc32(palette, strlen(palette));
 }
 
@@ -129,8 +130,8 @@ static hashtable_t *g_utf8_cache_table = NULL;
 static pthread_rwlock_t g_utf8_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 // Min-heap for O(log n) intelligent eviction
-static utf8_palette_cache_t **g_utf8_heap = NULL;         // Min-heap array
-static size_t g_utf8_heap_size = 0;                       // Current entries in heap
+static utf8_palette_cache_t **g_utf8_heap = NULL;                 // Min-heap array
+static size_t g_utf8_heap_size = 0;                               // Current entries in heap
 static const size_t g_utf8_heap_capacity = HASHTABLE_MAX_ENTRIES; // Max heap size
 
 // Character index ramp cache system with min-heap eviction
@@ -146,9 +147,9 @@ static const size_t g_char_ramp_heap_capacity = HASHTABLE_MAX_ENTRIES;
 static void init_utf8_cache_system(void) {
   if (!g_utf8_cache_table) {
     g_utf8_cache_table = hashtable_create();
-    
+
     // Initialize min-heap for eviction
-    SAFE_MALLOC(g_utf8_heap, g_utf8_heap_capacity * sizeof(utf8_palette_cache_t*), utf8_palette_cache_t**);
+    SAFE_MALLOC(g_utf8_heap, g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
     g_utf8_heap_size = 0;
   }
 }
@@ -178,7 +179,8 @@ static void utf8_heap_swap(size_t i, size_t j) {
 static void utf8_heap_bubble_up(size_t index) {
   while (index > 0) {
     size_t parent = (index - 1) / 2;
-    if (g_utf8_heap[index]->cached_score >= g_utf8_heap[parent]->cached_score) break;
+    if (g_utf8_heap[index]->cached_score >= g_utf8_heap[parent]->cached_score)
+      break;
     utf8_heap_swap(index, parent);
     index = parent;
   }
@@ -197,7 +199,8 @@ static void utf8_heap_bubble_down(size_t index) {
       smallest = right;
     }
 
-    if (smallest == index) break;
+    if (smallest == index)
+      break;
     utf8_heap_swap(index, smallest);
     index = smallest;
   }
@@ -264,8 +267,8 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
       uint64_t current_time = get_current_time_ns();
       uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
 
-      log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)",
-                victim_key, victim_age, victim_access_count);
+      log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
+                victim_age, victim_access_count);
 
       hashtable_remove(g_utf8_cache_table, victim_key);
       SAFE_FREE(victim_cache);
@@ -296,8 +299,8 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
   uint64_t current_time = get_current_time_ns();
   uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
 
-  log_debug("UTF8_CACHE_EVICTION: Min-heap evicting worst cache hash=0x%x (score=%.3f, age=%lus, count=%u)",
-            victim_key, victim_cache->cached_score, victim_age, victim_access_count);
+  log_debug("UTF8_CACHE_EVICTION: Min-heap evicting worst cache hash=0x%x (score=%.3f, age=%lus, count=%u)", victim_key,
+            victim_cache->cached_score, victim_age, victim_access_count);
 
   // Remove from hashtable and free
   hashtable_remove(g_utf8_cache_table, victim_key);
@@ -327,7 +330,8 @@ static void char_ramp_heap_swap(size_t i, size_t j) {
 static void char_ramp_heap_bubble_up(size_t index) {
   while (index > 0) {
     size_t parent = (index - 1) / 2;
-    if (g_char_ramp_heap[index]->cached_score >= g_char_ramp_heap[parent]->cached_score) break;
+    if (g_char_ramp_heap[index]->cached_score >= g_char_ramp_heap[parent]->cached_score)
+      break;
     char_ramp_heap_swap(index, parent);
     index = parent;
   }
@@ -339,14 +343,17 @@ static void char_ramp_heap_bubble_down(size_t index) {
     size_t right = 2 * index + 2;
     size_t smallest = index;
 
-    if (left < g_char_ramp_heap_size && g_char_ramp_heap[left]->cached_score < g_char_ramp_heap[smallest]->cached_score) {
+    if (left < g_char_ramp_heap_size &&
+        g_char_ramp_heap[left]->cached_score < g_char_ramp_heap[smallest]->cached_score) {
       smallest = left;
     }
-    if (right < g_char_ramp_heap_size && g_char_ramp_heap[right]->cached_score < g_char_ramp_heap[smallest]->cached_score) {
+    if (right < g_char_ramp_heap_size &&
+        g_char_ramp_heap[right]->cached_score < g_char_ramp_heap[smallest]->cached_score) {
       smallest = right;
     }
 
-    if (smallest == index) break;
+    if (smallest == index)
+      break;
     char_ramp_heap_swap(index, smallest);
     index = smallest;
   }
@@ -398,8 +405,8 @@ static bool try_insert_with_eviction_char_ramp(uint32_t hash, char_index_ramp_ca
       uint64_t current_time = get_current_time_ns();
       uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
 
-      log_debug("CHAR_RAMP_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)",
-                victim_key, victim_age, victim_access_count);
+      log_debug("CHAR_RAMP_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
+                victim_age, victim_access_count);
 
       hashtable_remove(g_char_ramp_cache_table, victim_key);
       SAFE_FREE(victim_cache);
@@ -472,8 +479,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
         // Recalculate score and update heap position
         uint64_t last_access = atomic_load(&cache->last_access_time);
         uint32_t access_count = atomic_load(&cache->access_count);
-        double new_score = calculate_cache_eviction_score(last_access, access_count,
-                                                          cache->creation_time, current_time);
+        double new_score =
+            calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
         utf8_heap_update_score(cache, new_score);
 
         pthread_rwlock_unlock(&g_utf8_cache_rwlock);
@@ -669,7 +676,8 @@ char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars) {
     g_char_ramp_cache_table = hashtable_create();
 
     // Initialize min-heap for eviction
-    SAFE_MALLOC(g_char_ramp_heap, g_char_ramp_heap_capacity * sizeof(char_index_ramp_cache_t*), char_index_ramp_cache_t**);
+    SAFE_MALLOC(g_char_ramp_heap, g_char_ramp_heap_capacity * sizeof(char_index_ramp_cache_t *),
+                char_index_ramp_cache_t **);
     g_char_ramp_heap_size = 0;
   }
 
@@ -701,7 +709,7 @@ char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars) {
     atomic_store(&cache->last_access_time, current_time);
     atomic_store(&cache->access_count, 1); // First access
     cache->creation_time = current_time;
-    cache->heap_index = 0; // Will be set by heap_insert
+    cache->heap_index = 0;     // Will be set by heap_insert
     cache->cached_score = 0.0; // Will be calculated by heap_insert
 
     // Store in hashtable with guaranteed min-heap eviction support

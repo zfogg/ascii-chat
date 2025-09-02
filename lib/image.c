@@ -253,9 +253,9 @@ char *image_print(const image_t *p, const char *palette) {
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2; // 0-63 index (same as SIMD)
+      uint8_t luma_idx = safe_luminance >> 2;                        // 0-63 index (same as SIMD)
       uint8_t char_idx = char_ramp_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-      
+
       // Use same 64-entry cache as SIMD for consistency
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
@@ -266,7 +266,8 @@ char *image_print(const image_t *p, const char *palette) {
         const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) >> 8;
         int next_safe_luminance = (next_luminance > 255) ? 255 : next_luminance;
         uint8_t next_luma_idx = next_safe_luminance >> 2; // 0-63 index (same as SIMD)
-        uint8_t next_char_idx = char_ramp_cache->char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
+        uint8_t next_char_idx =
+            char_ramp_cache->char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
         if (next_char_idx != char_idx)
           break;
         j++;
@@ -608,16 +609,16 @@ char *image_print_16color(const image_t *p, const char *palette) {
         log_error("Failed to get character index ramp cache or UTF-8 cache");
         return NULL;
       }
-      
+
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2; // 0-63 index (same as SIMD)
+      uint8_t luma_idx = safe_luminance >> 2;                        // 0-63 index (same as SIMD)
       uint8_t char_idx = char_ramp_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-      
+
       // Use direct palette character lookup (same as SIMD would do)
       char ascii_char = palette[char_idx];
       const utf8_char_t *char_info = &utf8_cache->cache[ascii_char];
-      
+
       if (char_info) {
         // Copy UTF-8 character bytes
         for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
@@ -702,16 +703,16 @@ char *image_print_16color_dithered(const image_t *p, const char *palette) {
         log_error("Failed to get character index ramp cache or UTF-8 cache");
         return NULL;
       }
-      
+
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2; // 0-63 index (same as SIMD)
+      uint8_t luma_idx = safe_luminance >> 2;                        // 0-63 index (same as SIMD)
       uint8_t char_idx = char_ramp_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-      
+
       // Use direct palette character lookup (same as SIMD would do)
       char ascii_char = palette[char_idx];
       const utf8_char_t *char_info = &utf8_cache->cache[ascii_char];
-      
+
       if (char_info) {
         // Copy UTF-8 character bytes
         for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
@@ -813,16 +814,16 @@ char *image_print_16color_dithered_with_background(const image_t *p, bool use_ba
         log_error("Failed to get character index ramp cache or UTF-8 cache");
         return NULL;
       }
-      
+
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2; // 0-63 index (same as SIMD)
+      uint8_t luma_idx = safe_luminance >> 2;                        // 0-63 index (same as SIMD)
       uint8_t char_idx = char_ramp_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-      
+
       // Use direct palette character lookup (same as SIMD would do)
       char ascii_char = palette[char_idx];
       const utf8_char_t *char_info = &utf8_cache->cache[ascii_char];
-      
+
       if (char_info) {
         // Copy UTF-8 character bytes
         for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
