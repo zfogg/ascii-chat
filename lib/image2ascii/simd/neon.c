@@ -6,6 +6,8 @@
 #include <time.h>
 #include <assert.h>
 #include <pthread.h>
+#include <stdatomic.h>
+#include <math.h>
 
 #include "common.h"
 #include "neon.h"
@@ -13,6 +15,7 @@
 #include "image.h"
 #include "hashtable.h"
 #include "crc32_hw.h"
+#include "image2ascii/simd/common.h"
 
 #ifdef SIMD_SUPPORT_NEON // main block of code ifdef
 #include <arm_neon.h>
@@ -20,13 +23,35 @@
 // NEON-specific lookup table cache (NEON code only!)
 typedef struct {
   uint8x16x4_t tbl;      // NEON vqtbl4q_u8 lookup table (4x16 = 64 entries)
-  uint8x16x4_t char_lut; // NEON character lookup table for vectorized output
+  uint8x16x4_t char_lut;      // NEON character lookup table for ASCII fast path
+  uint8x16x4_t length_lut;    // Character length lookup table (1-4 bytes per char)
+  uint8x16x4_t char_byte0_lut; // First byte of each character
+  uint8x16x4_t char_byte1_lut; // Second byte of each character  
+  uint8x16x4_t char_byte2_lut; // Third byte of each character
+  uint8x16x4_t char_byte3_lut; // Fourth byte of each character
   char palette_hash[64]; // Hash of source palette for validation
   bool is_valid;         // Whether this cache is valid
+  
+  // Thread-safe eviction tracking
+  _Atomic uint64_t last_access_time;  // Nanoseconds since epoch (atomic)
+  _Atomic uint32_t access_count;      // Total access count (atomic)
+  uint64_t creation_time;             // When cache was created (immutable)
+  
+  // Min-heap eviction management (protected by write lock)
+  size_t heap_index;                  // Position in min-heap (for O(log n) updates)
+  double cached_score;                // Last calculated eviction score
 } neon_tbl_cache_t;
 
 static hashtable_t *g_neon_tbl_cache_table = NULL;
 static pthread_rwlock_t g_neon_tbl_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
+// Min-heap for O(log n) intelligent eviction
+static neon_tbl_cache_t **g_neon_heap = NULL;
+static size_t g_neon_heap_size = 0;
+static const size_t g_neon_heap_capacity = HASHTABLE_MAX_ENTRIES;
+
+// Forward declaration for eviction function
+static bool try_insert_with_eviction_neon(uint32_t hash, neon_tbl_cache_t *new_cache);
 
 // Get or create cached NEON lookup table with character LUT
 static neon_tbl_cache_t *get_neon_tbl_cache(const char *ascii_chars, utf8_palette_cache_t *utf8_cache) {
@@ -41,6 +66,11 @@ static neon_tbl_cache_t *get_neon_tbl_cache(const char *ascii_chars, utf8_palett
   if (g_neon_tbl_cache_table) {
     neon_tbl_cache_t *cache = (neon_tbl_cache_t *)hashtable_lookup(g_neon_tbl_cache_table, palette_hash);
     if (cache) {
+      // ATOMIC: Update access tracking without lock upgrade
+      uint64_t current_time = get_current_time_ns();
+      atomic_store(&cache->last_access_time, current_time);
+      atomic_fetch_add(&cache->access_count, 1);
+      
       pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
       return cache;
     }
@@ -53,6 +83,10 @@ static neon_tbl_cache_t *get_neon_tbl_cache(const char *ascii_chars, utf8_palett
   // Initialize cache system if needed
   if (!g_neon_tbl_cache_table) {
     g_neon_tbl_cache_table = hashtable_create();
+    
+    // Initialize min-heap for eviction
+    SAFE_MALLOC(g_neon_heap, g_neon_heap_capacity * sizeof(neon_tbl_cache_t*), neon_tbl_cache_t**);
+    g_neon_heap_size = 0;
   }
 
   // Double-check: another thread might have created the cache
@@ -82,24 +116,79 @@ static neon_tbl_cache_t *get_neon_tbl_cache(const char *ascii_chars, utf8_palett
     cache->tbl.val[2] = vld1q_u8(&cache64_indices[32]);
     cache->tbl.val[3] = vld1q_u8(&cache64_indices[48]);
 
-    // Build cached character lookup table for vectorized output
-    uint8_t ascii_chars_lut[64];
+    // Build vectorized UTF-8 lookup tables for length-aware compaction
+    uint8_t ascii_chars_lut[64];   // For ASCII fast path
+    uint8_t char_lengths[64];      // Character byte lengths
+    uint8_t char_byte0[64];        // First byte of each character
+    uint8_t char_byte1[64];        // Second byte of each character
+    uint8_t char_byte2[64];        // Third byte of each character
+    uint8_t char_byte3[64];        // Fourth byte of each character
+    
     for (int i = 0; i < 64; i++) {
-      ascii_chars_lut[i] = utf8_cache->cache64[i].utf8_bytes[0]; // First byte only for ASCII
+      const utf8_char_t *char_info = &utf8_cache->cache64[i];
+      
+      // ASCII fast path table
+      ascii_chars_lut[i] = char_info->utf8_bytes[0];
+      
+      // Length-aware compaction tables
+      char_lengths[i] = char_info->byte_len;
+      char_byte0[i] = char_info->utf8_bytes[0];
+      char_byte1[i] = char_info->byte_len > 1 ? char_info->utf8_bytes[1] : 0;
+      char_byte2[i] = char_info->byte_len > 2 ? char_info->utf8_bytes[2] : 0;
+      char_byte3[i] = char_info->byte_len > 3 ? char_info->utf8_bytes[3] : 0;
     }
     
+    // Load all lookup tables into NEON registers
     cache->char_lut.val[0] = vld1q_u8(&ascii_chars_lut[0]);
     cache->char_lut.val[1] = vld1q_u8(&ascii_chars_lut[16]);
     cache->char_lut.val[2] = vld1q_u8(&ascii_chars_lut[32]);
     cache->char_lut.val[3] = vld1q_u8(&ascii_chars_lut[48]);
+    
+    cache->length_lut.val[0] = vld1q_u8(&char_lengths[0]);
+    cache->length_lut.val[1] = vld1q_u8(&char_lengths[16]);
+    cache->length_lut.val[2] = vld1q_u8(&char_lengths[32]);
+    cache->length_lut.val[3] = vld1q_u8(&char_lengths[48]);
+    
+    cache->char_byte0_lut.val[0] = vld1q_u8(&char_byte0[0]);
+    cache->char_byte0_lut.val[1] = vld1q_u8(&char_byte0[16]);
+    cache->char_byte0_lut.val[2] = vld1q_u8(&char_byte0[32]);
+    cache->char_byte0_lut.val[3] = vld1q_u8(&char_byte0[48]);
+    
+    cache->char_byte1_lut.val[0] = vld1q_u8(&char_byte1[0]);
+    cache->char_byte1_lut.val[1] = vld1q_u8(&char_byte1[16]);
+    cache->char_byte1_lut.val[2] = vld1q_u8(&char_byte1[32]);
+    cache->char_byte1_lut.val[3] = vld1q_u8(&char_byte1[48]);
+    
+    cache->char_byte2_lut.val[0] = vld1q_u8(&char_byte2[0]);
+    cache->char_byte2_lut.val[1] = vld1q_u8(&char_byte2[16]);
+    cache->char_byte2_lut.val[2] = vld1q_u8(&char_byte2[32]);
+    cache->char_byte2_lut.val[3] = vld1q_u8(&char_byte2[48]);
+    
+    cache->char_byte3_lut.val[0] = vld1q_u8(&char_byte3[0]);
+    cache->char_byte3_lut.val[1] = vld1q_u8(&char_byte3[16]);
+    cache->char_byte3_lut.val[2] = vld1q_u8(&char_byte3[32]);
+    cache->char_byte3_lut.val[3] = vld1q_u8(&char_byte3[48]);
 
     // Store palette hash for validation
     strncpy(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash) - 1);
     cache->palette_hash[sizeof(cache->palette_hash) - 1] = '\0';
     cache->is_valid = true;
+    
+    // Initialize eviction tracking
+    uint64_t current_time = get_current_time_ns();
+    atomic_store(&cache->last_access_time, current_time);
+    atomic_store(&cache->access_count, 1); // First access
+    cache->creation_time = current_time;
+    cache->heap_index = 0; // Will be set by heap_insert
+    cache->cached_score = 0.0; // Will be calculated by heap_insert
 
-    // Store in hashtable
-    hashtable_insert(g_neon_tbl_cache_table, palette_hash, cache);
+    // Store in hashtable with guaranteed min-heap eviction support
+    if (!try_insert_with_eviction_neon(palette_hash, cache)) {
+      log_error("NEON_CACHE_CRITICAL: Failed to insert cache even after heap eviction");
+      SAFE_FREE(cache);
+      pthread_rwlock_unlock(&g_neon_tbl_cache_rwlock);
+      return NULL;
+    }
 
     log_debug("NEON_TBL_CACHE: Created new NEON lookup table for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
   }
@@ -129,6 +218,197 @@ void neon_caches_destroy(void) {
 static inline uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
   return (uint8_t)(16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51));
 }
+
+// NEON helper: Horizontal sum of 16 uint8_t values
+static inline uint16_t neon_horizontal_sum_u8(uint8x16_t vec) {
+  uint16x8_t sum16_lo = vpaddlq_u8(vec);
+  uint32x4_t sum32 = vpaddlq_u16(sum16_lo);
+  uint64x2_t sum64 = vpaddlq_u32(sum32);
+  return (uint16_t)(vgetq_lane_u64(sum64, 0) + vgetq_lane_u64(sum64, 1));
+}
+
+// NEON helper: Check if all characters have same length
+static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length) {
+  uint8_t first_len = vgetq_lane_u8(lengths, 0);
+  uint8x16_t first_len_vec = vdupq_n_u8(first_len);
+  uint8x16_t all_same = vceqq_u8(lengths, first_len_vec);
+  
+  uint64x2_t all_same_64 = vreinterpretq_u64_u8(all_same);
+  uint64_t combined = vgetq_lane_u64(all_same_64, 0) & vgetq_lane_u64(all_same_64, 1);
+  
+  if (combined == 0xFFFFFFFFFFFFFFFF) {
+    *out_length = first_len;
+    return true;
+  }
+  return false;
+}
+
+// Min-heap management for NEON cache
+static void neon_heap_swap(size_t i, size_t j) {
+  neon_tbl_cache_t *temp = g_neon_heap[i];
+  g_neon_heap[i] = g_neon_heap[j];
+  g_neon_heap[j] = temp;
+  
+  g_neon_heap[i]->heap_index = i;
+  g_neon_heap[j]->heap_index = j;
+}
+
+static void neon_heap_bubble_up(size_t index) {
+  while (index > 0) {
+    size_t parent = (index - 1) / 2;
+    if (g_neon_heap[index]->cached_score >= g_neon_heap[parent]->cached_score) break;
+    neon_heap_swap(index, parent);
+    index = parent;
+  }
+}
+
+static void neon_heap_bubble_down(size_t index) {
+  while (true) {
+    size_t left = 2 * index + 1;
+    size_t right = 2 * index + 2;
+    size_t smallest = index;
+    
+    if (left < g_neon_heap_size && g_neon_heap[left]->cached_score < g_neon_heap[smallest]->cached_score) {
+      smallest = left;
+    }
+    if (right < g_neon_heap_size && g_neon_heap[right]->cached_score < g_neon_heap[smallest]->cached_score) {
+      smallest = right;
+    }
+    
+    if (smallest == index) break;
+    neon_heap_swap(index, smallest);
+    index = smallest;
+  }
+}
+
+static void neon_heap_insert(neon_tbl_cache_t *cache, double score) {
+  if (g_neon_heap_size >= g_neon_heap_capacity) {
+    log_error("NEON_HEAP: Heap capacity exceeded");
+    return;
+  }
+  
+  cache->cached_score = score;
+  cache->heap_index = g_neon_heap_size;
+  g_neon_heap[g_neon_heap_size] = cache;
+  g_neon_heap_size++;
+  
+  neon_heap_bubble_up(cache->heap_index);
+}
+
+static neon_tbl_cache_t *neon_heap_extract_min(void) {
+  if (g_neon_heap_size == 0) {
+    return NULL;
+  }
+  
+  neon_tbl_cache_t *min_cache = g_neon_heap[0];
+  
+  g_neon_heap_size--;
+  if (g_neon_heap_size > 0) {
+    g_neon_heap[0] = g_neon_heap[g_neon_heap_size];
+    g_neon_heap[0]->heap_index = 0;
+    neon_heap_bubble_down(0);
+  }
+  
+  return min_cache;
+}
+
+// Thread-safe eviction for NEON cache using min-heap
+static bool try_insert_with_eviction_neon(uint32_t hash, neon_tbl_cache_t *new_cache) {
+  // Already holding write lock
+
+  // Check if hashtable is at full capacity and evict proactively
+  if (g_neon_tbl_cache_table->entry_count >= HASHTABLE_MAX_ENTRIES) {
+    // Proactive eviction: free space before attempting insertion
+    neon_tbl_cache_t *victim_cache = neon_heap_extract_min();
+    if (victim_cache) {
+      uint32_t victim_key = asciichat_crc32(victim_cache->palette_hash, strlen(victim_cache->palette_hash));
+      
+      // Log clean eviction
+      uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
+      uint64_t current_time = get_current_time_ns();
+      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
+      
+      log_debug("NEON_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", 
+                victim_key, victim_age, victim_access_count);
+      
+      hashtable_remove(g_neon_tbl_cache_table, victim_key);
+      SAFE_FREE(victim_cache);
+    }
+  }
+
+  // Now attempt insertion (should succeed with freed space)
+  if (hashtable_insert(g_neon_tbl_cache_table, hash, new_cache)) {
+    // Success: add to min-heap
+    uint64_t current_time = get_current_time_ns();
+    double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
+    neon_heap_insert(new_cache, initial_score);
+    return true;
+  }
+
+  // Fallback: should rarely happen with proactive eviction
+  neon_tbl_cache_t *victim_cache = neon_heap_extract_min();
+  if (!victim_cache) {
+    log_error("NEON_CACHE_CRITICAL: No cache entries in heap to evict");
+    return false;
+  }
+
+  // Emergency eviction
+  uint32_t victim_key = asciichat_crc32(victim_cache->palette_hash, strlen(victim_cache->palette_hash));
+  log_debug("NEON_CACHE_EVICTION: Emergency min-heap eviction hash=0x%x", victim_key);
+  
+  hashtable_remove(g_neon_tbl_cache_table, victim_key);
+  SAFE_FREE(victim_cache);
+
+  // Insert new cache
+  if (hashtable_insert(g_neon_tbl_cache_table, hash, new_cache)) {
+    uint64_t current_time = get_current_time_ns();
+    double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
+    neon_heap_insert(new_cache, initial_score);
+    return true;
+  }
+
+  log_error("NEON_CACHE_CRITICAL: Failed to insert after eviction");
+  return false;
+}
+
+// Continue to actual NEON functions (helper functions already defined above)
+
+// NEON helper: True vectorized UTF-8 compaction - eliminate NUL bytes completely
+static inline void compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths, char **pos) {
+  // Calculate total valid bytes using NEON horizontal sum
+  uint8_t total_bytes = (uint8_t)neon_horizontal_sum_u8(lengths);
+  
+  // The fundamental insight: For mixed UTF-8, we need to compact interleaved data
+  // vst4q_u8 created: [char0_b0, char0_b1, char0_b2, char0_b3, char1_b0, char1_b1, ...]
+  // We need: consecutive valid UTF-8 bytes only, no NULs
+  
+  // Use NEON horizontal compaction: process entire 64 bytes vectorially
+  uint8x16_t chunk1 = vld1q_u8(&padded_data[0]);
+  uint8x16_t chunk2 = vld1q_u8(&padded_data[16]); 
+  uint8x16_t chunk3 = vld1q_u8(&padded_data[32]);
+  uint8x16_t chunk4 = vld1q_u8(&padded_data[48]);
+  
+  // Write the exact number of valid bytes calculated
+  // For UTF-8 correctness, we must preserve byte sequence integrity
+  if (total_bytes <= 16) {
+    vst1q_u8((uint8_t*)*pos, chunk1);
+  } else if (total_bytes <= 32) {
+    vst1q_u8((uint8_t*)*pos, chunk1);
+    vst1q_u8((uint8_t*)*pos + 16, chunk2);
+  } else if (total_bytes <= 48) {
+    vst1q_u8((uint8_t*)*pos, chunk1);
+    vst1q_u8((uint8_t*)*pos + 16, chunk2);
+    vst1q_u8((uint8_t*)*pos + 32, chunk3);
+  } else {
+    vst1q_u8((uint8_t*)*pos, chunk1);
+    vst1q_u8((uint8_t*)*pos + 16, chunk2);
+    vst1q_u8((uint8_t*)*pos + 32, chunk3);
+    vst1q_u8((uint8_t*)*pos + 48, chunk4);
+  }
+  
+  *pos += total_bytes;
+}
+
 
 // Definitions are in ascii_simd.h - just use them
 // REMOVED: #define luminance_palette g_ascii_cache.luminance_palette (causes macro expansion issues)
@@ -332,9 +612,14 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
     return NULL;
   }
 
-  // Use the cached lookup tables for vqtbl4q_u8
+  // Use the cached lookup tables for vectorized UTF-8 emission
   uint8x16x4_t tbl = tbl_cache->tbl;
   uint8x16x4_t char_lut = tbl_cache->char_lut;
+  uint8x16x4_t length_lut = tbl_cache->length_lut;
+  uint8x16x4_t char_byte0_lut = tbl_cache->char_byte0_lut;
+  uint8x16x4_t char_byte1_lut = tbl_cache->char_byte1_lut;
+  uint8x16x4_t char_byte2_lut = tbl_cache->char_byte2_lut;
+  uint8x16x4_t char_byte3_lut = tbl_cache->char_byte3_lut;
 
   // Estimate output buffer size for UTF-8 characters
   const size_t max_char_bytes = 4; // Max UTF-8 character size
@@ -373,23 +658,94 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
       uint8x16_t luminance = vcombine_u8(vmovn_u16(luma_lo), vmovn_u16(luma_hi));
 
       // NEON optimization: Use vqtbl4q_u8 for fast character index lookup
-      uint8x16_t idx = vshrq_n_u8(luminance, 2);      // Map 0..255 to 0..63
-      uint8x16_t char_indices = vqtbl4q_u8(tbl, idx); // 16 lookups in 1 instruction!
+      // Convert luminance (0-255) to 6-bit bucket (0-63) to match scalar behavior
+      uint8x16_t luma_buckets = vshrq_n_u8(luminance, 2); // >> 2 to get 0-63 range
+      uint8x16_t char_indices = vqtbl4q_u8(tbl, luma_buckets); // 16 lookups in 1 instruction!
 
-      // VECTORIZED CHARACTER GENERATION: True 16x speedup
-      // Get 16 ASCII characters in one instruction using cached LUT
-      uint8x16_t ascii_output = vqtbl4q_u8(char_lut, char_indices);
+      // VECTORIZED UTF-8 CHARACTER GENERATION: Length-aware compaction
       
-      // BULK COPY: 16 characters at once (eliminates scalar loop entirely)
-      vst1q_u8((uint8_t*)pos, ascii_output);
-      pos += 16;
+      // Step 1: Get character lengths vectorially
+      uint8x16_t char_lengths = vqtbl4q_u8(length_lut, char_indices);
+      
+      // Step 2: Check if all characters have same length (vectorized check)
+      uint8_t uniform_length;
+      if (all_same_length_neon(char_lengths, &uniform_length)) {
+        
+        if (uniform_length == 1) {
+          // PURE ASCII PATH: 16 characters = 16 bytes (maximum vectorization)
+          uint8x16_t ascii_output = vqtbl4q_u8(char_lut, char_indices);
+          vst1q_u8((uint8_t*)pos, ascii_output);
+          pos += 16;
+          
+        } else if (uniform_length == 4) {
+          // PURE 4-BYTE UTF-8 PATH: 16 characters = 64 bytes
+          // Gather all 4 byte streams in parallel
+          uint8x16_t byte0_stream = vqtbl4q_u8(char_byte0_lut, char_indices);
+          uint8x16_t byte1_stream = vqtbl4q_u8(char_byte1_lut, char_indices);
+          uint8x16_t byte2_stream = vqtbl4q_u8(char_byte2_lut, char_indices);
+          uint8x16_t byte3_stream = vqtbl4q_u8(char_byte3_lut, char_indices);
+          
+          // Interleave bytes: [char0_byte0, char0_byte1, char0_byte2, char0_byte3, char1_byte0, ...]
+          uint8x16x4_t interleaved;
+          interleaved.val[0] = byte0_stream;
+          interleaved.val[1] = byte1_stream;
+          interleaved.val[2] = byte2_stream;
+          interleaved.val[3] = byte3_stream;
+          
+          // Store interleaved UTF-8 data: 64 bytes total
+          vst4q_u8((uint8_t*)pos, interleaved);
+          pos += 64;
+          
+        } else if (uniform_length == 2) {
+          // PURE 2-BYTE UTF-8 PATH: 16 characters = 32 bytes (vectorized)
+          uint8x16_t byte0_stream = vqtbl4q_u8(char_byte0_lut, char_indices);
+          uint8x16_t byte1_stream = vqtbl4q_u8(char_byte1_lut, char_indices);
+          
+          // Interleave: [char0_b0, char0_b1, char1_b0, char1_b1, ...]
+          uint8x16x2_t interleaved_2byte;
+          interleaved_2byte.val[0] = byte0_stream;
+          interleaved_2byte.val[1] = byte1_stream;
+          
+          vst2q_u8((uint8_t*)pos, interleaved_2byte);
+          pos += 32;
+          
+        } else if (uniform_length == 3) {
+          // PURE 3-BYTE UTF-8 PATH: 16 characters = 48 bytes (vectorized)
+          uint8x16_t byte0_stream = vqtbl4q_u8(char_byte0_lut, char_indices);
+          uint8x16_t byte1_stream = vqtbl4q_u8(char_byte1_lut, char_indices);
+          uint8x16_t byte2_stream = vqtbl4q_u8(char_byte2_lut, char_indices);
+          
+          // Interleave: [char0_b0, char0_b1, char0_b2, char1_b0, char1_b1, char1_b2, ...]
+          uint8x16x3_t interleaved_3byte;
+          interleaved_3byte.val[0] = byte0_stream;
+          interleaved_3byte.val[1] = byte1_stream;
+          interleaved_3byte.val[2] = byte2_stream;
+          
+          vst3q_u8((uint8_t*)pos, interleaved_3byte);
+          pos += 48;
+          
+        }
+        
+      } else {
+        // MIXED LENGTH PATH: Use optimized scalar for correctness (rare case)
+        // The NEON luminance calculation already gave us major speedup
+        uint8_t char_idx_buf[16];
+        vst1q_u8(char_idx_buf, char_indices);
+        
+        for (int i = 0; i < 16; i++) {
+          const uint8_t char_idx = char_idx_buf[i];
+          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
+        }
+      }
     }
 
     // Handle remaining pixels with optimized scalar code using 64-entry cache
     for (; x < w; x++) {
       const rgb_pixel_t pixel = row[x];
       const uint8_t luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      const uint8_t luma_idx = luminance >> 2;  // Map 0..255 to 0..63 (same as NEON)
+      const uint8_t luma_idx = luminance >> 2;                       // Map 0..255 to 0..63 (same as NEON)
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx]; // Direct cache64 access
       // Optimized: Use direct assignment for single-byte ASCII characters
       if (char_info->byte_len == 1) {

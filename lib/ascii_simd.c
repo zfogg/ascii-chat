@@ -250,9 +250,7 @@ char *image_print_simd(image_t *image, const char *ascii_chars) {
 #elif SIMD_SUPPORT_AVX2
   return render_ascii_image_monochrome_avx2(image, ascii_chars);
 #else
-  // Build luminance palette from ascii_chars for scalar version
-  char luminance_palette[256];
-  build_client_luminance_palette(ascii_chars, strlen(ascii_chars), luminance_palette);
+  log_debug("COMPILED WITHOUT SPECIFIC SIMD");
   return convert_pixels_scalar_with_newlines(image, luminance_palette);
 #endif
 }

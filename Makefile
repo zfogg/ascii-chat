@@ -40,32 +40,32 @@ override CFLAGS += -Wall -Wextra
 override CFLAGS += -D_GNU_SOURCE
 
 # Get package-specific flags
-override CFLAGS  += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
-override LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+override CFLAGS += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+
+# Build LDFLAGS systematically to avoid duplicates
+PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+
+# Platform-specific libraries
+ifeq ($(shell uname),Darwin)
+    PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
+else ifeq ($(shell uname),Linux)
+    PLATFORM_LDFLAGS := -lncurses
+endif
+
+# System libraries (only add what pkg-config doesn't provide)
+SYSTEM_LDFLAGS := -lm
+
+# Check if pkg-config already provides pthread, if not add it
+ifeq ($(findstring -lpthread,$(PKG_LDFLAGS)),)
+    SYSTEM_LDFLAGS += -lpthread
+endif
+
+# Combine all LDFLAGS
+override LDFLAGS := $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYSTEM_LDFLAGS) $(ARCH_FLAGS)
 
 # Test-specific flags
 TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS))
 TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS))
-
-# Platform-specific LDFLAGS for webcam library
-ifeq ($(shell uname),Darwin)
-    # macOS: Add AVFoundation and CoreMedia frameworks
-    override LDFLAGS += -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
-    # macOS: Add ncurses for terminal capability detection
-    override LDFLAGS += -lncurses
-else ifeq ($(shell uname),Linux)
-    # Linux: No additional frameworks needed for V4L2
-    # Linux: Add ncurses for terminal capability detection
-    override LDFLAGS += -lncurses
-endif
-
-override LDFLAGS += -lm -lpthread
-
-# Avoid leading space from '+=' when LDFLAGS is initially empty
-override LDFLAGS += $(ARCH_FLAGS)
-
-# Deduplicate common libs to avoid linker warnings (e.g., duplicate -lm, -lpthread)
-override LDFLAGS := $(strip $(filter-out -lm -lpthread,$(LDFLAGS)) -lm -lpthread)
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
@@ -622,7 +622,7 @@ format-check:
 # Run bear to generate a compile_commands.json file (compile-only, no linking)
 compile_commands.json: Makefile
 	@echo "Running bear to generate compile_commands.json (objects only)..."
-	@make clean todo-clean && bear -- make -j debug objs
+	@make clean && bear -- make -j debug $(OBJS)
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
