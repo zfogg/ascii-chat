@@ -249,100 +249,102 @@ static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length)
 
 // NEON TBL lookup tables for decimal conversion (256 entries each)
 // Format: each entry has length byte + up to 3 decimal chars (4 bytes per entry)
-static uint8_t neon_decimal_table_data[256 * 4];  // 1024 bytes: [len][d1][d2][d3] per entry
+static uint8_t neon_decimal_table_data[256 * 4]; // 1024 bytes: [len][d1][d2][d3] per entry
 static bool neon_decimal_table_initialized = false;
 
 // Initialize NEON TBL decimal lookup table (called once at startup)
 void init_neon_decimal_table(void) {
-    if (neon_decimal_table_initialized) return;
-    
-    // Initialize g_dec3_cache first
-    if (!g_dec3_cache.dec3_initialized) {
-        init_dec3();
-    }
-    
-    // Convert dec3_t cache to NEON TBL format: [len][d1][d2][d3] per 4-byte entry
-    for (int i = 0; i < 256; i++) {
-        const dec3_t *dec = &g_dec3_cache.dec3_table[i];
-        uint8_t *entry = &neon_decimal_table_data[i * 4];
-        entry[0] = dec->len;  // Length (1-3)
-        entry[1] = (dec->len >= 1) ? dec->s[0] : '0';  // First digit
-        entry[2] = (dec->len >= 2) ? dec->s[1] : '0';  // Second digit  
-        entry[3] = (dec->len >= 3) ? dec->s[2] : '0';  // Third digit
-    }
-    
-    neon_decimal_table_initialized = true;
+  if (neon_decimal_table_initialized)
+    return;
+
+  // Initialize g_dec3_cache first
+  if (!g_dec3_cache.dec3_initialized) {
+    init_dec3();
+  }
+
+  // Convert dec3_t cache to NEON TBL format: [len][d1][d2][d3] per 4-byte entry
+  for (int i = 0; i < 256; i++) {
+    const dec3_t *dec = &g_dec3_cache.dec3_table[i];
+    uint8_t *entry = &neon_decimal_table_data[i * 4];
+    entry[0] = dec->len;                          // Length (1-3)
+    entry[1] = (dec->len >= 1) ? dec->s[0] : '0'; // First digit
+    entry[2] = (dec->len >= 2) ? dec->s[1] : '0'; // Second digit
+    entry[3] = (dec->len >= 3) ? dec->s[2] : '0'; // Third digit
+  }
+
+  neon_decimal_table_initialized = true;
 }
 
-// TODO: Implement true NEON vectorized ANSI sequence generation using TBL + compaction 
+// TODO: Implement true NEON vectorized ANSI sequence generation using TBL + compaction
 // Following the monochrome pattern: pad sequences to uniform width, then compact null bytes
 // For now, keep the existing scalar approach to avoid breaking the build
 
 // True NEON vectorized ANSI truecolor sequence assembly - no scalar loops!
-static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char_indices, uint8x16_t r_vals, uint8x16_t g_vals, uint8x16_t b_vals,
-                                                                 utf8_palette_cache_t *utf8_cache, char *output_buffer, size_t buffer_capacity,
-                                                                 bool use_background) {
-    // STREAMLINED IMPLEMENTATION: Focus on the real bottleneck - RGB->decimal conversion
-    // Key insight: ANSI sequences are too variable for effective SIMD, but TBL lookups provide major speedup
-    
-    // Ensure NEON decimal table is initialized for fast RGB->decimal conversion
-    init_neon_decimal_table();
-    
-    char *dst = output_buffer;
-    
-    // Extract values for optimized scalar processing with SIMD-accelerated lookups
-    uint8_t char_idx_buf[16], r_buf[16], g_buf[16], b_buf[16];
-    vst1q_u8(char_idx_buf, char_indices);
-    vst1q_u8(r_buf, r_vals);
-    vst1q_u8(g_buf, g_vals);
-    vst1q_u8(b_buf, b_vals);
-    
-    size_t total_written = 0;
-    const char *prefix = use_background ? "\033[48;2;" : "\033[38;2;";
-    const size_t prefix_len = 7;
-    
-    // Optimized scalar loop with NEON TBL acceleration for RGB->decimal conversion
-    // This eliminates the expensive snprintf() calls which were the real bottleneck
-    for (int i = 0; i < 16; i++) {
-        // Use NEON TBL lookups for RGB decimal conversion (major speedup!)
-        const uint8_t *r_entry = &neon_decimal_table_data[r_buf[i] * 4];
-        const uint8_t *g_entry = &neon_decimal_table_data[g_buf[i] * 4];
-        const uint8_t *b_entry = &neon_decimal_table_data[b_buf[i] * 4];
-        
-        const uint8_t char_idx = char_idx_buf[i];
-        const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-        
-        // Calculate total sequence length for buffer safety
-        size_t seq_len = prefix_len + r_entry[0] + 1 + g_entry[0] + 1 + b_entry[0] + 1 + char_info->byte_len;
-        if (total_written >= buffer_capacity - seq_len) {
-            break; // Buffer safety
-        }
-        
-        // Optimized assembly using TBL results (no divisions, no snprintf!)
-        memcpy(dst, prefix, prefix_len);
-        dst += prefix_len;
-        
-        // RGB components using pre-computed decimal strings
-        memcpy(dst, &r_entry[1], r_entry[0]);
-        dst += r_entry[0];
-        *dst++ = ';';
-        
-        memcpy(dst, &g_entry[1], g_entry[0]);
-        dst += g_entry[0];
-        *dst++ = ';';
-        
-        memcpy(dst, &b_entry[1], b_entry[0]);
-        dst += b_entry[0];
-        *dst++ = 'm';
-        
-        // UTF-8 character from cache
-        memcpy(dst, char_info->utf8_bytes, char_info->byte_len);
-        dst += char_info->byte_len;
-        
-        total_written = dst - output_buffer;
+static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char_indices, uint8x16_t r_vals,
+                                                                 uint8x16_t g_vals, uint8x16_t b_vals,
+                                                                 utf8_palette_cache_t *utf8_cache, char *output_buffer,
+                                                                 size_t buffer_capacity, bool use_background) {
+  // STREAMLINED IMPLEMENTATION: Focus on the real bottleneck - RGB->decimal conversion
+  // Key insight: ANSI sequences are too variable for effective SIMD, but TBL lookups provide major speedup
+
+  // Ensure NEON decimal table is initialized for fast RGB->decimal conversion
+  init_neon_decimal_table();
+
+  char *dst = output_buffer;
+
+  // Extract values for optimized scalar processing with SIMD-accelerated lookups
+  uint8_t char_idx_buf[16], r_buf[16], g_buf[16], b_buf[16];
+  vst1q_u8(char_idx_buf, char_indices);
+  vst1q_u8(r_buf, r_vals);
+  vst1q_u8(g_buf, g_vals);
+  vst1q_u8(b_buf, b_vals);
+
+  size_t total_written = 0;
+  const char *prefix = use_background ? "\033[48;2;" : "\033[38;2;";
+  const size_t prefix_len = 7;
+
+  // Optimized scalar loop with NEON TBL acceleration for RGB->decimal conversion
+  // This eliminates the expensive snprintf() calls which were the real bottleneck
+  for (int i = 0; i < 16; i++) {
+    // Use NEON TBL lookups for RGB decimal conversion (major speedup!)
+    const uint8_t *r_entry = &neon_decimal_table_data[r_buf[i] * 4];
+    const uint8_t *g_entry = &neon_decimal_table_data[g_buf[i] * 4];
+    const uint8_t *b_entry = &neon_decimal_table_data[b_buf[i] * 4];
+
+    const uint8_t char_idx = char_idx_buf[i];
+    const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+
+    // Calculate total sequence length for buffer safety
+    size_t seq_len = prefix_len + r_entry[0] + 1 + g_entry[0] + 1 + b_entry[0] + 1 + char_info->byte_len;
+    if (total_written >= buffer_capacity - seq_len) {
+      break; // Buffer safety
     }
-    
-    return total_written;
+
+    // Optimized assembly using TBL results (no divisions, no snprintf!)
+    memcpy(dst, prefix, prefix_len);
+    dst += prefix_len;
+
+    // RGB components using pre-computed decimal strings
+    memcpy(dst, &r_entry[1], r_entry[0]);
+    dst += r_entry[0];
+    *dst++ = ';';
+
+    memcpy(dst, &g_entry[1], g_entry[0]);
+    dst += g_entry[0];
+    *dst++ = ';';
+
+    memcpy(dst, &b_entry[1], b_entry[0]);
+    dst += b_entry[0];
+    *dst++ = 'm';
+
+    // UTF-8 character from cache
+    memcpy(dst, char_info->utf8_bytes, char_info->byte_len);
+    dst += char_info->byte_len;
+
+    total_written = dst - output_buffer;
+  }
+
+  return total_written;
 }
 
 // Min-heap management for NEON cache
@@ -998,9 +1000,10 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       } else {
         // VECTORIZED: Truecolor mode with full SIMD pipeline (no scalar spillover)
         char temp_buffer[16 * 50]; // Temporary buffer for 16 ANSI sequences (up to 50 bytes each)
-        size_t vectorized_length = neon_assemble_truecolor_sequences_true_simd(char_indices, pix.val[0], pix.val[1], pix.val[2],
-                                                                     utf8_cache, temp_buffer, sizeof(temp_buffer), use_background);
-        
+        size_t vectorized_length =
+            neon_assemble_truecolor_sequences_true_simd(char_indices, pix.val[0], pix.val[1], pix.val[2], utf8_cache,
+                                                        temp_buffer, sizeof(temp_buffer), use_background);
+
         // Write vectorized output to main buffer
         ob_write(&ob, temp_buffer, vectorized_length);
       }
