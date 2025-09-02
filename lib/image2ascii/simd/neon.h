@@ -20,6 +20,9 @@
 // NEON palette quantization with ordered dithering
 uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);
 
+// NEON decimal lookup table initialization (must be called once at startup)
+void init_neon_decimal_table(void);
+
 // {{{ NEW
 // Simple monochrome ASCII function that matches scalar image_print()
 char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii_chars);
