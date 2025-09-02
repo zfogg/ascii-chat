@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-15]
-        build_type: [debug]
+        build_type: [debug, release]
 
     steps:
     - name: Checkout code
@@ -53,6 +53,7 @@ jobs:
         echo "Unit tests completed successfully"
 
     - name: Run integration tests
+      if: matrix.build_type == 'release'
       run: |
         make test-integration
         echo "Integration tests completed successfully"
@@ -91,7 +92,7 @@ jobs:
 
     - name: Build performance tests
       run: |
-        make -j CSTD=c2x debug
+        make -j CSTD=c2x release
         make -j CSTD=c2x tests
 
     - name: Run performance tests

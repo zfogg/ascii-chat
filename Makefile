@@ -582,6 +582,8 @@ help:
 	@echo "  debug           - Build with debug symbols and no optimization"
 	@echo "  release         - Build with optimizations enabled"
 	@echo "  format          - Format source code using clang-format"
+	@echo "  install-hooks   - Install git hooks from git-hooks/ directory"
+	@echo "  uninstall-hooks - Remove installed git hooks"
 	@echo "  format-check    - Check code formatting without modifying files"
 	@echo "  clang-tidy      - Run clang-tidy on sources"
 	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
@@ -670,6 +672,29 @@ todo-clean:
 		$(MAKE) -C todo -f Makefile_rate_limiter clean || true; \
 	fi
 
+# Git hooks installation
+install-hooks:
+	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
+	@if [ -f git-hooks/pre-commit ]; then \
+		cp git-hooks/pre-commit .git/hooks/pre-commit; \
+		chmod +x .git/hooks/pre-commit; \
+		echo "  ✅ pre-commit hook installed"; \
+	else \
+		echo "  ⚠️  git-hooks/pre-commit not found"; \
+	fi
+	@echo "Git hooks installation complete!"
+
+uninstall-hooks:
+	@echo "Removing git hooks..."
+	@if [ -f .git/hooks/pre-commit ]; then \
+		rm -f .git/hooks/pre-commit; \
+		echo "  ✅ pre-commit hook removed"; \
+	else \
+		echo "  ⚠️  pre-commit hook not found"; \
+	fi
+	@echo "Git hooks removal complete!"
+
 # =============================================================================
 # Extra Makefile stuff
 # =============================================================================
@@ -678,4 +703,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json install-hooks uninstall-hooks
