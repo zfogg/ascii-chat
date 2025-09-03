@@ -31,16 +31,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium criterion
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
@@ -79,16 +73,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium criterion
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build performance tests
       run: |
@@ -107,10 +95,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies with sanitizers
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config valgrind
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: valgrind
 
     - name: Build with AddressSanitizer
       run: |
@@ -143,16 +132,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium coreutils
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        extra-packages: ${{ startsWith(matrix.os, 'macos') && 'coreutils' || '' }}
 
     - name: Build project
       run: |
@@ -190,16 +174,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium criterion
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build project
       run: |

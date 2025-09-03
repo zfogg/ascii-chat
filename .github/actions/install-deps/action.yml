@@ -1,0 +1,77 @@
+name: 'Install Dependencies'
+description: 'Install and cache build dependencies for ASCII-Chat'
+inputs:
+  os:
+    description: 'Operating system (ubuntu or macos)'
+    required: true
+  extra-packages:
+    description: 'Additional packages to install (space-separated)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache Homebrew (macOS)
+      if: inputs.os == 'macos'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar
+          /opt/homebrew/var
+        key: ${{ runner.os }}-${{ runner.arch }}-deps-${{ hashFiles('.github/actions/install-deps/action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-deps-
+
+    - name: Cache APT (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt/archives
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-${{ runner.arch }}-deps-${{ hashFiles('.github/actions/install-deps/action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-deps-
+
+    - name: Install dependencies (macOS)
+      if: inputs.os == 'macos'
+      shell: bash
+      run: |
+        # Only update if cache miss or forced
+        if [[ "${{ steps.cache.outputs.cache-hit }}" != "true" ]]; then
+          brew update
+        fi
+        
+        # Install base dependencies
+        brew install portaudio libsodium criterion
+        
+        # Install extra packages if provided
+        if [[ -n "${{ inputs.extra-packages }}" ]]; then
+          brew install ${{ inputs.extra-packages }}
+        fi
+
+    - name: Install dependencies (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      shell: bash
+      run: |
+        # Only update if cache miss or forced
+        if [[ "${{ steps.cache.outputs.cache-hit }}" != "true" ]]; then
+          sudo apt-get update
+        fi
+        
+        # Install base dependencies
+        sudo apt-get install -y \
+          clang \
+          libv4l-dev \
+          zlib1g-dev \
+          portaudio19-dev \
+          libsodium-dev \
+          libcriterion-dev \
+          pkg-config
+        
+        # Install extra packages if provided
+        if [[ -n "${{ inputs.extra-packages }}" ]]; then
+          sudo apt-get install -y ${{ inputs.extra-packages }}
+        fi
