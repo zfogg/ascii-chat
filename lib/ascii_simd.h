@@ -147,8 +147,18 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           int width, char *dst, size_t cap, bool is_truecolor);
 
 // Include architecture-specific implementations
+#ifdef SIMD_SUPPORT_SSE2
 #include "image2ascii/simd/sse2.h"
+#endif
+#ifdef SIMD_SUPPORT_SSSE3
 #include "image2ascii/simd/ssse3.h"
+#endif
+#ifdef SIMD_SUPPORT_AVX2
 #include "image2ascii/simd/avx2.h"
+#endif
+#ifdef SIMD_SUPPORT_SVE
 #include "image2ascii/simd/sve.h"
+#endif
+#ifdef SIMD_SUPPORT_NEON
 #include "image2ascii/simd/neon.h"
+#endif
