@@ -30,6 +30,7 @@ coverage:
         branches:
           - master
           - main
+          - palettes
 
       # Core server functionality (most critical)
       server_core:
@@ -132,6 +133,7 @@ coverage:
         branches:
           - master
           - main
+          - palettes
 
       # Stricter patch requirements for core functionality
       core_patch:
@@ -327,6 +329,7 @@ comment:
   branches:
     - master
     - main
+    - palettes
 
 # Ignore certain paths from coverage calculation
 ignore:
