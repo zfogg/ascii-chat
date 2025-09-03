@@ -27,15 +27,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build project (${{ matrix.build_type }}) (macOS)
       if: runner.os == 'macOS'
@@ -73,10 +68,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config bear
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: clang-tools bear
 
     - name: Run static analysis
       run: |
@@ -99,10 +95,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install clang-format
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-format make
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: clang-format make
 
     - name: Check code formatting
       run: |
