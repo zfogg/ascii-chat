@@ -37,6 +37,10 @@ jobs:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build test suite (${{ matrix.build_type }})
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${{ env.PKG_CONFIG_PATH }}
+        CPPFLAGS: -I/opt/homebrew/include:${{ env.CPPFLAGS }}
+        LDFLAGS: -L/opt/homebrew/lib:${{ env.LDFLAGS }}
       run: |
         make -j CSTD=c2x ${{ matrix.build_type }}
         make -j CSTD=c2x tests
@@ -79,6 +83,10 @@ jobs:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build performance tests
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${{ env.PKG_CONFIG_PATH }}
+        CPPFLAGS: -I/opt/homebrew/include:${{ env.CPPFLAGS }}
+        LDFLAGS: -L/opt/homebrew/lib:${{ env.LDFLAGS }}
       run: |
         make -j CSTD=c2x release
         make -j CSTD=c2x tests
@@ -139,6 +147,10 @@ jobs:
         extra-packages: ${{ startsWith(matrix.os, 'macos') && 'coreutils' || '' }}
 
     - name: Build project
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${{ env.PKG_CONFIG_PATH }}
+        CPPFLAGS: -I/opt/homebrew/include:${{ env.CPPFLAGS }}
+        LDFLAGS: -L/opt/homebrew/lib:${{ env.LDFLAGS }}
       run: |
         make -j CSTD=c2x debug
 
@@ -180,6 +192,10 @@ jobs:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build project
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${{ env.PKG_CONFIG_PATH }}
+        CPPFLAGS: -I/opt/homebrew/include:${{ env.CPPFLAGS }}
+        LDFLAGS: -L/opt/homebrew/lib:${{ env.LDFLAGS }}
       run: |
         cd todo
         make -j CSTD=c2x

@@ -34,6 +34,10 @@ jobs:
 
     - name: Build project (${{ matrix.build_type }}) (macOS)
       if: runner.os == 'macOS'
+      env:
+        PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${{ env.PKG_CONFIG_PATH }}
+        CPPFLAGS: -I/opt/homebrew/include:${{ env.CPPFLAGS }}
+        LDFLAGS: -L/opt/homebrew/lib:${{ env.LDFLAGS }}
       run: |
         make -j CSTD=c2x CXXSTD=c++2b ${{ matrix.build_type }}
     - name: Build project (${{ matrix.build_type }}) (Linux)
