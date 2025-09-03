@@ -14,6 +14,7 @@ runs:
   steps:
     - name: Cache Homebrew (macOS)
       if: inputs.os == 'macos'
+      id: cache-homebrew
       uses: actions/cache@v4
       with:
         path: |
@@ -26,6 +27,7 @@ runs:
 
     - name: Cache APT (Ubuntu)
       if: inputs.os == 'ubuntu'
+      id: cache-apt
       uses: actions/cache@v4
       with:
         path: |
@@ -36,13 +38,11 @@ runs:
           ${{ runner.os }}-${{ runner.arch }}-deps-
 
     - name: Install dependencies (macOS)
-      if: inputs.os == 'macos'
+      if: inputs.os == 'macos' && steps.cache-homebrew.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        # Only update if cache miss or forced
-        if [[ "${{ steps.cache.outputs.cache-hit }}" != "true" ]]; then
-          brew update
-        fi
+        # Cache miss - install dependencies
+        brew update
         
         # Install base dependencies
         brew install portaudio libsodium criterion
@@ -52,14 +52,19 @@ runs:
           brew install ${{ inputs.extra-packages }}
         fi
 
-    - name: Install dependencies (Ubuntu)
-      if: inputs.os == 'ubuntu'
+    - name: Set up pkg-config path (macOS)
+      if: inputs.os == 'macos'
       shell: bash
       run: |
-        # Only update if cache miss or forced
-        if [[ "${{ steps.cache.outputs.cache-hit }}" != "true" ]]; then
-          sudo apt-get update
-        fi
+        # Set up pkg-config path for Homebrew packages (always needed)
+        echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+
+    - name: Install dependencies (Ubuntu)
+      if: inputs.os == 'ubuntu' && steps.cache-apt.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # Cache miss - install dependencies
+        sudo apt-get update
         
         # Install base dependencies
         sudo apt-get install -y \
