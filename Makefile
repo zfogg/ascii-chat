@@ -442,10 +442,10 @@ objs: $(OBJS) $(TEST_OBJS)
 $(BUILD_DIR)/src:
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib/image2ascii:
+$(BUILD_DIR)/lib/image2ascii: | $(BUILD_DIR)/lib
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib/image2ascii/simd:
+$(BUILD_DIR)/lib/image2ascii/simd: | $(BUILD_DIR)/lib/image2ascii
 	@mkdir -p $@
 
 $(BUILD_DIR)/lib:
