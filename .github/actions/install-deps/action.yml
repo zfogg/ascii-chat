@@ -12,66 +12,19 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Cache Homebrew (macOS)
+    - name: Install and cache Homebrew packages (macOS)
       if: inputs.os == 'macos'
-      id: cache-homebrew
-      uses: actions/cache@v4
+      uses: tecolicom/actions-use-homebrew-tools@v1
       with:
-        path: |
-          ~/Library/Caches/Homebrew
-          /opt/homebrew/Cellar
-          /opt/homebrew/var
-        key: ${{ runner.os }}-${{ runner.arch }}-deps-${{ hashFiles('.github/actions/install-deps/action.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-deps-
+        tools: portaudio libsodium criterion ${{ inputs.extra-packages }}
+        cache: yes
 
-
-    - name: Check if packages exist (macOS)
-      if: inputs.os == 'macos'
-      id: check-packages
-      shell: bash
-      run: |
-        # Define required packages in one place
-        REQUIRED_PACKAGES=("portaudio" "libsodium" "criterion")
-        
-        # Store the package list for use in other steps
-        printf '%s\n' "${REQUIRED_PACKAGES[@]}" > /tmp/macos_packages.txt
-        
-        # Check if all required packages are already installed
-        ALL_INSTALLED=true
-        for package in "${REQUIRED_PACKAGES[@]}"; do
-          if ! brew list "$package" &>/dev/null; then
-            echo "Missing package: $package"
-            ALL_INSTALLED=false
-          fi
-        done
-        
-        if [[ "$ALL_INSTALLED" == "true" ]]; then
-          echo "packages-exist=true" >> $GITHUB_OUTPUT
-          echo "All required packages already installed"
-        else
-          echo "packages-exist=false" >> $GITHUB_OUTPUT
-          echo "Some packages need installation"
-        fi
-
-    - name: Install dependencies (macOS)
-      if: inputs.os == 'macos' && steps.check-packages.outputs.packages-exist != 'true'
-      shell: bash
-      run: |
-        # Install missing dependencies
-        echo "Installing Homebrew dependencies..."
-        brew update
-        
-        # Read package list from file
-        mapfile -t REQUIRED_PACKAGES < /tmp/macos_packages.txt
-        for package in "${REQUIRED_PACKAGES[@]}"; do
-          brew install "$package"
-        done
-        
-        # Install extra packages if provided
-        if [[ -n "${{ inputs.extra-packages }}" ]]; then
-          brew install ${{ inputs.extra-packages }}
-        fi
+    - name: Install and cache APT packages (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      uses: tecolicom/actions-use-apt-tools@v1
+      with:
+        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config ${{ inputs.extra-packages }}
+        cache: yes
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
@@ -81,69 +34,18 @@ runs:
         echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig" >> $GITHUB_ENV
         echo "CPPFLAGS=-I/opt/homebrew/include" >> $GITHUB_ENV
         echo "LDFLAGS=-L/opt/homebrew/lib" >> $GITHUB_ENV
-        
+
         # Verify they will be set for subsequent steps
         echo "Set PKG_CONFIG_PATH to /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig"
         echo "Set CPPFLAGS to -I/opt/homebrew/include"
         echo "Set LDFLAGS to -L/opt/homebrew/lib"
-        
+
         # Debug: Check if pkg-config can find portaudio immediately after setting env vars
         echo "Debug: Testing pkg-config with PKG_CONFIG_PATH..."
         export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
         pkg-config --libs portaudio-2.0 || echo "ERROR: pkg-config cannot find portaudio-2.0"
-        
+
         # Debug: Check if .pc files exist
         echo "Debug: Checking .pc files existence..."
         ls -la /opt/homebrew/lib/pkgconfig/portaudio* || echo "ERROR: No portaudio .pc files in /opt/homebrew/lib/pkgconfig/"
         ls -la /opt/homebrew/opt/portaudio/lib/pkgconfig/ || echo "ERROR: No portaudio directory in /opt/homebrew/opt/"
-
-    - name: Check if packages exist (Ubuntu)
-      if: inputs.os == 'ubuntu'
-      id: check-packages-ubuntu
-      shell: bash
-      run: |
-        # Define required packages in one place
-        REQUIRED_PACKAGES=("clang" "libv4l-dev" "zlib1g-dev" "portaudio19-dev" "libsodium-dev" "libcriterion-dev" "pkg-config")
-        
-        # Store the package list for use in other steps
-        printf '%s\n' "${REQUIRED_PACKAGES[@]}" > /tmp/ubuntu_packages.txt
-        
-        # Check if all required packages are already installed
-        ALL_INSTALLED=true
-        for package in "${REQUIRED_PACKAGES[@]}"; do
-          if ! dpkg -l | grep -q "^ii  $package "; then
-            echo "Missing package: $package"
-            ALL_INSTALLED=false
-          fi
-        done
-        
-        if [[ "$ALL_INSTALLED" == "true" ]]; then
-          echo "packages-exist=true" >> $GITHUB_OUTPUT
-          echo "All required packages already installed"
-        else
-          echo "packages-exist=false" >> $GITHUB_OUTPUT
-          echo "Some packages need installation"
-        fi
-
-    - name: Update package lists (Ubuntu)
-      if: inputs.os == 'ubuntu' && steps.check-packages-ubuntu.outputs.packages-exist != 'true'
-      shell: bash
-      run: |
-        echo "Updating package lists..."
-        sudo apt-get update
-
-    - name: Install dependencies (Ubuntu)
-      if: inputs.os == 'ubuntu' && steps.check-packages-ubuntu.outputs.packages-exist != 'true'
-      shell: bash
-      run: |
-        # Install missing dependencies
-        echo "Installing Ubuntu dependencies..."
-        
-        # Read package list from file
-        mapfile -t REQUIRED_PACKAGES < /tmp/ubuntu_packages.txt
-        sudo apt-get install -y "${REQUIRED_PACKAGES[@]}"
-        
-        # Install extra packages if provided
-        if [[ -n "${{ inputs.extra-packages }}" ]]; then
-          sudo apt-get install -y ${{ inputs.extra-packages }}
-        fi
