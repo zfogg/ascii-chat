@@ -464,25 +464,108 @@ create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib
 # Test Rules
 # =============================================================================
 
+# Coverage flags
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
+
+# Coverage build
+coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+coverage: $(TEST_EXECUTABLES)
+	@echo "Running tests with coverage..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output with coverage..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Coverage Tests">' >> junit.xml; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		done; \
+	fi
+	@echo "Generating coverage report..."
+	@find . -name "*.gcda" -exec gcov {} \; || echo "gcov completed"
+	@if command -v lcov >/dev/null 2>&1; then \
+		echo "Using lcov for detailed coverage report..."; \
+		lcov --capture --directory . --output-file coverage.info; \
+		lcov --remove coverage.info '/usr/*' --output-file coverage.info; \
+		lcov --remove coverage.info '*/tests/*' --output-file coverage.info; \
+		lcov --list coverage.info; \
+		if command -v genhtml >/dev/null 2>&1; then \
+			genhtml coverage.info --output-directory coverage_html; \
+			echo "Coverage report generated in coverage_html/"; \
+		fi; \
+	else \
+		echo "lcov not available - coverage files (.gcov) generated for codecov upload"; \
+	fi
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
 # Test targets
 tests: $(TEST_EXECUTABLES)
 
 test: $(TEST_EXECUTABLES)
 	@echo "Running all tests..."
-	@for test in $(TEST_EXECUTABLES); do \
-		echo "Running $$test..."; \
-		$$test; \
-	done
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test; \
+		done; \
+	fi
 	@echo "All tests completed!"
 
 test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 	@echo "Running unit tests..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
 	@> /tmp/test_logs.txt
-	@for test in $^; do \
-		echo "Running $$test..."; \
-		$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-	done
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Unit Tests">' >> junit.xml; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		done; \
+	fi
 	@echo "View test logs: cat /tmp/test_logs.txt"
 
 test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
@@ -596,6 +679,7 @@ help:
 	@echo "  test-integration - Run only integration tests"
 	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
 	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
+	@echo "  coverage        - Run tests with coverage analysis"
 	@echo "  todo            - Build the ./todo subproject"
 	@echo "  todo-clean      - Clean the ./todo subproject"
 	@echo "  clean           - Remove build artifacts"
@@ -706,4 +790,4 @@ uninstall-hooks:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json install-hooks uninstall-hooks
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks

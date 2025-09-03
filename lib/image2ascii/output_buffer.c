@@ -120,7 +120,7 @@ void emit_rep(outbuf_t *ob, uint32_t extra) {
 }
 
 // 256-color palette mapping (RGB to ANSI 256 color index)
-static uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
+static uint8_t __attribute__((unused)) rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
   // Use existing project function for consistency
   return (uint8_t)(16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51));
 }

@@ -224,19 +224,20 @@ Test(simd_caches, utf8_character_cache_correctness) {
 Test(simd_caches, character_index_ramp_correctness) {
     const char *test_palette = "   ...',;:clodxkO0KXNWM";
 
-    char_index_ramp_cache_t *cache = get_char_index_ramp_cache(test_palette);
-    cr_assert_not_null(cache, "Character ramp cache should be created");
+    // Character index ramp is now part of UTF-8 cache
+    utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(test_palette);
+    cr_assert_not_null(utf8_cache, "UTF-8 cache should be created");
 
     // Verify ramp values are in valid range
     size_t palette_len = strlen(test_palette);
     for (int i = 0; i < 64; i++) {
-        cr_assert_lt(cache->char_index_ramp[i], palette_len,
+        cr_assert_lt(utf8_cache->char_index_ramp[i], palette_len,
                     "Ramp index %d should be within palette bounds", i);
     }
 
     // Verify ramp is monotonic (darker → brighter)
     for (int i = 1; i < 64; i++) {
-        cr_assert_geq(cache->char_index_ramp[i], cache->char_index_ramp[i-1],
+        cr_assert_geq(utf8_cache->char_index_ramp[i], utf8_cache->char_index_ramp[i-1],
                      "Character ramp should be monotonic");
     }
 }

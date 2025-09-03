@@ -99,16 +99,14 @@ static void print_pixel_analysis(const image_t *image, const char *palette, int 
 static void print_cache_analysis(const char *palette) {
     printf("\n=== CACHE ANALYSIS ===\n");
     
-    // Get the caches
-    char_index_ramp_cache_t *char_ramp_cache = get_char_index_ramp_cache(palette);
+    // Get the UTF-8 cache (contains char_index_ramp data)
     utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
     
-    cr_assert_not_null(char_ramp_cache, "Failed to get char_ramp_cache");
     cr_assert_not_null(utf8_cache, "Failed to get utf8_cache");
     
-    printf("Character Index Ramp Cache (sample entries):\n");
+    printf("Character Index Ramp (from UTF-8 cache, sample entries):\n");
     for (int i = 0; i < 20 && i < 64; i++) {
-        uint8_t char_idx = char_ramp_cache->char_index_ramp[i];
+        uint8_t char_idx = utf8_cache->char_index_ramp[i];
         char expected_char = (char_idx < strlen(palette)) ? palette[char_idx] : '?';
         printf("  luma_idx[%2d] -> char_idx[%2d] -> '%c'\n", i, char_idx, expected_char);
     }
@@ -122,11 +120,11 @@ static void print_cache_analysis(const char *palette) {
                (unsigned char)first_byte, char_info->byte_len);
     }
     
-    // Verify cache consistency
+    // Verify cache consistency (between char_index_ramp and cache64)
     printf("Cache Consistency Check:\n");
     bool consistent = true;
     for (int i = 0; i < 64; i++) {
-        uint8_t char_idx = char_ramp_cache->char_index_ramp[i];
+        uint8_t char_idx = utf8_cache->char_index_ramp[i];
         const utf8_char_t *char_info = &utf8_cache->cache64[i];
         
         if (char_idx < strlen(palette)) {
@@ -360,11 +358,9 @@ Test(simd_scalar_comparison, cache_validation) {
     
     printf("\n=== TEST: Cache Validation ===\n");
     
-    // Get both cache systems
-    char_index_ramp_cache_t *char_ramp_cache = get_char_index_ramp_cache(palette);
+    // Get UTF-8 cache (contains char_index_ramp data)
     utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
     
-    cr_assert_not_null(char_ramp_cache, "Failed to get char_ramp_cache");
     cr_assert_not_null(utf8_cache, "Failed to get utf8_cache");
     
     printf("Validating cache consistency across all 64 luma_idx values:\n");
@@ -372,8 +368,8 @@ Test(simd_scalar_comparison, cache_validation) {
     int inconsistencies = 0;
     
     for (int luma_idx = 0; luma_idx < 64; luma_idx++) {
-        // Get character index from ramp cache
-        uint8_t char_idx = char_ramp_cache->char_index_ramp[luma_idx];
+        // Get character index from UTF-8 cache's char_index_ramp
+        uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
         
         // Get character from UTF-8 cache
         const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
@@ -389,7 +385,7 @@ Test(simd_scalar_comparison, cache_validation) {
         printf("  luma_idx[%2d]: char_idx=%2d -> pal_char='%c', cache64_char='%c', expected='%c'",
                luma_idx, char_idx, actual_char, cached_char, expected_char);
         
-        // Check consistency
+        // Check consistency between char_index_ramp and cache64
         if (actual_char != cached_char) {
             printf(" ❌ RAMP/UTF8 MISMATCH");
             inconsistencies++;
