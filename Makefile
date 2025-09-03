@@ -418,15 +418,18 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 # Compile source files from lib/image2ascii/
 $(BUILD_DIR)/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/
 $(BUILD_DIR)/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii/simd
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-# Compile C source files from lib/
+# Compile C source files from lib/ (not image2ascii/ or SIMD)
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $<
 

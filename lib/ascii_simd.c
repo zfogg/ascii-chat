@@ -8,6 +8,7 @@
 #include "ascii_simd.h"
 #include "palette.h"
 #include "ascii.h"
+#include "image2ascii/output_buffer.h"
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 
