@@ -67,7 +67,7 @@ runs:
           brew install ${{ inputs.extra-packages }}
         fi
 
-    - name: Set up pkg-config path (macOS)
+    - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
       shell: bash
       run: |
@@ -75,6 +75,16 @@ runs:
         echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo "CPPFLAGS=-I/opt/homebrew/include:$CPPFLAGS" >> $GITHUB_ENV
         echo "LDFLAGS=-L/opt/homebrew/lib:$LDFLAGS" >> $GITHUB_ENV
+        
+        # Also set them in the current step for immediate use
+        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PKG_CONFIG_PATH"
+        export CPPFLAGS="-I/opt/homebrew/include:$CPPFLAGS"
+        export LDFLAGS="-L/opt/homebrew/lib:$LDFLAGS"
+        
+        # Verify they're set correctly
+        echo "PKG_CONFIG_PATH is now: $PKG_CONFIG_PATH"
+        echo "CPPFLAGS is now: $CPPFLAGS"
+        echo "LDFLAGS is now: $LDFLAGS"
 
     - name: Install dependencies (Ubuntu)
       if: inputs.os == 'ubuntu' && steps.cache-apt.outputs.cache-hit != 'true'
