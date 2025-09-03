@@ -23,7 +23,7 @@ runs:
       if: inputs.os == 'ubuntu'
       uses: tecolicom/actions-use-apt-tools@v1
       with:
-        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev libasound2-dev libjack-jackd2-dev libjack-dev libboxfort-dev pkg-config ${{ inputs.extra-packages }}
+        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev libasound2-dev libjack-jackd2-dev libboxfort-dev pkg-config ${{ inputs.extra-packages }}
         cache: yes
 
     - name: Set up build environment (macOS)
