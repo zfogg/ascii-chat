@@ -38,10 +38,10 @@ jobs:
         languages: ${{ matrix.language }}
         config-file: ./.github/codeql/codeql-config.yml
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
 
     - name: Build for analysis
       run: |
@@ -60,10 +60,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
 
     - name: Check for known vulnerabilities in system packages
       run: |
@@ -119,10 +119,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: clang-tools
 
     - name: Run static security analysis
       run: |

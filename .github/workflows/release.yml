@@ -110,16 +110,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install opencv@4 pkg-config portaudio
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        extra-packages: ${{ startsWith(matrix.os, 'macos') && 'opencv@4' || '' }}
 
     - name: Build release
       run: |
