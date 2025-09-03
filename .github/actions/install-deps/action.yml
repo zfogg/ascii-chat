@@ -42,8 +42,22 @@ runs:
       id: check-packages
       shell: bash
       run: |
+        # Define required packages in one place
+        REQUIRED_PACKAGES=("portaudio" "libsodium" "criterion")
+        
+        # Store the package list for use in other steps
+        printf '%s\n' "${REQUIRED_PACKAGES[@]}" > /tmp/macos_packages.txt
+        
         # Check if all required packages are already installed
-        if brew list portaudio &>/dev/null && brew list libsodium &>/dev/null && brew list criterion &>/dev/null; then
+        ALL_INSTALLED=true
+        for package in "${REQUIRED_PACKAGES[@]}"; do
+          if ! brew list "$package" &>/dev/null; then
+            echo "Missing package: $package"
+            ALL_INSTALLED=false
+          fi
+        done
+        
+        if [[ "$ALL_INSTALLED" == "true" ]]; then
           echo "packages-exist=true" >> $GITHUB_OUTPUT
           echo "All required packages already installed"
         else
@@ -59,8 +73,11 @@ runs:
         echo "Installing Homebrew dependencies..."
         brew update
         
-        # Install base dependencies
-        brew install portaudio libsodium criterion
+        # Read package list from file
+        mapfile -t REQUIRED_PACKAGES < /tmp/macos_packages.txt
+        for package in "${REQUIRED_PACKAGES[@]}"; do
+          brew install "$package"
+        done
         
         # Install extra packages if provided
         if [[ -n "${{ inputs.extra-packages }}" ]]; then
@@ -86,22 +103,45 @@ runs:
         echo "CPPFLAGS is now: $CPPFLAGS"
         echo "LDFLAGS is now: $LDFLAGS"
 
-    - name: Install dependencies (Ubuntu)
-      if: inputs.os == 'ubuntu' && steps.cache-apt.outputs.cache-hit != 'true'
+    - name: Check if packages exist (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      id: check-packages-ubuntu
       shell: bash
       run: |
-        # Cache miss - install dependencies
+        # Define required packages in one place
+        REQUIRED_PACKAGES=("clang" "libv4l-dev" "zlib1g-dev" "portaudio19-dev" "libsodium-dev" "libcriterion-dev" "pkg-config")
+        
+        # Store the package list for use in other steps
+        printf '%s\n' "${REQUIRED_PACKAGES[@]}" > /tmp/ubuntu_packages.txt
+        
+        # Check if all required packages are already installed
+        ALL_INSTALLED=true
+        for package in "${REQUIRED_PACKAGES[@]}"; do
+          if ! dpkg -l | grep -q "^ii  $package "; then
+            echo "Missing package: $package"
+            ALL_INSTALLED=false
+          fi
+        done
+        
+        if [[ "$ALL_INSTALLED" == "true" ]]; then
+          echo "packages-exist=true" >> $GITHUB_OUTPUT
+          echo "All required packages already installed"
+        else
+          echo "packages-exist=false" >> $GITHUB_OUTPUT
+          echo "Some packages need installation"
+        fi
+
+    - name: Install dependencies (Ubuntu)
+      if: inputs.os == 'ubuntu' && steps.check-packages-ubuntu.outputs.packages-exist != 'true'
+      shell: bash
+      run: |
+        # Install missing dependencies
+        echo "Installing Ubuntu dependencies..."
         sudo apt-get update
         
-        # Install base dependencies
-        sudo apt-get install -y \
-          clang \
-          libv4l-dev \
-          zlib1g-dev \
-          portaudio19-dev \
-          libsodium-dev \
-          libcriterion-dev \
-          pkg-config
+        # Read package list from file
+        mapfile -t REQUIRED_PACKAGES < /tmp/ubuntu_packages.txt
+        sudo apt-get install -y "${REQUIRED_PACKAGES[@]}"
         
         # Install extra packages if provided
         if [[ -n "${{ inputs.extra-packages }}" ]]; then

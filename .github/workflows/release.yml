@@ -63,16 +63,26 @@ jobs:
 
           ## Installation
 
-          **Linux (Ubuntu/Debian):**
+          **Prerequisites:**
+          - Linux: clang, libv4l-dev, zlib1g-dev, portaudio19-dev, libsodium-dev, pkg-config
+          - macOS: portaudio, libsodium (via Homebrew)
+
+          **Quick Install:**
           ```bash
-          sudo apt-get install libv4l-dev zlib1g-dev portaudio19-dev pkg-config
-          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
-          tar -xzf ascii-chat-Linux-release.tar.gz
+          # Linux (Ubuntu/Debian)
+          sudo apt-get update && sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+
+          # macOS
+          brew install portaudio libsodium
           ```
 
-          **macOS:**
+          **Download Release:**
           ```bash
-          brew install opencv@4 zlib portaudio
+          # Linux
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
+          tar -xzf ascii-chat-Linux-release.tar.gz
+
+          # macOS
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-macOS-release.tar.gz
           tar -xzf ascii-chat-macOS-release.tar.gz
           ```
@@ -113,8 +123,7 @@ jobs:
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
       with:
-        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        extra-packages: ${{ startsWith(matrix.os, 'macos') && 'opencv@4' || '' }}
+        os: ${{ contains(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build release
       run: |
