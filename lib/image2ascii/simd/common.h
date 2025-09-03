@@ -60,48 +60,11 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
 void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]);
 void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]);
 
-// Character index ramp cache (shared across SIMD architectures)
-// Forward declaration for LRU list
-struct char_index_ramp_cache_s;
+// Note: char_index_ramp_cache removed - data already available in utf8_palette_cache_t.char_index_ramp[64]
 
-typedef struct char_index_ramp_cache_s {
-  uint8_t char_index_ramp[64]; // Character indices for SIMD lookup
-  char palette_hash[64];       // Hash of source palette for validation
-  bool is_valid;               // Whether this cache is valid
-
-  // Thread-safe eviction tracking
-  _Atomic uint64_t last_access_time; // Nanoseconds since epoch (atomic)
-  _Atomic uint32_t access_count;     // Total access count (atomic)
-  uint64_t creation_time;            // When cache was created (immutable)
-
-  // Min-heap eviction management (protected by write lock)
-  size_t heap_index;   // Position in min-heap (for O(log n) updates)
-  double cached_score; // Last calculated eviction score
-} char_index_ramp_cache_t;
-
-char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars);
-
-// Palette hash cache for O(1) CRC32 lookup
-typedef struct palette_hash_cache_s {
-  char palette_string[256]; // The palette string (key)
-  uint32_t crc32_hash;      // Cached CRC32 value
-  bool is_valid;            // Whether this cache is valid
-
-  // Thread-safe eviction tracking
-  _Atomic uint64_t last_access_time; // Nanoseconds since epoch (atomic)
-  _Atomic uint32_t access_count;     // Total access count (atomic)
-  uint64_t creation_time;            // When cache was created (immutable)
-
-  // Min-heap eviction management (protected by write lock)
-  size_t heap_index;   // Position in min-heap (for O(log n) updates)
-  double cached_score; // Last calculated eviction score
-
-  // Hash chain for string-based lookup
-  struct palette_hash_cache_s *next; // Next in hash chain
-} palette_hash_cache_t;
-
-// Fast palette hash lookup (replaces expensive CRC32 calls)
-uint32_t get_palette_hash_cached(const char *palette);
+// Fast palette hash function - no caching needed (djb2 hash is fast enough)
+// Note: Palette hash caching was removed as djb2 hash (~100-200ns) is negligible
+// compared to frame rendering costs (~16.7ms budget)
 
 // Central SIMD cache cleanup function
 void simd_caches_destroy_all(void);

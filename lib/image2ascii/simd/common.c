@@ -1,7 +1,6 @@
 #include "common.h"
 #include "image2ascii/simd/common.h"
 #include "hashtable.h"
-#include "crc32_hw.h"
 #include "ascii_simd.h"
 #include <time.h>
 #include <math.h>
@@ -113,17 +112,18 @@ double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access
   return (frequency_factor * aging_factor + recency_bonus) * lifetime_penalty;
 }
 
-// Palette hash cache temporarily disabled
-uint32_t get_palette_hash_cached(const char *palette) {
-  // Simple fallback: just compute CRC32 directly (optimize later)
-  if (!palette || strlen(palette) == 0)
-    return 0;
-  return asciichat_crc32(palette, strlen(palette));
+// Fast palette string hashing (replaces expensive CRC32)
+static inline uint32_t hash_palette_string(const char *palette) {
+  uint32_t hash = 5381; // djb2 hash algorithm
+  const char *p = palette;
+  while (*p) {
+    hash = ((hash << 5) + hash) + *p++; // hash * 33 + c
+  }
+  return hash;
 }
 
 // Forward declarations for eviction functions (defined after globals)
 static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache);
-static bool try_insert_with_eviction_char_ramp(uint32_t hash, char_index_ramp_cache_t *new_cache);
 
 // UTF-8 palette cache system with min-heap eviction
 static hashtable_t *g_utf8_cache_table = NULL;
@@ -134,14 +134,7 @@ static utf8_palette_cache_t **g_utf8_heap = NULL;                 // Min-heap ar
 static size_t g_utf8_heap_size = 0;                               // Current entries in heap
 static const size_t g_utf8_heap_capacity = HASHTABLE_MAX_ENTRIES; // Max heap size
 
-// Character index ramp cache system with min-heap eviction
-static hashtable_t *g_char_ramp_cache_table = NULL;
-static pthread_rwlock_t g_char_ramp_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-
-// Min-heap for O(log n) intelligent eviction
-static char_index_ramp_cache_t **g_char_ramp_heap = NULL;
-static size_t g_char_ramp_heap_size = 0;
-static const size_t g_char_ramp_heap_capacity = HASHTABLE_MAX_ENTRIES;
+// char_index_ramp_cache removed - data is already stored in utf8_palette_cache_t.char_index_ramp[64]
 
 // Initialize UTF-8 cache system with min-heap
 static void init_utf8_cache_system(void) {
@@ -153,17 +146,6 @@ static void init_utf8_cache_system(void) {
     g_utf8_heap_size = 0;
   }
 }
-
-// Min-heap management functions for UTF-8 cache
-
-// Palette hash cache system (string-based lookup for O(1) CRC32)
-static palette_hash_cache_t *g_palette_hash_cache[64] = {NULL}; // Simple hash table
-static pthread_rwlock_t g_palette_hash_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-
-// Min-heap for palette hash cache eviction
-static palette_hash_cache_t **g_palette_hash_heap = NULL;
-static size_t g_palette_hash_heap_size = 0;
-static const size_t g_palette_hash_heap_capacity = 64; // Separate limit for hash cache
 
 // Min-heap management functions for UTF-8 cache
 static void utf8_heap_swap(size_t i, size_t j) {
@@ -260,7 +242,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
     // Proactive eviction: free space before attempting insertion
     utf8_palette_cache_t *victim_cache = utf8_heap_extract_min();
     if (victim_cache) {
-      uint32_t victim_key = asciichat_crc32(victim_cache->palette_hash, strlen(victim_cache->palette_hash));
+      uint32_t victim_key = hash_palette_string(victim_cache->palette_hash);
 
       // Log clean eviction
       uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
@@ -292,7 +274,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
   }
 
   // Calculate victim key for hashtable removal
-  uint32_t victim_key = asciichat_crc32(victim_cache->palette_hash, strlen(victim_cache->palette_hash));
+  uint32_t victim_key = hash_palette_string(victim_cache->palette_hash);
 
   // Log eviction for debugging
   uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
@@ -317,136 +299,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
   }
 }
 
-// Min-heap management for char_ramp_cache (same pattern as UTF-8)
-static void char_ramp_heap_swap(size_t i, size_t j) {
-  char_index_ramp_cache_t *temp = g_char_ramp_heap[i];
-  g_char_ramp_heap[i] = g_char_ramp_heap[j];
-  g_char_ramp_heap[j] = temp;
-
-  g_char_ramp_heap[i]->heap_index = i;
-  g_char_ramp_heap[j]->heap_index = j;
-}
-
-static void char_ramp_heap_bubble_up(size_t index) {
-  while (index > 0) {
-    size_t parent = (index - 1) / 2;
-    if (g_char_ramp_heap[index]->cached_score >= g_char_ramp_heap[parent]->cached_score)
-      break;
-    char_ramp_heap_swap(index, parent);
-    index = parent;
-  }
-}
-
-static void char_ramp_heap_bubble_down(size_t index) {
-  while (true) {
-    size_t left = 2 * index + 1;
-    size_t right = 2 * index + 2;
-    size_t smallest = index;
-
-    if (left < g_char_ramp_heap_size &&
-        g_char_ramp_heap[left]->cached_score < g_char_ramp_heap[smallest]->cached_score) {
-      smallest = left;
-    }
-    if (right < g_char_ramp_heap_size &&
-        g_char_ramp_heap[right]->cached_score < g_char_ramp_heap[smallest]->cached_score) {
-      smallest = right;
-    }
-
-    if (smallest == index)
-      break;
-    char_ramp_heap_swap(index, smallest);
-    index = smallest;
-  }
-}
-
-static void char_ramp_heap_insert(char_index_ramp_cache_t *cache, double score) {
-  if (g_char_ramp_heap_size >= g_char_ramp_heap_capacity) {
-    log_error("CHAR_RAMP_HEAP: Heap capacity exceeded");
-    return;
-  }
-
-  cache->cached_score = score;
-  cache->heap_index = g_char_ramp_heap_size;
-  g_char_ramp_heap[g_char_ramp_heap_size] = cache;
-  g_char_ramp_heap_size++;
-
-  char_ramp_heap_bubble_up(cache->heap_index);
-}
-
-static char_index_ramp_cache_t *char_ramp_heap_extract_min(void) {
-  if (g_char_ramp_heap_size == 0) {
-    return NULL;
-  }
-
-  char_index_ramp_cache_t *min_cache = g_char_ramp_heap[0];
-
-  g_char_ramp_heap_size--;
-  if (g_char_ramp_heap_size > 0) {
-    g_char_ramp_heap[0] = g_char_ramp_heap[g_char_ramp_heap_size];
-    g_char_ramp_heap[0]->heap_index = 0;
-    char_ramp_heap_bubble_down(0);
-  }
-
-  return min_cache;
-}
-
-static bool try_insert_with_eviction_char_ramp(uint32_t hash, char_index_ramp_cache_t *new_cache) {
-  // Already holding write lock
-
-  // Check if hashtable is near capacity and evict proactively (80% threshold)
-  if (g_char_ramp_cache_table->entry_count >= HASHTABLE_MAX_ENTRIES) {
-    // Proactive eviction: free space before attempting insertion
-    char_index_ramp_cache_t *victim_cache = char_ramp_heap_extract_min();
-    if (victim_cache) {
-      uint32_t victim_key = asciichat_crc32(victim_cache->palette_hash, strlen(victim_cache->palette_hash));
-
-      // Log clean eviction
-      uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
-      uint64_t current_time = get_current_time_ns();
-      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
-
-      log_debug("CHAR_RAMP_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
-                victim_age, victim_access_count);
-
-      hashtable_remove(g_char_ramp_cache_table, victim_key);
-      SAFE_FREE(victim_cache);
-    }
-  }
-
-  // Now attempt insertion (should succeed with freed space)
-  if (hashtable_insert(g_char_ramp_cache_table, hash, new_cache)) {
-    // Success: add to min-heap
-    uint64_t current_time = get_current_time_ns();
-    double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
-    char_ramp_heap_insert(new_cache, initial_score);
-    return true;
-  }
-
-  // Fallback: should rarely happen with proactive eviction
-  char_index_ramp_cache_t *victim_cache = char_ramp_heap_extract_min();
-  if (!victim_cache) {
-    log_error("CHAR_RAMP_CACHE_CRITICAL: No cache entries in heap to evict");
-    return false;
-  }
-
-  // Emergency eviction
-  uint32_t victim_key = asciichat_crc32(victim_cache->palette_hash, strlen(victim_cache->palette_hash));
-  log_debug("CHAR_RAMP_EVICTION: Emergency min-heap eviction hash=0x%x", victim_key);
-
-  hashtable_remove(g_char_ramp_cache_table, victim_key);
-  SAFE_FREE(victim_cache);
-
-  // Insert new cache
-  if (hashtable_insert(g_char_ramp_cache_table, hash, new_cache)) {
-    uint64_t current_time = get_current_time_ns();
-    double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
-    char_ramp_heap_insert(new_cache, initial_score);
-    return true;
-  }
-
-  log_error("CHAR_RAMP_CACHE_CRITICAL: Failed to insert after eviction");
-  return false;
-}
+// char_ramp_cache functions removed - data already available in utf8_palette_cache_t
 
 // Get or create UTF-8 palette cache for a given palette
 utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
@@ -458,7 +311,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     return NULL;
 
   // Create hash of palette for cache key
-  uint32_t palette_hash = asciichat_crc32(ascii_chars, strlen(ascii_chars));
+  uint32_t palette_hash = hash_palette_string(ascii_chars);
 
   // Fast path: Try read-only lookup first (most common case)
   pthread_rwlock_rdlock(&g_utf8_cache_rwlock);
@@ -632,8 +485,8 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
     if (char_idx >= char_count)
       char_idx = char_count - 1;
 
-    // Store cache index for SIMD lookup
-    char_index_ramp[i] = (uint8_t)i;
+    // Store character index for SIMD lookup
+    char_index_ramp[i] = (uint8_t)char_idx;
 
     // Cache UTF-8 character
     cache64[i].byte_len = char_infos[char_idx].byte_len;
@@ -644,106 +497,11 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
   }
 }
 
-// Get or create cached character index ramp for SIMD architectures
-char_index_ramp_cache_t *get_char_index_ramp_cache(const char *ascii_chars) {
-  if (!ascii_chars)
-    return NULL;
-
-  // Create hash of palette for cache key
-  uint32_t palette_hash = asciichat_crc32(ascii_chars, strlen(ascii_chars));
-
-  // Fast path: Try read-only lookup first (most common case)
-  pthread_rwlock_rdlock(&g_char_ramp_cache_rwlock);
-  if (g_char_ramp_cache_table) {
-    char_index_ramp_cache_t *cache = (char_index_ramp_cache_t *)hashtable_lookup(g_char_ramp_cache_table, palette_hash);
-    if (cache) {
-      // ATOMIC: Update access tracking without lock upgrade
-      uint64_t current_time = get_current_time_ns();
-      atomic_store(&cache->last_access_time, current_time);
-      atomic_fetch_add(&cache->access_count, 1);
-
-      pthread_rwlock_unlock(&g_char_ramp_cache_rwlock);
-      return cache;
-    }
-  }
-  pthread_rwlock_unlock(&g_char_ramp_cache_rwlock);
-
-  // Slow path: Need to create cache entry, acquire write lock
-  pthread_rwlock_wrlock(&g_char_ramp_cache_rwlock);
-
-  // Initialize cache system if needed
-  if (!g_char_ramp_cache_table) {
-    g_char_ramp_cache_table = hashtable_create();
-
-    // Initialize min-heap for eviction
-    SAFE_MALLOC(g_char_ramp_heap, g_char_ramp_heap_capacity * sizeof(char_index_ramp_cache_t *),
-                char_index_ramp_cache_t **);
-    g_char_ramp_heap_size = 0;
-  }
-
-  // Double-check: another thread might have created the cache
-  char_index_ramp_cache_t *cache = (char_index_ramp_cache_t *)hashtable_lookup(g_char_ramp_cache_table, palette_hash);
-  if (!cache) {
-    // Create new cache
-    SAFE_MALLOC(cache, sizeof(char_index_ramp_cache_t), char_index_ramp_cache_t *);
-    memset(cache, 0, sizeof(char_index_ramp_cache_t));
-
-    // Build character index ramp (same logic as NEON uses)
-    size_t palette_len = strlen(ascii_chars);
-
-    for (int i = 0; i < 64; i++) {
-      int char_idx = palette_len > 1 ? (i * ((int)palette_len - 1) + 31) / 63 : 0;
-      if (char_idx >= (int)palette_len) {
-        char_idx = (int)palette_len - 1;
-      }
-      cache->char_index_ramp[i] = (uint8_t)char_idx;
-    }
-
-    // Store palette hash for validation
-    strncpy(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash) - 1);
-    cache->palette_hash[sizeof(cache->palette_hash) - 1] = '\0';
-    cache->is_valid = true;
-
-    // Initialize eviction tracking
-    uint64_t current_time = get_current_time_ns();
-    atomic_store(&cache->last_access_time, current_time);
-    atomic_store(&cache->access_count, 1); // First access
-    cache->creation_time = current_time;
-    cache->heap_index = 0;     // Will be set by heap_insert
-    cache->cached_score = 0.0; // Will be calculated by heap_insert
-
-    // Store in hashtable with guaranteed min-heap eviction support
-    if (!try_insert_with_eviction_char_ramp(palette_hash, cache)) {
-      log_error("CHAR_RAMP_CACHE_CRITICAL: Failed to insert cache even after heap eviction");
-      SAFE_FREE(cache);
-      pthread_rwlock_unlock(&g_char_ramp_cache_rwlock);
-      return NULL;
-    }
-
-    log_debug("CHAR_RAMP_CACHE: Created new ramp cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
-  }
-
-  pthread_rwlock_unlock(&g_char_ramp_cache_rwlock);
-  return cache;
-}
+// char_index_ramp_cache functions removed - data already available in utf8_palette_cache_t.char_index_ramp[64]
 
 // Central cleanup function for all SIMD caches
 void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
-
-  // Destroy shared character index ramp cache
-  pthread_rwlock_wrlock(&g_char_ramp_cache_rwlock);
-  if (g_char_ramp_cache_table) {
-    hashtable_destroy(g_char_ramp_cache_table);
-    g_char_ramp_cache_table = NULL;
-    log_debug("CHAR_RAMP_CACHE: Destroyed shared character index ramp cache");
-  }
-  // Clean up heap arrays
-  if (g_char_ramp_heap) {
-    SAFE_FREE(g_char_ramp_heap);
-    g_char_ramp_heap_size = 0;
-  }
-  pthread_rwlock_unlock(&g_char_ramp_cache_rwlock);
 
   // Destroy shared UTF-8 palette cache
   pthread_rwlock_wrlock(&g_utf8_cache_rwlock);

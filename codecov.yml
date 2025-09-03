@@ -1,0 +1,348 @@
+# Codecov configuration for ASCII-Chat
+# This configuration uses Components to organize coverage reporting by functionality
+
+# Global settings
+codecov:
+  # Use the default branch from Git
+  branch: master
+  # Reject reports older than 12 hours
+  max_report_age: "12h"
+
+# Coverage configuration
+coverage:
+  # Overall precision and display settings
+  precision: 2
+  round: down
+  range: 60..100
+  
+  # Status checks configuration
+  status:
+    # Default rules applied to all status checks  
+    default_rules:
+      flag_coverage_not_uploaded_behavior: include
+
+    # Project-level status checks
+    project:
+      # Overall project coverage
+      default:
+        target: auto
+        threshold: 2%
+        branches:
+          - master
+          - main
+
+      # Core server functionality (most critical)
+      server_core:
+        target: 75%  # Higher target for core server functionality
+        threshold: 1%
+        paths:
+          - "src/server.c"
+          - "lib/network.c"
+          - "lib/network.h"
+
+      # Client functionality
+      client_core:
+        target: 75%
+        threshold: 1%
+        paths:
+          - "src/client.c"
+
+      # ASCII conversion engine (core feature)
+      ascii_engine:
+        target: 80%  # High target for main feature
+        threshold: 1%
+        paths:
+          - "lib/ascii.c"
+          - "lib/ascii.h"
+          - "lib/ascii_simd*.c"
+          - "lib/ascii_simd*.h"
+          - "lib/image2ascii/**/*"
+
+      # Video processing pipeline
+      video_processing:
+        target: 70%
+        threshold: 2%
+        paths:
+          - "lib/image.c"
+          - "lib/image.h"
+          - "lib/webcam*.c"
+          - "lib/webcam*.h"
+          - "lib/webcam*.m"
+
+      # Audio system
+      audio_system:
+        target: 70%
+        threshold: 2%
+        paths:
+          - "lib/audio.c"
+          - "lib/audio.h"
+          - "lib/mixer.c"
+          - "lib/mixer.h"
+          - "lib/ringbuffer.c"
+          - "lib/ringbuffer.h"
+
+      # Network infrastructure
+      network_infrastructure:
+        target: 75%
+        threshold: 2%
+        paths:
+          - "lib/packet_queue.c"
+          - "lib/packet_queue.h"
+          - "lib/buffer_pool.c"
+          - "lib/buffer_pool.h"
+          - "lib/hashtable.c"
+          - "lib/hashtable.h"
+
+      # Security components
+      security_crypto:
+        target: 80%  # High target for security code
+        threshold: 1%
+        paths:
+          - "lib/crypto.c"
+          - "lib/crypto.h"
+          - "lib/crc32_hw.c"
+          - "lib/crc32_hw.h"
+
+      # Terminal rendering and output
+      terminal_rendering:
+        target: 65%
+        threshold: 2%
+        paths:
+          - "lib/ansi_fast.c"
+          - "lib/ansi_fast.h"
+          - "lib/terminal_detect.c"
+          - "lib/terminal_detect.h"
+          - "lib/palette.c"
+          - "lib/palette.h"
+
+      # Test infrastructure
+      test_framework:
+        target: 60%
+        threshold: 3%
+        paths:
+          - "tests/**/*"
+        informational: true  # Don't fail builds on test framework coverage
+
+    # Patch-level status checks (for PRs)
+    patch:
+      # Overall patch coverage
+      default:
+        target: 60%
+        threshold: 0%  # Strict - all new code should be tested
+        branches:
+          - master
+          - main
+
+      # Stricter patch requirements for core functionality
+      core_patch:
+        target: 80%
+        threshold: 0%
+        paths:
+          - "src/server.c"
+          - "src/client.c"
+          - "lib/ascii*.c"
+          - "lib/network.c"
+          - "lib/crypto.c"
+
+# Component management for detailed reporting
+component_management:
+  # Default rules inherited by all components
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 2%
+        branches:
+          - "!master"  # Don't run on master to reduce noise
+
+  # Individual components for detailed tracking
+  individual_components:
+    # Server core functionality
+    - component_id: server_core
+      name: "Server Core"
+      paths:
+        - "src/server.c"
+        - "tests/**/server*.c"
+      statuses:
+        - type: project
+          target: 75%
+          threshold: 1%
+        - type: patch
+          target: 80%
+
+    # Client core functionality
+    - component_id: client_core
+      name: "Client Core"
+      paths:
+        - "src/client.c"
+        - "tests/**/client*.c"
+      statuses:
+        - type: project
+          target: 75%
+          threshold: 1%
+        - type: patch
+          target: 80%
+
+    # ASCII art conversion engine
+    - component_id: ascii_engine
+      name: "ASCII Art Engine"
+      paths:
+        - "lib/ascii*.c"
+        - "lib/ascii*.h"
+        - "lib/image2ascii/**/*"
+        - "tests/**/ascii*.c"
+      statuses:
+        - type: project
+          target: 80%
+          threshold: 1%
+        - type: patch
+          target: 85%
+
+    # SIMD optimizations
+    - component_id: simd_optimizations
+      name: "SIMD Optimizations"
+      paths:
+        - "lib/ascii_simd*.c"
+        - "lib/ascii_simd*.h"
+        - "lib/image2ascii/simd/**/*"
+        - "tests/**/simd*.c"
+      statuses:
+        - type: project
+          target: 70%
+          threshold: 2%
+        - type: patch
+          target: 75%
+
+    # Network protocol and communication
+    - component_id: networking
+      name: "Network Protocol"
+      paths:
+        - "lib/network.*"
+        - "lib/packet_queue.*"
+        - "tests/**/network*.c"
+      statuses:
+        - type: project
+          target: 75%
+          threshold: 2%
+        - type: patch
+          target: 80%
+
+    # Audio processing and mixing
+    - component_id: audio_processing
+      name: "Audio Processing"
+      paths:
+        - "lib/audio.*"
+        - "lib/mixer.*"
+        - "lib/ringbuffer.*"
+        - "tests/**/audio*.c"
+      statuses:
+        - type: project
+          target: 70%
+          threshold: 2%
+        - type: patch
+          target: 75%
+
+    # Video capture and processing
+    - component_id: video_processing
+      name: "Video Processing"
+      paths:
+        - "lib/image.*"
+        - "lib/webcam*.*"
+        - "lib/aspect_ratio.*"
+      statuses:
+        - type: project
+          target: 70%
+          threshold: 2%
+
+    # Security and cryptography
+    - component_id: security
+      name: "Security & Crypto"
+      paths:
+        - "lib/crypto.*"
+        - "lib/crc32_hw.*"
+        - "tests/**/crypto*.c"
+      statuses:
+        - type: project
+          target: 80%
+          threshold: 1%
+        - type: patch
+          target: 85%
+
+    # Memory management and data structures
+    - component_id: data_structures
+      name: "Data Structures"
+      paths:
+        - "lib/buffer_pool.*"
+        - "lib/hashtable.*"
+        - "lib/common.*"
+        - "tests/**/buffer_pool*.c"
+        - "tests/**/hashtable*.c"
+      statuses:
+        - type: project
+          target: 75%
+          threshold: 2%
+        - type: patch
+          target: 80%
+
+    # Terminal output and rendering
+    - component_id: terminal_output
+      name: "Terminal Output"
+      paths:
+        - "lib/ansi_fast.*"
+        - "lib/terminal_detect.*"
+        - "lib/palette.*"
+      statuses:
+        - type: project
+          target: 65%
+          threshold: 2%
+
+    # Configuration and options
+    - component_id: configuration
+      name: "Configuration"
+      paths:
+        - "lib/options.*"
+        - "lib/logging.*"
+      statuses:
+        - type: project
+          target: 70%
+          informational: true
+
+    # Integration tests
+    - component_id: integration_tests
+      name: "Integration Tests"
+      paths:
+        - "tests/integration/**/*"
+      statuses:
+        - type: project
+          target: 60%
+          informational: true
+
+# Pull request comment configuration
+comment:
+  layout: "header, diff, flags, components, footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  branches:
+    - master
+    - main
+
+# Ignore certain paths from coverage calculation
+ignore:
+  - "build/**/*"
+  - "bin/**/*"
+  - "*.gcov"
+  - "**/*.gcov"
+  - ".github/**/*"
+  - "notes/**/*"
+  - "todo/**/*"
+  - "README.md"
+  - "Makefile*"
+  - "Info.plist"
+  - "**/.DS_Store"
+  - "**/compile_commands.json"
+
+# Notification settings
+github_checks:
+  annotations: true

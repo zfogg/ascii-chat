@@ -22,6 +22,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-15]
         build_type: [debug, release]
+        include:
+          - os: ubuntu-latest
+            os-name: ubuntu
+          - os: macos-15  
+            os-name: macos
 
     steps:
     - name: Checkout code
@@ -30,7 +35,8 @@ jobs:
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
       with:
-        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        os: ${{ matrix.os-name }}
+        extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
 
     - name: Build project (${{ matrix.build_type }}) (macOS)
       if: runner.os == 'macOS'
@@ -51,6 +57,47 @@ jobs:
         test -x ./bin/server
         test -x ./bin/client
 
+    - name: Run unit tests
+      run: |
+        make tests
+        GENERATE_JUNIT=1 make test-unit
+
+    - name: Generate coverage report (Ubuntu debug only)  
+      if: matrix.os-name == 'ubuntu' && matrix.build_type == 'debug'
+      run: |
+        make clean
+        GENERATE_JUNIT=1 make coverage
+
+    - name: Debug - Check if junit.xml exists
+      run: |
+        if [ -f junit.xml ]; then
+          echo "✅ junit.xml exists"
+          ls -la junit.xml
+          echo "=== First 10 lines of junit.xml ==="
+          head -10 junit.xml
+        else
+          echo "❌ junit.xml not found"
+          echo "Files in current directory:"
+          ls -la
+        fi
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        files: ./junit.xml
+        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload coverage to Codecov (Ubuntu debug only)
+      if: matrix.os-name == 'ubuntu' && matrix.build_type == 'debug'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./*.gcov
+        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
+        verbose: true
+
     - name: Upload artifacts
       if: matrix.build_type == 'release'
       uses: actions/upload-artifact@v4
@@ -60,6 +107,81 @@ jobs:
           bin/server
           bin/client
         retention-days: 30
+
+  test:
+    name: Test and Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: 'lcov gcovr libc6-dbg'
+
+    - name: Build and test with coverage
+      run: |
+        GENERATE_JUNIT=1 make coverage
+
+    - name: Generate coverage report
+      run: |
+        # Generate coverage files for codecov
+        find . -name "*.gcda" -exec gcov {} \;
+
+    - name: Debug - Check if junit.xml exists
+      run: |
+        if [ -f junit.xml ]; then
+          echo "✅ junit.xml exists"
+          ls -la junit.xml
+          echo "=== First 10 lines of junit.xml ==="
+          head -10 junit.xml
+        else
+          echo "❌ junit.xml not found"
+          echo "Files in current directory:"
+          ls -la
+        fi
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        files: ./junit.xml
+        flags: ascii-chat-tests
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./*.gcov
+        fail_ci_if_error: true
+        verbose: true
+
+  memory-check:
+    name: Memory Safety Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: 'libc6-dbg valgrind'
+
+    - name: Build for memory testing
+      run: |
+        make tests
+
+    - name: Run tests with AddressSanitizer
+      run: |
+        make clean
+        CFLAGS="-fsanitize=address -g -O0" LDFLAGS="-fsanitize=address" make test-unit
 
   static-analysis:
     runs-on: ubuntu-latest
@@ -79,7 +201,6 @@ jobs:
         # Run clang-tidy on source files
         bear -- make -j CSTD=c2x debug
         make CSTD=c2x clang-tidy
-
 
     - name: Check for memory leaks patterns
       run: |

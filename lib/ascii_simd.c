@@ -321,71 +321,6 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
   return (base_iterations > minimum_iterations) ? base_iterations : minimum_iterations;
 }
 
-// Measure execution time with adaptive iteration count for accuracy
-// Returns average time per operation in seconds
-static double measure_function_time(void (*func)(const rgb_pixel_t *, char *, int), const rgb_pixel_t *pixels,
-                                    char *output, int pixel_count) {
-  int iterations = calculate_adaptive_iterations(pixel_count, 10.0); // Target 10ms minimum
-
-  // Warmup run to stabilize CPU frequency scaling and caches
-  func(pixels, output, pixel_count);
-
-  // Actual measurement with multiple iterations
-  double start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    func(pixels, output, pixel_count);
-  }
-  double total_time = get_time_seconds() - start;
-
-  return total_time / iterations; // Return average time per iteration
-}
-
-// NEW: Measure execution time for image-based functions (like NEON)
-// Returns average time per operation in seconds
-static double measure_image_function_time(char *(*func)(const image_t *), const image_t *test_image) {
-  int pixel_count = test_image->w * test_image->h;
-  int iterations = calculate_adaptive_iterations(pixel_count, 10.0); // Target 10ms minimum
-
-  // Warmup run to stabilize CPU frequency scaling and caches
-  char *result = func(test_image);
-  if (result)
-    free(result);
-
-  // Actual measurement with multiple iterations
-  double start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    char *result = func(test_image);
-    if (result)
-      free(result);
-  }
-  double total_time = get_time_seconds() - start;
-
-  return total_time / iterations; // Return average time per iteration
-}
-
-// Measure execution time for color functions with background mode
-static double measure_image_function_time_color(char *(*func)(const image_t *, bool, bool), const image_t *test_image,
-                                                bool background_mode, bool use_256color) {
-  int pixel_count = test_image->w * test_image->h;
-  int iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-
-  // Warmup run
-  char *result = func(test_image, background_mode, true); // Use 256color mode for consistency
-  if (result)
-    free(result);
-
-  // Actual measurement with multiple iterations
-  double start = get_time_seconds();
-  for (int i = 0; i < iterations; i++) {
-    char *result = func(test_image, background_mode, true);
-    if (result)
-      free(result);
-  }
-  double total_time = get_time_seconds() - start;
-
-  return total_time / iterations;
-}
-
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
   simd_benchmark_t result = {0};
 
@@ -494,8 +429,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 #endif
 
 #ifdef SIMD_SUPPORT_SVE
-  // Benchmark SVE using new image-based timing function
-  result.sve_time = measure_image_function_time(render_ascii_image_monochrome_sve, test_image);
+  // SVE benchmarking disabled - function removed
+  result.sve_time = 0.0;
 #endif
 
   // Find best method
@@ -918,8 +853,6 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   const char *mode_str = background_mode ? "background" : "foreground";
 
   // Variables for webcam capture cleanup
-  rgb_pixel_t **frame_data = NULL;
-  int captured_frames = 0;
 
   if (source_image) {
     printf("Using provided source image data for COLOR %s %dx%d benchmarking with %d iterations...\n", mode_str, width,
