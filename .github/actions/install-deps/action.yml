@@ -37,11 +37,26 @@ runs:
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-deps-
 
-    - name: Install dependencies (macOS)
-      if: inputs.os == 'macos' && steps.cache-homebrew.outputs.cache-hit != 'true'
+    - name: Check if packages exist (macOS)
+      if: inputs.os == 'macos'
+      id: check-packages
       shell: bash
       run: |
-        # Cache miss - install dependencies
+        # Check if all required packages are already installed
+        if brew list portaudio &>/dev/null && brew list libsodium &>/dev/null && brew list criterion &>/dev/null; then
+          echo "packages-exist=true" >> $GITHUB_OUTPUT
+          echo "All required packages already installed"
+        else
+          echo "packages-exist=false" >> $GITHUB_OUTPUT
+          echo "Some packages need installation"
+        fi
+
+    - name: Install dependencies (macOS)
+      if: inputs.os == 'macos' && steps.check-packages.outputs.packages-exist != 'true'
+      shell: bash
+      run: |
+        # Install missing dependencies
+        echo "Installing Homebrew dependencies..."
         brew update
         
         # Install base dependencies
@@ -57,7 +72,9 @@ runs:
       shell: bash
       run: |
         # Set up pkg-config path for Homebrew packages (always needed)
-        echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "CPPFLAGS=-I/opt/homebrew/include:$CPPFLAGS" >> $GITHUB_ENV
+        echo "LDFLAGS=-L/opt/homebrew/lib:$LDFLAGS" >> $GITHUB_ENV
 
     - name: Install dependencies (Ubuntu)
       if: inputs.os == 'ubuntu' && steps.cache-apt.outputs.cache-hit != 'true'
