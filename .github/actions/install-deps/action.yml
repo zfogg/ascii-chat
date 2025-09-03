@@ -25,17 +25,6 @@ runs:
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-deps-
 
-    - name: Cache APT (Ubuntu)
-      if: inputs.os == 'ubuntu'
-      id: cache-apt
-      uses: actions/cache@v4
-      with:
-        path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-${{ runner.arch }}-deps-${{ hashFiles('.github/actions/install-deps/action.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-deps-
 
     - name: Check if packages exist (macOS)
       if: inputs.os == 'macos'
@@ -136,13 +125,19 @@ runs:
           echo "Some packages need installation"
         fi
 
+    - name: Update package lists (Ubuntu)
+      if: inputs.os == 'ubuntu' && steps.check-packages-ubuntu.outputs.packages-exist != 'true'
+      shell: bash
+      run: |
+        echo "Updating package lists..."
+        sudo apt-get update
+
     - name: Install dependencies (Ubuntu)
       if: inputs.os == 'ubuntu' && steps.check-packages-ubuntu.outputs.packages-exist != 'true'
       shell: bash
       run: |
         # Install missing dependencies
         echo "Installing Ubuntu dependencies..."
-        sudo apt-get update
         
         # Read package list from file
         mapfile -t REQUIRED_PACKAGES < /tmp/ubuntu_packages.txt
