@@ -97,6 +97,16 @@ runs:
         echo "Set PKG_CONFIG_PATH to /opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig"
         echo "Set CPPFLAGS to -I/opt/homebrew/include"
         echo "Set LDFLAGS to -L/opt/homebrew/lib"
+        
+        # Debug: Check if pkg-config can find portaudio immediately after setting env vars
+        echo "Debug: Testing pkg-config with PKG_CONFIG_PATH..."
+        export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
+        pkg-config --libs portaudio-2.0 || echo "ERROR: pkg-config cannot find portaudio-2.0"
+        
+        # Debug: Check if .pc files exist
+        echo "Debug: Checking .pc files existence..."
+        ls -la /opt/homebrew/lib/pkgconfig/portaudio* || echo "ERROR: No portaudio .pc files in /opt/homebrew/lib/pkgconfig/"
+        ls -la /opt/homebrew/opt/portaudio/lib/pkgconfig/ || echo "ERROR: No portaudio directory in /opt/homebrew/opt/"
 
     - name: Check if packages exist (Ubuntu)
       if: inputs.os == 'ubuntu'
