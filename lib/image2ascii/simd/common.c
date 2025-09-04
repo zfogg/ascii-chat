@@ -499,6 +499,17 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 
 // char_index_ramp_cache functions removed - data already available in utf8_palette_cache_t.char_index_ramp[64]
 
+// Callback to free individual UTF-8 cache entries during cleanup
+static void free_utf8_cache_entry(uint32_t key, void *value, void *user_data) {
+  (void)key;       // Unused
+  (void)user_data; // Unused
+
+  utf8_palette_cache_t *cache = (utf8_palette_cache_t *)value;
+  if (cache) {
+    SAFE_FREE(cache);
+  }
+}
+
 // Central cleanup function for all SIMD caches
 void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
@@ -506,6 +517,8 @@ void simd_caches_destroy_all(void) {
   // Destroy shared UTF-8 palette cache
   pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
+    // Free all UTF-8 cache entries before destroying hashtable
+    hashtable_foreach(g_utf8_cache_table, free_utf8_cache_entry, NULL);
     hashtable_destroy(g_utf8_cache_table);
     g_utf8_cache_table = NULL;
     log_debug("UTF8_CACHE: Destroyed shared UTF-8 palette cache");
