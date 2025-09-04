@@ -111,6 +111,80 @@ static inline uint16_t neon_horizontal_sum_u8(uint8x16_t vec) {
   return (uint16_t)(vgetq_lane_u64(sum64, 0) + vgetq_lane_u64(sum64, 1));
 }
 
+// NEON-optimized RLE detection: find run length for char+color pairs
+static inline int find_rle_run_length_neon(const uint8_t *char_buf, const uint8_t *color_buf, int start_pos,
+                                           int max_len, uint8_t target_char, uint8_t target_color) {
+  int run_length = 1; // At least the starting position
+
+  // Use NEON to check multiple elements at once when possible
+  int remaining = max_len - start_pos - 1;
+  if (remaining <= 0)
+    return 1;
+
+  const uint8_t *char_ptr = &char_buf[start_pos + 1];
+  const uint8_t *color_ptr = &color_buf[start_pos + 1];
+
+  // Process in chunks of 16 for full NEON utilization
+  while (remaining >= 16) {
+    uint8x16_t chars = vld1q_u8(char_ptr);
+    uint8x16_t colors = vld1q_u8(color_ptr);
+
+    uint8x16_t char_match = vceqq_u8(chars, vdupq_n_u8(target_char));
+    uint8x16_t color_match = vceqq_u8(colors, vdupq_n_u8(target_color));
+    uint8x16_t both_match = vandq_u8(char_match, color_match);
+
+    // Use NEON min/max to find first mismatch efficiently
+    // If all elements match, min will be 0xFF, otherwise it will be 0x00
+    uint8_t min_match = vminvq_u8(both_match);
+
+    if (min_match == 0xFF) {
+      // All 16 elements match
+      run_length += 16;
+      char_ptr += 16;
+      color_ptr += 16;
+      remaining -= 16;
+    } else {
+      // Find first mismatch position using bit scan
+      uint64_t mask_lo = vgetq_lane_u64(vreinterpretq_u64_u8(both_match), 0);
+      uint64_t mask_hi = vgetq_lane_u64(vreinterpretq_u64_u8(both_match), 1);
+
+      int matches_found = 0;
+      // Check low 8 bytes first
+      for (int i = 0; i < 8; i++) {
+        if ((mask_lo >> (i * 8)) & 0xFF) {
+          matches_found++;
+        } else {
+          break;
+        }
+      }
+
+      // If all low 8 matched, check high 8 bytes
+      if (matches_found == 8) {
+        for (int i = 0; i < 8; i++) {
+          if ((mask_hi >> (i * 8)) & 0xFF) {
+            matches_found++;
+          } else {
+            break;
+          }
+        }
+      }
+
+      run_length += matches_found;
+      break; // Found mismatch, stop
+    }
+  }
+
+  // Handle remaining elements with scalar loop
+  while (remaining > 0 && *char_ptr == target_char && *color_ptr == target_color) {
+    run_length++;
+    char_ptr++;
+    color_ptr++;
+    remaining--;
+  }
+
+  return run_length;
+}
+
 // NEON helper: Check if all characters have same length
 static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length) {
   uint8_t first_len = vgetq_lane_u8(lengths, 0);
@@ -579,17 +653,39 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
         }
 
       } else {
-        // MIXED LENGTH PATH: Simplified scalar approach with NEON-accelerated lookups
-        // The NEON luminance calculation already gave us major speedup
-        // For mixed lengths, use direct character-by-character output (like original scalar fallback)
+        // MIXED LENGTH PATH: SIMD shuffle mask optimization
+        // Use vqtbl4q_u8 to gather UTF-8 bytes in 4 passes, then compact with fast scalar
+
+        // Gather all UTF-8 bytes using existing lookup tables with shuffle masks
+        uint8x16_t byte0_vec = vqtbl4q_u8(char_byte0_lut, char_indices);
+        uint8x16_t byte1_vec = vqtbl4q_u8(char_byte1_lut, char_indices);
+        uint8x16_t byte2_vec = vqtbl4q_u8(char_byte2_lut, char_indices);
+        uint8x16_t byte3_vec = vqtbl4q_u8(char_byte3_lut, char_indices);
+
+        // Store gathered bytes to temporary buffers
+        uint8_t byte0_buf[16], byte1_buf[16], byte2_buf[16], byte3_buf[16];
+        vst1q_u8(byte0_buf, byte0_vec);
+        vst1q_u8(byte1_buf, byte1_vec);
+        vst1q_u8(byte2_buf, byte2_vec);
+        vst1q_u8(byte3_buf, byte3_vec);
+
+        // Fast scalar compaction: emit only valid bytes based on character lengths
+        // Store char_indices to buffer for lookup
         uint8_t char_idx_buf[16];
         vst1q_u8(char_idx_buf, char_indices);
 
         for (int i = 0; i < 16; i++) {
           const uint8_t char_idx = char_idx_buf[i];
-          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
-          pos += char_info->byte_len;
+          const uint8_t byte_len = utf8_cache->cache64[char_idx].byte_len;
+
+          // Emit bytes based on character length (1-4 bytes)
+          *pos++ = byte0_buf[i];
+          if (byte_len > 1)
+            *pos++ = byte1_buf[i];
+          if (byte_len > 2)
+            *pos++ = byte2_buf[i];
+          if (byte_len > 3)
+            *pos++ = byte3_buf[i];
         }
       }
     }
@@ -705,17 +801,13 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       uint8x16_t char_indices = vqtbl4q_u8(tbl, idx);
 
       if (use_256color) {
-        // 256-color mode: Still needs scalar processing for color quantization
-        uint8_t char_idx_buf[16], rbuf[16], gbuf_green[16], bbuf[16];
+        // 256-color mode: VECTORIZED color quantization
+        uint8_t char_idx_buf[16], color_indices[16];
         vst1q_u8(char_idx_buf, char_indices); // Character indices from SIMD lookup
-        vst1q_u8(rbuf, pix.val[0]);
-        vst1q_u8(gbuf_green, pix.val[1]);
-        vst1q_u8(bbuf, pix.val[2]);
-        // 256-color mode processing
-        uint8_t color_indices[16];
-        for (int i = 0; i < 16; i++) {
-          color_indices[i] = rgb_to_256color(rbuf[i], gbuf_green[i], bbuf[i]);
-        }
+
+        // VECTORIZED: Use existing optimized 256-color quantization
+        uint8x16_t color_indices_vec = palette256_index_dithered_neon(pix.val[0], pix.val[1], pix.val[2], x);
+        vst1q_u8(color_indices, color_indices_vec);
 
         // Emit with RLE on (UTF-8 character, color) runs using SIMD-derived indices
         for (int i = 0; i < 16;) {
@@ -723,11 +815,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
           const uint8_t color_idx = color_indices[i];
 
-          int j = i + 1;
-          while (j < 16 && char_idx_buf[j] == char_idx && color_indices[j] == color_idx) {
-            j++;
-          }
-          const uint32_t run = (uint32_t)(j - i);
+          // NEON-optimized RLE detection
+          const uint32_t run =
+              (uint32_t)find_rle_run_length_neon(char_idx_buf, color_indices, i, 16, char_idx, color_idx);
 
           if (color_idx != cur_color_idx) {
             if (use_background) {
@@ -746,7 +836,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
               ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
             }
           }
-          i = j;
+          i += run;
         }
       } else {
         // VECTORIZED: Truecolor mode with full SIMD pipeline (no scalar spillover)
