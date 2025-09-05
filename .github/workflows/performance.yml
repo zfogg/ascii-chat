@@ -26,10 +26,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config valgrind
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: valgrind
 
     - name: Build with debug symbols
       run: |
@@ -80,10 +81,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
 
     - name: Build different optimization levels
       run: |

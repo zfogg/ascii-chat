@@ -13,13 +13,14 @@ asciichat_error_t ascii_read_init(unsigned short int webcam_index);
 asciichat_error_t ascii_write_init(int fd);
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
-                    const bool aspect_ratio, const bool stretch);
+                    const bool aspect_ratio, const bool stretch, const char *palette_chars,
+                    const char luminance_palette[256]);
 
 // Capability-aware ASCII conversion using terminal detection
 #include "terminal_detect.h"
 char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                      const bool stretch);
+                                      const bool stretch, const char *palette_chars, const char luminance_palette[256]);
 asciichat_error_t ascii_write(const char *);
 
 void ascii_read_destroy(void);
@@ -53,16 +54,16 @@ char *get_lum_palette(void);
 #define ANSI_BG_PREFIX "\033[48;2;"
 #define ANSI_COLOR_SUFFIX "m"
 
-#define print(s) fwrite(s, 1, sizeof(s) / sizeof(s[0]), stdout)
+#define print(s) fwrite(s, 1, sizeof(s) / sizeof((s)[0]), stdout)
 
-#define console_clear(fd) write(fd, "\e[1;1H\e[2J", 10)
+#define console_clear(fd) write(fd, "\033[1;1H\033[2J", 10)
 
 // #define cursor_reset() print("\033[0;0H")
 #define cursor_reset(fd) write(fd, "\033[H", 3)
 
-#define cursor_hide(fd) write(fd, "\e[?25l", 6)
+#define cursor_hide(fd) dprintf(fd, "\033[?25l")
 
-#define cursor_show(fd) write(fd, "\e[?25h", 6)
+#define cursor_show(fd) dprintf(fd, "\033[?25h")
 
 #define terminal_reset(fd) write(fd, "\033c", 2)
 

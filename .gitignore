@@ -9,3 +9,9 @@ compile_commands.json
 *.old
 .cache
 *.o
+junit.xml
+*.gcov
+*.gcda
+*.gcno
+coverage.info
+coverage_html/

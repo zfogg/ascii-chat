@@ -30,9 +30,11 @@
 #endif
 
 // Luminance calculation constants (shared across all files)
+// formula: Y = (RED*R + GREEN*G + BLUE*B + THRESHOLD) >> 8
 #define LUMA_RED 77    // 0.299 * 256
 #define LUMA_GREEN 150 // 0.587 * 256
 #define LUMA_BLUE 29   // 0.114 * 256
+#define LUMA_THRESHOLD 128
 
 // Forward declaration for cache structure
 typedef struct {
@@ -40,32 +42,13 @@ typedef struct {
   char s[3];   // digits only, no terminator
 } dec3_t;
 
-// OPTIMIZATION 14: Cache-friendly data layout - group frequently accessed data
-// Cache line is typically 64 bytes, so we organize data to minimize cache misses
-struct __attribute__((aligned(64))) ascii_color_cache {
-  // Hot path #1: Character lookup (accessed every pixel)
-  char luminance_palette[256];
-
-  // Hot path #2: Decimal string lookup (accessed when colors change)
+// Global dec3 cache for digit conversion (shared across all clients)
+typedef struct {
   dec3_t dec3_table[256];
-
-  // Hot path #3: Initialization flags (checked frequently)
-  bool palette_initialized;
   bool dec3_initialized;
+} global_dec3_cache_t;
 
-  // Cold data: Constants (accessed once during init)
-  const char ascii_chars[24]; // "   ...',;:clodxkO0KXNWM"
-  int palette_len;
-} __attribute__((aligned(64)));
-
-// #define luminance_palette g_ascii_cache.luminance_palette
-
-// Pre-calculated luminance palette
-// REMOVED: static bool palette_initialized = false;
-
-// Global cache declaration - defined in ascii_simd.c
-extern struct ascii_color_cache g_ascii_cache;
-// REMOVED: static char luminance_palette[256];
+extern global_dec3_cache_t g_dec3_cache;
 
 // Pre-computed ANSI escape code templates
 // static const char ANSI_FG_PREFIX[] = "\033[38;2;";  // Unused, replaced by inline constants
@@ -74,8 +57,11 @@ extern struct ascii_color_cache g_ascii_cache;
 static const char ANSI_RESET[] = "\033[0m";
 
 void init_dec3(void);
-void init_palette(void);
 void ascii_simd_init(void);
+
+// Default palette access for legacy functions
+extern char g_default_luminance_palette[256];
+void init_default_luminance_palette(void);
 
 typedef struct {
   char *data; // pointer to allocated buffer
@@ -111,8 +97,8 @@ typedef struct {
 ImageRGB alloc_image(int w, int h);
 
 // Fallback scalar version
-void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count);
-char *convert_pixels_scalar_with_newlines(image_t *image);
+void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count, const char luminance_palette[256]);
+char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_palette[256]);
 
 // Row-based functions removed - use image_print_color() instead
 
@@ -139,8 +125,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
                                                              bool use_fast_path);
 void print_simd_capabilities(void);
 
-char *image_print_simd(image_t *image);
-char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path);
+char *image_print_simd(image_t *image, const char *ascii_chars);
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars);
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color
@@ -161,8 +147,18 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           int width, char *dst, size_t cap, bool is_truecolor);
 
 // Include architecture-specific implementations
+#ifdef SIMD_SUPPORT_SSE2
 #include "image2ascii/simd/sse2.h"
+#endif
+#ifdef SIMD_SUPPORT_SSSE3
 #include "image2ascii/simd/ssse3.h"
+#endif
+#ifdef SIMD_SUPPORT_AVX2
 #include "image2ascii/simd/avx2.h"
+#endif
+#ifdef SIMD_SUPPORT_SVE
 #include "image2ascii/simd/sve.h"
+#endif
+#ifdef SIMD_SUPPORT_NEON
 #include "image2ascii/simd/neon.h"
+#endif

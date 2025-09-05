@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Get list of files that are staged for commit
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Run formatting
+make format
+
+# Check which of the staged files were modified by formatting
+formatted_files=""
+for file in $staged_files; do
+    if [[ -f "$file" ]] && git diff --name-only | grep -q "^$file$"; then
+        formatted_files="$formatted_files $file"
+        git add "$file"
+    fi
+done
+
+# Show what was formatted
+if [[ -n "$formatted_files" ]]; then
+    echo "🎨 Code formatting applied to:$formatted_files"
+fi

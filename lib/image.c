@@ -7,16 +7,18 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "image.h"
 #include "ascii.h"
 #include "ascii_simd.h"
+#include "image2ascii/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
 #include "round.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
+#include "palette.h"
 
-// Use the global SIMD-optimized palette
-#define luminance_palette g_ascii_cache.luminance_palette
+// NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 
 // ansi_fast functions are declared in ansi_fast.h (already included)
 
@@ -189,9 +191,10 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 }
 
 // Optimized image printing with better memory access patterns
-char *image_print(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print: p is NULL");
+char *image_print(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -203,38 +206,86 @@ char *image_print(const image_t *p) {
     return NULL;
   }
 
-  // Need space for h rows, each with w characters, plus h-1 newlines, plus null terminator
-  const ssize_t len = (ssize_t)h * ((ssize_t)w + 1);
+  // Get UTF-8 character cache for proper multi-byte character support
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for scalar rendering");
+    return NULL;
+  }
+
+  // Character index ramp is now part of UTF-8 cache - no separate cache needed
+
+  // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
+  const size_t max_char_bytes = 4; // Max UTF-8 character size
+  const ssize_t len = (ssize_t)h * ((ssize_t)w * max_char_bytes + 1);
 
   const rgb_t *pix = p->pixels;
-  const unsigned short int *red_lut = RED;
-  const unsigned short int *green_lut = GREEN;
-  const unsigned short int *blue_lut = BLUE;
 
   char *lines;
   SAFE_MALLOC(lines, len * sizeof(char), char *);
 
-  int out_idx = 0;
+  // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
+  outbuf_t ob = {0};
+  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf) {
+    free(lines);
+    log_error("Failed to allocate output buffer for scalar rendering");
+    return NULL;
+  }
+
+  // Process pixels with UTF-8 RLE emission (same approach as SIMD)
   for (int y = 0; y < h; y++) {
     const int row_offset = y * w;
 
-    for (int x = 0; x < w; x++) {
+    for (int x = 0; x < w;) {
       const rgb_t pixel = pix[row_offset + x];
-      const int luminance = red_lut[pixel.r] + green_lut[pixel.g] + blue_lut[pixel.b];
-      lines[out_idx++] = luminance_palette[luminance];
+      // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+
+      // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+
+      // Use same 64-entry cache as SIMD for consistency
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
+
+      // Find run length for same character (RLE optimization)
+      int j = x + 1;
+      while (j < w) {
+        const rgb_t next_pixel = pix[row_offset + j];
+        const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) >> 8;
+        int next_safe_luminance = (next_luminance > 255) ? 255 : next_luminance;
+        uint8_t next_luma_idx = next_safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+        uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
+        if (next_char_idx != char_idx)
+          break;
+        j++;
+      }
+      uint32_t run = (uint32_t)(j - x);
+
+      // Emit UTF-8 character with RLE (same as SIMD)
+      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        }
+      }
+      x = j;
     }
+
+    // Add newline between rows (except last row)
     if (y != h - 1) {
-      lines[out_idx++] = '\n';
+      ob_putc(&ob, '\n');
     }
   }
-  lines[out_idx] = '\0';
 
-  // Debug: check if we actually wrote anything
-  if (out_idx == 0) {
-    log_error("image_print produced empty output (h=%d, w=%d)", h, w);
-  }
-
-  return lines;
+  ob_term(&ob);
+  free(lines); // Free the old buffer
+  return ob.buf;
 }
 
 // Color quantization to reduce frame size and improve performance
@@ -279,9 +330,17 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  * @note Exits with ASCIICHAT_ERR_BUFFER_ACCESS if buffer overflow is detected
  *       during string construction (should never happen with correct calculation).
  */
-char *image_print_color(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("p or p->pixels is NULL");
+char *image_print_color(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    return NULL;
+  }
+
+  // Get UTF-8 character cache for proper multi-byte character support
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    log_error("Failed to get UTF-8 palette cache for scalar color rendering");
     return NULL;
   }
 
@@ -347,7 +406,14 @@ char *image_print_color(const image_t *p) {
       const rgb_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       const int luminance = RED[r] + GREEN[g] + BLUE[b];
-      const char ascii_char = luminance_palette[luminance];
+
+      // Use UTF-8 character cache for proper character selection
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
+
+      // For RLE, we need to pass the first byte of the UTF-8 character
+      // Note: RLE system may need updates for full UTF-8 support
+      const char ascii_char = char_info->utf8_bytes[0];
 
       // Legacy function - always use foreground mode with RLE optimization
       // For proper per-client background support, use image_print_with_capabilities() instead
@@ -402,9 +468,11 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 }
 
 // Capability-aware image printing function
-char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps) {
-  if (!image || !image->pixels || !caps) {
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
+                                    const char luminance_palette[256] __attribute__((unused))) {
+  if (!image || !image->pixels || !caps || !palette) {
     log_error("Invalid parameters for image_print_with_capabilities");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -428,35 +496,35 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   // Choose the appropriate printing method based on terminal capabilities
   switch (caps->color_level) {
   case TERM_COLOR_TRUECOLOR:
-    // Use existing truecolor printing function
+    // Use existing truecolor printing function with client's palette
 #ifdef SIMD_SUPPORT
-    result = image_print_color_simd((image_t *)image, use_background_mode, false);
+    result = image_print_color_simd((image_t *)image, use_background_mode, false, palette);
 #else
-    result = image_print_color(image);
+    result = image_print_color(image, palette);
 #endif
     break;
 
   case TERM_COLOR_256:
 #ifdef SIMD_SUPPORT
-    result = image_print_color_simd((image_t *)image, use_background_mode, true);
+    result = image_print_color_simd((image_t *)image, use_background_mode, true, palette);
 #else
     // Use 256-color conversion
-    result = image_print_256color(image);
+    result = image_print_256color(image, palette);
 #endif
     break;
 
   case TERM_COLOR_16:
     // Use 16-color conversion with Floyd-Steinberg dithering for better quality
-    result = image_print_16color_dithered_with_background(image, use_background_mode);
+    result = image_print_16color_dithered_with_background(image, use_background_mode, palette);
     break;
 
   case TERM_COLOR_NONE:
   default:
-    // Use grayscale/monochrome conversion
+    // Use grayscale/monochrome conversion with client's custom palette
 #ifdef SIMD_SUPPORT
-    result = image_print_simd((image_t *)image);
+    result = image_print_simd((image_t *)image, palette);
 #else
-    result = image_print(image);
+    result = image_print(image, palette);
 #endif
     break;
   }
@@ -466,26 +534,28 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 }
 
 // 256-color image printing function using existing SIMD optimized code
-char *image_print_256color(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print_256color: p or p->pixels is NULL");
+char *image_print_256color(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_256color: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
   // Use the existing optimized SIMD colored printing (no background for 256-color mode)
 #ifdef SIMD_SUPPORT
-  char *result = image_print_color_simd((image_t *)p, false, true);
+  char *result = image_print_color_simd((image_t *)p, false, true, palette);
 #else
-  char *result = image_print_color(p);
+  char *result = image_print_color(p, palette);
 #endif
 
   return result;
 }
 
 // 16-color image printing function using ansi_fast color conversion
-char *image_print_16color(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print_16color: p or p->pixels is NULL");
+char *image_print_16color(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_16color: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -520,10 +590,36 @@ char *image_print_16color(const image_t *p) {
       uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
       ptr = append_16color_fg(ptr, color_index);
 
-      // Calculate luminance for ASCII character selection
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use the global SIMD ASCII cache luminance palette
-      *ptr++ = luminance_palette[luminance];
+      // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+
+      // Use UTF-8 cache which contains character index ramp
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (!utf8_cache) {
+        log_error("Failed to get UTF-8 cache");
+        return NULL;
+      }
+
+      // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+
+      // Use direct palette character lookup (same as SIMD would do)
+      char ascii_char = palette[char_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache[(unsigned char)ascii_char];
+
+      if (char_info) {
+        // Copy UTF-8 character bytes
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        // Fallback to simple ASCII if UTF-8 cache fails
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
     }
 
     // Add reset and newline at end of each row
@@ -539,9 +635,10 @@ char *image_print_16color(const image_t *p) {
 }
 
 // 16-color image printing with Floyd-Steinberg dithering
-char *image_print_16color_dithered(const image_t *p) {
-  if (!p || !p->pixels) {
-    log_error("image_print_16color_dithered: p or p->pixels is NULL");
+char *image_print_16color_dithered(const image_t *p, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_16color_dithered: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -586,10 +683,36 @@ char *image_print_16color_dithered(const image_t *p) {
       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
       ptr = append_16color_fg(ptr, color_index);
 
-      // Calculate luminance for ASCII character selection (same as non-dithered)
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use the global SIMD ASCII cache luminance palette
-      *ptr++ = luminance_palette[luminance];
+      // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+
+      // Use UTF-8 cache which contains character index ramp
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (!utf8_cache) {
+        log_error("Failed to get UTF-8 cache");
+        return NULL;
+      }
+
+      // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+
+      // Use direct palette character lookup (same as SIMD would do)
+      char ascii_char = palette[char_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache[(unsigned char)ascii_char];
+
+      if (char_info) {
+        // Copy UTF-8 character bytes
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        // Fallback to simple ASCII if UTF-8 cache fails
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
     }
 
     // Add reset and newline at end of each row
@@ -606,9 +729,10 @@ char *image_print_16color_dithered(const image_t *p) {
 }
 
 // 16-color image printing with Floyd-Steinberg dithering and background mode support
-char *image_print_16color_dithered_with_background(const image_t *p, bool use_background) {
-  if (!p || !p->pixels) {
-    log_error("image_print_16color_dithered_with_background: p or p->pixels is NULL");
+char *image_print_16color_dithered_with_background(const image_t *p, bool use_background, const char *palette) {
+  if (!p || !p->pixels || !palette) {
+    log_error("image_print_16color_dithered_with_background: p or p->pixels or palette is NULL");
+    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -669,10 +793,36 @@ char *image_print_16color_dithered_with_background(const image_t *p, bool use_ba
         ptr = append_16color_fg(ptr, color_index);
       }
 
-      // Calculate luminance for ASCII character selection
-      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b) / 256;
-      // Use the global SIMD ASCII cache luminance palette
-      *ptr++ = luminance_palette[luminance];
+      // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+
+      // Use UTF-8 cache which contains character index ramp
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (!utf8_cache) {
+        log_error("Failed to get UTF-8 cache");
+        return NULL;
+      }
+
+      // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+
+      // Use direct palette character lookup (same as SIMD would do)
+      char ascii_char = palette[char_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache[(unsigned char)ascii_char];
+
+      if (char_info) {
+        // Copy UTF-8 character bytes
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        // Fallback to simple ASCII if UTF-8 cache fails
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
     }
 
     // Add reset and newline at end of each row

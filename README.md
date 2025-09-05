@@ -11,7 +11,9 @@ session, and even iTerm or Kitty.app on macOS.
 It even works in an initial UNIX login shell, i.e. the login shell that runs
 'startx'.
 
-Eventually it will support 3+ simultaneous people, 'google-hangouts' style. Audio streaming is now supported via PortAudio!
+🆕 Now 3+ simultaneous people can connect and chat, like Google Hangouts and Zoom.
+
+🆕 Audio streaming is now supported via PortAudio Video4Linux!
 
 ![Animated demonstration: monochrome](http://i.imgur.com/E4OuqvX.gif)
 

@@ -40,32 +40,32 @@ override CFLAGS += -Wall -Wextra
 override CFLAGS += -D_GNU_SOURCE
 
 # Get package-specific flags
-override CFLAGS  += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
-override LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+override CFLAGS += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
+
+# Build LDFLAGS systematically to avoid duplicates
+PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+
+# Platform-specific libraries
+ifeq ($(shell uname),Darwin)
+    PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
+else ifeq ($(shell uname),Linux)
+    PLATFORM_LDFLAGS := -lncurses
+endif
+
+# System libraries (only add what pkg-config doesn't provide)
+SYSTEM_LDFLAGS := -lm
+
+# Check if pkg-config already provides pthread, if not add it
+ifeq ($(findstring -lpthread,$(PKG_LDFLAGS)),)
+    SYSTEM_LDFLAGS += -lpthread
+endif
+
+# Combine all LDFLAGS
+override LDFLAGS := $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYSTEM_LDFLAGS) $(ARCH_FLAGS)
 
 # Test-specific flags
 TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS))
 TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS))
-
-# Platform-specific LDFLAGS for webcam library
-ifeq ($(shell uname),Darwin)
-    # macOS: Add AVFoundation and CoreMedia frameworks
-    override LDFLAGS += -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
-    # macOS: Add ncurses for terminal capability detection
-    override LDFLAGS += -lncurses
-else ifeq ($(shell uname),Linux)
-    # Linux: No additional frameworks needed for V4L2
-    # Linux: Add ncurses for terminal capability detection
-    override LDFLAGS += -lncurses
-endif
-
-override LDFLAGS += -lm -lpthread
-
-# Avoid leading space from '+=' when LDFLAGS is initially empty
-override LDFLAGS += $(ARCH_FLAGS)
-
-# Deduplicate common libs to avoid linker warnings (e.g., duplicate -lm, -lpthread)
-override LDFLAGS := $(strip $(filter-out -lm -lpthread,$(LDFLAGS)) -lm -lpthread)
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
@@ -310,7 +310,7 @@ ifeq ($(UNAME_S),Darwin)
         CPU_OPT_FLAGS := -O3 -march=native
         $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
-        CPU_OPT_FLAGS := -O3 -mcpu=native -ffast-math
+        CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math
         $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native
@@ -345,12 +345,12 @@ TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
-# Header files  
+# Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
@@ -415,13 +415,21 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
+# Compile source files from lib/image2ascii/
+$(BUILD_DIR)/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii
+	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) -c $<
+
 # Compile SIMD source files from lib/image2ascii/simd/
 $(BUILD_DIR)/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii/simd
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-# Compile C source files from lib/
+# Compile C source files from lib/ (not image2ascii/ or SIMD)
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $<
 
@@ -437,7 +445,10 @@ objs: $(OBJS) $(TEST_OBJS)
 $(BUILD_DIR)/src:
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib/image2ascii/simd:
+$(BUILD_DIR)/lib/image2ascii: | $(BUILD_DIR)/lib
+	@mkdir -p $@
+
+$(BUILD_DIR)/lib/image2ascii/simd: | $(BUILD_DIR)/lib/image2ascii
 	@mkdir -p $@
 
 $(BUILD_DIR)/lib:
@@ -453,32 +464,115 @@ create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib
 # Test Rules
 # =============================================================================
 
+# Coverage flags
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
+
+# Coverage build
+coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+coverage: $(TEST_EXECUTABLES)
+	@echo "Running tests with coverage..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output with coverage..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Coverage Tests">' >> junit.xml; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		done; \
+	fi
+	@echo "Generating coverage report..."
+	@find . -name "*.gcda" -exec gcov {} \; || echo "gcov completed"
+	@if command -v lcov >/dev/null 2>&1; then \
+		echo "Using lcov for detailed coverage report..."; \
+		lcov --capture --directory . --output-file coverage.info; \
+		lcov --remove coverage.info '/usr/*' --output-file coverage.info; \
+		lcov --remove coverage.info '*/tests/*' --output-file coverage.info; \
+		lcov --list coverage.info; \
+		if command -v genhtml >/dev/null 2>&1; then \
+			genhtml coverage.info --output-directory coverage_html; \
+			echo "Coverage report generated in coverage_html/"; \
+		fi; \
+	else \
+		echo "lcov not available - coverage files (.gcov) generated for codecov upload"; \
+	fi
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
 # Test targets
 tests: $(TEST_EXECUTABLES)
 
 test: $(TEST_EXECUTABLES)
 	@echo "Running all tests..."
-	@for test in $(TEST_EXECUTABLES); do \
-		echo "Running $$test..."; \
-		$$test; \
-	done
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test; \
+		done; \
+	fi
 	@echo "All tests completed!"
 
 test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 	@echo "Running unit tests..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
 	@> /tmp/test_logs.txt
-	@for test in $^; do \
-		echo "Running $$test..."; \
-		$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-	done
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Unit Tests">' >> junit.xml; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		done; \
+	fi
 	@echo "View test logs: cat /tmp/test_logs.txt"
 
 test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 	@echo "Running integration tests..."
 	@for test in $^; do \
 		echo "Running $$test..."; \
-		$$test; \
+		$$test || (echo "Test failed: $$test" && exit 1); \
 	done
 
 test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
@@ -489,7 +583,7 @@ test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 	else \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test; \
+			$$test || (echo "Test failed: $$test" && exit 1); \
 		done; \
 	fi
 
@@ -574,6 +668,8 @@ help:
 	@echo "  debug           - Build with debug symbols and no optimization"
 	@echo "  release         - Build with optimizations enabled"
 	@echo "  format          - Format source code using clang-format"
+	@echo "  install-hooks   - Install git hooks from git-hooks/ directory"
+	@echo "  uninstall-hooks - Remove installed git hooks"
 	@echo "  format-check    - Check code formatting without modifying files"
 	@echo "  clang-tidy      - Run clang-tidy on sources"
 	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
@@ -583,6 +679,7 @@ help:
 	@echo "  test-integration - Run only integration tests"
 	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
 	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
+	@echo "  coverage        - Run tests with coverage analysis"
 	@echo "  todo            - Build the ./todo subproject"
 	@echo "  todo-clean      - Clean the ./todo subproject"
 	@echo "  clean           - Remove build artifacts"
@@ -614,7 +711,7 @@ format-check:
 # Run bear to generate a compile_commands.json file (compile-only, no linking)
 compile_commands.json: Makefile
 	@echo "Running bear to generate compile_commands.json (objects only)..."
-	@make clean todo-clean && bear -- make -j debug objs
+	@make clean && bear -- make -j debug $(OBJS)
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
@@ -662,6 +759,29 @@ todo-clean:
 		$(MAKE) -C todo -f Makefile_rate_limiter clean || true; \
 	fi
 
+# Git hooks installation
+install-hooks:
+	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
+	@if [ -f git-hooks/pre-commit ]; then \
+		cp git-hooks/pre-commit .git/hooks/pre-commit; \
+		chmod +x .git/hooks/pre-commit; \
+		echo "  ✅ pre-commit hook installed"; \
+	else \
+		echo "  ⚠️  git-hooks/pre-commit not found"; \
+	fi
+	@echo "Git hooks installation complete!"
+
+uninstall-hooks:
+	@echo "Removing git hooks..."
+	@if [ -f .git/hooks/pre-commit ]; then \
+		rm -f .git/hooks/pre-commit; \
+		echo "  ✅ pre-commit hook removed"; \
+	else \
+		echo "  ⚠️  pre-commit hook not found"; \
+	fi
+	@echo "Git hooks removal complete!"
+
 # =============================================================================
 # Extra Makefile stuff
 # =============================================================================
@@ -670,4 +790,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks

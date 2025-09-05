@@ -1,0 +1,61 @@
+name: 'Install Dependencies'
+description: 'Install and cache build dependencies for ASCII-Chat'
+inputs:
+  os:
+    description: 'Operating system (ubuntu or macos)'
+    required: true
+  extra-packages:
+    description: 'Additional packages to install (space-separated)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install and cache Homebrew packages (macOS)
+      if: inputs.os == 'macos'
+      uses: tecolicom/actions-use-homebrew-tools@v1
+      with:
+        tools: portaudio libsodium criterion ${{ inputs.extra-packages }}
+        cache: yes
+
+    - name: Install and cache APT packages (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      uses: tecolicom/actions-use-apt-tools@v1
+      with:
+        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev libasound2-dev libjack-jackd2-dev libboxfort-dev pkg-config ${{ inputs.extra-packages }}
+        cache: yes
+
+    - name: Set up build environment (macOS)
+      if: inputs.os == 'macos'
+      shell: bash
+      run: |
+        export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
+        export CPPFLAGS=-I/opt/homebrew/include
+        export LDFLAGS=-L/opt/homebrew/lib
+
+        export PKG_CONFIG_LIBS=portaudio-2.0 criterion zlib
+
+        # Set up pkg-config path for Homebrew packages (always needed)
+        echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "CPPFLAGS=$CPPFLAGS" >> $GITHUB_ENV
+        echo "LDFLAGS=$LDFLAGS" >> $GITHUB_ENV
+        echo "PKG_CONFIG_LIBS=$PKG_CONFIG_LIBS" >> $GITHUB_ENV
+
+        # Verify they will be set for subsequent steps
+        echo "Set PKG_CONFIG_PATH to $PKG_CONFIG_PATH"
+        echo "Set CPPFLAGS to $CPPFLAGS"
+        echo "Set LDFLAGS to $LDFLAGS"
+
+        # Debug: Check if pkg-config can find portaudio immediately after setting env vars
+        echo "Debug: Testing pkg-config with PKG_CONFIG_PATH and PKG_CONFIG_LIBS..."
+        pkg-config --libs --cflags "$PKG_CONFIG_LIBS"
+
+        # Debug: Check if .pc files exist
+        echo "Debug: Checking .pc files existence..."
+        for lib in $PKG_CONFIG_LIBS; do
+          ls -la /opt/homebrew/lib/pkgconfig/"$lib".pc || (
+            echo "ERROR: No $lib .pc files in /opt/homebrew/lib/pkgconfig/"
+            exit 1
+          )
+        done

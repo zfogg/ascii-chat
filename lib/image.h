@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "common.h"
+
 typedef struct rgb_t {
   uint8_t r, g, b;
 } __attribute__((packed)) rgb_t;
@@ -32,18 +34,17 @@ void image_destroy(image_t *);
 image_t *image_new_from_pool(size_t width, size_t height);
 void image_destroy_to_pool(image_t *image);
 void image_clear(image_t *);
-char *image_print(const image_t *);
-char *image_print_color(const image_t *);
+char *image_print(const image_t *, const char *palette);
+char *image_print_color(const image_t *, const char *palette);
 
 // Capability-aware image printing functions
 #include "terminal_detect.h"
-char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps);
-char *image_print_256color(const image_t *image);
-char *image_print_16color(const image_t *image);
-char *image_print_16color_dithered(const image_t *image);
-
-// Background-aware printing functions that respect client capabilities
-char *image_print_16color_dithered_with_background(const image_t *image, bool use_background);
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
+                                    const char luminance_palette[256]);
+char *image_print_256color(const image_t *image, const char *palette);
+char *image_print_16color(const image_t *image, const char *palette);
+char *image_print_16color_dithered(const image_t *image, const char *palette);
+char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette);
 
 void quantize_color(int *r, int *g, int *b, int levels);
 void image_resize(const image_t *, image_t *);

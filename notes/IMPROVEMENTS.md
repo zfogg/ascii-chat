@@ -200,7 +200,7 @@ Example log output:
 The improved architecture supports:
 
 - **Multiple Video Formats**: Easy to add JPEG, PNG, or compressed ASCII
-- **Color Support**: Protocol headers include quality/format fields  
+- **Color Support**: Protocol headers include quality/format fields
 - **Audio Streaming**: Separate message types for audio data
 - **Chat Messages**: Control message framework for text chat
 - **Recording/Playback**: Frame buffering enables easy recording
@@ -222,4 +222,4 @@ The codebase now follows professional C development practices:
 - **Cross-Platform**: Works on Linux, macOS, and other UNIX-like systems
 - **Dependencies**: OpenCV, pthread (all commonly available)
 
-This improved ASCII Chat demonstrates how to build robust, production-quality C applications with proper error handling, performance optimization, and maintainable architecture. 
+This improved ASCII Chat demonstrates how to build robust, production-quality C applications with proper error handling, performance optimization, and maintainable architecture.

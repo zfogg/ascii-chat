@@ -77,7 +77,8 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
-  PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
+  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
+  PACKET_TYPE_PALETTE_CONFIG = 14 // Server broadcasts palette configuration to clients
 } packet_type_t;
 
 typedef struct {
@@ -127,7 +128,10 @@ typedef struct {
   char term_type[32];         // $TERM value for debugging
   char colorterm[32];         // $COLORTERM value for debugging
   uint8_t detection_reliable; // True if detection methods were reliable
-  uint8_t reserved[3];        // Padding for alignment
+  uint32_t utf8_support;      // 0=no UTF-8, 1=UTF-8 supported
+  uint32_t palette_type;      // palette_type_t enum value
+  char palette_custom[64];    // Custom palette chars (if palette_type == PALETTE_CUSTOM)
+  uint8_t reserved[3];        // Padding for alignment (reduced from reserved[3])
 } __attribute__((packed)) terminal_capabilities_packet_t;
 
 // ============================================================================
@@ -184,6 +188,14 @@ typedef struct {
   uint32_t channels;      // Number of channels (1=mono, 2=stereo)
   // The actual audio data follows: float samples[total_samples]
 } __attribute__((packed)) audio_batch_packet_t;
+
+// Palette configuration packet - sent by server to synchronize palette across clients
+typedef struct {
+  uint32_t palette_type;   // palette_type_t enum value
+  uint32_t palette_length; // Number of characters in palette
+  uint32_t requires_utf8;  // 0=ASCII only, 1=needs UTF-8 support
+  char palette_chars[256]; // The actual palette characters (UTF-8)
+} __attribute__((packed)) palette_config_packet_t;
 
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
