@@ -156,40 +156,10 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
         const utf8_char_t *char_info = &utf8_cache->cache[luminance];
 
         // Optimized character emission
-        if (char_info->byte_len == 1) {
-          *pos++ = char_info->utf8_bytes[0];
-        } else {
-          switch (char_info->byte_len) {
-          case 2:
-            *pos++ = char_info->utf8_bytes[0];
-            *pos++ = char_info->utf8_bytes[1];
-            break;
-          case 3:
-            *pos++ = char_info->utf8_bytes[0];
-            *pos++ = char_info->utf8_bytes[1];
-            *pos++ = char_info->utf8_bytes[2];
-            break;
-          case 4:
-            *pos++ = char_info->utf8_bytes[0];
-            *pos++ = char_info->utf8_bytes[1];
-            *pos++ = char_info->utf8_bytes[2];
-            *pos++ = char_info->utf8_bytes[3];
-            break;
-          }
-        }
-      }
-    }
-
-    // Handle remaining pixels (scalar fallback)
-    for (; x < w; x++) {
-      const rgb_pixel_t pixel = row[x];
-      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-
-      if (char_info->byte_len == 1) {
-        *pos++ = char_info->utf8_bytes[0];
-      } else {
         switch (char_info->byte_len) {
+        case 1:
+          *pos++ = char_info->utf8_bytes[0];
+          break;
         case 2:
           *pos++ = char_info->utf8_bytes[0];
           *pos++ = char_info->utf8_bytes[1];
@@ -206,6 +176,34 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
           *pos++ = char_info->utf8_bytes[3];
           break;
         }
+      }
+    }
+
+    // Handle remaining pixels (scalar fallback)
+    for (; x < w; x++) {
+      const rgb_pixel_t pixel = row[x];
+      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
+      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
+
+      switch (char_info->byte_len) {
+      case 1:
+        *pos++ = char_info->utf8_bytes[0];
+        break;
+      case 2:
+        *pos++ = char_info->utf8_bytes[0];
+        *pos++ = char_info->utf8_bytes[1];
+        break;
+      case 3:
+        *pos++ = char_info->utf8_bytes[0];
+        *pos++ = char_info->utf8_bytes[1];
+        *pos++ = char_info->utf8_bytes[2];
+        break;
+      case 4:
+        *pos++ = char_info->utf8_bytes[0];
+        *pos++ = char_info->utf8_bytes[1];
+        *pos++ = char_info->utf8_bytes[2];
+        *pos++ = char_info->utf8_bytes[3];
+        break;
       }
     }
 
