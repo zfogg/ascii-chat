@@ -572,7 +572,7 @@ test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 	@echo "Running integration tests..."
 	@for test in $^; do \
 		echo "Running $$test..."; \
-		$$test; \
+		$$test || (echo "Test failed: $$test" && exit 1); \
 	done
 
 test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
@@ -583,7 +583,7 @@ test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 	else \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test; \
+			$$test || (echo "Test failed: $$test" && exit 1); \
 		done; \
 	fi
 
