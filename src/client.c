@@ -106,6 +106,7 @@ typedef struct {
 // Server state tracking for console clear logic
 static uint32_t g_last_active_count = 0;
 static bool g_server_state_initialized = false;
+static bool g_should_clear_before_next_frame = false;
 
 /* ============================================================================
  * Function Declarations
@@ -567,6 +568,13 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
   }
 
+  // Check if we need to clear console before rendering this frame (grid layout changed)
+  if (g_should_clear_before_next_frame) {
+    full_terminal_reset(tty_info_g.fd);
+    g_should_clear_before_next_frame = false;
+    log_debug("Cleared console before frame due to client count change");
+  }
+
   // For terminal: print every frame until final snapshot
   // For non-terminal: only print the final snapshot frame
   if (has_a_tty_g || (!has_a_tty_g && opt_snapshot_mode && take_snapshot)) {
@@ -957,11 +965,12 @@ static void handle_server_state_packet(const void *data, size_t len) {
   // uint32_t connected_count = ntohl(state->connected_client_count);
   uint32_t active_count = ntohl(state->active_client_count);
 
-  // Check if connected count changed - if so, clear console
+  // Check if connected count changed - if so, set flag to clear console before next frame
   if (g_server_state_initialized) {
     if (g_last_active_count != active_count) {
-      log_info("Active client count changed from %u to %u - clearing console", g_last_active_count, active_count);
-      full_terminal_reset(tty_info_g.fd);
+      log_info("Active client count changed from %u to %u - will clear console before next frame", g_last_active_count,
+               active_count);
+      g_should_clear_before_next_frame = true;
     }
   } else {
     // First state packet received

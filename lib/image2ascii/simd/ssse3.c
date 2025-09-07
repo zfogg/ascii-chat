@@ -163,11 +163,6 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
     return empty;
   }
 
-  // Use monochrome optimization for simple case
-  if (!use_background && !use_256color) {
-    return render_ascii_image_monochrome_ssse3(image, ascii_chars);
-  }
-
   // Get cached UTF-8 character mappings for color rendering
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
   if (!utf8_cache) {
