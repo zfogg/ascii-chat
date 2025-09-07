@@ -166,11 +166,20 @@ ifeq ($(SIMD_MODE),auto)
 
   # x86_64 feature detection (prefer newer SIMD instructions)
   ifeq ($(UNAME_M),x86_64)
-    HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    # macOS uses sysctl, Linux uses /proc/cpuinfo
+    ifeq ($(UNAME_S),Darwin)
+      HAS_AVX512F := $(shell sysctl -n hw.optional.avx512f 2>/dev/null || echo 0)
+      HAS_AVX512BW := $(shell sysctl -n hw.optional.avx512bw 2>/dev/null || echo 0)
+      HAS_AVX2 := $(shell sysctl -n hw.optional.avx2_0 2>/dev/null || echo 0)
+      HAS_SSSE3 := $(shell sysctl -n hw.optional.supplementalsse3 2>/dev/null || echo 0)
+      HAS_SSE2 := $(shell sysctl -n hw.optional.sse2 2>/dev/null || echo 0)
+    else
+      HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    endif
 
     # AVX-512 requires both AVX512F (foundation) and AVX512BW (byte/word operations)
     ifeq ($(HAS_AVX512F)$(HAS_AVX512BW),11)

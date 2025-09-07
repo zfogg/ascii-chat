@@ -165,11 +165,6 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
     return empty;
   }
 
-  // Use monochrome optimization for simple case
-  if (!use_background && !use_256color) {
-    return render_ascii_image_monochrome_sse2(image, ascii_chars);
-  }
-
   outbuf_t ob = {0};
   // Estimate buffer size based on mode (copied from NEON)
   size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
