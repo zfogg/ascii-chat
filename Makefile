@@ -498,6 +498,7 @@ sanitize: $(TARGETS)
 # Release test builds (with LTO matching release binaries)
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
 tests-release: override LDFLAGS += -flto
+tests-release: override TEST_LDFLAGS += -flto
 tests-release: $(TEST_EXECUTABLES)
 
 test-release: override CFLAGS += $(RELEASE_FLAGS)
