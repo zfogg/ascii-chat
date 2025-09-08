@@ -55,11 +55,17 @@ else ifeq ($(shell uname),Linux)
     # 1. Static PortAudio exists (libportaudio.a)
     # 2. JACK is actually installed (check with pkg-config)
 	# Check if JACK is available using pkg-config
-	JACK_AVAILABLE := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
-	ifeq ($(JACK_AVAILABLE),yes)
-		JACK_LIBS := $(shell pkg-config --libs jack)
-		ifneq ($(JACK_LIBS),)
-			PLATFORM_LDFLAGS += $(JACK_LIBS)
+	# Use := to ensure single evaluation
+	JACK_EXISTS := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
+	ifeq ($(JACK_EXISTS),yes)
+		# Get both library flags and library paths
+		JACK_LIBS := $(shell pkg-config --libs jack 2>/dev/null)
+		JACK_CFLAGS := $(shell pkg-config --cflags jack 2>/dev/null)
+		# Add library search path for JACK
+		PLATFORM_LDFLAGS += $(JACK_LIBS)
+		# If pkg-config doesn't provide the path, add common locations
+		ifeq ($(findstring -L,$(JACK_LIBS)),)
+			PLATFORM_LDFLAGS += -L/usr/lib/x86_64-linux-gnu -L/usr/lib
 		endif
 	endif
 endif
