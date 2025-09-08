@@ -1032,27 +1032,41 @@ format-check:
 # Generate compile_commands.json manually for clang-tidy
 compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILES)
 	@echo "Generating compile_commands.json..."
-	@echo "[" > compile_commands.json
+	@echo "[" > compile_commands.json.tmp
 	@first=true; \
-	for file in $(C_FILES) $(M_FILES) $(TEST_C_FILES); do \
+	for file in $(C_FILES) $(M_FILES); do \
 		if [ "$$first" = "true" ]; then \
 			first=false; \
 		else \
-			echo "," >> compile_commands.json; \
+			echo "," >> compile_commands.json.tmp; \
 		fi; \
-		echo "  {" >> compile_commands.json; \
-		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json; \
-		echo "    \"command\": \"clang $(CFLAGS) -c $$file\"," >> compile_commands.json; \
-		echo "    \"file\": \"$$file\"" >> compile_commands.json; \
-		echo "  }" >> compile_commands.json; \
+		echo "  {" >> compile_commands.json.tmp; \
+		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json.tmp; \
+		echo "    \"command\": \"clang $(CFLAGS) $(LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
+		echo "    \"file\": \"$$file\"" >> compile_commands.json.tmp; \
+		echo "  }" >> compile_commands.json.tmp; \
 	done; \
-	echo "]" >> compile_commands.json
-	@echo "compile_commands.json generated successfully!"
+	for file in $(TEST_C_FILES); do \
+		if [ "$$first" = "true" ]; then \
+			first=false; \
+		else \
+			echo "," >> compile_commands.json.tmp; \
+		fi; \
+		echo "  {" >> compile_commands.json.tmp; \
+		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json.tmp; \
+		echo "    \"command\": \"clang $(CFLAGS) $(TEST_LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
+		echo "    \"file\": \"$$file\"" >> compile_commands.json.tmp; \
+		echo "  }" >> compile_commands.json.tmp; \
+	done; \
+	echo "]" >> compile_commands.json.tmp
+	@jq . compile_commands.json.tmp > compile_commands.json
+	@rm -f compile_commands.json.tmp
+	@echo "compile_commands.json generated and formatted successfully!"
 
 # Run clang-tidy to check code style
 clang-tidy: compile_commands.json
 	@echo "Running clang-tidy with compile_commands.json..."
-	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) $(TEST_C_FILES) -- $(CFLAGS)
+	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) $(TEST_C_FILES)
 
 analyze:
 	@echo "Running clang static analysis (C sources)..."
