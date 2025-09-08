@@ -62,8 +62,8 @@ jobs:
         make tests
         GENERATE_JUNIT=1 make test-unit
 
-    - name: Generate coverage report (Ubuntu debug only)
-      if: matrix.os-name == 'ubuntu' && matrix.build_type == 'debug'
+    - name: Generate coverage report (debug builds only)
+      if: matrix.build_type == 'debug'
       run: |
         make clean
         GENERATE_JUNIT=1 make coverage
@@ -97,8 +97,8 @@ jobs:
         flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
         token: ${{ secrets.CODECOV_TOKEN }}
 
-    - name: Upload coverage to Codecov (Ubuntu debug only)
-      if: matrix.os-name == 'ubuntu' && matrix.build_type == 'debug'
+    - name: Upload coverage to Codecov (debug builds only)
+      if: matrix.build_type == 'debug'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
