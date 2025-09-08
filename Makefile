@@ -506,19 +506,13 @@ sanitize: $(TARGETS)
 
 # Release test builds (with LTO matching release binaries)
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
-# Only enable LTO on macOS - Ubuntu system libraries aren't LTO-compatible
-ifeq ($(shell uname),Darwin)
 tests-release: override LDFLAGS += -flto
 tests-release: override TEST_LDFLAGS += -flto
-endif
 tests-release: $(TEST_EXECUTABLES)
 
 test-release: override CFLAGS += $(RELEASE_FLAGS)
-# Only enable LTO on macOS - Ubuntu system libraries aren't LTO-compatible
-ifeq ($(shell uname),Darwin)
 test-release: override LDFLAGS += -flto
 test-release: override TEST_LDFLAGS += -flto
-endif
 test-release: $(TEST_EXECUTABLES)
 	@echo "Running all tests (release build with LTO)..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
@@ -564,11 +558,8 @@ test-release: $(TEST_EXECUTABLES)
 	@echo "View test logs: cat /tmp/test_logs.txt"
 
 test-unit-release: override CFLAGS += $(RELEASE_FLAGS)
-# Only enable LTO on macOS - Ubuntu system libraries aren't LTO-compatible
-ifeq ($(shell uname),Darwin)
 test-unit-release: override LDFLAGS += -flto
 test-unit-release: override TEST_LDFLAGS += -flto
-endif
 test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 	@echo "Running unit tests (release build with LTO)..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
