@@ -468,7 +468,6 @@ test-release: $(TEST_EXECUTABLES)
 			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed '1d;$$d' | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
 				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
@@ -510,7 +509,6 @@ test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed '1d;$$d' | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
 				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
@@ -620,7 +618,6 @@ coverage: $(TEST_EXECUTABLES)
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed '1d;$$d' | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
 				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
@@ -668,7 +665,6 @@ test: $(TEST_EXECUTABLES)
 			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed '1d;$$d' | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
 				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
@@ -707,7 +703,6 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed '1d;$$d' | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
 				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
