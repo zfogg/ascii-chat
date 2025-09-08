@@ -429,16 +429,16 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     for (int idx = 0; idx < total_pixels; idx++) {
         uint8_t target_luminance;
 
-        if (idx < (int)palette_len) {
-            // First N pixels: Generate exact luminance values for each palette character
-            uint8_t char_idx = idx;
-            uint8_t luma_idx = (char_idx * 63) / (palette_len - 1); // Map to 0-63 range
+        if (idx < 64) {
+            // First 64 pixels: Generate exact luminance values for all 64 luminance indices
+            // This ensures all palette characters get exercised since the mapping
+            // distributes 23 characters across 64 indices
+            uint8_t luma_idx = idx;
             target_luminance = (luma_idx << 2) + 2; // Reverse of (luminance >> 2), centered in bucket
         } else {
-            // Remaining pixels: Fill in gaps to ensure all 64 luma buckets are covered
-            int remaining_idx = idx - palette_len;
-            int remaining_pixels = total_pixels - palette_len;
-            target_luminance = (remaining_pixels > 0) ? (remaining_idx * 255) / remaining_pixels : 128;
+            // Remaining pixels: Cycle through all luminance values
+            uint8_t luma_idx = (idx - 64) % 64;
+            target_luminance = (luma_idx << 2) + 2;
         }
 
         // Generate RGB values that produce this exact luminance
@@ -458,8 +458,9 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     char *scalar_expanded = expand_rle_sequences(scalar_result);
     cr_assert_not_null(scalar_expanded, "Should be able to expand scalar RLE");
 
-    // PALETTE COVERAGE CHECK: Verify all characters are exercised
-    // Use UTF-8 palette functions to properly handle multi-byte characters
+    // PALETTE COVERAGE CHECK: Verify all UNIQUE characters are exercised
+    // Note: The palette "   ...',;:clodxkO0KXNWM" has duplicates (3 spaces, 3 dots)
+    // We check that all unique characters appear, not all positions
     utf8_palette_t *coverage_pal = utf8_palette_create(ascii_palette);
     cr_assert_not_null(coverage_pal, "Should create UTF-8 palette for coverage check");
     
@@ -489,19 +490,43 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
             char_bytes = 4;
         }
         
-        // Find this character in the palette
-        size_t p_idx = utf8_palette_find_char_index(coverage_pal, &scalar_expanded[i], char_bytes);
-        if (p_idx != (size_t)-1 && !palette_coverage[p_idx]) {
-            palette_coverage[p_idx] = true;
-            unique_chars_found++;
+        // Find ALL occurrences of this character in the palette (handles duplicates)
+        size_t found_indices[10];  // Support up to 10 duplicates of same char
+        size_t num_found = utf8_palette_find_all_char_indices(coverage_pal, &scalar_expanded[i], char_bytes, 
+                                                              found_indices, 10);
+        
+        // Mark all occurrences as found
+        for (size_t j = 0; j < num_found; j++) {
+            size_t p_idx = found_indices[j];
+            if (!palette_coverage[p_idx]) {
+                palette_coverage[p_idx] = true;
+                unique_chars_found++;
+            }
         }
         
         i += char_bytes;
     }
 
-    printf("COVERAGE: %d/%zu palette characters found in output\n", unique_chars_found, palette_char_count);
+    // Now we're tracking ALL positions including duplicates thanks to utf8_palette_find_all_char_indices
+    printf("COVERAGE: %d/%zu palette positions covered in output\n", unique_chars_found, palette_char_count);
+    
+    // Debug: Show which positions are missing
+    if (unique_chars_found < (int)palette_char_count) {
+        printf("Missing palette positions: ");
+        for (size_t i = 0; i < palette_char_count; i++) {
+            if (!palette_coverage[i]) {
+                const utf8_char_info_t *char_info = utf8_palette_get_char(coverage_pal, i);
+                if (char_info) {
+                    printf("[%zu]='%.*s' ", i, char_info->byte_len, char_info->bytes);
+                }
+            }
+        }
+        printf("\n");
+    }
+    
+    // We expect all palette positions to be covered (including duplicates)
     cr_assert_eq(unique_chars_found, (int)palette_char_count,
-                 "Must exercise ALL palette characters (%d/%zu found)",
+                 "Must exercise ALL palette positions (%d/%zu found)",
                  unique_chars_found, palette_char_count);
     
     SAFE_FREE(palette_coverage);

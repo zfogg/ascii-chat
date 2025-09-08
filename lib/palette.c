@@ -495,3 +495,23 @@ size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *u
 
   return (size_t)-1;
 }
+
+// Find all indices of a UTF-8 character in the palette (handles duplicates)
+// Returns the number of indices found, fills indices array up to max_indices
+size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes,
+                                          size_t *indices, size_t max_indices) {
+  if (!palette || !utf8_char || char_bytes == 0 || char_bytes > 4 || !indices || max_indices == 0) {
+    return 0;
+  }
+
+  size_t found_count = 0;
+
+  for (size_t i = 0; i < palette->char_count && found_count < max_indices; i++) {
+    const utf8_char_info_t *char_info = &palette->chars[i];
+    if (char_info->byte_len == char_bytes && memcmp(char_info->bytes, utf8_char, char_bytes) == 0) {
+      indices[found_count++] = i;
+    }
+  }
+
+  return found_count;
+}
