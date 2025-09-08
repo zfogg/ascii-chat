@@ -9,7 +9,15 @@
 #include "image2ascii/simd/common.h"
 #include "image2ascii/simd/neon.h"
 
-TestSuite(neon_color_renderers);
+TestSuite(neon_color_renderers, .init = setup_neon_quiet_logging, .fini = restore_neon_logging);
+
+void setup_neon_quiet_logging(void) {
+    log_set_level(LOG_FATAL);
+}
+
+void restore_neon_logging(void) {
+    log_set_level(LOG_DEBUG);
+}
 
 // Test helper: create a simple test image
 static image_t *create_test_image(int width, int height, uint8_t r, uint8_t g, uint8_t b) {
@@ -66,20 +74,20 @@ Test(neon_color_renderers, test_256color_solid_image) {
   image_t *image = create_test_image(32, 16, 255, 0, 0);  // Red image
   const char *ascii_chars = " .:-=+*#%@";
 
-  printf("\n=== DEBUG 256-COLOR SOLID RED TEST ===\n");
-  printf("Image: %dx%d pixels, all RGB(255,0,0)\n", image->w, image->h);
-  printf("ASCII chars: '%s'\n", ascii_chars);
+  log_debug("=== DEBUG 256-COLOR SOLID RED TEST ===");
+  log_debug("Image: %dx%d pixels, all RGB(255,0,0)", image->w, image->h);
+  log_debug("ASCII chars: '%s'", ascii_chars);
 
   char *result = render_ascii_neon_unified_optimized(image, false, true, ascii_chars);
 
-  printf("Result pointer: %p\n", (void*)result);
-  printf("\033[0mResult length: %zu\n", result ? strlen(result) : 0);
+  log_debug("Result pointer: %p", (void*)result);
+  log_debug("Result length: %zu", result ? strlen(result) : 0);
 
   if (result && strlen(result) > 0) {
-    printf("\033[0mFirst 300 chars: '%.300s'\033[0m\n", result);
-    printf("\033[0mContains \\033[38;5;: %s\n", strstr(result, "\033[38;5;") ? "YES" : "NO");
+    log_debug("First 300 chars: '%.300s'", result);
+    log_debug("Contains \\033[38;5;: %s", strstr(result, "\033[38;5;") ? "YES" : "NO");
   } else {
-    printf("ERROR: 256-color result is NULL or empty!\n");
+    log_error("ERROR: 256-color result is NULL or empty!");
   }
 
   cr_assert_not_null(result, "256-color renderer should return non-NULL result");
@@ -105,7 +113,7 @@ Test(neon_color_renderers, test_256color_gradient_image) {
   // Should contain multiple different color sequences for gradient
   cr_assert_not_null(strstr(result, "\033[38;5;"), "Should contain 256-color sequences");
 
-  printf("\033[0m256-color gradient result length: %zu\n", strlen(result));
+  log_debug("256-color gradient result length: %zu", strlen(result));
 
   free(result);
   cleanup_image(image);
@@ -116,20 +124,20 @@ Test(neon_color_renderers, test_truecolor_solid_image) {
   image_t *image = create_test_image(32, 16, 0, 255, 0);  // Green image
   const char *ascii_chars = " .:-=+*#%@";
 
-  printf("\n=== DEBUG TRUECOLOR SOLID GREEN TEST ===\n");
-  printf("Image: %dx%d pixels, all RGB(0,255,0)\n", image->w, image->h);
-  printf("ASCII chars: '%s'\n", ascii_chars);
+  log_debug("=== DEBUG TRUECOLOR SOLID GREEN TEST ===");
+  log_debug("Image: %dx%d pixels, all RGB(0,255,0)", image->w, image->h);
+  log_debug("ASCII chars: '%s'", ascii_chars);
 
   char *result = render_ascii_neon_unified_optimized(image, false, false, ascii_chars);
 
-  printf("Result pointer: %p\n", (void*)result);
-  printf("Result length: %zu\n", result ? strlen(result) : 0);
+  log_debug("Result pointer: %p", (void*)result);
+  log_debug("Result length: %zu", result ? strlen(result) : 0);
 
   if (result && strlen(result) > 0) {
-    printf("First 300 chars: '%.300s'\033[0m\n", result);
-    printf("\033[0mContains \\033[38;2;: %s\n", strstr(result, "\033[38;2;") ? "YES" : "NO");
+    log_debug("First 300 chars: '%.300s'", result);
+    log_debug("Contains \\033[38;2;: %s", strstr(result, "\033[38;2;") ? "YES" : "NO");
   } else {
-    printf("ERROR: Truecolor result is NULL or empty!\n");
+    log_error("ERROR: Truecolor result is NULL or empty!");
   }
 
   cr_assert_not_null(result, "Truecolor renderer should return non-NULL result");
@@ -155,7 +163,7 @@ Test(neon_color_renderers, test_truecolor_gradient_image) {
   // Should contain truecolor sequences
   cr_assert_not_null(strstr(result, "\033[38;2;"), "Should contain truecolor sequences");
 
-  printf("\033[0mTruecolor gradient result length: %zu\n", strlen(result));
+  log_debug("Truecolor gradient result length: %zu", strlen(result));
 
   free(result);
   cleanup_image(image);
@@ -173,7 +181,7 @@ Test(neon_color_renderers, test_background_mode_256color) {
   // Should contain background color sequences
   cr_assert_not_null(strstr(result, "\033[48;5;"), "Should contain 256-color BG sequences");
 
-  printf("\033[0m256-color background result (first 150 chars): %.150s\033[0m\n", result);
+  log_debug("256-color background result (first 150 chars): %.150s", result);
 
   free(result);
   cleanup_image(image);
@@ -191,7 +199,7 @@ Test(neon_color_renderers, test_background_mode_truecolor) {
   // Should contain background color sequences
   cr_assert_not_null(strstr(result, "\033[48;2;"), "Should contain truecolor BG sequences");
 
-  printf("\033[0mTruecolor background result (first 150 chars): %.150s\033[0m\n", result);
+  log_debug("Truecolor background result (first 150 chars): %.150s", result);
 
   free(result);
   cleanup_image(image);
@@ -207,7 +215,7 @@ Test(neon_color_renderers, test_unified_dispatcher_256color) {
   cr_assert_not_null(result, "Unified dispatcher should return non-NULL result for 256-color");
   cr_assert_not_null(strstr(result, "\033[38;5;"), "Dispatcher should route to 256-color renderer");
 
-  printf("\033[0mDispatcher 256-color result length: %zu\n", strlen(result));
+  log_debug("Dispatcher 256-color result length: %zu", strlen(result));
 
   free(result);
   cleanup_image(image);
@@ -223,7 +231,7 @@ Test(neon_color_renderers, test_unified_dispatcher_truecolor) {
   cr_assert_not_null(result, "Unified dispatcher should return non-NULL result for truecolor");
   cr_assert_not_null(strstr(result, "\033[38;2;"), "Dispatcher should route to truecolor renderer");
 
-  printf("\033[0mDispatcher truecolor result length: %zu\n", strlen(result));
+  log_debug("Dispatcher truecolor result length: %zu", strlen(result));
 
   free(result);
   cleanup_image(image);
@@ -234,26 +242,26 @@ Test(neon_color_renderers, test_direct_comparison) {
   image_t *image = create_test_image(16, 8, 128, 64, 192);  // Purple image
   const char *ascii_chars = " .oO@";
 
-  printf("\n=== DIRECT COMPARISON TEST ===\n");
-  printf("Same image: %dx%d pixels, all RGB(128,64,192)\n", image->w, image->h);
-  printf("Same ASCII chars: '%s'\n", ascii_chars);
+  log_debug("=== DIRECT COMPARISON TEST ===");
+  log_debug("Same image: %dx%d pixels, all RGB(128,64,192)", image->w, image->h);
+  log_debug("Same ASCII chars: '%s'", ascii_chars);
 
-  printf("\n--- 256-COLOR MODE ---\n");
+  log_debug("--- 256-COLOR MODE ---");
   char *result_256 = render_ascii_neon_unified_optimized(image, false, true, ascii_chars);
-  printf("256-color pointer: %p\n", (void*)result_256);
-  printf("\033[0m256-color length: %zu\n", result_256 ? strlen(result_256) : 0);
+  log_debug("256-color pointer: %p", (void*)result_256);
+  log_debug("256-color length: %zu", result_256 ? strlen(result_256) : 0);
   if (result_256) {
-    printf("256-color first 200 chars: '%.200s'\033[0m\n", result_256);
-    printf("\033[0mContains 256-color seq: %s\n", strstr(result_256, "\033[38;5;") ? "YES" : "NO");
+    log_debug("256-color first 200 chars: '%.200s'", result_256);
+    log_debug("Contains 256-color seq: %s", strstr(result_256, "\033[38;5;") ? "YES" : "NO");
   }
 
-  printf("\n--- TRUECOLOR MODE ---\n");
+  log_debug("--- TRUECOLOR MODE ---");
   char *result_true = render_ascii_neon_unified_optimized(image, false, false, ascii_chars);
-  printf("Truecolor pointer: %p\n", (void*)result_true);
-  printf("Truecolor length: %zu\n", result_true ? strlen(result_true) : 0);
+  log_debug("Truecolor pointer: %p", (void*)result_true);
+  log_debug("Truecolor length: %zu", result_true ? strlen(result_true) : 0);
   if (result_true) {
-    printf("Truecolor first 200 chars: '%.200s'\033[0m\n", result_true);
-    printf("\033[0mContains truecolor seq: %s\n", strstr(result_true, "\033[38;2;") ? "YES" : "NO");
+    log_debug("Truecolor first 200 chars: '%.200s'", result_true);
+    log_debug("Contains truecolor seq: %s", strstr(result_true, "\033[38;2;") ? "YES" : "NO");
   }
 
   cr_assert_not_null(result_256, "256-color should return non-NULL");
@@ -269,21 +277,21 @@ Test(neon_color_renderers, test_utf8_characters) {
   image_t *image = create_gradient_image(24, 12);
   const char *ascii_chars = " ░▒▓█🌑🌒🌓🌕";  // Mix of 1-byte and 4-byte UTF-8
 
-  printf("\n=== UTF-8 TEST ===\n");
-  printf("Gradient image: %dx%d pixels\n", image->w, image->h);
-  printf("UTF-8 ASCII chars: '%s'\n", ascii_chars);
+  log_debug("=== UTF-8 TEST ===");
+  log_debug("Gradient image: %dx%d pixels", image->w, image->h);
+  log_debug("UTF-8 ASCII chars: '%s'", ascii_chars);
 
   char *result_256 = render_ascii_neon_unified_optimized(image, false, true, ascii_chars);
   char *result_true = render_ascii_neon_unified_optimized(image, false, false, ascii_chars);
 
-  printf("\033[0m256-color UTF-8 result length: %zu\n", result_256 ? strlen(result_256) : 0);
-  printf("\033[0mTruecolor UTF-8 result length: %zu\n", result_true ? strlen(result_true) : 0);
+  log_debug("256-color UTF-8 result length: %zu", result_256 ? strlen(result_256) : 0);
+  log_debug("Truecolor UTF-8 result length: %zu", result_true ? strlen(result_true) : 0);
 
   if (result_256 && strlen(result_256) > 0) {
-    printf("\033[0m256-color contains moon: %s\n", strstr(result_256, "🌑") ? "YES" : "NO");
+    log_debug("256-color contains moon: %s", strstr(result_256, "🌑") ? "YES" : "NO");
   }
   if (result_true && strlen(result_true) > 0) {
-    printf("\033[0mTruecolor contains moon: %s\n", strstr(result_true, "🌑") ? "YES" : "NO");
+    log_debug("Truecolor contains moon: %s", strstr(result_true, "🌑") ? "YES" : "NO");
   }
 
   cr_assert_not_null(result_256, "256-color renderer should handle UTF-8 characters");
