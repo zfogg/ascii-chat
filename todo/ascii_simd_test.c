@@ -22,6 +22,7 @@
 #include "../lib/ascii.h"
 #include "../lib/image.h"
 #include "../lib/webcam.h"
+#include "../lib/terminal_detect.h"
 
 // Image source options
 typedef enum {
@@ -98,13 +99,20 @@ void test_ascii_correctness(void) {
         bool config_passed = true;
         char *results[3] = {NULL};
 
+        // Build default luminance palette for test (move outside loop)
+        char test_luminance_palette[256];
+        build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+        
         for (int run = 0; run < 3; run++) {
+
             results[run] = ascii_convert(test_image,
                                        test_configs[cfg_idx].width,
                                        test_configs[cfg_idx].height,
                                        test_configs[cfg_idx].color,
                                        test_configs[cfg_idx].aspect_ratio,
-                                       test_configs[cfg_idx].stretch);
+                                       test_configs[cfg_idx].stretch,
+                                       DEFAULT_ASCII_PALETTE,
+                                       test_luminance_palette);
 
             if (!results[run]) {
                 printf("  ❌ Run %d: ascii_convert returned NULL\n", run + 1);
@@ -181,6 +189,10 @@ void test_color_correctness(void) {
             printf("Testing: %s (%dx%d)\n", test_modes[mode_idx].name, width, height);
             total++;
 
+            // Build default luminance palette for this test
+            char test_luminance_palette[256];
+            build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+
             // Create test image
             image_t *test_image = image_new(width, height);
             if (!test_image) {
@@ -203,14 +215,29 @@ void test_color_correctness(void) {
             char *simd_result = NULL;
             bool test_passed = false;
 
+            // Benchmark actual scalar functions vs SIMD functions (proper comparison)
             if (test_modes[mode_idx].is_color) {
-                // Test color functions - test 256-color mode (optimized function)
-                scalar_result = image_print_color(test_image);
-                simd_result = image_print_color_simd(test_image, false, true); // FG mode, 256-color (optimized!)
+                // Test color functions
+                scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE); // Pure scalar
+                
+                // SIMD with same capabilities as scalar
+                terminal_capabilities_t caps = {0};
+                caps.color_level = TERM_COLOR_TRUECOLOR;
+                caps.color_count = 16777216;
+                caps.render_mode = RENDER_MODE_FOREGROUND;
+                caps.capabilities = TERM_CAP_COLOR_TRUE;
+                simd_result = image_print_with_capabilities(test_image, &caps, DEFAULT_ASCII_PALETTE, test_luminance_palette);
             } else {
-                // Test monochrome functions
-                scalar_result = image_print(test_image);
-                simd_result = image_print_simd(test_image);
+                // Test monochrome functions  
+                scalar_result = image_print(test_image, DEFAULT_ASCII_PALETTE); // Pure scalar
+                
+                // SIMD with same capabilities as scalar
+                terminal_capabilities_t caps = {0};
+                caps.color_level = TERM_COLOR_NONE;
+                caps.color_count = 2;
+                caps.render_mode = RENDER_MODE_FOREGROUND;
+                caps.capabilities = 0;
+                simd_result = image_print_with_capabilities(test_image, &caps, DEFAULT_ASCII_PALETTE, test_luminance_palette);
             }
 
             if (!scalar_result || !simd_result) {
@@ -311,56 +338,99 @@ void test_performance_benchmarks(void) {
 
         // Use the same benchmark function as integration test for consistency
         printf("  Detailed SIMD Architecture Performance:\n");
-        
+
         simd_benchmark_t mono_bench = benchmark_simd_conversion(test_image->w, test_image->h, iterations);
-        
+
         printf("    Scalar:  %8.4f ms/frame\n", mono_bench.scalar_time * 1000);
         if (mono_bench.sse2_time > 0) {
-            printf("    SSE2:    %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    SSE2:    %8.4f ms/frame (%4.2fx scalar)\n",
                    mono_bench.sse2_time * 1000, mono_bench.scalar_time / mono_bench.sse2_time);
         }
         if (mono_bench.ssse3_time > 0) {
-            printf("    SSSE3:   %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    SSSE3:   %8.4f ms/frame (%4.2fx scalar)\n",
                    mono_bench.ssse3_time * 1000, mono_bench.scalar_time / mono_bench.ssse3_time);
         }
         if (mono_bench.avx2_time > 0) {
-            printf("    AVX2:    %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    AVX2:    %8.4f ms/frame (%4.2fx scalar)\n",
                    mono_bench.avx2_time * 1000, mono_bench.scalar_time / mono_bench.avx2_time);
         }
         if (mono_bench.neon_time > 0) {
-            printf("    NEON:    %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    NEON:    %8.4f ms/frame (%4.2fx scalar)\n",
                    mono_bench.neon_time * 1000, mono_bench.scalar_time / mono_bench.neon_time);
         }
         if (mono_bench.sve_time > 0) {
-            printf("    SVE:     %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    SVE:     %8.4f ms/frame (%4.2fx scalar)\n",
                    mono_bench.sve_time * 1000, mono_bench.scalar_time / mono_bench.sve_time);
         }
         printf("    Winner:  %s\n", mono_bench.best_method);
+        
+        // Test UTF-8 Emoji Performance Impact
+        printf("  UTF-8 vs ASCII Palette Comparison:\n");
+        
+        // Create test using image_print_simd directly with different palettes
+        const char *utf8_palette = "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐";
+        const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
+        
+        struct timespec utf8_start, utf8_end, ascii_start, ascii_end;
+        const int utf8_iterations = 20;
+        
+        // ASCII palette timing
+        clock_gettime(CLOCK_MONOTONIC, &ascii_start);
+        for (int iter = 0; iter < utf8_iterations; iter++) {
+            char *result = image_print_simd(test_image, ascii_palette);
+            if (result) free(result);
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ascii_end);
+        
+        // UTF-8 palette timing
+        clock_gettime(CLOCK_MONOTONIC, &utf8_start);
+        for (int iter = 0; iter < utf8_iterations; iter++) {
+            char *result = image_print_simd(test_image, utf8_palette);
+            if (result) free(result);
+        }
+        clock_gettime(CLOCK_MONOTONIC, &utf8_end);
+        
+        double ascii_time = (ascii_end.tv_sec - ascii_start.tv_sec) + (ascii_end.tv_nsec - ascii_start.tv_nsec) / 1e9;
+        double utf8_time = (utf8_end.tv_sec - utf8_start.tv_sec) + (utf8_end.tv_nsec - utf8_start.tv_nsec) / 1e9;
+        
+        double ascii_ms = (ascii_time / utf8_iterations) * 1000;
+        double utf8_ms = (utf8_time / utf8_iterations) * 1000;
+        
+        printf("    ASCII:   %8.4f ms/frame\n", ascii_ms);
+        printf("    UTF-8:   %8.4f ms/frame (%4.2fx slower)\n", utf8_ms, utf8_ms / ascii_ms);
+        
+        if (utf8_ms / ascii_ms < 1.5) {
+            printf("    ✅ UTF-8 impact: Minimal (<1.5x slower)\n");
+        } else if (utf8_ms / ascii_ms < 3.0) {
+            printf("    ⚠️  UTF-8 impact: Moderate (1.5-3x slower)\n");
+        } else {
+            printf("    ❌ UTF-8 impact: Severe (>3x slower)\n");
+        }
 
         // Test Color ASCII with detailed breakdown
         printf("  Color ASCII (detailed):\n");
-        
+
         simd_benchmark_t color_bench = benchmark_simd_color_conversion(test_image->w, test_image->h, iterations, false);
-        
+
         printf("    Scalar:  %8.4f ms/frame\n", color_bench.scalar_time * 1000);
         if (color_bench.sse2_time > 0) {
-            printf("    SSE2:    %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    SSE2:    %8.4f ms/frame (%4.2fx scalar)\n",
                    color_bench.sse2_time * 1000, color_bench.scalar_time / color_bench.sse2_time);
         }
         if (color_bench.ssse3_time > 0) {
-            printf("    SSSE3:   %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    SSSE3:   %8.4f ms/frame (%4.2fx scalar)\n",
                    color_bench.ssse3_time * 1000, color_bench.scalar_time / color_bench.ssse3_time);
         }
         if (color_bench.avx2_time > 0) {
-            printf("    AVX2:    %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    AVX2:    %8.4f ms/frame (%4.2fx scalar)\n",
                    color_bench.avx2_time * 1000, color_bench.scalar_time / color_bench.avx2_time);
         }
         if (color_bench.neon_time > 0) {
-            printf("    NEON:    %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    NEON:    %8.4f ms/frame (%4.2fx scalar)\n",
                    color_bench.neon_time * 1000, color_bench.scalar_time / color_bench.neon_time);
         }
         if (color_bench.sve_time > 0) {
-            printf("    SVE:     %8.4f ms/frame (%4.2fx speedup)\n",
+            printf("    SVE:     %8.4f ms/frame (%4.2fx scalar)\n",
                    color_bench.sve_time * 1000, color_bench.scalar_time / color_bench.sve_time);
         }
         printf("    Winner:  %s\n", color_bench.best_method);
@@ -410,35 +480,39 @@ void test_integration(void) {
 
     // Show all available SIMD architecture results
     if (bench.sse2_time > 0) {
-        printf("  SSE2:       %8.3f ms/frame (%4.1fx faster)\n",
+        printf("  SSE2:       %8.3f ms/frame (%4.2fx scalar)\n",
                bench.sse2_time * 1000, bench.scalar_time / bench.sse2_time);
     }
     if (bench.ssse3_time > 0) {
-        printf("  SSSE3:      %8.3f ms/frame (%4.1fx faster)\n",
+        printf("  SSSE3:      %8.3f ms/frame (%4.2fx scalar)\n",
                bench.ssse3_time * 1000, bench.scalar_time / bench.ssse3_time);
     }
     if (bench.avx2_time > 0) {
-        printf("  AVX2:       %8.3f ms/frame (%4.1fx faster)\n",
+        printf("  AVX2:       %8.3f ms/frame (%4.2fx scalar)\n",
                bench.avx2_time * 1000, bench.scalar_time / bench.avx2_time);
     }
     if (bench.neon_time > 0) {
-        printf("  NEON:       %8.3f ms/frame (%4.1fx faster)\n",
+        printf("  NEON:       %8.3f ms/frame (%4.2fx scalar)\n",
                bench.neon_time * 1000, bench.scalar_time / bench.neon_time);
     }
     if (bench.sve_time > 0) {
-        printf("  SVE:        %8.3f ms/frame (%4.1fx faster)\n",
+        printf("  SVE:        %8.3f ms/frame (%4.2fx scalar)\n",
                bench.sve_time * 1000, bench.scalar_time / bench.sve_time);
     }
 
     printf("  Winner:     %s", bench.best_method);
     if (strcmp(bench.best_method, "scalar") != 0) {
-        printf(" (%.1fx faster)", bench.speedup_best);
+        printf(" (%.2fx scalar)", bench.speedup_best);
     }
     printf("\n");
     printf("  CPU Saved:  %.1f%% at 60 FPS\n", 100.0 * (1.0 - 1.0 / bench.speedup_best));
 
     // Show actual ASCII output sample
-    char *ascii_output = ascii_convert(source_image, 40, 10, true, true, false);
+    // Build default luminance palette for test
+    char test_luminance_palette[256];
+    build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
+
+    char *ascii_output = ascii_convert(source_image, 40, 10, true, true, false, DEFAULT_ASCII_PALETTE, test_luminance_palette);
     if (ascii_output) {
         printf("\nSample ASCII output (40x10):\n");
         printf("┌────────────────────────────────────────┐\n");

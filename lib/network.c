@@ -485,6 +485,13 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
     break;
+  case PACKET_TYPE_PALETTE_CONFIG:
+    // Palette config must be exactly the struct size
+    if (pkt_len != sizeof(palette_config_packet_t)) {
+      log_error("Invalid palette config packet size: %u (expected %zu)", pkt_len, sizeof(palette_config_packet_t));
+      return -1;
+    }
+    break;
   case PACKET_TYPE_PING:
   case PACKET_TYPE_PONG:
     if (pkt_len > 64) { // Ping/pong shouldn't be large
@@ -852,6 +859,12 @@ int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_pa
   memcpy(net_caps.colorterm, caps->colorterm, sizeof(net_caps.colorterm));
 
   net_caps.detection_reliable = caps->detection_reliable;
+
+  // NEW: Include palette information
+  net_caps.palette_type = htonl(caps->palette_type);
+  net_caps.utf8_support = htonl(caps->utf8_support);
+  memcpy(net_caps.palette_custom, caps->palette_custom, sizeof(net_caps.palette_custom));
+
   memset(net_caps.reserved, 0, sizeof(net_caps.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_CAPABILITIES, &net_caps, sizeof(net_caps));
@@ -890,6 +903,16 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.width = width;
   net_packet.height = height;
 
+  // NEW: Include client's palette preferences
+  net_packet.palette_type = opt_palette_type;
+  net_packet.utf8_support = caps.utf8_support ? 1 : 0;
+  if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
+    strncpy(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom) - 1);
+    net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
+  } else {
+    memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+  }
+
   // log_debug("NETWORK DEBUG: About to send capabilities packet with width=%u, height=%u", width, height);
 
   strncpy(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type) - 1);
@@ -899,6 +922,17 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
+
+  // NEW: Include client's palette preference
+  net_packet.palette_type = opt_palette_type;
+  net_packet.utf8_support = opt_force_utf8 ? 1 : 0; // Use forced UTF-8 or detect
+  if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
+    strncpy(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom) - 1);
+    net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
+  } else {
+    memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+  }
+
   memset(net_packet.reserved, 0, sizeof(net_packet.reserved));
 
   return send_terminal_capabilities_packet(sockfd, &net_packet);

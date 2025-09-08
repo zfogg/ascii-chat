@@ -22,20 +22,21 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-15]
         build_type: [debug, release]
+        include:
+          - os: ubuntu-latest
+            os-name: ubuntu
+          - os: macos-15
+            os-name: macos
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ matrix.os-name }}
+        extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
 
     - name: Build project (${{ matrix.build_type }}) (macOS)
       if: runner.os == 'macOS'
@@ -56,6 +57,7 @@ jobs:
         test -x ./bin/server
         test -x ./bin/client
 
+
     - name: Upload artifacts
       if: matrix.build_type == 'release'
       uses: actions/upload-artifact@v4
@@ -66,7 +68,8 @@ jobs:
           bin/client
         retention-days: 30
 
-  static-analysis:
+  memory-check:
+    name: Memory Safety Check
     runs-on: ubuntu-latest
 
     steps:
@@ -74,16 +77,32 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install dependencies
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: 'libc6-dbg valgrind'
+
+    - name: Run tests with AddressSanitizer
       run: |
-        sudo apt-get update
-        sudo apt-get install -y clang clang-tools libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config bear
+        CFLAGS="-fsanitize=address -g -O0" LDFLAGS="-fsanitize=address" make test-unit
+
+  static-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: clang-tools
 
     - name: Run static analysis
       run: |
-        # Run clang-tidy on source files
-        bear -- make -j CSTD=c2x debug
+        # Run clang-tidy on source files (no need for bear anymore)
         make CSTD=c2x clang-tidy
-
 
     - name: Check for memory leaks patterns
       run: |
@@ -99,10 +118,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install clang-format
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-format make
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: clang-format make
 
     - name: Check code formatting
       run: |

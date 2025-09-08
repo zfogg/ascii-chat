@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include "terminal_detect.h"
+#include "palette.h"
 
 #define OPTIONS_BUFF_SIZE 256
 
@@ -54,6 +55,11 @@ extern char opt_log_file[OPTIONS_BUFF_SIZE];
 extern unsigned short int opt_encrypt_enabled;      // Enable AES encryption
 extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // Encryption key from --key
 extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE]; // Key file path from --keyfile
+
+// Palette options
+extern palette_type_t opt_palette_type; // Selected palette type
+extern char opt_palette_custom[256];    // Custom palette characters
+extern bool opt_palette_custom_set;     // True if custom palette was set
 // Default weights; must add up to 1.0
 extern const float weight_red;
 extern const float weight_green;

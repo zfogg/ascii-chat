@@ -7,9 +7,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "ascii_simd.h"
-#include "options.h"
+
 #include "common.h"
 #include "image.h"
+#include "palette.h"
 
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation
@@ -18,9 +19,6 @@
  * ANSI color code generation for maximum performance.
  * ============================================================================
  */
-
-// Definitions are in ascii_simd.h - just use them
-#define luminance_palette g_ascii_cache.luminance_palette
 
 // Background ASCII luminance threshold - same as NEON version
 #ifndef BGASCII_LUMA_THRESHOLD
@@ -181,7 +179,7 @@ inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b)
   *dst++ = ';';
 
   // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
-  const dec3_t *rd = &g_ascii_cache.dec3_table[r];
+  const dec3_t *rd = &g_dec3_cache.dec3_table[r];
   if (rd->len == 1) {
     *dst++ = rd->s[0];
   } else if (rd->len == 2) {
@@ -196,7 +194,7 @@ inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b)
   }
   *dst++ = ';';
 
-  const dec3_t *gd = &g_ascii_cache.dec3_table[g];
+  const dec3_t *gd = &g_dec3_cache.dec3_table[g];
   if (gd->len == 1) {
     *dst++ = gd->s[0];
   } else if (gd->len == 2) {
@@ -211,7 +209,7 @@ inline char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b)
   }
   *dst++ = ';';
 
-  const dec3_t *bd = &g_ascii_cache.dec3_table[b];
+  const dec3_t *bd = &g_dec3_cache.dec3_table[b];
   if (bd->len == 1) {
     *dst++ = bd->s[0];
   } else if (bd->len == 2) {
@@ -242,7 +240,7 @@ inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b)
   *dst++ = ';';
 
   // Optimized digit copying
-  const dec3_t *rd = &g_ascii_cache.dec3_table[r];
+  const dec3_t *rd = &g_dec3_cache.dec3_table[r];
   if (rd->len == 1) {
     *dst++ = rd->s[0];
   } else if (rd->len == 2) {
@@ -257,7 +255,7 @@ inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b)
   }
   *dst++ = ';';
 
-  const dec3_t *gd = &g_ascii_cache.dec3_table[g];
+  const dec3_t *gd = &g_dec3_cache.dec3_table[g];
   if (gd->len == 1) {
     *dst++ = gd->s[0];
   } else if (gd->len == 2) {
@@ -272,7 +270,7 @@ inline char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b)
   }
   *dst++ = ';';
 
-  const dec3_t *bd = &g_ascii_cache.dec3_table[b];
+  const dec3_t *bd = &g_dec3_cache.dec3_table[b];
   if (bd->len == 1) {
     *dst++ = bd->s[0];
   } else if (bd->len == 2) {
@@ -304,7 +302,7 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   *dst++ = ';';
 
   // Foreground RGB digits
-  const dec3_t *d = &g_ascii_cache.dec3_table[fr];
+  const dec3_t *d = &g_dec3_cache.dec3_table[fr];
   if (d->len == 1) {
     *dst++ = d->s[0];
   } else if (d->len == 2) {
@@ -319,7 +317,7 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   }
   *dst++ = ';';
 
-  d = &g_ascii_cache.dec3_table[fg];
+  d = &g_dec3_cache.dec3_table[fg];
   if (d->len == 1) {
     *dst++ = d->s[0];
   } else if (d->len == 2) {
@@ -334,7 +332,7 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   }
   *dst++ = ';';
 
-  d = &g_ascii_cache.dec3_table[fb];
+  d = &g_dec3_cache.dec3_table[fb];
   if (d->len == 1) {
     *dst++ = d->s[0];
   } else if (d->len == 2) {
@@ -357,7 +355,7 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   *dst++ = ';';
 
   // Background RGB digits
-  d = &g_ascii_cache.dec3_table[br];
+  d = &g_dec3_cache.dec3_table[br];
   if (d->len == 1) {
     *dst++ = d->s[0];
   } else if (d->len == 2) {
@@ -372,7 +370,7 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   }
   *dst++ = ';';
 
-  d = &g_ascii_cache.dec3_table[bg];
+  d = &g_dec3_cache.dec3_table[bg];
   if (d->len == 1) {
     *dst++ = d->s[0];
   } else if (d->len == 2) {
@@ -387,7 +385,7 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   }
   *dst++ = ';';
 
-  d = &g_ascii_cache.dec3_table[bb];
+  d = &g_dec3_cache.dec3_table[bb];
   if (d->len == 1) {
     *dst++ = d->s[0];
   } else if (d->len == 2) {
@@ -406,12 +404,12 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
 }
 
 // Legacy wrapper functions for backward compatibility
-static inline int generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
+static inline int __attribute__((unused)) generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
   char *result = append_sgr_truecolor_fg(dst, r, g, b);
   return (int)(result - dst);
 }
 
-static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
+static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
   char *result = append_sgr_truecolor_bg(dst, r, g, b);
   return (int)(result - dst);
 }
@@ -428,15 +426,15 @@ static inline int generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
  * ============================================================================
  */
 
-char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path) {
-#ifdef SIMD_SUPPORT_NEON
-  return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path);
-#elif SIMD_SUPPORT_SSE2
-  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_fast_path);
-#elif SIMD_SUPPORT_SSSE3
-  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_fast_path);
-#elif SIMD_SUPPORT_AVX2
-  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_fast_path);
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars) {
+#ifdef SIMD_SUPPORT_AVX2
+  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+#elif defined(SIMD_SUPPORT_SSSE3)
+  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+#elif defined(SIMD_SUPPORT_SSE2)
+  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+#elif defined(SIMD_SUPPORT_NEON)
+  return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
 #else
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds
