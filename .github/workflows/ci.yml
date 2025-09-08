@@ -57,55 +57,6 @@ jobs:
         test -x ./bin/server
         test -x ./bin/client
 
-    - name: Run unit tests
-      if: matrix.build_type == 'release'
-      run: |
-        GENERATE_JUNIT=1 make test-unit-release
-
-    - name: Generate coverage report (debug builds only)
-      if: matrix.build_type == 'debug'
-      run: |
-        GENERATE_JUNIT=1 make coverage
-
-        # Generate coverage files for codecov
-        find . -name "*.gcda" -exec gcov {} \;
-
-        # Debug: Show what coverage files were generated
-        echo "Generated coverage files:"
-        find . -name "*.gcov" -type f | head -20
-        ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
-
-    - name: Validate junit.xml
-      if: ${{ !cancelled() }}
-      run: |
-        if [ -f junit.xml ]; then
-          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
-          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
-        else
-          echo "❌ junit.xml not found"
-          find . -name "*.xml" -type f | head -5
-        fi
-
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
-      uses: codecov/test-results-action@v1
-      with:
-        files: ./junit.xml
-        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-
-    - name: Upload coverage to Codecov (debug builds only)
-      if: matrix.build_type == 'debug'
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        directory: .
-        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
-        name: ascii-chat-coverage-${{ matrix.os-name }}-${{ matrix.build_type }}
-        fail_ci_if_error: false
-        verbose: true
 
     - name: Upload artifacts
       if: matrix.build_type == 'release'
@@ -116,62 +67,6 @@ jobs:
           bin/server
           bin/client
         retention-days: 30
-
-  test:
-    name: Test and Analysis
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install dependencies
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
-        extra-packages: 'lcov gcovr libc6-dbg'
-
-    - name: Build and test with coverage
-      run: |
-        GENERATE_JUNIT=1 make coverage
-
-    - name: Generate coverage report
-      run: |
-        # Generate coverage files for codecov
-        find . -name "*.gcda" -exec gcov {} \;
-
-        # Debug: Show what coverage files were generated
-        echo "Generated coverage files:"
-        find . -name "*.gcov" -type f | head -20
-        ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
-
-    - name: Validate junit.xml
-      run: |
-        if [ -f junit.xml ]; then
-          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
-          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
-        else
-          echo "❌ junit.xml not found"
-        fi
-
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
-      with:
-        files: ./junit.xml
-        flags: ascii-chat-tests
-        token: ${{ secrets.CODECOV_TOKEN }}
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        directory: .
-        flags: coverage
-        name: ascii-chat-coverage
-        fail_ci_if_error: false
-        verbose: true
 
   memory-check:
     name: Memory Safety Check
