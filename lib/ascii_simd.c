@@ -546,9 +546,9 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark SSE2 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result = render_ascii_sse2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
-    if (result)
-      free(result);
+    char *ascii_output = render_ascii_sse2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
+    if (ascii_output)
+      free(ascii_output);
   }
   result.sse2_time = get_time_seconds() - start;
 #endif
@@ -557,9 +557,9 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark SSSE3 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result = render_ascii_ssse3_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
-    if (result)
-      free(result);
+    char *ascii_output = render_ascii_ssse3_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
+    if (ascii_output)
+      free(ascii_output);
   }
   result.ssse3_time = get_time_seconds() - start;
 #endif
@@ -568,9 +568,9 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   // Benchmark AVX2 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result = render_ascii_avx2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
-    if (result)
-      free(result);
+    char *ascii_output = render_ascii_avx2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
+    if (ascii_output)
+      free(ascii_output);
   }
   result.avx2_time = get_time_seconds() - start;
 #endif
@@ -581,9 +581,9 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   for (int i = 0; i < iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
-    char *result = render_ascii_neon_unified_optimized(&temp_image, background_mode, true, DEFAULT_ASCII_PALETTE);
-    if (result)
-      free(result);
+    char *ascii_output = render_ascii_neon_unified_optimized(&temp_image, background_mode, true, DEFAULT_ASCII_PALETTE);
+    if (ascii_output)
+      free(ascii_output);
   }
   result.neon_time = get_time_seconds() - start;
 #endif
