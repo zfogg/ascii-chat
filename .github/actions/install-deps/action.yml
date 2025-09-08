@@ -35,8 +35,10 @@ runs:
         echo "JACK_AVAILABLE=$?"
         
         echo "=== Searching for JACK libraries ==="
-        find /usr -name "libjack*.so*" 2>/dev/null || echo "No libjack.so found in /usr"
-        find /lib -name "libjack*.so*" 2>/dev/null || echo "No libjack.so found in /lib"
+        # Use locate or ls in specific directories instead of find
+        ls -la /usr/lib/*/libjack*.so* 2>/dev/null || echo "No libjack.so found in /usr/lib/*/"
+        ls -la /usr/local/lib/libjack*.so* 2>/dev/null || echo "No libjack.so found in /usr/local/lib/"
+        ls -la /lib/*/libjack*.so* 2>/dev/null || echo "No libjack.so found in /lib/*/"
         
         echo "=== Library paths ==="
         ls -la /usr/lib/x86_64-linux-gnu/libjack* 2>/dev/null || echo "No jack libs in /usr/lib/x86_64-linux-gnu/"
@@ -45,6 +47,15 @@ runs:
         
         echo "=== ldconfig cache ==="
         ldconfig -p | grep jack || echo "No jack libraries in ldconfig cache"
+        
+        echo "=== pkg-config raw output ==="
+        echo "pkg-config --libs jack returns: '$(pkg-config --libs jack)'"
+        echo "pkg-config --cflags jack returns: '$(pkg-config --cflags jack)'"
+        echo "pkg-config --libs-only-l jack returns: '$(pkg-config --libs-only-l jack)'"
+        echo "pkg-config --libs-only-L jack returns: '$(pkg-config --libs-only-L jack)'"
+        
+        echo "=== Confirm installation method ==="
+        dpkg -l | grep jack | head -5 || echo "No jack packages found via dpkg"
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
