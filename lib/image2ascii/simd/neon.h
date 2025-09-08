@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "image.h"
+#include "../image.h"
 
 #if (defined(SIMD_SUPPORT_NEON) || defined(__ARM_NEON) || defined(__aarch64__))
 #include <arm_neon.h>

@@ -26,7 +26,7 @@
 #include "network.h"
 #include "options.h"
 #include "audio.h"
-#include "image.h"
+#include "image2ascii/image.h"
 #include "webcam.h"
 #include "buffer_pool.h"
 #include "terminal_detect.h"

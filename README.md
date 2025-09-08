@@ -48,19 +48,21 @@ Check the `Makefile` to see how it works.
 ### Build Targets
 - `make` or `make all` - Build all targets with default flags
 - `make debug` - Build with debug symbols and no optimization
+- `make debug-coverage` - Build with debug symbols and coverage
 - `make release` - Build with optimizations enabled
+- `make release-coverage` - Build with optimizations and coverage
 - `make sanitize` - Build with address sanitizer for debugging
 - `make clean` - Remove build artifacts
 
-### Test Targets
-- `make test` - Run all tests (unit + integration + performance)
-- `make test-unit` - Run only unit tests
-- `make test-integration` - Run only integration tests
-- `make test-performance` - Run performance benchmarks
-- `make test-debug` - Run all tests with debug build and coverage
-- `make test-release` - Run all tests with release build and LTO
-- `make test-unit-release` - Run unit tests with release build and LTO
-- `make coverage` - Run tests with coverage analysis
+### Test Building Targets
+- `make tests-debug` - Build test executables with debug flags
+- `make tests-release` - Build test executables with release flags
+- `make tests-debug-coverage` - Build test executables with debug + coverage
+- `make tests-release-coverage` - Build test executables with release + coverage
+
+### Test Running Targets
+- `make test` - Run all tests in debug mode
+- `make test-release` - Run all tests in release mode
 
 ### Development Tools
 - `make format` - Format source code using clang-format
@@ -87,13 +89,61 @@ The Makefile supports several configuration options:
 - `MAKEFLAGS=-j$(nproc)` - Parallel build jobs (Linux) or `-j$(sysctl -n hw.logicalcpu)` (macOS)
 
 ## Testing
-1. Have the dependencies installed.
-2. Run `make test` or `make test-unit` or `make test-integration`.
 
-Notes:
-* You can run 'em one-by-one: `make tests && ls bin/test_*`
-* Useful: `bin/test_*` with `--verbose` and `--filter`, also `--help`.
-* Testing framework docs: [libcriterion docs](https://criterion.readthedocs.io/en/master/)
+The project uses a unified test runner script (`tests/scripts/run_tests.sh`) that consolidates all test execution logic.
+
+### Quick Start
+1. Have the dependencies installed.
+2. Run `make test` (debug mode) or `make test-release` (release mode).
+
+### Test Types
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test component interactions and full workflows
+- **Performance Tests**: Benchmark SIMD vs scalar implementations
+
+### Using the Test Script Directly
+```bash
+# Run all tests in debug mode
+./tests/scripts/run_tests.sh
+
+# Run specific test types
+./tests/scripts/run_tests.sh -t unit
+./tests/scripts/run_tests.sh -t integration
+./tests/scripts/run_tests.sh -t performance
+
+# Run with different build configurations
+./tests/scripts/run_tests.sh -b debug
+./tests/scripts/run_tests.sh -b release
+./tests/scripts/run_tests.sh -b debug-coverage
+./tests/scripts/run_tests.sh -b release-coverage
+./tests/scripts/run_tests.sh -b sanitize
+
+# Generate JUnit XML for CI
+./tests/scripts/run_tests.sh -J
+
+# Run in parallel (default: number of CPU cores)
+./tests/scripts/run_tests.sh -j 4
+
+# Verbose output
+./tests/scripts/run_tests.sh -v
+```
+
+### Manual Test Execution
+You can also run individual test executables directly:
+```bash
+# Build test executables first
+make tests-debug
+
+# Run individual tests
+bin/test_mixer --verbose
+bin/test_ascii_simd_performance --filter "monochrome"
+```
+
+### Testing Framework
+- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
+- **Coverage**: Code coverage reports generated in CI
+- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
+- **Memory Checking**: AddressSanitizer support via `-b sanitize` for detecting memory issues
 
 
 ## Cryptography

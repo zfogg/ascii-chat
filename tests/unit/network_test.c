@@ -10,7 +10,7 @@
 #include "network.h"
 #include "crc32_hw.h"
 #include "packet_queue.h"
-#include "image.h"
+#include "image2ascii/image.h"
 #include "image2ascii/simd/ascii_simd.h"
 
 void setup_network_quiet_logging(void);

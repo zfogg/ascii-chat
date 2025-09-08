@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdio.h>
-#include "image.h"
+#include "image2ascii/image.h"
 
 // High-level webcam interface (backwards compatible)
 int webcam_init(unsigned short int webcam_index);
