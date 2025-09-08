@@ -129,6 +129,18 @@ endif
 UNAME_M := $(shell uname -m)
 UNAME_S := $(shell uname -s)
 
+# Detect number of CPU cores for parallel builds
+ifeq ($(UNAME_S),Darwin)
+  # macOS: use sysctl to get number of logical processors
+  CPU_CORES := $(shell sysctl -n hw.logicalcpu)
+else ifeq ($(UNAME_S),Linux)
+  # Linux: use nproc to get number of processing units available
+  CPU_CORES := $(shell nproc)
+else
+  # Fallback: assume 4 cores for other systems
+  CPU_CORES := 4
+endif
+
 # macOS specifics: detect Apple Silicon and Rosetta
 ifeq ($(UNAME_S),Darwin)
   IS_APPLE_SILICON := $(shell sysctl -n hw.optional.arm64 2>/dev/null || echo 0)
@@ -471,7 +483,7 @@ test-release: $(TEST_EXECUTABLES)
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
@@ -484,7 +496,7 @@ test-release: $(TEST_EXECUTABLES)
 		failed=0; \
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
-			$$test 2>>/tmp/test_logs.txt; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
 			test_exit_code=$$?; \
 			if [ $$test_exit_code -eq 0 ]; then \
 				echo "Test passed: $$test"; \
@@ -516,7 +528,7 @@ test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
 			test_exit_code=$$?; \
 			if [ $$test_exit_code -ne 0 ]; then \
 				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
@@ -533,7 +545,7 @@ test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test 2>>/tmp/test_logs.txt; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
 			test_exit_code=$$?; \
 			if [ $$test_exit_code -eq 0 ]; then \
 				echo "Test passed: $$test"; \
@@ -633,7 +645,7 @@ coverage: $(TEST_EXECUTABLES)
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
 			test_exit_code=$$?; \
 			if [ $$test_exit_code -ne 0 ]; then \
 				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
@@ -649,7 +661,7 @@ coverage: $(TEST_EXECUTABLES)
 	else \
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
-			$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 		done; \
 	fi
 	@echo "Generating coverage report..."
@@ -684,7 +696,7 @@ test: $(TEST_EXECUTABLES)
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
@@ -697,7 +709,7 @@ test: $(TEST_EXECUTABLES)
 		failed=0; \
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
-			if ! $$test; then \
+			if ! $$test --jobs $(CPU_CORES); then \
 				echo "Test failed: $$test"; \
 				failed=1; \
 			fi; \
@@ -723,7 +735,7 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
 			test_exit_code=$$?; \
 			if [ $$test_exit_code -eq 0 ]; then \
 				echo "Test passed: $$test"; \
@@ -746,12 +758,15 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test 2>>/tmp/test_logs.txt; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
 			test_exit_code=$$?; \
 			if [ $$test_exit_code -eq 0 ]; then \
 				echo "Test passed: $$test"; \
 			else \
 				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				echo "=== Test failure details ==="; \
+				tail -50 /tmp/test_logs.txt; \
+				echo "=== End failure details ==="; \
 				failed=1; \
 			fi; \
 		done; \
@@ -766,7 +781,7 @@ test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 	@failed=0; \
 	for test in $^; do \
 		echo "Running $$test..."; \
-		if ! $$test; then \
+		if ! $$test --jobs $(CPU_CORES); then \
 			echo "Test failed: $$test"; \
 			failed=1; \
 		fi; \
@@ -784,7 +799,7 @@ test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			if ! $$test; then \
+			if ! $$test --jobs $(CPU_CORES); then \
 				echo "Test failed: $$test"; \
 				failed=1; \
 			fi; \
@@ -800,7 +815,7 @@ test-quiet: $(TEST_EXECUTABLES)
 	@> /tmp/test_logs.txt
 	@for test in $(TEST_EXECUTABLES); do \
 		echo "Running $$test..."; \
-		$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 	done
 	@echo "All tests completed!"
 	@echo "View test logs: cat /tmp/test_logs.txt"
@@ -919,9 +934,9 @@ format-check:
     xargs clang-format --dry-run --Werror
 
 # Run bear to generate a compile_commands.json file (compile-only, no linking)
-compile_commands.json: Makefile
-	@echo "Running bear to generate compile_commands.json (objects only)..."
-	@make clean && bear -- make -j debug $(OBJS)
+compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILES)
+	@echo "Running bear to generate compile_commands.json (objects + test objects)..."
+	@make clean && bear -- make debug $(OBJS) $(TEST_OBJS)
 	@echo "Bear complete!"
 
 # Run clang-tidy to check code style
