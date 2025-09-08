@@ -80,12 +80,11 @@ jobs:
 
     - name: Build performance tests
       run: |
-        make -j CSTD=c2x release
-        make -j CSTD=c2x tests
+        make -j CSTD=c2x tests-release
 
     - name: Run performance tests
       run: |
-        make test-performance
+        make -j CSTD=c2x test-performance
         echo "Performance tests completed successfully"
 
   memory-tests:

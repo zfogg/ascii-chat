@@ -444,6 +444,94 @@ sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 
+# Release test builds (with LTO matching release binaries)
+tests-release: override CFLAGS += $(RELEASE_FLAGS)
+tests-release: override LDFLAGS += -flto
+tests-release: $(TEST_EXECUTABLES)
+
+test-release: override CFLAGS += $(RELEASE_FLAGS)
+test-release: override LDFLAGS += -flto
+test-release: $(TEST_EXECUTABLES)
+	@echo "Running all tests (release build with LTO)..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests (Release)">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed '1d;$$d' | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			if ! $$test 2>>/tmp/test_logs.txt; then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed!"; \
+			exit 1; \
+		fi; \
+	fi
+	@echo "All tests completed!"
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
+test-unit-release: override CFLAGS += $(RELEASE_FLAGS)
+test-unit-release: override LDFLAGS += -flto
+test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
+	@echo "Running unit tests (release build with LTO)..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Unit Tests (Release)">' >> junit.xml; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed '1d;$$d' | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			if ! $$test 2>>/tmp/test_logs.txt; then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			exit 1; \
+		fi; \
+	fi
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking $@..."
@@ -766,6 +854,9 @@ help:
 	@echo "  test-integration - Run only integration tests"
 	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
 	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
+	@echo "  tests-release   - Build tests with release flags and LTO"
+	@echo "  test-release    - Run all tests with release flags and LTO"
+	@echo "  test-unit-release - Run unit tests with release flags and LTO"
 	@echo "  coverage        - Run tests with coverage analysis"
 	@echo "  todo            - Build the ./todo subproject"
 	@echo "  todo-clean      - Clean the ./todo subproject"
