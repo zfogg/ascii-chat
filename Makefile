@@ -78,18 +78,26 @@ override LDFLAGS := $(LINUX_LIB_PATHS) $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYST
 
 # Test-specific flags
 TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "")
-# Criterion on Linux needs additional libraries for its dependencies
+# Test linking flags - try pkg-config first, fallback to direct linking
+TEST_LDFLAGS := $(shell pkg-config --libs criterion 2>/dev/null)
+ifeq ($(TEST_LDFLAGS),)
+    # Fallback for systems without pkg-config for criterion
+    ifeq ($(shell uname),Linux)
+        TEST_LDFLAGS := -lcriterion -lboxfort
+    else
+        # macOS with Homebrew - need explicit path
+        TEST_LDFLAGS := -L/opt/homebrew/lib -lcriterion
+    endif
+endif
+
+# Add optional dependencies on Linux only if they exist
 ifeq ($(shell uname),Linux)
-    TEST_LDFLAGS := -lcriterion -lboxfort
-    # Only add optional Criterion dependencies if they exist
     ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
     endif
     ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
     endif
-else
-    TEST_LDFLAGS := -lcriterion
 endif
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
