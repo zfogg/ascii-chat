@@ -30,12 +30,8 @@ runs:
       if: inputs.os == 'ubuntu'
       shell: bash
       run: |
-        pkg-config --exists jack
         pkg-config --cflags --libs jack
         echo "JACK_AVAILABLE=$?"
-        pkg-config --exists jack2
-        pkg-config --cflags --libs jack2
-        echo "JACK2_AVAILABLE=$?"
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
