@@ -25,10 +25,6 @@ coverage:
     # Default rules applied to all status checks  
     default_rules:
       flag_coverage_not_uploaded_behavior: include
-      # Advanced status check settings
-      if_ci_failed: error
-      only_pulls: false
-      informational: false
 
     # Project-level status checks
     project:
@@ -471,7 +467,6 @@ comment:
     - palettes
   # Show component information prominently in PR comments
   show_carryforward_flags: false
-  show_critical_files: true
 
 # Ignore certain paths from coverage calculation
 ignore:
@@ -487,24 +482,6 @@ ignore:
   - "Info.plist"
   - "**/.DS_Store"
   - "**/compile_commands.json"
-
-# Test analytics configuration
-test_analytics:
-  # Enable test analytics for identifying consistently failing tests
-  enabled: true
-  # Configure notifications for flaky/failing tests
-  notify:
-    after_n_builds: 3
-    # Track test failures across builds
-    behavior: default
-  # Configure test result processing
-  flags:
-    - ascii-chat-tests-ubuntu-debug
-    - ascii-chat-tests-ubuntu-release  
-    - ascii-chat-tests-macos-debug
-    - ascii-chat-tests-macos-release
-    - ascii-chat-tests
-    - coverage
 
 # Flag configuration for organizing uploads
 flags:
