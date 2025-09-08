@@ -26,6 +26,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-15]
         build_type: [debug, release]
+        include:
+          - os: ubuntu-latest
+            os-name: ubuntu
+          - os: macos-15
+            os-name: macos
 
     steps:
     - name: Checkout code
@@ -34,17 +39,61 @@ jobs:
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
       with:
-        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        os: ${{ matrix.os-name }}
+        extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
         make -j CSTD=c2x ${{ matrix.build_type }}
         make -j CSTD=c2x tests
 
-    - name: Run unit tests
+    - name: Run unit tests with JUnit XML generation
       run: |
-        make test-unit
+        GENERATE_JUNIT=1 make test-unit-${{ matrix.build_type }}
         echo "Unit tests completed successfully"
+
+    - name: Generate coverage report (debug builds only)
+      if: matrix.build_type == 'debug'
+      run: |
+        # Generate coverage files for codecov
+        find . -name "*.gcda" -exec gcov {} \;
+        
+        # Debug: Show what coverage files were generated
+        echo "Generated coverage files:"
+        find . -name "*.gcov" -type f | head -20
+        ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
+
+    - name: Validate junit.xml
+      if: ${{ !cancelled() }}
+      run: |
+        if [ -f junit.xml ]; then
+          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
+          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
+        else
+          echo "❌ junit.xml not found"
+          find . -name "*.xml" -type f | head -5
+        fi
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
+      uses: codecov/test-results-action@v1
+      with:
+        files: ./junit.xml
+        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+
+    - name: Upload coverage to Codecov (debug builds only)
+      if: matrix.build_type == 'debug'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./*.gcov
+        directory: .
+        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
+        name: ascii-chat-coverage-${{ matrix.os-name }}-${{ matrix.build_type }}
+        fail_ci_if_error: false
+        verbose: true
 
     - name: Run integration tests
       if: matrix.build_type == 'release'
