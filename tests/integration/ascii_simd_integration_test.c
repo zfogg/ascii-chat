@@ -612,7 +612,8 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
                 continue;
             }
             if (result[i] == '\033') {
-                while (i < len && result[i] != 'm') i++;
+                // Skip ANSI escape sequences - they can end with 'm' (color) or 'b' (REP)
+                while (i < len && result[i] != 'm' && result[i] != 'b') i++;
                 if (i < len) i++;
                 continue;
             }
@@ -791,14 +792,18 @@ Test(ascii_simd_integration, extreme_image_sizes) {
         cr_assert_not_null(scalar_result, "%s: Scalar should handle extreme size", extreme_sizes[i].name);
         cr_assert_not_null(simd_result, "%s: SIMD should handle extreme size", extreme_sizes[i].name);
 
-        // Expand RLE sequences in scalar output for fair comparison
+        // Expand RLE sequences in both outputs for fair comparison
+        // Both scalar and SIMD implementations use RLE compression for efficiency
         char *scalar_expanded = expand_rle_sequences(scalar_result);
+        char *simd_expanded = expand_rle_sequences(simd_result);
         cr_assert_not_null(scalar_expanded, "%s: Should be able to expand scalar RLE", extreme_sizes[i].name);
+        cr_assert_not_null(simd_expanded, "%s: Should be able to expand SIMD RLE", extreme_sizes[i].name);
 
         // For monochrome, should produce identical output after RLE expansion
-        cr_assert_str_eq(scalar_expanded, simd_result, "%s: Outputs should match after RLE expansion", extreme_sizes[i].name);
+        cr_assert_str_eq(scalar_expanded, simd_expanded, "%s: Outputs should match after RLE expansion", extreme_sizes[i].name);
 
         free(scalar_expanded);
+        free(simd_expanded);
 
         free(scalar_result);
         free(simd_result);
@@ -1501,7 +1506,8 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
             for (size_t i = 0; i < scalar_len; i++) {
                 // Skip ANSI escape sequences and newlines
                 if (scalar_result[i] == '\033') {
-                    while (i < scalar_len && scalar_result[i] != 'm') i++;
+                    // Skip ANSI escape sequences - they can end with 'm' (color) or 'b' (REP)
+                    while (i < scalar_len && scalar_result[i] != 'm' && scalar_result[i] != 'b') i++;
                     continue;
                 }
                 if (scalar_result[i] == '\n' || scalar_result[i] == '\r') continue;
