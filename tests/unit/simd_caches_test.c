@@ -36,25 +36,43 @@ Test(simd_caches, utf8_cache_capacity_limits) {
     // Test behavior when exceeding hashtable capacity (32 entries)
     const int test_palettes = 40; // Exceed capacity
     char **results = NULL;
+    
+    printf("[TEST START] utf8_cache_capacity_limits - Testing %d palettes\n", test_palettes);
+    fflush(stdout);
+    
     SAFE_MALLOC(results, test_palettes * sizeof(char*), char**);
+    if (!results) {
+        printf("[ERROR] Failed to allocate results array\n");
+        fflush(stdout);
+        cr_assert(false, "Memory allocation failed");
+        return;
+    }
 
     // Generate unique palettes
     for (int i = 0; i < test_palettes; i++) {
         char palette[32];
         snprintf(palette, sizeof(palette), "   .:-=+*#%%@%d", i); // Unique per iteration
+        
+        printf("[DEBUG] Testing palette %d: '%s'\n", i, palette);
+        fflush(stdout);
 
         utf8_palette_cache_t *cache = get_utf8_palette_cache(palette);
 
         if (i < 32) {
             // First 32 should succeed
+            printf("[DEBUG] Palette %d: cache=%p (expecting non-NULL)\n", i, (void*)cache);
+            fflush(stdout);
             cr_assert_not_null(cache, "Palette %d should be cached successfully", i);
         } else {
             // After 32: depends on eviction implementation
             // Current implementation: may return NULL or evict older entries
-            printf("Palette %d: cache=%p\n", i, (void*)cache);
+            printf("[DEBUG] Palette %d: cache=%p (overflow case)\n", i, (void*)cache);
+            fflush(stdout);
         }
     }
 
+    printf("[TEST END] utf8_cache_capacity_limits - Completed successfully\n");
+    fflush(stdout);
     free(results);
 }
 
