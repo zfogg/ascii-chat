@@ -78,18 +78,11 @@ override LDFLAGS := $(LINUX_LIB_PATHS) $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYST
 
 # Test-specific flags
 TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "")
-# Criterion on Linux may need additional libraries for its dependencies
+# Add libraries that Criterion depends on
 ifeq ($(shell uname),Linux)
-    TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "-lcriterion")
-    # Only add optional Criterion dependencies if they exist
-    ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
-        TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
-    endif
-    ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
-        TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
-    endif
+    TEST_LDFLAGS := -lcriterion -lboxfort
 else
-    TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "-lcriterion")
+    TEST_LDFLAGS := -lcriterion
 endif
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
@@ -523,9 +516,10 @@ coverage: $(TEST_EXECUTABLES)
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -e "s/<testsuite name=\"/<testsuite name=\"$$test_class./" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" \
-				    -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed '1d;$$d' | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
 			fi; \
 		done; \
@@ -570,9 +564,10 @@ test: $(TEST_EXECUTABLES)
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
 			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
 			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -e "s/<testsuite name=\"/<testsuite name=\"$$test_class./" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" \
-				    -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed '1d;$$d' | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
 			fi; \
 		done; \
@@ -608,9 +603,10 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -e "s/<testsuite name=\"/<testsuite name=\"$$test_class./" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" \
-				    -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed '1d;$$d' | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
 			fi; \
 		done; \
