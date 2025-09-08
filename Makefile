@@ -78,9 +78,16 @@ override LDFLAGS := $(LINUX_LIB_PATHS) $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYST
 
 # Test-specific flags
 TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "")
-# Add libraries that Criterion depends on
+# Criterion on Linux needs additional libraries for its dependencies
 ifeq ($(shell uname),Linux)
     TEST_LDFLAGS := -lcriterion -lboxfort
+    # Only add optional Criterion dependencies if they exist
+    ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
+    endif
+    ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
+    endif
 else
     TEST_LDFLAGS := -lcriterion
 endif
