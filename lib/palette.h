@@ -74,3 +74,5 @@ const utf8_char_info_t *utf8_palette_get_char(const utf8_palette_t *palette, siz
 size_t utf8_palette_get_char_count(const utf8_palette_t *palette);
 bool utf8_palette_contains_char(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes);
 size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes);
+size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes,
+                                          size_t *indices, size_t max_indices);
