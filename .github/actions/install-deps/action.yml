@@ -23,7 +23,7 @@ runs:
       if: inputs.os == 'ubuntu'
       uses: tecolicom/actions-use-apt-tools@v1
       with:
-        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libsodium-dev libcriterion-dev libboxfort-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libssl-dev libssh2-1-dev libssh2-1 libgssapi-krb5-2 libhttp-parser-dev libpcre2-dev libpcre2-8-0 pkg-config ${{ inputs.extra-packages }}
+        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libboxfort-dev libsodium-dev libcriterion-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libssl-dev libssh2-1-dev libgssapi-krb5-2 libhttp-parser-dev libpcre2-dev libpcre2-8-0 pkg-config ${{ inputs.extra-packages }}
         cache: yes
 
     - name: Debug available libraries (Ubuntu)
@@ -31,32 +31,37 @@ runs:
       shell: bash
       run: |
         echo "=== Checking test dependency libraries ==="
-        
+
+        # Check ssh
+        echo "libssh2:"
+        pkg-config --exists libssh2 && echo "✅ libssh2 found" || echo "❌ libssh2 not found"
+        pkg-config --libs libssh2 2>/dev/null || echo "No libssh2 libs via pkg-config"
+
         # Check criterion
         echo "Criterion:"
         pkg-config --exists criterion && echo "✅ criterion found" || echo "❌ criterion not found"
         pkg-config --libs criterion 2>/dev/null || echo "No criterion libs via pkg-config"
-        
+
         # Check libgit2
         echo "LibGit2:"
         pkg-config --exists libgit2 && echo "✅ libgit2 found" || echo "❌ libgit2 not found"
-        
+
         # Check nanomsg
         echo "Nanomsg:"
         pkg-config --exists nanomsg && echo "✅ nanomsg found" || echo "❌ nanomsg not found"
         find /usr/lib/x86_64-linux-gnu/ -name "*nanomsg*" || echo "No nanomsg libs found"
-        
+
         # Check boxfort
         echo "Boxfort:"
         find /usr/lib/x86_64-linux-gnu/ -name "*boxfort*" || echo "No boxfort libs found"
-        
+
         # Check JACK libraries are properly linked
         echo "=== Checking JACK installation ==="
         ls -la /usr/lib/x86_64-linux-gnu/ | grep jack || echo "No JACK libs found"
-        
+
         # Try to fix broken symlinks if they exist
         sudo ldconfig
-        
+
         # Verify pkg-config can find jack
         echo "=== Testing pkg-config for jack ==="
         if pkg-config --exists jack; then
