@@ -243,6 +243,10 @@ Test(network, compressed_packet_handling) {
         SAFE_FREE(decompressed_data);
         cr_assert(false, "Decompressed size should match original");
     }
+
+    // Add null terminator for string comparison
+    decompressed_data[decompressed_size] = '\0';
+
     if (strcmp(decompressed_data, test_data) != 0) {
         SAFE_FREE(compressed_data);
         SAFE_FREE(decompressed_data);
