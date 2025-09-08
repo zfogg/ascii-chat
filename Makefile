@@ -102,8 +102,18 @@ ifeq ($(shell uname),Linux)
     ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
     endif
-    # Add system libraries that may be needed
-    TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8 -lgssapi_krb5
+    # Add system libraries that may be needed (use pkg-config when available)
+    # For GSSAPI/Kerberos support (needed by libssh2/libgit2)
+    ifneq ($(shell pkg-config --exists krb5-gssapi 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs krb5-gssapi)
+    else ifneq ($(shell pkg-config --exists mit-krb5-gssapi 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs mit-krb5-gssapi)
+    else
+        # Fallback: try common library names
+        TEST_LDFLAGS += -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err
+    endif
+    # Other dependencies
+    TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8
 endif
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS

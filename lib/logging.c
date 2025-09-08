@@ -203,6 +203,13 @@ void log_set_level(log_level_t level) {
   pthread_mutex_unlock(&g_log.mutex);
 }
 
+log_level_t log_get_level(void) {
+  pthread_mutex_lock(&g_log.mutex);
+  log_level_t level = g_log.level;
+  pthread_mutex_unlock(&g_log.mutex);
+  return level;
+}
+
 void log_set_terminal_output(bool enabled) {
   pthread_mutex_lock(&g_log.mutex);
   g_log.terminal_output_enabled = enabled;

@@ -272,8 +272,12 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
     return;
 
   // Only print stats if log level allows INFO messages
-  if (g_log.level > LOG_INFO)
+  log_level_t current_level = log_get_level();
+  if (current_level > LOG_INFO) {
+    // Debug: print why we're skipping (this will be suppressed by LOG_FATAL)
+    log_debug("Skipping hashtable stats - current level %d > LOG_INFO (%d)", current_level, LOG_INFO);
     return;
+  }
 
   pthread_rwlock_rdlock(&ht->rwlock);
 
