@@ -7,6 +7,11 @@ codecov:
   branch: master
   # Reject reports older than 12 hours
   max_report_age: "12h"
+  # Enable notifications and integrations
+  notify:
+    # Enable GitHub PR comments with coverage details
+    require_ci_to_pass: false
+    after_n_builds: 1
 
 # Coverage configuration
 coverage:
@@ -346,6 +351,73 @@ ignore:
   - "**/.DS_Store"
   - "**/compile_commands.json"
 
+# Test analytics configuration
+test_analytics:
+  # Enable test analytics for identifying consistently failing tests
+  enabled: true
+  # Configure notifications for flaky/failing tests
+  notify:
+    after_n_builds: 3
+    # Track test failures across builds
+    behavior: default
+  # Configure test result processing
+  flags:
+    - ascii-chat-tests-ubuntu-debug
+    - ascii-chat-tests-ubuntu-release  
+    - ascii-chat-tests-macos-debug
+    - ascii-chat-tests-macos-release
+    - ascii-chat-tests
+    - coverage
+
+# Flag configuration for organizing uploads
+flags:
+  ascii-chat-tests-ubuntu-debug:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/"
+    carryforward: false
+  ascii-chat-tests-ubuntu-release:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/"
+    carryforward: false
+  ascii-chat-tests-macos-debug:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/"
+    carryforward: false
+  ascii-chat-tests-macos-release:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/"
+    carryforward: false
+  ascii-chat-tests:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/"
+    carryforward: false
+  coverage:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/"
+    carryforward: false
+
 # Notification settings
 github_checks:
   annotations: true
+
+# Profiling configuration for YAML reporting
+profiling:
+  # Enable YAML report customization
+  critical_files_paths:
+    - "src/server.c"
+    - "src/client.c" 
+    - "lib/ascii*.c"
+    - "lib/network.c"
+    - "lib/crypto.c"
