@@ -52,10 +52,9 @@ else ifeq ($(shell uname),Linux)
     PLATFORM_LDFLAGS := -lncurses
     # Only add JACK if it's available (check with pkg-config)
     # Try jack2 first (jackd2), then fall back to jack
-    ifneq ($(shell pkg-config --exists jack2 2>/dev/null && echo yes),)
-        PLATFORM_LDFLAGS += $(shell pkg-config --libs jack2)
-    else ifneq ($(shell pkg-config --exists jack 2>/dev/null && echo yes),)
-        PLATFORM_LDFLAGS += $(shell pkg-config --libs jack)
+    JACK_LIBS := $(shell pkg-config --libs jack2 2>/dev/null || pkg-config --libs jack 2>/dev/null)
+    ifneq ($(strip $(JACK_LIBS)),)
+        PLATFORM_LDFLAGS += $(JACK_LIBS)
     endif
 endif
 
