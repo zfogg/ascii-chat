@@ -58,8 +58,9 @@ else ifeq ($(shell uname),Linux)
 	JACK_EXISTS := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
 	ifeq ($(JACK_EXISTS),yes)
 		# pkg-config returns -ljack but not the library path on Ubuntu
-		# Add the library path explicitly for x86_64-linux-gnu
-		PLATFORM_LDFLAGS += -L/usr/lib/x86_64-linux-gnu -ljack
+		# Libraries exist in both /usr/lib/x86_64-linux-gnu and /lib/x86_64-linux-gnu
+		# Add both paths to ensure linker finds them
+		PLATFORM_LDFLAGS := -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu $(PLATFORM_LDFLAGS) -ljack
 	endif
 endif
 
