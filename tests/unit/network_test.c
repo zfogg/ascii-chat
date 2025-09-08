@@ -219,11 +219,11 @@ Test(network, compressed_packet_handling) {
 
     if (result != Z_OK) {
         SAFE_FREE(compressed_data);
-        cr_assert_fail("zlib compression should succeed");
+        cr_assert_fail("%s", "zlib compression should succeed");
     }
     if (compressed_size <= 0) {
         SAFE_FREE(compressed_data);
-        cr_assert_fail("Compressed size should be positive");
+        cr_assert_fail("%s", "Compressed size should be positive");
     }
 
     // Test decompression
@@ -236,17 +236,17 @@ Test(network, compressed_packet_handling) {
     if (result != Z_OK) {
         SAFE_FREE(compressed_data);
         SAFE_FREE(decompressed_data);
-        cr_assert_fail("zlib decompression should succeed");
+        cr_assert_fail("%s", "zlib decompression should succeed");
     }
     if (decompressed_size != data_len) {
         SAFE_FREE(compressed_data);
         SAFE_FREE(decompressed_data);
-        cr_assert_fail("Decompressed size should match original");
+        cr_assert_fail("%s", "Decompressed size should match original");
     }
     if (strcmp(decompressed_data, test_data) != 0) {
         SAFE_FREE(compressed_data);
         SAFE_FREE(decompressed_data);
-        cr_assert_fail("Decompressed data should match original");
+        cr_assert_fail("%s", "Decompressed data should match original");
     }
 
     // Cleanup
