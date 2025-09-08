@@ -1040,7 +1040,7 @@ format-check:
     xargs clang-format --dry-run --Werror
 
 # Generate compile_commands.json manually for clang-tidy
-compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILES)
+compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(TEST_C_FILES)
 	@echo "Generating compile_commands.json..."
 	@echo "[" > compile_commands.json.tmp
 	@first=true; \
@@ -1064,7 +1064,7 @@ compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILE
 		fi; \
 		echo "  {" >> compile_commands.json.tmp; \
 		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json.tmp; \
-		echo "    \"command\": \"clang $(CFLAGS) $(TEST_LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
+		echo "    \"command\": \"clang $(CFLAGS) $(TEST_CFLAGS) $(TEST_LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
 		echo "    \"file\": \"$$file\"" >> compile_commands.json.tmp; \
 		echo "  }" >> compile_commands.json.tmp; \
 	done; \
