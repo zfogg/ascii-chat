@@ -1218,6 +1218,11 @@ Test(simd_caches, cache_cleanup_safety) {
     cr_assert_not_null(cache, "Cache should be created");
     cr_assert(cache->is_valid, "Cache should be valid");
 
+    // Store the palette hash before cleanup
+    char original_palette_hash[65];
+    strncpy(original_palette_hash, cache->palette_hash, sizeof(original_palette_hash) - 1);
+    original_palette_hash[sizeof(original_palette_hash) - 1] = '\0';
+
     // Cleanup should be safe
     simd_caches_destroy_all();
 
@@ -1227,7 +1232,7 @@ Test(simd_caches, cache_cleanup_safety) {
     cr_assert(new_cache->is_valid, "New cache should be valid");
 
     // Cache should work correctly after cleanup (same palette should produce same cache data)
-    cr_assert_str_eq(cache->palette_hash, new_cache->palette_hash, "Cache should have same palette hash");
+    cr_assert_str_eq(original_palette_hash, new_cache->palette_hash, "Cache should have same palette hash");
 }
 
 Test(simd_caches, extreme_palette_stress_test) {
