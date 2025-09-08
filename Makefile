@@ -484,8 +484,12 @@ test-release: $(TEST_EXECUTABLES)
 		failed=0; \
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
-			if ! $$test 2>>/tmp/test_logs.txt; then \
-				echo "Test failed: $$test"; \
+			$$test 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
 				failed=1; \
 			fi; \
 		done; \
@@ -512,7 +516,11 @@ test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -ne 0 ]; then \
+				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
+			fi; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
@@ -525,8 +533,12 @@ test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			if ! $$test 2>>/tmp/test_logs.txt; then \
-				echo "Test failed: $$test"; \
+			$$test 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
 				failed=1; \
 			fi; \
 		done; \
@@ -621,7 +633,11 @@ coverage: $(TEST_EXECUTABLES)
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -ne 0 ]; then \
+				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
+			fi; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
@@ -702,11 +718,19 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 		rm -f junit.xml; \
 		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
 		echo '<testsuites name="ASCII-Chat Unit Tests">' >> junit.xml; \
+		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
 			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				failed=1; \
+			fi; \
 			if [ -f /tmp/$$test_name.xml ]; then \
 				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
 				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
@@ -715,12 +739,19 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 			fi; \
 		done; \
 		echo '</testsuites>' >> junit.xml; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed during JUnit XML generation!"; \
+		fi; \
 	else \
 		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			if ! $$test 2>>/tmp/test_logs.txt; then \
-				echo "Test failed: $$test"; \
+			$$test 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
 				failed=1; \
 			fi; \
 		done; \
