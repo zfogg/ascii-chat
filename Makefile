@@ -137,11 +137,7 @@ ifeq ($(shell uname),Linux)
     TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8 -ldl -lresolv
 endif
 
-# Add LTO flag to test linking when in release mode
-# This ensures test executables can link with LTO-compiled object files
-ifeq ($(findstring -flto,$(CFLAGS)),-flto)
-    TEST_LDFLAGS += -flto
-endif
+# LTO flag will be added to TEST_LDFLAGS by release test targets
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
@@ -502,10 +498,12 @@ sanitize: $(TARGETS)
 # Release test builds (with LTO matching release binaries)
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
 tests-release: override LDFLAGS += -flto
+tests-release: override TEST_LDFLAGS += -flto
 tests-release: $(TEST_EXECUTABLES)
 
 test-release: override CFLAGS += $(RELEASE_FLAGS)
 test-release: override LDFLAGS += -flto
+test-release: override TEST_LDFLAGS += -flto
 test-release: $(TEST_EXECUTABLES)
 	@echo "Running all tests (release build with LTO)..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
