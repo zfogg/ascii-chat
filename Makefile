@@ -438,6 +438,7 @@ endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
 DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
 RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
 SANITIZE_FLAGS := -fsanitize=address
 
@@ -491,7 +492,8 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: override CFLAGS += $(DEBUG_FLAGS)
+debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+debug: override LDFLAGS += $(COVERAGE_FLAGS)
 debug: $(TARGETS)
 
 # Release build
@@ -505,10 +507,14 @@ sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
 # Release test builds (with LTO matching release binaries)
 
-tests-debug: override CFLAGS += $(DEBUG_FLAGS)
+tests-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+tests-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
 tests-debug: $(TEST_EXECUTABLES)
 
-test-debug: override CFLAGS += $(DEBUG_FLAGS)
+test-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+test-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+test-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
 test-debug: $(TEST_EXECUTABLES)
 	@echo "Running all tests (debug build)..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
@@ -815,9 +821,13 @@ test: $(TEST_EXECUTABLES)
 	fi
 	@echo "All tests completed!"
 
-test-unit-debug: test-unit
+# test-unit is the default for CI and includes coverage
+test-unit: test-unit-debug
 
-test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
+test-unit-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+test-unit-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+test-unit-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+test-unit-debug: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 	@echo "Running unit tests..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
 	@> /tmp/test_logs.txt
