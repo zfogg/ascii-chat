@@ -136,29 +136,29 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   }
 
   // Process row by row for better cache locality
-  for (int y = 0; y < h; y++) {
+  for (uint32_t y = 0; y < (uint32_t)h; y++) {
     const rgb_pixel_t *row_pixels = &pixels[y * w];
-    int x = 0;
+    uint32_t x = 0;
 
     // AVX2 fast path: process 32 pixels at a time
     if (w >= 32) {
       // Small buffer for 32 pixels (stays in L1 cache)
       uint8_t luma_indices[32];
 
-      while (x + 31 < w) {
+      while (x + 31 < (uint32_t)w) {
         // Process 32 pixels with AVX2
         avx2_process_32_pixels(&row_pixels[x], luma_indices, NULL, NULL, NULL, false);
 
         // Immediately emit these 32 characters with RLE
-        int chunk_pos = 0;
-        while (chunk_pos < 32 && x + chunk_pos < w) {
+        uint32_t chunk_pos = 0;
+        while (chunk_pos < 32 && x + chunk_pos < (uint32_t)w) {
           const uint8_t luma_idx = luma_indices[chunk_pos];
           const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
           const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
           // Find run length within this chunk
-          int run_end = chunk_pos + 1;
-          while (run_end < 32 && x + run_end < w) {
+          uint32_t run_end = chunk_pos + 1;
+          while (run_end < 32 && x + run_end < (uint32_t)w) {
             const uint8_t next_luma_idx = luma_indices[run_end];
             const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
             if (next_char_idx != char_idx)
@@ -183,7 +183,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     }
 
     // Scalar processing for remaining pixels (< 32)
-    while (x < w) {
+    while (x < (uint32_t)w) {
       const rgb_pixel_t *p = &row_pixels[x];
       const int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b + 128) >> 8;
       const uint8_t luma_idx = luminance >> 2; // 0-255 -> 0-63
@@ -191,8 +191,8 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       // Find run length for RLE
-      int j = x + 1;
-      while (j < w) {
+      uint32_t j = x + 1;
+      while (j < (uint32_t)w) {
         const rgb_pixel_t *next_p = &row_pixels[j];
         const int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b + 128) >> 8;
         const uint8_t next_luma_idx = next_luminance >> 2;
@@ -201,7 +201,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
           break;
         j++;
       }
-      uint32_t run = (uint32_t)(j - x);
+      uint32_t run = j - x;
 
       // Emit UTF-8 character with RLE
       ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
@@ -216,7 +216,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     }
 
     // Add newline after each row (except last)
-    if (y < h - 1) {
+    if (y < (uint32_t)h - 1) {
       ob_putc(&ob, '\n');
     }
   }
@@ -280,7 +280,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   const rgb_pixel_t *pixels_data = (const rgb_pixel_t *)image->pixels;
 
   // Process entire image with AVX2 SIMD
-  int pixel_idx = 0;
+  size_t pixel_idx = 0;
 
   // Main AVX2 loop - process 32 pixels at a time for maximum throughput
   for (; pixel_idx + 31 < total_pixels; pixel_idx += 32) {
@@ -353,7 +353,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
         // Find run length
         uint32_t run = 1;
-        while (x + run < width) {
+        while (x + run < (uint32_t)width) {
           uint8_t next_luma_idx = char_indices[idx + run];
           uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
           if (next_char_idx != char_idx)
@@ -392,7 +392,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
         // Find run length
         uint32_t run = 1;
-        while (x + run < width) {
+        while (x + run < (uint32_t)width) {
           uint8_t next_luma_idx = char_indices[idx + run];
           uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
           if (next_char_idx != char_idx)
