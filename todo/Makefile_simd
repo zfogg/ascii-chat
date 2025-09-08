@@ -81,7 +81,7 @@ endif
 
 override CFLAGS += $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS)
 
-override LDFLAGS := -lm
+override LDFLAGS := -lm -flto
 
 # Platform LDFLAGS for webcam backends when needed
 ifeq ($(UNAME_S),Darwin)

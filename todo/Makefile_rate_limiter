@@ -2,7 +2,7 @@
 CC = clang
 CSTD ?= c23
 CFLAGS = -Wall -Wextra -O3 -std=$(CSTD) -I../lib -D_GNU_SOURCE
-LDFLAGS = -lm
+LDFLAGS = -lm -flto
 
 SOURCES = rate_limiter.c rate_limiter_example.c
 OBJECTS = $(SOURCES:.c=.o)
