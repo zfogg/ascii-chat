@@ -92,16 +92,33 @@ endif
 
 # Add required dependencies on Linux
 ifeq ($(shell uname),Linux)
-    # Add essential test dependencies
+    # Add essential test dependencies - order matters for linking
+    # First add protobuf-c (needed by criterion)
     ifneq ($(shell pkg-config --exists libprotobuf-c 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs libprotobuf-c)
+    else
+        # Fallback if pkg-config doesn't work
+        TEST_LDFLAGS += -lprotobuf-c
     endif
+
+    # Add boxfort (needed by criterion for sandboxing)
+    ifneq ($(shell pkg-config --exists boxfort 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs boxfort)
+    else
+        # Fallback if pkg-config doesn't work
+        TEST_LDFLAGS += -lboxfort
+    endif
+
+    # Add libgit2 dependencies
     ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
     endif
+
+    # Add nanomsg
     ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
     endif
+
     # Add system libraries that may be needed (use pkg-config when available)
     # For GSSAPI/Kerberos support (needed by libssh2/libgit2)
     ifneq ($(shell pkg-config --exists krb5-gssapi 2>/dev/null && echo yes),)
@@ -112,10 +129,11 @@ ifeq ($(shell uname),Linux)
         # If we have libssh2 via pkg-config, it should bring in its deps
         TEST_LDFLAGS += $(shell pkg-config --libs libssh2)
     else
-        # Fallback: skip gssapi_krb5 if not found, it's optional for most cases
+        # Fallback: add GSSAPI libraries if available
         TEST_LDFLAGS += -lkrb5 -lk5crypto -lcom_err
     endif
-    # Other dependencies
+
+    # Other dependencies - add in dependency order
     TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8
 endif
 
