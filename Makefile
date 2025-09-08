@@ -411,6 +411,7 @@ debug: $(TARGETS)
 
 # Release build
 release: override CFLAGS += $(RELEASE_FLAGS)
+release: override LDFLAGS += -flto
 release: $(TARGETS)
 
 # Memory sanitizer build (inherits debug flags)
