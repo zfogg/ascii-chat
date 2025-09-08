@@ -26,48 +26,27 @@ runs:
         tools: clang libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libsodium-dev libcriterion-dev libboxfort-dev pkg-config ${{ inputs.extra-packages }}
         cache: yes
 
-    - name: debug
+    - name: Fix JACK library setup (Ubuntu)
       if: inputs.os == 'ubuntu'
       shell: bash
       run: |
-        echo "=== JACK pkg-config info ==="
-        pkg-config --cflags --libs jack || echo "pkg-config for jack failed"
-        echo "JACK_AVAILABLE=$?"
+        # Check if JACK libraries are properly linked
+        echo "=== Checking JACK installation ==="
+        ls -la /usr/lib/x86_64-linux-gnu/ | grep jack || echo "No JACK libs found"
         
-        echo "=== Searching for JACK libraries ==="
-        # Use locate or ls in specific directories instead of find
-        ls -la /usr/lib/*/libjack*.so* 2>/dev/null || echo "No libjack.so found in /usr/lib/*/"
-        ls -la /usr/local/lib/libjack*.so* 2>/dev/null || echo "No libjack.so found in /usr/local/lib/"
-        ls -la /lib/*/libjack*.so* 2>/dev/null || echo "No libjack.so found in /lib/*/"
+        # Try to fix broken symlinks if they exist
+        sudo ldconfig
         
-        echo "=== Library paths ==="
-        ls -la /usr/lib/x86_64-linux-gnu/libjack* 2>/dev/null || echo "No jack libs in /usr/lib/x86_64-linux-gnu/"
-        ls -la /usr/lib/libjack* 2>/dev/null || echo "No jack libs in /usr/lib/"
-        ls -la /usr/local/lib/libjack* 2>/dev/null || echo "No jack libs in /usr/local/lib/"
-        
-        echo "=== ldconfig cache ==="
-        ldconfig -p | grep jack || echo "No jack libraries in ldconfig cache"
-        
-        echo "=== pkg-config raw output ==="
-        echo "pkg-config --libs jack returns: '$(pkg-config --libs jack)'"
-        echo "pkg-config --cflags jack returns: '$(pkg-config --cflags jack)'"
-        echo "pkg-config --libs-only-l jack returns: '$(pkg-config --libs-only-l jack)'"
-        echo "pkg-config --libs-only-L jack returns: '$(pkg-config --libs-only-L jack)'"
-        
-        echo "=== Confirm installation method ==="
-        dpkg -l | grep jack | head -5 || echo "No jack packages found via dpkg"
-        
-        echo "=== Check library file details ==="
-        file /usr/lib/x86_64-linux-gnu/libjack.so* || echo "Cannot check file type"
-        readlink -f /usr/lib/x86_64-linux-gnu/libjack.so || echo "Cannot resolve symlink"
-        ls -laL /usr/lib/x86_64-linux-gnu/libjack.so || echo "Cannot stat resolved file"
-        
-        echo "=== Test direct linking ==="
-        echo 'int main() { return 0; }' > /tmp/test.c
-        gcc /tmp/test.c -L/usr/lib/x86_64-linux-gnu -ljack -o /tmp/test 2>&1 || echo "Direct gcc link failed"
-        
-        echo "=== Check ldconfig ==="
-        sudo ldconfig -v 2>/dev/null | grep jack || echo "No jack in ldconfig"
+        # Verify pkg-config can find jack
+        echo "=== Testing pkg-config for jack ==="
+        if pkg-config --exists jack; then
+          echo "✅ pkg-config found jack"
+          pkg-config --libs --cflags jack
+        else
+          echo "❌ pkg-config cannot find jack"
+          echo "Available .pc files:"
+          find /usr/lib/x86_64-linux-gnu/pkgconfig/ -name "*jack*" || echo "No jack .pc files"
+        fi
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'

@@ -59,6 +59,7 @@ jobs:
 
     - name: Run unit tests
       run: |
+        make clean
         make tests
         GENERATE_JUNIT=1 make test-unit
 
