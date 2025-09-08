@@ -95,7 +95,7 @@ Test(logging, log_special_characters) {
 
     // Test with format specifiers in the message (should be handled safely)
     log_debug("Message with percent signs: 100%% complete");
-    log_info("Message with format chars: %s %d %f (but no args)");
+    log_info("Message with format chars: %s %d %f (but no args)", "test", 42, 3.14);
 
     cr_assert(true, "Special character logging should work");
 }
