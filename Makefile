@@ -101,13 +101,6 @@ ifeq ($(shell uname),Linux)
         TEST_LDFLAGS += -lprotobuf-c
     endif
 
-    # Add Nanopb (needed by criterion for protobuf)
-    ifneq ($(shell pkg-config --exists nanopb 2>/dev/null && echo yes),)
-        TEST_LDFLAGS += $(shell pkg-config --libs nanopb)
-    else
-        # Fallback if pkg-config doesn't work
-        TEST_LDFLAGS += -lnanopb
-    endif
 
     # Add boxfort (needed by criterion for sandboxing)
     ifneq ($(shell pkg-config --exists boxfort 2>/dev/null && echo yes),)
