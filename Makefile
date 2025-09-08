@@ -49,6 +49,8 @@ PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 ifeq ($(shell uname),Darwin)
     PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
 else ifeq ($(shell uname),Linux)
+    # Library search paths for Linux (must come first in LDFLAGS)
+    LINUX_LIB_PATHS := -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu
     PLATFORM_LDFLAGS := -lncurses
     # When using static PortAudio, we need JACK libraries for the JACK backend
     # Only add -ljack if:
@@ -58,9 +60,8 @@ else ifeq ($(shell uname),Linux)
 	JACK_EXISTS := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
 	ifeq ($(JACK_EXISTS),yes)
 		# pkg-config returns -ljack but not the library path on Ubuntu
-		# Libraries exist in both /usr/lib/x86_64-linux-gnu and /lib/x86_64-linux-gnu
-		# Add both paths to ensure linker finds them
-		PLATFORM_LDFLAGS := -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu $(PLATFORM_LDFLAGS) -ljack
+		# Add -ljack to platform flags
+		PLATFORM_LDFLAGS += -ljack
 	endif
 endif
 
@@ -72,8 +73,8 @@ ifeq ($(findstring -lpthread,$(PKG_LDFLAGS)),)
     SYSTEM_LDFLAGS += -lpthread
 endif
 
-# Combine all LDFLAGS
-override LDFLAGS := $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYSTEM_LDFLAGS) $(ARCH_FLAGS)
+# Combine all LDFLAGS (library paths must come first)
+override LDFLAGS := $(LINUX_LIB_PATHS) $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYSTEM_LDFLAGS) $(ARCH_FLAGS)
 
 # Test-specific flags
 TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "")
