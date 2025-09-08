@@ -54,13 +54,11 @@ else ifeq ($(shell uname),Linux)
     # Only add -ljack if:
     # 1. Static PortAudio exists (libportaudio.a)
     # 2. JACK is actually installed (check with pkg-config)
-    ifneq ($(wildcard /lib/x86_64-linux-gnu/libportaudio.a /usr/lib/x86_64-linux-gnu/libportaudio.a /usr/lib/libportaudio.a),)
-        # Check if JACK is available using pkg-config
-        JACK_AVAILABLE := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
-        ifeq ($(JACK_AVAILABLE),yes)
-            PLATFORM_LDFLAGS += -ljack
-        endif
-    endif
+	# Check if JACK is available using pkg-config
+	JACK_AVAILABLE := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
+	ifeq ($(JACK_AVAILABLE),yes)
+		PLATFORM_LDFLAGS += -$(shell pkg-config --libs --cflags jack)
+	endif
 endif
 
 # System libraries (only add what pkg-config doesn't provide)
