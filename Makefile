@@ -1029,16 +1029,30 @@ format-check:
 	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
     xargs clang-format --dry-run --Werror
 
-# Run bear to generate a compile_commands.json file (compile-only, no linking)
+# Generate compile_commands.json manually for clang-tidy
 compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILES)
-	@echo "Running bear to generate compile_commands.json (objects + test objects)..."
-	@make clean && bear -- make debug $(OBJS) $(TEST_OBJS)
-	@echo "Bear complete!"
+	@echo "Generating compile_commands.json..."
+	@echo "[" > compile_commands.json
+	@first=true; \
+	for file in $(C_FILES) $(M_FILES) $(TEST_C_FILES); do \
+		if [ "$$first" = "true" ]; then \
+			first=false; \
+		else \
+			echo "," >> compile_commands.json; \
+		fi; \
+		echo "  {" >> compile_commands.json; \
+		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json; \
+		echo "    \"command\": \"clang $(CFLAGS) -c $$file\"," >> compile_commands.json; \
+		echo "    \"file\": \"$$file\"" >> compile_commands.json; \
+		echo "  }" >> compile_commands.json; \
+	done; \
+	echo "]" >> compile_commands.json
+	@echo "compile_commands.json generated successfully!"
 
 # Run clang-tidy to check code style
 clang-tidy: compile_commands.json
 	@echo "Running clang-tidy with compile_commands.json..."
-	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) -- $(CFLAGS)
+	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) $(TEST_C_FILES) -- $(CFLAGS)
 
 analyze:
 	@echo "Running clang static analysis (C sources)..."
