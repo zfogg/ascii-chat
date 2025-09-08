@@ -56,6 +56,18 @@ runs:
         
         echo "=== Confirm installation method ==="
         dpkg -l | grep jack | head -5 || echo "No jack packages found via dpkg"
+        
+        echo "=== Check library file details ==="
+        file /usr/lib/x86_64-linux-gnu/libjack.so* || echo "Cannot check file type"
+        readlink -f /usr/lib/x86_64-linux-gnu/libjack.so || echo "Cannot resolve symlink"
+        ls -laL /usr/lib/x86_64-linux-gnu/libjack.so || echo "Cannot stat resolved file"
+        
+        echo "=== Test direct linking ==="
+        echo 'int main() { return 0; }' > /tmp/test.c
+        gcc /tmp/test.c -L/usr/lib/x86_64-linux-gnu -ljack -o /tmp/test 2>&1 || echo "Direct gcc link failed"
+        
+        echo "=== Check ldconfig ==="
+        sudo ldconfig -v 2>/dev/null | grep jack || echo "No jack in ldconfig"
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
