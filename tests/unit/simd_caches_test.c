@@ -28,13 +28,13 @@ void segfault_handler(int sig) {
     void *array[50];
     size_t size;
 
-    fprintf(stderr, "\n[CRASH] Caught signal %d (SIGSEGV)\n", sig);
+    log_error("\n[CRASH] Caught signal %d (SIGSEGV)", sig);
 
     // Get void*'s for all entries on the stack
     size = backtrace(array, 50);
 
     // Print out all the frames to stderr
-    fprintf(stderr, "[CRASH] Stack trace (%zu frames):\n", size);
+    log_error("[CRASH] Stack trace (%zu frames):", size);
     backtrace_symbols_fd(array, size, STDERR_FILENO);
 
     // Re-raise the signal to get default behavior
@@ -49,16 +49,9 @@ void setup_cache_logging(void) {
     signal(SIGSEGV, segfault_handler);
     signal(SIGBUS, segfault_handler);
     signal(SIGABRT, segfault_handler);
-
-    printf("[SETUP] simd_caches test suite initialized\n");
-    printf("[SETUP] Log level set to FATAL\n");
-    printf("[SETUP] Signal handlers installed\n");
-    fflush(stdout);
 }
 
 void restore_cache_logging(void) {
-    printf("[TEARDOWN] simd_caches test suite cleanup\n");
-    fflush(stdout);
     log_set_level(LOG_ERROR);
 
     // Restore default signal handlers
@@ -76,12 +69,9 @@ Test(simd_caches, utf8_cache_capacity_limits) {
     const int test_palettes = 40; // Exceed capacity
     char **results = NULL;
 
-    printf("[TEST START] utf8_cache_capacity_limits - Testing %d palettes\n", test_palettes);
-    fflush(stdout);
-
     SAFE_MALLOC(results, test_palettes * sizeof(char*), char**);
     if (!results) {
-        printf("[ERROR] Failed to allocate results array\n");
+        log_error("[ERROR] Failed to allocate results array");
         fflush(stdout);
         cr_assert(false, "Memory allocation failed");
         return;
@@ -107,14 +97,12 @@ Test(simd_caches, utf8_cache_capacity_limits) {
         }
     }
 
-    printf("[TEST END] utf8_cache_capacity_limits - Completed successfully\n");
-    fflush(stdout);
+    log_debug("[TEST END] utf8_cache_capacity_limits - Completed successfully");
     free(results);
 }
 
 Test(simd_caches, cache_collision_handling) {
-    printf("[TEST START] cache_collision_handling\n");
-    fflush(stdout);
+    log_debug("[TEST START] cache_collision_handling");
 
     // Test hashtable collision handling with similar hash values
     const char *similar_palettes[] = {
@@ -152,8 +140,7 @@ Test(simd_caches, cache_collision_handling) {
                         "Cache %d should store correct palette string", i);
     }
 
-    printf("[TEST END] cache_collision_handling - Completed successfully\n");
-    fflush(stdout);
+    log_debug("[TEST END] cache_collision_handling - Completed successfully");
 }
 
 Test(simd_caches, cache_persistence_across_calls) {
@@ -201,7 +188,7 @@ Test(simd_caches, cache_access_performance) {
     double cached_access_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     double avg_cached_time = cached_access_time / iterations;
 
-    printf("Cache performance: First=%.6fs, Avg cached=%.6fs\n", first_access_time, avg_cached_time);
+    log_debug("Cache performance: First=%.6fs, Avg cached=%.6fs", first_access_time, avg_cached_time);
 
     // Cached access should be at least 10x faster than first access
     cr_assert_lt(avg_cached_time * 10, first_access_time,
@@ -233,7 +220,7 @@ Test(simd_caches, concurrent_cache_access) {
     double total_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     double avg_time = total_time / iterations;
 
-    printf("Concurrent access: %d calls in %.3fs (%.6fs each)\n",
+    log_debug("Concurrent access: %d calls in %.3fs (%.6fs each)",
            iterations, total_time, avg_time);
 
     // Should maintain good performance under concurrent load
@@ -265,7 +252,7 @@ Test(simd_caches, utf8_character_cache_correctness) {
 
         // Check first character in cache64 - fix sign extension
         uint8_t actual_first_byte = (uint8_t)cache->cache64[0].utf8_bytes[0];
-        printf("%s: Expected first byte=0x%02x, Actual=0x%02x\n",
+        log_debug("%s: Expected first byte=0x%02x, Actual=0x%02x",
                utf8_tests[t].name, utf8_tests[t].expected_first_byte, actual_first_byte);
 
         // For mixed palettes, the first character might be ASCII space, not UTF-8
@@ -365,7 +352,7 @@ Test(simd_caches, neon_cache_performance) {
     double total_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     double avg_time = (total_time / iterations) * 1000; // Convert to ms
 
-    printf("NEON cache performance: %.4fms/frame\n", avg_time);
+    log_debug("NEON cache performance: %.4fms/frame", avg_time);
 
     // Should be very fast with cached lookups
     cr_assert_lt(avg_time, 1.0, "NEON with cache should be <1ms/frame (got %.4fms)", avg_time);
@@ -384,7 +371,7 @@ Test(simd_caches, extreme_palette_cycling_60fps) {
     const int test_duration_seconds = 2; // 2 seconds = 120 frames
     const int total_frames = fps * test_duration_seconds;
 
-    printf("Testing extreme palette cycling: %d frames, %d unique palettes\n", total_frames, total_frames);
+    log_debug("Testing extreme palette cycling: %d frames, %d unique palettes", total_frames, total_frames);
 
     struct timespec frame_start, frame_end;
     double total_render_time = 0.0;
@@ -410,19 +397,19 @@ Test(simd_caches, extreme_palette_cycling_60fps) {
 
         // Every 30 frames, report progress
         if (frame % 30 == 0) {
-            printf("Frame %d: cache=%s, time=%.4fms\n",
+            log_debug("Frame %d: cache=%s, time=%.4fms",
                    frame, cache ? "✅" : "❌", frame_time * 1000);
         }
     }
 
     double avg_frame_time = (total_render_time / total_frames) * 1000; // Convert to ms
 
-    printf("Extreme cycling results:\n");
-    printf("- Total frames: %d\n", total_frames);
-    printf("- Successful caches: %d/%d (%.1f%%)\n", successful_caches, total_frames,
+    log_debug("Extreme cycling results:");
+    log_debug("- Total frames: %d", total_frames);
+    log_debug("- Successful caches: %d/%d (%.1f%%)", successful_caches, total_frames,
            (successful_caches * 100.0) / total_frames);
-    printf("- Average frame time: %.4fms\n", avg_frame_time);
-    printf("- Performance impact: %.1f%% of 16.7ms budget\n", (avg_frame_time / 16.7) * 100);
+    log_debug("- Average frame time: %.4fms", avg_frame_time);
+    log_debug("- Performance impact: %.1f%% of 16.7ms budget", (avg_frame_time / 16.7) * 100);
 
     // All palette requests should succeed (guaranteed eviction)
     cr_assert_eq(successful_caches, total_frames, "All palette requests should succeed with eviction");
@@ -439,7 +426,7 @@ Test(simd_caches, frequency_based_cache_persistence) {
 
     // Phase 1: Establish popularity by accessing it many times
     const int popularity_accesses = 50;
-    printf("Phase 1: Building popularity for animation palette (%d accesses)\n", popularity_accesses);
+    log_debug("Phase 1: Building popularity for animation palette (%d accesses)", popularity_accesses);
 
     for (int i = 0; i < popularity_accesses; i++) {
         utf8_palette_cache_t *cache = get_utf8_palette_cache(popular_palette);
@@ -450,7 +437,7 @@ Test(simd_caches, frequency_based_cache_persistence) {
     }
 
     // Phase 2: Fill cache with other palettes to trigger eviction pressure
-    printf("Phase 2: Creating cache pressure with 40 different palettes\n");
+    log_debug("Phase 2: Creating cache pressure with 40 different palettes");
 
     for (int i = 0; i < 40; i++) {
         char pressure_palette[64];
@@ -463,7 +450,7 @@ Test(simd_caches, frequency_based_cache_persistence) {
     }
 
     // Phase 3: Wait some time to allow aging, then test if popular palette survived
-    printf("Phase 3: Testing if popular palette survived eviction pressure\n");
+    log_debug("Phase 3: Testing if popular palette survived eviction pressure");
     usleep(1000); // 1ms aging - sufficient for test ordering
 
     struct timespec access_start, access_end;
@@ -473,7 +460,7 @@ Test(simd_caches, frequency_based_cache_persistence) {
 
     double access_time = (access_end.tv_sec - access_start.tv_sec) + (access_end.tv_nsec - access_start.tv_nsec) / 1e9;
 
-    printf("Popular palette access after pressure: time=%.6fs\n", access_time);
+    log_debug("Popular palette access after pressure: time=%.6fs", access_time);
 
     cr_assert_not_null(survived_cache, "Popular palette should survive eviction pressure");
 
@@ -484,7 +471,7 @@ Test(simd_caches, frequency_based_cache_persistence) {
 Test(simd_caches, eviction_fairness_algorithm) {
     // Test that eviction algorithm correctly prioritizes by score (age + frequency)
 
-    printf("Testing eviction fairness: frequency vs recency\n");
+    log_debug("Testing eviction fairness: frequency vs recency");
 
     // Create baseline cache entries
     const struct {
@@ -519,7 +506,7 @@ Test(simd_caches, eviction_fairness_algorithm) {
     }
 
     // Now create pressure to force evictions (create 30 more unique palettes)
-    printf("Creating eviction pressure with 30 additional palettes\n");
+    log_debug("Creating eviction pressure with 30 additional palettes");
 
     for (int pressure = 0; pressure < 30; pressure++) {
         char pressure_palette[64];
@@ -530,7 +517,7 @@ Test(simd_caches, eviction_fairness_algorithm) {
     }
 
     // Test which caches survived - should follow eviction score logic
-    printf("Testing survival rates after eviction pressure\n");
+    log_debug("Testing survival rates after eviction pressure");
 
     for (int s = 0; s < num_scenarios; s++) {
         struct timespec start, end;
@@ -541,7 +528,7 @@ Test(simd_caches, eviction_fairness_algorithm) {
         double access_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
         bool is_cached = (test_cache != NULL && access_time < 0.001); // Fast = cache hit
 
-        printf("%s: %s (%.6fs)\n",
+        log_debug("%s: %s (%.6fs)",
                test_scenarios[s].name,
                is_cached ? "SURVIVED ✅" : "EVICTED ❌",
                access_time);
@@ -574,7 +561,7 @@ Test(simd_caches, animation_palette_cycling_realistic) {
     const int animation_duration = 3; // 3 seconds
     const int total_cycles = cycles_per_second * animation_duration;
 
-    printf("Animation test: %d palettes, %d cycles/sec, %d seconds (%d total accesses)\n",
+    log_debug("Animation test: %d palettes, %d cycles/sec, %d seconds (%d total accesses)",
            num_palettes, cycles_per_second, animation_duration, total_cycles * num_palettes);
 
     struct timespec start, end;
@@ -594,10 +581,10 @@ Test(simd_caches, animation_palette_cycling_realistic) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     double total_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf("Animation completed in %.3fs\n", total_time);
+    log_debug("Animation completed in %.3fs", total_time);
 
     // Create cache pressure with many one-off palettes
-    printf("Creating post-animation cache pressure\n");
+    log_debug("Creating post-animation cache pressure");
 
     for (int pressure = 0; pressure < 35; pressure++) {
         char oneoff_palette[64];
@@ -608,7 +595,7 @@ Test(simd_caches, animation_palette_cycling_realistic) {
     }
 
     // Test if animation palettes survived (they should - high frequency scores)
-    printf("Testing animation palette survival after cache pressure\n");
+    log_debug("Testing animation palette survival after cache pressure");
 
     int survived_count = 0;
     for (int p = 0; p < num_palettes; p++) {
@@ -622,9 +609,9 @@ Test(simd_caches, animation_palette_cycling_realistic) {
 
         if (is_cached) {
             survived_count++;
-            printf("Animation palette %d: SURVIVED ✅ (%.6fs)\n", p, access_time);
+            log_debug("Animation palette %d: SURVIVED ✅ (%.6fs)", p, access_time);
         } else {
-            printf("Animation palette %d: EVICTED ❌ (%.6fs)\n", p, access_time);
+            log_debug("Animation palette %d: EVICTED ❌ (%.6fs)", p, access_time);
         }
     }
 
@@ -639,7 +626,7 @@ Test(simd_caches, old_frequent_palette_persistence) {
 
     const char *old_frequent_palette = "old_frequent_🎯🎪🎨🎭🎮";
 
-    printf("Phase 1: Establishing old frequent palette with high access count\n");
+    log_debug("Phase 1: Establishing old frequent palette with high access count");
 
     // Make this palette very popular
     const int high_frequency_accesses = 100;
@@ -652,10 +639,10 @@ Test(simd_caches, old_frequent_palette_persistence) {
         }
     }
 
-    printf("Phase 2: Aging the popular palette (minimal delay)\n");
+    log_debug("Phase 2: Aging the popular palette (minimal delay)");
     usleep(1000); // 1ms aging - sufficient for timestamp differentiation
 
-    printf("Phase 3: Creating new palettes to fill cache and trigger evictions\n");
+    log_debug("Phase 3: Creating new palettes to fill cache and trigger evictions");
 
     // Fill cache with new entries to trigger eviction pressure
     const int new_palettes = 50;
@@ -667,11 +654,11 @@ Test(simd_caches, old_frequent_palette_persistence) {
         cr_assert_not_null(cache, "New palette %d should be cached", i);
 
         if (i % 10 == 0) {
-            printf("Creating pressure: palette %d/%d\n", i, new_palettes);
+            log_debug("Creating pressure: palette %d/%d", i, new_palettes);
         }
     }
 
-    printf("Phase 4: Testing if old frequent palette survived\n");
+    log_debug("Phase 4: Testing if old frequent palette survived");
 
     // Test if the old frequent palette is still cached
     struct timespec test_start, test_end;
@@ -682,7 +669,7 @@ Test(simd_caches, old_frequent_palette_persistence) {
     double access_time = (test_end.tv_sec - test_start.tv_sec) + (test_end.tv_nsec - test_start.tv_nsec) / 1e9;
     bool is_fast_access = (access_time < 0.001); // Fast = cache hit
 
-    printf("Old frequent palette test: cache=%s, time=%.6fs, cached=%s\n",
+    log_debug("Old frequent palette test: cache=%s, time=%.6fs, cached=%s",
            old_cache ? "EXISTS" : "NULL",
            access_time,
            is_fast_access ? "YES" : "NO");
@@ -700,10 +687,10 @@ Test(simd_caches, old_frequent_palette_persistence) {
 Test(simd_caches, eviction_ordering_verification) {
     // Test that eviction happens in correct order at full capacity (32/32 entries)
 
-    printf("Testing eviction ordering at full cache capacity\n");
+    log_debug("Testing eviction ordering at full cache capacity");
 
     // Phase 1: Fill cache to exactly 30/32 entries with baseline palettes
-    printf("Phase 1: Filling cache to 30/32 entries\n");
+    log_debug("Phase 1: Filling cache to 30/32 entries");
     for (int i = 0; i < HASHTABLE_MAX_ENTRIES - 2; i++) {
         char baseline[64];
         snprintf(baseline, sizeof(baseline), "baseline_%02d", i);
@@ -712,7 +699,7 @@ Test(simd_caches, eviction_ordering_verification) {
     }
 
     // Phase 2: Add one high-value item that should survive eviction
-    printf("Phase 2: Adding high-value item (frequent + recent)\n");
+    log_debug("Phase 2: Adding high-value item (frequent + recent)");
     const char *survivor_palette = "SURVIVOR_HIGH_VALUE";
     for (int access = 0; access < 50; access++) {
         utf8_palette_cache_t *survivor = get_utf8_palette_cache(survivor_palette);
@@ -720,7 +707,7 @@ Test(simd_caches, eviction_ordering_verification) {
     }
 
     // Phase 3: Add one low-value item that should be evicted first
-    printf("Phase 3: Adding low-value item (infrequent + will be aged)\n");
+    log_debug("Phase 3: Adding low-value item (infrequent + will be aged)");
     const char *victim_palette = "VICTIM_LOW_VALUE";
     utf8_palette_cache_t *victim = get_utf8_palette_cache(victim_palette);
     cr_assert_not_null(victim, "Victim should be initially cached");
@@ -729,7 +716,7 @@ Test(simd_caches, eviction_ordering_verification) {
     usleep(100); // 0.1ms aging - minimal but sufficient for timestamp ordering
 
     // Cache is now full (32/32). Next insertion will trigger eviction.
-    printf("Phase 4: Cache full - next insertion triggers eviction\n");
+    log_debug("Phase 4: Cache full - next insertion triggers eviction");
 
     // Force eviction by adding new item
     const char *trigger_palette = "EVICTION_TRIGGER";
@@ -737,7 +724,7 @@ Test(simd_caches, eviction_ordering_verification) {
     cr_assert_not_null(trigger, "Eviction trigger should be cached");
 
     // Test survival: high-value item should survive, low-value item should be evicted
-    printf("Phase 5: Testing eviction results\n");
+    log_debug("Phase 5: Testing eviction results");
 
     struct timespec start, end;
 
@@ -753,8 +740,8 @@ Test(simd_caches, eviction_ordering_verification) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     double victim_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf("Survivor access time: %.6fs\n", survivor_time);
-    printf("Victim access time: %.6fs\n", victim_time);
+    log_debug("Survivor access time: %.6fs", survivor_time);
+    log_debug("Victim access time: %.6fs", victim_time);
 
     // At minimum, both should still exist (cache always returns valid data)
     cr_assert_not_null(survivor_test, "Survivor should exist");
@@ -775,7 +762,7 @@ Test(simd_caches, eviction_ordering_verification) {
 Test(simd_caches, min_heap_ordering_verification) {
     // Test that min-heap maintains proper ordering with score changes
 
-    printf("Testing min-heap ordering with dynamic score changes\n");
+    log_debug("Testing min-heap ordering with dynamic score changes");
 
     // Create palettes with known initial scores
     const struct {
@@ -795,7 +782,7 @@ Test(simd_caches, min_heap_ordering_verification) {
 
     // Create entries with different characteristics
     for (int e = 0; e < num_entries; e++) {
-        printf("Creating %s with %d accesses, %dms aging\n",
+        log_debug("Creating %s with %d accesses, %dms aging",
                heap_test_entries[e].name,
                heap_test_entries[e].initial_accesses,
                heap_test_entries[e].age_delay_ms);
@@ -812,7 +799,7 @@ Test(simd_caches, min_heap_ordering_verification) {
         usleep(heap_test_entries[e].age_delay_ms); // Use microseconds directly
     }
 
-    printf("Testing heap ordering by triggering score updates\n");
+    log_debug("Testing heap ordering by triggering score updates");
 
     // Force score recalculation by accessing each cache 10 times
     // (triggers heap position updates on every 10th access)
@@ -827,7 +814,7 @@ Test(simd_caches, min_heap_ordering_verification) {
     }
 
     // Now test eviction order by creating pressure
-    printf("Testing eviction order with cache pressure\n");
+    log_debug("Testing eviction order with cache pressure");
 
     const char *evicted_order[num_entries];
     int eviction_count = 0;
@@ -845,7 +832,7 @@ Test(simd_caches, min_heap_ordering_verification) {
     }
 
     // Test which entries survived - order should follow heap logic
-    printf("Testing survival after heap-based eviction\n");
+    log_debug("Testing survival after heap-based eviction");
 
     for (int e = 0; e < num_entries; e++) {
         struct timespec start, end;
@@ -856,7 +843,7 @@ Test(simd_caches, min_heap_ordering_verification) {
         double access_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
         bool survived = (cache != NULL && access_time < 0.001);
 
-        printf("%s: %s (%.6fs)\n",
+        log_debug("%s: %s (%.6fs)",
                heap_test_entries[e].name,
                survived ? "SURVIVED ✅" : "EVICTED ❌",
                access_time);
@@ -873,13 +860,13 @@ Test(simd_caches, min_heap_ordering_verification) {
 Test(simd_caches, heap_score_updates_and_rebalancing) {
     // Test that heap rebalances correctly when cache scores change
 
-    printf("Testing heap rebalancing with score changes\n");
+    log_debug("Testing heap rebalancing with score changes");
 
     // Create a palette that starts with low score but becomes popular
     const char *rising_star_palette = "rising_star_📈🚀🌟";
 
     // Phase 1: Create with low initial score (few accesses, will be near heap root)
-    printf("Phase 1: Creating rising star with low initial score\n");
+    log_debug("Phase 1: Creating rising star with low initial score");
     utf8_palette_cache_t *rising_cache = get_utf8_palette_cache(rising_star_palette);
     cr_assert_not_null(rising_cache, "Rising star cache should be created");
 
@@ -892,7 +879,7 @@ Test(simd_caches, heap_score_updates_and_rebalancing) {
         cr_assert_not_null(cache, "Filler cache %d should be created", filler);
     }
 
-    printf("Phase 2: Making rising star very popular (triggering heap rebalancing)\n");
+    log_debug("Phase 2: Making rising star very popular (triggering heap rebalancing)");
 
     // Now make the rising star very popular (should trigger heap position updates)
     const int popularity_boost = 25; // This should trigger score recalculation and heap movement
@@ -901,11 +888,11 @@ Test(simd_caches, heap_score_updates_and_rebalancing) {
         cr_assert_eq(cache, rising_cache, "Rising star should return same cache object");
 
         if (boost % 5 == 0) {
-            printf("Popularity boost: access %d/%d\n", boost, popularity_boost);
+            log_debug("Popularity boost: access %d/%d", boost, popularity_boost);
         }
     }
 
-    printf("Phase 3: Testing that rising star moved deeper in heap (better score)\n");
+    log_debug("Phase 3: Testing that rising star moved deeper in heap (better score)");
 
     // Create eviction pressure to test where rising star ended up in heap
     for (int pressure = 0; pressure < 20; pressure++) {
@@ -924,7 +911,7 @@ Test(simd_caches, heap_score_updates_and_rebalancing) {
 
     double final_access_time = (test_end.tv_sec - test_start.tv_sec) + (test_end.tv_nsec - test_start.tv_nsec) / 1e9;
 
-    printf("Rising star final test: time=%.6fs\n", final_access_time);
+    log_debug("Rising star final test: time=%.6fs", final_access_time);
 
     cr_assert_not_null(final_cache, "Rising star should survive due to heap rebalancing");
     cr_assert_lt(final_access_time, 0.001, "Rising star should be fast cached access");
@@ -933,7 +920,7 @@ Test(simd_caches, heap_score_updates_and_rebalancing) {
 Test(simd_caches, heap_extraction_and_insertion_cycles) {
     // Test heap behavior under repeated extraction/insertion cycles
 
-    printf("Testing heap stability under extraction/insertion cycles\n");
+    log_debug("Testing heap stability under extraction/insertion cycles");
 
     // Create initial cache population
     const int initial_population = 20;
@@ -953,7 +940,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
         usleep((i % 5)); // Variable aging: 0-4 microseconds
     }
 
-    printf("Phase 1: Rapid cache creation/eviction cycles\n");
+    log_debug("Phase 1: Rapid cache creation/eviction cycles");
 
     // Perform rapid insertion cycles that will trigger many evictions
     const int rapid_cycles = 50;
@@ -969,7 +956,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
         cr_assert_not_null(cache, "Rapid cycle %d should be cached", cycle);
 
         if (cycle % 10 == 0) {
-            printf("Rapid cycle %d/%d\n", cycle, rapid_cycles);
+            log_debug("Rapid cycle %d/%d", cycle, rapid_cycles);
         }
     }
 
@@ -977,12 +964,12 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
     double cycle_time = (cycle_end.tv_sec - cycle_start.tv_sec) + (cycle_end.tv_nsec - cycle_start.tv_nsec) / 1e9;
     double avg_cycle_time = (cycle_time / rapid_cycles) * 1000; // Convert to ms
 
-    printf("Rapid cycles completed: %.3fs total, %.4fms average\n", cycle_time, avg_cycle_time);
+    log_debug("Rapid cycles completed: %.3fs total, %.4fms average", cycle_time, avg_cycle_time);
 
     // Should maintain good performance during heap operations
     cr_assert_lt(avg_cycle_time, 2.0, "Heap operations should be fast (<2ms, got %.4fms)", avg_cycle_time);
 
-    printf("Phase 2: Testing heap integrity after stress\n");
+    log_debug("Phase 2: Testing heap integrity after stress");
 
     // Test that heap structure is still intact by checking some initial caches
     int heap_integrity_survivors = 0;
@@ -996,7 +983,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
         }
     }
 
-    printf("Heap integrity: %d initial caches still accessible after stress\n", heap_integrity_survivors);
+    log_debug("Heap integrity: %d initial caches still accessible after stress", heap_integrity_survivors);
 
     // Heap should still be functional (some entries might be evicted, but no corruption)
     cr_assert_geq(heap_integrity_survivors, 0, "Heap should maintain integrity after stress");
@@ -1009,7 +996,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
 Test(simd_caches, heap_score_calculation_accuracy) {
     // Test that heap score calculations work correctly for different scenarios
 
-    printf("Testing heap score calculation accuracy\n");
+    log_debug("Testing heap score calculation accuracy");
 
     // Create palettes with known characteristics and verify their relative ordering
     const struct {
@@ -1031,7 +1018,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
 
     // Create each test case with specified pattern
     for (int t = 0; t < num_test_cases; t++) {
-        printf("Creating %s: %d accesses, %dms aging\n",
+        log_debug("Creating %s: %d accesses, %dms aging",
                score_test_cases[t].name,
                score_test_cases[t].access_count,
                score_test_cases[t].age_delay_ms);
@@ -1048,7 +1035,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
     }
 
     // Force score updates for all caches (trigger heap rebalancing)
-    printf("Forcing score updates to trigger heap rebalancing\n");
+    log_debug("Forcing score updates to trigger heap rebalancing");
 
     for (int t = 0; t < num_test_cases; t++) {
         // Access 10 times to trigger score update (every 10th access)
@@ -1059,7 +1046,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
     }
 
     // Create massive eviction pressure to test ordering
-    printf("Creating eviction pressure to test heap ordering\n");
+    log_debug("Creating eviction pressure to test heap ordering");
 
     const int eviction_rounds = 25; // Should evict worst entries first
     char evicted_names[eviction_rounds][32];
@@ -1074,7 +1061,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
     }
 
     // Test survival order - should match expected score ordering
-    printf("Testing survival order matches heap score ordering\n");
+    log_debug("Testing survival order matches heap score ordering");
 
     bool worst_survived = false, excellent_survived = false;
 
@@ -1087,7 +1074,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
         double access_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
         bool survived = (cache != NULL && access_time < 0.001);
 
-        printf("%s (score=%.1f): %s (%.6fs)\n",
+        log_debug("%s (score=%.1f): %s (%.6fs)",
                score_test_cases[t].name,
                score_test_cases[t].expected_relative_score,
                survived ? "SURVIVED ✅" : "EVICTED ❌",
@@ -1102,18 +1089,18 @@ Test(simd_caches, heap_score_calculation_accuracy) {
 
     // Worst might survive if heap isn't full enough, but excellent should definitely survive
     if (!worst_survived && excellent_survived) {
-        printf("✅ Heap ordering working correctly: worst evicted, excellent survived\n");
+        log_debug("✅ Heap ordering working correctly: worst evicted, excellent survived");
     } else if (worst_survived && excellent_survived) {
-        printf("⚠️ Both survived - heap not under enough pressure for ordering test\n");
+        log_debug("⚠️ Both survived - heap not under enough pressure for ordering test");
     } else {
-        printf("❌ Unexpected ordering result\n");
+        log_debug("❌ Unexpected ordering result");
     }
 }
 
 Test(simd_caches, heap_memory_management) {
     // Test that heap memory management is correct (no leaks, corruption)
 
-    printf("Testing heap memory management and cleanup\n");
+    log_debug("Testing heap memory management and cleanup");
 
     // Phase 1: Fill heap to capacity
     const int capacity_test = 35; // Slightly over capacity
@@ -1126,17 +1113,17 @@ Test(simd_caches, heap_memory_management) {
         cr_assert_not_null(cache, "Capacity test %d should be cached", i);
 
         if (i % 10 == 0) {
-            printf("Filling capacity: %d/%d\n", i, capacity_test);
+            log_debug("Filling capacity: %d/%d", i, capacity_test);
         }
     }
 
     // Phase 2: Test heap cleanup
-    printf("Testing heap cleanup and reinitialization\n");
+    log_debug("Testing heap cleanup and reinitialization");
 
     simd_caches_destroy_all();
 
     // Phase 3: Test that heap works after cleanup
-    printf("Testing heap functionality after cleanup\n");
+    log_debug("Testing heap functionality after cleanup");
 
     for (int post = 0; post < 5; post++) {
         char post_cleanup[64];
@@ -1146,7 +1133,7 @@ Test(simd_caches, heap_memory_management) {
         cr_assert_not_null(cache, "Post-cleanup cache %d should work", post);
     }
 
-    printf("✅ Heap memory management test completed successfully\n");
+    log_debug("✅ Heap memory management test completed successfully");
 }
 
 Test(simd_caches, cache_eviction_algorithm_future) {
@@ -1208,7 +1195,7 @@ Test(simd_caches, invalid_palette_handling) {
 
     utf8_palette_cache_t *empty_cache = get_utf8_palette_cache("");
     // Empty palette behavior depends on implementation - should not crash
-    printf("Empty palette cache: %p\n", (void*)empty_cache);
+    log_debug("Empty palette cache: %p", (void*)empty_cache);
 
     // Very long palette
     char long_palette[1000];
@@ -1217,7 +1204,7 @@ Test(simd_caches, invalid_palette_handling) {
 
     utf8_palette_cache_t *long_cache = get_utf8_palette_cache(long_palette);
     // Should handle gracefully (truncate or reject)
-    printf("Long palette cache: %p\n", (void*)long_cache);
+    log_debug("Long palette cache: %p", (void*)long_cache);
 }
 
 Test(simd_caches, cache_cleanup_safety) {
@@ -1254,10 +1241,10 @@ Test(simd_caches, extreme_palette_stress_test) {
         }
     }
 
-    printf("Stress test: %d/%d palettes successfully cached\n", successful_caches, stress_palette_count);
+    log_debug("Stress test: %d/%d palettes successfully cached", successful_caches, stress_palette_count);
 
     // Should handle at least 32 unique palettes (hashtable capacity)
-    cr_assert_geq(successful_caches, 32, "Should handle at least hashtable capacity worth of palettes");
+    cr_assert_eq(successful_caches, stress_palette_count, "Should handle at least hashtable capacity worth of palettes");
 
     // After stress test, system should still work
     utf8_palette_cache_t *normal_cache = get_utf8_palette_cache("   ...',;:clodxkO0KXNWM");

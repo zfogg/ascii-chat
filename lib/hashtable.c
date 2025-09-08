@@ -271,6 +271,10 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
   if (!ht)
     return;
 
+  // Only print stats if log level allows INFO messages
+  if (g_log.level > LOG_INFO)
+    return;
+
   pthread_rwlock_rdlock(&ht->rwlock);
 
   double hit_rate = (ht->lookups > 0) ? ((double)ht->hits * 100.0 / (double)ht->lookups) : 0.0;
