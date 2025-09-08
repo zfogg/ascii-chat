@@ -14,9 +14,8 @@ void restore_logging(void);
 TestSuite(logging, .init = setup_quiet_logging, .fini = restore_logging);
 
 void setup_quiet_logging(void) {
-    // For logging tests, we need to see the log output to verify it works
-    // Don't suppress logging for these tests
-    log_set_level(LOG_DEBUG);
+    // Suppress logging output during tests like other unit tests
+    log_set_level(LOG_FATAL);
 }
 
 void restore_logging(void) {
