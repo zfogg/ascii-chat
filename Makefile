@@ -109,14 +109,14 @@ ifeq ($(shell uname),Linux)
         TEST_LDFLAGS += -lboxfort
     endif
 
-    # Add libgit2 dependencies
-    ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
-        TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
-    endif
-
     # Add nanomsg
     ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
+    endif
+
+    # Add libgit2 dependencies
+    ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
     endif
 
     # Add system libraries that may be needed (use pkg-config when available)
@@ -494,6 +494,11 @@ release: $(TARGETS)
 sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
+
+# Release test builds (with LTO matching release binaries)
+tests-release: override CFLAGS += $(RELEASE_FLAGS)
+tests-release: override LDFLAGS += -flto
+tests-release: $(TEST_EXECUTABLES)
 
 test-release: override CFLAGS += $(RELEASE_FLAGS)
 test-release: override LDFLAGS += -flto
