@@ -92,12 +92,18 @@ endif
 
 # Add required dependencies on Linux
 ifeq ($(shell uname),Linux)
+    # Add essential test dependencies
+    ifneq ($(shell pkg-config --exists libprotobuf-c 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs libprotobuf-c)
+    endif
     ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
     endif
     ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
     endif
+    # Add system libraries that may be needed
+    TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8 -lgssapi_krb5
 endif
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
