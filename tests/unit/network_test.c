@@ -220,7 +220,7 @@ Test(network, compressed_packet_handling) {
 
     // Test decompression
     char *decompressed_data;
-    SAFE_MALLOC(decompressed_data, data_len, char*);
+    SAFE_MALLOC(decompressed_data, data_len + 1, char*);  // +1 for null terminator
     uLongf decompressed_size = data_len;
 
     result = uncompress((Bytef*)decompressed_data, &decompressed_size,
