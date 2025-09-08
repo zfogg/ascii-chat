@@ -25,6 +25,10 @@ coverage:
     # Default rules applied to all status checks  
     default_rules:
       flag_coverage_not_uploaded_behavior: include
+      # Advanced status check settings
+      if_ci_failed: error
+      only_pulls: false
+      informational: false
 
     # Project-level status checks
     project:
@@ -135,32 +139,109 @@ coverage:
       default:
         target: 60%
         threshold: 0%  # Strict - all new code should be tested
+        base: auto
         branches:
           - master
           - main
           - palettes
+        if_ci_failed: error
+        only_pulls: true
+        informational: false
 
       # Stricter patch requirements for core functionality
       core_patch:
         target: 80%
         threshold: 0%
+        base: auto
         paths:
           - "src/server.c"
           - "src/client.c"
           - "lib/ascii*.c"
           - "lib/network.c"
           - "lib/crypto.c"
+        branches:
+          - master
+          - main
+          - palettes
+        if_ci_failed: error
+        only_pulls: true
+
+      # Security code requires 100% patch coverage
+      security_patch:
+        target: 100%
+        threshold: 0%
+        base: auto
+        paths:
+          - "lib/crypto.*"
+          - "lib/crc32_hw.*"
+        branches:
+          - master
+          - main
+          - palettes
+        if_ci_failed: error
+        only_pulls: true
+
+      # SIMD optimizations patch coverage
+      simd_patch:
+        target: 70%
+        threshold: 5%
+        base: auto
+        paths:
+          - "lib/ascii_simd*.*"
+          - "lib/image2ascii/simd/**/*"
+        branches:
+          - master
+          - main
+          - palettes
+        if_ci_failed: error
+        only_pulls: true
+
+      # Test files should be covered too
+      tests_patch:
+        target: 80%
+        threshold: 10%
+        base: auto
+        paths:
+          - "tests/**/*"
+        branches:
+          - master
+          - main
+          - palettes
+        if_ci_failed: success  # Don't fail CI for test coverage
+        only_pulls: true
+        informational: true
+
+    # Changes status - detects unexpected coverage changes
+    changes:
+      default:
+        # Detect coverage changes not in the diff
+        if_ci_failed: error
+        branches:
+          - master
+          - main
+          - palettes
 
 # Component management for detailed reporting
 component_management:
   # Default rules inherited by all components
   default_rules:
+    # Default paths that apply to all components unless overridden
+    paths:
+      - "lib/**/*"
+      - "src/**/*"
+    # Flag regexes to include specific flag patterns
+    flag_regexes:
+      - "ascii-chat-tests.*"
+      - "coverage"
     statuses:
       - type: project
         target: auto
         threshold: 2%
         branches:
           - "!master"  # Don't run on master to reduce noise
+      - type: patch
+        target: 70%
+        threshold: 5%
 
   # Individual components for detailed tracking
   individual_components:
@@ -324,6 +405,59 @@ component_management:
           target: 60%
           informational: true
 
+    # Cross-cutting components (span multiple directories)
+    - component_id: simd_all
+      name: "All SIMD Code"
+      paths:
+        - ".*simd.*"
+        - "lib/image2ascii/simd/**/*"
+      flag_regexes:
+        - "ascii-chat-tests.*"
+      statuses:
+        - type: project
+          target: 70%
+          threshold: 3%
+        - type: patch
+          target: 75%
+
+    - component_id: test_infrastructure
+      name: "Test Infrastructure"
+      paths:
+        - "tests/**/*.c"
+        - "tests/**/*.h"
+      flag_regexes:
+        - "coverage"
+        - "ascii-chat-tests.*"
+      statuses:
+        - type: project
+          target: 65%
+          informational: true
+
+    - component_id: headers
+      name: "Header Files"
+      paths:
+        - "lib/**/*.h"
+        - "src/**/*.h" 
+      statuses:
+        - type: project
+          target: auto
+          informational: true
+
+    - component_id: platform_specific
+      name: "Platform-Specific Code"
+      paths:
+        - "lib/webcam_avfoundation.m"
+        - "lib/webcam_v4l2.c"
+        - "lib/webcam_platform.*"
+        - "lib/image2ascii/simd/neon.*"
+        - "lib/image2ascii/simd/sse.*"
+        - "lib/image2ascii/simd/avx.*"
+      statuses:
+        - type: project
+          target: 60%
+          threshold: 5%
+          informational: true
+
 # Pull request comment configuration
 comment:
   layout: "header, diff, flags, components, footer"
@@ -335,6 +469,9 @@ comment:
     - master
     - main
     - palettes
+  # Show component information prominently in PR comments
+  show_carryforward_flags: false
+  show_critical_files: true
 
 # Ignore certain paths from coverage calculation
 ignore:
