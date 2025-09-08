@@ -90,21 +90,13 @@ ifeq ($(TEST_LDFLAGS),)
     endif
 endif
 
-# Add optional dependencies on Linux only if they exist
+# Add required dependencies on Linux
 ifeq ($(shell uname),Linux)
     ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
-    else
-        ifneq ($(shell find /usr/lib* -name "libgit2.so*" 2>/dev/null | head -1),)
-            TEST_LDFLAGS += -lgit2
-        endif
     endif
     ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
-    else
-        ifneq ($(shell find /usr/lib* -name "libnanomsg.so*" 2>/dev/null | head -1),)
-            TEST_LDFLAGS += -lnanomsg
-        endif
     endif
 endif
 
