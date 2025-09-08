@@ -102,6 +102,14 @@ ifeq ($(shell uname),Linux)
     endif
 
 
+    # Add Nanopb (needed by criterion for protobuf) - use static library
+    ifneq ($(shell pkg-config --exists nanopb 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs nanopb)
+    else
+        # Fallback: link against the static library provided by libnanopb-dev
+        TEST_LDFLAGS += /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a
+    endif
+
     # Add boxfort (needed by criterion for sandboxing)
     ifneq ($(shell pkg-config --exists boxfort 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs boxfort)
