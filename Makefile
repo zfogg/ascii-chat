@@ -130,11 +130,11 @@ ifeq ($(shell uname),Linux)
         TEST_LDFLAGS += $(shell pkg-config --libs libssh2)
     else
         # Fallback: add GSSAPI libraries if available
-        TEST_LDFLAGS += -lkrb5 -lk5crypto -lcom_err
+        TEST_LDFLAGS += -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err
     endif
 
     # Other dependencies - add in dependency order
-    TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8
+    TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8 -ldl -lresolv
 endif
 
 # Add LTO flag to test linking when in release mode
