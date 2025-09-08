@@ -8,39 +8,68 @@
 #include "common.h"
 #include "image.h"
 #include "ascii_simd.h"
+#include "../output_buffer.h"
 
 // Forward declarations for architecture-specific implementations
 typedef rgb_t rgb_pixel_t;
 
-// Dynamic output buffer (auto-expanding)
-typedef struct {
-  char *buf;
-  size_t len;
-  size_t cap;
-} outbuf_t;
-
-// Buffer management functions
-void ob_reserve(outbuf_t *ob, size_t need);
-void ob_putc(outbuf_t *ob, char c);
-void ob_write(outbuf_t *ob, const char *s, size_t n);
-void ob_term(outbuf_t *ob);
-void ob_u8(outbuf_t *ob, uint8_t v);
-void ob_u32(outbuf_t *ob, uint32_t v);
-
 #define RAMP64_SIZE 64
-void build_ramp64(uint8_t ramp64[RAMP64_SIZE]);
 
-// ANSI escape sequence emission
-void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
-void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
-// rgb_to_256color is now static in common.c
-void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx);
-void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx);
-void emit_reset(outbuf_t *ob);
-bool rep_is_profitable(uint32_t runlen);
-void emit_rep(outbuf_t *ob, uint32_t extra);
-void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
-void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
+// Cache eviction algorithm parameters
+#define CACHE_FREQUENCY_DECAY_TIME 300.0 // 5 minutes - frequency bonus decay
+#define CACHE_RECENCY_SCALE 60.0         // 1 minute - recency importance
+#define CACHE_RECENT_ACCESS_THRESHOLD 10 // 10 seconds - protect recent access from eviction
+#define CACHE_MAX_LIFETIME 3600          // 1 hour - maximum cache lifetime
+#define CACHE_MIN_ACCESS_THRESHOLD 3     // Minimum accesses for frequency protection
+
+void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars);
+
+// Cache eviction helper functions
+double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
+                                      uint64_t current_time);
+uint64_t get_current_time_ns(void);
+
+// UTF-8 character cache system for SIMD renderers
+typedef struct {
+  char utf8_bytes[4]; // Up to 4 bytes for UTF-8 character
+  uint8_t byte_len;   // Actual length (1-4 bytes)
+} utf8_char_t;
+
+// Forward declaration for LRU list
+struct utf8_palette_cache_s;
+
+typedef struct utf8_palette_cache_s {
+  utf8_char_t cache[256];      // 256-entry cache for direct luminance lookup (monochrome)
+  utf8_char_t cache64[64];     // 64-entry cache for SIMD color lookup
+  uint8_t char_index_ramp[64]; // Character indices for vqtbl4q_u8 lookup
+  char palette_hash[64];       // Hash of palette for cache validation
+  bool is_valid;               // Whether cache is valid
+
+  // Thread-safe eviction tracking
+  _Atomic uint64_t last_access_time; // Nanoseconds since epoch (atomic)
+  _Atomic uint32_t access_count;     // Total access count (atomic)
+  uint64_t creation_time;            // When cache was created (immutable)
+
+  // Min-heap eviction management (protected by write lock)
+  size_t heap_index;   // Position in min-heap (for O(log n) updates)
+  double cached_score; // Last calculated eviction score
+} utf8_palette_cache_t;
+
+// UTF-8 palette cache functions
+utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
+void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]);
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]);
+
+// Note: char_index_ramp_cache removed - data already available in utf8_palette_cache_t.char_index_ramp[64]
+
+// Fast palette hash function - no caching needed (djb2 hash is fast enough)
+// Note: Palette hash caching was removed as djb2 hash (~100-200ns) is negligible
+// compared to frame rendering costs (~16.7ms budget)
+
+// Central SIMD cache cleanup function
+void simd_caches_destroy_all(void);
+
+// ANSI escape sequence emission functions now in output_buffer.h
 
 // Row-based functions removed - use image-based API instead
 // See individual architecture headers (sse2.h, ssse3.h, avx2.h, neon.h) for new image-based functions
@@ -60,7 +89,7 @@ char *append_sgr_reset(char *dst);
 
 // Helper: write decimal RGB triplet using dec3 cache
 static inline size_t write_rgb_triplet(uint8_t value, char *dst) {
-  const dec3_t *d = &g_ascii_cache.dec3_table[value];
+  const dec3_t *d = &g_dec3_cache.dec3_table[value];
   memcpy(dst, d->s, d->len);
   return d->len;
 }
@@ -122,25 +151,4 @@ static inline size_t write_decimal(int value, char *dst) {
   return pos;
 }
 
-// Fast decimal for REP counts
-static inline int digits_u32(uint32_t v) {
-  if (v >= 1000000000u)
-    return 10;
-  if (v >= 100000000u)
-    return 9;
-  if (v >= 10000000u)
-    return 8;
-  if (v >= 1000000u)
-    return 7;
-  if (v >= 100000u)
-    return 6;
-  if (v >= 10000u)
-    return 5;
-  if (v >= 1000u)
-    return 4;
-  if (v >= 100u)
-    return 3;
-  if (v >= 10u)
-    return 2;
-  return 1;
-}
+// Fast decimal for REP counts - now in output_buffer.h

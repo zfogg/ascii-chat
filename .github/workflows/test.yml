@@ -25,37 +25,75 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-15]
-        build_type: [debug]
+        build_type: [debug, release]
+        include:
+          - os: ubuntu-latest
+            os-name: ubuntu
+          - os: macos-15
+            os-name: macos
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium criterion
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ matrix.os-name }}
+        extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
         make -j CSTD=c2x ${{ matrix.build_type }}
-        make -j CSTD=c2x tests
+        make -j CSTD=c2x tests-${{ matrix.build_type }}
 
-    - name: Run unit tests
+    - name: Run unit tests with JUnit XML generation
       run: |
-        make test-unit
+        GENERATE_JUNIT=1 make test-unit-${{ matrix.build_type }}
         echo "Unit tests completed successfully"
 
-    - name: Run integration tests
+    - name: Generate coverage report (debug builds only)
+      if: matrix.build_type == 'debug'
       run: |
-        make test-integration
-        echo "Integration tests completed successfully"
+        # Generate coverage files for codecov
+        find . -name "*.gcda" -exec gcov {} \;
+
+        # Debug: Show what coverage files were generated
+        echo "Generated coverage files:"
+        find . -name "*.gcov" -type f | head -20
+        ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
+
+    - name: Validate junit.xml
+      if: ${{ !cancelled() }}
+      run: |
+        if [ -f junit.xml ]; then
+          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
+          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
+        else
+          echo "❌ junit.xml not found"
+          find . -name "*.xml" -type f | head -5
+        fi
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
+      uses: codecov/test-results-action@v1
+      with:
+        files: ./junit.xml
+        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+
+    - name: Upload coverage to Codecov (debug builds only)
+      if: matrix.build_type == 'debug'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./*.gcov
+        directory: .
+        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
+        name: ascii-chat-coverage-${{ matrix.os-name }}-${{ matrix.build_type }}
+        fail_ci_if_error: false
+        verbose: true
 
     - name: Upload test results
       if: always()
@@ -64,6 +102,49 @@ jobs:
         name: test-results-${{ runner.os }}-${{ matrix.build_type }}
         path: |
           bin/test_*
+          *.log
+        retention-days: 7
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+        include:
+          - os: ubuntu-latest
+            os-name: ubuntu
+          - os: macos-15
+            os-name: macos
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ matrix.os-name }}
+
+    - name: Build project in release mode
+      run: |
+        make -j CSTD=c2x release
+        make -j CSTD=c2x tests-release
+
+    - name: Run integration tests
+      run: |
+        echo "Running integration tests in release mode..."
+        make test-integration
+        echo "Integration tests completed successfully"
+
+    - name: Upload integration test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-results-${{ runner.os }}
+        path: |
+          bin/test_integration_*
           *.log
         retention-days: 7
 
@@ -78,25 +159,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium criterion
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build performance tests
       run: |
-        make -j CSTD=c2x debug
-        make -j CSTD=c2x tests
+        make -j CSTD=c2x tests-release
 
     - name: Run performance tests
       run: |
-        make test-performance
+        make -j CSTD=c2x test-performance
         echo "Performance tests completed successfully"
 
   memory-tests:
@@ -106,10 +180,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies with sanitizers
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config valgrind
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ubuntu
+        extra-packages: valgrind
 
     - name: Build with AddressSanitizer
       run: |
@@ -142,16 +217,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium coreutils
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        extra-packages: ${{ startsWith(matrix.os, 'macos') && 'coreutils' || '' }}
 
     - name: Build project
       run: |
@@ -189,16 +259,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev pkg-config
-
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install portaudio libsodium criterion
+    - name: Install dependencies with caching
+      uses: ./.github/actions/install-deps
+      with:
+        os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Build project
       run: |

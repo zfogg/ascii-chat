@@ -6,46 +6,9 @@
 #include <unistd.h>
 #include <limits.h>
 
-// Global decimal lookup table - precomputed at startup (extern for testing)
-dec3_t dec3[256];
-static bool dec3_initialized = false;
-
 // 256-color lookup table (optional)
 static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
 static bool color256_initialized = false;
-
-// Initialize decimal lookup table - converts 0-255 to string format
-void ansi_fast_init(void) {
-  if (dec3_initialized)
-    return;
-
-  for (int v = 0; v < 256; v++) {
-    int d2 = v / 100;
-    int r = v % 100;
-    int d1 = r / 10;
-    int d0 = r % 10;
-
-    char *p = dec3[v].s;
-    if (d2) {
-      // 100-255: three digits
-      p[0] = '0' + d2;
-      p[1] = '0' + d1;
-      p[2] = '0' + d0;
-      dec3[v].len = 3;
-    } else if (d1) {
-      // 10-99: two digits
-      p[0] = '0' + d1;
-      p[1] = '0' + d0;
-      dec3[v].len = 2;
-    } else {
-      // 0-9: one digit
-      p[0] = '0' + d0;
-      dec3[v].len = 1;
-    }
-  }
-
-  dec3_initialized = true;
-}
 
 // Fast foreground color: \033[38;2;R;G;Bm
 char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
@@ -54,18 +17,18 @@ char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
   dst += 7;
 
   // Red component + semicolon
-  memcpy(dst, dec3[r].s, dec3[r].len);
-  dst += dec3[r].len;
+  memcpy(dst, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+  dst += g_dec3_cache.dec3_table[r].len;
   *dst++ = ';';
 
   // Green component + semicolon
-  memcpy(dst, dec3[g].s, dec3[g].len);
-  dst += dec3[g].len;
+  memcpy(dst, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+  dst += g_dec3_cache.dec3_table[g].len;
   *dst++ = ';';
 
   // Blue component + suffix
-  memcpy(dst, dec3[b].s, dec3[b].len);
-  dst += dec3[b].len;
+  memcpy(dst, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+  dst += g_dec3_cache.dec3_table[b].len;
   *dst++ = 'm';
 
   return dst;
@@ -76,16 +39,16 @@ char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
   memcpy(dst, "\033[48;2;", 7);
   dst += 7;
 
-  memcpy(dst, dec3[r].s, dec3[r].len);
-  dst += dec3[r].len;
+  memcpy(dst, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+  dst += g_dec3_cache.dec3_table[r].len;
   *dst++ = ';';
 
-  memcpy(dst, dec3[g].s, dec3[g].len);
-  dst += dec3[g].len;
+  memcpy(dst, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+  dst += g_dec3_cache.dec3_table[g].len;
   *dst++ = ';';
 
-  memcpy(dst, dec3[b].s, dec3[b].len);
-  dst += dec3[b].len;
+  memcpy(dst, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+  dst += g_dec3_cache.dec3_table[b].len;
   *dst++ = 'm';
 
   return dst;
@@ -98,31 +61,31 @@ char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b
   dst += 7;
 
   // Foreground RGB
-  memcpy(dst, dec3[fg_r].s, dec3[fg_r].len);
-  dst += dec3[fg_r].len;
+  memcpy(dst, g_dec3_cache.dec3_table[fg_r].s, g_dec3_cache.dec3_table[fg_r].len);
+  dst += g_dec3_cache.dec3_table[fg_r].len;
   *dst++ = ';';
 
-  memcpy(dst, dec3[fg_g].s, dec3[fg_g].len);
-  dst += dec3[fg_g].len;
+  memcpy(dst, g_dec3_cache.dec3_table[fg_g].s, g_dec3_cache.dec3_table[fg_g].len);
+  dst += g_dec3_cache.dec3_table[fg_g].len;
   *dst++ = ';';
 
-  memcpy(dst, dec3[fg_b].s, dec3[fg_b].len);
-  dst += dec3[fg_b].len;
+  memcpy(dst, g_dec3_cache.dec3_table[fg_b].s, g_dec3_cache.dec3_table[fg_b].len);
+  dst += g_dec3_cache.dec3_table[fg_b].len;
 
   // Background RGB
   memcpy(dst, ";48;2;", 6);
   dst += 6;
 
-  memcpy(dst, dec3[bg_r].s, dec3[bg_r].len);
-  dst += dec3[bg_r].len;
+  memcpy(dst, g_dec3_cache.dec3_table[bg_r].s, g_dec3_cache.dec3_table[bg_r].len);
+  dst += g_dec3_cache.dec3_table[bg_r].len;
   *dst++ = ';';
 
-  memcpy(dst, dec3[bg_g].s, dec3[bg_g].len);
-  dst += dec3[bg_g].len;
+  memcpy(dst, g_dec3_cache.dec3_table[bg_g].s, g_dec3_cache.dec3_table[bg_g].len);
+  dst += g_dec3_cache.dec3_table[bg_g].len;
   *dst++ = ';';
 
-  memcpy(dst, dec3[bg_b].s, dec3[bg_b].len);
-  dst += dec3[bg_b].len;
+  memcpy(dst, g_dec3_cache.dec3_table[bg_b].s, g_dec3_cache.dec3_table[bg_b].len);
+  dst += g_dec3_cache.dec3_table[bg_b].len;
   *dst++ = 'm';
 
   return dst;
@@ -187,55 +150,6 @@ void ansi_rle_finish(ansi_rle_context_t *ctx) {
   if (ctx->length < ctx->capacity) {
     ctx->buffer[ctx->length] = '\0';
   }
-}
-
-// Complete optimized frame generation
-size_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
-                                     size_t buffer_capacity, ansi_color_mode_t mode) {
-  // ASCII palette (matching existing implementation)
-  const int palette_len = g_ascii_cache.palette_len;
-
-  int pixel_count = width * height;
-  char *ascii_chars;
-  SAFE_MALLOC(ascii_chars, pixel_count, char *);
-
-  // Convert RGB pixels to ASCII characters
-  for (int i = 0; i < pixel_count; i++) {
-    const uint8_t *p = &pixels[i * 3]; // Assuming RGB format
-
-    // Calculate luminance using integer arithmetic
-    int luminance = (LUMA_RED * p[0] + LUMA_GREEN * p[1] + LUMA_BLUE * p[2]) >> 8;
-
-    // Map luminance to ASCII character
-    int palette_index = (luminance * palette_len) / 255;
-    if (palette_index >= palette_len)
-      palette_index = palette_len - 1;
-    ascii_chars[i] = g_ascii_cache.ascii_chars[palette_index];
-  }
-
-  ansi_rle_context_t rle_ctx;
-  ansi_rle_init(&rle_ctx, output_buffer, buffer_capacity, mode);
-
-  // Standard one-pixel-per-cell mode (traditional ASCII art)
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      int idx = y * width + x;
-      const uint8_t *pixel = &pixels[idx * 3];
-
-      char ascii_char = (idx < pixel_count) ? ascii_chars[idx] : ' '; // Bounds check
-      ansi_rle_add_pixel(&rle_ctx, pixel[0], pixel[1], pixel[2], ascii_char);
-    }
-
-    // Add newline (except for last row)
-    if (y < height - 1 && rle_ctx.length < rle_ctx.capacity - 1) {
-      rle_ctx.buffer[rle_ctx.length++] = '\n';
-    }
-  }
-
-  ansi_rle_finish(&rle_ctx);
-
-  free(ascii_chars);
-  return rle_ctx.length;
 }
 
 // 256-color mode initialization (optional high-speed mode)

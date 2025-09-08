@@ -60,6 +60,7 @@ void hashtable_foreach(hashtable_t *ht, hashtable_foreach_fn callback, void *use
 // Statistics and debugging
 size_t hashtable_size(hashtable_t *ht);
 void hashtable_print_stats(hashtable_t *ht, const char *name);
+void hashtable_set_stats_enabled(bool enabled); // Control stats printing (for tests)
 double hashtable_load_factor(hashtable_t *ht);
 
 // Locking (for external coordination)

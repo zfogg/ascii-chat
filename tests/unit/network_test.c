@@ -208,28 +208,52 @@ Test(network, compressed_packet_handling) {
 
     // Test zlib compression directly
     uLongf compressed_size = compressBound(data_len);
-    char *compressed_data;
+    char *compressed_data = NULL;
+    char *decompressed_data = NULL;
+
     SAFE_MALLOC(compressed_data, compressed_size, char*);
 
     // Compress the data
     int result = compress((Bytef*)compressed_data, &compressed_size,
                          (const Bytef*)test_data, data_len);
 
-    cr_assert_eq(result, Z_OK, "zlib compression should succeed");
-    cr_assert_gt(compressed_size, 0, "Compressed size should be positive");
+    if (result != Z_OK) {
+        SAFE_FREE(compressed_data);
+        cr_assert(false, "zlib compression should succeed");
+    }
+    if (compressed_size <= 0) {
+        SAFE_FREE(compressed_data);
+        cr_assert(false, "Compressed size should be positive");
+    }
 
     // Test decompression
-    char *decompressed_data;
-    SAFE_MALLOC(decompressed_data, data_len, char*);
+    SAFE_MALLOC(decompressed_data, data_len + 1, char*);  // +1 for null terminator
     uLongf decompressed_size = data_len;
 
     result = uncompress((Bytef*)decompressed_data, &decompressed_size,
                        (const Bytef*)compressed_data, compressed_size);
 
-    cr_assert_eq(result, Z_OK, "zlib decompression should succeed");
-    cr_assert_eq(decompressed_size, data_len, "Decompressed size should match original");
-    cr_assert_str_eq(decompressed_data, test_data, "Decompressed data should match original");
+    if (result != Z_OK) {
+        SAFE_FREE(compressed_data);
+        SAFE_FREE(decompressed_data);
+        cr_assert(false, "zlib decompression should succeed");
+    }
+    if (decompressed_size != data_len) {
+        SAFE_FREE(compressed_data);
+        SAFE_FREE(decompressed_data);
+        cr_assert(false, "Decompressed size should match original");
+    }
 
-    free(compressed_data);
-    free(decompressed_data);
+    // Add null terminator for string comparison
+    decompressed_data[decompressed_size] = '\0';
+
+    if (strcmp(decompressed_data, test_data) != 0) {
+        SAFE_FREE(compressed_data);
+        SAFE_FREE(decompressed_data);
+        cr_assert(false, "Decompressed data should match original");
+    }
+
+    // Cleanup
+    SAFE_FREE(compressed_data);
+    SAFE_FREE(decompressed_data);
 }

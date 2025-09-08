@@ -40,32 +40,113 @@ override CFLAGS += -Wall -Wextra
 override CFLAGS += -D_GNU_SOURCE
 
 # Get package-specific flags
-override CFLAGS  += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
-override LDFLAGS += $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
+override CFLAGS += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
 
-# Test-specific flags
-TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS))
-TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS))
+# Build LDFLAGS systematically to avoid duplicates
+PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 
-# Platform-specific LDFLAGS for webcam library
+# Platform-specific libraries
 ifeq ($(shell uname),Darwin)
-    # macOS: Add AVFoundation and CoreMedia frameworks
-    override LDFLAGS += -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo
-    # macOS: Add ncurses for terminal capability detection
-    override LDFLAGS += -lncurses
+    PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
 else ifeq ($(shell uname),Linux)
-    # Linux: No additional frameworks needed for V4L2
-    # Linux: Add ncurses for terminal capability detection
-    override LDFLAGS += -lncurses
+    # Library search paths for Linux (must come first in LDFLAGS)
+    LINUX_LIB_PATHS := -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu
+    PLATFORM_LDFLAGS := -lncurses
+    # When using static PortAudio, we need JACK libraries for the JACK backend
+    # Only add -ljack if:
+    # 1. Static PortAudio exists (libportaudio.a)
+    # 2. JACK is actually installed (check with pkg-config)
+	# Check if JACK is available using pkg-config
+	JACK_EXISTS := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
+	ifeq ($(JACK_EXISTS),yes)
+		# pkg-config returns -ljack but not the library path on Ubuntu
+		# Add -ljack to platform flags
+		PLATFORM_LDFLAGS += -ljack
+	endif
 endif
 
-override LDFLAGS += -lm -lpthread
+# System libraries (only add what pkg-config doesn't provide)
+SYSTEM_LDFLAGS := -lm
 
-# Avoid leading space from '+=' when LDFLAGS is initially empty
-override LDFLAGS += $(ARCH_FLAGS)
+# Check if pkg-config already provides pthread, if not add it
+ifeq ($(findstring -lpthread,$(PKG_LDFLAGS)),)
+    SYSTEM_LDFLAGS += -lpthread
+endif
 
-# Deduplicate common libs to avoid linker warnings (e.g., duplicate -lm, -lpthread)
-override LDFLAGS := $(strip $(filter-out -lm -lpthread,$(LDFLAGS)) -lm -lpthread)
+# Combine all LDFLAGS (library paths must come first)
+override LDFLAGS := $(LINUX_LIB_PATHS) $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYSTEM_LDFLAGS) $(ARCH_FLAGS)
+
+# Test-specific flags
+TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "")
+# Test linking flags - try pkg-config first, fallback to direct linking
+TEST_LDFLAGS := $(shell pkg-config --libs criterion 2>/dev/null)
+ifeq ($(TEST_LDFLAGS),)
+    # Fallback for systems without pkg-config for criterion
+    ifeq ($(shell uname),Linux)
+        TEST_LDFLAGS := -lcriterion -lboxfort
+    else
+        # macOS with Homebrew - need explicit path
+        TEST_LDFLAGS := -L/opt/homebrew/lib -lcriterion
+    endif
+endif
+
+# Add required dependencies on Linux
+ifeq ($(shell uname),Linux)
+    # Add essential test dependencies - order matters for linking
+    # First add protobuf-c (needed by criterion)
+    ifneq ($(shell pkg-config --exists libprotobuf-c 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs libprotobuf-c)
+    else
+        # Fallback if pkg-config doesn't work
+        TEST_LDFLAGS += -lprotobuf-c
+    endif
+
+
+    # Add Nanopb (needed by criterion for protobuf) - use static library
+    ifneq ($(shell pkg-config --exists nanopb 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs nanopb)
+    else
+        # Fallback: link against the static library provided by libnanopb-dev
+        TEST_LDFLAGS += /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a
+    endif
+
+    # Add boxfort (needed by criterion for sandboxing)
+    ifneq ($(shell pkg-config --exists boxfort 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs boxfort)
+    else
+        # Fallback if pkg-config doesn't work
+        TEST_LDFLAGS += -lboxfort
+    endif
+
+    # Add nanomsg
+    ifneq ($(shell pkg-config --exists nanomsg 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs nanomsg)
+    endif
+
+    # Add libgit2 dependencies
+    ifneq ($(shell pkg-config --exists libgit2 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs libgit2)
+    endif
+
+    # Add system libraries that may be needed (use pkg-config when available)
+    # For GSSAPI/Kerberos support (needed by libssh2/libgit2)
+    ifneq ($(shell pkg-config --exists krb5-gssapi 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs krb5-gssapi)
+    else ifneq ($(shell pkg-config --exists mit-krb5-gssapi 2>/dev/null && echo yes),)
+        TEST_LDFLAGS += $(shell pkg-config --libs mit-krb5-gssapi)
+    else ifneq ($(shell pkg-config --exists libssh2 2>/dev/null && echo yes),)
+        # If we have libssh2 via pkg-config, it should bring in its deps
+        TEST_LDFLAGS += $(shell pkg-config --libs libssh2)
+    else
+        # Fallback: add GSSAPI libraries if available
+        TEST_LDFLAGS += -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err
+    endif
+
+    # Other dependencies - add in dependency order
+    TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8 -ldl -lresolv
+endif
+
+# LTO flag will be added to TEST_LDFLAGS by release test targets
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
@@ -89,6 +170,18 @@ endif
 # Detect CPU/OS for reasonable defaults (build-host only)
 UNAME_M := $(shell uname -m)
 UNAME_S := $(shell uname -s)
+
+# Detect number of CPU cores for parallel builds
+ifeq ($(UNAME_S),Darwin)
+  # macOS: use sysctl to get number of logical processors
+  CPU_CORES := $(shell sysctl -n hw.logicalcpu)
+else ifeq ($(UNAME_S),Linux)
+  # Linux: use nproc to get number of processing units available
+  CPU_CORES := $(shell nproc)
+else
+  # Fallback: assume 4 cores for other systems
+  CPU_CORES := 4
+endif
 
 # macOS specifics: detect Apple Silicon and Rosetta
 ifeq ($(UNAME_S),Darwin)
@@ -166,20 +259,34 @@ ifeq ($(SIMD_MODE),auto)
 
   # x86_64 feature detection (prefer newer SIMD instructions)
   ifeq ($(UNAME_M),x86_64)
-    HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
-    HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    # macOS uses sysctl, Linux uses /proc/cpuinfo
+    ifeq ($(UNAME_S),Darwin)
+      HAS_AVX512F := $(shell sysctl -n hw.optional.avx512f 2>/dev/null || echo 0)
+      HAS_AVX512BW := $(shell sysctl -n hw.optional.avx512bw 2>/dev/null || echo 0)
+      HAS_AVX2 := $(shell sysctl -n hw.optional.avx2_0 2>/dev/null || echo 0)
+      HAS_SSSE3 := $(shell sysctl -n hw.optional.supplementalsse3 2>/dev/null || echo 0)
+      HAS_SSE2 := $(shell sysctl -n hw.optional.sse2 2>/dev/null || echo 0)
+      HAS_SSE42 := $(shell sysctl -n hw.optional.sse4_2 2>/dev/null || echo 0)
+    else
+      HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    endif
 
     # AVX-512 requires both AVX512F (foundation) and AVX512BW (byte/word operations)
     ifeq ($(HAS_AVX512F)$(HAS_AVX512BW),11)
       ENABLE_SIMD_AVX512 = yes
-    else ifeq ($(HAS_AVX2),1)
+	endif
+    ifeq ($(HAS_AVX2),1)
       ENABLE_SIMD_AVX2 = yes
-    else ifeq ($(HAS_SSSE3),1)
+    endif
+    ifeq ($(HAS_SSSE3),1)
       ENABLE_SIMD_SSSE3 = yes
-    else ifeq ($(HAS_SSE2),1)
+    endif
+    ifeq ($(HAS_SSE2),1)
       ENABLE_SIMD_SSE2 = yes
     endif
   endif
@@ -187,31 +294,29 @@ endif
 
 ifneq ($(or $(ENABLE_SIMD_AVX512),$(ENABLE_SIMD_AVX2),$(ENABLE_SIMD_SSSE3),$(ENABLE_SIMD_SSE2),$(ENABLE_SIMD_SVE),$(ENABLE_SIMD_NEON)),)
   SIMD_CFLAGS := -DSIMD_SUPPORT
+  # Prefer wider vector widths for SIMD-heavy multimedia workloads
+  ifdef ENABLE_SIMD_AVX2
+    SIMD_CFLAGS += -mprefer-vector-width=256
+  endif
 endif
 
 # Apply SIMD flags based on detection
 ifdef ENABLE_SIMD_SSE2
-  $(info Using SSE2 baseline (x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
 endif
 ifdef ENABLE_SIMD_SSSE3
-  $(info Using SSSE3 with 32-pixel processing (x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
 endif
 ifdef ENABLE_SIMD_AVX2
-  $(info Using AVX2 + SSSE3 + SSE2 (32-pixel processing x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
 endif
 ifdef ENABLE_SIMD_AVX512
-  $(info Using AVX-512 (64-pixel processing - fastest x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX512 -mavx512f -mavx512bw
 endif
 ifdef ENABLE_SIMD_NEON
-  $(info Using ARM NEON (Apple Silicon/ARM64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_NEON
 endif
 ifdef ENABLE_SIMD_SVE
-  $(info Using ARM SVE (Scalable Vector Extensions - next-gen ARM64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_SVE -march=armv8-a+sve
 endif
 
@@ -246,16 +351,16 @@ ifeq ($(CRC32_HW),auto)
 
   # x86_64 SSE4.2 detection (includes CRC32)
   ifeq ($(UNAME_M),x86_64)
-    HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    # HAS_SSE42 already detected above in SIMD section
     ifeq ($(HAS_SSE42),1)
       ENABLE_CRC32_HW = yes
     endif
   endif
 
-  # Rosetta detection
+  # Rosetta detection - SSE4.2 already detected above
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_ROSETTA),1)
-      HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      # HAS_SSE42 already set in SIMD detection
       ifeq ($(HAS_SSE42),1)
         ENABLE_CRC32_HW = yes
       endif
@@ -305,35 +410,36 @@ override CFLAGS += $(ARCH_FLAGS) $(HW_ACCEL_CFLAGS)
 
 # CPU-aware optimization flags for all platforms
 ifeq ($(UNAME_S),Darwin)
-    # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use generic flags on Apple Silicon
+    # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use -ffast-math only on Apple Silicon
     ifeq ($(IS_ROSETTA),1)
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
         $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
-        CPU_OPT_FLAGS := -O3 -mcpu=native -ffast-math
+        CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math -ffp-contract=fast
         $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
         $(info Using Intel Mac optimizations: $(CPU_OPT_FLAGS))
     endif
 else ifeq ($(UNAME_S),Linux)
-    # Linux: CPU-specific optimizations
+    # Linux: CPU-specific optimizations without -ffast-math for safety
     ifeq ($(UNAME_M),aarch64)
-        CPU_OPT_FLAGS := -O3 -mcpu=native
+        CPU_OPT_FLAGS := -O3 -mcpu=native -ffp-contract=fast -ffinite-math-only
         $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
     else
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
         $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
     endif
 else
-    # Other platforms: Generic -O3
-    CPU_OPT_FLAGS := -O3
+    # Other platforms: Generic -O3 with safer math optimizations
+    CPU_OPT_FLAGS := -O3 -ffp-contract=fast
     $(info Using generic optimizations: $(CPU_OPT_FLAGS))
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
 DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
-RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fno-exceptions -fno-rtti
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
+RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
 SANITIZE_FLAGS := -fsanitize=address
 
 # =============================================================================
@@ -345,12 +451,12 @@ TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
-# Header files  
+# Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
@@ -386,17 +492,173 @@ default: $(TARGETS)
 all: default
 
 # Debug build
-debug: override CFLAGS += $(DEBUG_FLAGS)
+debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+debug: override LDFLAGS += $(COVERAGE_FLAGS)
 debug: $(TARGETS)
 
 # Release build
 release: override CFLAGS += $(RELEASE_FLAGS)
+release: override LDFLAGS += -flto
 release: $(TARGETS)
 
 # Memory sanitizer build (inherits debug flags)
 sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
+# Release test builds (with LTO matching release binaries)
+
+tests-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+tests-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug: $(TEST_EXECUTABLES)
+
+test-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+test-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+test-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+test-debug: $(TEST_EXECUTABLES)
+	@echo "Running all tests (debug build)..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests (Debug)">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed!"; \
+			exit 1; \
+		fi; \
+	fi
+	@echo "All tests completed!"
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
+# Release test builds (with LTO matching release binaries)
+tests-release: override CFLAGS += $(RELEASE_FLAGS)
+tests-release: override LDFLAGS += -flto
+tests-release: override TEST_LDFLAGS += -flto
+tests-release: $(TEST_EXECUTABLES)
+
+test-release: override CFLAGS += $(RELEASE_FLAGS)
+test-release: override LDFLAGS += -flto
+test-release: override TEST_LDFLAGS += -flto
+test-release: $(TEST_EXECUTABLES)
+	@echo "Running all tests (release build with LTO)..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests (Release)">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed!"; \
+			exit 1; \
+		fi; \
+	fi
+	@echo "All tests completed!"
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
+test-unit-release: override CFLAGS += $(RELEASE_FLAGS)
+test-unit-release: override LDFLAGS += -flto
+test-unit-release: override TEST_LDFLAGS += -flto
+test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
+	@echo "Running unit tests (release build with LTO)..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Unit Tests (Release)">' >> junit.xml; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -ne 0 ]; then \
+				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
+			fi; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			exit 1; \
+		fi; \
+	fi
+	@echo "View test logs: cat /tmp/test_logs.txt"
 
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
@@ -415,13 +677,21 @@ $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
 	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
+# Compile source files from lib/image2ascii/
+$(BUILD_DIR)/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii
+	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) -c $<
+
 # Compile SIMD source files from lib/image2ascii/simd/
 $(BUILD_DIR)/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii/simd
 	@echo "Compiling $<..."
+	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
-# Compile C source files from lib/
+# Compile C source files from lib/ (not image2ascii/ or SIMD)
 $(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
 	@echo "Compiling $<..."
 	$(CC) -o $@ $(CFLAGS) -c $<
 
@@ -437,7 +707,10 @@ objs: $(OBJS) $(TEST_OBJS)
 $(BUILD_DIR)/src:
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib/image2ascii/simd:
+$(BUILD_DIR)/lib/image2ascii: | $(BUILD_DIR)/lib
+	@mkdir -p $@
+
+$(BUILD_DIR)/lib/image2ascii/simd: | $(BUILD_DIR)/lib/image2ascii
 	@mkdir -p $@
 
 $(BUILD_DIR)/lib:
@@ -453,33 +726,175 @@ create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib
 # Test Rules
 # =============================================================================
 
+# Coverage flags
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
+
+# Coverage build
+coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+coverage: $(TEST_EXECUTABLES)
+	@echo "Running tests with coverage..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output with coverage..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Coverage Tests">' >> junit.xml; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -ne 0 ]; then \
+				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
+			fi; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		done; \
+	fi
+	@echo "Generating coverage report..."
+	@find . -name "*.gcda" -exec gcov {} \; || echo "gcov completed"
+	@if command -v lcov >/dev/null 2>&1; then \
+		echo "Using lcov for detailed coverage report..."; \
+		lcov --capture --directory . --output-file coverage.info; \
+		lcov --remove coverage.info '/usr/*' --output-file coverage.info; \
+		lcov --remove coverage.info '*/tests/*' --output-file coverage.info; \
+		lcov --list coverage.info; \
+		if command -v genhtml >/dev/null 2>&1; then \
+			genhtml coverage.info --output-directory coverage_html; \
+			echo "Coverage report generated in coverage_html/"; \
+		fi; \
+	else \
+		echo "lcov not available - coverage files (.gcov) generated for codecov upload"; \
+	fi
+	@echo "View test logs: cat /tmp/test_logs.txt"
+
 # Test targets
 tests: $(TEST_EXECUTABLES)
 
 test: $(TEST_EXECUTABLES)
 	@echo "Running all tests..."
-	@for test in $(TEST_EXECUTABLES); do \
-		echo "Running $$test..."; \
-		$$test; \
-	done
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			if ! $$test --jobs $(CPU_CORES); then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed!"; \
+			exit 1; \
+		fi; \
+	fi
 	@echo "All tests completed!"
 
-test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
+# test-unit is the default for CI and includes coverage
+test-unit: test-unit-debug
+
+test-unit-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+test-unit-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+test-unit-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+test-unit-debug: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 	@echo "Running unit tests..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
 	@> /tmp/test_logs.txt
-	@for test in $^; do \
-		echo "Running $$test..."; \
-		$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-	done
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Unit Tests">' >> junit.xml; \
+		failed=0; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				failed=1; \
+			fi; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed during JUnit XML generation!"; \
+		fi; \
+	else \
+		failed=0; \
+		for test in $^; do \
+			echo "Running $$test..."; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				echo "=== Test failure details ==="; \
+				tail -50 /tmp/test_logs.txt; \
+				echo "=== End failure details ==="; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			exit 1; \
+		fi; \
+	fi
 	@echo "View test logs: cat /tmp/test_logs.txt"
 
 test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 	@echo "Running integration tests..."
-	@for test in $^; do \
+	@failed=0; \
+	for test in $^; do \
 		echo "Running $$test..."; \
-		$$test; \
-	done
+		if ! $$test --jobs $(CPU_CORES); then \
+			echo "Test failed: $$test"; \
+			failed=1; \
+		fi; \
+	done; \
+	if [ $$failed -eq 1 ]; then \
+		exit 1; \
+	fi
 
 test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 	@echo "Running performance benchmarks..."
@@ -487,10 +902,17 @@ test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 		echo "Note: Main performance tests are in todo/ascii_simd_test"; \
 		echo "Run: cd todo && make -f Makefile_simd ascii_simd_test && ./ascii_simd_test"; \
 	else \
+		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test; \
+			if ! $$test --jobs $(CPU_CORES); then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
 		done; \
+		if [ $$failed -eq 1 ]; then \
+			exit 1; \
+		fi; \
 	fi
 
 test-quiet: $(TEST_EXECUTABLES)
@@ -499,7 +921,7 @@ test-quiet: $(TEST_EXECUTABLES)
 	@> /tmp/test_logs.txt
 	@for test in $(TEST_EXECUTABLES); do \
 		echo "Running $$test..."; \
-		$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+		$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 	done
 	@echo "All tests completed!"
 	@echo "View test logs: cat /tmp/test_logs.txt"
@@ -509,15 +931,15 @@ test-quiet: $(TEST_EXECUTABLES)
 # test_integration_crypto_network_test -> build/tests/integration/crypto_network_test.o
 $(BIN_DIR)/test_unit_%: $(TEST_BUILD_DIR)/unit/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking test $@..."
-	$(CC) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
 
 $(BIN_DIR)/test_integration_%: $(TEST_BUILD_DIR)/integration/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking test $@..."
-	$(CC) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
 
 $(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/performance/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking test $@..."
-	$(CC) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
 
 # Compile test files
 $(TEST_BUILD_DIR)/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/unit
@@ -574,6 +996,8 @@ help:
 	@echo "  debug           - Build with debug symbols and no optimization"
 	@echo "  release         - Build with optimizations enabled"
 	@echo "  format          - Format source code using clang-format"
+	@echo "  install-hooks   - Install git hooks from git-hooks/ directory"
+	@echo "  uninstall-hooks - Remove installed git hooks"
 	@echo "  format-check    - Check code formatting without modifying files"
 	@echo "  clang-tidy      - Run clang-tidy on sources"
 	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
@@ -583,6 +1007,10 @@ help:
 	@echo "  test-integration - Run only integration tests"
 	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
 	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
+	@echo "  tests-release   - Build tests with release flags and LTO"
+	@echo "  test-release    - Run all tests with release flags and LTO"
+	@echo "  test-unit-release - Run unit tests with release flags and LTO"
+	@echo "  coverage        - Run tests with coverage analysis"
 	@echo "  todo            - Build the ./todo subproject"
 	@echo "  todo-clean      - Clean the ./todo subproject"
 	@echo "  clean           - Remove build artifacts"
@@ -611,16 +1039,44 @@ format-check:
 	find $(SRC_DIR) $(LIB_DIR) -name "*.c" -o -name "*.h" | \
     xargs clang-format --dry-run --Werror
 
-# Run bear to generate a compile_commands.json file (compile-only, no linking)
-compile_commands.json: Makefile
-	@echo "Running bear to generate compile_commands.json (objects only)..."
-	@make clean todo-clean && bear -- make -j debug objs
-	@echo "Bear complete!"
+# Generate compile_commands.json manually for clang-tidy
+compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILES)
+	@echo "Generating compile_commands.json..."
+	@echo "[" > compile_commands.json.tmp
+	@first=true; \
+	for file in $(C_FILES) $(M_FILES); do \
+		if [ "$$first" = "true" ]; then \
+			first=false; \
+		else \
+			echo "," >> compile_commands.json.tmp; \
+		fi; \
+		echo "  {" >> compile_commands.json.tmp; \
+		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json.tmp; \
+		echo "    \"command\": \"clang $(CFLAGS) $(LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
+		echo "    \"file\": \"$$file\"" >> compile_commands.json.tmp; \
+		echo "  }" >> compile_commands.json.tmp; \
+	done; \
+	for file in $(TEST_C_FILES); do \
+		if [ "$$first" = "true" ]; then \
+			first=false; \
+		else \
+			echo "," >> compile_commands.json.tmp; \
+		fi; \
+		echo "  {" >> compile_commands.json.tmp; \
+		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json.tmp; \
+		echo "    \"command\": \"clang $(CFLAGS) $(TEST_LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
+		echo "    \"file\": \"$$file\"" >> compile_commands.json.tmp; \
+		echo "  }" >> compile_commands.json.tmp; \
+	done; \
+	echo "]" >> compile_commands.json.tmp
+	@jq . compile_commands.json.tmp > compile_commands.json
+	@rm -f compile_commands.json.tmp
+	@echo "compile_commands.json generated and formatted successfully!"
 
 # Run clang-tidy to check code style
 clang-tidy: compile_commands.json
 	@echo "Running clang-tidy with compile_commands.json..."
-	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) -- $(CFLAGS)
+	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) $(TEST_C_FILES)
 
 analyze:
 	@echo "Running clang static analysis (C sources)..."
@@ -640,7 +1096,10 @@ scan-build: c-objs
 	scan-build --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
-	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
+	@echo "LOC for ./src and ./lib:"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' src lib
+	@echo "LOC for ./tests:"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' tests
 
 # =============================================================================
 # Subprojects
@@ -662,6 +1121,29 @@ todo-clean:
 		$(MAKE) -C todo -f Makefile_rate_limiter clean || true; \
 	fi
 
+# Git hooks installation
+install-hooks:
+	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
+	@if [ -f git-hooks/pre-commit ]; then \
+		cp git-hooks/pre-commit .git/hooks/pre-commit; \
+		chmod +x .git/hooks/pre-commit; \
+		echo "  ✅ pre-commit hook installed"; \
+	else \
+		echo "  ⚠️  git-hooks/pre-commit not found"; \
+	fi
+	@echo "Git hooks installation complete!"
+
+uninstall-hooks:
+	@echo "Removing git hooks..."
+	@if [ -f .git/hooks/pre-commit ]; then \
+		rm -f .git/hooks/pre-commit; \
+		echo "  ✅ pre-commit hook removed"; \
+	else \
+		echo "  ⚠️  pre-commit hook not found"; \
+	fi
+	@echo "Git hooks removal complete!"
+
 # =============================================================================
 # Extra Makefile stuff
 # =============================================================================
@@ -670,4 +1152,4 @@ todo-clean:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet todo todo-clean compile_commands.json
+.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks

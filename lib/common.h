@@ -203,6 +203,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 void log_init(const char *filename, log_level_t level);
 void log_destroy(void);
 void log_set_level(log_level_t level);
+log_level_t log_get_level(void);            /* Get current log level */
 void log_set_terminal_output(bool enabled); /* Control stderr output to terminal */
 void log_truncate_if_large(void);           /* Manually truncate large log files */
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);

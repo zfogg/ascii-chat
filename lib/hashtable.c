@@ -3,6 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Global flag to disable hashtable stats printing (for tests)
+static bool g_disable_hashtable_stats = false;
+
+// Function to control hashtable stats printing (for tests)
+void hashtable_set_stats_enabled(bool enabled) {
+  g_disable_hashtable_stats = !enabled;
+}
+
 /* ============================================================================
  * Hash Function
  * ============================================================================ */
@@ -270,6 +278,11 @@ double hashtable_load_factor(hashtable_t *ht) {
 void hashtable_print_stats(hashtable_t *ht, const char *name) {
   if (!ht)
     return;
+
+  // Check if stats printing is disabled (for tests)
+  if (g_disable_hashtable_stats) {
+    return;
+  }
 
   pthread_rwlock_rdlock(&ht->rwlock);
 

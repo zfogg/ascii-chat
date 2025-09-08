@@ -81,7 +81,7 @@ endif
 
 override CFLAGS += $(BASE_CFLAGS) $(ARCH_FLAGS) $(SIMD_CFLAGS)
 
-override LDFLAGS := -lm
+override LDFLAGS := -lm -flto
 
 # Platform LDFLAGS for webcam backends when needed
 ifeq ($(UNAME_S),Darwin)
@@ -102,6 +102,7 @@ COMMON_MAIN_OBJECTS = \
   ../build/lib/image2ascii/simd/sve.o \
   ../build/lib/image2ascii/simd/neon.o \
   ../build/lib/image2ascii/simd/common.o \
+  ../build/lib/image2ascii/output_buffer.o \
   ../build/lib/ansi_fast.o \
   ../build/lib/logging.o \
   ../build/lib/buffer_pool.o \
@@ -109,6 +110,9 @@ COMMON_MAIN_OBJECTS = \
   ../build/lib/options.o \
   ../build/lib/image.o \
   ../build/lib/ascii.o \
+  ../build/lib/crc32_hw.o \
+  ../build/lib/hashtable.o \
+  ../build/lib/palette.o \
   ../build/lib/aspect_ratio.o
 
 # Webcam objects (core + platform backends)
@@ -144,38 +148,31 @@ COLOR_CORRECTNESS_EXECUTABLE = color_correctness_test
 # First ensure main project objects are built
 ensure-main-objects:
 	@echo "Ensuring main project objects are built (clean, isolated flags, NEON-friendly)..."
-	@cd .. && $(MAKE) clean && $(MAKE) release SIMD_MODE=$(SIMD_MODE_AUTO) CRC32_HW=$(CRC32_HW) AES_HW=$(AES_HW) CFLAGS= OBJCFLAGS=
+	@cd .. && $(MAKE) clean && $(MAKE) release SIMD_MODE=$(SIMD_MODE_AUTO) CRC32_HW=$(CRC32_HW) CFLAGS= OBJCFLAGS= LDFLAGS=-flto
 
 # Targets
-all: ensure-main-objects $(ASCII_SIMD_EXECUTABLE) $(ANSI_FAST_EXECUTABLE) $(COLOR_CORRECTNESS_EXECUTABLE)
+all: ensure-main-objects ascii_simd_test ansi_fast_test color_correctness_test
 	@echo "Built all test programs with: $(SIMD_CFLAGS)"
 
-$(ASCII_SIMD_EXECUTABLE): $(ASCII_SIMD_TEST_OBJECTS) | ensure-main-objects
-	@echo "Linking $@ with main project SIMD objects..."
-	$(CC) $(ASCII_SIMD_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) $(WEBCAM_CORE_OBJECTS) $(WEBCAM_BACKEND_OBJECTS) ../build/lib/terminal_detect.o -o $@ $(LDFLAGS) $(PLATFORM_LDFLAGS) -lncurses
-
-# ANSI fast test needs ansi_fast.c compiled separately
-$(ANSI_FAST_EXECUTABLE): $(ANSI_FAST_TEST_OBJECTS) ../build/lib/ansi_fast.o | ensure-main-objects
-	@echo "Linking $@ with optimized ANSI generation..."
-	$(CC) $(ANSI_FAST_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) $(WEBCAM_CORE_OBJECTS) $(WEBCAM_BACKEND_OBJECTS) ../build/lib/terminal_detect.o -o $@ $(LDFLAGS) $(PLATFORM_LDFLAGS) -lncurses
-
-$(COLOR_CORRECTNESS_EXECUTABLE): $(COLOR_CORRECTNESS_TEST_OBJECTS) | ensure-main-objects
-	@echo "Linking $@ with main project SIMD objects..."
-	$(CC) $(COLOR_CORRECTNESS_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) $(WEBCAM_CORE_OBJECTS) $(WEBCAM_BACKEND_OBJECTS) ../build/lib/terminal_detect.o -o $@ $(LDFLAGS) $(PLATFORM_LDFLAGS) -lncurses
 
 # Compile ansi_fast.c
 ../build/lib/ansi_fast.o: ../lib/ansi_fast.c ../lib/ansi_fast.h
 	@echo "Compiling ansi_fast.c..."
-	$(CC) $(CFLAGS) -c ../lib/ansi_fast.c -o ../build/lib/ansi_fast.o
-
+	$(CC) $(CFLAGS) -flto -c ../lib/ansi_fast.c -o ../build/lib/ansi_fast.o
 
 
 # Individual targets for convenience
-ascii_simd_test: $(ASCII_SIMD_EXECUTABLE)
+ascii_simd_test: ensure-main-objects $(ASCII_SIMD_TEST_OBJECTS)
+	@echo "Linking $@ with main project SIMD objects..."
+	$(CC) $(ASCII_SIMD_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) $(WEBCAM_CORE_OBJECTS) $(WEBCAM_BACKEND_OBJECTS) ../build/lib/terminal_detect.o -o $@ $(LDFLAGS) $(PLATFORM_LDFLAGS) -lncurses
 
-ansi_fast_test: $(ANSI_FAST_EXECUTABLE)
+ansi_fast_test: ensure-main-objects $(ANSI_FAST_TEST_OBJECTS) ../build/lib/ansi_fast.o
+	@echo "Linking $@ with optimized ANSI generation..."
+	$(CC) $(ANSI_FAST_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) $(WEBCAM_CORE_OBJECTS) $(WEBCAM_BACKEND_OBJECTS) ../build/lib/terminal_detect.o -o $@ $(LDFLAGS) $(PLATFORM_LDFLAGS) -lncurses
 
-color_correctness_test: $(COLOR_CORRECTNESS_EXECUTABLE)
+color_correctness_test: ensure-main-objects $(COLOR_CORRECTNESS_TEST_OBJECTS)
+	@echo "Linking $@ with main project SIMD objects..."
+	$(CC) $(COLOR_CORRECTNESS_TEST_OBJECTS) $(MAIN_PROJECT_OBJECTS) $(WEBCAM_CORE_OBJECTS) $(WEBCAM_BACKEND_OBJECTS) ../build/lib/terminal_detect.o -o $@ $(LDFLAGS) $(PLATFORM_LDFLAGS) -lncurses
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
