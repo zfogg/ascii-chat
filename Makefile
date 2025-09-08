@@ -57,7 +57,7 @@ else ifeq ($(shell uname),Linux)
 	# Check if JACK is available using pkg-config
 	JACK_AVAILABLE := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
 	ifeq ($(JACK_AVAILABLE),yes)
-		PLATFORM_LDFLAGS += $(shell pkg-config --libs --cflags jack)
+		PLATFORM_LDFLAGS += $(shell pkg-config --libs jack)
 	endif
 endif
 
