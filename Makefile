@@ -734,6 +734,8 @@ test: $(TEST_EXECUTABLES)
 	fi
 	@echo "All tests completed!"
 
+test-unit-debug: test-unit
+
 test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 	@echo "Running unit tests..."
 	@echo "Test logs will be saved to /tmp/test_logs.txt"
