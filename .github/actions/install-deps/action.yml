@@ -23,7 +23,7 @@ runs:
       if: inputs.os == 'ubuntu'
       uses: tecolicom/actions-use-apt-tools@v1
       with:
-        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libsodium-dev libcriterion-dev libboxfort-dev libgit2-dev libnanomsg-dev pkg-config ${{ inputs.extra-packages }}
+        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libsodium-dev libcriterion-dev libboxfort-dev libgit2-dev libnanomsg-dev libnanomsg5 pkg-config ${{ inputs.extra-packages }}
         cache: yes
 
     - name: Debug available libraries (Ubuntu)
