@@ -49,7 +49,8 @@ PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 ifeq ($(shell uname),Darwin)
     PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
 else ifeq ($(shell uname),Linux)
-    PLATFORM_LDFLAGS := -lncurses
+    # Linux needs explicit JACK library for PortAudio backend
+    PLATFORM_LDFLAGS := -lncurses -ljack
 endif
 
 # System libraries (only add what pkg-config doesn't provide)
@@ -64,8 +65,15 @@ endif
 override LDFLAGS := $(PKG_LDFLAGS) $(PLATFORM_LDFLAGS) $(SYSTEM_LDFLAGS) $(ARCH_FLAGS)
 
 # Test-specific flags
-TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS))
-TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS))
+TEST_CFLAGS  := $(shell pkg-config --cflags $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "")
+# Criterion on Linux may need additional libraries for its dependencies
+ifeq ($(shell uname),Linux)
+    TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "-lcriterion")
+    # Add libraries that Criterion needs but pkg-config might not include
+    TEST_LDFLAGS += -lgit2 -lnanomsg
+else
+    TEST_LDFLAGS := $(shell pkg-config --libs $(TEST_PKG_CONFIG_LIBS) 2>/dev/null || echo "-lcriterion")
+endif
 
 # NOTE: set CFLAGS+=-std= ~after~ setting OBJCFLAGS
 override OBJCFLAGS += $(CFLAGS)
