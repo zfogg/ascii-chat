@@ -2,19 +2,110 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h> // Ensure bool type is available
 #include "avx2.h"
 #include "common.h"
 #include "ansi_fast.h"
+#include "../output_buffer.h"
 
 #ifdef SIMD_SUPPORT_AVX2
 #include <immintrin.h>
 
-// AVX2 optimized monochrome renderer with true 32-pixel processing per iteration
-// Unlike NEON which uses vqtbl4q_u8 table lookups, AVX2 leverages:
-// - Direct RGB gathering from 32 consecutive pixels (32 pixels at once)
-// - 256-bit register processing with 16-bit intermediate math for precision
-// - Bit-shifting luminance approximation to prevent overflow
-// - Full 32-pixel processing (2x NEON's 16-pixel width)
+// Optimized AVX2 function to load 32 RGB pixels and separate channels
+// IMPORTANT: Simple loops vectorize better than manual unrolling!
+static inline void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__restrict r_out,
+                                             uint8_t *__restrict g_out, uint8_t *__restrict b_out) {
+  // CRITICAL PERFORMANCE NOTE:
+  // Testing reveals that manual unrolling PREVENTS vectorization!
+  // - Manual unrolling: generates 96 scalar MOVZBL instructions (30x slower)
+  // - Simple loop: generates VMOVDQU + VPSHUFB SIMD instructions (30x faster)
+  //
+  // The compiler auto-vectorizes this simple pattern into:
+  // 1. VMOVDQU - bulk load pixel data into SIMD registers
+  // 2. VPSHUFB - shuffle bytes to extract R, G, B channels
+  // 3. VMOVDQU - store separated channels
+  //
+  // DO NOT manually unroll this loop - it breaks SIMD optimization!
+
+  for (int i = 0; i < 32; i++) {
+    r_out[i] = pixels[i].r;
+    g_out[i] = pixels[i].g;
+    b_out[i] = pixels[i].b;
+  }
+}
+
+// AVX2 function to compute luminance for 32 pixels using accurate coefficients
+// Input: 32 RGB values in separate arrays
+// Output: 32 luminance values (0-255 range)
+static inline void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_t *g_vals, const uint8_t *b_vals,
+                                             uint8_t *luminance_out) {
+  // Load all 32 RGB values into AVX2 registers
+  __m256i r_all = _mm256_loadu_si256((__m256i *)r_vals);
+  __m256i g_all = _mm256_loadu_si256((__m256i *)g_vals);
+  __m256i b_all = _mm256_loadu_si256((__m256i *)b_vals);
+
+  // Process low 16 pixels with accurate coefficients (16-bit math to prevent overflow)
+  __m256i r_lo = _mm256_unpacklo_epi8(r_all, _mm256_setzero_si256());
+  __m256i g_lo = _mm256_unpacklo_epi8(g_all, _mm256_setzero_si256());
+  __m256i b_lo = _mm256_unpacklo_epi8(b_all, _mm256_setzero_si256());
+
+  __m256i luma_16_lo = _mm256_mullo_epi16(r_lo, _mm256_set1_epi16(77));
+  luma_16_lo = _mm256_add_epi16(luma_16_lo, _mm256_mullo_epi16(g_lo, _mm256_set1_epi16(150)));
+  luma_16_lo = _mm256_add_epi16(luma_16_lo, _mm256_mullo_epi16(b_lo, _mm256_set1_epi16(29)));
+  luma_16_lo = _mm256_add_epi16(luma_16_lo, _mm256_set1_epi16(128));
+  luma_16_lo = _mm256_srli_epi16(luma_16_lo, 8);
+
+  // Process high 16 pixels with accurate coefficients
+  __m256i r_hi = _mm256_unpackhi_epi8(r_all, _mm256_setzero_si256());
+  __m256i g_hi = _mm256_unpackhi_epi8(g_all, _mm256_setzero_si256());
+  __m256i b_hi = _mm256_unpackhi_epi8(b_all, _mm256_setzero_si256());
+
+  __m256i luma_16_hi = _mm256_mullo_epi16(r_hi, _mm256_set1_epi16(77));
+  luma_16_hi = _mm256_add_epi16(luma_16_hi, _mm256_mullo_epi16(g_hi, _mm256_set1_epi16(150)));
+  luma_16_hi = _mm256_add_epi16(luma_16_hi, _mm256_mullo_epi16(b_hi, _mm256_set1_epi16(29)));
+  luma_16_hi = _mm256_add_epi16(luma_16_hi, _mm256_set1_epi16(128));
+  luma_16_hi = _mm256_srli_epi16(luma_16_hi, 8);
+
+  // Pack back to 8-bit
+  __m256i luma_packed = _mm256_packus_epi16(luma_16_lo, luma_16_hi);
+
+  // Fix the 128-bit lane-local packing: [lo0..7, hi0..7, lo8..15, hi8..15] -> [lo0..15, hi0..15]
+  // After packing, bytes are in [Q0,Q1,Q2,Q3] = [0-7, 16-23, 8-15, 24-31]
+  // We want [0-15, 16-31] = [Q0,Q2,Q1,Q3]
+  // Use permute4x64 with 0xD8 = 0b11011000 = (3,1,2,0) to swap middle quarters
+  __m256i luma_final = _mm256_permute4x64_epi64(luma_packed, 0xD8);
+
+  _mm256_storeu_si256((__m256i *)luminance_out, luma_final);
+}
+
+// Process 32 pixels: extract RGB, compute luminance, store character indices
+// Returns updated pixel index
+static inline void avx2_process_32_pixels(const rgb_pixel_t *pixels, uint8_t *char_indices, uint8_t *r_buffer,
+                                          uint8_t *g_buffer, uint8_t *b_buffer, bool store_rgb) {
+  // Extract RGB channels
+  uint8_t r_vals[32], g_vals[32], b_vals[32];
+  avx2_load_rgb32_optimized(pixels, r_vals, g_vals, b_vals);
+
+  // Store RGB if needed (for color modes)
+  if (store_rgb && r_buffer && g_buffer && b_buffer) {
+    memcpy(r_buffer, r_vals, 32);
+    memcpy(g_buffer, g_vals, 32);
+    memcpy(b_buffer, b_vals, 32);
+  }
+
+  // Compute luminance
+  uint8_t luminance_vals[32];
+  avx2_compute_luminance_32(r_vals, g_vals, b_vals, luminance_vals);
+
+  // Convert to character indices (0-63 range)
+  for (int i = 0; i < 32; i++) {
+    char_indices[i] = luminance_vals[i] >> 2;
+  }
+}
+
+// AVX2 optimized monochrome renderer with two-pass approach
+// Pass 1: Process entire image with SIMD (maximizes throughput)
+// Pass 2: Generate output with RLE compression like scalar version
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars) {
   if (!image || !image->pixels || !ascii_chars) {
     return NULL;
@@ -27,192 +118,103 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     return NULL;
   }
 
-  // Get cached UTF-8 character mappings (same as NEON)
+  // Get cached UTF-8 character mappings
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
   if (!utf8_cache) {
     log_error("Failed to get UTF-8 palette cache");
     return NULL;
   }
 
-  // Buffer allocation (same as NEON)
-  const size_t max_char_bytes = 4;
-  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
-
-  char *output;
-  SAFE_MALLOC(output, len, char *);
-
-  char *pos = output;
+  const int total_pixels = h * w;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
+  // Allocate buffer for luminance/character indices
+  uint8_t *char_indices;
+  SAFE_MALLOC(char_indices, total_pixels, uint8_t *);
+
+  // ========== PASS 1: Process entire image with AVX2 SIMD ==========
+  // Process all pixels in one continuous loop for maximum SIMD efficiency
+  int pixel_idx = 0;
+
+  // Main AVX2 loop - process 32 pixels at a time
+  for (; pixel_idx + 31 < total_pixels; pixel_idx += 32) {
+    // Use shared helper function to process 32 pixels
+    avx2_process_32_pixels(&pixels[pixel_idx], &char_indices[pixel_idx], NULL, NULL, NULL, false);
+  }
+
+  // Scalar tail for remaining pixels
+  for (; pixel_idx < total_pixels; pixel_idx++) {
+    const rgb_pixel_t *p = &pixels[pixel_idx];
+    const int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b + 128) >> 8;
+    char_indices[pixel_idx] = luminance >> 2; // 0-255 -> 0-63
+  }
+
+  // ========== PASS 2: Generate output with RLE compression ==========
+  // Use outbuf_t for efficient UTF-8 RLE emission (same as scalar)
+  outbuf_t ob = {0};
+  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
+  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  if (!ob.buf) {
+    free(char_indices);
+    log_error("Failed to allocate output buffer for AVX2 rendering");
+    return NULL;
+  }
+
+  // Generate output row by row with RLE compression
   for (int y = 0; y < h; y++) {
-    const rgb_pixel_t *row = &pixels[y * w];
-    int x = 0;
+    const int row_offset = y * w;
 
-    // AVX2 vectorized processing: TRUE 32 pixels per iteration - no splitting!
-    for (; x + 31 < w; x += 32) {
-      // Gather RGB values from 32 consecutive pixels using simple scalar loop
-      // (Compiler will likely vectorize this automatically)
-      uint8_t r_vals[32], g_vals[32], b_vals[32];
-      for (int i = 0; i < 32; i++) {
-        const rgb_pixel_t *p = &row[x + i];
-        r_vals[i] = p->r;
-        g_vals[i] = p->g;
-        b_vals[i] = p->b;
+    for (int x = 0; x < w;) {
+      const uint8_t luma_idx = char_indices[row_offset + x];
+      const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
+      // Use cache64 with luma_idx, same as scalar
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
+
+      // Find run length for same character (RLE optimization)
+      // Compare character indices, not luminance indices
+      int j = x + 1;
+      while (j < w) {
+        const uint8_t next_luma_idx = char_indices[row_offset + j];
+        const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+        if (next_char_idx != char_idx)
+          break;
+        j++;
       }
+      uint32_t run = (uint32_t)(j - x);
 
-      // Calculate luminance for ALL 32 pixels using TRUE AVX2 8-bit processing
-      // Y = (77*R + 150*G + 29*B + 128) >> 8 - prevent overflow using bit shifting
-      uint8_t luminance_results[32];
-
-      // Load all 32 RGB values into AVX2 registers
-      __m256i r_all = _mm256_loadu_si256((__m256i *)r_vals);
-      __m256i g_all = _mm256_loadu_si256((__m256i *)g_vals);
-      __m256i b_all = _mm256_loadu_si256((__m256i *)b_vals);
-
-      // AVX2 true 8-bit luminance using weighted average approach
-      // Use bit shifting instead of exact coefficients to avoid overflow
-      // Approximation: Y ≈ R/4 + G/2 + B/8 (close to Y = 0.299*R + 0.587*G + 0.114*B)
-
-      // Right shift to prevent overflow: R>>2, G>>1, B>>3
-      __m256i r_shifted = _mm256_srli_epi16(_mm256_unpacklo_epi8(r_all, _mm256_setzero_si256()), 2);
-      __m256i g_shifted = _mm256_srli_epi16(_mm256_unpacklo_epi8(g_all, _mm256_setzero_si256()), 1);
-      __m256i b_shifted = _mm256_srli_epi16(_mm256_unpacklo_epi8(b_all, _mm256_setzero_si256()), 3);
-
-      // Add weighted components (no overflow possible now)
-      __m256i luma_16_lo = _mm256_add_epi16(_mm256_add_epi16(r_shifted, g_shifted), b_shifted);
-
-      // Process high 16 pixels (completing the full 32-pixel vector processing)
-      __m256i r_shifted_hi = _mm256_srli_epi16(_mm256_unpackhi_epi8(r_all, _mm256_setzero_si256()), 2);
-      __m256i g_shifted_hi = _mm256_srli_epi16(_mm256_unpackhi_epi8(g_all, _mm256_setzero_si256()), 1);
-      __m256i b_shifted_hi = _mm256_srli_epi16(_mm256_unpackhi_epi8(b_all, _mm256_setzero_si256()), 3);
-
-      __m256i luma_16_hi = _mm256_add_epi16(_mm256_add_epi16(r_shifted_hi, g_shifted_hi), b_shifted_hi);
-
-      // Pack back to 8-bit and store all 32 luminance results
-      __m256i luma_final = _mm256_packus_epi16(luma_16_lo, luma_16_hi);
-      _mm256_storeu_si256((__m256i *)luminance_results, luma_final);
-
-      // Convert luminance to characters and emit directly - no intermediate arrays!
-      for (int i = 0; i < 32; i++) {
-        const uint8_t luminance = luminance_results[i];
-        const uint8_t luma_idx = luminance >> 2; // 0-255 -> 0-63
-        const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
-
-        // Emit UTF-8 character directly to output buffer
-        switch (char_info->byte_len) {
-        case 1:
-          *pos++ = char_info->utf8_bytes[0];
-          break;
-        case 2:
-          *pos++ = char_info->utf8_bytes[0];
-          *pos++ = char_info->utf8_bytes[1];
-          break;
-        case 3:
-          *pos++ = char_info->utf8_bytes[0];
-          *pos++ = char_info->utf8_bytes[1];
-          *pos++ = char_info->utf8_bytes[2];
-          break;
-        case 4:
-          *pos++ = char_info->utf8_bytes[0];
-          *pos++ = char_info->utf8_bytes[1];
-          *pos++ = char_info->utf8_bytes[2];
-          *pos++ = char_info->utf8_bytes[3];
-          break;
+      // Emit UTF-8 character with RLE (same as scalar)
+      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+      if (rep_is_profitable(run)) {
+        emit_rep(&ob, run - 1);
+      } else {
+        for (uint32_t k = 1; k < run; k++) {
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         }
       }
+      x = j;
     }
 
-    // Handle remaining pixels (scalar fallback)
-    for (; x < w; x++) {
-      const rgb_pixel_t pixel = row[x];
-      const int luminance = (LUMA_RED * pixel.r + LUMA_GREEN * pixel.g + LUMA_BLUE * pixel.b + 128) >> 8;
-      const utf8_char_t *char_info = &utf8_cache->cache[luminance];
-
-      switch (char_info->byte_len) {
-      case 1:
-        *pos++ = char_info->utf8_bytes[0];
-        break;
-      case 2:
-        *pos++ = char_info->utf8_bytes[0];
-        *pos++ = char_info->utf8_bytes[1];
-        break;
-      case 3:
-        *pos++ = char_info->utf8_bytes[0];
-        *pos++ = char_info->utf8_bytes[1];
-        *pos++ = char_info->utf8_bytes[2];
-        break;
-      case 4:
-        *pos++ = char_info->utf8_bytes[0];
-        *pos++ = char_info->utf8_bytes[1];
-        *pos++ = char_info->utf8_bytes[2];
-        *pos++ = char_info->utf8_bytes[3];
-        break;
-      }
-    }
-
+    // Add newline after each row (except last)
     if (y < h - 1) {
-      *pos++ = '\n';
+      ob_putc(&ob, '\n');
     }
   }
 
-  *pos = '\0';
-  return output;
+  ob_term(&ob);
+
+  // Cleanup
+  free(char_indices);
+
+  return ob.buf;
 }
 
-// AVX2 helper function to convert 32-bit RGB arrays to 256-color indices using pure 32-bit arithmetic
-static inline void avx2_rgb_to_256color_pure_32bit(const uint32_t r_vals[32], const uint32_t g_vals[32],
-                                                   const uint32_t b_vals[32], uint32_t color_indices[32]) {
-  // 256-color cube quantization: 16 + 36*R_q + 6*G_q + B_q where R_q,G_q,B_q ∈ [0,5]
-  // Quantize to 6 levels using 32-bit arithmetic: q = (color * 5 + 127) / 255 ≈ (color * 5 + 127) >> 8
+// Removed unused function avx2_rgb_to_256color_pure_32bit
+// The function was expecting uint32_t arrays but we work with uint8_t buffers
+// 256-color conversion is now precomputed in Pass 1
 
-  const __m256i five = _mm256_set1_epi32(5);
-  const __m256i round = _mm256_set1_epi32(127);
-  const __m256i sixteen = _mm256_set1_epi32(16);
-  const __m256i thirtysix = _mm256_set1_epi32(36);
-  const __m256i six = _mm256_set1_epi32(6);
-
-  // Process all 32 pixels using 4 AVX2 registers each for R, G, B (stay in 32-bit)
-  for (int batch = 0; batch < 4; batch++) {
-    int offset = batch * 8;
-
-    // Load 8 RGB values as 32-bit
-    __m256i r_8 = _mm256_loadu_si256((__m256i *)&r_vals[offset]);
-    __m256i g_8 = _mm256_loadu_si256((__m256i *)&g_vals[offset]);
-    __m256i b_8 = _mm256_loadu_si256((__m256i *)&b_vals[offset]);
-
-    // Quantize using pure 32-bit arithmetic: q = (color * 5 + 127) >> 8
-    __m256i rq = _mm256_srli_epi32(_mm256_add_epi32(_mm256_mullo_epi32(r_8, five), round), 8);
-    __m256i gq = _mm256_srli_epi32(_mm256_add_epi32(_mm256_mullo_epi32(g_8, five), round), 8);
-    __m256i bq = _mm256_srli_epi32(_mm256_add_epi32(_mm256_mullo_epi32(b_8, five), round), 8);
-
-    // Calculate 256-color index using pure 32-bit: 16 + 36*R_q + 6*G_q + B_q
-    __m256i idx = _mm256_add_epi32(sixteen, _mm256_add_epi32(_mm256_mullo_epi32(rq, thirtysix),
-                                                             _mm256_add_epi32(_mm256_mullo_epi32(gq, six), bq)));
-
-    // Store as 32-bit (no packing to 8-bit)
-    _mm256_storeu_si256((__m256i *)&color_indices[offset], idx);
-  }
-}
-
-// AVX2 helper function to build lookup tables (replaces NEON vqtbl4q_u8)
-static inline void avx2_build_utf8_lookup_arrays(utf8_palette_cache_t *utf8_cache, uint8_t char_indices[64],
-                                                 uint8_t char_lengths[64], uint8_t char_byte0[64],
-                                                 uint8_t char_byte1[64], uint8_t char_byte2[64],
-                                                 uint8_t char_byte3[64]) {
-  // Build lookup arrays for AVX2 gather operations
-  for (int i = 0; i < 64; i++) {
-    char_indices[i] = (uint8_t)i; // Direct mapping: luminance bucket -> cache64 index
-    const utf8_char_t *char_info = &utf8_cache->cache64[i];
-
-    char_lengths[i] = char_info->byte_len;
-    char_byte0[i] = char_info->utf8_bytes[0];
-    char_byte1[i] = char_info->byte_len > 1 ? char_info->utf8_bytes[1] : 0;
-    char_byte2[i] = char_info->byte_len > 2 ? char_info->utf8_bytes[2] : 0;
-    char_byte3[i] = char_info->byte_len > 3 ? char_info->utf8_bytes[3] : 0;
-  }
-}
-
-// AVX2 color implementation with full 32-pixel vectorized processing
+// AVX2 color implementation with two-pass optimization:
+// Pass 1: Process ALL pixels with AVX2 SIMD (compute luminance/character indices)
+// Pass 2: Generate ANSI output from stored results
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars) {
   if (!image || !image->pixels) {
@@ -221,6 +223,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   const int width = image->w;
   const int height = image->h;
+  const size_t total_pixels = (size_t)width * (size_t)height;
 
   if (width <= 0 || height <= 0) {
     char *empty;
@@ -236,182 +239,115 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
     return NULL;
   }
 
-  // Build AVX2 lookup arrays (replaces NEON table lookups)
-  uint8_t char_indices[64], char_lengths[64];
-  uint8_t char_byte0[64], char_byte1[64], char_byte2[64], char_byte3[64];
-  avx2_build_utf8_lookup_arrays(utf8_cache, char_indices, char_lengths, char_byte0, char_byte1, char_byte2, char_byte3);
+  // =============================================================================
+  // PASS 1: Process ALL pixels with AVX2 SIMD first
+  // Store intermediate results to maximize SIMD throughput
+  // =============================================================================
 
-  // Initialize output buffer
+  // Allocate intermediate buffers for the entire image
+  uint8_t *char_indices; // Character index for each pixel (0-63)
+  uint8_t *r_buffer = NULL, *g_buffer = NULL, *b_buffer = NULL;
+  uint8_t *color256_indices = NULL; // Precomputed 256-color indices
+
+  SAFE_MALLOC(char_indices, total_pixels, uint8_t *);
+
+  // Store RGB values for both modes to avoid re-reading pixels in pass 2
+  SAFE_MALLOC(r_buffer, total_pixels, uint8_t *);
+  SAFE_MALLOC(g_buffer, total_pixels, uint8_t *);
+  SAFE_MALLOC(b_buffer, total_pixels, uint8_t *);
+
+  // Allocate 256-color index buffer if needed
+  if (use_256color) {
+    SAFE_MALLOC(color256_indices, total_pixels, uint8_t *);
+  }
+
+  const rgb_pixel_t *pixels_data = (const rgb_pixel_t *)image->pixels;
+
+  // Process entire image with AVX2 SIMD
+  int pixel_idx = 0;
+
+  // Main AVX2 loop - process 32 pixels at a time for maximum throughput
+  for (; pixel_idx + 31 < total_pixels; pixel_idx += 32) {
+    // Use shared helper function to process 32 pixels and store RGB
+    avx2_process_32_pixels(&pixels_data[pixel_idx], &char_indices[pixel_idx], &r_buffer[pixel_idx],
+                           &g_buffer[pixel_idx], &b_buffer[pixel_idx], true);
+  }
+
+  // Handle remaining pixels with scalar code
+  for (; pixel_idx < total_pixels; pixel_idx++) {
+    const rgb_pixel_t *p = &pixels_data[pixel_idx];
+    uint8_t R = p->r, G = p->g, B = p->b;
+
+    // Store RGB for both modes (needed in Pass 2)
+    r_buffer[pixel_idx] = R;
+    g_buffer[pixel_idx] = G;
+    b_buffer[pixel_idx] = B;
+
+    uint8_t Y = (uint8_t)((77 * R + 150 * G + 29 * B + 128) >> 8);
+    char_indices[pixel_idx] = Y >> 2; // 0-63 index
+
+    // Precompute 256-color index if needed
+    if (use_256color) {
+      color256_indices[pixel_idx] = rgb_to_256color(R, G, B);
+    }
+  }
+
+  // =============================================================================
+  // PASS 2: Generate ANSI output from stored results
+  // This pass focuses purely on string generation without SIMD interference
+  // =============================================================================
+
+  // Initialize output buffer with improved size calculation
   outbuf_t ob = {0};
-  size_t bytes_per_pixel = use_256color ? 6u : 15u; // Estimate for ANSI codes
-  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 64u;
+  // Calculate more accurate buffer size:
+  // - For 256-color mode: ~6 bytes per pixel (ESC[38;5;NNNm + char)
+  // - For true color mode: ~20 bytes per pixel (ESC[38;2;RRR;GGG;BBBm + char)
+  // - Add space for newlines and potential RLE optimization
+  size_t bytes_per_pixel = use_256color ? 10u : 25u; // Conservative estimates
+  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 1024u;
   ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
-  if (!ob.buf)
+  if (!ob.buf) {
+    free(char_indices);
+    if (r_buffer) {
+      free(r_buffer);
+      free(g_buffer);
+      free(b_buffer);
+    }
     return NULL;
+  }
 
   // Track current color state
   int curR = -1, curG = -1, curB = -1;
   int cur_color_idx = -1;
 
-  const rgb_pixel_t *pixels_data = (const rgb_pixel_t *)image->pixels;
-
+  // Generate output row by row
   for (int y = 0; y < height; y++) {
-    const rgb_pixel_t *row = &pixels_data[y * width];
+    int row_start = y * width;
     int x = 0;
 
-    // AVX2 vectorized processing: 32 pixels per iteration (true 32-pixel processing with 256-bit registers)
-    while (x + 32 <= width) {
-      // Gather RGB values from 32 consecutive pixels (same as monochrome implementation)
-      uint8_t r_vals[32], g_vals[32], b_vals[32];
-
-      // Efficiently gather RGB values (compiler will likely vectorize this loop)
-      for (int i = 0; i < 32; i++) {
-        const rgb_pixel_t *p = &row[x + i];
-        r_vals[i] = p->r;
-        g_vals[i] = p->g;
-        b_vals[i] = p->b;
-      }
-
-      // Calculate luminance for ALL 32 pixels using TRUE AVX2 8-bit processing
-      // Y ≈ R/4 + G/2 + B/8 - bit shifting prevents overflow, stays in 8-bit domain
-      uint8_t luminance_vals[32];
-
-      // Load all 32 RGB values into AVX2 registers
-      __m256i r_all = _mm256_loadu_si256((__m256i *)r_vals);
-      __m256i g_all = _mm256_loadu_si256((__m256i *)g_vals);
-      __m256i b_all = _mm256_loadu_si256((__m256i *)b_vals);
-
-      // AVX2 bit-shift luminance approximation to prevent overflow
-      __m256i r_shifted = _mm256_srli_epi16(_mm256_unpacklo_epi8(r_all, _mm256_setzero_si256()), 2);
-      __m256i g_shifted = _mm256_srli_epi16(_mm256_unpacklo_epi8(g_all, _mm256_setzero_si256()), 1);
-      __m256i b_shifted = _mm256_srli_epi16(_mm256_unpacklo_epi8(b_all, _mm256_setzero_si256()), 3);
-
-      __m256i luma_16_lo = _mm256_add_epi16(_mm256_add_epi16(r_shifted, g_shifted), b_shifted);
-
-      // Process high 16 pixels (completing the full 32-pixel vector processing)
-      __m256i r_shifted_hi = _mm256_srli_epi16(_mm256_unpackhi_epi8(r_all, _mm256_setzero_si256()), 2);
-      __m256i g_shifted_hi = _mm256_srli_epi16(_mm256_unpackhi_epi8(g_all, _mm256_setzero_si256()), 1);
-      __m256i b_shifted_hi = _mm256_srli_epi16(_mm256_unpackhi_epi8(b_all, _mm256_setzero_si256()), 3);
-
-      __m256i luma_16_hi = _mm256_add_epi16(_mm256_add_epi16(r_shifted_hi, g_shifted_hi), b_shifted_hi);
-
-      // Pack and store all 32 luminance results
-      __m256i luma_final = _mm256_packus_epi16(luma_16_lo, luma_16_hi);
-      _mm256_storeu_si256((__m256i *)luminance_vals, luma_final);
-
-      // Convert luminance to character indices using 8-bit values
-      uint8_t char_idx_results[32];
-      for (int i = 0; i < 32; i++) {
-        char_idx_results[i] = luminance_vals[i] >> 2; // Divide by 4 for 0-63 range
-      }
+    while (x < width) {
+      int idx = row_start + x;
+      uint8_t luma_idx = char_indices[idx];                          // This is actually the luminance index (0-63)
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];      // Map to character index for palette
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx]; // Use luma_idx for cache lookup
 
       if (use_256color) {
-        // 256-color mode: Convert RGB values using scalar method for now
-        uint8_t color_indices[32];
-        for (int i = 0; i < 32; i++) {
-          color_indices[i] = rgb_to_256color(r_vals[i], g_vals[i], b_vals[i]);
-        }
+        // 256-color mode: use precomputed color indices from Pass 1
+        uint8_t color_idx = color256_indices[idx];
 
-        // Emit with run-length encoding (similar to NEON implementation)
-        for (int i = 0; i < 32;) {
-          const uint8_t char_idx = char_idx_results[i];
-          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-          const uint8_t color_idx = color_indices[i];
-
-          // Find run length of same character and color
-          uint32_t run = 1;
-          while (i + run < 32 && char_idx_results[i + run] == char_idx && color_indices[i + run] == color_idx) {
-            run++;
-          }
-
-          // Set color if changed
-          if (color_idx != cur_color_idx) {
-            if (use_background) {
-              emit_set_256_color_bg(&ob, color_idx);
-            } else {
-              emit_set_256_color_fg(&ob, color_idx);
-            }
-            cur_color_idx = color_idx;
-          }
-
-          // Emit character with RLE optimization
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-          if (rep_is_profitable(run)) {
-            emit_rep(&ob, run - 1);
-          } else {
-            for (uint32_t k = 1; k < run; k++) {
-              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-            }
-          }
-          i += run;
-        }
-      } else {
-        // Truecolor mode: process each pixel with RLE using 8-bit RGB values
-        for (int i = 0; i < 32;) {
-          const uint8_t char_idx = char_idx_results[i];
-          const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-          const uint8_t R = r_vals[i], G = g_vals[i], B = b_vals[i];
-
-          // Find run length of same character and color
-          uint32_t run = 1;
-          while (i + run < 32 && char_idx_results[i + run] == char_idx && r_vals[i + run] == R &&
-                 g_vals[i + run] == G && b_vals[i + run] == B) {
-            run++;
-          }
-
-          // Set color if changed
-          if (R != curR || G != curG || B != curB) {
-            if (use_background) {
-              emit_set_truecolor_bg(&ob, R, G, B);
-            } else {
-              emit_set_truecolor_fg(&ob, R, G, B);
-            }
-            curR = R;
-            curG = G;
-            curB = B;
-          }
-
-          // Emit character with RLE optimization
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-          if (rep_is_profitable(run)) {
-            emit_rep(&ob, run - 1);
-          } else {
-            for (uint32_t k = 1; k < run; k++) {
-              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-            }
-          }
-          i += run;
-        }
-      }
-      x += 32;
-    }
-
-    // Scalar tail processing for remaining pixels (similar to NEON implementation)
-    for (; x < width;) {
-      const rgb_pixel_t *p = &row[x];
-      uint32_t R = p->r, G = p->g, B = p->b;
-      uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128u) >> 8);
-      uint8_t luma_idx = Y >> 2; // 0-63 index
-      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
-      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
-
-      if (use_256color) {
-        // 256-color scalar tail
-        uint8_t color_idx = rgb_to_256color((uint8_t)R, (uint8_t)G, (uint8_t)B);
-
-        int j = x + 1;
-        while (j < width) {
-          const rgb_pixel_t *q = &row[j];
-          uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
-          uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + 128u) >> 8);
-          uint8_t char_idx2 = utf8_cache->char_index_ramp[Y2 >> 2];
-          uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
-          if (char_idx2 != char_idx || color_idx2 != color_idx)
+        // Find run length
+        uint32_t run = 1;
+        while (x + run < width) {
+          uint8_t next_luma_idx = char_indices[idx + run];
+          uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+          if (next_char_idx != char_idx)
             break;
-          j++;
+          if (color256_indices[idx + run] != color_idx)
+            break;
+          run++;
         }
-        uint32_t run = (uint32_t)(j - x);
 
+        // Set color if changed
         if (color_idx != cur_color_idx) {
           if (use_background) {
             emit_set_256_color_bg(&ob, color_idx);
@@ -421,6 +357,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           cur_color_idx = color_idx;
         }
 
+        // Emit character with RLE
         ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
@@ -429,32 +366,39 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
             ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
-        x = j;
-      } else {
-        // Truecolor scalar tail
-        int j = x + 1;
-        while (j < width) {
-          const rgb_pixel_t *q = &row[j];
-          uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
-          uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + 128u) >> 8);
-          uint8_t char_idx2 = utf8_cache->char_index_ramp[Y2 >> 2];
-          if (char_idx2 != char_idx || R2 != R || G2 != G || B2 != B)
-            break;
-          j++;
-        }
-        uint32_t run = (uint32_t)(j - x);
+        x += run;
 
+      } else {
+        // Truecolor mode: use buffered RGB values
+        uint8_t R = r_buffer[idx];
+        uint8_t G = g_buffer[idx];
+        uint8_t B = b_buffer[idx];
+
+        // Find run length
+        uint32_t run = 1;
+        while (x + run < width) {
+          uint8_t next_luma_idx = char_indices[idx + run];
+          uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+          if (next_char_idx != char_idx)
+            break;
+          if (r_buffer[idx + run] != R || g_buffer[idx + run] != G || b_buffer[idx + run] != B)
+            break;
+          run++;
+        }
+
+        // Set color if changed
         if ((int)R != curR || (int)G != curG || (int)B != curB) {
           if (use_background) {
-            emit_set_truecolor_bg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+            emit_set_truecolor_bg(&ob, R, G, B);
           } else {
-            emit_set_truecolor_fg(&ob, (uint8_t)R, (uint8_t)G, (uint8_t)B);
+            emit_set_truecolor_fg(&ob, R, G, B);
           }
-          curR = (int)R;
-          curG = (int)G;
-          curB = (int)B;
+          curR = R;
+          curG = G;
+          curB = B;
         }
 
+        // Emit character with RLE
         ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
@@ -463,7 +407,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
             ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
           }
         }
-        x = j;
+        x += run;
       }
     }
 
@@ -473,6 +417,16 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   }
 
   ob_term(&ob);
+
+  // Clean up intermediate buffers
+  free(char_indices);
+  free(r_buffer);
+  free(g_buffer);
+  free(b_buffer);
+  if (color256_indices) {
+    free(color256_indices);
+  }
+
   return ob.buf;
 }
 

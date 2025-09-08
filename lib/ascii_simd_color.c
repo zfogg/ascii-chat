@@ -427,14 +427,14 @@ static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g,
  */
 
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars) {
-#ifdef SIMD_SUPPORT_NEON
-  return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
-#elif defined(SIMD_SUPPORT_AVX2)
+#ifdef SIMD_SUPPORT_AVX2
   return render_ascii_avx2_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSSE3)
   return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSE2)
   return render_ascii_sse2_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+#elif defined(SIMD_SUPPORT_NEON)
+  return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
 #else
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds

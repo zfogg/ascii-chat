@@ -37,6 +37,21 @@ typedef struct {
 #define PALETTE_CHARS_MINIMAL "   .-+*#"
 #define PALETTE_CHARS_COOL "   ▁▂▃▄▅▆▇█"
 
+/* UTF-8 Palette Character Structure */
+typedef struct {
+  char bytes[4];         // UTF-8 bytes for this character (max 4 bytes)
+  uint8_t byte_len;      // Number of bytes (1-4)
+  uint8_t display_width; // Terminal display width (1-2)
+} utf8_char_info_t;
+
+/* UTF-8 Palette Structure - properly handles multi-byte characters */
+typedef struct {
+  utf8_char_info_t *chars; // Array of UTF-8 characters
+  size_t char_count;       // Number of characters (not bytes!)
+  size_t total_bytes;      // Total byte length of palette string
+  char *raw_string;        // Original palette string
+} utf8_palette_t;
+
 /* Default palette for legacy functions */
 extern const char DEFAULT_ASCII_PALETTE[];
 extern const size_t DEFAULT_ASCII_PALETTE_LEN;
@@ -51,3 +66,11 @@ int apply_palette_config(palette_type_t type, const char *custom_chars);
 int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]);
 int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[256],
                               size_t *client_palette_len, char client_luminance_palette[256]);
+
+/* UTF-8 Palette Functions */
+utf8_palette_t *utf8_palette_create(const char *palette_string);
+void utf8_palette_destroy(utf8_palette_t *palette);
+const utf8_char_info_t *utf8_palette_get_char(const utf8_palette_t *palette, size_t index);
+size_t utf8_palette_get_char_count(const utf8_palette_t *palette);
+bool utf8_palette_contains_char(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes);
+size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes);

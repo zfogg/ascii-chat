@@ -236,16 +236,17 @@ void options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = "a:p:x:y:c:f::M:P:C:AsqSD:L:EK:F:h";
+    optstring = ":a:p:x:y:c:f::M:P:C:AsqSD:L:EK:F:h"; // Leading ':' for error reporting
     options = client_options;
   } else {
-    optstring = "a:p:P:C:AL:EK:F:h";
+    optstring = ":a:p:P:C:AL:EK:F:h"; // Leading ':' for error reporting
     options = server_options;
   }
 
+  int longindex = 0; // Move outside loop so ':' case can access it
   while (1) {
-    int index = 0;
-    int c = getopt_long(argc, argv, optstring, options, &index);
+    longindex = 0;
+    int c = getopt_long(argc, argv, optstring, options, &longindex);
     if (c == -1)
       break;
 
@@ -257,7 +258,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'a': {
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       if (!is_valid_ipv4(value_str)) {
-        log_error("Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.", value_str);
+        fprintf(stderr, "Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.\n", value_str);
         exit(EXIT_FAILURE);
       }
       snprintf(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -270,7 +271,7 @@ void options_init(int argc, char **argv, bool is_client) {
       char *endptr;
       long port_num = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
-        log_error("Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
+        fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
         exit(EXIT_FAILURE);
       }
       snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -282,7 +283,7 @@ void options_init(int argc, char **argv, bool is_client) {
       if (value_str) {
         opt_width = strtoint(value_str);
         if (opt_width == 0) {
-          log_error("Invalid width value '%s'. Width must be a positive integer.", value_str);
+          fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
           exit(EXIT_FAILURE);
         }
         auto_width = 0; // Mark as manually set
@@ -295,7 +296,7 @@ void options_init(int argc, char **argv, bool is_client) {
       if (value_str) {
         opt_height = strtoint(value_str);
         if (opt_height == 0) {
-          log_error("Invalid height value '%s'. Height must be a positive integer.", value_str);
+          fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
           exit(EXIT_FAILURE);
         }
         auto_height = 0; // Mark as manually set
@@ -307,7 +308,7 @@ void options_init(int argc, char **argv, bool is_client) {
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       int parsed_index = strtoint(value_str);
       if (parsed_index < 0) {
-        log_error("Invalid webcam index value '%s'. Webcam index must be a non-negative integer.", value_str);
+        fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n", value_str);
         exit(EXIT_FAILURE);
       }
       opt_webcam_index = (unsigned short int)parsed_index;
@@ -318,7 +319,7 @@ void options_init(int argc, char **argv, bool is_client) {
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       int parsed_flip = strtoint(value_str);
       if (parsed_flip < 0 || parsed_flip > 1) {
-        log_error("Invalid webcam flip value '%s'. Webcam flip must be 0 or 1.", value_str);
+        fprintf(stderr, "Invalid webcam flip value '%s'. Webcam flip must be 0 or 1.\n", value_str);
         exit(EXIT_FAILURE);
       }
       opt_webcam_flip = (unsigned short int)parsed_flip;
@@ -338,7 +339,7 @@ void options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
         opt_color_mode = COLOR_MODE_TRUECOLOR;
       } else {
-        log_error("Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor", value_str);
+        fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n", value_str);
         exit(1);
       }
       break;
@@ -360,7 +361,8 @@ void options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
         opt_render_mode = RENDER_MODE_HALF_BLOCK;
       } else {
-        log_error("Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
+        fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
+                value_str);
         exit(1);
       }
       break;
@@ -381,7 +383,8 @@ void options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "custom") == 0) {
         opt_palette_type = PALETTE_CUSTOM;
       } else {
-        log_error("Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom", value_str);
+        fprintf(stderr, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
+                value_str);
         exit(EXIT_FAILURE);
       }
       break;
@@ -390,12 +393,12 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'C': { // --palette-chars
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       if (strlen(value_str) == 0) {
-        log_error("Invalid palette-chars: cannot be empty");
+        fprintf(stderr, "Invalid palette-chars: cannot be empty\n");
         exit(EXIT_FAILURE);
       }
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
-        log_error("Invalid palette-chars: too long (%zu chars, max %zu)", strlen(value_str),
-                  sizeof(opt_palette_custom) - 1);
+        fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
+                sizeof(opt_palette_custom) - 1);
         exit(EXIT_FAILURE);
       }
       strncpy(opt_palette_custom, value_str, sizeof(opt_palette_custom) - 1);
@@ -426,11 +429,11 @@ void options_init(int argc, char **argv, bool is_client) {
       char *endptr;
       opt_snapshot_delay = strtof(value_str, &endptr);
       if (*endptr != '\0' || value_str == endptr) {
-        log_error("Invalid snapshot delay value '%s'. Snapshot delay must be a number.", value_str);
+        fprintf(stderr, "Invalid snapshot delay value '%s'. Snapshot delay must be a number.\n", value_str);
         exit(EXIT_FAILURE);
       }
       if (opt_snapshot_delay < 0.0f) {
-        log_error("Snapshot delay must be non-negative (got %.2f)", opt_snapshot_delay);
+        fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
         exit(EXIT_FAILURE);
       }
       break;
@@ -439,7 +442,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'L': {
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       if (strlen(value_str) == 0) {
-        log_error("Invalid log file value '%s'. Log file path cannot be empty.", value_str);
+        fprintf(stderr, "Invalid log file value '%s'. Log file path cannot be empty.\n", value_str);
         exit(EXIT_FAILURE);
       }
       snprintf(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -453,7 +456,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'K': {
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       if (strlen(value_str) == 0) {
-        log_error("Invalid encryption key value '%s'. Encryption key cannot be empty.", value_str);
+        fprintf(stderr, "Invalid encryption key value '%s'. Encryption key cannot be empty.\n", value_str);
         exit(EXIT_FAILURE);
       }
       snprintf(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -464,7 +467,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'F': {
       char *value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
       if (strlen(value_str) == 0) {
-        log_error("Invalid keyfile value '%s'. Keyfile path cannot be empty.", value_str);
+        fprintf(stderr, "Invalid keyfile value '%s'. Keyfile path cannot be empty.\n", value_str);
         exit(EXIT_FAILURE);
       }
       snprintf(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -472,8 +475,40 @@ void options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
+    case ':':
+      // Missing argument for option
+      if (optopt == 0 || optopt > 127) {
+        // Long option - need to find which one from argv
+        // getopt_long doesn't update longindex for missing arguments
+        const char *opt_name = NULL;
+        if (optind > 1 && optind <= argc) {
+          const char *arg = argv[optind - 1];
+          if (strncmp(arg, "--", 2) == 0) {
+            opt_name = arg + 2;
+            // Remove any '=' if present
+            char *eq = strchr(opt_name, '=');
+            if (eq) {
+              static char opt_buf[256];
+              size_t len = eq - opt_name;
+              if (len < sizeof(opt_buf)) {
+                strncpy(opt_buf, opt_name, len);
+                opt_buf[len] = '\0';
+                opt_name = opt_buf;
+              }
+            }
+          }
+        }
+        fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server",
+                opt_name ? opt_name : "unknown");
+      } else {
+        // Short option
+        fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
+      }
+      exit(EXIT_FAILURE);
+      break;
+
     case '?':
-      log_error("Unknown option %c", optopt);
+      fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr, is_client);
       exit(EXIT_FAILURE);
       break;
@@ -498,8 +533,8 @@ void options_init(int argc, char **argv, bool is_client) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     if (caps.color_level > TERM_COLOR_NONE) {
       opt_color_output = 1;
-      log_debug("Auto-enabled color output based on terminal capabilities: %s",
-                terminal_color_level_name(caps.color_level));
+      fprintf(stderr, "Auto-enabled color output based on terminal capabilities: %s\n",
+              terminal_color_level_name(caps.color_level));
     }
   }
 }

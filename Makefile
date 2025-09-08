@@ -173,22 +173,27 @@ ifeq ($(SIMD_MODE),auto)
       HAS_AVX2 := $(shell sysctl -n hw.optional.avx2_0 2>/dev/null || echo 0)
       HAS_SSSE3 := $(shell sysctl -n hw.optional.supplementalsse3 2>/dev/null || echo 0)
       HAS_SSE2 := $(shell sysctl -n hw.optional.sse2 2>/dev/null || echo 0)
+      HAS_SSE42 := $(shell sysctl -n hw.optional.sse4_2 2>/dev/null || echo 0)
     else
       HAS_AVX512F := $(shell grep -q avx512f /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
       HAS_AVX512BW := $(shell grep -q avx512bw /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
       HAS_AVX2 := $(shell grep -q avx2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
       HAS_SSSE3 := $(shell grep -q ssse3 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
       HAS_SSE2 := $(shell grep -q sse2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
     endif
 
     # AVX-512 requires both AVX512F (foundation) and AVX512BW (byte/word operations)
     ifeq ($(HAS_AVX512F)$(HAS_AVX512BW),11)
       ENABLE_SIMD_AVX512 = yes
-    else ifeq ($(HAS_AVX2),1)
+	endif
+    ifeq ($(HAS_AVX2),1)
       ENABLE_SIMD_AVX2 = yes
-    else ifeq ($(HAS_SSSE3),1)
+    endif
+    ifeq ($(HAS_SSSE3),1)
       ENABLE_SIMD_SSSE3 = yes
-    else ifeq ($(HAS_SSE2),1)
+    endif
+    ifeq ($(HAS_SSE2),1)
       ENABLE_SIMD_SSE2 = yes
     endif
   endif
@@ -196,31 +201,29 @@ endif
 
 ifneq ($(or $(ENABLE_SIMD_AVX512),$(ENABLE_SIMD_AVX2),$(ENABLE_SIMD_SSSE3),$(ENABLE_SIMD_SSE2),$(ENABLE_SIMD_SVE),$(ENABLE_SIMD_NEON)),)
   SIMD_CFLAGS := -DSIMD_SUPPORT
+  # Prefer wider vector widths for SIMD-heavy multimedia workloads
+  ifdef ENABLE_SIMD_AVX2
+    SIMD_CFLAGS += -mprefer-vector-width=256
+  endif
 endif
 
 # Apply SIMD flags based on detection
 ifdef ENABLE_SIMD_SSE2
-  $(info Using SSE2 baseline (x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
 endif
 ifdef ENABLE_SIMD_SSSE3
-  $(info Using SSSE3 with 32-pixel processing (x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
 endif
 ifdef ENABLE_SIMD_AVX2
-  $(info Using AVX2 + SSSE3 + SSE2 (32-pixel processing x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
 endif
 ifdef ENABLE_SIMD_AVX512
-  $(info Using AVX-512 (64-pixel processing - fastest x86_64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX512 -mavx512f -mavx512bw
 endif
 ifdef ENABLE_SIMD_NEON
-  $(info Using ARM NEON (Apple Silicon/ARM64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_NEON
 endif
 ifdef ENABLE_SIMD_SVE
-  $(info Using ARM SVE (Scalable Vector Extensions - next-gen ARM64))
   SIMD_CFLAGS += -DSIMD_SUPPORT_SVE -march=armv8-a+sve
 endif
 
@@ -255,16 +258,16 @@ ifeq ($(CRC32_HW),auto)
 
   # x86_64 SSE4.2 detection (includes CRC32)
   ifeq ($(UNAME_M),x86_64)
-    HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+    # HAS_SSE42 already detected above in SIMD section
     ifeq ($(HAS_SSE42),1)
       ENABLE_CRC32_HW = yes
     endif
   endif
 
-  # Rosetta detection
+  # Rosetta detection - SSE4.2 already detected above
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_ROSETTA),1)
-      HAS_SSE42 := $(shell grep -q sse4_2 /proc/cpuinfo 2>/dev/null && echo 1 || echo 0)
+      # HAS_SSE42 already set in SIMD detection
       ifeq ($(HAS_SSE42),1)
         ENABLE_CRC32_HW = yes
       endif
@@ -314,35 +317,35 @@ override CFLAGS += $(ARCH_FLAGS) $(HW_ACCEL_CFLAGS)
 
 # CPU-aware optimization flags for all platforms
 ifeq ($(UNAME_S),Darwin)
-    # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use generic flags on Apple Silicon
+    # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use -ffast-math only on Apple Silicon
     ifeq ($(IS_ROSETTA),1)
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
         $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
-        CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math
+        CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math -ffp-contract=fast
         $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
         $(info Using Intel Mac optimizations: $(CPU_OPT_FLAGS))
     endif
 else ifeq ($(UNAME_S),Linux)
-    # Linux: CPU-specific optimizations
+    # Linux: CPU-specific optimizations without -ffast-math for safety
     ifeq ($(UNAME_M),aarch64)
-        CPU_OPT_FLAGS := -O3 -mcpu=native
+        CPU_OPT_FLAGS := -O3 -mcpu=native -ffp-contract=fast -ffinite-math-only
         $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
     else
-        CPU_OPT_FLAGS := -O3 -march=native
+        CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
         $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
     endif
 else
-    # Other platforms: Generic -O3
-    CPU_OPT_FLAGS := -O3
+    # Other platforms: Generic -O3 with safer math optimizations
+    CPU_OPT_FLAGS := -O3 -ffp-contract=fast
     $(info Using generic optimizations: $(CPU_OPT_FLAGS))
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
 DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
-RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fno-exceptions -fno-rtti
+RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
 SANITIZE_FLAGS := -fsanitize=address
 
 # =============================================================================
@@ -543,10 +546,18 @@ test: $(TEST_EXECUTABLES)
 		done; \
 		echo '</testsuites>' >> junit.xml; \
 	else \
+		failed=0; \
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
-			$$test; \
+			if ! $$test; then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
 		done; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed!"; \
+			exit 1; \
+		fi; \
 	fi
 	@echo "All tests completed!"
 
@@ -570,19 +581,33 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 		done; \
 		echo '</testsuites>' >> junit.xml; \
 	else \
+		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
+			if ! $$test 2>>/tmp/test_logs.txt; then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
 		done; \
+		if [ $$failed -eq 1 ]; then \
+			exit 1; \
+		fi; \
 	fi
 	@echo "View test logs: cat /tmp/test_logs.txt"
 
 test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
 	@echo "Running integration tests..."
-	@for test in $^; do \
+	@failed=0; \
+	for test in $^; do \
 		echo "Running $$test..."; \
-		$$test || (echo "Test failed: $$test" && exit 1); \
-	done
+		if ! $$test; then \
+			echo "Test failed: $$test"; \
+			failed=1; \
+		fi; \
+	done; \
+	if [ $$failed -eq 1 ]; then \
+		exit 1; \
+	fi
 
 test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 	@echo "Running performance benchmarks..."
@@ -590,10 +615,17 @@ test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
 		echo "Note: Main performance tests are in todo/ascii_simd_test"; \
 		echo "Run: cd todo && make -f Makefile_simd ascii_simd_test && ./ascii_simd_test"; \
 	else \
+		failed=0; \
 		for test in $^; do \
 			echo "Running $$test..."; \
-			$$test || (echo "Test failed: $$test" && exit 1); \
+			if ! $$test; then \
+				echo "Test failed: $$test"; \
+				failed=1; \
+			fi; \
 		done; \
+		if [ $$failed -eq 1 ]; then \
+			exit 1; \
+		fi; \
 	fi
 
 test-quiet: $(TEST_EXECUTABLES)
@@ -746,7 +778,10 @@ scan-build: c-objs
 	scan-build --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
-	cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' .
+	@echo "LOC for ./src and ./lib:"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' src lib
+	@echo "LOC for ./tests:"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' tests
 
 # =============================================================================
 # Subprojects

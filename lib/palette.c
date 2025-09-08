@@ -324,3 +324,174 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
 
   return 0;
 }
+
+/* UTF-8 Palette Functions Implementation */
+
+// Create a UTF-8 palette structure from a string
+utf8_palette_t *utf8_palette_create(const char *palette_string) {
+  if (!palette_string || *palette_string == '\0') {
+    return NULL;
+  }
+
+  utf8_palette_t *palette;
+  SAFE_MALLOC(palette, sizeof(utf8_palette_t), utf8_palette_t *);
+
+  // Count UTF-8 characters (not bytes)
+  size_t char_count = 0;
+  const char *p = palette_string;
+  size_t total_bytes = strlen(palette_string);
+
+  // First pass: count characters
+  size_t bytes_processed = 0;
+  while (bytes_processed < total_bytes) {
+    int bytes = 1;
+    unsigned char c = (unsigned char)p[0];
+
+    if ((c & 0x80) == 0) {
+      bytes = 1; // ASCII
+    } else if ((c & 0xE0) == 0xC0) {
+      bytes = 2; // 2-byte UTF-8
+    } else if ((c & 0xF0) == 0xE0) {
+      bytes = 3; // 3-byte UTF-8
+    } else if ((c & 0xF8) == 0xF0) {
+      bytes = 4; // 4-byte UTF-8
+    }
+
+    // Verify we have enough bytes left
+    if (bytes_processed + bytes > total_bytes) {
+      break;
+    }
+
+    p += bytes;
+    bytes_processed += bytes;
+    char_count++;
+  }
+
+  // Allocate character array
+  SAFE_MALLOC(palette->chars, char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
+  SAFE_MALLOC(palette->raw_string, total_bytes + 1, char *);
+
+  memcpy(palette->raw_string, palette_string, total_bytes + 1);
+  palette->char_count = char_count;
+  palette->total_bytes = total_bytes; // Use strlen() value
+
+  // Second pass: parse characters
+  p = palette_string;
+  size_t char_idx = 0;
+  bytes_processed = 0;
+
+  // Set locale for wcwidth - save a copy of the old locale
+  char old_locale[256] = {0};
+  char *current_locale = setlocale(LC_CTYPE, NULL);
+  if (current_locale) {
+    strncpy(old_locale, current_locale, sizeof(old_locale) - 1);
+  }
+  setlocale(LC_CTYPE, "");
+
+  while (char_idx < char_count && bytes_processed < total_bytes) {
+    utf8_char_info_t *char_info = &palette->chars[char_idx];
+
+    // Determine UTF-8 byte length
+    unsigned char c = (unsigned char)*p;
+    int bytes = 1;
+
+    if ((c & 0x80) == 0) {
+      bytes = 1;
+    } else if ((c & 0xE0) == 0xC0) {
+      bytes = 2;
+    } else if ((c & 0xF0) == 0xE0) {
+      bytes = 3;
+    } else if ((c & 0xF8) == 0xF0) {
+      bytes = 4;
+    }
+
+    // Verify we have enough bytes left
+    if (bytes_processed + bytes > total_bytes) {
+      break;
+    }
+
+    // Copy bytes and null-terminate
+    memcpy(char_info->bytes, p, bytes);
+    if (bytes < 4) {
+      memset(char_info->bytes + bytes, 0, 4 - bytes);
+    }
+    char_info->byte_len = bytes;
+
+    // Get display width
+    wchar_t wc;
+    if (mbtowc(&wc, p, bytes) > 0) {
+      int width = wcwidth(wc);
+      char_info->display_width = (width > 0 && width <= 2) ? width : 1;
+    } else {
+      char_info->display_width = 1;
+    }
+
+    p += bytes;
+    bytes_processed += bytes;
+    char_idx++;
+  }
+
+  // Restore locale
+  if (old_locale[0] != '\0') {
+    setlocale(LC_CTYPE, old_locale);
+  }
+
+  return palette;
+}
+
+// Destroy a UTF-8 palette structure
+void utf8_palette_destroy(utf8_palette_t *palette) {
+  if (palette) {
+    SAFE_FREE(palette->chars);
+    SAFE_FREE(palette->raw_string);
+    SAFE_FREE(palette);
+  }
+}
+
+// Get the nth character from the palette
+const utf8_char_info_t *utf8_palette_get_char(const utf8_palette_t *palette, size_t index) {
+  if (!palette || index >= palette->char_count) {
+    return NULL;
+  }
+  return &palette->chars[index];
+}
+
+// Get the number of characters in the palette
+size_t utf8_palette_get_char_count(const utf8_palette_t *palette) {
+  if (!palette) {
+    return 0;
+  }
+  return palette->char_count;
+}
+
+// Check if palette contains a specific UTF-8 character
+bool utf8_palette_contains_char(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes) {
+  if (!palette || !utf8_char || char_bytes == 0 || char_bytes > 4) {
+    return false;
+  }
+
+  for (size_t i = 0; i < palette->char_count; i++) {
+    const utf8_char_info_t *char_info = &palette->chars[i];
+    if (char_info->byte_len == char_bytes && memcmp(char_info->bytes, utf8_char, char_bytes) == 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Find the index of a UTF-8 character in the palette
+size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes) {
+  if (!palette || !utf8_char || char_bytes == 0 || char_bytes > 4) {
+    return (size_t)-1;
+  }
+
+  for (size_t i = 0; i < palette->char_count; i++) {
+    const utf8_char_info_t *char_info = &palette->chars[i];
+    if (char_info->byte_len == char_bytes && memcmp(char_info->bytes, utf8_char, char_bytes) == 0) {
+      return i;
+    }
+  }
+
+  return (size_t)-1;
+}
