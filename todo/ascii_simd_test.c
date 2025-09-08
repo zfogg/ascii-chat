@@ -17,10 +17,10 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include "../lib/common.h"
-#include "../lib/ascii_simd.h"
+#include "../lib/image2ascii/simd/ascii_simd.h"
 #include "../lib/options.h"
-#include "../lib/ascii.h"
-#include "../lib/image.h"
+#include "../lib/image2ascii/ascii.h"
+#include "../lib/image2ascii/image.h"
 #include "../lib/webcam.h"
 #include "../lib/terminal_detect.h"
 

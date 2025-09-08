@@ -1096,8 +1096,10 @@ scan-build: c-objs
 	scan-build --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
-	@echo "LOC for ./src and ./lib:"
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' src lib
+	@echo "LOC for ./src"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' src
+	@echo "LOC for ./lib:"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' lib
 	@echo "LOC for ./tests:"
 	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' tests
 

@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #include "common.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
 #include "image.h"
 #include "palette.h"

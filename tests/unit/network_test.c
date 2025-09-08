@@ -11,7 +11,7 @@
 #include "crc32_hw.h"
 #include "packet_queue.h"
 #include "image.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 
 void setup_network_quiet_logging(void);
 void restore_network_logging(void);

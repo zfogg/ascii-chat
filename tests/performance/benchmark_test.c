@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "common.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "network.h"
 #include "audio.h"
 #include "mixer.h"

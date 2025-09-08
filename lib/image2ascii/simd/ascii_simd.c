@@ -7,10 +7,17 @@
 #include "common.h"
 #include "ascii_simd.h"
 #include "palette.h"
-#include "ascii.h"
+#include "../ascii.h"
 #include "image2ascii/output_buffer.h"
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
+
+// Helper: write decimal RGB triplet using dec3 cache
+size_t write_rgb_triplet(uint8_t value, char *dst) {
+  const dec3_t *d = &g_dec3_cache.dec3_table[value];
+  memcpy(dst, d->s, d->len);
+  return d->len;
+}
 
 // Default luminance palette for legacy functions
 char g_default_luminance_palette[256];

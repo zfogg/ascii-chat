@@ -88,18 +88,15 @@ char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, 
 char *append_sgr_reset(char *dst);
 
 // Helper: write decimal RGB triplet using dec3 cache
-static inline size_t write_rgb_triplet(uint8_t value, char *dst) {
-  const dec3_t *d = &g_dec3_cache.dec3_table[value];
-  memcpy(dst, d->s, d->len);
-  return d->len;
-}
+// Note: This function is defined in ascii_simd.c to avoid circular dependencies
+size_t write_rgb_triplet(uint8_t value, char *dst);
 
 // Emit ANSI SGR for truecolor FG/BG - use fast manual builder
-static inline void emit_sgr(Str *out, int fr, int fg, int fb, int br, int bg, int bb) {
+static inline void emit_sgr(outbuf_t *out, int fr, int fg, int fb, int br, int bg, int bb) {
   // Fast truecolor FG+BG SGR without sprintf
   // Builds: "\x1b[38;2;FR;FG;FB;48;2;BR;BG;BBm"
-  str_reserve(out, out->len + 40);
-  char *p = out->data + out->len;
+  ob_reserve(out, out->len + 40);
+  char *p = out->buf + out->len;
 
   // FG prefix
   memcpy(p, "\x1b[38;2;", 7);
@@ -124,7 +121,7 @@ static inline void emit_sgr(Str *out, int fr, int fg, int fb, int br, int bg, in
   p += write_rgb_triplet((uint8_t)bb, p);
   *p++ = 'm';
 
-  out->len = (size_t)(p - out->data);
+  out->len = (size_t)(p - out->buf);
 }
 
 // Simple decimal writer for REP counts (can be larger than 255)

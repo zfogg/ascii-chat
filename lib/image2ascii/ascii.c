@@ -10,7 +10,7 @@
 #include "curses.h"
 
 #include "ascii.h"
-#include "ascii_simd.h"
+#include "simd/ascii_simd.h"
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"

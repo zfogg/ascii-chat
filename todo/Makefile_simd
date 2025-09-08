@@ -94,8 +94,8 @@ endif
 
 # Link against main project's object files (webcam backend is platform-specific)
 COMMON_MAIN_OBJECTS = \
-  ../build/lib/ascii_simd.o \
-  ../build/lib/ascii_simd_color.o \
+  ../build/lib/image2ascii/simd/ascii_simd.o \
+  ../build/lib/image2ascii/simd/ascii_simd_color.o \
   ../build/lib/image2ascii/simd/sse2.o \
   ../build/lib/image2ascii/simd/ssse3.o \
   ../build/lib/image2ascii/simd/avx2.o \
@@ -180,17 +180,17 @@ color_correctness_test: ensure-main-objects $(COLOR_CORRECTNESS_TEST_OBJECTS)
 # Test different compilation modes (these compile and link separately for comparison)
 test-scalar: ensure-main-objects
 	@echo "Building scalar test programs..."
-	$(CC) $(BASE_CFLAGS) ascii_simd_test.c ../lib/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_scalar $(LDFLAGS)
+	$(CC) $(BASE_CFLAGS) ascii_simd_test.c ../lib/image2ascii/simd/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_scalar $(LDFLAGS)
 	@echo "Built scalar-only versions"
 
 test-sse2: ensure-main-objects
 	@echo "Building SSE2 test programs..."
-	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2 ascii_simd_test.c ../lib/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_sse2 $(LDFLAGS)
+	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_SSE2 -msse2 ascii_simd_test.c ../lib/image2ascii/simd/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_sse2 $(LDFLAGS)
 	@echo "Built SSE2 versions"
 
 test-neon: ensure-main-objects
 	@echo "Building NEON test programs..."
-	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON ascii_simd_test.c ../lib/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_neon $(LDFLAGS)
+	$(CC) $(BASE_CFLAGS) -DSIMD_SUPPORT -DSIMD_SUPPORT_NEON ascii_simd_test.c ../lib/image2ascii/simd/ascii_simd.c ../lib/logging.c -o $(ASCII_SIMD_EXECUTABLE)_neon $(LDFLAGS)
 	@echo "Built NEON versions"
 
 test-all: test-scalar test-sse2 test-neon

@@ -11,7 +11,7 @@
 #include "common.h"
 #include "hashtable.h"
 #include "image2ascii/simd/common.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 
 
 #ifdef SIMD_SUPPORT_NEON

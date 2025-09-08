@@ -10,7 +10,7 @@
 #include "common.h"
 #include "image.h"
 #include "ascii.h"
-#include "ascii_simd.h"
+#include "simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
