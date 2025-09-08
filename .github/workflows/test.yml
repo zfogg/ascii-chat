@@ -300,24 +300,10 @@ jobs:
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
-    - name: Build benchmarks in release mode
-      run: |
-        make -j CSTD=c2x release
-        make -j CSTD=c2x tests-release
-
     - name: Run SIMD benchmarks
       run: |
-        echo "Running SIMD performance benchmarks..."
-        # Run performance benchmarks if they exist
-        if [ -f ./bin/test_performance_simd_benchmark ]; then
-          ./bin/test_performance_simd_benchmark --synthetic | tee benchmark_output.log
-        else
-          echo "Note: SIMD benchmark test not yet migrated from todo/"
-          # Fallback to todo benchmarks if migration not complete
-          if [ -d todo ] && [ -f todo/Makefile ]; then
-            cd todo && make -j CSTD=c2x && ./ascii_simd_test --synthetic | tee ../benchmark_output.log
-          fi
-        fi
+        # Run todo benchmarks until migration to criterion performance tests is complete
+        cd todo && make -j CSTD=c2x && ./ascii_simd_test --synthetic | tee ../benchmark_output.log
 
     - name: Upload benchmark results
       if: always()
