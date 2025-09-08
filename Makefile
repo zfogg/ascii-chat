@@ -503,6 +503,55 @@ release: $(TARGETS)
 sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
+# Release test builds (with LTO matching release binaries)
+
+tests-debug: override CFLAGS += $(DEBUG_FLAGS)
+tests-debug: $(TEST_EXECUTABLES)
+
+test-debug: override CFLAGS += $(DEBUG_FLAGS)
+test-debug: $(TEST_EXECUTABLES)
+	@echo "Running all tests (debug build)..."
+	@echo "Test logs will be saved to /tmp/test_logs.txt"
+	@> /tmp/test_logs.txt
+	@if [ -n "$$GENERATE_JUNIT" ]; then \
+		echo "Generating JUnit XML output..."; \
+		rm -f junit.xml; \
+		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
+		echo '<testsuites name="ASCII-Chat Tests (Debug)">' >> junit.xml; \
+		total_tests=0; total_failures=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
+			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
+			if [ -f /tmp/$$test_name.xml ]; then \
+				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
+				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
+				rm -f /tmp/$$test_name.xml; \
+			fi; \
+		done; \
+		echo '</testsuites>' >> junit.xml; \
+	else \
+		failed=0; \
+		for test in $(TEST_EXECUTABLES); do \
+			echo "Running $$test..."; \
+			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
+			test_exit_code=$$?; \
+			if [ $$test_exit_code -eq 0 ]; then \
+				echo "Test passed: $$test"; \
+			else \
+				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
+				failed=1; \
+			fi; \
+		done; \
+		if [ $$failed -eq 1 ]; then \
+			echo "Some tests failed!"; \
+			exit 1; \
+		fi; \
+	fi
+	@echo "All tests completed!"
+	@echo "View test logs: cat /tmp/test_logs.txt"
 
 # Release test builds (with LTO matching release binaries)
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
