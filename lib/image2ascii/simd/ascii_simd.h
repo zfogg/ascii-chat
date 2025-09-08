@@ -3,10 +3,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "common.h"
-#include "image.h"
+#include "../image.h"
 
 // Use the project's existing rgb_t for consistency
-#include "image.h"
+#include "../image.h"
 
 // Check for SIMD support and include architecture-specific headers
 #ifdef __ARM_FEATURE_SVE

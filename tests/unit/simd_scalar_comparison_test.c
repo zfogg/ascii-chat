@@ -2,7 +2,7 @@
 #include <criterion/new/assert.h>
 #include "common.h"
 #include "image2ascii/simd/ascii_simd.h"
-#include "image.h"
+#include "image2ascii/image.h"
 #include "image2ascii/simd/common.h"
 
 void setup_comparison_logging(void);

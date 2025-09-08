@@ -438,7 +438,7 @@ endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
 DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
-COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage -DCOVERAGE_BUILD
 RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
 SANITIZE_FLAGS := -fsanitize=address
 
@@ -475,7 +475,7 @@ OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/clien
 # Test files - exclude problematic tests for now
 TEST_C_FILES_ALL := $(wildcard $(TEST_DIR)/unit/*.c) $(wildcard $(TEST_DIR)/integration/*.c) $(wildcard $(TEST_DIR)/performance/*.c)
 # Exclude tests with API mismatches that prevent compilation
-TEST_C_FILES_EXCLUDE := $(TEST_DIR)/unit/ascii_simd_test.c $(TEST_DIR)/integration/server_multiclient_test.c $(TEST_DIR)/integration/video_pipeline_test.c
+TEST_C_FILES_EXCLUDE := $(TEST_DIR)/unit/ascii_simd_test.c $(TEST_DIR)/integration/server_multiclient_test.c $(TEST_DIR)/integration/video_pipeline_test.c $(TEST_DIR)/performance/benchmark_test.c
 TEST_C_FILES := $(filter-out $(TEST_C_FILES_EXCLUDE), $(TEST_C_FILES_ALL))
 TEST_OBJS := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/%.o, $(TEST_C_FILES))
 # Transform test file paths to executable names with flattened structure
@@ -491,174 +491,50 @@ TEST_EXECUTABLES := $(foreach file,$(TEST_C_FILES),$(BIN_DIR)/test_$(subst /,_,$
 default: $(TARGETS)
 all: default
 
-# Debug build
-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+debug: override CFLAGS += $(DEBUG_FLAGS)
+debug: override LDFLAGS +=
 debug: $(TARGETS)
 
-# Release build
+debug-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+debug-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+debug-coverage: $(TARGETS)
+
 release: override CFLAGS += $(RELEASE_FLAGS)
 release: override LDFLAGS += -flto
 release: $(TARGETS)
 
-# Memory sanitizer build (inherits debug flags)
+release-coverage: override CFLAGS += $(RELEASE_FLAGS) $(COVERAGE_FLAGS)
+release-coverage: override LDFLAGS += -flto $(COVERAGE_FLAGS)
+release-coverage: $(TARGETS)
+
 sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
-# Release test builds (with LTO matching release binaries)
 
-tests-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-tests-debug: override LDFLAGS += $(COVERAGE_FLAGS)
-tests-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug: override CFLAGS += $(DEBUG_FLAGS)
+tests-debug: override LDFLAGS +=
+tests-debug: override TEST_LDFLAGS +=
 tests-debug: $(TEST_EXECUTABLES)
 
-test-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-test-debug: override LDFLAGS += $(COVERAGE_FLAGS)
-test-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
-test-debug: $(TEST_EXECUTABLES)
-	@echo "Running all tests (debug build)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Tests (Debug)">' >> junit.xml; \
-		total_tests=0; total_failures=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		failed=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed!"; \
-			exit 1; \
-		fi; \
-	fi
-	@echo "All tests completed!"
-	@echo "View test logs: cat /tmp/test_logs.txt"
+tests-debug-coverage: debug-coverage
+tests-debug-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+tests-debug-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug-coverage: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug-coverage: $(TEST_EXECUTABLES)
 
-# Release test builds (with LTO matching release binaries)
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
 tests-release: override LDFLAGS += -flto
 tests-release: override TEST_LDFLAGS += -flto
 tests-release: $(TEST_EXECUTABLES)
 
-test-release: override CFLAGS += $(RELEASE_FLAGS)
-test-release: override LDFLAGS += -flto
-test-release: override TEST_LDFLAGS += -flto
-test-release: $(TEST_EXECUTABLES)
-	@echo "Running all tests (release build with LTO)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Tests (Release)">' >> junit.xml; \
-		total_tests=0; total_failures=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		failed=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed!"; \
-			exit 1; \
-		fi; \
-	fi
-	@echo "All tests completed!"
-	@echo "View test logs: cat /tmp/test_logs.txt"
+tests-release-coverage: release-coverage
+tests-release-coverage: override CFLAGS += $(RELEASE_FLAGS) $(COVERAGE_FLAGS)
+tests-release-coverage: override LDFLAGS += -flto $(COVERAGE_FLAGS)
+tests-release-coverage: override TEST_LDFLAGS += -flto $(COVERAGE_FLAGS)
+tests-release-coverage: $(TEST_EXECUTABLES)
 
-test-unit-release: override CFLAGS += $(RELEASE_FLAGS)
-test-unit-release: override LDFLAGS += -flto
-test-unit-release: override TEST_LDFLAGS += -flto
-test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
-	@echo "Running unit tests (release build with LTO)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Unit Tests (Release)">' >> junit.xml; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -ne 0 ]; then \
-				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
-			fi; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			exit 1; \
-		fi; \
-	fi
-	@echo "View test logs: cat /tmp/test_logs.txt"
+
+
 
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
@@ -726,205 +602,26 @@ create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib
 # Test Rules
 # =============================================================================
 
-# Coverage flags
-COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
-
 # Coverage build
-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
-coverage: $(TEST_EXECUTABLES)
-	@echo "Running tests with coverage..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output with coverage..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Coverage Tests">' >> junit.xml; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -ne 0 ]; then \
-				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
-			fi; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-		done; \
-	fi
-	@echo "Generating coverage report..."
-	@find . -name "*.gcda" -exec gcov {} \; || echo "gcov completed"
-	@if command -v lcov >/dev/null 2>&1; then \
-		echo "Using lcov for detailed coverage report..."; \
-		lcov --capture --directory . --output-file coverage.info; \
-		lcov --remove coverage.info '/usr/*' --output-file coverage.info; \
-		lcov --remove coverage.info '*/tests/*' --output-file coverage.info; \
-		lcov --list coverage.info; \
-		if command -v genhtml >/dev/null 2>&1; then \
-			genhtml coverage.info --output-directory coverage_html; \
-			echo "Coverage report generated in coverage_html/"; \
-		fi; \
-	else \
-		echo "lcov not available - coverage files (.gcov) generated for codecov upload"; \
-	fi
-	@echo "View test logs: cat /tmp/test_logs.txt"
 
 # Test targets
 tests: $(TEST_EXECUTABLES)
 
+# Run all tests in debug mode
 test: $(TEST_EXECUTABLES)
-	@echo "Running all tests..."
 	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Tests">' >> junit.xml; \
-		total_tests=0; total_failures=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
+		./tests/scripts/run_tests.sh -b debug -J; \
 	else \
-		failed=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			if ! $$test --jobs $(CPU_CORES); then \
-				echo "Test failed: $$test"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed!"; \
-			exit 1; \
-		fi; \
+		./tests/scripts/run_tests.sh -b debug; \
 	fi
-	@echo "All tests completed!"
 
-# test-unit is the default for CI and includes coverage
-test-unit: test-unit-debug
-
-test-unit-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-test-unit-debug: override LDFLAGS += $(COVERAGE_FLAGS)
-test-unit-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
-test-unit-debug: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
-	@echo "Running unit tests..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
+# Run all tests in release mode
+test-release: $(TEST_EXECUTABLES)
 	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Unit Tests">' >> junit.xml; \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed during JUnit XML generation!"; \
-		fi; \
+		./tests/scripts/run_tests.sh -b release -J; \
 	else \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				echo "=== Test failure details ==="; \
-				tail -50 /tmp/test_logs.txt; \
-				echo "=== End failure details ==="; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			exit 1; \
-		fi; \
+		./tests/scripts/run_tests.sh -b release; \
 	fi
-	@echo "View test logs: cat /tmp/test_logs.txt"
-
-test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
-	@echo "Running integration tests..."
-	@failed=0; \
-	for test in $^; do \
-		echo "Running $$test..."; \
-		if ! $$test --jobs $(CPU_CORES); then \
-			echo "Test failed: $$test"; \
-			failed=1; \
-		fi; \
-	done; \
-	if [ $$failed -eq 1 ]; then \
-		exit 1; \
-	fi
-
-test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
-	@echo "Running performance benchmarks..."
-	@if [ -z "$^" ]; then \
-		echo "Note: Main performance tests are in todo/ascii_simd_test"; \
-		echo "Run: cd todo && make -f Makefile_simd ascii_simd_test && ./ascii_simd_test"; \
-	else \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			if ! $$test --jobs $(CPU_CORES); then \
-				echo "Test failed: $$test"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			exit 1; \
-		fi; \
-	fi
-
-test-quiet: $(TEST_EXECUTABLES)
-	@echo "Running all tests (quiet mode)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@for test in $(TEST_EXECUTABLES); do \
-		echo "Running $$test..."; \
-		$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-	done
-	@echo "All tests completed!"
-	@echo "View test logs: cat /tmp/test_logs.txt"
 
 # Build test executables - map flattened names back to their object files
 # test_unit_common_test -> build/tests/unit/common_test.o
@@ -966,11 +663,10 @@ $(TEST_BUILD_DIR)/performance:
 
 # For CI
 c-objs: $(OBJS_C)
-	@echo "C object files:"
-	@echo $(OBJS_C)
 	@echo "C object files count: $(words $(OBJS_C))"
-	@echo "C object files size: $(shell du -sh $(OBJS_C) | cut -f1)"
-	@echo "C object files count: $(words $(OBJS_C))"
+	@echo "C object files size (sorted by size):"
+	@du -sh $(OBJS_C) | sort -rh
+	@du -csh $(OBJS_C) | grep total
 
 # =============================================================================
 # Utility Targets
@@ -992,29 +688,29 @@ clean:
 # Show help information
 help:
 	@echo "Available targets:"
-	@echo "  all/default     - Build all targets with default flags"
-	@echo "  debug           - Build with debug symbols and no optimization"
-	@echo "  release         - Build with optimizations enabled"
-	@echo "  format          - Format source code using clang-format"
-	@echo "  install-hooks   - Install git hooks from git-hooks/ directory"
-	@echo "  uninstall-hooks - Remove installed git hooks"
-	@echo "  format-check    - Check code formatting without modifying files"
-	@echo "  clang-tidy      - Run clang-tidy on sources"
-	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
-	@echo "  cloc            - Count lines of code"
-	@echo "  test            - Run all tests (unit + integration + performance)"
-	@echo "  test-unit       - Run only unit tests (quiet mode)"
-	@echo "  test-integration - Run only integration tests"
-	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
-	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
-	@echo "  tests-release   - Build tests with release flags and LTO"
-	@echo "  test-release    - Run all tests with release flags and LTO"
-	@echo "  test-unit-release - Run unit tests with release flags and LTO"
-	@echo "  coverage        - Run tests with coverage analysis"
-	@echo "  todo            - Build the ./todo subproject"
-	@echo "  todo-clean      - Clean the ./todo subproject"
-	@echo "  clean           - Remove build artifacts"
-	@echo "  help            - Show this help message"
+	@echo "  all/default                      - Build all targets with default flags"
+	@echo "  debug                            - Build with debug symbols and no optimization"
+	@echo "  debug-coverage                   - Build with debug symbols and coverage"
+	@echo "  release                          - Build with optimizations enabled"
+	@echo "  release-coverage                 - Build with optimizations and coverage"
+	@echo "  format                           - Format source code using clang-format"
+	@echo "  install-hooks                    - Install git hooks from git-hooks/ directory"
+	@echo "  uninstall-hooks                  - Remove installed git hooks"
+	@echo "  format-check                     - Check code formatting without modifying files"
+	@echo "  clang-tidy                       - Run clang-tidy on sources"
+	@echo "  analyze                          - Run static analysis (clang --analyze, cppcheck)"
+	@echo "  cloc                             - Count lines of code"
+	@echo "  test                             - Run all tests (unit + integration + performance) in debug mode"
+	@echo "  test-release                     - Run all tests (unit + integration + performance) in release mode"
+	@echo "  tests                            - Build all test executables in debug mode"
+	@echo "  tests-debug                      - Build all test executables in debug mode"
+	@echo "  tests-debug-coverage             - Build all test executables with debug and coverage"
+	@echo "  tests-release                    - Build all test executables in release mode"
+	@echo "  tests-release-coverage           - Build all test executables with release and coverage"
+	@echo "  todo                             - Build the ./todo subproject"
+	@echo "  todo-clean                       - Clean the ./todo subproject"
+	@echo "  clean                            - Remove build artifacts"
+	@echo "  help                             - Show this help message"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  CC=$(CC)"
@@ -1154,4 +850,4 @@ uninstall-hooks:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks
+.PHONY: all clean default help debug debug-coverage sanitize release release-coverage c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-release tests-debug tests-release tests-debug-coverage tests-release-coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks

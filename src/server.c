@@ -12,7 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "image.h"
+#include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "common.h"

@@ -102,7 +102,7 @@ void test_ascii_correctness(void) {
         // Build default luminance palette for test (move outside loop)
         char test_luminance_palette[256];
         build_client_luminance_palette(DEFAULT_ASCII_PALETTE, DEFAULT_ASCII_PALETTE_LEN, test_luminance_palette);
-        
+
         for (int run = 0; run < 3; run++) {
 
             results[run] = ascii_convert(test_image,
@@ -219,7 +219,7 @@ void test_color_correctness(void) {
             if (test_modes[mode_idx].is_color) {
                 // Test color functions
                 scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE); // Pure scalar
-                
+
                 // SIMD with same capabilities as scalar
                 terminal_capabilities_t caps = {0};
                 caps.color_level = TERM_COLOR_TRUECOLOR;
@@ -228,9 +228,9 @@ void test_color_correctness(void) {
                 caps.capabilities = TERM_CAP_COLOR_TRUE;
                 simd_result = image_print_with_capabilities(test_image, &caps, DEFAULT_ASCII_PALETTE, test_luminance_palette);
             } else {
-                // Test monochrome functions  
+                // Test monochrome functions
                 scalar_result = image_print(test_image, DEFAULT_ASCII_PALETTE); // Pure scalar
-                
+
                 // SIMD with same capabilities as scalar
                 terminal_capabilities_t caps = {0};
                 caps.color_level = TERM_COLOR_NONE;
@@ -363,17 +363,17 @@ void test_performance_benchmarks(void) {
                    mono_bench.sve_time * 1000, mono_bench.scalar_time / mono_bench.sve_time);
         }
         printf("    Winner:  %s\n", mono_bench.best_method);
-        
+
         // Test UTF-8 Emoji Performance Impact
         printf("  UTF-8 vs ASCII Palette Comparison:\n");
-        
+
         // Create test using image_print_simd directly with different palettes
         const char *utf8_palette = "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐";
         const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
-        
+
         struct timespec utf8_start, utf8_end, ascii_start, ascii_end;
         const int utf8_iterations = 20;
-        
+
         // ASCII palette timing
         clock_gettime(CLOCK_MONOTONIC, &ascii_start);
         for (int iter = 0; iter < utf8_iterations; iter++) {
@@ -381,7 +381,7 @@ void test_performance_benchmarks(void) {
             if (result) free(result);
         }
         clock_gettime(CLOCK_MONOTONIC, &ascii_end);
-        
+
         // UTF-8 palette timing
         clock_gettime(CLOCK_MONOTONIC, &utf8_start);
         for (int iter = 0; iter < utf8_iterations; iter++) {
@@ -389,16 +389,16 @@ void test_performance_benchmarks(void) {
             if (result) free(result);
         }
         clock_gettime(CLOCK_MONOTONIC, &utf8_end);
-        
+
         double ascii_time = (ascii_end.tv_sec - ascii_start.tv_sec) + (ascii_end.tv_nsec - ascii_start.tv_nsec) / 1e9;
         double utf8_time = (utf8_end.tv_sec - utf8_start.tv_sec) + (utf8_end.tv_nsec - utf8_start.tv_nsec) / 1e9;
-        
+
         double ascii_ms = (ascii_time / utf8_iterations) * 1000;
         double utf8_ms = (utf8_time / utf8_iterations) * 1000;
-        
+
         printf("    ASCII:   %8.4f ms/frame\n", ascii_ms);
         printf("    UTF-8:   %8.4f ms/frame (%4.2fx slower)\n", utf8_ms, utf8_ms / ascii_ms);
-        
+
         if (utf8_ms / ascii_ms < 1.5) {
             printf("    ✅ UTF-8 impact: Minimal (<1.5x slower)\n");
         } else if (utf8_ms / ascii_ms < 3.0) {
