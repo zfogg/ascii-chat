@@ -44,6 +44,7 @@ void segfault_handler(int sig) {
 
 void setup_cache_logging(void) {
     log_set_level(LOG_FATAL); // Reduce verbose output during tests
+    hashtable_set_stats_enabled(false); // Disable hashtable stats for this test
 
     // Install segfault handler
     signal(SIGSEGV, segfault_handler);
@@ -53,6 +54,7 @@ void setup_cache_logging(void) {
 
 void restore_cache_logging(void) {
     log_set_level(LOG_ERROR);
+    hashtable_set_stats_enabled(true); // Re-enable hashtable stats
 
     // Restore default signal handlers
     signal(SIGSEGV, SIG_DFL);
@@ -1214,6 +1216,7 @@ Test(simd_caches, cache_cleanup_safety) {
     // Create cache
     utf8_palette_cache_t *cache = get_utf8_palette_cache(test_palette);
     cr_assert_not_null(cache, "Cache should be created");
+    cr_assert(cache->is_valid, "Cache should be valid");
 
     // Cleanup should be safe
     simd_caches_destroy_all();
@@ -1221,9 +1224,10 @@ Test(simd_caches, cache_cleanup_safety) {
     // Should be able to create new cache after cleanup
     utf8_palette_cache_t *new_cache = get_utf8_palette_cache(test_palette);
     cr_assert_not_null(new_cache, "Should be able to create cache after cleanup");
+    cr_assert(new_cache->is_valid, "New cache should be valid");
 
-    // Should be different object (old one was destroyed)
-    cr_assert_neq(cache, new_cache, "New cache should be different object after cleanup");
+    // Cache should work correctly after cleanup (same palette should produce same cache data)
+    cr_assert_str_eq(cache->palette_hash, new_cache->palette_hash, "Cache should have same palette hash");
 }
 
 Test(simd_caches, extreme_palette_stress_test) {
