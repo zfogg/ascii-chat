@@ -108,9 +108,12 @@ ifeq ($(shell uname),Linux)
         TEST_LDFLAGS += $(shell pkg-config --libs krb5-gssapi)
     else ifneq ($(shell pkg-config --exists mit-krb5-gssapi 2>/dev/null && echo yes),)
         TEST_LDFLAGS += $(shell pkg-config --libs mit-krb5-gssapi)
+    else ifneq ($(shell pkg-config --exists libssh2 2>/dev/null && echo yes),)
+        # If we have libssh2 via pkg-config, it should bring in its deps
+        TEST_LDFLAGS += $(shell pkg-config --libs libssh2)
     else
-        # Fallback: try common library names
-        TEST_LDFLAGS += -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err
+        # Fallback: skip gssapi_krb5 if not found, it's optional for most cases
+        TEST_LDFLAGS += -lkrb5 -lk5crypto -lcom_err
     endif
     # Other dependencies
     TEST_LDFLAGS += -lssl -lcrypto -lssh2 -lhttp_parser -lpcre2-8
