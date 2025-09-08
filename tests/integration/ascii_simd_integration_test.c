@@ -11,6 +11,7 @@
 #include "image2ascii/simd/common.h"
 #include "image.h"
 #include "palette.h"
+#include "hashtable.h"
 
 void setup_simd_quiet_logging(void);
 void restore_simd_logging(void);
@@ -18,11 +19,13 @@ void restore_simd_logging(void);
 TestSuite(ascii_simd_integration, .init = setup_simd_quiet_logging, .fini = restore_simd_logging);
 
 void setup_simd_quiet_logging(void) {
-    log_set_level(LOG_ERROR);
+    log_set_level(LOG_FATAL);
+    hashtable_set_stats_enabled(false); // Disable hashtable stats for this test
 }
 
 void restore_simd_logging(void) {
     log_set_level(LOG_DEBUG);
+    hashtable_set_stats_enabled(true); // Re-enable hashtable stats
 }
 
 // Helper function to generate test images that guarantee full palette coverage
@@ -37,8 +40,8 @@ static void generate_full_palette_test_image(image_t *test_image, const char *pa
 
     size_t palette_char_count = utf8_palette_get_char_count(utf8_pal);
 
-    printf("Generating test image (%dx%d) to exercise all %zu palette characters\n",
-           test_image->w, test_image->h, palette_char_count);
+    log_debug("Generating test image (%dx%d) to exercise all %zu palette characters",
+              test_image->w, test_image->h, palette_char_count);
 
     for (int idx = 0; idx < total_pixels; idx++) {
         uint8_t target_luminance;
@@ -74,7 +77,7 @@ static void generate_full_palette_test_image(image_t *test_image, const char *pa
     }
 
     // Verify mapping for first few palette characters
-    printf("Luminance verification (first 5 characters):\n");
+    log_debug("Luminance verification (first 5 characters):");
     for (int i = 0; i < (int)palette_char_count && i < 5; i++) {
         rgb_pixel_t pixel = test_image->pixels[i];
         int calc_luma = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
@@ -83,8 +86,8 @@ static void generate_full_palette_test_image(image_t *test_image, const char *pa
         const utf8_char_info_t *char_info = utf8_palette_get_char(utf8_pal, i);
         char display_char = (char_info && char_info->byte_len == 1) ? char_info->bytes[0] : '?';
 
-        printf("  pixel[%d]: RGB(%d,%d,%d) -> luminance=%d -> luma_idx=%d -> palette[%d]='%c'\n",
-               i, pixel.r, pixel.g, pixel.b, calc_luma, luma_idx, i, display_char);
+        log_debug("  pixel[%d]: RGB(%d,%d,%d) -> luminance=%d -> luma_idx=%d -> palette[%d]='%c'",
+                  i, pixel.r, pixel.g, pixel.b, calc_luma, luma_idx, i, display_char);
     }
 
     // Clean up UTF-8 palette
@@ -216,8 +219,8 @@ Test(ascii_simd_integration, monochrome_performance_vs_scalar) {
 
     double speedup = scalar_time / simd_time;
 
-    printf("Monochrome Performance: Scalar=%.4fms, SIMD=%.4fms, Speedup=%.2fx\n",
-           (scalar_time / iterations) * 1000, (simd_time / iterations) * 1000, speedup);
+    log_debug("Monochrome Performance: Scalar=%.4fms, SIMD=%.4fms, Speedup=%.2fx",
+              (scalar_time / iterations) * 1000, (simd_time / iterations) * 1000, speedup);
 
     // Assert minimum 2x speedup for SIMD
     cr_assert_gt(speedup, 2.0, "SIMD monochrome should be at least 2x faster than scalar (got %.2fx)", speedup);
@@ -268,8 +271,8 @@ Test(ascii_simd_integration, color_performance_vs_scalar) {
 
     double speedup = scalar_time / simd_time;
 
-    printf("Color Performance: Scalar=%.4fms, SIMD=%.4fms, Speedup=%.2fx\n",
-           (scalar_time / iterations) * 1000, (simd_time / iterations) * 1000, speedup);
+    log_debug("Color Performance: Scalar=%.4fms, SIMD=%.4fms, Speedup=%.2fx",
+              (scalar_time / iterations) * 1000, (simd_time / iterations) * 1000, speedup);
 
     // With vectorized NEON color implementation, we expect 2x+ speedup in release builds
     // Allow lower threshold for debug builds where SIMD optimizations may not show full benefit
@@ -327,8 +330,8 @@ Test(ascii_simd_integration, utf8_palette_performance) {
 
     double utf8_penalty = utf8_time / ascii_time;
 
-    printf("UTF-8 vs ASCII: ASCII=%.4fms, UTF-8=%.4fms, Penalty=%.2fx\n",
-           (ascii_time / iterations) * 1000, (utf8_time / iterations) * 1000, utf8_penalty);
+    log_debug("UTF-8 vs ASCII: ASCII=%.4fms, UTF-8=%.4fms, Penalty=%.2fx",
+              (ascii_time / iterations) * 1000, (utf8_time / iterations) * 1000, utf8_penalty);
 
     // UTF-8 should not be more than 3x slower than ASCII (after our optimizations)
     cr_assert_lt(utf8_penalty, 3.0, "UTF-8 should not be >3x slower than ASCII (got %.2fx)", utf8_penalty);
@@ -389,9 +392,9 @@ Test(ascii_simd_integration, various_image_sizes_performance) {
 
         double speedup = scalar_time / simd_time;
 
-        printf("%s (%dx%d): Scalar=%.4fms, SIMD=%.4fms, Speedup=%.2fx\n",
-               test_sizes[size_idx].name, width, height,
-               (scalar_time / iterations) * 1000, (simd_time / iterations) * 1000, speedup);
+        log_debug("%s (%dx%d): Scalar=%.4fms, SIMD=%.4fms, Speedup=%.2fx",
+                  test_sizes[size_idx].name, width, height,
+                  (scalar_time / iterations) * 1000, (simd_time / iterations) * 1000, speedup);
 
         // Assert minimum expected speedup
         cr_assert_gt(speedup, expected_speedup,
@@ -424,7 +427,7 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     size_t palette_len = utf8_palette_get_char_count(utf8_pal);
     utf8_palette_destroy(utf8_pal);
 
-    printf("Generating test image to exercise all %zu palette characters\n", palette_len);
+    log_debug("Generating test image to exercise all %zu palette characters", palette_len);
 
     for (int idx = 0; idx < total_pixels; idx++) {
         uint8_t target_luminance;
@@ -508,20 +511,20 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     }
 
     // Now we're tracking ALL positions including duplicates thanks to utf8_palette_find_all_char_indices
-    printf("COVERAGE: %d/%zu palette positions covered in output\n", unique_chars_found, palette_char_count);
+    log_debug("COVERAGE: %d/%zu palette positions covered in output", unique_chars_found, palette_char_count);
 
     // Debug: Show which positions are missing
     if (unique_chars_found < (int)palette_char_count) {
-        printf("Missing palette positions: ");
+        log_debug("Missing palette positions: ");
         for (size_t i = 0; i < palette_char_count; i++) {
             if (!palette_coverage[i]) {
                 const utf8_char_info_t *char_info = utf8_palette_get_char(coverage_pal, i);
                 if (char_info) {
-                    printf("[%zu]='%.*s' ", i, char_info->byte_len, char_info->bytes);
+                    log_debug("[%zu]='%.*s' ", i, char_info->byte_len, char_info->bytes);
                 }
             }
         }
-        printf("\n");
+        log_debug("");
     }
 
     // We expect all palette positions to be covered (including duplicates)
@@ -533,8 +536,8 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     utf8_palette_destroy(coverage_pal);
 
     // Debug: Print output lengths
-    printf("DEBUG: Raw lengths - scalar=%zu, simd=%zu\n", strlen(scalar_result), strlen(simd_result));
-    printf("DEBUG: After RLE expansion - scalar_expanded=%zu, simd=%zu\n", strlen(scalar_expanded), strlen(simd_result));
+    log_debug("DEBUG: Raw lengths - scalar=%zu, simd=%zu", strlen(scalar_result), strlen(simd_result));
+    log_debug("DEBUG: After RLE expansion - scalar_expanded=%zu, simd=%zu", strlen(scalar_expanded), strlen(simd_result));
 
     // Debug: Show first differences
     if (strcmp(scalar_expanded, simd_result) != 0) {
@@ -542,9 +545,9 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
         int diff_count = 0;
         for (size_t i = 0; i < min_len && diff_count < 5; i++) {
             if (scalar_expanded[i] != simd_result[i]) {
-                printf("DEBUG: Diff at pos %zu: scalar='%c'(0x%02x) vs simd='%c'(0x%02x)\n",
-                       i, scalar_expanded[i], (unsigned char)scalar_expanded[i],
-                       simd_result[i], (unsigned char)simd_result[i]);
+                log_debug("DEBUG: Diff at pos %zu: scalar='%c'(0x%02x) vs simd='%c'(0x%02x)",
+                          i, scalar_expanded[i], (unsigned char)scalar_expanded[i],
+                          simd_result[i], (unsigned char)simd_result[i]);
                 diff_count++;
             }
         }
@@ -639,7 +642,7 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
             }
         }
 
-        printf("Palette %d: %zu total chars, %zu unique chars\n", p, palette_char_count, unique_palette_chars);
+        log_debug("Palette %d: %zu total chars, %zu unique chars", p, palette_char_count, unique_palette_chars);
 
         bool *palette_coverage;
         SAFE_MALLOC(palette_coverage, palette_char_count * sizeof(bool), bool *);
@@ -689,8 +692,8 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
             i += char_bytes;
         }
 
-        printf("Palette %d coverage: %d/%zu unique characters found (out of %zu total chars)\n",
-               p, unique_chars_found, unique_palette_chars, palette_char_count);
+        log_debug("Palette %d coverage: %d/%zu unique characters found (out of %zu total chars)",
+                  p, unique_chars_found, unique_palette_chars, palette_char_count);
         cr_assert_eq(unique_chars_found, (int)unique_palette_chars,
                      "Palette %d must exercise ALL unique characters (%d/%zu found)",
                      p, unique_chars_found, unique_palette_chars);
@@ -739,7 +742,7 @@ Test(ascii_simd_integration, cache_system_efficiency) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     double cached_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf("Cache Performance: %.4fms/frame with warmed cache\n", (cached_time / iterations) * 1000);
+    log_debug("Cache Performance: %.4fms/frame with warmed cache", (cached_time / iterations) * 1000);
 
     // With cache, should be very fast
     double ms_per_frame = (cached_time / iterations) * 1000;
@@ -786,8 +789,8 @@ Test(ascii_simd_integration, rwlock_concurrency_simulation) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     double total_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf("Concurrency Test: %d calls in %.3fs (%.4fms each)\n",
-           iterations, total_time, (total_time / iterations) * 1000);
+    log_debug("Concurrency Test: %d calls in %.3fs (%.4fms each)",
+              iterations, total_time, (total_time / iterations) * 1000);
 
     // Should maintain good performance under rapid access
     double ms_per_call = (total_time / iterations) * 1000;
@@ -918,7 +921,7 @@ Test(ascii_simd_integration, null_byte_padding_correctness) {
     for (size_t i = 0; i < simd_len; i++) {
         if (simd_result[i] == '\0') {
             null_count++;
-            printf("ISSUE: Found null byte at position %zu in SIMD UTF-8 output\n", i);
+            log_debug("ISSUE: Found null byte at position %zu in SIMD UTF-8 output", i);
         }
     }
 
@@ -928,14 +931,14 @@ Test(ascii_simd_integration, null_byte_padding_correctness) {
         if (simd_result[i] == '\0' && i > simd_len) break; // Stop at first trailing null
         total_bytes_with_nulls++;
         if (simd_result[i] == '\0' && i < simd_len) {
-            printf("DEBUG: Null byte found at position %zu (within strlen range %zu)\n", i, simd_len);
+            log_debug("DEBUG: Null byte found at position %zu (within strlen range %zu)", i, simd_len);
         }
     }
 
-    printf("UTF-8 SIMD Output Analysis:\n");
-    printf("  strlen() length: %zu bytes\n", simd_len);
-    printf("  Total bytes scanned: %zu bytes\n", total_bytes_with_nulls);
-    printf("  Null bytes within string: %zu\n", null_count);
+    log_debug("UTF-8 SIMD Output Analysis:");
+    log_debug("  strlen() length: %zu bytes", simd_len);
+    log_debug("  Total bytes scanned: %zu bytes", total_bytes_with_nulls);
+    log_debug("  Null bytes within string: %zu", null_count);
 
     // SIMD should NOT have null bytes in the middle of valid UTF-8 output
     cr_assert_eq(null_count, 0, "SIMD UTF-8 output should not contain null bytes (found %zu)", null_count);
@@ -945,11 +948,11 @@ Test(ascii_simd_integration, null_byte_padding_correctness) {
     cr_assert_not_null(scalar_result, "Scalar should produce UTF-8 output");
 
     size_t scalar_len = strlen(scalar_result);
-    printf("  Scalar strlen() length: %zu bytes\n", scalar_len);
+    log_debug("  Scalar strlen() length: %zu bytes", scalar_len);
 
     // Outputs should be similar length (SIMD shouldn't be massively padded)
     double size_ratio = (double)simd_len / (double)scalar_len;
-    printf("  SIMD/Scalar size ratio: %.2fx\n", size_ratio);
+    log_debug("  SIMD/Scalar size ratio: %.2fx", size_ratio);
 
     cr_assert_lt(size_ratio, 2.0, "SIMD output shouldn't be more than 2x scalar size (got %.2fx)", size_ratio);
 
@@ -1003,7 +1006,7 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
     const int num_palettes = sizeof(mixed_palettes) / sizeof(mixed_palettes[0]);
 
     for (int p = 0; p < num_palettes; p++) {
-        printf("\nTesting palette: %s (%s)\n", mixed_palettes[p].name, mixed_palettes[p].description);
+        log_debug("\nTesting palette: %s (%s)", mixed_palettes[p].name, mixed_palettes[p].description);
 
         // Test scalar output first
         char *scalar_result = image_print(test_image, mixed_palettes[p].palette);
@@ -1016,41 +1019,41 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
         size_t scalar_len = strlen(scalar_result);
         size_t simd_len = strlen(simd_result);
 
-        printf("  Scalar: %zu bytes, SIMD: %zu bytes\n", scalar_len, simd_len);
+        log_debug("  Scalar: %zu bytes, SIMD: %zu bytes", scalar_len, simd_len);
 
         // Debug output: Show first few lines of each to compare content
-        printf("  Scalar output sample (first 200 chars):\n");
+        log_debug("  Scalar output sample (first 200 chars):");
         for (size_t i = 0; i < scalar_len && i < 200; i++) {
             if (scalar_result[i] == '\n') {
-                printf("\\n");
+                log_debug("\\n");
             } else if (scalar_result[i] == '\033') {
-                printf("\\e");
+                log_debug("\\e");
             } else if (scalar_result[i] < 32 || scalar_result[i] > 126) {
-                printf("<%02x>", (unsigned char)scalar_result[i]);
+                log_debug("<%02x>", (unsigned char)scalar_result[i]);
             } else {
-                printf("%c", scalar_result[i]);
+                log_debug("%c", scalar_result[i]);
             }
         }
-        printf("\n\n  SIMD output sample (first 200 chars):\n");
+        log_debug("\n\n  SIMD output sample (first 200 chars):");
         for (size_t i = 0; i < simd_len && i < 200; i++) {
             if (simd_result[i] == '\n') {
-                printf("\\n");
+                log_debug("\\n");
             } else if (simd_result[i] == '\033') {
-                printf("\\e");
+                log_debug("\\e");
             } else if (simd_result[i] < 32 || simd_result[i] > 126) {
-                printf("<%02x>", (unsigned char)simd_result[i]);
+                log_debug("<%02x>", (unsigned char)simd_result[i]);
             } else {
-                printf("%c", simd_result[i]);
+                log_debug("%c", simd_result[i]);
             }
         }
-        printf("\n");
+        log_debug("");
 
         // Check for null bytes in SIMD output (protocol violation)
         size_t null_count = 0;
         for (size_t i = 0; i < simd_len; i++) {
             if (simd_result[i] == '\0') {
                 null_count++;
-                printf("  ERROR: Null byte at position %zu in %s\n", i, mixed_palettes[p].name);
+                log_debug("  ERROR: Null byte at position %zu in %s", i, mixed_palettes[p].name);
             }
         }
 
@@ -1059,7 +1062,7 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
 
         // Check output size ratio (SIMD shouldn't be massively larger due to padding)
         double size_ratio = (double)simd_len / (double)scalar_len;
-        printf("  Size ratio: %.2fx\n", size_ratio);
+        log_debug("  Size ratio: %.2fx", size_ratio);
 
         cr_assert_lt(size_ratio, 3.0, "%s: SIMD output too large vs scalar (%.2fx)",
                      mixed_palettes[p].name, size_ratio);
@@ -1120,15 +1123,15 @@ Test(ascii_simd_integration, utf8_padding_performance_penalty) {
 
     double performance_penalty = utf8_time / ascii_time;
 
-    printf("UTF-8 Padding Performance Test:\n");
-    printf("  ASCII SIMD: %.4fms/frame\n", (ascii_time / iterations) * 1000);
-    printf("  UTF-8 SIMD: %.4fms/frame\n", (utf8_time / iterations) * 1000);
-    printf("  Performance penalty: %.2fx slower\n", performance_penalty);
+    log_debug("UTF-8 Padding Performance Test:");
+    log_debug("  ASCII SIMD: %.4fms/frame", (ascii_time / iterations) * 1000);
+    log_debug("  UTF-8 SIMD: %.4fms/frame", (utf8_time / iterations) * 1000);
+    log_debug("  Performance penalty: %.2fx slower", performance_penalty);
 
     // If null compaction is broken, UTF-8 will be significantly slower than ASCII
     // This test documents the current broken behavior
     if (performance_penalty > 3.0) {
-        printf("WARNING: UTF-8 is %.2fx slower than ASCII - null byte compaction likely broken!\n", performance_penalty);
+        log_debug("WARNING: UTF-8 is %.2fx slower than ASCII - null byte compaction likely broken!", performance_penalty);
     }
 
     // Don't assert for now - we expect this to fail until null compaction is implemented
@@ -1217,7 +1220,7 @@ Test(ascii_simd_integration, neon_architecture_verification) {
     double neon_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
     double ms_per_frame = (neon_time / iterations) * 1000;
-    printf("NEON Monochrome Performance: %.4fms/frame\n", ms_per_frame);
+    log_debug("NEON Monochrome Performance: %.4fms/frame", ms_per_frame);
 
     // NEON should be very fast for this size
     cr_assert_lt(ms_per_frame, 0.5, "NEON should be <0.5ms/frame for 160x48 (got %.4fms)", ms_per_frame);
@@ -1300,7 +1303,7 @@ Test(ascii_simd_integration, terminal_capabilities_integration) {
         cr_assert_gt(len, 0, "Capability %d should produce non-empty output", c);
 
         // Different capabilities should produce different output sizes
-        printf("Capability %d: %zu bytes\n", c, len);
+        log_debug("Capability %d: %zu bytes", c, len);
 
         free(result);
     }
@@ -1349,7 +1352,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
 
     for (int p = 0; p < num_palettes; p++) {
         const char *palette = mixed_palettes[p].palette;
-        printf("\nTesting %s: %s\n", mixed_palettes[p].name, mixed_palettes[p].description);
+        log_debug("\nTesting %s: %s", mixed_palettes[p].name, mixed_palettes[p].description);
 
         // Benchmark scalar implementation
         struct timespec start, end;
@@ -1374,12 +1377,12 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
 
         double scalar_vs_simd_ratio = scalar_time / simd_time;
 
-        printf("  %s: Scalar=%.4fms, SIMD=%.4fms, Ratio=%.2fx %s\n",
-               mixed_palettes[p].name,
-               (scalar_time / iterations) * 1000,
-               (simd_time / iterations) * 1000,
-               scalar_vs_simd_ratio,
-               (scalar_vs_simd_ratio < 1.0) ? "✓ Scalar faster" : "❌ SIMD faster");
+        log_debug("  %s: Scalar=%.4fms, SIMD=%.4fms, Ratio=%.2fx %s",
+                  mixed_palettes[p].name,
+                  (scalar_time / iterations) * 1000,
+                  (simd_time / iterations) * 1000,
+                  scalar_vs_simd_ratio,
+                  (scalar_vs_simd_ratio < 1.0) ? "✓ Scalar faster" : "❌ SIMD faster");
 
         // PALETTE COVERAGE VERIFICATION: Ensure all characters from mixed UTF-8 palette are used
         char *coverage_test = image_print_simd(test_image, palette);
@@ -1407,7 +1410,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
             }
         }
 
-        printf("  Palette coverage: %d/%zu characters found\n", unique_chars_found, palette_len);
+        log_debug("  Palette coverage: %d/%zu characters found", unique_chars_found, palette_len);
         cr_assert_eq(unique_chars_found, (int)palette_len,
                      "%s must exercise ALL characters (%d/%zu found)",
                      mixed_palettes[p].name, unique_chars_found, palette_len);
@@ -1417,14 +1420,14 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
         total_tests++;
     }
 
-    printf("\nResults: %d/%d palettes had scalar faster than SIMD\n", scalar_wins, total_tests);
+    log_debug("\nResults: %d/%d palettes had scalar faster than SIMD", scalar_wins, total_tests);
 
     // Based on actual results: SIMD handles mixed UTF-8 better than expected!
     // Document this finding - SIMD should still outperform scalar even with mixed byte lengths
     if (scalar_wins > total_tests / 2) {
-        printf("UNEXPECTED: Scalar outperformed SIMD for mixed UTF-8 palettes - this suggests UTF-8 handling complexity is high\n");
+        log_debug("UNEXPECTED: Scalar outperformed SIMD for mixed UTF-8 palettes - this suggests UTF-8 handling complexity is high");
     } else {
-        printf("EXPECTED: SIMD outperformed scalar even for mixed UTF-8 palettes - UTF-8 handling is optimized\n");
+        log_debug("EXPECTED: SIMD outperformed scalar even for mixed UTF-8 palettes - UTF-8 handling is optimized");
         // Assert SIMD maintains reasonable performance (at least 1.5x faster on average)
         double total_simd_speedup = 0.0;
         for (int p = 0; p < num_palettes; p++) {
@@ -1506,14 +1509,14 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
     };
 
     for (int m = 0; m < 2; m++) {
-        printf("\n\n========== TESTING %s MODE ==========\n", test_modes[m].mode_name);
+        log_debug("\n\n========== TESTING %s MODE ==========", test_modes[m].mode_name);
 
         for (int p = 0; p < num_palettes; p++) {
             const char *palette = verification_palettes[p].palette;
-            printf("\n=== %s: %s (%s) ===\n",
-                   test_modes[m].mode_name,
-                   verification_palettes[p].name,
-                   verification_palettes[p].description);
+            log_debug("\n=== %s: %s (%s) ===",
+                      test_modes[m].mode_name,
+                      verification_palettes[p].name,
+                      verification_palettes[p].description);
 
             // Generate outputs based on mode
             char *scalar_result, *simd_result;
@@ -1536,7 +1539,7 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
             size_t scalar_len = strlen(scalar_result);
             size_t simd_len = strlen(simd_result);
 
-            printf("  Lengths: Scalar=%zu, SIMD=%zu\n", scalar_len, simd_len);
+            log_debug("  Lengths: Scalar=%zu, SIMD=%zu", scalar_len, simd_len);
 
             // CRITICAL: Verify that ALL unique characters from palette appear in output
             size_t palette_len = strlen(palette);
@@ -1563,13 +1566,13 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
                 }
             }
 
-            printf("  Palette Coverage: %d/%zu unique characters found in output\n",
-                   unique_chars_found, palette_len);
+            log_debug("  Palette Coverage: %d/%zu unique characters found in output",
+                      unique_chars_found, palette_len);
 
             if (unique_chars_found == (int)palette_len) {
-                printf("  ✅ COVERAGE: PERFECT - All %zu characters exercised\n", palette_len);
+                log_debug("  ✅ COVERAGE: PERFECT - All %zu characters exercised", palette_len);
             } else {
-                printf("  ❌ COVERAGE: INCOMPLETE - Only %d/%zu characters found\n", unique_chars_found, palette_len);
+                log_debug("  ❌ COVERAGE: INCOMPLETE - Only %d/%zu characters found", unique_chars_found, palette_len);
             }
 
             // ASSERT 100% palette coverage is required
@@ -1579,10 +1582,10 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
 
             // CRITICAL: Exact length match required
             if (scalar_len != simd_len) {
-                printf("  ❌ LENGTH MISMATCH: %s mode not yet optimized with shuffle masks\n",
-                       test_modes[m].mode_name);
+                log_debug("  ❌ LENGTH MISMATCH: %s mode not yet optimized with shuffle masks",
+                          test_modes[m].mode_name);
                 if (test_modes[m].is_color) {
-                    printf("  📝 NOTE: Color shuffle mask optimization not yet implemented - EXPECTED FAILURE\n");
+                    log_debug("  📝 NOTE: Color shuffle mask optimization not yet implemented - EXPECTED FAILURE");
                 } else {
                     cr_assert_eq(scalar_len, simd_len,
                                  "%s %s: Monochrome lengths must match (scalar=%zu, simd=%zu)",
@@ -1602,15 +1605,15 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
                 }
 
                 if (exact_match) {
-                    printf("  ✅ PERFECT MATCH: All %zu bytes identical\n", scalar_len);
+                    log_debug("  ✅ PERFECT MATCH: All %zu bytes identical", scalar_len);
                 } else {
-                    printf("  ❌ CONTENT MISMATCH at byte %d: scalar=0x%02x vs simd=0x%02x\n",
-                           first_diff,
-                           (unsigned char)scalar_result[first_diff],
-                           (unsigned char)simd_result[first_diff]);
+                    log_debug("  ❌ CONTENT MISMATCH at byte %d: scalar=0x%02x vs simd=0x%02x",
+                              first_diff,
+                              (unsigned char)scalar_result[first_diff],
+                              (unsigned char)simd_result[first_diff]);
 
                     if (test_modes[m].is_color) {
-                        printf("  📝 NOTE: Color shuffle mask optimization not yet implemented - EXPECTED FAILURE\n");
+                        log_debug("  📝 NOTE: Color shuffle mask optimization not yet implemented - EXPECTED FAILURE");
                     } else {
                         // For monochrome, this is a real failure
                         cr_assert(exact_match,
@@ -1626,14 +1629,14 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
                 }
 
                 if (null_count > 0) {
-                    printf("  ⚠️  NULL BYTES: Found %zu embedded null bytes\n", null_count);
+                    log_debug("  ⚠️  NULL BYTES: Found %zu embedded null bytes", null_count);
                     if (!test_modes[m].is_color) {
                         cr_assert_eq(null_count, 0,
                                      "%s %s: No null bytes allowed (shuffle mask failed to compact %zu nulls)",
                                      test_modes[m].mode_name, verification_palettes[p].name, null_count);
                     }
                 } else {
-                    printf("  ✅ NULL VERIFICATION: No embedded null bytes found\n");
+                    log_debug("  ✅ NULL VERIFICATION: No embedded null bytes found");
                 }
             }
 
@@ -1642,9 +1645,9 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
         }
     }
 
-    printf("\n🎯 SHUFFLE MASK VERIFICATION COMPLETE!\n");
-    printf("   ✅ MONOCHROME: Should pass (NEON shuffle mask implemented)\n");
-    printf("   📝 COLOR: Expected to fail until color shuffle mask implemented\n");
+    log_debug("\n🎯 SHUFFLE MASK VERIFICATION COMPLETE!");
+    log_debug("   ✅ MONOCHROME: Should pass (NEON shuffle mask implemented)");
+    log_debug("   📝 COLOR: Expected to fail until color shuffle mask implemented");
 
     image_destroy(test_image);
 }
@@ -1653,8 +1656,8 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
     // COMPREHENSIVE NEON MONOCHROME MIXED UTF-8 PERFORMANCE TESTING
     // Tests all aspects: various palettes, image sizes, cache scenarios, and byte length patterns
 
-    printf("\n🚀 COMPREHENSIVE NEON MONOCHROME MIXED-BYTE PERFORMANCE TEST\n");
-    printf("Testing: palettes, lengths, sizes, cache patterns as requested\n\n");
+    log_debug("\n🚀 COMPREHENSIVE NEON MONOCHROME MIXED-BYTE PERFORMANCE TEST");
+    log_debug("Testing: palettes, lengths, sizes, cache patterns as requested\n");
 
     // Define comprehensive palette test matrix
     const struct {
@@ -1704,8 +1707,8 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
 
     const int num_sizes = sizeof(size_matrix) / sizeof(size_matrix[0]);
 
-    printf("Testing %d palettes × %d sizes = %d combinations\n", num_palettes, num_sizes, num_palettes * num_sizes);
-    printf("Estimated runtime: ~30-60 seconds for comprehensive coverage\n\n");
+    log_debug("Testing %d palettes × %d sizes = %d combinations", num_palettes, num_sizes, num_palettes * num_sizes);
+    log_debug("Estimated runtime: ~30-60 seconds for comprehensive coverage\n");
 
     // Performance tracking
     double total_speedup = 0.0;
@@ -1720,7 +1723,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
         const char *palette_name = comprehensive_palettes[p].name;
         double min_expected_speedup = comprehensive_palettes[p].min_speedup;
 
-        printf("📊 PALETTE: %s (\"%s\")\n", palette_name, comprehensive_palettes[p].description);
+        log_debug("📊 PALETTE: %s (\"%s\")", palette_name, comprehensive_palettes[p].description);
 
         for (int s = 0; s < num_sizes; s++) {
             int width = size_matrix[s].width;
@@ -1792,8 +1795,8 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
             double simd_cold_ms = (simd_cold_time / iterations) * 1000;
             double simd_hot_ms = (simd_hot_time / iterations) * 1000;
 
-            printf("  %s (%dx%d): Scalar=%.3fms | SIMD Cold=%.3fms (%.2fx) | Hot=%.3fms (%.2fx) | Cache=%.2fx\n",
-                   size_name, width, height, scalar_ms, simd_cold_ms, cold_speedup, simd_hot_ms, hot_speedup, cache_benefit);
+            log_debug("  %s (%dx%d): Scalar=%.3fms | SIMD Cold=%.3fms (%.2fx) | Hot=%.3fms (%.2fx) | Cache=%.2fx",
+                      size_name, width, height, scalar_ms, simd_cold_ms, cold_speedup, simd_hot_ms, hot_speedup, cache_benefit);
 
             // Performance validation - allow UTF-8 and very small images to be slower
             double min_cold_speedup = 0.5;  // Very small images may be slower due to SIMD overhead
@@ -1811,16 +1814,16 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
             double size_adjusted_min = min_expected_speedup * size_matrix[s].size_factor / 2.0;  // Adjust for image size
 
             if (hot_speedup < size_adjusted_min) {
-                printf("    ⚠️  BELOW EXPECTED: Got %.2fx, expected >%.2fx for this palette+size combo\n",
-                       hot_speedup, size_adjusted_min);
+                log_debug("    ⚠️  BELOW EXPECTED: Got %.2fx, expected >%.2fx for this palette+size combo",
+                          hot_speedup, size_adjusted_min);
             } else {
-                printf("    ✅ PERFORMANCE: Meets expectations (%.2fx >= %.2fx)\n", hot_speedup, size_adjusted_min);
+                log_debug("    ✅ PERFORMANCE: Meets expectations (%.2fx >= %.2fx)", hot_speedup, size_adjusted_min);
             }
 
             // Track cache effectiveness
             if (cache_benefit > 1.1) {
                 cache_hit_tests++;
-                printf("    💨 CACHE BENEFIT: %.2fx improvement from cache warmup\n", cache_benefit);
+                log_debug("    💨 CACHE BENEFIT: %.2fx improvement from cache warmup", cache_benefit);
             }
 
             // Track best performance
@@ -1838,16 +1841,16 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
             image_destroy(test_image);
         }
 
-        printf("\n");
+        log_debug("");
     }
 
     // COMPREHENSIVE PERFORMANCE SUMMARY
-    printf("🏁 COMPREHENSIVE MIXED-BYTE PERFORMANCE RESULTS:\n");
-    printf("   Total test combinations: %d\n", total_tests);
-    printf("   Average SIMD speedup: %.2fx\n", total_speedup / total_tests);
-    printf("   Best performance: %.2fx (%s)\n", best_speedup, best_combo);
-    printf("   Cache benefits observed: %d/%d tests (%.1f%%)\n",
-           cache_hit_tests, total_tests, (cache_hit_tests * 100.0) / total_tests);
+    log_debug("🏁 COMPREHENSIVE MIXED-BYTE PERFORMANCE RESULTS:");
+    log_debug("   Total test combinations: %d", total_tests);
+    log_debug("   Average SIMD speedup: %.2fx", total_speedup / total_tests);
+    log_debug("   Best performance: %.2fx (%s)", best_speedup, best_combo);
+    log_debug("   Cache benefits observed: %d/%d tests (%.1f%%)",
+              cache_hit_tests, total_tests, (cache_hit_tests * 100.0) / total_tests);
 
     // Overall performance validation
     double avg_speedup = total_speedup / total_tests;
@@ -1857,7 +1860,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
     cr_assert_gt(best_speedup, 4.0,
                  "Best case speedup should be >4.0x (got %.2fx with %s)", best_speedup, best_combo);
 
-    printf("\n✅ NEON MONOCHROME MIXED-BYTE PATH: COMPREHENSIVE PERFORMANCE VALIDATED!\n");
-    printf("   The mixed UTF-8 path is working efficiently across all test scenarios.\n");
-    printf("   Your suspicion about scalar performance was incorrect - NEON is genuinely faster.\n\n");
+    log_debug("\n✅ NEON MONOCHROME MIXED-BYTE PATH: COMPREHENSIVE PERFORMANCE VALIDATED!");
+    log_debug("   The mixed UTF-8 path is working efficiently across all test scenarios.");
+    log_debug("   Your suspicion about scalar performance was incorrect - NEON is genuinely faster.");
 }
