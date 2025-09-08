@@ -53,7 +53,7 @@ jobs:
         echo "Unit tests completed successfully"
 
     - name: Generate coverage report (debug builds only)
-      if: matrix.build_type == 'debug'
+      if: always() && matrix.build_type == 'debug'
       run: |
         # Generate coverage files for codecov
         find . -name "*.gcda" -exec gcov {} \;
@@ -84,7 +84,7 @@ jobs:
         fail_ci_if_error: false
 
     - name: Upload coverage to Codecov (debug builds only)
-      if: matrix.build_type == 'debug'
+      if: always() && matrix.build_type == 'debug'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -137,6 +137,7 @@ jobs:
         echo "Integration tests completed successfully"
 
     - name: Generate coverage report
+      if: always()
       run: |
         # Generate coverage files for codecov
         find . -name "*.gcda" -exec gcov {} \;
@@ -153,6 +154,7 @@ jobs:
         fail_ci_if_error: false
 
     - name: Upload coverage to Codecov
+      if: always()
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -198,6 +200,7 @@ jobs:
         echo "Performance tests completed successfully"
 
     - name: Generate coverage report
+      if: always()
       run: |
         # Generate coverage files for codecov
         find . -name "*.gcda" -exec gcov {} \;
@@ -214,6 +217,7 @@ jobs:
         fail_ci_if_error: false
 
     - name: Upload coverage to Codecov
+      if: always()
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
