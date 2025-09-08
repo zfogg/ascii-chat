@@ -75,26 +75,25 @@ jobs:
         find . -name "*.gcov" -type f | head -20
         ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
 
-    - name: Debug - Check if junit.xml exists
+    - name: Validate junit.xml
+      if: ${{ !cancelled() }}
       run: |
         if [ -f junit.xml ]; then
-          echo "✅ junit.xml exists"
-          ls -la junit.xml
-          echo "=== First 10 lines of junit.xml ==="
-          head -10 junit.xml
+          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
+          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
         else
           echo "❌ junit.xml not found"
-          echo "Files in current directory:"
-          ls -la
+          find . -name "*.xml" -type f | head -5
         fi
 
     - name: Upload test results to Codecov
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
       uses: codecov/test-results-action@v1
       with:
         files: ./junit.xml
         flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
         token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
     - name: Upload coverage to Codecov (debug builds only)
       if: matrix.build_type == 'debug'
@@ -146,17 +145,13 @@ jobs:
         find . -name "*.gcov" -type f | head -20
         ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
 
-    - name: Debug - Check if junit.xml exists
+    - name: Validate junit.xml
       run: |
         if [ -f junit.xml ]; then
-          echo "✅ junit.xml exists"
-          ls -la junit.xml
-          echo "=== First 10 lines of junit.xml ==="
-          head -10 junit.xml
+          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
+          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
         else
           echo "❌ junit.xml not found"
-          echo "Files in current directory:"
-          ls -la
         fi
 
     - name: Upload test results to Codecov
@@ -191,10 +186,6 @@ jobs:
       with:
         os: ubuntu
         extra-packages: 'libc6-dbg valgrind'
-
-    - name: Build for memory testing
-      run: |
-        make tests
 
     - name: Run tests with AddressSanitizer
       run: |
