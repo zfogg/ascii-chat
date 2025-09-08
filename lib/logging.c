@@ -25,13 +25,15 @@ static struct {
   char filename[256];           /* Store filename for rotation */
   size_t current_size;          /* Track current file size */
   bool terminal_output_enabled; /* Control stderr output to terminal */
+  bool level_manually_set;      /* Track if level was set manually */
 } g_log = {.file = 0,
            .level = LOG_INFO,
            .mutex = PTHREAD_MUTEX_INITIALIZER,
            .initialized = false,
            .filename = {0},
            .current_size = 0,
-           .terminal_output_enabled = true};
+           .terminal_output_enabled = true,
+           .level_manually_set = false};
 
 static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
@@ -200,6 +202,7 @@ void log_destroy(void) {
 void log_set_level(log_level_t level) {
   pthread_mutex_lock(&g_log.mutex);
   g_log.level = level;
+  g_log.level_manually_set = true;
   pthread_mutex_unlock(&g_log.mutex);
 }
 
@@ -236,7 +239,9 @@ void log_truncate_if_large(void) {
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
   if (!g_log.initialized) {
-    log_init(NULL, LOG_INFO);
+    // Use manually set level if available, otherwise default to LOG_INFO
+    log_level_t init_level = g_log.level_manually_set ? g_log.level : LOG_INFO;
+    log_init(NULL, init_level);
   }
 
   if (level < g_log.level) {
