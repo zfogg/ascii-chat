@@ -494,9 +494,12 @@ coverage: $(TEST_EXECUTABLES)
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				sed -e "s/<testsuite name=\"/<testsuite name=\"$$test_class./" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" \
+				    -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
 			fi; \
 		done; \
@@ -538,9 +541,12 @@ test: $(TEST_EXECUTABLES)
 		for test in $(TEST_EXECUTABLES); do \
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
 			$$test --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
 			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				sed -e "s/<testsuite name=\"/<testsuite name=\"$$test_class./" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" \
+				    -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
 			fi; \
 		done; \
@@ -573,9 +579,12 @@ test-unit: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
 		for test in $^; do \
 			echo "Running $$test..."; \
 			test_name=$$(basename $$test); \
+			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
 			$$test --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
 			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
+				sed -e "s/<testsuite name=\"/<testsuite name=\"$$test_class./" \
+				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" \
+				    -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml >> junit.xml; \
 				rm -f /tmp/$$test_name.xml; \
 			fi; \
 		done; \
@@ -644,15 +653,15 @@ test-quiet: $(TEST_EXECUTABLES)
 # test_integration_crypto_network_test -> build/tests/integration/crypto_network_test.o
 $(BIN_DIR)/test_unit_%: $(TEST_BUILD_DIR)/unit/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking test $@..."
-	$(CC) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
 
 $(BIN_DIR)/test_integration_%: $(TEST_BUILD_DIR)/integration/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking test $@..."
-	$(CC) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
 
 $(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/performance/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking test $@..."
-	$(CC) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
 
 # Compile test files
 $(TEST_BUILD_DIR)/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/unit
