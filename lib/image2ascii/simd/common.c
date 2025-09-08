@@ -2,6 +2,7 @@
 #include "image2ascii/simd/common.h"
 #include "hashtable.h"
 #include "ascii_simd.h"
+#include "palette.h"
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
@@ -33,55 +34,44 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
     return;
   }
 
-  // Build character boundary map for UTF-8 support
-  // First, find all character start positions
-  int char_starts[256]; // More than enough for any reasonable palette
-  int char_count = 0;
-
-  const char *p = ascii_chars;
-  while (*p && char_count < 255) {
-    char_starts[char_count] = (int)(p - ascii_chars); // Byte offset of this character
-    char_count++;
-
-    // Skip to next UTF-8 character
-    if ((*p & 0x80) == 0) {
-      // ASCII character (1 byte)
-      p++;
-    } else if ((*p & 0xE0) == 0xC0) {
-      // 2-byte UTF-8 character
-      p += 2;
-    } else if ((*p & 0xF0) == 0xE0) {
-      // 3-byte UTF-8 character
-      p += 3;
-    } else if ((*p & 0xF8) == 0xF0) {
-      // 4-byte UTF-8 character
-      p += 4;
-    } else {
-      // Invalid UTF-8, skip 1 byte
-      p++;
-    }
-  }
-
-  if (char_count == 0) {
-    // No valid characters found, use space
+  // Use UTF-8 palette functions for proper character handling
+  utf8_palette_t *utf8_pal = utf8_palette_create(ascii_chars);
+  if (!utf8_pal) {
+    // Fallback to space character
     for (int i = 0; i < RAMP64_SIZE; i++) {
       ramp64[i] = ' ';
     }
     return;
   }
 
-  // Now build the ramp64 lookup using character indices, not byte indices
+  size_t char_count = utf8_palette_get_char_count(utf8_pal);
+  if (char_count == 0) {
+    // No valid characters found, use space
+    for (int i = 0; i < RAMP64_SIZE; i++) {
+      ramp64[i] = ' ';
+    }
+    utf8_palette_destroy(utf8_pal);
+    return;
+  }
+
+  // Build the ramp64 lookup using UTF-8 character indices
   for (int i = 0; i < RAMP64_SIZE; i++) {
     // Map 0-63 to 0-(char_count-1) using proper character indexing
-    int char_idx = (i * (char_count - 1) + (RAMP64_SIZE - 1) / 2) / (RAMP64_SIZE - 1);
+    size_t char_idx = (i * (char_count - 1) + (RAMP64_SIZE - 1) / 2) / (RAMP64_SIZE - 1);
     if (char_idx >= char_count) {
       char_idx = char_count - 1;
     }
 
     // Get the first byte of the character at this character index
-    int byte_offset = char_starts[char_idx];
-    ramp64[i] = (uint8_t)ascii_chars[byte_offset];
+    const utf8_char_info_t *char_info = utf8_palette_get_char(utf8_pal, char_idx);
+    if (char_info) {
+      ramp64[i] = (uint8_t)char_info->bytes[0];
+    } else {
+      ramp64[i] = ' '; // Fallback
+    }
   }
+
+  utf8_palette_destroy(utf8_pal);
 }
 
 // Cache eviction helper functions

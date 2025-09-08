@@ -30,24 +30,32 @@ static void generate_full_palette_test_image(image_t *test_image, const char *pa
     if (!test_image || !palette) return;
 
     int total_pixels = test_image->w * test_image->h;
-    size_t palette_len = strlen(palette);
+    
+    // Use UTF-8 palette functions to get proper character count (not byte count)
+    utf8_palette_t *utf8_pal = utf8_palette_create(palette);
+    cr_assert_not_null(utf8_pal, "Should create UTF-8 palette for test image generation");
+    
+    size_t palette_char_count = utf8_palette_get_char_count(utf8_pal);
 
     printf("Generating test image (%dx%d) to exercise all %zu palette characters\n",
-           test_image->w, test_image->h, palette_len);
+           test_image->w, test_image->h, palette_char_count);
 
     for (int idx = 0; idx < total_pixels; idx++) {
         uint8_t target_luminance;
 
-        if (idx < (int)palette_len) {
+        if (idx < (int)palette_char_count) {
             // First N pixels: Generate exact luminance values for each palette character
-            // Map palette index to luma_idx (0-63), then to luminance (0-255)
-            uint8_t char_idx = idx;
-            uint8_t luma_idx = (char_idx * 63) / (palette_len - 1); // Map to 0-63 range
-            target_luminance = (luma_idx << 2) + 2; // Reverse of (luminance >> 2), centered in bucket
+            // Spread luminance values evenly across 0-255 to ensure all palette characters are used
+            if (palette_char_count == 1) {
+                target_luminance = 128; // Middle gray for single character
+            } else {
+                // Map character index to luminance: idx=0->0, idx=N-1->255
+                target_luminance = (idx * 255) / (palette_char_count - 1);
+            }
         } else {
             // Remaining pixels: Fill in gaps to ensure comprehensive luminance coverage
-            int remaining_idx = idx - palette_len;
-            int remaining_pixels = total_pixels - palette_len;
+            int remaining_idx = idx - palette_char_count;
+            int remaining_pixels = total_pixels - palette_char_count;
 
             if (remaining_pixels > 0) {
                 // Distribute remaining pixels across full 0-255 range
@@ -67,14 +75,20 @@ static void generate_full_palette_test_image(image_t *test_image, const char *pa
 
     // Verify mapping for first few palette characters
     printf("Luminance verification (first 5 characters):\n");
-    for (int i = 0; i < (int)palette_len && i < 5; i++) {
+    for (int i = 0; i < (int)palette_char_count && i < 5; i++) {
         rgb_pixel_t pixel = test_image->pixels[i];
         int calc_luma = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
         uint8_t luma_idx = calc_luma >> 2;
+        // Use UTF-8 palette to get the character safely
+        const utf8_char_info_t *char_info = utf8_palette_get_char(utf8_pal, i);
+        char display_char = (char_info && char_info->byte_len == 1) ? char_info->bytes[0] : '?';
+        
         printf("  pixel[%d]: RGB(%d,%d,%d) -> luminance=%d -> luma_idx=%d -> palette[%d]='%c'\n",
-               i, pixel.r, pixel.g, pixel.b, calc_luma, luma_idx, i,
-               (i < (int)palette_len) ? palette[i] : '?');
+               i, pixel.r, pixel.g, pixel.b, calc_luma, luma_idx, i, display_char);
     }
+    
+    // Clean up UTF-8 palette
+    utf8_palette_destroy(utf8_pal);
 }
 
 // =============================================================================
@@ -403,7 +417,12 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
 
     // GUARANTEED PALETTE COVERAGE: Create test image that exercises EVERY palette character
     int total_pixels = width * height;
-    size_t palette_len = strlen(ascii_palette);
+    
+    // Use UTF-8 palette to get proper character count
+    utf8_palette_t *utf8_pal = utf8_palette_create(ascii_palette);
+    cr_assert_not_null(utf8_pal, "Should create UTF-8 palette");
+    size_t palette_len = utf8_palette_get_char_count(utf8_pal);
+    utf8_palette_destroy(utf8_pal);
 
     printf("Generating test image to exercise all %zu palette characters\n", palette_len);
 
@@ -440,26 +459,53 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     cr_assert_not_null(scalar_expanded, "Should be able to expand scalar RLE");
 
     // PALETTE COVERAGE CHECK: Verify all characters are exercised
-    bool palette_coverage[256] = {false};
+    // Use UTF-8 palette functions to properly handle multi-byte characters
+    utf8_palette_t *coverage_pal = utf8_palette_create(ascii_palette);
+    cr_assert_not_null(coverage_pal, "Should create UTF-8 palette for coverage check");
+    
+    size_t palette_char_count = utf8_palette_get_char_count(coverage_pal);
+    bool *palette_coverage;
+    SAFE_MALLOC(palette_coverage, palette_char_count * sizeof(bool), bool *);
+    memset(palette_coverage, 0, palette_char_count * sizeof(bool));
     int unique_chars_found = 0;
 
-    for (size_t i = 0; i < strlen(scalar_expanded); i++) {
-        char c = scalar_expanded[i];
-        if (c == '\n' || c == '\r') continue; // Skip newlines
-
-        for (size_t p_idx = 0; p_idx < palette_len; p_idx++) {
-            if (c == ascii_palette[p_idx] && !palette_coverage[p_idx]) {
-                palette_coverage[p_idx] = true;
-                unique_chars_found++;
-                break;
-            }
+    for (size_t i = 0; i < strlen(scalar_expanded);) {
+        if (scalar_expanded[i] == '\n' || scalar_expanded[i] == '\r') {
+            i++;
+            continue;
         }
+        
+        // Determine UTF-8 character byte length
+        unsigned char c = (unsigned char)scalar_expanded[i];
+        int char_bytes = 1;
+        
+        if ((c & 0x80) == 0) {
+            char_bytes = 1;
+        } else if ((c & 0xE0) == 0xC0) {
+            char_bytes = 2;
+        } else if ((c & 0xF0) == 0xE0) {
+            char_bytes = 3;
+        } else if ((c & 0xF8) == 0xF0) {
+            char_bytes = 4;
+        }
+        
+        // Find this character in the palette
+        size_t p_idx = utf8_palette_find_char_index(coverage_pal, &scalar_expanded[i], char_bytes);
+        if (p_idx != (size_t)-1 && !palette_coverage[p_idx]) {
+            palette_coverage[p_idx] = true;
+            unique_chars_found++;
+        }
+        
+        i += char_bytes;
     }
 
-    printf("COVERAGE: %d/%zu palette characters found in output\n", unique_chars_found, palette_len);
-    cr_assert_eq(unique_chars_found, (int)palette_len,
+    printf("COVERAGE: %d/%zu palette characters found in output\n", unique_chars_found, palette_char_count);
+    cr_assert_eq(unique_chars_found, (int)palette_char_count,
                  "Must exercise ALL palette characters (%d/%zu found)",
-                 unique_chars_found, palette_len);
+                 unique_chars_found, palette_char_count);
+    
+    SAFE_FREE(palette_coverage);
+    utf8_palette_destroy(coverage_pal);
 
     // Debug: Print output lengths
     printf("DEBUG: Raw lengths - scalar=%zu, simd=%zu\n", strlen(scalar_result), strlen(simd_result));
@@ -495,17 +541,7 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
     image_t *test_image = image_new(width, height);
     cr_assert_not_null(test_image, "Should create test image");
 
-    // Create pattern that EXERCISES ENTIRE PALETTE RANGE
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int idx = y * width + x;
-            // Full luminance range 0-255 to ensure all palette characters are tested
-            uint8_t luma_target = (idx * 255) / (width * height - 1);
-            test_image->pixels[idx].r = luma_target;
-            test_image->pixels[idx].g = luma_target;
-            test_image->pixels[idx].b = luma_target;
-        }
-    }
+    // We'll generate specific test patterns for each palette inside the loop
 
     // Test various UTF-8 palettes
     const char *utf8_palettes[] = {
@@ -519,6 +555,10 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
 
     for (int p = 0; p < num_palettes; p++) {
         const char *palette = utf8_palettes[p];
+        
+        // Generate test image specifically for this palette to ensure full coverage
+        generate_full_palette_test_image(test_image, palette);
+        
         char *result = image_print_simd(test_image, palette);
         cr_assert_not_null(result, "UTF-8 palette %d should produce output", p);
 
@@ -526,33 +566,96 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
         size_t len = strlen(result);
         cr_assert_gt(len, 0, "UTF-8 palette %d should produce non-empty output", p);
 
-        // ASSERT PALETTE COVERAGE: Verify all characters from palette appear in output
-        size_t palette_len = strlen(palette);
-        bool palette_coverage[256] = {false};
-        int unique_chars_found = 0;
-
-        for (size_t i = 0; i < len; i++) {
-            // Skip newlines and ANSI escape sequences
-            if (result[i] == '\n' || result[i] == '\r') continue;
-            if (result[i] == '\033') {
-                while (i < len && result[i] != 'm') i++;
-                continue;
-            }
-
-            // Check if this byte corresponds to a palette character
-            for (size_t pal_idx = 0; pal_idx < palette_len; pal_idx++) {
-                if (result[i] == palette[pal_idx] && !palette_coverage[pal_idx]) {
-                    palette_coverage[pal_idx] = true;
-                    unique_chars_found++;
+        // ASSERT PALETTE COVERAGE: Verify all unique characters from palette appear in output
+        // Use UTF-8 palette functions to properly handle multi-byte characters
+        utf8_palette_t *utf8_pal = utf8_palette_create(palette);
+        cr_assert_not_null(utf8_pal, "Should create UTF-8 palette");
+        
+        size_t palette_char_count = utf8_palette_get_char_count(utf8_pal);
+        
+        // Count unique characters in palette (some palettes have duplicate chars like "   ._...")
+        size_t unique_palette_chars = 0;
+        bool *seen_chars;
+        SAFE_MALLOC(seen_chars, palette_char_count * sizeof(bool), bool *);
+        memset(seen_chars, 0, palette_char_count * sizeof(bool));
+        
+        for (size_t pi = 0; pi < palette_char_count; pi++) {
+            const utf8_char_info_t *char_info = utf8_palette_get_char(utf8_pal, pi);
+            if (!char_info) continue;
+            
+            bool is_duplicate = false;
+            for (size_t pj = 0; pj < pi; pj++) {
+                const utf8_char_info_t *other_char = utf8_palette_get_char(utf8_pal, pj);
+                if (other_char && char_info->byte_len == other_char->byte_len &&
+                    memcmp(char_info->bytes, other_char->bytes, char_info->byte_len) == 0) {
+                    is_duplicate = true;
                     break;
                 }
             }
+            
+            if (!is_duplicate) {
+                unique_palette_chars++;
+            }
+        }
+        
+        printf("Palette %d: %zu total chars, %zu unique chars\n", p, palette_char_count, unique_palette_chars);
+        
+        bool *palette_coverage;
+        SAFE_MALLOC(palette_coverage, palette_char_count * sizeof(bool), bool *);
+        memset(palette_coverage, 0, palette_char_count * sizeof(bool));
+        int unique_chars_found = 0;
+
+        for (size_t i = 0; i < len;) {
+            // Skip newlines and ANSI escape sequences
+            if (result[i] == '\n' || result[i] == '\r') {
+                i++;
+                continue;
+            }
+            if (result[i] == '\033') {
+                while (i < len && result[i] != 'm') i++;
+                if (i < len) i++;
+                continue;
+            }
+
+            // Check if this UTF-8 character is in the palette
+            unsigned char c = (unsigned char)result[i];
+            int char_bytes = 1;
+            
+            if ((c & 0x80) == 0) {
+                char_bytes = 1;
+            } else if ((c & 0xE0) == 0xC0) {
+                char_bytes = 2;
+            } else if ((c & 0xF0) == 0xE0) {
+                char_bytes = 3;
+            } else if ((c & 0xF8) == 0xF0) {
+                char_bytes = 4;
+            }
+            
+            // Bounds check - ensure we don't read past end of result
+            if (i + char_bytes > len) {
+                i++; // Skip this incomplete UTF-8 sequence
+                continue;
+            }
+            
+            // Find this character in the palette
+            size_t pal_idx = utf8_palette_find_char_index(utf8_pal, &result[i], char_bytes);
+            if (pal_idx != (size_t)-1 && pal_idx < palette_char_count && !palette_coverage[pal_idx]) {
+                palette_coverage[pal_idx] = true;
+                unique_chars_found++;
+            }
+            
+            i += char_bytes;
         }
 
-        printf("Palette %d coverage: %d/%zu characters found\n", p, unique_chars_found, palette_len);
-        cr_assert_eq(unique_chars_found, (int)palette_len,
-                     "Palette %d must exercise ALL characters (%d/%zu found)",
-                     p, unique_chars_found, palette_len);
+        printf("Palette %d coverage: %d/%zu unique characters found (out of %zu total chars)\n", 
+               p, unique_chars_found, unique_palette_chars, palette_char_count);
+        cr_assert_eq(unique_chars_found, (int)unique_palette_chars,
+                     "Palette %d must exercise ALL unique characters (%d/%zu found)",
+                     p, unique_chars_found, unique_palette_chars);
+        
+        SAFE_FREE(palette_coverage);
+        SAFE_FREE(seen_chars);
+        utf8_palette_destroy(utf8_pal);
 
         // Verify no null bytes in the middle of output (would break UTF-8)
         for (size_t i = 0; i < len; i++) {
@@ -868,6 +971,33 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
         size_t simd_len = strlen(simd_result);
 
         printf("  Scalar: %zu bytes, SIMD: %zu bytes\n", scalar_len, simd_len);
+        
+        // Debug output: Show first few lines of each to compare content
+        printf("  Scalar output sample (first 200 chars):\n");
+        for (size_t i = 0; i < scalar_len && i < 200; i++) {
+            if (scalar_result[i] == '\n') {
+                printf("\\n");
+            } else if (scalar_result[i] == '\033') {
+                printf("\\e");
+            } else if (scalar_result[i] < 32 || scalar_result[i] > 126) {
+                printf("<%02x>", (unsigned char)scalar_result[i]);
+            } else {
+                printf("%c", scalar_result[i]);
+            }
+        }
+        printf("\n\n  SIMD output sample (first 200 chars):\n");
+        for (size_t i = 0; i < simd_len && i < 200; i++) {
+            if (simd_result[i] == '\n') {
+                printf("\\n");
+            } else if (simd_result[i] == '\033') {
+                printf("\\e");
+            } else if (simd_result[i] < 32 || simd_result[i] > 126) {
+                printf("<%02x>", (unsigned char)simd_result[i]);
+            } else {
+                printf("%c", simd_result[i]);
+            }
+        }
+        printf("\n");
 
         // Check for null bytes in SIMD output (protocol violation)
         size_t null_count = 0;
