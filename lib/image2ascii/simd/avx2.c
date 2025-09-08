@@ -103,9 +103,8 @@ static inline void avx2_process_32_pixels(const rgb_pixel_t *pixels, uint8_t *ch
   }
 }
 
-// AVX2 optimized monochrome renderer with two-pass approach
-// Pass 1: Process entire image with SIMD (maximizes throughput)
-// Pass 2: Generate output with RLE compression like scalar version
+// AVX2 optimized monochrome renderer with single-pass approach
+// Process pixels and emit output immediately for better cache locality
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars) {
   if (!image || !image->pixels || !ascii_chars) {
     return NULL;
@@ -125,56 +124,78 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
     return NULL;
   }
 
-  const int total_pixels = h * w;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
-  // Allocate buffer for luminance/character indices
-  uint8_t *char_indices;
-  SAFE_MALLOC(char_indices, total_pixels, uint8_t *);
-
-  // ========== PASS 1: Process entire image with AVX2 SIMD ==========
-  // Process all pixels in one continuous loop for maximum SIMD efficiency
-  int pixel_idx = 0;
-
-  // Main AVX2 loop - process 32 pixels at a time
-  for (; pixel_idx + 31 < total_pixels; pixel_idx += 32) {
-    // Use shared helper function to process 32 pixels
-    avx2_process_32_pixels(&pixels[pixel_idx], &char_indices[pixel_idx], NULL, NULL, NULL, false);
-  }
-
-  // Scalar tail for remaining pixels
-  for (; pixel_idx < total_pixels; pixel_idx++) {
-    const rgb_pixel_t *p = &pixels[pixel_idx];
-    const int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b + 128) >> 8;
-    char_indices[pixel_idx] = luminance >> 2; // 0-255 -> 0-63
-  }
-
-  // ========== PASS 2: Generate output with RLE compression ==========
-  // Use outbuf_t for efficient UTF-8 RLE emission (same as scalar)
+  // Use outbuf_t for efficient UTF-8 RLE emission
   outbuf_t ob = {0};
   ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
   ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
   if (!ob.buf) {
-    free(char_indices);
     log_error("Failed to allocate output buffer for AVX2 rendering");
     return NULL;
   }
 
-  // Generate output row by row with RLE compression
+  // Process row by row for better cache locality
   for (int y = 0; y < h; y++) {
-    const int row_offset = y * w;
+    const rgb_pixel_t *row_pixels = &pixels[y * w];
+    int x = 0;
 
-    for (int x = 0; x < w;) {
-      const uint8_t luma_idx = char_indices[row_offset + x];
+    // AVX2 fast path: process 32 pixels at a time
+    if (w >= 32) {
+      // Small buffer for 32 pixels (stays in L1 cache)
+      uint8_t luma_indices[32];
+
+      while (x + 31 < w) {
+        // Process 32 pixels with AVX2
+        avx2_process_32_pixels(&row_pixels[x], luma_indices, NULL, NULL, NULL, false);
+
+        // Immediately emit these 32 characters with RLE
+        int chunk_pos = 0;
+        while (chunk_pos < 32 && x + chunk_pos < w) {
+          const uint8_t luma_idx = luma_indices[chunk_pos];
+          const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
+          const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
+
+          // Find run length within this chunk
+          int run_end = chunk_pos + 1;
+          while (run_end < 32 && x + run_end < w) {
+            const uint8_t next_luma_idx = luma_indices[run_end];
+            const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+            if (next_char_idx != char_idx)
+              break;
+            run_end++;
+          }
+          uint32_t run = (uint32_t)(run_end - chunk_pos);
+
+          // Emit UTF-8 character with RLE
+          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+          if (rep_is_profitable(run)) {
+            emit_rep(&ob, run - 1);
+          } else {
+            for (uint32_t k = 1; k < run; k++) {
+              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+            }
+          }
+          chunk_pos = run_end;
+        }
+        x += 32;
+      }
+    }
+
+    // Scalar processing for remaining pixels (< 32)
+    while (x < w) {
+      const rgb_pixel_t *p = &row_pixels[x];
+      const int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b + 128) >> 8;
+      const uint8_t luma_idx = luminance >> 2; // 0-255 -> 0-63
       const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
-      // Use cache64 with luma_idx, same as scalar
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
-      // Find run length for same character (RLE optimization)
-      // Compare character indices, not luminance indices
+      // Find run length for RLE
       int j = x + 1;
       while (j < w) {
-        const uint8_t next_luma_idx = char_indices[row_offset + j];
+        const rgb_pixel_t *next_p = &row_pixels[j];
+        const int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b + 128) >> 8;
+        const uint8_t next_luma_idx = next_luminance >> 2;
         const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
         if (next_char_idx != char_idx)
           break;
@@ -182,7 +203,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       }
       uint32_t run = (uint32_t)(j - x);
 
-      // Emit UTF-8 character with RLE (same as scalar)
+      // Emit UTF-8 character with RLE
       ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
       if (rep_is_profitable(run)) {
         emit_rep(&ob, run - 1);
@@ -201,13 +222,8 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   }
 
   ob_term(&ob);
-
-  // Cleanup
-  free(char_indices);
-
   return ob.buf;
 }
-
 // Removed unused function avx2_rgb_to_256color_pure_32bit
 // The function was expecting uint32_t arrays but we work with uint8_t buffers
 // 256-color conversion is now precomputed in Pass 1
