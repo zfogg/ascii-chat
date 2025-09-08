@@ -49,13 +49,8 @@ PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 ifeq ($(shell uname),Darwin)
     PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
 else ifeq ($(shell uname),Linux)
+    # Linux: only add required libraries, JACK is optional and handled by PortAudio
     PLATFORM_LDFLAGS := -lncurses
-    # Only add JACK if it's available (check with pkg-config)
-    # Try jack2 first (jackd2), then fall back to jack
-    JACK_LIBS := $(shell pkg-config --libs jack2 2>/dev/null || pkg-config --libs jack 2>/dev/null)
-    ifneq ($(strip $(JACK_LIBS)),)
-        PLATFORM_LDFLAGS += $(JACK_LIBS)
-    endif
 endif
 
 # System libraries (only add what pkg-config doesn't provide)
