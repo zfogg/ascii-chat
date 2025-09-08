@@ -5,6 +5,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <execinfo.h>
 
 #include "common.h"
 #include "hashtable.h"
@@ -17,15 +19,51 @@
 
 void setup_cache_logging(void);
 void restore_cache_logging(void);
+void segfault_handler(int sig);
 
 TestSuite(simd_caches, .init = setup_cache_logging, .fini = restore_cache_logging);
 
+void segfault_handler(int sig) {
+    void *array[50];
+    size_t size;
+    
+    fprintf(stderr, "\n[CRASH] Caught signal %d (SIGSEGV)\n", sig);
+    
+    // Get void*'s for all entries on the stack
+    size = backtrace(array, 50);
+    
+    // Print out all the frames to stderr
+    fprintf(stderr, "[CRASH] Stack trace (%zu frames):\n", size);
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    
+    // Re-raise the signal to get default behavior
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 void setup_cache_logging(void) {
     log_set_level(LOG_DEBUG); // Enable debug for cache operations
+    
+    // Install segfault handler
+    signal(SIGSEGV, segfault_handler);
+    signal(SIGBUS, segfault_handler);
+    signal(SIGABRT, segfault_handler);
+    
+    printf("[SETUP] simd_caches test suite initialized\n");
+    printf("[SETUP] Log level set to DEBUG\n");
+    printf("[SETUP] Signal handlers installed\n");
+    fflush(stdout);
 }
 
 void restore_cache_logging(void) {
+    printf("[TEARDOWN] simd_caches test suite cleanup\n");
+    fflush(stdout);
     log_set_level(LOG_ERROR);
+    
+    // Restore default signal handlers
+    signal(SIGSEGV, SIG_DFL);
+    signal(SIGBUS, SIG_DFL);
+    signal(SIGABRT, SIG_DFL);
 }
 
 // =============================================================================
@@ -77,6 +115,9 @@ Test(simd_caches, utf8_cache_capacity_limits) {
 }
 
 Test(simd_caches, cache_collision_handling) {
+    printf("[TEST START] cache_collision_handling\n");
+    fflush(stdout);
+    
     // Test hashtable collision handling with similar hash values
     const char *similar_palettes[] = {
         "   ...',;:clodxkO0KXNWM",
@@ -91,20 +132,35 @@ Test(simd_caches, cache_collision_handling) {
 
     // Create all caches
     for (int i = 0; i < num_palettes; i++) {
+        printf("[DEBUG] Getting cache for palette %d: '%s'\n", i, similar_palettes[i]);
+        fflush(stdout);
+        
         caches[i] = get_utf8_palette_cache(similar_palettes[i]);
+        
+        printf("[DEBUG] Got cache %d: %p\n", i, (void*)caches[i]);
+        fflush(stdout);
+        
         cr_assert_not_null(caches[i], "Similar palette %d should be cached", i);
     }
 
     // Verify each cache is unique and correct
     for (int i = 0; i < num_palettes; i++) {
         for (int j = i + 1; j < num_palettes; j++) {
+            printf("[DEBUG] Comparing cache %d (%p) vs %d (%p)\n", 
+                   i, (void*)caches[i], j, (void*)caches[j]);
+            fflush(stdout);
             cr_assert_neq(caches[i], caches[j], "Palette %d and %d should have different cache objects", i, j);
         }
 
         // Verify palette hash is correct
+        printf("[DEBUG] Verifying palette hash for cache %d\n", i);
+        fflush(stdout);
         cr_assert_str_eq(caches[i]->palette_hash, similar_palettes[i],
                         "Cache %d should store correct palette string", i);
     }
+    
+    printf("[TEST END] cache_collision_handling - Completed successfully\n");
+    fflush(stdout);
 }
 
 Test(simd_caches, cache_persistence_across_calls) {
