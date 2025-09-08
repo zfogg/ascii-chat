@@ -51,9 +51,15 @@ ifeq ($(shell uname),Darwin)
 else ifeq ($(shell uname),Linux)
     PLATFORM_LDFLAGS := -lncurses
     # When using static PortAudio, we need JACK libraries for the JACK backend
-    # Check if we're using static linking (if libportaudio.a exists)
+    # Only add -ljack if:
+    # 1. Static PortAudio exists (libportaudio.a)
+    # 2. JACK is actually installed (check with pkg-config)
     ifneq ($(wildcard /lib/x86_64-linux-gnu/libportaudio.a /usr/lib/x86_64-linux-gnu/libportaudio.a /usr/lib/libportaudio.a),)
-        PLATFORM_LDFLAGS += -ljack
+        # Check if JACK is available using pkg-config
+        JACK_AVAILABLE := $(shell pkg-config --exists jack 2>/dev/null && echo yes || echo no)
+        ifeq ($(JACK_AVAILABLE),yes)
+            PLATFORM_LDFLAGS += -ljack
+        endif
     endif
 endif
 
