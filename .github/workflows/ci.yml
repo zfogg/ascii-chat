@@ -97,12 +97,11 @@ jobs:
       uses: ./.github/actions/install-deps
       with:
         os: ubuntu
-        extra-packages: clang-tools bear
+        extra-packages: clang-tools
 
     - name: Run static analysis
       run: |
-        # Run clang-tidy on source files
-        bear -- make -j CSTD=c2x debug
+        # Run clang-tidy on source files (no need for bear anymore)
         make CSTD=c2x clang-tidy
 
     - name: Check for memory leaks patterns
