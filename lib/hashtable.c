@@ -3,6 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Global flag to disable hashtable stats printing (for tests)
+static bool g_disable_hashtable_stats = false;
+
+// Function to control hashtable stats printing (for tests)
+void hashtable_set_stats_enabled(bool enabled) {
+  g_disable_hashtable_stats = !enabled;
+}
+
 /* ============================================================================
  * Hash Function
  * ============================================================================ */
@@ -271,11 +279,8 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
   if (!ht)
     return;
 
-  // Only print stats if log level allows INFO messages
-  log_level_t current_level = log_get_level();
-  if (current_level > LOG_INFO) {
-    // Debug: print why we're skipping (this will be suppressed by LOG_FATAL)
-    log_debug("Skipping hashtable stats - current level %d > LOG_INFO (%d)", current_level, LOG_INFO);
+  // Check if stats printing is disabled (for tests)
+  if (g_disable_hashtable_stats) {
     return;
   }
 
