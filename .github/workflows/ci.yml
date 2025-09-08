@@ -58,6 +58,7 @@ jobs:
         test -x ./bin/client
 
     - name: Run unit tests
+      if: matrix.build_type == 'release'
       run: |
         GENERATE_JUNIT=1 make test-unit-release
 
