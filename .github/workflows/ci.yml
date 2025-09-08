@@ -25,7 +25,7 @@ jobs:
         include:
           - os: ubuntu-latest
             os-name: ubuntu
-          - os: macos-15  
+          - os: macos-15
             os-name: macos
 
     steps:
@@ -62,15 +62,15 @@ jobs:
         make tests
         GENERATE_JUNIT=1 make test-unit
 
-    - name: Generate coverage report (Ubuntu debug only)  
+    - name: Generate coverage report (Ubuntu debug only)
       if: matrix.os-name == 'ubuntu' && matrix.build_type == 'debug'
       run: |
         make clean
         GENERATE_JUNIT=1 make coverage
-        
+
         # Generate coverage files for codecov
         find . -name "*.gcda" -exec gcov {} \;
-        
+
         # Debug: Show what coverage files were generated
         echo "Generated coverage files:"
         find . -name "*.gcov" -type f | head -20
@@ -141,7 +141,7 @@ jobs:
       run: |
         # Generate coverage files for codecov
         find . -name "*.gcda" -exec gcov {} \;
-        
+
         # Debug: Show what coverage files were generated
         echo "Generated coverage files:"
         find . -name "*.gcov" -type f | head -20
@@ -199,7 +199,6 @@ jobs:
 
     - name: Run tests with AddressSanitizer
       run: |
-        make clean
         CFLAGS="-fsanitize=address -g -O0" LDFLAGS="-fsanitize=address" make test-unit
 
   static-analysis:
