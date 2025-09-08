@@ -49,8 +49,12 @@ PKG_LDFLAGS := $(shell pkg-config --libs --static $(PKG_CONFIG_LIBS))
 ifeq ($(shell uname),Darwin)
     PLATFORM_LDFLAGS := -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -lncurses
 else ifeq ($(shell uname),Linux)
-    # Linux: only add required libraries, JACK is optional and handled by PortAudio
     PLATFORM_LDFLAGS := -lncurses
+    # When using static PortAudio, we need JACK libraries for the JACK backend
+    # Check if we're using static linking (if libportaudio.a exists)
+    ifneq ($(wildcard /lib/x86_64-linux-gnu/libportaudio.a /usr/lib/x86_64-linux-gnu/libportaudio.a /usr/lib/libportaudio.a),)
+        PLATFORM_LDFLAGS += -ljack
+    endif
 endif
 
 # System libraries (only add what pkg-config doesn't provide)
