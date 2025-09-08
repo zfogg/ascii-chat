@@ -18,8 +18,8 @@
 #include <math.h>
 #include "../lib/ansi_fast.h"
 #include "../lib/common.h"
-#include "../lib/image.h"
-#include "../lib/ascii_simd.h"
+#include "../lib/image2ascii/image.h"
+#include "../lib/image2ascii/simd/ascii_simd.h"
 #include "../lib/palette.h"
 
 // Test image dimensions

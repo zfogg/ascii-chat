@@ -13,8 +13,8 @@
 #include <unistd.h>
 
 #include "image.h"
-#include "ascii.h"
-#include "ascii_simd.h"
+#include "image2ascii/ascii.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "common.h"
 #include "image2ascii/simd/common.h"
 #include "network.h"

@@ -5,7 +5,7 @@
 
 #include "common.h"
 #include "image.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
 #include "image2ascii/simd/neon.h"
 

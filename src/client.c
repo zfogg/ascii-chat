@@ -19,8 +19,8 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 
-#include "ascii.h"
-#include "ascii_simd.h"
+#include "image2ascii/ascii.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "common.h"
 #include "mixer.h"
 #include "network.h"

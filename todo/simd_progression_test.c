@@ -3,8 +3,8 @@
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
-#include "../lib/ascii_simd.h"
-#include "../lib/image.h"
+#include "../lib/image2ascii/simd/ascii_simd.h"
+#include "../lib/image2ascii/image.h"
 
 static double get_time_seconds(void) {
     struct timespec ts;

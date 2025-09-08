@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "palette.h"
 #include "common.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 
 /* Default palette constants for legacy functions */
 const char DEFAULT_ASCII_PALETTE[] = PALETTE_CHARS_STANDARD;

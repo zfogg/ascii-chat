@@ -7,7 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "ascii.h"
+#include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
 #include "terminal_detect.h"

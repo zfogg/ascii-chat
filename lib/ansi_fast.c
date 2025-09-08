@@ -1,5 +1,5 @@
 #include "common.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "ansi_fast.h"
 #include <string.h>
 #include <time.h>

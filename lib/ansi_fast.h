@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "../lib/ascii_simd.h"
+#include "../lib/image2ascii/simd/ascii_simd.h"
 #include "../lib/common.h"
 #include "../lib/webcam.h"
 
@@ -40,7 +40,7 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
         // Create proper 2D test image (not row-wise!)
         const int img_width = 40, img_height = 12; // Small test image
         image_t *test_image = image_new(img_width, img_height);
-        
+
         // Fill with test pattern
         for (int y = 0; y < img_height; y++) {
             for (int x = 0; x < img_width; x++) {
@@ -50,11 +50,11 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
                 test_image->pixels[idx].b = ((x + y) * 127) / (img_width + img_height);
             }
         }
-        
+
         // Generate scalar output using full image function
         char *scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE);
         size_t scalar_len = scalar_result ? strlen(scalar_result) : 0;
-        
+
         // Generate SIMD output using optimized unified function
         char *simd_result = image_print_color_simd(test_image, background_mode, false, DEFAULT_ASCII_PALETTE);
         size_t simd_len = simd_result ? strlen(simd_result) : 0;
@@ -93,7 +93,7 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
             printf("   SIMD:   content=%s, colors=%s\n",
                    simd_has_content ? "✅" : "❌", simd_has_colors ? "✅" : "❌");
         }
-        
+
         // Cleanup
         if (scalar_result) free(scalar_result);
         if (simd_result) free(simd_result);

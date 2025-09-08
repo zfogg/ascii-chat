@@ -5,8 +5,8 @@
 
 #include "common.h"
 #include "network.h"
-#include "ascii_simd.h"
-#include "ascii_simd_color.h"
+#include "image2ascii/simd/ascii_simd.h"
+#include "image2ascii/simd/ascii_simd_color.h"
 #include "compression.h"
 
 void setup_pipeline_quiet_logging(void);

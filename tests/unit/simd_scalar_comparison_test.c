@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include "common.h"
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "image.h"
 #include "image2ascii/simd/common.h"
 

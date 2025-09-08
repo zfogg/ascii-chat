@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "../lib/image.h"
+#include "../lib/image2ascii/image.h"
 #include "../lib/common.h"
 
 extern unsigned short opt_background_color;
