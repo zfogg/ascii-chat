@@ -9,6 +9,9 @@
 #include "image2ascii/simd/common.h"
 #include "image2ascii/simd/neon.h"
 
+void setup_neon_quiet_logging(void);
+void restore_neon_logging(void);
+
 TestSuite(neon_color_renderers, .init = setup_neon_quiet_logging, .fini = restore_neon_logging);
 
 void setup_neon_quiet_logging(void) {

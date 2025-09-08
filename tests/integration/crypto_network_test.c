@@ -5,6 +5,9 @@
 #include "crypto.h"
 #include "common.h"
 
+void setup_crypto_quiet_logging(void);
+void restore_crypto_logging(void);
+
 TestSuite(crypto_network_integration, .init = setup_crypto_quiet_logging, .fini = restore_crypto_logging);
 
 void setup_crypto_quiet_logging(void) {
