@@ -101,6 +101,7 @@ typedef long long ssize_t;
 // Threading Abstraction
 // ============================================================================
 
+// Use different name to avoid conflict with macOS system headers
 typedef struct {
 #if PLATFORM_WINDOWS
   HANDLE handle;
@@ -108,7 +109,12 @@ typedef struct {
 #else
   pthread_t thread;
 #endif
-} thread_t;
+} asciithread_t;
+
+// Provide compatibility typedef if not conflicting
+#ifndef __APPLE__
+typedef asciithread_t thread_t;
+#endif
 
 typedef struct {
 #if PLATFORM_WINDOWS
@@ -144,15 +150,15 @@ typedef struct {
 } thread_id_t;
 
 // Thread functions
-int thread_create(thread_t *thread, void *(*func)(void *), void *arg);
-int thread_join(thread_t *thread, void **retval);
+int thread_create(asciithread_t *thread, void *(*func)(void *), void *arg);
+int thread_join(asciithread_t *thread, void **retval);
 void thread_exit(void *retval);
 thread_id_t thread_self(void);
 int thread_equal(thread_id_t t1, thread_id_t t2);
 uint64_t thread_current_id(void);
 
 // Helper to check if thread is initialized
-static inline bool thread_is_initialized(thread_t *thread) {
+static inline bool thread_is_initialized(asciithread_t *thread) {
 #if PLATFORM_WINDOWS
   return thread->handle != NULL;
 #else
