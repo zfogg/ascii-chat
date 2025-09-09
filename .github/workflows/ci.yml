@@ -105,6 +105,8 @@ jobs:
       run: |
         # Run clang-tidy on source files (no need for bear anymore)
         make CSTD=c2x clang-tidy
+        # Run clang static analyzer
+        make CSTD=c2x analyze
 
     - name: Check for memory leaks patterns
       run: |
