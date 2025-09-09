@@ -53,13 +53,21 @@ jobs:
       run: |
         # Use debug-coverage for debug builds to enable coverage
         BUILD_TARGET=${{ matrix.build_type == 'debug' && 'debug-coverage' || matrix.build_type }}
+        echo "Building with target: ${BUILD_TARGET}"
         make -j CSTD=c2x ${BUILD_TARGET}
         make -j CSTD=c2x tests-${BUILD_TARGET}
+        echo "Test executables built:"
+        ls -la bin/test_* 2>/dev/null || echo "No test executables found in bin/"
+        echo "All files in bin:"
+        ls -la bin/ 2>/dev/null || echo "bin/ directory not found"
 
     - name: Run unit tests with JUnit XML generation
       run: |
         # Use debug-coverage for debug builds
         BUILD_TARGET=${{ matrix.build_type == 'debug' && 'debug-coverage' || matrix.build_type }}
+        echo "Running tests with build type: ${BUILD_TARGET}"
+        echo "Looking for test executables:"
+        find . -name "test_unit_*" -type f 2>/dev/null | head -10
         ./tests/scripts/run_tests.sh -t unit -b ${BUILD_TARGET} -J
         echo "Unit tests completed successfully"
 
