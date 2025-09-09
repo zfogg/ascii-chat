@@ -661,6 +661,46 @@ c-objs: $(OBJS_C)
 # =============================================================================
 # Utility Targets
 # =============================================================================
+# Dependencies
+# =============================================================================
+
+# Install dependencies based on the OS
+.PHONY: deps
+deps:
+	@echo "Installing dependencies for $(shell uname -s)..."
+ifeq ($(shell uname -s),Darwin)
+	# macOS dependencies
+	@echo "Installing macOS dependencies via Homebrew..."
+	@brew install portaudio libsodium criterion zlib coreutils || true
+	@echo "macOS dependencies installed"
+else ifeq ($(shell uname -s),Linux)
+	# Ubuntu/Linux dependencies
+	@echo "Installing Linux dependencies via apt..."
+	@sudo apt-get update || true
+	@sudo apt-get install -y build-essential pkg-config libportaudio2 portaudio19-dev \
+		libsodium-dev libcriterion-dev zlib1g-dev || true
+	@echo "Linux dependencies installed"
+else
+	@echo "Unsupported OS: $(shell uname -s)"
+	@exit 1
+endif
+
+# Install test-specific dependencies
+.PHONY: deps-test
+deps-test: deps
+	@echo "Installing test-specific dependencies..."
+ifeq ($(shell uname -s),Darwin)
+	# macOS test dependencies (coreutils for gtimeout)
+	@brew install gcovr || true
+else ifeq ($(shell uname -s),Linux)
+	# Linux test dependencies
+	@sudo apt-get install -y lcov gcovr valgrind || true
+endif
+	@echo "Test dependencies installed"
+
+# =============================================================================
+# Clean Targets
+# =============================================================================
 
 # Clean build artifacts
 clean:

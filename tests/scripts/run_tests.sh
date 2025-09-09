@@ -212,10 +212,31 @@ run_single_test() {
             echo "[ERROR] Test executable not executable: $test_executable" | tee -a "$output_file"
             ls -la "$test_executable" | tee -a "$output_file"
             test_exit_code=126
-        elif timeout --preserve-status 300 "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1; then
-            test_exit_code=0
         else
-            test_exit_code=$?
+            # Run test with optional timeout
+            # Use gtimeout on macOS (GNU coreutils), timeout on Linux
+            local timeout_cmd=""
+            if command -v gtimeout >/dev/null 2>&1; then
+                # macOS with GNU coreutils installed
+                timeout_cmd="gtimeout --preserve-status 300"
+            elif command -v timeout >/dev/null 2>&1; then
+                # Check if it's GNU timeout with --preserve-status support
+                if timeout --version 2>/dev/null | grep -q "GNU\|coreutils"; then
+                    timeout_cmd="timeout --preserve-status 300"
+                else
+                    # BSD timeout
+                    timeout_cmd="timeout 300"
+                fi
+            fi
+            
+            if [[ -n "$timeout_cmd" ]]; then
+                $timeout_cmd "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1
+                test_exit_code=$?
+            else
+                # No timeout available, run directly
+                "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1
+                test_exit_code=$?
+            fi
         fi
 
         local test_end_time=$(date +%s.%N)
