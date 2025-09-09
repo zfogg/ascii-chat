@@ -533,6 +533,12 @@ tests-release-coverage: override LDFLAGS += -flto $(COVERAGE_FLAGS)
 tests-release-coverage: override TEST_LDFLAGS += -flto $(COVERAGE_FLAGS)
 tests-release-coverage: $(TEST_EXECUTABLES)
 
+tests-sanitize: sanitize
+tests-sanitize: override CFLAGS += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+tests-sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
+tests-sanitize: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
+tests-sanitize: $(TEST_EXECUTABLES)
+
 
 
 
@@ -850,4 +856,4 @@ uninstall-hooks:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug debug-coverage sanitize release release-coverage c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-release tests-debug tests-release tests-debug-coverage tests-release-coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks
+.PHONY: all clean default help debug debug-coverage sanitize release release-coverage c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-release tests-debug tests-release tests-debug-coverage tests-release-coverage tests-sanitize todo todo-clean compile_commands.json install-hooks uninstall-hooks

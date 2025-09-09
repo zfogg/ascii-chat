@@ -84,7 +84,9 @@ jobs:
 
     - name: Run tests with AddressSanitizer
       run: |
-        CFLAGS="-fsanitize=address -g -O0" LDFLAGS="-fsanitize=address" make test-unit
+        make -j CSTD=c2x sanitize
+        make -j CSTD=c2x tests-sanitize
+        ./tests/scripts/run_tests.sh -t unit -b sanitize
 
   static-analysis:
     runs-on: ubuntu-latest

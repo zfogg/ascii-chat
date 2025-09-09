@@ -243,7 +243,7 @@ jobs:
     - name: Build with AddressSanitizer
       run: |
         make -j CSTD=c2x sanitize
-        make -j CSTD=c2x tests
+        make -j CSTD=c2x tests-sanitize
 
     - name: Run tests with AddressSanitizer
       run: |

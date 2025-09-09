@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -955,7 +956,7 @@ int main(int argc, char *argv[]) {
   atexit(debug_memory_report);
 #endif
 
-  // Initialize global shared buffer pool
+  // image.pngimage.pngInitialize global shared buffer pool
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
   log_truncate_if_large(); /* Truncate if log is already too large */
