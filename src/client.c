@@ -66,22 +66,22 @@ static volatile bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
 
-static thread_t g_data_thread;
+static asciithread_t g_data_thread;
 static bool g_data_thread_created = false;
 static volatile bool g_data_thread_exited = false;
 
 // Ping thread for keepalive
-static thread_t g_ping_thread;
+static asciithread_t g_ping_thread;
 static bool g_ping_thread_created = false;
 static volatile bool g_ping_thread_exited = false;
 
 // Webcam capture thread
-static thread_t g_capture_thread;
+static asciithread_t g_capture_thread;
 static bool g_capture_thread_created = false;
 static volatile bool g_capture_thread_exited = false;
 
 // Audio capture thread
-static thread_t g_audio_capture_thread;
+static asciithread_t g_audio_capture_thread;
 static bool g_audio_capture_thread_created = false;
 static volatile bool g_audio_capture_thread_exited = false;
 

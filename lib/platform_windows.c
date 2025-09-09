@@ -8,12 +8,12 @@
 #include <signal.h>
 
 // Thread implementation
-int thread_create(thread_t *thread, void *(*func)(void *), void *arg) {
+int thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
   thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, &thread->id);
   return (thread->handle != NULL) ? 0 : -1;
 }
 
-int thread_join(thread_t *thread, void **retval) {
+int thread_join(asciithread_t *thread, void **retval) {
   if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0) {
     if (retval) {
       DWORD exit_code;

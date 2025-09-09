@@ -13,11 +13,11 @@
 #include <stdio.h>
 
 // Thread implementation
-int thread_create(thread_t *thread, void *(*func)(void *), void *arg) {
+int thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
   return pthread_create(&thread->thread, NULL, func, arg);
 }
 
-int thread_join(thread_t *thread, void **retval) {
+int thread_join(asciithread_t *thread, void **retval) {
   return pthread_join(thread->thread, retval);
 }
 

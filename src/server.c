@@ -76,7 +76,7 @@ typedef struct {
 
 typedef struct {
   int socket;
-  thread_t receive_thread; // Thread for receiving client data
+  asciithread_t receive_thread; // Thread for receiving client data
   // Send thread removed - using broadcast thread for all sending
   uint32_t client_id;
   char display_name[MAX_DISPLAY_NAME_LEN];
@@ -123,12 +123,12 @@ typedef struct {
   packet_queue_t *video_queue; // Queue for video packets to send to this client
 
   // Dedicated send thread for this client
-  thread_t send_thread;
+  asciithread_t send_thread;
   bool send_thread_running;
 
   // NEW: Per-client rendering threads
-  thread_t video_render_thread;
-  thread_t audio_render_thread;
+  asciithread_t video_render_thread;
+  asciithread_t audio_render_thread;
   bool video_render_thread_running;
   bool audio_render_thread_running;
 
@@ -166,7 +166,7 @@ static rwlock_t g_client_manager_rwlock = {0};
 static mixer_t *g_audio_mixer = NULL;
 
 // Statistics logging thread
-static thread_t g_stats_logger_thread;
+static asciithread_t g_stats_logger_thread;
 static bool g_stats_logger_thread_created = false;
 
 // Blank frame statistics
@@ -1099,7 +1099,7 @@ int main(int argc, char *argv[]) {
     // SAFETY FIX: Collect client IDs under lock, then process without lock to prevent infinite loops
     typedef struct {
       uint32_t client_id;
-      thread_t receive_thread;
+      asciithread_t receive_thread;
     } cleanup_task_t;
 
     cleanup_task_t cleanup_tasks[MAX_CLIENTS];
@@ -1116,7 +1116,7 @@ int main(int argc, char *argv[]) {
         cleanup_count++;
 
         // Clear the thread handle immediately to avoid double-join
-        memset(&client->receive_thread, 0, sizeof(thread_t));
+        memset(&client->receive_thread, 0, sizeof(asciithread_t));
       }
     }
     rwlock_unlock(&g_client_manager_rwlock);
@@ -2003,7 +2003,7 @@ int destroy_client_render_threads(client_info_t *client) {
     } else {
       log_error("Failed to join video render thread for client %u: %s", client->client_id, strerror(result));
     }
-    memset(&client->video_render_thread, 0, sizeof(thread_t));
+    memset(&client->video_render_thread, 0, sizeof(asciithread_t));
   }
 
   if (thread_is_initialized(&client->audio_render_thread)) {
@@ -2015,7 +2015,7 @@ int destroy_client_render_threads(client_info_t *client) {
     } else {
       log_error("Failed to join audio render thread for client %u: %s", client->client_id, strerror(result));
     }
-    memset(&client->audio_render_thread, 0, sizeof(thread_t));
+    memset(&client->audio_render_thread, 0, sizeof(asciithread_t));
   }
 
   // Destroy per-client mutex
