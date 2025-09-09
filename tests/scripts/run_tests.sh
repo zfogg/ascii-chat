@@ -117,16 +117,16 @@ get_test_executables() {
 
     case "$category" in
         unit)
-            find "$bin_dir" -name "test_unit_*" -type f -executable 2>/dev/null | sort
+            find "$bin_dir" -name "test_unit_*" -type f 2>/dev/null | sort
             ;;
         integration)
-            find "$bin_dir" -name "test_integration_*" -type f -executable 2>/dev/null | sort
+            find "$bin_dir" -name "test_integration_*" -type f 2>/dev/null | sort
             ;;
         performance)
-            find "$bin_dir" -name "test_performance_*" -type f -executable 2>/dev/null | sort
+            find "$bin_dir" -name "test_performance_*" -type f 2>/dev/null | sort
             ;;
         all)
-            find "$bin_dir" -name "test_*" -type f -executable 2>/dev/null | sort
+            find "$bin_dir" -name "test_*" -type f 2>/dev/null | sort
             ;;
         *)
             log_error "Unknown test category: $category"
@@ -171,6 +171,10 @@ ensure_tests_built() {
 # Run a single test with proper error handling
 run_single_test() {
     local test_executable="$1"
+    # Ensure we have the full path
+    if [[ ! "$test_executable" = /* ]]; then
+        test_executable="$PROJECT_ROOT/bin/$test_executable"
+    fi
     local test_name="$(basename "$test_executable")"
     local jobs="$2"
     local generate_junit="$3"
@@ -188,7 +192,15 @@ run_single_test() {
 
         # Run test with timeout and capture output
         local test_exit_code=0
-        if timeout --preserve-status 300 "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1; then
+        # Check if test executable exists and is executable
+        if [[ ! -f "$test_executable" ]]; then
+            echo "[ERROR] Test executable not found: $test_executable" | tee -a "$output_file"
+            test_exit_code=127
+        elif [[ ! -x "$test_executable" ]]; then
+            echo "[ERROR] Test executable not executable: $test_executable" | tee -a "$output_file"
+            ls -la "$test_executable" | tee -a "$output_file"
+            test_exit_code=126
+        elif timeout --preserve-status 300 "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1; then
             test_exit_code=0
         else
             test_exit_code=$?
@@ -327,12 +339,17 @@ run_test_category() {
 
     # Get test executables for this category
     local test_executables
+    log_verbose "Looking for $category tests in: $PROJECT_ROOT/bin"
+    log_verbose "Using find pattern: test_${category}_*"
     test_executables=($(get_test_executables "$category"))
-
+    log_verbose "Found ${#test_executables[@]} test executables"
+    
     if [[ ${#test_executables[@]} -eq 0 ]]; then
         log_info "No $category tests found in $PROJECT_ROOT/bin"
         log_info "Looking for any test executables:"
         ls -la "$PROJECT_ROOT/bin/" 2>/dev/null | grep test_ || echo "  No test files in bin/"
+        log_info "Direct find command result:"
+        find "$PROJECT_ROOT/bin" -name "test_${category}_*" -type f 2>&1
         
         log_info "Building tests with $build_type configuration..."
         ensure_tests_built "$build_type" "$category"
