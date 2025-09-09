@@ -278,7 +278,7 @@ Test(ascii_simd_performance, various_image_sizes_performance) {
   for (int size_idx = 0; size_idx < num_sizes; size_idx++) {
     int width = test_sizes[size_idx].width;
     int height = test_sizes[size_idx].height;
-    double expected_speedup = test_sizes[size_idx].min_speedup;
+    // double expected_speedup = test_sizes[size_idx].min_speedup; // Unused
     int pattern_type = test_sizes[size_idx].pattern_type;
 
     image_t *test_image = image_new(width, height);
@@ -400,35 +400,35 @@ Test(ascii_simd_performance, simd_architecture_benchmarks) {
 #ifdef SIMD_SUPPORT_SSE2
   if (mono_bench.sse2_time > 0) {
     double sse2_speedup = mono_bench.scalar_time / mono_bench.sse2_time;
-    cr_assert_gt(sse3_speedup, 1.0, "SSE2 should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", sse2_speedup);
+    cr_assert_gt(sse2_speedup, 1.0, "SSE2 should not be more than 1x slower than scalar (expected >1.0x, got %.2fx)", sse2_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   if (mono_bench.ssse3_time > 0) {
     double ssse3_speedup = mono_bench.scalar_time / mono_bench.ssse3_time;
-    cr_assert_gt(ssse3_speedup, 1.0, "SSSE3 should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", ssse3_speedup);
+    cr_assert_gt(ssse3_speedup, 1.0, "SSSE3 should not be more than 1x slower than scalar (expected >1.0x, got %.2fx)", ssse3_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   if (mono_bench.avx2_time > 0) {
     double avx2_speedup = mono_bench.scalar_time / mono_bench.avx2_time;
-    cr_assert_gt(avx2_speedup, 1.0, "AVX2 should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", avx2_speedup);
+    cr_assert_gt(avx2_speedup, 1.0, "AVX2 should not be more than 1x slower than scalar (expected >1.0x, got %.2fx)", avx2_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
   if (mono_bench.neon_time > 0) {
     double neon_speedup = mono_bench.scalar_time / mono_bench.neon_time;
-    cr_assert_gt(neon_speedup, 1.0, "NEON should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", neon_speedup);
+    cr_assert_gt(neon_speedup, 1.0, "NEON should not be more than 1x slower than scalar (expected >1.0x, got %.2fx)", neon_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_SVE
   if (mono_bench.sve_time > 0) {
     double sve_speedup = mono_bench.scalar_time / mono_bench.sve_time;
-    cr_assert_gt(sve_speedup, 1.0, "SVE should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", sve_speedup);
+    cr_assert_gt(sve_speedup, 1.0, "SVE should not be more than 1x slower than scalar (expected >1.0x, got %.2fx)", sve_speedup);
   }
 #endif
 
