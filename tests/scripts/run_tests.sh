@@ -177,39 +177,111 @@ run_single_test() {
         # Generate JUnit XML for this test
         local xml_file="/tmp/${test_name}_$(date +%s%N).xml"
         local test_class="$(echo "$test_name" | sed 's/^test_//; s/_test$//; s/_/./g')"
-
-        if "$test_executable" --jobs "$jobs" --xml="$xml_file" 2>&1 | tee -a "$log_file"; then
+        local output_file="/tmp/${test_name}_output_$(date +%s%N).txt"
+        local start_time=$(date +%s)
+        
+        # Run test with timeout and capture output
+        local test_exit_code=0
+        if timeout --preserve-status 300 "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1; then
+            test_exit_code=0
+        else
+            test_exit_code=$?
+        fi
+        
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        
+        # Output to log file
+        cat "$output_file" >> "$log_file"
+        
+        if [[ $test_exit_code -eq 0 ]]; then
             log_verbose "Test passed: $test_name"
-            if [[ -f "$xml_file" ]]; then
+            if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]]; then
                 # Transform the XML to match our naming convention
-                sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" | \
-                sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
-                    -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >> "$junit_file"
+                if grep -q '<testsuite' "$xml_file"; then
+                    sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" | \
+                    sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
+                        -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >> "$junit_file"
+                else
+                    # XML exists but no testsuite - create one
+                    echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"${duration}.0\">" >> "$junit_file"
+                    echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\"/>" >> "$junit_file"
+                    echo "</testsuite>" >> "$junit_file"
+                fi
                 rm -f "$xml_file"
             else
                 # Test passed but no XML generated - create a minimal entry
-                echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"0.0\">" >> "$junit_file"
-                echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"0.0\"/>" >> "$junit_file"
+                echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"${duration}.0\">" >> "$junit_file"
+                echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\"/>" >> "$junit_file"
                 echo "</testsuite>" >> "$junit_file"
             fi
+            rm -f "$output_file"
             return 0
         else
-            log_verbose "Test failed: $test_name"
-            # Create a failed test entry even if XML generation failed
-            if [[ -f "$xml_file" ]]; then
+            # Determine failure type
+            local failure_type="TestFailure"
+            local failure_msg="Test failed with exit code $test_exit_code"
+            
+            if [[ $test_exit_code -eq 124 ]]; then
+                failure_type="Timeout"
+                failure_msg="Test timed out after 300 seconds"
+            elif [[ $test_exit_code -gt 128 ]]; then
+                # Exit code > 128 usually means killed by signal
+                local signal=$((test_exit_code - 128))
+                failure_type="Crash"
+                failure_msg="Test crashed with signal $signal"
+            fi
+            
+            log_verbose "Test failed: $test_name (exit code: $test_exit_code)"
+            
+            # Try to use generated XML if available
+            if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]] && grep -q '<testsuite' "$xml_file"; then
+                # Use the XML but ensure it shows as failed
                 sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" | \
                 sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
                     -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >> "$junit_file"
                 rm -f "$xml_file"
             else
-                # Test failed and no XML - create a failure entry
-                echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"1\" errors=\"0\" time=\"0.0\">" >> "$junit_file"
-                echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"0.0\">" >> "$junit_file"
-                echo "    <failure message=\"Test executable failed\" type=\"TestFailure\">Test failed to run or crashed</failure>" >> "$junit_file"
+                # No usable XML - create comprehensive failure entry
+                local error_count=0
+                local failure_count=1
+                if [[ "$failure_type" == "Crash" ]] || [[ "$failure_type" == "Timeout" ]]; then
+                    error_count=1
+                    failure_count=0
+                fi
+                
+                echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"$failure_count\" errors=\"$error_count\" time=\"${duration}.0\">" >> "$junit_file"
+                echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\">" >> "$junit_file"
+                
+                # Include last 50 lines of output in the failure message
+                local output_tail=""
+                if [[ -f "$output_file" ]]; then
+                    output_tail=$(tail -50 "$output_file" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&apos;/g')
+                fi
+                
+                if [[ $error_count -eq 1 ]]; then
+                    echo "    <error message=\"$failure_msg\" type=\"$failure_type\">" >> "$junit_file"
+                else
+                    echo "    <failure message=\"$failure_msg\" type=\"$failure_type\">" >> "$junit_file"
+                fi
+                
+                echo "Exit code: $test_exit_code" >> "$junit_file"
+                echo "" >> "$junit_file"
+                echo "Last 50 lines of output:" >> "$junit_file"
+                echo "$output_tail" >> "$junit_file"
+                
+                if [[ $error_count -eq 1 ]]; then
+                    echo "    </error>" >> "$junit_file"
+                else
+                    echo "    </failure>" >> "$junit_file"
+                fi
+                
                 echo "  </testcase>" >> "$junit_file"
                 echo "</testsuite>" >> "$junit_file"
             fi
-            return 1
+            
+            rm -f "$output_file" "$xml_file"
+            return $test_exit_code
         fi
     else
         # Regular test run
@@ -278,7 +350,10 @@ run_test_category() {
         if run_single_test "$test_executable" "$actual_jobs" "$generate_junit" "$log_file" "$junit_file"; then
             ((passed_tests++))
         else
+            local exit_code=$?
             failed=1
+            # Continue running other tests even if one fails/crashes
+            log_warning "Test failed with exit code $exit_code, continuing with remaining tests..."
         fi
     done
 
