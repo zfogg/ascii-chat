@@ -194,7 +194,6 @@ ifeq ($(UNAME_S),Darwin)
   ifeq ($(IS_APPLE_SILICON),1)
     ifneq ($(IS_ROSETTA),1)
       ARCH_FLAGS := -arch arm64
-      $(info Forcing arm64 build on Apple Silicon)
     endif
   endif
 endif
@@ -375,26 +374,20 @@ ifdef ENABLE_CRC32_HW
   # Add architecture-specific flags
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_APPLE_SILICON),1)
-      $(info Enabling ARM CRC32 hardware acceleration (Apple Silicon))
     else
-      $(info Enabling Intel CRC32 hardware acceleration (SSE4.2))
       CRC32_CFLAGS += -msse4.2
     endif
   else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
-    $(info Enabling ARM CRC32 hardware acceleration (Linux ARM64))
   else ifeq ($(UNAME_M),x86_64)
-    $(info Enabling Intel CRC32 hardware acceleration (SSE4.2))
     CRC32_CFLAGS += -msse4.2
   endif
 else
-  $(info CRC32 hardware acceleration disabled)
   CRC32_CFLAGS :=
 endif
 
 # =============================================================================
 # Libsodium-based Crypto Configuration
 # =============================================================================
-$(info Using libsodium for cryptographic operations)
 
 # =============================================================================
 # Combine All Hardware Acceleration Flags
@@ -413,27 +406,21 @@ ifeq ($(UNAME_S),Darwin)
     # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use -ffast-math only on Apple Silicon
     ifeq ($(IS_ROSETTA),1)
         CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
         CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math -ffp-contract=fast
-        $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Intel Mac optimizations: $(CPU_OPT_FLAGS))
     endif
 else ifeq ($(UNAME_S),Linux)
     # Linux: CPU-specific optimizations without -ffast-math for safety
     ifeq ($(UNAME_M),aarch64)
         CPU_OPT_FLAGS := -O3 -mcpu=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
     endif
 else
     # Other platforms: Generic -O3 with safer math optimizations
     CPU_OPT_FLAGS := -O3 -ffp-contract=fast
-    $(info Using generic optimizations: $(CPU_OPT_FLAGS))
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
