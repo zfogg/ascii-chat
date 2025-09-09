@@ -80,7 +80,16 @@ Test(mixer, create_and_destroy) {
 }
 
 Test(mixer, create_with_invalid_params) {
+    // Set a breakpoint on this line for debugging
+    printf("DEBUG: Starting create_with_invalid_params test\n");
+
+    // Add a simple pause to give debugger time to attach
+    for (int i = 0; i < 1000000; i++) {
+        // Simple delay loop
+    }
+
     mixer_t *mixer = mixer_create(0, 44100);
+    printf("DEBUG: mixer_create(0, 44100) returned: %p\n", mixer);
     cr_assert_null(mixer);
 
     mixer = mixer_create(4, 0);
