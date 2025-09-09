@@ -475,6 +475,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
             for (int k = 1; k < run; k++) {
               memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
               pos += char_info->byte_len;
+            }
           }
           i += run;
         } else {
@@ -531,7 +532,6 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
               memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
               pos += char_info->byte_len;
             }
-          }
           }
           i += run;
         }
