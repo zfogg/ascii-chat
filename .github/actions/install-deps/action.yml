@@ -16,7 +16,7 @@ runs:
       if: inputs.os == 'macos'
       uses: tecolicom/actions-use-homebrew-tools@v1
       with:
-        tools: portaudio libsodium criterion ${{ inputs.extra-packages }}
+        tools: portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}
         cache: yes
 
     - name: Install and cache APT packages (Ubuntu)
