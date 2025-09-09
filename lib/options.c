@@ -39,10 +39,11 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
-unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
+static const unsigned short default_width = OPT_WIDTH_DEFAULT, default_height = OPT_HEIGHT_DEFAULT;
+unsigned short int opt_width = default_width, opt_height = default_height;
 bool auto_width = true, auto_height = true;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "27224";
+char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1", opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -68,7 +69,7 @@ unsigned short int opt_snapshot_mode = 0;
 // Snapshot delay in seconds (float) - default 3.0 for webcam warmup
 #if defined(__APPLE__)
 // their macbook webcams shows pure black first then fade up into a real color image over a few seconds
-#define SNAPSHOT_DELAY_DEFAULT 5.0f
+#define SNAPSHOT_DELAY_DEFAULT 4.0f
 #else
 #define SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif

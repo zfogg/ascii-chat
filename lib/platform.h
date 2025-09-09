@@ -210,9 +210,11 @@ typedef int socket_t;
 #define WOULD_BLOCK_ERROR EWOULDBLOCK
 #define IN_PROGRESS_ERROR EINPROGRESS
 #define closesocket close
+#ifndef __APPLE__
 typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
+#endif
 #endif
 
 // Define ssize_t for Windows
