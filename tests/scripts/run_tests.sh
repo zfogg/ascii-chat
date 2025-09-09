@@ -186,10 +186,29 @@ run_single_test() {
                 sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
                     -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >> "$junit_file"
                 rm -f "$xml_file"
+            else
+                # Test passed but no XML generated - create a minimal entry
+                echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"0.0\">" >> "$junit_file"
+                echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"0.0\"/>" >> "$junit_file"
+                echo "</testsuite>" >> "$junit_file"
             fi
             return 0
         else
             log_verbose "Test failed: $test_name"
+            # Create a failed test entry even if XML generation failed
+            if [[ -f "$xml_file" ]]; then
+                sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" | \
+                sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
+                    -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >> "$junit_file"
+                rm -f "$xml_file"
+            else
+                # Test failed and no XML - create a failure entry
+                echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"1\" errors=\"0\" time=\"0.0\">" >> "$junit_file"
+                echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"0.0\">" >> "$junit_file"
+                echo "    <failure message=\"Test executable failed\" type=\"TestFailure\">Test failed to run or crashed</failure>" >> "$junit_file"
+                echo "  </testcase>" >> "$junit_file"
+                echo "</testsuite>" >> "$junit_file"
+            fi
             return 1
         fi
     else
@@ -212,6 +231,11 @@ run_test_category() {
     local generate_junit="$4"
     local log_file="$5"
     local junit_file="$6"
+    
+    # Set up trap to close XML properly on exit
+    if [[ -n "$generate_junit" ]]; then
+        trap "echo '</testsuites>' >> '$junit_file' 2>/dev/null || true" EXIT INT TERM
+    fi
 
     log_info "Running $category tests..."
 
@@ -259,6 +283,8 @@ run_test_category() {
     done
 
     if [[ -n "$generate_junit" ]]; then
+        # Remove trap and close XML properly
+        trap - EXIT INT TERM
         echo '</testsuites>' >> "$junit_file"
     fi
 
