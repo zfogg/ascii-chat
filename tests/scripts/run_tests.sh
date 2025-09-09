@@ -108,19 +108,25 @@ detect_cpu_cores() {
 get_test_executables() {
     local category="$1"
     local bin_dir="$PROJECT_ROOT/bin"
+    
+    # Check if bin directory exists
+    if [[ ! -d "$bin_dir" ]]; then
+        log_verbose "bin directory not found at: $bin_dir"
+        return
+    fi
 
     case "$category" in
         unit)
-            find "$bin_dir" -name "test_unit_*" -type f 2>/dev/null | sort
+            find "$bin_dir" -name "test_unit_*" -type f -executable 2>/dev/null | sort
             ;;
         integration)
-            find "$bin_dir" -name "test_integration_*" -type f 2>/dev/null | sort
+            find "$bin_dir" -name "test_integration_*" -type f -executable 2>/dev/null | sort
             ;;
         performance)
-            find "$bin_dir" -name "test_performance_*" -type f 2>/dev/null | sort
+            find "$bin_dir" -name "test_performance_*" -type f -executable 2>/dev/null | sort
             ;;
         all)
-            find "$bin_dir" -name "test_*" -type f 2>/dev/null | sort
+            find "$bin_dir" -name "test_*" -type f -executable 2>/dev/null | sort
             ;;
         *)
             log_error "Unknown test category: $category"
@@ -324,12 +330,18 @@ run_test_category() {
     test_executables=($(get_test_executables "$category"))
 
     if [[ ${#test_executables[@]} -eq 0 ]]; then
-        log_info "No $category tests found. Building tests first..."
+        log_info "No $category tests found in $PROJECT_ROOT/bin"
+        log_info "Looking for any test executables:"
+        ls -la "$PROJECT_ROOT/bin/" 2>/dev/null | grep test_ || echo "  No test files in bin/"
+        
+        log_info "Building tests with $build_type configuration..."
         ensure_tests_built "$build_type" "$category"
         test_executables=($(get_test_executables "$category"))
 
         if [[ ${#test_executables[@]} -eq 0 ]]; then
             log_error "No $category tests found after building"
+            log_error "Contents of bin directory:"
+            ls -la "$PROJECT_ROOT/bin/" 2>/dev/null || echo "bin/ directory does not exist"
             return 1
         fi
     fi
