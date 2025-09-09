@@ -117,16 +117,28 @@ get_test_executables() {
 
     case "$category" in
         unit)
-            find "$bin_dir" -name "test_unit_*" -type f 2>/dev/null | sort
+            # Use simple shell globbing instead of find
+            for f in "$bin_dir"/test_unit_*; do
+                [[ -f "$f" ]] && echo "$f"
+            done | sort
             ;;
         integration)
-            find "$bin_dir" -name "test_integration_*" -type f 2>/dev/null | sort
+            # Use simple shell globbing instead of find
+            for f in "$bin_dir"/test_integration_*; do
+                [[ -f "$f" ]] && echo "$f"
+            done | sort
             ;;
         performance)
-            find "$bin_dir" -name "test_performance_*" -type f 2>/dev/null | sort
+            # Use simple shell globbing instead of find
+            for f in "$bin_dir"/test_performance_*; do
+                [[ -f "$f" ]] && echo "$f"
+            done | sort
             ;;
         all)
-            find "$bin_dir" -name "test_*" -type f 2>/dev/null | sort
+            # Use simple shell globbing instead of find
+            for f in "$bin_dir"/test_*; do
+                [[ -f "$f" ]] && echo "$f"
+            done | sort
             ;;
         *)
             log_error "Unknown test category: $category"
