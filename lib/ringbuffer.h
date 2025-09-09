@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <pthread.h>
+#include "platform.h"
 
 /* ============================================================================
  * Lock-Free Ring Buffer for Frame Management
@@ -37,7 +37,7 @@ typedef struct audio_ring_buffer {
   float data[AUDIO_RING_BUFFER_SIZE];
   volatile int write_index;
   volatile int read_index;
-  pthread_mutex_t mutex;
+  mutex_t mutex;
 } audio_ring_buffer_t;
 
 /* ============================================================================
@@ -143,7 +143,7 @@ typedef struct {
 
 typedef struct {
   ringbuffer_t *rb;
-  pthread_mutex_t mutex; /* Thread-safe access to framebuffer operations */
+  mutex_t mutex; /* Thread-safe access to framebuffer operations */
 } framebuffer_t;
 
 /**

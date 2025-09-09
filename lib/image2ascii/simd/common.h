@@ -11,6 +11,7 @@
 #include "../output_buffer.h"
 
 // Forward declarations for architecture-specific implementations
+// rgb_t should be available from image.h
 typedef rgb_t rgb_pixel_t;
 
 #define RAMP64_SIZE 64

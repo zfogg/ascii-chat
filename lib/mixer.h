@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include "platform.h"
 
 // Include ringbuffer.h to get the audio_ring_buffer_t type
 #include "ringbuffer.h"
@@ -86,7 +86,7 @@ typedef struct {
   uint8_t source_id_to_index[256]; // Hash table: client_id → mixer source index
 
   // OPTIMIZATION 2: Reader-writer synchronization
-  pthread_rwlock_t source_lock; // Protects source arrays and bitset
+  rwlock_t source_lock; // Protects source arrays and bitset
 
   // Crowd scaling (loud with few, quiet with many)
   float crowd_alpha; // Scale ~ 1 / active^alpha (typically 0.5)

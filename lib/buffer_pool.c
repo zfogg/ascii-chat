@@ -2,8 +2,10 @@
 #include "common.h"
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
 #include <execinfo.h>
+#endif
 
 /* ============================================================================
  * Internal Buffer Pool Functions
@@ -131,7 +133,7 @@ data_buffer_pool_t *data_buffer_pool_create(void) {
   pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
   pool->xlarge_pool = buffer_pool_create_single(BUFFER_POOL_XLARGE_SIZE, BUFFER_POOL_XLARGE_COUNT);
 
-  pthread_mutex_init(&pool->pool_mutex, NULL);
+  mutex_init(&pool->pool_mutex);
 
   pool->total_allocs = 0;
   pool->pool_hits = 0;
@@ -161,7 +163,7 @@ void data_buffer_pool_destroy(data_buffer_pool_t *pool) {
   buffer_pool_destroy_single(pool->large_pool);
   buffer_pool_destroy_single(pool->xlarge_pool);
 
-  pthread_mutex_destroy(&pool->pool_mutex);
+  mutex_destroy(&pool->pool_mutex);
   SAFE_FREE(pool);
 }
 
@@ -174,7 +176,7 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     return data;
   }
 
-  pthread_mutex_lock(&pool->pool_mutex);
+  mutex_lock(&pool->pool_mutex);
   pool->total_allocs++;
 
   void *buffer = NULL;
@@ -207,13 +209,18 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     pool->malloc_fallbacks++;
   }
 
-  pthread_mutex_unlock(&pool->pool_mutex);
+  mutex_unlock(&pool->pool_mutex);
 
   // If no buffer from pool, use malloc
   if (!buffer) {
+#ifndef _WIN32
     void *callstack[3];
     int frames = backtrace(callstack, 3);
     char **symbols = backtrace_symbols(callstack, frames);
+#else
+    int frames = 0;
+    char **symbols = NULL;
+#endif
 
     // log_error("MALLOC FALLBACK ALLOC: size=%zu at %s:%d thread=%p", size, __FILE__, __LINE__,
     //         (void *)pthread_self());
@@ -222,7 +229,9 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     //   if (frames >= 3)
     //     log_error("  Called from: %s", symbols[2]);
     // }
+#ifndef _WIN32
     free(symbols);
+#endif
 
     SAFE_MALLOC(buffer, size, void *);
     // log_error("MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p", size, buffer,
@@ -244,7 +253,7 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
     return;
   }
 
-  pthread_mutex_lock(&pool->pool_mutex);
+  mutex_lock(&pool->pool_mutex);
 
   bool freed = false;
 
@@ -259,7 +268,7 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
     freed = buffer_pool_free_single(pool->xlarge_pool, data);
   }
 
-  pthread_mutex_unlock(&pool->pool_mutex);
+  mutex_unlock(&pool->pool_mutex);
 
   // If not from any pool, it was malloc'd
   if (!freed) {
@@ -276,12 +285,12 @@ void data_buffer_pool_get_stats(data_buffer_pool_t *pool, uint64_t *hits, uint64
     return;
   }
 
-  pthread_mutex_lock(&pool->pool_mutex);
+  mutex_lock(&pool->pool_mutex);
   if (hits)
     *hits = pool->pool_hits;
   if (misses)
     *misses = pool->malloc_fallbacks;
-  pthread_mutex_unlock(&pool->pool_mutex);
+  mutex_unlock(&pool->pool_mutex);
 }
 
 /* ============================================================================
@@ -290,21 +299,28 @@ void data_buffer_pool_get_stats(data_buffer_pool_t *pool, uint64_t *hits, uint64
  */
 
 static data_buffer_pool_t *g_global_buffer_pool = NULL;
-static pthread_mutex_t g_global_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
+static mutex_t g_global_pool_mutex = {0};
+static volatile bool g_global_pool_mutex_initialized = false;
 
 void data_buffer_pool_init_global(void) {
-  pthread_mutex_lock(&g_global_pool_mutex);
+  // Initialize mutex if not already done (thread-safe on Windows/POSIX)
+  if (!g_global_pool_mutex_initialized) {
+    mutex_init(&g_global_pool_mutex);
+    g_global_pool_mutex_initialized = true;
+  }
+  
+  mutex_lock(&g_global_pool_mutex);
   if (!g_global_buffer_pool) {
     g_global_buffer_pool = data_buffer_pool_create();
     if (g_global_buffer_pool) {
       log_info("Initialized global shared buffer pool");
     }
   }
-  pthread_mutex_unlock(&g_global_pool_mutex);
+  mutex_unlock(&g_global_pool_mutex);
 }
 
 void data_buffer_pool_cleanup_global(void) {
-  pthread_mutex_lock(&g_global_pool_mutex);
+  mutex_lock(&g_global_pool_mutex);
   if (g_global_buffer_pool) {
     // Log final statistics
     uint64_t hits, misses;
@@ -317,7 +333,7 @@ void data_buffer_pool_cleanup_global(void) {
     data_buffer_pool_destroy(g_global_buffer_pool);
     g_global_buffer_pool = NULL;
   }
-  pthread_mutex_unlock(&g_global_pool_mutex);
+  mutex_unlock(&g_global_pool_mutex);
 }
 
 data_buffer_pool_t *data_buffer_pool_get_global(void) {
@@ -364,7 +380,7 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
 
   memset(stats, 0, sizeof(*stats));
 
-  pthread_mutex_lock(&pool->pool_mutex);
+  mutex_lock(&pool->pool_mutex);
 
   // Small pool stats
   if (pool->small_pool) {
@@ -413,7 +429,7 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
     stats->total_pool_usage_percent = (total_hits * 100) / stats->total_allocations;
   }
 
-  pthread_mutex_unlock(&pool->pool_mutex);
+  mutex_unlock(&pool->pool_mutex);
 }
 
 void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name) {

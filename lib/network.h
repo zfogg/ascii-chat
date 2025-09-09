@@ -1,8 +1,7 @@
 #pragma once
 
-#include <netinet/in.h>
+#include "platform.h"
 #include <stdbool.h>
-#include <sys/socket.h>
 #include "common.h"
 #include "terminal_detect.h"
 #include "crc32_hw.h"
@@ -87,7 +86,7 @@ typedef struct {
   uint32_t length;    // payload length
   uint32_t crc32;     // payload checksum
   uint32_t client_id; // which client this packet is from (0 = server)
-} __attribute__((packed)) packet_header_t;
+} PACKED_ATTR packet_header_t;
 
 // Multi-user protocol structures
 #define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
@@ -98,25 +97,25 @@ typedef struct {
   uint32_t client_id;                      // Unique client identifier
   char display_name[MAX_DISPLAY_NAME_LEN]; // User display name
   uint32_t capabilities;                   // Bitmask: VIDEO_CAPABLE | AUDIO_CAPABLE
-} __attribute__((packed)) client_info_packet_t;
+} PACKED_ATTR client_info_packet_t;
 
 typedef struct {
   uint32_t client_id;   // Which client this stream is from
   uint32_t stream_type; // VIDEO_STREAM | AUDIO_STREAM
   uint32_t timestamp;   // When frame was captured
-} __attribute__((packed)) stream_header_t;
+} PACKED_ATTR stream_header_t;
 
 typedef struct {
   uint32_t client_count;                     // Number of clients in list
   client_info_packet_t clients[MAX_CLIENTS]; // Client info array
-} __attribute__((packed)) client_list_packet_t;
+} PACKED_ATTR client_list_packet_t;
 
 // Server state packet - sent to clients when state changes
 typedef struct {
   uint32_t connected_client_count; // Number of currently connected clients
   uint32_t active_client_count;    // Number of clients actively sending video
   uint32_t reserved[6];            // Reserved for future use
-} __attribute__((packed)) server_state_packet_t;
+} PACKED_ATTR server_state_packet_t;
 
 // Terminal capabilities packet - sent by client to inform server of capabilities
 typedef struct {
@@ -132,7 +131,7 @@ typedef struct {
   uint32_t palette_type;      // palette_type_t enum value
   char palette_custom[64];    // Custom palette chars (if palette_type == PALETTE_CUSTOM)
   uint8_t reserved[3];        // Padding for alignment (reduced from reserved[3])
-} __attribute__((packed)) terminal_capabilities_packet_t;
+} PACKED_ATTR terminal_capabilities_packet_t;
 
 // ============================================================================
 // Unified Frame Packet Structures
@@ -152,7 +151,7 @@ typedef struct {
   // The actual ASCII frame data follows this header in the packet payload
   // If compressed_size > 0, data is zlib compressed
   // Format: char data[original_size] or compressed_data[compressed_size]
-} __attribute__((packed)) ascii_frame_packet_t;
+} PACKED_ATTR ascii_frame_packet_t;
 
 // Image frame packet - contains raw RGB image with dimensions
 // Used when client sends camera frames to server
@@ -166,7 +165,7 @@ typedef struct {
 
   // The actual pixel data follows this header in the packet payload
   // Format: rgb_t pixels[width * height] or compressed data
-} __attribute__((packed)) image_frame_packet_t;
+} PACKED_ATTR image_frame_packet_t;
 
 // Frame flags for ascii_frame_packet_t
 #define FRAME_FLAG_HAS_COLOR 0x01      // Frame includes ANSI color codes
@@ -187,7 +186,7 @@ typedef struct {
   uint32_t sample_rate;   // Sample rate (e.g., 44100)
   uint32_t channels;      // Number of channels (1=mono, 2=stereo)
   // The actual audio data follows: float samples[total_samples]
-} __attribute__((packed)) audio_batch_packet_t;
+} PACKED_ATTR audio_batch_packet_t;
 
 // Palette configuration packet - sent by server to synchronize palette across clients
 typedef struct {
@@ -195,7 +194,7 @@ typedef struct {
   uint32_t palette_length; // Number of characters in palette
   uint32_t requires_utf8;  // 0=ASCII only, 1=needs UTF-8 support
   char palette_chars[256]; // The actual palette characters (UTF-8)
-} __attribute__((packed)) palette_config_packet_t;
+} PACKED_ATTR palette_config_packet_t;
 
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01

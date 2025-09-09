@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pthread.h>
+#include "platform.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -56,7 +56,7 @@ typedef struct data_buffer_pool {
   buffer_pool_t *medium_pool; // Pool for medium buffers (small frames)
   buffer_pool_t *large_pool;  // Pool for large buffers (large frames)
   buffer_pool_t *xlarge_pool; // Pool for extra large buffers (1MB+ frames)
-  pthread_mutex_t pool_mutex; // Protect all pools
+  mutex_t pool_mutex;         // Protect all pools
   // Global statistics
   uint64_t total_allocs;     // Total allocation requests
   uint64_t pool_hits;        // Allocations satisfied from pools

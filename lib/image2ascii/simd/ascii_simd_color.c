@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include <pthread.h>
+#include "platform.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "ascii_simd.h"
@@ -461,6 +461,6 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
 
   // Use scalar image function instead of row-based processing
   free(ascii); // Free the allocated buffer since we're using image function's output
-  return image_print_color(image);
+  return image_print_color(image, ascii_chars);
 #endif
 }

@@ -1,12 +1,18 @@
 #include "aspect_ratio.h"
+#ifdef _WIN32
+#include "getopt_windows.h"
+#else
 #include <getopt.h>
+#endif
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#endif
 
 #include "image2ascii/ascii.h"
 #include "options.h"
@@ -33,9 +39,8 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
-unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT,
-
-                   auto_width = 1, auto_height = 1;
+unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
+bool auto_width = true, auto_height = true;
 
 char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
@@ -259,7 +264,11 @@ static int is_valid_ipv4(const char *ip) {
   temp[sizeof(temp) - 1] = '\0';
 
   char *saveptr;
+#ifdef _WIN32
+  char *token = strtok_s(temp, ".", &saveptr);
+#else
   char *token = strtok_r(temp, ".", &saveptr);
+#endif
   while (token != NULL && count < 4) {
     char *endptr;
     long octet = strtol(token, &endptr, 10);
@@ -273,7 +282,11 @@ static int is_valid_ipv4(const char *ip) {
       return 0;
 
     // octets[count] = (int)octet;
+#ifdef _WIN32
+    token = strtok_s(NULL, ".", &saveptr);
+#else
     token = strtok_r(NULL, ".", &saveptr);
+#endif
     count++; // Increment count for each valid octet
   }
 

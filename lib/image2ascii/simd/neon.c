@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
-#include <pthread.h>
+#include "platform.h"
 #include <stdatomic.h>
 #include <math.h>
 

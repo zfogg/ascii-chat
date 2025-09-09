@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "platform.h"
+
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough.
 #ifndef UINT8_MAX
@@ -15,7 +17,14 @@ typedef unsigned long long uint64_t;
 #endif
 
 #include <stdlib.h>
+
+// Define ssize_t for Windows
+#ifdef _WIN32
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;
+#else
 #include <sys/types.h>
+#endif
 
 // Render mode enum (defined here to avoid circular dependencies)
 typedef enum {
@@ -182,11 +191,18 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   } while (0)
 
 /* Safe string copy */
+#ifdef _WIN32
+#define SAFE_STRNCPY(dst, src, size)                                                                                   \
+  do {                                                                                                                 \
+    strncpy_s((dst), (size), (src), (size) - 1);                                                                      \
+  } while (0)
+#else
 #define SAFE_STRNCPY(dst, src, size)                                                                                   \
   do {                                                                                                                 \
     strncpy((dst), (src), (size) - 1);                                                                                 \
     (dst)[(size) - 1] = '\0';                                                                                          \
   } while (0)
+#endif
 
 /* Min/Max macros (with guards for macOS Foundation.h) */
 #ifndef MIN

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <pthread.h>
+#include "platform.h"
 
 /*
  * Simple Hash Table Implementation
@@ -33,7 +33,7 @@ typedef struct {
   hashtable_entry_t *free_list;                       // Stack of free entries
   size_t entry_count;                                 // Number of active entries
   size_t pool_size;                                   // Size of entry pool
-  pthread_rwlock_t rwlock;                            // Reader-writer lock for concurrency
+  rwlock_t rwlock;                                    // Reader-writer lock for concurrency
 
   // Statistics
   uint64_t lookups;    // Total lookup operations

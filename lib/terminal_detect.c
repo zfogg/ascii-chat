@@ -1,11 +1,16 @@
+#include "platform.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <fcntl.h>
 #include <locale.h>
+
+#if !PLATFORM_WINDOWS
 #include <langinfo.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#else
+#include <windows.h>
+#endif
 
 #ifdef __linux__
 #include <term.h>
@@ -20,22 +25,24 @@
 
 // Terminal size detection (moved from options.c)
 int get_terminal_size(unsigned short int *width, unsigned short int *height) {
-  struct winsize w;
+  terminal_size_t size;
 
-  // First try ioctl - this works when stdout is a terminal
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
-    *width = w.ws_col;
-    *height = w.ws_row;
-    // log_debug("Terminal size from ioctl: %dx%d", *width, *height);
+  // First try platform-specific terminal size function
+  if (terminal_get_size(&size) == 0 && size.cols > 0 && size.rows > 0) {
+    *width = size.cols;
+    *height = size.rows;
+    // log_debug("Terminal size from platform: %dx%d", *width, *height);
     return 0;
   }
 
-  // ioctl failed - likely because stdout is redirected
-  // Try to get terminal size via $TTY (preferred) or /dev/tty (fallback)
+  // On Unix, try alternate TTY paths
+#if !PLATFORM_WINDOWS
+  // Try to get terminal size via $TTY environment variable
   char *tty_path = getenv("TTY");
   if (tty_path && strlen(tty_path) > 0 && is_valid_tty_path(tty_path)) {
     int tty_fd = open(tty_path, O_RDONLY);
     if (tty_fd >= 0) {
+      struct winsize w;
       if (ioctl(tty_fd, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
         *width = w.ws_col;
         *height = w.ws_row;
@@ -46,10 +53,13 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       close(tty_fd);
     }
   }
+#endif
 
-  // Fallback to /dev/tty if $TTY not available or failed
+  // Fallback to /dev/tty on Unix - Windows is already handled above
+#if !PLATFORM_WINDOWS
   int tty_fd = open("/dev/tty", O_RDONLY);
   if (tty_fd >= 0) {
+    struct winsize w;
     if (ioctl(tty_fd, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
       *width = w.ws_col;
       *height = w.ws_row;
@@ -61,6 +71,7 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
   } else {
     log_debug("Failed to open /dev/tty");
   }
+#endif
 
   // Try environment variables as fallback
   char *cols_str = getenv("COLUMNS");
@@ -264,6 +275,8 @@ terminal_color_level_t detect_color_support(void) {
 bool detect_utf8_support(void) {
   // Method 1: Check locale settings
   setlocale(LC_CTYPE, "");
+
+#if !PLATFORM_WINDOWS
   char const *encoding = nl_langinfo(CODESET);
 
   if (encoding) {
@@ -273,6 +286,13 @@ bool detect_utf8_support(void) {
       return true;
     }
   }
+#else
+  // Windows: Check code page
+  UINT codepage = GetConsoleOutputCP();
+  if (codepage == CP_UTF8) {
+    return true;
+  }
+#endif
 
   // Method 2: Check environment variables
   char *lang = getenv("LANG");

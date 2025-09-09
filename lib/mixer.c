@@ -246,7 +246,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   memset(mixer->source_id_to_index, 0xFF, sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
 
   // OPTIMIZATION 2: Initialize reader-writer lock
-  if (pthread_rwlock_init(&mixer->source_lock, NULL) != 0) {
+  if (rwlock_init(&mixer->source_lock) != 0) {
     log_error("Failed to initialize mixer source lock");
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
@@ -277,7 +277,7 @@ void mixer_destroy(mixer_t *mixer) {
     return;
 
   // OPTIMIZATION 2: Destroy reader-writer lock
-  pthread_rwlock_destroy(&mixer->source_lock);
+  rwlock_destroy(&mixer->source_lock);
 
   ducking_free(&mixer->ducking);
 
@@ -294,7 +294,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
     return -1;
 
   // OPTIMIZATION 2: Acquire write lock for source modification
-  pthread_rwlock_wrlock(&mixer->source_lock);
+  rwlock_wrlock(&mixer->source_lock);
 
   // Find an empty slot
   int slot = -1;
@@ -306,7 +306,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   }
 
   if (slot == -1) {
-    pthread_rwlock_unlock(&mixer->source_lock);
+    rwlock_unlock(&mixer->source_lock);
     log_warn("Mixer: No available slots for client %u", client_id);
     return -1;
   }
@@ -320,7 +320,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
   mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
 
-  pthread_rwlock_unlock(&mixer->source_lock);
+  rwlock_unlock(&mixer->source_lock);
 
   log_info("Mixer: Added source for client %u at slot %d", client_id, slot);
   return slot;
@@ -331,7 +331,7 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
     return;
 
   // OPTIMIZATION 2: Acquire write lock for source modification
-  pthread_rwlock_wrlock(&mixer->source_lock);
+  rwlock_wrlock(&mixer->source_lock);
 
   for (int i = 0; i < mixer->max_sources; i++) {
     if (mixer->source_ids[i] == client_id) {
@@ -348,14 +348,14 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->ducking.envelope[i] = 0.0f;
       mixer->ducking.gain[i] = 1.0f;
 
-      pthread_rwlock_unlock(&mixer->source_lock);
+      rwlock_unlock(&mixer->source_lock);
 
       log_info("Mixer: Removed source for client %u from slot %d", client_id, i);
       return;
     }
   }
 
-  pthread_rwlock_unlock(&mixer->source_lock);
+  rwlock_unlock(&mixer->source_lock);
 }
 
 void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
@@ -363,7 +363,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
     return;
 
   // OPTIMIZATION 2: Acquire write lock for source modification
-  pthread_rwlock_wrlock(&mixer->source_lock);
+  rwlock_wrlock(&mixer->source_lock);
 
   for (int i = 0; i < mixer->max_sources; i++) {
     if (mixer->source_ids[i] == client_id) {
@@ -376,13 +376,13 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
         mixer->active_sources_mask &= ~(1ULL << i); // Clear bit
       }
 
-      pthread_rwlock_unlock(&mixer->source_lock);
+      rwlock_unlock(&mixer->source_lock);
       log_debug("Mixer: Set source %u active=%d", client_id, active);
       return;
     }
   }
 
-  pthread_rwlock_unlock(&mixer->source_lock);
+  rwlock_unlock(&mixer->source_lock);
 }
 
 int mixer_process(mixer_t *mixer, float *output, int num_samples) {

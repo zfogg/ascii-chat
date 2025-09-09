@@ -56,20 +56,23 @@ char *get_lum_palette(void);
 
 #define print(s) fwrite(s, 1, sizeof(s) / sizeof((s)[0]), stdout)
 
+#ifdef _WIN32
+#define console_clear(fd) _write(fd, "\033[1;1H\033[2J", 10)
+#define cursor_reset(fd) _write(fd, "\033[H", 3)
+#define terminal_reset(fd) _write(fd, "\033c", 2)
+#define terminal_clear_scrollback(fd) _write(fd, "\033[3J", 4)
+#define ascii_clear_screen(fd) _write(fd, "\033[2J", 4)
+#else
 #define console_clear(fd) write(fd, "\033[1;1H\033[2J", 10)
-
-// #define cursor_reset() print("\033[0;0H")
 #define cursor_reset(fd) write(fd, "\033[H", 3)
+#define terminal_reset(fd) write(fd, "\033c", 2)
+#define terminal_clear_scrollback(fd) write(fd, "\033[3J", 4)
+#define ascii_clear_screen(fd) write(fd, "\033[2J", 4)
+#endif
 
 #define cursor_hide(fd) dprintf(fd, "\033[?25l")
 
 #define cursor_show(fd) dprintf(fd, "\033[?25h")
-
-#define terminal_reset(fd) write(fd, "\033c", 2)
-
-#define terminal_clear_scrollback(fd) write(fd, "\033[3J", 4)
-
-#define terminal_clear_screen(fd) write(fd, "\033[2J", 4)
 
 static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
                              ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};
