@@ -414,7 +414,8 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
 
       // Process each pixel in the chunk
-      for (int i = 0; i < 32; i++) {
+      int i = 0;
+      while (i < 32) {
         const uint8_t R = avx2_r_buffer[i];
         const uint8_t G = avx2_g_buffer[i];
         const uint8_t B = avx2_b_buffer[i];
@@ -474,9 +475,8 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
             for (int k = 1; k < run; k++) {
               memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
               pos += char_info->byte_len;
-            }
           }
-          i += run - 1; // -1 because loop will increment
+          i += run;
         } else {
           // Truecolor mode
           // Find run length
@@ -532,7 +532,8 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
               pos += char_info->byte_len;
             }
           }
-          i += run - 1; // -1 because loop will increment
+          }
+          i += run;
         }
       }
       x += 32;
