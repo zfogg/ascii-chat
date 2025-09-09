@@ -20,6 +20,7 @@ on:
 
 jobs:
   unit-tests:
+    name: Unit Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -175,6 +176,7 @@ jobs:
         retention-days: 7
 
   performance-tests:
+    name: Performance Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
