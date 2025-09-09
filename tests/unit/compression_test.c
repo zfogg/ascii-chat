@@ -23,6 +23,9 @@ TestSuite(compression, .init = setup_quiet_test_logging, .fini = restore_test_lo
 void setup_quiet_test_logging(void) {
   // Set log level to only show fatal errors during non-logging tests
   log_set_level(LOG_FATAL);
+
+  // Ensure TESTING environment variable is set for fast timeouts
+  setenv("TESTING", "1", 1);
 }
 
 void restore_test_logging(void) {
