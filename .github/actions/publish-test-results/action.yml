@@ -94,9 +94,26 @@ runs:
         token: ${{ inputs.codecov-token }}
         fail_ci_if_error: false
 
+    # Check if coverage files exist before uploading
+    - name: Check Coverage Files
+      id: check-coverage
+      if: ${{ always() && inputs.upload-coverage == 'true' }}
+      shell: bash
+      run: |
+        echo "Checking for coverage files matching: ${{ inputs.coverage-files }}"
+        if ls ${{ inputs.coverage-files }} 2>/dev/null | head -1 > /dev/null; then
+          echo "✅ Found coverage files"
+          echo "has_coverage=true" >> $GITHUB_OUTPUT
+          ls -la ${{ inputs.coverage-files }} | head -10
+        else
+          echo "⚠️ No coverage files found matching pattern: ${{ inputs.coverage-files }}"
+          echo "has_coverage=false" >> $GITHUB_OUTPUT
+          echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
+        fi
+
     # Upload coverage to Codecov (optional)
     - name: Upload Coverage to Codecov
-      if: ${{ always() && inputs.upload-coverage == 'true' }}
+      if: ${{ always() && inputs.upload-coverage == 'true' && steps.check-coverage.outputs.has_coverage == 'true' }}
       uses: codecov/codecov-action@v4
       with:
         token: ${{ inputs.codecov-token }}
