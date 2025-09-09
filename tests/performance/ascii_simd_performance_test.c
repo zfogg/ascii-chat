@@ -15,6 +15,7 @@
 #include "image2ascii/image.h"
 #include "palette.h"
 #include "hashtable.h"
+#include "buffer_pool.h"
 
 void setup_performance_quiet_logging(void);
 void restore_performance_logging(void);
@@ -24,6 +25,7 @@ TestSuite(ascii_simd_performance, .init = setup_performance_quiet_logging, .fini
 void setup_performance_quiet_logging(void) {
   log_set_level(LOG_FATAL);
   hashtable_set_stats_enabled(false);
+  data_buffer_pool_init_global();
 }
 
 void restore_performance_logging(void) {

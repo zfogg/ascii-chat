@@ -18,6 +18,12 @@ on:
       - 'tests/**'
       - 'Makefile'
 
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
 jobs:
   unit-tests:
     name: Unit Tests
@@ -64,37 +70,17 @@ jobs:
         find . -name "*.gcov" -type f | head -20
         ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
 
-    - name: Validate junit.xml
-      if: ${{ !cancelled() }}
-      run: |
-        if [ -f junit.xml ]; then
-          echo "✅ junit.xml exists ($(wc -l < junit.xml) lines)"
-          xmllint --format junit.xml > /dev/null && echo "✅ Valid XML" || echo "❌ Invalid XML"
-        else
-          echo "❌ junit.xml not found"
-          find . -name "*.xml" -type f | head -5
-        fi
-
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
-      uses: codecov/test-results-action@v1
+    - name: Publish Test Results and Coverage
+      uses: ./.github/actions/publish-test-results
+      if: always()
       with:
-        files: ./junit.xml
-        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-
-    - name: Upload coverage to Codecov (debug builds only)
-      if: always() && matrix.build_type == 'debug'
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        directory: .
-        flags: ascii-chat-tests-${{ matrix.os-name }}-${{ matrix.build_type }}
-        name: ascii-chat-coverage-${{ matrix.os-name }}-${{ matrix.build_type }}
-        fail_ci_if_error: false
-        verbose: true
+        test-type: unit
+        os-name: ${{ matrix.os-name }}
+        build-type: ${{ matrix.build_type }}
+        junit-file: junit.xml
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
 
     - name: Upload test results
       if: always()
@@ -145,25 +131,16 @@ jobs:
         echo "Generated coverage files:"
         find . -name "*.gcov" -type f | head -20
 
-    - name: Upload integration test results to Codecov
-      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
-      uses: codecov/test-results-action@v1
-      with:
-        files: ./junit.xml
-        flags: ascii-chat-integration-${{ matrix.os-name }}
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-
-    - name: Upload coverage to Codecov
+    - name: Publish Test Results and Coverage
+      uses: ./.github/actions/publish-test-results
       if: always()
-      uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        flags: ascii-chat-integration-${{ matrix.os-name }}
-        name: ascii-chat-integration-coverage-${{ matrix.os-name }}
-        fail_ci_if_error: false
-        verbose: true
+        test-type: integration
+        os-name: ${{ matrix.os-name }}
+        junit-file: junit.xml
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
     - name: Upload integration test results
       if: always()
@@ -209,25 +186,16 @@ jobs:
         echo "Generated coverage files:"
         find . -name "*.gcov" -type f | head -20
 
-    - name: Upload performance test results to Codecov
-      if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
-      uses: codecov/test-results-action@v1
-      with:
-        files: ./junit.xml
-        flags: ascii-chat-performance-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
-
-    - name: Upload coverage to Codecov
+    - name: Publish Test Results and Coverage
+      uses: ./.github/actions/publish-test-results
       if: always()
-      uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        flags: ascii-chat-performance-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        name: ascii-chat-performance-coverage-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        fail_ci_if_error: false
-        verbose: true
+        test-type: performance
+        os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        junit-file: junit.xml
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
   memory-tests:
     runs-on: ubuntu-latest

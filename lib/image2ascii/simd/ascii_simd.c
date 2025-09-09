@@ -9,6 +9,7 @@
 #include "palette.h"
 #include "../ascii.h"
 #include "image2ascii/output_buffer.h"
+#include "avx2.h"
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 
@@ -411,7 +412,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
-  // Benchmark AVX2 using new image-based timing function
+  // Benchmark AVX2 using optimized single-pass implementation
   // Benchmark AVX2 monochrome rendering
   double start_avx2 = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
