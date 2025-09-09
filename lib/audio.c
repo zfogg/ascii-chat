@@ -406,7 +406,7 @@ int audio_set_realtime_priority(void) {
   param.sched_priority = 80; // High priority (1-99 range)
 
   // Try to set real-time scheduling for current thread
-  if (pthread_setschedparam(thread_self().thread, policy, &param) != 0) {
+  if (pthread_setschedparam(ascii_thread_self().thread, policy, &param) != 0) {
     log_error(
         "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
     return -1;
