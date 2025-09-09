@@ -314,7 +314,9 @@ bool terminal_supports_unicode(void);
 int terminal_clear_screen(void);
 int terminal_move_cursor(int row, int col);
 void terminal_enable_ansi(void);
-#define write _write // Re-define after declarations
+#if PLATFORM_WINDOWS
+#define write _write // Re-define after declarations on Windows only
+#endif
 
 // File/TTY functions
 int platform_isatty(int fd);
