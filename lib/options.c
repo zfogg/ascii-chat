@@ -157,6 +157,8 @@ void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
 
   if (get_terminal_size(&term_width, &term_height) == 0) {
+    log_debug("Terminal size detected: %dx%d, auto_width=%d, auto_height=%d", term_width, term_height, (int)auto_width,
+              (int)auto_height);
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (auto_height && auto_width) {
@@ -353,7 +355,7 @@ void options_init(int argc, char **argv, bool is_client) {
         _exit(EXIT_FAILURE);
       }
       opt_width = (unsigned short int)width_val;
-      auto_width = 0; // Mark as manually set
+      auto_width = false; // Mark as manually set
       break;
     }
 
@@ -365,7 +367,7 @@ void options_init(int argc, char **argv, bool is_client) {
         _exit(EXIT_FAILURE);
       }
       opt_height = (unsigned short int)height_val;
-      auto_height = 0; // Mark as manually set
+      auto_height = false; // Mark as manually set
       break;
     }
 
