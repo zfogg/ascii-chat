@@ -1,13 +1,14 @@
 #include "common.h"
-#include <pthread.h>
+#include "platform.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <sys/stat.h>
 
 /* ============================================================================
@@ -20,7 +21,7 @@
 static struct {
   int file;
   log_level_t level;
-  pthread_mutex_t mutex;
+  mutex_t mutex;
   bool initialized;
   char filename[256];           /* Store filename for rotation */
   size_t current_size;          /* Track current file size */
@@ -28,7 +29,7 @@ static struct {
   bool level_manually_set;      /* Track if level was set manually */
 } g_log = {.file = 0,
            .level = LOG_INFO,
-           .mutex = PTHREAD_MUTEX_INITIALIZER,
+           .mutex = {0},
            .initialized = false,
            .filename = {0},
            .current_size = 0,
@@ -59,7 +60,7 @@ static void rotate_log_if_needed(void) {
     if (read_file < 0) {
       fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -70,7 +71,7 @@ static void rotate_log_if_needed(void) {
     if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
       close(read_file);
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -85,11 +86,11 @@ static void rotate_log_if_needed(void) {
     /* Read the tail into a temporary file */
     char temp_filename[512];
     snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
-    int temp_file = open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    int temp_file = open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (temp_file < 0) {
       close(read_file);
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -106,7 +107,7 @@ static void rotate_log_if_needed(void) {
         close(temp_file);
         unlink(temp_filename);
         /* Fall back to truncation */
-        int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+        int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
         g_log.file = fd;
         g_log.current_size = 0;
         return;
@@ -121,14 +122,14 @@ static void rotate_log_if_needed(void) {
     if (rename(temp_filename, g_log.filename) != 0) {
       unlink(temp_filename); /* Clean up temp file */
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
 
     /* Reopen for appending */
-    g_log.file = open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+    g_log.file = open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     if (g_log.file < 0) {
       fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
       g_log.file = STDERR_FILENO;
@@ -150,7 +151,14 @@ static void rotate_log_if_needed(void) {
 }
 
 void log_init(const char *filename, log_level_t level) {
-  pthread_mutex_lock(&g_log.mutex);
+  // Initialize mutex if this is the first time
+  static bool mutex_initialized = false;
+  if (!mutex_initialized) {
+    mutex_init(&g_log.mutex);
+    mutex_initialized = true;
+  }
+
+  mutex_lock(&g_log.mutex);
 
   // Preserve the terminal output setting
   bool preserve_terminal_output = g_log.terminal_output_enabled;
@@ -167,7 +175,7 @@ void log_init(const char *filename, log_level_t level) {
   if (filename) {
     /* Store filename for rotation */
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
-    int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+    int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     g_log.file = fd;
     if (!g_log.file) {
       if (preserve_terminal_output) {
@@ -192,11 +200,11 @@ void log_init(const char *filename, log_level_t level) {
   // Restore the terminal output setting
   g_log.terminal_output_enabled = preserve_terminal_output;
 
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_destroy(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
 
   if (g_log.file && g_log.file != STDERR_FILENO) {
     close(g_log.file);
@@ -205,38 +213,38 @@ void log_destroy(void) {
   g_log.file = 0;
   g_log.initialized = false;
 
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_set_level(log_level_t level) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   g_log.level = level;
   g_log.level_manually_set = true;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 log_level_t log_get_level(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   log_level_t level = g_log.level;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
   return level;
 }
 
 void log_set_terminal_output(bool enabled) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   g_log.terminal_output_enabled = enabled;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 bool log_get_terminal_output(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   bool enabled = g_log.terminal_output_enabled;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
   return enabled;
 }
 
 void log_truncate_if_large(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
 
   if (g_log.file && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     /* Check if current log is too large */
@@ -250,7 +258,7 @@ void log_truncate_if_large(void) {
     }
   }
 
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
@@ -268,7 +276,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     return;
   }
 
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
 
   /* Get current time using clock_gettime (avoids localtime) */
   struct timespec ts;
@@ -351,6 +359,4 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
     fprintf(stderr, "\n");
   }
-
-  pthread_mutex_unlock(&g_log.mutex);
 }

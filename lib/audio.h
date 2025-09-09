@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include <pthread.h>
+#include "platform.h"
 #include <portaudio.h>
 
 #ifdef __linux__
@@ -30,7 +30,7 @@ typedef struct {
   bool initialized;
   bool recording;
   bool playing;
-  pthread_mutex_t state_mutex;
+  mutex_t state_mutex;
 } audio_context_t;
 
 int audio_init(audio_context_t *ctx);

@@ -1,24 +1,18 @@
-#include <arpa/inet.h>
+#include "platform.h"
+#include "platform_init.h"
+
 #include <errno.h>
 #include <limits.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <time.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <zconf.h>
 #include <zlib.h>
-#include <sys/ioctl.h>
-#include <termios.h>
 
 #include "image2ascii/ascii.h"
 #include "image2ascii/simd/ascii_simd.h"
@@ -36,15 +30,21 @@
 static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
+#ifdef _WIN32
+    // Simplified terminal reset for Windows to avoid hangs
+    printf("\033[2J\033[H\033[?25l"); // Clear screen, home cursor, hide cursor
+    fflush(stdout);
+#else
     terminal_reset(fd);
     // terminal_clear_scrollback(fd);
-    terminal_clear_screen(fd);
+    terminal_clear_screen();
     cursor_reset(fd);
     // FIXME: cursor_hide() and cursor_show() don't work with write()
     // cursor_hide(fd);
     printf("\e[?25l");
     // Force output to terminal immediately
     fsync(fd);
+#endif
   }
 }
 
@@ -66,27 +66,27 @@ static volatile bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
 
-static pthread_t g_data_thread;
+static thread_t g_data_thread;
 static bool g_data_thread_created = false;
 static volatile bool g_data_thread_exited = false;
 
 // Ping thread for keepalive
-static pthread_t g_ping_thread;
+static thread_t g_ping_thread;
 static bool g_ping_thread_created = false;
 static volatile bool g_ping_thread_exited = false;
 
 // Webcam capture thread
-static pthread_t g_capture_thread;
+static thread_t g_capture_thread;
 static bool g_capture_thread_created = false;
 static volatile bool g_capture_thread_exited = false;
 
 // Audio capture thread
-static pthread_t g_audio_capture_thread;
+static thread_t g_audio_capture_thread;
 static bool g_audio_capture_thread_created = false;
 static volatile bool g_audio_capture_thread_exited = false;
 
 // Mutex to protect socket sends (prevent interleaved packets)
-static pthread_mutex_t g_send_mutex = PTHREAD_MUTEX_INITIALIZER;
+static mutex_t g_send_mutex = {0};
 
 /* ============================================================================
  * Multi-User Client State
@@ -144,91 +144,91 @@ static void *audio_capture_thread_func(void *arg);
 
 // Thread-safe wrapper for network.h send_packet
 static int safe_send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_packet
   int result = send_packet(sockfd, type, data, len);
 #define send_packet safe_send_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_audio_packet
 static int safe_send_audio_packet(int sockfd, const float *samples, int num_samples) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_audio_packet
   int result = send_audio_packet(sockfd, samples, num_samples);
 #define send_audio_packet safe_send_audio_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_audio_batch_packet
 static int safe_send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_audio_batch_packet
   int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count);
 #define send_audio_batch_packet safe_send_audio_batch_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_terminal_size_with_auto_detect
 static int safe_send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsigned short height) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_terminal_size_with_auto_detect
   int result = send_terminal_size_with_auto_detect(sockfd, width, height);
 #define send_terminal_size_with_auto_detect safe_send_terminal_size_with_auto_detect
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_pong_packet
 static int safe_send_pong_packet(int sockfd) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_pong_packet
   int result = send_pong_packet(sockfd);
 #define send_pong_packet safe_send_pong_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_ping_packet
 static int safe_send_ping_packet(int sockfd) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_ping_packet
   int result = send_ping_packet(sockfd);
 #define send_ping_packet safe_send_ping_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_stream_start_packet
 static int safe_send_stream_start_packet(int sockfd, uint32_t stream_type) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_stream_start_packet
   int result = send_stream_start_packet(sockfd, stream_type);
 #define send_stream_start_packet safe_send_stream_start_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_stream_stop_packet
 static int safe_send_stream_stop_packet(int sockfd, uint32_t stream_type) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_stream_stop_packet
   int result = send_stream_stop_packet(sockfd, stream_type);
 #define send_stream_stop_packet safe_send_stream_stop_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
 // Thread-safe wrapper for network.h send_client_join_packet
 static int safe_send_client_join_packet(int socketfd, const char *display_name, uint32_t capabilities) {
-  pthread_mutex_lock(&g_send_mutex);
+  mutex_lock(&g_send_mutex);
 #undef send_client_join_packet
   int result = send_client_join_packet(socketfd, display_name, capabilities);
 #define send_client_join_packet safe_send_client_join_packet
-  pthread_mutex_unlock(&g_send_mutex);
+  mutex_unlock(&g_send_mutex);
   return result;
 }
 
@@ -279,7 +279,7 @@ static void shutdown_client() {
     }
 
     // Wait for thread to exit - but with a timeout check
-    // Since macOS doesn't have pthread_timedjoin_np, we'll do a simple wait
+    // Platform abstraction doesn't have timedjoin, we'll do a simple wait
     int wait_count = 0;
     while (wait_count < 20 && !g_data_thread_exited) { // Wait up to 2 seconds
       usleep(100000);                                  // 100ms
@@ -287,11 +287,12 @@ static void shutdown_client() {
     }
 
     if (!g_data_thread_exited) {
-      log_error("Data thread not responding - forcing cancellation");
-      pthread_cancel(g_data_thread);
-      pthread_join(g_data_thread, NULL); // Still need to join even after cancel
+      log_error("Data thread not responding - forcing termination");
+      // Note: thread cancellation not available in platform abstraction
+      // Thread should exit when g_should_exit is set
+      thread_join(&g_data_thread, NULL);
     } else {
-      pthread_join(g_data_thread, NULL);
+      thread_join(&g_data_thread, NULL);
     }
 
     g_data_thread_created = false;
@@ -305,6 +306,9 @@ static void shutdown_client() {
 
   // Clean up webcam
   ascii_write_destroy(tty_info_g.fd, true);
+
+  // Cleanup mutex
+  mutex_destroy(&g_send_mutex);
 
   log_info("Client shutdown complete");
   log_destroy(); // Destroy logging last
@@ -423,18 +427,32 @@ tty_info_t get_current_tty(void) {
     result.fd = STDERR_FILENO;
   }
   if (result.fd != -1) {
+#ifndef _WIN32
     result.path = ttyname(result.fd);
+#else
+    result.path = "CON";  // Windows console device
+#endif
     result.owns_fd = false;
     return result;
   }
 
   // Method 3: Try /dev/tty (most reliable for controlling terminal)
+#ifndef WIN32
   result.fd = open("/dev/tty", O_WRONLY);
   if (result.fd >= 0) {
     result.path = "/dev/tty";
     result.owns_fd = true;
     return result;
   }
+#else
+  // On Windows, use CON for console output
+  result.fd = _open("CON", _O_WRONLY);
+  if (result.fd >= 0) {
+    result.path = "CON";
+    result.owns_fd = true;
+    return result;
+  }
+#endif
 
   return result; // Not running in a TTY
 }
@@ -458,7 +476,11 @@ void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
       cursor_reset(STDOUT_FILENO);
     }
     write(STDOUT_FILENO, frame_data, strlen(frame_data));
+#ifndef _WIN32
     fsync(STDOUT_FILENO);
+#else
+    _commit(STDOUT_FILENO);
+#endif
   }
 }
 
@@ -493,6 +515,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Handle compression if needed
   if (header.flags & FRAME_FLAG_IS_COMPRESSED && header.compressed_size > 0) {
+#ifndef NO_COMPRESSION
     // Compressed frame - decompress it
     if (frame_data_len != header.compressed_size) {
       log_error("Compressed frame size mismatch: expected %u, got %zu", header.compressed_size, frame_data_len);
@@ -515,6 +538,11 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     frame_data[header.original_size] = '\0';
 #ifdef COMPRESSION_DEBUG
     log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, header.original_size);
+#endif
+#else
+    // Compression is disabled - cannot handle compressed frames
+    log_error("Received compressed frame but compression support is disabled");
+    return;
 #endif
   } else {
     // Uncompressed frame
@@ -990,6 +1018,14 @@ static void handle_server_state_packet(const void *data, size_t len) {
 // when actual local video/audio capture functionality is added to clients.
 
 int main(int argc, char *argv[]) {
+  
+  // Initialize platform-specific functionality (Winsock, etc)
+  if (platform_init() != 0) {
+    fprintf(stderr, "FATAL: Failed to initialize platform\n");
+    return 1;
+  }
+  atexit(platform_cleanup);
+  
   // Parse options first to check for quiet mode
   options_init(argc, argv, true);
 
@@ -1045,6 +1081,12 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  // Initialize mutex
+  if (mutex_init(&g_send_mutex) != 0) {
+    log_fatal("Failed to initialize send mutex");
+    exit(1);
+  }
+
   // Initialize global shared buffer pool
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
@@ -1064,11 +1106,13 @@ int main(int argc, char *argv[]) {
   // Cleanup nicely on Ctrl+C.
   signal(SIGINT, sigint_handler);
 
-  // Handle terminal resize events
+#ifndef _WIN32
+  // Handle terminal resize events (not available on Windows)
   signal(SIGWINCH, sigwinch_handler);
 
-  // Ignore SIGPIPE - we'll handle write errors ourselves
+  // Ignore SIGPIPE - we'll handle write errors ourselves (not on Windows)
   signal(SIGPIPE, SIG_IGN);
+#endif
 
   // Initialize ASCII output for this connection
   ascii_write_init(tty_info_g.fd, false);
@@ -1134,8 +1178,8 @@ int main(int argc, char *argv[]) {
       }
 
       // try to open a socket
-      if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        log_error("Error: could not create socket: %s", network_error_string(errno));
+      if ((sockfd = socket_create(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        log_error("Error: could not create socket: %s", strerror(errno));
         g_should_reconnect = true;
         continue; // try to connect again
       }
@@ -1196,7 +1240,11 @@ int main(int argc, char *argv[]) {
         my_capabilities |= CLIENT_CAP_STRETCH; // Add stretch if enabled
       }
 
+#ifdef WIN32
+      char *os_username = getenv("USERNAME"); // Windows uses USERNAME
+#else
       char *os_username = getenv("USER");
+#endif
       char *display_name = os_username;
       if (!os_username || strcmp(os_username, "") == 0) {
         display_name = ASCIICHAT_DEFAULT_DISPLAY_NAME;
@@ -1225,7 +1273,7 @@ int main(int argc, char *argv[]) {
 
       // Start data reception thread
       g_data_thread_exited = false; // Reset exit flag for new connection
-      if (pthread_create(&g_data_thread, NULL, data_reception_thread_func, NULL) != 0) {
+      if (thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
         log_error("Failed to create data reception thread");
         g_should_reconnect = true;
         continue;
@@ -1235,7 +1283,7 @@ int main(int argc, char *argv[]) {
 
       // Start ping thread for keepalive
       g_ping_thread_exited = false; // Reset exit flag for new connection
-      if (pthread_create(&g_ping_thread, NULL, ping_thread_func, NULL) != 0) {
+      if (thread_create(&g_ping_thread, ping_thread_func, NULL) != 0) {
         log_error("Failed to create ping thread");
         g_should_reconnect = true;
         continue;
@@ -1245,7 +1293,7 @@ int main(int argc, char *argv[]) {
 
       // Start webcam capture thread
       g_capture_thread_exited = false;
-      if (pthread_create(&g_capture_thread, NULL, webcam_capture_thread_func, NULL) != 0) {
+      if (thread_create(&g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
         log_error("Failed to create webcam capture thread");
         g_should_reconnect = true;
         continue;
@@ -1261,7 +1309,7 @@ int main(int argc, char *argv[]) {
       // Start audio capture thread if audio is enabled
       if (opt_audio_enabled) {
         g_audio_capture_thread_exited = false;
-        if (pthread_create(&g_audio_capture_thread, NULL, audio_capture_thread_func, NULL) != 0) {
+        if (thread_create(&g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
           log_error("Failed to create audio capture thread");
           // Non-fatal, continue without audio
         } else {
@@ -1307,25 +1355,25 @@ int main(int argc, char *argv[]) {
 
     // Clean up data thread for this connection
     if (g_data_thread_created) {
-      pthread_join(g_data_thread, NULL);
+      thread_join(&g_data_thread, NULL);
       g_data_thread_created = false;
     }
 
     // Clean up ping thread for this connection
     if (g_ping_thread_created) {
-      pthread_join(g_ping_thread, NULL);
+      thread_join(&g_ping_thread, NULL);
       g_ping_thread_created = false;
     }
 
     // Clean up capture thread for this connection
     if (g_capture_thread_created) {
-      pthread_join(g_capture_thread, NULL);
+      thread_join(&g_capture_thread, NULL);
       g_capture_thread_created = false;
     }
 
     // Clean up audio capture thread for this connection
     if (g_audio_capture_thread_created) {
-      pthread_join(g_audio_capture_thread, NULL);
+      thread_join(&g_audio_capture_thread, NULL);
       g_audio_capture_thread_created = false;
     }
   }

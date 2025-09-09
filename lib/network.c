@@ -5,15 +5,17 @@
 #include "terminal_detect.h"
 #include <stdint.h>
 #include <errno.h>
+#ifndef _WIN32
 #include <fcntl.h>
 #include <netinet/tcp.h>
-#include <pthread.h>
+#include <sys/select.h>
+#include <unistd.h>
+#endif
+#include "platform.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
-#include <unistd.h>
 #include "options.h"
 
 // Check if we're in a test environment
@@ -74,11 +76,16 @@ int set_socket_keepalive(int sockfd) {
 }
 
 int set_socket_nonblocking(int sockfd) {
+#ifdef _WIN32
+  u_long mode = 1; // 1 to enable non-blocking socket
+  return ioctlsocket(sockfd, FIONBIO, &mode);
+#else
   int flags = fcntl(sockfd, F_GETFL, 0);
   if (flags == -1) {
     return -1;
   }
   return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+#endif
 }
 
 bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen,
@@ -95,7 +102,7 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
     return true;
   }
 
-  if (errno != EINPROGRESS) {
+  if (errno != IN_PROGRESS_ERROR) {
     return false;
   }
 

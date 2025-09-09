@@ -4,17 +4,18 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "platform.h"
 #include "common.h"
 
 typedef struct rgb_t {
   uint8_t r, g, b;
-} __attribute__((packed)) rgb_t;
+} PACKED_ATTR rgb_t;
 
 // SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
 typedef struct rgb_pixel_simd_t {
   uint8_t r, g, b;
   uint8_t padding; // Align to 4-byte boundary for efficient SIMD access
-} __attribute__((aligned(16))) rgb_pixel_simd_t;
+} ALIGNED_ATTR(16) rgb_pixel_simd_t;
 
 typedef struct image_t {
   int w, h;

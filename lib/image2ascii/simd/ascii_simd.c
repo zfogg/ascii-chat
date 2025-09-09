@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdarg.h>
 
+#include "platform.h"
 #include "common.h"
 #include "ascii_simd.h"
 #include "palette.h"
@@ -260,7 +261,7 @@ char *image_print_simd(image_t *image, const char *ascii_chars) {
   return render_ascii_image_monochrome_neon(image, ascii_chars);
 #else
   log_debug("COMPILED WITHOUT SPECIFIC SIMD");
-  return convert_pixels_scalar_with_newlines(image, luminance_palette);
+  return convert_pixels_scalar_with_newlines(image, ascii_chars);
 #endif
 }
 

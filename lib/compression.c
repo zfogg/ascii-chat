@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <zlib.h>
-#include <arpa/inet.h>
+#include "platform.h"
 #include "compression.h"
 #include "common.h"
 #include "options.h"

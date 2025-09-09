@@ -1,18 +1,16 @@
-#include <arpa/inet.h>
+#include "platform.h"
+#include "platform_init.h"
+
 #include <errno.h>
 #include <limits.h>
-#include <netinet/in.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
@@ -39,31 +37,26 @@
 static volatile bool g_should_exit = false;
 
 // No emergency socket tracking needed - main shutdown sequence handles socket closure
-static pthread_mutex_t g_stats_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t g_socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+static static_mutex_t g_stats_mutex = STATIC_MUTEX_INIT;
+static static_mutex_t g_socket_mutex = STATIC_MUTEX_INIT;
 
 // Shutdown signaling for fast thread cleanup
-static pthread_mutex_t g_shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t g_shutdown_cond = PTHREAD_COND_INITIALIZER;
+static static_mutex_t g_shutdown_mutex = STATIC_MUTEX_INIT;
+static static_cond_t g_shutdown_cond = STATIC_COND_INIT;
 
 /* Interruptible sleep that respects shutdown signal */
-static void interruptible_usleep(useconds_t usec) {
+static void interruptible_usleep(unsigned int usec) {
   if (g_should_exit)
     return;
 
-  pthread_mutex_lock(&g_shutdown_mutex);
+  static_mutex_lock(&g_shutdown_mutex);
   if (!g_should_exit) {
-    struct timespec timeout;
-    clock_gettime(CLOCK_REALTIME, &timeout);
-    timeout.tv_sec += usec / 1000000;
-    timeout.tv_nsec += (usec % 1000000) * 1000;
-    if (timeout.tv_nsec >= 1000000000) {
-      timeout.tv_sec++;
-      timeout.tv_nsec -= 1000000000;
-    }
-    pthread_cond_timedwait(&g_shutdown_cond, &g_shutdown_mutex, &timeout);
+    int timeout_ms = (int)(usec / 1000);
+    if (timeout_ms == 0)
+      timeout_ms = 1; // Ensure minimum 1ms
+    static_cond_timedwait(&g_shutdown_cond, &g_shutdown_mutex, timeout_ms);
   }
-  pthread_mutex_unlock(&g_shutdown_mutex);
+  static_mutex_unlock(&g_shutdown_mutex);
 }
 
 /* Performance statistics */
@@ -83,7 +76,7 @@ typedef struct {
 
 typedef struct {
   int socket;
-  pthread_t receive_thread; // Thread for receiving client data
+  thread_t receive_thread; // Thread for receiving client data
   // Send thread removed - using broadcast thread for all sending
   uint32_t client_id;
   char display_name[MAX_DISPLAY_NAME_LEN];
@@ -130,12 +123,12 @@ typedef struct {
   packet_queue_t *video_queue; // Queue for video packets to send to this client
 
   // Dedicated send thread for this client
-  pthread_t send_thread;
+  thread_t send_thread;
   bool send_thread_running;
 
   // NEW: Per-client rendering threads
-  pthread_t video_render_thread;
-  pthread_t audio_render_thread;
+  thread_t video_render_thread;
+  thread_t audio_render_thread;
   bool video_render_thread_running;
   bool audio_render_thread_running;
 
@@ -144,25 +137,25 @@ typedef struct {
   struct timespec last_audio_render_time;
 
   // NEW: Per-client synchronization
-  pthread_mutex_t client_state_mutex;
+  mutex_t client_state_mutex;
   // CONCURRENCY FIX: Per-client cached frame protection for concurrent video generation
-  pthread_mutex_t cached_frame_mutex;
+  mutex_t cached_frame_mutex;
   // THREAD-SAFE FRAMEBUFFER: Per-client video buffer mutex for concurrent access
-  pthread_mutex_t video_buffer_mutex;
+  mutex_t video_buffer_mutex;
 } client_info_t;
 
 typedef struct {
   client_info_t clients[MAX_CLIENTS]; // Backing storage (still needed)
   hashtable_t *client_hashtable;      // Hash table for O(1) lookup by client_id
   int client_count;
-  pthread_mutex_t mutex;
+  mutex_t mutex;
   uint32_t next_client_id; // For assigning unique IDs
 } client_manager_t;
 
 // Global multi-client state
 static client_manager_t g_client_manager = {0};
 // NEW: Reader-writer lock for better concurrency (multiple readers, exclusive writers)
-static pthread_rwlock_t g_client_manager_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static rwlock_t g_client_manager_rwlock = {0};
 
 /* ============================================================================
  * Audio Mixing System
@@ -173,7 +166,7 @@ static pthread_rwlock_t g_client_manager_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static mixer_t *g_audio_mixer = NULL;
 
 // Statistics logging thread
-static pthread_t g_stats_logger_thread;
+static thread_t g_stats_logger_thread;
 static bool g_stats_logger_thread_created = false;
 
 // Blank frame statistics
@@ -187,11 +180,11 @@ static size_t g_last_valid_frame_size = 0;
 static unsigned short g_last_frame_width = 0;
 static unsigned short g_last_frame_height = 0;
 static bool g_last_frame_was_color = false;
-static pthread_mutex_t g_frame_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+static mutex_t g_frame_cache_mutex = {0};
 
 static server_stats_t g_stats = {0};
 
-static int listenfd = 0;
+static socket_t listenfd = INVALID_SOCKET;
 
 /* ============================================================================
  * Multi-Client Function Declarations
@@ -249,7 +242,7 @@ static void sigint_handler(int sigint) {
   write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 
   // Wake up all sleeping threads immediately
-  pthread_cond_broadcast(&g_shutdown_cond);
+  static_cond_broadcast(&g_shutdown_cond);
 
   // Close all client sockets to interrupt blocking receive threads (signal-safe)
   // Note: This is done without mutex locking since signal handlers should be minimal
@@ -260,8 +253,8 @@ static void sigint_handler(int sigint) {
   }
 
   // Close listening socket to interrupt accept() - this is signal-safe
-  if (listenfd > 0) {
-    close(listenfd);
+  if (listenfd != INVALID_SOCKET) {
+    socket_close(listenfd);
   }
 
   // Don't do complex operations in signal handler - they can cause deadlocks
@@ -276,11 +269,11 @@ static void sigterm_handler(int sigterm) {
   log_info("SIGTERM received - shutting down server...");
 
   // Wake up all sleeping threads immediately - signal-safe operation
-  pthread_cond_broadcast(&g_shutdown_cond);
+  static_cond_broadcast(&g_shutdown_cond);
 
   // Close listening socket to interrupt accept() - signal-safe
-  if (listenfd > 0) {
-    close(listenfd);
+  if (listenfd != INVALID_SOCKET) {
+    socket_close(listenfd);
   }
 
   // NOTE: Client socket closure handled by main shutdown sequence (not signal handler)
@@ -349,7 +342,7 @@ void *stats_logger_thread_func(void *arg) {
     buffer_pool_log_global_stats();
 
     // Log client statistics
-    pthread_rwlock_rdlock(&g_client_manager_rwlock);
+    rwlock_rdlock(&g_client_manager_rwlock);
     int active_clients = 0;
     int clients_with_audio = 0;
     int clients_with_video = 0;
@@ -365,7 +358,7 @@ void *stats_logger_thread_func(void *arg) {
         }
       }
     }
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
 
     log_info("Active clients: %d, Audio: %d, Video: %d", active_clients, clients_with_audio, clients_with_video);
     log_info("Blank frames sent: %llu", (unsigned long long)g_blank_frames_sent);
@@ -376,7 +369,7 @@ void *stats_logger_thread_func(void *arg) {
     }
 
     // Log per-client buffer pool stats if they have local pools
-    pthread_rwlock_rdlock(&g_client_manager_rwlock);
+    rwlock_rdlock(&g_client_manager_rwlock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
       if (client->active && client->client_id != 0) {
@@ -399,7 +392,7 @@ void *stats_logger_thread_func(void *arg) {
         }
       }
     }
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
   }
 
   log_info("Statistics logger thread stopped");
@@ -413,7 +406,7 @@ void *stats_logger_thread_func(void *arg) {
 
 // Cleanup frame cache on shutdown
 void cleanup_frame_cache() {
-  pthread_mutex_lock(&g_frame_cache_mutex);
+  mutex_lock(&g_frame_cache_mutex);
   if (g_last_valid_frame) {
     free(g_last_valid_frame);
     g_last_valid_frame = NULL;
@@ -423,7 +416,7 @@ void cleanup_frame_cache() {
     g_last_frame_height = 0;
     g_last_frame_was_color = false;
   }
-  pthread_mutex_unlock(&g_frame_cache_mutex);
+  mutex_unlock(&g_frame_cache_mutex);
 }
 
 // NEW: Per-client frame generation function
@@ -450,7 +443,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   // CONCURRENCY FIX: Now using READ lock since framebuffer operations are thread-safe
   // framebuffer_read_multi_frame() now uses internal mutex for thread safety
   // Multiple video generation threads can safely access client list concurrently
-  pthread_rwlock_rdlock(&g_client_manager_rwlock);
+  rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
 
@@ -516,7 +509,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
           if (got_new_frame) {
             // CONCURRENCY FIX: Lock only THIS client's cached frame data
-            pthread_mutex_lock(&client->cached_frame_mutex);
+            mutex_lock(&client->cached_frame_mutex);
 
             // Got a new frame - update our cache
             // Free old cached frame data if we had one
@@ -541,7 +534,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
               client->has_cached_frame = false;
             }
 
-            pthread_mutex_unlock(&client->cached_frame_mutex);
+            mutex_unlock(&client->cached_frame_mutex);
           }
         }
 
@@ -552,13 +545,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           frame_to_use = &current_frame;
         } else {
           // CONCURRENCY FIX: Lock THIS client's cached frame for reading
-          pthread_mutex_lock(&client->cached_frame_mutex);
+          mutex_lock(&client->cached_frame_mutex);
           if (client->has_cached_frame) {
             frame_to_use = &client->last_valid_frame;
             using_cached_frame = true;
           } else {
             // No cached frame - unlock immediately since we won't use it
-            pthread_mutex_unlock(&client->cached_frame_mutex);
+            mutex_unlock(&client->cached_frame_mutex);
           }
           // Note: If using_cached_frame=true, we keep the lock held while using the data
         }
@@ -579,7 +572,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             }
             // Unlock cached frame mutex if we were using cached data
             if (using_cached_frame) {
-              pthread_mutex_unlock(&client->cached_frame_mutex);
+              mutex_unlock(&client->cached_frame_mutex);
             }
             source_count++;
             continue;
@@ -596,7 +589,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             }
             // Unlock cached frame mutex if we were using cached data
             if (using_cached_frame) {
-              pthread_mutex_unlock(&client->cached_frame_mutex);
+              mutex_unlock(&client->cached_frame_mutex);
             }
             source_count++;
             continue;
@@ -623,7 +616,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
         // CONCURRENCY FIX: Unlock cached frame mutex if we were using cached data
         if (using_cached_frame) {
-          pthread_mutex_unlock(&client->cached_frame_mutex);
+          mutex_unlock(&client->cached_frame_mutex);
         }
       } // End of if (client->is_sending_video)
 
@@ -631,7 +624,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       source_count++;
     }
   }
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   // No active video sources - don't generate placeholder frames
   if (source_count == 0) {
@@ -831,9 +824,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   if (target_client && target_client->has_terminal_caps) {
     // Use capability-aware ASCII conversion for better terminal compatibility
-    pthread_mutex_lock(&target_client->client_state_mutex);
+    mutex_lock(&target_client->client_state_mutex);
     terminal_capabilities_t caps_snapshot = target_client->terminal_caps;
-    pthread_mutex_unlock(&target_client->client_state_mutex);
+    mutex_unlock(&target_client->client_state_mutex);
 
     if (target_client->client_palette_initialized) {
       // Render with client's custom palette using enhanced capabilities
@@ -930,6 +923,14 @@ int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame,
  */
 
 int main(int argc, char *argv[]) {
+  
+  // Initialize platform-specific functionality (Winsock, etc)
+  if (platform_init() != 0) {
+    fprintf(stderr, "FATAL: Failed to initialize platform\n");
+    return 1;
+  }
+  atexit(platform_cleanup);
+  
   options_init(argc, argv, false);
 
   // Initialize logging - use specified log file or default
@@ -976,22 +977,26 @@ int main(int argc, char *argv[]) {
 
   // Handle terminal resize events
   log_info("SERVER: Setting up signal handlers...");
+#ifndef _WIN32
   signal(SIGWINCH, sigwinch_handler);
+#endif
 
   // Simple signal handling (temporarily disable complex threading signal handling)
   log_info("SERVER: Setting up simple signal handlers...");
 
   // Handle Ctrl+C for cleanup
   signal(SIGINT, sigint_handler);
+#ifndef _WIN32
   signal(SIGTERM, sigterm_handler);
 
-  // Ignore SIGPIPE
+  // Ignore SIGPIPE (not on Windows)
   signal(SIGPIPE, SIG_IGN);
+#endif
   log_info("SERVER: Signal handling setup complete");
 
   // Start statistics logging thread for periodic performance monitoring
   log_info("SERVER: Creating statistics logger thread...");
-  if (pthread_create(&g_stats_logger_thread, NULL, stats_logger_thread_func, NULL) != 0) {
+  if (thread_create(&g_stats_logger_thread, stats_logger_thread_func, NULL) != 0) {
     log_error("Failed to create statistics logger thread");
   } else {
     g_stats_logger_thread_created = true;
@@ -1005,8 +1010,8 @@ int main(int argc, char *argv[]) {
   socklen_t client_len = sizeof(client_addr);
 
   log_info("SERVER: Creating listen socket...");
-  listenfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (listenfd < 0) {
+  listenfd = socket_create(AF_INET, SOCK_STREAM, 0);
+  if (listenfd == INVALID_SOCKET) {
     log_fatal("Failed to create socket: %s", strerror(errno));
     exit(1);
   }
@@ -1020,9 +1025,8 @@ int main(int argc, char *argv[]) {
 
   // Set socket options
   int yes = 1;
-  if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+  if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
     log_fatal("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
-    perror("setsockopt");
     exit(ASCIICHAT_ERR_NETWORK);
   }
 
@@ -1032,14 +1036,13 @@ int main(int argc, char *argv[]) {
   }
 
   // Bind socket
-  if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
     log_fatal("Socket bind failed: %s", strerror(errno));
-    perror("Error: network bind failed");
     exit(1);
   }
 
   // Listen for connections
-  if (listen(listenfd, 10) < 0) {
+  if (socket_listen(listenfd, 10) < 0) {
     log_fatal("Connection listen failed: %s", strerror(errno));
     exit(1);
   }
@@ -1047,9 +1050,19 @@ int main(int argc, char *argv[]) {
   struct timespec last_stats_time;
   clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
+  // Initialize synchronization primitives
+  if (rwlock_init(&g_client_manager_rwlock) != 0) {
+    log_fatal("Failed to initialize client manager rwlock");
+    exit(1);
+  }
+  if (mutex_init(&g_frame_cache_mutex) != 0) {
+    log_fatal("Failed to initialize frame cache mutex");
+    exit(1);
+  }
+
   // Initialize client manager
   memset(&g_client_manager, 0, sizeof(g_client_manager));
-  pthread_mutex_init(&g_client_manager.mutex, NULL);
+  mutex_init(&g_client_manager.mutex);
   g_client_manager.next_client_id = 0;
 
   // Initialize client hash table for O(1) lookup
@@ -1086,33 +1099,33 @@ int main(int argc, char *argv[]) {
     // SAFETY FIX: Collect client IDs under lock, then process without lock to prevent infinite loops
     typedef struct {
       uint32_t client_id;
-      pthread_t receive_thread;
+      thread_t receive_thread;
     } cleanup_task_t;
 
     cleanup_task_t cleanup_tasks[MAX_CLIENTS];
     int cleanup_count = 0;
 
-    pthread_rwlock_rdlock(&g_client_manager_rwlock);
+    rwlock_rdlock(&g_client_manager_rwlock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
       // Check if this client has been marked inactive by its receive thread
-      if (client->client_id != 0 && !client->active && client->receive_thread != 0) {
+      if (client->client_id != 0 && !client->active && thread_is_initialized(&client->receive_thread)) {
         // Collect cleanup task
         cleanup_tasks[cleanup_count].client_id = client->client_id;
         cleanup_tasks[cleanup_count].receive_thread = client->receive_thread;
         cleanup_count++;
 
         // Clear the thread handle immediately to avoid double-join
-        client->receive_thread = 0;
+        memset(&client->receive_thread, 0, sizeof(thread_t));
       }
     }
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
 
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
       log_info("Cleaning up disconnected client %u", cleanup_tasks[i].client_id);
       // Wait for receive thread to finish
-      pthread_join(cleanup_tasks[i].receive_thread, NULL);
+      thread_join(&cleanup_tasks[i].receive_thread, NULL);
       // Remove the client and clean up resources
       remove_client(cleanup_tasks[i].client_id);
     }
@@ -1171,11 +1184,11 @@ int main(int argc, char *argv[]) {
   g_should_exit = true;
 
   // Wake up all sleeping threads before waiting for them
-  pthread_cond_broadcast(&g_shutdown_cond);
+  static_cond_broadcast(&g_shutdown_cond);
 
   // CRITICAL: Close all client sockets to interrupt blocking receive_packet() calls
   log_info("Closing all client sockets to interrupt blocking I/O...");
-  pthread_rwlock_wrlock(&g_client_manager_rwlock);
+  rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0) {
       log_debug("Closing socket for client %u to interrupt receive thread", g_client_manager.clients[i].client_id);
@@ -1184,12 +1197,12 @@ int main(int argc, char *argv[]) {
       g_client_manager.clients[i].socket = -1;
     }
   }
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   // Wait for stats logger thread to finish
   if (g_stats_logger_thread_created) {
     log_info("Waiting for stats logger thread to finish...");
-    pthread_join(g_stats_logger_thread, NULL);
+    thread_join(&g_stats_logger_thread, NULL);
     log_info("Stats logger thread stopped");
     g_stats_logger_thread_created = false;
   }
@@ -1201,7 +1214,7 @@ int main(int argc, char *argv[]) {
   log_info("Cleaning up connected clients...");
 
   // First, close all client sockets to interrupt receive threads
-  pthread_rwlock_wrlock(&g_client_manager_rwlock);
+  rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->active && client->socket > 0) {
@@ -1211,7 +1224,7 @@ int main(int argc, char *argv[]) {
       client->socket = 0; // Mark as closed
     }
   }
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   // Now clean up client resources
   log_info("Scanning for clients to clean up (active or with allocated resources)...");
@@ -1222,7 +1235,7 @@ int main(int argc, char *argv[]) {
   int active_clients_found = 0;
   int inactive_clients_with_resources = 0;
 
-  pthread_rwlock_rdlock(&g_client_manager_rwlock);
+  rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->client_id != 0) { // Client slot has been used
@@ -1238,7 +1251,7 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   // Process removals without holding lock (prevents infinite loops and lock contention)
   for (int i = 0; i < active_clients_found; i++) {
@@ -1255,13 +1268,13 @@ int main(int argc, char *argv[]) {
 
   // Cleanup resources
   // No server framebuffer or webcam to clean up
-  close(listenfd);
+  socket_close(listenfd);
 
   // Final statistics
-  pthread_mutex_lock(&g_stats_mutex);
+  static_mutex_lock(&g_stats_mutex);
   log_info("Final stats: captured=%lu, sent=%lu, dropped=%lu", g_stats.frames_captured, g_stats.frames_sent,
            g_stats.frames_dropped);
-  pthread_mutex_unlock(&g_stats_mutex);
+  static_mutex_unlock(&g_stats_mutex);
 
   // Cleanup audio mixer if it was created
   if (g_audio_mixer) {
@@ -1289,9 +1302,10 @@ int main(int argc, char *argv[]) {
   data_buffer_pool_cleanup_global();
 
   // Destroy mutexes (do this before log_destroy in case logging uses them)
-  pthread_mutex_destroy(&g_stats_mutex);
-  pthread_mutex_destroy(&g_socket_mutex);
-  pthread_rwlock_destroy(&g_client_manager_rwlock);
+  // g_stats_mutex is static - no explicit destroy needed;
+  // g_socket_mutex is static - no explicit destroy needed;
+  mutex_destroy(&g_frame_cache_mutex);
+  rwlock_destroy(&g_client_manager_rwlock);
 
   return 0;
 }
@@ -1324,7 +1338,7 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
   if (data && len > sizeof(uint32_t) * 2) {
     // Parse image dimensions
     uint32_t img_width = ntohl(*(uint32_t *)data);
-    uint32_t img_height = ntohl(*(uint32_t *)(data + sizeof(uint32_t)));
+    uint32_t img_height = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t)));
     size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
 
     // log_info("[SERVER RECEIVE] Client %u sent frame: %ux%u, aspect: %.3f (original aspect)", client->client_id,
@@ -1415,8 +1429,8 @@ void *client_receive_thread_func(void *arg) {
   }
 
   // Enable thread cancellation for clean shutdown
-  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+  // Thread cancellation not available in platform abstraction
+  // Threads should exit when g_should_exit is set
 
   log_info("Started receive thread for client %u (%s)", client->client_id, client->display_name);
 
@@ -1529,7 +1543,7 @@ void *client_receive_thread_func(void *arg) {
       if (len == sizeof(terminal_capabilities_packet_t)) {
         const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
-        pthread_mutex_lock(&client->client_state_mutex);
+        mutex_lock(&client->client_state_mutex);
 
         // Convert from network byte order and store dimensions
         client->width = ntohs(caps->width);
@@ -1577,7 +1591,10 @@ void *client_receive_thread_func(void *arg) {
         // Mark that we have received capabilities for this client
         client->has_terminal_caps = true;
 
-        pthread_mutex_unlock(&client->client_state_mutex);
+        // Update legacy wants_color field based on color capabilities
+        client->wants_color = (client->terminal_caps.color_level > TERM_COLOR_NONE);
+
+        mutex_unlock(&client->client_state_mutex);
 
         log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
                  "render_mode=%s, reliable=%s",
@@ -1757,9 +1774,9 @@ void *client_video_render_thread_func(void *arg) {
   bool should_continue = true;
   while (should_continue && !g_should_exit) {
     // CRITICAL FIX: Check thread state with mutex protection
-    pthread_mutex_lock(&client->client_state_mutex);
+    mutex_lock(&client->client_state_mutex);
     should_continue = client->video_render_thread_running && client->active;
-    pthread_mutex_unlock(&client->client_state_mutex);
+    mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {
       break;
@@ -1777,13 +1794,13 @@ void *client_video_render_thread_func(void *arg) {
     }
 
     // CRITICAL FIX: Protect client state access with per-client mutex
-    pthread_mutex_lock(&client->client_state_mutex);
+    mutex_lock(&client->client_state_mutex);
     uint32_t client_id_snapshot = client->client_id;
     unsigned short width_snapshot = client->width;
     unsigned short height_snapshot = client->height;
     bool wants_stretch_snapshot = client->wants_stretch;
     bool active_snapshot = client->active;
-    pthread_mutex_unlock(&client->client_state_mutex);
+    mutex_unlock(&client->client_state_mutex);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
@@ -1842,9 +1859,9 @@ void *client_audio_render_thread_func(void *arg) {
   bool should_continue = true;
   while (should_continue && !g_should_exit) {
     // CRITICAL FIX: Check thread state with mutex protection
-    pthread_mutex_lock(&client->client_state_mutex);
+    mutex_lock(&client->client_state_mutex);
     should_continue = client->audio_render_thread_running && client->active;
-    pthread_mutex_unlock(&client->client_state_mutex);
+    mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {
       break;
@@ -1855,11 +1872,11 @@ void *client_audio_render_thread_func(void *arg) {
     }
 
     // CRITICAL FIX: Protect client state access with per-client mutex
-    pthread_mutex_lock(&client->client_state_mutex);
+    mutex_lock(&client->client_state_mutex);
     uint32_t client_id_snapshot = client->client_id;
     bool active_snapshot = client->active;
     packet_queue_t *audio_queue_snapshot = client->audio_queue;
-    pthread_mutex_unlock(&client->client_state_mutex);
+    mutex_unlock(&client->client_state_mutex);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
@@ -1895,23 +1912,23 @@ int create_client_render_threads(client_info_t *client) {
   }
 
   // Initialize per-client mutex
-  if (pthread_mutex_init(&client->client_state_mutex, NULL) != 0) {
+  if (mutex_init(&client->client_state_mutex) != 0) {
     log_error("Failed to initialize client state mutex for client %u", client->client_id);
     return -1;
   }
 
   // CONCURRENCY FIX: Initialize per-client cached frame mutex
-  if (pthread_mutex_init(&client->cached_frame_mutex, NULL) != 0) {
+  if (mutex_init(&client->cached_frame_mutex) != 0) {
     log_error("Failed to initialize cached frame mutex for client %u", client->client_id);
-    pthread_mutex_destroy(&client->client_state_mutex);
+    mutex_destroy(&client->client_state_mutex);
     return -1;
   }
 
   // THREAD-SAFE FRAMEBUFFER: Initialize per-client video buffer mutex
-  if (pthread_mutex_init(&client->video_buffer_mutex, NULL) != 0) {
+  if (mutex_init(&client->video_buffer_mutex) != 0) {
     log_error("Failed to initialize video buffer mutex for client %u", client->client_id);
-    pthread_mutex_destroy(&client->cached_frame_mutex);
-    pthread_mutex_destroy(&client->client_state_mutex);
+    mutex_destroy(&client->cached_frame_mutex);
+    mutex_destroy(&client->client_state_mutex);
     return -1;
   }
 
@@ -1920,38 +1937,38 @@ int create_client_render_threads(client_info_t *client) {
   client->audio_render_thread_running = false;
 
   // Create video rendering thread
-  if (pthread_create(&client->video_render_thread, NULL, client_video_render_thread_func, client) != 0) {
+  if (thread_create(&client->video_render_thread, client_video_render_thread_func, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
-    pthread_mutex_destroy(&client->video_buffer_mutex);
-    pthread_mutex_destroy(&client->cached_frame_mutex);
-    pthread_mutex_destroy(&client->client_state_mutex);
+    mutex_destroy(&client->video_buffer_mutex);
+    mutex_destroy(&client->cached_frame_mutex);
+    mutex_destroy(&client->client_state_mutex);
     return -1;
   }
 
   // CRITICAL FIX: Protect thread_running flag with mutex
-  pthread_mutex_lock(&client->client_state_mutex);
+  mutex_lock(&client->client_state_mutex);
   client->video_render_thread_running = true;
-  pthread_mutex_unlock(&client->client_state_mutex);
+  mutex_unlock(&client->client_state_mutex);
 
   // Create audio rendering thread
-  if (pthread_create(&client->audio_render_thread, NULL, client_audio_render_thread_func, client) != 0) {
+  if (thread_create(&client->audio_render_thread, client_audio_render_thread_func, client) != 0) {
     log_error("Failed to create audio render thread for client %u", client->client_id);
     // Clean up video thread
-    pthread_mutex_lock(&client->client_state_mutex);
+    mutex_lock(&client->client_state_mutex);
     client->video_render_thread_running = false;
-    pthread_mutex_unlock(&client->client_state_mutex);
-    pthread_cancel(client->video_render_thread);
-    pthread_join(client->video_render_thread, NULL);
-    pthread_mutex_destroy(&client->video_buffer_mutex);
-    pthread_mutex_destroy(&client->cached_frame_mutex);
-    pthread_mutex_destroy(&client->client_state_mutex);
+    mutex_unlock(&client->client_state_mutex);
+    // Note: thread cancellation not available in platform abstraction
+    thread_join(&client->video_render_thread, NULL);
+    mutex_destroy(&client->video_buffer_mutex);
+    mutex_destroy(&client->cached_frame_mutex);
+    mutex_destroy(&client->client_state_mutex);
     return -1;
   }
 
   // CRITICAL FIX: Protect thread_running flag with mutex
-  pthread_mutex_lock(&client->client_state_mutex);
+  mutex_lock(&client->client_state_mutex);
   client->audio_render_thread_running = true;
-  pthread_mutex_unlock(&client->client_state_mutex);
+  mutex_unlock(&client->client_state_mutex);
 
   log_info("Created render threads for client %u", client->client_id);
   return 0;
@@ -1966,19 +1983,19 @@ int destroy_client_render_threads(client_info_t *client) {
   log_debug("Destroying render threads for client %u", client->client_id);
 
   // Signal threads to stop - CRITICAL FIX: Protect with mutex
-  pthread_mutex_lock(&client->client_state_mutex);
+  mutex_lock(&client->client_state_mutex);
   client->video_render_thread_running = false;
   client->audio_render_thread_running = false;
-  pthread_mutex_unlock(&client->client_state_mutex);
+  mutex_unlock(&client->client_state_mutex);
 
   // Wake up any sleeping threads using shutdown condition
-  pthread_mutex_lock(&g_shutdown_mutex);
-  pthread_cond_broadcast(&g_shutdown_cond);
-  pthread_mutex_unlock(&g_shutdown_mutex);
+  static_mutex_lock(&g_shutdown_mutex);
+  static_cond_broadcast(&g_shutdown_cond);
+  static_mutex_unlock(&g_shutdown_mutex);
 
   // Wait for threads to finish (deterministic cleanup)
-  if (client->video_render_thread) {
-    int result = pthread_join(client->video_render_thread, NULL);
+  if (thread_is_initialized(&client->video_render_thread)) {
+    int result = thread_join(&client->video_render_thread, NULL);
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Video render thread joined for client %u", client->client_id);
@@ -1986,11 +2003,11 @@ int destroy_client_render_threads(client_info_t *client) {
     } else {
       log_error("Failed to join video render thread for client %u: %s", client->client_id, strerror(result));
     }
-    client->video_render_thread = 0;
+    memset(&client->video_render_thread, 0, sizeof(thread_t));
   }
 
-  if (client->audio_render_thread) {
-    int result = pthread_join(client->audio_render_thread, NULL);
+  if (thread_is_initialized(&client->audio_render_thread)) {
+    int result = thread_join(&client->audio_render_thread, NULL);
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Audio render thread joined for client %u", client->client_id);
@@ -1998,11 +2015,11 @@ int destroy_client_render_threads(client_info_t *client) {
     } else {
       log_error("Failed to join audio render thread for client %u: %s", client->client_id, strerror(result));
     }
-    client->audio_render_thread = 0;
+    memset(&client->audio_render_thread, 0, sizeof(thread_t));
   }
 
   // Destroy per-client mutex
-  pthread_mutex_destroy(&client->client_state_mutex);
+  mutex_destroy(&client->client_state_mutex);
 
   log_debug("Successfully destroyed render threads for client %u", client->client_id);
   return 0;
@@ -2013,7 +2030,7 @@ void broadcast_server_state_to_all_clients(void) {
   // Count active clients with video
   int active_video_count = 0;
 
-  pthread_rwlock_rdlock(&g_client_manager_rwlock);
+  rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (g_client_manager.clients[i].active && g_client_manager.clients[i].is_sending_video) {
       active_video_count++;
@@ -2042,7 +2059,7 @@ void broadcast_server_state_to_all_clients(void) {
       }
     }
   }
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   log_info("Broadcast server state to all clients: %d connected, %d active with video", state.connected_client_count,
            active_video_count);
@@ -2050,7 +2067,7 @@ void broadcast_server_state_to_all_clients(void) {
 
 // Client management functions
 int add_client(int socket, const char *client_ip, int port) {
-  pthread_rwlock_wrlock(&g_client_manager_rwlock);
+  rwlock_wrlock(&g_client_manager_rwlock);
 
   // Find empty slot - this is the authoritative check
   int slot = -1;
@@ -2066,12 +2083,12 @@ int add_client(int socket, const char *client_ip, int port) {
   }
 
   if (slot == -1) {
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
     log_error("No available client slots (all %d slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    send(socket, reject_msg, strlen(reject_msg), MSG_NOSIGNAL);
+    send(socket, reject_msg, strlen(reject_msg), 0);  // MSG_NOSIGNAL not on Windows
 
     return -1;
   }
@@ -2096,7 +2113,7 @@ int add_client(int socket, const char *client_ip, int port) {
   client->incoming_video_buffer = framebuffer_create_multi(64); // Increased to 64 frames to handle bursts
   if (!client->incoming_video_buffer) {
     log_error("Failed to create video buffer for client %u", client->client_id);
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
     return -1;
   }
 
@@ -2106,7 +2123,7 @@ int add_client(int socket, const char *client_ip, int port) {
     log_error("Failed to create audio buffer for client %u", client->client_id);
     framebuffer_destroy(client->incoming_video_buffer);
     client->incoming_video_buffer = NULL;
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
     return -1;
   }
 
@@ -2120,7 +2137,7 @@ int add_client(int socket, const char *client_ip, int port) {
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     client->incoming_video_buffer = NULL;
     client->incoming_audio_buffer = NULL;
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
     return -1;
   }
 
@@ -2134,7 +2151,7 @@ int add_client(int socket, const char *client_ip, int port) {
     client->incoming_video_buffer = NULL;
     client->incoming_audio_buffer = NULL;
     client->audio_queue = NULL;
-    pthread_rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_unlock(&g_client_manager_rwlock);
     return -1;
   }
 
@@ -2159,20 +2176,20 @@ int add_client(int socket, const char *client_ip, int port) {
     }
   }
 
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   // Start threads for this client
-  if (pthread_create(&client->receive_thread, NULL, client_receive_thread_func, client) != 0) {
+  if (thread_create(&client->receive_thread, client_receive_thread_func, client) != 0) {
     log_error("Failed to create receive thread for client %u", client->client_id);
     remove_client(client->client_id);
     return -1;
   }
 
   // Start send thread for this client
-  if (pthread_create(&client->send_thread, NULL, client_send_thread_func, client) != 0) {
+  if (thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
     log_error("Failed to create send thread for client %u", client->client_id);
     // Join the receive thread before cleaning up to prevent race conditions
-    pthread_join(client->receive_thread, NULL);
+    thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
     remove_client(client->client_id);
     return -1;
@@ -2214,7 +2231,7 @@ int add_client(int socket, const char *client_ip, int port) {
 }
 
 int remove_client(uint32_t client_id) {
-  pthread_rwlock_wrlock(&g_client_manager_rwlock);
+  rwlock_wrlock(&g_client_manager_rwlock);
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
@@ -2263,9 +2280,9 @@ int remove_client(uint32_t client_id) {
       // Wait for send thread to exit if it was created
       // Note: We must join regardless of send_thread_running flag to prevent race condition
       // where thread sets flag to false just before we check it, causing missed cleanup
-      if (client->send_thread != 0) {
+      if (thread_is_initialized(&client->send_thread)) {
         // The shutdown signal above will cause the send thread to exit
-        int join_result = pthread_join(client->send_thread, NULL);
+        int join_result = thread_join(&client->send_thread, NULL);
         if (join_result == 0) {
           log_debug("Send thread for client %u has terminated", client_id);
         } else {
@@ -2274,8 +2291,9 @@ int remove_client(uint32_t client_id) {
       }
 
       // Join receive thread if it exists and we're not in the receive thread context
-      if (client->receive_thread != 0 && !pthread_equal(pthread_self(), client->receive_thread)) {
-        int join_result = pthread_join(client->receive_thread, NULL);
+      // Note: simplified thread cleanup without thread_equal check
+      {
+        int join_result = thread_join(&client->receive_thread, NULL);
         if (join_result == 0) {
           log_debug("Receive thread for client %u has terminated", client_id);
         } else {
@@ -2317,10 +2335,10 @@ int remove_client(uint32_t client_id) {
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
       // CONCURRENCY FIX: Destroy per-client cached frame mutex
-      pthread_mutex_destroy(&client->cached_frame_mutex);
+      mutex_destroy(&client->cached_frame_mutex);
       // THREAD-SAFE FRAMEBUFFER: Destroy per-client video buffer mutex
-      pthread_mutex_destroy(&client->video_buffer_mutex);
-      pthread_mutex_destroy(&client->client_state_mutex);
+      mutex_destroy(&client->video_buffer_mutex);
+      mutex_destroy(&client->client_state_mutex);
 
       // Clear the entire client structure to ensure it's ready for reuse
       memset(client, 0, sizeof(client_info_t));
@@ -2338,7 +2356,7 @@ int remove_client(uint32_t client_id) {
       log_info("CLIENT REMOVED: client_id=%u (%s) removed from slot ?, remaining clients: %d", client_id,
                display_name_copy, remaining_count);
 
-      pthread_rwlock_unlock(&g_client_manager_rwlock);
+      rwlock_unlock(&g_client_manager_rwlock);
 
       // Broadcast updated server state to all remaining clients
       // This will trigger them to clear their terminals before the new grid layout
@@ -2348,7 +2366,7 @@ int remove_client(uint32_t client_id) {
     }
   }
 
-  pthread_rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_unlock(&g_client_manager_rwlock);
 
   log_error("Client %u not found for removal", client_id);
   return -1;

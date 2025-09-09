@@ -4,10 +4,12 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
-#include <unistd.h>
-#include <termios.h>
 
-#include "curses.h"
+#include "platform.h"
+
+#if !PLATFORM_WINDOWS
+#include <ncurses.h>
+#endif
 
 #include "ascii.h"
 #include "simd/ascii_simd.h"
@@ -40,6 +42,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     console_clear(fd);
     cursor_reset(fd);
 
+#if !PLATFORM_WINDOWS
     struct termios termios;
     if (tcgetattr(fd, &termios) != 0) {
       log_error("Failed to get terminal attributes for fd %d", fd);
@@ -47,10 +50,13 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     }
     termios.c_lflag &= ~ECHO;
     tcsetattr(fd, TCSANOW, &termios);
+#endif
+#if !PLATFORM_WINDOWS
     // Disable blink for the terminal cursor
     if (curs_set(0) == ERR) {
       log_warn("Failed to DISable cursor blink with curs_set(0)");
     }
+#endif
 
     // FIXME: make cursor_hide() work
     // cursor_hide(fd); // this doesn't work
@@ -280,14 +286,18 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
     // cursor_show(fd); // this doesn't work
     printf("\033[?25h"); // this works
 
+#if !PLATFORM_WINDOWS
     struct termios termios;
     tcgetattr(fd, &termios);
     termios.c_lflag |= ECHO;
     tcsetattr(fd, TCSANOW, &termios);
+#endif
+#if !PLATFORM_WINDOWS
     // Enable blink for the terminal cursor
     if (curs_set(1) == ERR) {
       log_warn("Failed to ENable cursor blink with curs_set(1)");
     }
+#endif
   }
   log_debug("ASCII writer destroyed");
 }
