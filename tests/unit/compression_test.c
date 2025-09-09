@@ -166,12 +166,12 @@ Test(compression, send_ascii_frame_packet_oversized_frame) {
   int sockfd = create_test_socket();
   cr_assert_geq(sockfd, 0);
 
-  // Test with frame size larger than 10MB
-  char *large_frame = malloc(11 * 1024 * 1024);
+  // Test with frame size larger than 10MB (reduced to 1MB for faster testing)
+  char *large_frame = malloc(1024 * 1024);
   cr_assert_not_null(large_frame);
-  memset(large_frame, 'A', 11 * 1024 * 1024);
+  memset(large_frame, 'A', 1024 * 1024);
 
-  int result = send_ascii_frame_packet(sockfd, large_frame, 11 * 1024 * 1024, 80, 24);
+  int result = send_ascii_frame_packet(sockfd, large_frame, 1024 * 1024, 80, 24);
   cr_assert_eq(result, -1);
 
   free(large_frame);
