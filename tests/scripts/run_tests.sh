@@ -108,7 +108,7 @@ detect_cpu_cores() {
 get_test_executables() {
     local category="$1"
     local bin_dir="$PROJECT_ROOT/bin"
-    
+
     # Check if bin directory exists
     if [[ ! -d "$bin_dir" ]]; then
         log_verbose "bin directory not found at: $bin_dir"
@@ -193,6 +193,12 @@ run_single_test() {
     local log_file="$4"
     local junit_file="$5"
 
+    # Enable colored output for Criterion tests
+    export TERM=${TERM:-xterm-256color}
+    export CLICOLOR=1
+    export CLICOLOR_FORCE=1
+    export CRITERION_USE_COLORS=always
+
     echo "[TEST] Starting: $test_name"
     local test_start_time=$(date +%s.%N)
 
@@ -204,39 +210,29 @@ run_single_test() {
 
         # Run test with timeout and capture output
         local test_exit_code=0
-        # Check if test executable exists and is executable
-        if [[ ! -f "$test_executable" ]]; then
-            echo "[ERROR] Test executable not found: $test_executable" | tee -a "$output_file"
-            test_exit_code=127
-        elif [[ ! -x "$test_executable" ]]; then
-            echo "[ERROR] Test executable not executable: $test_executable" | tee -a "$output_file"
-            ls -la "$test_executable" | tee -a "$output_file"
-            test_exit_code=126
-        else
-            # Run test with optional timeout
-            # Use gtimeout on macOS (GNU coreutils), timeout on Linux
-            local timeout_cmd=""
-            if command -v gtimeout >/dev/null 2>&1; then
-                # macOS with GNU coreutils installed
-                timeout_cmd="gtimeout --preserve-status 300"
-            elif command -v timeout >/dev/null 2>&1; then
-                # Check if it's GNU timeout with --preserve-status support
-                if timeout --version 2>/dev/null | grep -q "GNU\|coreutils"; then
-                    timeout_cmd="timeout --preserve-status 300"
-                else
-                    # BSD timeout
-                    timeout_cmd="timeout 300"
-                fi
-            fi
-            
-            if [[ -n "$timeout_cmd" ]]; then
-                $timeout_cmd "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1
-                test_exit_code=$?
+        # Run test with optional timeout
+        # Use gtimeout on macOS (GNU coreutils), timeout on Linux
+        local timeout_cmd=""
+        if command -v gtimeout >/dev/null 2>&1; then
+            # macOS with GNU coreutils installed
+            timeout_cmd="gtimeout --preserve-status 300"
+        elif command -v timeout >/dev/null 2>&1; then
+            # Check if it's GNU timeout with --preserve-status support
+            if timeout --version 2>/dev/null | grep -q "GNU\|coreutils"; then
+                timeout_cmd="timeout --preserve-status 300"
             else
-                # No timeout available, run directly
-                "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1
-                test_exit_code=$?
+                # BSD timeout
+                timeout_cmd="timeout 300"
             fi
+        fi
+
+        if [[ -n "$timeout_cmd" ]]; then
+            TESTING=1 $timeout_cmd "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1
+            test_exit_code=$?
+        else
+            # No timeout available, run directly
+            TESTING=1 "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1
+            test_exit_code=$?
         fi
 
         local test_end_time=$(date +%s.%N)
@@ -335,8 +331,11 @@ run_single_test() {
             return $test_exit_code
         fi
     else
-        # Regular test run
-        if "$test_executable" --jobs "$jobs" 2>&1 | tee -a "$log_file"; then
+        # Regular test run - run directly to preserve colors
+        TESTING=1 "$test_executable" --jobs "$jobs" --verbose
+        test_exit_code=$?
+
+        if [[ $test_exit_code -eq 0 ]]; then
             local test_end_time=$(date +%s.%N)
             local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
             echo "[TEST] PASSED: $test_name (${duration}s)"
@@ -376,14 +375,14 @@ run_test_category() {
     log_verbose "Using find pattern: test_${category}_*"
     test_executables=($(get_test_executables "$category"))
     log_verbose "Found ${#test_executables[@]} test executables"
-    
+
     if [[ ${#test_executables[@]} -eq 0 ]]; then
         log_info "No $category tests found in $PROJECT_ROOT/bin"
         log_info "Looking for any test executables:"
         ls -la "$PROJECT_ROOT/bin/" 2>/dev/null | grep test_ || echo "  No test files in bin/"
         log_info "Direct find command result:"
         find "$PROJECT_ROOT/bin" -name "test_${category}_*" -type f 2>&1
-        
+
         log_info "Building tests with $build_type configuration..."
         ensure_tests_built "$build_type" "$category"
         test_executables=($(get_test_executables "$category"))
