@@ -251,7 +251,8 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
 
       // Convert to character indices and emit immediately
-      for (int i = 0; i < 32; i++) {
+      int i = 0;
+      while (i < 32) {
         const uint8_t luma_idx = avx2_luminance_buffer[i] >> 2; // 0-63
         const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
@@ -292,7 +293,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
             pos += char_info->byte_len;
           }
         }
-        i = run_end - 1; // -1 because loop will increment
+        i = run_end;
       }
       x += 32;
     }
