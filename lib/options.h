@@ -15,6 +15,9 @@
 // Returns the integer value, or INT_MIN on error
 int strtoint_safe(const char *str);
 
+#define OPT_WIDTH_DEFAULT 110
+#define OPT_HEIGHT_DEFAULT 70
+
 extern unsigned short int opt_width, opt_height, auto_width, auto_height;
 
 extern char opt_address[], opt_port[];
