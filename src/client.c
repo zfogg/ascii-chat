@@ -572,7 +572,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (g_should_clear_before_next_frame) {
     full_terminal_reset(tty_info_g.fd);
     g_should_clear_before_next_frame = false;
-    log_debug("Cleared console before frame due to client count change");
   }
 
   // For terminal: print every frame until final snapshot
