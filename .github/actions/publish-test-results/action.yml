@@ -37,11 +37,15 @@ runs:
         if [ -f "codecov.yml" ]; then
           echo "🔍 Validating codecov.yml configuration..."
           response=$(curl -s --data-binary @codecov.yml https://codecov.io/validate)
-          if echo "$response" | grep -q '"valid": true'; then
+          
+          # Check if response starts with "Valid!" (successful validation)
+          if echo "$response" | grep -q '^Valid!'; then
             echo "✅ codecov.yml is valid"
+            # Extract and display the JSON part (skip first line)
+            echo "$response" | tail -n +2 | jq -C '.coverage.status.project | keys' 2>/dev/null || true
           else
             echo "❌ codecov.yml validation failed:"
-            echo "$response" | jq . || echo "$response"
+            echo "$response"
             exit 1
           fi
         else
@@ -62,10 +66,48 @@ runs:
           find . -name "*.xml" -type f | head -5
         fi
 
-    # Publish test results to GitHub checks
-    - name: Publish Test Results to GitHub
+    # Publish test results to GitHub checks (Linux)
+    - name: Publish Test Results to GitHub (Linux)
       uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
+      if: always() && runner.os == 'Linux'
+      with:
+        files: |
+          ${{ inputs.junit-file }}
+        check_name: |
+          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+              inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
+              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+        comment_title: |
+          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+              inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
+              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+        compare_to_earlier_commit: true
+        test_changes_limit: 10
+        fail_on: 'nothing'  # Don't fail the workflow based on test results
+
+    # Publish test results to GitHub checks (macOS)
+    - name: Publish Test Results to GitHub (macOS)
+      uses: EnricoMi/publish-unit-test-result-action/macos@v2
+      if: always() && runner.os == 'macOS'
+      with:
+        files: |
+          ${{ inputs.junit-file }}
+        check_name: |
+          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+              inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
+              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+        comment_title: |
+          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+              inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
+              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+        compare_to_earlier_commit: true
+        test_changes_limit: 10
+        fail_on: 'nothing'  # Don't fail the workflow based on test results
+
+    # Publish test results to GitHub checks (Windows)
+    - name: Publish Test Results to GitHub (Windows)
+      uses: EnricoMi/publish-unit-test-result-action/windows@v2
+      if: always() && runner.os == 'Windows'
       with:
         files: |
           ${{ inputs.junit-file }}
