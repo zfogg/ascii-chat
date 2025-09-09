@@ -539,9 +539,6 @@ tests-sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 tests-sanitize: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
 tests-sanitize: $(TEST_EXECUTABLES)
 
-
-
-
 # Build executables
 $(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
 	@echo "Linking $@..."
@@ -725,7 +722,7 @@ help:
 	@echo "  LDFLAGS=$(LDFLAGS)"
 
 # =============================================================================
-# Code Formatting
+# Code Utils
 # =============================================================================
 
 # Format source code
