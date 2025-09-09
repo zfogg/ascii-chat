@@ -66,23 +66,23 @@ int mutex_unlock(mutex_t *mutex) {
 
 // Read-write lock implementation
 int rwlock_init(rwlock_t *lock) {
-  return pthread_rwlock_init(&lock->rwlock, NULL);
+  return pthread_rwlock_init(&lock->lock, NULL);
 }
 
 int rwlock_destroy(rwlock_t *lock) {
-  return pthread_rwlock_destroy(&lock->rwlock);
+  return pthread_rwlock_destroy(&lock->lock);
 }
 
 int rwlock_rdlock(rwlock_t *lock) {
-  return pthread_rwlock_rdlock(&lock->rwlock);
+  return pthread_rwlock_rdlock(&lock->lock);
 }
 
 int rwlock_wrlock(rwlock_t *lock) {
-  return pthread_rwlock_wrlock(&lock->rwlock);
+  return pthread_rwlock_wrlock(&lock->lock);
 }
 
 int rwlock_unlock(rwlock_t *lock) {
-  return pthread_rwlock_unlock(&lock->rwlock);
+  return pthread_rwlock_unlock(&lock->lock);
 }
 
 int rwlock_rdunlock(rwlock_t *lock) {
