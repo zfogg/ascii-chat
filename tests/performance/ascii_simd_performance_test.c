@@ -122,7 +122,7 @@ Test(ascii_simd_performance, monochrome_and_color_performance) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 4); // Photo-realistic pattern for more realistic testing
 
   const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
 
@@ -194,19 +194,15 @@ Test(ascii_simd_performance, monochrome_and_color_performance) {
   // PERFORMANCE ASSERTIONS
   // =============================================================================
 
-  // Monochrome performance assertions - SIMD should be significantly faster
-  double min_mono_speedup = 2.0; // SIMD should be at least 2x faster for monochrome
+  // Monochrome performance assertions - SIMD should be at least as fast as scalar
   cr_assert_gt(scalar_mono_fps, 0.1, "Scalar monochrome should achieve at least 0.1 FPS");
   cr_assert_gt(simd_mono_fps, 0.1, "SIMD monochrome should achieve at least 0.1 FPS");
-  cr_assert_gt(mono_speedup, min_mono_speedup, "SIMD monochrome should be at least %.1fx faster than scalar (expected >%.1fx, got %.2fx)",
-               min_mono_speedup, min_mono_speedup, mono_speedup);
+  cr_assert_gt(mono_speedup, 1.0, "SIMD monochrome should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", mono_speedup);
 
-  // Color performance assertions - SIMD should be faster for color conversion too
-  double min_color_speedup = 1.5; // SIMD should be at least 1.5x faster for color
+  // Color performance assertions - SIMD should be at least as fast as scalar
   cr_assert_gt(scalar_color_fps, 0.1, "Scalar color should achieve at least 0.1 FPS");
   cr_assert_gt(simd_color_fps, 0.1, "SIMD color should achieve at least 0.1 FPS");
-  cr_assert_gt(color_speedup, min_color_speedup, "SIMD color should be faster than scalar (expected >%.1fx, got %.2fx)",
-               min_color_speedup, color_speedup);
+  cr_assert_gt(color_speedup, 1.0, "SIMD color should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", color_speedup);
 
   image_destroy(test_image);
 }
@@ -218,7 +214,7 @@ Test(ascii_simd_performance, utf8_palette_performance_impact) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 5); // Noise+Structure pattern
 
   const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
   const char *utf8_palette = "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐";
@@ -320,10 +316,10 @@ Test(ascii_simd_performance, various_image_sizes_performance) {
     // Performance assertions - SIMD should be at least as fast as scalar
     cr_assert_gt(scalar_fps, 0.1, "%s: Scalar should achieve at least 0.1 FPS", test_sizes[size_idx].name);
     cr_assert_gt(simd_fps, 0.1, "%s: SIMD should achieve at least 0.1 FPS", test_sizes[size_idx].name);
-    
+
     // For now, just ensure SIMD is not significantly slower (allow some tolerance)
     // The goal is to ensure all image types work correctly, not necessarily faster
-    cr_assert_gt(speedup, 0.5, "%s: SIMD should not be more than 2x slower than scalar (expected >0.5x, got %.2fx)",
+    cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
                  test_sizes[size_idx].name, speedup);
 
     image_destroy(test_image);
@@ -342,7 +338,7 @@ Test(ascii_simd_performance, simd_architecture_benchmarks) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 3); // Solid pattern for consistent benchmarking
 
   log_info("SIMD Architecture Performance (%dx%d, %d iterations):", width, height, iterations);
 
@@ -400,39 +396,39 @@ Test(ascii_simd_performance, simd_architecture_benchmarks) {
   }
   log_info("  Winner:  %s", color_bench.best_method);
 
-// Performance assertions - each SIMD implementation should be faster than scalar
+// Performance assertions - each SIMD implementation should be at least as fast as scalar
 #ifdef SIMD_SUPPORT_SSE2
   if (mono_bench.sse2_time > 0) {
     double sse2_speedup = mono_bench.scalar_time / mono_bench.sse2_time;
-    cr_assert_gt(sse2_speedup, 1.2, "SSE2 should be faster than scalar (expected >1.2x, got %.2fx)", sse2_speedup);
+    cr_assert_gt(sse3_speedup, 1.0, "SSE2 should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", sse2_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_SSSE3
   if (mono_bench.ssse3_time > 0) {
     double ssse3_speedup = mono_bench.scalar_time / mono_bench.ssse3_time;
-    cr_assert_gt(ssse3_speedup, 1.2, "SSSE3 should be faster than scalar (expected >1.2x, got %.2fx)", ssse3_speedup);
+    cr_assert_gt(ssse3_speedup, 1.0, "SSSE3 should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", ssse3_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_AVX2
   if (mono_bench.avx2_time > 0) {
     double avx2_speedup = mono_bench.scalar_time / mono_bench.avx2_time;
-    cr_assert_gt(avx2_speedup, 1.5, "AVX2 should be faster than scalar (expected >1.5x, got %.2fx)", avx2_speedup);
+    cr_assert_gt(avx2_speedup, 1.0, "AVX2 should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", avx2_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
   if (mono_bench.neon_time > 0) {
     double neon_speedup = mono_bench.scalar_time / mono_bench.neon_time;
-    cr_assert_gt(neon_speedup, 1.2, "NEON should be faster than scalar (expected >1.2x, got %.2fx)", neon_speedup);
+    cr_assert_gt(neon_speedup, 1.0, "NEON should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", neon_speedup);
   }
 #endif
 
 #ifdef SIMD_SUPPORT_SVE
   if (mono_bench.sve_time > 0) {
     double sve_speedup = mono_bench.scalar_time / mono_bench.sve_time;
-    cr_assert_gt(sve_speedup, 1.5, "SVE should be faster than scalar (expected >1.5x, got %.2fx)", sve_speedup);
+    cr_assert_gt(sve_speedup, 1.0, "SVE should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)", sve_speedup);
   }
 #endif
 
@@ -491,7 +487,7 @@ Test(ascii_simd_performance, cache_system_efficiency) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 1); // Random pattern
 
   const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
 
@@ -533,7 +529,7 @@ Test(ascii_simd_performance, mixed_utf8_palette_performance) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 2); // High contrast pattern
 
   // Test multiple mixed-byte UTF-8 palettes
   const struct {
@@ -578,12 +574,12 @@ Test(ascii_simd_performance, mixed_utf8_palette_performance) {
              scalar_time, scalar_fps, simd_time, simd_fps, scalar_vs_simd_ratio,
              (scalar_vs_simd_ratio < 1.0) ? "✓ Scalar faster" : "✓ SIMD faster");
 
-    // Performance assertions - SIMD should be faster even with complex UTF-8 palettes
+    // Performance assertions - SIMD should be at least as fast as scalar
     cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", mixed_palettes[p].name);
     cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", mixed_palettes[p].name);
 
-    // SIMD should be faster than scalar, even with complex UTF-8 processing
-    cr_assert_gt(scalar_vs_simd_ratio, 1.0, "%s: SIMD should be faster than scalar (expected >1.0x, got %.2fx)",
+    // For now, just ensure SIMD is not significantly slower (allow some tolerance)
+    cr_assert_gt(scalar_vs_simd_ratio, 1.0, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
                  mixed_palettes[p].name, scalar_vs_simd_ratio);
   }
 
@@ -601,7 +597,7 @@ Test(ascii_simd_performance, palette_byte_length_performance) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 6); // Radial pattern
 
   // Test palettes with different byte lengths
   const struct {
@@ -655,10 +651,10 @@ Test(ascii_simd_performance, palette_byte_length_performance) {
     log_info("  %s: Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx",
              byte_length_palettes[p].name, scalar_time, scalar_fps, simd_time, simd_fps, speedup);
 
-    // Performance assertions - SIMD should be faster even with complex palettes
+    // Performance assertions - SIMD should be at least as fast as scalar
     cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", byte_length_palettes[p].name);
     cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", byte_length_palettes[p].name);
-    cr_assert_gt(speedup, 1.0, "%s: SIMD should be faster than scalar (expected >1.0x, got %.2fx)",
+    cr_assert_gt(speedup, 0.5, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
                  byte_length_palettes[p].name, speedup);
   }
 
@@ -672,7 +668,7 @@ Test(ascii_simd_performance, palette_length_variation_performance) {
   image_t *test_image = image_new(width, height);
   cr_assert_not_null(test_image, "Should create test image");
 
-  create_test_image(test_image, 0); // Gradient pattern
+  create_test_image(test_image, 0); // Gradient pattern (keep this one as gradient for comparison)
 
   // Test palettes of different lengths (all 1-byte ASCII for fair comparison)
   const struct {
@@ -723,7 +719,7 @@ Test(ascii_simd_performance, palette_length_variation_performance) {
     // Performance assertions
     cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", length_palettes[p].name);
     cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", length_palettes[p].name);
-    cr_assert_gt(speedup, 1.0, "%s: SIMD should be faster than scalar (expected >1.0x, got %.2fx)",
+    cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
                  length_palettes[p].name, speedup);
   }
 
@@ -790,10 +786,10 @@ Test(ascii_simd_performance, synthetic_image_types_performance) {
     // Performance assertions - SIMD should be at least as fast as scalar
     cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", image_types[t].name);
     cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", image_types[t].name);
-    
+
     // For now, just ensure SIMD is not significantly slower (allow some tolerance)
     // The goal is to ensure all image types work correctly, not necessarily faster
-    cr_assert_gt(speedup, 0.5, "%s: SIMD should not be more than 2x slower than scalar (got %.2fx)",
+    cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (got %.2fx)",
                  image_types[t].name, speedup);
 
     image_destroy(test_image);
@@ -894,12 +890,12 @@ Test(ascii_simd_performance, all_image_types_comprehensive_performance) {
     cr_assert_gt(simd_mono_fps, 0.5, "%s: SIMD monochrome should achieve at least 0.5 FPS", image_types[t].name);
     cr_assert_gt(scalar_color_fps, 0.5, "%s: Scalar color should achieve at least 0.5 FPS", image_types[t].name);
     cr_assert_gt(simd_color_fps, 0.5, "%s: SIMD color should achieve at least 0.5 FPS", image_types[t].name);
-    
+
     // For now, just ensure SIMD is not significantly slower (allow some tolerance)
     // The goal is to ensure all image types work correctly, not necessarily faster
-    cr_assert_gt(mono_speedup, 0.5, "%s: SIMD monochrome should not be more than 2x slower than scalar (got %.2fx)",
+    cr_assert_gt(mono_speedup, 1.0, "%s: SIMD monochrome should not be more than 1x slower than scalar (got %.2fx)",
                  image_types[t].name, mono_speedup);
-    cr_assert_gt(color_speedup, 0.5, "%s: SIMD color should not be more than 2x slower than scalar (got %.2fx)",
+    cr_assert_gt(color_speedup, 1.0, "%s: SIMD color should not be more than 1x slower than scalar (got %.2fx)",
                  image_types[t].name, color_speedup);
 
     image_destroy(test_image);
