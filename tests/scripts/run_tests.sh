@@ -171,15 +171,15 @@ run_single_test() {
     local log_file="$4"
     local junit_file="$5"
 
-    log_verbose "Running test: $test_name"
+    echo "[TEST] Starting: $test_name"
+    local test_start_time=$(date +%s.%N)
 
     if [[ -n "$generate_junit" ]]; then
         # Generate JUnit XML for this test
         local xml_file="/tmp/${test_name}_$(date +%s%N).xml"
         local test_class="$(echo "$test_name" | sed 's/^test_//; s/_test$//; s/_/./g')"
         local output_file="/tmp/${test_name}_output_$(date +%s%N).txt"
-        local start_time=$(date +%s)
-        
+
         # Run test with timeout and capture output
         local test_exit_code=0
         if timeout --preserve-status 300 "$test_executable" --jobs "$jobs" --xml="$xml_file" > "$output_file" 2>&1; then
@@ -187,15 +187,15 @@ run_single_test() {
         else
             test_exit_code=$?
         fi
-        
-        local end_time=$(date +%s)
-        local duration=$((end_time - start_time))
-        
+
+        local test_end_time=$(date +%s.%N)
+        local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
+
         # Output to log file
         cat "$output_file" >> "$log_file"
-        
+
         if [[ $test_exit_code -eq 0 ]]; then
-            log_verbose "Test passed: $test_name"
+            echo "[TEST] PASSED: $test_name (${duration}s)"
             if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]]; then
                 # Transform the XML to match our naming convention
                 if grep -q '<testsuite' "$xml_file"; then
@@ -221,7 +221,7 @@ run_single_test() {
             # Determine failure type
             local failure_type="TestFailure"
             local failure_msg="Test failed with exit code $test_exit_code"
-            
+
             if [[ $test_exit_code -eq 124 ]]; then
                 failure_type="Timeout"
                 failure_msg="Test timed out after 300 seconds"
@@ -231,9 +231,9 @@ run_single_test() {
                 failure_type="Crash"
                 failure_msg="Test crashed with signal $signal"
             fi
-            
-            log_verbose "Test failed: $test_name (exit code: $test_exit_code)"
-            
+
+            echo "[TEST] FAILED: $test_name (${duration}s, exit code: $test_exit_code)"
+
             # Try to use generated XML if available
             if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]] && grep -q '<testsuite' "$xml_file"; then
                 # Use the XML but ensure it shows as failed
@@ -249,47 +249,51 @@ run_single_test() {
                     error_count=1
                     failure_count=0
                 fi
-                
+
                 echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"$failure_count\" errors=\"$error_count\" time=\"${duration}.0\">" >> "$junit_file"
                 echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\">" >> "$junit_file"
-                
+
                 # Include last 50 lines of output in the failure message
                 local output_tail=""
                 if [[ -f "$output_file" ]]; then
                     output_tail=$(tail -50 "$output_file" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&apos;/g')
                 fi
-                
+
                 if [[ $error_count -eq 1 ]]; then
                     echo "    <error message=\"$failure_msg\" type=\"$failure_type\">" >> "$junit_file"
                 else
                     echo "    <failure message=\"$failure_msg\" type=\"$failure_type\">" >> "$junit_file"
                 fi
-                
+
                 echo "Exit code: $test_exit_code" >> "$junit_file"
                 echo "" >> "$junit_file"
                 echo "Last 50 lines of output:" >> "$junit_file"
                 echo "$output_tail" >> "$junit_file"
-                
+
                 if [[ $error_count -eq 1 ]]; then
                     echo "    </error>" >> "$junit_file"
                 else
                     echo "    </failure>" >> "$junit_file"
                 fi
-                
+
                 echo "  </testcase>" >> "$junit_file"
                 echo "</testsuite>" >> "$junit_file"
             fi
-            
+
             rm -f "$output_file" "$xml_file"
             return $test_exit_code
         fi
     else
         # Regular test run
         if "$test_executable" --jobs "$jobs" 2>&1 | tee -a "$log_file"; then
-            log_verbose "Test passed: $test_name"
+            local test_end_time=$(date +%s.%N)
+            local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
+            echo "[TEST] PASSED: $test_name (${duration}s)"
             return 0
         else
-            log_verbose "Test failed: $test_name"
+            local test_end_time=$(date +%s.%N)
+            local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
+            echo "[TEST] FAILED: $test_name (${duration}s)"
             return 1
         fi
     fi
@@ -303,13 +307,17 @@ run_test_category() {
     local generate_junit="$4"
     local log_file="$5"
     local junit_file="$6"
-    
+
     # Set up trap to close XML properly on exit
     if [[ -n "$generate_junit" ]]; then
         trap "echo '</testsuites>' >> '$junit_file' 2>/dev/null || true" EXIT INT TERM
     fi
 
-    log_info "Running $category tests..."
+    echo ""
+    echo "=========================================="
+    echo "Starting $category tests..."
+    echo "=========================================="
+    local category_start_time=$(date +%s.%N)
 
     # Get test executables for this category
     local test_executables
@@ -353,7 +361,7 @@ run_test_category() {
             local exit_code=$?
             failed=1
             # Continue running other tests even if one fails/crashes
-            log_warning "Test failed with exit code $exit_code, continuing with remaining tests..."
+            log_info "Test failed with exit code $exit_code, continuing with remaining tests..."
         fi
     done
 
@@ -364,8 +372,15 @@ run_test_category() {
     fi
 
     # Report results
+    local category_end_time=$(date +%s.%N)
+    local category_duration=$(echo "$category_end_time - $category_start_time" | bc -l)
     local failed_tests=$((total_tests - passed_tests))
-    log_info "$category tests completed: $passed_tests passed, $failed_tests failed"
+
+    echo ""
+    echo "=========================================="
+    echo "$category tests completed: $passed_tests passed, $failed_tests failed"
+    echo "$category execution time: ${category_duration}s"
+    echo "=========================================="
 
     if [[ $failed -eq 1 ]]; then
         log_error "Some $category tests failed!"
@@ -473,6 +488,7 @@ main() {
 
     # Run tests
     local overall_failed=0
+    local overall_start_time=$(date +%s.%N)
 
     for category in "${categories_to_run[@]}"; do
         if ! run_test_category "$category" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file"; then
@@ -480,7 +496,15 @@ main() {
         fi
     done
 
+    local overall_end_time=$(date +%s.%N)
+    local total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
+
     # Final report
+    echo ""
+    echo "=========================================="
+    echo "TOTAL EXECUTION TIME: ${total_duration}s"
+    echo "=========================================="
+
     if [[ $overall_failed -eq 0 ]]; then
         log_info "All tests completed successfully!"
     else

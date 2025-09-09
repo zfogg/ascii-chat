@@ -17,13 +17,13 @@ TestSuite(framebuffer, .init = setup_quiet_test_logging, .fini = restore_test_lo
 TestSuite(audio_ring_buffer, .init = setup_quiet_test_logging, .fini = restore_test_logging);
 
 void setup_quiet_test_logging(void) {
-    // Set log level to only show fatal errors during non-logging tests
-    log_set_level(LOG_FATAL);
+  // Set log level to only show fatal errors during non-logging tests
+  log_set_level(LOG_FATAL);
 }
 
 void restore_test_logging(void) {
-    // Restore normal log level after tests
-    log_set_level(LOG_DEBUG);
+  // Restore normal log level after tests
+  log_set_level(LOG_DEBUG);
 }
 
 /* ============================================================================
@@ -31,243 +31,243 @@ void restore_test_logging(void) {
  * ============================================================================ */
 
 Test(ringbuffer, create_and_destroy) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 8);
-    cr_assert_not_null(rb);
-    cr_assert_eq(rb->element_size, sizeof(int));
-    cr_assert_geq(rb->capacity, 8); // Should be rounded up to power of 2
-    cr_assert_eq(ringbuffer_size(rb), 0);
-    cr_assert(ringbuffer_is_empty(rb));
-    cr_assert_not(ringbuffer_is_full(rb));
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 8);
+  cr_assert_not_null(rb);
+  cr_assert_eq(rb->element_size, sizeof(int));
+  cr_assert_geq(rb->capacity, 8); // Should be rounded up to power of 2
+  cr_assert_eq(ringbuffer_size(rb), 0);
+  cr_assert(ringbuffer_is_empty(rb));
+  cr_assert_not(ringbuffer_is_full(rb));
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, create_with_invalid_params) {
-    // Test with zero element size
-    ringbuffer_t *rb = ringbuffer_create(0, 8);
-    cr_assert_null(rb);
+  // Test with zero element size
+  ringbuffer_t *rb = ringbuffer_create(0, 8);
+  cr_assert_null(rb);
 
-    // Test with zero capacity
-    rb = ringbuffer_create(sizeof(int), 0);
-    cr_assert_null(rb);
+  // Test with zero capacity
+  rb = ringbuffer_create(sizeof(int), 0);
+  cr_assert_null(rb);
 
-    // Test with both zero
-    rb = ringbuffer_create(0, 0);
-    cr_assert_null(rb);
+  // Test with both zero
+  rb = ringbuffer_create(0, 0);
+  cr_assert_null(rb);
 }
 
 Test(ringbuffer, destroy_null) {
-    // Should not crash when destroying NULL
-    ringbuffer_destroy(NULL);
-    cr_assert(true);
+  // Should not crash when destroying NULL
+  ringbuffer_destroy(NULL);
+  cr_assert(true);
 }
 
 Test(ringbuffer, basic_write_read) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    int test_data = 42;
-    bool result = ringbuffer_write(rb, &test_data);
-    cr_assert(result);
-    cr_assert_eq(ringbuffer_size(rb), 1);
-    cr_assert_not(ringbuffer_is_empty(rb));
+  int test_data = 42;
+  bool result = ringbuffer_write(rb, &test_data);
+  cr_assert(result);
+  cr_assert_eq(ringbuffer_size(rb), 1);
+  cr_assert_not(ringbuffer_is_empty(rb));
 
-    int read_data;
-    result = ringbuffer_read(rb, &read_data);
-    cr_assert(result);
-    cr_assert_eq(read_data, 42);
-    cr_assert_eq(ringbuffer_size(rb), 0);
-    cr_assert(ringbuffer_is_empty(rb));
+  int read_data;
+  result = ringbuffer_read(rb, &read_data);
+  cr_assert(result);
+  cr_assert_eq(read_data, 42);
+  cr_assert_eq(ringbuffer_size(rb), 0);
+  cr_assert(ringbuffer_is_empty(rb));
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, write_read_multiple) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 8);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 8);
+  cr_assert_not_null(rb);
 
-    // Write multiple values
-    for (int i = 0; i < 5; i++) {
-        bool result = ringbuffer_write(rb, &i);
-        cr_assert(result);
-    }
+  // Write multiple values
+  for (int i = 0; i < 5; i++) {
+    bool result = ringbuffer_write(rb, &i);
+    cr_assert(result);
+  }
 
-    cr_assert_eq(ringbuffer_size(rb), 5);
+  cr_assert_eq(ringbuffer_size(rb), 5);
 
-    // Read them back
-    for (int i = 0; i < 5; i++) {
-        int read_data;
-        bool result = ringbuffer_read(rb, &read_data);
-        cr_assert(result);
-        cr_assert_eq(read_data, i);
-    }
+  // Read them back
+  for (int i = 0; i < 5; i++) {
+    int read_data;
+    bool result = ringbuffer_read(rb, &read_data);
+    cr_assert(result);
+    cr_assert_eq(read_data, i);
+  }
 
-    cr_assert_eq(ringbuffer_size(rb), 0);
-    cr_assert(ringbuffer_is_empty(rb));
+  cr_assert_eq(ringbuffer_size(rb), 0);
+  cr_assert(ringbuffer_is_empty(rb));
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, write_to_full_buffer) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    // Fill the buffer
-    for (int i = 0; i < 4; i++) {
-        bool result = ringbuffer_write(rb, &i);
-        cr_assert(result);
-    }
+  // Fill the buffer
+  for (int i = 0; i < 4; i++) {
+    bool result = ringbuffer_write(rb, &i);
+    cr_assert(result);
+  }
 
-    cr_assert(ringbuffer_is_full(rb));
+  cr_assert(ringbuffer_is_full(rb));
 
-    // Try to write one more - should fail
-    int extra = 99;
-    bool result = ringbuffer_write(rb, &extra);
-    cr_assert_not(result);
-    cr_assert_eq(ringbuffer_size(rb), 4);
+  // Try to write one more - should fail
+  int extra = 99;
+  bool result = ringbuffer_write(rb, &extra);
+  cr_assert_not(result);
+  cr_assert_eq(ringbuffer_size(rb), 4);
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, read_from_empty_buffer) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    int read_data;
-    bool result = ringbuffer_read(rb, &read_data);
-    cr_assert_not(result);
-    cr_assert_eq(ringbuffer_size(rb), 0);
+  int read_data;
+  bool result = ringbuffer_read(rb, &read_data);
+  cr_assert_not(result);
+  cr_assert_eq(ringbuffer_size(rb), 0);
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, peek_functionality) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    int test_data = 123;
-    ringbuffer_write(rb, &test_data);
+  int test_data = 123;
+  ringbuffer_write(rb, &test_data);
 
-    // Peek should not consume the data
-    int peek_data;
-    bool result = ringbuffer_peek(rb, &peek_data);
-    cr_assert(result);
-    cr_assert_eq(peek_data, 123);
-    cr_assert_eq(ringbuffer_size(rb), 1); // Size should be unchanged
+  // Peek should not consume the data
+  int peek_data;
+  bool result = ringbuffer_peek(rb, &peek_data);
+  cr_assert(result);
+  cr_assert_eq(peek_data, 123);
+  cr_assert_eq(ringbuffer_size(rb), 1); // Size should be unchanged
 
-    // Read should consume the data
-    int read_data;
-    result = ringbuffer_read(rb, &read_data);
-    cr_assert(result);
-    cr_assert_eq(read_data, 123);
-    cr_assert_eq(ringbuffer_size(rb), 0);
+  // Read should consume the data
+  int read_data;
+  result = ringbuffer_read(rb, &read_data);
+  cr_assert(result);
+  cr_assert_eq(read_data, 123);
+  cr_assert_eq(ringbuffer_size(rb), 0);
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, peek_empty_buffer) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    int peek_data;
-    bool result = ringbuffer_peek(rb, &peek_data);
-    cr_assert_not(result);
+  int peek_data;
+  bool result = ringbuffer_peek(rb, &peek_data);
+  cr_assert_not(result);
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, clear_functionality) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    // Add some data
-    for (int i = 0; i < 3; i++) {
-        ringbuffer_write(rb, &i);
-    }
+  // Add some data
+  for (int i = 0; i < 3; i++) {
+    ringbuffer_write(rb, &i);
+  }
 
-    cr_assert_eq(ringbuffer_size(rb), 3);
+  cr_assert_eq(ringbuffer_size(rb), 3);
 
-    // Clear the buffer
-    ringbuffer_clear(rb);
+  // Clear the buffer
+  ringbuffer_clear(rb);
 
-    cr_assert_eq(ringbuffer_size(rb), 0);
-    cr_assert(ringbuffer_is_empty(rb));
-    cr_assert_not(ringbuffer_is_full(rb));
+  cr_assert_eq(ringbuffer_size(rb), 0);
+  cr_assert(ringbuffer_is_empty(rb));
+  cr_assert_not(ringbuffer_is_full(rb));
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, null_parameters) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
+  cr_assert_not_null(rb);
 
-    // Test with NULL data
-    bool result = ringbuffer_write(rb, NULL);
-    cr_assert_not(result);
+  // Test with NULL data
+  bool result = ringbuffer_write(rb, NULL);
+  cr_assert_not(result);
 
-    result = ringbuffer_read(rb, NULL);
-    cr_assert_not(result);
+  result = ringbuffer_read(rb, NULL);
+  cr_assert_not(result);
 
-    result = ringbuffer_peek(rb, NULL);
-    cr_assert_not(result);
+  result = ringbuffer_peek(rb, NULL);
+  cr_assert_not(result);
 
-    // Test with NULL ringbuffer
-    int data = 42;
-    result = ringbuffer_write(NULL, &data);
-    cr_assert_not(result);
+  // Test with NULL ringbuffer
+  int data = 42;
+  result = ringbuffer_write(NULL, &data);
+  cr_assert_not(result);
 
-    result = ringbuffer_read(NULL, &data);
-    cr_assert_not(result);
+  result = ringbuffer_read(NULL, &data);
+  cr_assert_not(result);
 
-    result = ringbuffer_peek(NULL, &data);
-    cr_assert_not(result);
+  result = ringbuffer_peek(NULL, &data);
+  cr_assert_not(result);
 
-    // Test size functions with NULL
-    cr_assert_eq(ringbuffer_size(NULL), 0);
-    cr_assert(ringbuffer_is_empty(NULL));
-    cr_assert(ringbuffer_is_full(NULL));
+  // Test size functions with NULL
+  cr_assert_eq(ringbuffer_size(NULL), 0);
+  cr_assert(ringbuffer_is_empty(NULL));
+  cr_assert(ringbuffer_is_full(NULL));
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, power_of_two_capacity) {
-    // Test that capacity is rounded up to power of 2
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 5);
-    cr_assert_not_null(rb);
-    cr_assert_eq(rb->capacity, 8); // Should be rounded up to 8
+  // Test that capacity is rounded up to power of 2
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 5);
+  cr_assert_not_null(rb);
+  cr_assert_eq(rb->capacity, 8); // Should be rounded up to 8
 
-    rb = ringbuffer_create(sizeof(int), 3);
-    cr_assert_not_null(rb);
-    cr_assert_eq(rb->capacity, 4); // Should be rounded up to 4
+  rb = ringbuffer_create(sizeof(int), 3);
+  cr_assert_not_null(rb);
+  cr_assert_eq(rb->capacity, 4); // Should be rounded up to 4
 
-    rb = ringbuffer_create(sizeof(int), 1);
-    cr_assert_not_null(rb);
-    cr_assert_eq(rb->capacity, 1); // 1 is already a power of 2
+  rb = ringbuffer_create(sizeof(int), 1);
+  cr_assert_not_null(rb);
+  cr_assert_eq(rb->capacity, 1); // 1 is already a power of 2
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 Test(ringbuffer, large_element_size) {
-    // Test with large element size
-    struct large_struct {
-        char data[1024];
-    };
+  // Test with large element size
+  struct large_struct {
+    char data[1024];
+  };
 
-    ringbuffer_t *rb = ringbuffer_create(sizeof(struct large_struct), 2);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(struct large_struct), 2);
+  cr_assert_not_null(rb);
 
-    struct large_struct test_data;
-    memset(test_data.data, 'A', sizeof(test_data.data));
+  struct large_struct test_data;
+  memset(test_data.data, 'A', sizeof(test_data.data));
 
-    bool result = ringbuffer_write(rb, &test_data);
-    cr_assert(result);
+  bool result = ringbuffer_write(rb, &test_data);
+  cr_assert(result);
 
-    struct large_struct read_data;
-    result = ringbuffer_read(rb, &read_data);
-    cr_assert(result);
-    cr_assert_eq(memcmp(test_data.data, read_data.data, sizeof(test_data.data)), 0);
+  struct large_struct read_data;
+  result = ringbuffer_read(rb, &read_data);
+  cr_assert(result);
+  cr_assert_eq(memcmp(test_data.data, read_data.data, sizeof(test_data.data)), 0);
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
 
 /* ============================================================================
@@ -275,228 +275,228 @@ Test(ringbuffer, large_element_size) {
  * ============================================================================ */
 
 Test(framebuffer, create_and_destroy) {
-    framebuffer_t *fb = framebuffer_create(4);
-    cr_assert_not_null(fb);
-    cr_assert_not_null(fb->rb);
+  framebuffer_t *fb = framebuffer_create(4);
+  cr_assert_not_null(fb);
+  cr_assert_not_null(fb->rb);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, create_with_invalid_capacity) {
-    framebuffer_t *fb = framebuffer_create(0);
-    cr_assert_null(fb);
+  framebuffer_t *fb = framebuffer_create(0);
+  cr_assert_null(fb);
 }
 
 Test(framebuffer, destroy_null) {
-    // Should not crash when destroying NULL
-    framebuffer_destroy(NULL);
-    cr_assert(true);
+  // Should not crash when destroying NULL
+  framebuffer_destroy(NULL);
+  cr_assert(true);
 }
 
 Test(framebuffer, write_and_read_frame) {
-    framebuffer_t *fb = framebuffer_create(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create(4);
+  cr_assert_not_null(fb);
 
-    const char *test_frame = "Hello, World!";
-    size_t frame_size = strlen(test_frame);
+  const char *test_frame = "Hello, World!";
+  size_t frame_size = strlen(test_frame);
 
-    bool result = framebuffer_write_frame(fb, test_frame, frame_size);
-    cr_assert(result);
+  bool result = framebuffer_write_frame(fb, test_frame, frame_size);
+  cr_assert(result);
 
-    frame_t frame;
-    result = framebuffer_read_frame(fb, &frame);
-    cr_assert(result);
-    cr_assert_eq(frame.magic, FRAME_MAGIC);
-    cr_assert_eq(frame.size, frame_size + 1); // +1 for null terminator
-    cr_assert_not_null(frame.data);
-    cr_assert_eq(strcmp(frame.data, test_frame), 0);
+  frame_t frame;
+  result = framebuffer_read_frame(fb, &frame);
+  cr_assert(result);
+  cr_assert_eq(frame.magic, FRAME_MAGIC);
+  cr_assert_eq(frame.size, frame_size + 1); // +1 for null terminator
+  cr_assert_not_null(frame.data);
+  cr_assert_eq(strcmp(frame.data, test_frame), 0);
 
-    // Clean up the frame data
-    SAFE_FREE(frame.data);
+  // Clean up the frame data
+  SAFE_FREE(frame.data);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, write_invalid_frame) {
-    framebuffer_t *fb = framebuffer_create(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create(4);
+  cr_assert_not_null(fb);
 
-    // Test with NULL frame data
-    bool result = framebuffer_write_frame(fb, NULL, 10);
-    cr_assert_not(result);
+  // Test with NULL frame data
+  bool result = framebuffer_write_frame(fb, NULL, 10);
+  cr_assert_not(result);
 
-    // Test with zero frame size
-    result = framebuffer_write_frame(fb, "test", 0);
-    cr_assert_not(result);
+  // Test with zero frame size
+  result = framebuffer_write_frame(fb, "test", 0);
+  cr_assert_not(result);
 
-    // Test with NULL framebuffer
-    result = framebuffer_write_frame(NULL, "test", 4);
-    cr_assert_not(result);
+  // Test with NULL framebuffer
+  result = framebuffer_write_frame(NULL, "test", 4);
+  cr_assert_not(result);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, read_invalid_frame) {
-    framebuffer_t *fb = framebuffer_create(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create(4);
+  cr_assert_not_null(fb);
 
-    frame_t frame;
+  frame_t frame;
 
-    // Test with NULL framebuffer
-    bool result = framebuffer_read_frame(NULL, &frame);
-    cr_assert_not(result);
+  // Test with NULL framebuffer
+  bool result = framebuffer_read_frame(NULL, &frame);
+  cr_assert_not(result);
 
-    // Test with NULL frame pointer
-    result = framebuffer_read_frame(fb, NULL);
-    cr_assert_not(result);
+  // Test with NULL frame pointer
+  result = framebuffer_read_frame(fb, NULL);
+  cr_assert_not(result);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, buffer_overflow) {
-    framebuffer_t *fb = framebuffer_create(2);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create(2);
+  cr_assert_not_null(fb);
 
-    // Fill the buffer
-    framebuffer_write_frame(fb, "frame1", 6);
-    framebuffer_write_frame(fb, "frame2", 6);
+  // Fill the buffer
+  framebuffer_write_frame(fb, "frame1", 6);
+  framebuffer_write_frame(fb, "frame2", 6);
 
-    // Try to write one more - should drop oldest frame
-    bool result = framebuffer_write_frame(fb, "frame3", 6);
-    cr_assert(result);
+  // Try to write one more - should drop oldest frame
+  bool result = framebuffer_write_frame(fb, "frame3", 6);
+  cr_assert(result);
 
-    // Should only have frame2 and frame3
-    frame_t frame;
-    result = framebuffer_read_frame(fb, &frame);
-    cr_assert(result);
-    cr_assert_eq(strcmp(frame.data, "frame2"), 0);
-    SAFE_FREE(frame.data);
+  // Should only have frame2 and frame3
+  frame_t frame;
+  result = framebuffer_read_frame(fb, &frame);
+  cr_assert(result);
+  cr_assert_eq(strcmp(frame.data, "frame2"), 0);
+  SAFE_FREE(frame.data);
 
-    result = framebuffer_read_frame(fb, &frame);
-    cr_assert(result);
-    cr_assert_eq(strcmp(frame.data, "frame3"), 0);
-    SAFE_FREE(frame.data);
+  result = framebuffer_read_frame(fb, &frame);
+  cr_assert(result);
+  cr_assert_eq(strcmp(frame.data, "frame3"), 0);
+  SAFE_FREE(frame.data);
 
-    // Should be empty now
-    result = framebuffer_read_frame(fb, &frame);
-    cr_assert_not(result);
+  // Should be empty now
+  result = framebuffer_read_frame(fb, &frame);
+  cr_assert_not(result);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, clear_functionality) {
-    framebuffer_t *fb = framebuffer_create(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create(4);
+  cr_assert_not_null(fb);
 
-    // Add some frames
-    framebuffer_write_frame(fb, "frame1", 6);
-    framebuffer_write_frame(fb, "frame2", 6);
+  // Add some frames
+  framebuffer_write_frame(fb, "frame1", 6);
+  framebuffer_write_frame(fb, "frame2", 6);
 
-    // Clear the buffer
-    framebuffer_clear(fb);
+  // Clear the buffer
+  framebuffer_clear(fb);
 
-    // Should be empty
-    frame_t frame;
-    bool result = framebuffer_read_frame(fb, &frame);
-    cr_assert_not(result);
+  // Should be empty
+  frame_t frame;
+  bool result = framebuffer_read_frame(fb, &frame);
+  cr_assert_not(result);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, multi_source_create_and_destroy) {
-    framebuffer_t *fb = framebuffer_create_multi(4);
-    cr_assert_not_null(fb);
-    cr_assert_not_null(fb->rb);
+  framebuffer_t *fb = framebuffer_create_multi(4);
+  cr_assert_not_null(fb);
+  cr_assert_not_null(fb->rb);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, multi_source_write_and_read) {
-    framebuffer_t *fb = framebuffer_create_multi(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create_multi(4);
+  cr_assert_not_null(fb);
 
-    const char *test_frame = "Multi-source frame";
-    size_t frame_size = strlen(test_frame);
-    uint32_t client_id = 123;
-    uint32_t sequence = 456;
-    uint32_t timestamp = 789;
+  const char *test_frame = "Multi-source frame";
+  size_t frame_size = strlen(test_frame);
+  uint32_t client_id = 123;
+  uint32_t sequence = 456;
+  uint32_t timestamp = 789;
 
-    bool result = framebuffer_write_multi_frame(fb, test_frame, frame_size, client_id, sequence, timestamp);
-    cr_assert(result);
+  bool result = framebuffer_write_multi_frame(fb, test_frame, frame_size, client_id, sequence, timestamp);
+  cr_assert(result);
 
-    multi_source_frame_t frame;
-    result = framebuffer_read_multi_frame(fb, &frame);
-    cr_assert(result);
-    cr_assert_eq(frame.magic, FRAME_MAGIC);
-    cr_assert_eq(frame.source_client_id, client_id);
-    cr_assert_eq(frame.frame_sequence, sequence);
-    cr_assert_eq(frame.timestamp, timestamp);
-    cr_assert_eq(frame.size, frame_size);
-    cr_assert_not_null(frame.data);
-    cr_assert_eq(memcmp(frame.data, test_frame, frame_size), 0);
+  multi_source_frame_t frame;
+  result = framebuffer_read_multi_frame(fb, &frame);
+  cr_assert(result);
+  cr_assert_eq(frame.magic, FRAME_MAGIC);
+  cr_assert_eq(frame.source_client_id, client_id);
+  cr_assert_eq(frame.frame_sequence, sequence);
+  cr_assert_eq(frame.timestamp, timestamp);
+  cr_assert_eq(frame.size, frame_size);
+  cr_assert_not_null(frame.data);
+  cr_assert_eq(memcmp(frame.data, test_frame, frame_size), 0);
 
-    // Clean up the frame data
-    SAFE_FREE(frame.data);
+  // Clean up the frame data
+  SAFE_FREE(frame.data);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, multi_source_peek) {
-    framebuffer_t *fb = framebuffer_create_multi(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create_multi(4);
+  cr_assert_not_null(fb);
 
-    const char *test_frame = "Peek test frame";
-    size_t frame_size = strlen(test_frame);
+  const char *test_frame = "Peek test frame";
+  size_t frame_size = strlen(test_frame);
 
-    framebuffer_write_multi_frame(fb, test_frame, frame_size, 1, 1, 1);
+  framebuffer_write_multi_frame(fb, test_frame, frame_size, 1, 1, 1);
 
-    multi_source_frame_t frame;
-    bool result = framebuffer_peek_latest_multi_frame(fb, &frame);
-    cr_assert(result);
-    cr_assert_eq(frame.magic, FRAME_MAGIC);
-    cr_assert_eq(memcmp(frame.data, test_frame, frame_size), 0);
+  multi_source_frame_t frame;
+  bool result = framebuffer_peek_latest_multi_frame(fb, &frame);
+  cr_assert(result);
+  cr_assert_eq(frame.magic, FRAME_MAGIC);
+  cr_assert_eq(memcmp(frame.data, test_frame, frame_size), 0);
 
-    // Frame should still be in buffer
-    multi_source_frame_t frame2;
-    result = framebuffer_read_multi_frame(fb, &frame2);
-    cr_assert(result);
-    cr_assert_eq(memcmp(frame2.data, test_frame, frame_size), 0);
+  // Frame should still be in buffer
+  multi_source_frame_t frame2;
+  result = framebuffer_read_multi_frame(fb, &frame2);
+  cr_assert(result);
+  cr_assert_eq(memcmp(frame2.data, test_frame, frame_size), 0);
 
-    // Clean up
-    SAFE_FREE(frame.data);
-    SAFE_FREE(frame2.data);
+  // Clean up
+  SAFE_FREE(frame.data);
+  SAFE_FREE(frame2.data);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 Test(framebuffer, multi_source_invalid_params) {
-    framebuffer_t *fb = framebuffer_create_multi(4);
-    cr_assert_not_null(fb);
+  framebuffer_t *fb = framebuffer_create_multi(4);
+  cr_assert_not_null(fb);
 
-    // Test with NULL parameters
-    bool result = framebuffer_write_multi_frame(NULL, "test", 4, 1, 1, 1);
-    cr_assert_not(result);
+  // Test with NULL parameters
+  bool result = framebuffer_write_multi_frame(NULL, "test", 4, 1, 1, 1);
+  cr_assert_not(result);
 
-    result = framebuffer_write_multi_frame(fb, NULL, 4, 1, 1, 1);
-    cr_assert_not(result);
+  result = framebuffer_write_multi_frame(fb, NULL, 4, 1, 1, 1);
+  cr_assert_not(result);
 
-    result = framebuffer_write_multi_frame(fb, "test", 0, 1, 1, 1);
-    cr_assert_not(result);
+  result = framebuffer_write_multi_frame(fb, "test", 0, 1, 1, 1);
+  cr_assert_not(result);
 
-    multi_source_frame_t frame;
-    result = framebuffer_read_multi_frame(NULL, &frame);
-    cr_assert_not(result);
+  multi_source_frame_t frame;
+  result = framebuffer_read_multi_frame(NULL, &frame);
+  cr_assert_not(result);
 
-    result = framebuffer_read_multi_frame(fb, NULL);
-    cr_assert_not(result);
+  result = framebuffer_read_multi_frame(fb, NULL);
+  cr_assert_not(result);
 
-    result = framebuffer_peek_latest_multi_frame(NULL, &frame);
-    cr_assert_not(result);
+  result = framebuffer_peek_latest_multi_frame(NULL, &frame);
+  cr_assert_not(result);
 
-    result = framebuffer_peek_latest_multi_frame(fb, NULL);
-    cr_assert_not(result);
+  result = framebuffer_peek_latest_multi_frame(fb, NULL);
+  cr_assert_not(result);
 
-    framebuffer_destroy(fb);
+  framebuffer_destroy(fb);
 }
 
 /* ============================================================================
@@ -504,149 +504,149 @@ Test(framebuffer, multi_source_invalid_params) {
  * ============================================================================ */
 
 Test(audio_ring_buffer, create_and_destroy) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 Test(audio_ring_buffer, destroy_null) {
-    // Should not crash when destroying NULL
-    audio_ring_buffer_destroy(NULL);
-    cr_assert(true);
+  // Should not crash when destroying NULL
+  audio_ring_buffer_destroy(NULL);
+  cr_assert(true);
 }
 
 Test(audio_ring_buffer, basic_write_read) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+  float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
 
-    int written = audio_ring_buffer_write(arb, test_samples, 4);
-    cr_assert_eq(written, 4);
+  int written = audio_ring_buffer_write(arb, test_samples, 4);
+  cr_assert_eq(written, 4);
 
-    float read_samples[4];
-    int read = audio_ring_buffer_read(arb, read_samples, 4);
-    cr_assert_eq(read, 4);
+  float read_samples[4];
+  int read = audio_ring_buffer_read(arb, read_samples, 4);
+  cr_assert_eq(read, 4);
 
-    for (int i = 0; i < 4; i++) {
-        cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
-    }
+  for (int i = 0; i < 4; i++) {
+    cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
+  }
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 Test(audio_ring_buffer, partial_read_write) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    float test_samples[8] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
+  float test_samples[8] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
 
-    // Write all samples
-    int written = audio_ring_buffer_write(arb, test_samples, 8);
-    cr_assert_eq(written, 8);
+  // Write all samples
+  int written = audio_ring_buffer_write(arb, test_samples, 8);
+  cr_assert_eq(written, 8);
 
-    // Read only 3 samples
-    float read_samples[3];
-    int read = audio_ring_buffer_read(arb, read_samples, 3);
-    cr_assert_eq(read, 3);
+  // Read only 3 samples
+  float read_samples[3];
+  int read = audio_ring_buffer_read(arb, read_samples, 3);
+  cr_assert_eq(read, 3);
 
-    for (int i = 0; i < 3; i++) {
-        cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
-    }
+  for (int i = 0; i < 3; i++) {
+    cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
+  }
 
-    // Read remaining 5 samples
-    float read_samples2[5];
-    read = audio_ring_buffer_read(arb, read_samples2, 5);
-    cr_assert_eq(read, 5);
+  // Read remaining 5 samples
+  float read_samples2[5];
+  read = audio_ring_buffer_read(arb, read_samples2, 5);
+  cr_assert_eq(read, 5);
 
-    for (int i = 0; i < 5; i++) {
-        cr_assert_float_eq(read_samples2[i], test_samples[i + 3], 1e-6f);
-    }
+  for (int i = 0; i < 5; i++) {
+    cr_assert_float_eq(read_samples2[i], test_samples[i + 3], 1e-6f);
+  }
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 Test(audio_ring_buffer, buffer_overflow) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    // Fill buffer beyond capacity
-    float test_samples[AUDIO_RING_BUFFER_SIZE + 100];
-    for (int i = 0; i < AUDIO_RING_BUFFER_SIZE + 100; i++) {
-        test_samples[i] = (float)i * 0.001f;
-    }
+  // Fill buffer beyond capacity
+  float test_samples[AUDIO_RING_BUFFER_SIZE + 100];
+  for (int i = 0; i < AUDIO_RING_BUFFER_SIZE + 100; i++) {
+    test_samples[i] = (float)i * 0.001f;
+  }
 
-    // Try to write more than capacity - should fail
-    int written = audio_ring_buffer_write(arb, test_samples, AUDIO_RING_BUFFER_SIZE + 100);
-    cr_assert_eq(written, 0); // Should fail when trying to write more than capacity
+  // Try to write more than capacity - should fail
+  int written = audio_ring_buffer_write(arb, test_samples, AUDIO_RING_BUFFER_SIZE + 100);
+  cr_assert_eq(written, 0); // Should fail when trying to write more than capacity
 
-    // Now write exactly the capacity - should succeed
-    written = audio_ring_buffer_write(arb, test_samples, AUDIO_RING_BUFFER_SIZE);
-    cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE); // Should write exactly the capacity
+  // Now write exactly the capacity - should succeed
+  written = audio_ring_buffer_write(arb, test_samples, AUDIO_RING_BUFFER_SIZE);
+  cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE); // Should write exactly the capacity
 
-    // Read all samples
-    float read_samples[AUDIO_RING_BUFFER_SIZE];
-    int read = audio_ring_buffer_read(arb, read_samples, AUDIO_RING_BUFFER_SIZE);
-    cr_assert_leq(read, AUDIO_RING_BUFFER_SIZE); // Should not read more than what was written
-    cr_assert_gt(read, 0); // Should read something
+  // Read all samples
+  float read_samples[AUDIO_RING_BUFFER_SIZE];
+  int read = audio_ring_buffer_read(arb, read_samples, AUDIO_RING_BUFFER_SIZE);
+  cr_assert_leq(read, AUDIO_RING_BUFFER_SIZE); // Should not read more than what was written
+  cr_assert_gt(read, 0);                       // Should read something
 
-    // Verify we got the first samples (oldest)
-    for (int i = 0; i < read; i++) {
-        cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
-    }
+  // Verify we got the first samples (oldest)
+  for (int i = 0; i < read; i++) {
+    cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
+  }
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 Test(audio_ring_buffer, read_from_empty) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    float read_samples[4];
-    int read = audio_ring_buffer_read(arb, read_samples, 4);
-    cr_assert_eq(read, 0);
+  float read_samples[4];
+  int read = audio_ring_buffer_read(arb, read_samples, 4);
+  cr_assert_eq(read, 0);
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 Test(audio_ring_buffer, null_parameters) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+  float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
 
-    // Test with NULL buffer
-    int written = audio_ring_buffer_write(NULL, test_samples, 4);
-    cr_assert_eq(written, 0);
+  // Test with NULL buffer
+  int written = audio_ring_buffer_write(NULL, test_samples, 4);
+  cr_assert_eq(written, 0);
 
-    written = audio_ring_buffer_write(arb, NULL, 4);
-    cr_assert_eq(written, 0);
+  written = audio_ring_buffer_write(arb, NULL, 4);
+  cr_assert_eq(written, 0);
 
-    // Test with NULL buffer
-    int read = audio_ring_buffer_read(NULL, test_samples, 4);
-    cr_assert_eq(read, 0);
+  // Test with NULL buffer
+  int read = audio_ring_buffer_read(NULL, test_samples, 4);
+  cr_assert_eq(read, 0);
 
-    read = audio_ring_buffer_read(arb, NULL, 4);
-    cr_assert_eq(read, 0);
+  read = audio_ring_buffer_read(arb, NULL, 4);
+  cr_assert_eq(read, 0);
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 Test(audio_ring_buffer, zero_samples) {
-    audio_ring_buffer_t *arb = audio_ring_buffer_create();
-    cr_assert_not_null(arb);
+  audio_ring_buffer_t *arb = audio_ring_buffer_create();
+  cr_assert_not_null(arb);
 
-    float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+  float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
 
-    // Test with zero samples
-    int written = audio_ring_buffer_write(arb, test_samples, 0);
-    cr_assert_eq(written, 0);
+  // Test with zero samples
+  int written = audio_ring_buffer_write(arb, test_samples, 0);
+  cr_assert_eq(written, 0);
 
-    int read = audio_ring_buffer_read(arb, test_samples, 0);
-    cr_assert_eq(read, 0);
+  int read = audio_ring_buffer_read(arb, test_samples, 0);
+  cr_assert_eq(read, 0);
 
-    audio_ring_buffer_destroy(arb);
+  audio_ring_buffer_destroy(arb);
 }
 
 /* ============================================================================
@@ -654,88 +654,88 @@ Test(audio_ring_buffer, zero_samples) {
  * ============================================================================ */
 
 typedef struct {
-    ringbuffer_t *rb;
-    int thread_id;
-    int num_operations;
-    bool success;
+  ringbuffer_t *rb;
+  int thread_id;
+  int num_operations;
+  bool success;
 } thread_test_data_t;
 
 void *producer_thread(void *arg) {
-    thread_test_data_t *data = (thread_test_data_t *)arg;
+  thread_test_data_t *data = (thread_test_data_t *)arg;
 
-    for (int i = 0; i < data->num_operations; i++) {
-        int value = data->thread_id * 1000 + i;
-        if (!ringbuffer_write(data->rb, &value)) {
-            data->success = false;
-            return NULL;
-        }
-        usleep(100); // 0.1ms delay
+  for (int i = 0; i < data->num_operations; i++) {
+    int value = data->thread_id * 1000 + i;
+    if (!ringbuffer_write(data->rb, &value)) {
+      data->success = false;
+      return NULL;
     }
+    usleep(100); // 0.1ms delay
+  }
 
-    data->success = true;
-    return NULL;
+  data->success = true;
+  return NULL;
 }
 
 void *consumer_thread(void *arg) {
-    thread_test_data_t *data = (thread_test_data_t *)arg;
+  thread_test_data_t *data = (thread_test_data_t *)arg;
 
-    for (int i = 0; i < data->num_operations; i++) {
-        int value;
-        if (!ringbuffer_read(data->rb, &value)) {
-            data->success = false;
-            return NULL;
-        }
-        usleep(100); // 0.1ms delay
+  for (int i = 0; i < data->num_operations; i++) {
+    int value;
+    if (!ringbuffer_read(data->rb, &value)) {
+      data->success = false;
+      return NULL;
     }
+    usleep(100); // 0.1ms delay
+  }
 
-    data->success = true;
-    return NULL;
+  data->success = true;
+  return NULL;
 }
 
 Test(ringbuffer, thread_safety) {
-    ringbuffer_t *rb = ringbuffer_create(sizeof(int), 16);
-    cr_assert_not_null(rb);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 16);
+  cr_assert_not_null(rb);
 
-    const int num_threads = 2; // Reduced to reduce contention
-    const int operations_per_thread = 50; // Reduced to make test faster and more reliable
+  const int num_threads = 2;            // Reduced to reduce contention
+  const int operations_per_thread = 50; // Reduced to make test faster and more reliable
 
-    pthread_t threads[num_threads * 2];
-    thread_test_data_t thread_data[num_threads * 2];
+  pthread_t threads[num_threads * 2];
+  thread_test_data_t thread_data[num_threads * 2];
 
-    // Create producer threads
-    for (int i = 0; i < num_threads; i++) {
-        thread_data[i].rb = rb;
-        thread_data[i].thread_id = i;
-        thread_data[i].num_operations = operations_per_thread;
-        thread_data[i].success = false;
+  // Create producer threads
+  for (int i = 0; i < num_threads; i++) {
+    thread_data[i].rb = rb;
+    thread_data[i].thread_id = i;
+    thread_data[i].num_operations = operations_per_thread;
+    thread_data[i].success = false;
 
-        int result = pthread_create(&threads[i], NULL, producer_thread, &thread_data[i]);
-        cr_assert_eq(result, 0);
-    }
+    int result = pthread_create(&threads[i], NULL, producer_thread, &thread_data[i]);
+    cr_assert_eq(result, 0);
+  }
 
-    // Create consumer threads
-    for (int i = 0; i < num_threads; i++) {
-        thread_data[num_threads + i].rb = rb;
-        thread_data[num_threads + i].thread_id = i;
-        thread_data[num_threads + i].num_operations = operations_per_thread;
-        thread_data[num_threads + i].success = false;
+  // Create consumer threads
+  for (int i = 0; i < num_threads; i++) {
+    thread_data[num_threads + i].rb = rb;
+    thread_data[num_threads + i].thread_id = i;
+    thread_data[num_threads + i].num_operations = operations_per_thread;
+    thread_data[num_threads + i].success = false;
 
-        int result = pthread_create(&threads[num_threads + i], NULL, consumer_thread, &thread_data[num_threads + i]);
-        cr_assert_eq(result, 0);
-    }
+    int result = pthread_create(&threads[num_threads + i], NULL, consumer_thread, &thread_data[num_threads + i]);
+    cr_assert_eq(result, 0);
+  }
 
-    // Wait for all threads to complete
-    for (int i = 0; i < num_threads * 2; i++) {
-        pthread_join(threads[i], NULL);
-    }
+  // Wait for all threads to complete
+  for (int i = 0; i < num_threads * 2; i++) {
+    pthread_join(threads[i], NULL);
+  }
 
-    // Check that all threads succeeded
-    for (int i = 0; i < num_threads * 2; i++) {
-        cr_assert(thread_data[i].success);
-    }
+  // Check that all threads succeeded
+  for (int i = 0; i < num_threads * 2; i++) {
+    cr_assert(thread_data[i].success);
+  }
 
-    // Buffer should be empty
-    cr_assert(ringbuffer_is_empty(rb));
+  // Buffer should be empty
+  cr_assert(ringbuffer_is_empty(rb));
 
-    ringbuffer_destroy(rb);
+  ringbuffer_destroy(rb);
 }
