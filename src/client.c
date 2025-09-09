@@ -290,9 +290,9 @@ static void shutdown_client() {
       log_error("Data thread not responding - forcing termination");
       // Note: thread cancellation not available in platform abstraction
       // Thread should exit when g_should_exit is set
-      thread_join(&g_data_thread, NULL);
+      ascii_thread_join(&g_data_thread, NULL);
     } else {
-      thread_join(&g_data_thread, NULL);
+      ascii_thread_join(&g_data_thread, NULL);
     }
 
     g_data_thread_created = false;
@@ -1178,7 +1178,7 @@ int main(int argc, char *argv[]) {
       }
 
       // try to open a socket
-      if ((sockfd = socket_create(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+      if ((sockfd = socket_create(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET_VALUE) {
         log_error("Error: could not create socket: %s", strerror(errno));
         g_should_reconnect = true;
         continue; // try to connect again
@@ -1273,7 +1273,7 @@ int main(int argc, char *argv[]) {
 
       // Start data reception thread
       g_data_thread_exited = false; // Reset exit flag for new connection
-      if (thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
+      if (ascii_thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
         log_error("Failed to create data reception thread");
         g_should_reconnect = true;
         continue;
@@ -1283,7 +1283,7 @@ int main(int argc, char *argv[]) {
 
       // Start ping thread for keepalive
       g_ping_thread_exited = false; // Reset exit flag for new connection
-      if (thread_create(&g_ping_thread, ping_thread_func, NULL) != 0) {
+      if (ascii_thread_create(&g_ping_thread, ping_thread_func, NULL) != 0) {
         log_error("Failed to create ping thread");
         g_should_reconnect = true;
         continue;
@@ -1293,7 +1293,7 @@ int main(int argc, char *argv[]) {
 
       // Start webcam capture thread
       g_capture_thread_exited = false;
-      if (thread_create(&g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
+      if (ascii_thread_create(&g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
         log_error("Failed to create webcam capture thread");
         g_should_reconnect = true;
         continue;
@@ -1309,7 +1309,7 @@ int main(int argc, char *argv[]) {
       // Start audio capture thread if audio is enabled
       if (opt_audio_enabled) {
         g_audio_capture_thread_exited = false;
-        if (thread_create(&g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
+        if (ascii_thread_create(&g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
           log_error("Failed to create audio capture thread");
           // Non-fatal, continue without audio
         } else {
@@ -1355,25 +1355,25 @@ int main(int argc, char *argv[]) {
 
     // Clean up data thread for this connection
     if (g_data_thread_created) {
-      thread_join(&g_data_thread, NULL);
+      ascii_thread_join(&g_data_thread, NULL);
       g_data_thread_created = false;
     }
 
     // Clean up ping thread for this connection
     if (g_ping_thread_created) {
-      thread_join(&g_ping_thread, NULL);
+      ascii_thread_join(&g_ping_thread, NULL);
       g_ping_thread_created = false;
     }
 
     // Clean up capture thread for this connection
     if (g_capture_thread_created) {
-      thread_join(&g_capture_thread, NULL);
+      ascii_thread_join(&g_capture_thread, NULL);
       g_capture_thread_created = false;
     }
 
     // Clean up audio capture thread for this connection
     if (g_audio_capture_thread_created) {
-      thread_join(&g_audio_capture_thread, NULL);
+      ascii_thread_join(&g_audio_capture_thread, NULL);
       g_audio_capture_thread_created = false;
     }
   }

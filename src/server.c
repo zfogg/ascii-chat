@@ -184,7 +184,7 @@ static mutex_t g_frame_cache_mutex = {0};
 
 static server_stats_t g_stats = {0};
 
-static socket_t listenfd = INVALID_SOCKET;
+static socket_t listenfd = INVALID_SOCKET_VALUE;
 
 /* ============================================================================
  * Multi-Client Function Declarations
@@ -253,7 +253,7 @@ static void sigint_handler(int sigint) {
   }
 
   // Close listening socket to interrupt accept() - this is signal-safe
-  if (listenfd != INVALID_SOCKET) {
+  if (listenfd != INVALID_SOCKET_VALUE) {
     socket_close(listenfd);
   }
 
@@ -272,7 +272,7 @@ static void sigterm_handler(int sigterm) {
   static_cond_broadcast(&g_shutdown_cond);
 
   // Close listening socket to interrupt accept() - signal-safe
-  if (listenfd != INVALID_SOCKET) {
+  if (listenfd != INVALID_SOCKET_VALUE) {
     socket_close(listenfd);
   }
 
@@ -996,7 +996,7 @@ int main(int argc, char *argv[]) {
 
   // Start statistics logging thread for periodic performance monitoring
   log_info("SERVER: Creating statistics logger thread...");
-  if (thread_create(&g_stats_logger_thread, stats_logger_thread_func, NULL) != 0) {
+  if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread_func, NULL) != 0) {
     log_error("Failed to create statistics logger thread");
   } else {
     g_stats_logger_thread_created = true;
@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[]) {
 
   log_info("SERVER: Creating listen socket...");
   listenfd = socket_create(AF_INET, SOCK_STREAM, 0);
-  if (listenfd == INVALID_SOCKET) {
+  if (listenfd == INVALID_SOCKET_VALUE) {
     log_fatal("Failed to create socket: %s", strerror(errno));
     exit(1);
   }
@@ -1109,7 +1109,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
       // Check if this client has been marked inactive by its receive thread
-      if (client->client_id != 0 && !client->active && thread_is_initialized(&client->receive_thread)) {
+      if (client->client_id != 0 && !client->active && ascii_thread_is_initialized(&client->receive_thread)) {
         // Collect cleanup task
         cleanup_tasks[cleanup_count].client_id = client->client_id;
         cleanup_tasks[cleanup_count].receive_thread = client->receive_thread;
@@ -1125,7 +1125,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < cleanup_count; i++) {
       log_info("Cleaning up disconnected client %u", cleanup_tasks[i].client_id);
       // Wait for receive thread to finish
-      thread_join(&cleanup_tasks[i].receive_thread, NULL);
+      ascii_thread_join(&cleanup_tasks[i].receive_thread, NULL);
       // Remove the client and clean up resources
       remove_client(cleanup_tasks[i].client_id);
     }
@@ -1202,7 +1202,7 @@ int main(int argc, char *argv[]) {
   // Wait for stats logger thread to finish
   if (g_stats_logger_thread_created) {
     log_info("Waiting for stats logger thread to finish...");
-    thread_join(&g_stats_logger_thread, NULL);
+    ascii_thread_join(&g_stats_logger_thread, NULL);
     log_info("Stats logger thread stopped");
     g_stats_logger_thread_created = false;
   }
@@ -1937,7 +1937,7 @@ int create_client_render_threads(client_info_t *client) {
   client->audio_render_thread_running = false;
 
   // Create video rendering thread
-  if (thread_create(&client->video_render_thread, client_video_render_thread_func, client) != 0) {
+  if (ascii_thread_create(&client->video_render_thread, client_video_render_thread_func, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
     mutex_destroy(&client->video_buffer_mutex);
     mutex_destroy(&client->cached_frame_mutex);
@@ -1951,14 +1951,14 @@ int create_client_render_threads(client_info_t *client) {
   mutex_unlock(&client->client_state_mutex);
 
   // Create audio rendering thread
-  if (thread_create(&client->audio_render_thread, client_audio_render_thread_func, client) != 0) {
+  if (ascii_thread_create(&client->audio_render_thread, client_audio_render_thread_func, client) != 0) {
     log_error("Failed to create audio render thread for client %u", client->client_id);
     // Clean up video thread
     mutex_lock(&client->client_state_mutex);
     client->video_render_thread_running = false;
     mutex_unlock(&client->client_state_mutex);
     // Note: thread cancellation not available in platform abstraction
-    thread_join(&client->video_render_thread, NULL);
+    ascii_thread_join(&client->video_render_thread, NULL);
     mutex_destroy(&client->video_buffer_mutex);
     mutex_destroy(&client->cached_frame_mutex);
     mutex_destroy(&client->client_state_mutex);
@@ -1994,8 +1994,8 @@ int destroy_client_render_threads(client_info_t *client) {
   static_mutex_unlock(&g_shutdown_mutex);
 
   // Wait for threads to finish (deterministic cleanup)
-  if (thread_is_initialized(&client->video_render_thread)) {
-    int result = thread_join(&client->video_render_thread, NULL);
+  if (ascii_thread_is_initialized(&client->video_render_thread)) {
+    int result = ascii_thread_join(&client->video_render_thread, NULL);
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Video render thread joined for client %u", client->client_id);
@@ -2006,8 +2006,8 @@ int destroy_client_render_threads(client_info_t *client) {
     memset(&client->video_render_thread, 0, sizeof(asciithread_t));
   }
 
-  if (thread_is_initialized(&client->audio_render_thread)) {
-    int result = thread_join(&client->audio_render_thread, NULL);
+  if (ascii_thread_is_initialized(&client->audio_render_thread)) {
+    int result = ascii_thread_join(&client->audio_render_thread, NULL);
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Audio render thread joined for client %u", client->client_id);
@@ -2179,17 +2179,17 @@ int add_client(int socket, const char *client_ip, int port) {
   rwlock_unlock(&g_client_manager_rwlock);
 
   // Start threads for this client
-  if (thread_create(&client->receive_thread, client_receive_thread_func, client) != 0) {
+  if (ascii_thread_create(&client->receive_thread, client_receive_thread_func, client) != 0) {
     log_error("Failed to create receive thread for client %u", client->client_id);
     remove_client(client->client_id);
     return -1;
   }
 
   // Start send thread for this client
-  if (thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
+  if (ascii_thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
     log_error("Failed to create send thread for client %u", client->client_id);
     // Join the receive thread before cleaning up to prevent race conditions
-    thread_join(&client->receive_thread, NULL);
+    ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
     remove_client(client->client_id);
     return -1;
@@ -2280,9 +2280,9 @@ int remove_client(uint32_t client_id) {
       // Wait for send thread to exit if it was created
       // Note: We must join regardless of send_thread_running flag to prevent race condition
       // where thread sets flag to false just before we check it, causing missed cleanup
-      if (thread_is_initialized(&client->send_thread)) {
+      if (ascii_thread_is_initialized(&client->send_thread)) {
         // The shutdown signal above will cause the send thread to exit
-        int join_result = thread_join(&client->send_thread, NULL);
+        int join_result = ascii_thread_join(&client->send_thread, NULL);
         if (join_result == 0) {
           log_debug("Send thread for client %u has terminated", client_id);
         } else {
@@ -2293,7 +2293,7 @@ int remove_client(uint32_t client_id) {
       // Join receive thread if it exists and we're not in the receive thread context
       // Note: simplified thread cleanup without thread_equal check
       {
-        int join_result = thread_join(&client->receive_thread, NULL);
+        int join_result = ascii_thread_join(&client->receive_thread, NULL);
         if (join_result == 0) {
           log_debug("Receive thread for client %u has terminated", client_id);
         } else {

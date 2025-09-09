@@ -13,33 +13,33 @@
 #include <stdio.h>
 
 // Thread implementation
-int thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
+int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
   return pthread_create(&thread->thread, NULL, func, arg);
 }
 
-int thread_join(asciithread_t *thread, void **retval) {
+int ascii_thread_join(asciithread_t *thread, void **retval) {
   return pthread_join(thread->thread, retval);
 }
 
-void thread_exit(void *retval) {
+void ascii_thread_exit(void *retval) {
   pthread_exit(retval);
 }
 
-int thread_detach(thread_t *thread) {
+int ascii_thread_detach(asciithread_t *thread) {
   return pthread_detach(thread->thread);
 }
 
-thread_id_t thread_self(void) {
+thread_id_t ascii_thread_self(void) {
   thread_id_t id;
   id.thread = pthread_self();
   return id;
 }
 
-int thread_equal(thread_id_t t1, thread_id_t t2) {
+int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
   return pthread_equal(t1.thread, t2.thread);
 }
 
-uint64_t thread_current_id(void) {
+uint64_t ascii_thread_current_id(void) {
   return (uint64_t)pthread_self();
 }
 
@@ -86,11 +86,11 @@ int rwlock_unlock(rwlock_t *lock) {
 }
 
 int rwlock_rdunlock(rwlock_t *lock) {
-  return pthread_rwlock_unlock(&lock->rwlock);
+  return pthread_rwlock_unlock(&lock->lock);
 }
 
 int rwlock_wrunlock(rwlock_t *lock) {
-  return pthread_rwlock_unlock(&lock->rwlock);
+  return pthread_rwlock_unlock(&lock->lock);
 }
 
 // Condition variable implementation

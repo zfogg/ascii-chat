@@ -8,12 +8,12 @@
 #include <signal.h>
 
 // Thread implementation
-int thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
+int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
   thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, &thread->id);
   return (thread->handle != NULL) ? 0 : -1;
 }
 
-int thread_join(asciithread_t *thread, void **retval) {
+int ascii_thread_join(asciithread_t *thread, void **retval) {
   if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0) {
     if (retval) {
       DWORD exit_code;
@@ -26,22 +26,22 @@ int thread_join(asciithread_t *thread, void **retval) {
   return -1;
 }
 
-void thread_exit(void *retval) {
+void ascii_thread_exit(void *retval) {
   ExitThread((DWORD)(uintptr_t)retval);
 }
 
-int thread_detach(thread_t *thread) {
+int ascii_thread_detach(asciithread_t *thread) {
   CloseHandle(thread->handle);
   return 0;
 }
 
-thread_id_t thread_self(void) {
+thread_id_t ascii_thread_self(void) {
   thread_id_t id;
   id.id = GetCurrentThreadId();
   return id;
 }
 
-int thread_equal(thread_id_t t1, thread_id_t t2) {
+int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
   return t1.id == t2.id;
 }
 
@@ -224,7 +224,7 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result) {
 }
 
 // Additional platform functions
-uint64_t thread_current_id(void) {
+uint64_t ascii_thread_current_id(void) {
   return (uint64_t)GetCurrentThreadId();
 }
 
