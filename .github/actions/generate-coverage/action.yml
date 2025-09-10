@@ -120,7 +120,7 @@ runs:
     # Check if coverage files exist before uploading
     - name: Check Coverage Files
       id: check-coverage
-      if: ${{ inputs.upload-coverage == 'true' }}
+      if: inputs.upload-coverage == 'true'
       shell: bash
       run: |
         echo "🔍 Checking for coverage files..."
