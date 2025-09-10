@@ -885,7 +885,7 @@ function run_tests_in_parallel() {
   done
 
   # Return results to stdout (this is what gets captured)
-  echo "$passed_tests $failed_tests"
+  echo "$passed_tests $failed_tests $tests_that_started"
 }
 
 # =============================================================================
@@ -1192,9 +1192,10 @@ function run_test_category() {
     local results=$(run_tests_in_parallel "$build_type" "$jobs" "$generate_junit" "$log_file" "$junit_file" "$max_parallel_tests" "$jobs_per_test" "${test_executables[@]}")
     local passed_tests=$(echo "$results" | cut -d' ' -f1)
     local failed_tests=$(echo "$results" | cut -d' ' -f2)
+    tests_that_started=$(echo "$results" | cut -d' ' -f3)
 
     if [[ $failed_tests -gt 0 ]]; then
-            failed=1
+      failed=1
     fi
   else
     # Sequential execution mode (original code)
@@ -1687,6 +1688,7 @@ function main() {
       local results=$(run_tests_in_parallel "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$max_parallel_tests" "$jobs_per_test" "${test_executables[@]}")
       local passed_count=$(echo "$results" | cut -d' ' -f1)
       local failed_count=$(echo "$results" | cut -d' ' -f2)
+      local tests_that_started=$(echo "$results" | cut -d' ' -f3)
     else
       # Sequential execution mode (fallback for --no-parallel)
       for test_name in "${MULTIPLE_TESTS[@]}"; do
