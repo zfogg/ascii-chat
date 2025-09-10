@@ -765,3 +765,19 @@ Test(ansi_fast, integration_color_mode_switching) {
     *result = '\0';
     cr_assert(strstr(buffer, "\033[") != NULL, "16-color should work");
 }
+
+/* ============================================================================
+ * New Coverage Test
+ * ============================================================================ */
+
+Test(ansi_fast, new_coverage_test) {
+    // Test the new is_color_mode_supported function
+    cr_assert(is_color_mode_supported(COLOR_MODE_TRUECOLOR), "Truecolor mode should be supported");
+    cr_assert(is_color_mode_supported(COLOR_MODE_256_COLOR), "256-color mode should be supported");
+    cr_assert(is_color_mode_supported(COLOR_MODE_16_COLOR), "16-color mode should be supported");
+    cr_assert(is_color_mode_supported(COLOR_MODE_MONO), "Mono mode should be supported");
+    cr_assert(is_color_mode_supported(COLOR_MODE_AUTO), "Auto mode should be supported");
+    
+    // Test with an invalid mode (this will test the default case)
+    cr_assert_not(is_color_mode_supported((color_mode_t)999), "Invalid mode should not be supported");
+}
