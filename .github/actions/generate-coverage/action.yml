@@ -88,12 +88,12 @@ runs:
              strings "build/tests/coverage/unit/ascii_test.o" | grep -E "(clang|gcc|GCC)" | head -5 || echo "No compiler info found in object file"
          fi
 
-        if [ -n "$gcda_files" ]; then
-            echo "✅ Successfully found $gcda_files_count gcda files"
-        else
-            echo "❌ ERROR: No gcda files found" >&2 && false
-            echo 1 || exit 1
-        fi
+         if [ -n "$gcda_files" ]; then
+             echo "✅ Successfully found $gcda_files_count gcda files"
+         else
+             echo "❌ ERROR: No gcda files found" >&2 && false
+             echo 1 || exit 1
+         fi
 
 
          # Process each .gcda file
