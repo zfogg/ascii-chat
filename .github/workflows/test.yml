@@ -76,48 +76,15 @@ jobs:
 
     - name: Generate coverage report (debug builds only)
       if: always() && matrix.build_type == 'debug'
-      run: |
-        # Generate coverage files for codecov (coverage builds create .gcda files)
-        echo "Looking for .gcda files to generate coverage from..."
-        find . -name "*.gcda" -type f | head -10
+      uses: ./.github/actions/generate-coverage
+      with:
+        build-type: ${{ matrix.build_type }}
+        os-name: ${{ matrix.os-name }}
+        test-type: unit
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
-        if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
-          echo "Found .gcda files, generating coverage..."
-          find . -name "*.gcda" -exec gcov {} \;
-
-          # Show what coverage files were generated
-          echo "Generated coverage files:"
-          find . -name "*.gcov" -type f | head -20
-
-          # Copy all .gcov files to root directory with directory structure preserved
-          echo "Copying .gcov files to root directory with preserved paths..."
-          find . -name "*.gcov" -type f | while read gcov_file; do
-            # Create a filename that preserves the directory structure
-            # Replace / with _ and remove leading ./ if present
-            safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
-            cp "$gcov_file" "./$safe_name" || true
-            echo "Copied $gcov_file -> $safe_name"
-          done
-
-          # Validate that .gcov files were actually generated and copied
-          echo "Validating coverage file generation..."
-          if ls *.gcov 2>/dev/null | head -1 > /dev/null; then
-            echo "✅ Successfully generated and copied $(ls *.gcov 2>/dev/null | wc -l) coverage files"
-            ls -la *.gcov 2>/dev/null | head -10
-          else
-            echo "❌ ERROR: No .gcov files found after generation and copying!"
-            echo "This indicates a problem with coverage generation."
-            echo "Debug information:"
-            echo "  - .gcda files found: $(find . -name "*.gcda" -type f | wc -l)"
-            echo "  - .gcov files found in subdirectories: $(find . -name "*.gcov" -type f | wc -l)"
-            echo "  - gcov command exit status: $?"
-            exit 1
-          fi
-        else
-          echo "No .gcda files found (this is expected for non-coverage builds)"
-        fi
-
-    - name: Publish Test Results and Coverage
+    - name: Publish Test Results
       uses: ./.github/actions/publish-test-results
       if: always()
       with:
@@ -125,9 +92,8 @@ jobs:
         os-name: ${{ matrix.os-name }}
         build-type: ${{ matrix.build_type }}
         junit-file: junit.xml
-        coverage-files: './*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
+        upload-coverage: 'false'
 
     - name: Upload test results
       if: always()
@@ -163,11 +129,14 @@ jobs:
         os: ${{ matrix.os-name }}
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr' || 'gcovr' }}
 
-    - name: Build and run integration tests with coverage
+    - name: Build integration tests with coverage
       run: |
-        echo "Running integration tests with coverage build..."
+        echo "Building integration tests with coverage build..."
         make -j CSTD=c2x coverage
         make -j CSTD=c2x tests-coverage
+
+    - name: Build and run integration tests with coverage
+      run: |
         LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
         ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
         echo "Integration tests completed successfully"
@@ -175,47 +144,23 @@ jobs:
 
     - name: Generate coverage report
       if: always()
-      run: |
-        # Generate coverage files for codecov
-        find . -name "*.gcda" -exec gcov {} \;
-        echo "Generated coverage files:"
-        find . -name "*.gcov" -type f | head -20
+      uses: ./.github/actions/generate-coverage
+      with:
+        build-type: coverage
+        os-name: ${{ matrix.os-name }}
+        test-type: integration
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
-        # Copy all .gcov files to root directory with directory structure preserved
-        echo "Copying .gcov files to root directory with preserved paths..."
-        find . -name "*.gcov" -type f | while read gcov_file; do
-          # Create a filename that preserves the directory structure
-          # Replace / with _ and remove leading ./ if present
-          safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
-          cp "$gcov_file" "./$safe_name" || true
-          echo "Copied $gcov_file -> $safe_name"
-        done
-
-        # Validate that .gcov files were actually generated and copied
-        echo "Validating coverage file generation..."
-        if ls *.gcov 2>/dev/null | head -1 > /dev/null; then
-          echo "✅ Successfully generated and copied $(ls *.gcov 2>/dev/null | wc -l) coverage files"
-          ls -la *.gcov 2>/dev/null | head -10
-        else
-          echo "❌ ERROR: No .gcov files found after generation and copying!"
-          echo "This indicates a problem with coverage generation."
-          echo "Debug information:"
-          echo "  - .gcda files found: $(find . -name "*.gcda" -type f | wc -l)"
-          echo "  - .gcov files found in subdirectories: $(find . -name "*.gcov" -type f | wc -l)"
-          echo "  - gcov command exit status: $?"
-          exit 1
-        fi
-
-    - name: Publish Test Results and Coverage
+    - name: Publish Test Results
       uses: ./.github/actions/publish-test-results
       if: always()
       with:
         test-type: integration
         os-name: ${{ matrix.os-name }}
         junit-file: junit.xml
-        coverage-files: './*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'true'
+        upload-coverage: 'false'
 
     - name: Upload integration test results
       if: always()
