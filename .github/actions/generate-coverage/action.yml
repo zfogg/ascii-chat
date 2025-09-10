@@ -29,8 +29,9 @@ inputs:
 
 runs:
   using: 'composite'
+  if: ${{ os == 'ubuntu' }}
   steps:
-    - name: Install codecov CLI
+    - name: Install codecov CLI on Ubuntu
       if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
@@ -74,17 +75,18 @@ runs:
 
 
          # Process each .gcda file
-         find . -name "*.gcda" -type f | while read -r gcda_file; do
+         for gcda_file in $(find . -name "*.gcda" -type f); do
              gcda_dir=$(dirname "$gcda_file")
              base_name=$(basename "$gcda_file" .gcda)
 
+             echo "Processing $gcda_file in directory $gcda_dir"
              (cd "$gcda_dir" && gcov "$(basename "$gcda_file")" >/dev/null 2>&1)
 
              # Move ALL .gcov files generated in this directory to root with safe names
-             find "$gcda_dir" -name "*.gcov" -type f | while read -r gcov_file; do
+             for gcov_file in $(find "$gcda_dir" -name "*.gcov" -type f); do
                  gcov_base=$(basename "$gcov_file" .gcov)
                  safe_name=$(echo "$gcda_dir/$gcov_base" | sed "s|^\./||" | sed "s|/|_|g")
-                 mv "$gcov_file" "./$safe_name.gcov"
+                 \mv "$gcov_file" "./$safe_name.gcov"
                  echo "Generated $gcda_file -> $safe_name.gcov"
              done
          done
@@ -94,6 +96,10 @@ runs:
         echo "🙈 Generated coverage with $gcov_files_count gcov files with safe names..."
 
          echo "🔠 Validating coverage file generation..."
+         echo "Debug: gcda_files_count=$gcda_files_count, gcov_files_count=$gcov_files_count"
+         echo "Debug: gcov_files found:"
+         echo "$gcov_files" | head -10
+
          if [ -n "$gcov_files" ] && [ $gcov_files_count -ge $gcda_files_count ]; then
              echo "✅ Successfully generated and copied $gcov_files_count coverage files (expected at least $gcda_files_count)"
              # Output the list of generated .gcov files for use in upload step
@@ -104,7 +110,9 @@ runs:
          else
              echo "❌ ERROR: No gcov files or insufficient gcov files found after generation and copying\!" >&2
              echo "Expected at least $gcda_files_count files, but found $gcov_files_count" >&2
-             echo 1 || exit 1
+             echo "Debug: Listing all .gcov files:"
+             find . -name "*.gcov" -type f -exec ls -la {} \;
+             exit 1
          fi
 
          echo "🏁 Generation step completed successfully"
