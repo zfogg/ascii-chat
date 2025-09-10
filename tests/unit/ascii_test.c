@@ -584,6 +584,7 @@ Test(ascii, ascii_write_empty_data) {
  * ============================================================================ */
 
 Test(ascii, ascii_read_init_basic) {
+  cr_fail("FORCED FAILURE FOR TESTING HANGING BEHAVIOR");
   if (getenv("CI") != NULL) {
     cr_skip("Skipping test in CI environment");
     return;
