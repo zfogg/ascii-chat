@@ -769,8 +769,10 @@ function run_tests_in_parallel() {
         test_junit="/tmp/junit_${test_name}_worker${worker_id}_$$.xml"
       fi
 
-      # Print starting message to stderr
-      echo "🚀 [TEST] Starting: $test_name" >&2
+      # Print starting message to stderr (only in verbose mode or for debugging)
+      if [[ -n "$VERBOSE" ]]; then
+        echo "🚀 [TEST] Starting: $test_name" >&2
+      fi
       log_verbose "Worker $worker_id starting test $((test_index + 1)) of $total_tests: $test_name"
 
       # Run test synchronously (not in background)
@@ -790,13 +792,24 @@ function run_tests_in_parallel() {
       # Process result
       if [[ $exit_code -eq 0 ]]; then
         ((worker_passed++))
-        echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
+        # Only show passing tests in verbose mode, otherwise keep output minimal
+        if [[ -n "$VERBOSE" ]]; then
+          echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
+        fi
       elif [[ $exit_code -eq 130 ]] || [[ $exit_code -gt 128 ]]; then
         ((worker_failed++))
         echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $test_name" >&2
       else
         ((worker_failed++))
         echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit code: $exit_code, $formatted_time)" >&2
+
+        # Show failure details for failed tests
+        if [[ -f "$test_log" ]]; then
+          echo "--- Failure details for $test_name ---" >&2
+          # Show the complete test log to see all assertion errors
+          cat "$test_log" >&2
+          echo "--- End failure details ---" >&2
+        fi
       fi
 
       ((worker_started++))
