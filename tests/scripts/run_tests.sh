@@ -234,37 +234,83 @@ function get_test_executables() {
     return
   fi
 
-  # Tests always have the same name regardless of build type
-  case "$category" in
-  unit)
-    # Use simple shell globbing instead of find
-    for f in "$bin_dir"/test_unit_*; do
-      [[ -f "$f" ]] && echo "$f"
-    done | sort
-    ;;
-  integration)
-    # Use simple shell globbing instead of find
-    for f in "$bin_dir"/test_integration_*; do
-      [[ -f "$f" ]] && echo "$f"
-    done | sort
-    ;;
-  performance)
-    # Use simple shell globbing instead of find
-    for f in "$bin_dir"/test_performance_*; do
-      [[ -f "$f" ]] && echo "$f"
-    done | sort
-    ;;
-  all)
-    # Use simple shell globbing instead of find
-    for f in "$bin_dir"/test_*; do
-      [[ -f "$f" ]] && echo "$f"
-    done | sort
-    ;;
-  *)
-    log_error "Unknown test category: $category"
-    return 1
-    ;;
-  esac
+  # Handle coverage builds differently
+  if [[ "$build_type" == "coverage" ]]; then
+    case "$category" in
+    unit)
+      # For coverage, discover test source files and build coverage executables
+      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          executable_name="test_unit_${test_name}_coverage"
+          echo "$bin_dir/$executable_name"
+        fi
+      done | sort
+      ;;
+    integration)
+      # For coverage, discover test source files and build coverage executables
+      for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          executable_name="test_integration_${test_name}_coverage"
+          echo "$bin_dir/$executable_name"
+        fi
+      done | sort
+      ;;
+    performance)
+      # For coverage, discover test source files and build coverage executables
+      for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          executable_name="test_performance_${test_name}_coverage"
+          echo "$bin_dir/$executable_name"
+        fi
+      done | sort
+      ;;
+    all)
+      # All coverage tests
+      for f in "$bin_dir"/test_*_coverage; do
+        [[ -f "$f" ]] && echo "$f"
+      done | sort
+      ;;
+    *)
+      log_error "Unknown test category: $category"
+      return 1
+      ;;
+    esac
+  else
+    # Regular builds use standard naming
+    case "$category" in
+    unit)
+      # Use simple shell globbing instead of find
+      for f in "$bin_dir"/test_unit_*; do
+        [[ -f "$f" ]] && echo "$f"
+      done | sort
+      ;;
+    integration)
+      # Use simple shell globbing instead of find
+      for f in "$bin_dir"/test_integration_*; do
+        [[ -f "$f" ]] && echo "$f"
+      done | sort
+      ;;
+    performance)
+      # Use simple shell globbing instead of find
+      for f in "$bin_dir"/test_performance_*; do
+        [[ -f "$f" ]] && echo "$f"
+      done | sort
+      ;;
+    all)
+      # Use simple shell globbing instead of find
+      for f in "$bin_dir"/test_*; do
+        [[ -f "$f" ]] && echo "$f"
+      done | sort
+      ;;
+    *)
+      log_error "Unknown test category: $category"
+      return 1
+      ;;
+    esac
+  fi
 }
 
 # Build tests if they don't exist
