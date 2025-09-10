@@ -30,8 +30,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install codecov CLI on Ubuntu
-      if: ${{ inputs.upload-coverage == 'true' && runner.os == 'Linux' }}
+    - name: Install codecov CLI
+      if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
         echo "📦 Installing codecov CLI..."
@@ -63,36 +63,20 @@ runs:
         echo "Looking for .gcda files to generate coverage from..."
         gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
         gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
-        echo "🙈 Generating coverage with ${gcda_files_count} gcda files with safe names..."
-
-        # Debug: Check clang and llvm-cov versions
-        echo "Debug: Clang version:"
-        clang --version || echo "Clang not found"
-        echo "Debug: llvm-cov version:"
-        llvm-cov --version || echo "llvm-cov not found"
+        echo "Generating coverage with ${gcda_files_count} gcda files..."
 
         # For clang, we should use llvm-cov instead of gcov
         if command -v llvm-cov >/dev/null 2>&1; then
-            echo "Using llvm-cov for clang coverage generation"
             COVERAGE_CMD="llvm-cov gcov"
         else
-            echo "llvm-cov not found, falling back to gcov"
             COVERAGE_CMD="gcov"
         fi
 
-        # Check what compiler was used for the coverage build
-        echo "Debug: Checking what compiler was used for coverage build..."
-        if [ -f "build/tests/coverage/unit/ascii_test.o" ]; then
-            echo "Checking ascii_test.o compiler info:"
-            file "build/tests/coverage/unit/ascii_test.o" || echo "Could not check object file"
-            strings "build/tests/coverage/unit/ascii_test.o" | grep -E "(clang|gcc|GCC)" | head -5 || echo "No compiler info found in object file"
-        fi
-
         if [ -n "$gcda_files" ]; then
-            echo "✅ Successfully found $gcda_files_count gcda files"
+            echo "✅ Found $gcda_files_count gcda files"
         else
-            echo "❌ ERROR: No gcda files found" >&2 && false
-            echo 1 || exit 1
+            echo "❌ ERROR: No gcda files found" >&2
+            exit 1
         fi
 
         # Process each .gcda file
@@ -100,83 +84,42 @@ runs:
             gcda_dir=$(dirname "$gcda_file")
             base_name=$(basename "$gcda_file" .gcda)
 
-            echo "Processing $gcda_file in directory $gcda_dir"
+            echo "Processing $gcda_file"
 
-            # Debug: Check file versions before running gcov
-            echo "Debug: Checking .gcno and .gcda file versions:"
-            if [ -f "$gcda_dir/$(basename "$gcda_file" .gcda).gcno" ]; then
-                echo "Found .gcno file: $gcda_dir/$(basename "$gcda_file" .gcda).gcno"
-                file "$gcda_dir/$(basename "$gcda_file" .gcda).gcno" || echo "Could not check .gcno file"
-                echo "Debug: .gcno file size:"
-                ls -la "$gcda_dir/$(basename "$gcda_file" .gcda).gcno" || echo "Could not check .gcno file size"
-            else
-                echo "No .gcno file found for $gcda_file"
-            fi
-
-            echo "Debug: .gcda file info:"
-            file "$gcda_file" || echo "Could not check .gcda file"
-            ls -la "$gcda_file" || echo "Could not check .gcda file size"
-
-            echo "Debug: Running coverage generation:"
             (cd "$gcda_dir" && $COVERAGE_CMD "$(basename "$gcda_file")" 2>&1) || echo "coverage generation failed with exit code $?"
-            echo "🔠 coverage generation completed"
 
             # Move ALL .gcov files generated in this directory to root with safe names
             for gcov_file in $(find "$gcda_dir" -name "*.gcov" -type f); do
                 gcov_base=$(basename "$gcov_file" .gcov)
-                echo "gcov_base=$gcov_base"
                 safe_name=$(echo "$gcda_dir/$gcov_base" | sed "s|^\./||" | sed "s|/|_|g")
-                echo "safe_name=$safe_name"
                 \mv "$gcov_file" "./$safe_name.gcov"
-                echo "🔠 mv completed"
                 echo "Generated $gcda_file -> $safe_name.gcov"
             done
         done
 
         gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
         gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
-        echo "🙈 Generated coverage with $gcov_files_count gcov files with safe names..."
-
-        echo "🔠 Validating coverage file generation..."
-        echo "Debug: gcda_files_count=$gcda_files_count, gcov_files_count=$gcov_files_count"
-        echo "Debug: gcov_files found:"
-        echo "$gcov_files" | head -10
+        echo "Generated $gcov_files_count coverage files..."
 
         if [ -n "$gcov_files" ] && [ $gcov_files_count -ge $gcda_files_count ]; then
-            echo "✅ Successfully generated and copied $gcov_files_count coverage files (expected at least $gcda_files_count)"
+            echo "✅ Successfully generated $gcov_files_count coverage files"
             # Output the list of generated .gcov files for use in upload step
             echo "gcov-files<<EOF" >> $GITHUB_OUTPUT
             echo "$gcov_files" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
-            echo "📤 Output gcov-files to GITHUB_OUTPUT completed"
         else
-            echo "❌ ERROR: No gcov files or insufficient gcov files found after generation and copying\!" >&2
+            echo "❌ ERROR: No gcov files or insufficient gcov files found" >&2
             echo "Expected at least $gcda_files_count files, but found $gcov_files_count" >&2
-            echo "Debug: Listing all .gcov files:"
-            find . -name "*.gcov" -type f -exec ls -la {} \;
             exit 1
         fi
-
-        echo "🏁 Generation step completed successfully"
 
     - name: Check Coverage Files
       id: check-coverage
       if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        echo "🔍 Checking for coverage files..."
-        echo "Current directory: $(pwd)"
-        echo "Directory contents:"
-        ls -la .
-
         gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
         gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
-
-        echo "Found $gcov_files_count .gcov files"
-        if [ -n "$gcov_files" ]; then
-          echo "Files found:"
-          echo "$gcov_files" | head -10
-        fi
 
         if [ -n "$gcov_files" ] && [ $gcov_files_count -gt 0 ]; then
           echo "✅ Found $gcov_files_count coverage files"
@@ -184,40 +127,21 @@ runs:
         else
           echo "⚠️ No coverage files found"
           echo "has_coverage=false" >> $GITHUB_OUTPUT
-          echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
         fi
 
-    - name: Debug Upload Conditions
-      if: ${{ inputs.upload-coverage == 'true' }}
-      shell: bash
-      run: |
-        echo "🔍 Debugging upload conditions..."
-        echo "inputs.upload-coverage: '${{ inputs.upload-coverage }}'"
-        echo "inputs.codecov-token: '${{ inputs.codecov-token }}'"
-        echo "steps.check-coverage.outputs.has_coverage: '${{ steps.check-coverage.outputs.has_coverage }}'"
-        echo "Condition evaluation:"
-        echo "  inputs.upload-coverage == 'true': ${{ inputs.upload-coverage == 'true' }}"
 
     - name: Upload Coverage to Codecov
       if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        echo "🚀 Starting Codecov upload..."
-        echo "Upload coverage: ${{ inputs.upload-coverage }}"
-        echo "Check coverage output: ${{ steps.check-coverage.outputs.has_coverage }}"
-        echo "Current directory: $(pwd)"
-        echo "Files in current directory:"
-        ls -la .
+        echo "Uploading coverage to Codecov..."
 
         # Check if .gcov files exist
         gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
         gcov_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
-        echo "Found $gcov_count .gcov files for upload"
 
         if [ $gcov_count -gt 0 ]; then
-          echo "✅ Proceeding with Codecov upload"
-          echo "Files to upload:"
-          echo "$gcov_files"
+          echo "✅ Uploading $gcov_count coverage files"
 
           # Build codecov command with multiple --file arguments
           codecov_cmd="codecov do-upload --token=\"${{ inputs.codecov-token }}\""
@@ -232,7 +156,6 @@ runs:
           codecov_cmd="$codecov_cmd --name=\"${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}\""
           codecov_cmd="$codecov_cmd --fail-on-error"
 
-          echo "Running codecov command: $codecov_cmd"
           eval $codecov_cmd
         else
           echo "⚠️ No .gcov files found, skipping upload"
@@ -242,11 +165,10 @@ runs:
       if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        echo "📊 Uploading JUnit XML to Codecov..."
-        echo "JUnit file: ${{ inputs.junit-file }}"
+        echo "Uploading JUnit XML to Codecov..."
 
         if [ -f "${{ inputs.junit-file }}" ]; then
-          echo "✅ JUnit XML file found, uploading to Codecov"
+          echo "✅ Uploading JUnit XML file"
 
           # Upload JUnit XML using codecov CLI
           codecov do-upload --token="${{ inputs.codecov-token }}" \
@@ -256,5 +178,5 @@ runs:
                   --name="${{ inputs.test-type == 'unit' && format('ascii-chat-test-results-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-test-results-{0}', inputs.os-name) || format('ascii-chat-performance-test-results-{0}', inputs.os-name) }}" \
                   --fail-on-error
         else
-          echo "⚠️ JUnit XML file not found at ${{ inputs.junit-file }}, skipping upload"
+          echo "⚠️ JUnit XML file not found, skipping upload"
         fi
