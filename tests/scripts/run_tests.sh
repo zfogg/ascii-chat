@@ -779,22 +779,9 @@ function run_tests_in_parallel() {
       # Run test synchronously (not in background)
       local exit_code=0
       if [[ -n "$generate_junit" ]]; then
-        # Run test and capture output to temporary file first
-        local temp_output="/tmp/test_output_${test_name}_worker${worker_id}_$$.txt"
-        "$test_executable" --jobs "$jobs_per_test" --xml "$test_junit" >"$temp_output" 2>&1
+        # Run test with XML output to JUnit file and capture test output separately
+        "$test_executable" --jobs "$jobs_per_test" --xml "$test_junit" >"$test_log" 2>&1
         exit_code=$?
-
-        # Copy the output to test log for failure analysis
-        cp "$temp_output" "$test_log"
-
-        # Extract just the XML part to the JUnit file
-        if [[ -f "$temp_output" ]]; then
-          # The XML output is in the temp file, copy it to JUnit file
-          cp "$temp_output" "$test_junit"
-        fi
-
-        # Clean up temp file
-        rm -f "$temp_output"
       else
         "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
         exit_code=$?
@@ -819,14 +806,23 @@ function run_tests_in_parallel() {
         echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit code: $exit_code, $formatted_time)" >&2
 
         # Show failure details for failed tests
-        if [[ -f "$test_log" ]]; then
+        if [[ -n "$generate_junit" ]]; then
+          # In JUnit mode, run the test again without XML to get the actual failure output
           echo "--- Failure details for $test_name ---" >&2
-          # Show the complete test log to see all assertion errors
-          cat "$test_log" >&2
+          echo "Running test again without XML to show failure details..." >&2
+          "$test_executable" --jobs "$jobs_per_test"
           echo "--- End failure details ---" >&2
         else
-          echo "--- No test log found for $test_name ---" >&2
-          echo "Test log path: $test_log" >&2
+          # In non-JUnit mode, show the test log
+          if [[ -f "$test_log" ]]; then
+            echo "--- Failure details for $test_name ---" >&2
+            # Show the complete test log to see all assertion errors
+            cat "$test_log" >&2
+            echo "--- End failure details ---" >&2
+          else
+            echo "--- No test log found for $test_name ---" >&2
+            echo "Test log path: $test_log" >&2
+          fi
         fi
       fi
 
