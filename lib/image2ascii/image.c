@@ -122,6 +122,10 @@ void image_destroy_to_pool(image_t *image) {
 }
 
 void image_clear(image_t *p) {
+  if (!p || !p->pixels) {
+    log_error("image_clear: p or p->pixels is NULL");
+    return;
+  }
   memset(p->pixels, 0, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t));
 }
 
@@ -290,6 +294,16 @@ char *image_print(const image_t *p, const char *palette) {
 
 // Color quantization to reduce frame size and improve performance
 void quantize_color(int *r, int *g, int *b, int levels) {
+  if (!r || !g || !b) {
+    log_error("quantize_color: r, g, or b is NULL");
+    return;
+  }
+
+  if (levels <= 0) {
+    log_error("quantize_color: levels must be positive, got %d", levels);
+    return;
+  }
+
   int step = 256 / levels;
   *r = (*r / step) * step;
   *g = (*g / step) * step;
@@ -447,6 +461,11 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
 }
 
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
+  if (!fg_code || !bg_code) {
+    log_error("rgb_to_ansi_8bit: fg_code or bg_code is NULL");
+    return;
+  }
+
   // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
   if (r == g && g == b) {
     // Grayscale

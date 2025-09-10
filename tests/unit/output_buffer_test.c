@@ -6,19 +6,10 @@
 
 #include "image2ascii/output_buffer.h"
 #include "common.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(output_buffer, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-  log_set_level(LOG_FATAL);
-}
-
-void restore_test_logging(void) {
-  log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with default log levels
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVEL(output_buffer);
 
 /* ============================================================================
  * Basic Buffer Operations Tests
@@ -340,7 +331,10 @@ Test(output_buffer, rep_is_profitable_basic) {
   cr_assert_eq(rep_is_profitable(0), false);
   cr_assert_eq(rep_is_profitable(1), false);
   cr_assert_eq(rep_is_profitable(2), false);
-  cr_assert_eq(rep_is_profitable(3), true);
+  cr_assert_eq(rep_is_profitable(3), false);  // 3 total chars: manual=3, REP=5
+  cr_assert_eq(rep_is_profitable(4), false);  // 4 total chars: manual=4, REP=5
+  cr_assert_eq(rep_is_profitable(5), false);  // 5 total chars: manual=5, REP=5 (equal)
+  cr_assert_eq(rep_is_profitable(6), true);   // 6 total chars: manual=6, REP=5
   cr_assert_eq(rep_is_profitable(10), true);
   cr_assert_eq(rep_is_profitable(100), true);
 }

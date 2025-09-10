@@ -4,19 +4,10 @@
 
 #include "common.h"
 #include "hashtable.h"
+#include "tests/logging.h"
 
-void setup_hashtable_quiet_logging(void);
-void restore_hashtable_logging(void);
-
-TestSuite(hashtable, .init = setup_hashtable_quiet_logging, .fini = restore_hashtable_logging);
-
-void setup_hashtable_quiet_logging(void) {
-    log_set_level(LOG_FATAL);
-}
-
-void restore_hashtable_logging(void) {
-    log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(hashtable);
 
 // Test data structure for storing in hashtable
 typedef struct {

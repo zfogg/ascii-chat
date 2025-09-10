@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "common.h"
+#include "tests/logging.h"
 
 // Global setup to reduce verbose output during tests
 void setup_quiet_logging(void);
@@ -22,12 +23,18 @@ void setup_quiet_logging(void) {
   // Suppress logging output during tests like other unit tests
   log_set_terminal_output(false);
   log_set_level(LOG_FATAL);
+
+  // Disable both stdout and stderr for quiet testing
+  test_logging_disable(true, true);
 }
 
 void restore_logging(void) {
   // Restore normal log level after tests
   // Don't restore terminal output to avoid interfering with other tests
   log_set_terminal_output(true);
+
+  // Restore stdout and stderr
+  test_logging_restore();
   log_set_level(LOG_DEBUG);
 }
 

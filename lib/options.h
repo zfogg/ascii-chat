@@ -7,6 +7,10 @@
 
 #define OPTIONS_BUFF_SIZE 256
 
+// Default terminal dimensions
+#define OPT_WIDTH_DEFAULT 110
+#define OPT_HEIGHT_DEFAULT 70
+
 // Safely parse string to integer with validation
 // Returns the integer value, or INT_MIN on error
 int strtoint_safe(const char *str);
@@ -18,8 +22,6 @@ extern char opt_address[], opt_port[];
 extern unsigned short int opt_webcam_index;
 
 extern bool opt_webcam_flip;
-
-extern unsigned short int opt_color_output;
 
 // Terminal color mode override (client only)
 typedef enum {

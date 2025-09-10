@@ -9,21 +9,10 @@
 #include "image2ascii/ascii.h"
 #include "common.h"
 #include "options.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(image, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-  // Set log level to only show fatal errors during non-logging tests
-  log_set_level(LOG_FATAL);
-}
-
-void restore_test_logging(void) {
-  // Restore normal log level after tests
-  log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with custom log levels
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(image, LOG_FATAL, LOG_DEBUG);
 
 /* ============================================================================
  * Image Creation and Destruction Tests
@@ -415,36 +404,36 @@ Test(image, rgb_to_ansi_fg_basic) {
   char *result = rgb_to_ansi_fg(255, 0, 0);
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
-  free(result);
+  // Note: result points to static buffer, no need to free
 }
 
 Test(image, rgb_to_ansi_fg_boundary_values) {
   // Test boundary values
   char *result1 = rgb_to_ansi_fg(0, 0, 0);
   cr_assert_not_null(result1);
-  free(result1);
+  // Note: result1 points to static buffer, no need to free
 
   char *result2 = rgb_to_ansi_fg(255, 255, 255);
   cr_assert_not_null(result2);
-  free(result2);
+  // Note: result2 points to static buffer, no need to free
 }
 
 Test(image, rgb_to_ansi_bg_basic) {
   char *result = rgb_to_ansi_bg(0, 255, 0);
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
-  free(result);
+  // Note: result points to static buffer, no need to free
 }
 
 Test(image, rgb_to_ansi_bg_boundary_values) {
   // Test boundary values
   char *result1 = rgb_to_ansi_bg(0, 0, 0);
   cr_assert_not_null(result1);
-  free(result1);
+  // Note: result1 points to static buffer, no need to free
 
   char *result2 = rgb_to_ansi_bg(255, 255, 255);
   cr_assert_not_null(result2);
-  free(result2);
+  // Note: result2 points to static buffer, no need to free
 }
 
 Test(image, rgb_to_ansi_8bit_basic) {

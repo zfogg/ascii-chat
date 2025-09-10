@@ -6,19 +6,10 @@
 
 #include "common.h"
 #include "audio.h"
+#include "tests/logging.h"
 
-void setup_audio_quiet_logging(void);
-void restore_audio_logging(void);
-
-TestSuite(audio, .init = setup_audio_quiet_logging, .fini = restore_audio_logging);
-
-void setup_audio_quiet_logging(void) {
-    log_set_level(LOG_FATAL);
-}
-
-void restore_audio_logging(void) {
-    log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(audio);
 
 // =============================================================================
 // Audio Initialization Tests

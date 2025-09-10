@@ -6,28 +6,17 @@
 #include "mixer.h"
 #include "audio.h"
 #include "common.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(mixer, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(mixer_utils, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(compressor, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(ducking, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(noise_gate, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(highpass_filter, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(soft_clip, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(mixer_integration, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-    // Set log level to only show fatal errors during non-logging tests
-    log_set_level(LOG_FATAL);
-}
-
-void restore_test_logging(void) {
-    // Restore normal log level after tests
-    log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suites with custom log levels
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer_utils, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(compressor, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ducking, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(noise_gate, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(highpass_filter, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(soft_clip, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer_integration, LOG_FATAL, LOG_DEBUG);
 
 // Test data generation helpers
 static void generate_sine_wave(float *buffer, int num_samples, float frequency, float sample_rate, float amplitude) {

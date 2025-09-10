@@ -1188,8 +1188,9 @@ int main(int argc, char *argv[]) {
       if (opt_audio_enabled) {
         my_capabilities |= CLIENT_CAP_AUDIO; // Add audio if enabled
       }
-      if (opt_color_output) {
-        my_capabilities |= CLIENT_CAP_COLOR; // Add color if enabled
+      // Add color capability based on color mode
+      if (opt_color_mode != COLOR_MODE_MONO) {
+        my_capabilities |= CLIENT_CAP_COLOR; // Add color if not monochrome
       }
       if (opt_stretch) {
         my_capabilities |= CLIENT_CAP_STRETCH; // Add stretch if enabled

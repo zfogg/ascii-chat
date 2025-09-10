@@ -2,29 +2,18 @@
 #include <criterion/new/assert.h>
 #include <string.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "ringbuffer.h"
 #include "audio.h"
 #include "common.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(ringbuffer, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(framebuffer, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-TestSuite(audio_ring_buffer, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-  // Set log level to only show fatal errors during non-logging tests
-  log_set_level(LOG_FATAL);
-}
-
-void restore_test_logging(void) {
-  // Restore normal log level after tests
-  log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suites with custom log levels
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(framebuffer, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio_ring_buffer, LOG_FATAL, LOG_DEBUG);
 
 /* ============================================================================
  * Ring Buffer Tests
@@ -571,29 +560,38 @@ Test(audio_ring_buffer, buffer_overflow) {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   cr_assert_not_null(arb);
 
-  // Fill buffer beyond capacity
-  float test_samples[AUDIO_RING_BUFFER_SIZE + 100];
+  // First test: Try to write more than buffer capacity - should be rejected
+  float oversized_samples[AUDIO_RING_BUFFER_SIZE + 100];
   for (int i = 0; i < AUDIO_RING_BUFFER_SIZE + 100; i++) {
-    test_samples[i] = (float)i * 0.001f;
+    oversized_samples[i] = (float)i * 0.001f;
   }
+  int written = audio_ring_buffer_write(arb, oversized_samples, AUDIO_RING_BUFFER_SIZE + 100);
+  cr_assert_eq(written, 0); // Should fail when trying to write more than buffer size
 
-  // Try to write more than capacity - should fail
-  int written = audio_ring_buffer_write(arb, test_samples, AUDIO_RING_BUFFER_SIZE + 100);
-  cr_assert_eq(written, 0); // Should fail when trying to write more than capacity
+  // Second test: Write a small amount first, then try to overflow
+  float initial_samples[10];
+  for (int i = 0; i < 10; i++) {
+    initial_samples[i] = (float)i * 0.1f;
+  }
+  written = audio_ring_buffer_write(arb, initial_samples, 10);
+  cr_assert_eq(written, 10);
 
-  // Now write exactly the capacity - should succeed
-  written = audio_ring_buffer_write(arb, test_samples, AUDIO_RING_BUFFER_SIZE);
-  cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE); // Should write exactly the capacity
+  // Now try to write enough to cause overflow (this should drop the old samples)
+  float overflow_samples[AUDIO_RING_BUFFER_SIZE - 5];
+  for (int i = 0; i < AUDIO_RING_BUFFER_SIZE - 5; i++) {
+    overflow_samples[i] = (float)(i + 1000) * 0.001f;
+  }
+  written = audio_ring_buffer_write(arb, overflow_samples, AUDIO_RING_BUFFER_SIZE - 5);
+  cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE - 5);
 
-  // Read all samples
+  // Read back samples - should get the newer samples (overflow_samples)
   float read_samples[AUDIO_RING_BUFFER_SIZE];
-  int read = audio_ring_buffer_read(arb, read_samples, AUDIO_RING_BUFFER_SIZE);
-  cr_assert_leq(read, AUDIO_RING_BUFFER_SIZE); // Should not read more than what was written
-  cr_assert_gt(read, 0);                       // Should read something
+  int read = audio_ring_buffer_read(arb, read_samples, AUDIO_RING_BUFFER_SIZE - 5);
+  cr_assert_eq(read, AUDIO_RING_BUFFER_SIZE - 5);
 
-  // Verify we got the first samples (oldest)
+  // Verify we got the overflow samples (not the initial ones)
   for (int i = 0; i < read; i++) {
-    cr_assert_float_eq(read_samples[i], test_samples[i], 1e-6f);
+    cr_assert_float_eq(read_samples[i], overflow_samples[i], 1e-6f);
   }
 
   audio_ring_buffer_destroy(arb);
@@ -696,8 +694,8 @@ Test(ringbuffer, thread_safety) {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 16);
   cr_assert_not_null(rb);
 
-  const int num_threads = 2;            // Reduced to reduce contention
-  const int operations_per_thread = 50; // Reduced to make test faster and more reliable
+  const int num_threads = 8;            // Lots of producers/consumers to test reliability
+  const int operations_per_thread = 100; // Really test it
 
   pthread_t threads[num_threads * 2];
   thread_test_data_t thread_data[num_threads * 2];

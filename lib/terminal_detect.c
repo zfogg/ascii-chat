@@ -58,49 +58,42 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       return 0;
     }
     close(tty_fd);
+  } else {
+    log_debug("Failed to open /dev/tty");
   }
 
-  // Only fall back to environment variables if we're not in a real terminal
-  if (isatty(STDOUT_FILENO)) {
-    // We're connected to a terminal but ioctl failed - use defaults
-    *width = 80;
-    *height = 24;
-    // log_debug("Terminal fallback (ioctl failed but isatty): %dx%d", *width, *height);
-    return -1;
-  }
-
-  // stdout is redirected - try environment variables as fallback
+  // Try environment variables as fallback
   char *cols_str = getenv("COLUMNS");
   char *lines_str = getenv("LINES");
 
-  // Try to use environment variables, but validate each one individually
-  bool used_env = false;
-  *width = 80;  // Default width
-  *height = 24; // Default height
+  // Only use environment variables if BOTH are set and valid
+  *width = OPT_WIDTH_DEFAULT;   // Default width (matches options.c)
+  *height = OPT_HEIGHT_DEFAULT; // Default height (matches options.c)
 
-  if (cols_str) {
+  if (cols_str && lines_str) {
     int env_width = atoi(cols_str);
-    if (env_width > 0) {
-      *width = (unsigned short int)env_width;
-      used_env = true;
-    }
-  }
-
-  if (lines_str) {
     int env_height = atoi(lines_str);
-    if (env_height > 0) {
+
+    // Both must be valid positive values
+    if (env_width > 0 && env_height > 0) {
+      *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
-      used_env = true;
+      log_debug("Terminal size from environment: %dx%d", *width, *height);
+      return 0;
     }
   }
 
-  if (used_env) {
-    // log_debug("Terminal size from environment: %dx%d", *width, *height);
-    return 0;
+  // If we're in a terminal but couldn't detect size, try to use stty as last resort
+  if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO)) {
+    // We're in a terminal environment, so use more reasonable defaults
+    *width = OPT_WIDTH_DEFAULT;
+    *height = OPT_HEIGHT_DEFAULT;
+    log_debug("Terminal size fallback (terminal but no detection): %dx%d", *width, *height);
+    return 0; // Return success with defaults
   }
 
-  // Final fallback to reasonable defaults when output is redirected
-  // log_debug("Terminal size fallback (redirected output): %dx%d", *width, *height);
+  // Final fallback for redirected output
+  log_debug("Terminal size fallback (redirected output): %dx%d", *width, *height);
   return -1;
 }
 

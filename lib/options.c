@@ -33,8 +33,7 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
-static const unsigned short default_width = 110, default_height = 70;
-unsigned short int opt_width = default_width, opt_height = default_height,
+unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT,
 
                    auto_width = 1, auto_height = 1;
 
@@ -43,8 +42,6 @@ char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "
 unsigned short int opt_webcam_index = 0;
 
 bool opt_webcam_flip = false;
-
-unsigned short int opt_color_output = 0;
 
 // Terminal color mode and capability options
 terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
@@ -154,27 +151,21 @@ void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
 
   if (get_terminal_size(&term_width, &term_height) == 0) {
-    log_debug("Terminal size detected: %dx%d, auto_width=%d, auto_height=%d", term_width, term_height, auto_width,
-              auto_height);
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (auto_height && auto_width) {
       opt_height = term_height;
       opt_width = term_width; // Also set width when both are auto
-      log_debug("Both auto: set to %dx%d", opt_width, opt_height);
     }
     // If only height is auto, use full terminal height
     else if (auto_height) {
       opt_height = term_height;
-      log_debug("Height auto: set height to %d", opt_height);
     }
     // If only width is auto, use full terminal width
     else if (auto_width) {
       opt_width = term_width;
-      log_debug("Width auto: set width to %d", opt_width);
     }
   } else {
-    log_debug("Failed to get terminal size, using defaults: %dx%d", opt_width, opt_height);
   }
 }
 
@@ -183,13 +174,10 @@ void update_dimensions_to_terminal_size(void) {
   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
   int terminal_result = get_terminal_size(&term_width, &term_height);
   if (terminal_result == 0) {
-    log_debug("Terminal size detected: %dx%d", term_width, term_height);
     if (auto_width) {
-      log_debug("Setting opt_width from %u to %u", opt_width, term_width);
       opt_width = term_width;
     }
     if (auto_height) {
-      log_debug("Setting opt_height from %u to %u", opt_height, term_height);
       opt_height = term_height;
     }
     log_debug("After update_dimensions_to_terminal_size: opt_width=%d, opt_height=%d", opt_width, opt_height);
@@ -316,8 +304,6 @@ void options_init(int argc, char **argv, bool is_client) {
       break;
 
     char argbuf[1024];
-    fprintf(stderr, "DEBUG: switch case c=%d, optarg='%s'\n", c, optarg ? optarg : "NULL");
-    fflush(stderr);
     switch (c) {
     case 0:
       break;
@@ -326,7 +312,6 @@ void options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
       if (!is_valid_ipv4(value_str)) {
         fprintf(stderr, "Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.\n", value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       snprintf(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -340,7 +325,6 @@ void options_init(int argc, char **argv, bool is_client) {
       long port_num = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
         fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -352,7 +336,6 @@ void options_init(int argc, char **argv, bool is_client) {
       int width_val = strtoint_safe(value_str);
       if (width_val == INT_MIN || width_val <= 0) {
         fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       opt_width = (unsigned short int)width_val;
@@ -365,7 +348,6 @@ void options_init(int argc, char **argv, bool is_client) {
       int height_val = strtoint_safe(value_str);
       if (height_val == INT_MIN || height_val <= 0) {
         fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       opt_height = (unsigned short int)height_val;
@@ -378,7 +360,6 @@ void options_init(int argc, char **argv, bool is_client) {
       int parsed_index = strtoint_safe(value_str);
       if (parsed_index == INT_MIN || parsed_index < 0) {
         fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n", value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       opt_webcam_index = (unsigned short int)parsed_index;
@@ -405,7 +386,6 @@ void options_init(int argc, char **argv, bool is_client) {
         opt_color_mode = COLOR_MODE_TRUECOLOR;
       } else {
         fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n", value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -429,7 +409,6 @@ void options_init(int argc, char **argv, bool is_client) {
       } else {
         fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
                 value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -452,7 +431,6 @@ void options_init(int argc, char **argv, bool is_client) {
       } else {
         fprintf(stderr, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
                 value_str);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -463,7 +441,6 @@ void options_init(int argc, char **argv, bool is_client) {
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
         fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
                 sizeof(opt_palette_custom) - 1);
-        fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       strncpy(opt_palette_custom, value_str, sizeof(opt_palette_custom) - 1);
@@ -570,13 +547,11 @@ void options_init(int argc, char **argv, bool is_client) {
           fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
         }
       }
-      fflush(stderr);
       _exit(EXIT_FAILURE);
 
     case '?':
       fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr, is_client);
-      fflush(stderr);
       _exit(EXIT_FAILURE);
 
     case 'h':
@@ -593,16 +568,6 @@ void options_init(int argc, char **argv, bool is_client) {
   // First set any auto dimensions to terminal size, then apply full height logic
   update_dimensions_to_terminal_size();
   update_dimensions_for_full_height();
-
-  // Auto-enable color output based on terminal capabilities (unless explicitly disabled)
-  if (!opt_color_output && opt_color_mode == COLOR_MODE_AUTO) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
-    if (caps.color_level > TERM_COLOR_NONE) {
-      opt_color_output = 1;
-      fprintf(stderr, "Auto-enabled color output based on terminal capabilities: %s\n",
-              terminal_color_level_name(caps.color_level));
-    }
-  }
 }
 
 #define USAGE_INDENT "    "
