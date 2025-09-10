@@ -125,7 +125,7 @@ runs:
           codecov_cmd="$codecov_cmd --pr=\"${{ github.event.pull_request.number }}\""
 
           # Control gcov behavior to focus on coverage build files
-          codecov_cmd="$codecov_cmd --gcov-include=\"build/coverage/**\""
+          codecov_cmd="$codecov_cmd --gcov-include=\"build/tests/coverage/**\""
 
           # Add JUnit XML file if it exists
           if [ -f "${{ inputs.junit-file }}" ]; then
