@@ -91,14 +91,30 @@ jobs:
 
           # Copy all .gcov files to root directory with directory structure preserved
           echo "Copying .gcov files to root directory with preserved paths..."
+          gcov_count=0
           find . -name "*.gcov" -type f | while read gcov_file; do
             # Create a filename that preserves the directory structure
             # Replace / with _ and remove leading ./ if present
             safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
             cp "$gcov_file" "./$safe_name"
             echo "Copied $gcov_file -> $safe_name"
+            ((gcov_count++))
           done
-          ls -la *.gcov 2>/dev/null || echo "No .gcov files copied to root directory"
+
+          # Validate that .gcov files were actually generated and copied
+          echo "Validating coverage file generation..."
+          if ls *.gcov 2>/dev/null | head -1 > /dev/null; then
+            echo "✅ Successfully generated and copied $(ls *.gcov 2>/dev/null | wc -l) coverage files"
+            ls -la *.gcov 2>/dev/null | head -10
+          else
+            echo "❌ ERROR: No .gcov files found after generation and copying!"
+            echo "This indicates a problem with coverage generation."
+            echo "Debug information:"
+            echo "  - .gcda files found: $(find . -name "*.gcda" -type f | wc -l)"
+            echo "  - .gcov files found in subdirectories: $(find . -name "*.gcov" -type f | wc -l)"
+            echo "  - gcov command exit status: $?"
+            exit 1
+          fi
         else
           echo "No .gcda files found (this is expected for non-coverage builds)"
         fi
@@ -169,14 +185,30 @@ jobs:
 
         # Copy all .gcov files to root directory with directory structure preserved
         echo "Copying .gcov files to root directory with preserved paths..."
+        gcov_count=0
         find . -name "*.gcov" -type f | while read gcov_file; do
           # Create a filename that preserves the directory structure
           # Replace / with _ and remove leading ./ if present
           safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
           cp "$gcov_file" "./$safe_name"
           echo "Copied $gcov_file -> $safe_name"
+          ((gcov_count++))
         done
-        ls -la *.gcov 2>/dev/null || echo "No .gcov files copied to root directory"
+
+        # Validate that .gcov files were actually generated and copied
+        echo "Validating coverage file generation..."
+        if ls *.gcov 2>/dev/null | head -1 > /dev/null; then
+          echo "✅ Successfully generated and copied $(ls *.gcov 2>/dev/null | wc -l) coverage files"
+          ls -la *.gcov 2>/dev/null | head -10
+        else
+          echo "❌ ERROR: No .gcov files found after generation and copying!"
+          echo "This indicates a problem with coverage generation."
+          echo "Debug information:"
+          echo "  - .gcda files found: $(find . -name "*.gcda" -type f | wc -l)"
+          echo "  - .gcov files found in subdirectories: $(find . -name "*.gcov" -type f | wc -l)"
+          echo "  - gcov command exit status: $?"
+          exit 1
+        fi
 
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results

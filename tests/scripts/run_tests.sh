@@ -887,10 +887,29 @@ function run_tests_in_parallel() {
 
         # Also append to main JUnit file with file locking to prevent race conditions
         if [[ -f "$junit_file" ]]; then
-          # Extract just the testsuite content (skip XML declaration and testsuites wrapper)
-          # Extract all individual testsuite elements from the Criterion XML (not the outer testsuites wrapper)
-          # Use awk to extract only the testsuite elements, not the outer testsuites wrapper
-          awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$test_junit" >>"$junit_file"
+          # Use file locking to prevent race conditions when multiple workers write simultaneously
+          local junit_lock="/tmp/junit_lock_$$.txt"
+          local retry_count=0
+          local max_retries=10
+
+          while [[ $retry_count -lt $max_retries ]]; do
+            if mkdir "$junit_lock" 2>/dev/null; then
+              # We have the lock, safely append to JUnit file
+              awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$test_junit" >>"$junit_file"
+              rmdir "$junit_lock"
+              break
+            else
+              # Lock is held by another process, wait and retry
+              sleep 0.001
+              ((retry_count++))
+            fi
+          done
+
+          # If we couldn't get the lock after max retries, append without locking (fallback)
+          if [[ $retry_count -eq $max_retries ]]; then
+            echo "Warning: Could not acquire JUnit file lock after $max_retries retries, appending without lock" >&2
+            awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$test_junit" >>"$junit_file"
+          fi
         fi
 
         rm -f "$test_junit"
@@ -951,7 +970,7 @@ function run_tests_in_parallel() {
   done
 
   # Clean up queue and lock files
-  rm -f "/tmp/queue_index_$$.txt" "/tmp/queue_lock_$$.txt" "$failed_test_details_file"
+  rm -f "/tmp/queue_index_$$.txt" "/tmp/queue_lock_$$.txt" "/tmp/junit_lock_$$.txt" "$failed_test_details_file"
 
   # Return results to stdout (this is what gets captured)
   echo "$passed_tests $failed_tests $tests_that_started"
@@ -1515,7 +1534,8 @@ function main() {
       log_error "XML errors: $xml_errors"
       log_error "XML content:"
       cat "$junit_file" >&2
-      overall_failed=1
+      log_error "Exiting due to invalid JUnit XML"
+      exit 1
     else
       log_info "✅ JUnit XML validation passed"
     fi
