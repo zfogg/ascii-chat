@@ -60,10 +60,33 @@ runs:
       if: always()
       shell: bash
       run: |
-        echo "Looking for .gcda files to generate coverage from..."
-        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
-        gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
-        echo "🙈 Generating coverage with ${gcda_files_count} gcda files with safe names..."
+         echo "Looking for .gcda files to generate coverage from..."
+         gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+         gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
+         echo "🙈 Generating coverage with ${gcda_files_count} gcda files with safe names..."
+
+         # Debug: Check clang and llvm-cov versions
+         echo "Debug: Clang version:"
+         clang --version || echo "Clang not found"
+         echo "Debug: llvm-cov version:"
+         llvm-cov --version || echo "llvm-cov not found"
+
+         # For clang, we should use llvm-cov instead of gcov
+         if command -v llvm-cov >/dev/null 2>&1; then
+             echo "Using llvm-cov for clang coverage generation"
+             COVERAGE_CMD="llvm-cov gcov"
+         else
+             echo "llvm-cov not found, falling back to gcov"
+             COVERAGE_CMD="gcov"
+         fi
+
+         # Check what compiler was used for the coverage build
+         echo "Debug: Checking what compiler was used for coverage build..."
+         if [ -f "build/tests/coverage/unit/ascii_test.o" ]; then
+             echo "Checking ascii_test.o compiler info:"
+             file "build/tests/coverage/unit/ascii_test.o" || echo "Could not check object file"
+             strings "build/tests/coverage/unit/ascii_test.o" | grep -E "(clang|gcc|GCC)" | head -5 || echo "No compiler info found in object file"
+         fi
 
         if [ -n "$gcda_files" ]; then
             echo "✅ Successfully found $gcda_files_count gcda files"
@@ -79,8 +102,25 @@ runs:
              base_name=$(basename "$gcda_file" .gcda)
 
              echo "Processing $gcda_file in directory $gcda_dir"
-             (cd "$gcda_dir" && gcov "$(basename "$gcda_file")")
-             echo "🔠 gcov completed"
+
+             # Debug: Check file versions before running gcov
+             echo "Debug: Checking .gcno and .gcda file versions:"
+             if [ -f "$gcda_dir/$(basename "$gcda_file" .gcda).gcno" ]; then
+                 echo "Found .gcno file: $gcda_dir/$(basename "$gcda_file" .gcda).gcno"
+                 file "$gcda_dir/$(basename "$gcda_file" .gcda).gcno" || echo "Could not check .gcno file"
+                 echo "Debug: .gcno file size:"
+                 ls -la "$gcda_dir/$(basename "$gcda_file" .gcda).gcno" || echo "Could not check .gcno file size"
+             else
+                 echo "No .gcno file found for $gcda_file"
+             fi
+
+             echo "Debug: .gcda file info:"
+             file "$gcda_file" || echo "Could not check .gcda file"
+             ls -la "$gcda_file" || echo "Could not check .gcda file size"
+
+             echo "Debug: Running coverage generation:"
+             (cd "$gcda_dir" && $COVERAGE_CMD "$(basename "$gcda_file")" 2>&1) || echo "coverage generation failed with exit code $?"
+             echo "🔠 coverage generation completed"
 
              # Move ALL .gcov files generated in this directory to root with safe names
              for gcov_file in $(find "$gcda_dir" -name "*.gcov" -type f); do
