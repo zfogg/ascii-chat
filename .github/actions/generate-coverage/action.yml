@@ -86,7 +86,9 @@ runs:
 
             echo "Processing $gcda_file"
 
-            (cd "$gcda_dir" && $COVERAGE_CMD "$(basename "$gcda_file")" 2>&1) || echo "coverage generation failed with exit code $?"
+            # Run gcov from project root with full path to gcda file
+            # This allows gcov to find source files using the paths stored in the .gcno files
+            $COVERAGE_CMD "$gcda_file" 2>&1 || echo "coverage generation failed with exit code $?"
 
             # Move ALL .gcov files generated in this directory to root with safe names
             for gcov_file in $(find "$gcda_dir" -name "*.gcov" -type f); do
@@ -142,9 +144,19 @@ runs:
 
         if [ $gcov_count -gt 0 ]; then
           echo "✅ Uploading $gcov_count coverage files"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "PR: ${{ github.event.pull_request.number }}"
 
           # Build codecov command with multiple --file arguments
           codecov_cmd="codecov do-upload --token=\"${{ inputs.codecov-token }}\""
+
+          # Add repository and commit information
+          codecov_cmd="$codecov_cmd --slug=\"${{ github.repository }}\""
+          codecov_cmd="$codecov_cmd --sha=\"${{ github.sha }}\""
+          codecov_cmd="$codecov_cmd --branch=\"${{ github.ref_name }}\""
+          codecov_cmd="$codecov_cmd --pr=\"${{ github.event.pull_request.number }}\""
 
           # Add each file as a separate --file argument
           for file in $gcov_files; do
@@ -169,9 +181,17 @@ runs:
 
         if [ -f "${{ inputs.junit-file }}" ]; then
           echo "✅ Uploading JUnit XML file"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "PR: ${{ github.event.pull_request.number }}"
 
           # Upload JUnit XML using codecov CLI
           codecov do-upload --token="${{ inputs.codecov-token }}" \
+                  --slug="${{ github.repository }}" \
+                  --sha="${{ github.sha }}" \
+                  --branch="${{ github.ref_name }}" \
+                  --pr="${{ github.event.pull_request.number }}" \
                   --file="${{ inputs.junit-file }}" \
                   --report-type=test_results \
                   --flag="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
