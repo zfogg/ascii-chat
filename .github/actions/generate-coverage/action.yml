@@ -219,18 +219,21 @@ runs:
           echo "Files to upload:"
           echo "$gcov_files"
 
-          # Convert the file list to a format that codecov can use
-          # Replace newlines with spaces for the files parameter
-          files_list=$(echo "$gcov_files" | tr '\n' ' ')
-          echo "Files list for upload: $files_list"
+          # Build codecov command with multiple --file arguments
+          codecov_cmd="codecov do-upload --token=\"${{ inputs.codecov-token }}\""
 
-          # Use codecov CLI directly for more control
-          codecov --token="${{ inputs.codecov-token }}" \
-                  --files="$files_list" \
-                  --flags="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
-                  --name="${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}" \
-                  --fail_ci_if_error=true \
-                  --verbose
+          # Add each file as a separate --file argument
+          for file in $gcov_files; do
+              codecov_cmd="$codecov_cmd --file=\"$file\""
+          done
+
+          # Add other arguments
+          codecov_cmd="$codecov_cmd --flag=\"${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}\""
+          codecov_cmd="$codecov_cmd --name=\"${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}\""
+          codecov_cmd="$codecov_cmd --fail-on-error"
+
+          echo "Running codecov command: $codecov_cmd"
+          eval $codecov_cmd
         else
           echo "⚠️ No .gcov files found, skipping upload"
         fi
@@ -246,12 +249,12 @@ runs:
           echo "✅ JUnit XML file found, uploading to Codecov"
 
           # Upload JUnit XML using codecov CLI
-          codecov --token="${{ inputs.codecov-token }}" \
-                  --files="${{ inputs.junit-file }}" \
-                  --flags="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
+          codecov do-upload --token="${{ inputs.codecov-token }}" \
+                  --file="${{ inputs.junit-file }}" \
+                  --report-type=test_results \
+                  --flag="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
                   --name="${{ inputs.test-type == 'unit' && format('ascii-chat-test-results-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-test-results-{0}', inputs.os-name) || format('ascii-chat-performance-test-results-{0}', inputs.os-name) }}" \
-                  --fail_ci_if_error=true \
-                  --verbose
+                  --fail-on-error
         else
           echo "⚠️ JUnit XML file not found at ${{ inputs.junit-file }}, skipping upload"
         fi
