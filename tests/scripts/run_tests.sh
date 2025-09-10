@@ -694,12 +694,7 @@ function run_tests_in_parallel() {
   local tests_that_started=0
   local tests_completed=0
 
-  # Arrays to track running tests
-  local test_pids=()
-  local test_names=()
-  local test_logs=()
-  local test_junit_files=()
-  local test_start_times=()
+  # No arrays needed for worker pool approach
 
   # Queue of tests waiting to run
   local test_queue=("${test_executables[@]}")
@@ -707,93 +702,124 @@ function run_tests_in_parallel() {
 
   log_info "🚀 Running $total_tests tests in parallel (up to $max_parallel_tests concurrent tests, $jobs_per_test jobs each)"
 
-  # Function to start a test from the queue
-  start_next_test() {
-    if [[ $queue_index -lt ${#test_queue[@]} ]]; then
-      local test_executable="${test_queue[$queue_index]}"
+  # Worker function that runs tests sequentially until queue is empty
+  worker_function() {
+    local worker_id=$1
+    local worker_log="/tmp/worker_${worker_id}_$$.log"
+    local worker_passed=0
+    local worker_failed=0
+    local worker_started=0
+
+    while true; do
+      # Atomically get next test from queue using proper file locking
+      local test_executable=""
+      local test_index=-1
+
+      # Use file locking to safely get next test
+      local queue_file="/tmp/queue_index_$$.txt"
+      local lock_file="/tmp/queue_lock_$$.txt"
+
+      # Use shlock with retry logic for non-blocking parallel execution
+      local retry_count=0
+      local max_retries=10
+
+      while [[ $retry_count -lt $max_retries ]]; do
+        if shlock -f "$lock_file" -p $$; then
+          # We have the lock, now safely read and update queue index
+          local current_index=0
+          if [[ -f "$queue_file" ]]; then
+            current_index=$(cat "$queue_file" 2>/dev/null || echo "0")
+          fi
+
+          # Check if we have more tests
+          if [[ $current_index -lt ${#test_queue[@]} ]]; then
+            test_executable="${test_queue[$current_index]}"
+            test_index=$current_index
+            echo $((current_index + 1)) > "$queue_file"
+          fi
+
+          # Release the lock
+          rm -f "$lock_file"
+          break
+        else
+          # Lock is held by another worker, wait briefly and retry
+          sleep 0.001
+          ((retry_count++))
+        fi
+      done
+
+      # If no more tests, exit worker
+      if [[ -z "$test_executable" ]]; then
+        break
+      fi
+
       local test_name="$(basename "$test_executable")"
-      local test_log="/tmp/test_${test_name}_$$.log"
+      local test_log="/tmp/test_${test_name}_worker${worker_id}_$$.log"
       local test_junit=""
       local start_time=$(date +%s.%N)
 
       # Create separate JUnit file for this test if needed
       if [[ -n "$generate_junit" ]]; then
-        test_junit="/tmp/junit_${test_name}_$$.xml"
+        test_junit="/tmp/junit_${test_name}_worker${worker_id}_$$.xml"
       fi
 
       # Print starting message to stderr
       echo "🚀 [TEST] Starting: $test_name" >&2
-      log_verbose "Starting test $((tests_that_started + 1)) of $total_tests: $test_name (parallel)"
+      log_verbose "Worker $worker_id starting test $((test_index + 1)) of $total_tests: $test_name"
 
-      # Start test in background
-      local test_pid=$(start_test_in_background "$test_executable" "$jobs_per_test" "$generate_junit" "$test_log" "$test_junit")
+      # Run test synchronously (not in background)
+      local exit_code=0
+      if [[ -n "$generate_junit" ]]; then
+        "$test_executable" --jobs "$jobs_per_test" --junit-xml "$test_junit" > "$test_log" 2>&1
+        exit_code=$?
+      else
+        "$test_executable" --jobs "$jobs_per_test" > "$test_log" 2>&1
+        exit_code=$?
+      fi
 
-      # Add to tracking arrays
-      test_pids+=($test_pid)
-      test_names+=("$test_name")
-      test_logs+=("$test_log")
-      test_junit_files+=("$test_junit")
-      test_start_times+=("$start_time")
+      local end_time=$(date +%s.%N)
+      local duration=$(echo "$end_time - $start_time" | bc -l)
+      local formatted_time=$(format_duration "$duration")
 
-      ((tests_that_started++))
-      ((queue_index++))
+      # Process result
+      if [[ $exit_code -eq 0 ]]; then
+        ((worker_passed++))
+        echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
+      elif [[ $exit_code -eq 130 ]] || [[ $exit_code -gt 128 ]]; then
+        ((worker_failed++))
+        echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $test_name" >&2
+      else
+        ((worker_failed++))
+        echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit code: $exit_code, $formatted_time)" >&2
+      fi
 
-      return 0  # Successfully started a test
+      ((worker_started++))
+
+      # Append test log to worker log
+      if [[ -f "$test_log" ]]; then
+        echo "=== Test: $test_name ===" >> "$worker_log"
+        cat "$test_log" >> "$worker_log"
+        rm -f "$test_log"
+      fi
+
+      # Append JUnit XML to worker log if needed
+      if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
+        echo "=== JUnit XML for: $test_name ===" >> "$worker_log"
+        cat "$test_junit" >> "$worker_log"
+        rm -f "$test_junit"
+      fi
+    done
+
+    # Write worker results to a results file
+    echo "$worker_passed $worker_failed $worker_started" > "/tmp/worker_${worker_id}_results_$$.txt"
+
+    # Append worker log to main log file
+    if [[ -f "$worker_log" ]]; then
+      cat "$worker_log" >> "$log_file"
+      rm -f "$worker_log"
     fi
-    return 1  # No more tests to start
   }
 
-  # Function to process a completed test
-  process_completed_test() {
-    local idx=$1
-    local test_name="${test_names[$idx]}"
-    local test_log="${test_logs[$idx]}"
-    local test_junit="${test_junit_files[$idx]}"
-    local start_time="${test_start_times[$idx]}"
-
-    local end_time=$(date +%s.%N)
-    local duration=$(echo "$end_time - $start_time" | bc -l)
-    local formatted_time=$(format_duration "$duration")
-
-    if [[ $wait_exit_code -eq 0 ]]; then
-      ((passed_tests++))
-      echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
-    elif [[ $wait_exit_code -eq 130 ]] || [[ $wait_exit_code -gt 128 ]]; then
-      ((failed_tests++))
-      echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $test_name" >&2
-    else
-      ((failed_tests++))
-      echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit code: $wait_exit_code, $formatted_time)" >&2
-    fi
-
-    # Append test log to main log file
-    if [[ -f "$test_log" ]]; then
-      cat "$test_log" >> "$log_file"
-      rm -f "$test_log"
-    fi
-
-    # Append JUnit XML to main JUnit file
-    if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
-      sed -n '/<testsuite/,/<\/testsuite>/p' "$test_junit" >> "$junit_file" 2>/dev/null || true
-      rm -f "$test_junit"
-    fi
-
-    # Remove completed test from arrays
-    unset test_pids[$idx]
-    unset test_names[$idx]
-    unset test_logs[$idx]
-    unset test_junit_files[$idx]
-    unset test_start_times[$idx]
-
-    # Rebuild arrays to remove gaps
-    test_pids=(${test_pids[@]+"${test_pids[@]}"})
-    test_names=(${test_names[@]+"${test_names[@]}"})
-    test_logs=(${test_logs[@]+"${test_logs[@]}"})
-    test_junit_files=(${test_junit_files[@]+"${test_junit_files[@]}"})
-    test_start_times=(${test_start_times[@]+"${test_start_times[@]}"})
-
-    ((tests_completed++))
-  }
 
   # Function to format duration nicely
   format_duration() {
@@ -814,78 +840,71 @@ function run_tests_in_parallel() {
     fi
   }
 
-  # Start initial batch of tests
-  for ((i=0; i<max_parallel_tests && i<total_tests; i++)); do
-    start_next_test
+  # Launch worker processes
+  local worker_pids=()
+  for ((i=1; i<=max_parallel_tests; i++)); do
+    worker_function $i &
+    worker_pids+=($!)
   done
 
-  # Main execution loop
-  while [[ $tests_completed -lt $total_tests ]]; do
-    # Check for interrupt
-    if [[ $INTERRUPTED -eq 1 ]]; then
-      # Kill all remaining processes
-      if [[ ${#test_pids[@]} -gt 0 ]]; then
-        echo "" >&2
-        echo "🛑 Killing remaining test processes..." >&2
-        for pid in "${test_pids[@]}"; do
-          if [[ -n "$pid" ]]; then
-            pkill -KILL -P $pid 2>/dev/null || true
-            kill -KILL $pid 2>/dev/null || true
-          fi
-        done
-      fi
-      break
-    fi
+  # Wait for all workers to complete
+  for worker_pid in "${worker_pids[@]}"; do
+    wait "$worker_pid"
+  done
 
-    # Check for completed processes
-    local completed_idx=""
-    local wait_exit_code=0
-
-    for idx in "${!test_pids[@]}"; do
-      if [[ -n "${test_pids[$idx]}" ]]; then
-        if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
-          # Process has completed
-          completed_idx=$idx
-          local completed_pid=${test_pids[$idx]}
-
-          # Check if the process is still a child of this shell
-          if kill -0 $completed_pid 2>/dev/null; then
-            wait $completed_pid 2>/dev/null
-            wait_exit_code=$?
-          else
-            # Process is not a child, try to get exit code from log
-            wait_exit_code=0
-            if [[ -f "${test_logs[$idx]}" ]]; then
-              local log_content=$(cat "${test_logs[$idx]}" 2>/dev/null)
-              if [[ "$log_content" =~ "Synthesis: Tested:" ]]; then
-                wait_exit_code=0  # Test completed successfully
-              else
-                wait_exit_code=1  # Test failed
-              fi
-            fi
-          fi
-          break
-        fi
-      fi
-    done
-
-    # If no process completed yet, sleep briefly and continue
-    if [[ -z "$completed_idx" ]]; then
-      sleep 0.05
-      continue
-    fi
-
-    # Process the completed test
-    process_completed_test "$completed_idx"
-
-    # Start next test from queue if we have capacity
-    if [[ ${#test_pids[@]} -lt $max_parallel_tests ]]; then
-      start_next_test
+  # Collect results from all workers
+  for ((i=1; i<=max_parallel_tests; i++)); do
+    local results_file="/tmp/worker_${i}_results_$$.txt"
+    if [[ -f "$results_file" ]]; then
+      local worker_results=($(cat "$results_file"))
+      passed_tests=$((passed_tests + worker_results[0]))
+      failed_tests=$((failed_tests + worker_results[1]))
+      tests_that_started=$((tests_that_started + worker_results[2]))
+      rm -f "$results_file"
     fi
   done
+
+  # Clean up queue and lock files
+  rm -f "/tmp/queue_index_$$.txt"
+  rm -f "/tmp/queue_lock_$$.txt"
 
   # Return results to stdout (this is what gets captured)
   echo "$passed_tests $failed_tests $tests_that_started"
+}
+
+# =============================================================================
+# Resource Allocation Function
+# =============================================================================
+
+# Calculate optimal resource allocation for parallel test execution
+function calculate_resource_allocation() {
+  local num_tests=$1
+  local total_cores=$2
+  local jobs=$3  # Optional: explicitly specified jobs
+  
+  local max_parallel_tests
+  local jobs_per_test
+  
+  # If jobs explicitly specified, use that for parallel tests
+  if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
+    max_parallel_tests=$jobs
+    jobs_per_test=1  # Default to 1 if manually specified
+  else
+    # Always use CORES/2 parallel executables with CORES jobs each for maximum CPU utilization
+    max_parallel_tests=$((total_cores / 2))
+    jobs_per_test=$total_cores
+    
+    # Ensure at least 1 parallel test and 1 job per test
+    if [[ $max_parallel_tests -lt 1 ]]; then
+      max_parallel_tests=1
+    fi
+    if [[ $jobs_per_test -lt 1 ]]; then
+      jobs_per_test=1
+    fi
+  fi
+  
+  # Return values as a space-separated string
+  echo "$max_parallel_tests $jobs_per_test"
 }
 
 # =============================================================================
@@ -1154,32 +1173,10 @@ function run_test_category() {
   # Smart resource allocation: start many tests in parallel with good core usage
   local total_cores=$(detect_cpu_cores)
   local num_tests=${#test_executables[@]}
-  local max_parallel_tests
-  local jobs_per_test
-
-  # If jobs explicitly specified, use that for parallel tests
-  if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
-    max_parallel_tests=$jobs
-    jobs_per_test=1  # Default to 1 if manually specified
-  else
-    # Automatic smart allocation - ALWAYS use all available cores
-    if [[ $num_tests -eq 1 ]]; then
-      # Single test: use all cores for maximum parallelism within the test
-      max_parallel_tests=1
-      jobs_per_test=$total_cores
-    elif [[ $num_tests -le $total_cores ]]; then
-      # Few tests: run all tests in parallel and distribute all cores among them
-      max_parallel_tests=$num_tests
-      jobs_per_test=$((total_cores / num_tests))
-
-      # Ensure minimum 1 core per test
-      [[ $jobs_per_test -lt 1 ]] && jobs_per_test=1
-    else
-      # Many tests: limit concurrent tests to number of cores, use 1 job per test
-      max_parallel_tests=$total_cores
-      jobs_per_test=1
-    fi
-  fi
+  # Calculate resource allocation using the centralized function
+  local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
+  local max_parallel_tests=${allocation[0]}
+  local jobs_per_test=${allocation[1]}
 
   # Update actual_jobs to reflect jobs per test
   actual_jobs=$jobs_per_test
@@ -1195,7 +1192,7 @@ function run_test_category() {
     tests_that_started=$(echo "$results" | cut -d' ' -f3)
 
     if [[ $failed_tests -gt 0 ]]; then
-      failed=1
+            failed=1
     fi
   else
     # Sequential execution mode (original code)
@@ -1628,32 +1625,10 @@ function main() {
     # Smart resource allocation for multiple tests - prioritize parallel execution
     local total_cores=$(detect_cpu_cores)
     local num_tests=${#MULTIPLE_TESTS[@]}
-    local max_parallel_tests
-    local jobs_per_test
-
-    # If jobs explicitly specified, use that for parallel tests
-    if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
-      max_parallel_tests=$jobs
-      jobs_per_test=1  # Default to 1 if manually specified
-    else
-      # Automatic smart allocation - ALWAYS use all available cores
-      if [[ $num_tests -eq 1 ]]; then
-        # Single test: use all cores for maximum parallelism within the test
-        max_parallel_tests=1
-        jobs_per_test=$total_cores
-      elif [[ $num_tests -le $total_cores ]]; then
-        # Few tests: run all tests in parallel and distribute all cores among them
-        max_parallel_tests=$num_tests
-        jobs_per_test=$((total_cores / num_tests))
-
-        # Ensure minimum 1 core per test
-        [[ $jobs_per_test -lt 1 ]] && jobs_per_test=1
-      else
-        # Many tests: limit concurrent tests to number of cores, use 1 job per test
-        max_parallel_tests=$total_cores
-        jobs_per_test=1
-      fi
-    fi
+    # Calculate resource allocation using the centralized function
+    local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
+    local max_parallel_tests=${allocation[0]}
+    local jobs_per_test=${allocation[1]}
 
     log_info "🎯 Resource allocation: $num_tests tests, $max_parallel_tests parallel, $jobs_per_test jobs each (${total_cores} cores total)"
 
