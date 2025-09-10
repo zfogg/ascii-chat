@@ -318,42 +318,42 @@ function exec_test_executable() {
   # Parse flags
   while [[ $# -gt 0 ]]; do
     case $1 in
-    --executable)
-      test_executable="$2"
-      shift 2
-      ;;
-    --jobs)
-      jobs="$2"
-      shift 2
-      ;;
-    --generate-junit)
-      generate_junit="$2"
-      shift 2
-      ;;
-    --log-file)
-      log_file="$2"
-      shift 2
-      ;;
-    --junit-file)
-      junit_file="$2"
-      shift 2
-      ;;
-    --xml)
-      xml_file="$2"
-      shift 2
-      ;;
-    --filter)
-      filter="$2"
-      shift 2
-      ;;
-    --background)
-      background_mode="1"
-      shift
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      return 1
-      ;;
+      --executable)
+        test_executable="$2"
+        shift 2
+        ;;
+      --jobs)
+        jobs="$2"
+        shift 2
+        ;;
+      --generate-junit)
+        generate_junit="$2"
+        shift 2
+        ;;
+      --log-file)
+        log_file="$2"
+        shift 2
+        ;;
+      --junit-file)
+        junit_file="$2"
+        shift 2
+        ;;
+      --xml)
+        xml_file="$2"
+        shift 2
+        ;;
+      --filter)
+        filter="$2"
+        shift 2
+        ;;
+      --background)
+        background_mode="1"
+        shift
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        return 1
+        ;;
     esac
   done
 
@@ -443,131 +443,131 @@ function generate_junit_xml() {
   # Parse flags
   while [[ $# -gt 0 ]]; do
     case $1 in
-    --test-name)
-      test_name="$2"
-      shift 2
-      ;;
-    --test-class)
-      test_class="$2"
-      shift 2
-      ;;
-    --duration)
-      duration="$2"
-      shift 2
-      ;;
-    --exit-code)
-      test_exit_code="$2"
-      shift 2
-      ;;
-    --xml-file)
-      xml_file="$2"
-      shift 2
-      ;;
-    --output-file)
-      output_file="$2"
-      shift 2
-      ;;
-    --junit-file)
-      junit_file="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      return 1
-      ;;
+      --test-name)
+        test_name="$2"
+        shift 2
+        ;;
+      --test-class)
+        test_class="$2"
+        shift 2
+        ;;
+      --duration)
+        duration="$2"
+        shift 2
+        ;;
+      --exit-code)
+        test_exit_code="$2"
+        shift 2
+        ;;
+      --xml-file)
+        xml_file="$2"
+        shift 2
+        ;;
+      --output-file)
+        output_file="$2"
+        shift 2
+        ;;
+      --junit-file)
+        junit_file="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        return 1
+        ;;
     esac
   done
 
-  if [[ $test_exit_code -eq 0 ]]; then
+    if [[ $test_exit_code -eq 0 ]]; then
     # Test passed
-    if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]]; then
-      # Transform the XML to match our naming convention
-      if grep -q '<testsuite' "$xml_file"; then
-        sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" |
-          sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
-            -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >>"$junit_file"
-      else
-        # XML exists but no testsuite - create one
+      if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]]; then
+        # Transform the XML to match our naming convention
+        if grep -q '<testsuite' "$xml_file"; then
+          sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" |
+            sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
+              -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >>"$junit_file"
+        else
+          # XML exists but no testsuite - create one
         # Format duration properly for JUnit XML (ensure it's a valid decimal)
         local formatted_duration=$(printf "%.3f" "$duration")
         echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"$formatted_duration\">" >>"$junit_file"
         echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"$formatted_duration\"/>" >>"$junit_file"
-        echo "</testsuite>" >>"$junit_file"
-      fi
-      rm -f "$xml_file"
-    else
-      # Test passed but no XML generated - create a minimal entry
+          echo "</testsuite>" >>"$junit_file"
+        fi
+        rm -f "$xml_file"
+      else
+        # Test passed but no XML generated - create a minimal entry
       # Format duration properly for JUnit XML (ensure it's a valid decimal)
       local formatted_duration=$(printf "%.3f" "$duration")
       echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"$formatted_duration\">" >>"$junit_file"
       echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"$formatted_duration\"/>" >>"$junit_file"
-      echo "</testsuite>" >>"$junit_file"
-    fi
-    rm -f "$output_file"
-  else
-    # Test failed - determine failure type and generate appropriate XML
-    local failure_type="TestFailure"
-    local failure_msg="Test failed with exit code $test_exit_code"
-
-    if [[ $test_exit_code -eq 124 ]]; then
-      failure_type="Timeout"
-      failure_msg="Test timed out after 300 seconds"
-    elif [[ $test_exit_code -gt 128 ]]; then
-      # Exit code > 128 usually means killed by signal
-      local signal=$((test_exit_code - 128))
-      failure_type="Crash"
-      failure_msg="Test crashed with signal $signal"
-    fi
-
-    # Try to use generated XML if available
-    if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]] && grep -q '<testsuite' "$xml_file"; then
-      # Use the XML but ensure it shows as failed
-      sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" |
-        sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
-          -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >>"$junit_file"
-      rm -f "$xml_file"
-    else
-      # No usable XML - create comprehensive failure entry
-      local error_count=0
-      local failure_count=1
-      if [[ "$failure_type" == "Crash" ]] || [[ "$failure_type" == "Timeout" ]]; then
-        error_count=1
-        failure_count=0
+        echo "</testsuite>" >>"$junit_file"
       fi
+      rm -f "$output_file"
+    else
+    # Test failed - determine failure type and generate appropriate XML
+      local failure_type="TestFailure"
+      local failure_msg="Test failed with exit code $test_exit_code"
+
+      if [[ $test_exit_code -eq 124 ]]; then
+        failure_type="Timeout"
+        failure_msg="Test timed out after 300 seconds"
+      elif [[ $test_exit_code -gt 128 ]]; then
+        # Exit code > 128 usually means killed by signal
+        local signal=$((test_exit_code - 128))
+        failure_type="Crash"
+        failure_msg="Test crashed with signal $signal"
+      fi
+
+      # Try to use generated XML if available
+      if [[ -f "$xml_file" ]] && [[ -s "$xml_file" ]] && grep -q '<testsuite' "$xml_file"; then
+        # Use the XML but ensure it shows as failed
+        sed -n '/<testsuite/,/<\/testsuite>/p' "$xml_file" |
+          sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$test_class\"/" \
+            -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >>"$junit_file"
+        rm -f "$xml_file"
+      else
+        # No usable XML - create comprehensive failure entry
+        local error_count=0
+        local failure_count=1
+        if [[ "$failure_type" == "Crash" ]] || [[ "$failure_type" == "Timeout" ]]; then
+          error_count=1
+          failure_count=0
+        fi
 
       # Format duration properly for JUnit XML (ensure it's a valid decimal)
       local formatted_duration=$(printf "%.3f" "$duration")
       echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"$failure_count\" errors=\"$error_count\" time=\"$formatted_duration\">" >>"$junit_file"
       echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"$formatted_duration\">" >>"$junit_file"
 
-      # Include last 50 lines of output in the failure message
-      local output_tail=""
-      if [[ -f "$output_file" ]]; then
-        output_tail=$(tail -50 "$output_file" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&apos;/g')
+        # Include last 50 lines of output in the failure message
+        local output_tail=""
+        if [[ -f "$output_file" ]]; then
+          output_tail=$(tail -50 "$output_file" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&apos;/g')
+        fi
+
+        if [[ $error_count -eq 1 ]]; then
+          echo "    <error message=\"$failure_msg\" type=\"$failure_type\">" >>"$junit_file"
+        else
+          echo "    <failure message=\"$failure_msg\" type=\"$failure_type\">" >>"$junit_file"
+        fi
+
+        echo "Exit code: $test_exit_code" >>"$junit_file"
+        echo "" >>"$junit_file"
+        echo "Last 50 lines of output:" >>"$junit_file"
+        echo "$output_tail" >>"$junit_file"
+
+        if [[ $error_count -eq 1 ]]; then
+          echo "    </error>" >>"$junit_file"
+        else
+          echo "    </failure>" >>"$junit_file"
+        fi
+
+        echo "  </testcase>" >>"$junit_file"
+        echo "</testsuite>" >>"$junit_file"
       fi
 
-      if [[ $error_count -eq 1 ]]; then
-        echo "    <error message=\"$failure_msg\" type=\"$failure_type\">" >>"$junit_file"
-      else
-        echo "    <failure message=\"$failure_msg\" type=\"$failure_type\">" >>"$junit_file"
-      fi
-
-      echo "Exit code: $test_exit_code" >>"$junit_file"
-      echo "" >>"$junit_file"
-      echo "Last 50 lines of output:" >>"$junit_file"
-      echo "$output_tail" >>"$junit_file"
-
-      if [[ $error_count -eq 1 ]]; then
-        echo "    </error>" >>"$junit_file"
-      else
-        echo "    </failure>" >>"$junit_file"
-      fi
-
-      echo "  </testcase>" >>"$junit_file"
-      echo "</testsuite>" >>"$junit_file"
-    fi
-
-    rm -f "$output_file" "$xml_file"
+      rm -f "$output_file" "$xml_file"
   fi
 }
 
@@ -580,22 +580,22 @@ function determine_test_failure() {
   # Parse flags
   while [[ $# -gt 0 ]]; do
     case $1 in
-    --exit-code)
-      test_exit_code="$2"
-      shift 2
-      ;;
-    --test-name)
-      test_name="$2"
-      shift 2
-      ;;
-    --duration)
-      duration="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      return 1
-      ;;
+      --exit-code)
+        test_exit_code="$2"
+        shift 2
+        ;;
+      --test-name)
+        test_name="$2"
+        shift 2
+        ;;
+      --duration)
+        duration="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        return 1
+        ;;
     esac
   done
 
@@ -628,7 +628,7 @@ function determine_test_failure() {
     else
       echo "$emoji [TEST] FAILED: $test_name (${duration}s, exit code: $test_exit_code)"
     fi
-    return $test_exit_code
+      return $test_exit_code
   fi
 }
 
@@ -813,12 +813,12 @@ function run_tests_in_parallel() {
         echo "=== JUnit XML for: $test_name ===" >>"$worker_log"
         cat "$test_junit" >>"$worker_log"
 
-        # Also append to main JUnit file
+        # Also append to main JUnit file with file locking to prevent race conditions
         if [[ -f "$junit_file" ]]; then
           # Extract just the testsuite content (skip XML declaration and testsuites wrapper)
           # Extract all individual testsuite elements from the Criterion XML (not the outer testsuites wrapper)
           # Use awk to extract only the testsuite elements, not the outer testsuites wrapper
-          awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ && in_testsuite {in_testsuite=0}' "$test_junit" >>"$junit_file"
+          awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$test_junit" >>"$junit_file"
         fi
 
         rm -f "$test_junit"
@@ -937,34 +937,34 @@ function run_single_test() {
   # Parse flags
   while [[ $# -gt 0 ]]; do
     case $1 in
-    --executable)
-      test_executable="$2"
-      shift 2
-      ;;
-    --jobs)
-      jobs="$2"
-      shift 2
-      ;;
-    --generate-junit)
-      generate_junit="$2"
-      shift 2
-      ;;
-    --log-file)
-      log_file="$2"
-      shift 2
-      ;;
-    --junit-file)
-      junit_file="$2"
-      shift 2
-      ;;
-    --filter)
-      filter="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      return 1
-      ;;
+      --executable)
+        test_executable="$2"
+        shift 2
+        ;;
+      --jobs)
+        jobs="$2"
+        shift 2
+        ;;
+      --generate-junit)
+        generate_junit="$2"
+        shift 2
+        ;;
+      --log-file)
+        log_file="$2"
+        shift 2
+        ;;
+      --junit-file)
+        junit_file="$2"
+        shift 2
+        ;;
+      --filter)
+        filter="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        return 1
+        ;;
     esac
   done
 
@@ -1041,11 +1041,16 @@ function run_single_test() {
   fi
 
   local test_end_time=$(date +%s.%N)
-  local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
+      local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
 
   if [[ -n "$generate_junit" ]]; then
-    # Generate JUnit XML
-    generate_junit_xml --test-name "$test_name" --test-class "$test_class" --duration "$duration" --exit-code "$test_exit_code" --xml-file "$xml_file" --output-file "$output_file" --junit-file "$junit_file"
+    # Append Criterion's XML to the main JUnit file (extract only testsuite elements)
+    if [[ -f "$xml_file" ]] && [[ -f "$junit_file" ]]; then
+      awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$xml_file" >>"$junit_file"
+    fi
+
+    # Clean up temporary files
+    rm -f "$xml_file" "$output_file"
   fi
 
   # Determine and report test result
@@ -1079,36 +1084,36 @@ function run_test_category() {
   log_verbose "Looking for test source files in $PROJECT_ROOT/tests/$category/"
 
   case "$category" in
-  unit)
-    # Find all unit test source files and convert to executable names
-    for f in "$PROJECT_ROOT/tests/unit/"*_test.c; do
-      if [[ -f "$f" ]]; then
-        local basename=$(basename "$f" .c)
-        local test_name="test_unit_${basename%_test}"
-        test_names_to_build+=("$test_name")
-      fi
-    done
-    ;;
-  integration)
-    # Find all integration test source files and convert to executable names
-    for f in "$PROJECT_ROOT/tests/integration/"*_test.c; do
-      if [[ -f "$f" ]]; then
-        local basename=$(basename "$f" .c)
-        local test_name="test_integration_${basename%_test}"
-        test_names_to_build+=("$test_name")
-      fi
-    done
-    ;;
-  performance)
-    # Find all performance test source files and convert to executable names
-    for f in "$PROJECT_ROOT/tests/performance/"*_test.c; do
-      if [[ -f "$f" ]]; then
-        local basename=$(basename "$f" .c)
-        local test_name="test_performance_${basename%_test}"
-        test_names_to_build+=("$test_name")
-      fi
-    done
-    ;;
+    unit)
+      # Find all unit test source files and convert to executable names
+      for f in "$PROJECT_ROOT/tests/unit/"*_test.c; do
+        if [[ -f "$f" ]]; then
+          local basename=$(basename "$f" .c)
+          local test_name="test_unit_${basename%_test}"
+          test_names_to_build+=("$test_name")
+        fi
+      done
+      ;;
+    integration)
+      # Find all integration test source files and convert to executable names
+      for f in "$PROJECT_ROOT/tests/integration/"*_test.c; do
+        if [[ -f "$f" ]]; then
+          local basename=$(basename "$f" .c)
+          local test_name="test_integration_${basename%_test}"
+          test_names_to_build+=("$test_name")
+        fi
+      done
+      ;;
+    performance)
+      # Find all performance test source files and convert to executable names
+      for f in "$PROJECT_ROOT/tests/performance/"*_test.c; do
+        if [[ -f "$f" ]]; then
+          local basename=$(basename "$f" .c)
+          local test_name="test_performance_${basename%_test}"
+          test_names_to_build+=("$test_name")
+        fi
+      done
+      ;;
   esac
 
   if [[ ${#test_names_to_build[@]} -eq 0 ]]; then
@@ -1205,7 +1210,7 @@ function run_test_category() {
     tests_that_started=$(echo "$results" | cut -d' ' -f3)
 
     if [[ $failed_tests -gt 0 ]]; then
-      failed=1
+            failed=1
     fi
   else
     # Sequential execution mode (original code)
@@ -1578,9 +1583,29 @@ function main() {
   local overall_start_time=$(date +%s.%N)
 
   if [[ -n "$SINGLE_TEST" ]]; then
+    # Initialize JUnit XML for single test
+    if [[ -n "$GENERATE_JUNIT" ]]; then
+      echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
+      echo "<testsuites name=\"ASCII-Chat Single Test\">" >>"$junit_file"
+    fi
+
     # Run single test binary
     if ! run_single_test_binary "$SINGLE_TEST" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$FILTER"; then
       overall_failed=1
+    fi
+
+    # Close JUnit XML for single test
+    if [[ -n "$GENERATE_JUNIT" ]]; then
+      echo '</testsuites>' >>"$junit_file"
+
+      # Validate JUnit XML
+      if ! xmllint --noout "$junit_file" 2>/dev/null; then
+        log_error "❌ JUnit XML validation failed!"
+        log_error "Invalid XML in: $junit_file"
+        overall_failed=1
+      else
+        log_info "✅ JUnit XML validation passed"
+      fi
     fi
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
     # Run multiple specific test binaries
@@ -1652,18 +1677,18 @@ function main() {
 
     # Prepare test executables array
     local test_executables=()
-    for test_name in "${MULTIPLE_TESTS[@]}"; do
-      # Normalize test name
-      if [[ "$test_name" != test_* ]]; then
-        test_name="test_$test_name"
-      fi
-      local test_path="$PROJECT_ROOT/bin/$test_name"
+      for test_name in "${MULTIPLE_TESTS[@]}"; do
+        # Normalize test name
+        if [[ "$test_name" != test_* ]]; then
+          test_name="test_$test_name"
+        fi
+        local test_path="$PROJECT_ROOT/bin/$test_name"
 
-      # Check if it exists after build
-      if [[ ! -f "$test_path" ]]; then
-        log_error "Test executable not found after build: $test_path"
-        exit 1
-      fi
+        # Check if it exists after build
+        if [[ ! -f "$test_path" ]]; then
+          log_error "Test executable not found after build: $test_path"
+          exit 1
+        fi
 
       test_executables+=("$test_path")
     done
@@ -1717,7 +1742,18 @@ function main() {
     fi
 
     if [[ -n "$GENERATE_JUNIT" ]]; then
+      # Wait a moment to ensure all workers have finished writing to the JUnit file
+      sleep 0.1
       echo '</testsuites>' >>"$junit_file"
+
+      # Validate JUnit XML
+      if ! xmllint --noout "$junit_file" 2>/dev/null; then
+        log_error "❌ JUnit XML validation failed!"
+        log_error "Invalid XML in: $junit_file"
+        overall_failed=1
+      else
+        log_info "✅ JUnit XML validation passed"
+      fi
     fi
 
     echo ""
@@ -1732,33 +1768,33 @@ function main() {
     echo "==========================================="
   else
     # Run test categories
-    local all_categories_failed_completely=1
-    local no_tests_ran=0
-    for category in "${categories_to_run[@]}"; do
-      # Check if we've been interrupted
-      if [[ $INTERRUPTED -eq 1 ]]; then
-        break
-      fi
+  local all_categories_failed_completely=1
+  local no_tests_ran=0
+  for category in "${categories_to_run[@]}"; do
+    # Check if we've been interrupted
+    if [[ $INTERRUPTED -eq 1 ]]; then
+      break
+    fi
 
-      run_test_category "$category" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file"
-      local category_result=$?
+    run_test_category "$category" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file"
+    local category_result=$?
 
-      if [[ $category_result -eq 0 ]]; then
-        # At least one category had all tests pass
-        all_categories_failed_completely=0
-      elif [[ $category_result -eq 1 ]]; then
-        # Some tests passed, some failed
-        overall_failed=1
-        all_categories_failed_completely=0
-      elif [[ $category_result -eq 2 ]]; then
-        # All tests in this category failed to run
-        overall_failed=1
-      elif [[ $category_result -eq 3 ]]; then
-        # No tests ran at all in this category
-        overall_failed=1
-        no_tests_ran=1
-      fi
-    done
+    if [[ $category_result -eq 0 ]]; then
+      # At least one category had all tests pass
+      all_categories_failed_completely=0
+    elif [[ $category_result -eq 1 ]]; then
+      # Some tests passed, some failed
+      overall_failed=1
+      all_categories_failed_completely=0
+    elif [[ $category_result -eq 2 ]]; then
+      # All tests in this category failed to run
+      overall_failed=1
+    elif [[ $category_result -eq 3 ]]; then
+      # No tests ran at all in this category
+      overall_failed=1
+      no_tests_ran=1
+    fi
+  done
   fi
 
   # Check if we were interrupted
