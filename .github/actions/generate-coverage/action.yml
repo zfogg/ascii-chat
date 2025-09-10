@@ -79,7 +79,7 @@ runs:
         processed_count=0
         failed_count=0
 
-        for gcda_file in $(find . -name "*.gcda" -type f); do
+        for gcda_file in $(find ./build/coverage -name "*.gcda" -type f); do
             gcda_dir=$(dirname "$gcda_file")
             base_name=$(basename "$gcda_file" .gcda)
 
