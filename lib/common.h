@@ -218,6 +218,10 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
 
+/* New functions for coverage testing */
+void calculate_memory_stats(size_t *total_allocated, size_t *total_freed, size_t *current_usage);
+bool validate_memory_pattern(const void *ptr, size_t size, uint8_t expected_pattern);
+
 /* Memory debugging (only in debug builds) */
 #ifdef DEBUG_MEMORY
 void *debug_malloc(size_t size, const char *file, int line);
