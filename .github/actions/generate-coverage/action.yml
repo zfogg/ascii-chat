@@ -22,6 +22,10 @@ inputs:
     description: 'Whether to upload coverage to Codecov'
     required: false
     default: 'false'
+  junit-file:
+    description: 'Path to JUnit XML file for upload'
+    required: false
+    default: 'junit.xml'
 
 runs:
   using: 'composite'
@@ -71,11 +75,14 @@ runs:
              echo "gcov-files<<EOF" >> $GITHUB_OUTPUT
              echo "$gcov_files" >> $GITHUB_OUTPUT
              echo "EOF" >> $GITHUB_OUTPUT
+             echo "📤 Output gcov-files to GITHUB_OUTPUT completed"
          else
              echo "❌ ERROR: No gcov files or insufficient gcov files found after generation and copying\!" >&2
              echo "Expected at least $gcda_files_count files, but found $gcov_files_count" >&2
              echo 1 || exit 1
          fi
+
+         echo "🏁 Generation step completed successfully"
 
     # Check if coverage files exist before uploading
     - name: Check Coverage Files
@@ -105,6 +112,20 @@ runs:
           echo "has_coverage=false" >> $GITHUB_OUTPUT
           echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
         fi
+
+    # Debug upload conditions
+    - name: Debug Upload Conditions
+      if: always()
+      shell: bash
+      run: |
+        echo "🔍 Debugging upload conditions..."
+        echo "inputs.upload-coverage: '${{ inputs.upload-coverage }}'"
+        echo "inputs.codecov-token: '${{ inputs.codecov-token }}'"
+        echo "steps.check-coverage.outputs.has_coverage: '${{ steps.check-coverage.outputs.has_coverage }}'"
+        echo "Condition evaluation:"
+        echo "  always(): true"
+        echo "  inputs.upload-coverage == 'true': ${{ inputs.upload-coverage == 'true' }}"
+        echo "  Combined condition: ${{ always() && inputs.upload-coverage == 'true' }}"
 
     # Upload coverage to Codecov (optional)
     - name: Upload Coverage to Codecov
@@ -142,5 +163,27 @@ runs:
                   --verbose
         else
           echo "⚠️ No .gcov files found, skipping upload"
+        fi
+
+    # Upload JUnit XML to Codecov
+    - name: Upload JUnit XML to Codecov
+      if: always() && inputs.upload-coverage == 'true'
+      shell: bash
+      run: |
+        echo "📊 Uploading JUnit XML to Codecov..."
+        echo "JUnit file: ${{ inputs.junit-file }}"
+
+        if [ -f "${{ inputs.junit-file }}" ]; then
+          echo "✅ JUnit XML file found, uploading to Codecov"
+
+          # Upload JUnit XML using codecov CLI
+          codecov --token="${{ inputs.codecov-token }}" \
+                  --files="${{ inputs.junit-file }}" \
+                  --flags="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
+                  --name="${{ inputs.test-type == 'unit' && format('ascii-chat-test-results-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-test-results-{0}', inputs.os-name) || format('ascii-chat-performance-test-results-{0}', inputs.os-name) }}" \
+                  --fail_ci_if_error=true \
+                  --verbose
+        else
+          echo "⚠️ JUnit XML file not found at ${{ inputs.junit-file }}, skipping upload"
         fi
 

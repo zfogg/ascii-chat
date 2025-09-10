@@ -83,6 +83,7 @@ jobs:
         test-type: unit
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: 'true'
+        junit-file: junit.xml
 
     - name: Publish Test Results
       uses: ./.github/actions/publish-test-results
@@ -92,8 +93,6 @@ jobs:
         os-name: ${{ matrix.os-name }}
         build-type: ${{ matrix.build_type }}
         junit-file: junit.xml
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'false'
 
     - name: Upload test results
       if: always()
@@ -151,6 +150,7 @@ jobs:
         test-type: integration
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: 'true'
+        junit-file: junit.xml
 
     - name: Publish Test Results
       uses: ./.github/actions/publish-test-results
@@ -159,8 +159,6 @@ jobs:
         test-type: integration
         os-name: ${{ matrix.os-name }}
         junit-file: junit.xml
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'false'
 
     - name: Upload integration test results
       if: always()
