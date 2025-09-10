@@ -128,9 +128,14 @@ runs:
           echo "Files to upload:"
           echo "$gcov_files"
 
+          # Convert the file list to a format that codecov can use
+          # Replace newlines with spaces for the files parameter
+          files_list=$(echo "$gcov_files" | tr '\n' ' ')
+          echo "Files list for upload: $files_list"
+
           # Use codecov CLI directly for more control
           codecov --token="${{ inputs.codecov-token }}" \
-                  --files="./*.gcov" \
+                  --files="$files_list" \
                   --flags="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
                   --name="${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}" \
                   --fail_ci_if_error=true \
