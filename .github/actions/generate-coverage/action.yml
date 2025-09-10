@@ -124,6 +124,10 @@ runs:
           codecov_cmd="$codecov_cmd --branch=\"${{ github.ref_name }}\""
           codecov_cmd="$codecov_cmd --pr=\"${{ github.event.pull_request.number }}\""
 
+          # Control gcov behavior to prioritize coverage build files
+          codecov_cmd="$codecov_cmd --gcov-include=\"build/coverage/**\""
+          codecov_cmd="$codecov_cmd --gcov-ignore=\"build/debug/**\""
+
           # Add JUnit XML file if it exists
           if [ -f "${{ inputs.junit-file }}" ]; then
             codecov_cmd="$codecov_cmd --file=\"${{ inputs.junit-file }}\""
