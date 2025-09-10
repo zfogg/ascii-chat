@@ -36,20 +36,20 @@ runs:
       run: |
         echo "📦 Installing codecov CLI..."
         if command -v pip3 >/dev/null 2>&1; then
-          pip3 install codecov
+          pip3 install codecov-cli
         elif command -v pip >/dev/null 2>&1; then
-          pip install codecov
+          pip install codecov-cli
         else
           echo "❌ Neither pip3 nor pip found. Installing pip first..."
           if [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS
             curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
             python3 get-pip.py
-            pip3 install codecov
+            pip3 install codecov-cli
           else
             # Linux
             sudo apt-get update && sudo apt-get install -y python3-pip
-            pip3 install codecov
+            pip3 install codecov-cli
           fi
         fi
         echo "✅ codecov CLI installed successfully"
@@ -230,6 +230,7 @@ runs:
           # Add other arguments
           codecov_cmd="$codecov_cmd --flag=\"${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}\""
           codecov_cmd="$codecov_cmd --name=\"${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}\""
+          codecov_cmd="$codecov_cmd --fail-on-error"
 
           echo "Running codecov command: $codecov_cmd"
           eval $codecov_cmd
@@ -252,7 +253,8 @@ runs:
                   --file="${{ inputs.junit-file }}" \
                   --report-type=test_results \
                   --flag="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
-                  --name="${{ inputs.test-type == 'unit' && format('ascii-chat-test-results-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-test-results-{0}', inputs.os-name) || format('ascii-chat-performance-test-results-{0}', inputs.os-name) }}"
+                  --name="${{ inputs.test-type == 'unit' && format('ascii-chat-test-results-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-test-results-{0}', inputs.os-name) || format('ascii-chat-performance-test-results-{0}', inputs.os-name) }}" \
+                  --fail-on-error
         else
           echo "⚠️ JUnit XML file not found at ${{ inputs.junit-file }}, skipping upload"
         fi
