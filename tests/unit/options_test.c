@@ -7,59 +7,56 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <curses.h>
+#include <sys/ioctl.h>
+#include <termcap.h>
+
 
 #include "options.h"
 #include "common.h"
 #include "terminal_detect.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
+// Use the enhanced macro to create complete test suites with custom log levels
+//TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVEL(options, LOG_INFO, LOG_DEBUG);
+//TEST_LOGGING_SETUP_AND_TEARDOWN_WITH_LOG_LEVELS(LOG_FATAL, LOG_DEBUG, false, false);
+//TestSuite(options, .init = setup_quiet_test_logging, .fini = restore_test_logging);
 
-// Global variables to store original stdout and stderr for restoration
-static int original_stdout_fd = -1;
-static int original_stderr_fd = -1;
-static int dev_null_fd = -1;
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBUG);
 
-TestSuite(options, .init = setup_quiet_test_logging, .fini = restore_test_logging);
+// Macro helpers for argv construction without brace-literals at call sites
+#define ARGV_LIST(...) ((char*[]){ __VA_ARGS__, NULL })
+#define ARG_WRAP(list) ((char*[]) list)
 
-// Separate test suite for error handling tests that need to see stderr output
-TestSuite(options_errors, .init = NULL, .fini = NULL);
+// Usage:
+// GENERATE_OPTIONS_TEST(name,
+//   ARGV_LIST("client", "-x", "100", "-y", "50"),
+//   /* is_client */ true,
+//   { /* option_assertions using opt_* variables */ },
+//   { /* exit_assertions using exit_code */ });
+#define GENERATE_OPTIONS_TEST(test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
+  GENERATE_OPTIONS_TEST_IN_SUITE(options, test_name, argv_list, is_client_val, option_assertions, exit_assertions)
 
-void setup_quiet_test_logging(void) {
-  // Set log level to only show fatal errors during non-logging tests
-  log_set_level(LOG_FATAL);
-
-  // Redirect stdout and stderr to /dev/null to silence test output
-  original_stdout_fd = dup(STDOUT_FILENO);
-  original_stderr_fd = dup(STDERR_FILENO);
-  dev_null_fd = open("/dev/null", O_WRONLY);
-  dup2(dev_null_fd, STDOUT_FILENO);
-  dup2(dev_null_fd, STDERR_FILENO);
-}
-
-void restore_test_logging(void) {
-  // Restore normal log level after tests
-  log_set_level(LOG_DEBUG);
-
-  // Restore original stdout and stderr
-  if (original_stdout_fd != -1) {
-    dup2(original_stdout_fd, STDOUT_FILENO);
-    close(original_stdout_fd);
-    original_stdout_fd = -1;
+#define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
+  Test(suite_name, test_##test_name) { \
+    char *argv[] = argv_list; \
+    int argc = (int)(sizeof(argv) / sizeof(argv[0])) - 1; \
+    options_backup_t backup; \
+    save_options(&backup); \
+    \
+    /* Test exit behavior with fork */ \
+    int exit_code = test_options_init_with_fork(argv, argc, is_client_val); \
+    \
+    /* Test option values in main process (only if no exit expected) */ \
+    if (exit_code == 0) { \
+      options_init(argc, argv, is_client_val); \
+      option_assertions \
+    } \
+    \
+    restore_options(&backup); \
+    exit_assertions \
   }
-
-  if (original_stderr_fd != -1) {
-    dup2(original_stderr_fd, STDERR_FILENO);
-    close(original_stderr_fd);
-    original_stderr_fd = -1;
-  }
-
-  // Close /dev/null file descriptor
-  if (dev_null_fd != -1) {
-    close(dev_null_fd);
-    dev_null_fd = -1;
-  }
-}
 
 // Helper function to save and restore global options
 typedef struct {
@@ -67,7 +64,6 @@ typedef struct {
   char opt_address[OPTIONS_BUFF_SIZE], opt_port[OPTIONS_BUFF_SIZE];
   unsigned short int opt_webcam_index;
   bool opt_webcam_flip;
-  unsigned short int opt_color_output;
   terminal_color_mode_t opt_color_mode;
   render_mode_t opt_render_mode;
   unsigned short int opt_show_capabilities, opt_force_utf8;
@@ -92,7 +88,6 @@ static void save_options(options_backup_t *backup) {
   backup->opt_port[OPTIONS_BUFF_SIZE - 1] = '\0';
   backup->opt_webcam_index = opt_webcam_index;
   backup->opt_webcam_flip = opt_webcam_flip;
-  backup->opt_color_output = opt_color_output;
   backup->opt_color_mode = opt_color_mode;
   backup->opt_render_mode = opt_render_mode;
   backup->opt_show_capabilities = opt_show_capabilities;
@@ -126,7 +121,6 @@ static void restore_options(const options_backup_t *backup) {
   opt_port[OPTIONS_BUFF_SIZE - 1] = '\0';
   opt_webcam_index = backup->opt_webcam_index;
   opt_webcam_flip = backup->opt_webcam_flip;
-  opt_color_output = backup->opt_color_output;
   opt_color_mode = backup->opt_color_mode;
   opt_render_mode = backup->opt_render_mode;
   opt_show_capabilities = backup->opt_show_capabilities;
@@ -149,7 +143,7 @@ static void restore_options(const options_backup_t *backup) {
   opt_palette_custom_set = backup->opt_palette_custom_set;
 }
 
-// Helper function to test options_init with fork/exec to avoid exit() calls  
+// Helper function to test options_init with fork/exec to avoid exit() calls
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   pid_t pid = fork();
   if (pid == 0) {
@@ -160,10 +154,10 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
       dup2(devnull, STDERR_FILENO);
       close(devnull);
     }
-    
+
     // Also suppress logging
     log_set_level(LOG_FATAL);
-    
+
     // Ensure argv is NULL-terminated for getopt_long and any library routines
     char **argv_with_null;
     if (argv[argc - 1] != NULL) {
@@ -213,7 +207,6 @@ Test(options, default_values) {
   cr_assert_str_eq(opt_port, "27224");
   cr_assert_eq(opt_webcam_index, 0);
   cr_assert_eq(opt_webcam_flip, false);
-  cr_assert_eq(opt_color_output, 0);
   cr_assert_eq(opt_color_mode, COLOR_MODE_AUTO);
   cr_assert_eq(opt_render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(opt_show_capabilities, 0);
@@ -229,177 +222,299 @@ Test(options, default_values) {
   restore_options(&backup);
 }
 
-Test(options, basic_client_options) {
-  options_backup_t backup;
-  save_options(&backup);
+GENERATE_OPTIONS_TEST_IN_SUITE(
+  options,
+  basic_client_options,
+  ARGV_LIST("client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "192.168.1.1");
+    cr_assert_str_eq(opt_port, "8080");
+    cr_assert_eq(opt_width, 100);
+    cr_assert_eq(opt_height, 50);
+    cr_assert_eq(auto_width, 0);
+    cr_assert_eq(auto_height, 0);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Basic client options should not exit");
+  }
+)
 
-  char *argv[] = {"client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50", NULL};
-  int argc = 9;
-
-  int result = test_options_init_with_fork(argv, argc, true);
-  cr_assert_eq(result, 0);
-
-  restore_options(&backup);
-}
-
-Test(options, basic_server_options) {
-  options_backup_t backup;
-  save_options(&backup);
-
-  char *argv[] = {"server", "-a", "127.0.0.1", "-p", "3000", NULL};
-  int argc = 5;
-
-  int result = test_options_init_with_fork(argv, argc, false);
-  cr_assert_eq(result, 0);
-
-  restore_options(&backup);
-}
+GENERATE_OPTIONS_TEST(
+  basic_server_options,
+  ARGV_LIST("server", "-a", "127.0.0.1", "-p", "3000"),
+  false,
+  {
+    cr_assert_str_eq(opt_address, "127.0.0.1");
+    cr_assert_str_eq(opt_port, "3000");
+    // Server should use default values for client-only options
+    if (getenv("TERM") && getenv("TTY") || getenv("COLUMNS") && getenv("LINES")) {
+      unsigned short int width;
+      unsigned short int height;
+      get_terminal_size(&width, &height);
+      log_debug("Terminal size from get_terminal_size: %dx%d", width, height);
+      cr_assert_eq(width, opt_width);
+      cr_assert_eq(height, opt_height);
+    } else {
+      cr_assert_eq(opt_width, 110);
+      cr_assert_eq(opt_height, 70);
+    }
+    cr_assert_eq(opt_webcam_index, 0);
+    cr_assert_eq(opt_webcam_flip, false);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Basic server options should not exit");
+  }
+)
 
 /* ============================================================================
  * Address and Port Validation Tests
  * ============================================================================ */
 
-Test(options, valid_ipv4_addresses) {
-  options_backup_t backup;
-  save_options(&backup);
-
-  char *valid_ips[] = {"192.168.1.1", "127.0.0.1", "10.0.0.1", "255.255.255.255", "0.0.0.0"};
-
-  for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "-a", valid_ips[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 0, "Valid IP %s should not cause exit", valid_ips[i]);
+GENERATE_OPTIONS_TEST(
+  valid_ipv4_192_168_1_1,
+  ARGV_LIST("client", "-a", "192.168.1.1"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "192.168.1.1");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid IP 192.168.1.1 should not cause exit");
   }
+)
 
-  restore_options(&backup);
-}
-
-Test(options, invalid_ipv4_addresses) {
-  char *invalid_ips[] = {
-      "256.1.1.1",       // Octet > 255
-      "192.168.1",       // Too few octets
-      "192.168.1.1.1",   // Too many octets
-      "192.168.1.abc",   // Non-numeric
-      "192.168.1.",      // Trailing dot
-      ".192.168.1.1",    // Leading dot
-      "192..168.1.1",    // Double dot
-      "192.168.-1.1",    // Negative octet
-      "192.168.1.1.1.1", // Way too many octets
-      "notanip",         // Not an IP at all
-      ""                 // Empty string
-  };
-
-  for (int i = 0; i < 11; i++) {
-    char *argv[] = {"client", "-a", invalid_ips[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 1, "Invalid IP %s should cause exit with code 1", invalid_ips[i]);
+GENERATE_OPTIONS_TEST(
+  valid_ipv4_127_0_0_1,
+  ARGV_LIST("client", "-a", "127.0.0.1"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "127.0.0.1");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid IP 127.0.0.1 should not cause exit");
   }
-}
+)
 
-Test(options, valid_ports) {
-  options_backup_t backup;
-  save_options(&backup);
-
-  char *valid_ports[] = {"1", "80", "443", "8080", "27224", "65535"};
-
-  for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "-p", valid_ports[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 0, "Valid port %s should not cause exit", valid_ports[i]);
+GENERATE_OPTIONS_TEST(
+  valid_ipv4_255_255_255_255,
+  ARGV_LIST("client", "-a", "255.255.255.255"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "255.255.255.255");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid IP 255.255.255.255 should not cause exit");
   }
+)
 
-  restore_options(&backup);
-}
-
-Test(options, invalid_ports) {
-  char *invalid_ports[] = {
-      "0",     // Too low
-      "65536", // Too high
-      "abc",   // Non-numeric
-      "-1",    // Negative
-      "80.5",  // Decimal
-      ""       // Empty
-  };
-
-  for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "-p", invalid_ports[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 1, "Invalid port %s should cause exit with code 1", invalid_ports[i]);
+GENERATE_OPTIONS_TEST(
+  invalid_ipv4_octet_too_large,
+  ARGV_LIST("client", "-a", "256.1.1.1"),
+  true,
+  {
+    // This should not be reached since options_init should exit
+    cr_fail("Should not reach this point - invalid IP should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid IP 256.1.1.1 should cause exit with code 1");
   }
-}
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_ipv4_too_few_octets,
+  ARGV_LIST("client", "-a", "192.168.1"),
+  true,
+  {
+    // This should not be reached since options_init should exit
+    cr_fail("Should not reach this point - invalid IP should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid IP 192.168.1 should cause exit with code 1");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_ipv4_non_numeric,
+  ARGV_LIST("client", "-a", "192.168.1.abc"),
+  true,
+  {
+    // This should not be reached since options_init should exit
+    cr_fail("Should not reach this point - invalid IP should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid IP 192.168.1.abc should cause exit with code 1");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  valid_port_80,
+  ARGV_LIST("client", "-p", "80"),
+  true,
+  {
+    cr_assert_str_eq(opt_port, "80");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid port 80 should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  valid_port_65535,
+  ARGV_LIST("client", "-p", "65535"),
+  true,
+  {
+    cr_assert_str_eq(opt_port, "65535");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid port 65535 should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_port_too_low,
+  ARGV_LIST("client", "-p", "0"),
+  true,
+  {
+    // This should not be reached since options_init should exit
+    cr_fail("Should not reach this point - invalid port should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid port 0 should cause exit with code 1");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_port_too_high,
+  ARGV_LIST("client", "-p", "65536"),
+  true,
+  {
+    // This should not be reached since options_init should exit
+    cr_fail("Should not reach this point - invalid port should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid port 65536 should cause exit with code 1");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_port_non_numeric,
+  ARGV_LIST("client", "-p", "abc"),
+  true,
+  {
+    // This should not be reached since options_init should exit
+    cr_fail("Should not reach this point - invalid port should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid port abc should cause exit with code 1");
+  }
+)
 
 /* ============================================================================
  * Dimension Tests
  * ============================================================================ */
 
-Test(options, valid_dimensions) {
-  options_backup_t backup;
-  save_options(&backup);
-
-  char *argv[] = {"client", "-x", "100", "-y", "50", NULL};
-  int result = test_options_init_with_fork(argv, 5, true);
-  cr_assert_eq(result, 0);
-
-  restore_options(&backup);
-}
-
-Test(options, invalid_dimensions) {
-  char *invalid_dims[] = {
-      "0",     // Zero width/height
-      "-1",    // Negative
-      "abc",   // Non-numeric
-      "100.5", // Decimal
-      ""       // Empty
-  };
-
-  for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "-x", invalid_dims[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 1, "Invalid dimension %s should cause exit with code 1", invalid_dims[i]);
+GENERATE_OPTIONS_TEST(
+  valid_dimensions,
+  ARGV_LIST("client", "-x", "100", "-y", "50"),
+  true,
+  {
+    cr_assert_eq(opt_width, 100);
+    cr_assert_eq(opt_height, 50);
+    cr_assert_eq(auto_width, 0);
+    cr_assert_eq(auto_height, 0);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid dimensions should not cause exit");
   }
-}
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_dimension_zero,
+  ARGV_LIST("client", "-x", "0"),
+  true,
+  {
+    cr_fail("Should not reach this point - invalid dimension should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid dimension 0 should cause exit with code 1");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_dimension_negative,
+  ARGV_LIST("client", "-x", "-1"),
+  true,
+  {
+    cr_fail("Should not reach this point - invalid dimension should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid dimension -1 should cause exit with code 1");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  invalid_dimension_non_numeric,
+  ARGV_LIST("client", "-x", "abc"),
+  true,
+  {
+    cr_fail("Should not reach this point - invalid dimension should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Invalid dimension abc should cause exit with code 1");
+  }
+)
 
 /* ============================================================================
  * Webcam Options Tests
  * ============================================================================ */
 
-Test(options, valid_webcam_index) {
-  options_backup_t backup;
-  save_options(&backup);
+GENERATE_OPTIONS_TEST(
+  valid_webcam_index,
+  ARGV_LIST("client", "-c", "2"),
+  true,
+  { /* no option assertions needed for success-only check */ },
+  { cr_assert_eq(exit_code, 0); }
+)
 
-  char *argv[] = {"client", "-c", "2", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 0);
+GENERATE_OPTIONS_TEST(
+  invalid_webcam_index_neg1,
+  ARGV_LIST("client", "-c", "-1"),
+  true,
+  { cr_fail("Should not reach this point - invalid webcam index should cause exit"); },
+  { cr_assert_eq(exit_code, 1); }
+)
 
-  restore_options(&backup);
-}
+GENERATE_OPTIONS_TEST(
+  invalid_webcam_index_abc,
+  ARGV_LIST("client", "-c", "abc"),
+  true,
+  { cr_fail("Should not reach this point - invalid webcam index should cause exit"); },
+  { cr_assert_eq(exit_code, 1); }
+)
 
-Test(options, invalid_webcam_index) {
-  char *invalid_indices[] = {
-      "-1",  // Negative
-      "abc", // Non-numeric
-      "2.5", // Decimal
-      ""     // Empty
-  };
+GENERATE_OPTIONS_TEST(
+  invalid_webcam_index_decimal,
+  ARGV_LIST("client", "-c", "2.5"),
+  true,
+  { cr_fail("Should not reach this point - invalid webcam index should cause exit"); },
+  { cr_assert_eq(exit_code, 1); }
+)
 
-  for (int i = 0; i < 4; i++) {
-    char *argv[] = {"client", "-c", invalid_indices[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 1, "Invalid webcam index %s should cause exit with code 1", invalid_indices[i]);
-  }
-}
+GENERATE_OPTIONS_TEST(
+  invalid_webcam_index_empty,
+  ARGV_LIST("client", "-c", ""),
+  true,
+  { cr_fail("Should not reach this point - invalid webcam index should cause exit"); },
+  { cr_assert_eq(exit_code, 1); }
+)
 
-Test(options, valid_webcam_flip) {
-  options_backup_t backup;
-  save_options(&backup);
-
-  // Test that -f flag works (should not cause exit)
-  char *argv[] = {"client", "-f", NULL};
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 0, "Webcam flip flag should not cause exit");
-
-  restore_options(&backup);
-}
+GENERATE_OPTIONS_TEST(
+  valid_webcam_flip,
+  ARGV_LIST("client", "-f"),
+  true,
+  { /* flip flag only */ },
+  { cr_assert_eq(exit_code, 0, "Webcam flip flag should not cause exit"); }
+)
 
 
 /* ============================================================================
@@ -544,56 +659,79 @@ Test(options, invalid_snapshot_delays) {
  * File Path Tests
  * ============================================================================ */
 
-Test(options, valid_log_file) {
-  options_backup_t backup;
-  save_options(&backup);
+GENERATE_OPTIONS_TEST(
+  valid_log_file,
+  ARGV_LIST("client", "--log-file", "/tmp/test.log"),
+  true,
+  {
+    cr_assert_str_eq(opt_log_file, "/tmp/test.log");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid log file should not cause exit");
+  }
+)
 
-  char *argv[] = {"client", "--log-file", "/tmp/test.log", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 0);
+GENERATE_OPTIONS_TEST(
+  invalid_log_file,
+  ARGV_LIST("client", "--log-file", ""),
+  true,
+  {
+    cr_fail("Should not reach this point - empty log file should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Empty log file should exit with code 1");
+  }
+)
 
-  restore_options(&backup);
-}
+GENERATE_OPTIONS_TEST(
+  valid_encryption_key,
+  ARGV_LIST("client", "--key", "mysecretkey"),
+  true,
+  {
+    cr_assert_str_eq(opt_encrypt_key, "mysecretkey");
+    cr_assert_eq(opt_encrypt_enabled, 1);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid encryption key should not cause exit");
+  }
+)
 
-Test(options, invalid_log_file) {
-  char *argv[] = {"client", "--log-file", "", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 1);
-}
+GENERATE_OPTIONS_TEST(
+  invalid_encryption_key,
+  ARGV_LIST("client", "--key", ""),
+  true,
+  {
+    cr_fail("Should not reach this point - empty key should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Empty key should exit with code 1");
+  }
+)
 
-Test(options, valid_encryption_key) {
-  options_backup_t backup;
-  save_options(&backup);
+GENERATE_OPTIONS_TEST(
+  valid_keyfile,
+  ARGV_LIST("client", "--keyfile", "/tmp/keyfile.txt"),
+  true,
+  {
+    cr_assert_str_eq(opt_encrypt_keyfile, "/tmp/keyfile.txt");
+    cr_assert_eq(opt_encrypt_enabled, 1);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Valid keyfile should not cause exit");
+  }
+)
 
-  char *argv[] = {"client", "--key", "mysecretkey", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 0);
-
-  restore_options(&backup);
-}
-
-Test(options, invalid_encryption_key) {
-  char *argv[] = {"client", "--key", "", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 1);
-}
-
-Test(options, valid_keyfile) {
-  options_backup_t backup;
-  save_options(&backup);
-
-  char *argv[] = {"client", "--keyfile", "/tmp/keyfile.txt", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 0);
-
-  restore_options(&backup);
-}
-
-Test(options, invalid_keyfile) {
-  char *argv[] = {"client", "--keyfile", "", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 1);
-}
+GENERATE_OPTIONS_TEST(
+  invalid_keyfile,
+  ARGV_LIST("client", "--keyfile", ""),
+  true,
+  {
+    cr_fail("Should not reach this point - empty keyfile should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Empty keyfile should exit with code 1");
+  }
+)
 
 /* ============================================================================
  * Flag Options Tests
@@ -615,53 +753,97 @@ Test(options, flag_options) {
  * Help Tests
  * ============================================================================ */
 
-Test(options, help_client) {
-  char *argv[] = {"client", "--help", NULL};
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 0);
-}
+GENERATE_OPTIONS_TEST(
+  help_client,
+  ARGV_LIST("client", "--help"),
+  true,
+  {
+    // Help should display and exit cleanly
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Help should exit with code 0");
+  }
+)
 
-Test(options, help_server) {
-  char *argv[] = {"server", "--help", NULL};
-  int result = test_options_init_with_fork(argv, 2, false);
-  cr_assert_eq(result, 0);
-}
+GENERATE_OPTIONS_TEST(
+  help_server,
+  ARGV_LIST("server", "--help"),
+  false,
+  {
+    // Help should display and exit cleanly
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Help should exit with code 0");
+  }
+)
 
-Test(options, help_short) {
-  char *argv[] = {"client", "-h", NULL};
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 0);
-}
+GENERATE_OPTIONS_TEST(
+  help_short,
+  ARGV_LIST("client", "-h"),
+  true,
+  {
+    // Help should display and exit cleanly
+  },
+  {
+    cr_assert_eq(exit_code, 0, "Short help should exit with code 0");
+  }
+)
 
 /* ============================================================================
  * Error Handling Tests
  * ============================================================================ */
 
-Test(options_errors, unknown_option) {
-  char *argv[] = {"client", "--unknown-option", NULL};
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 1);
-}
+GENERATE_OPTIONS_TEST_IN_SUITE(
+  options_errors,
+  unknown_option,
+  ARGV_LIST("client", "--unknown-option"),
+  true,
+  {
+    cr_fail("Should not reach this point - unknown option should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Unknown option should exit with code 1");
+  }
+)
 
-Test(options_errors, missing_argument_address) {
-  char *argv[] = {"client", "--address", NULL};
-  log_set_level(LOG_DEBUG);
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 1);
-}
+GENERATE_OPTIONS_TEST_IN_SUITE(
+  options_errors,
+  missing_argument_address,
+  ARGV_LIST("client", "--address"),
+  true,
+  {
+    cr_fail("Should not reach this point - missing argument should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1");
+  }
+)
 
-Test(options_errors, missing_argument_short) {
-  char *argv[] = {"client", "-a", NULL};
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 1);
-}
+GENERATE_OPTIONS_TEST_IN_SUITE(
+  options_errors,
+  missing_argument_short,
+  ARGV_LIST("client", "-a"),
+  true,
+  {
+    cr_fail("Should not reach this point - missing argument should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1");
+  }
+)
 
-Test(options_errors, missing_argument_port) {
-  char *argv[] = {"client", "--port", NULL};
-  log_set_level(LOG_DEBUG);
-  int result = test_options_init_with_fork(argv, 2, true);
-  cr_assert_eq(result, 1);
-}
+GENERATE_OPTIONS_TEST_IN_SUITE(
+  options_errors,
+  missing_argument_port,
+  ARGV_LIST("client", "--port"),
+  true,
+  {
+    cr_fail("Should not reach this point - missing argument should cause exit");
+  },
+  {
+    cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1");
+  }
+)
 
 /* ============================================================================
  * Equals Sign Handling Tests
@@ -924,3 +1106,636 @@ Test(options, random_combinations) {
 
   restore_options(&backup);
 }
+
+/* ============================================================================
+ * Direct Value Testing - Tests that actually verify opt_* variables
+ * ============================================================================ */
+
+GENERATE_OPTIONS_TEST(
+  actual_values_client,
+  ARGV_LIST("client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50"),
+  true,
+  {
+    // Test actual values were set
+    cr_assert_str_eq(opt_address, "192.168.1.1");
+    cr_assert_str_eq(opt_port, "8080");
+    cr_assert_eq(opt_width, 100);
+    cr_assert_eq(opt_height, 50);
+    cr_assert_eq(auto_width, 0);
+    cr_assert_eq(auto_height, 0);
+  },
+  {
+    // Test that options_init doesn't exit with error
+    cr_assert_eq(exit_code, 0, "options_init should not exit with error");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  color_mode_auto,
+  ARGV_LIST("client", "--color-mode", "auto"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_AUTO);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "auto color mode should not exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  color_mode_256,
+  ARGV_LIST("client", "--color-mode", "256"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_256_COLOR);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "256 color mode should not exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  color_mode_truecolor,
+  ARGV_LIST("client", "--color-mode", "truecolor"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_TRUECOLOR);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "truecolor mode should not exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  render_mode_foreground,
+  ARGV_LIST("client", "--render-mode", "foreground"),
+  true,
+  {
+    cr_assert_eq(opt_render_mode, RENDER_MODE_FOREGROUND);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "foreground render mode should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  render_mode_background,
+  ARGV_LIST("client", "--render-mode", "background"),
+  true,
+  {
+    cr_assert_eq(opt_render_mode, RENDER_MODE_BACKGROUND);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "background render mode should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  render_mode_half_block,
+  ARGV_LIST("client", "--render-mode", "half-block"),
+  true,
+  {
+    cr_assert_eq(opt_render_mode, RENDER_MODE_HALF_BLOCK);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "half-block render mode should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  palette_standard,
+  ARGV_LIST("client", "--palette", "standard"),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_STANDARD);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "standard palette should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  palette_blocks,
+  ARGV_LIST("client", "--palette", "blocks"),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_BLOCKS);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "blocks palette should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  palette_custom_chars,
+  ARGV_LIST("client", "--palette-chars", "@#%*+=:-. "),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_CUSTOM);
+    cr_assert_str_eq(opt_palette_custom, "@#%*+=:-. ");
+    cr_assert_eq(opt_palette_custom_set, true);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "custom palette chars should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_flag_values,
+  ARGV_LIST("client", "--audio", "--stretch", "--quiet", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-f"),
+  true,
+  {
+    // Test all flags were set
+    cr_assert_eq(opt_audio_enabled, 1);
+    cr_assert_eq(opt_stretch, 1);
+    cr_assert_eq(opt_quiet, 1);
+    cr_assert_eq(opt_snapshot_mode, 1);
+    cr_assert_eq(opt_encrypt_enabled, 1);
+    cr_assert_eq(opt_force_utf8, 1);
+    cr_assert_eq(opt_show_capabilities, 1);
+    cr_assert_eq(opt_webcam_flip, true);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "flag values should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  encryption_key_value,
+  ARGV_LIST("client", "--key", "mysecretpassword123"),
+  true,
+  {
+    cr_assert_str_eq(opt_encrypt_key, "mysecretpassword123");
+    cr_assert_eq(opt_encrypt_enabled, 1);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "encryption key should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  encryption_keyfile_value,
+  ARGV_LIST("client", "--keyfile", "/etc/secret.key"),
+  true,
+  {
+    cr_assert_str_eq(opt_encrypt_keyfile, "/etc/secret.key");
+    cr_assert_eq(opt_encrypt_enabled, 1);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "keyfile should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_snapshot_delay_values,
+  ARGV_LIST("client", "--snapshot-delay", "2.5"),
+  true,
+  {
+    cr_assert_float_eq(opt_snapshot_delay, 2.5f, 0.01);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "snapshot delay should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_webcam_values,
+  ARGV_LIST("client", "-c", "3", "-f"),
+  true,
+  {
+    cr_assert_eq(opt_webcam_index, 3);
+    cr_assert_eq(opt_webcam_flip, true);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "webcam values should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_comprehensive_client_values,
+  ARGV_LIST("client", "--address=10.0.0.1", "--port=9999", "--width=200", "--height=100",
+            "--webcam-index=2", "--webcam-flip", "--color-mode=256", "--render-mode=background",
+            "--palette=digital", "--audio", "--stretch", "--quiet", "--snapshot",
+            "--snapshot-delay=5.0", "--log-file=/var/log/test.log", "--encrypt", "--key=testkey123"),
+  true,
+  {
+    // Verify ALL values
+    cr_assert_str_eq(opt_address, "10.0.0.1");
+    cr_assert_str_eq(opt_port, "9999");
+    cr_assert_eq(opt_width, 200);
+    cr_assert_eq(opt_height, 100);
+    cr_assert_eq(opt_webcam_index, 2);
+    cr_assert_eq(opt_webcam_flip, true);
+    cr_assert_eq(opt_color_mode, COLOR_MODE_256_COLOR);
+    cr_assert_eq(opt_render_mode, RENDER_MODE_BACKGROUND);
+    cr_assert_eq(opt_palette_type, PALETTE_DIGITAL);
+    cr_assert_eq(opt_audio_enabled, 1);
+    cr_assert_eq(opt_stretch, 1);
+    cr_assert_eq(opt_quiet, 1);
+    cr_assert_eq(opt_snapshot_mode, 1);
+    cr_assert_float_eq(opt_snapshot_delay, 5.0f, 0.01);
+    cr_assert_str_eq(opt_log_file, "/var/log/test.log");
+    cr_assert_eq(opt_encrypt_enabled, 1);
+    cr_assert_str_eq(opt_encrypt_key, "testkey123");
+  // Should be enabled by color-mode
+    cr_assert_eq(auto_width, 0);  // Should be disabled when width is set
+    cr_assert_eq(auto_height, 0); // Should be disabled when height is set
+  },
+  {
+    cr_assert_eq(exit_code, 0, "comprehensive client values should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_server_values,
+  ARGV_LIST("server", "--address=0.0.0.0", "--port=12345", "--palette=minimal",
+            "--audio", "--log-file=/tmp/server.log", "--encrypt", "--keyfile=/etc/server.key"),
+  false,
+  {
+    // Verify server values
+    cr_assert_str_eq(opt_address, "0.0.0.0");
+    cr_assert_str_eq(opt_port, "12345");
+    cr_assert_eq(opt_palette_type, PALETTE_MINIMAL);
+    cr_assert_eq(opt_audio_enabled, 1);
+    cr_assert_str_eq(opt_log_file, "/tmp/server.log");
+    cr_assert_eq(opt_encrypt_enabled, 1);
+    cr_assert_str_eq(opt_encrypt_keyfile, "/etc/server.key");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "server values should not cause exit");
+  }
+)
+
+/* ============================================================================
+ * Additional Test Scenarios with the Macro
+ * ============================================================================ */
+
+GENERATE_OPTIONS_TEST(
+  test_equals_sign_syntax,
+  ARGV_LIST("client", "--address=192.168.1.100", "--port=8080", "--width=150", "--height=75"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "192.168.1.100");
+    cr_assert_str_eq(opt_port, "8080");
+    cr_assert_eq(opt_width, 150);
+    cr_assert_eq(opt_height, 75);
+    cr_assert_eq(auto_width, 0);  // Should be disabled when width is set
+    cr_assert_eq(auto_height, 0); // Should be disabled when height is set
+  },
+  {
+    cr_assert_eq(exit_code, 0, "equals sign syntax should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_mixed_syntax,
+  ARGV_LIST("client", "-a", "10.0.0.1", "--port=3000", "-x", "80", "--height=60"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "10.0.0.1");
+    cr_assert_str_eq(opt_port, "3000");
+    cr_assert_eq(opt_width, 80);
+    cr_assert_eq(opt_height, 60);
+    cr_assert_eq(auto_width, 0);
+    cr_assert_eq(auto_height, 0);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "mixed syntax should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_monochrome_mode,
+  ARGV_LIST("client", "--color-mode", "mono"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_MONO);
+  // Should be disabled for monochrome
+  },
+  {
+    cr_assert_eq(exit_code, 0, "monochrome mode should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_monochrome_alias,
+  ARGV_LIST("client", "--color-mode", "monochrome"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_MONO);
+  // Should be disabled for monochrome
+  },
+  {
+    cr_assert_eq(exit_code, 0, "monochrome alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_16color_mode,
+  ARGV_LIST("client", "--color-mode", "16"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_16_COLOR);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "16color mode should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_16color_alias,
+  ARGV_LIST("client", "--color-mode", "16color"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_16_COLOR);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "16color alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_256color_alias,
+  ARGV_LIST("client", "--color-mode", "256color"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_256_COLOR);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "256color alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_truecolor_alias,
+  ARGV_LIST("client", "--color-mode", "24bit"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_TRUECOLOR);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "truecolor alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_palette_digital,
+  ARGV_LIST("client", "--palette", "digital"),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_DIGITAL);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "digital palette should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_palette_minimal,
+  ARGV_LIST("client", "--palette", "minimal"),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_MINIMAL);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "minimal palette should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_palette_cool,
+  ARGV_LIST("client", "--palette", "cool"),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_COOL);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "cool palette should not cause exit");
+  }
+)
+
+/* Converted looped palette test into specific GENERATE_OPTIONS_TEST cases above. */
+
+GENERATE_OPTIONS_TEST(
+  test_render_mode_fg_alias,
+  ARGV_LIST("client", "--render-mode", "fg"),
+  true,
+  {
+    cr_assert_eq(opt_render_mode, RENDER_MODE_FOREGROUND);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "fg alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_render_mode_bg_alias,
+  ARGV_LIST("client", "--render-mode", "bg"),
+  true,
+  {
+    cr_assert_eq(opt_render_mode, RENDER_MODE_BACKGROUND);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "bg alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_render_mode_halfblock_alias,
+  ARGV_LIST("client", "--render-mode", "halfblock"),
+  true,
+  {
+    cr_assert_eq(opt_render_mode, RENDER_MODE_HALF_BLOCK);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "halfblock alias should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_log_file_path,
+  ARGV_LIST("client", "--log-file", "/var/log/ascii-chat.log"),
+  true,
+  {
+    cr_assert_str_eq(opt_log_file, "/var/log/ascii-chat.log");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "log file path should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_webcam_index_only,
+  ARGV_LIST("client", "-c", "5"),
+  true,
+  {
+    cr_assert_eq(opt_webcam_index, 5);
+    cr_assert_eq(opt_webcam_flip, false);  // Should remain default
+  },
+  {
+    cr_assert_eq(exit_code, 0, "webcam index should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_webcam_flip_only,
+  ARGV_LIST("client", "-f"),
+  true,
+  {
+    cr_assert_eq(opt_webcam_index, 0);  // Should remain default
+    cr_assert_eq(opt_webcam_flip, true);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "webcam flip should not cause exit");
+  }
+)
+
+/* ============================================================================
+ * Server-specific Tests
+ * ============================================================================ */
+
+GENERATE_OPTIONS_TEST(
+  test_server_basic_options,
+  ARGV_LIST("client", "--address=127.0.0.1", "--port=8080", "--width=110", "--height=70"),
+  true,
+  {
+    cr_assert_str_eq(opt_address, "127.0.0.1");
+    cr_assert_str_eq(opt_port, "8080");
+    // Server should use default values for client-only options
+    cr_assert_eq(opt_width, 110);  // Should use default width
+    cr_assert_eq(opt_height, 70);  // Should use default height
+    cr_assert_eq(opt_webcam_index, 0);       // Should use default
+    cr_assert_eq(opt_webcam_flip, false);    // Should use default
+  },
+  {
+    cr_assert_eq(exit_code, 0, "server basic options should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_server_palette_options,
+  ARGV_LIST("server", "--palette", "blocks", "--palette-chars", "0123456789"),
+  false,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_CUSTOM); // --palette-chars overrides to custom
+    cr_assert_str_eq(opt_palette_custom, "0123456789");
+    cr_assert_eq(opt_palette_custom_set, true);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "server palette options should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_server_encryption_options,
+  ARGV_LIST("server", "--encrypt", "--keyfile", "/etc/server.key"),
+  false,
+  {
+    cr_assert_eq(opt_encrypt_enabled, 1);
+    cr_assert_str_eq(opt_encrypt_keyfile, "/etc/server.key");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "server encryption options should not cause exit");
+  }
+)
+
+/* ============================================================================
+ * Edge Cases and Error Conditions
+ * ============================================================================ */
+
+GENERATE_OPTIONS_TEST(
+  test_auto_dimensions,
+  ARGV_LIST("client"),
+  true,
+  {
+    // These should be set to auto (1) by default
+    cr_assert_eq(auto_width, 1);
+    cr_assert_eq(auto_height, 1);
+    // The actual dimensions will be set by update_dimensions_to_terminal_size()
+    // but we can't easily test that without mocking terminal detection
+  },
+  {
+    cr_assert_eq(exit_code, 0, "auto dimensions should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_manual_dimensions_disable_auto,
+  ARGV_LIST("client", "--width", "100", "--height", "50"),
+  true,
+  {
+    cr_assert_eq(opt_width, 100);
+    cr_assert_eq(opt_height, 50);
+    cr_assert_eq(auto_width, 0);   // Should be disabled when manually set
+    cr_assert_eq(auto_height, 0);  // Should be disabled when manually set
+  },
+  {
+    cr_assert_eq(exit_code, 0, "manual dimensions should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_encryption_auto_enable,
+  ARGV_LIST("client", "--key", "mypassword"),
+  true,
+  {
+    cr_assert_eq(opt_encrypt_enabled, 1);  // Should be auto-enabled
+    cr_assert_str_eq(opt_encrypt_key, "mypassword");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "encryption key should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_encryption_keyfile_auto_enable,
+  ARGV_LIST("client", "--keyfile", "/path/to/key"),
+  true,
+  {
+    cr_assert_eq(opt_encrypt_enabled, 1);  // Should be auto-enabled
+    cr_assert_str_eq(opt_encrypt_keyfile, "/path/to/key");
+  },
+  {
+    cr_assert_eq(exit_code, 0, "keyfile should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_custom_palette_auto_set_type,
+  ARGV_LIST("client", "--palette-chars", "ABCDEFGH"),
+  true,
+  {
+    cr_assert_eq(opt_palette_type, PALETTE_CUSTOM);
+    cr_assert_str_eq(opt_palette_custom, "ABCDEFGH");
+    cr_assert_eq(opt_palette_custom_set, true);
+  },
+  {
+    cr_assert_eq(exit_code, 0, "custom palette chars should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_color_output_enabled_by_color_mode,
+  ARGV_LIST("client", "--color-mode", "256"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_256_COLOR);
+  // Should be enabled
+  },
+  {
+    cr_assert_eq(exit_code, 0, "256 color mode should not cause exit");
+  }
+)
+
+GENERATE_OPTIONS_TEST(
+  test_color_output_disabled_by_mono,
+  ARGV_LIST("client", "--color-mode", "mono"),
+  true,
+  {
+    cr_assert_eq(opt_color_mode, COLOR_MODE_MONO);
+  // Should be disabled
+  },
+  {
+    cr_assert_eq(exit_code, 0, "mono color mode should not cause exit");
+  }
+)

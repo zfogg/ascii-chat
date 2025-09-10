@@ -14,24 +14,10 @@
 #include "network.h"
 #include "common.h"
 #include "options.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(compression, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-  // Set log level to only show fatal errors during non-logging tests
-  log_set_level(LOG_FATAL);
-
-  // Ensure TESTING environment variable is set for fast timeouts
-  setenv("TESTING", "1", 1);
-}
-
-void restore_test_logging(void) {
-  // Restore normal log level after tests
-  log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(compression);
 
 // Mock network functions for testing
 static int mock_send_packet_calls = 0;

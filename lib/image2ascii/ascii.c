@@ -257,16 +257,12 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  const char *testing_env = getenv("TESTING");
-  fprintf(stderr, "DEBUG: opt_snapshot_mode=%d, testing_env=%s\n", opt_snapshot_mode,
-          testing_env ? testing_env : "NULL");
-  if (!opt_snapshot_mode && testing_env == NULL) {
+  if (!opt_snapshot_mode && getenv("TESTING") == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
   size_t frame_len = strlen(frame);
   size_t written = fwrite(frame, 1, frame_len, stdout);
-  fprintf(stderr, "DEBUG: fwrite wrote %zu of %zu bytes\n", written, frame_len);
   if (written != frame_len) {
     log_error("Failed to write ASCII frame");
     return ASCIICHAT_ERR_TERMINAL;

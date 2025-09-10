@@ -8,21 +8,10 @@
 
 #include "aspect_ratio.h"
 #include "common.h"
+#include "tests/logging.h"
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(aspect_ratio, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-  // Set log level to only show fatal errors during non-logging tests
-  log_set_level(LOG_FATAL);
-}
-
-void restore_test_logging(void) {
-  // Restore normal log level after tests
-  log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(aspect_ratio);
 
 /* ============================================================================
  * Basic Aspect Ratio Function Tests

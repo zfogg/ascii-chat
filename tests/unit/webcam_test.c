@@ -10,6 +10,7 @@
 #include "common.h"
 #include "options.h"
 #include "image2ascii/image.h"
+#include "tests/logging.h"
 
 // Check if we're in a CI environment
 static int is_ci_environment(void) {
@@ -17,20 +18,8 @@ static int is_ci_environment(void) {
          getenv("CIRCLECI") != NULL || getenv("JENKINS_URL") != NULL;
 }
 
-void setup_quiet_test_logging(void);
-void restore_test_logging(void);
-
-TestSuite(webcam, .init = setup_quiet_test_logging, .fini = restore_test_logging);
-
-void setup_quiet_test_logging(void) {
-  // Set log level to only show fatal errors during non-logging tests
-  log_set_level(LOG_FATAL);
-}
-
-void restore_test_logging(void) {
-  // Restore normal log level after tests
-  log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(webcam);
 
 // Mock webcam platform functions
 static int mock_webcam_platform_init_calls = 0;

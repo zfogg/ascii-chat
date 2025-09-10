@@ -51,8 +51,8 @@ jobs:
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
-        # Use debug-coverage for debug builds to enable coverage
-        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'debug-coverage' || matrix.build_type }}
+        # Use coverage for debug builds to enable coverage
+        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'coverage' || matrix.build_type }}
         echo "Building with target: ${BUILD_TARGET}"
         make -j CSTD=c2x ${BUILD_TARGET}
         make -j CSTD=c2x tests-${BUILD_TARGET}
@@ -63,25 +63,28 @@ jobs:
 
     - name: Run unit tests with JUnit XML generation
       run: |
-        # Use debug-coverage for debug builds
-        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'debug-coverage' || matrix.build_type }}
+        # Use coverage for debug builds
+        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'coverage' || matrix.build_type }}
         echo "Running tests with build type: ${BUILD_TARGET}"
         echo "Looking for test executables:"
         find . -name "test_unit_*" -type f 2>/dev/null | head -10
-        ./tests/scripts/run_tests.sh -t unit -b ${BUILD_TARGET} -J
+        # Save logs with descriptive filename
+        LOG_FILE="unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log"
+        ./tests/scripts/run_tests.sh -t unit -b ${BUILD_TARGET} -J --log-file="${LOG_FILE}"
         echo "Unit tests completed successfully"
+        echo "Test logs saved to: ${LOG_FILE}"
 
     - name: Generate coverage report (debug builds only)
       if: always() && matrix.build_type == 'debug'
       run: |
-        # Generate coverage files for codecov (debug-coverage builds create .gcda files)
+        # Generate coverage files for codecov (coverage builds create .gcda files)
         echo "Looking for .gcda files to generate coverage from..."
         find . -name "*.gcda" -type f | head -10
-        
+
         if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
           echo "Found .gcda files, generating coverage..."
           find . -name "*.gcda" -exec gcov {} \;
-          
+
           # Show what coverage files were generated
           echo "Generated coverage files:"
           find . -name "*.gcov" -type f | head -20
@@ -108,8 +111,9 @@ jobs:
       with:
         name: test-results-${{ runner.os }}-${{ matrix.build_type }}
         path: |
-          bin/test_*
-          *.log
+          junit.xml
+          unit-tests-*.log
+          tests.log
         retention-days: 7
 
   integration-tests:
@@ -137,11 +141,13 @@ jobs:
 
     - name: Build and run integration tests with coverage
       run: |
-        echo "Running integration tests with release build and coverage..."
-        make -j CSTD=c2x release-coverage
-        make -j CSTD=c2x tests-release-coverage
-        ./tests/scripts/run_tests.sh -t integration -b release-coverage -J
+        echo "Running integration tests with coverage build..."
+        make -j CSTD=c2x coverage
+        make -j CSTD=c2x tests-coverage
+        LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
+        ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
         echo "Integration tests completed successfully"
+        echo "Test logs saved to: ${LOG_FILE}"
 
     - name: Generate coverage report
       if: always()
@@ -168,8 +174,9 @@ jobs:
       with:
         name: integration-test-results-${{ runner.os }}
         path: |
-          bin/test_integration_*
-          *.log
+          junit.xml
+          integration-tests-*.log
+          tests.log
         retention-days: 7
 
   performance-tests:
@@ -188,34 +195,36 @@ jobs:
       uses: ./.github/actions/install-deps
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr' || 'gcovr' }}
 
-    - name: Build and run performance tests with coverage
+    - name: Build and run performance tests
       run: |
-        # Build and run performance tests with coverage and JUnit XML output
-        make -j CSTD=c2x debug-coverage
-        make -j CSTD=c2x tests-debug-coverage
-        ./tests/scripts/run_tests.sh -t performance -b debug-coverage -J
+        # Build and run performance tests with release mode for accurate performance
+        make -j CSTD=c2x release
+        make -j CSTD=c2x tests-release
+        LOG_FILE="performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log"
+        ./tests/scripts/run_tests.sh -t performance -b release -J --log-file="${LOG_FILE}"
         echo "Performance tests completed successfully"
+        echo "Test logs saved to: ${LOG_FILE}"
 
-    - name: Generate coverage report
-      if: always()
-      run: |
-        # Generate coverage files for codecov
-        find . -name "*.gcda" -exec gcov {} \;
-        echo "Generated coverage files:"
-        find . -name "*.gcov" -type f | head -20
-
-    - name: Publish Test Results and Coverage
+    - name: Publish Test Results
       uses: ./.github/actions/publish-test-results
       if: always()
       with:
         test-type: performance
         os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
         junit-file: junit.xml
-        coverage-files: './*.gcov'
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'true'
+        upload-coverage: 'false'
+
+    - name: Upload performance test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-test-results-${{ runner.os }}
+        path: |
+          junit.xml
+          performance-tests-*.log
+          tests.log
+        retention-days: 7
 
   memory-tests:
     runs-on: ubuntu-latest
@@ -238,17 +247,33 @@ jobs:
     - name: Run tests with AddressSanitizer
       run: |
         # Run tests with AddressSanitizer to detect memory issues
-        ./tests/scripts/run_tests.sh -b sanitize
+        LOG_FILE="sanitizer-tests.log"
+        ./tests/scripts/run_tests.sh -b sanitize --log-file="${LOG_FILE}"
         echo "AddressSanitizer tests completed successfully"
+        echo "Test logs saved to: ${LOG_FILE}"
 
     - name: Memory leak detection
       run: |
         # Additional memory leak checks
         echo "Running memory leak detection..."
+
         # Test basic binary functionality for leaks
-        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server || true
-        timeout 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server || true
+        [ $? -eq 124 ] && echo "Server timed out" || false
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client || true
+        [ $? -eq 124 ] && echo "Client timed out" || false
+
         echo "Memory leak detection completed"
+
+    - name: Upload memory test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: memory-test-results
+        path: |
+          sanitizer-tests.log
+          tests.log
+        retention-days: 7
 
   functional-tests:
     runs-on: ${{ matrix.os }}
