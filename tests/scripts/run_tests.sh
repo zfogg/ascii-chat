@@ -681,30 +681,77 @@ function start_test_in_background() {
 
 # Function to run tests in parallel with proper queue management
 function run_tests_in_parallel() {
-  local test_executables=("$@")
-  local build_type="$1"
-  local jobs="$2"
-  local generate_junit="$3"
-  local log_file="$4"
-  local junit_file="$5"
-  local max_parallel_tests="$6"
-  local jobs_per_test="$7"
+  local build_type=""
+  local jobs=""
+  local generate_junit=""
+  local log_file=""
+  local junit_file=""
+  local max_parallel_tests=""
+  local jobs_per_test=""
+  local test_executables=()
 
-  # Remove the first 7 parameters (they were for the function signature)
-  shift 7
-  test_executables=("$@")
+  # Parse named arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --build-type)
+        build_type="$2"
+        shift 2
+        ;;
+      --jobs)
+        jobs="$2"
+        shift 2
+        ;;
+      --generate-junit)
+        generate_junit="$2"
+        shift 2
+        ;;
+      --log-file)
+        log_file="$2"
+        shift 2
+        ;;
+      --junit-file)
+        junit_file="$2"
+        shift 2
+        ;;
+      --max-parallel-tests)
+        max_parallel_tests="$2"
+        shift 2
+        ;;
+      --jobs-per-test)
+        jobs_per_test="$2"
+        shift 2
+        ;;
+      --test-executables)
+        shift
+        # Collect all remaining arguments as test executables
+        while [[ $# -gt 0 ]]; do
+          test_executables+=("$1")
+          shift
+        done
+        ;;
+      *)
+        # If it doesn't start with --, treat as test executable
+        test_executables+=("$1")
+        shift
+        ;;
+    esac
+  done
 
   local total_tests=${#test_executables[@]}
   local passed_tests=0
   local failed_tests=0
   local tests_that_started=0
   local tests_completed=0
+  local failed_test_details=()
+  local failed_test_details_file="/tmp/failed_tests_$$.txt"
+  >"$failed_test_details_file"  # Initialize empty file
 
   # No arrays needed for worker pool approach
 
   # Queue of tests waiting to run
   local test_queue=("${test_executables[@]}")
   local queue_index=0
+
 
   log_info "🚀 Running $total_tests tests in parallel (up to $max_parallel_tests concurrent tests, $jobs_per_test jobs each)"
 
@@ -765,6 +812,7 @@ function run_tests_in_parallel() {
       local test_junit=""
       local start_time=$(date +%s.%N)
 
+
       # Create separate JUnit file for this test if needed
       if [[ -n "$generate_junit" ]]; then
         test_junit="/tmp/junit_${test_name}_worker${worker_id}_$$.xml"
@@ -807,7 +855,8 @@ function run_tests_in_parallel() {
 
         # Show failure details for failed tests
         if [[ -n "$generate_junit" ]]; then
-          # In JUnit mode, just note that we need to show failure details later
+          # In JUnit mode, collect the test for later re-run to show failure details
+          echo "$test_executable" >> "$failed_test_details_file"
           echo "--- Failure details for $test_name ---" >&2
           echo "Test failed - failure details will be shown after all tests complete" >&2
           echo "--- End failure details ---" >&2
@@ -906,7 +955,36 @@ function run_tests_in_parallel() {
 
   # Clean up queue and lock files
   rm -f "/tmp/queue_index_$$.txt"
-  rm -f "/tmp/queue_lock_$$.txt"
+  # Read failed test details from file into array
+  if [[ -s "$failed_test_details_file" ]]; then
+    while IFS= read -r failed_test; do
+      failed_test_details+=("$failed_test")
+    done < "$failed_test_details_file"
+  fi
+
+  # Show failure details for failed tests if in JUnit mode
+  if [[ -n "$generate_junit" && ${#failed_test_details[@]} -gt 0 ]]; then
+    echo "" >&2
+    echo "==========================================" >&2
+    echo "🔍 FAILURE DETAILS" >&2
+    echo "==========================================" >&2
+
+    for failed_test in "${failed_test_details[@]}"; do
+      local test_name=$(basename "$failed_test")
+      echo "" >&2
+      echo "--- Failure details for $test_name ---" >&2
+
+      # Re-run the test without JUnit mode to get the actual failure output
+      "$failed_test" --jobs "$jobs_per_test" 2>&1 | head -50 >&2
+
+      echo "--- End failure details ---" >&2
+    done
+
+    echo "" >&2
+    echo "==========================================" >&2
+  fi
+
+  rm -f "/tmp/queue_lock_$$.txt" "$failed_test_details_file"
 
   # Return results to stdout (this is what gets captured)
   echo "$passed_tests $failed_tests $tests_that_started"
@@ -1601,13 +1679,149 @@ function main() {
     categories_to_run=("$TEST_TYPE")
   fi
 
-  # Run tests
-  local overall_failed=0
+  # Determine all tests to run upfront
+  local all_tests_to_run=()
   local overall_start_time=$(date +%s.%N)
 
   if [[ -n "$SINGLE_TEST" ]]; then
-    # Initialize JUnit XML for single test
-    if [[ -n "$GENERATE_JUNIT" ]]; then
+    # Single test mode - construct full path
+    all_tests_to_run=("$PROJECT_ROOT/bin/$SINGLE_TEST")
+  elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
+    # Multiple specific tests mode - construct full paths
+    for test in "${MULTIPLE_TESTS[@]}"; do
+      all_tests_to_run+=("$PROJECT_ROOT/bin/$test")
+    done
+  else
+    # Category mode - determine all categories to run
+    local categories_to_run=()
+    if [[ ${#TEST_CATEGORIES[@]} -eq 0 ]]; then
+      # No categories specified, run all
+      categories_to_run=("unit" "integration" "performance")
+    else
+      # Use specified categories
+      categories_to_run=("${TEST_CATEGORIES[@]}")
+    fi
+
+    # Get all test executables from all categories
+    for category in "${categories_to_run[@]}"; do
+      local category_tests=($(get_test_executables "$category" "$BUILD_TYPE"))
+      if [[ ${#category_tests[@]} -gt 0 ]]; then
+        all_tests_to_run+=("${category_tests[@]}")
+      fi
+    done
+  fi
+
+  # Now we have all tests - build and run them
+  if [[ ${#all_tests_to_run[@]} -eq 0 ]]; then
+    log_error "No tests found to run!"
+    exit 1
+  fi
+
+  log_info "🎯 Running ${#all_tests_to_run[@]} test(s)"
+
+  # Initialize JUnit XML
+  if [[ -n "$GENERATE_JUNIT" ]]; then
+    echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
+    echo "<testsuites name=\"ASCII-Chat Tests\">" >>"$junit_file"
+  fi
+
+  # Build all test executables
+  local test_targets=()
+  for test_executable in "${all_tests_to_run[@]}"; do
+    local test_name=$(basename "$test_executable")
+    test_targets+=("bin/$test_name")
+  done
+
+  log_info "🔨 Building ${#test_targets[@]} test executables..."
+  local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
+  if [[ "$BUILD_TYPE" != "default" ]]; then
+    make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
+  fi
+  make_cmd="$make_cmd ${test_targets[*]}"
+
+  # Run make and capture output
+  local make_output
+  make_output=$(eval "$make_cmd" 2>&1)
+  local make_exit_code=$?
+
+  # Show non-"up to date" output
+  echo "$make_output" | grep -v "is up to date" || true
+
+  if [[ $make_exit_code -ne 0 ]]; then
+    log_error "Make command failed with exit code $make_exit_code"
+    exit 1
+  fi
+
+  # Run all tests using the existing parallel execution function
+  local total_cores=$(detect_cpu_cores)
+  local num_tests=${#all_tests_to_run[@]}
+  local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
+  local max_parallel_tests=${allocation[0]}
+  local jobs_per_test=${allocation[1]}
+
+  local results=$(run_tests_in_parallel --build-type "$BUILD_TYPE" --jobs "$jobs" --generate-junit "$GENERATE_JUNIT" --log-file "$log_file" --junit-file "$junit_file" --max-parallel-tests "$max_parallel_tests" --jobs-per-test "$jobs_per_test" --test-executables "${all_tests_to_run[@]}")
+  local passed_tests=$(echo "$results" | cut -d' ' -f1)
+  local failed_tests=$(echo "$results" | cut -d' ' -f2)
+  local tests_that_started=$(echo "$results" | cut -d' ' -f3)
+
+  # Close JUnit XML
+  if [[ -n "$GENERATE_JUNIT" ]]; then
+    echo '</testsuites>' >>"$junit_file"
+
+    # Validate JUnit XML
+    local xml_errors
+    xml_errors=$(xmllint --noout "$junit_file" 2>&1)
+    if [[ $? -ne 0 ]]; then
+      log_error "❌ JUnit XML validation failed!"
+      log_error "Invalid XML in: $junit_file"
+      log_error "XML errors: $xml_errors"
+      log_error "XML content:"
+      cat "$junit_file" >&2
+      overall_failed=1
+    else
+      log_info "✅ JUnit XML validation passed"
+    fi
+  fi
+
+  # Report results
+  echo ""
+  echo "=========================================="
+  if [[ $failed_tests -eq 0 ]]; then
+    echo "✅ Tests completed: $passed_tests passed, $failed_tests failed"
+    overall_failed=0
+  else
+    echo "❌ Tests completed: $passed_tests passed, $failed_tests failed"
+    overall_failed=1
+  fi
+  echo "=========================================="
+
+  # Final exit logic
+  local overall_end_time=$(date +%s.%N)
+  local total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
+
+  echo ""
+  echo "=========================================="
+  echo "⏱️ TOTAL EXECUTION TIME: ${total_duration}s"
+  echo "=========================================="
+
+  if [[ $overall_failed -eq 0 ]]; then
+    log_success "All tests completed successfully! 🎉"
+    log_info "📋 View test logs: cat $log_file"
+  else
+    log_error "Some tests failed!"
+    log_info "View test logs: cat $log_file 📋"
+    exit 1
+  fi
+}
+
+# =============================================================================
+# Script Entry Point
+# =============================================================================
+
+# Only run main if script is executed directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
       echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
       echo "<testsuites name=\"ASCII-Chat Single Test\">" >>"$junit_file"
     fi
@@ -1621,10 +1835,15 @@ function main() {
     if [[ -n "$GENERATE_JUNIT" ]]; then
       echo '</testsuites>' >>"$junit_file"
 
-      # Validate JUnit XML
-      if ! xmllint --noout "$junit_file" 2>/dev/null; then
+      # Validate JUnit XML for well-formedness
+      local xml_errors
+      xml_errors=$(xmllint --noout "$junit_file" 2>&1)
+      if [[ $? -ne 0 ]]; then
         log_error "❌ JUnit XML validation failed!"
         log_error "Invalid XML in: $junit_file"
+        log_error "XML errors: $xml_errors"
+        log_error "XML content:"
+        cat "$junit_file" >&2
         overall_failed=1
       else
         log_info "✅ JUnit XML validation passed"
@@ -1769,10 +1988,15 @@ function main() {
       sleep 0.1
       echo '</testsuites>' >>"$junit_file"
 
-      # Validate JUnit XML
-      if ! xmllint --noout "$junit_file" 2>/dev/null; then
+      # Validate JUnit XML for well-formedness
+      local xml_errors
+      xml_errors=$(xmllint --noout "$junit_file" 2>&1)
+      if [[ $? -ne 0 ]]; then
         log_error "❌ JUnit XML validation failed!"
         log_error "Invalid XML in: $junit_file"
+        log_error "XML errors: $xml_errors"
+        log_error "XML content:"
+        cat "$junit_file" >&2
         overall_failed=1
       else
         log_info "✅ JUnit XML validation passed"
