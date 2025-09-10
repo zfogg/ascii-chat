@@ -91,14 +91,14 @@ jobs:
 
           # Copy all .gcov files to root directory with directory structure preserved
           echo "Copying .gcov files to root directory with preserved paths..."
-          gcov_count=0
           find . -name "*.gcov" -type f | while read gcov_file; do
             # Create a filename that preserves the directory structure
             # Replace / with _ and remove leading ./ if present
             safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
-            cp "$gcov_file" "./$safe_name"
-            echo "Copied $gcov_file -> $safe_name"
-            ((gcov_count++))
+            if [ ! "$safe_name" = "$gcov_file" ]; then
+              cp "$gcov_file" "./$safe_name"
+              echo "Copied $gcov_file -> $safe_name"
+            fi
           done
 
           # Validate that .gcov files were actually generated and copied
@@ -185,14 +185,14 @@ jobs:
 
         # Copy all .gcov files to root directory with directory structure preserved
         echo "Copying .gcov files to root directory with preserved paths..."
-        gcov_count=0
         find . -name "*.gcov" -type f | while read gcov_file; do
           # Create a filename that preserves the directory structure
           # Replace / with _ and remove leading ./ if present
           safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
-          cp "$gcov_file" "./$safe_name"
-          echo "Copied $gcov_file -> $safe_name"
-          ((gcov_count++))
+          if [ ! "$safe_name" = "$gcov_file" ]; then
+            cp "$gcov_file" "./$safe_name"
+            echo "Copied $gcov_file -> $safe_name"
+          fi
         done
 
         # Validate that .gcov files were actually generated and copied
