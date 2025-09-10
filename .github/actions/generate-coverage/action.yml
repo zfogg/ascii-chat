@@ -79,7 +79,7 @@ runs:
         processed_count=0
         failed_count=0
 
-        for gcda_file in $(find ./build/coverage -name "*.gcda" -type f); do
+        for gcda_file in $(find . -name "*.gcda" -type f); do
             gcda_dir=$(dirname "$gcda_file")
             base_name=$(basename "$gcda_file" .gcda)
 
@@ -143,18 +143,18 @@ runs:
         fi
 
 
-    - name: Upload Coverage to Codecov
+    - name: Upload Coverage and JUnit to Codecov
       if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        echo "Uploading coverage to Codecov..."
+        echo "Uploading coverage and JUnit to Codecov..."
 
         # Check if .gcov files exist
         gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
         gcov_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
 
         if [ $gcov_count -gt 0 ]; then
-          echo "✅ Uploading $gcov_count coverage files"
+          echo "✅ Uploading $gcov_count coverage files and JUnit XML"
           echo "Repository: ${{ github.repository }}"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.ref_name }}"
@@ -169,45 +169,26 @@ runs:
           codecov_cmd="$codecov_cmd --branch=\"${{ github.ref_name }}\""
           codecov_cmd="$codecov_cmd --pr=\"${{ github.event.pull_request.number }}\""
 
-          # Add each file as a separate --file argument
+          # Add each .gcov file as a separate --file argument
           for file in $gcov_files; do
             codecov_cmd="$codecov_cmd --file=\"$file\""
           done
+
+          # Add JUnit XML file if it exists
+          if [ -f "${{ inputs.junit-file }}" ]; then
+            codecov_cmd="$codecov_cmd --file=\"${{ inputs.junit-file }}\""
+            echo "✅ Including JUnit XML in upload"
+          else
+            echo "⚠️ JUnit XML file not found, uploading coverage only"
+          fi
 
           # Add other arguments
           codecov_cmd="$codecov_cmd --flag=\"${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}\""
           codecov_cmd="$codecov_cmd --name=\"${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}\""
           codecov_cmd="$codecov_cmd --fail-on-error"
 
+          echo "Running codecov command: $codecov_cmd"
           eval $codecov_cmd
         else
           echo "⚠️ No .gcov files found, skipping upload"
-        fi
-
-    - name: Upload JUnit XML to Codecov
-      if: ${{ inputs.upload-coverage == 'true' }}
-      shell: bash
-      run: |
-        echo "Uploading JUnit XML to Codecov..."
-
-        if [ -f "${{ inputs.junit-file }}" ]; then
-          echo "✅ Uploading JUnit XML file"
-          echo "Repository: ${{ github.repository }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "PR: ${{ github.event.pull_request.number }}"
-
-          # Upload JUnit XML using codecov CLI
-          codecov do-upload --token="${{ inputs.codecov-token }}" \
-                  --slug="${{ github.repository }}" \
-                  --sha="${{ github.sha }}" \
-                  --branch="${{ github.ref_name }}" \
-                  --pr="${{ github.event.pull_request.number }}" \
-                  --file="${{ inputs.junit-file }}" \
-                  --report-type=test_results \
-                  --flag="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
-                  --name="${{ inputs.test-type == 'unit' && format('ascii-chat-test-results-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-test-results-{0}', inputs.os-name) || format('ascii-chat-performance-test-results-{0}', inputs.os-name) }}" \
-                  --fail-on-error
-        else
-          echo "⚠️ JUnit XML file not found, skipping upload"
         fi
