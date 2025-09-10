@@ -29,10 +29,9 @@ inputs:
 
 runs:
   using: 'composite'
-  if: ${{ os == 'ubuntu' }}
   steps:
     - name: Install codecov CLI on Ubuntu
-      if: ${{ inputs.upload-coverage == 'true' }}
+      if: ${{ inputs.upload-coverage == 'true' && runner.os == 'Linux' }}
       shell: bash
       run: |
         echo "📦 Installing codecov CLI..."
@@ -120,7 +119,7 @@ runs:
     # Check if coverage files exist before uploading
     - name: Check Coverage Files
       id: check-coverage
-      if: inputs.upload-coverage == 'true'
+      if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
         echo "🔍 Checking for coverage files..."
