@@ -240,7 +240,7 @@ Test(webcam, read_success) {
   mock_webcam_platform_read_result = test_image;
 
   // Set up global options
-  opt_webcam_flip = 0;
+  opt_webcam_flip = false;
   last_image_width = 0;
   last_image_height = 0;
 
@@ -315,7 +315,7 @@ Test(webcam, read_with_horizontal_flip) {
   }
 
   mock_webcam_platform_read_result = test_image;
-  opt_webcam_flip = 1;
+  opt_webcam_flip = true;
 
   image_t *result = webcam_read();
 
@@ -359,7 +359,7 @@ Test(webcam, read_without_horizontal_flip) {
   }
 
   mock_webcam_platform_read_result = test_image;
-  opt_webcam_flip = 0;
+  opt_webcam_flip = false;
 
   image_t *result = webcam_read();
 
@@ -395,7 +395,7 @@ Test(webcam, read_multiple_calls) {
     cr_assert_not_null(test_images[i]);
   }
 
-  opt_webcam_flip = 0;
+  opt_webcam_flip = false;
 
   // Read multiple frames
   for (int i = 0; i < 5; i++) {
@@ -490,7 +490,7 @@ Test(webcam, init_read_cleanup_cycle) {
     image_t *test_image = create_test_image(320, 240);
     cr_assert_not_null(test_image);
     mock_webcam_platform_read_result = test_image;
-    opt_webcam_flip = 0;
+    opt_webcam_flip = false;
 
     image_t *read_result = webcam_read();
     cr_assert_not_null(read_result);
@@ -530,7 +530,7 @@ Test(webcam, read_with_odd_width_flip) {
   }
 
   mock_webcam_platform_read_result = test_image;
-  opt_webcam_flip = 1;
+  opt_webcam_flip = true;
 
   image_t *result = webcam_read();
 
@@ -568,7 +568,7 @@ Test(webcam, read_with_single_pixel_width) {
   test_image->pixels[1].r = 200;
 
   mock_webcam_platform_read_result = test_image;
-  opt_webcam_flip = 1;
+  opt_webcam_flip = true;
 
   image_t *result = webcam_read();
 

@@ -155,36 +155,49 @@ Test(terminal_detect, detect_truecolor_support) {
   char *original_colorterm = getenv("COLORTERM");
   char *original_term = getenv("TERM");
 
+  printf("Original COLORTERM: %s\n", original_colorterm ? original_colorterm : "NULL");
+  printf("Original TERM: %s\n", original_term ? original_term : "NULL");
+
   // Test with COLORTERM=truecolor
   setenv("COLORTERM", "truecolor", 1);
+  printf("Set COLORTERM=truecolor\n");
   bool result = detect_truecolor_support();
-  // Note: This should work but may vary by environment
-  // cr_assert(result);
+  printf("detect_truecolor_support() returned: %s\n", result ? "true" : "false");
+  cr_assert(result, "COLORTERM=truecolor should enable truecolor support");
 
   // Test with COLORTERM=24bit
   setenv("COLORTERM", "24bit", 1);
+  printf("Set COLORTERM=24bit\n");
   result = detect_truecolor_support();
-  // Note: This should work but may vary by environment
-  // cr_assert(result);
+  printf("detect_truecolor_support() returned: %s\n", result ? "true" : "false");
+  cr_assert(result, "COLORTERM=24bit should enable truecolor support");
 
   // Test with known truecolor terminals
   unsetenv("COLORTERM");
   setenv("TERM", "iterm2", 1);
+  printf("Set TERM=iterm2, unset COLORTERM\n");
   result = detect_truecolor_support();
-  // May or may not be true depending on terminfo
+  printf("detect_truecolor_support() returned: %s\n", result ? "true" : "false");
+  // May or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
 
   setenv("TERM", "konsole", 1);
+  printf("Set TERM=konsole\n");
   result = detect_truecolor_support();
-  // May or may not be true depending on terminfo
+  printf("detect_truecolor_support() returned: %s\n", result ? "true" : "false");
+  // May or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
 
   // Test with non-truecolor terminal
   setenv("TERM", "dumb", 1);
   unsetenv("COLORTERM"); // Make sure COLORTERM is not set
+  printf("Set TERM=dumb, unset COLORTERM\n");
   result = detect_truecolor_support();
-  // Note: dumb terminal should not support truecolor, but implementation may vary
-  // cr_assert_not(result);
+  printf("detect_truecolor_support() returned: %s\n", result ? "true" : "false");
+  cr_assert_not(result, "dumb terminal should not support truecolor");
 
   // Restore original environment
+  printf("Restoring original environment\n");
   if (original_colorterm) {
     setenv("COLORTERM", original_colorterm, 1);
   } else {
@@ -196,9 +209,6 @@ Test(terminal_detect, detect_truecolor_support) {
   } else {
     unsetenv("TERM");
   }
-
-  // Basic assertion to ensure test runs
-  cr_assert(true);
 }
 
 Test(terminal_detect, detect_256color_support) {

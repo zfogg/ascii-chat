@@ -69,7 +69,7 @@ image_t *webcam_read(void) {
   }
 
   // Apply horizontal flip if requested
-  if (opt_webcam_flip == 1) {
+  if (opt_webcam_flip) {
     // Flip the image horizontally
     for (int y = 0; y < frame->h; y++) {
       for (int x = 0; x < frame->w / 2; x++) {

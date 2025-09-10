@@ -142,8 +142,19 @@ int get_terminfo_color_count(void) {
   // Check if TERM is set before calling setupterm to avoid ncurses error message
   char *term_env = getenv("TERM");
   if (term_env) {
+    // Suppress stderr during setupterm to avoid "unknown terminal type" messages
+    int stderr_fd = dup(STDERR_FILENO);
+    int dev_null = open("/dev/null", O_WRONLY);
+    dup2(dev_null, STDERR_FILENO);
+
     // Try to initialize terminfo
     int result = setupterm(NULL, STDOUT_FILENO, NULL);
+
+    // Restore stderr
+    dup2(stderr_fd, STDERR_FILENO);
+    close(stderr_fd);
+    close(dev_null);
+
     if (result == 0) { // setupterm returns 0 on success
       colors = tigetnum("colors");
       // log_debug("Terminfo colors: %d", colors);
@@ -369,21 +380,21 @@ void test_terminal_output_modes(void) {
   printf("Testing terminal output modes:\n");
 
   // Test basic ANSI colors (16-color)
-  printf("\n16-color test:\n");
+  printf("  16-color: ");
   for (int i = 30; i <= 37; i++) {
     printf("\033[%dm█\033[0m", i);
   }
   printf("\n");
 
   // Test 256-color mode
-  printf("\n256-color test:\n");
+  printf("  256-color: ");
   for (int i = 0; i < 16; i++) {
     printf("\033[38;5;%dm█\033[0m", i);
   }
   printf("\n");
 
   // Test truecolor mode
-  printf("\nTruecolor test:\n");
+  printf("  Truecolor: ");
   for (int i = 0; i < 16; i++) {
     int r = (i * 255) / 15;
     printf("\033[38;2;%d;0;0m█\033[0m", r);
@@ -391,10 +402,8 @@ void test_terminal_output_modes(void) {
   printf("\n");
 
   // Test Unicode characters
-  printf("\nUnicode test: ");
+  printf("  Unicode: ");
   printf("░▒▓\n");
-
-  printf("\nTest complete.\n");
 }
 
 // Apply color mode and background mode overrides to detected capabilities

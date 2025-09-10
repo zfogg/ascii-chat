@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -303,7 +304,7 @@ static void shutdown_client() {
   }
 
   // Clean up webcam
-  ascii_write_destroy(tty_info_g.fd);
+  ascii_write_destroy(tty_info_g.fd, true);
 
   log_info("Client shutdown complete");
   log_destroy(); // Destroy logging last
@@ -1052,7 +1053,11 @@ int main(int argc, char *argv[]) {
   atexit(shutdown_client);
 
   char *address = opt_address;
-  int port = strtoint(opt_port);
+  int port = strtoint_safe(opt_port);
+  if (port == INT_MIN) {
+    log_error("Invalid port configuration: %s", opt_port);
+    exit(EXIT_FAILURE);
+  }
 
   struct sockaddr_in serv_addr;
 
@@ -1066,7 +1071,7 @@ int main(int argc, char *argv[]) {
   signal(SIGPIPE, SIG_IGN);
 
   // Initialize ASCII output for this connection
-  ascii_write_init(tty_info_g.fd);
+  ascii_write_init(tty_info_g.fd, false);
 
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
