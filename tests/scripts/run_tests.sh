@@ -23,29 +23,42 @@ if [[ "${BASH_VERSINFO[0]}" -gt 4 ]] || ([[ "${BASH_VERSINFO[0]}" -eq 4 ]] && [[
   WAIT_N_SUPPORTED=1
 fi
 
+# Print cancellation message
+function print_cancellation_message() {
+  echo ""
+  echo "=========================================="
+  echo "❌ TESTS CANCELLED BY USER (Ctrl-C)"
+  echo "=========================================="
+}
+
 # Cleanup function for Ctrl-C
 function handle_interrupt() {
+  # Set interrupted flag
+  INTERRUPTED=1
+
   # Disable the trap immediately to prevent re-entry
   trap - INT TERM HUP
-  
+
   # Print cancellation message to the terminal directly (before redirecting output)
-  echo "" >/dev/tty
-  echo "" >/dev/tty
-  echo "==========================================" >/dev/tty
-  echo "❌ TESTS CANCELLED BY USER (Ctrl-C)" >/dev/tty
-  echo "==========================================" >/dev/tty
-  
+  {
+    echo ""
+    echo ""
+    echo "=========================================="
+    echo "❌ TESTS CANCELLED BY USER (Ctrl-C)"
+    echo "=========================================="
+  } >/dev/tty
+
   # Redirect all further output to /dev/null to stop printing
   exec 1>/dev/null 2>&1
-  
+
   # Kill all child processes immediately without waiting
   # Use process group kill for instant termination
   kill -KILL -- -$$ 2>/dev/null || true
-  
+
   # Also kill direct children and background jobs
   pkill -KILL -P $$ 2>/dev/null || true
   jobs -p | xargs -r kill -KILL 2>/dev/null || true
-  
+
   # Exit immediately
   exit 130
 }
@@ -83,7 +96,33 @@ NO_PARALLEL=""
 TEST_CATEGORIES=("unit" "integration" "performance")
 
 # =============================================================================
-# Helper Functions
+# Logging Functions
+# =============================================================================
+
+function log_info() {
+  echo "ℹ️ [INFO] $*" >&2
+}
+
+function log_error() {
+  echo "❌ [ERROR] $*" >&2
+}
+
+function log_success() {
+  echo "✅ [SUCCESS] $*" >&2
+}
+
+function log_warning() {
+  echo "⚠️ [WARNING] $*" >&2
+}
+
+function log_verbose() {
+  if [[ -n "$VERBOSE" ]]; then
+    echo "🔍 [VERBOSE] $*" >&2
+  fi
+}
+
+# =============================================================================
+# Help and Documentation
 # =============================================================================
 
 function show_help() {
@@ -146,27 +185,9 @@ TEST TYPES:
 EOF
 }
 
-function log_info() {
-  echo "ℹ️ [INFO] $*" >&2
-}
-
-function log_error() {
-  echo "❌ [ERROR] $*" >&2
-}
-
-function log_success() {
-  echo "✅ [SUCCESS] $*" >&2
-}
-
-function log_warning() {
-  echo "⚠️ [WARNING] $*" >&2
-}
-
-function log_verbose() {
-  if [[ -n "$VERBOSE" ]]; then
-    echo "🔍 [VERBOSE] $*" >&2
-  fi
-}
+# =============================================================================
+# System and Build Utilities
+# =============================================================================
 
 # Wrapper for make command with optional grc colorization
 function colored_make() {
@@ -196,6 +217,10 @@ function detect_cpu_cores() {
     ;;
   esac
 }
+
+# =============================================================================
+# Test Discovery and File Management
+# =============================================================================
 
 # Get test executables for a specific category
 function get_test_executables() {
@@ -272,6 +297,10 @@ function ensure_tests_built() {
   esac
 }
 
+# =============================================================================
+# Test Execution Functions
+# =============================================================================
+
 function clean_verbose_test_output() {
   tail -n+2 | grep --color=always -v -E '\[.*SKIP.*\]' | grep --color=always -v -E '\[.*RUN.*\]'
 }
@@ -284,6 +313,7 @@ function exec_test_executable() {
   local junit_file=""
   local filter=""
   local xml_file=""
+  local background_mode=""
 
   # Parse flags
   while [[ $# -gt 0 ]]; do
@@ -316,6 +346,10 @@ function exec_test_executable() {
         filter="$2"
         shift 2
         ;;
+      --background)
+        background_mode="1"
+        shift
+        ;;
       *)
         echo "Unknown option: $1" >&2
         return 1
@@ -347,36 +381,54 @@ function exec_test_executable() {
     filter_flag="--filter=$filter"
   fi
 
-  # Run the test with TESTING=1 environment variable
-  local test_exit_code
-  
   # Check for interrupt before starting
   if [[ $INTERRUPTED -eq 1 ]]; then
     return 130
   fi
-  
-  if [[ -n "$log_file" ]]; then
-    # Run test in foreground for proper signal handling
-    env TESTING=1 "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag 2>&1 | tee -a "$log_file"
-    test_exit_code=${PIPESTATUS[0]}
+
+  if [[ -n "$background_mode" ]]; then
+    # Background mode: run the test and return immediately
+    # The calling function will handle PID tracking and result collection
+    if [[ -n "$log_file" ]]; then
+      # Run test and append to log file without tee to avoid pipe issues
+      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag >>"$log_file" 2>&1 &
+    else
+      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag 2>&1 &
+    fi
+    # Return the PID of the background process
+    echo $!
+    return 0
   else
-    env TESTING=1 "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag 2>&1
-    test_exit_code=$?
-  fi
-  
-  # If test was killed by signal, return immediately
-  if [[ $test_exit_code -eq 130 ]] || [[ $test_exit_code -gt 128 ]]; then
-    INTERRUPTED=1
+    # Synchronous mode: run the test and wait for completion
+    local test_exit_code
+
+    if [[ -n "$log_file" ]]; then
+      # Run test and append to log file without tee to avoid pipe issues
+      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag >>"$log_file" 2>&1
+      test_exit_code=$?
+    else
+      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag 2>&1
+      test_exit_code=$?
+    fi
+
+    # If test was killed by signal, return immediately
+    if [[ $test_exit_code -eq 130 ]] || [[ $test_exit_code -gt 128 ]]; then
+      INTERRUPTED=1
+      return $test_exit_code
+    fi
+
+    # Check if we were interrupted
+    if [[ $INTERRUPTED -eq 1 ]]; then
+      return 130
+    fi
+
     return $test_exit_code
   fi
-  
-  # Check if we were interrupted
-  if [[ $INTERRUPTED -eq 1 ]]; then
-    return 130
-  fi
-  
-  return $test_exit_code
 }
+
+# =============================================================================
+# JUnit XML Generation Functions
+# =============================================================================
 
 # Generate JUnit XML for a test result
 function generate_junit_xml() {
@@ -574,6 +626,268 @@ function determine_test_failure() {
   fi
 }
 
+# =============================================================================
+# Process Control and Execution Functions
+# =============================================================================
+
+# Function to start a test in background
+function start_test_in_background() {
+  local test_executable=$1
+  local actual_jobs=$2
+  local generate_junit=$3
+  local test_log=$4
+  local test_junit=$5
+
+  # Build command line arguments for the test executable
+  local jobs_flag=""
+  if [[ -n "$actual_jobs" && "$actual_jobs" != "1" ]]; then
+    jobs_flag="--jobs=$actual_jobs"
+  fi
+
+  local verbose_flag=""
+  if [[ -n "$VERBOSE" ]]; then
+    verbose_flag="--verbose"
+  fi
+
+  local color_flag="--color=always"
+
+  # Build the command arguments array
+  local cmd_args=()
+  [[ -n "$jobs_flag" ]] && cmd_args+=("$jobs_flag")
+  [[ -n "$verbose_flag" ]] && cmd_args+=("$verbose_flag")
+  [[ -n "$color_flag" ]] && cmd_args+=("$color_flag")
+
+  # Run the test executable directly in background to maintain proper parent-child relationship
+  if [[ -n "$test_log" ]]; then
+    # Run test and append to log file
+    "$test_executable" "${cmd_args[@]}" >>"$test_log" 2>&1 &
+  else
+    "$test_executable" "${cmd_args[@]}" 2>&1 &
+  fi
+
+  local pid=$!
+  echo $pid  # Return the PID of the background process
+}
+
+# Function to run tests in parallel with proper queue management
+function run_tests_in_parallel() {
+  local test_executables=("$@")
+  local build_type="$1"
+  local jobs="$2"
+  local generate_junit="$3"
+  local log_file="$4"
+  local junit_file="$5"
+  local max_parallel_tests="$6"
+  local jobs_per_test="$7"
+
+  # Remove the first 7 parameters (they were for the function signature)
+  shift 7
+  test_executables=("$@")
+
+  local total_tests=${#test_executables[@]}
+  local passed_tests=0
+  local failed_tests=0
+  local tests_that_started=0
+  local tests_completed=0
+
+  # Arrays to track running tests
+  local test_pids=()
+  local test_names=()
+  local test_logs=()
+  local test_junit_files=()
+  local test_start_times=()
+
+  # Queue of tests waiting to run
+  local test_queue=("${test_executables[@]}")
+  local queue_index=0
+
+  log_info "🚀 Running $total_tests tests in parallel (up to $max_parallel_tests concurrent tests, $jobs_per_test jobs each)"
+
+  # Function to start a test from the queue
+  start_next_test() {
+    if [[ $queue_index -lt ${#test_queue[@]} ]]; then
+      local test_executable="${test_queue[$queue_index]}"
+      local test_name="$(basename "$test_executable")"
+      local test_log="/tmp/test_${test_name}_$$.log"
+      local test_junit=""
+      local start_time=$(date +%s.%N)
+
+      # Create separate JUnit file for this test if needed
+      if [[ -n "$generate_junit" ]]; then
+        test_junit="/tmp/junit_${test_name}_$$.xml"
+      fi
+
+      # Print starting message
+      echo "🚀 [TEST] Starting: $test_name"
+      log_verbose "Starting test $((tests_that_started + 1)) of $total_tests: $test_name (parallel)"
+
+      # Start test in background
+      local test_pid=$(start_test_in_background "$test_executable" "$jobs_per_test" "$generate_junit" "$test_log" "$test_junit")
+      
+      # Add to tracking arrays
+      test_pids+=($test_pid)
+      test_names+=("$test_name")
+      test_logs+=("$test_log")
+      test_junit_files+=("$test_junit")
+      test_start_times+=("$start_time")
+
+      ((tests_that_started++))
+      ((queue_index++))
+      
+      return 0  # Successfully started a test
+    fi
+    return 1  # No more tests to start
+  }
+
+  # Function to process a completed test
+  process_completed_test() {
+    local idx=$1
+    local test_name="${test_names[$idx]}"
+    local test_log="${test_logs[$idx]}"
+    local test_junit="${test_junit_files[$idx]}"
+    local start_time="${test_start_times[$idx]}"
+
+    local end_time=$(date +%s.%N)
+    local duration=$(echo "$end_time - $start_time" | bc -l)
+    local formatted_time=$(format_duration "$duration")
+
+    if [[ $wait_exit_code -eq 0 ]]; then
+      ((passed_tests++))
+      echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)"
+    elif [[ $wait_exit_code -eq 130 ]] || [[ $wait_exit_code -gt 128 ]]; then
+      ((failed_tests++))
+      echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $test_name"
+    else
+      ((failed_tests++))
+      echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit code: $wait_exit_code, $formatted_time)"
+    fi
+
+    # Append test log to main log file
+    if [[ -f "$test_log" ]]; then
+      cat "$test_log" >> "$log_file"
+      rm -f "$test_log"
+    fi
+
+    # Append JUnit XML to main JUnit file
+    if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
+      sed -n '/<testsuite/,/<\/testsuite>/p' "$test_junit" >> "$junit_file" 2>/dev/null || true
+      rm -f "$test_junit"
+    fi
+
+    # Remove completed test from arrays
+    unset test_pids[$idx]
+    unset test_names[$idx]
+    unset test_logs[$idx]
+    unset test_junit_files[$idx]
+    unset test_start_times[$idx]
+
+    # Rebuild arrays to remove gaps
+    test_pids=(${test_pids[@]+"${test_pids[@]}"})
+    test_names=(${test_names[@]+"${test_names[@]}"})
+    test_logs=(${test_logs[@]+"${test_logs[@]}"})
+    test_junit_files=(${test_junit_files[@]+"${test_junit_files[@]}"})
+    test_start_times=(${test_start_times[@]+"${test_start_times[@]}"})
+
+    ((tests_completed++))
+  }
+
+  # Function to format duration nicely
+  format_duration() {
+    local duration=$1
+    # Convert to milliseconds
+    local ms=$(echo "$duration * 1000" | bc -l | cut -d. -f1)
+
+    if [[ $ms -lt 1000 ]]; then
+      echo "${ms}ms"
+    elif [[ $ms -lt 60000 ]]; then
+      # Show in seconds with 2 decimal places
+      printf "%.2fs" $(echo "scale=2; $duration" | bc -l)
+    else
+      # Show in minutes and seconds
+      local mins=$((ms / 60000))
+      local secs=$(echo "scale=2; ($ms % 60000) / 1000" | bc -l)
+      printf "%dm%.2fs" $mins $secs
+    fi
+  }
+
+  # Start initial batch of tests
+  for ((i=0; i<max_parallel_tests && i<total_tests; i++)); do
+    start_next_test
+  done
+
+  # Main execution loop
+  while [[ $tests_completed -lt $total_tests ]]; do
+    # Check for interrupt
+    if [[ $INTERRUPTED -eq 1 ]]; then
+      # Kill all remaining processes
+      if [[ ${#test_pids[@]} -gt 0 ]]; then
+        echo ""
+        echo "🛑 Killing remaining test processes..."
+        for pid in "${test_pids[@]}"; do
+          if [[ -n "$pid" ]]; then
+            pkill -KILL -P $pid 2>/dev/null || true
+            kill -KILL $pid 2>/dev/null || true
+          fi
+        done
+      fi
+      break
+    fi
+
+    # Check for completed processes
+    local completed_idx=""
+    local wait_exit_code=0
+
+    for idx in "${!test_pids[@]}"; do
+      if [[ -n "${test_pids[$idx]}" ]]; then
+        if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
+          # Process has completed
+          completed_idx=$idx
+          local completed_pid=${test_pids[$idx]}
+          
+          # Check if the process is still a child of this shell
+          if kill -0 $completed_pid 2>/dev/null; then
+            wait $completed_pid 2>/dev/null
+            wait_exit_code=$?
+          else
+            # Process is not a child, try to get exit code from log
+            wait_exit_code=0
+            if [[ -f "${test_logs[$idx]}" ]]; then
+              local log_content=$(cat "${test_logs[$idx]}" 2>/dev/null)
+              if [[ "$log_content" =~ "Synthesis: Tested:" ]]; then
+                wait_exit_code=0  # Test completed successfully
+              else
+                wait_exit_code=1  # Test failed
+              fi
+            fi
+          fi
+          break
+        fi
+      fi
+    done
+
+    # If no process completed yet, sleep briefly and continue
+    if [[ -z "$completed_idx" ]]; then
+      sleep 0.05
+      continue
+    fi
+
+    # Process the completed test
+    process_completed_test "$completed_idx"
+
+    # Start next test from queue if we have capacity
+    if [[ ${#test_pids[@]} -lt $max_parallel_tests ]]; then
+      start_next_test
+    fi
+  done
+
+  # Return results
+  echo "$passed_tests $failed_tests"
+}
+
+# =============================================================================
+# Core Test Running Functions
+# =============================================================================
+
 # Run a single test with proper error handling
 function run_single_test() {
   local test_executable=""
@@ -628,13 +942,13 @@ function run_single_test() {
   export CLICOLOR=1
   export CLICOLOR_FORCE=1
   export CRITERION_USE_COLORS=always
-  export TESTING=1
+  # export TESTING=1  # Disabled - causes Criterion to abort
 
   # Check if already interrupted before starting
   if [[ $INTERRUPTED -eq 1 ]]; then
     return 130
   fi
-  
+
   echo "🚀 [TEST] Starting: $test_name"
   local test_start_time=$(date +%s.%N)
 
@@ -725,7 +1039,7 @@ function run_test_category() {
   # First, determine what test executables should exist based on source files
   local test_names_to_build=()
   log_verbose "Looking for test source files in $PROJECT_ROOT/tests/$category/"
-  
+
   case "$category" in
     unit)
       # Find all unit test source files and convert to executable names
@@ -758,46 +1072,38 @@ function run_test_category() {
       done
       ;;
   esac
-  
+
   if [[ ${#test_names_to_build[@]} -eq 0 ]]; then
     log_error "No $category test source files found in $PROJECT_ROOT/tests/$category/"
     return 1
   fi
-  
+
   # Always build all tests for this category (make will skip if already built)
   log_info "🔨 Building ${#test_names_to_build[@]} $category test(s) in $build_type mode..."
-  
+
   # Add bin/ prefix to all test names
   local make_targets=()
   for test_name in "${test_names_to_build[@]}"; do
     make_targets+=("bin/$test_name")
   done
-  
+
   # Build all test executables at once with the specified build type
-  # Filter out "up to date" messages
-  if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done"; then
-    # Check if make actually succeeded (grep returns 1 if no lines match, which could mean all were filtered)
-    if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}" >/dev/null 2>&1; then
-      local make_exit_code=0
-    else
-      local make_exit_code=1
-    fi
-  else
-    local make_exit_code=${PIPESTATUS[0]}
-  fi
-  
+  # Filter out "up to date" messages and capture make's exit code via PIPESTATUS
+  colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done" || true
+  local make_exit_code=${PIPESTATUS[0]}
+
   if [[ $make_exit_code -ne 0 ]]; then
     log_error "Failed to build $category tests"
     return 1
   else
     log_success "Successfully built $category tests"
   fi
-  
+
   # Now get the list of built executables
   log_verbose "Getting list of test executables for category: $category, build_type: $build_type"
   local test_executables=($(get_test_executables "$category" "$build_type"))
   log_verbose "Found test executables array with ${#test_executables[@]} elements"
-  
+
   if [[ ${#test_executables[@]} -eq 0 ]]; then
     log_error "No $category tests found after building 😕"
     log_error "Contents of bin directory:"
@@ -825,7 +1131,7 @@ function run_test_category() {
   # Determine if we should run tests in parallel
   local actual_jobs="$jobs"
   local parallel_execution=0
-  
+
   # Enable parallel execution by default unless explicitly disabled
   if [[ -z "$NO_PARALLEL" ]]; then
     parallel_execution=1
@@ -839,19 +1145,114 @@ function run_test_category() {
   local test_logs=()
   local test_junit_files=()  # Track individual JUnit XML files
   local test_start_times=()  # Track test start times for duration calculation
-  
-  # Use jobs parameter for max parallel tests, default to CPU cores
-  local max_parallel_tests=$jobs
-  if [[ -z "$max_parallel_tests" ]] || [[ "$max_parallel_tests" -lt 1 ]]; then
-    max_parallel_tests=$(detect_cpu_cores)
+
+  # Smart resource allocation: start many tests in parallel with good core usage
+  local total_cores=$(detect_cpu_cores)
+  local num_tests=${#test_executables[@]}
+  local max_parallel_tests
+  local jobs_per_test
+
+  # If jobs explicitly specified, use that for parallel tests
+  if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
+    max_parallel_tests=$jobs
+    jobs_per_test=1  # Default to 1 if manually specified
+  else
+    # Automatic smart allocation - prioritize parallel test execution
+    if [[ $num_tests -eq 1 ]]; then
+      # Single test: use all cores for maximum parallelism within the test
+      max_parallel_tests=1
+      jobs_per_test=$total_cores
+    elif [[ $num_tests -le 6 ]]; then
+      # Few tests: run all in parallel, use 2-4 cores per test
+      max_parallel_tests=$num_tests
+      jobs_per_test=$((total_cores / num_tests))
+      [[ $jobs_per_test -lt 2 ]] && jobs_per_test=2
+      [[ $jobs_per_test -gt 4 ]] && jobs_per_test=4
+    else
+      # Many tests: run up to 8-12 tests in parallel, use 2-3 cores per test
+      max_parallel_tests=$((total_cores / 2))
+      [[ $max_parallel_tests -gt 12 ]] && max_parallel_tests=12
+      [[ $max_parallel_tests -gt $num_tests ]] && max_parallel_tests=$num_tests
+
+      jobs_per_test=$((total_cores / max_parallel_tests))
+      [[ $jobs_per_test -lt 2 ]] && jobs_per_test=2
+      [[ $jobs_per_test -gt 3 ]] && jobs_per_test=3
+    fi
   fi
+
+  # Update actual_jobs to reflect jobs per test
+  actual_jobs=$jobs_per_test
+
+  log_info "🎯 Resource allocation: $num_tests tests, $max_parallel_tests parallel, $jobs_per_test jobs each (${total_cores} cores total)"
+
+  # =============================================================================
+  # Parallel Test Array Management Functions
+  # =============================================================================
+
+  # Function to rebuild arrays after removing an element at index
+  # This removes gaps in arrays after unsetting an element
+  rebuild_test_arrays() {
+    test_pids=(${test_pids[@]+"${test_pids[@]}"})
+    test_names=(${test_names[@]+"${test_names[@]}"})
+    test_logs=(${test_logs[@]+"${test_logs[@]}"})
+    test_junit_files=(${test_junit_files[@]+"${test_junit_files[@]}"})
+    test_start_times=(${test_start_times[@]+"${test_start_times[@]}"})
+  }
+
+  # Function to find which PID from an array has completed
+  find_completed_pid_index() {
+    local completed_idx=""
+    for idx in "${!test_pids[@]}"; do
+      if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
+        completed_idx=$idx
+        break
+      fi
+    done
+    echo "$completed_idx"
+  }
+
+  # Function to remove a test from tracking arrays by index
+  remove_test_from_arrays() {
+    local idx=$1
+    unset test_pids[$idx]
+    unset test_names[$idx]
+    unset test_logs[$idx]
+    unset test_junit_files[$idx]
+    unset test_start_times[$idx]
+  }
+
+  # =============================================================================
+  # Process Control and Execution Functions
+  # =============================================================================
+
+  # Function to wait for any process to complete (handles wait -n availability)
+  wait_for_any_process() {
+    if [[ $WAIT_N_SUPPORTED -eq 1 ]]; then
+      wait -n
+      return $?
+    else
+      # Fallback - wait for first valid PID in array
+      # Iterate through array indices to find first valid PID
+      for idx in "${!test_pids[@]}"; do
+        if [[ -n "${test_pids[$idx]}" ]]; then
+          wait ${test_pids[$idx]} 2>/dev/null
+          return $?
+        fi
+      done
+    fi
+    return 0
+  }
+
+  # =============================================================================
+  # Test Result Formatting and Reporting Functions
+  # =============================================================================
 
   # Function to format duration nicely
   format_duration() {
     local duration=$1
     # Convert to milliseconds
     local ms=$(echo "$duration * 1000" | bc -l | cut -d. -f1)
-    
+
     if [[ $ms -lt 1000 ]]; then
       echo "${ms}ms"
     elif [[ $ms -lt 60000 ]]; then
@@ -864,7 +1265,7 @@ function run_test_category() {
       printf "%dm%.2fs" $mins $secs
     fi
   }
-  
+
   # Function to wait for a test to complete
   wait_for_test() {
     local pid=$1
@@ -872,34 +1273,50 @@ function run_test_category() {
     local test_log=$3
     local test_junit=$4
     local start_time=$5
-    
-    if wait $pid 2>/dev/null; then
+
+    # Check if process is still running
+    if kill -0 $pid 2>/dev/null; then
+      # Process is still running, wait for it
+      wait $pid 2>/dev/null
       local exit_code=$?
-      local end_time=$(date +%s.%N)
-      local duration=$(echo "$end_time - $start_time" | bc -l)
-      local formatted_time=$(format_duration "$duration")
-      
-      if [[ $exit_code -eq 0 ]]; then
-        ((passed_tests++))
-        echo -e "✅ [TEST] \033[32mPASSED\033[0m: $(basename "$test_name") ($formatted_time)"
-      else
-        ((failed_tests++))
-        failed=1
-        echo -e "❌ [TEST] \033[31mFAILED\033[0m: $(basename "$test_name") (exit code: $exit_code, $formatted_time)"
-      fi
     else
-      # Process was killed or interrupted
+      # Process already completed - check its exit status from log
+      # Default to success if we can't determine
+      local exit_code=0
+
+      # Try to get exit code from the last line of log if it exists
+      if [[ -f "$test_log" ]]; then
+        local last_line=$(tail -1 "$test_log" 2>/dev/null)
+        if [[ "$last_line" =~ "exit code: "([0-9]+) ]]; then
+          exit_code="${BASH_REMATCH[1]}"
+        fi
+      fi
+    fi
+
+    local end_time=$(date +%s.%N)
+    local duration=$(echo "$end_time - $start_time" | bc -l)
+    local formatted_time=$(format_duration "$duration")
+
+    if [[ $exit_code -eq 0 ]]; then
+      ((passed_tests++))
+      echo -e "✅ [TEST] \033[32mPASSED\033[0m: $(basename "$test_name") ($formatted_time)"
+    elif [[ $exit_code -eq 130 ]] || [[ $exit_code -gt 128 ]]; then
+      # Killed by signal
       ((failed_tests++))
       failed=1
       echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $(basename "$test_name")"
+    else
+      ((failed_tests++))
+      failed=1
+      echo -e "❌ [TEST] \033[31mFAILED\033[0m: $(basename "$test_name") (exit code: $exit_code, $formatted_time)"
     fi
-    
+
     # Append test log to main log file
     if [[ -f "$test_log" ]]; then
       cat "$test_log" >> "$log_file"
       rm -f "$test_log"
     fi
-    
+
     # Append JUnit XML to main JUnit file (extract testsuite elements)
     if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
       # Extract just the testsuite element(s) and append to main file
@@ -933,10 +1350,10 @@ function run_test_category() {
             ) &
           fi
         done
-        
+
         # Wait for background SIGTERM sends to complete
         wait
-        
+
         # Give all processes 1 second to terminate gracefully
         timeout 1 bash -c '
           pids=($@)
@@ -947,7 +1364,7 @@ function run_test_category() {
             done
           done
         ' -- "${pids_to_kill[@]}" 2>/dev/null || true
-        
+
         # Force kill any remaining processes with SIGKILL in parallel
         for pid in "${pids_to_kill[@]}"; do
           if kill -0 $pid 2>/dev/null; then
@@ -957,7 +1374,7 @@ function run_test_category() {
             ) &
           fi
         done
-        
+
         # Wait for all SIGKILL operations to complete
         wait
       fi
@@ -966,151 +1383,140 @@ function run_test_category() {
 
   if [[ $parallel_execution -eq 1 ]]; then
     log_info "🚀 Running tests in parallel (up to $max_parallel_tests concurrent tests)"
-    
-    # Parallel execution mode
+
+    # Start all tests immediately in parallel (up to max_parallel_tests)
     for test_executable in "${test_executables[@]}"; do
       # Check if we've been interrupted
       if [[ $INTERRUPTED -eq 1 ]]; then
         break
       fi
-      
+
       ((tests_that_started++))
       local test_name="$(basename "$test_executable")"
       local test_log="/tmp/test_${test_name}_$$.log"
       local test_junit=""
       local start_time=$(date +%s.%N)
-      
+
       # Create separate JUnit file for this test if needed
       if [[ -n "$generate_junit" ]]; then
         test_junit="/tmp/junit_${test_name}_$$.xml"
       fi
-      
+
       # Print starting message
       echo "🚀 [TEST] Starting: $test_name"
       log_verbose "Starting test $tests_that_started of $total_tests: $test_name (parallel)"
-      
+
       # Start test in background with proper signal handling and output redirection
-      if [[ -n "$generate_junit" ]]; then
-        (
-          trap 'exit 130' INT TERM
-          # Check if interrupted before starting
-          [[ $INTERRUPTED -eq 1 ]] && exit 130
-          run_single_test --executable "$test_executable" --jobs "$actual_jobs" \
-            --generate-junit "$generate_junit" --log-file "$test_log" --junit-file "$test_junit"
-        ) >>"$test_log" 2>&1 &
-      else
-        (
-          trap 'exit 130' INT TERM
-          # Check if interrupted before starting
-          [[ $INTERRUPTED -eq 1 ]] && exit 130
-          run_single_test --executable "$test_executable" --jobs "$actual_jobs" \
-            --generate-junit "" --log-file "$test_log" --junit-file ""
-        ) >>"$test_log" 2>&1 &
-      fi
-      
-      local test_pid=$!
+      local test_pid=$(start_test_in_background "$test_executable" "$actual_jobs" "$generate_junit" "$test_log" "$test_junit")
       test_pids+=($test_pid)
-      test_names+=("$test_executable")
+      test_names+=("$test_name")
       test_logs+=("$test_log")
       test_junit_files+=("$test_junit")
       test_start_times+=("$start_time")
-      
-      # If we've reached max parallel tests, wait for one to complete
-      if [[ ${#test_pids[@]} -ge $max_parallel_tests ]]; then
-        # Wait for any child process to complete
-        if [[ $WAIT_N_SUPPORTED -eq 1 ]]; then
-          wait -n
-          local wait_result=$?
-        else
-          # Fallback for older bash - wait for first PID to complete
-          wait ${test_pids[0]}
-          local wait_result=$?
-        fi
-        
-        # Check for interrupt
-        if [[ $INTERRUPTED -eq 1 ]]; then
-          [[ ${#test_pids[@]} -gt 0 ]] && kill_all_test_processes "${test_pids[@]}"
-          break
-        fi
-        
-        # Find which PID completed
-        local completed_idx=""
-        for idx in "${!test_pids[@]}"; do
-          if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
-            completed_idx=$idx
-            break
-          fi
-        done
-        
-        if [[ -n "$completed_idx" ]]; then
-          wait_for_test "${test_pids[$completed_idx]}" "${test_names[$completed_idx]}" "${test_logs[$completed_idx]}" "${test_junit_files[$completed_idx]}" "${test_start_times[$completed_idx]}"
-          
-          # Remove completed test from arrays
-          unset test_pids[$completed_idx]
-          unset test_names[$completed_idx]
-          unset test_logs[$completed_idx]
-          unset test_junit_files[$completed_idx]
-          unset test_start_times[$completed_idx]
-          
-          # Rebuild arrays to remove gaps (handle empty arrays)
-          test_pids=(${test_pids[@]+"${test_pids[@]}"})
-          test_names=(${test_names[@]+"${test_names[@]}"})
-          test_logs=(${test_logs[@]+"${test_logs[@]}"})
-          test_junit_files=(${test_junit_files[@]+"${test_junit_files[@]}"})
-          test_start_times=(${test_start_times[@]+"${test_start_times[@]}"})
-        fi
-      fi
+
+      echo "Test PID: $test_name: $test_pid"
+
+      # Continue starting tests until we reach max_parallel_tests
+      # No waiting here - start all tests immediately
     done
-    
+
     # If interrupted, kill all remaining test processes
     if [[ $INTERRUPTED -eq 1 ]]; then
       echo ""
       echo "🛑 Killing remaining test processes..."
       [[ ${#test_pids[@]} -gt 0 ]] && kill_all_test_processes "${test_pids[@]}"
     else
-      # Wait for all remaining tests to complete
+      # Wait for all tests to complete
       while [[ ${#test_pids[@]} -gt 0 ]]; do
         # Wait for any remaining process to complete
-        if [[ $WAIT_N_SUPPORTED -eq 1 ]]; then
-          wait -n
-        else
-          # Fallback - wait for first PID in array
-          if [[ ${#test_pids[@]} -gt 0 ]]; then
-            wait ${test_pids[0]}
+        local completed_idx=""
+        local wait_exit_code=0
+
+        # Use polling approach instead of wait -n to avoid race conditions
+        # Find which PID completed by polling
+        for idx in "${!test_pids[@]}"; do
+          if [[ -n "${test_pids[$idx]}" ]]; then
+            if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
+              # Process has completed
+              completed_idx=$idx
+              # Get the actual exit code for this specific PID
+              # Store the PID before calling wait to avoid race conditions
+              local completed_pid=${test_pids[$idx]}
+              local completed_test_name="${test_names[$idx]}"
+              echo "Waiting for $completed_test_name: $completed_pid"
+              # Check if the process is still a child of this shell
+              if kill -0 $completed_pid 2>/dev/null; then
+                wait $completed_pid 2>/dev/null
+                wait_exit_code=$?
+              else
+                # Process is not a child, try to get exit code from log
+                wait_exit_code=0
+                if [[ -f "${test_logs[$idx]}" ]]; then
+                  # Try to determine exit code from log content
+                  local log_content=$(cat "${test_logs[$idx]}" 2>/dev/null)
+                  if [[ "$log_content" =~ "Synthesis: Tested:" ]]; then
+                    wait_exit_code=0  # Test completed successfully
+                  else
+                    wait_exit_code=1  # Test failed
+                  fi
+                fi
+              fi
+              break
+            fi
           fi
+        done
+
+        # If no process completed yet, sleep briefly and continue
+        if [[ -z "$completed_idx" ]]; then
+          sleep 0.05
+          continue
         fi
-        
+
         # Check for interrupt
         if [[ $INTERRUPTED -eq 1 ]]; then
           [[ ${#test_pids[@]} -gt 0 ]] && kill_all_test_processes "${test_pids[@]}"
           break
         fi
-        
-        # Find which PID completed
-        local completed_idx=""
-        for idx in "${!test_pids[@]}"; do
-          if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
-            completed_idx=$idx
-            break
-          fi
-        done
-        
+
+        # Process the completed test
         if [[ -n "$completed_idx" ]]; then
-          wait_for_test "${test_pids[$completed_idx]}" "${test_names[$completed_idx]}" "${test_logs[$completed_idx]}" "${test_junit_files[$completed_idx]}" "${test_start_times[$completed_idx]}"
-          
-          # Remove completed test from arrays
-          unset test_pids[$completed_idx]
-          unset test_names[$completed_idx]
-          unset test_logs[$completed_idx]
-          unset test_junit_files[$completed_idx]
-          unset test_start_times[$completed_idx]
-          
-          # Rebuild arrays to remove gaps (handle empty arrays)
-          test_pids=(${test_pids[@]+"${test_pids[@]}"})
-          test_names=(${test_names[@]+"${test_names[@]}"})
-          test_logs=(${test_logs[@]+"${test_logs[@]}"})
-          test_junit_files=(${test_junit_files[@]+"${test_junit_files[@]}"})
-          test_start_times=(${test_start_times[@]+"${test_start_times[@]}"})
+          local test_name="${test_names[$completed_idx]}"
+          local test_log="${test_logs[$completed_idx]}"
+          local test_junit="${test_junit_files[$completed_idx]}"
+          local start_time="${test_start_times[$completed_idx]}"
+
+          local end_time=$(date +%s.%N)
+          local duration=$(echo "$end_time - $start_time" | bc -l)
+          local formatted_time=$(format_duration "$duration")
+
+          if [[ $wait_exit_code -eq 0 ]]; then
+            ((passed_tests++))
+            echo -e "✅ [TEST] \033[32mPASSED\033[0m: $(basename "$test_name") ($formatted_time)"
+          elif [[ $wait_exit_code -eq 130 ]] || [[ $wait_exit_code -gt 128 ]]; then
+            ((failed_tests++))
+            failed=1
+            echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $(basename "$test_name")"
+          else
+            ((failed_tests++))
+            failed=1
+            echo -e "❌ [TEST] \033[31mFAILED\033[0m: $(basename "$test_name") (exit code: $wait_exit_code, $formatted_time)"
+          fi
+
+          # Append test log to main log file
+          if [[ -f "$test_log" ]]; then
+            cat "$test_log" >> "$log_file"
+            rm -f "$test_log"
+          fi
+
+          # Append JUnit XML to main JUnit file
+          if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
+            sed -n '/<testsuite/,/<\/testsuite>/p' "$test_junit" >> "$junit_file" 2>/dev/null || true
+            rm -f "$test_junit"
+          fi
+
+          # Remove completed test from arrays and rebuild
+          remove_test_from_arrays "$completed_idx"
+          rebuild_test_arrays
         fi
       done
     fi
@@ -1121,14 +1527,14 @@ function run_test_category() {
       if [[ $INTERRUPTED -eq 1 ]]; then
         break
       fi
-      
+
       ((tests_that_started++))
       log_verbose "Running test $tests_that_started of $total_tests: $(basename "$test_executable")"
       if run_single_test --executable "$test_executable" --jobs "$actual_jobs" --generate-junit "$generate_junit" --log-file "$log_file" --junit-file "$junit_file"; then
         ((passed_tests++))
       else
         local exit_code=$?
-        
+
         # Check if interrupted by Ctrl-C
         if [[ $exit_code -eq 130 ]]; then
           echo ""
@@ -1136,7 +1542,7 @@ function run_test_category() {
           INTERRUPTED=1
           break
         fi
-        
+
         failed=1
         # Continue running other tests even if one fails/crashes
         log_warning "Test failed with exit code $exit_code, continuing with remaining tests..."
@@ -1153,7 +1559,7 @@ function run_test_category() {
   # Report results
   local category_end_time=$(date +%s.%N)
   local category_duration=$(echo "$category_end_time - $category_start_time" | bc -l)
-  
+
   # Calculate failed tests properly (in parallel mode, failed_tests is already set)
   if [[ $parallel_execution -eq 0 ]]; then
     failed_tests=$((tests_that_started - passed_tests))
@@ -1161,7 +1567,7 @@ function run_test_category() {
 
   echo ""
   echo "=========================================="
-  
+
   # Check if no tests actually ran
   if [[ $tests_that_started -eq 0 ]]; then
     echo "❌ CRITICAL: No $category tests were executed!"
@@ -1198,30 +1604,28 @@ function run_test_category() {
 }
 
 # =============================================================================
-# Build Test Executable
+# Build Management Functions
 # =============================================================================
 
 function build_test_executable() {
   local test_name="$1"
   local build_type="$2"
-  
+
   # Always build the test executable (make will handle if it's up-to-date)
   local make_target="bin/$test_name"
   log_info "🔨 Building test: $make_target in $build_type mode"
-  
+
   # Build the specific test executable (filter out "up to date" messages)
-  if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done"; then
+  # Use PIPESTATUS to get make's exit code after piping through grep
+  colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done" || true
+  local make_exit_code=${PIPESTATUS[0]}
+
+  if [[ $make_exit_code -eq 0 ]]; then
     log_success "Successfully built $make_target"
     return 0
   else
-    # Check if make actually failed or just had nothing to do
-    if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" >/dev/null 2>&1; then
-      # Make succeeded but output was filtered - it was already up to date
-      return 0
-    else
-      log_error "Failed to build test: $make_target"
-      return 1
-    fi
+    log_error "Failed to build test: $make_target"
+    return 1
   fi
 }
 
@@ -1261,13 +1665,13 @@ function run_single_test_binary() {
   # Build the test executable
   local test_binary_name="$(basename "$test_executable")"
   if ! build_test_executable "$test_binary_name" "$build_type"; then
-    exit 1
+    return 1
   fi
-  
+
   # Check if it exists after build
   if [[ ! -f "$test_executable" ]]; then
     log_error "Test executable not found after build: $test_executable"
-    exit 1
+    return 1
   fi
 
   # Run the single test
@@ -1276,21 +1680,25 @@ function run_single_test_binary() {
     return 0
   else
     local exit_code=$?
+    # Check if interrupted by signal (130 = SIGINT)
+    if [[ $exit_code -eq 130 ]] || [[ $INTERRUPTED -eq 1 ]]; then
+      return 130
+    fi
     log_error "Test failed with exit code $exit_code"
-    return 1
+    return $exit_code
   fi
 }
 
 
 
 # =============================================================================
-# Main Function
+# Main Entry Point
 # =============================================================================
 
 function main() {
   # Store positional arguments before processing options
   local positional_args=()
-  
+
   # Parse command line arguments
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -1379,7 +1787,7 @@ function main() {
     # Two arguments - first is test type, second is test name
     local type_arg="${positional_args[0]}"
     local name_arg="${positional_args[1]}"
-    
+
     # Check if first argument is a valid test type
     if [[ "$type_arg" =~ ^(unit|integration|performance)$ ]]; then
       # Construct the full test name for single test
@@ -1391,7 +1799,7 @@ function main() {
   elif [[ ${#positional_args[@]} -gt 2 ]]; then
     # Three or more arguments - first is test type, rest are test names
     local type_arg="${positional_args[0]}"
-    
+
     # Check if first argument is a valid test type
     if [[ "$type_arg" =~ ^(unit|integration|performance)$ ]]; then
       # Multiple tests to run - store them in an array
@@ -1441,8 +1849,14 @@ function main() {
 
   # Detect CPU cores
   local jobs
-  jobs=$(detect_cpu_cores)
-  log_info "⚡ Using $jobs parallel jobs"
+  if [[ -z "$JOBS" ]]; then
+    # No jobs specified, let the test functions handle automatic allocation
+    jobs=""
+    log_info "⚡ Using automatic resource allocation"
+  else
+    jobs="$JOBS"
+    log_info "⚡ Using $jobs parallel jobs"
+  fi
 
   # Setup logging
   local log_file
@@ -1451,14 +1865,14 @@ function main() {
   else
     log_file="tests.log"
   fi
-  
+
   local junit_file="$PROJECT_ROOT/junit.xml"
 
   if [[ -n "$GENERATE_JUNIT" ]]; then
     log_info "📄 JUnit XML output will be generated: $junit_file"
     rm -f "$junit_file"
   fi
-  
+
   # Always set up logging (not just for JUnit)
   log_info "📝 Test logs will be saved to: $log_file"
   >"$log_file"
@@ -1486,62 +1900,407 @@ function main() {
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
     # Run multiple specific test binaries
     log_info "🎯 Running ${#MULTIPLE_TESTS[@]} specific tests"
-    
+
     if [[ -n "$GENERATE_JUNIT" ]]; then
       # Initialize JUnit XML for multiple tests
       echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
       echo "<testsuites name=\"ASCII-Chat Multiple Tests\">" >>"$junit_file"
     fi
-    
+
     local passed_count=0
     local failed_count=0
-    
+
+    # Build all test executables with single make call for efficiency
+    local test_targets=()
     for test_name in "${MULTIPLE_TESTS[@]}"; do
-      echo ""
-      echo "=========================================="
-      echo "🔧 Running: $test_name"
-      echo "=========================================="
-      
-      # Check if test exists before trying to run it
-      local test_path
       if [[ "$test_name" != test_* ]]; then
         test_name="test_$test_name"
       fi
-      
-      # Test executables always have the same name
-      test_path="$PROJECT_ROOT/bin/$test_name"
-      
-      # Build the test executable
-      if ! build_test_executable "$test_name" "$BUILD_TYPE"; then
-        exit 1
-      fi
-      
-      # Check if it exists after build
-      if [[ ! -f "$test_path" ]]; then
-        log_error "Test executable not found after build: $test_path"
-        exit 1
-      fi
-      
-      if run_single_test_binary "$test_name" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$FILTER"; then
-        ((passed_count++))
-      else
-        ((failed_count++))
-        overall_failed=1
-      fi
+      test_targets+=("bin/$test_name")
     done
-    
+
+    echo "🔨 Building ${#test_targets[@]} test executables with single make call..."
+    local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
+    if [[ "$BUILD_TYPE" != "default" ]]; then
+      make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
+    fi
+    make_cmd="$make_cmd ${test_targets[*]}"
+
+    # Run make and capture output, filtering "up to date" messages
+    local make_output
+    make_output=$(eval "$make_cmd" 2>&1)
+    local make_exit_code=$?
+
+    # Show non-"up to date" output
+    echo "$make_output" | grep -v "is up to date" || true
+
+    # Check if make failed
+    if [[ $make_exit_code -ne 0 ]]; then
+      log_error "Make command failed with exit code $make_exit_code"
+      exit 1
+    fi
+
+    # Set up parallel execution arrays and resource allocation
+    local test_pids=()
+    local test_names=()
+    local test_logs=()
+    local test_junit_files=()
+    local test_start_times=()
+    local tests_that_started=0
+
+    # Smart resource allocation for multiple tests - prioritize parallel execution
+    local total_cores=$(detect_cpu_cores)
+    local num_tests=${#MULTIPLE_TESTS[@]}
+    local max_parallel_tests
+    local jobs_per_test
+
+    # If jobs explicitly specified, use that for parallel tests
+    if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
+      max_parallel_tests=$jobs
+      jobs_per_test=1  # Default to 1 if manually specified
+    else
+      # Automatic smart allocation - prioritize parallel test execution
+      if [[ $num_tests -eq 1 ]]; then
+        # Single test: use all cores for maximum parallelism within the test
+        max_parallel_tests=1
+        jobs_per_test=$total_cores
+      elif [[ $num_tests -le 6 ]]; then
+        # Few tests: run all in parallel, use 2-4 cores per test
+        max_parallel_tests=$num_tests
+        jobs_per_test=$((total_cores / num_tests))
+        [[ $jobs_per_test -lt 2 ]] && jobs_per_test=2
+        [[ $jobs_per_test -gt 4 ]] && jobs_per_test=4
+      else
+        # Many tests: run up to 8-12 tests in parallel, use 2-3 cores per test
+        max_parallel_tests=$((total_cores / 2))
+        [[ $max_parallel_tests -gt 12 ]] && max_parallel_tests=12
+        [[ $max_parallel_tests -gt $num_tests ]] && max_parallel_tests=$num_tests
+
+        jobs_per_test=$((total_cores / max_parallel_tests))
+        [[ $jobs_per_test -lt 2 ]] && jobs_per_test=2
+        [[ $jobs_per_test -gt 3 ]] && jobs_per_test=3
+      fi
+    fi
+
+    log_info "🎯 Resource allocation: $num_tests tests, $max_parallel_tests parallel, $jobs_per_test jobs each (${total_cores} cores total)"
+
+    # Parallel Test Array Management Functions (same as in run_test_category)
+    # Function to rebuild arrays after removing an element at index
+    rebuild_test_arrays() {
+      test_pids=(${test_pids[@]+"${test_pids[@]}"})
+      test_names=(${test_names[@]+"${test_names[@]}"})
+      test_logs=(${test_logs[@]+"${test_logs[@]}"})
+      test_junit_files=(${test_junit_files[@]+"${test_junit_files[@]}"})
+      test_start_times=(${test_start_times[@]+"${test_start_times[@]}"})
+    }
+
+    # Function to remove a test from tracking arrays by index
+    remove_test_from_arrays() {
+      local idx=$1
+      unset test_pids[$idx]
+      unset test_names[$idx]
+      unset test_logs[$idx]
+      unset test_junit_files[$idx]
+      unset test_start_times[$idx]
+    }
+
+
+    # Function to format duration nicely
+    format_duration() {
+      local duration=$1
+      # Convert to milliseconds
+      local ms=$(echo "$duration * 1000" | bc -l | cut -d. -f1)
+
+      if [[ $ms -lt 1000 ]]; then
+        echo "${ms}ms"
+      elif [[ $ms -lt 60000 ]]; then
+        # Show in seconds with 2 decimal places
+        printf "%.2fs" $(echo "scale=2; $duration" | bc -l)
+      else
+        # Show in minutes and seconds
+        local mins=$((ms / 60000))
+        local secs=$(echo "scale=2; ($ms % 60000) / 1000" | bc -l)
+        printf "%dm%.2fs" $mins $secs
+      fi
+    }
+
+    # Function to kill all running test processes
+    kill_all_test_processes() {
+      local pids_to_kill=("$@")
+      if [[ ${#pids_to_kill[@]} -gt 0 ]]; then
+        # When interrupted, immediately kill with SIGKILL to stop output
+        if [[ $INTERRUPTED -eq 1 ]]; then
+          # Immediate SIGKILL in parallel - no graceful termination
+          for pid in "${pids_to_kill[@]}"; do
+            (
+              pkill -KILL -P $pid 2>/dev/null || true
+              kill -KILL $pid 2>/dev/null || true
+            ) &
+          done
+          wait
+        else
+          # Normal termination - try graceful first
+          # Send SIGTERM for all processes in parallel
+          for pid in "${pids_to_kill[@]}"; do
+            if kill -0 $pid 2>/dev/null; then
+              (
+                pkill -TERM -P $pid 2>/dev/null || true
+                kill -TERM $pid 2>/dev/null || true
+              ) &
+            fi
+          done
+
+          # Wait for background SIGTERM sends to complete
+          wait
+
+          # Give all processes 1 second to terminate gracefully
+          timeout 1 bash -c '
+            pids=($@)
+            for pid in "${pids[@]}"; do
+              while kill -0 $pid 2>/dev/null; do
+                sleep 0.05
+                break
+              done
+            done
+          ' -- "${pids_to_kill[@]}" 2>/dev/null || true
+
+          # Force kill any remaining processes with SIGKILL in parallel
+          for pid in "${pids_to_kill[@]}"; do
+            if kill -0 $pid 2>/dev/null; then
+              (
+                pkill -KILL -P $pid 2>/dev/null || true
+                kill -KILL $pid 2>/dev/null || true
+              ) &
+            fi
+          done
+
+          # Wait for all SIGKILL operations to complete
+          wait
+        fi
+      fi
+    }
+
+    # Check if we should run tests in parallel (default) or sequentially
+    local parallel_execution=1
+    if [[ -n "$NO_PARALLEL" ]]; then
+      parallel_execution=0
+      log_verbose "Running multiple tests sequentially (parallel execution disabled)"
+    else
+      log_info "🚀 Running multiple tests in parallel (up to $max_parallel_tests concurrent tests)"
+    fi
+
+    if [[ $parallel_execution -eq 1 ]]; then
+      # Parallel execution mode
+      for test_name in "${MULTIPLE_TESTS[@]}"; do
+        # Check if we've been interrupted
+        if [[ $INTERRUPTED -eq 1 ]]; then
+          break
+        fi
+
+        ((tests_that_started++))
+
+        # Normalize test name
+        if [[ "$test_name" != test_* ]]; then
+          test_name="test_$test_name"
+        fi
+
+        local test_path="$PROJECT_ROOT/bin/$test_name"
+
+        # Check if it exists after build
+        if [[ ! -f "$test_path" ]]; then
+          log_error "Test executable not found after build: $test_path"
+          exit 1
+        fi
+
+        local test_log="/tmp/test_${test_name}_$$.log"
+        local test_junit=""
+        local start_time=$(date +%s.%N)
+
+        # Create separate JUnit file for this test if needed
+        if [[ -n "$GENERATE_JUNIT" ]]; then
+          test_junit="/tmp/junit_${test_name}_$$.xml"
+        fi
+
+        # Print starting message
+        echo "🚀 [TEST] Starting: $test_name"
+        log_verbose "Starting test $tests_that_started of $num_tests: $test_name (parallel)"
+
+        # Start test in background with proper signal handling and output redirection
+        # Pass the full path to the test executable
+        local test_pid=$(start_test_in_background "$test_path" "$jobs_per_test" "$GENERATE_JUNIT" "$test_log" "$test_junit" 1)
+
+        # Always add the test to tracking arrays
+        # Some tests complete very quickly and might be done before we check
+        if [[ -n "$test_pid" ]]; then
+          test_pids+=($test_pid)
+          test_names+=("$test_name")
+          test_logs+=("$test_log")
+          test_junit_files+=("$test_junit")
+          test_start_times+=("$start_time")
+        else
+          # No PID returned - this shouldn't happen
+          echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (failed to start - no PID)"
+          ((failed_count++))
+        fi
+
+        # Continue starting tests until we reach max_parallel_tests
+        # No waiting here - start all tests immediately
+      done
+
+      # If interrupted, kill all remaining test processes
+      if [[ $INTERRUPTED -eq 1 ]]; then
+        echo ""
+        echo "🛑 Killing remaining test processes..."
+        [[ ${#test_pids[@]} -gt 0 ]] && kill_all_test_processes "${test_pids[@]}"
+      else
+        # Wait for all remaining tests to complete
+        while [[ ${#test_pids[@]} -gt 0 ]]; do
+          # Wait for any remaining process to complete
+          local completed_idx=""
+          local wait_exit_code=0
+
+          # Use polling approach instead of wait -n to avoid race conditions
+          # Find which PID completed by polling
+          for idx in "${!test_pids[@]}"; do
+            if [[ -n "${test_pids[$idx]}" ]]; then
+              if ! kill -0 ${test_pids[$idx]} 2>/dev/null; then
+                # Process has completed
+                completed_idx=$idx
+                # Get the actual exit code for this specific PID
+                # Store the PID before calling wait to avoid race conditions
+                local completed_pid=${test_pids[$idx]}
+                local completed_test_name="${test_names[$idx]}"
+                echo "Waiting for $completed_test_name: $completed_pid"
+                # Check if the process is still a child of this shell
+                if kill -0 $completed_pid 2>/dev/null; then
+                  wait $completed_pid 2>/dev/null
+                  wait_exit_code=$?
+                else
+                  # Process is not a child, try to get exit code from log
+                  wait_exit_code=0
+                  if [[ -f "${test_logs[$idx]}" ]]; then
+                    # Try to determine exit code from log content
+                    local log_content=$(cat "${test_logs[$idx]}" 2>/dev/null)
+                    if [[ "$log_content" =~ "Synthesis: Tested:" ]]; then
+                      wait_exit_code=0  # Test completed successfully
+                    else
+                      wait_exit_code=1  # Test failed
+                    fi
+                  fi
+                fi
+                break
+              fi
+            fi
+          done
+
+          # If no process completed yet, sleep briefly and continue
+          if [[ -z "$completed_idx" ]]; then
+            sleep 0.05
+            continue
+          fi
+
+          # Check for interrupt
+          if [[ $INTERRUPTED -eq 1 ]]; then
+            [[ ${#test_pids[@]} -gt 0 ]] && kill_all_test_processes "${test_pids[@]}"
+            break
+          fi
+
+          # Process the completed test
+          if [[ -n "$completed_idx" ]]; then
+            local completed_test_name="${test_names[$completed_idx]}"
+            local completed_test_log="${test_logs[$completed_idx]}"
+            local completed_test_junit="${test_junit_files[$completed_idx]}"
+            local completed_start_time="${test_start_times[$completed_idx]}"
+
+            local end_time=$(date +%s.%N)
+            local duration=$(echo "$end_time - $completed_start_time" | bc -l)
+            local formatted_time=$(format_duration "$duration")
+
+            if [[ $wait_exit_code -eq 0 ]]; then
+              ((passed_count++))
+              echo -e "✅ [TEST] \033[32mPASSED\033[0m: $(basename "$completed_test_name") ($formatted_time)"
+            elif [[ $wait_exit_code -eq 130 ]] || [[ $wait_exit_code -gt 128 ]]; then
+              ((failed_count++))
+              echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $(basename "$completed_test_name")"
+            else
+              ((failed_count++))
+              echo -e "❌ [TEST] \033[31mFAILED\033[0m: $(basename "$completed_test_name") (exit code: $wait_exit_code, $formatted_time)"
+            fi
+
+            # Append test log to main log file
+            if [[ -f "$completed_test_log" ]]; then
+              cat "$completed_test_log" >> "$log_file"
+              rm -f "$completed_test_log"
+            fi
+
+            # Append JUnit XML to main JUnit file
+            if [[ -n "$GENERATE_JUNIT" ]] && [[ -f "$completed_test_junit" ]]; then
+              sed -n '/<testsuite/,/<\/testsuite>/p' "$completed_test_junit" >> "$junit_file" 2>/dev/null || true
+              rm -f "$completed_test_junit"
+            fi
+
+            # Remove completed test from arrays and rebuild
+            remove_test_from_arrays "$completed_idx"
+            rebuild_test_arrays
+          fi
+        done
+      fi
+    else
+      # Sequential execution mode (fallback for --no-parallel)
+      for test_name in "${MULTIPLE_TESTS[@]}"; do
+        # Check if interrupted before starting next test
+        if [[ $INTERRUPTED -eq 1 ]]; then
+          print_cancellation_message
+          exit 130
+        fi
+
+        echo ""
+        echo "=========================================="
+        echo "🔧 Running: $test_name"
+        echo "=========================================="
+
+        # Normalize test name
+        if [[ "$test_name" != test_* ]]; then
+          test_name="test_$test_name"
+        fi
+
+        local test_path="$PROJECT_ROOT/bin/$test_name"
+
+        # Check if it exists after build
+        if [[ ! -f "$test_path" ]]; then
+          log_error "Test executable not found after build: $test_path"
+          exit 1
+        fi
+
+        if run_single_test_binary "$test_name" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$FILTER"; then
+          ((passed_count++))
+        else
+          local exit_code=$?
+          # Check if interrupted by signal
+          if [[ $exit_code -eq 130 ]] || [[ $INTERRUPTED -eq 1 ]]; then
+            print_cancellation_message
+            exit 130
+          fi
+          ((failed_count++))
+          overall_failed=1
+        fi
+      done
+    fi
+
     if [[ -n "$GENERATE_JUNIT" ]]; then
       echo '</testsuites>' >>"$junit_file"
     fi
-    
+
     echo ""
     echo "=========================================="
     if [[ $failed_count -eq 0 ]]; then
       echo "✅ Multiple tests completed: $passed_count passed, $failed_count failed"
+      overall_failed=0
     else
       echo "❌ Multiple tests completed: $passed_count passed, $failed_count failed"
+      overall_failed=1
     fi
-    echo "=========================================="
+    echo "==========================================="
   else
     # Run test categories
   local all_categories_failed_completely=1
@@ -1551,10 +2310,10 @@ function main() {
     if [[ $INTERRUPTED -eq 1 ]]; then
       break
     fi
-    
+
     run_test_category "$category" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file"
     local category_result=$?
-    
+
     if [[ $category_result -eq 0 ]]; then
       # At least one category had all tests pass
       all_categories_failed_completely=0
@@ -1593,14 +2352,24 @@ function main() {
       exit 1
     fi
   fi
-  
+
   # Normal final report
   echo ""
   echo "=========================================="
   echo "⏱️ TOTAL EXECUTION TIME: ${total_duration}s"
   echo "=========================================="
 
-  if [[ $overall_failed -eq 0 ]]; then
+  # For multiple test mode, check the failed_count to determine overall success
+  if [[ -n "$MULTIPLE_TEST_MODE" ]]; then
+    if [[ $failed_count -eq 0 ]]; then
+      log_success "All tests completed successfully! 🎉"
+      log_info "📋 View test logs: cat $log_file"
+    else
+      log_error "Some tests failed!"
+      log_info "View test logs: cat $log_file 📋"
+      exit 1
+    fi
+  elif [[ $overall_failed -eq 0 ]]; then
     log_success "All tests completed successfully! 🎉"
     log_info "📋 View test logs: cat $log_file"
   else
