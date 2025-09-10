@@ -167,7 +167,7 @@ runs:
         echo "🔍 Checking for coverage files..."
         echo "Current directory: $(pwd)"
         echo "Directory contents:"
-        ls -la . | head -20
+        ls -la .
 
         gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
         gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
@@ -207,7 +207,7 @@ runs:
         echo "Check coverage output: ${{ steps.check-coverage.outputs.has_coverage }}"
         echo "Current directory: $(pwd)"
         echo "Files in current directory:"
-        ls -la . | head -20
+        ls -la .
 
         # Check if .gcov files exist
         gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
