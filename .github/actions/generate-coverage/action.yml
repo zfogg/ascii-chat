@@ -75,70 +75,25 @@ runs:
             exit 1
         fi
 
-        # Process each .gcda file
-        processed_count=0
-        failed_count=0
-
-        for gcda_file in $(find . -name "*.gcda" -type f); do
-            gcda_dir=$(dirname "$gcda_file")
-            base_name=$(basename "$gcda_file" .gcda)
-
-            echo "Processing $gcda_file"
-
-            # Run gcov from project root with full path to gcda file
-            # This allows gcov to find source files using the paths stored in the .gcno files
-            if $COVERAGE_CMD "$gcda_file" 2>&1; then
-                processed_count=$((processed_count + 1))
-                echo "✅ Successfully processed $gcda_file"
-            else
-                failed_count=$((failed_count + 1))
-                echo "⚠️ Failed to process $gcda_file (this may be normal for system files)"
-            fi
-
-            # Move ALL .gcov files generated in this directory to root with safe names
-            for gcov_file in $(find "$gcda_dir" -name "*.gcov" -type f); do
-                gcov_base=$(basename "$gcov_file" .gcov)
-                safe_name=$(echo "$gcda_dir/$gcov_base" | sed "s|^\./||" | sed "s|/|_|g")
-                \mv "$gcov_file" "./$safe_name.gcov"
-                echo "Generated $gcda_file -> $safe_name.gcov"
-            done
-        done
-
-        echo "Processed $processed_count files successfully, $failed_count failed"
-
-        gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
-        gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
-        echo "Generated $gcov_files_count coverage files..."
-
-        # Calculate minimum expected files (allow for some files to not generate coverage)
-        min_expected=$((gcda_files_count * 80 / 100))  # Expect at least 80% of gcda files to generate gcov
-
-        if [ -n "$gcov_files" ] && [ $gcov_files_count -ge $min_expected ]; then
-            echo "✅ Successfully generated $gcov_files_count coverage files (expected at least $min_expected)"
-            # Output the list of generated .gcov files for use in upload step
-            echo "gcov-files<<EOF" >> $GITHUB_OUTPUT
-            echo "$gcov_files" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-        else
-            echo "❌ ERROR: No gcov files or insufficient gcov files found" >&2
-            echo "Expected at least $min_expected files, but found $gcov_files_count" >&2
-            echo "Total .gcda files: $gcda_files_count" >&2
-            exit 1
-        fi
+        # Let Codecov handle coverage generation automatically
+        # We just need to ensure .gcda files exist and are accessible
+        echo "✅ Found $gcda_files_count .gcda files for Codecov to process"
+        echo "Codecov will automatically run gcov on the .gcno files to generate coverage data"
 
     - name: Check Coverage Files
       id: check-coverage
       if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
-        gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
+        # Check that .gcda files exist (Codecov will generate .gcov files automatically)
+        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+        gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
 
-        if [ -n "$gcov_files" ] && [ $gcov_files_count -gt 0 ]; then
-          echo "✅ Found $gcov_files_count coverage files"
+        if [ -n "$gcda_files" ] && [ $gcda_files_count -gt 0 ]; then
+          echo "✅ Found $gcda_files_count .gcda files for Codecov to process"
           echo "has_coverage=true" >> $GITHUB_OUTPUT
         else
-          echo "⚠️ No coverage files found"
+          echo "⚠️ No .gcda files found"
           echo "has_coverage=false" >> $GITHUB_OUTPUT
         fi
 
@@ -149,18 +104,18 @@ runs:
       run: |
         echo "Uploading coverage and JUnit to Codecov..."
 
-        # Check if .gcov files exist
-        gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
-        gcov_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
+        # Check if .gcda files exist (Codecov will generate .gcov files automatically)
+        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+        gcda_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
 
-        if [ $gcov_count -gt 0 ]; then
-          echo "✅ Uploading $gcov_count coverage files and JUnit XML"
+        if [ $gcda_count -gt 0 ]; then
+          echo "✅ Uploading coverage data from $gcda_count .gcda files and JUnit XML"
           echo "Repository: ${{ github.repository }}"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "PR: ${{ github.event.pull_request.number }}"
 
-          # Build codecov command with multiple --file arguments
+          # Build codecov command - let it automatically find and process .gcda files
           codecov_cmd="codecov do-upload --token=\"${{ inputs.codecov-token }}\""
 
           # Add repository and commit information
@@ -168,11 +123,6 @@ runs:
           codecov_cmd="$codecov_cmd --sha=\"${{ github.sha }}\""
           codecov_cmd="$codecov_cmd --branch=\"${{ github.ref_name }}\""
           codecov_cmd="$codecov_cmd --pr=\"${{ github.event.pull_request.number }}\""
-
-          # Add each .gcov file as a separate --file argument
-          for file in $gcov_files; do
-            codecov_cmd="$codecov_cmd --file=\"$file\""
-          done
 
           # Add JUnit XML file if it exists
           if [ -f "${{ inputs.junit-file }}" ]; then
@@ -188,7 +138,8 @@ runs:
           codecov_cmd="$codecov_cmd --fail-on-error"
 
           echo "Running codecov command: $codecov_cmd"
+          echo "Codecov will automatically find and process .gcda files to generate coverage data"
           eval $codecov_cmd
         else
-          echo "⚠️ No .gcov files found, skipping upload"
+          echo "⚠️ No .gcda files found, skipping upload"
         fi
