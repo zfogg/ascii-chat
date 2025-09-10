@@ -67,18 +67,3 @@ runs:
             exit 1
           )
         done
-
-    - name: Install codecov CLI
-      shell: bash
-      run: |
-        echo "📦 Installing codecov CLI..."
-        if command -v pip3 >/dev/null 2>&1; then
-          pip3 install codecov
-        elif command -v pip >/dev/null 2>&1; then
-          pip install codecov
-        else
-          echo "❌ Neither pip3 nor pip found"
-          exit 1
-        fi
-        echo "✅ codecov CLI installed successfully"
-        codecov --version

@@ -80,12 +80,16 @@ runs:
 
              echo "Processing $gcda_file in directory $gcda_dir"
              (cd "$gcda_dir" && gcov "$(basename "$gcda_file")" >/dev/null 2>&1)
+             echo "🔠 gcov completed"
 
              # Move ALL .gcov files generated in this directory to root with safe names
              for gcov_file in $(find "$gcda_dir" -name "*.gcov" -type f); do
                  gcov_base=$(basename "$gcov_file" .gcov)
+                 echo "gcov_base=$gcov_base"
                  safe_name=$(echo "$gcda_dir/$gcov_base" | sed "s|^\./||" | sed "s|/|_|g")
+                 echo "safe_name=$safe_name"
                  \mv "$gcov_file" "./$safe_name.gcov"
+                 echo "🔠 mv completed"
                  echo "Generated $gcda_file -> $safe_name.gcov"
              done
          done
