@@ -95,10 +95,8 @@ jobs:
             # Create a filename that preserves the directory structure
             # Replace / with _ and remove leading ./ if present
             safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
-            if [ ! "$safe_name" = "$gcov_file" ]; then
-              cp "$gcov_file" "./$safe_name"
-              echo "Copied $gcov_file -> $safe_name"
-            fi
+            cp "$gcov_file" "./$safe_name" || true
+            echo "Copied $gcov_file -> $safe_name"
           done
 
           # Validate that .gcov files were actually generated and copied
@@ -189,10 +187,8 @@ jobs:
           # Create a filename that preserves the directory structure
           # Replace / with _ and remove leading ./ if present
           safe_name=$(echo "$gcov_file" | sed 's|^\./||' | sed 's|/|_|g')
-          if [ ! "$safe_name" = "$gcov_file" ]; then
-            cp "$gcov_file" "./$safe_name"
-            echo "Copied $gcov_file -> $safe_name"
-          fi
+          cp "$gcov_file" "./$safe_name" || true
+          echo "Copied $gcov_file -> $safe_name"
         done
 
         # Validate that .gcov files were actually generated and copied
