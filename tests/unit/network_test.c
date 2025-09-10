@@ -13,8 +13,8 @@
 #include "common.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(network);
+// Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);
 
 static int create_test_socket(void) {
     return socket(AF_INET, SOCK_STREAM, 0);
@@ -66,14 +66,18 @@ Test(network, set_socket_nonblocking_invalid_socket) {
 }
 
 Test(network, connect_with_timeout_invalid_socket) {
+    log_debug("Starting connect_with_timeout_invalid_socket test");
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons(8080);
 
+    log_debug("Calling connect_with_timeout with invalid socket");
     bool result = connect_with_timeout(-1, (struct sockaddr *)&addr, sizeof(addr), 1);
+    log_debug("connect_with_timeout returned: %s", result ? "true" : "false");
     cr_assert_eq(result, false);
+    log_debug("connect_with_timeout_invalid_socket test completed");
 }
 
 Test(network, send_with_timeout_invalid_socket) {
@@ -168,9 +172,13 @@ Test(network, network_error_string_valid_codes) {
 }
 
 Test(network, random_size_messages) {
+    log_debug("Starting random_size_messages test");
     srand(42);
 
     for (int i = 0; i < 100; i++) {
+        if (i % 20 == 0) {
+            log_debug("Processing iteration %d/100", i);
+        }
         unsigned short width = (rand() % 1000) + 1;
         unsigned short height = (rand() % 1000) + 1;
 
@@ -184,4 +192,5 @@ Test(network, random_size_messages) {
         cr_assert_eq(parsed_width, width);
         cr_assert_eq(parsed_height, height);
     }
+    log_debug("random_size_messages test completed");
 }

@@ -824,13 +824,13 @@ function run_tests_in_parallel() {
 
       # Run test synchronously (not in background)
       local exit_code=0
-  if [[ -n "$generate_junit" ]]; then
+      if [[ -n "$generate_junit" ]]; then
         # Run test with XML output and capture both XML and test output
         # Criterion sends XML to stdout when using --xml, so we need to capture it
-        "$test_executable" --jobs "$jobs_per_test" --xml >"$test_junit" 2>"$test_log"
+        TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" --xml >"$test_junit" 2>"$test_log"
         exit_code=$?
       else
-        "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
+        TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
         exit_code=$?
       fi
 
@@ -855,7 +855,7 @@ function run_tests_in_parallel() {
           # In JUnit mode, immediately re-run the test to show failure details
           echo "--- Failure details for $test_name ---" >&2
           # Re-run the test without JUnit mode to get the actual failure output
-          "$test_executable" --jobs "$jobs_per_test" >&2 || true  # Ignore exit code
+          TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" >&2 || true  # Ignore exit code
           echo "--- End failure details ---" >&2
         else
           # In non-JUnit mode, show the test log

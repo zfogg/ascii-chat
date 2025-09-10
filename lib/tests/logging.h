@@ -223,4 +223,19 @@ bool test_logging_is_disabled(void);
     test_logging_disable(false, true);                                                                                 \
   }
 
+/**
+ * @brief Macro to create a complete test suite with debug logging and stdout/stderr enabled
+ *
+ * This macro creates unique setup/teardown functions with debug logging enabled
+ * and stdout/stderr available for debugging output.
+ *
+ * Usage:
+ * @code
+ * TEST_SUITE_WITH_DEBUG_LOGGING(my_suite);
+ * TEST_SUITE_WITH_DEBUG_LOGGING(my_suite, .timeout = 10);
+ * @endcode
+ */
+#define TEST_SUITE_WITH_DEBUG_LOGGING(suite_name, ...)                                                                 \
+  TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(suite_name, LOG_DEBUG, LOG_DEBUG, false, false, ##__VA_ARGS__)
+
 #endif // LOGGING_H
