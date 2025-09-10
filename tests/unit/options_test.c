@@ -149,31 +149,46 @@ static void restore_options(const options_backup_t *backup) {
   opt_palette_custom_set = backup->opt_palette_custom_set;
 }
 
-// Helper function to test options_init with fork/exec to avoid exit() calls
+// Helper function to test options_init with fork/exec to avoid exit() calls  
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   pid_t pid = fork();
   if (pid == 0) {
-    // Child process
+    // Child process - redirect all output to /dev/null
+    int devnull = open("/dev/null", O_WRONLY);
+    if (devnull >= 0) {
+      dup2(devnull, STDOUT_FILENO);
+      dup2(devnull, STDERR_FILENO);
+      close(devnull);
+    }
+    
+    // Also suppress logging
+    log_set_level(LOG_FATAL);
+    
     // Ensure argv is NULL-terminated for getopt_long and any library routines
-    char **argv_copy = (char **)calloc((size_t)argc + 1, sizeof(char *));
-    if (argv_copy) {
-      for (int i = 0; i < argc; i++) {
-        argv_copy[i] = argv[i];
+    char **argv_with_null;
+    if (argv[argc - 1] != NULL) {
+      argv_with_null = (char **)calloc((size_t)argc + 1, sizeof(char *));
+      if (argv_with_null) {
+        for (int i = 0; i < argc; i++) {
+          argv_with_null[i] = argv[i];
+        }
+        argv_with_null[argc] = NULL;
+      } else {
+        // Fallback to original argv if allocation fails
+        argv_with_null = argv;
       }
-      argv_copy[argc] = NULL;
     } else {
-      // Fallback to original argv if allocation fails
-      argv_copy = argv;
+      // It's already NULL-terminated
+      argv_with_null = argv;
     }
 
-    options_init(argc, argv_copy, is_client);
+    options_init(argc, argv_with_null, is_client);
     _exit(0); // Should not reach here if options_init calls exit()
   } else if (pid > 0) {
     // Parent process
     int status;
     waitpid(pid, &status, 0);
     int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
-    printf("DEBUG: Parent process: status=%d, exit_code=%d\n", status, exit_code);
     return exit_code;
   } else {
     // Fork failed
