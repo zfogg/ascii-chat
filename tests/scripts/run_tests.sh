@@ -818,17 +818,16 @@ function run_tests_in_parallel() {
         test_junit="/tmp/junit_${test_name}_worker${worker_id}_$$.xml"
       fi
 
-      # Print starting message to stderr (only in verbose mode or for debugging)
-      if [[ -n "$VERBOSE" ]]; then
-        echo "🚀 [TEST] Starting: $test_name" >&2
-      fi
+      # Print starting message to stderr
+      echo "🚀 [TEST] Starting: $test_name" >&2
       log_verbose "Worker $worker_id starting test $((test_index + 1)) of $total_tests: $test_name"
 
       # Run test synchronously (not in background)
       local exit_code=0
-      if [[ -n "$generate_junit" ]]; then
-        # Run test with XML output to JUnit file and capture test output separately
-        "$test_executable" --jobs "$jobs_per_test" --xml "$test_junit" >"$test_log" 2>&1
+  if [[ -n "$generate_junit" ]]; then
+        # Run test with XML output and capture both XML and test output
+        # Criterion sends XML to stdout when using --xml, so we need to capture it
+        "$test_executable" --jobs "$jobs_per_test" --xml >"$test_junit" 2>"$test_log"
         exit_code=$?
       else
         "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
@@ -842,10 +841,8 @@ function run_tests_in_parallel() {
       # Process result
       if [[ $exit_code -eq 0 ]]; then
         ((worker_passed++))
-        # Only show passing tests in verbose mode, otherwise keep output minimal
-        if [[ -n "$VERBOSE" ]]; then
-          echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
-        fi
+        # Show passing tests
+        echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
       elif [[ $exit_code -eq 130 ]] || [[ $exit_code -gt 128 ]]; then
         ((worker_failed++))
         echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $test_name" >&2
@@ -855,10 +852,10 @@ function run_tests_in_parallel() {
 
         # Show failure details for failed tests
         if [[ -n "$generate_junit" ]]; then
-          # In JUnit mode, collect the test for later re-run to show failure details
-          echo "$test_executable" >> "$failed_test_details_file"
+          # In JUnit mode, immediately re-run the test to show failure details
           echo "--- Failure details for $test_name ---" >&2
-          echo "Test failed - failure details will be shown after all tests complete" >&2
+          # Re-run the test without JUnit mode to get the actual failure output
+          "$test_executable" --jobs "$jobs_per_test" >&2 || true  # Ignore exit code
           echo "--- End failure details ---" >&2
         else
           # In non-JUnit mode, show the test log
@@ -954,37 +951,7 @@ function run_tests_in_parallel() {
   done
 
   # Clean up queue and lock files
-  rm -f "/tmp/queue_index_$$.txt"
-  # Read failed test details from file into array
-  if [[ -s "$failed_test_details_file" ]]; then
-    while IFS= read -r failed_test; do
-      failed_test_details+=("$failed_test")
-    done < "$failed_test_details_file"
-  fi
-
-  # Show failure details for failed tests if in JUnit mode
-  if [[ -n "$generate_junit" && ${#failed_test_details[@]} -gt 0 ]]; then
-    echo "" >&2
-    echo "==========================================" >&2
-    echo "🔍 FAILURE DETAILS" >&2
-    echo "==========================================" >&2
-
-    for failed_test in "${failed_test_details[@]}"; do
-      local test_name=$(basename "$failed_test")
-      echo "" >&2
-      echo "--- Failure details for $test_name ---" >&2
-
-      # Re-run the test without JUnit mode to get the actual failure output
-      "$failed_test" --jobs "$jobs_per_test" 2>&1 | head -50 >&2
-
-      echo "--- End failure details ---" >&2
-    done
-
-    echo "" >&2
-    echo "==========================================" >&2
-  fi
-
-  rm -f "/tmp/queue_lock_$$.txt" "$failed_test_details_file"
+  rm -f "/tmp/queue_index_$$.txt" "/tmp/queue_lock_$$.txt" "$failed_test_details_file"
 
   # Return results to stdout (this is what gets captured)
   echo "$passed_tests $failed_tests $tests_that_started"
@@ -1087,7 +1054,7 @@ function run_single_test() {
   export CRITERION_TEST=1 # Ensure tests know they're running in test environment
 
   # Check if already interrupted before starting
-  if [[ $INTERRUPTED -eq 1 ]]; then
+        if [[ $INTERRUPTED -eq 1 ]]; then
     return 130
   fi
 
@@ -1163,238 +1130,6 @@ function run_single_test() {
   return $test_exit_code
 }
 
-# Run tests for a specific category
-function run_test_category() {
-  local category="$1"
-  local build_type="$2"
-  local jobs="$3"
-  local generate_junit="$4"
-  local log_file="$5"
-  local junit_file="$6"
-
-  # Note: JUnit XML closing is handled by the caller, not here
-
-  echo ""
-  echo "=========================================="
-  echo "🔧 Starting $category tests..."
-  echo "=========================================="
-  local category_start_time=$(date +%s.%N)
-
-  # First, determine what test executables should exist based on source files
-  local test_names_to_build=()
-  log_verbose "Looking for test source files in $PROJECT_ROOT/tests/$category/"
-
-  case "$category" in
-    unit)
-      # Find all unit test source files and convert to executable names
-      for f in "$PROJECT_ROOT/tests/unit/"*_test.c; do
-        if [[ -f "$f" ]]; then
-          local basename=$(basename "$f" .c)
-          local test_name="test_unit_${basename%_test}"
-          test_names_to_build+=("$test_name")
-        fi
-      done
-      ;;
-    integration)
-      # Find all integration test source files and convert to executable names
-      for f in "$PROJECT_ROOT/tests/integration/"*_test.c; do
-        if [[ -f "$f" ]]; then
-          local basename=$(basename "$f" .c)
-          local test_name="test_integration_${basename%_test}"
-          test_names_to_build+=("$test_name")
-        fi
-      done
-      ;;
-    performance)
-      # Find all performance test source files and convert to executable names
-      for f in "$PROJECT_ROOT/tests/performance/"*_test.c; do
-        if [[ -f "$f" ]]; then
-          local basename=$(basename "$f" .c)
-          local test_name="test_performance_${basename%_test}"
-          test_names_to_build+=("$test_name")
-        fi
-      done
-      ;;
-  esac
-
-  if [[ ${#test_names_to_build[@]} -eq 0 ]]; then
-    log_error "No $category test source files found in $PROJECT_ROOT/tests/$category/"
-    return 1
-  fi
-
-  # Always build all tests for this category (make will skip if already built)
-  log_info "🔨 Building ${#test_names_to_build[@]} $category test(s) in $build_type mode..."
-
-  # Add bin/ prefix to all test names
-  local make_targets=()
-  for test_name in "${test_names_to_build[@]}"; do
-    make_targets+=("bin/$test_name")
-  done
-
-  # Build all test executables at once with the specified build type
-  # Filter out "up to date" messages and capture make's exit code via PIPESTATUS
-  colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done" || true
-  local make_exit_code=${PIPESTATUS[0]}
-
-  if [[ $make_exit_code -ne 0 ]]; then
-    log_error "Failed to build $category tests"
-    return 1
-  else
-    log_success "Successfully built $category tests"
-  fi
-
-  # Now get the list of built executables
-  log_verbose "Getting list of test executables for category: $category, build_type: $build_type"
-  local test_executables=($(get_test_executables "$category" "$build_type"))
-  log_verbose "Found test executables array with ${#test_executables[@]} elements"
-
-  if [[ ${#test_executables[@]} -eq 0 ]]; then
-    log_error "No $category tests found after building 😕"
-    log_error "Contents of bin directory:"
-    ls -la "$PROJECT_ROOT/bin/" 2>/dev/null || echo "bin/ directory does not exist"
-    log_error "Trying to debug get_test_executables directly:"
-    get_test_executables "$category" "$build_type" | head -5
-    return 1
-  fi
-
-  local failed=0
-  local total_tests=${#test_executables[@]}
-  local passed_tests=0
-  local failed_tests=0
-  local tests_that_started=0
-
-  log_info "📦 Found $total_tests $category test(s)"
-
-  if [[ -n "$generate_junit" ]]; then
-    # Initialize JUnit XML
-    echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
-    echo "<testsuites name=\"ASCII-Chat $category Tests\">" >>"$junit_file"
-  fi
-
-  # Run each test
-  # Determine if we should run tests in parallel
-  local actual_jobs="$jobs"
-  local parallel_execution=0
-
-  # Enable parallel execution by default unless explicitly disabled
-  if [[ -z "$NO_PARALLEL" ]]; then
-    parallel_execution=1
-  else
-    log_verbose "Running tests sequentially (parallel execution disabled)"
-  fi
-
-  # Arrays to track parallel test execution
-  local test_pids=()
-  local test_names=()
-  local test_logs=()
-  local test_junit_files=() # Track individual JUnit XML files
-  local test_start_times=() # Track test start times for duration calculation
-
-  # Smart resource allocation: start many tests in parallel with good core usage
-  local total_cores=$(detect_cpu_cores)
-  local num_tests=${#test_executables[@]}
-  # Calculate resource allocation using the centralized function
-  local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
-  local max_parallel_tests=${allocation[0]}
-  local jobs_per_test=${allocation[1]}
-
-  # Update actual_jobs to reflect jobs per test
-  actual_jobs=$jobs_per_test
-
-  log_info "🎯 Resource allocation: $num_tests tests, $max_parallel_tests parallel, $jobs_per_test jobs each (${total_cores} cores total)"
-
-  if [[ $parallel_execution -eq 1 ]]; then
-    # Use the unified parallel execution function
-    local results=$(run_tests_in_parallel "$build_type" "$jobs" "$generate_junit" "$log_file" "$junit_file" "$max_parallel_tests" "$jobs_per_test" "${test_executables[@]}")
-    local passed_tests=$(echo "$results" | cut -d' ' -f1)
-    local failed_tests=$(echo "$results" | cut -d' ' -f2)
-    tests_that_started=$(echo "$results" | cut -d' ' -f3)
-
-    if [[ $failed_tests -gt 0 ]]; then
-            failed=1
-    fi
-  else
-    # Sequential execution mode (original code)
-    for test_executable in "${test_executables[@]}"; do
-      # Check if we've been interrupted
-      if [[ $INTERRUPTED -eq 1 ]]; then
-        break
-      fi
-
-      ((tests_that_started++))
-      log_verbose "Running test $tests_that_started of $total_tests: $(basename "$test_executable")"
-      if run_single_test --executable "$test_executable" --jobs "$actual_jobs" --generate-junit "$generate_junit" --log-file "$log_file" --junit-file "$junit_file"; then
-        ((passed_tests++))
-      else
-        local exit_code=$?
-
-        # Check if interrupted by Ctrl-C
-        if [[ $exit_code -eq 130 ]]; then
-          echo ""
-          echo "🛑 Tests cancelled by user (Ctrl-C)"
-          INTERRUPTED=1
-          break
-        fi
-
-        failed=1
-        # Continue running other tests even if one fails/crashes
-        log_warning "Test failed with exit code $exit_code, continuing with remaining tests..."
-      fi
-    done
-  fi
-
-  if [[ -n "$generate_junit" ]]; then
-    # Remove trap and close XML properly
-    trap - EXIT INT TERM
-    echo '</testsuites>' >>"$junit_file"
-  fi
-
-  # Report results
-  local category_end_time=$(date +%s.%N)
-  local category_duration=$(echo "$category_end_time - $category_start_time" | bc -l)
-
-  # Calculate failed tests properly (in parallel mode, failed_tests is already set)
-  if [[ $parallel_execution -eq 0 ]]; then
-    failed_tests=$((tests_that_started - passed_tests))
-  fi
-
-  echo ""
-  echo "=========================================="
-
-  # Check if no tests actually ran
-  if [[ $tests_that_started -eq 0 ]]; then
-    echo "❌ CRITICAL: No $category tests were executed!"
-    echo "=========================================="
-    return 3 # Special return code for "no tests ran at all"
-  elif [[ $passed_tests -eq 0 ]] && [[ $total_tests -gt 0 ]]; then
-    echo "❌ All $category tests failed to run"
-    echo "=========================================="
-    return 2 # Special return code for "all tests failed to run"
-  elif [[ $failed_tests -eq 0 ]]; then
-    echo "✅ $category tests completed: $passed_tests passed, $failed_tests failed"
-    echo "⏱️ $category execution time: ${category_duration}s"
-  else
-    echo "❌ $category tests completed: $passed_tests passed, $failed_tests failed"
-    echo "⏱️ $category execution time: ${category_duration}s"
-  fi
-  echo "=========================================="
-
-  if [[ $tests_that_started -eq 0 ]]; then
-    log_error "CRITICAL: No tests were executed in $category category!"
-    return 3 # No tests ran at all
-  elif [[ $failed -eq 1 ]]; then
-    if [[ $passed_tests -gt 0 ]]; then
-      log_error "Some $category tests failed!"
-      return 1 # Some tests failed but some passed
-    else
-      # All tests failed
-      return 2 # All tests failed to run
-    fi
-  else
-    log_success "All $category tests passed!"
-    return 0 # All tests passed
-  fi
-}
 
 # =============================================================================
 # Build Management Functions
@@ -1694,8 +1429,11 @@ function main() {
   else
     # Category mode - determine all categories to run
     local categories_to_run=()
-    if [[ ${#TEST_CATEGORIES[@]} -eq 0 ]]; then
-      # No categories specified, run all
+    # If we have a specific TEST_TYPE (not "all"), use that instead of TEST_CATEGORIES
+    if [[ -n "$TEST_TYPE" && "$TEST_TYPE" != "all" ]]; then
+      categories_to_run=("$TEST_TYPE")
+    elif [[ ${#TEST_CATEGORIES[@]} -eq 0 ]]; then
+      # No categories specified via command line, run all
       categories_to_run=("unit" "integration" "performance")
     else
       # Use specified categories
@@ -1720,40 +1458,40 @@ function main() {
   log_info "🎯 Running ${#all_tests_to_run[@]} test(s)"
 
   # Initialize JUnit XML
-  if [[ -n "$GENERATE_JUNIT" ]]; then
-    echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
+    if [[ -n "$GENERATE_JUNIT" ]]; then
+      echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
     echo "<testsuites name=\"ASCII-Chat Tests\">" >>"$junit_file"
-  fi
+    fi
 
   # Build all test executables
-  local test_targets=()
+    local test_targets=()
   for test_executable in "${all_tests_to_run[@]}"; do
     local test_name=$(basename "$test_executable")
-    test_targets+=("bin/$test_name")
-  done
+      test_targets+=("bin/$test_name")
+    done
 
   log_info "🔨 Building ${#test_targets[@]} test executables..."
-  local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
-  if [[ "$BUILD_TYPE" != "default" ]]; then
-    make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
-  fi
-  make_cmd="$make_cmd ${test_targets[*]}"
+    local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
+    if [[ "$BUILD_TYPE" != "default" ]]; then
+      make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
+    fi
+    make_cmd="$make_cmd ${test_targets[*]}"
 
   # Run make and capture output
-  local make_output
-  make_output=$(eval "$make_cmd" 2>&1)
-  local make_exit_code=$?
+    local make_output
+    make_output=$(eval "$make_cmd" 2>&1)
+    local make_exit_code=$?
 
-  # Show non-"up to date" output
-  echo "$make_output" | grep -v "is up to date" || true
+    # Show non-"up to date" output
+    echo "$make_output" | grep -v "is up to date" || true
 
-  if [[ $make_exit_code -ne 0 ]]; then
-    log_error "Make command failed with exit code $make_exit_code"
-    exit 1
-  fi
+    if [[ $make_exit_code -ne 0 ]]; then
+      log_error "Make command failed with exit code $make_exit_code"
+      exit 1
+    fi
 
   # Run all tests using the existing parallel execution function
-  local total_cores=$(detect_cpu_cores)
+    local total_cores=$(detect_cpu_cores)
   local num_tests=${#all_tests_to_run[@]}
   local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
   local max_parallel_tests=${allocation[0]}
@@ -1765,7 +1503,7 @@ function main() {
   local tests_that_started=$(echo "$results" | cut -d' ' -f3)
 
   # Close JUnit XML
-  if [[ -n "$GENERATE_JUNIT" ]]; then
+        if [[ -n "$GENERATE_JUNIT" ]]; then
     echo '</testsuites>' >>"$junit_file"
 
     # Validate JUnit XML
@@ -1784,15 +1522,15 @@ function main() {
   fi
 
   # Report results
-  echo ""
-  echo "=========================================="
+        echo ""
+        echo "=========================================="
   if [[ $failed_tests -eq 0 ]]; then
     echo "✅ Tests completed: $passed_tests passed, $failed_tests failed"
-    overall_failed=0
-  else
+      overall_failed=0
+    else
     echo "❌ Tests completed: $passed_tests passed, $failed_tests failed"
-    overall_failed=1
-  fi
+      overall_failed=1
+    fi
   echo "=========================================="
 
   # Final exit logic
@@ -1805,283 +1543,6 @@ function main() {
   echo "=========================================="
 
   if [[ $overall_failed -eq 0 ]]; then
-    log_success "All tests completed successfully! 🎉"
-    log_info "📋 View test logs: cat $log_file"
-  else
-    log_error "Some tests failed!"
-    log_info "View test logs: cat $log_file 📋"
-    exit 1
-  fi
-}
-
-# =============================================================================
-# Script Entry Point
-# =============================================================================
-
-# Only run main if script is executed directly (not sourced)
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-      echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
-      echo "<testsuites name=\"ASCII-Chat Single Test\">" >>"$junit_file"
-    fi
-
-    # Run single test binary
-    if ! run_single_test_binary "$SINGLE_TEST" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$FILTER"; then
-      overall_failed=1
-    fi
-
-    # Close JUnit XML for single test
-    if [[ -n "$GENERATE_JUNIT" ]]; then
-      echo '</testsuites>' >>"$junit_file"
-
-      # Validate JUnit XML for well-formedness
-      local xml_errors
-      xml_errors=$(xmllint --noout "$junit_file" 2>&1)
-      if [[ $? -ne 0 ]]; then
-        log_error "❌ JUnit XML validation failed!"
-        log_error "Invalid XML in: $junit_file"
-        log_error "XML errors: $xml_errors"
-        log_error "XML content:"
-        cat "$junit_file" >&2
-        overall_failed=1
-      else
-        log_info "✅ JUnit XML validation passed"
-      fi
-    fi
-  elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
-    # Run multiple specific test binaries
-    log_info "🎯 Running ${#MULTIPLE_TESTS[@]} specific tests"
-
-    if [[ -n "$GENERATE_JUNIT" ]]; then
-      # Initialize JUnit XML for multiple tests
-      echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
-      echo "<testsuites name=\"ASCII-Chat Multiple Tests\">" >>"$junit_file"
-    fi
-
-    local passed_count=0
-    local failed_count=0
-
-    # Build all test executables with single make call for efficiency
-    local test_targets=()
-    for test_name in "${MULTIPLE_TESTS[@]}"; do
-      if [[ "$test_name" != test_* ]]; then
-        test_name="test_$test_name"
-      fi
-      test_targets+=("bin/$test_name")
-    done
-
-    echo "🔨 Building ${#test_targets[@]} test executables with single make call..."
-    local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
-    if [[ "$BUILD_TYPE" != "default" ]]; then
-      make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
-    fi
-    make_cmd="$make_cmd ${test_targets[*]}"
-
-    # Run make and capture output, filtering "up to date" messages
-    local make_output
-    make_output=$(eval "$make_cmd" 2>&1)
-    local make_exit_code=$?
-
-    # Show non-"up to date" output
-    echo "$make_output" | grep -v "is up to date" || true
-
-    # Check if make failed
-    if [[ $make_exit_code -ne 0 ]]; then
-      log_error "Make command failed with exit code $make_exit_code"
-      exit 1
-    fi
-
-    # Set up parallel execution arrays and resource allocation
-    local test_pids=()
-    local test_names=()
-    local test_logs=()
-    local test_junit_files=()
-    local test_start_times=()
-    local tests_that_started=0
-
-    # Smart resource allocation for multiple tests - prioritize parallel execution
-    local total_cores=$(detect_cpu_cores)
-    local num_tests=${#MULTIPLE_TESTS[@]}
-    # Calculate resource allocation using the centralized function
-    local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
-    local max_parallel_tests=${allocation[0]}
-    local jobs_per_test=${allocation[1]}
-
-    log_info "🎯 Resource allocation: $num_tests tests, $max_parallel_tests parallel, $jobs_per_test jobs each (${total_cores} cores total)"
-
-    # Check if we should run tests in parallel (default) or sequentially
-    local parallel_execution=1
-    if [[ -n "$NO_PARALLEL" ]]; then
-      parallel_execution=0
-      log_verbose "Running multiple tests sequentially (parallel execution disabled)"
-    fi
-
-    # Prepare test executables array
-    local test_executables=()
-      for test_name in "${MULTIPLE_TESTS[@]}"; do
-        # Normalize test name
-        if [[ "$test_name" != test_* ]]; then
-          test_name="test_$test_name"
-        fi
-        local test_path="$PROJECT_ROOT/bin/$test_name"
-
-        # Check if it exists after build
-        if [[ ! -f "$test_path" ]]; then
-          log_error "Test executable not found after build: $test_path"
-          exit 1
-        fi
-
-      test_executables+=("$test_path")
-    done
-
-    if [[ $parallel_execution -eq 1 ]]; then
-      # Use the unified parallel execution function
-      local results=$(run_tests_in_parallel "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$max_parallel_tests" "$jobs_per_test" "${test_executables[@]}")
-      local passed_count=$(echo "$results" | cut -d' ' -f1)
-      local failed_count=$(echo "$results" | cut -d' ' -f2)
-      local tests_that_started=$(echo "$results" | cut -d' ' -f3)
-    else
-      # Sequential execution mode (fallback for --no-parallel)
-      for test_name in "${MULTIPLE_TESTS[@]}"; do
-        # Check if interrupted before starting next test
-        if [[ $INTERRUPTED -eq 1 ]]; then
-          print_cancellation_message
-          exit 130
-        fi
-
-        echo ""
-        echo "=========================================="
-        echo "🔧 Running: $test_name"
-        echo "=========================================="
-
-        # Normalize test name
-        if [[ "$test_name" != test_* ]]; then
-          test_name="test_$test_name"
-        fi
-
-        local test_path="$PROJECT_ROOT/bin/$test_name"
-
-        # Check if it exists after build
-        if [[ ! -f "$test_path" ]]; then
-          log_error "Test executable not found after build: $test_path"
-          exit 1
-        fi
-
-        if run_single_test_binary "$test_name" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file" "$FILTER"; then
-          ((passed_count++))
-        else
-          local exit_code=$?
-          # Check if interrupted by signal
-          if [[ $exit_code -eq 130 ]] || [[ $INTERRUPTED -eq 1 ]]; then
-            print_cancellation_message
-            exit 130
-          fi
-          ((failed_count++))
-          overall_failed=1
-        fi
-      done
-    fi
-
-    if [[ -n "$GENERATE_JUNIT" ]]; then
-      # Wait a moment to ensure all workers have finished writing to the JUnit file
-      sleep 0.1
-      echo '</testsuites>' >>"$junit_file"
-
-      # Validate JUnit XML for well-formedness
-      local xml_errors
-      xml_errors=$(xmllint --noout "$junit_file" 2>&1)
-      if [[ $? -ne 0 ]]; then
-        log_error "❌ JUnit XML validation failed!"
-        log_error "Invalid XML in: $junit_file"
-        log_error "XML errors: $xml_errors"
-        log_error "XML content:"
-        cat "$junit_file" >&2
-        overall_failed=1
-      else
-        log_info "✅ JUnit XML validation passed"
-      fi
-    fi
-
-    echo ""
-    echo "=========================================="
-    if [[ $failed_count -eq 0 ]]; then
-      echo "✅ Multiple tests completed: $passed_count passed, $failed_count failed"
-      overall_failed=0
-    else
-      echo "❌ Multiple tests completed: $passed_count passed, $failed_count failed"
-      overall_failed=1
-    fi
-    echo "==========================================="
-  else
-    # Run test categories
-  local all_categories_failed_completely=1
-  local no_tests_ran=0
-  for category in "${categories_to_run[@]}"; do
-    # Check if we've been interrupted
-    if [[ $INTERRUPTED -eq 1 ]]; then
-      break
-    fi
-
-    run_test_category "$category" "$BUILD_TYPE" "$jobs" "$GENERATE_JUNIT" "$log_file" "$junit_file"
-    local category_result=$?
-
-    if [[ $category_result -eq 0 ]]; then
-      # At least one category had all tests pass
-      all_categories_failed_completely=0
-    elif [[ $category_result -eq 1 ]]; then
-      # Some tests passed, some failed
-      overall_failed=1
-      all_categories_failed_completely=0
-    elif [[ $category_result -eq 2 ]]; then
-      # All tests in this category failed to run
-      overall_failed=1
-    elif [[ $category_result -eq 3 ]]; then
-      # No tests ran at all in this category
-      overall_failed=1
-      no_tests_ran=1
-    fi
-  done
-  fi
-
-  # Check if we were interrupted
-  if [[ $INTERRUPTED -eq 1 ]]; then
-    # Don't show normal final report - interrupt handler already printed cancellation message
-    exit 130
-  fi
-
-  local overall_end_time=$(date +%s.%N)
-  local total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
-
-  # Final report
-  # Special handling for when ALL tests in ALL categories failed to run
-  if [[ -z "$SINGLE_TEST" ]] && [[ -z "$MULTIPLE_TEST_MODE" ]]; then
-    # Category mode - check if all categories had all tests fail to run
-    if [[ $all_categories_failed_completely -eq 1 ]]; then
-      # All categories had ALL tests fail to run (no tests passed anywhere)
-      # Already printed "All X tests failed to run" for each category
-      # Don't show execution time or logs
-      exit 1
-    fi
-  fi
-
-  # Normal final report
-  echo ""
-  echo "=========================================="
-  echo "⏱️ TOTAL EXECUTION TIME: ${total_duration}s"
-  echo "=========================================="
-
-  # For multiple test mode, check the failed_count to determine overall success
-  if [[ -n "$MULTIPLE_TEST_MODE" ]]; then
-    if [[ $failed_count -eq 0 ]]; then
-      log_success "All tests completed successfully! 🎉"
-      log_info "📋 View test logs: cat $log_file"
-    else
-      log_error "Some tests failed!"
-      log_info "View test logs: cat $log_file 📋"
-      exit 1
-    fi
-  elif [[ $overall_failed -eq 0 ]]; then
     log_success "All tests completed successfully! 🎉"
     log_info "📋 View test logs: cat $log_file"
   else
