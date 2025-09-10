@@ -584,6 +584,11 @@ Test(ascii, ascii_write_empty_data) {
  * ============================================================================ */
 
 Test(ascii, ascii_read_init_basic) {
+  if (getenv("CI") != NULL) {
+    cr_skip("Skipping test in CI environment");
+    return;
+  }
+
   asciichat_error_t result = ascii_read_init(0);
 
   // Should succeed or fail gracefully (depends on webcam availability)

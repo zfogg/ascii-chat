@@ -807,10 +807,9 @@ function run_tests_in_parallel() {
 
         # Show failure details for failed tests
         if [[ -n "$generate_junit" ]]; then
-          # In JUnit mode, run the test again without XML to get the actual failure output
+          # In JUnit mode, just note that we need to show failure details later
           echo "--- Failure details for $test_name ---" >&2
-          echo "Running test again without XML to show failure details..." >&2
-          "$test_executable" --jobs "$jobs_per_test"
+          echo "Test failed - failure details will be shown after all tests complete" >&2
           echo "--- End failure details ---" >&2
         else
           # In non-JUnit mode, show the test log
@@ -1095,10 +1094,7 @@ function run_test_category() {
   local log_file="$5"
   local junit_file="$6"
 
-  # Set up trap to close XML properly on exit
-  if [[ -n "$generate_junit" ]]; then
-    trap "echo '</testsuites>' >> '$junit_file' 2>/dev/null || true" EXIT INT TERM
-  fi
+  # Note: JUnit XML closing is handled by the caller, not here
 
   echo ""
   echo "=========================================="
