@@ -657,6 +657,10 @@ function start_test_in_background() {
   [[ -n "$verbose_flag" ]] && cmd_args+=("$verbose_flag")
   [[ -n "$color_flag" ]] && cmd_args+=("$color_flag")
 
+  # Set test environment variables for fast test mode
+  export TESTING=1
+  export CRITERION_TEST=1
+
   # Run the test executable directly in background to maintain proper parent-child relationship
   if [[ -n "$test_log" ]]; then
     # Run test and append to log file
@@ -942,7 +946,8 @@ function run_single_test() {
   export CLICOLOR=1
   export CLICOLOR_FORCE=1
   export CRITERION_USE_COLORS=always
-  # export TESTING=1  # Disabled - causes Criterion to abort
+  export TESTING=1  # Enable fast test mode for network/compression tests
+  export CRITERION_TEST=1  # Ensure tests know they're running in test environment
 
   # Check if already interrupted before starting
   if [[ $INTERRUPTED -eq 1 ]]; then
@@ -1162,13 +1167,17 @@ function run_test_category() {
       # Single test: use all cores for maximum parallelism within the test
       max_parallel_tests=1
       jobs_per_test=$total_cores
-    else
-      # Multiple tests: run all tests in parallel and distribute all cores among them
+    elif [[ $num_tests -le $total_cores ]]; then
+      # Few tests: run all tests in parallel and distribute all cores among them
       max_parallel_tests=$num_tests
       jobs_per_test=$((total_cores / num_tests))
 
-      # Ensure minimum 1 core per test, but prefer to use all cores
+      # Ensure minimum 1 core per test
       [[ $jobs_per_test -lt 1 ]] && jobs_per_test=1
+    else
+      # Many tests: limit concurrent tests to number of cores, use 1 job per test
+      max_parallel_tests=$total_cores
+      jobs_per_test=1
     fi
   fi
 
@@ -1631,13 +1640,17 @@ function main() {
         # Single test: use all cores for maximum parallelism within the test
         max_parallel_tests=1
         jobs_per_test=$total_cores
-      else
-        # Multiple tests: run all tests in parallel and distribute all cores among them
+      elif [[ $num_tests -le $total_cores ]]; then
+        # Few tests: run all tests in parallel and distribute all cores among them
         max_parallel_tests=$num_tests
         jobs_per_test=$((total_cores / num_tests))
 
-        # Ensure minimum 1 core per test, but prefer to use all cores
+        # Ensure minimum 1 core per test
         [[ $jobs_per_test -lt 1 ]] && jobs_per_test=1
+      else
+        # Many tests: limit concurrent tests to number of cores, use 1 job per test
+        max_parallel_tests=$total_cores
+        jobs_per_test=1
       fi
     fi
 
