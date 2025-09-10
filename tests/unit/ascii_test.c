@@ -14,7 +14,7 @@
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with custom log levels
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ascii, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ascii, LOG_FATAL, LOG_DEBUG, true, true);
 
 /* ============================================================================
  * ASCII Conversion Tests

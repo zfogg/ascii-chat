@@ -9,8 +9,8 @@
 #include "options.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with custom log levels
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(terminal_detect, LOG_FATAL, LOG_DEBUG);
+// Use the enhanced macro with stdout/stderr enabled for debugging
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(terminal_detect, LOG_FATAL, LOG_DEBUG, false, false);
 
 /* ============================================================================
  * Terminal Size Detection Tests
@@ -143,35 +143,83 @@ Test(terminal_detect, detect_truecolor_support) {
   char *original_colorterm = getenv("COLORTERM");
   char *original_term = getenv("TERM");
 
-  // Test with COLORTERM=truecolor
+  // Test 1: COLORTERM=truecolor should enable truecolor
   setenv("COLORTERM", "truecolor", 1);
+  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
   bool result = detect_truecolor_support();
   cr_assert(result, "COLORTERM=truecolor should enable truecolor support");
 
-  // Test with COLORTERM=24bit
+  // Test 2: COLORTERM=24bit should enable truecolor
   setenv("COLORTERM", "24bit", 1);
+  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
   result = detect_truecolor_support();
   cr_assert(result, "COLORTERM=24bit should enable truecolor support");
 
-  // Test with known truecolor terminals
-  unsetenv("COLORTERM");
+  // Test 3: COLORTERM with other values should not enable truecolor
+  setenv("COLORTERM", "256color", 1);
+  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
+  result = detect_truecolor_support();
+  cr_assert(result == false, "COLORTERM=256color should not enable truecolor support");
+
+  setenv("COLORTERM", "16color", 1);
+  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
+  result = detect_truecolor_support();
+  cr_assert(result == false, "COLORTERM=16color should not enable truecolor support");
+
+  unsetenv("COLORTERM"); // Clear COLORTERM
   setenv("TERM", "iterm2", 1);
   result = detect_truecolor_support();
-  // May or may not be true depending on terminfo, but should not crash
+  // Note: This may or may not be true depending on terminfo, but should not crash
   (void)result; // Suppress unused variable warning
 
   setenv("TERM", "konsole", 1);
   result = detect_truecolor_support();
-  // May or may not be true depending on terminfo, but should not crash
+  // Note: This may or may not be true depending on terminfo, but should not crash
   (void)result; // Suppress unused variable warning
 
-  // Test with non-truecolor terminal
+  setenv("TERM", "gnome-terminal", 1);
+  result = detect_truecolor_support();
+  // Note: This may or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
+
+  setenv("TERM", "xfce4-terminal", 1);
+  result = detect_truecolor_support();
+  // Note: This may or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
+
+  setenv("TERM", "alacritty", 1);
+  result = detect_truecolor_support();
+  // Note: This may or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
+
+  setenv("TERM", "kitty", 1);
+  result = detect_truecolor_support();
+  // Note: This may or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
+
+  // Test 5: Non-truecolor terminals should not enable truecolor
+  unsetenv("COLORTERM"); // Clear COLORTERM
   setenv("TERM", "dumb", 1);
-  unsetenv("COLORTERM"); // Make sure COLORTERM is not set
   result = detect_truecolor_support();
   // Note: Some systems may have terminfo that reports high color counts even for "dumb"
   // This is a limitation of the current detection method, so we just verify it doesn't crash
   (void)result; // Suppress unused variable warning
+
+  setenv("TERM", "xterm", 1);
+  result = detect_truecolor_support();
+  // Note: This may or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
+
+  setenv("TERM", "screen", 1);
+  result = detect_truecolor_support();
+  // Note: This may or may not be true depending on terminfo, but should not crash
+  (void)result; // Suppress unused variable warning
+
+  // Test 6: No environment variables should not enable truecolor
+  unsetenv("COLORTERM");
+  unsetenv("TERM");
+  result = detect_truecolor_support();
+  cr_assert(result == false, "No COLORTERM or TERM should not enable truecolor support");
 
   // Restore original environment
   if (original_colorterm) {

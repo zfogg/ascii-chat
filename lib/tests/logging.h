@@ -98,14 +98,15 @@ bool test_logging_is_disabled(void);
  *
  * Usage:
  * @code
- * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(my_suite, LOG_FATAL, LOG_DEBUG);
- * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(my_suite, LOG_FATAL, LOG_DEBUG, .timeout = 10);
+ * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(my_suite, LOG_FATAL, LOG_DEBUG, true, true);
+ * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(my_suite, LOG_FATAL, LOG_DEBUG, false, false, .timeout = 10);
  * @endcode
  */
-#define TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(suite_name, setup_level, restore_level, ...)                      \
+#define TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(suite_name, setup_level, restore_level, disable_stdout,           \
+                                                     disable_stderr, ...)                                              \
   void setup_quiet_test_logging_##suite_name(void) {                                                                   \
     log_set_level(setup_level);                                                                                        \
-    test_logging_disable(true, true);                                                                                  \
+    test_logging_disable(disable_stdout, disable_stderr);                                                              \
   }                                                                                                                    \
   void restore_test_logging_##suite_name(void) {                                                                       \
     log_set_level(restore_level);                                                                                      \

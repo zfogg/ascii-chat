@@ -759,12 +759,16 @@ function run_test_category() {
   done
   
   # Build all test executables at once with the specified build type
-  # Capture make output to filter it
-  # Run make directly to show colorized output
-  if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}"; then
-    local make_exit_code=0
+  # Filter out "up to date" messages
+  if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done"; then
+    # Check if make actually succeeded (grep returns 1 if no lines match, which could mean all were filtered)
+    if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" -j$(detect_cpu_cores) "${make_targets[@]}" >/dev/null 2>&1; then
+      local make_exit_code=0
+    else
+      local make_exit_code=1
+    fi
   else
-    local make_exit_code=1
+    local make_exit_code=${PIPESTATUS[0]}
   fi
   
   if [[ $make_exit_code -ne 0 ]]; then
@@ -897,13 +901,19 @@ function build_test_executable() {
   local make_target="bin/$test_name"
   log_info "🔨 Building test: $make_target in $build_type mode"
   
-  # Build the specific test executable
-  if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target"; then
+  # Build the specific test executable (filter out "up to date" messages)
+  if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done"; then
     log_success "Successfully built $make_target"
     return 0
   else
-    log_error "Failed to build test: $make_target"
-    return 1
+    # Check if make actually failed or just had nothing to do
+    if colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" >/dev/null 2>&1; then
+      # Make succeeded but output was filtered - it was already up to date
+      return 0
+    else
+      log_error "Failed to build test: $make_target"
+      return 1
+    fi
   fi
 }
 

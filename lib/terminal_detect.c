@@ -140,8 +140,35 @@ int get_terminfo_color_count(void) {
     int dev_null = open("/dev/null", O_WRONLY);
     dup2(dev_null, STDERR_FILENO);
 
-    // Try to initialize terminfo
-    int result = setupterm(NULL, STDOUT_FILENO, NULL);
+    // Try to initialize terminfo - check database first to avoid crashes
+    int result = -1;
+
+    // First, check if the terminal type exists in the terminfo database
+    // tgetent returns 1 if found, 0 if not found, -1 on error
+    int tgetent_result = tgetent(NULL, term_env);
+
+    if (tgetent_result == 1) {
+      // Terminal type exists in database, safe to call setupterm
+      result = setupterm(NULL, STDOUT_FILENO, NULL);
+
+      // setupterm returns 0 on success, 1 if terminal type not found, -1 on error
+      if (result == 1) {
+        // This shouldn't happen since tgetent found it, but handle gracefully
+        log_debug("Terminal type '%s' not found in terminfo database (inconsistent)", term_env);
+        result = -1; // Mark as failed
+      } else if (result == -1) {
+        // Error accessing terminfo database
+        log_debug("Error accessing terminfo database for terminal type '%s'", term_env);
+      }
+    } else if (tgetent_result == 0) {
+      // Terminal type not found in terminfo database
+      log_debug("Terminal type '%s' not found in terminfo database", term_env);
+      result = -1; // Mark as failed
+    } else {
+      // Error accessing terminfo database
+      log_debug("Error accessing terminfo database for terminal type '%s'", term_env);
+      result = -1; // Mark as failed
+    }
 
     // Restore stderr
     dup2(stderr_fd, STDERR_FILENO);

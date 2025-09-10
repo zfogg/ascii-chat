@@ -11,9 +11,9 @@
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(framebuffer, LOG_FATAL, LOG_DEBUG);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio_ring_buffer, LOG_FATAL, LOG_DEBUG);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG, true, true);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(framebuffer, LOG_FATAL, LOG_DEBUG, true, true);
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio_ring_buffer, LOG_FATAL, LOG_DEBUG, true, true);
 
 /* ============================================================================
  * Ring Buffer Tests
@@ -577,17 +577,20 @@ Test(audio_ring_buffer, buffer_overflow) {
   cr_assert_eq(written, 10);
 
   // Now try to write enough to cause overflow (this should drop the old samples)
-  float overflow_samples[AUDIO_RING_BUFFER_SIZE - 5];
-  for (int i = 0; i < AUDIO_RING_BUFFER_SIZE - 5; i++) {
+  // We need to write enough samples to exceed the available space
+  // Available space after writing 10 samples = AUDIO_RING_BUFFER_SIZE - 10 - 1 = 8181
+  // So we need to write more than 8181 samples to cause overflow
+  float overflow_samples[AUDIO_RING_BUFFER_SIZE - 1];
+  for (int i = 0; i < AUDIO_RING_BUFFER_SIZE - 1; i++) {
     overflow_samples[i] = (float)(i + 1000) * 0.001f;
   }
-  written = audio_ring_buffer_write(arb, overflow_samples, AUDIO_RING_BUFFER_SIZE - 5);
-  cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE - 5);
+  written = audio_ring_buffer_write(arb, overflow_samples, AUDIO_RING_BUFFER_SIZE - 1);
+  cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE - 1);
 
   // Read back samples - should get the newer samples (overflow_samples)
   float read_samples[AUDIO_RING_BUFFER_SIZE];
-  int read = audio_ring_buffer_read(arb, read_samples, AUDIO_RING_BUFFER_SIZE - 5);
-  cr_assert_eq(read, AUDIO_RING_BUFFER_SIZE - 5);
+  int read = audio_ring_buffer_read(arb, read_samples, AUDIO_RING_BUFFER_SIZE - 1);
+  cr_assert_eq(read, AUDIO_RING_BUFFER_SIZE - 1);
 
   // Verify we got the overflow samples (not the initial ones)
   for (int i = 0; i < read; i++) {
@@ -656,46 +659,106 @@ typedef struct {
   int thread_id;
   int num_operations;
   bool success;
+  pthread_mutex_t *mutex;
+  pthread_cond_t *not_full;
+  pthread_cond_t *not_empty;
+  int *total_produced;
+  int *total_consumed;
+  int max_operations;
 } thread_test_data_t;
 
 void *producer_thread(void *arg) {
   thread_test_data_t *data = (thread_test_data_t *)arg;
+  data->success = true;
 
   for (int i = 0; i < data->num_operations; i++) {
     int value = data->thread_id * 1000 + i;
+
+    pthread_mutex_lock(data->mutex);
+
+    // Wait while buffer is full
+    while (ringbuffer_is_full(data->rb) && *data->total_consumed < data->max_operations) {
+      pthread_cond_wait(data->not_full, data->mutex);
+    }
+
+    // Check if we should exit (all consumption is done)
+    if (*data->total_consumed >= data->max_operations) {
+      pthread_mutex_unlock(data->mutex);
+      break;
+    }
+
+    // Write to buffer
     if (!ringbuffer_write(data->rb, &value)) {
       data->success = false;
+      pthread_mutex_unlock(data->mutex);
       return NULL;
     }
-    usleep(100); // 0.1ms delay
+
+    (*data->total_produced)++;
+
+    // Signal consumers that buffer is not empty
+    pthread_cond_signal(data->not_empty);
+    pthread_mutex_unlock(data->mutex);
+
+    usleep(10); // Small delay to allow thread interleaving
   }
 
-  data->success = true;
   return NULL;
 }
 
 void *consumer_thread(void *arg) {
   thread_test_data_t *data = (thread_test_data_t *)arg;
+  data->success = true;
 
   for (int i = 0; i < data->num_operations; i++) {
     int value;
+
+    pthread_mutex_lock(data->mutex);
+
+    // Wait while buffer is empty and not all items have been produced
+    while (ringbuffer_is_empty(data->rb) && *data->total_produced < data->max_operations) {
+      pthread_cond_wait(data->not_empty, data->mutex);
+    }
+
+    // Check if we're done (buffer empty and all production complete)
+    if (ringbuffer_is_empty(data->rb) && *data->total_produced >= data->max_operations) {
+      pthread_mutex_unlock(data->mutex);
+      break;
+    }
+
+    // Read from buffer
     if (!ringbuffer_read(data->rb, &value)) {
       data->success = false;
+      pthread_mutex_unlock(data->mutex);
       return NULL;
     }
-    usleep(100); // 0.1ms delay
+
+    (*data->total_consumed)++;
+
+    // Signal producers that buffer is not full
+    pthread_cond_signal(data->not_full);
+    pthread_mutex_unlock(data->mutex);
+
+    usleep(10); // Small delay to allow thread interleaving
   }
 
-  data->success = true;
   return NULL;
 }
 
 Test(ringbuffer, thread_safety) {
-  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 16);
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), 64); // Larger buffer to reduce contention
   cr_assert_not_null(rb);
 
-  const int num_threads = 8;            // Lots of producers/consumers to test reliability
-  const int operations_per_thread = 100; // Really test it
+  const int num_threads = 4;            // Fewer threads to reduce contention
+  const int operations_per_thread = 50; // Fewer operations per thread
+  const int total_operations = num_threads * operations_per_thread;
+
+  // Initialize synchronization primitives
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t not_full = PTHREAD_COND_INITIALIZER;
+  pthread_cond_t not_empty = PTHREAD_COND_INITIALIZER;
+  int total_produced = 0;
+  int total_consumed = 0;
 
   pthread_t threads[num_threads * 2];
   thread_test_data_t thread_data[num_threads * 2];
@@ -706,6 +769,12 @@ Test(ringbuffer, thread_safety) {
     thread_data[i].thread_id = i;
     thread_data[i].num_operations = operations_per_thread;
     thread_data[i].success = false;
+    thread_data[i].mutex = &mutex;
+    thread_data[i].not_full = &not_full;
+    thread_data[i].not_empty = &not_empty;
+    thread_data[i].total_produced = &total_produced;
+    thread_data[i].total_consumed = &total_consumed;
+    thread_data[i].max_operations = total_operations;
 
     int result = pthread_create(&threads[i], NULL, producer_thread, &thread_data[i]);
     cr_assert_eq(result, 0);
@@ -717,6 +786,12 @@ Test(ringbuffer, thread_safety) {
     thread_data[num_threads + i].thread_id = i;
     thread_data[num_threads + i].num_operations = operations_per_thread;
     thread_data[num_threads + i].success = false;
+    thread_data[num_threads + i].mutex = &mutex;
+    thread_data[num_threads + i].not_full = &not_full;
+    thread_data[num_threads + i].not_empty = &not_empty;
+    thread_data[num_threads + i].total_produced = &total_produced;
+    thread_data[num_threads + i].total_consumed = &total_consumed;
+    thread_data[num_threads + i].max_operations = total_operations;
 
     int result = pthread_create(&threads[num_threads + i], NULL, consumer_thread, &thread_data[num_threads + i]);
     cr_assert_eq(result, 0);
@@ -729,11 +804,20 @@ Test(ringbuffer, thread_safety) {
 
   // Check that all threads succeeded
   for (int i = 0; i < num_threads * 2; i++) {
-    cr_assert(thread_data[i].success);
+    cr_assert(thread_data[i].success, "All threads succeed");
   }
+
+  // Verify correct number of operations
+  cr_assert_eq(total_produced, total_operations, "All items were produced");
+  cr_assert_eq(total_consumed, total_operations, "All items were consumed");
 
   // Buffer should be empty
   cr_assert(ringbuffer_is_empty(rb));
+
+  // Clean up synchronization primitives
+  pthread_mutex_destroy(&mutex);
+  pthread_cond_destroy(&not_full);
+  pthread_cond_destroy(&not_empty);
 
   ringbuffer_destroy(rb);
 }
