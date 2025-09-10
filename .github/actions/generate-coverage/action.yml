@@ -87,7 +87,7 @@ runs:
     # Check if coverage files exist before uploading
     - name: Check Coverage Files
       id: check-coverage
-      if: ${{ always() && inputs.upload-coverage == 'true' }}
+      if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
         echo "🔍 Checking for coverage files..."
@@ -115,7 +115,7 @@ runs:
 
     # Debug upload conditions
     - name: Debug Upload Conditions
-      if: always()
+      if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
         echo "🔍 Debugging upload conditions..."
@@ -123,13 +123,11 @@ runs:
         echo "inputs.codecov-token: '${{ inputs.codecov-token }}'"
         echo "steps.check-coverage.outputs.has_coverage: '${{ steps.check-coverage.outputs.has_coverage }}'"
         echo "Condition evaluation:"
-        echo "  always(): true"
         echo "  inputs.upload-coverage == 'true': ${{ inputs.upload-coverage == 'true' }}"
-        echo "  Combined condition: ${{ always() && inputs.upload-coverage == 'true' }}"
 
     # Upload coverage to Codecov (optional)
     - name: Upload Coverage to Codecov
-      if: ${{ always() && inputs.upload-coverage == 'true' }}
+      if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
         echo "🚀 Starting Codecov upload..."
@@ -167,7 +165,7 @@ runs:
 
     # Upload JUnit XML to Codecov
     - name: Upload JUnit XML to Codecov
-      if: always() && inputs.upload-coverage == 'true'
+      if: ${{ inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
         echo "📊 Uploading JUnit XML to Codecov..."
