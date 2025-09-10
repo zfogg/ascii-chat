@@ -488,15 +488,19 @@ function generate_junit_xml() {
             -e "s/<testcase name=\"/<testcase classname=\"$test_class\" name=\"/" >>"$junit_file"
       else
         # XML exists but no testsuite - create one
-        echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"${duration}.0\">" >>"$junit_file"
-        echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\"/>" >>"$junit_file"
+        # Format duration properly for JUnit XML (ensure it's a valid decimal)
+        local formatted_duration=$(printf "%.3f" "$duration")
+        echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"$formatted_duration\">" >>"$junit_file"
+        echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"$formatted_duration\"/>" >>"$junit_file"
         echo "</testsuite>" >>"$junit_file"
       fi
       rm -f "$xml_file"
     else
       # Test passed but no XML generated - create a minimal entry
-      echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"${duration}.0\">" >>"$junit_file"
-      echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\"/>" >>"$junit_file"
+      # Format duration properly for JUnit XML (ensure it's a valid decimal)
+      local formatted_duration=$(printf "%.3f" "$duration")
+      echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"0\" errors=\"0\" time=\"$formatted_duration\">" >>"$junit_file"
+      echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"$formatted_duration\"/>" >>"$junit_file"
       echo "</testsuite>" >>"$junit_file"
     fi
     rm -f "$output_file"
@@ -531,8 +535,10 @@ function generate_junit_xml() {
         failure_count=0
       fi
 
-      echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"$failure_count\" errors=\"$error_count\" time=\"${duration}.0\">" >>"$junit_file"
-      echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"${duration}.0\">" >>"$junit_file"
+      # Format duration properly for JUnit XML (ensure it's a valid decimal)
+      local formatted_duration=$(printf "%.3f" "$duration")
+      echo "<testsuite name=\"$test_class\" tests=\"1\" failures=\"$failure_count\" errors=\"$error_count\" time=\"$formatted_duration\">" >>"$junit_file"
+      echo "  <testcase classname=\"$test_class\" name=\"all\" time=\"$formatted_duration\">" >>"$junit_file"
 
       # Include last 50 lines of output in the failure message
       local output_tail=""
