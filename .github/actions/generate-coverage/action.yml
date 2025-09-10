@@ -83,33 +83,59 @@ runs:
       if: ${{ always() && inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
-        echo "Checking for coverage files matching: ./*.gcov"
-        if ls ./*.gcov 2>/dev/null | head -1 > /dev/null; then
-          echo "✅ Found coverage files"
+        echo "🔍 Checking for coverage files..."
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la . | head -20
+
+        gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
+        gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
+
+        echo "Found $gcov_files_count .gcov files"
+        if [ -n "$gcov_files" ]; then
+          echo "Files found:"
+          echo "$gcov_files" | head -10
+        fi
+
+        if [ -n "$gcov_files" ] && [ $gcov_files_count -gt 0 ]; then
+          echo "✅ Found $gcov_files_count coverage files"
           echo "has_coverage=true" >> $GITHUB_OUTPUT
-          ls -la ./*.gcov | head -10
         else
-          echo "⚠️ No coverage files found matching pattern: ./*.gcov"
+          echo "⚠️ No coverage files found"
           echo "has_coverage=false" >> $GITHUB_OUTPUT
           echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
         fi
 
     # Upload coverage to Codecov (optional)
     - name: Upload Coverage to Codecov
-      if: ${{ always() && inputs.upload-coverage == 'true' && steps.check-coverage.outputs.has_coverage == 'true' }}
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ inputs.codecov-token }}
-        files: ${{ steps.generate-coverage.outputs.gcov-files }}
-        directory: .
-        flags: |
-          ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
-              inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-{0}', inputs.os-name) }}
-        name: |
-          ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
-              inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
-        fail_ci_if_error: false
-        verbose: true
+      if: ${{ always() && inputs.upload-coverage == 'true' }}
+      shell: bash
+      run: |
+        echo "🚀 Starting Codecov upload..."
+        echo "Upload coverage: ${{ inputs.upload-coverage }}"
+        echo "Check coverage output: ${{ steps.check-coverage.outputs.has_coverage }}"
+        echo "Current directory: $(pwd)"
+        echo "Files in current directory:"
+        ls -la . | head -20
+
+        # Check if .gcov files exist
+        gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
+        gcov_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
+        echo "Found $gcov_count .gcov files for upload"
+
+        if [ $gcov_count -gt 0 ]; then
+          echo "✅ Proceeding with Codecov upload"
+          echo "Files to upload:"
+          echo "$gcov_files"
+
+          # Use codecov CLI directly for more control
+          codecov --token="${{ inputs.codecov-token }}" \
+                  --files="./*.gcov" \
+                  --flags="${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}" \
+                  --name="${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}" \
+                  --fail_ci_if_error=true \
+                  --verbose
+        else
+          echo "⚠️ No .gcov files found, skipping upload"
+        fi
 
