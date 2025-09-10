@@ -776,7 +776,7 @@ function run_tests_in_parallel() {
       # Run test synchronously (not in background)
       local exit_code=0
       if [[ -n "$generate_junit" ]]; then
-        "$test_executable" --jobs "$jobs_per_test" --junit-xml "$test_junit" >"$test_log" 2>&1
+        "$test_executable" --jobs "$jobs_per_test" --xml "$test_junit" >"$test_junit" 2>"$test_log"
         exit_code=$?
       else
         "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
@@ -812,6 +812,15 @@ function run_tests_in_parallel() {
       if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
         echo "=== JUnit XML for: $test_name ===" >>"$worker_log"
         cat "$test_junit" >>"$worker_log"
+
+        # Also append to main JUnit file
+        if [[ -f "$junit_file" ]]; then
+          # Extract just the testsuite content (skip XML declaration and testsuites wrapper)
+          # Extract all individual testsuite elements from the Criterion XML (not the outer testsuites wrapper)
+          # Use awk to extract only the testsuite elements, not the outer testsuites wrapper
+          awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ && in_testsuite {in_testsuite=0}' "$test_junit" >>"$junit_file"
+        fi
+
         rm -f "$test_junit"
       fi
     done
