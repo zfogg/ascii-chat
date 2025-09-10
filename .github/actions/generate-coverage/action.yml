@@ -35,25 +35,16 @@ runs:
       shell: bash
       run: |
         echo "📦 Installing codecov CLI..."
-        if command -v pip3 >/dev/null 2>&1; then
-          pip3 install codecov-cli
-        elif command -v pip >/dev/null 2>&1; then
-          pip install codecov-cli
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS - use Homebrew (already installed via install-deps action)
+          echo "codecov-cli should already be installed via Homebrew on macOS"
+          codecov --version
         else
-          echo "❌ Neither pip3 nor pip found. Installing pip first..."
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS
-            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-            python3 get-pip.py
-            pip3 install codecov-cli
-          else
-            # Linux
-            sudo apt-get update && sudo apt-get install -y python3-pip
-            pip3 install codecov-cli
-          fi
+          # Linux - use pip3
+          echo "Installing codecov-cli via pip3 on Linux..."
+          pip3 install codecov-cli
+          codecov --version
         fi
-        echo "✅ codecov CLI installed successfully"
-        codecov --version
 
     - name: Generate coverage report
       id: generate-coverage
