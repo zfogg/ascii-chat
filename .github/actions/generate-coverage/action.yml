@@ -79,7 +79,7 @@ runs:
              base_name=$(basename "$gcda_file" .gcda)
 
              echo "Processing $gcda_file in directory $gcda_dir"
-             (cd "$gcda_dir" && gcov "$(basename "$gcda_file")" >/dev/null 2>&1)
+             (cd "$gcda_dir" && gcov "$(basename "$gcda_file")")
              echo "🔠 gcov completed"
 
              # Move ALL .gcov files generated in this directory to root with safe names
