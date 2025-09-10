@@ -881,10 +881,10 @@ function calculate_resource_allocation() {
   local num_tests=$1
   local total_cores=$2
   local jobs=$3  # Optional: explicitly specified jobs
-  
+
   local max_parallel_tests
   local jobs_per_test
-  
+
   # If jobs explicitly specified, use that for parallel tests
   if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
     max_parallel_tests=$jobs
@@ -893,7 +893,7 @@ function calculate_resource_allocation() {
     # Always use CORES/2 parallel executables with CORES jobs each for maximum CPU utilization
     max_parallel_tests=$((total_cores / 2))
     jobs_per_test=$total_cores
-    
+
     # Ensure at least 1 parallel test and 1 job per test
     if [[ $max_parallel_tests -lt 1 ]]; then
       max_parallel_tests=1
@@ -902,7 +902,7 @@ function calculate_resource_allocation() {
       jobs_per_test=1
     fi
   fi
-  
+
   # Return values as a space-separated string
   echo "$max_parallel_tests $jobs_per_test"
 }
