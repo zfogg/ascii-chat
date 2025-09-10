@@ -546,7 +546,16 @@ tests-coverage: coverage
 tests-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
 tests-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
 tests-coverage: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
-tests-coverage: $(TEST_EXECUTABLES)
+tests-coverage: $(TEST_OBJS_COVERAGE) $(OBJS_NON_TARGET_COVERAGE)
+	@echo "Building test executables with coverage..."
+	@for test_obj in $(TEST_OBJS_COVERAGE); do \
+		test_name=$$(basename $$test_obj .o); \
+		test_category=$$(echo $$test_obj | sed 's|.*/coverage/\([^/]*\)/.*|\1|'); \
+		test_base=$$(echo $$test_name | sed 's/_test$$//'); \
+		executable_name="test_$${test_category}_$${test_base}_coverage"; \
+		echo "Linking $$executable_name (coverage mode)..."; \
+		$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $(BIN_DIR)/$$executable_name $$test_obj $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS); \
+	done
 
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
 tests-release: override LDFLAGS += -flto
@@ -790,7 +799,7 @@ test-release: $(TEST_EXECUTABLES)
 	fi
 
 # Build test executables - map flattened names back to their object files
-# Unit tests use debug objects
+# Unit tests - use debug objects by default
 $(BIN_DIR)/test_unit_%: $(TEST_BUILD_DIR)/debug/unit/%_test.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking test $@ (debug mode)..."
 	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
@@ -805,8 +814,7 @@ $(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/release/performance/%_test.o $(
 	@echo "Linking test $@ (release mode)..."
 	$(CC) $(CFLAGS) $(RELEASE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_RELEASE) $(LDFLAGS) $(TEST_LDFLAGS)
 
-# Coverage variants for CI
-# Unit tests with coverage (debug mode)
+# Legacy coverage variants (kept for compatibility)
 $(BIN_DIR)/test_unit_%_coverage: $(TEST_BUILD_DIR)/coverage/unit/%_test.o $(OBJS_NON_TARGET_COVERAGE) | $(BIN_DIR)
 	@echo "Linking test $@ (coverage mode)..."
 	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
