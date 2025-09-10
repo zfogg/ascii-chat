@@ -1,0 +1,115 @@
+name: 'Generate Coverage Report'
+description: 'Generate coverage files with safe names for codecov upload'
+
+inputs:
+  build-type:
+    description: 'Build type (debug, release, etc.)'
+    required: true
+    default: 'debug'
+  os-name:
+    description: 'OS name for logging'
+    required: true
+    default: 'unknown'
+  test-type:
+    description: 'Type of test (unit, integration, performance)'
+    required: true
+    default: 'unit'
+  codecov-token:
+    description: 'Codecov token for uploading coverage'
+    required: false
+    default: ''
+  upload-coverage:
+    description: 'Whether to upload coverage to Codecov'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate coverage report
+      id: generate-coverage
+      if: always()
+      shell: bash
+      run: |
+        echo "Looking for .gcda files to generate coverage from..."
+        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+        gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
+        echo "🙈 Generating coverage with ${gcda_files_count} gcda files with safe names..."
+
+        if [ -n "$gcda_files" ]; then
+            echo "✅ Successfully found $gcda_files_count gcda files"
+        else
+            echo "❌ ERROR: No gcda files found" >&2 && false
+            echo 1 || exit 1
+        fi
+
+
+         # Process each .gcda file
+         find . -name "*.gcda" -type f | while read -r gcda_file; do
+             gcda_dir=$(dirname "$gcda_file")
+             base_name=$(basename "$gcda_file" .gcda)
+
+             (cd "$gcda_dir" && gcov "$(basename "$gcda_file")" >/dev/null 2>&1)
+
+             # Move ALL .gcov files generated in this directory to root with safe names
+             find "$gcda_dir" -name "*.gcov" -type f | while read -r gcov_file; do
+                 gcov_base=$(basename "$gcov_file" .gcov)
+                 safe_name=$(echo "$gcda_dir/$gcov_base" | sed "s|^\./||" | sed "s|/|_|g")
+                 mv "$gcov_file" "./$safe_name.gcov"
+                 echo "Generated $gcda_file -> $safe_name.gcov"
+             done
+         done
+
+        gcov_files=$(find . -name "*.gcov" -type f 2>/dev/null)
+        gcov_files_count=$(echo "$gcov_files" | wc -l | sed 's/ //g')
+        echo "🙈 Generated coverage with $gcov_files_count gcov files with safe names..."
+
+         echo "🔠 Validating coverage file generation..."
+         if [ -n "$gcov_files" ] && [ $gcov_files_count -ge $gcda_files_count ]; then
+             echo "✅ Successfully generated and copied $gcov_files_count coverage files (expected at least $gcda_files_count)"
+             # Output the list of generated .gcov files for use in upload step
+             echo "gcov-files<<EOF" >> $GITHUB_OUTPUT
+             echo "$gcov_files" >> $GITHUB_OUTPUT
+             echo "EOF" >> $GITHUB_OUTPUT
+         else
+             echo "❌ ERROR: No gcov files or insufficient gcov files found after generation and copying\!" >&2
+             echo "Expected at least $gcda_files_count files, but found $gcov_files_count" >&2
+             echo 1 || exit 1
+         fi
+
+    # Check if coverage files exist before uploading
+    - name: Check Coverage Files
+      id: check-coverage
+      if: ${{ always() && inputs.upload-coverage == 'true' }}
+      shell: bash
+      run: |
+        echo "Checking for coverage files matching: ./*.gcov"
+        if ls ./*.gcov 2>/dev/null | head -1 > /dev/null; then
+          echo "✅ Found coverage files"
+          echo "has_coverage=true" >> $GITHUB_OUTPUT
+          ls -la ./*.gcov | head -10
+        else
+          echo "⚠️ No coverage files found matching pattern: ./*.gcov"
+          echo "has_coverage=false" >> $GITHUB_OUTPUT
+          echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
+        fi
+
+    # Upload coverage to Codecov (optional)
+    - name: Upload Coverage to Codecov
+      if: ${{ always() && inputs.upload-coverage == 'true' && steps.check-coverage.outputs.has_coverage == 'true' }}
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ inputs.codecov-token }}
+        files: ${{ steps.generate-coverage.outputs.gcov-files }}
+        directory: .
+        flags: |
+          ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
+              inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
+              format('ascii-chat-performance-{0}', inputs.os-name) }}
+        name: |
+          ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
+              inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
+              format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
+        fail_ci_if_error: false
+        verbose: true
+
