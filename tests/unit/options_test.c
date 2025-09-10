@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #include "options.h"
 #include "common.h"
@@ -14,23 +15,58 @@
 void setup_quiet_test_logging(void);
 void restore_test_logging(void);
 
+// Global variables to store original stdout and stderr for restoration
+static int original_stdout_fd = -1;
+static int original_stderr_fd = -1;
+static int dev_null_fd = -1;
+
 TestSuite(options, .init = setup_quiet_test_logging, .fini = restore_test_logging);
+
+// Separate test suite for error handling tests that need to see stderr output
+TestSuite(options_errors, .init = NULL, .fini = NULL);
 
 void setup_quiet_test_logging(void) {
   // Set log level to only show fatal errors during non-logging tests
   log_set_level(LOG_FATAL);
+
+  // Redirect stdout and stderr to /dev/null to silence test output
+  original_stdout_fd = dup(STDOUT_FILENO);
+  original_stderr_fd = dup(STDERR_FILENO);
+  dev_null_fd = open("/dev/null", O_WRONLY);
+  dup2(dev_null_fd, STDOUT_FILENO);
+  dup2(dev_null_fd, STDERR_FILENO);
 }
 
 void restore_test_logging(void) {
   // Restore normal log level after tests
   log_set_level(LOG_DEBUG);
+
+  // Restore original stdout and stderr
+  if (original_stdout_fd != -1) {
+    dup2(original_stdout_fd, STDOUT_FILENO);
+    close(original_stdout_fd);
+    original_stdout_fd = -1;
+  }
+
+  if (original_stderr_fd != -1) {
+    dup2(original_stderr_fd, STDERR_FILENO);
+    close(original_stderr_fd);
+    original_stderr_fd = -1;
+  }
+
+  // Close /dev/null file descriptor
+  if (dev_null_fd != -1) {
+    close(dev_null_fd);
+    dev_null_fd = -1;
+  }
 }
 
 // Helper function to save and restore global options
 typedef struct {
   unsigned short int opt_width, opt_height, auto_width, auto_height;
   char opt_address[OPTIONS_BUFF_SIZE], opt_port[OPTIONS_BUFF_SIZE];
-  unsigned short int opt_webcam_index, opt_webcam_flip;
+  unsigned short int opt_webcam_index;
+  bool opt_webcam_flip;
   unsigned short int opt_color_output;
   terminal_color_mode_t opt_color_mode;
   render_mode_t opt_render_mode;
@@ -118,13 +154,27 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   pid_t pid = fork();
   if (pid == 0) {
     // Child process
-    options_init(argc, argv, is_client);
-    exit(0); // Should not reach here if options_init calls exit()
+    // Ensure argv is NULL-terminated for getopt_long and any library routines
+    char **argv_copy = (char **)calloc((size_t)argc + 1, sizeof(char *));
+    if (argv_copy) {
+      for (int i = 0; i < argc; i++) {
+        argv_copy[i] = argv[i];
+      }
+      argv_copy[argc] = NULL;
+    } else {
+      // Fallback to original argv if allocation fails
+      argv_copy = argv;
+    }
+
+    options_init(argc, argv_copy, is_client);
+    _exit(0); // Should not reach here if options_init calls exit()
   } else if (pid > 0) {
     // Parent process
     int status;
     waitpid(pid, &status, 0);
-    return WEXITSTATUS(status);
+    int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
+    printf("DEBUG: Parent process: status=%d, exit_code=%d\n", status, exit_code);
+    return exit_code;
   } else {
     // Fork failed
     return -1;
@@ -147,7 +197,7 @@ Test(options, default_values) {
   cr_assert_str_eq(opt_address, "0.0.0.0");
   cr_assert_str_eq(opt_port, "27224");
   cr_assert_eq(opt_webcam_index, 0);
-  cr_assert_eq(opt_webcam_flip, 1);
+  cr_assert_eq(opt_webcam_flip, false);
   cr_assert_eq(opt_color_output, 0);
   cr_assert_eq(opt_color_mode, COLOR_MODE_AUTO);
   cr_assert_eq(opt_render_mode, RENDER_MODE_FOREGROUND);
@@ -168,7 +218,7 @@ Test(options, basic_client_options) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50"};
+  char *argv[] = {"client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50", NULL};
   int argc = 9;
 
   int result = test_options_init_with_fork(argv, argc, true);
@@ -181,7 +231,7 @@ Test(options, basic_server_options) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"server", "-a", "127.0.0.1", "-p", "3000"};
+  char *argv[] = {"server", "-a", "127.0.0.1", "-p", "3000", NULL};
   int argc = 5;
 
   int result = test_options_init_with_fork(argv, argc, false);
@@ -201,7 +251,7 @@ Test(options, valid_ipv4_addresses) {
   char *valid_ips[] = {"192.168.1.1", "127.0.0.1", "10.0.0.1", "255.255.255.255", "0.0.0.0"};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "-a", valid_ips[i]};
+    char *argv[] = {"client", "-a", valid_ips[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 0, "Valid IP %s should not cause exit", valid_ips[i]);
   }
@@ -225,7 +275,7 @@ Test(options, invalid_ipv4_addresses) {
   };
 
   for (int i = 0; i < 11; i++) {
-    char *argv[] = {"client", "-a", invalid_ips[i]};
+    char *argv[] = {"client", "-a", invalid_ips[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid IP %s should cause exit with code 1", invalid_ips[i]);
   }
@@ -238,7 +288,7 @@ Test(options, valid_ports) {
   char *valid_ports[] = {"1", "80", "443", "8080", "27224", "65535"};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "-p", valid_ports[i]};
+    char *argv[] = {"client", "-p", valid_ports[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 0, "Valid port %s should not cause exit", valid_ports[i]);
   }
@@ -257,7 +307,7 @@ Test(options, invalid_ports) {
   };
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "-p", invalid_ports[i]};
+    char *argv[] = {"client", "-p", invalid_ports[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid port %s should cause exit with code 1", invalid_ports[i]);
   }
@@ -271,7 +321,7 @@ Test(options, valid_dimensions) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "-x", "100", "-y", "50"};
+  char *argv[] = {"client", "-x", "100", "-y", "50", NULL};
   int result = test_options_init_with_fork(argv, 5, true);
   cr_assert_eq(result, 0);
 
@@ -288,7 +338,7 @@ Test(options, invalid_dimensions) {
   };
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "-x", invalid_dims[i]};
+    char *argv[] = {"client", "-x", invalid_dims[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid dimension %s should cause exit with code 1", invalid_dims[i]);
   }
@@ -302,7 +352,7 @@ Test(options, valid_webcam_index) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "-c", "2"};
+  char *argv[] = {"client", "-c", "2", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 0);
 
@@ -318,7 +368,7 @@ Test(options, invalid_webcam_index) {
   };
 
   for (int i = 0; i < 4; i++) {
-    char *argv[] = {"client", "-c", invalid_indices[i]};
+    char *argv[] = {"client", "-c", invalid_indices[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid webcam index %s should cause exit with code 1", invalid_indices[i]);
   }
@@ -328,32 +378,14 @@ Test(options, valid_webcam_flip) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "-f", "0"};
-  int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 0);
-
-  char *argv2[] = {"client", "-f", "1"};
-  result = test_options_init_with_fork(argv2, 3, true);
-  cr_assert_eq(result, 0);
+  // Test that -f flag works (should not cause exit)
+  char *argv[] = {"client", "-f", NULL};
+  int result = test_options_init_with_fork(argv, 2, true);
+  cr_assert_eq(result, 0, "Webcam flip flag should not cause exit");
 
   restore_options(&backup);
 }
 
-Test(options, invalid_webcam_flip) {
-  char *invalid_flips[] = {
-      "2",   // Too high
-      "-1",  // Negative
-      "abc", // Non-numeric
-      "0.5", // Decimal
-      ""     // Empty
-  };
-
-  for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "-f", invalid_flips[i]};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 1, "Invalid webcam flip %s should cause exit with code 1", invalid_flips[i]);
-  }
-}
 
 /* ============================================================================
  * Color Mode Tests
@@ -366,7 +398,7 @@ Test(options, valid_color_modes) {
   char *valid_modes[] = {"auto", "mono", "monochrome", "16", "16color", "256", "256color", "truecolor", "24bit"};
 
   for (int i = 0; i < 9; i++) {
-    char *argv[] = {"client", "--color-mode", valid_modes[i]};
+    char *argv[] = {"client", "--color-mode", valid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 0, "Valid color mode %s should not cause exit", valid_modes[i]);
   }
@@ -378,7 +410,7 @@ Test(options, invalid_color_modes) {
   char *invalid_modes[] = {"invalid", "32", "512", "fullcolor", "rgb", ""};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "--color-mode", invalid_modes[i]};
+    char *argv[] = {"client", "--color-mode", invalid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid color mode %s should cause exit with code 1", invalid_modes[i]);
   }
@@ -395,7 +427,7 @@ Test(options, valid_render_modes) {
   char *valid_modes[] = {"foreground", "fg", "background", "bg", "half-block", "halfblock"};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "--render-mode", valid_modes[i]};
+    char *argv[] = {"client", "--render-mode", valid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 0, "Valid render mode %s should not cause exit", valid_modes[i]);
   }
@@ -407,7 +439,7 @@ Test(options, invalid_render_modes) {
   char *invalid_modes[] = {"invalid", "full", "block", "text", ""};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "--render-mode", invalid_modes[i]};
+    char *argv[] = {"client", "--render-mode", invalid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid render mode %s should cause exit with code 1", invalid_modes[i]);
   }
@@ -424,7 +456,7 @@ Test(options, valid_palettes) {
   char *valid_palettes[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "--palette", valid_palettes[i]};
+    char *argv[] = {"client", "--palette", valid_palettes[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 0, "Valid palette %s should not cause exit", valid_palettes[i]);
   }
@@ -436,7 +468,7 @@ Test(options, invalid_palettes) {
   char *invalid_palettes[] = {"invalid", "ascii", "unicode", "color", ""};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "--palette", invalid_palettes[i]};
+    char *argv[] = {"client", "--palette", invalid_palettes[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid palette %s should cause exit with code 1", invalid_palettes[i]);
   }
@@ -446,7 +478,7 @@ Test(options, valid_palette_chars) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--palette-chars", " .:-=+*#%@$"};
+  char *argv[] = {"client", "--palette-chars", " .:-=+*#%@$", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 0);
 
@@ -455,7 +487,7 @@ Test(options, valid_palette_chars) {
 
 Test(options, invalid_palette_chars) {
   // Empty palette chars should fail
-  char *argv[] = {"client", "--palette-chars", ""};
+  char *argv[] = {"client", "--palette-chars", "", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 1);
 }
@@ -471,7 +503,7 @@ Test(options, valid_snapshot_delays) {
   char *valid_delays[] = {"0.0", "1.5", "3.0", "10.0", "0"};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "--snapshot-delay", valid_delays[i]};
+    char *argv[] = {"client", "--snapshot-delay", valid_delays[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 0, "Valid snapshot delay %s should not cause exit", valid_delays[i]);
   }
@@ -487,7 +519,7 @@ Test(options, invalid_snapshot_delays) {
   };
 
   for (int i = 0; i < 3; i++) {
-    char *argv[] = {"client", "--snapshot-delay", invalid_delays[i]};
+    char *argv[] = {"client", "--snapshot-delay", invalid_delays[i], NULL};
     int result = test_options_init_with_fork(argv, 3, true);
     cr_assert_eq(result, 1, "Invalid snapshot delay %s should cause exit with code 1", invalid_delays[i]);
   }
@@ -501,7 +533,7 @@ Test(options, valid_log_file) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--log-file", "/tmp/test.log"};
+  char *argv[] = {"client", "--log-file", "/tmp/test.log", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 0);
 
@@ -509,7 +541,7 @@ Test(options, valid_log_file) {
 }
 
 Test(options, invalid_log_file) {
-  char *argv[] = {"client", "--log-file", ""};
+  char *argv[] = {"client", "--log-file", "", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 1);
 }
@@ -518,7 +550,7 @@ Test(options, valid_encryption_key) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--key", "mysecretkey"};
+  char *argv[] = {"client", "--key", "mysecretkey", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 0);
 
@@ -526,7 +558,7 @@ Test(options, valid_encryption_key) {
 }
 
 Test(options, invalid_encryption_key) {
-  char *argv[] = {"client", "--key", ""};
+  char *argv[] = {"client", "--key", "", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 1);
 }
@@ -535,7 +567,7 @@ Test(options, valid_keyfile) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--keyfile", "/tmp/keyfile.txt"};
+  char *argv[] = {"client", "--keyfile", "/tmp/keyfile.txt", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 0);
 
@@ -543,7 +575,7 @@ Test(options, valid_keyfile) {
 }
 
 Test(options, invalid_keyfile) {
-  char *argv[] = {"client", "--keyfile", ""};
+  char *argv[] = {"client", "--keyfile", "", NULL};
   int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 1);
 }
@@ -557,7 +589,7 @@ Test(options, flag_options) {
   save_options(&backup);
 
   char *argv[] = {"client",  "--show-capabilities", "--utf8",   "--audio", "--stretch",
-                  "--quiet", "--snapshot",          "--encrypt"};
+                  "--quiet", "--snapshot",          "--encrypt", NULL};
   int result = test_options_init_with_fork(argv, 8, true);
   cr_assert_eq(result, 0);
 
@@ -569,19 +601,19 @@ Test(options, flag_options) {
  * ============================================================================ */
 
 Test(options, help_client) {
-  char *argv[] = {"client", "--help"};
+  char *argv[] = {"client", "--help", NULL};
   int result = test_options_init_with_fork(argv, 2, true);
   cr_assert_eq(result, 0);
 }
 
 Test(options, help_server) {
-  char *argv[] = {"server", "--help"};
+  char *argv[] = {"server", "--help", NULL};
   int result = test_options_init_with_fork(argv, 2, false);
   cr_assert_eq(result, 0);
 }
 
 Test(options, help_short) {
-  char *argv[] = {"client", "-h"};
+  char *argv[] = {"client", "-h", NULL};
   int result = test_options_init_with_fork(argv, 2, true);
   cr_assert_eq(result, 0);
 }
@@ -590,20 +622,28 @@ Test(options, help_short) {
  * Error Handling Tests
  * ============================================================================ */
 
-Test(options, unknown_option) {
-  char *argv[] = {"client", "--unknown-option"};
+Test(options_errors, unknown_option) {
+  char *argv[] = {"client", "--unknown-option", NULL};
   int result = test_options_init_with_fork(argv, 2, true);
   cr_assert_eq(result, 1);
 }
 
-Test(options, missing_argument) {
-  char *argv[] = {"client", "--address"};
+Test(options_errors, missing_argument_address) {
+  char *argv[] = {"client", "--address", NULL};
+  log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, 2, true);
   cr_assert_eq(result, 1);
 }
 
-Test(options, missing_argument_short) {
-  char *argv[] = {"client", "-a"};
+Test(options_errors, missing_argument_short) {
+  char *argv[] = {"client", "-a", NULL};
+  int result = test_options_init_with_fork(argv, 2, true);
+  cr_assert_eq(result, 1);
+}
+
+Test(options_errors, missing_argument_port) {
+  char *argv[] = {"client", "--port", NULL};
+  log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, 2, true);
   cr_assert_eq(result, 1);
 }
@@ -616,7 +656,7 @@ Test(options, equals_sign_handling) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--address=192.168.1.1", "--port=8080", "--width=100", "--height=50"};
+  char *argv[] = {"client", "--address=192.168.1.1", "--port=8080", "--width=100", "--height=50", NULL};
   int result = test_options_init_with_fork(argv, 5, true);
   cr_assert_eq(result, 0);
 
@@ -637,7 +677,7 @@ Test(options, complex_client_combination) {
                   "--width=120",
                   "--height=60",
                   "--webcam-index=1",
-                  "--webcam-flip=0",
+                  "--webcam-flip",
                   "--color-mode=256",
                   "--render-mode=background",
                   "--palette=blocks",
@@ -648,9 +688,11 @@ Test(options, complex_client_combination) {
                   "--snapshot-delay=2.5",
                   "--log-file=/tmp/ascii-chat.log",
                   "--encrypt",
-                  "--key=mysecretpassword"};
+                  "--key=mysecretpassword",
+                  NULL};
   int argc = 18;
 
+  log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, argc, true);
   cr_assert_eq(result, 0);
 
@@ -664,7 +706,8 @@ Test(options, complex_server_combination) {
   char *argv[] = {"server",       "--address=0.0.0.0",
                   "--port=27224", "--palette=digital",
                   "--audio",      "--log-file=/var/log/ascii-chat.log",
-                  "--encrypt",    "--keyfile=/etc/ascii-chat/key"};
+                  "--encrypt",    "--keyfile=/etc/ascii-chat/key",
+                  NULL};
   int argc = 8;
 
   int result = test_options_init_with_fork(argv, argc, false);
@@ -788,7 +831,7 @@ Test(options, very_long_arguments) {
   long_logfile[sizeof(long_logfile) - 1] = '\0';
   strcpy(long_logfile, "/tmp/test.log");
 
-  char *argv[] = {"client", "-a", long_address, "-p", long_port, "-L", long_logfile};
+  char *argv[] = {"client", "-a", long_address, "-p", long_port, "-L", long_logfile, NULL};
   int result = test_options_init_with_fork(argv, 7, true);
   cr_assert_eq(result, 0);
 
@@ -805,7 +848,8 @@ Test(options, maximum_values) {
                   "--width=65535",
                   "--height=65535",
                   "--webcam-index=65535",
-                  "--snapshot-delay=999.999"};
+                  "--snapshot-delay=999.999",
+                  NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
@@ -819,7 +863,7 @@ Test(options, minimum_values) {
   save_options(&backup);
 
   char *argv[] = {"client",           "--address=0.0.0.0",   "--port=1", "--width=1", "--height=1",
-                  "--webcam-index=0", "--snapshot-delay=0.0"};
+                  "--webcam-index=0", "--snapshot-delay=0.0", NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);

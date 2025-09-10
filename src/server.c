@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
@@ -963,7 +964,11 @@ int main(int argc, char *argv[]) {
   log_info("ASCII Chat server starting...");
 
   log_info("SERVER: Options initialized, using log file: %s", log_filename);
-  int port = strtoint(opt_port);
+  int port = strtoint_safe(opt_port);
+  if (port == INT_MIN) {
+    log_error("Invalid port configuration: %s", opt_port);
+    exit(EXIT_FAILURE);
+  }
   log_info("SERVER: Port set to %d", port);
 
   log_info("SERVER: Initializing luminance palette...");

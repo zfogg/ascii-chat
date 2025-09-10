@@ -10,7 +10,7 @@ extern char ascii_palette[];
 typedef struct image_t image_t;
 
 asciichat_error_t ascii_read_init(unsigned short int webcam_index);
-asciichat_error_t ascii_write_init(int fd);
+asciichat_error_t ascii_write_init(int fd, bool reset_terminal);
 
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
                     const bool aspect_ratio, const bool stretch, const char *palette_chars,
@@ -24,7 +24,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 asciichat_error_t ascii_write(const char *);
 
 void ascii_read_destroy(void);
-void ascii_write_destroy(int fd);
+void ascii_write_destroy(int fd, bool reset_terminal);
 
 // Utility to add leading spaces (left-padding) to each line of a frame.
 // Caller owns the returned buffer and must free it with free().
