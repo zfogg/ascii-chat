@@ -725,12 +725,13 @@ function run_tests_in_parallel() {
       local queue_file="/tmp/queue_index_$$.txt"
       local lock_file="/tmp/queue_lock_$$.txt"
 
-      # Use shlock with retry logic for non-blocking parallel execution
+      # Use simple file locking with retry logic for non-blocking parallel execution
       local retry_count=0
       local max_retries=10
 
       while [[ $retry_count -lt $max_retries ]]; do
-        if shlock -f "$lock_file" -p $$; then
+        # Use mkdir for atomic locking (works on most filesystems)
+        if mkdir "$lock_file" 2>/dev/null; then
           # We have the lock, now safely read and update queue index
           local current_index=0
           if [[ -f "$queue_file" ]]; then
@@ -745,7 +746,7 @@ function run_tests_in_parallel() {
           fi
 
           # Release the lock
-          rm -f "$lock_file"
+          rmdir "$lock_file" 2>/dev/null
           break
         else
           # Lock is held by another worker, wait briefly and retry
@@ -778,8 +779,22 @@ function run_tests_in_parallel() {
       # Run test synchronously (not in background)
       local exit_code=0
       if [[ -n "$generate_junit" ]]; then
-        "$test_executable" --jobs "$jobs_per_test" --xml "$test_junit" >"$test_junit" 2>"$test_log"
+        # Run test and capture output to temporary file first
+        local temp_output="/tmp/test_output_${test_name}_worker${worker_id}_$$.txt"
+        "$test_executable" --jobs "$jobs_per_test" --xml "$test_junit" >"$temp_output" 2>&1
         exit_code=$?
+
+        # Copy the output to test log for failure analysis
+        cp "$temp_output" "$test_log"
+
+        # Extract just the XML part to the JUnit file
+        if [[ -f "$temp_output" ]]; then
+          # The XML output is in the temp file, copy it to JUnit file
+          cp "$temp_output" "$test_junit"
+        fi
+
+        # Clean up temp file
+        rm -f "$temp_output"
       else
         "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
         exit_code=$?
@@ -809,6 +824,9 @@ function run_tests_in_parallel() {
           # Show the complete test log to see all assertion errors
           cat "$test_log" >&2
           echo "--- End failure details ---" >&2
+        else
+          echo "--- No test log found for $test_name ---" >&2
+          echo "Test log path: $test_log" >&2
         fi
       fi
 
