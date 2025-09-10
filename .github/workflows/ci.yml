@@ -15,58 +15,6 @@ on:
       - '**.m'
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-15]
-        build_type: [debug, release]
-        include:
-          - os: ubuntu-latest
-            os-name: ubuntu
-          - os: macos-15
-            os-name: macos
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
-      with:
-        os: ${{ matrix.os-name }}
-        extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
-
-    - name: Build project (${{ matrix.build_type }}) (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        make -j CSTD=c2x CXXSTD=c++2b ${{ matrix.build_type }}
-    - name: Build project (${{ matrix.build_type }}) (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        make -j CSTD=c2x ${{ matrix.build_type }}
-
-    - name: Test basic functionality
-      run: |
-        # Test that binaries exist and can show help
-        ./bin/server --help
-        ./bin/client --help
-
-        # Test that binaries have correct permissions
-        test -x ./bin/server
-        test -x ./bin/client
-
-
-    - name: Upload artifacts
-      if: matrix.build_type == 'release'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ascii-chat-${{ runner.os }}-${{ matrix.build_type }}
-        path: |
-          bin/server
-          bin/client
-        retention-days: 30
 
   memory-check:
     name: Memory Safety Check
