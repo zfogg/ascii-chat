@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdarg.h>
 
-#include "platform.h"
+#include "platform/abstraction.h"
 #include "common.h"
 #include "ascii_simd.h"
 #include "palette.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

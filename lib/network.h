@@ -1,6 +1,6 @@
 #pragma once
 
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <stdbool.h>
 #include "common.h"
 #include "terminal_detect.h"

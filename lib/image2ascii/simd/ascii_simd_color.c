@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "ascii_simd.h"

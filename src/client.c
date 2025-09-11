@@ -1,5 +1,5 @@
-#include "platform.h"
-#include "platform_init.h"
+#include "platform/abstraction.h"
+#include "platform/init.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -58,7 +58,7 @@ typedef struct {
 static tty_info_t tty_info_g;
 // ------
 
-static int sockfd = 0;
+static int sockfd = INVALID_SOCKET_VALUE;
 static volatile bool g_should_exit = false;
 static volatile bool g_first_connection = true;
 static volatile bool g_should_reconnect = false;
@@ -233,13 +233,13 @@ static int safe_send_client_join_packet(int socketfd, const char *display_name, 
 }
 
 static int close_socket(int socketfd) {
-  if (socketfd > 0) {
+  if (socketfd != INVALID_SOCKET_VALUE && socketfd >= 0) {
     log_info("Closing socket connection");
-    if (0 > (socketfd = close(socketfd))) {
+    if (socket_close(socketfd) != 0) {
       log_error("Failed to close socket: %s", network_error_string(errno));
       return -1;
     }
-    return socketfd;
+    return 0;
   }
   return 0; // Socket connection not found. Just return 0 as if we closed a socket.
 }
@@ -273,7 +273,7 @@ static void shutdown_client() {
     usleep(100000); // 100ms
 
     // Force close socket to break any blocking recv() calls
-    if (sockfd > 0) {
+    if (sockfd != INVALID_SOCKET_VALUE) {
       shutdown(sockfd, SHUT_RDWR);
       close(sockfd);
     }
@@ -335,7 +335,7 @@ static void sigint_handler(int sigint) {
   g_connection_lost = true; // Signal all threads to exit
 
   // Close socket to interrupt recv operations
-  if (sockfd > 0) {
+  if (sockfd != INVALID_SOCKET_VALUE) {
     shutdown(sockfd, SHUT_RDWR); // More aggressive than close
     close(sockfd);
     sockfd = 0;
@@ -353,7 +353,7 @@ static void sigwinch_handler(int sigwinch) {
   if (auto_width && auto_height) {
     update_dimensions_to_terminal_size();
     // Send new size to server if connected
-    if (sockfd > 0) {
+    if (sockfd != INVALID_SOCKET_VALUE) {
       if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
         log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
       } else {
@@ -631,7 +631,7 @@ static void *data_reception_thread_func(void *arg) {
 #endif
 
   while (!g_should_exit) {
-    if (sockfd == 0) {
+    if (sockfd == INVALID_SOCKET_VALUE) {
       log_debug("CLIENT: Waiting for socket connection (sockfd=0)");
       usleep(10 * 1000);
       continue;
@@ -729,7 +729,7 @@ static void *ping_thread_func(void *arg) {
     }
 
     // Wait 3 seconds before next ping
-    for (int i = 0; i < 3 && !g_should_exit && !g_connection_lost && sockfd > 0; i++) {
+    for (int i = 0; i < 3 && !g_should_exit && !g_connection_lost && sockfd != INVALID_SOCKET_VALUE; i++) {
       usleep(1000 * 1000); // 1 second
     }
   }
@@ -1164,9 +1164,10 @@ int main(int argc, char *argv[]) {
 
     if (g_first_connection || g_should_reconnect) {
       // Close any existing socket before attempting new connection
-      if (0 > (sockfd = close_socket(sockfd))) {
+      if (close_socket(sockfd) < 0) {
         exit(ASCIICHAT_ERR_NETWORK);
       }
+      sockfd = INVALID_SOCKET_VALUE;  // Reset to invalid after closing
 
       if (reconnect_attempt > 0) {
         float delay = get_reconnect_delay(reconnect_attempt);
@@ -1328,7 +1329,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Connection monitoring loop - wait for connection to break or shutdown
-    while (!g_should_exit && sockfd > 0 && !g_connection_lost) {
+    while (!g_should_exit && sockfd != INVALID_SOCKET_VALUE && !g_connection_lost) {
       // Check if data thread has exited (indicates connection lost)
       if (g_data_thread_exited) {
         log_info("Data thread exited, connection lost");
@@ -1348,7 +1349,7 @@ int main(int argc, char *argv[]) {
     g_should_reconnect = true;
 
     // Close the socket to signal threads to exit
-    if (sockfd > 0) {
+    if (sockfd != INVALID_SOCKET_VALUE) {
       close(sockfd);
       sockfd = 0;
     }

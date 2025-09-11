@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "platform.h"
+#include "platform/abstraction.h"
 
 /* ============================================================================
  * Lock-Free Ring Buffer for Frame Management

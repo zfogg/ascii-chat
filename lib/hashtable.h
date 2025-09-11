@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "platform.h"
+#include "platform/abstraction.h"
 
 /*
  * Simple Hash Table Implementation

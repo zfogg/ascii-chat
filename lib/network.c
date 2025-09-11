@@ -11,7 +11,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 #endif
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +20,7 @@
 
 // Check if we're in a test environment
 static int is_test_environment(void) {
-  return getenv("CRITERION_TEST") != NULL || getenv("TESTING") != NULL;
+  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
 }
 
 int set_socket_timeout(int sockfd, int timeout_seconds) {
@@ -28,11 +28,19 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
+#ifdef _WIN32
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+#else
   if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+#endif
     return -1;
   }
 
+#ifdef _WIN32
+  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+#else
   if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
+#endif
     return -1;
   }
 
@@ -41,7 +49,11 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
 
 int set_socket_keepalive(int sockfd) {
   int keepalive = 1;
+#ifdef _WIN32
+  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (const char*)&keepalive, sizeof(keepalive)) < 0) {
+#else
   if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0) {
+#endif
     return -1;
   }
 
@@ -49,26 +61,42 @@ int set_socket_keepalive(int sockfd) {
   /* macOS: TCP_KEEPALIVE sets the idle time (in seconds) before sending probes */
   {
     int keepalive_idle = KEEPALIVE_IDLE;
+#ifdef _WIN32
+    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, (const char*)&keepalive_idle, sizeof(keepalive_idle));
+#else
     (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &keepalive_idle, sizeof(keepalive_idle));
+#endif
     /* Interval/count tuning is not available via setsockopt on macOS; client/server PINGs handle liveness. */
   }
 #endif
 
 #ifdef TCP_KEEPIDLE
   int keepidle = KEEPALIVE_IDLE;
+#ifdef _WIN32
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, (const char*)&keepidle, sizeof(keepidle));
+#else
   setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
+#endif
   // Not critical, continue if fail.
 #endif
 
 #ifdef TCP_KEEPINTVL
   int keepintvl = KEEPALIVE_INTERVAL;
+#ifdef _WIN32
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, (const char*)&keepintvl, sizeof(keepintvl));
+#else
   setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
+#endif
   // Not critical, continue if fail.
 #endif
 
 #ifdef TCP_KEEPCNT
   int keepcnt = KEEPALIVE_COUNT;
+#ifdef _WIN32
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, (const char*)&keepcnt, sizeof(keepcnt));
+#else
   setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
+#endif
   // Not critical, continue if fail.
 #endif
 
@@ -127,7 +155,11 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
   // Check if connection was successful
   int error = 0;
   socklen_t len = sizeof(error);
+#ifdef _WIN32
+  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&error, &len) < 0) {
+#else
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+#endif
     return false;
   }
 
@@ -278,7 +310,7 @@ const char *network_error_string(int error_code) {
   case ECONNRESET:
     return "Connection reset by peer";
   default:
-    return strerror(error_code);
+    return SAFE_STRERROR(error_code);
   }
 }
 
@@ -315,7 +347,7 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 
   // Parse the width,height values
   int w, h;
-  int parsed = sscanf(message, SIZE_MESSAGE_FORMAT, &w, &h);
+  int parsed = SAFE_SSCANF(message, SIZE_MESSAGE_FORMAT, &w, &h);
   if (parsed != 2 || w <= 0 || h <= 0 || w > 65535 || h > 65535) {
     return -1;
   }
@@ -369,7 +401,7 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
   }
 
   int num_samples;
-  int parsed = sscanf(header, AUDIO_MESSAGE_FORMAT, &num_samples);
+  int parsed = SAFE_SSCANF(header, AUDIO_MESSAGE_FORMAT, &num_samples);
   if (parsed != 1 || num_samples <= 0 || num_samples > max_samples || num_samples > AUDIO_SAMPLES_PER_PACKET) {
     return -1;
   }
@@ -901,8 +933,8 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
     caps.color_level = TERM_COLOR_NONE;
     caps.color_count = 2;
     caps.capabilities = 0; // No special capabilities
-    strncpy(caps.term_type, "unknown", sizeof(caps.term_type) - 1);
-    strncpy(caps.colorterm, "", sizeof(caps.colorterm) - 1);
+    SAFE_STRNCPY(caps.term_type, "unknown", sizeof(caps.term_type));
+    SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
     caps.detection_reliable = 0; // Not reliable
   }
 
@@ -919,7 +951,7 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.palette_type = opt_palette_type;
   net_packet.utf8_support = caps.utf8_support ? 1 : 0;
   if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
-    strncpy(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom) - 1);
+    SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
     memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
@@ -927,10 +959,10 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
 
   // log_debug("NETWORK DEBUG: About to send capabilities packet with width=%u, height=%u", width, height);
 
-  strncpy(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type) - 1);
+  SAFE_STRNCPY(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type));
   net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
 
-  strncpy(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm) - 1);
+  SAFE_STRNCPY(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm));
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
@@ -939,7 +971,7 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.palette_type = opt_palette_type;
   net_packet.utf8_support = opt_force_utf8 ? 1 : 0; // Use forced UTF-8 or detect
   if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
-    strncpy(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom) - 1);
+    SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
     memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));

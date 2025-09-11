@@ -8,7 +8,7 @@
  *
  * $Id: aspect_ratio.c 466 2006-10-02 11:35:03Z csl $
  */
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <stdbool.h>
 
 void aspect_ratio(const ssize_t img_width, const ssize_t img_height, const ssize_t width, const ssize_t height,

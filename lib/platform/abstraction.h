@@ -1,5 +1,24 @@
-#ifndef PLATFORM_H
-#define PLATFORM_H
+#ifndef PLATFORM_ABSTRACTION_H
+#define PLATFORM_ABSTRACTION_H
+
+/**
+ * @file abstraction.h
+ * @brief Cross-platform abstraction layer for ASCII-Chat
+ * 
+ * This header provides a comprehensive abstraction layer that enables ASCII-Chat
+ * to run seamlessly on Windows, Linux, and macOS. It abstracts:
+ * - Threading primitives (threads, mutexes, rwlocks, condition variables)
+ * - Socket operations (TCP/IP networking)
+ * - Terminal I/O operations
+ * - System functions (sleep, time, environment variables)
+ * - File I/O operations
+ * 
+ * The abstraction layer uses compile-time platform detection to select the
+ * appropriate implementation for each platform.
+ * 
+ * @author ASCII-Chat Development Team
+ * @date January 2025
+ */
 
 // ============================================================================
 // Platform Detection
@@ -67,9 +86,12 @@ typedef long long ssize_t;
 #define PACKED_ATTR
 #define ALIGNED_ATTR(x) __declspec(align(x))
 
-// MSVC doesn't support GCC attributes - only define if not already defined
+// MSVC doesn't support GCC attributes, but Clang does
+// Only disable __attribute__ for MSVC, not for Clang on Windows
+#if defined(_MSC_VER) && !defined(__clang__)
 #ifndef __attribute__
 #define __attribute__(x)
+#endif
 #endif
 
 // Missing errno values
@@ -100,8 +122,19 @@ typedef long long ssize_t;
 // ============================================================================
 // Threading Abstraction
 // ============================================================================
+/**
+ * @defgroup Threading Cross-Platform Threading API
+ * @{
+ * 
+ * The threading API provides platform-independent thread management, synchronization
+ * primitives, and thread-local storage. On Windows, it wraps the Windows Threading
+ * API. On POSIX systems (Linux/macOS), it wraps pthreads.
+ */
 
-// Use different name to avoid conflict with macOS system headers
+/**
+ * @brief Thread handle structure
+ * @note Named asciithread_t to avoid conflict with macOS system headers
+ */
 typedef struct {
 #if PLATFORM_WINDOWS
   HANDLE handle;
@@ -428,4 +461,6 @@ void *aligned_alloc(size_t alignment, size_t size);
 #define STDERR_FILENO 2
 #endif
 
-#endif // PLATFORM_H
+/** @} */ // End of Utilities group
+
+#endif // PLATFORM_ABSTRACTION_H

@@ -1,5 +1,5 @@
 #include "common.h"
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,11 +56,11 @@ static void rotate_log_if_needed(void) {
     close(g_log.file);
 
     /* Open file for reading to get the tail */
-    int read_file = open(g_log.filename, O_RDONLY);
+    int read_file = SAFE_OPEN(g_log.filename, O_RDONLY, 0);
     if (read_file < 0) {
       fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -71,7 +71,7 @@ static void rotate_log_if_needed(void) {
     if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
       close(read_file);
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -86,11 +86,11 @@ static void rotate_log_if_needed(void) {
     /* Read the tail into a temporary file */
     char temp_filename[512];
     snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
-    int temp_file = open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
+    int temp_file = SAFE_OPEN(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (temp_file < 0) {
       close(read_file);
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -107,7 +107,7 @@ static void rotate_log_if_needed(void) {
         close(temp_file);
         unlink(temp_filename);
         /* Fall back to truncation */
-        int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+        int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
         g_log.file = fd;
         g_log.current_size = 0;
         return;
@@ -122,14 +122,14 @@ static void rotate_log_if_needed(void) {
     if (rename(temp_filename, g_log.filename) != 0) {
       unlink(temp_filename); /* Clean up temp file */
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
 
     /* Reopen for appending */
-    g_log.file = open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
+    g_log.file = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     if (g_log.file < 0) {
       fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
       g_log.file = STDERR_FILENO;
@@ -175,7 +175,7 @@ void log_init(const char *filename, log_level_t level) {
   if (filename) {
     /* Store filename for rotation */
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
-    int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, 0600);
+    int fd = SAFE_OPEN(filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     g_log.file = fd;
     if (!g_log.file) {
       if (preserve_terminal_output) {

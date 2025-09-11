@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "platform.h"
+#include "platform/abstraction.h"
 
 // Include ringbuffer.h to get the audio_ring_buffer_t type
 #include "ringbuffer.h"

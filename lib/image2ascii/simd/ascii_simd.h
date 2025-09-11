@@ -9,24 +9,30 @@
 #include "../image.h"
 
 // Check for SIMD support and include architecture-specific headers
-#ifdef __ARM_FEATURE_SVE
-#define SIMD_SUPPORT_SVE 1
-#endif
+// Disable SIMD on Windows with Clang due to intrinsics compatibility issues
+#if defined(_WIN32) && defined(__clang__) && __clang_major__ >= 20
+  // Windows with Clang 20+ has issues with MMX intrinsics
+  // Keep SIMD disabled until fixed
+#else
+  #ifdef __ARM_FEATURE_SVE
+  #define SIMD_SUPPORT_SVE 1
+  #endif
 
-#ifdef __AVX2__
-#define SIMD_SUPPORT_AVX2 1
-#endif
+  #ifdef __AVX2__
+  #define SIMD_SUPPORT_AVX2 1
+  #endif
 
-#ifdef __SSE2__
-#define SIMD_SUPPORT_SSE2 1
-#endif
+  #ifdef __SSE2__
+  #define SIMD_SUPPORT_SSE2 1
+  #endif
 
-#ifdef __SSSE3__
-#define SIMD_SUPPORT_SSSE3 1
-#endif
+  #ifdef __SSSE3__
+  #define SIMD_SUPPORT_SSSE3 1
+  #endif
 
-#ifdef __ARM_NEON
-#define SIMD_SUPPORT_NEON 1
+  #ifdef __ARM_NEON
+  #define SIMD_SUPPORT_NEON 1
+  #endif
 #endif
 
 // Luminance calculation constants (shared across all files)
