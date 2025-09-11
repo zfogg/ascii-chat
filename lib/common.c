@@ -8,6 +8,9 @@ void does_something(int a) {
   if (a == 1) {
     printf("1\n");
   }
+  if (a == 2) {
+    printf("2\n");
+  }
   return;
 }
 
