@@ -5,7 +5,7 @@
 #include <time.h>
 #include <math.h>
 
-#include "platform.h"
+#include "platform/abstraction.h"
 
 #if !PLATFORM_WINDOWS
 #include <ncurses.h>

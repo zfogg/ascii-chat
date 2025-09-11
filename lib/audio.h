@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include "platform.h"
+#include "platform/abstraction.h"
 #include <portaudio.h>
 
 #ifdef __linux__

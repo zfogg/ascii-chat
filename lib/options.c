@@ -263,7 +263,7 @@ static int is_valid_ipv4(const char *ip) {
   // Copy to temp buffer to avoid modifying original
   if (strlen(ip) >= sizeof(temp))
     return 0;
-  strncpy(temp, ip, sizeof(temp) - 1);
+  SAFE_STRNCPY(temp, ip, sizeof(temp));
   temp[sizeof(temp) - 1] = '\0';
 
   char *saveptr;
@@ -459,7 +459,7 @@ void options_init(int argc, char **argv, bool is_client) {
                 sizeof(opt_palette_custom) - 1);
         _exit(EXIT_FAILURE);
       }
-      strncpy(opt_palette_custom, value_str, sizeof(opt_palette_custom) - 1);
+      SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
       opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
       opt_palette_custom_set = true;
       opt_palette_type = PALETTE_CUSTOM; // Automatically set to custom
@@ -540,7 +540,7 @@ void options_init(int argc, char **argv, bool is_client) {
               static char safe_buf[256];
               size_t len = eq - opt_name;
               if (len > 0 && len < sizeof(safe_buf) - 1) {
-                strncpy(safe_buf, opt_name, len);
+                SAFE_STRNCPY(safe_buf, opt_name, len + 1);
                 safe_buf[len] = '\0';
                 opt_name = safe_buf;
               }

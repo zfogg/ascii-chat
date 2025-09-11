@@ -1,7 +1,7 @@
 #ifndef PLATFORM_INIT_H
 #define PLATFORM_INIT_H
 
-#include "platform.h"
+#include "platform/abstraction.h"
 
 // ============================================================================
 // Static Initialization Helpers

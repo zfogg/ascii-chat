@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "platform.h"
+#include "platform/abstraction.h"
 #include "common.h"
 
 typedef struct rgb_t {

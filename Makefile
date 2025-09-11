@@ -31,13 +31,40 @@ override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
 # Compiler Flags
 # =============================================================================
 
-CSTD ?= c23
+# Use C17 on Windows, C23 on POSIX for better SIMD compatibility
+ifneq ($(shell uname),)
+  ifeq ($(findstring MINGW,$(shell uname)),)
+    ifeq ($(findstring MSYS,$(shell uname)),)
+      ifeq ($(findstring CYGWIN,$(shell uname)),)
+        CSTD ?= c23
+      else
+        CSTD ?= c17
+      endif
+    else
+      CSTD ?= c17
+    endif
+  else
+    CSTD ?= c17
+  endif
+else
+  CSTD ?= c17
+endif
 
 # Base flags
 override CFLAGS += -Wall -Wextra
 
+
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
-override CFLAGS += -D_GNU_SOURCE
+# Only enable on POSIX systems (Linux/macOS), not Windows
+ifneq ($(shell uname),)
+  ifeq ($(findstring MINGW,$(shell uname)),)
+    ifeq ($(findstring MSYS,$(shell uname)),)
+      ifeq ($(findstring CYGWIN,$(shell uname)),)
+        override CFLAGS += -D_GNU_SOURCE
+      endif
+    endif
+  endif
+endif
 
 # Get package-specific flags
 override CFLAGS += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
@@ -301,13 +328,28 @@ endif
 
 # Apply SIMD flags based on detection
 ifdef ENABLE_SIMD_SSE2
-  SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
+  ifeq ($(shell uname),)
+    # Windows - disable MMX to avoid compiler bugs
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2 -mno-mmx
+  else
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
+  endif
 endif
 ifdef ENABLE_SIMD_SSSE3
-  SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
+  ifeq ($(shell uname),)
+    # Windows - disable MMX to avoid compiler bugs
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3 -mno-mmx
+  else
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
+  endif
 endif
 ifdef ENABLE_SIMD_AVX2
-  SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
+  ifeq ($(shell uname),)
+    # Windows - disable MMX to avoid compiler bugs
+    SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2 -mno-mmx
+  else
+    SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
+  endif
 endif
 ifdef ENABLE_SIMD_AVX512
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX512 -mavx512f -mavx512bw
@@ -436,14 +478,28 @@ SANITIZE_FLAGS := -fsanitize=address
 # Targets (executables)
 TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
+# Platform-specific source files
+PLATFORM_C_FILES_COMMON := $(wildcard $(LIB_DIR)/platform/*.c)
+ifeq ($(shell uname),Darwin)
+  # macOS: Use POSIX implementation
+  PLATFORM_C_FILES := $(PLATFORM_C_FILES_COMMON) $(wildcard $(LIB_DIR)/platform/posix/*.c)
+else ifeq ($(shell uname),Linux)
+  # Linux: Use POSIX implementation
+  PLATFORM_C_FILES := $(PLATFORM_C_FILES_COMMON) $(wildcard $(LIB_DIR)/platform/posix/*.c)
+else
+  # Windows: Use Windows implementation
+  PLATFORM_C_FILES := $(PLATFORM_C_FILES_COMMON) $(wildcard $(LIB_DIR)/platform/windows/*.c)
+endif
+
 # Source code files
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(PLATFORM_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
+PLATFORM_H_FILES := $(wildcard $(LIB_DIR)/platform/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(PLATFORM_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
@@ -673,27 +729,91 @@ $(BUILD_DIR)/coverage/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD
 	@echo "Compiling $< (coverage)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - debug
-$(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib
-	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+# Compile platform source files - debug
+$(BUILD_DIR)/debug/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/platform
 	@echo "Compiling $< (debug)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - release
-$(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib
+# Compile platform/posix source files - debug
+$(BUILD_DIR)/debug/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/platform/posix
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile platform/windows source files - debug
+$(BUILD_DIR)/debug/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/platform/windows
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - debug
+$(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile platform source files - release
+$(BUILD_DIR)/release/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/platform
 	@echo "Compiling $< (release)..."
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - sanitize
-$(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
+# Compile platform/posix source files - release
+$(BUILD_DIR)/release/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/platform/posix
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile platform/windows source files - release
+$(BUILD_DIR)/release/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/platform/windows
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - release
+$(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile platform source files - sanitize
+$(BUILD_DIR)/sanitize/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/platform
 	@echo "Compiling $< (sanitize)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - coverage
+# Compile platform/posix source files - sanitize
+$(BUILD_DIR)/sanitize/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/platform/posix
+	@echo "Compiling $< (sanitize)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile platform/windows source files - sanitize
+$(BUILD_DIR)/sanitize/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/platform/windows
+	@echo "Compiling $< (sanitize)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - sanitize
+$(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	@echo "Compiling $< (sanitize)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile platform source files - coverage
+$(BUILD_DIR)/coverage/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/platform
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile platform/posix source files - coverage
+$(BUILD_DIR)/coverage/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/platform/posix
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile platform/windows source files - coverage
+$(BUILD_DIR)/coverage/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/platform/windows
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - coverage
 $(BUILD_DIR)/coverage/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (coverage)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
@@ -764,6 +884,33 @@ $(BUILD_DIR)/release/lib/tests: | $(BUILD_DIR)/release/lib
 $(BUILD_DIR)/sanitize/lib/tests: | $(BUILD_DIR)/sanitize/lib
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib/tests: | $(BUILD_DIR)/coverage/lib
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/platform: | $(BUILD_DIR)/debug/lib
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/platform: | $(BUILD_DIR)/release/lib
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib/platform: | $(BUILD_DIR)/sanitize/lib
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/platform: | $(BUILD_DIR)/coverage/lib
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/platform/posix: | $(BUILD_DIR)/debug/lib/platform
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/platform/posix: | $(BUILD_DIR)/release/lib/platform
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib/platform/posix: | $(BUILD_DIR)/sanitize/lib/platform
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/platform/posix: | $(BUILD_DIR)/coverage/lib/platform
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/platform/windows: | $(BUILD_DIR)/debug/lib/platform
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/platform/windows: | $(BUILD_DIR)/release/lib/platform
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib/platform/windows: | $(BUILD_DIR)/sanitize/lib/platform
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/platform/windows: | $(BUILD_DIR)/coverage/lib/platform
 	@mkdir -p $@
 
 $(BIN_DIR):

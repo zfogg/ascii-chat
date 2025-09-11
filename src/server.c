@@ -1,5 +1,5 @@
-#include "platform.h"
-#include "platform_init.h"
+#include "platform/abstraction.h"
+#include "platform/init.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -38,7 +38,7 @@ static volatile bool g_should_exit = false;
 
 // No emergency socket tracking needed - main shutdown sequence handles socket closure
 static static_mutex_t g_stats_mutex = STATIC_MUTEX_INIT;
-static static_mutex_t g_socket_mutex = STATIC_MUTEX_INIT;
+// g_socket_mutex removed - was unused
 
 // Shutdown signaling for fast thread cleanup
 static static_mutex_t g_shutdown_mutex = STATIC_MUTEX_INIT;
@@ -226,12 +226,14 @@ client_info_t *find_client_by_id_fast(uint32_t client_id); // O(1) hash table lo
  * ============================================================================
  */
 
+#ifndef _WIN32
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Server terminal resize - we ignore this since we use client's terminal size
   // Only log that the event occurred
   log_debug("Server terminal resized (ignored - using client terminal size)");
 }
+#endif
 
 static void sigint_handler(int sigint) {
   (void)(sigint);
@@ -1303,7 +1305,6 @@ int main(int argc, char *argv[]) {
 
   // Destroy mutexes (do this before log_destroy in case logging uses them)
   // g_stats_mutex is static - no explicit destroy needed;
-  // g_socket_mutex is static - no explicit destroy needed;
   mutex_destroy(&g_frame_cache_mutex);
   rwlock_destroy(&g_client_manager_rwlock);
 
@@ -1557,18 +1558,15 @@ void *client_receive_thread_func(void *arg) {
         client->terminal_caps.detection_reliable = caps->detection_reliable;
 
         // Copy terminal type strings safely
-        strncpy(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type) - 1);
-        client->terminal_caps.term_type[sizeof(client->terminal_caps.term_type) - 1] = '\0';
+        SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
 
-        strncpy(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm) - 1);
-        client->terminal_caps.colorterm[sizeof(client->terminal_caps.colorterm) - 1] = '\0';
+        SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
 
         // NEW: Store client's palette preferences
         client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
         client->terminal_caps.palette_type = ntohl(caps->palette_type);
-        strncpy(client->terminal_caps.palette_custom, caps->palette_custom,
-                sizeof(client->terminal_caps.palette_custom) - 1);
-        client->terminal_caps.palette_custom[sizeof(client->terminal_caps.palette_custom) - 1] = '\0';
+        SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
+                sizeof(client->terminal_caps.palette_custom));
 
         // Initialize client's per-client palette cache
         const char *custom_chars =
