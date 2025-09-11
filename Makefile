@@ -548,6 +548,10 @@ OBJS_NON_TARGET_COVERAGE := $(filter-out $(BUILD_DIR)/coverage/src/server.o $(BU
 OBJS := $(OBJS_DEBUG)
 OBJS_NON_TARGET := $(OBJS_NON_TARGET_DEBUG)
 
+# Dynamic object selection based on BUILD_MODE
+OBJS_CURRENT = $(OBJS_$(shell echo $(BUILD_MODE) | tr '[:lower:]' '[:upper:]'))
+OBJS_NON_TARGET_CURRENT = $(OBJS_NON_TARGET_$(shell echo $(BUILD_MODE) | tr '[:lower:]' '[:upper:]'))
+
 # Test files - exclude problematic tests for now
 TEST_C_FILES_ALL := $(wildcard $(TEST_DIR)/unit/*.c) $(wildcard $(TEST_DIR)/integration/*.c) $(wildcard $(TEST_DIR)/performance/*.c)
 # Exclude tests with API mismatches that prevent compilation
@@ -571,24 +575,31 @@ TEST_EXECUTABLES := $(foreach file,$(TEST_C_FILES),$(BIN_DIR)/test_$(subst /,_,$
 # Build Rules
 # =============================================================================
 
+# Default build mode
+BUILD_MODE ?= debug
+
 # Main targets
 default: $(TARGETS)
 all: default
 
+debug: BUILD_MODE := debug
 debug: override CFLAGS += $(DEBUG_FLAGS)
 debug: override LDFLAGS +=
 debug: $(TARGETS)
 
+coverage: BUILD_MODE := coverage
 coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
 coverage: override LDFLAGS += $(COVERAGE_FLAGS)
 coverage: $(TARGETS)
 
+release: BUILD_MODE := release
 release: override CFLAGS += $(RELEASE_FLAGS)
 release: override LDFLAGS += -flto
-release: $(TARGETS)
+release: $(BIN_DIR)/server-release $(BIN_DIR)/client-release
 
 # Simplified coverage mode (debug-based only)
 
+sanitize: BUILD_MODE := sanitize
 sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
@@ -626,7 +637,7 @@ tests-sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 tests-sanitize: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
 tests-sanitize: $(TEST_EXECUTABLES)
 
-# Build executables - debug versions
+# Build executables - default to debug
 $(BIN_DIR)/server: $(BUILD_DIR)/debug/src/server.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -637,76 +648,77 @@ $(BIN_DIR)/client: $(BUILD_DIR)/debug/src/client.o $(OBJS_NON_TARGET_DEBUG) | $(
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
 
+# Release executables
+$(BIN_DIR)/server-release: $(BUILD_DIR)/release/src/server.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+	@echo "Linking $@ (release)..."
+	$(CC) -o $@ $^ $(LDFLAGS)
+	@cp $@ $(BIN_DIR)/server
+	@echo "Built $@ successfully!"
+
+$(BIN_DIR)/client-release: $(BUILD_DIR)/release/src/client.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+	@echo "Linking $@ (release)..."
+	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
+	@cp $@ $(BIN_DIR)/client
+	@echo "Built $@ successfully!"
+
 # Compile C source files from src/ - debug
 $(BUILD_DIR)/debug/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/src
 	@echo "Compiling $< (debug)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
 # Compile C source files from src/ - release
 $(BUILD_DIR)/release/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/src
 	@echo "Compiling $< (release)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile C source files from src/ - sanitize
 $(BUILD_DIR)/sanitize/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/src
 	@echo "Compiling $< (sanitize)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile C source files from src/ - coverage
 $(BUILD_DIR)/coverage/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/src
 	@echo "Compiling $< (coverage)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - debug
 $(BUILD_DIR)/debug/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/image2ascii
 	@echo "Compiling $< (debug)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - release
 $(BUILD_DIR)/release/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/image2ascii
 	@echo "Compiling $< (release)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - sanitize
 $(BUILD_DIR)/sanitize/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/image2ascii
 	@echo "Compiling $< (sanitize)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - coverage
 $(BUILD_DIR)/coverage/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/image2ascii
 	@echo "Compiling $< (coverage)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - debug
 $(BUILD_DIR)/debug/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/image2ascii/simd
 	@echo "Compiling $< (debug)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - release
 $(BUILD_DIR)/release/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/image2ascii/simd
 	@echo "Compiling $< (release)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - sanitize
 $(BUILD_DIR)/sanitize/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/image2ascii/simd
 	@echo "Compiling $< (sanitize)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - coverage
 $(BUILD_DIR)/coverage/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/image2ascii/simd
 	@echo "Compiling $< (coverage)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile C source files from lib/tests/ - debug

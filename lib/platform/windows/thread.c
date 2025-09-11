@@ -1,7 +1,7 @@
 /**
  * @file thread.c
  * @brief Windows thread implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides Windows Threading API wrappers for the platform abstraction layer,
  * enabling cross-platform thread management using a unified API.
  */
@@ -21,8 +21,8 @@
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
-    thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, &thread->id);
-    return (thread->handle != NULL) ? 0 : -1;
+  thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, &thread->id);
+  return (thread->handle != NULL) ? 0 : -1;
 }
 
 /**
@@ -32,16 +32,16 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
-    if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0) {
-        if (retval) {
-            DWORD exit_code;
-            GetExitCodeThread(thread->handle, &exit_code);
-            *retval = (void *)(uintptr_t)exit_code;
-        }
-        CloseHandle(thread->handle);
-        return 0;
+  if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0) {
+    if (retval) {
+      DWORD exit_code;
+      GetExitCodeThread(thread->handle, &exit_code);
+      *retval = (void *)(uintptr_t)exit_code;
     }
-    return -1;
+    CloseHandle(thread->handle);
+    return 0;
+  }
+  return -1;
 }
 
 /**
@@ -49,7 +49,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
  * @param retval Return value for the thread
  */
 void ascii_thread_exit(void *retval) {
-    ExitThread((DWORD)(uintptr_t)retval);
+  ExitThread((DWORD)(uintptr_t)retval);
 }
 
 /**
@@ -58,8 +58,8 @@ void ascii_thread_exit(void *retval) {
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_detach(asciithread_t *thread) {
-    CloseHandle(thread->handle);
-    return 0;
+  CloseHandle(thread->handle);
+  return 0;
 }
 
 /**
@@ -67,9 +67,9 @@ int ascii_thread_detach(asciithread_t *thread) {
  * @return Thread ID structure for current thread
  */
 thread_id_t ascii_thread_self(void) {
-    thread_id_t id;
-    id.id = GetCurrentThreadId();
-    return id;
+  thread_id_t id;
+  id.id = GetCurrentThreadId();
+  return id;
 }
 
 /**
@@ -79,7 +79,7 @@ thread_id_t ascii_thread_self(void) {
  * @return Non-zero if equal, 0 if different
  */
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
-    return t1.id == t2.id;
+  return t1.id == t2.id;
 }
 
 /**
@@ -87,7 +87,7 @@ int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
  * @return Current thread ID as uint64_t
  */
 uint64_t ascii_thread_current_id(void) {
-    return (uint64_t)GetCurrentThreadId();
+  return (uint64_t)GetCurrentThreadId();
 }
 
 #endif // _WIN32

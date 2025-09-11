@@ -1,7 +1,7 @@
 /**
  * @file mutex.c
  * @brief POSIX mutex implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides POSIX pthread mutex wrappers for the platform abstraction layer,
  * enabling cross-platform mutex synchronization using a unified API.
  */
@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int mutex_init(mutex_t *mutex) {
-    return pthread_mutex_init(&mutex->mutex, NULL);
+  return pthread_mutex_init(&mutex->mutex, NULL);
 }
 
 /**
@@ -26,7 +26,7 @@ int mutex_init(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_destroy(mutex_t *mutex) {
-    return pthread_mutex_destroy(&mutex->mutex);
+  return pthread_mutex_destroy(&mutex->mutex);
 }
 
 /**
@@ -35,7 +35,7 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock(mutex_t *mutex) {
-    return pthread_mutex_lock(&mutex->mutex);
+  return pthread_mutex_lock(&mutex->mutex);
 }
 
 /**
@@ -44,7 +44,7 @@ int mutex_lock(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock(mutex_t *mutex) {
-    return pthread_mutex_trylock(&mutex->mutex);
+  return pthread_mutex_trylock(&mutex->mutex);
 }
 
 /**
@@ -53,7 +53,7 @@ int mutex_trylock(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock(mutex_t *mutex) {
-    return pthread_mutex_unlock(&mutex->mutex);
+  return pthread_mutex_unlock(&mutex->mutex);
 }
 
 #endif // !_WIN32

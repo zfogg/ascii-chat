@@ -1,7 +1,7 @@
 /**
  * @file system.c
  * @brief POSIX system functions implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides POSIX system function wrappers for the platform abstraction layer,
  * enabling cross-platform system operations using a unified API.
  */
@@ -21,17 +21,17 @@
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-    static char username[256];
-    const char *user = getenv("USER");
-    if (!user) {
-        user = getenv("USERNAME");
-    }
-    if (user) {
-        strncpy(username, user, sizeof(username) - 1);
-        username[sizeof(username) - 1] = '\0';
-        return username;
-    }
-    return "unknown";
+  static char username[256];
+  const char *user = getenv("USER");
+  if (!user) {
+    user = getenv("USERNAME");
+  }
+  if (user) {
+    strncpy(username, user, sizeof(username) - 1);
+    username[sizeof(username) - 1] = '\0';
+    return username;
+  }
+  return "unknown";
 }
 
 /**
@@ -40,8 +40,8 @@ const char *get_username_env(void) {
  * @note POSIX platforms don't need special initialization
  */
 int platform_init(void) {
-    // POSIX platforms don't need special initialization
-    return 0;
+  // POSIX platforms don't need special initialization
+  return 0;
 }
 
 /**
@@ -49,7 +49,7 @@ int platform_init(void) {
  * @note POSIX platforms don't need special cleanup
  */
 void platform_cleanup(void) {
-    // POSIX platforms don't need special cleanup
+  // POSIX platforms don't need special cleanup
 }
 
 /**
@@ -57,7 +57,7 @@ void platform_cleanup(void) {
  * @param ms Number of milliseconds to sleep
  */
 void platform_sleep_ms(unsigned int ms) {
-    usleep(ms * 1000);
+  usleep(ms * 1000);
 }
 
 /**
@@ -65,7 +65,7 @@ void platform_sleep_ms(unsigned int ms) {
  * @param us Number of microseconds to sleep
  */
 void platform_sleep_us(unsigned int us) {
-    usleep(us);
+  usleep(us);
 }
 
 /**
@@ -73,7 +73,7 @@ void platform_sleep_us(unsigned int us) {
  * @return Process ID as integer
  */
 int platform_get_pid(void) {
-    return (int)getpid();
+  return (int)getpid();
 }
 
 /**
@@ -81,7 +81,7 @@ int platform_get_pid(void) {
  * @return Username string or "unknown" if not found
  */
 const char *platform_get_username(void) {
-    return get_username_env();
+  return get_username_env();
 }
 
 /**
@@ -91,7 +91,7 @@ const char *platform_get_username(void) {
  * @return Previous signal handler, or SIG_ERR on error
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler) {
-    return signal(sig, handler);
+  return signal(sig, handler);
 }
 
 /**
@@ -100,7 +100,7 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
  * @return Variable value or NULL if not found
  */
 const char *platform_getenv(const char *name) {
-    return getenv(name);
+  return getenv(name);
 }
 
 /**
@@ -110,7 +110,7 @@ const char *platform_getenv(const char *name) {
  * @return 0 on success, error code on failure
  */
 int platform_setenv(const char *name, const char *value) {
-    return setenv(name, value, 1);
+  return setenv(name, value, 1);
 }
 
 /**
@@ -119,7 +119,7 @@ int platform_setenv(const char *name, const char *value) {
  * @return 1 if TTY, 0 if not
  */
 int platform_isatty(int fd) {
-    return isatty(fd);
+  return isatty(fd);
 }
 
 /**
@@ -127,7 +127,7 @@ int platform_isatty(int fd) {
  * @return Path to TTY device
  */
 const char *platform_get_tty_path(void) {
-    return get_tty_path();
+  return get_tty_path();
 }
 
 /**
@@ -136,13 +136,13 @@ const char *platform_get_tty_path(void) {
  * @return File descriptor on success, -1 on failure
  */
 int platform_open_tty(const char *mode) {
-    int flags = O_RDWR;
-    if (strchr(mode, 'r') && !strchr(mode, 'w')) {
-        flags = O_RDONLY;
-    } else if (strchr(mode, 'w') && !strchr(mode, 'r')) {
-        flags = O_WRONLY;
-    }
-    return open("/dev/tty", flags);
+  int flags = O_RDWR;
+  if (strchr(mode, 'r') && !strchr(mode, 'w')) {
+    flags = O_RDONLY;
+  } else if (strchr(mode, 'w') && !strchr(mode, 'r')) {
+    flags = O_WRONLY;
+  }
+  return open("/dev/tty", flags);
 }
 
 #endif // !_WIN32

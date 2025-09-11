@@ -1,7 +1,7 @@
 /**
  * @file rwlock.c
  * @brief Windows read-write lock implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides Windows SRW Lock wrappers for the platform abstraction layer,
  * enabling cross-platform reader-writer synchronization using a unified API.
  */
@@ -17,8 +17,8 @@
  * @return 0 on success, error code on failure
  */
 int rwlock_init(rwlock_t *lock) {
-    InitializeSRWLock(&lock->lock);
-    return 0;
+  InitializeSRWLock(&lock->lock);
+  return 0;
 }
 
 /**
@@ -28,9 +28,9 @@ int rwlock_init(rwlock_t *lock) {
  * @note SRWLocks don't need explicit destruction on Windows
  */
 int rwlock_destroy(rwlock_t *lock) {
-    // SRWLocks don't need explicit destruction
-    (void)lock; // Suppress unused parameter warning
-    return 0;
+  // SRWLocks don't need explicit destruction
+  (void)lock; // Suppress unused parameter warning
+  return 0;
 }
 
 /**
@@ -39,8 +39,8 @@ int rwlock_destroy(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdlock(rwlock_t *lock) {
-    AcquireSRWLockShared(&lock->lock);
-    return 0;
+  AcquireSRWLockShared(&lock->lock);
+  return 0;
 }
 
 /**
@@ -49,8 +49,8 @@ int rwlock_rdlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrlock(rwlock_t *lock) {
-    AcquireSRWLockExclusive(&lock->lock);
-    return 0;
+  AcquireSRWLockExclusive(&lock->lock);
+  return 0;
 }
 
 /**
@@ -61,10 +61,10 @@ int rwlock_wrlock(rwlock_t *lock) {
  *       so we try to release as writer first, then as reader
  */
 int rwlock_unlock(rwlock_t *lock) {
-    // Try to release as writer first, then as reader
-    // This is a limitation of SRWLock - we don't track lock type
-    ReleaseSRWLockExclusive(&lock->lock);
-    return 0;
+  // Try to release as writer first, then as reader
+  // This is a limitation of SRWLock - we don't track lock type
+  ReleaseSRWLockExclusive(&lock->lock);
+  return 0;
 }
 
 /**
@@ -73,8 +73,8 @@ int rwlock_unlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdunlock(rwlock_t *lock) {
-    ReleaseSRWLockShared(&lock->lock);
-    return 0;
+  ReleaseSRWLockShared(&lock->lock);
+  return 0;
 }
 
 /**
@@ -83,8 +83,8 @@ int rwlock_rdunlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrunlock(rwlock_t *lock) {
-    ReleaseSRWLockExclusive(&lock->lock);
-    return 0;
+  ReleaseSRWLockExclusive(&lock->lock);
+  return 0;
 }
 
 #endif // _WIN32
