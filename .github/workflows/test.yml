@@ -61,6 +61,14 @@ jobs:
         echo "All files in bin:"
         ls -la bin/ 2>/dev/null || echo "bin/ directory not found"
 
+        # Debug: Check if coverage build actually created .gcno files
+        if [ "${BUILD_TARGET}" = "coverage" ]; then
+          echo "DEBUG: Coverage build - checking for .gcno files..."
+          echo "DEBUG: Count of .gcno files after build: $(find . -name "*.gcno" -type f | wc -l)"
+          echo "DEBUG: Sample .gcno files:"
+          find . -name "*.gcno" -type f | head -5
+        fi
+
     - name: Run unit tests with JUnit XML generation
       run: |
         # Use coverage for debug builds
@@ -83,12 +91,38 @@ jobs:
 
         if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
           echo "Found .gcda files, generating coverage..."
-          echo "DEBUG: Running gcov on .gcda files..."
-          find . -name "*.gcda" -exec gcov {} \;
-          echo "DEBUG: gcov command completed"
+
+          # Debug: Check .gcno files
+          echo "DEBUG: Checking .gcno files..."
+          echo "DEBUG: Count of .gcno files: $(find . -name "*.gcno" -type f | wc -l)"
+          echo "DEBUG: Sample .gcno files:"
+          find . -name "*.gcno" -type f | head -5
+
+          # Debug: Check .gcda files
+          echo "DEBUG: Count of .gcda files: $(find . -name "*.gcda" -type f | wc -l)"
+          echo "DEBUG: Sample .gcda files:"
+          find . -name "*.gcda" -type f | head -5
+
+          # Debug: Check if we have matching .gcno/.gcda pairs
+          echo "DEBUG: Checking for matching .gcno/.gcda pairs..."
+          for gcda in $(find . -name "*.gcda" -type f | head -3); do
+            gcno="${gcda%.gcda}.gcno"
+            echo "DEBUG: Checking pair: $gcda -> $gcno"
+            if [ -f "$gcno" ]; then
+              echo "DEBUG: ✅ Pair exists"
+              ls -la "$gcno" "$gcda"
+            else
+              echo "DEBUG: ❌ Missing .gcno file for $gcda"
+            fi
+          done
+
+          echo "DEBUG: Running llvm-cov on .gcda files..."
+          # Use llvm-cov for clang coverage data
+          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+          echo "DEBUG: llvm-cov command completed"
 
           # Debug: Check where .gcov files were created
-          echo "DEBUG: Looking for .gcov files after gcov execution..."
+          echo "DEBUG: Looking for .gcov files after coverage execution..."
           echo "DEBUG: All .gcov files found:"
           find . -name "*.gcov" -type f -exec ls -la {} \;
           echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
@@ -168,12 +202,13 @@ jobs:
       if: always()
       run: |
         # Generate coverage files for codecov
-        echo "DEBUG: Running gcov on .gcda files..."
-        find . -name "*.gcda" -exec gcov {} \;
-        echo "DEBUG: gcov command completed"
+        echo "DEBUG: Running llvm-cov on .gcda files..."
+        # Use llvm-cov for clang coverage data
+        find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+        echo "DEBUG: llvm-cov command completed"
 
         # Debug: Check where .gcov files were created
-        echo "DEBUG: Looking for .gcov files after gcov execution..."
+        echo "DEBUG: Looking for .gcov files after coverage execution..."
         echo "DEBUG: All .gcov files found:"
         find . -name "*.gcov" -type f -exec ls -la {} \;
         echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
