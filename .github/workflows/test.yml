@@ -83,8 +83,11 @@ jobs:
 
         if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
           echo "Found .gcda files, generating coverage..."
-          # Use -o option to ensure .gcov files are placed in repo root on both Ubuntu and macOS
-          find . -name "*.gcda" -exec sh -c 'gcov -o "$(dirname "$1")" "$1"' _ {} \;
+          find . -name "*.gcda" -exec gcov {} \;
+
+          # Move all .gcov files to repo root for consistent behavior across platforms
+          echo "Moving .gcov files to repo root..."
+          find . -name "*.gcov" -type f -exec mv {} . \; 2>/dev/null || true
 
           # Show what coverage files were generated
           echo "Generated coverage files:"
