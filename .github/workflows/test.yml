@@ -83,7 +83,8 @@ jobs:
 
         if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
           echo "Found .gcda files, generating coverage..."
-          find . -name "*.gcda" -exec gcov {} \;
+          # Use -o option to ensure .gcov files are placed in repo root on both Ubuntu and macOS
+          find . -name "*.gcda" -exec sh -c 'gcov -o "$(dirname "$1")" "$1"' _ {} \;
 
           # Show what coverage files were generated
           echo "Generated coverage files:"
@@ -101,7 +102,7 @@ jobs:
         os-name: ${{ matrix.os-name }}
         build-type: ${{ matrix.build_type }}
         junit-file: junit.xml
-        coverage-files: './**/*.gcov'
+        coverage-files: './*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
 
@@ -153,7 +154,8 @@ jobs:
       if: always()
       run: |
         # Generate coverage files for codecov
-        find . -name "*.gcda" -exec gcov {} \;
+        # Use -o option to ensure .gcov files are placed in repo root on both Ubuntu and macOS
+        find . -name "*.gcda" -exec sh -c 'gcov -o "$(dirname "$1")" "$1"' _ {} \;
         echo "Generated coverage files:"
         find . -name "*.gcov" -type f | head -20
 
