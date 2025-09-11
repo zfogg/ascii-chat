@@ -3,6 +3,14 @@
 #include <string.h>
 #include <stdio.h>
 
+void does_something(int a) {
+  printf("does_something\n");
+  if (a == 1) {
+    printf("1\n");
+  }
+  return;
+}
+
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double MB = 1024.0 * 1024.0;
   const double GB = MB * 1024.0;

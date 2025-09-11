@@ -76,16 +76,24 @@ jobs:
 
     - name: Generate coverage report (debug builds only)
       if: always() && matrix.build_type == 'debug'
-      uses: ./.github/actions/generate-coverage
-      with:
-        build-type: ${{ matrix.build_type }}
-        os-name: ${{ matrix.os-name }}
-        test-type: unit
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'true'
-        junit-file: junit.xml
+      run: |
+        # Generate coverage files for codecov (coverage builds create .gcda files)
+        echo "Looking for .gcda files to generate coverage from..."
+        find . -name "*.gcda" -type f | head -10
 
-    - name: Publish Test Results
+        if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
+          echo "Found .gcda files, generating coverage..."
+          find . -name "*.gcda" -exec gcov {} \;
+
+          # Show what coverage files were generated
+          echo "Generated coverage files:"
+          find . -name "*.gcov" -type f | head -20
+          ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
+        else
+          echo "No .gcda files found (this is expected for non-coverage builds)"
+        fi
+
+    - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
       if: always()
       with:
@@ -93,6 +101,9 @@ jobs:
         os-name: ${{ matrix.os-name }}
         build-type: ${{ matrix.build_type }}
         junit-file: junit.xml
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
 
     - name: Upload test results
       if: always()
@@ -128,14 +139,11 @@ jobs:
         os: ${{ matrix.os-name }}
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr' || 'gcovr' }}
 
-    - name: Build integration tests with coverage
-      run: |
-        echo "Building integration tests with coverage build..."
-        make -j CSTD=c2x coverage
-        make -j CSTD=c2x tests-coverage
-
     - name: Build and run integration tests with coverage
       run: |
+        echo "Running integration tests with coverage build..."
+        make -j CSTD=c2x coverage
+        make -j CSTD=c2x tests-coverage
         LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
         ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
         echo "Integration tests completed successfully"
@@ -143,22 +151,22 @@ jobs:
 
     - name: Generate coverage report
       if: always()
-      uses: ./.github/actions/generate-coverage
-      with:
-        build-type: coverage
-        os-name: ${{ matrix.os-name }}
-        test-type: integration
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'true'
-        junit-file: junit.xml
+      run: |
+        # Generate coverage files for codecov
+        find . -name "*.gcda" -exec gcov {} \;
+        echo "Generated coverage files:"
+        find . -name "*.gcov" -type f | head -20
 
-    - name: Publish Test Results
+    - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
       if: always()
       with:
         test-type: integration
         os-name: ${{ matrix.os-name }}
         junit-file: junit.xml
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
     - name: Upload integration test results
       if: always()
