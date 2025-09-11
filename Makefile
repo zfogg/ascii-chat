@@ -896,21 +896,29 @@ $(BUILD_DIR)/coverage/lib/platform: | $(BUILD_DIR)/coverage/lib
 	@mkdir -p $@
 
 $(BUILD_DIR)/debug/lib/platform/posix: | $(BUILD_DIR)/debug/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 $(BUILD_DIR)/release/lib/platform/posix: | $(BUILD_DIR)/release/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 $(BUILD_DIR)/sanitize/lib/platform/posix: | $(BUILD_DIR)/sanitize/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib/platform/posix: | $(BUILD_DIR)/coverage/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 
 $(BUILD_DIR)/debug/lib/platform/windows: | $(BUILD_DIR)/debug/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 $(BUILD_DIR)/release/lib/platform/windows: | $(BUILD_DIR)/release/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 $(BUILD_DIR)/sanitize/lib/platform/windows: | $(BUILD_DIR)/sanitize/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib/platform/windows: | $(BUILD_DIR)/coverage/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 
 $(BIN_DIR):
