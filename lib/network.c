@@ -29,7 +29,7 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
   timeout.tv_usec = 0;
 
 #ifdef _WIN32
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)) < 0) {
 #else
   if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
 #endif
@@ -37,7 +37,7 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
   }
 
 #ifdef _WIN32
-  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout)) < 0) {
 #else
   if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
 #endif
@@ -50,7 +50,7 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
 int set_socket_keepalive(int sockfd) {
   int keepalive = 1;
 #ifdef _WIN32
-  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (const char*)&keepalive, sizeof(keepalive)) < 0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) < 0) {
 #else
   if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0) {
 #endif
@@ -62,7 +62,7 @@ int set_socket_keepalive(int sockfd) {
   {
     int keepalive_idle = KEEPALIVE_IDLE;
 #ifdef _WIN32
-    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, (const char*)&keepalive_idle, sizeof(keepalive_idle));
+    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, (const char *)&keepalive_idle, sizeof(keepalive_idle));
 #else
     (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &keepalive_idle, sizeof(keepalive_idle));
 #endif
@@ -73,7 +73,7 @@ int set_socket_keepalive(int sockfd) {
 #ifdef TCP_KEEPIDLE
   int keepidle = KEEPALIVE_IDLE;
 #ifdef _WIN32
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, (const char*)&keepidle, sizeof(keepidle));
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, (const char *)&keepidle, sizeof(keepidle));
 #else
   setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
 #endif
@@ -83,7 +83,7 @@ int set_socket_keepalive(int sockfd) {
 #ifdef TCP_KEEPINTVL
   int keepintvl = KEEPALIVE_INTERVAL;
 #ifdef _WIN32
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, (const char*)&keepintvl, sizeof(keepintvl));
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, (const char *)&keepintvl, sizeof(keepintvl));
 #else
   setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
 #endif
@@ -93,7 +93,7 @@ int set_socket_keepalive(int sockfd) {
 #ifdef TCP_KEEPCNT
   int keepcnt = KEEPALIVE_COUNT;
 #ifdef _WIN32
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, (const char*)&keepcnt, sizeof(keepcnt));
+  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, (const char *)&keepcnt, sizeof(keepcnt));
 #else
   setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
 #endif
@@ -156,7 +156,7 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
   int error = 0;
   socklen_t len = sizeof(error);
 #ifdef _WIN32
-  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&error, &len) < 0) {
+  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) < 0) {
 #else
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
 #endif

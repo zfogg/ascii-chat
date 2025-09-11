@@ -1167,7 +1167,7 @@ int main(int argc, char *argv[]) {
       if (close_socket(sockfd) < 0) {
         exit(ASCIICHAT_ERR_NETWORK);
       }
-      sockfd = INVALID_SOCKET_VALUE;  // Reset to invalid after closing
+      sockfd = INVALID_SOCKET_VALUE; // Reset to invalid after closing
 
       if (reconnect_attempt > 0) {
         float delay = get_reconnect_delay(reconnect_attempt);

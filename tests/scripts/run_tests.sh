@@ -191,10 +191,18 @@ EOF
 
 # Wrapper for make command with optional grc colorization
 function colored_make() {
+  # Determine which make command to use
+  local make_cmd="make"
+  
+  # On macOS, prefer gmake if available (GNU Make 4.x)
+  if [[ "$(uname -s)" == "Darwin" ]] && command -v gmake >/dev/null 2>&1; then
+    make_cmd="gmake"
+  fi
+  
   if command -v grc >/dev/null 2>&1; then
-    grc --colour=on make "$@"
+    grc --colour=on $make_cmd "$@"
   else
-    make "$@"
+    $make_cmd "$@"
   fi
 }
 
@@ -1536,7 +1544,13 @@ function main() {
     done
 
   log_info "🔨 Building ${#test_targets[@]} test executables..."
-    local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
+    # Determine which make command to use
+    local make_binary="make"
+    if [[ "$(uname -s)" == "Darwin" ]] && command -v gmake >/dev/null 2>&1; then
+      make_binary="gmake"
+    fi
+    
+    local make_cmd="$make_binary -C $PROJECT_ROOT CSTD=c2x"
     if [[ "$BUILD_TYPE" != "default" ]]; then
       make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
     fi

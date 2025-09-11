@@ -4,8 +4,8 @@
 /**
  * @file internal.h
  * @brief Internal platform abstraction layer function declarations
- * 
- * This header provides function declarations shared between platform 
+ *
+ * This header provides function declarations shared between platform
  * abstraction components (system.c, terminal.c, etc.) within the same
  * platform implementation.
  */
