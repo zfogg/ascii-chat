@@ -96,14 +96,14 @@ jobs:
           # Move all .gcov files to repo root for consistent behavior across platforms
           echo "Moving .gcov files to repo root..."
           echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-          find . -name "*.gcov" -type f -exec mv {} . \;
+          find . -name "*.gcov" -type f -exec mv {} . \; || false
           echo "DEBUG: Move command completed"
 
           # Show what coverage files were generated
           echo "Generated coverage files:"
           echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
           find . -name "*.gcov" -type f | head -20
-          ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
+          ls -la *.gcov 2>/dev/null
         else
           echo "No .gcda files found (this is expected for non-coverage builds)"
         fi
