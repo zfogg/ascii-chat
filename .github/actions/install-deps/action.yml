@@ -38,11 +38,17 @@ runs:
       if: inputs.os == 'macos'
       shell: bash
       run: |
+        # NOTE: `brew info make` says "make" is installed as "gmake", but they give us gnubin
+        export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
+
         export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
         export CPPFLAGS=-I/opt/homebrew/include
         export LDFLAGS=-L/opt/homebrew/lib
 
         export PKG_CONFIG_LIBS=portaudio-2.0 criterion zlib
+
+        # Set up PATH
+        echo "PATH=$PATH" >> $GITHUB_ENV
 
         # Set up pkg-config path for Homebrew packages (always needed)
         echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
