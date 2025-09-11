@@ -9,6 +9,7 @@
 #ifndef _WIN32
 
 #include "../abstraction.h"
+#include "../internal.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>

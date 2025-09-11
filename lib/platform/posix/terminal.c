@@ -9,6 +9,7 @@
 #ifndef _WIN32
 
 #include "../abstraction.h"
+#include "../internal.h"
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <termios.h>

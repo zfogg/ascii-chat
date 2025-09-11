@@ -9,6 +9,7 @@
 #ifdef _WIN32
 
 #include "../abstraction.h"
+#include "../internal.h"
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
