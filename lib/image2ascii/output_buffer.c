@@ -12,32 +12,50 @@
 // ob_u32 - append a decimal number to the output buffer
 
 void ob_reserve(outbuf_t *ob, size_t need) {
-  if (ob->len + need <= ob->cap)
+  if (!ob)
     return;
-  size_t ncap = ob->cap ? ob->cap : 4096;
-  while (ncap < ob->len + need)
-    ncap = (ncap * 3) / 2;
-  SAFE_REALLOC(ob->buf, ncap, char *);
-  ob->cap = ncap;
+  if (ob->cap == 0) {
+    // Always allocate at least default capacity on first call
+    size_t ncap = 4096;
+    while (ncap < ob->len + need)
+      ncap = (ncap * 3) / 2;
+    SAFE_REALLOC(ob->buf, ncap, char *);
+    ob->cap = ncap;
+  } else if (ob->len + need > ob->cap) {
+    // Expand existing buffer
+    size_t ncap = ob->cap;
+    while (ncap < ob->len + need)
+      ncap = (ncap * 3) / 2;
+    SAFE_REALLOC(ob->buf, ncap, char *);
+    ob->cap = ncap;
+  }
 }
 
 void ob_putc(outbuf_t *ob, char c) {
+  if (!ob)
+    return;
   ob_reserve(ob, 1);
   ob->buf[ob->len++] = c;
 }
 
 void ob_write(outbuf_t *ob, const char *s, size_t n) {
+  if (!ob)
+    return;
   ob_reserve(ob, n);
   memcpy(ob->buf + ob->len, s, n);
   ob->len += n;
 }
 
 void ob_term(outbuf_t *ob) {
+  if (!ob)
+    return;
   ob_putc(ob, '\0');
 }
 
 // Fast decimal for uint8_t (0..255)
 void ob_u8(outbuf_t *ob, uint8_t v) {
+  if (!ob)
+    return;
   if (v >= 100) {
     uint8_t d0 = v / 100;
     uint8_t r = v % 100;
@@ -57,6 +75,8 @@ void ob_u8(outbuf_t *ob, uint8_t v) {
 }
 
 void ob_u32(outbuf_t *ob, uint32_t v) {
+  if (!ob)
+    return;
   char tmp[10];
   int i = 0;
   do {
@@ -70,6 +90,8 @@ void ob_u32(outbuf_t *ob, uint32_t v) {
 
 // Truecolor SGR emission (foreground)
 void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
+  if (!ob)
+    return;
   // ESC[38;2;R;G;Bm
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
@@ -84,6 +106,8 @@ void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
 
 // Truecolor SGR emission (background)
 void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
+  if (!ob)
+    return;
   // ESC[48;2;R;G;Bm
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
@@ -97,6 +121,8 @@ void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void emit_reset(outbuf_t *ob) {
+  if (!ob)
+    return;
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
   ob_putc(ob, '0');
@@ -105,13 +131,16 @@ void emit_reset(outbuf_t *ob) {
 
 // REP profitability calculation
 bool rep_is_profitable(uint32_t runlen) {
-  if (runlen <= 1)
+  if (runlen <= 2)
     return false;
-  uint32_t k = runlen - 1;
-  return k > (uint32_t)(digits_u32(k) + 3);
+  uint32_t k = runlen - 1;                           // Extra repetitions beyond the first character
+  uint32_t rep_cost = (uint32_t)(digits_u32(k) + 3); // ESC [ digits b
+  return k > rep_cost;                               // Manual repetition cost vs REP cost
 }
 
 void emit_rep(outbuf_t *ob, uint32_t extra) {
+  if (!ob)
+    return;
   // ESC [ extra b
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
@@ -127,6 +156,8 @@ static uint8_t __attribute__((unused)) rgb_to_256color(uint8_t r, uint8_t g, uin
 
 // 256-color SGR emission (foreground)
 void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx) {
+  if (!ob)
+    return;
   // ESC[38;5;Nm
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
@@ -137,6 +168,8 @@ void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx) {
 
 // 256-color SGR emission (background)
 void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx) {
+  if (!ob)
+    return;
   // ESC[48;5;Nm
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
@@ -146,8 +179,9 @@ void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx) {
 }
 
 void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
+  if (!ob)
+    return;
   // ESC[38;2;R;G;Bm
-  ob->buf ? (void)0 : (void)0; // hint: ob_* already handles reserve
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');
   ob_write(ob, "38;2;", 5);
@@ -160,6 +194,8 @@ void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {
+  if (!ob)
+    return;
   // ESC[48;2;R;G;Bm
   ob_putc(ob, 0x1b);
   ob_putc(ob, '[');

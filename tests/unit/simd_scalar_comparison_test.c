@@ -1,22 +1,13 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include "common.h"
-#include "ascii_simd.h"
-#include "image.h"
+#include "image2ascii/simd/ascii_simd.h"
+#include "image2ascii/image.h"
 #include "image2ascii/simd/common.h"
+#include "tests/logging.h"
 
-void setup_comparison_logging(void);
-void restore_comparison_logging(void);
-
-TestSuite(simd_scalar_comparison, .init = setup_comparison_logging, .fini = restore_comparison_logging);
-
-void setup_comparison_logging(void) {
-    log_set_level(LOG_FATAL);
-}
-
-void restore_comparison_logging(void) {
-    log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(simd_scalar_comparison);
 
 // Helper function to extract ASCII characters from output (skip ANSI sequences)
 static char *extract_ascii_chars(const char *output, size_t max_chars) {

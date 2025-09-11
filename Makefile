@@ -194,7 +194,6 @@ ifeq ($(UNAME_S),Darwin)
   ifeq ($(IS_APPLE_SILICON),1)
     ifneq ($(IS_ROSETTA),1)
       ARCH_FLAGS := -arch arm64
-      $(info Forcing arm64 build on Apple Silicon)
     endif
   endif
 endif
@@ -375,26 +374,20 @@ ifdef ENABLE_CRC32_HW
   # Add architecture-specific flags
   ifeq ($(UNAME_S),Darwin)
     ifeq ($(IS_APPLE_SILICON),1)
-      $(info Enabling ARM CRC32 hardware acceleration (Apple Silicon))
     else
-      $(info Enabling Intel CRC32 hardware acceleration (SSE4.2))
       CRC32_CFLAGS += -msse4.2
     endif
   else ifneq (,$(filter aarch64 arm64,$(UNAME_M)))
-    $(info Enabling ARM CRC32 hardware acceleration (Linux ARM64))
   else ifeq ($(UNAME_M),x86_64)
-    $(info Enabling Intel CRC32 hardware acceleration (SSE4.2))
     CRC32_CFLAGS += -msse4.2
   endif
 else
-  $(info CRC32 hardware acceleration disabled)
   CRC32_CFLAGS :=
 endif
 
 # =============================================================================
 # Libsodium-based Crypto Configuration
 # =============================================================================
-$(info Using libsodium for cryptographic operations)
 
 # =============================================================================
 # Combine All Hardware Acceleration Flags
@@ -413,32 +406,26 @@ ifeq ($(UNAME_S),Darwin)
     # macOS: avoid -mcpu when targeting x86_64 (Rosetta); use -ffast-math only on Apple Silicon
     ifeq ($(IS_ROSETTA),1)
         CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Rosetta (x86_64) optimizations: $(CPU_OPT_FLAGS))
     else ifeq ($(IS_APPLE_SILICON),1)
         CPU_OPT_FLAGS := -O3 -march=native -mcpu=native -ffast-math -ffp-contract=fast
-        $(info Using Apple Silicon optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Intel Mac optimizations: $(CPU_OPT_FLAGS))
     endif
 else ifeq ($(UNAME_S),Linux)
     # Linux: CPU-specific optimizations without -ffast-math for safety
     ifeq ($(UNAME_M),aarch64)
         CPU_OPT_FLAGS := -O3 -mcpu=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Linux ARM64 optimizations: $(CPU_OPT_FLAGS))
     else
         CPU_OPT_FLAGS := -O3 -march=native -ffp-contract=fast -ffinite-math-only
-        $(info Using Linux x86_64 optimizations: $(CPU_OPT_FLAGS))
     endif
 else
     # Other platforms: Generic -O3 with safer math optimizations
     CPU_OPT_FLAGS := -O3 -ffp-contract=fast
-    $(info Using generic optimizations: $(CPU_OPT_FLAGS))
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
 DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
-COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
+COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage -DCOVERAGE_BUILD
 RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
 SANITIZE_FLAGS := -fsanitize=address
 
@@ -451,37 +438,78 @@ TARGETS := $(addprefix $(BIN_DIR)/, server client)
 
 # Source code files
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c)
+C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
-# Object files (binaries)
-OBJS_C := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
-          $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
-OBJS_M := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
-          $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
+# Object files (binaries) - separate by build configuration
+# Debug objects
+OBJS_C_DEBUG := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/debug/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+                $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/debug/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M_DEBUG := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/debug/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+                $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/debug/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
-# All object files for server and client
-OBJS := $(OBJS_C) $(OBJS_M)
+# Release objects
+OBJS_C_RELEASE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/release/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+                  $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/release/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M_RELEASE := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/release/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+                  $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/release/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
-# Non-target object files (files without main methods)
-OBJS_NON_TARGET := $(filter-out $(BUILD_DIR)/src/server.o $(BUILD_DIR)/src/client.o, $(OBJS))
+# Sanitize objects
+OBJS_C_SANITIZE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/sanitize/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+                   $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/sanitize/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M_SANITIZE := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/sanitize/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+                   $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/sanitize/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
+
+# Coverage objects
+OBJS_C_COVERAGE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/coverage/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+                   $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/coverage/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M_COVERAGE := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/coverage/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+                   $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/coverage/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
+
+# Default to debug for backward compatibility
+OBJS_C := $(OBJS_C_DEBUG)
+OBJS_M := $(OBJS_M_DEBUG)
+
+# All object files for server and client by configuration
+OBJS_DEBUG := $(OBJS_C_DEBUG) $(OBJS_M_DEBUG)
+OBJS_RELEASE := $(OBJS_C_RELEASE) $(OBJS_M_RELEASE)
+OBJS_SANITIZE := $(OBJS_C_SANITIZE) $(OBJS_M_SANITIZE)
+OBJS_COVERAGE := $(OBJS_C_COVERAGE) $(OBJS_M_COVERAGE)
+
+# Non-target object files (files without main methods) by configuration
+OBJS_NON_TARGET_DEBUG := $(filter-out $(BUILD_DIR)/debug/src/server.o $(BUILD_DIR)/debug/src/client.o, $(OBJS_DEBUG))
+OBJS_NON_TARGET_RELEASE := $(filter-out $(BUILD_DIR)/release/src/server.o $(BUILD_DIR)/release/src/client.o, $(OBJS_RELEASE))
+OBJS_NON_TARGET_SANITIZE := $(filter-out $(BUILD_DIR)/sanitize/src/server.o $(BUILD_DIR)/sanitize/src/client.o, $(OBJS_SANITIZE))
+OBJS_NON_TARGET_COVERAGE := $(filter-out $(BUILD_DIR)/coverage/src/server.o $(BUILD_DIR)/coverage/src/client.o, $(OBJS_COVERAGE))
+
+# Default to debug for backward compatibility
+OBJS := $(OBJS_DEBUG)
+OBJS_NON_TARGET := $(OBJS_NON_TARGET_DEBUG)
 
 # Test files - exclude problematic tests for now
 TEST_C_FILES_ALL := $(wildcard $(TEST_DIR)/unit/*.c) $(wildcard $(TEST_DIR)/integration/*.c) $(wildcard $(TEST_DIR)/performance/*.c)
 # Exclude tests with API mismatches that prevent compilation
-TEST_C_FILES_EXCLUDE := $(TEST_DIR)/unit/ascii_simd_test.c $(TEST_DIR)/integration/server_multiclient_test.c $(TEST_DIR)/integration/video_pipeline_test.c $(TEST_DIR)/performance/benchmark_test.c
+TEST_C_FILES_EXCLUDE := $(TEST_DIR)/unit/ascii_simd_test.c $(TEST_DIR)/integration/server_multiclient_test.c $(TEST_DIR)/integration/video_pipeline_test.c
 TEST_C_FILES := $(filter-out $(TEST_C_FILES_EXCLUDE), $(TEST_C_FILES_ALL))
-TEST_OBJS := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/%.o, $(TEST_C_FILES))
+
+# Test objects by configuration
+TEST_OBJS_DEBUG := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/debug/%.o, $(TEST_C_FILES))
+TEST_OBJS_RELEASE := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/release/%.o, $(TEST_C_FILES))
+TEST_OBJS_SANITIZE := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/sanitize/%.o, $(TEST_C_FILES))
+TEST_OBJS_COVERAGE := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/coverage/%.o, $(TEST_C_FILES))
+
+# Default to debug
+TEST_OBJS := $(TEST_OBJS_DEBUG)
 # Transform test file paths to executable names with flattened structure
-# tests/unit/common_test.c -> bin/test_unit_common_test
-# tests/integration/crypto_network_test.c -> bin/test_integration_crypto_network_test
-TEST_EXECUTABLES := $(foreach file,$(TEST_C_FILES),$(BIN_DIR)/test_$(subst /,_,$(patsubst $(TEST_DIR)/%.c,%,$(file))))
+# tests/unit/common_test.c -> bin/test_unit_common
+# tests/integration/crypto_network_test.c -> bin/test_integration_crypto_network
+TEST_EXECUTABLES := $(foreach file,$(TEST_C_FILES),$(BIN_DIR)/test_$(subst /,_,$(patsubst $(TEST_DIR)/%_test.c,%,$(file))))
 
 # =============================================================================
 # Build Rules
@@ -491,489 +519,415 @@ TEST_EXECUTABLES := $(foreach file,$(TEST_C_FILES),$(BIN_DIR)/test_$(subst /,_,$
 default: $(TARGETS)
 all: default
 
-# Debug build
-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-debug: override LDFLAGS += $(COVERAGE_FLAGS)
+debug: override CFLAGS += $(DEBUG_FLAGS)
+debug: override LDFLAGS +=
 debug: $(TARGETS)
 
-# Release build
+coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+coverage: $(TARGETS)
+
 release: override CFLAGS += $(RELEASE_FLAGS)
 release: override LDFLAGS += -flto
 release: $(TARGETS)
 
-# Memory sanitizer build (inherits debug flags)
+# Simplified coverage mode (debug-based only)
+
 sanitize: override CFLAGS  += $(DEBUG_FLAGS)
 sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
 sanitize: $(TARGETS)
-# Release test builds (with LTO matching release binaries)
 
-tests-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-tests-debug: override LDFLAGS += $(COVERAGE_FLAGS)
-tests-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+tests-debug: override CFLAGS += $(DEBUG_FLAGS)
+tests-debug: override LDFLAGS +=
+tests-debug: override TEST_LDFLAGS +=
 tests-debug: $(TEST_EXECUTABLES)
 
-test-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-test-debug: override LDFLAGS += $(COVERAGE_FLAGS)
-test-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
-test-debug: $(TEST_EXECUTABLES)
-	@echo "Running all tests (debug build)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Tests (Debug)">' >> junit.xml; \
-		total_tests=0; total_failures=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		failed=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed!"; \
-			exit 1; \
-		fi; \
-	fi
-	@echo "All tests completed!"
-	@echo "View test logs: cat /tmp/test_logs.txt"
+tests-coverage: coverage
+tests-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+tests-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
+tests-coverage: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
+tests-coverage: $(TEST_OBJS_COVERAGE) $(OBJS_NON_TARGET_COVERAGE)
+	@echo "Building test executables with coverage..."
+	@for test_obj in $(TEST_OBJS_COVERAGE); do \
+		test_name=$$(basename $$test_obj .o); \
+		test_category=$$(echo $$test_obj | sed 's|.*/coverage/\([^/]*\)/.*|\1|'); \
+		test_base=$$(echo $$test_name | sed 's/_test$$//'); \
+		executable_name="test_$${test_category}_$${test_base}_coverage"; \
+		echo "Linking $$executable_name (coverage mode)..."; \
+		$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $(BIN_DIR)/$$executable_name $$test_obj $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS); \
+	done
 
-# Release test builds (with LTO matching release binaries)
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
 tests-release: override LDFLAGS += -flto
 tests-release: override TEST_LDFLAGS += -flto
 tests-release: $(TEST_EXECUTABLES)
 
-test-release: override CFLAGS += $(RELEASE_FLAGS)
-test-release: override LDFLAGS += -flto
-test-release: override TEST_LDFLAGS += -flto
-test-release: $(TEST_EXECUTABLES)
-	@echo "Running all tests (release build with LTO)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Tests (Release)">' >> junit.xml; \
-		total_tests=0; total_failures=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		failed=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed!"; \
-			exit 1; \
-		fi; \
-	fi
-	@echo "All tests completed!"
-	@echo "View test logs: cat /tmp/test_logs.txt"
+# Simplified tests-coverage mode
 
-test-unit-release: override CFLAGS += $(RELEASE_FLAGS)
-test-unit-release: override LDFLAGS += -flto
-test-unit-release: override TEST_LDFLAGS += -flto
-test-unit-release: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
-	@echo "Running unit tests (release build with LTO)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Unit Tests (Release)">' >> junit.xml; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -ne 0 ]; then \
-				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
-			fi; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			exit 1; \
-		fi; \
-	fi
-	@echo "View test logs: cat /tmp/test_logs.txt"
+tests-sanitize: sanitize
+tests-sanitize: override CFLAGS += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
+tests-sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
+tests-sanitize: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
+tests-sanitize: $(TEST_EXECUTABLES)
 
-# Build executables
-$(BIN_DIR)/server: $(BUILD_DIR)/src/server.o $(OBJS_NON_TARGET) | $(BIN_DIR)
-	@echo "Linking $@..."
+# Build executables - debug versions
+$(BIN_DIR)/server: $(BUILD_DIR)/debug/src/server.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client: $(BUILD_DIR)/src/client.o $(OBJS_NON_TARGET) | $(BIN_DIR)
-	@echo "Linking $@..."
+$(BIN_DIR)/client: $(BUILD_DIR)/debug/src/client.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
 
-# Compile C source files from src/
-$(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/src
-	@echo "Compiling $<..."
+# Compile C source files from src/ - debug
+$(BUILD_DIR)/debug/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/src
+	@echo "Compiling $< (debug)..."
 	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
-# Compile source files from lib/image2ascii/
-$(BUILD_DIR)/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii
-	@echo "Compiling $<..."
+# Compile C source files from src/ - release
+$(BUILD_DIR)/release/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/src
+	@echo "Compiling $< (release)..."
 	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
-# Compile SIMD source files from lib/image2ascii/simd/
-$(BUILD_DIR)/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/lib/image2ascii/simd
-	@echo "Compiling $<..."
+# Compile C source files from src/ - sanitize
+$(BUILD_DIR)/sanitize/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/src
+	@echo "Compiling $< (sanitize)..."
 	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD)
-$(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/lib
+# Compile C source files from src/ - coverage
+$(BUILD_DIR)/coverage/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/src
+	@echo "Compiling $< (coverage)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile source files from lib/image2ascii/ - debug
+$(BUILD_DIR)/debug/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/image2ascii
+	@echo "Compiling $< (debug)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile source files from lib/image2ascii/ - release
+$(BUILD_DIR)/release/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/image2ascii
+	@echo "Compiling $< (release)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile source files from lib/image2ascii/ - sanitize
+$(BUILD_DIR)/sanitize/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/image2ascii
+	@echo "Compiling $< (sanitize)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile source files from lib/image2ascii/ - coverage
+$(BUILD_DIR)/coverage/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/image2ascii
+	@echo "Compiling $< (coverage)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile SIMD source files from lib/image2ascii/simd/ - debug
+$(BUILD_DIR)/debug/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/image2ascii/simd
+	@echo "Compiling $< (debug)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile SIMD source files from lib/image2ascii/simd/ - release
+$(BUILD_DIR)/release/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/image2ascii/simd
+	@echo "Compiling $< (release)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile SIMD source files from lib/image2ascii/simd/ - sanitize
+$(BUILD_DIR)/sanitize/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/image2ascii/simd
+	@echo "Compiling $< (sanitize)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile SIMD source files from lib/image2ascii/simd/ - coverage
+$(BUILD_DIR)/coverage/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/image2ascii/simd
+	@echo "Compiling $< (coverage)..."
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile C source files from lib/tests/ - debug
+$(BUILD_DIR)/debug/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/tests
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile C source files from lib/tests/ - release
+$(BUILD_DIR)/release/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/tests
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile C source files from lib/tests/ - sanitize
+$(BUILD_DIR)/sanitize/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/tests
+	@echo "Compiling $< (sanitize)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile C source files from lib/tests/ - coverage
+$(BUILD_DIR)/coverage/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/tests
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD) - debug
+$(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
-	@echo "Compiling $<..."
-	$(CC) -o $@ $(CFLAGS) -c $<
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
-# Compile Objective-C source files from lib/
-$(BUILD_DIR)/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/lib
-	@echo "Compiling $<..."
-	$(CC) -o $@ $(OBJCFLAGS) -c $<
+# Compile C source files from lib/ (not image2ascii/ or SIMD) - release
+$(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD) - sanitize
+$(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	@echo "Compiling $< (sanitize)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD) - coverage
+$(BUILD_DIR)/coverage/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile Objective-C source files from lib/ - debug
+$(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/debug/lib
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(OBJCFLAGS) $(DEBUG_FLAGS) -c $<
+
+# Compile Objective-C source files from lib/ - release
+$(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/release/lib
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(OBJCFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile Objective-C source files from lib/ - sanitize
+$(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
+	@echo "Compiling $< (sanitize)..."
+	$(CC) -o $@ $(OBJCFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile Objective-C source files from lib/ - coverage
+$(BUILD_DIR)/coverage/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/coverage/lib
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(OBJCFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Build all object files without linking (useful for tooling like Bear/clangd)
-objs: $(OBJS) $(TEST_OBJS)
+objs: $(OBJS_DEBUG) $(TEST_OBJS_DEBUG)
 
-# Ensure build and bin directories exist
-$(BUILD_DIR)/src:
+# Ensure build and bin directories exist for each configuration
+$(BUILD_DIR)/debug/src:
+	@mkdir -p $@
+$(BUILD_DIR)/release/src:
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/src:
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/src:
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib/image2ascii: | $(BUILD_DIR)/lib
+$(BUILD_DIR)/debug/lib:
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib:
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib:
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib:
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib/image2ascii/simd: | $(BUILD_DIR)/lib/image2ascii
+$(BUILD_DIR)/debug/lib/image2ascii: | $(BUILD_DIR)/debug/lib
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/image2ascii: | $(BUILD_DIR)/release/lib
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib/image2ascii: | $(BUILD_DIR)/sanitize/lib
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/image2ascii: | $(BUILD_DIR)/coverage/lib
 	@mkdir -p $@
 
-$(BUILD_DIR)/lib:
+$(BUILD_DIR)/debug/lib/image2ascii/simd: | $(BUILD_DIR)/debug/lib/image2ascii
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/image2ascii/simd: | $(BUILD_DIR)/release/lib/image2ascii
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib/image2ascii/simd: | $(BUILD_DIR)/sanitize/lib/image2ascii
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/image2ascii/simd: | $(BUILD_DIR)/coverage/lib/image2ascii
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/tests: | $(BUILD_DIR)/debug/lib
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/tests: | $(BUILD_DIR)/release/lib
+	@mkdir -p $@
+$(BUILD_DIR)/sanitize/lib/tests: | $(BUILD_DIR)/sanitize/lib
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/tests: | $(BUILD_DIR)/coverage/lib
 	@mkdir -p $@
 
 $(BIN_DIR):
 	@mkdir -p $@
 
 # Create all build directories at once
-create-dirs: $(BUILD_DIR)/src $(BUILD_DIR)/src/image2ascii/simd $(BUILD_DIR)/lib $(BIN_DIR)
+create-dirs: $(BUILD_DIR)/debug/src $(BUILD_DIR)/release/src $(BUILD_DIR)/debug/lib $(BUILD_DIR)/release/lib $(BIN_DIR)
 
 # =============================================================================
 # Test Rules
 # =============================================================================
 
-# Coverage flags
-COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage
-
 # Coverage build
-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
-coverage: $(TEST_EXECUTABLES)
-	@echo "Running tests with coverage..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output with coverage..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Coverage Tests">' >> junit.xml; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -ne 0 ]; then \
-				echo "Test failed: $$test (exit code: $$test_exit_code)" && exit 1; \
-			fi; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-	else \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-		done; \
-	fi
-	@echo "Generating coverage report..."
-	@find . -name "*.gcda" -exec gcov {} \; || echo "gcov completed"
-	@if command -v lcov >/dev/null 2>&1; then \
-		echo "Using lcov for detailed coverage report..."; \
-		lcov --capture --directory . --output-file coverage.info; \
-		lcov --remove coverage.info '/usr/*' --output-file coverage.info; \
-		lcov --remove coverage.info '*/tests/*' --output-file coverage.info; \
-		lcov --list coverage.info; \
-		if command -v genhtml >/dev/null 2>&1; then \
-			genhtml coverage.info --output-directory coverage_html; \
-			echo "Coverage report generated in coverage_html/"; \
-		fi; \
-	else \
-		echo "lcov not available - coverage files (.gcov) generated for codecov upload"; \
-	fi
-	@echo "View test logs: cat /tmp/test_logs.txt"
 
-# Test targets
+# Test targets - build all tests with appropriate modes
 tests: $(TEST_EXECUTABLES)
+	@echo "All tests built successfully!"
 
+# Run all tests in debug mode
 test: $(TEST_EXECUTABLES)
-	@echo "Running all tests..."
 	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Tests">' >> junit.xml; \
-		total_tests=0; total_failures=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>/dev/null || true; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
+		./tests/scripts/run_tests.sh -b debug -J; \
 	else \
-		failed=0; \
-		for test in $(TEST_EXECUTABLES); do \
-			echo "Running $$test..."; \
-			if ! $$test --jobs $(CPU_CORES); then \
-				echo "Test failed: $$test"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed!"; \
-			exit 1; \
-		fi; \
+		./tests/scripts/run_tests.sh -b debug; \
 	fi
-	@echo "All tests completed!"
 
-# test-unit is the default for CI and includes coverage
-test-unit: test-unit-debug
-
-test-unit-debug: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
-test-unit-debug: override LDFLAGS += $(COVERAGE_FLAGS)
-test-unit-debug: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
-test-unit-debug: $(filter $(BIN_DIR)/test_unit_%, $(TEST_EXECUTABLES))
-	@echo "Running unit tests..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
+# Run all tests in release mode
+test-release: $(TEST_EXECUTABLES)
 	@if [ -n "$$GENERATE_JUNIT" ]; then \
-		echo "Generating JUnit XML output..."; \
-		rm -f junit.xml; \
-		echo '<?xml version="1.0" encoding="UTF-8"?>' > junit.xml; \
-		echo '<testsuites name="ASCII-Chat Unit Tests">' >> junit.xml; \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			test_name=$$(basename $$test); \
-			test_class=$$(echo $$test_name | sed 's/^test_//; s/_test$$//; s/_/./g'); \
-			$$test --jobs $(CPU_CORES) --xml=/tmp/$$test_name.xml 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				failed=1; \
-			fi; \
-			if [ -f /tmp/$$test_name.xml ]; then \
-				sed -n '/<testsuite/,/<\/testsuite>/p' /tmp/$$test_name.xml | \
-				sed -e "s/<testsuite name=\"[^\"]*\"/<testsuite name=\"$$test_class\"/" \
-				    -e "s/<testcase name=\"/<testcase classname=\"$$test_class\" name=\"/" >> junit.xml; \
-				rm -f /tmp/$$test_name.xml; \
-			fi; \
-		done; \
-		echo '</testsuites>' >> junit.xml; \
-		if [ $$failed -eq 1 ]; then \
-			echo "Some tests failed during JUnit XML generation!"; \
-		fi; \
+		./tests/scripts/run_tests.sh -b release -J; \
 	else \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt; \
-			test_exit_code=$$?; \
-			if [ $$test_exit_code -eq 0 ]; then \
-				echo "Test passed: $$test"; \
-			else \
-				echo "Test failed: $$test (exit code: $$test_exit_code)"; \
-				echo "=== Test failure details ==="; \
-				tail -50 /tmp/test_logs.txt; \
-				echo "=== End failure details ==="; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			exit 1; \
-		fi; \
+		./tests/scripts/run_tests.sh -b release; \
 	fi
-	@echo "View test logs: cat /tmp/test_logs.txt"
-
-test-integration: $(filter $(BIN_DIR)/test_integration_%, $(TEST_EXECUTABLES))
-	@echo "Running integration tests..."
-	@failed=0; \
-	for test in $^; do \
-		echo "Running $$test..."; \
-		if ! $$test --jobs $(CPU_CORES); then \
-			echo "Test failed: $$test"; \
-			failed=1; \
-		fi; \
-	done; \
-	if [ $$failed -eq 1 ]; then \
-		exit 1; \
-	fi
-
-test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
-	@echo "Running performance benchmarks..."
-	@if [ -z "$^" ]; then \
-		echo "Note: Main performance tests are in todo/ascii_simd_test"; \
-		echo "Run: cd todo && make -f Makefile_simd ascii_simd_test && ./ascii_simd_test"; \
-	else \
-		failed=0; \
-		for test in $^; do \
-			echo "Running $$test..."; \
-			if ! $$test --jobs $(CPU_CORES); then \
-				echo "Test failed: $$test"; \
-				failed=1; \
-			fi; \
-		done; \
-		if [ $$failed -eq 1 ]; then \
-			exit 1; \
-		fi; \
-	fi
-
-test-quiet: $(TEST_EXECUTABLES)
-	@echo "Running all tests (quiet mode)..."
-	@echo "Test logs will be saved to /tmp/test_logs.txt"
-	@> /tmp/test_logs.txt
-	@for test in $(TEST_EXECUTABLES); do \
-		echo "Running $$test..."; \
-		$$test --jobs $(CPU_CORES) 2>>/tmp/test_logs.txt || (echo "Test failed: $$test" && exit 1); \
-	done
-	@echo "All tests completed!"
-	@echo "View test logs: cat /tmp/test_logs.txt"
 
 # Build test executables - map flattened names back to their object files
-# test_unit_common_test -> build/tests/unit/common_test.o
-# test_integration_crypto_network_test -> build/tests/integration/crypto_network_test.o
-$(BIN_DIR)/test_unit_%: $(TEST_BUILD_DIR)/unit/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
-	@echo "Linking test $@..."
-	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+# Unit tests - use debug objects by default
+$(BIN_DIR)/test_unit_%: $(TEST_BUILD_DIR)/debug/unit/%_test.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+	@echo "Linking test $@ (debug mode)..."
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
 
-$(BIN_DIR)/test_integration_%: $(TEST_BUILD_DIR)/integration/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
-	@echo "Linking test $@..."
-	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+# Integration tests use debug objects
+$(BIN_DIR)/test_integration_%: $(TEST_BUILD_DIR)/debug/integration/%_test.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+	@echo "Linking test $@ (debug mode)..."
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
 
-$(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/performance/%.o $(OBJS_NON_TARGET) | $(BIN_DIR)
-	@echo "Linking test $@..."
-	$(CC) $(CFLAGS) -o $@ $< $(OBJS_NON_TARGET) $(LDFLAGS) $(TEST_LDFLAGS)
+# Performance tests use release objects for speed
+$(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/release/performance/%_test.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+	@echo "Linking test $@ (release mode)..."
+	$(CC) $(CFLAGS) $(RELEASE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_RELEASE) $(LDFLAGS) $(TEST_LDFLAGS)
 
-# Compile test files
-$(TEST_BUILD_DIR)/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/unit
-	@echo "Compiling test $<..."
-	$(CC) -o $@ $(CFLAGS) $(TEST_CFLAGS) -c $<
+# Legacy coverage variants (kept for compatibility)
+$(BIN_DIR)/test_unit_%_coverage: $(TEST_BUILD_DIR)/coverage/unit/%_test.o $(OBJS_NON_TARGET_COVERAGE) | $(BIN_DIR)
+	@echo "Linking test $@ (coverage mode)..."
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
 
-$(TEST_BUILD_DIR)/integration/%.o: $(TEST_DIR)/integration/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/integration
-	@echo "Compiling test $<..."
-	$(CC) -o $@ $(CFLAGS) $(TEST_CFLAGS) -c $<
+# Integration tests with coverage (debug mode)
+$(BIN_DIR)/test_integration_%_coverage: $(TEST_BUILD_DIR)/coverage/integration/%_test.o $(OBJS_NON_TARGET_COVERAGE) | $(BIN_DIR)
+	@echo "Linking test $@ (coverage mode)..."
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
 
-$(TEST_BUILD_DIR)/performance/%.o: $(TEST_DIR)/performance/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/performance
-	@echo "Compiling test $<..."
-	$(CC) -o $@ $(CFLAGS) $(TEST_CFLAGS) -c $<
+# Performance tests with coverage (release mode)
+# Coverage tests use debug-based coverage mode
+
+# Release-coverage test variants (for CI)
+# All coverage tests use the same coverage mode
+
+# Compile test files - unit tests in debug mode
+$(TEST_BUILD_DIR)/debug/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/debug/unit
+	@echo "Compiling test $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(TEST_CFLAGS) -c $<
+
+# Compile test files - integration tests in debug mode
+$(TEST_BUILD_DIR)/debug/integration/%.o: $(TEST_DIR)/integration/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/debug/integration
+	@echo "Compiling test $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(TEST_CFLAGS) -c $<
+
+# Compile test files - performance tests in release mode
+$(TEST_BUILD_DIR)/release/performance/%.o: $(TEST_DIR)/performance/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/release/performance
+	@echo "Compiling test $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) $(TEST_CFLAGS) -c $<
+
+# Compile test files - unit tests with coverage
+$(TEST_BUILD_DIR)/coverage/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/coverage/unit
+	@echo "Compiling test $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
+
+# Compile test files - integration tests with coverage
+$(TEST_BUILD_DIR)/coverage/integration/%.o: $(TEST_DIR)/integration/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/coverage/integration
+	@echo "Compiling test $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
+
+# Compile test files - performance tests with coverage (release mode)
+$(TEST_BUILD_DIR)/coverage/performance/%.o: $(TEST_DIR)/performance/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/coverage/performance
+	@echo "Compiling test $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
 
 # Test directory creation
-$(TEST_BUILD_DIR)/unit:
+$(TEST_BUILD_DIR)/debug/unit:
 	@mkdir -p $@
 
-$(TEST_BUILD_DIR)/integration:
+$(TEST_BUILD_DIR)/debug/integration:
 	@mkdir -p $@
 
-$(TEST_BUILD_DIR)/performance:
+$(TEST_BUILD_DIR)/release/performance:
+	@mkdir -p $@
+
+$(TEST_BUILD_DIR)/coverage/unit:
+	@mkdir -p $@
+
+$(TEST_BUILD_DIR)/coverage/integration:
+	@mkdir -p $@
+
+$(TEST_BUILD_DIR)/coverage/performance:
 	@mkdir -p $@
 
 # For CI
 c-objs: $(OBJS_C)
-	@echo "C object files:"
-	@echo $(OBJS_C)
 	@echo "C object files count: $(words $(OBJS_C))"
-	@echo "C object files size: $(shell du -sh $(OBJS_C) | cut -f1)"
-	@echo "C object files count: $(words $(OBJS_C))"
+	@echo "C object files size (sorted by size):"
+	@du -sh $(OBJS_C) | sort -rh
+	@du -csh $(OBJS_C) | grep total
 
 # =============================================================================
 # Utility Targets
+# =============================================================================
+# Dependencies
+# =============================================================================
+
+# Install dependencies based on the OS
+.PHONY: deps
+deps:
+	@echo "Installing dependencies for $(shell uname -s)..."
+ifeq ($(shell uname -s),Darwin)
+	# macOS dependencies
+	@echo "Installing macOS dependencies via Homebrew..."
+	@brew install portaudio libsodium criterion zlib coreutils || true
+	@echo "macOS dependencies installed"
+else ifeq ($(shell uname -s),Linux)
+	# Ubuntu/Linux dependencies
+	@echo "Installing Linux dependencies via apt..."
+	@sudo apt-get update || true
+	@sudo apt-get install -y build-essential pkg-config libportaudio2 portaudio19-dev \
+		libsodium-dev libcriterion-dev zlib1g-dev || true
+	@echo "Linux dependencies installed"
+else
+	@echo "Unsupported OS: $(shell uname -s)"
+	@exit 1
+endif
+
+# Install test-specific dependencies
+.PHONY: deps-test
+deps-test: deps
+	@echo "Installing test-specific dependencies..."
+ifeq ($(shell uname -s),Darwin)
+	# macOS test dependencies (coreutils for gtimeout)
+	@brew install gcovr || true
+else ifeq ($(shell uname -s),Linux)
+	# Linux test dependencies
+	@sudo apt-get install -y lcov gcovr valgrind || true
+endif
+	@echo "Test dependencies installed"
+
+# =============================================================================
+# Clean Targets
 # =============================================================================
 
 # Clean build artifacts
@@ -992,29 +946,27 @@ clean:
 # Show help information
 help:
 	@echo "Available targets:"
-	@echo "  all/default     - Build all targets with default flags"
-	@echo "  debug           - Build with debug symbols and no optimization"
-	@echo "  release         - Build with optimizations enabled"
-	@echo "  format          - Format source code using clang-format"
-	@echo "  install-hooks   - Install git hooks from git-hooks/ directory"
-	@echo "  uninstall-hooks - Remove installed git hooks"
-	@echo "  format-check    - Check code formatting without modifying files"
-	@echo "  clang-tidy      - Run clang-tidy on sources"
-	@echo "  analyze         - Run static analysis (clang --analyze, cppcheck)"
-	@echo "  cloc            - Count lines of code"
-	@echo "  test            - Run all tests (unit + integration + performance)"
-	@echo "  test-unit       - Run only unit tests (quiet mode)"
-	@echo "  test-integration - Run only integration tests"
-	@echo "  test-performance - Run performance benchmarks (see todo/ascii_simd_test)"
-	@echo "  test-quiet      - Run all tests (quiet mode - no verbose logging)"
-	@echo "  tests-release   - Build tests with release flags and LTO"
-	@echo "  test-release    - Run all tests with release flags and LTO"
-	@echo "  test-unit-release - Run unit tests with release flags and LTO"
-	@echo "  coverage        - Run tests with coverage analysis"
-	@echo "  todo            - Build the ./todo subproject"
-	@echo "  todo-clean      - Clean the ./todo subproject"
-	@echo "  clean           - Remove build artifacts"
-	@echo "  help            - Show this help message"
+	@echo "  all/default                      - Build all targets with default flags"
+	@echo "  debug                            - Build with debug symbols and no optimization"
+	@echo "  coverage                         - Build with debug symbols and coverage"
+	@echo "  release                          - Build with optimizations enabled"
+	@echo "  format                           - Format source code using clang-format"
+	@echo "  install-hooks                    - Install git hooks from git-hooks/ directory"
+	@echo "  uninstall-hooks                  - Remove installed git hooks"
+	@echo "  format-check                     - Check code formatting without modifying files"
+	@echo "  clang-tidy                       - Run clang-tidy on sources"
+	@echo "  analyze                          - Run static analysis (clang --analyze, cppcheck)"
+	@echo "  cloc                             - Count lines of code"
+	@echo "  test                             - Run all tests (unit + integration + performance) in debug mode"
+	@echo "  test-release                     - Run all tests (unit + integration + performance) in release mode"
+	@echo "  tests                            - Build all test executables in debug mode"
+	@echo "  tests-debug                      - Build all test executables in debug mode"
+	@echo "  tests-coverage                   - Build all test executables with coverage"
+	@echo "  tests-release                    - Build all test executables in release mode"
+	@echo "  todo                             - Build the ./todo subproject"
+	@echo "  todo-clean                       - Clean the ./todo subproject"
+	@echo "  clean                            - Remove build artifacts"
+	@echo "  help                             - Show this help message"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  CC=$(CC)"
@@ -1023,7 +975,7 @@ help:
 	@echo "  LDFLAGS=$(LDFLAGS)"
 
 # =============================================================================
-# Code Formatting
+# Code Utils
 # =============================================================================
 
 # Format source code
@@ -1040,7 +992,7 @@ format-check:
     xargs clang-format --dry-run --Werror
 
 # Generate compile_commands.json manually for clang-tidy
-compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILES)
+compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(TEST_C_FILES)
 	@echo "Generating compile_commands.json..."
 	@echo "[" > compile_commands.json.tmp
 	@first=true; \
@@ -1064,7 +1016,7 @@ compile_commands.json: Makefile $(C_FILES) $(M_FILES) $(C_HEADERS) $(TEST_C_FILE
 		fi; \
 		echo "  {" >> compile_commands.json.tmp; \
 		echo "    \"directory\": \"$(PWD)\"," >> compile_commands.json.tmp; \
-		echo "    \"command\": \"clang $(CFLAGS) $(TEST_LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
+		echo "    \"command\": \"clang $(CFLAGS) $(TEST_CFLAGS) $(TEST_LDFLAGS) -c $$file\"," >> compile_commands.json.tmp; \
 		echo "    \"file\": \"$$file\"" >> compile_commands.json.tmp; \
 		echo "  }" >> compile_commands.json.tmp; \
 	done; \
@@ -1096,8 +1048,10 @@ scan-build: c-objs
 	scan-build --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer make CSTD="$(CSTD)" EXTRA_CFLAGS="-Wformat -Wformat-security -Werror=format-security" c-objs
 
 cloc:
-	@echo "LOC for ./src and ./lib:"
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' src lib
+	@echo "LOC for ./src"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' src
+	@echo "LOC for ./lib:"
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' lib
 	@echo "LOC for ./tests:"
 	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' tests
 
@@ -1152,4 +1106,4 @@ uninstall-hooks:
 
 .PRECIOUS: $(OBJS_NON_TARGET)
 
-.PHONY: all clean default help debug sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-unit test-integration test-performance test-quiet coverage todo todo-clean compile_commands.json install-hooks uninstall-hooks
+.PHONY: all clean default help debug coverage sanitize release c-objs format format-check bear clang-tidy analyze scan-build cloc tests test test-release tests-debug tests-release tests-coverage tests-sanitize todo todo-clean compile_commands.json install-hooks uninstall-hooks

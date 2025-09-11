@@ -11,9 +11,9 @@ session, and even iTerm or Kitty.app on macOS.
 It even works in an initial UNIX login shell, i.e. the login shell that runs
 'startx'.
 
-🆕 Now 3+ simultaneous people can connect and chat, like Google Hangouts and Zoom.
+🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do.
 
-🆕 Audio streaming is now supported via PortAudio Video4Linux!
+🆕 Audio streaming is now supported via PortAudio, with a custom mixer with features like compression, ducking, crowd scaling, noise gating, hi/lo-pass filtering, and soft clipping.
 
 ![Animated demonstration: monochrome](http://i.imgur.com/E4OuqvX.gif)
 
@@ -21,8 +21,7 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 
 
-Dependencies
-==========
+## Dependencies
 - Most people: `apt-get install build-essential clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev
 libcriterion-dev`
 - ArchLinux masterrace: `pacman -S clang pkg-config v4l-utils zlib portaudio libsodium libcriterion`
@@ -33,8 +32,7 @@ libcriterion-dev`
 - **macOS**: AVFoundation
 
 
-Build and run
-==========
+## Build and run
 - Clone this repo onto a computer with a webcam.
 - Install the dependencies.
 - Run `make`.
@@ -45,27 +43,110 @@ Use `make -j debug` as you edit and test code (sometimes `make clean` too 😏).
 
 Check the `Makefile` to see how it works.
 
-If you need compile_commands.json for clang-based tools, check out `bear`:
-```bash
-brew install bear # or `apt-get install bear` or `yay -S bear`
-make compile_commands.json
-ls compile_commands.json
+## Available Make Targets
 
+### Build Targets
+- `make` or `make all` - Build all targets with default flags
+- `make debug` - Build with debug symbols and no optimization
+- `make debug-coverage` - Build with debug symbols and coverage
+- `make release` - Build with optimizations enabled
+- `make release-coverage` - Build with optimizations and coverage
+- `make sanitize` - Build with address sanitizer for debugging
+- `make clean` - Remove build artifacts
+
+### Test Building Targets
+- `make tests-debug` - Build test executables with debug flags
+- `make tests-release` - Build test executables with release flags
+- `make tests-debug-coverage` - Build test executables with debug + coverage
+- `make tests-release-coverage` - Build test executables with release + coverage
+
+### Test Running Targets
+- `make test` - Run all tests in debug mode
+- `make test-release` - Run all tests in release mode
+
+### Development Tools
+- `make format` - Format source code using clang-format
+- `make format-check` - Check code formatting without modifying files
+- `make clang-tidy` - Run clang-tidy on sources
+- `make analyze` - Run static analysis (clang --analyze, cppcheck)
+- `make scan-build` - Run scan-build static analyzer
+- `make cloc` - Count lines of code
+- `make compile_commands.json` - Generate compile_commands.json for IDE support
+
+## Utility Targets
+- `make help` - Show all available targets and configuration
+- `make install-hooks` - Install git hooks from git-hooks/ directory
+- `make uninstall-hooks` - Remove installed git hooks
+- `make todo` - Build the ./todo subproject
+- `make todo-clean` - Clean the ./todo subproject
+
+### Configuration
+The Makefile supports several configuration options:
+- `CC=clang` - Set compiler (default: clang)
+- `CSTD=c23` - Set C standard (default: c23)
+- `SIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
+- `CRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
+- `MAKEFLAGS=-j$(nproc)` - Parallel build jobs (Linux) or `-j$(sysctl -n hw.logicalcpu)` (macOS)
+
+## Testing
+
+The project uses a unified test runner script (`tests/scripts/run_tests.sh`) that consolidates all test execution logic.
+
+### Quick Start
+1. Have the dependencies installed.
+2. Run `make test` (debug mode) or `make test-release` (release mode).
+
+### Test Types
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test component interactions and full workflows
+- **Performance Tests**: Benchmark SIMD vs scalar implementations
+
+### Using the Test Script Directly
+```bash
+# Run all tests in debug mode
+./tests/scripts/run_tests.sh
+
+# Run specific test types
+./tests/scripts/run_tests.sh -t unit
+./tests/scripts/run_tests.sh -t integration
+./tests/scripts/run_tests.sh -t performance
+
+# Run with different build configurations
+./tests/scripts/run_tests.sh -b debug
+./tests/scripts/run_tests.sh -b release
+./tests/scripts/run_tests.sh -b debug-coverage
+./tests/scripts/run_tests.sh -b release-coverage
+./tests/scripts/run_tests.sh -b sanitize
+
+# Generate JUnit XML for CI
+./tests/scripts/run_tests.sh -J
+
+# Run in parallel (default: number of CPU cores)
+./tests/scripts/run_tests.sh -j 4
+
+# Verbose output
+./tests/scripts/run_tests.sh -v
 ```
 
-Testing
-=========
-1. Have the dependencies installed.
-2. Run `make test` or `make test-unit` or `make test-integration`.
+### Manual Test Execution
+You can also run individual test executables directly:
+```bash
+# Build test executables first
+make tests-debug
 
-Notes:
-* You can run 'em one-by-one: `make tests && ls bin/test_*`
-* Useful: `bin/test_*` with `--verbose` and `--filter`, also `--help`.
-* Testing framework docs: [libcriterion docs](https://criterion.readthedocs.io/en/master/)
+# Run individual tests
+bin/test_mixer --verbose
+bin/test_ascii_simd_performance --filter "monochrome"
+```
+
+### Testing Framework
+- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
+- **Coverage**: Code coverage reports generated in CI
+- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
+- **Memory Checking**: AddressSanitizer support via `-b sanitize` for detecting memory issues
 
 
-Cryptography
-=========
+## Cryptography
 🔴⚠️ NOT YET IMPLEMENTED 🔴⚠️
 
 Good news though: we have **libsodium** installed and some code written for it.
@@ -73,10 +154,9 @@ Good news though: we have **libsodium** installed and some code written for it.
 🔜 TODO: Implement crypto.
 
 
-Command line flags
-=========
+## Command line flags
 
-## Client Options
+### Client Options
 
 Run `./bin/client -h` to see all client options:
 
@@ -101,7 +181,7 @@ Run `./bin/client -h` to see all client options:
 - `-F --keyfile FILE`: Read encryption key from file
 - `-h --help`: Show help message
 
-## Server Options
+### Server Options
 
 Run `./bin/server -h` to see all server options:
 
@@ -115,60 +195,19 @@ Run `./bin/server -h` to see all server options:
 - `-h --help`: Show help message
 
 
-Usage
-==========
+## Usage
 
-Start the server:
+Start the server and wait for client connections:
 ```bash
 ./bin/server [options]
 ```
 
-Connect with a client:
+Start the client and connect to a running server:
 ```bash
 ./bin/client [options]
 ```
 
-
-### New Color Feature
-
-You can now enable colored ASCII output that preserves the original colors from
-your webcam! Use the `--color` or `-C` flag:
-
-**Server with color:**
-```bash
-./bin/server --color
-```
-
-**Client with color:**
-```bash
-./bin/client --color
-```
-
-The colored output uses ANSI escape codes to colorize each ASCII character based
-on the RGB values from the original webcam image, creating a much more vibrant
-and realistic representation.
-
-
-### Audio Feature
-
-You can now enable real-time audio streaming between server and client! Use the `--audio` or `-A` flag:
-
-**Server with audio:**
-```bash
-./bin/server --audio
-```
-
-**Client with audio:**
-```bash
-./bin/client --audio
-```
-
-Audio is captured on the server and streamed to the client in real-time using PortAudio for cross-platform compatibility. The system works on both Linux (ALSA) and macOS (Core Audio).
-
-
-
-TODO
-==========
+## TODO
 - [x] Audio.
 - [x] Client should continuously attempt to reconnect
 - [ ] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
@@ -183,17 +222,17 @@ TODO
 - [ ] Compile to WASM/WASI and run in the browser
 - [x] Socket multiplexing.
 - [ ] Edge detection and other things like that to make the image nicer.
-- [x] Multiple clients.
-- [ ] Snapshot mode for clients with --snap to "take a photo" and print it to the terminal rather than render video for a long time.
+- [x] Multiple clients. Grid to display them.
+- [x] Snapshot mode for clients with --snapshot to "take a photo" of a call and print it to the terminal or a file, rather than rendering video for a long time.
 - [x] Audio mixing for multiple clients with compression and ducking.
 - [ ] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
 - [ ] Lock-free packet send queues.
 - [x] Hardware-accelerated ASCII-conversion via SIMD.
 
 
-Notes
-==========
-**Note:** Colored frames are many times larger than monochrome frames due
+## Notes
+
+- **Note:** Colored frames are many times larger than monochrome frames due
 to the ANSI color codes.
 
-We don't really save bandwidth by sending color ascii video. I did the math with Claude Code.
+- We don't really save bandwidth by sending color ascii video. I did the math with Claude Code.

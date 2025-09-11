@@ -1,20 +1,22 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
-#include "image.h"
-#include "ascii.h"
-#include "ascii_simd.h"
+#include "image2ascii/image.h"
+#include "image2ascii/ascii.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "common.h"
 #include "image2ascii/simd/common.h"
 #include "network.h"
@@ -91,7 +93,6 @@ typedef struct {
   // Media capabilities
   bool can_send_video;
   bool can_send_audio;
-  bool wants_color;   // Client wants colored ASCII output
   bool wants_stretch; // Client wants stretched output (ignore aspect ratio)
   bool is_sending_video;
   bool is_sending_audio;
@@ -859,8 +860,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
-    // log_debug("Per-client %u: Generated ASCII frame: %zu bytes, %ux%u, color=%s", target_client_id, *out_size, width,
-    //           height, wants_color ? "yes" : "no");
   } else {
     log_error("Per-client %u: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;
@@ -891,12 +890,13 @@ int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame,
   }
 
   // Create ASCII frame packet header
-  ascii_frame_packet_t frame_header = {.width = htonl(client->width),
-                                       .height = htonl(client->height),
-                                       .original_size = htonl((uint32_t)frame_size),
-                                       .compressed_size = htonl(0), // Not using compression for per-client frames yet
-                                       .checksum = htonl(asciichat_crc32(ascii_frame, frame_size)),
-                                       .flags = htonl(client->wants_color ? FRAME_FLAG_HAS_COLOR : 0)};
+  ascii_frame_packet_t frame_header = {
+      .width = htonl(client->width),
+      .height = htonl(client->height),
+      .original_size = htonl((uint32_t)frame_size),
+      .compressed_size = htonl(0), // Not using compression for per-client frames yet
+      .checksum = htonl(asciichat_crc32(ascii_frame, frame_size)),
+      .flags = htonl((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
 
   // Allocate buffer for complete packet (header + data)
   size_t packet_size = sizeof(ascii_frame_packet_t) + frame_size;
@@ -955,14 +955,18 @@ int main(int argc, char *argv[]) {
   atexit(debug_memory_report);
 #endif
 
-  // Initialize global shared buffer pool
+  // image.pngimage.pngInitialize global shared buffer pool
   data_buffer_pool_init_global();
   atexit(data_buffer_pool_cleanup_global);
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
   log_info("SERVER: Options initialized, using log file: %s", log_filename);
-  int port = strtoint(opt_port);
+  int port = strtoint_safe(opt_port);
+  if (port == INT_MIN) {
+    log_error("Invalid port configuration: %s", opt_port);
+    exit(EXIT_FAILURE);
+  }
   log_info("SERVER: Port set to %d", port);
 
   log_info("SERVER: Initializing luminance palette...");
@@ -1451,11 +1455,9 @@ void *client_receive_thread_func(void *arg) {
         SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
         client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
         client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
-        client->wants_color = (join_info->capabilities & CLIENT_CAP_COLOR) != 0;
         client->wants_stretch = (join_info->capabilities & CLIENT_CAP_STRETCH) != 0;
-        log_info("Client %u joined: %s (video=%d, audio=%d, color=%d, stretch=%d)", client->client_id,
-                 client->display_name, client->can_send_video, client->can_send_audio, client->wants_color,
-                 client->wants_stretch);
+        log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", client->client_id, client->display_name,
+                 client->can_send_video, client->can_send_audio, client->wants_stretch);
 
         // REMOVED: Don't send CLEAR_CONSOLE to other clients when a new client joins
         // This was causing flickering for existing clients
@@ -1574,9 +1576,6 @@ void *client_receive_thread_func(void *arg) {
 
         // Mark that we have received capabilities for this client
         client->has_terminal_caps = true;
-
-        // Update legacy wants_color field based on color capabilities
-        client->wants_color = (client->terminal_caps.color_level > TERM_COLOR_NONE);
 
         pthread_mutex_unlock(&client->client_state_mutex);
 

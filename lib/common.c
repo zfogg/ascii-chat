@@ -3,6 +3,17 @@
 #include <string.h>
 #include <stdio.h>
 
+void does_something(int a) {
+  printf("does_something\n");
+  if (a == 1) {
+    printf("1\n");
+  }
+  if (a == 2) {
+    printf("2\n");
+  }
+  return;
+}
+
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double MB = 1024.0 * 1024.0;
   const double GB = MB * 1024.0;
@@ -287,3 +298,60 @@ void debug_memory_report(void) {
 }
 
 #endif /* DEBUG_MEMORY */
+
+/* ============================================================================
+ * New Function for Coverage Testing
+ * ============================================================================
+ */
+
+/**
+ * Calculate memory usage statistics for coverage testing
+ * This function will be covered by our new test
+ */
+void calculate_memory_stats(size_t *total_allocated, size_t *total_freed, size_t *current_usage) {
+  if (!total_allocated || !total_freed || !current_usage) {
+    return;
+  }
+
+#ifdef DEBUG_MEMORY
+  pthread_mutex_lock(&g_mem.mutex);
+  *total_allocated = g_mem.total_allocated;
+  *total_freed = g_mem.total_freed;
+  *current_usage = g_mem.current_usage;
+  pthread_mutex_unlock(&g_mem.mutex);
+#else
+  // In non-debug builds, return zeros
+  *total_allocated = 0;
+  *total_freed = 0;
+  *current_usage = 0;
+#endif
+}
+
+/**
+ * Validate memory pattern in a buffer
+ * This function tests a new code path for coverage
+ */
+bool validate_memory_pattern(const void *ptr, size_t size, uint8_t expected_pattern) {
+  if (!ptr || size == 0) {
+    return false;
+  }
+
+  const uint8_t *byte_ptr = (const uint8_t *)ptr;
+
+  // Check first and last bytes
+  if (byte_ptr[0] != expected_pattern || byte_ptr[size - 1] != expected_pattern) {
+    return false;
+  }
+
+  // Check every 100th byte for large buffers
+  if (size > 1000) {
+    for (size_t i = 100; i < size - 100; i += 100) {
+      if (byte_ptr[i] != expected_pattern) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+// Test comment for codecov

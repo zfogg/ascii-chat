@@ -1,0 +1,148 @@
+name: 'Generate Coverage Report'
+description: 'Generate coverage files with safe names for codecov upload'
+
+inputs:
+  build-type:
+    description: 'Build type (debug, release, etc.)'
+    required: true
+    default: 'debug'
+  os-name:
+    description: 'OS name for logging'
+    required: true
+    default: 'unknown'
+  test-type:
+    description: 'Type of test (unit, integration, performance)'
+    required: true
+    default: 'unit'
+  codecov-token:
+    description: 'Codecov token for uploading coverage'
+    required: false
+    default: ''
+  upload-coverage:
+    description: 'Whether to upload coverage to Codecov'
+    required: false
+    default: 'false'
+  junit-file:
+    description: 'Path to JUnit XML file for upload'
+    required: false
+    default: 'junit.xml'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install codecov CLI
+      if: ${{ inputs.upload-coverage == 'true' }}
+      shell: bash
+      run: |
+        echo "📦 Installing codecov CLI..."
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS - use Homebrew (already installed via install-deps action)
+          echo "codecov-cli should already be installed via Homebrew on macOS"
+          codecov --version
+        else
+          # Linux - use pip3
+          echo "Installing codecov-cli via pip3 on Linux..."
+          pip3 install codecov-cli
+          codecov --version
+        fi
+
+    - name: Generate coverage report
+      id: generate-coverage
+      if: always()
+      shell: bash
+      run: |
+        echo "Looking for .gcda files to generate coverage from..."
+        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+        gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
+        echo "Generating coverage with ${gcda_files_count} gcda files..."
+        echo "Found .gcda files:"
+        echo "$gcda_files" | head -10
+        if [ $gcda_files_count -gt 10 ]; then
+            echo "... and $((gcda_files_count - 10)) more files"
+        fi
+
+        # For clang, we should use llvm-cov instead of gcov
+        if command -v llvm-cov >/dev/null 2>&1; then
+            COVERAGE_CMD="llvm-cov gcov"
+        else
+            COVERAGE_CMD="gcov"
+        fi
+
+        if [ -n "$gcda_files" ]; then
+            echo "✅ Found $gcda_files_count gcda files"
+        else
+            echo "❌ ERROR: No gcda files found" >&2
+            exit 1
+        fi
+
+        # Let Codecov handle coverage generation automatically
+        # We just need to ensure .gcda files exist and are accessible
+        echo "✅ Found $gcda_files_count .gcda files for Codecov to process"
+        echo "Codecov will automatically run gcov on the .gcno files to generate coverage data"
+
+    - name: Check Coverage Files
+      id: check-coverage
+      if: ${{ inputs.upload-coverage == 'true' }}
+      shell: bash
+      run: |
+        # Check that .gcda files exist (Codecov will generate .gcov files automatically)
+        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+        gcda_files_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
+
+        if [ -n "$gcda_files" ] && [ $gcda_files_count -gt 0 ]; then
+          echo "✅ Found $gcda_files_count .gcda files for Codecov to process"
+          echo "has_coverage=true" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ No .gcda files found"
+          echo "has_coverage=false" >> $GITHUB_OUTPUT
+        fi
+
+
+    - name: Upload Coverage and JUnit to Codecov
+      if: ${{ inputs.upload-coverage == 'true' }}
+      shell: bash
+      run: |
+        echo "Uploading coverage and JUnit to Codecov..."
+
+        # Check if .gcda files exist (Codecov will generate .gcov files automatically)
+        gcda_files=$(find . -name "*.gcda" -type f 2>/dev/null)
+        gcda_count=$(echo "$gcda_files" | wc -l | sed 's/ //g')
+
+        if [ $gcda_count -gt 0 ]; then
+          echo "✅ Uploading coverage data from $gcda_count .gcda files and JUnit XML"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "PR: ${{ github.event.pull_request.number }}"
+
+          # Build codecov command - let it automatically find and process .gcda files
+          codecov_cmd="codecov do-upload --token=\"${{ inputs.codecov-token }}\""
+
+          # Add repository and commit information
+          codecov_cmd="$codecov_cmd --slug=\"${{ github.repository }}\""
+          codecov_cmd="$codecov_cmd --sha=\"${{ github.sha }}\""
+          codecov_cmd="$codecov_cmd --branch=\"${{ github.ref_name }}\""
+          codecov_cmd="$codecov_cmd --pr=\"${{ github.event.pull_request.number }}\""
+
+          # Control gcov behavior to focus on coverage build files
+          codecov_cmd="$codecov_cmd --gcov-include=\"build/tests/coverage/**\""
+
+          # Add JUnit XML file if it exists
+          if [ -f "${{ inputs.junit-file }}" ]; then
+            codecov_cmd="$codecov_cmd --file=\"${{ inputs.junit-file }}\""
+            echo "✅ Including JUnit XML in upload"
+          else
+            echo "⚠️ JUnit XML file not found, uploading coverage only"
+          fi
+
+          # Add other arguments
+          codecov_cmd="$codecov_cmd --flag=\"${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) || format('ascii-chat-performance-{0}', inputs.os-name) }}\""
+          codecov_cmd="$codecov_cmd --name=\"${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) || format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}\""
+          codecov_cmd="$codecov_cmd --fail-on-error"
+
+          echo "Running codecov command: $codecov_cmd"
+          echo "Codecov will automatically find and process .gcda files to generate coverage data"
+          eval $codecov_cmd
+        else
+          echo "⚠️ No .gcda files found, skipping upload"
+        fi

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "image.h"
+#include "image2ascii/image.h"
 
 // Platform-specific webcam interface
 typedef struct webcam_context_t webcam_context_t;
