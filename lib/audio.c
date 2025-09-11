@@ -406,11 +406,18 @@ int audio_set_realtime_priority(void) {
   param.sched_priority = 80; // High priority (1-99 range)
 
   // Try to set real-time scheduling for current thread
+#ifndef _WIN32
   if (pthread_setschedparam(ascii_thread_self().thread, policy, &param) != 0) {
     log_error(
         "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
     return -1;
   }
+#else
+  // Windows thread priority setting is handled differently
+  // TODO: Implement Windows-specific thread priority setting
+  (void)policy;
+  (void)param;
+#endif
 
   log_info("✓ Audio thread real-time priority set to %d with SCHED_FIFO", param.sched_priority);
   return 0;

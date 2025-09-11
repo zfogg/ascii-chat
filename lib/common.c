@@ -400,11 +400,11 @@ void calculate_memory_stats(size_t *total_allocated, size_t *total_freed, size_t
   }
 
 #ifdef DEBUG_MEMORY
-  pthread_mutex_lock(&g_mem.mutex);
+  mutex_lock(&g_mem.mutex);
   *total_allocated = g_mem.total_allocated;
   *total_freed = g_mem.total_freed;
   *current_usage = g_mem.current_usage;
-  pthread_mutex_unlock(&g_mem.mutex);
+  mutex_unlock(&g_mem.mutex);
 #else
   // In non-debug builds, return zeros
   *total_allocated = 0;
