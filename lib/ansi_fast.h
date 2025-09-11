@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ascii_simd.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -82,6 +82,9 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
 typedef terminal_color_mode_t color_mode_t;
 
 char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color_mode_t mode);
+
+// New function for coverage testing
+bool is_color_mode_supported(color_mode_t mode);
 
 // REMOVED: generate_ansi_frame_optimized function not implemented
 // Complete frame generation with optimized ANSI string generation

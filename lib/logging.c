@@ -152,6 +152,9 @@ static void rotate_log_if_needed(void) {
 void log_init(const char *filename, log_level_t level) {
   pthread_mutex_lock(&g_log.mutex);
 
+  // Preserve the terminal output setting
+  bool preserve_terminal_output = g_log.terminal_output_enabled;
+
   if (g_log.initialized) {
     if (g_log.file && g_log.file != STDERR_FILENO) {
       close(g_log.file);
@@ -167,7 +170,9 @@ void log_init(const char *filename, log_level_t level) {
     int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
     g_log.file = fd;
     if (!g_log.file) {
-      fprintf(stderr, "Failed to open log file: %s\n", filename);
+      if (preserve_terminal_output) {
+        fprintf(stderr, "Failed to open log file: %s\n", filename);
+      }
       g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0'; /* Clear filename on failure */
     } else {
@@ -183,6 +188,10 @@ void log_init(const char *filename, log_level_t level) {
   }
 
   g_log.initialized = true;
+
+  // Restore the terminal output setting
+  g_log.terminal_output_enabled = preserve_terminal_output;
+
   pthread_mutex_unlock(&g_log.mutex);
 }
 
@@ -219,6 +228,13 @@ void log_set_terminal_output(bool enabled) {
   pthread_mutex_unlock(&g_log.mutex);
 }
 
+bool log_get_terminal_output(void) {
+  pthread_mutex_lock(&g_log.mutex);
+  bool enabled = g_log.terminal_output_enabled;
+  pthread_mutex_unlock(&g_log.mutex);
+  return enabled;
+}
+
 void log_truncate_if_large(void) {
   pthread_mutex_lock(&g_log.mutex);
 
@@ -239,9 +255,13 @@ void log_truncate_if_large(void) {
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
   if (!g_log.initialized) {
+    // Preserve the current terminal output setting before auto-initialization
+    bool preserve_terminal_output = g_log.terminal_output_enabled;
     // Use manually set level if available, otherwise default to LOG_INFO
     log_level_t init_level = g_log.level_manually_set ? g_log.level : LOG_INFO;
     log_init(NULL, init_level);
+    // Restore the terminal output setting after initialization
+    g_log.terminal_output_enabled = preserve_terminal_output;
   }
 
   if (level < g_log.level) {
@@ -306,8 +326,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // No need to flush with direct write() - it bypasses stdio buffering
   }
 
-  // Handle stderr output separately
-  if (log_file != NULL && log_file == stderr) {
+  // Handle stderr output separately - only if terminal output is enabled
+  if (log_file != NULL && log_file == stderr && g_log.terminal_output_enabled) {
     fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
     va_list args;
@@ -320,7 +340,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   /* Also print to stderr with colors if it's a terminal and terminal output is enabled */
-  if (g_log.terminal_output_enabled && g_log.file != STDERR_FILENO && isatty(STDERR_FILENO)) {
+  if (g_log.terminal_output_enabled && isatty(STDERR_FILENO)) {
     fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
             line, func);
 

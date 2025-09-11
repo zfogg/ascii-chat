@@ -521,6 +521,30 @@ flags:
       - "src/"
       - "tests/"
     carryforward: false
+  ascii-chat-integration-ubuntu:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/integration/"
+    carryforward: false
+  ascii-chat-integration-macos:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/integration/"
+    carryforward: false
+  ascii-chat-performance-ubuntu:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/performance/"
+    carryforward: false
+  ascii-chat-performance-macos:
+    paths:
+      - "lib/"
+      - "src/"
+      - "tests/performance/"
+    carryforward: false
 
 # Notification settings
 github_checks:

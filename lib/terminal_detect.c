@@ -58,49 +58,42 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       return 0;
     }
     close(tty_fd);
+  } else {
+    log_debug("Failed to open /dev/tty");
   }
 
-  // Only fall back to environment variables if we're not in a real terminal
-  if (isatty(STDOUT_FILENO)) {
-    // We're connected to a terminal but ioctl failed - use defaults
-    *width = 80;
-    *height = 24;
-    // log_debug("Terminal fallback (ioctl failed but isatty): %dx%d", *width, *height);
-    return -1;
-  }
-
-  // stdout is redirected - try environment variables as fallback
+  // Try environment variables as fallback
   char *cols_str = getenv("COLUMNS");
   char *lines_str = getenv("LINES");
 
-  // Try to use environment variables, but validate each one individually
-  bool used_env = false;
-  *width = 80;  // Default width
-  *height = 24; // Default height
+  // Only use environment variables if BOTH are set and valid
+  *width = OPT_WIDTH_DEFAULT;   // Default width (matches options.c)
+  *height = OPT_HEIGHT_DEFAULT; // Default height (matches options.c)
 
-  if (cols_str) {
+  if (cols_str && lines_str) {
     int env_width = atoi(cols_str);
-    if (env_width > 0) {
-      *width = (unsigned short int)env_width;
-      used_env = true;
-    }
-  }
-
-  if (lines_str) {
     int env_height = atoi(lines_str);
-    if (env_height > 0) {
+
+    // Both must be valid positive values
+    if (env_width > 0 && env_height > 0) {
+      *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
-      used_env = true;
+      log_debug("Terminal size from environment: %dx%d", *width, *height);
+      return 0;
     }
   }
 
-  if (used_env) {
-    // log_debug("Terminal size from environment: %dx%d", *width, *height);
-    return 0;
+  // If we're in a terminal but couldn't detect size, try to use stty as last resort
+  if (isatty(STDIN_FILENO) || isatty(STDOUT_FILENO)) {
+    // We're in a terminal environment, so use more reasonable defaults
+    *width = OPT_WIDTH_DEFAULT;
+    *height = OPT_HEIGHT_DEFAULT;
+    log_debug("Terminal size fallback (terminal but no detection): %dx%d", *width, *height);
+    return 0; // Return success with defaults
   }
 
-  // Final fallback to reasonable defaults when output is redirected
-  // log_debug("Terminal size fallback (redirected output): %dx%d", *width, *height);
+  // Final fallback for redirected output
+  log_debug("Terminal size fallback (redirected output): %dx%d", *width, *height);
   return -1;
 }
 
@@ -142,8 +135,46 @@ int get_terminfo_color_count(void) {
   // Check if TERM is set before calling setupterm to avoid ncurses error message
   char *term_env = getenv("TERM");
   if (term_env) {
-    // Try to initialize terminfo
-    int result = setupterm(NULL, STDOUT_FILENO, NULL);
+    // Suppress stderr during setupterm to avoid "unknown terminal type" messages
+    int stderr_fd = dup(STDERR_FILENO);
+    int dev_null = open("/dev/null", O_WRONLY);
+    dup2(dev_null, STDERR_FILENO);
+
+    // Try to initialize terminfo - check database first to avoid crashes
+    int result = -1;
+
+    // First, check if the terminal type exists in the terminfo database
+    // tgetent returns 1 if found, 0 if not found, -1 on error
+    int tgetent_result = tgetent(NULL, term_env);
+
+    if (tgetent_result == 1) {
+      // Terminal type exists in database, safe to call setupterm
+      result = setupterm(NULL, STDOUT_FILENO, NULL);
+
+      // setupterm returns 0 on success, 1 if terminal type not found, -1 on error
+      if (result == 1) {
+        // This shouldn't happen since tgetent found it, but handle gracefully
+        log_debug("Terminal type '%s' not found in terminfo database (inconsistent)", term_env);
+        result = -1; // Mark as failed
+      } else if (result == -1) {
+        // Error accessing terminfo database
+        log_debug("Error accessing terminfo database for terminal type '%s'", term_env);
+      }
+    } else if (tgetent_result == 0) {
+      // Terminal type not found in terminfo database
+      log_debug("Terminal type '%s' not found in terminfo database", term_env);
+      result = -1; // Mark as failed
+    } else {
+      // Error accessing terminfo database
+      log_debug("Error accessing terminfo database for terminal type '%s'", term_env);
+      result = -1; // Mark as failed
+    }
+
+    // Restore stderr
+    dup2(stderr_fd, STDERR_FILENO);
+    close(stderr_fd);
+    close(dev_null);
+
     if (result == 0) { // setupterm returns 0 on success
       colors = tigetnum("colors");
       // log_debug("Terminfo colors: %d", colors);
@@ -369,21 +400,21 @@ void test_terminal_output_modes(void) {
   printf("Testing terminal output modes:\n");
 
   // Test basic ANSI colors (16-color)
-  printf("\n16-color test:\n");
+  printf("  16-color: ");
   for (int i = 30; i <= 37; i++) {
     printf("\033[%dm█\033[0m", i);
   }
   printf("\n");
 
   // Test 256-color mode
-  printf("\n256-color test:\n");
+  printf("  256-color: ");
   for (int i = 0; i < 16; i++) {
     printf("\033[38;5;%dm█\033[0m", i);
   }
   printf("\n");
 
   // Test truecolor mode
-  printf("\nTruecolor test:\n");
+  printf("  Truecolor: ");
   for (int i = 0; i < 16; i++) {
     int r = (i * 255) / 15;
     printf("\033[38;2;%d;0;0m█\033[0m", r);
@@ -391,10 +422,8 @@ void test_terminal_output_modes(void) {
   printf("\n");
 
   // Test Unicode characters
-  printf("\nUnicode test: ");
+  printf("  Unicode: ");
   printf("░▒▓\n");
-
-  printf("\nTest complete.\n");
 }
 
 // Apply color mode and background mode overrides to detected capabilities

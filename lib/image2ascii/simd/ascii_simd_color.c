@@ -9,7 +9,7 @@
 #include "ascii_simd.h"
 
 #include "common.h"
-#include "image.h"
+#include "../image.h"
 #include "palette.h"
 
 /* ============================================================================

@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -19,14 +20,14 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 
-#include "ascii.h"
-#include "ascii_simd.h"
+#include "image2ascii/ascii.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "common.h"
 #include "mixer.h"
 #include "network.h"
 #include "options.h"
 #include "audio.h"
-#include "image.h"
+#include "image2ascii/image.h"
 #include "webcam.h"
 #include "buffer_pool.h"
 #include "terminal_detect.h"
@@ -303,7 +304,7 @@ static void shutdown_client() {
   }
 
   // Clean up webcam
-  ascii_write_destroy(tty_info_g.fd);
+  ascii_write_destroy(tty_info_g.fd, true);
 
   log_info("Client shutdown complete");
   log_destroy(); // Destroy logging last
@@ -572,7 +573,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (g_should_clear_before_next_frame) {
     full_terminal_reset(tty_info_g.fd);
     g_should_clear_before_next_frame = false;
-    log_debug("Cleared console before frame due to client count change");
   }
 
   // For terminal: print every frame until final snapshot
@@ -1053,7 +1053,11 @@ int main(int argc, char *argv[]) {
   atexit(shutdown_client);
 
   char *address = opt_address;
-  int port = strtoint(opt_port);
+  int port = strtoint_safe(opt_port);
+  if (port == INT_MIN) {
+    log_error("Invalid port configuration: %s", opt_port);
+    exit(EXIT_FAILURE);
+  }
 
   struct sockaddr_in serv_addr;
 
@@ -1067,7 +1071,7 @@ int main(int argc, char *argv[]) {
   signal(SIGPIPE, SIG_IGN);
 
   // Initialize ASCII output for this connection
-  ascii_write_init(tty_info_g.fd);
+  ascii_write_init(tty_info_g.fd, false);
 
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
@@ -1184,8 +1188,9 @@ int main(int argc, char *argv[]) {
       if (opt_audio_enabled) {
         my_capabilities |= CLIENT_CAP_AUDIO; // Add audio if enabled
       }
-      if (opt_color_output) {
-        my_capabilities |= CLIENT_CAP_COLOR; // Add color if enabled
+      // Add color capability based on color mode
+      if (opt_color_mode != COLOR_MODE_MONO) {
+        my_capabilities |= CLIENT_CAP_COLOR; // Add color if not monochrome
       }
       if (opt_stretch) {
         my_capabilities |= CLIENT_CAP_STRETCH; // Add stretch if enabled

@@ -1,12 +1,19 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdio.h>
 #include "terminal_detect.h"
 #include "palette.h"
 
 #define OPTIONS_BUFF_SIZE 256
 
-#define strtoint(s) (int)strtol(s, (char **)NULL, 10)
+// Default terminal dimensions
+#define OPT_WIDTH_DEFAULT 110
+#define OPT_HEIGHT_DEFAULT 70
+
+// Safely parse string to integer with validation
+// Returns the integer value, or INT_MIN on error
+int strtoint_safe(const char *str);
 
 extern unsigned short int opt_width, opt_height, auto_width, auto_height;
 
@@ -14,9 +21,7 @@ extern char opt_address[], opt_port[];
 
 extern unsigned short int opt_webcam_index;
 
-extern unsigned short int opt_webcam_flip;
-
-extern unsigned short int opt_color_output;
+extern bool opt_webcam_flip;
 
 // Terminal color mode override (client only)
 typedef enum {

@@ -7,19 +7,10 @@
 #include "packet_queue.h"
 #include "network.h"
 #include "crc32_hw.h"  // For CRC calculation
+#include "tests/logging.h"
 
-void setup_packet_queue_quiet_logging(void);
-void restore_packet_queue_logging(void);
-
-TestSuite(packet_queue, .init = setup_packet_queue_quiet_logging, .fini = restore_packet_queue_logging);
-
-void setup_packet_queue_quiet_logging(void) {
-    log_set_level(LOG_FATAL);
-}
-
-void restore_packet_queue_logging(void) {
-    log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);
 
 // =============================================================================
 // Node Pool Tests

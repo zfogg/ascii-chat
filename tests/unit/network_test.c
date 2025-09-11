@@ -1,259 +1,196 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <string.h>
-#include <arpa/inet.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
-#include <zlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-#include "common.h"
 #include "network.h"
-#include "crc32_hw.h"
-#include "packet_queue.h"
-#include "image.h"
-#include "ascii_simd.h"
+#include "common.h"
+#include "tests/logging.h"
 
-void setup_network_quiet_logging(void);
-void restore_network_logging(void);
+// Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);
 
-TestSuite(network, .init = setup_network_quiet_logging, .fini = restore_network_logging);
-
-void setup_network_quiet_logging(void) {
-    log_set_level(LOG_FATAL);
+static int create_test_socket(void) {
+    return socket(AF_INET, SOCK_STREAM, 0);
 }
 
-void restore_network_logging(void) {
-    log_set_level(LOG_DEBUG);
+Test(network, set_socket_timeout_valid) {
+    int sockfd = create_test_socket();
+    cr_assert_geq(sockfd, 0);
+
+    int result = set_socket_timeout(sockfd, 1);
+    cr_assert_eq(result, 0);
+
+    close(sockfd);
 }
 
-// =============================================================================
-// Packet Header Tests
-// =============================================================================
-
-Test(network, packet_header_validation) {
-    packet_header_t header;
-
-    // Valid header
-    header.magic = PACKET_MAGIC;
-    header.type = PACKET_TYPE_ASCII_FRAME;
-    header.length = 1024;
-    header.crc32 = 0x12345678;
-    header.client_id = 99;
-
-    // Basic structure validation - just check fields are set correctly
-    cr_assert_eq(header.magic, PACKET_MAGIC, "Magic should be set correctly");
-    cr_assert_eq(header.type, PACKET_TYPE_ASCII_FRAME, "Type should be set correctly");
-    cr_assert_eq(header.length, 1024, "Length should be set correctly");
-    cr_assert_eq(header.client_id, 99, "Client ID should be set correctly");
+Test(network, set_socket_timeout_invalid_socket) {
+    int result = set_socket_timeout(-1, 1);
+    cr_assert_eq(result, -1);
 }
 
-Test(network, packet_type_validation) {
-    // Test that packet type constants are defined and have reasonable values
-    cr_assert_gt(PACKET_TYPE_ASCII_FRAME, 0, "ASCII_FRAME should be positive");
-    cr_assert_gt(PACKET_TYPE_IMAGE_FRAME, 0, "IMAGE_FRAME should be positive");
-    cr_assert_gt(PACKET_TYPE_AUDIO, 0, "AUDIO should be positive");
-    cr_assert_gt(PACKET_TYPE_PING, 0, "PING should be positive");
-    cr_assert_gt(PACKET_TYPE_PONG, 0, "PONG should be positive");
-    cr_assert_gt(PACKET_TYPE_CLIENT_JOIN, 0, "CLIENT_JOIN should be positive");
-    cr_assert_gt(PACKET_TYPE_CLIENT_LEAVE, 0, "CLIENT_LEAVE should be positive");
-    cr_assert_gt(PACKET_TYPE_STREAM_START, 0, "STREAM_START should be positive");
-    cr_assert_gt(PACKET_TYPE_STREAM_STOP, 0, "STREAM_STOP should be positive");
-    cr_assert_gt(PACKET_TYPE_CLEAR_CONSOLE, 0, "CLEAR_CONSOLE should be positive");
-    cr_assert_gt(PACKET_TYPE_SERVER_STATE, 0, "SERVER_STATE should be positive");
+Test(network, set_socket_keepalive_valid) {
+    int sockfd = create_test_socket();
+    cr_assert_geq(sockfd, 0);
+
+    int result = set_socket_keepalive(sockfd);
+    cr_assert_eq(result, 0);
+
+    close(sockfd);
 }
 
-// =============================================================================
-// CRC32 Tests
-// =============================================================================
-
-Test(network, crc32_basic) {
-    const char *test_data = "Hello, ASCII-Chat!";
-    uint32_t crc = asciichat_crc32(test_data, strlen(test_data));
-
-    cr_assert_neq(crc, 0, "CRC should not be zero for real data");
-    cr_assert_neq(crc, 0xFFFFFFFF, "CRC should not be all 1s for real data");
-
-    // Test consistency - same input should give same CRC
-    uint32_t crc2 = asciichat_crc32(test_data, strlen(test_data));
-    cr_assert_eq(crc, crc2, "CRC should be consistent for same input");
+Test(network, set_socket_keepalive_invalid_socket) {
+    int result = set_socket_keepalive(-1);
+    cr_assert_eq(result, -1);
 }
 
-Test(network, crc32_incremental) {
-    const char *part1 = "Hello, ";
-    const char *part2 = "ASCII-Chat!";
-    const char *full = "Hello, ASCII-Chat!";
+Test(network, set_socket_nonblocking_valid) {
+    int sockfd = create_test_socket();
+    cr_assert_geq(sockfd, 0);
 
-    // Calculate CRC for concatenated data
-    char concatenated[256];
-    strcpy(concatenated, part1);
-    strcat(concatenated, part2);
-    uint32_t crc_concatenated = asciichat_crc32(concatenated, strlen(concatenated));
+    int result = set_socket_nonblocking(sockfd);
+    cr_assert_eq(result, 0);
 
-    // Calculate CRC all at once
-    uint32_t crc_full = asciichat_crc32(full, strlen(full));
-
-    cr_assert_eq(crc_concatenated, crc_full, "Concatenated CRC should match full CRC");
+    close(sockfd);
 }
 
-Test(network, crc32_edge_cases) {
-    // Empty data
-    uint32_t crc_empty = asciichat_crc32("", 0);
-    // Note: CRC32 of empty data might be 0 depending on the implementation
-    // Just verify it doesn't crash and produces a consistent result
-    uint32_t crc_empty2 = asciichat_crc32("", 0);
-    cr_assert_eq(crc_empty, crc_empty2, "Empty data should produce consistent CRC");
-
-    // Single byte
-    uint8_t single_byte = 0x42;
-    uint32_t crc_single = asciichat_crc32(&single_byte, 1);
-    cr_assert_neq(crc_single, 0, "Single byte should produce valid CRC");
-
-    // All zeros
-    uint8_t zeros[100] = {0};
-    uint32_t crc_zeros = asciichat_crc32(zeros, 100);
-    cr_assert_neq(crc_zeros, 0, "All zeros should produce valid CRC");
-
-    // All 255s
-    uint8_t ones[100];
-    memset(ones, 0xFF, 100);
-    uint32_t crc_ones = asciichat_crc32(ones, 100);
-    cr_assert_neq(crc_ones, 0, "All 255s should produce valid CRC");
-    cr_assert_neq(crc_ones, crc_zeros, "Different patterns should produce different CRCs");
+Test(network, set_socket_nonblocking_invalid_socket) {
+    int result = set_socket_nonblocking(-1);
+    cr_assert_eq(result, -1);
 }
 
-// =============================================================================
-// Packet Creation Tests
-// =============================================================================
+Test(network, connect_with_timeout_invalid_socket) {
+    log_debug("Starting connect_with_timeout_invalid_socket test");
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_port = htons(8080);
 
-Test(network, create_ascii_frame_packet) {
-    // Test skipped - create_ascii_frame_packet function not implemented
-    cr_skip_test("create_ascii_frame_packet function not implemented");
+    log_debug("Calling connect_with_timeout with invalid socket");
+    bool result = connect_with_timeout(-1, (struct sockaddr *)&addr, sizeof(addr), 1);
+    log_debug("connect_with_timeout returned: %s", result ? "true" : "false");
+    cr_assert_eq(result, false);
+    log_debug("connect_with_timeout_invalid_socket test completed");
 }
 
-Test(network, create_image_frame_packet) {
-    // Test skipped - create_image_frame_packet function not implemented
-    cr_skip_test("create_image_frame_packet function not implemented");
+Test(network, send_with_timeout_invalid_socket) {
+    const char *data = "test data";
+    ssize_t result = send_with_timeout(-1, data, strlen(data), 1);
+    cr_assert_eq(result, -1);
 }
 
-Test(network, create_audio_packet) {
-    // Test skipped - create_audio_packet function not implemented
-    cr_skip_test("create_audio_packet function not implemented");
+Test(network, recv_with_timeout_invalid_socket) {
+    char buffer[1024];
+    ssize_t result = recv_with_timeout(-1, buffer, sizeof(buffer), 1);
+    cr_assert_eq(result, -1);
 }
 
-// =============================================================================
-// Packet Serialization Tests
-// =============================================================================
+Test(network, parse_size_message_valid) {
+    unsigned short width, height;
+    const char *message = "SIZE:80,24\n";
 
-Test(network, packet_serialization_roundtrip) {
-    // Test skipped - packet serialization functions not implemented
-    cr_skip_test("packet serialization functions not implemented");
+    int result = parse_size_message(message, &width, &height);
+    cr_assert_eq(result, 0);
+    cr_assert_eq(width, 80);
+    cr_assert_eq(height, 24);
 }
 
-Test(network, packet_serialization_endianness) {
-    // Test skipped - packet serialization functions not implemented
-    cr_skip_test("packet serialization functions not implemented");
+Test(network, parse_size_message_invalid_format) {
+    unsigned short width, height;
+    const char *message = "INVALID:80,24\n";
+
+    int result = parse_size_message(message, &width, &height);
+    cr_assert_eq(result, -1);
 }
 
-// =============================================================================
-// Error Handling Tests
-// =============================================================================
-
-Test(network, invalid_packet_handling) {
-    // Test skipped - packet deserialization functions not implemented
-    cr_skip_test("packet deserialization functions not implemented");
+Test(network, parse_size_message_null_pointers) {
+    int result = parse_size_message("SIZE:80,24\n", NULL, NULL);
+    cr_assert_eq(result, -1);
 }
 
-Test(network, buffer_overflow_protection) {
-    // Test skipped - packet serialization functions not implemented
-    cr_skip_test("packet serialization functions not implemented");
+Test(network, send_packet_invalid_socket) {
+    const char *data = "test data";
+    int result = send_packet(-1, PACKET_TYPE_PING, data, strlen(data));
+    cr_assert_eq(result, -1);
 }
 
-// =============================================================================
-// Network Utility Tests
-// =============================================================================
+Test(network, receive_packet_invalid_socket) {
+    packet_type_t type;
+    void *data;
+    size_t len;
 
-Test(network, socket_timeout_setting) {
-    int test_socket = socket(AF_INET, SOCK_STREAM, 0);
-    cr_assert_geq(test_socket, 0, "Test socket creation should succeed");
-
-    int result = set_socket_timeout(test_socket, 5000); // 5 second timeout
-    cr_assert_eq(result, 0, "Setting socket timeout should succeed");
-
-    // Verify timeout was set (this is platform-dependent, so we just check no error)
-    struct timeval timeout;
-    socklen_t len = sizeof(timeout);
-    int getopt_result = getsockopt(test_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, &len);
-
-    // Just verify that setting the timeout didn't fail and we can read it back
-    // The actual timeout value may vary by platform/implementation
-    cr_assert_eq(getopt_result, 0, "getsockopt should succeed");
-    cr_assert_gt(timeout.tv_sec, 0, "Timeout should be set to a positive value");
-
-    close(test_socket);
+    int result = receive_packet(-1, &type, &data, &len);
+    cr_assert_eq(result, -1);
 }
 
-Test(network, address_parsing) {
-    // Test skipped - parse_address function not implemented
-    cr_skip_test("parse_address function not implemented");
+Test(network, send_audio_data_invalid_socket) {
+    float samples[256];
+    memset(samples, 0, sizeof(samples));
+
+    int result = send_audio_data(-1, samples, 256);
+    cr_assert_eq(result, -1);
 }
 
-// =============================================================================
-// Compression Integration Tests
-// =============================================================================
+Test(network, receive_audio_data_invalid_socket) {
+    float samples[256];
 
-Test(network, compressed_packet_handling) {
-    // Test that zlib compression is available and working
-    const char *test_data = "This is test data for compression";
-    size_t data_len = strlen(test_data);
+    int result = receive_audio_data(-1, samples, 256);
+    cr_assert_eq(result, -1);
+}
 
-    // Test zlib compression directly
-    uLongf compressed_size = compressBound(data_len);
-    char *compressed_data = NULL;
-    char *decompressed_data = NULL;
+Test(network, send_client_join_packet_invalid_socket) {
+    int result = send_client_join_packet(-1, "TestUser", CLIENT_CAP_VIDEO);
+    cr_assert_eq(result, -1);
+}
 
-    SAFE_MALLOC(compressed_data, compressed_size, char*);
+Test(network, send_ping_packet_invalid_socket) {
+    int result = send_ping_packet(-1);
+    cr_assert_eq(result, -1);
+}
 
-    // Compress the data
-    int result = compress((Bytef*)compressed_data, &compressed_size,
-                         (const Bytef*)test_data, data_len);
+Test(network, send_pong_packet_invalid_socket) {
+    int result = send_pong_packet(-1);
+    cr_assert_eq(result, -1);
+}
 
-    if (result != Z_OK) {
-        SAFE_FREE(compressed_data);
-        cr_assert(false, "zlib compression should succeed");
+Test(network, network_error_string_valid_codes) {
+    const char *error1 = network_error_string(0);
+    cr_assert_not_null(error1);
+
+    const char *error2 = network_error_string(-1);
+    cr_assert_not_null(error2);
+
+    const char *error3 = network_error_string(100);
+    cr_assert_not_null(error3);
+}
+
+Test(network, random_size_messages) {
+    log_debug("Starting random_size_messages test");
+    srand(42);
+
+    for (int i = 0; i < 100; i++) {
+        if (i % 20 == 0) {
+            log_debug("Processing iteration %d/100", i);
+        }
+        unsigned short width = (rand() % 1000) + 1;
+        unsigned short height = (rand() % 1000) + 1;
+
+        char message[64];
+        snprintf(message, sizeof(message), "SIZE:%u,%u\n", width, height);
+
+        unsigned short parsed_width, parsed_height;
+        int result = parse_size_message(message, &parsed_width, &parsed_height);
+
+        cr_assert_eq(result, 0);
+        cr_assert_eq(parsed_width, width);
+        cr_assert_eq(parsed_height, height);
     }
-    if (compressed_size <= 0) {
-        SAFE_FREE(compressed_data);
-        cr_assert(false, "Compressed size should be positive");
-    }
-
-    // Test decompression
-    SAFE_MALLOC(decompressed_data, data_len + 1, char*);  // +1 for null terminator
-    uLongf decompressed_size = data_len;
-
-    result = uncompress((Bytef*)decompressed_data, &decompressed_size,
-                       (const Bytef*)compressed_data, compressed_size);
-
-    if (result != Z_OK) {
-        SAFE_FREE(compressed_data);
-        SAFE_FREE(decompressed_data);
-        cr_assert(false, "zlib decompression should succeed");
-    }
-    if (decompressed_size != data_len) {
-        SAFE_FREE(compressed_data);
-        SAFE_FREE(decompressed_data);
-        cr_assert(false, "Decompressed size should match original");
-    }
-
-    // Add null terminator for string comparison
-    decompressed_data[decompressed_size] = '\0';
-
-    if (strcmp(decompressed_data, test_data) != 0) {
-        SAFE_FREE(compressed_data);
-        SAFE_FREE(decompressed_data);
-        cr_assert(false, "Decompressed data should match original");
-    }
-
-    // Cleanup
-    SAFE_FREE(compressed_data);
-    SAFE_FREE(decompressed_data);
+    log_debug("random_size_messages test completed");
 }

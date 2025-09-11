@@ -2,31 +2,161 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdbool.h> // Ensure bool type is available
+#include <stdbool.h>
 #include "avx2.h"
 #include "common.h"
-#include "ansi_fast.h"
 #include "../output_buffer.h"
+#include "../../buffer_pool.h"
+#include "../../ansi_fast.h"
 
 #ifdef SIMD_SUPPORT_AVX2
 #include <immintrin.h>
 
+// Simple emission functions for direct buffer writing
+static inline char *emit_set_256_color_fg_simple(char *pos, uint8_t color_idx) {
+  *pos++ = '\x1b';
+  *pos++ = '[';
+  *pos++ = '3';
+  *pos++ = '8';
+  *pos++ = ';';
+  *pos++ = '5';
+  *pos++ = ';';
+  if (color_idx >= 100) {
+    *pos++ = '0' + (color_idx / 100);
+    *pos++ = '0' + ((color_idx / 10) % 10);
+    *pos++ = '0' + (color_idx % 10);
+  } else if (color_idx >= 10) {
+    *pos++ = '0' + (color_idx / 10);
+    *pos++ = '0' + (color_idx % 10);
+  } else {
+    *pos++ = '0' + color_idx;
+  }
+  *pos++ = 'm';
+  return pos;
+}
+
+static inline char *emit_set_256_color_bg_simple(char *pos, uint8_t color_idx) {
+  *pos++ = '\x1b';
+  *pos++ = '[';
+  *pos++ = '4';
+  *pos++ = '8';
+  *pos++ = ';';
+  *pos++ = '5';
+  *pos++ = ';';
+  if (color_idx >= 100) {
+    *pos++ = '0' + (color_idx / 100);
+    *pos++ = '0' + ((color_idx / 10) % 10);
+    *pos++ = '0' + (color_idx % 10);
+  } else if (color_idx >= 10) {
+    *pos++ = '0' + (color_idx / 10);
+    *pos++ = '0' + (color_idx % 10);
+  } else {
+    *pos++ = '0' + color_idx;
+  }
+  *pos++ = 'm';
+  return pos;
+}
+
+static inline char *emit_set_truecolor_fg_simple(char *pos, uint8_t r, uint8_t g, uint8_t b) {
+  *pos++ = '\x1b';
+  *pos++ = '[';
+  *pos++ = '3';
+  *pos++ = '8';
+  *pos++ = ';';
+  *pos++ = '2';
+  *pos++ = ';';
+  if (r >= 100) {
+    *pos++ = '0' + (r / 100);
+    *pos++ = '0' + ((r / 10) % 10);
+    *pos++ = '0' + (r % 10);
+  } else if (r >= 10) {
+    *pos++ = '0' + (r / 10);
+    *pos++ = '0' + (r % 10);
+  } else {
+    *pos++ = '0' + r;
+  }
+  *pos++ = ';';
+  if (g >= 100) {
+    *pos++ = '0' + (g / 100);
+    *pos++ = '0' + ((g / 10) % 10);
+    *pos++ = '0' + (g % 10);
+  } else if (g >= 10) {
+    *pos++ = '0' + (g / 10);
+    *pos++ = '0' + (g % 10);
+  } else {
+    *pos++ = '0' + g;
+  }
+  *pos++ = ';';
+  if (b >= 100) {
+    *pos++ = '0' + (b / 100);
+    *pos++ = '0' + ((b / 10) % 10);
+    *pos++ = '0' + (b % 10);
+  } else if (b >= 10) {
+    *pos++ = '0' + (b / 10);
+    *pos++ = '0' + (b % 10);
+  } else {
+    *pos++ = '0' + b;
+  }
+  *pos++ = 'm';
+  return pos;
+}
+
+static inline char *emit_set_truecolor_bg_simple(char *pos, uint8_t r, uint8_t g, uint8_t b) {
+  *pos++ = '\x1b';
+  *pos++ = '[';
+  *pos++ = '4';
+  *pos++ = '8';
+  *pos++ = ';';
+  *pos++ = '2';
+  *pos++ = ';';
+  if (r >= 100) {
+    *pos++ = '0' + (r / 100);
+    *pos++ = '0' + ((r / 10) % 10);
+    *pos++ = '0' + (r % 10);
+  } else if (r >= 10) {
+    *pos++ = '0' + (r / 10);
+    *pos++ = '0' + (r % 10);
+  } else {
+    *pos++ = '0' + r;
+  }
+  *pos++ = ';';
+  if (g >= 100) {
+    *pos++ = '0' + (g / 100);
+    *pos++ = '0' + ((g / 10) % 10);
+    *pos++ = '0' + (g % 10);
+  } else if (g >= 10) {
+    *pos++ = '0' + (g / 10);
+    *pos++ = '0' + (g % 10);
+  } else {
+    *pos++ = '0' + g;
+  }
+  *pos++ = ';';
+  if (b >= 100) {
+    *pos++ = '0' + (b / 100);
+    *pos++ = '0' + ((b / 10) % 10);
+    *pos++ = '0' + (b % 10);
+  } else if (b >= 10) {
+    *pos++ = '0' + (b / 10);
+    *pos++ = '0' + (b % 10);
+  } else {
+    *pos++ = '0' + b;
+  }
+  *pos++ = 'm';
+  return pos;
+}
+
+// Thread-local storage for AVX2 working buffers
+// These stay in L1 cache and are reused across function calls
+static __thread uint8_t avx2_r_buffer[32] __attribute__((aligned(32)));
+static __thread uint8_t avx2_g_buffer[32] __attribute__((aligned(32)));
+static __thread uint8_t avx2_b_buffer[32] __attribute__((aligned(32)));
+static __thread uint8_t avx2_luminance_buffer[32] __attribute__((aligned(32)));
+
 // Optimized AVX2 function to load 32 RGB pixels and separate channels
-// IMPORTANT: Simple loops vectorize better than manual unrolling!
+// Uses simple loop that auto-vectorizes to VMOVDQU + VPSHUFB
 static inline void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixels, uint8_t *__restrict r_out,
                                              uint8_t *__restrict g_out, uint8_t *__restrict b_out) {
-  // CRITICAL PERFORMANCE NOTE:
-  // Testing reveals that manual unrolling PREVENTS vectorization!
-  // - Manual unrolling: generates 96 scalar MOVZBL instructions (30x slower)
-  // - Simple loop: generates VMOVDQU + VPSHUFB SIMD instructions (30x faster)
-  //
-  // The compiler auto-vectorizes this simple pattern into:
-  // 1. VMOVDQU - bulk load pixel data into SIMD registers
-  // 2. VPSHUFB - shuffle bytes to extract R, G, B channels
-  // 3. VMOVDQU - store separated channels
-  //
-  // DO NOT manually unroll this loop - it breaks SIMD optimization!
-
+  // Simple loop that compiler auto-vectorizes into efficient SIMD
   for (int i = 0; i < 32; i++) {
     r_out[i] = pixels[i].r;
     g_out[i] = pixels[i].g;
@@ -34,9 +164,7 @@ static inline void avx2_load_rgb32_optimized(const rgb_pixel_t *__restrict pixel
   }
 }
 
-// AVX2 function to compute luminance for 32 pixels using accurate coefficients
-// Input: 32 RGB values in separate arrays
-// Output: 32 luminance values (0-255 range)
+// AVX2 function to compute luminance for 32 pixels
 static inline void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_t *g_vals, const uint8_t *b_vals,
                                              uint8_t *luminance_out) {
   // Load all 32 RGB values into AVX2 registers
@@ -78,33 +206,7 @@ static inline void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_
   _mm256_storeu_si256((__m256i *)luminance_out, luma_final);
 }
 
-// Process 32 pixels: extract RGB, compute luminance, store character indices
-// Returns updated pixel index
-static inline void avx2_process_32_pixels(const rgb_pixel_t *pixels, uint8_t *char_indices, uint8_t *r_buffer,
-                                          uint8_t *g_buffer, uint8_t *b_buffer, bool store_rgb) {
-  // Extract RGB channels
-  uint8_t r_vals[32], g_vals[32], b_vals[32];
-  avx2_load_rgb32_optimized(pixels, r_vals, g_vals, b_vals);
-
-  // Store RGB if needed (for color modes)
-  if (store_rgb && r_buffer && g_buffer && b_buffer) {
-    memcpy(r_buffer, r_vals, 32);
-    memcpy(g_buffer, g_vals, 32);
-    memcpy(b_buffer, b_vals, 32);
-  }
-
-  // Compute luminance
-  uint8_t luminance_vals[32];
-  avx2_compute_luminance_32(r_vals, g_vals, b_vals, luminance_vals);
-
-  // Convert to character indices (0-63 range)
-  for (int i = 0; i < 32; i++) {
-    char_indices[i] = luminance_vals[i] >> 2;
-  }
-}
-
-// AVX2 optimized monochrome renderer with single-pass approach
-// Process pixels and emit output immediately for better cache locality
+// Single-pass AVX2 monochrome renderer with immediate emission
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars) {
   if (!image || !image->pixels || !ascii_chars) {
     return NULL;
@@ -126,111 +228,140 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
 
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
-  // Use outbuf_t for efficient UTF-8 RLE emission
-  outbuf_t ob = {0};
-  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
-  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
-  if (!ob.buf) {
+  // Use malloc for output buffer (will be freed by caller)
+  size_t output_size = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
+
+  char *output = (char *)malloc(output_size);
+  if (!output) {
     log_error("Failed to allocate output buffer for AVX2 rendering");
     return NULL;
   }
 
+  char *pos = output;
+
   // Process row by row for better cache locality
-  for (uint32_t y = 0; y < (uint32_t)h; y++) {
+  for (int y = 0; y < h; y++) {
     const rgb_pixel_t *row_pixels = &pixels[y * w];
-    uint32_t x = 0;
+    int x = 0;
 
     // AVX2 fast path: process 32 pixels at a time
-    if (w >= 32) {
-      // Small buffer for 32 pixels (stays in L1 cache)
-      uint8_t luma_indices[32];
+    while (x + 31 < w) {
+      // Process 32 pixels with AVX2 using thread-local buffers
+      avx2_load_rgb32_optimized(&row_pixels[x], avx2_r_buffer, avx2_g_buffer, avx2_b_buffer);
+      avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
 
-      while (x + 31 < (uint32_t)w) {
-        // Process 32 pixels with AVX2
-        avx2_process_32_pixels(&row_pixels[x], luma_indices, NULL, NULL, NULL, false);
+      // Convert to character indices and emit immediately
+      int i = 0;
+      while (i < 32) {
+        const uint8_t luma_idx = avx2_luminance_buffer[i] >> 2; // 0-63
+        const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
-        // Immediately emit these 32 characters with RLE
-        uint32_t chunk_pos = 0;
-        while (chunk_pos < 32 && x + chunk_pos < (uint32_t)w) {
-          const uint8_t luma_idx = luma_indices[chunk_pos];
-          const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
-          const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
-
-          // Find run length within this chunk
-          uint32_t run_end = chunk_pos + 1;
-          while (run_end < 32 && x + run_end < (uint32_t)w) {
-            const uint8_t next_luma_idx = luma_indices[run_end];
-            const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
-            if (next_char_idx != char_idx)
-              break;
-            run_end++;
-          }
-          uint32_t run = (uint32_t)(run_end - chunk_pos);
-
-          // Emit UTF-8 character with RLE
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-          if (rep_is_profitable(run)) {
-            emit_rep(&ob, run - 1);
-          } else {
-            for (uint32_t k = 1; k < run; k++) {
-              ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
-            }
-          }
-          chunk_pos = run_end;
+        // Find run length within this chunk
+        int run_end = i + 1;
+        while (run_end < 32 && x + run_end < w) {
+          const uint8_t next_luma_idx = avx2_luminance_buffer[run_end] >> 2;
+          if (next_luma_idx != luma_idx)
+            break;
+          run_end++;
         }
-        x += 32;
+        int run = run_end - i;
+
+        // Emit UTF-8 character with RLE
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
+
+        if (rep_is_profitable(run)) {
+          *pos++ = '\x1b';
+          *pos++ = '[';
+          // Emit run count (run - 1 for REP command)
+          uint32_t rep_count = run - 1;
+          if (rep_count >= 100) {
+            *pos++ = '0' + (rep_count / 100);
+            *pos++ = '0' + ((rep_count / 10) % 10);
+            *pos++ = '0' + (rep_count % 10);
+          } else if (rep_count >= 10) {
+            *pos++ = '0' + (rep_count / 10);
+            *pos++ = '0' + (rep_count % 10);
+          } else {
+            *pos++ = '0' + rep_count;
+          }
+          *pos++ = 'b';
+        } else {
+          // Emit remaining characters
+          for (int k = 1; k < run; k++) {
+            memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+            pos += char_info->byte_len;
+          }
+        }
+        i = run_end;
       }
+      x += 32;
     }
 
     // Scalar processing for remaining pixels (< 32)
-    while (x < (uint32_t)w) {
+    while (x < w) {
       const rgb_pixel_t *p = &row_pixels[x];
       const int luminance = (LUMA_RED * p->r + LUMA_GREEN * p->g + LUMA_BLUE * p->b + 128) >> 8;
       const uint8_t luma_idx = luminance >> 2; // 0-255 -> 0-63
-      const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
       const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       // Find run length for RLE
-      uint32_t j = x + 1;
-      while (j < (uint32_t)w) {
+      int j = x + 1;
+      while (j < w) {
         const rgb_pixel_t *next_p = &row_pixels[j];
         const int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b + 128) >> 8;
         const uint8_t next_luma_idx = next_luminance >> 2;
-        const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
-        if (next_char_idx != char_idx)
+        if (next_luma_idx != luma_idx)
           break;
         j++;
       }
-      uint32_t run = j - x;
+      int run = j - x;
 
       // Emit UTF-8 character with RLE
-      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+      memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+      pos += char_info->byte_len;
+
       if (rep_is_profitable(run)) {
-        emit_rep(&ob, run - 1);
+        *pos++ = '\x1b';
+        *pos++ = '[';
+        // Emit run count (run - 1 for REP command)
+        uint32_t rep_count = run - 1;
+        if (rep_count >= 100) {
+          *pos++ = '0' + (rep_count / 100);
+          *pos++ = '0' + ((rep_count / 10) % 10);
+          *pos++ = '0' + (rep_count % 10);
+        } else if (rep_count >= 10) {
+          *pos++ = '0' + (rep_count / 10);
+          *pos++ = '0' + (rep_count % 10);
+        } else {
+          *pos++ = '0' + rep_count;
+        }
+        *pos++ = 'b';
       } else {
-        for (uint32_t k = 1; k < run; k++) {
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        for (int k = 1; k < run; k++) {
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
         }
       }
       x = j;
     }
 
-    // Add newline after each row (except last)
-    if (y < (uint32_t)h - 1) {
-      ob_putc(&ob, '\n');
+    // Add reset sequence and newline after each row (except last)
+    *pos++ = '\x1b';
+    *pos++ = '[';
+    *pos++ = '0';
+    *pos++ = 'm';
+    if (y < h - 1) {
+      *pos++ = '\n';
     }
   }
 
-  ob_term(&ob);
-  return ob.buf;
-}
-// Removed unused function avx2_rgb_to_256color_pure_32bit
-// The function was expecting uint32_t arrays but we work with uint8_t buffers
-// 256-color conversion is now precomputed in Pass 1
+  *pos = '\0'; // Null terminate
 
-// AVX2 color implementation with two-pass optimization:
-// Pass 1: Process ALL pixels with AVX2 SIMD (compute luminance/character indices)
-// Pass 2: Generate ANSI output from stored results
+  return output;
+}
+
+// Single-pass AVX2 color renderer with immediate emission
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars) {
   if (!image || !image->pixels) {
@@ -239,7 +370,6 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   const int width = image->w;
   const int height = image->h;
-  const size_t total_pixels = (size_t)width * (size_t)height;
 
   if (width <= 0 || height <= 0) {
     char *empty;
@@ -255,110 +385,182 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
     return NULL;
   }
 
-  // =============================================================================
-  // PASS 1: Process ALL pixels with AVX2 SIMD first
-  // Store intermediate results to maximize SIMD throughput
-  // =============================================================================
-
-  // Allocate intermediate buffers for the entire image
-  uint8_t *char_indices; // Character index for each pixel (0-63)
-  uint8_t *r_buffer = NULL, *g_buffer = NULL, *b_buffer = NULL;
-  uint8_t *color256_indices = NULL; // Precomputed 256-color indices
-
-  SAFE_MALLOC(char_indices, total_pixels, uint8_t *);
-
-  // Store RGB values for both modes to avoid re-reading pixels in pass 2
-  SAFE_MALLOC(r_buffer, total_pixels, uint8_t *);
-  SAFE_MALLOC(g_buffer, total_pixels, uint8_t *);
-  SAFE_MALLOC(b_buffer, total_pixels, uint8_t *);
-
-  // Allocate 256-color index buffer if needed
-  if (use_256color) {
-    SAFE_MALLOC(color256_indices, total_pixels, uint8_t *);
-  }
-
-  const rgb_pixel_t *pixels_data = (const rgb_pixel_t *)image->pixels;
-
-  // Process entire image with AVX2 SIMD
-  size_t pixel_idx = 0;
-
-  // Main AVX2 loop - process 32 pixels at a time for maximum throughput
-  for (; pixel_idx + 31 < total_pixels; pixel_idx += 32) {
-    // Use shared helper function to process 32 pixels and store RGB
-    avx2_process_32_pixels(&pixels_data[pixel_idx], &char_indices[pixel_idx], &r_buffer[pixel_idx],
-                           &g_buffer[pixel_idx], &b_buffer[pixel_idx], true);
-  }
-
-  // Handle remaining pixels with scalar code
-  for (; pixel_idx < total_pixels; pixel_idx++) {
-    const rgb_pixel_t *p = &pixels_data[pixel_idx];
-    uint8_t R = p->r, G = p->g, B = p->b;
-
-    // Store RGB for both modes (needed in Pass 2)
-    r_buffer[pixel_idx] = R;
-    g_buffer[pixel_idx] = G;
-    b_buffer[pixel_idx] = B;
-
-    uint8_t Y = (uint8_t)((77 * R + 150 * G + 29 * B + 128) >> 8);
-    char_indices[pixel_idx] = Y >> 2; // 0-63 index
-
-    // Precompute 256-color index if needed
-    if (use_256color) {
-      color256_indices[pixel_idx] = rgb_to_256color(R, G, B);
-    }
-  }
-
-  // =============================================================================
-  // PASS 2: Generate ANSI output from stored results
-  // This pass focuses purely on string generation without SIMD interference
-  // =============================================================================
-
-  // Initialize output buffer with improved size calculation
-  outbuf_t ob = {0};
-  // Calculate more accurate buffer size:
-  // - For 256-color mode: ~6 bytes per pixel (ESC[38;5;NNNm + char)
-  // - For true color mode: ~20 bytes per pixel (ESC[38;2;RRR;GGG;BBBm + char)
-  // - Add space for newlines and potential RLE optimization
+  // Use malloc for output buffer (will be freed by caller)
   size_t bytes_per_pixel = use_256color ? 10u : 25u; // Conservative estimates
-  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 1024u;
-  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
-  if (!ob.buf) {
-    free(char_indices);
-    if (r_buffer) {
-      free(r_buffer);
-      free(g_buffer);
-      free(b_buffer);
-    }
+  size_t output_size = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 1024u;
+
+  char *output = (char *)malloc(output_size);
+  if (!output) {
+    log_error("Failed to allocate output buffer for AVX2 color rendering");
     return NULL;
   }
+
+  char *pos = output;
+  const rgb_pixel_t *pixels_data = (const rgb_pixel_t *)image->pixels;
 
   // Track current color state
   int curR = -1, curG = -1, curB = -1;
   int cur_color_idx = -1;
 
-  // Generate output row by row
+  // Generate output row by row with single-pass processing
   for (int y = 0; y < height; y++) {
-    int row_start = y * width;
+    const rgb_pixel_t *row_pixels = &pixels_data[y * width];
     int x = 0;
 
+    // AVX2 fast path: process 32 pixels at a time
+    while (x + 31 < width) {
+      // Process 32 pixels with AVX2 using thread-local buffers
+      avx2_load_rgb32_optimized(&row_pixels[x], avx2_r_buffer, avx2_g_buffer, avx2_b_buffer);
+      avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
+
+      // Process each pixel in the chunk
+      int i = 0;
+      while (i < 32) {
+        const uint8_t R = avx2_r_buffer[i];
+        const uint8_t G = avx2_g_buffer[i];
+        const uint8_t B = avx2_b_buffer[i];
+        const uint8_t luma_idx = avx2_luminance_buffer[i] >> 2;
+        const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
+        const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+
+        if (use_256color) {
+          uint8_t color_idx = rgb_to_256color(R, G, B);
+
+          // Find run length
+          int run = 1;
+          while (i + run < 32 && x + run < width) {
+            const uint8_t next_R = avx2_r_buffer[i + run];
+            const uint8_t next_G = avx2_g_buffer[i + run];
+            const uint8_t next_B = avx2_b_buffer[i + run];
+            const uint8_t next_luma_idx = avx2_luminance_buffer[i + run] >> 2;
+            const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+            if (next_char_idx != char_idx)
+              break;
+            if (rgb_to_256color(next_R, next_G, next_B) != color_idx)
+              break;
+            run++;
+          }
+
+          // Set color if changed
+          if (color_idx != cur_color_idx) {
+            if (use_background) {
+              pos = emit_set_256_color_bg_simple(pos, color_idx);
+            } else {
+              pos = emit_set_256_color_fg_simple(pos, color_idx);
+            }
+            cur_color_idx = color_idx;
+          }
+
+          // Emit character with RLE
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
+
+          if (rep_is_profitable(run)) {
+            *pos++ = '\x1b';
+            *pos++ = '[';
+            // Emit run count (run - 1 for REP command)
+            uint32_t rep_count = run - 1;
+            if (rep_count >= 100) {
+              *pos++ = '0' + (rep_count / 100);
+              *pos++ = '0' + ((rep_count / 10) % 10);
+              *pos++ = '0' + (rep_count % 10);
+            } else if (rep_count >= 10) {
+              *pos++ = '0' + (rep_count / 10);
+              *pos++ = '0' + (rep_count % 10);
+            } else {
+              *pos++ = '0' + rep_count;
+            }
+            *pos++ = 'b';
+          } else {
+            for (int k = 1; k < run; k++) {
+              memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+              pos += char_info->byte_len;
+            }
+          }
+          i += run;
+        } else {
+          // Truecolor mode
+          // Find run length
+          int run = 1;
+          while (i + run < 32 && x + run < width) {
+            const uint8_t next_R = avx2_r_buffer[i + run];
+            const uint8_t next_G = avx2_g_buffer[i + run];
+            const uint8_t next_B = avx2_b_buffer[i + run];
+            const uint8_t next_luma_idx = avx2_luminance_buffer[i + run] >> 2;
+            const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+            if (next_char_idx != char_idx)
+              break;
+            if (next_R != R || next_G != G || next_B != B)
+              break;
+            run++;
+          }
+
+          // Set color if changed
+          if ((int)R != curR || (int)G != curG || (int)B != curB) {
+            if (use_background) {
+              pos = emit_set_truecolor_bg_simple(pos, R, G, B);
+            } else {
+              pos = emit_set_truecolor_fg_simple(pos, R, G, B);
+            }
+            curR = R;
+            curG = G;
+            curB = B;
+          }
+
+          // Emit character with RLE
+          memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+          pos += char_info->byte_len;
+
+          if (rep_is_profitable(run)) {
+            *pos++ = '\x1b';
+            *pos++ = '[';
+            // Emit run count (run - 1 for REP command)
+            uint32_t rep_count = run - 1;
+            if (rep_count >= 100) {
+              *pos++ = '0' + (rep_count / 100);
+              *pos++ = '0' + ((rep_count / 10) % 10);
+              *pos++ = '0' + (rep_count % 10);
+            } else if (rep_count >= 10) {
+              *pos++ = '0' + (rep_count / 10);
+              *pos++ = '0' + (rep_count % 10);
+            } else {
+              *pos++ = '0' + rep_count;
+            }
+            *pos++ = 'b';
+          } else {
+            for (int k = 1; k < run; k++) {
+              memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+              pos += char_info->byte_len;
+            }
+          }
+          i += run;
+        }
+      }
+      x += 32;
+    }
+
+    // Scalar processing for remaining pixels (< 32)
     while (x < width) {
-      int idx = row_start + x;
-      uint8_t luma_idx = char_indices[idx];                          // This is actually the luminance index (0-63)
-      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];      // Map to character index for palette
-      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx]; // Use luma_idx for cache lookup
+      const rgb_pixel_t *p = &row_pixels[x];
+      const uint8_t R = p->r, G = p->g, B = p->b;
+      const int luminance = (LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128) >> 8;
+      const uint8_t luma_idx = luminance >> 2;
+      const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
 
       if (use_256color) {
-        // 256-color mode: use precomputed color indices from Pass 1
-        uint8_t color_idx = color256_indices[idx];
+        uint8_t color_idx = rgb_to_256color(R, G, B);
 
         // Find run length
-        uint32_t run = 1;
-        while (x + run < (uint32_t)width) {
-          uint8_t next_luma_idx = char_indices[idx + run];
-          uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+        int run = 1;
+        while (x + run < width) {
+          const rgb_pixel_t *next_p = &row_pixels[x + run];
+          const int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b + 128) >> 8;
+          const uint8_t next_luma_idx = next_luminance >> 2;
+          const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
           if (next_char_idx != char_idx)
             break;
-          if (color256_indices[idx + run] != color_idx)
+          if (rgb_to_256color(next_p->r, next_p->g, next_p->b) != color_idx)
             break;
           run++;
         }
@@ -366,38 +568,52 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         // Set color if changed
         if (color_idx != cur_color_idx) {
           if (use_background) {
-            emit_set_256_color_bg(&ob, color_idx);
+            pos = emit_set_256_color_bg_simple(pos, color_idx);
           } else {
-            emit_set_256_color_fg(&ob, color_idx);
+            pos = emit_set_256_color_fg_simple(pos, color_idx);
           }
           cur_color_idx = color_idx;
         }
 
         // Emit character with RLE
-        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
+
         if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
+          *pos++ = '\x1b';
+          *pos++ = '[';
+          // Emit run count (run - 1 for REP command)
+          uint32_t rep_count = run - 1;
+          if (rep_count >= 100) {
+            *pos++ = '0' + (rep_count / 100);
+            *pos++ = '0' + ((rep_count / 10) % 10);
+            *pos++ = '0' + (rep_count % 10);
+          } else if (rep_count >= 10) {
+            *pos++ = '0' + (rep_count / 10);
+            *pos++ = '0' + (rep_count % 10);
+          } else {
+            *pos++ = '0' + rep_count;
+          }
+          *pos++ = 'b';
         } else {
-          for (uint32_t k = 1; k < run; k++) {
-            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+          for (int k = 1; k < run; k++) {
+            memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+            pos += char_info->byte_len;
           }
         }
         x += run;
-
       } else {
-        // Truecolor mode: use buffered RGB values
-        uint8_t R = r_buffer[idx];
-        uint8_t G = g_buffer[idx];
-        uint8_t B = b_buffer[idx];
-
+        // Truecolor mode
         // Find run length
-        uint32_t run = 1;
-        while (x + run < (uint32_t)width) {
-          uint8_t next_luma_idx = char_indices[idx + run];
-          uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
+        int run = 1;
+        while (x + run < width) {
+          const rgb_pixel_t *next_p = &row_pixels[x + run];
+          const int next_luminance = (LUMA_RED * next_p->r + LUMA_GREEN * next_p->g + LUMA_BLUE * next_p->b + 128) >> 8;
+          const uint8_t next_luma_idx = next_luminance >> 2;
+          const uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx];
           if (next_char_idx != char_idx)
             break;
-          if (r_buffer[idx + run] != R || g_buffer[idx + run] != G || b_buffer[idx + run] != B)
+          if (next_p->r != R || next_p->g != G || next_p->b != B)
             break;
           run++;
         }
@@ -405,9 +621,9 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         // Set color if changed
         if ((int)R != curR || (int)G != curG || (int)B != curB) {
           if (use_background) {
-            emit_set_truecolor_bg(&ob, R, G, B);
+            pos = emit_set_truecolor_bg_simple(pos, R, G, B);
           } else {
-            emit_set_truecolor_fg(&ob, R, G, B);
+            pos = emit_set_truecolor_fg_simple(pos, R, G, B);
           }
           curR = R;
           curG = G;
@@ -415,41 +631,54 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         }
 
         // Emit character with RLE
-        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+        memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+        pos += char_info->byte_len;
+
         if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
+          *pos++ = '\x1b';
+          *pos++ = '[';
+          // Emit run count (run - 1 for REP command)
+          uint32_t rep_count = run - 1;
+          if (rep_count >= 100) {
+            *pos++ = '0' + (rep_count / 100);
+            *pos++ = '0' + ((rep_count / 10) % 10);
+            *pos++ = '0' + (rep_count % 10);
+          } else if (rep_count >= 10) {
+            *pos++ = '0' + (rep_count / 10);
+            *pos++ = '0' + (rep_count % 10);
+          } else {
+            *pos++ = '0' + rep_count;
+          }
+          *pos++ = 'b';
         } else {
-          for (uint32_t k = 1; k < run; k++) {
-            ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+          for (int k = 1; k < run; k++) {
+            memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
+            pos += char_info->byte_len;
           }
         }
         x += run;
       }
     }
 
+    // Add reset sequence and newline after each row (except last)
+    *pos++ = '\x1b';
+    *pos++ = '[';
+    *pos++ = '0';
+    *pos++ = 'm';
     if (y < height - 1) {
-      ob_write(&ob, "\n", 1);
+      *pos++ = '\n';
     }
   }
 
-  ob_term(&ob);
+  *pos = '\0'; // Null terminate
 
-  // Clean up intermediate buffers
-  free(char_indices);
-  free(r_buffer);
-  free(g_buffer);
-  free(b_buffer);
-  if (color256_indices) {
-    free(color256_indices);
-  }
-
-  return ob.buf;
+  return output;
 }
 
 // Destroy AVX2 cache resources (called at program shutdown)
 void avx2_caches_destroy(void) {
   // AVX2 currently uses shared caches from common.c, so no specific cleanup needed
-  log_debug("AVX2_CACHE: AVX2 caches cleaned up");
+  log_debug("AVX2_CACHE: AVX2 optimized caches cleaned up");
 }
 
 #endif /* SIMD_SUPPORT_AVX2 */

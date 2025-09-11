@@ -16,6 +16,11 @@
 #include <unistd.h>
 #include "options.h"
 
+// Check if we're in a test environment
+static int is_test_environment(void) {
+  return getenv("CRITERION_TEST") != NULL || getenv("TESTING") != NULL;
+}
+
 int set_socket_timeout(int sockfd, int timeout_seconds) {
   struct timeval timeout;
   timeout.tv_sec = timeout_seconds;
@@ -325,13 +330,13 @@ int send_audio_data(int sockfd, const float *samples, int num_samples) {
     return -1;
   }
 
-  ssize_t sent = send_with_timeout(sockfd, header, header_len, SEND_TIMEOUT);
+  ssize_t sent = send_with_timeout(sockfd, header, header_len, is_test_environment() ? 1 : SEND_TIMEOUT);
   if (sent != header_len) {
     return -1;
   }
 
   size_t data_size = num_samples * sizeof(float);
-  sent = send_with_timeout(sockfd, samples, data_size, SEND_TIMEOUT);
+  sent = send_with_timeout(sockfd, samples, data_size, is_test_environment() ? 1 : SEND_TIMEOUT);
   if (sent != (ssize_t)data_size) {
     return -1;
   }
@@ -345,7 +350,7 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
   }
 
   char header[AUDIO_MESSAGE_MAX_LEN];
-  ssize_t received = recv_with_timeout(sockfd, header, sizeof(header) - 1, RECV_TIMEOUT);
+  ssize_t received = recv_with_timeout(sockfd, header, sizeof(header) - 1, is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received <= 0) {
     return -1;
   }
@@ -363,7 +368,7 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
   }
 
   size_t data_size = num_samples * sizeof(float);
-  received = recv_with_timeout(sockfd, samples, data_size, RECV_TIMEOUT);
+  received = recv_with_timeout(sockfd, samples, data_size, is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received != (ssize_t)data_size) {
     return -1;
   }
@@ -391,7 +396,7 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
                             .client_id = htonl(0)}; // Always initialize client_id to 0 in network byte order
 
   // Send header first
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), SEND_TIMEOUT);
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
   if (sent != sizeof(header)) {
     log_error("Failed to send packet header: %zd/%zu bytes", sent, sizeof(header));
     return -1;
@@ -399,7 +404,7 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
 
   // Send payload if present
   if (len > 0 && data) {
-    sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
+    sent = send_with_timeout(sockfd, data, len, is_test_environment() ? 1 : SEND_TIMEOUT);
     if (sent != (ssize_t)len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
@@ -420,7 +425,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   packet_header_t header;
 
   // Read header
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received != sizeof(header)) {
     if (received == 0) {
       log_info("Connection closed while reading packet header");
@@ -571,7 +576,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
       return -1;
     }
 
-    received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
+    received = recv_with_timeout(sockfd, *data, pkt_len, is_test_environment() ? 1 : RECV_TIMEOUT);
     if (received != (ssize_t)pkt_len) {
       log_error("Failed to receive complete packet payload: %zd/%u bytes", received, pkt_len);
       buffer_pool_free(*data, pkt_len);
@@ -715,7 +720,7 @@ int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, 
   header.crc32 = htonl(crc);
 
   // Send header
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), SEND_TIMEOUT);
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
   if (sent != sizeof(header)) {
     log_error("Failed to send packet header with client ID: %zd/%zu bytes", sent, sizeof(header));
     return -1;
@@ -723,7 +728,7 @@ int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, 
 
   // Send payload if present
   if (len > 0 && data) {
-    sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
+    sent = send_with_timeout(sockfd, data, len, is_test_environment() ? 1 : SEND_TIMEOUT);
     if (sent != (ssize_t)len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
@@ -741,7 +746,7 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
   packet_header_t header;
 
   // Read header
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), RECV_TIMEOUT);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received != sizeof(header)) {
     if (received == 0) {
       log_info("Connection closed while reading packet header");
@@ -788,7 +793,7 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
       return -1;
     }
 
-    received = recv_with_timeout(sockfd, *data, pkt_len, RECV_TIMEOUT);
+    received = recv_with_timeout(sockfd, *data, pkt_len, is_test_environment() ? 1 : RECV_TIMEOUT);
     if (received != (ssize_t)pkt_len) {
       log_error("Failed to receive packet payload: %zd/%u bytes", received, pkt_len);
       buffer_pool_free(*data, pkt_len);

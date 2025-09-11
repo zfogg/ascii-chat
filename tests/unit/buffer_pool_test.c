@@ -4,19 +4,10 @@
 
 #include "common.h"
 #include "buffer_pool.h"
+#include "tests/logging.h"
 
-void setup_buffer_pool_quiet_logging(void);
-void restore_buffer_pool_logging(void);
-
-TestSuite(buffer_pool, .init = setup_buffer_pool_quiet_logging, .fini = restore_buffer_pool_logging);
-
-void setup_buffer_pool_quiet_logging(void) {
-    log_set_level(LOG_FATAL);
-}
-
-void restore_buffer_pool_logging(void) {
-    log_set_level(LOG_DEBUG);
-}
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(buffer_pool);
 
 // =============================================================================
 // Buffer Pool Creation and Destruction Tests

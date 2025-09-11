@@ -10,7 +10,7 @@
 #include "curses.h"
 
 #include "ascii.h"
-#include "ascii_simd.h"
+#include "simd/ascii_simd.h"
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"
@@ -28,14 +28,23 @@ asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ascii_write_init(int fd) {
-  // Skip terminal control sequences in snapshot mode - just print raw ASCII
-  if (!opt_snapshot_mode) {
+asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
+  // Validate file descriptor
+  if (fd < 0) {
+    log_error("Invalid file descriptor %d", fd);
+    return ASCIICHAT_ERR_INVALID_PARAM;
+  }
+
+  // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
+  if (!opt_snapshot_mode && reset_terminal && getenv("TESTING") == NULL) {
     console_clear(fd);
     cursor_reset(fd);
 
     struct termios termios;
-    tcgetattr(fd, &termios);
+    if (tcgetattr(fd, &termios) != 0) {
+      log_error("Failed to get terminal attributes for fd %d", fd);
+      return ASCIICHAT_ERR_TERMINAL;
+    }
     termios.c_lflag &= ~ECHO;
     tcsetattr(fd, TCSANOW, &termios);
     // Disable blink for the terminal cursor
@@ -56,7 +65,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
                     const char luminance_palette[256]) {
   if (original == NULL || !palette_chars || !luminance_palette) {
     log_error("ascii_convert: invalid parameters");
-    exit(ASCIICHAT_ERR_INVALID_PARAM);
+    return NULL;
   }
 
   // Start with the target dimensions requested by the user (or detected from
@@ -247,13 +256,14 @@ asciichat_error_t ascii_write(const char *frame) {
     return ASCIICHAT_ERR_INVALID_PARAM;
   }
 
-  // Skip cursor reset in snapshot mode - just print raw ASCII
-  if (!opt_snapshot_mode) {
+  // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
+  if (!opt_snapshot_mode && getenv("TESTING") == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
   size_t frame_len = strlen(frame);
-  if (fwrite(frame, 1, frame_len, stdout) != frame_len) {
+  size_t written = fwrite(frame, 1, frame_len, stdout);
+  if (written != frame_len) {
     log_error("Failed to write ASCII frame");
     return ASCIICHAT_ERR_TERMINAL;
   }
@@ -261,11 +271,11 @@ asciichat_error_t ascii_write(const char *frame) {
   return ASCIICHAT_OK;
 }
 
-void ascii_write_destroy(int fd) {
+void ascii_write_destroy(int fd, bool reset_terminal) {
   // console_clear(fd);
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
-  if (!opt_snapshot_mode) {
+  if (!opt_snapshot_mode && reset_terminal) {
     // FIXME: make cursor_show() work
     // cursor_show(fd); // this doesn't work
     printf("\033[?25h"); // this works
@@ -398,9 +408,16 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     }
 
     // Copy the source frame into the result, line by line, centering it
+    // Handle NULL frame_data gracefully
     const char *src_data = sources[0].frame_data;
     int src_pos = 0;
     int src_size = (int)sources[0].frame_size;
+
+    // If source data is NULL or empty, just return the empty frame
+    if (!src_data || src_size <= 0) {
+      *out_size = target_size - 1; // Don't count null terminator
+      return result;
+    }
 
     // Count lines in source to calculate vertical padding
     int src_lines = 0;
@@ -463,9 +480,15 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     // Too small for grid layout, just use first source
     char *result;
     SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
-    memcpy(result, sources[0].frame_data, sources[0].frame_size);
-    result[sources[0].frame_size] = '\0';
-    *out_size = sources[0].frame_size;
+    if (sources[0].frame_data && sources[0].frame_size > 0) {
+      memcpy(result, sources[0].frame_data, sources[0].frame_size);
+      result[sources[0].frame_size] = '\0';
+      *out_size = sources[0].frame_size;
+    } else {
+      // Handle NULL or empty frame data
+      result[0] = '\0';
+      *out_size = 0;
+    }
     return result;
   }
 

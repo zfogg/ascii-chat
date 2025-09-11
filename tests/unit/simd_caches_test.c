@@ -11,18 +11,17 @@
 #include "common.h"
 #include "hashtable.h"
 #include "image2ascii/simd/common.h"
-#include "ascii_simd.h"
-
+#include "image2ascii/simd/ascii_simd.h"
+#include "tests/logging.h"
 
 #ifdef SIMD_SUPPORT_NEON
 #include "image2ascii/simd/neon.h"
 #endif
 
-void setup_cache_logging(void);
-void restore_cache_logging(void);
 void segfault_handler(int sig);
 
-TestSuite(simd_caches, .init = setup_cache_logging, .fini = restore_cache_logging);
+// Use the enhanced macro to create complete test suite with basic quiet logging
+TEST_SUITE_WITH_QUIET_LOGGING(simd_caches);
 
 void segfault_handler(int sig) {
     void *array[50];

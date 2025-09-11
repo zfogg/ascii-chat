@@ -147,12 +147,10 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
 
 void ducking_free(ducking_t *duck) {
   if (duck->envelope) {
-    free(duck->envelope);
-    duck->envelope = NULL;
+    SAFE_FREE(duck->envelope);
   }
   if (duck->gain) {
-    free(duck->gain);
-    duck->gain = NULL;
+    SAFE_FREE(duck->gain);
   }
 }
 
@@ -195,8 +193,22 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
 
 // Mixer implementation
 mixer_t *mixer_create(int max_sources, int sample_rate) {
+  // Validate parameters
+  if (max_sources <= 0 || max_sources > MIXER_MAX_SOURCES) {
+    log_error("Invalid max_sources: %d (must be 1-%d)", max_sources, MIXER_MAX_SOURCES);
+    return NULL;
+  }
+
+  if (sample_rate <= 0 || sample_rate > 192000) {
+    log_error("Invalid sample_rate: %d (must be 1-192000)", sample_rate);
+    return NULL;
+  }
+
   mixer_t *mixer;
   SAFE_MALLOC(mixer, sizeof(mixer_t), mixer_t *);
+  if (!mixer) {
+    return NULL;
+  }
 
   mixer->num_sources = 0;
   mixer->max_sources = max_sources;
@@ -204,8 +216,25 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Allocate source management arrays
   SAFE_MALLOC(mixer->source_buffers, max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
+  if (!mixer->source_buffers) {
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+
   SAFE_MALLOC(mixer->source_ids, max_sources * sizeof(uint32_t), uint32_t *);
+  if (!mixer->source_ids) {
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+
   SAFE_MALLOC(mixer->source_active, max_sources * sizeof(bool), bool *);
+  if (!mixer->source_active) {
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
 
   // Initialize arrays
   memset(mixer->source_buffers, 0, max_sources * sizeof(audio_ring_buffer_t *));
@@ -219,11 +248,11 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (pthread_rwlock_init(&mixer->source_lock, NULL) != 0) {
     log_error("Failed to initialize mixer source lock");
-    free(mixer->source_buffers);
-    free(mixer->source_ids);
-    free(mixer->source_active);
-    free(mixer->mix_buffer);
-    free(mixer);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer->mix_buffer);
+    SAFE_FREE(mixer);
     return NULL;
   }
 
@@ -252,16 +281,11 @@ void mixer_destroy(mixer_t *mixer) {
 
   ducking_free(&mixer->ducking);
 
-  if (mixer->source_buffers)
-    free(mixer->source_buffers);
-  if (mixer->source_ids)
-    free(mixer->source_ids);
-  if (mixer->source_active)
-    free(mixer->source_active);
-  if (mixer->mix_buffer)
-    free(mixer->mix_buffer);
-
-  free(mixer);
+  SAFE_FREE(mixer->source_buffers);
+  SAFE_FREE(mixer->source_ids);
+  SAFE_FREE(mixer->source_active);
+  SAFE_FREE(mixer->mix_buffer);
+  SAFE_FREE(mixer);
   log_info("Audio mixer destroyed");
 }
 
