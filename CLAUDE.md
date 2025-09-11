@@ -159,9 +159,26 @@ cmake --build build --config Debug
 ```
 
 ### Unix/macOS Building
+
+**macOS Make Compatibility Note:**
+macOS ships with GNU Make 3.81 (from 2006) which has known bugs with order-only prerequisites and pattern rules. For reliable builds on macOS, use GNU Make 4.x (`gmake`):
+
+```bash
+# Install GNU Make 4.x on macOS
+brew install make  # Installs as 'gmake' to avoid conflicts
+
+# Use gmake for building on macOS
+gmake clean && gmake debug  # macOS with GNU Make 4.x
+make clean && make debug    # Linux or macOS with Make 3.81 (may have issues)
+```
+
+The GitHub Actions macOS runner has `gmake` pre-installed via the install-deps action. The test runner script (`tests/scripts/run_tests.sh`) automatically detects and uses `gmake` when available on macOS.
+
+**Standard Build Commands:**
 ```bash
 # Clean build (always do this when debugging issues)
-make clean && make debug
+make clean && make debug     # Linux
+gmake clean && gmake debug   # macOS (recommended)
 
 # Format code after changes
 make format
