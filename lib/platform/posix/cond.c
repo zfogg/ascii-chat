@@ -1,7 +1,7 @@
 /**
  * @file cond.c
  * @brief POSIX condition variable implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides POSIX pthread condition variable wrappers for the platform abstraction layer,
  * enabling cross-platform thread synchronization using a unified API.
  */
@@ -18,7 +18,7 @@
  * @return 0 on success, error code on failure
  */
 int cond_init(cond_t *cond) {
-    return pthread_cond_init(&cond->cond, NULL);
+  return pthread_cond_init(&cond->cond, NULL);
 }
 
 /**
@@ -27,7 +27,7 @@ int cond_init(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_destroy(cond_t *cond) {
-    return pthread_cond_destroy(&cond->cond);
+  return pthread_cond_destroy(&cond->cond);
 }
 
 /**
@@ -38,7 +38,7 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
-    return pthread_cond_wait(&cond->cond, &mutex->mutex);
+  return pthread_cond_wait(&cond->cond, &mutex->mutex);
 }
 
 /**
@@ -50,15 +50,15 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec += timeout_ms / 1000;
-    ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-    if (ts.tv_nsec >= 1000000000) {
-        ts.tv_sec++;
-        ts.tv_nsec -= 1000000000;
-    }
-    return pthread_cond_timedwait(&cond->cond, &mutex->mutex, &ts);
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  ts.tv_sec += timeout_ms / 1000;
+  ts.tv_nsec += (timeout_ms % 1000) * 1000000;
+  if (ts.tv_nsec >= 1000000000) {
+    ts.tv_sec++;
+    ts.tv_nsec -= 1000000000;
+  }
+  return pthread_cond_timedwait(&cond->cond, &mutex->mutex, &ts);
 }
 
 /**
@@ -67,7 +67,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
-    return pthread_cond_signal(&cond->cond);
+  return pthread_cond_signal(&cond->cond);
 }
 
 /**
@@ -76,7 +76,7 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
-    return pthread_cond_broadcast(&cond->cond);
+  return pthread_cond_broadcast(&cond->cond);
 }
 
 #endif // !_WIN32

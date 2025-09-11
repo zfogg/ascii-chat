@@ -4,7 +4,7 @@
 /**
  * @file abstraction.h
  * @brief Cross-platform abstraction layer for ASCII-Chat
- * 
+ *
  * This header provides a comprehensive abstraction layer that enables ASCII-Chat
  * to run seamlessly on Windows, Linux, and macOS. It abstracts:
  * - Threading primitives (threads, mutexes, rwlocks, condition variables)
@@ -12,10 +12,10 @@
  * - Terminal I/O operations
  * - System functions (sleep, time, environment variables)
  * - File I/O operations
- * 
+ *
  * The abstraction layer uses compile-time platform detection to select the
  * appropriate implementation for each platform.
- * 
+ *
  * @author ASCII-Chat Development Team
  * @date January 2025
  */
@@ -125,7 +125,7 @@ typedef long long ssize_t;
 /**
  * @defgroup Threading Cross-Platform Threading API
  * @{
- * 
+ *
  * The threading API provides platform-independent thread management, synchronization
  * primitives, and thread-local storage. On Windows, it wraps the Windows Threading
  * API. On POSIX systems (Linux/macOS), it wraps pthreads.

@@ -1,7 +1,7 @@
 /**
  * @file cond.c
  * @brief Windows condition variable implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides Windows Condition Variable wrappers for the platform abstraction layer,
  * enabling cross-platform thread synchronization using a unified API.
  */
@@ -17,8 +17,8 @@
  * @return 0 on success, error code on failure
  */
 int cond_init(cond_t *cond) {
-    InitializeConditionVariable(&cond->cv);
-    return 0;
+  InitializeConditionVariable(&cond->cv);
+  return 0;
 }
 
 /**
@@ -28,9 +28,9 @@ int cond_init(cond_t *cond) {
  * @note Condition variables don't need explicit destruction on Windows
  */
 int cond_destroy(cond_t *cond) {
-    // Condition variables don't need explicit destruction on Windows
-    (void)cond; // Suppress unused parameter warning
-    return 0;
+  // Condition variables don't need explicit destruction on Windows
+  (void)cond; // Suppress unused parameter warning
+  return 0;
 }
 
 /**
@@ -41,7 +41,7 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
-    return SleepConditionVariableCS(&cond->cv, &mutex->cs, INFINITE) ? 0 : -1;
+  return SleepConditionVariableCS(&cond->cv, &mutex->cs, INFINITE) ? 0 : -1;
 }
 
 /**
@@ -53,7 +53,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
-    return SleepConditionVariableCS(&cond->cv, &mutex->cs, timeout_ms) ? 0 : -1;
+  return SleepConditionVariableCS(&cond->cv, &mutex->cs, timeout_ms) ? 0 : -1;
 }
 
 /**
@@ -62,8 +62,8 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
-    WakeConditionVariable(&cond->cv);
-    return 0;
+  WakeConditionVariable(&cond->cv);
+  return 0;
 }
 
 /**
@@ -72,8 +72,8 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
-    WakeAllConditionVariable(&cond->cv);
-    return 0;
+  WakeAllConditionVariable(&cond->cv);
+  return 0;
 }
 
 #endif // _WIN32

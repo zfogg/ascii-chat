@@ -373,4 +373,3 @@ void debug_memory_report(void) {
 }
 
 #endif /* DEBUG_MEMORY */
-
