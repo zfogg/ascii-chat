@@ -83,7 +83,7 @@ typedef long long ssize_t;
 
 // GCC/Clang packed struct support
 #define PACKED_STRUCT_BEGIN
-#define PACKED_STRUCT_END  
+#define PACKED_STRUCT_END
 #define PACKED_ATTR __attribute__((packed))
 #define ALIGNED_ATTR(x) __attribute__((aligned(x)))
 #include <sys/types.h>

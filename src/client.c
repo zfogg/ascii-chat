@@ -430,7 +430,7 @@ tty_info_t get_current_tty(void) {
 #ifndef _WIN32
     result.path = ttyname(result.fd);
 #else
-    result.path = "CON";  // Windows console device
+    result.path = "CON"; // Windows console device
 #endif
     result.owns_fd = false;
     return result;
@@ -1018,14 +1018,14 @@ static void handle_server_state_packet(const void *data, size_t len) {
 // when actual local video/audio capture functionality is added to clients.
 
 int main(int argc, char *argv[]) {
-  
+
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
     fprintf(stderr, "FATAL: Failed to initialize platform\n");
     return 1;
   }
   atexit(platform_cleanup);
-  
+
   // Parse options first to check for quiet mode
   options_init(argc, argv, true);
 
