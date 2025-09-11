@@ -101,7 +101,7 @@ jobs:
         os-name: ${{ matrix.os-name }}
         build-type: ${{ matrix.build_type }}
         junit-file: junit.xml
-        coverage-files: './*.gcov'
+        coverage-files: './**/*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
 
