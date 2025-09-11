@@ -1,7 +1,7 @@
 /**
  * @file mutex.c
  * @brief Windows mutex implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides Windows Critical Section wrappers for the platform abstraction layer,
  * enabling cross-platform mutex synchronization using a unified API.
  */
@@ -17,8 +17,8 @@
  * @return 0 on success, error code on failure
  */
 int mutex_init(mutex_t *mutex) {
-    InitializeCriticalSection(&mutex->cs);
-    return 0;
+  InitializeCriticalSection(&mutex->cs);
+  return 0;
 }
 
 /**
@@ -27,8 +27,8 @@ int mutex_init(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_destroy(mutex_t *mutex) {
-    DeleteCriticalSection(&mutex->cs);
-    return 0;
+  DeleteCriticalSection(&mutex->cs);
+  return 0;
 }
 
 /**
@@ -37,8 +37,8 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock(mutex_t *mutex) {
-    EnterCriticalSection(&mutex->cs);
-    return 0;
+  EnterCriticalSection(&mutex->cs);
+  return 0;
 }
 
 /**
@@ -47,7 +47,7 @@ int mutex_lock(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock(mutex_t *mutex) {
-    return TryEnterCriticalSection(&mutex->cs) ? 0 : EBUSY;
+  return TryEnterCriticalSection(&mutex->cs) ? 0 : EBUSY;
 }
 
 /**
@@ -56,8 +56,8 @@ int mutex_trylock(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock(mutex_t *mutex) {
-    LeaveCriticalSection(&mutex->cs);
-    return 0;
+  LeaveCriticalSection(&mutex->cs);
+  return 0;
 }
 
 #endif // _WIN32

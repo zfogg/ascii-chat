@@ -1,7 +1,7 @@
 /**
  * @file system.c
  * @brief Windows system functions implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides Windows system function wrappers for the platform abstraction layer,
  * enabling cross-platform system operations using a unified API.
  */
@@ -25,17 +25,17 @@
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-    static char username[256];
-    const char *user = getenv("USERNAME");
-    if (!user) {
-        user = getenv("USER");
-    }
-    if (user) {
-        strncpy(username, user, sizeof(username) - 1);
-        username[sizeof(username) - 1] = '\0';
-        return username;
-    }
-    return "unknown";
+  static char username[256];
+  const char *user = getenv("USERNAME");
+  if (!user) {
+    user = getenv("USER");
+  }
+  if (user) {
+    strncpy(username, user, sizeof(username) - 1);
+    username[sizeof(username) - 1] = '\0';
+    return username;
+  }
+  return "unknown";
 }
 
 /**
@@ -43,20 +43,20 @@ const char *get_username_env(void) {
  * @return 0 on success, error code on failure
  */
 int platform_init(void) {
-    // Set binary mode for stdin/stdout to handle raw data
-    _setmode(_fileno(stdin), _O_BINARY);
-    _setmode(_fileno(stdout), _O_BINARY);
-    _setmode(_fileno(stderr), _O_BINARY);
+  // Set binary mode for stdin/stdout to handle raw data
+  _setmode(_fileno(stdin), _O_BINARY);
+  _setmode(_fileno(stdout), _O_BINARY);
+  _setmode(_fileno(stderr), _O_BINARY);
 
-    // Initialize Winsock will be done in socket_windows.c
-    return 0;
+  // Initialize Winsock will be done in socket_windows.c
+  return 0;
 }
 
 /**
  * @brief Clean up platform-specific functionality
  */
 void platform_cleanup(void) {
-    // Cleanup will be done in socket_windows.c for Winsock
+  // Cleanup will be done in socket_windows.c for Winsock
 }
 
 /**
@@ -64,7 +64,7 @@ void platform_cleanup(void) {
  * @param ms Number of milliseconds to sleep
  */
 void platform_sleep_ms(unsigned int ms) {
-    Sleep(ms);
+  Sleep(ms);
 }
 
 /**
@@ -73,8 +73,8 @@ void platform_sleep_ms(unsigned int ms) {
  * @note Windows Sleep only supports milliseconds, so we convert
  */
 void platform_sleep_us(unsigned int us) {
-    // Windows Sleep only supports milliseconds, so convert
-    Sleep((us + 999) / 1000);
+  // Windows Sleep only supports milliseconds, so convert
+  Sleep((us + 999) / 1000);
 }
 
 /**
@@ -83,9 +83,9 @@ void platform_sleep_us(unsigned int us) {
  * @return 0 on success
  */
 int usleep(unsigned int usec) {
-    // Use the platform function
-    platform_sleep_us(usec);
-    return 0;
+  // Use the platform function
+  platform_sleep_us(usec);
+  return 0;
 }
 
 /**
@@ -93,7 +93,7 @@ int usleep(unsigned int usec) {
  * @return Process ID as integer
  */
 int platform_get_pid(void) {
-    return (int)GetCurrentProcessId();
+  return (int)GetCurrentProcessId();
 }
 
 /**
@@ -101,7 +101,7 @@ int platform_get_pid(void) {
  * @return Username string or "unknown" if not found
  */
 const char *platform_get_username(void) {
-    return get_username_env();
+  return get_username_env();
 }
 
 /**
@@ -111,7 +111,7 @@ const char *platform_get_username(void) {
  * @return Previous signal handler, or SIG_ERR on error
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler) {
-    return signal(sig, handler);
+  return signal(sig, handler);
 }
 
 /**
@@ -120,7 +120,7 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
  * @return Variable value or NULL if not found
  */
 const char *platform_getenv(const char *name) {
-    return getenv(name);
+  return getenv(name);
 }
 
 /**
@@ -130,7 +130,7 @@ const char *platform_getenv(const char *name) {
  * @return 0 on success, error code on failure
  */
 int platform_setenv(const char *name, const char *value) {
-    return _putenv_s(name, value);
+  return _putenv_s(name, value);
 }
 
 /**
@@ -139,7 +139,7 @@ int platform_setenv(const char *name, const char *value) {
  * @return 1 if TTY, 0 if not
  */
 int platform_isatty(int fd) {
-    return _isatty(fd);
+  return _isatty(fd);
 }
 
 /**
@@ -147,7 +147,7 @@ int platform_isatty(int fd) {
  * @return Path to TTY device
  */
 const char *platform_get_tty_path(void) {
-    return get_tty_path();
+  return get_tty_path();
 }
 
 /**
@@ -156,9 +156,9 @@ const char *platform_get_tty_path(void) {
  * @return File descriptor on success, -1 on failure
  */
 int platform_open_tty(const char *mode) {
-    (void)mode; // Unused on Windows
-    // On Windows, we use CON for console access
-    return _open("CON", _O_RDWR);
+  (void)mode; // Unused on Windows
+  // On Windows, we use CON for console access
+  return _open("CON", _O_RDWR);
 }
 
 /**
@@ -168,18 +168,18 @@ int platform_open_tty(const char *mode) {
  * @return 0 on success, -1 on failure
  */
 int clock_gettime(int clk_id, struct timespec *tp) {
-    LARGE_INTEGER freq, counter;
-    (void)clk_id; // Unused parameter
+  LARGE_INTEGER freq, counter;
+  (void)clk_id; // Unused parameter
 
-    if (!QueryPerformanceFrequency(&freq) || !QueryPerformanceCounter(&counter)) {
-        return -1;
-    }
+  if (!QueryPerformanceFrequency(&freq) || !QueryPerformanceCounter(&counter)) {
+    return -1;
+  }
 
-    // Convert to seconds and nanoseconds
-    tp->tv_sec = counter.QuadPart / freq.QuadPart;
-    tp->tv_nsec = ((counter.QuadPart % freq.QuadPart) * 1000000000) / freq.QuadPart;
+  // Convert to seconds and nanoseconds
+  tp->tv_sec = counter.QuadPart / freq.QuadPart;
+  tp->tv_nsec = ((counter.QuadPart % freq.QuadPart) * 1000000000) / freq.QuadPart;
 
-    return 0;
+  return 0;
 }
 
 /**
@@ -189,7 +189,7 @@ int clock_gettime(int clk_id, struct timespec *tp) {
  * @return Pointer to aligned memory block, or NULL on failure
  */
 void *aligned_alloc(size_t alignment, size_t size) {
-    return _aligned_malloc(size, alignment);
+  return _aligned_malloc(size, alignment);
 }
 
 /**
@@ -199,11 +199,11 @@ void *aligned_alloc(size_t alignment, size_t size) {
  * @return Pointer to result on success, NULL on failure
  */
 struct tm *gmtime_r(const time_t *timep, struct tm *result) {
-    errno_t err = gmtime_s(result, timep);
-    if (err != 0) {
-        return NULL;
-    }
-    return result;
+  errno_t err = gmtime_s(result, timep);
+  if (err != 0) {
+    return NULL;
+  }
+  return result;
 }
 
 #endif // _WIN32

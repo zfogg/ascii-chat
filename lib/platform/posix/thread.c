@@ -1,7 +1,7 @@
 /**
  * @file thread.c
  * @brief POSIX thread implementation for ASCII-Chat platform abstraction layer
- * 
+ *
  * This file provides POSIX pthread wrappers for the platform abstraction layer,
  * enabling cross-platform thread management using a unified API.
  */
@@ -20,7 +20,7 @@
  * @return 0 on success, error code on failure
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
-    return pthread_create(&thread->thread, NULL, func, arg);
+  return pthread_create(&thread->thread, NULL, func, arg);
 }
 
 /**
@@ -30,7 +30,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, error code on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
-    return pthread_join(thread->thread, retval);
+  return pthread_join(thread->thread, retval);
 }
 
 /**
@@ -38,7 +38,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
  * @param retval Return value for the thread
  */
 void ascii_thread_exit(void *retval) {
-    pthread_exit(retval);
+  pthread_exit(retval);
 }
 
 /**
@@ -47,7 +47,7 @@ void ascii_thread_exit(void *retval) {
  * @return 0 on success, error code on failure
  */
 int ascii_thread_detach(asciithread_t *thread) {
-    return pthread_detach(thread->thread);
+  return pthread_detach(thread->thread);
 }
 
 /**
@@ -55,9 +55,9 @@ int ascii_thread_detach(asciithread_t *thread) {
  * @return Thread ID structure for current thread
  */
 thread_id_t ascii_thread_self(void) {
-    thread_id_t id;
-    id.thread = pthread_self();
-    return id;
+  thread_id_t id;
+  id.thread = pthread_self();
+  return id;
 }
 
 /**
@@ -67,7 +67,7 @@ thread_id_t ascii_thread_self(void) {
  * @return Non-zero if equal, 0 if different
  */
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
-    return pthread_equal(t1.thread, t2.thread);
+  return pthread_equal(t1.thread, t2.thread);
 }
 
 /**
@@ -75,7 +75,7 @@ int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
  * @return Current thread ID as uint64_t
  */
 uint64_t ascii_thread_current_id(void) {
-    return (uint64_t)pthread_self();
+  return (uint64_t)pthread_self();
 }
 
 #endif // !_WIN32

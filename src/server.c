@@ -1566,7 +1566,7 @@ void *client_receive_thread_func(void *arg) {
         client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
         client->terminal_caps.palette_type = ntohl(caps->palette_type);
         SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
-                sizeof(client->terminal_caps.palette_custom));
+                     sizeof(client->terminal_caps.palette_custom));
 
         // Initialize client's per-client palette cache
         const char *custom_chars =

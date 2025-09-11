@@ -206,11 +206,11 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 
 /* Platform-safe environment variable access */
 #ifdef _WIN32
-static inline char* SAFE_GETENV(const char* name) {
-  #pragma warning(push)
-  #pragma warning(disable: 4996)  // Disable deprecation warning for getenv
+static inline char *SAFE_GETENV(const char *name) {
+#pragma warning(push)
+#pragma warning(disable : 4996) // Disable deprecation warning for getenv
   return getenv(name);
-  #pragma warning(pop)
+#pragma warning(pop)
 }
 #else
 #define SAFE_GETENV(name) getenv(name)
@@ -225,8 +225,8 @@ static inline char* SAFE_GETENV(const char* name) {
 
 /* Platform-safe strerror */
 #ifdef _WIN32
-static inline const char* SAFE_STRERROR(int errnum) {
-  static __declspec(thread) char buffer[256];  // Thread-local storage on Windows
+static inline const char *SAFE_STRERROR(int errnum) {
+  static __declspec(thread) char buffer[256]; // Thread-local storage on Windows
   strerror_s(buffer, sizeof(buffer), errnum);
   return buffer;
 }
@@ -236,20 +236,20 @@ static inline const char* SAFE_STRERROR(int errnum) {
 
 /* Platform-safe file open for Windows */
 #ifdef _WIN32
-  #include <share.h>
-  #define SAFE_OPEN(path, flags, mode) _sopen_s_wrapper(path, flags, _SH_DENYNO, mode)
-  
-  static inline int _sopen_s_wrapper(const char* filename, int oflag, int shflag, int pmode) {
-    int fd;
-    errno_t err = _sopen_s(&fd, filename, oflag, shflag, pmode);
-    if (err != 0) {
-      errno = err;
-      return -1;
-    }
-    return fd;
+#include <share.h>
+#define SAFE_OPEN(path, flags, mode) _sopen_s_wrapper(path, flags, _SH_DENYNO, mode)
+
+static inline int _sopen_s_wrapper(const char *filename, int oflag, int shflag, int pmode) {
+  int fd;
+  errno_t err = _sopen_s(&fd, filename, oflag, shflag, pmode);
+  if (err != 0) {
+    errno = err;
+    return -1;
   }
+  return fd;
+}
 #else
-  #define SAFE_OPEN(path, flags, mode) open(path, flags, mode)
+#define SAFE_OPEN(path, flags, mode) open(path, flags, mode)
 #endif
 
 /* Min/Max macros (with guards for macOS Foundation.h) */
