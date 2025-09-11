@@ -1591,9 +1591,6 @@ void *client_receive_thread_func(void *arg) {
         // Mark that we have received capabilities for this client
         client->has_terminal_caps = true;
 
-        // Update legacy wants_color field based on color capabilities
-        client->wants_color = (client->terminal_caps.color_level > TERM_COLOR_NONE);
-
         mutex_unlock(&client->client_state_mutex);
 
         log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
