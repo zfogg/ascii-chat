@@ -14,17 +14,29 @@
 // For global mutexes/locks that need static initialization
 typedef struct {
   mutex_t mutex;
+#if PLATFORM_WINDOWS
+  volatile LONG initialized;
+#else
   volatile int initialized;
+#endif
 } static_mutex_t;
 
 typedef struct {
   rwlock_t lock;
+#if PLATFORM_WINDOWS
+  volatile LONG initialized;
+#else
   volatile int initialized;
+#endif
 } static_rwlock_t;
 
 typedef struct {
   cond_t cond;
+#if PLATFORM_WINDOWS
+  volatile LONG initialized;
+#else
   volatile int initialized;
+#endif
 } static_cond_t;
 
 // Initialization macros
