@@ -343,3 +343,4 @@ bool validate_memory_pattern(const void *ptr, size_t size, uint8_t expected_patt
 
   return true;
 }
+// Test comment for codecov
