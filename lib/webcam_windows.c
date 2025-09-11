@@ -22,7 +22,7 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
 
   webcam_context_t *cam;
   SAFE_MALLOC(cam, sizeof(webcam_context_t), webcam_context_t *);
-  
+
   // Default webcam resolution for testing
   cam->width = 640;
   cam->height = 480;
@@ -36,9 +36,9 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
   for (int y = 0; y < cam->height; y++) {
     for (int x = 0; x < cam->width; x++) {
       int idx = (y * cam->width + x) * 3;
-      cam->dummy_frame[idx + 0] = (x * 255) / cam->width;      // R
-      cam->dummy_frame[idx + 1] = (y * 255) / cam->height;     // G
-      cam->dummy_frame[idx + 2] = 128;                         // B
+      cam->dummy_frame[idx + 0] = (x * 255) / cam->width;  // R
+      cam->dummy_frame[idx + 1] = (y * 255) / cam->height; // G
+      cam->dummy_frame[idx + 2] = 128;                     // B
     }
   }
 
@@ -56,7 +56,8 @@ void webcam_platform_cleanup(webcam_context_t *ctx) {
 }
 
 image_t *webcam_platform_read(webcam_context_t *ctx) {
-  if (!ctx) return NULL;
+  if (!ctx)
+    return NULL;
 
   // Simulate frame capture with slight variation
   ctx->frame_counter++;
@@ -70,7 +71,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
   // Convert to image_t format
   image_t *img;
   SAFE_MALLOC(img, sizeof(image_t), image_t *);
-  
+
   img->w = ctx->width;
   img->h = ctx->height;
   SAFE_MALLOC(img->pixels, ctx->width * ctx->height * sizeof(rgb_t), rgb_t *);

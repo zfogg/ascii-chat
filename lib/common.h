@@ -194,7 +194,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 #ifdef _WIN32
 #define SAFE_STRNCPY(dst, src, size)                                                                                   \
   do {                                                                                                                 \
-    strncpy_s((dst), (size), (src), (size) - 1);                                                                      \
+    strncpy_s((dst), (size), (src), (size) - 1);                                                                       \
   } while (0)
 #else
 #define SAFE_STRNCPY(dst, src, size)                                                                                   \

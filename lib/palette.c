@@ -10,18 +10,27 @@
 #else
 // Windows compatibility - wcwidth is not available
 static int wcwidth(wchar_t wc) {
-    // Simple implementation for Windows - most characters are width 1
-    // Wide characters (CJK) are width 2, control characters are -1
-    if (wc < 32) return -1;  // Control characters
-    if (wc >= 0x1100 && wc <= 0x115F) return 2;  // Hangul Jamo
-    if (wc >= 0x2E80 && wc <= 0x9FFF) return 2;  // CJK range
-    if (wc >= 0xAC00 && wc <= 0xD7AF) return 2;  // Hangul Syllables
-    if (wc >= 0xF900 && wc <= 0xFAFF) return 2;  // CJK Compatibility Ideographs
-    if (wc >= 0xFE10 && wc <= 0xFE19) return 2;  // Vertical forms
-    if (wc >= 0xFE30 && wc <= 0xFE6F) return 2;  // CJK Compatibility Forms
-    if (wc >= 0xFF00 && wc <= 0xFF60) return 2;  // Fullwidth Forms
-    if (wc >= 0xFFE0 && wc <= 0xFFE6) return 2;  // Fullwidth Forms
-    return 1;  // Most characters are width 1
+  // Simple implementation for Windows - most characters are width 1
+  // Wide characters (CJK) are width 2, control characters are -1
+  if (wc < 32)
+    return -1; // Control characters
+  if (wc >= 0x1100 && wc <= 0x115F)
+    return 2; // Hangul Jamo
+  if (wc >= 0x2E80 && wc <= 0x9FFF)
+    return 2; // CJK range
+  if (wc >= 0xAC00 && wc <= 0xD7AF)
+    return 2; // Hangul Syllables
+  if (wc >= 0xF900 && wc <= 0xFAFF)
+    return 2; // CJK Compatibility Ideographs
+  if (wc >= 0xFE10 && wc <= 0xFE19)
+    return 2; // Vertical forms
+  if (wc >= 0xFE30 && wc <= 0xFE6F)
+    return 2; // CJK Compatibility Forms
+  if (wc >= 0xFF00 && wc <= 0xFF60)
+    return 2; // Fullwidth Forms
+  if (wc >= 0xFFE0 && wc <= 0xFFE6)
+    return 2; // Fullwidth Forms
+  return 1;   // Most characters are width 1
 }
 #endif
 #include "palette.h"

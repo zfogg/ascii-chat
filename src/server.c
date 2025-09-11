@@ -923,14 +923,14 @@ int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame,
  */
 
 int main(int argc, char *argv[]) {
-  
+
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
     fprintf(stderr, "FATAL: Failed to initialize platform\n");
     return 1;
   }
   atexit(platform_cleanup);
-  
+
   options_init(argc, argv, false);
 
   // Initialize logging - use specified log file or default
@@ -2088,7 +2088,7 @@ int add_client(int socket, const char *client_ip, int port) {
 
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    send(socket, reject_msg, strlen(reject_msg), 0);  // MSG_NOSIGNAL not on Windows
+    send(socket, reject_msg, strlen(reject_msg), 0); // MSG_NOSIGNAL not on Windows
 
     return -1;
   }

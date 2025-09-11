@@ -308,7 +308,7 @@ void data_buffer_pool_init_global(void) {
     mutex_init(&g_global_pool_mutex);
     g_global_pool_mutex_initialized = true;
   }
-  
+
   mutex_lock(&g_global_pool_mutex);
   if (!g_global_buffer_pool) {
     g_global_buffer_pool = data_buffer_pool_create();
