@@ -83,14 +83,25 @@ jobs:
 
         if find . -name "*.gcda" -type f | head -1 > /dev/null 2>&1; then
           echo "Found .gcda files, generating coverage..."
+          echo "DEBUG: Running gcov on .gcda files..."
           find . -name "*.gcda" -exec gcov {} \;
+          echo "DEBUG: gcov command completed"
+
+          # Debug: Check where .gcov files were created
+          echo "DEBUG: Looking for .gcov files after gcov execution..."
+          echo "DEBUG: All .gcov files found:"
+          find . -name "*.gcov" -type f -exec ls -la {} \;
+          echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
 
           # Move all .gcov files to repo root for consistent behavior across platforms
           echo "Moving .gcov files to repo root..."
+          echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
           find . -name "*.gcov" -type f -exec mv {} . \;
+          echo "DEBUG: Move command completed"
 
           # Show what coverage files were generated
           echo "Generated coverage files:"
+          echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
           find . -name "*.gcov" -type f | head -20
           ls -la *.gcov 2>/dev/null || echo "No .gcov files in root directory"
         else
@@ -157,13 +168,24 @@ jobs:
       if: always()
       run: |
         # Generate coverage files for codecov
+        echo "DEBUG: Running gcov on .gcda files..."
         find . -name "*.gcda" -exec gcov {} \;
+        echo "DEBUG: gcov command completed"
+
+        # Debug: Check where .gcov files were created
+        echo "DEBUG: Looking for .gcov files after gcov execution..."
+        echo "DEBUG: All .gcov files found:"
+        find . -name "*.gcov" -type f -exec ls -la {} \;
+        echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
 
         # Move all .gcov files to repo root for consistent behavior across platforms
         echo "Moving .gcov files to repo root..."
+        echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
         find . -name "*.gcov" -type f -exec mv {} . \;
+        echo "DEBUG: Move command completed"
 
         echo "Generated coverage files:"
+        echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
         find . -name "*.gcov" -type f | head -20
 
     - name: Publish Test Results and Coverage
