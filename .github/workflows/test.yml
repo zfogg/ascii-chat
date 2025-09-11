@@ -116,10 +116,16 @@ jobs:
             fi
           done
 
-          echo "DEBUG: Running llvm-cov on .gcda files..."
-          # Use llvm-cov for clang coverage data
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
-          echo "DEBUG: llvm-cov command completed"
+          echo "DEBUG: Running coverage tool on .gcda files..."
+          # Use gcov on macOS, llvm-cov on Ubuntu
+          if [ "${{ matrix.os-name }}" = "macos" ]; then
+            echo "DEBUG: Using gcov (macOS)"
+            find . -name "*.gcda" -exec gcov {} \;
+          else
+            echo "DEBUG: Using llvm-cov (Ubuntu)"
+            find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+          fi
+          echo "DEBUG: Coverage command completed"
 
           # Debug: Check where .gcov files were created
           echo "DEBUG: Looking for .gcov files after coverage execution..."
@@ -202,10 +208,16 @@ jobs:
       if: always()
       run: |
         # Generate coverage files for codecov
-        echo "DEBUG: Running llvm-cov on .gcda files..."
-        # Use llvm-cov for clang coverage data
-        find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
-        echo "DEBUG: llvm-cov command completed"
+        echo "DEBUG: Running coverage tool on .gcda files..."
+        # Use gcov on macOS, llvm-cov on Ubuntu
+        if [ "${{ matrix.os-name }}" = "macos" ]; then
+          echo "DEBUG: Using gcov (macOS)"
+          find . -name "*.gcda" -exec gcov {} \;
+        else
+          echo "DEBUG: Using llvm-cov (Ubuntu)"
+          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+        fi
+        echo "DEBUG: Coverage command completed"
 
         # Debug: Check where .gcov files were created
         echo "DEBUG: Looking for .gcov files after coverage execution..."
