@@ -747,7 +747,7 @@ $(BUILD_DIR)/debug/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C
 # Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - debug
 $(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
-	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (debug)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
 
@@ -769,7 +769,7 @@ $(BUILD_DIR)/release/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $
 # Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - release
 $(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
-	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (release)..."
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
@@ -791,7 +791,7 @@ $(BUILD_DIR)/sanitize/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c 
 # Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - sanitize
 $(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
-	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (sanitize)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
 
@@ -813,7 +813,7 @@ $(BUILD_DIR)/coverage/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c 
 # Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - coverage
 $(BUILD_DIR)/coverage/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
-	$(if $(findstring platform,$*),$(error This rule should not match platform files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (coverage)..."
 	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
 
