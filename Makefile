@@ -466,7 +466,7 @@ else
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
-DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
+DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY -fsanitize=address,undefined
 COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage -DCOVERAGE_BUILD
 RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
 SANITIZE_FLAGS := -fsanitize=address
@@ -476,7 +476,7 @@ SANITIZE_FLAGS := -fsanitize=address
 # =============================================================================
 
 # Targets (executables)
-TARGETS := $(addprefix $(BIN_DIR)/, server client)
+TARGETS := $(addprefix $(BIN_DIR)/, ascii-chat-server ascii-chat-client)
 
 # Platform-specific source files
 PLATFORM_C_FILES_COMMON := $(wildcard $(LIB_DIR)/platform/*.c)
@@ -584,7 +584,7 @@ all: default
 
 debug: BUILD_MODE := debug
 debug: override CFLAGS += $(DEBUG_FLAGS)
-debug: override LDFLAGS +=
+debug: override LDFLAGS += -fsanitize=address,undefined
 debug: $(TARGETS)
 
 coverage: BUILD_MODE := coverage
@@ -595,7 +595,7 @@ coverage: $(TARGETS)
 release: BUILD_MODE := release
 release: override CFLAGS += $(RELEASE_FLAGS)
 release: override LDFLAGS += -flto
-release: $(BIN_DIR)/server-release $(BIN_DIR)/client-release
+release: $(BIN_DIR)/ascii-chat-server-release $(BIN_DIR)/ascii-chat-client-release
 
 # Simplified coverage mode (debug-based only)
 
@@ -638,27 +638,27 @@ tests-sanitize: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
 tests-sanitize: $(TEST_EXECUTABLES)
 
 # Build executables - default to debug
-$(BIN_DIR)/server: $(BUILD_DIR)/debug/src/server.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+$(BIN_DIR)/ascii-chat-server: $(BUILD_DIR)/debug/src/server.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client: $(BUILD_DIR)/debug/src/client.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+$(BIN_DIR)/ascii-chat-client: $(BUILD_DIR)/debug/src/client.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
 	@echo "Built $@ successfully!"
 
 # Release executables
-$(BIN_DIR)/server-release: $(BUILD_DIR)/release/src/server.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+$(BIN_DIR)/ascii-chat-server-release: $(BUILD_DIR)/release/src/server.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
 	@echo "Linking $@ (release)..."
 	$(CC) -o $@ $^ $(LDFLAGS)
-	@cp $@ $(BIN_DIR)/server
+	@cp $@ $(BIN_DIR)/ascii-chat-server
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client-release: $(BUILD_DIR)/release/src/client.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+$(BIN_DIR)/ascii-chat-client-release: $(BUILD_DIR)/release/src/client.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
 	@echo "Linking $@ (release)..."
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
-	@cp $@ $(BIN_DIR)/client
+	@cp $@ $(BIN_DIR)/ascii-chat-client
 	@echo "Built $@ successfully!"
 
 # Compile C source files from src/ - debug

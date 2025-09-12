@@ -2,11 +2,8 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include "../image.h"
 #include "common.h"
-#include "../image.h"
-
-// Use the project's existing rgb_t for consistency
-#include "../image.h"
 
 // Check for SIMD support and include architecture-specific headers
 // Disable SIMD on Windows with Clang due to intrinsics compatibility issues

@@ -263,6 +263,7 @@ static void sigint_handler(int sigint) {
   // Let the main thread handle the cleanup when it sees g_should_exit = true
 }
 
+#ifndef _WIN32
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   g_should_exit = true;
@@ -282,6 +283,7 @@ static void sigterm_handler(int sigterm) {
   // Signal handler should be minimal - just set flag and wake threads
   // Main thread will properly close client sockets with mutex protection
 }
+#endif
 
 /* ============================================================================
  * Fast Client Lookup Functions

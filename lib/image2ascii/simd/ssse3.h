@@ -4,8 +4,9 @@
 
 #ifdef SIMD_SUPPORT_SSSE3
 #ifdef _WIN32
-// Clang 20+ workaround: Use immintrin.h with proper feature detection
-#if !defined(__SSSE3__)
+// Windows: Use immintrin.h with proper feature detection
+// MSVC doesn't define __SSSE3__ but x64 always has it
+#if !defined(__SSSE3__) && !defined(_M_X64) && !defined(_M_AMD64)
 #error "SSSE3 support required"
 #endif
 #include <immintrin.h>

@@ -4,8 +4,9 @@
 
 #ifdef SIMD_SUPPORT_SSE2
 #ifdef _WIN32
-// Clang 20+ workaround: Use immintrin.h with proper feature detection
-#if !defined(__SSE2__)
+// Windows: Use immintrin.h with proper feature detection
+// MSVC defines _M_X64 for x64 (which always has SSE2) or _M_IX86_FP >= 2 for x86 with SSE2
+#if !defined(__SSE2__) && !defined(_M_X64) && !(defined(_M_IX86_FP) && _M_IX86_FP >= 2)
 #error "SSE2 support required"
 #endif
 #include <immintrin.h>

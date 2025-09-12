@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "platform/abstraction.h"
-#include "common.h"
+#include "../platform/abstraction.h"
+#include "../common.h"
 
 typedef struct rgb_t {
   uint8_t r, g, b;

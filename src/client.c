@@ -15,7 +15,6 @@
 #include <zlib.h>
 
 #include "image2ascii/ascii.h"
-#include "image2ascii/simd/ascii_simd.h"
 #include "common.h"
 #include "mixer.h"
 #include "network.h"
@@ -342,6 +341,7 @@ static void sigint_handler(int sigint) {
   }
 }
 
+#ifndef _WIN32
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // log_debug("SIGWINCH HANDLER CALLED: auto_width=%u, auto_height=%u, current opt_width=%u, opt_height=%u",
@@ -363,6 +363,7 @@ static void sigwinch_handler(int sigwinch) {
     }
   }
 }
+#endif
 
 #define MAX_RECONNECT_DELAY (5 * 1000 * 1000) // Maximum delay between reconnection attempts (microseconds)
 
@@ -1067,9 +1068,7 @@ int main(int argc, char *argv[]) {
   log_set_terminal_output(has_a_tty_g && !opt_quiet && !opt_snapshot_mode);
   log_truncate_if_large(); /* Truncate if log is already too large */
 
-  // CRITICAL FIX: Initialize ASCII SIMD cache (missing from client!)
-  // This initializes g_ascii_cache.dec3_table needed for NEON truecolor/256-color RGB output
-  ascii_simd_init();
+  // Client doesn't do ASCII conversion - server handles that
 
 #ifdef DEBUG_MEMORY
   debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
