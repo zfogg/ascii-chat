@@ -198,12 +198,17 @@ static int safe_send_audio_batch_packet(socket_t sockfd, const float *samples, i
  * @return 0 on success, negative on error
  */
 static int safe_send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, unsigned short height) {
+  log_error("DEBUG: safe_send entry, errno=%d", errno);
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    log_error("DEBUG: connection inactive or invalid socket, errno=%d", errno);
     return -1;
   }
 
+  log_error("DEBUG: acquiring send mutex, errno=%d", errno);
   mutex_lock(&g_send_mutex);
+  log_error("DEBUG: calling send_terminal_size_with_auto_detect, errno=%d", errno);
   int result = send_terminal_size_with_auto_detect(sockfd, width, height);
+  log_error("DEBUG: send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
   mutex_unlock(&g_send_mutex);
 
   return result;
@@ -439,13 +444,21 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   log_info("Connected to server %s:%d (local port: %d)", address, port, local_port);
 
+  // Mark connection as active immediately after successful socket connection
+  atomic_store(&g_connection_active, true);
+  atomic_store(&g_connection_lost, false);
+  atomic_store(&g_should_reconnect, false);
+
   // Configure socket options for optimal performance
   if (set_socket_keepalive(g_sockfd) < 0) {
     log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
   }
 
   // Send initial terminal capabilities to server
-  if (safe_send_terminal_size_with_auto_detect(g_sockfd, opt_width, opt_height) < 0) {
+  log_error("DEBUG: About to call safe_send_terminal_size_with_auto_detect, errno=%d", errno);
+  int result = safe_send_terminal_size_with_auto_detect(g_sockfd, opt_width, opt_height);
+  log_error("DEBUG: safe_send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
+  if (result < 0) {
     log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
@@ -483,10 +496,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     return -1;
   }
 
-  // Mark connection as active
-  atomic_store(&g_connection_active, true);
-  atomic_store(&g_connection_lost, false);
-  atomic_store(&g_should_reconnect, false);
+  // Connection already marked as active after socket creation
 
   return 0;
 }

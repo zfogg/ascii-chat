@@ -18,19 +18,19 @@
 #define KEEPALIVE_COUNT 8
 
 // Network utility functions
-int set_socket_timeout(int sockfd, int timeout_seconds);
-int set_socket_nonblocking(int sockfd);
-int set_socket_keepalive(int sockfd);
-bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds);
-ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_seconds);
-ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds);
-int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds);
+int set_socket_timeout(socket_t sockfd, int timeout_seconds);
+int set_socket_nonblocking(socket_t sockfd);
+int set_socket_keepalive(socket_t sockfd);
+bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds);
+ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int timeout_seconds);
+ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds);
+int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds);
 
 // Error handling
 const char *network_error_string(int error_code);
 
 // Size communication protocol
-int send_size_message(int sockfd, unsigned short width, unsigned short height);
+int send_size_message(socket_t sockfd, unsigned short width, unsigned short height);
 int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 
 /* ============================================================================
@@ -218,33 +218,38 @@ typedef struct {
  */
 
 /* Protocol functions */
-int send_audio_data(int sockfd, const float *samples, int num_samples);
-int receive_audio_data(int sockfd, float *samples, int max_samples);
+int send_audio_data(socket_t sockfd, const float *samples, int num_samples);
+int receive_audio_data(socket_t sockfd, float *samples, int max_samples);
 
-int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
-int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);
+int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len);
+int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *len);
 
-int send_audio_packet(int sockfd, const float *samples, int num_samples);
-int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count);
+int send_audio_packet(socket_t sockfd, const float *samples, int num_samples);
+int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count);
 
 // Multi-user protocol functions
-int send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities);
-int send_client_leave_packet(int sockfd, uint32_t client_id);
-int send_client_list_packet(int sockfd, const client_list_packet_t *client_list);
-int send_stream_start_packet(int sockfd, uint32_t stream_type);
-int send_stream_stop_packet(int sockfd, uint32_t stream_type);
+int send_client_join_packet(socket_t sockfd, const char *display_name, uint32_t capabilities);
+int send_client_leave_packet(socket_t sockfd, uint32_t client_id);
+int send_stream_start_packet(socket_t sockfd, uint32_t stream_type);
+int send_stream_stop_packet(socket_t sockfd, uint32_t stream_type);
 
 // Packet sending with client ID
-int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);
-int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
+int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);
+int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
 
 // Heartbeat/ping functions
-int send_ping_packet(int sockfd);
-int send_pong_packet(int sockfd);
+int send_ping_packet(socket_t sockfd);
+int send_pong_packet(socket_t sockfd);
 
 // Console control functions
-int send_clear_console_packet(int sockfd);
-int send_server_state_packet(int sockfd, const server_state_packet_t *state);
-int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_packet_t *caps);
-int send_terminal_size_with_auto_detect(int sockfd, unsigned short width,
+int send_clear_console_packet(socket_t sockfd);
+int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state);
+int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabilities_packet_t *caps);
+int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width,
                                         unsigned short height); // Convenience function with auto-detection
+
+// Frame sending functions
+int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size, int width, int height);
+int send_image_frame_packet(socket_t sockfd, const void *pixel_data, size_t pixel_size, int width, int height,
+                            uint32_t pixel_format);
+int send_compressed_frame(socket_t sockfd, const char *frame_data, size_t frame_size);

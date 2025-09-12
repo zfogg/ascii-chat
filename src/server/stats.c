@@ -313,69 +313,13 @@ extern uint64_t g_blank_frames_sent;
  */
 
 void *stats_logger_thread(void *arg) {
-  printf("[DEBUG] stats_logger_thread_func: ENTRY - function called with arg=%p\n", arg);
-  fflush(stdout);
   (void)arg;
 
-  printf("[DEBUG] stats_logger_thread_func: About to call log_info\n");
-  fflush(stdout);
-
-  // TEMPORARILY BYPASS log_info to test if it's causing the hang
-  printf("[INFO] Statistics logger thread started (bypassing log_info)\n");
-  fflush(stdout);
-  // log_info("Statistics logger thread started");
-
-  printf("[DEBUG] stats_logger_thread_func: After log_info bypass, starting main loop\n");
-  fflush(stdout);
-
-  int loop_count = 0;
   while (1) {
-    // Check g_should_exit with explicit atomic read
-    bool should_exit = atomic_load(&g_should_exit);
-    printf("[DEBUG] stats thread loop %d: g_should_exit = %d\n", loop_count, should_exit);
-    fflush(stdout);
-
-    if (should_exit) {
-      printf("[INFO] Stats thread: Detected g_should_exit at start of loop %d, breaking\n", loop_count);
-      fflush(stdout);
-      break;
-    }
-
     // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
     for (int i = 0; i < 3000; i++) {
-      if (i == 0 || i == 100 || i == 200) {
-        printf("[DEBUG] Stats thread: About to call interruptible_usleep, iteration %d\n", i);
-        fflush(stdout);
-      }
-
       interruptible_usleep(10000); // 10ms sleep - can be interrupted by shutdown
-
-      // Check g_should_exit after EVERY sleep
-      should_exit = atomic_load(&g_should_exit);
-      if (should_exit) {
-        printf("[INFO] Stats thread: Detected g_should_exit=true in sleep loop at iteration %d\n", i);
-        fflush(stdout);
-        break;
-      }
-
-      // Debug: print every 50 iterations to see if we're still looping
-      if (i % 50 == 0 && i > 0) {
-        printf("[DEBUG] Stats thread: Still in sleep loop, iteration %d, g_should_exit=%d\n", i, (int)should_exit);
-        fflush(stdout);
-      }
     }
-
-    printf("[DEBUG] Stats thread: Exited inner for loop, checking g_should_exit again\n");
-    fflush(stdout);
-
-    if (atomic_load(&g_should_exit)) {
-      printf("[INFO] Stats thread: Detected g_should_exit after sleep loop, breaking main loop\n");
-      fflush(stdout);
-      // log_info("Stats thread: Detected g_should_exit after sleep loop, breaking main loop");
-      break;
-    }
-
-    loop_count++;
 
     log_info("=== Periodic Statistics Report ===");
 
@@ -436,12 +380,6 @@ void *stats_logger_thread(void *arg) {
     rwlock_unlock(&g_client_manager_rwlock);
   }
 
-  printf("[DEBUG] Stats thread: Exited main while loop\n");
-  fflush(stdout);
-
-  printf("[INFO] Statistics logger thread stopped - about to return NULL\n");
-  fflush(stdout);
-  // log_info("Statistics logger thread stopped - about to return");
   return NULL;
 }
 

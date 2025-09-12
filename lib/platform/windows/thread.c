@@ -22,27 +22,12 @@ typedef struct {
 // Windows thread wrapper function that calls POSIX-style function
 static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
   thread_wrapper_t *wrapper = (thread_wrapper_t *)param;
-  printf("[DEBUG] windows_thread_wrapper: Starting, wrapper=%p\n", wrapper);
-  fflush(stdout);
   
   if (!wrapper) {
-    printf("[DEBUG] windows_thread_wrapper: ERROR - wrapper is NULL!\n");
-    fflush(stdout);
     return 1;
   }
   
-  printf("[DEBUG] windows_thread_wrapper: wrapper->posix_func=%p, wrapper->arg=%p\n", 
-         wrapper->posix_func, wrapper->arg);
-  fflush(stdout);
-  
-  printf("[DEBUG] windows_thread_wrapper: About to call posix_func...\n");
-  fflush(stdout);
-  
   void *result = wrapper->posix_func(wrapper->arg);
-  
-  printf("[DEBUG] windows_thread_wrapper: Thread function returned, result=%p\n", result);
-  fflush(stdout);
-  
   free(wrapper);
   return (DWORD)(uintptr_t)result;
 }
@@ -80,14 +65,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
-  // Add logging to debug hanging issues
-  printf("[DEBUG] ascii_thread_join: Starting WaitForSingleObject with INFINITE timeout\n");
-  fflush(stdout);
-  
   DWORD result = WaitForSingleObject((*thread), INFINITE);
-  
-  printf("[DEBUG] ascii_thread_join: WaitForSingleObject returned: %lu\n", result);
-  fflush(stdout);
   
   if (result == WAIT_OBJECT_0) {
     if (retval) {
