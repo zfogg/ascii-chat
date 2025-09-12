@@ -51,7 +51,9 @@ Check the `Makefile` to see how it works.
 - `make debug-coverage` - Build with debug symbols and coverage
 - `make release` - Build with optimizations enabled
 - `make release-coverage` - Build with optimizations and coverage
-- `make sanitize` - Build with address sanitizer for debugging
+- `make debug` - Build with comprehensive sanitizers for debugging
+- `make dev` - Debug build without sanitizers (faster iteration)
+- `make tsan` - Build with thread sanitizer for race condition detection
 - `make clean` - Remove build artifacts
 
 ### Test Building Targets
@@ -116,7 +118,7 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 ./tests/scripts/run_tests.sh -b release
 ./tests/scripts/run_tests.sh -b debug-coverage
 ./tests/scripts/run_tests.sh -b release-coverage
-./tests/scripts/run_tests.sh -b sanitize
+./tests/scripts/run_tests.sh -b debug
 
 # Generate JUnit XML for CI
 ./tests/scripts/run_tests.sh -J
@@ -143,7 +145,7 @@ bin/test_ascii_simd_performance --filter "monochrome"
 - **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
 - **Coverage**: Code coverage reports generated in CI
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
-- **Memory Checking**: AddressSanitizer support via `-b sanitize` for detecting memory issues
+- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
 
 ## Cryptography

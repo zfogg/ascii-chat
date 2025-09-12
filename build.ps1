@@ -137,6 +137,29 @@ New-Item -ItemType HardLink -Path "bin\ascii-chat-server.exe" -Target "$PWD\buil
 New-Item -ItemType HardLink -Path "bin\ascii-chat-client.exe" -Target "$PWD\build\bin\ascii-chat-client.exe" | Out-Null
 Write-Host "Created hard links in bin/" -ForegroundColor Green
 
+# Link compile_commands.json to repo root for IDE/tool integration
+if (Test-Path "$BuildDir\compile_commands.json") {
+    Write-Host ""
+    Write-Host "Linking compile_commands.json to repo root..." -ForegroundColor Cyan
+    
+    # Remove old link/file if it exists
+    if (Test-Path "compile_commands.json") { 
+        Remove-Item "compile_commands.json" -Force 
+    }
+    
+    # Create hard link (no admin needed, works across drives)
+    # Use symbolic link if on different volumes (requires admin on Windows)
+    try {
+        New-Item -ItemType HardLink -Path "compile_commands.json" -Target "$PWD\$BuildDir\compile_commands.json" -ErrorAction Stop | Out-Null
+        Write-Host "Created hard link for compile_commands.json" -ForegroundColor Green
+    }
+    catch {
+        # Fall back to copying if hard link fails (e.g., different volumes)
+        Copy-Item "$BuildDir\compile_commands.json" "compile_commands.json" -Force
+        Write-Host "Copied compile_commands.json (hard link failed, possibly different volumes)" -ForegroundColor Yellow
+    }
+}
+
 # Copy DLLs to bin/ directory so binaries can find them
 $dlls = Get-ChildItem "build\bin\*.dll" -ErrorAction SilentlyContinue
 if ($dlls) {

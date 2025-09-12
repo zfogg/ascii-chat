@@ -6,13 +6,7 @@
 #include <math.h>
 
 #include "platform/abstraction.h"
-
-#if !PLATFORM_WINDOWS
-#include <ncurses.h>
-#include <termios.h>
-#else
-#include <io.h>  // For Windows I/O functions
-#endif
+#include "platform/terminal.h"
 
 #include "ascii.h"
 #include "common.h"
@@ -44,25 +38,15 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     console_clear(fd);
     cursor_reset(fd);
 
-#if !PLATFORM_WINDOWS
-    struct termios termios;
-    if (tcgetattr(fd, &termios) != 0) {
-      log_error("Failed to get terminal attributes for fd %d", fd);
+    // Disable echo using platform abstraction
+    if (terminal_set_echo(false) != 0) {
+      log_error("Failed to disable echo for fd %d", fd);
       return ASCIICHAT_ERR_TERMINAL;
     }
-    termios.c_lflag &= ~ECHO;
-    tcsetattr(fd, TCSANOW, &termios);
-#endif
-#if !PLATFORM_WINDOWS
-    // Disable blink for the terminal cursor
-    if (curs_set(0) == ERR) {
-      log_warn("Failed to DISable cursor blink with curs_set(0)");
+    // Hide cursor using platform abstraction
+    if (terminal_hide_cursor(fd, true) != 0) {
+      log_warn("Failed to hide cursor");
     }
-#endif
-
-    // FIXME: make cursor_hide() work
-    // cursor_hide(fd); // this doesn't work
-    printf("\e[?25l"); // this works
   }
   log_debug("ASCII writer initialized");
   return ASCIICHAT_OK;
@@ -287,22 +271,15 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
   if (!opt_snapshot_mode && reset_terminal) {
-    // FIXME: make cursor_show() work
-    // cursor_show(fd); // this doesn't work
-    printf("\033[?25h"); // this works
-
-#if !PLATFORM_WINDOWS
-    struct termios termios;
-    tcgetattr(fd, &termios);
-    termios.c_lflag |= ECHO;
-    tcsetattr(fd, TCSANOW, &termios);
-#endif
-#if !PLATFORM_WINDOWS
-    // Enable blink for the terminal cursor
-    if (curs_set(1) == ERR) {
-      log_warn("Failed to ENable cursor blink with curs_set(1)");
+    // Show cursor using platform abstraction
+    if (terminal_hide_cursor(fd, false) != 0) {
+      log_warn("Failed to show cursor");
     }
-#endif
+
+    // Re-enable echo using platform abstraction
+    if (terminal_set_echo(true) != 0) {
+      log_warn("Failed to re-enable echo");
+    }
   }
   log_debug("ASCII writer destroyed");
 }
