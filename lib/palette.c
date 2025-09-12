@@ -159,10 +159,10 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
   memset(caps, 0, sizeof(utf8_capabilities_t));
 
   // Check environment variables
-  const char *lang = getenv("LANG");
-  const char *lc_all = getenv("LC_ALL");
-  const char *lc_ctype = getenv("LC_CTYPE");
-  const char *term = getenv("TERM");
+  const char *lang = SAFE_GETENV("LANG");
+  const char *lc_all = SAFE_GETENV("LC_ALL");
+  const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
+  const char *term = SAFE_GETENV("TERM");
 
   // Store terminal type
   if (term) {
@@ -417,7 +417,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   char old_locale[256] = {0};
   char *current_locale = setlocale(LC_CTYPE, NULL);
   if (current_locale) {
-    strncpy(old_locale, current_locale, sizeof(old_locale) - 1);
+    SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));
   }
   setlocale(LC_CTYPE, "");
 
