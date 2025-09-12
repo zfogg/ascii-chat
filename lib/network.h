@@ -93,6 +93,12 @@ typedef struct {
 #define MAX_DISPLAY_NAME_LEN 32
 #define MAX_CLIENTS 10
 
+// Size packet for terminal size updates
+typedef struct {
+    uint32_t width;
+    uint32_t height;
+} size_packet_t;
+
 typedef struct {
   uint32_t client_id;                      // Unique client identifier
   char display_name[MAX_DISPLAY_NAME_LEN]; // User display name

@@ -155,7 +155,7 @@ Usage: $0 [OPTIONS] [TEST_NAME]
 
 OPTIONS:
     -t, --type TYPE         Test type: all, unit, integration, performance (default: all)
-    -b, --build TYPE        Build type: debug, release, coverage, sanitize (default: debug)
+    -b, --build TYPE        Build type: debug, dev, release, coverage, tsan (default: debug)
     -j, --jobs N            Number of parallel test executables to run (default: auto-detect CPU cores)
     -J, --junit             Generate JUnit XML output
     -l, --log-file PATH     Save test output to specified log file (default: tests.log in current dir)
@@ -180,7 +180,8 @@ EXAMPLES:
     $0 -t performance -J                  # Run performance tests with JUnit output
     $0 -c -t integration                  # Run integration tests with coverage
     $0 -b coverage -J                     # Run all tests with coverage+JUnit
-    $0 -b sanitize                        # Run with AddressSanitizer for memory checking
+    $0 -b debug                          # Run with AddressSanitizer for memory checking
+    $0 -b tsan                           # Run with ThreadSanitizer for race detection
     $0 --log-file=/tmp/my_test.log unit  # Run unit tests with custom log file
     $0 test_unit_ascii                    # Run single test binary by name
     $0 unit_ascii                         # Run single test binary without test_ prefix
@@ -193,10 +194,11 @@ EXAMPLES:
     $0 -J -l /tmp/custom.log              # Generate JUnit XML and save logs to custom file
 
 BUILD TYPES:
-    debug                 - Debug build with symbols, no optimization
+    debug                 - Debug build with AddressSanitizer (default, safe)
+    dev                   - Debug build without sanitizers (faster iteration)
     release               - Release build with optimizations and LTO
     coverage              - Debug build with coverage instrumentation
-    sanitize              - Debug build with AddressSanitizer for memory checking
+    tsan                  - Debug build with ThreadSanitizer for race detection
 
 TEST TYPES:
     all                   - Run all test categories
@@ -361,10 +363,6 @@ function ensure_tests_built() {
     ;;
   coverage)
     colored_make tests-coverage
-    ;;
-  sanitize)
-    colored_make sanitize
-    colored_make tests
     ;;
   *)
     log_error "Unknown build type: $build_type"
@@ -1018,7 +1016,7 @@ function main() {
     exit 1
   fi
 
-  if [[ ! "$BUILD_TYPE" =~ ^(debug|release|coverage|sanitize)$ ]]; then
+  if [[ ! "$BUILD_TYPE" =~ ^(debug|dev|release|coverage|tsan)$ ]]; then
     log_error "Invalid build type: $BUILD_TYPE"
     exit 1
   fi

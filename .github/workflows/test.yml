@@ -319,14 +319,14 @@ jobs:
 
     - name: Build with AddressSanitizer
       run: |
-        make -j CSTD=c2x sanitize
-        make -j CSTD=c2x tests-sanitize
+        make -j CSTD=c2x debug
+        make -j CSTD=c2x tests-debug
 
     - name: Run tests with AddressSanitizer
       run: |
-        # Run tests with AddressSanitizer to detect memory issues
+        # Run tests with AddressSanitizer and other sanitizers to detect memory issues
         LOG_FILE="sanitizer-tests.log"
-        ./tests/scripts/run_tests.sh -b sanitize --log-file="${LOG_FILE}"
+        ./tests/scripts/run_tests.sh -b debug --log-file="${LOG_FILE}"
         echo "AddressSanitizer tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
 

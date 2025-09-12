@@ -22,6 +22,9 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 project(ascii-chat LANGUAGES C CXX)
 
+# Generate compile_commands.json for IDE/tool integration (clangd, VSCode, etc.)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Configure MinGW mode for any compiler
 if(WIN32 AND USE_MINGW)
     message(STATUS "Configuring ${CMAKE_C_COMPILER_ID} for MinGW mode")
@@ -115,24 +118,19 @@ if(NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
 endif()
 message(STATUS "Parallel build jobs: ${CPU_CORES}")
 
-# C standard selection (matches Makefile logic)
-if(WIN32)
-    # Use C17 on Windows, C23 on POSIX for better SIMD compatibility
-    set(CMAKE_C_STANDARD 17)
-else()
-    # Try C23 for better SIMD on POSIX systems
-    set(CMAKE_C_STANDARD 23)
-endif()
+# C standard selection - use latest C23 for future-proofing
+set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)  # Use pure C23, not GNU extensions
 
 
 # Build type (matches Makefile modes)
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Release, Coverage, Sanitize" FORCE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, Coverage" FORCE)
 endif()
 
 # Valid build types (matching Makefile)
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "Coverage" "Sanitize")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Dev" "Release" "Coverage")
 
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -241,6 +239,7 @@ include_directories(
 
 # Build type specific flags (matching Makefile logic)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # Debug mode WITH sanitizers (default, safe)
     add_definitions(-DDEBUG_MEMORY -DDEBUG_NETWORK)
     if(MSVC)
         add_compile_options(/Od /Zi)
@@ -251,7 +250,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     else()
         add_compile_options(-g -O0 -DDEBUG)
         
-        # Check if sanitizers are available (not all compilers support them on Windows)
+        # Always use sanitizers in Debug mode
         if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR (CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32))
             add_compile_options(-fsanitize=address,undefined)
             add_link_options(-fsanitize=address,undefined)
@@ -270,6 +269,24 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 endif()
             endif()
         endif()
+        
+        if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
+            # CodeView debug format is only supported by Clang on Windows (native mode)
+            add_compile_options(-gcodeview)
+        endif()
+    endif()
+elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
+    # Dev mode - debug WITHOUT sanitizers (faster iteration)
+    add_definitions(-DDEBUG_MEMORY -DDEBUG_NETWORK)
+    if(MSVC)
+        add_compile_options(/Od /Zi)
+        add_definitions(-DDEBUG)
+    elseif(WIN32 AND USE_MINGW)
+        # MinGW mode already has flags set - skip to avoid conflicts
+        message(STATUS "Skipping dev flag setup for MinGW (already configured)")
+    else()
+        add_compile_options(-g -O0 -DDEBUG)
+        # No sanitizers in Dev mode for faster compilation/runtime
         
         if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
             # CodeView debug format is only supported by Clang on Windows (native mode)
@@ -1222,8 +1239,15 @@ endif()
 # Executables
 # =============================================================================
 
-# Server executable
-add_executable(ascii-chat-server src/server.c)
+# Server executable - now modular
+add_executable(ascii-chat-server 
+    src/server/main.c
+    src/server/client.c
+    src/server/protocol.c
+    src/server/stream.c
+    src/server/render.c
+    src/server/stats.c
+)
 target_link_libraries(ascii-chat-server ascii-chat-lib)
 
 # Client executable
@@ -1476,10 +1500,10 @@ if(JACK_FOUND)
 endif()
 message(STATUS "")
 message(STATUS "Build Commands:")
-message(STATUS "  Configure Debug:   cmake -B build -DCMAKE_BUILD_TYPE=Debug")
+message(STATUS "  Configure Debug:   cmake -B build -DCMAKE_BUILD_TYPE=Debug     # With sanitizers (default)")
+message(STATUS "  Configure Dev:     cmake -B build -DCMAKE_BUILD_TYPE=Dev       # Debug without sanitizers (faster)")
 message(STATUS "  Configure Release: cmake -B build -DCMAKE_BUILD_TYPE=Release")
 message(STATUS "  Configure Coverage:cmake -B build -DCMAKE_BUILD_TYPE=Coverage")
-message(STATUS "  Configure Sanitize:cmake -B build -DCMAKE_BUILD_TYPE=Sanitize")
 message(STATUS "  Build:             cmake --build build")
 message(STATUS "  Run server:        ./build/bin/ascii-chat-server")
 message(STATUS "  Run client:        ./build/bin/ascii-chat-client")

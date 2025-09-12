@@ -9,7 +9,7 @@
 - On Windows: use CMake for building (`cmake -B build && cmake --build build`)
 - Use `clang` instead of `gcc`
 - Don't use `git add .`, add all files individually
-- Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `make clean && make sanitize`
+- Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `make clean && make debug`
 - Use log_*() from logging.c and common.h for logging instead of printf()
 - When debugging and testing, make a test_whatever.sh and use that so you don't bother the developer by requesting to run commands over and over
 
@@ -177,17 +177,17 @@ The GitHub Actions macOS runner has `gmake` pre-installed via the install-deps a
 **Standard Build Commands:**
 ```bash
 # Clean build (always do this when debugging issues)
-make clean && make debug     # Linux
-gmake clean && gmake debug   # macOS (recommended)
+make clean && make debug     # Linux - Debug with AddressSanitizer (default, safe)
+gmake clean && gmake debug   # macOS - Debug with AddressSanitizer (recommended)
 
 # Format code after changes
 make format
 
-# Debug build with symbols
-make clean && make debug
+# Dev build (debug symbols only, no sanitizers - faster iteration)
+make clean && make dev
 
-# Build with AddressSanitizer (memory debugging)
-make clean && make sanitize
+# Debug build with AddressSanitizer (default, catches memory bugs)
+make clean && make debug
 
 # Build tests
 make tests
@@ -272,7 +272,8 @@ The test runner provides:
 # Different build types
 ./tests/scripts/run_tests.sh -b release      # Optimized build
 ./tests/scripts/run_tests.sh -b coverage     # Coverage instrumentation
-./tests/scripts/run_tests.sh -b sanitize     # AddressSanitizer enabled
+./tests/scripts/run_tests.sh -b debug        # AddressSanitizer enabled (default)
+./tests/scripts/run_tests.sh -b dev          # Debug without sanitizers (faster)
 
 # Generate JUnit XML for CI
 ./tests/scripts/run_tests.sh -J
@@ -426,7 +427,7 @@ Add these defines to see detailed logs:
 **Memory crashes:**
 - Always use SAFE_MALLOC() macro instead of malloc()
 - Check framebuffer operations - common source of use-after-free
-- Build with AddressSanitizer: `make clean && make sanitize`
+- Build with AddressSanitizer: `make clean && make debug`
 
 ### 4. Debugging Tools
 
@@ -576,7 +577,7 @@ if (client->active && client->has_video) {  // RACE CONDITION!
 ## Manual Testing Checklist
 
 Before committing any changes:
-1. [ ] `make clean && make debug` (Unix) or rebuild with CMake (Windows)
+1. [ ] `make clean && make debug` (Unix - with sanitizers) or rebuild with CMake (Windows)
 2. [ ] `make format` - code is properly formatted
 3. [ ] **Run tests**: `./tests/scripts/run_tests.sh`
 4. [ ] Start server, connect 2+ clients
