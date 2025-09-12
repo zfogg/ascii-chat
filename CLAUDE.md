@@ -33,7 +33,7 @@ ASCII-Chat is a terminal-based video chat application that converts webcam video
 
 ```
 ascii-chat/
-├── bin/                        # Compiled binaries (server, client, tests)
+├── bin/                        # Compiled binaries (ascii-chat-server, ascii-chat-client, tests)
 ├── build/                      # Object files (.o) and build artifacts
 ├── build_clang/                # Windows CMake build directory (NEW)
 ├── notes/                      # Development notes and documentation
@@ -154,8 +154,8 @@ cmake -B build -G "Visual Studio 17 2022"
 cmake --build build --config Debug
 
 # Run server and client
-./build_clang/bin/server.exe
-./build_clang/bin/client.exe
+./build_clang/bin/ascii-chat-server.exe
+./build_clang/bin/ascii-chat-client.exe
 ```
 
 ### Unix/macOS Building
@@ -196,37 +196,37 @@ make tests
 ### Essential Commands
 ```bash
 # Start server (listens on port 8080)
-./bin/server  # Unix/macOS
-./build_clang/bin/server.exe  # Windows
+./bin/ascii-chat-server  # Unix/macOS
+./build_clang/bin/ascii-chat-server.exe  # Windows
 
 # Start client (connects to localhost by default)
-./bin/client  # Unix/macOS
-./build_clang/bin/client.exe  # Windows
+./bin/ascii-chat-client  # Unix/macOS
+./build_clang/bin/ascii-chat-client.exe  # Windows
 
 # Connect to a server
-./bin/client --address 127.0.0.1 --port 8080
+./bin/ascii-chat-client --address 127.0.0.1 --port 8080
 
 # Run with custom dimensions (by default it uses terminal size)
-./bin/client --width 80 --height 24
+./bin/ascii-chat-client --width 80 --height 24
 
 # Color and audio support
-./bin/server --color --audio
-./bin/client --color --audio
+./bin/ascii-chat-server --color --audio
+./bin/ascii-chat-client --color --audio
 
 # Help and options
-./bin/server --help
-./bin/client --help
+./bin/ascii-chat-server --help
+./bin/ascii-chat-client --help
 ```
 
 ### Debug Helpers
 ```bash
 # --log-file helps with debugging (better than pipe redirects)
-./bin/server --log-file /tmp/server-test.log
-./bin/client --log-file /tmp/client-test.log
+./bin/ascii-chat-server --log-file /tmp/server-test.log
+./bin/ascii-chat-client --log-file /tmp/client-test.log
 
 # --snapshot mode for testing without continuous capture
-./bin/client --snapshot                    # Single frame and exit
-./bin/client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
+./bin/ascii-chat-client --snapshot                    # Single frame and exit
+./bin/ascii-chat-client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
 ```
 
 ## Testing Framework (UPDATED - Use run_tests.sh!)
@@ -437,14 +437,14 @@ sudo tcpdump -i lo port 8080 -X    # Linux
 netsh trace start capture=yes tracefile=trace.etl provider=Microsoft-Windows-TCPIP # Windows
 
 # Memory debugging
-leaks --atExit -- ./bin/server     # macOS
-valgrind ./bin/server               # Linux
+leaks --atExit -- ./bin/ascii-chat-server     # macOS
+valgrind ./bin/ascii-chat-server               # Linux
 # Windows: Use Visual Studio diagnostics or Application Verifier
 
 # Debuggers
-lldb ./bin/server                   # macOS (NOT gdb!)
-gdb ./bin/server                    # Linux
-windbg ./build_clang/bin/server.exe # Windows
+lldb ./bin/ascii-chat-server                   # macOS (NOT gdb!)
+gdb ./bin/ascii-chat-server                    # Linux
+windbg ./build_clang/bin/ascii-chat-server.exe # Windows
 
 # Process monitoring
 lsof -p $(pgrep server)             # Unix file descriptors

@@ -86,6 +86,17 @@ typedef long long ssize_t;
 #define PACKED_ATTR
 #define ALIGNED_ATTR(x) __declspec(align(x))
 
+// Thread-local storage and alignment macros
+#ifdef _MSC_VER
+  #define THREAD_LOCAL __declspec(thread)
+  #define ALIGNED_32 __declspec(align(32))
+  #define ALIGNED_16 __declspec(align(16))
+#else
+  #define THREAD_LOCAL __thread
+  #define ALIGNED_32 __attribute__((aligned(32)))
+  #define ALIGNED_16 __attribute__((aligned(16)))
+#endif
+
 // MSVC doesn't support GCC attributes, but Clang does
 // Only disable __attribute__ for MSVC, not for Clang on Windows
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -108,6 +119,13 @@ typedef long long ssize_t;
 #define PACKED_STRUCT_END
 #define PACKED_ATTR __attribute__((packed))
 #define ALIGNED_ATTR(x) __attribute__((aligned(x)))
+
+// Thread-local storage and alignment macros (already defined above for MSVC)
+#ifndef THREAD_LOCAL
+  #define THREAD_LOCAL __thread
+  #define ALIGNED_32 __attribute__((aligned(32)))
+  #define ALIGNED_16 __attribute__((aligned(16)))
+#endif
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>

@@ -36,8 +36,8 @@ libcriterion-dev`
 - Clone this repo onto a computer with a webcam.
 - Install the dependencies.
 - Run `make`.
-- Run `./bin/server -p 9001` in one terminal, and then
-- Run `./bin/client -p 9001` in another.
+- Run `./bin/ascii-chat-server -p 9001` in one terminal, and then
+- Run `./bin/ascii-chat-client -p 9001` in another.
 
 Use `make -j debug` as you edit and test code (sometimes `make clean` too 😏).
 
@@ -158,7 +158,7 @@ Good news though: we have **libsodium** installed and some code written for it.
 
 ### Client Options
 
-Run `./bin/client -h` to see all client options:
+Run `./bin/ascii-chat-client -h` to see all client options:
 
 - `-a --address ADDRESS`: IPv4 address to connect to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port (default: 27224)
@@ -183,7 +183,7 @@ Run `./bin/client -h` to see all client options:
 
 ### Server Options
 
-Run `./bin/server -h` to see all server options:
+Run `./bin/ascii-chat-server -h` to see all server options:
 
 - `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port to listen on (default: 27224)
@@ -199,12 +199,12 @@ Run `./bin/server -h` to see all server options:
 
 Start the server and wait for client connections:
 ```bash
-./bin/server [options]
+./bin/ascii-chat-server [options]
 ```
 
 Start the client and connect to a running server:
 ```bash
-./bin/client [options]
+./bin/ascii-chat-client [options]
 ```
 
 ## TODO

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "image2ascii/image.h"
+#include "../image.h"
 
 #ifdef SIMD_SUPPORT_AVX2
 

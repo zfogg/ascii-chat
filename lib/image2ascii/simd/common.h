@@ -5,9 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "common.h"
 #include "../image.h"
-#include "ascii_simd.h"
 #include "../output_buffer.h"
 
 // Forward declarations for architecture-specific implementations

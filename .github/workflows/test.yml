@@ -336,9 +336,9 @@ jobs:
         echo "Running memory leak detection..."
 
         # Test basic binary functionality for leaks
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/ascii-chat-server || true
         [ $? -eq 124 ] && echo "Server timed out" || false
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/ascii-chat-client || true
         [ $? -eq 124 ] && echo "Client timed out" || false
 
         echo "Memory leak detection completed"
@@ -380,9 +380,9 @@ jobs:
       run: |
         # Set TERM for terminal detection in CI environment
         # Test server help (doesn't require terminal setup)
-        ./bin/server --help
+        ./bin/ascii-chat-server --help
         # Test basic server startup (short timeout)
-        timeout 2s ./bin/server --log-file /tmp/server_test.log || true
+        timeout 2s ./bin/ascii-chat-server --log-file /tmp/server_test.log || true
         echo "Server startup test passed"
 
     - name: Test client functionality
@@ -390,6 +390,6 @@ jobs:
         TERM: xterm-256color
       run: |
         # Test client help (doesn't require webcam)
-        timeout 3 ./bin/server || true
+        timeout 3 ./bin/ascii-chat-server || true
         # Test client capabilities detection
-        ./bin/client --show-capabilities
+        ./bin/ascii-chat-client --show-capabilities

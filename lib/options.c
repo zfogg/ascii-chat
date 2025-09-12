@@ -40,7 +40,7 @@ int strtoint_safe(const char *str) {
 }
 
 static const unsigned short default_width = OPT_WIDTH_DEFAULT, default_height = OPT_HEIGHT_DEFAULT;
-unsigned short int opt_width = default_width, opt_height = default_height;
+unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
 bool auto_width = true, auto_height = true;
 
 char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1", opt_port[OPTIONS_BUFF_SIZE] = "27224";
@@ -299,6 +299,15 @@ static int is_valid_ipv4(const char *ip) {
 
 void options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
+
+  // Set different default addresses for client vs server
+  if (is_client) {
+    // Client connects to localhost by default
+    snprintf(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+  } else {
+    // Server binds to all interfaces by default
+    snprintf(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+  }
 
   // Use different option sets for client vs server
   const char *optstring;
@@ -591,7 +600,7 @@ void options_init(int argc, char **argv, bool is_client) {
 void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "ascii-chat - client options\n");
   fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 0.0.0.0)\n");
+  fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
   fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
   fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
   fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
