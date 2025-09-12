@@ -18,7 +18,7 @@
 #include "options.h"
 #include "common.h"
 #include "platform/string.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 
 // Safely parse string to integer with validation
 int strtoint_safe(const char *str) {

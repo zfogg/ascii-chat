@@ -39,7 +39,7 @@ char *image_print(const image_t *, const char *palette);
 char *image_print_color(const image_t *, const char *palette);
 
 // Capability-aware image printing functions
-#include "terminal_detect.h"
+#include "../platform/terminal.h"
 char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
                                     const char luminance_palette[256]);
 char *image_print_256color(const image_t *image, const char *palette);

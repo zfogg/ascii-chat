@@ -8,11 +8,14 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
-#include "../internal.h"
+#include "../../options.h"
+#include "../../common.h"
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <io.h>
+#include <fcntl.h>
+#include <string.h>
 
 /**
  * @brief Get terminal size
@@ -344,6 +347,325 @@ int terminal_clear_scrollback(int fd) {
     return -1;
   }
   return fflush(stdout);
+}
+
+// ============================================================================
+// Terminal Detection and Capabilities (Windows)
+// ============================================================================
+
+/**
+ * Get terminal size with Windows Console API - simpler than Unix
+ */
+int get_terminal_size(unsigned short int *width, unsigned short int *height) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    if (console_handle == INVALID_HANDLE_VALUE) {
+        log_debug("Failed to get console handle");
+        goto fallback;
+    }
+
+    if (GetConsoleScreenBufferInfo(console_handle, &csbi)) {
+        // Use window size, not buffer size
+        *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+        *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+        log_debug("Windows console size: %dx%d", *width, *height);
+        return 0;
+    }
+
+    log_debug("GetConsoleScreenBufferInfo failed: %lu", GetLastError());
+
+fallback:
+    // Environment variable fallback
+    char *cols_str = SAFE_GETENV("COLUMNS");
+    char *lines_str = SAFE_GETENV("LINES");
+
+    *width = OPT_WIDTH_DEFAULT;
+    *height = OPT_HEIGHT_DEFAULT;
+
+    if (cols_str && lines_str) {
+        int env_width = atoi(cols_str);
+        int env_height = atoi(lines_str);
+
+        if (env_width > 0 && env_height > 0) {
+            *width = (unsigned short int)env_width;
+            *height = (unsigned short int)env_height;
+            log_debug("Terminal size from environment: %dx%d", *width, *height);
+            return 0;
+        }
+    }
+
+    log_debug("Windows terminal size fallback: %dx%d", *width, *height);
+    return -1;
+}
+
+/**
+ * Get current TTY on Windows - just use CON device
+ */
+tty_info_t get_current_tty(void) {
+    tty_info_t result = {-1, NULL, false};
+
+    // On Windows, use CON for console output
+    result.fd = SAFE_OPEN("CON", _O_WRONLY, 0);
+    if (result.fd >= 0) {
+        result.path = "CON";
+        result.owns_fd = true;
+        log_debug("Windows TTY: CON (fd=%d)", result.fd);
+        return result;
+    }
+
+    log_debug("Failed to open CON device: %s", SAFE_STRERROR(errno));
+    return result; // No TTY available
+}
+
+/**
+ * Validate TTY path on Windows - only CON is valid
+ */
+bool is_valid_tty_path(const char *path) {
+    if (!path || strlen(path) == 0) {
+        return false;
+    }
+
+    // Only CON is valid on Windows
+    return (_stricmp(path, "CON") == 0);
+}
+
+/**
+ * Detect color support on Windows - check ANSI support
+ */
+static terminal_color_level_t detect_windows_color_support(void) {
+    // Check if we can enable ANSI processing
+    HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (console_handle == INVALID_HANDLE_VALUE) {
+        log_debug("Cannot get console handle for color detection");
+        return TERM_COLOR_NONE;
+    }
+
+    DWORD console_mode = 0;
+    if (!GetConsoleMode(console_handle, &console_mode)) {
+        log_debug("Cannot get console mode for color detection");
+        return TERM_COLOR_NONE;
+    }
+
+    // Try to enable ANSI escape sequence processing
+    DWORD new_mode = console_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    if (SetConsoleMode(console_handle, new_mode)) {
+        // Success! Windows supports ANSI escapes, assume truecolor
+        log_debug("Windows console supports ANSI escape sequences");
+        return TERM_COLOR_TRUECOLOR;
+    }
+
+    log_debug("Windows console does not support ANSI escape sequences");
+    return TERM_COLOR_NONE;
+}
+
+/**
+ * Detect UTF-8 support on Windows - check console code page
+ */
+static bool detect_windows_utf8_support(void) {
+    UINT codepage = GetConsoleOutputCP();
+    log_debug("Windows console code page: %u", codepage);
+    return (codepage == CP_UTF8);
+}
+
+/**
+ * Detect terminal capabilities on Windows - much simpler than Unix!
+ */
+terminal_capabilities_t detect_terminal_capabilities(void) {
+    terminal_capabilities_t caps = {0};
+
+    // Detect color support level
+    caps.color_level = detect_windows_color_support();
+
+    // Set capability flags based on color level
+    switch (caps.color_level) {
+    case TERM_COLOR_TRUECOLOR:
+        caps.capabilities |= TERM_CAP_COLOR_TRUE;
+        caps.capabilities |= TERM_CAP_COLOR_256;
+        caps.capabilities |= TERM_CAP_COLOR_16;
+        caps.color_count = 16777216;
+        caps.detection_reliable = true;
+        break;
+
+    case TERM_COLOR_256:
+        caps.capabilities |= TERM_CAP_COLOR_256;
+        caps.capabilities |= TERM_CAP_COLOR_16;
+        caps.color_count = 256;
+        caps.detection_reliable = true;
+        break;
+
+    case TERM_COLOR_16:
+        caps.capabilities |= TERM_CAP_COLOR_16;
+        caps.color_count = 16;
+        caps.detection_reliable = false;
+        break;
+
+    case TERM_COLOR_NONE:
+        caps.color_count = 0;
+        caps.detection_reliable = false;
+        break;
+    }
+
+    // Detect UTF-8 support
+    caps.utf8_support = detect_windows_utf8_support();
+    if (caps.utf8_support) {
+        caps.capabilities |= TERM_CAP_UTF8;
+    }
+
+    // Background color support (assume yes if any color support)
+    if (caps.color_level > TERM_COLOR_NONE) {
+        caps.capabilities |= TERM_CAP_BACKGROUND;
+    }
+
+    // Store environment variables for debugging
+    char *term = SAFE_GETENV("TERM");
+    char *colorterm = SAFE_GETENV("COLORTERM");
+
+    SAFE_STRNCPY(caps.term_type, term ? term : "windows-console", sizeof(caps.term_type) - 1);
+    SAFE_STRNCPY(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm) - 1);
+
+    log_debug("Windows terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s",
+              caps.color_level, caps.capabilities, caps.utf8_support ? "yes" : "no");
+
+    return caps;
+}
+
+/**
+ * Helper functions for capability reporting
+ */
+const char *terminal_color_level_name(terminal_color_level_t level) {
+    switch (level) {
+    case TERM_COLOR_NONE:
+        return "monochrome";
+    case TERM_COLOR_16:
+        return "16-color";
+    case TERM_COLOR_256:
+        return "256-color";
+    case TERM_COLOR_TRUECOLOR:
+        return "truecolor";
+    default:
+        return "unknown";
+    }
+}
+
+const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
+    static char summary[256];
+
+    snprintf(summary, sizeof(summary), "%s (%d colors), UTF-8: %s, TERM: %s, COLORTERM: %s",
+             terminal_color_level_name(caps->color_level), caps->color_count,
+             (caps->capabilities & TERM_CAP_UTF8) ? "yes" : "no", caps->term_type, caps->colorterm);
+
+    return summary;
+}
+
+void print_terminal_capabilities(const terminal_capabilities_t *caps) {
+    printf("Terminal Capabilities (Windows):\n");
+    printf("  Color Level: %s\n", terminal_color_level_name(caps->color_level));
+    printf("  Max Colors: %d\n", caps->color_count);
+    printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
+    printf("  Background Colors: %s\n", (caps->capabilities & TERM_CAP_BACKGROUND) ? "Yes" : "No");
+    printf("  Render Mode: %s\n", caps->render_mode == RENDER_MODE_FOREGROUND   ? "foreground"
+                                : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
+                                : caps->render_mode == RENDER_MODE_HALF_BLOCK ? "half-block"
+                                                                              : "unknown");
+    printf("  TERM: %s\n", caps->term_type);
+    printf("  COLORTERM: %s\n", caps->colorterm);
+    printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
+    printf("  Capabilities Bitmask: 0x%08x\n", caps->capabilities);
+}
+
+void test_terminal_output_modes(void) {
+    printf("Testing Windows terminal output modes:\n");
+
+    // Test basic ANSI colors (16-color)
+    printf("  16-color: ");
+    for (int i = 30; i <= 37; i++) {
+        printf("\033[%dm█\033[0m", i);
+    }
+    printf("\n");
+
+    // Test 256-color mode
+    printf("  256-color: ");
+    for (int i = 0; i < 16; i++) {
+        printf("\033[38;5;%dm█\033[0m", i);
+    }
+    printf("\n");
+
+    // Test truecolor mode
+    printf("  Truecolor: ");
+    for (int i = 0; i < 16; i++) {
+        int r = (i * 255) / 15;
+        printf("\033[38;2;%d;0;0m█\033[0m", r);
+    }
+    printf("\n");
+
+    // Test Unicode characters
+    printf("  Unicode: ");
+    printf("░▒▓\n");
+}
+
+/**
+ * Apply color mode and render mode overrides to detected capabilities
+ */
+terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
+    // Handle color mode overrides
+    switch (opt_color_mode) {
+    case COLOR_MODE_AUTO:
+        // Use detected capabilities as-is
+        break;
+
+    case COLOR_MODE_MONO:
+        caps.color_level = TERM_COLOR_NONE;
+        caps.color_count = 2;
+        caps.capabilities &= ~(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16);
+        break;
+
+    case COLOR_MODE_16_COLOR:
+        caps.color_level = TERM_COLOR_16;
+        caps.color_count = 16;
+        caps.capabilities &= ~(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256);
+        caps.capabilities |= TERM_CAP_COLOR_16;
+        break;
+
+    case COLOR_MODE_256_COLOR:
+        caps.color_level = TERM_COLOR_256;
+        caps.color_count = 256;
+        caps.capabilities &= ~TERM_CAP_COLOR_TRUE;
+        caps.capabilities |= TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
+        break;
+
+    case COLOR_MODE_TRUECOLOR:
+        caps.color_level = TERM_COLOR_TRUECOLOR;
+        caps.color_count = 16777216;
+        caps.capabilities |= TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
+        break;
+    }
+
+    // Handle render mode overrides
+    switch (opt_render_mode) {
+    case RENDER_MODE_FOREGROUND:
+        caps.capabilities &= ~TERM_CAP_BACKGROUND;
+        break;
+
+    case RENDER_MODE_BACKGROUND:
+        caps.capabilities |= TERM_CAP_BACKGROUND;
+        break;
+
+    case RENDER_MODE_HALF_BLOCK:
+        caps.capabilities |= TERM_CAP_UTF8 | TERM_CAP_BACKGROUND;
+        break;
+    }
+
+    // Handle UTF-8 override
+    if (opt_force_utf8) {
+        caps.utf8_support = true;
+        caps.capabilities |= TERM_CAP_UTF8;
+    }
+
+    // Include client's render mode preference
+    caps.render_mode = opt_render_mode;
+
+    return caps;
 }
 
 #endif // _WIN32

@@ -1,12 +1,12 @@
 /**
- * @file client.c  
+ * @file client.c
  * @brief Per-Client Lifecycle Management and Threading Coordination
- * 
+ *
  * This module manages the complete lifecycle of individual clients in the ASCII-Chat
  * server's modular architecture. It replaced the client management portions of the
  * original monolithic server.c, providing clean separation of concerns and improved
  * maintainability.
- * 
+ *
  * CORE RESPONSIBILITIES:
  * ======================
  * 1. Client connection establishment and initialization
@@ -15,52 +15,52 @@
  * 4. Client disconnection handling and resource cleanup
  * 5. Hash table management for O(1) client lookups
  * 6. Integration point between main.c and other modules
- * 
+ *
  * THREADING ARCHITECTURE PER CLIENT:
  * ===================================
  * Each connected client spawns multiple dedicated threads:
  * - Receive Thread: Handles incoming packets from client (calls protocol.c functions)
- * - Send Thread: Manages outgoing packet delivery using packet queues  
+ * - Send Thread: Manages outgoing packet delivery using packet queues
  * - Video Render Thread: Generates ASCII frames at 60fps (render.c)
  * - Audio Render Thread: Mixes audio streams at 172fps (render.c)
- * 
+ *
  * This per-client threading model provides several advantages:
  * - Linear performance scaling (no shared bottlenecks)
  * - Fault isolation (one client's issues don't affect others)
  * - Simplified synchronization (each client owns its resources)
  * - Real-time performance guarantees per client
- * 
+ *
  * DATA STRUCTURES AND SYNCHRONIZATION:
  * ====================================
  * The module manages two primary data structures:
- * 
+ *
  * 1. client_manager_t (global singleton):
  *    - Array of client_info_t structs (backing storage)
  *    - Hash table for O(1) client_id -> client_info_t lookups
  *    - Protected by reader-writer lock (g_client_manager_rwlock)
  *    - Allows concurrent reads, exclusive writes
- * 
+ *
  * 2. client_info_t (per-client state):
  *    - Network connection details and capabilities
  *    - Thread handles and synchronization primitives
  *    - Media buffers (video/audio) and packet queues
  *    - Terminal capabilities and rendering preferences
  *    - Protected by per-client mutex (client_state_mutex)
- * 
+ *
  * CRITICAL SYNCHRONIZATION PATTERNS:
  * ===================================
- * 
+ *
  * LOCK ORDERING PROTOCOL (prevents deadlocks):
  * 1. Always acquire g_client_manager_rwlock FIRST
  * 2. Then acquire per-client mutexes if needed
  * 3. Release in reverse order
- * 
+ *
  * SNAPSHOT PATTERN (reduces lock contention):
  * 1. Acquire mutex
  * 2. Copy needed state variables to local copies
- * 3. Release mutex immediately  
+ * 3. Release mutex immediately
  * 4. Process using local copies without locks
- * 
+ *
  * INTEGRATION WITH OTHER MODULES:
  * ===============================
  * - main.c: Calls add_client() and remove_client() from main loop
@@ -68,7 +68,7 @@
  * - render.c: Render thread functions created per client
  * - stream.c: Stream generation functions called by render threads
  * - stats.c: Accesses client data for performance monitoring
- * 
+ *
  * THREAD LIFECYCLE MANAGEMENT:
  * ============================
  * Thread creation order (in add_client()):
@@ -76,33 +76,33 @@
  * 2. Create send thread (for outgoing packet delivery)
  * 3. Create receive thread (for incoming packet processing)
  * 4. Create render threads (video + audio generation)
- * 
+ *
  * Thread termination order (in remove_client()):
  * 1. Set shutdown flags (causes threads to exit main loops)
  * 2. Join send thread (cleanest exit, no blocking I/O)
  * 3. Join receive thread (may be blocked on network I/O)
  * 4. Join render threads (computational work, clean exit)
  * 5. Clean up resources (queues, buffers, mutexes)
- * 
+ *
  * WHY THIS MODULAR DESIGN:
  * =========================
  * The original server.c contained all client management code inline, making it:
  * - Hard to understand the client lifecycle
- * - Difficult to modify threading behavior  
+ * - Difficult to modify threading behavior
  * - Impossible to isolate client-related bugs
  * - Challenging to add new client features
- * 
+ *
  * This modular approach provides:
  * - Clear separation of client vs. server concerns
  * - Easier testing of client management logic
- * - Better code reuse and maintenance  
+ * - Better code reuse and maintenance
  * - Future extensibility for new client types
- * 
- * @author ASCII-Chat Development Team
- * @date January 2025
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
  * @version 2.0 (Post-Modularization)
  * @see main.c For overall server architecture
- * @see render.c For per-client rendering implementation 
+ * @see render.c For per-client rendering implementation
  * @see protocol.c For client packet processing
  */
 
@@ -127,30 +127,30 @@
 
 /**
  * @brief Global client manager singleton - central coordination point
- * 
+ *
  * This is the primary data structure for managing all connected clients.
  * It serves as the bridge between main.c's connection accept loop and
  * the per-client threading architecture.
- * 
+ *
  * STRUCTURE COMPONENTS:
  * - clients[]: Array backing storage for client_info_t structs
  * - client_hashtable: O(1) lookup table for client_id -> client_info_t*
  * - client_count: Current number of active clients
  * - mutex: Legacy mutex (mostly replaced by rwlock)
  * - next_client_id: Monotonic counter for unique client identification
- * 
+ *
  * THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent access
  */
 client_manager_t g_client_manager = {0};
 
 /**
  * @brief Reader-writer lock protecting the global client manager
- * 
+ *
  * This lock enables high-performance concurrent access patterns:
  * - Multiple threads can read client data simultaneously (stats, rendering)
  * - Only one thread can modify client data at a time (add/remove operations)
  * - Eliminates contention between read-heavy operations
- * 
+ *
  * USAGE PATTERN:
  * - Read operations: rwlock_rdlock() for client lookups, stats gathering
  * - Write operations: rwlock_wrlock() for add_client(), remove_client()
@@ -163,8 +163,8 @@ extern atomic_bool g_should_exit;    ///< Global shutdown flag from main.c
 extern mixer_t *g_audio_mixer;       ///< Global audio mixer from main.c
 
 // Forward declarations for internal functions
-void *client_receive_thread_func(void *arg);      ///< Client packet receive thread
-void *client_send_thread_func(void *arg);         ///< Client packet send thread  
+// client_receive_thread is implemented below
+void *client_send_thread_func(void *arg);         ///< Client packet send thread
 void broadcast_server_state_to_all_clients(void); ///< Notify all clients of state changes
 
 /* ============================================================================
@@ -174,24 +174,24 @@ void broadcast_server_state_to_all_clients(void); ///< Notify all clients of sta
 
 /**
  * @brief Fast O(1) client lookup by ID using hash table
- * 
+ *
  * This is the primary method for locating clients throughout the server.
  * It uses a hash table for constant-time lookups regardless of client count,
  * making it suitable for high-performance operations like rendering and stats.
- * 
+ *
  * PERFORMANCE CHARACTERISTICS:
  * - Time Complexity: O(1) average case, O(n) worst case (hash collision)
- * - Space Complexity: O(1) 
+ * - Space Complexity: O(1)
  * - Thread Safety: Hash table is internally thread-safe for lookups
- * 
+ *
  * USAGE PATTERNS:
  * - Called by render threads to find target clients for frame generation
  * - Used by protocol handlers to locate clients for packet processing
  * - Stats collection for per-client performance monitoring
- * 
+ *
  * @param client_id Unique identifier for the client (0 is invalid)
  * @return Pointer to client_info_t if found, NULL if not found or invalid ID
- * 
+ *
  * @note Does not require external locking - hash table provides thread safety
  * @note Returns direct pointer to client struct - caller should use snapshot pattern
  */
@@ -205,24 +205,24 @@ client_info_t *find_client_by_id(uint32_t client_id) {
 
 /**
  * @brief Find client by socket descriptor using linear search
- * 
+ *
  * This function provides socket-based client lookup, primarily used during
  * connection establishment before client IDs are assigned. Less efficient
  * than find_client_by_id() but necessary for socket-based operations.
- * 
+ *
  * PERFORMANCE CHARACTERISTICS:
  * - Time Complexity: O(n) where n = number of active clients
  * - Space Complexity: O(1)
  * - Thread Safety: Requires external read lock on g_client_manager_rwlock
- * 
+ *
  * USAGE PATTERNS:
  * - Connection establishment during add_client() processing
  * - Socket error handling and cleanup operations
  * - Debugging and diagnostic functions
- * 
+ *
  * @param socket Platform-abstracted socket descriptor to search for
  * @return Pointer to client_info_t if found, NULL if not found
- * 
+ *
  * @warning Requires caller to hold g_client_manager_rwlock read lock
  * @note Only searches active clients (avoids returning stale entries)
  */
@@ -353,7 +353,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   rwlock_unlock(&g_client_manager_rwlock);
 
   // Start threads for this client
-  if (ascii_thread_create(&client->receive_thread, client_receive_thread_func, client) != 0) {
+  if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
     log_error("Failed to create receive thread for client %u", client->client_id);
     remove_client(client->client_id);
     return -1;

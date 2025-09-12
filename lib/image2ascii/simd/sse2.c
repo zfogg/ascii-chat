@@ -5,6 +5,7 @@
 #include "sse2.h"
 #include "ascii_simd.h"
 #include "common.h"
+#include "../output_buffer.h"
 
 #ifdef SIMD_SUPPORT_SSE2
 #include <emmintrin.h>

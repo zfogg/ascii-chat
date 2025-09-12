@@ -1,5 +1,6 @@
 #include "common.h"
 #include "platform/abstraction.h"
+#include "platform/file.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +51,7 @@ static void rotate_log_if_needed(void) {
   }
 
   if (g_log.current_size >= MAX_LOG_SIZE) {
-    close(g_log.file);
+    platform_close(g_log.file);
 
     /* Open file for reading to get the tail */
     int read_file = SAFE_OPEN(g_log.filename, O_RDONLY, 0);
@@ -66,7 +67,7 @@ static void rotate_log_if_needed(void) {
     /* Seek to position where we want to start keeping data (keep last 2MB) */
     size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
     if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
-      close(read_file);
+      platform_close(read_file);
       /* Fall back to truncation */
       int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
@@ -76,7 +77,7 @@ static void rotate_log_if_needed(void) {
 
     /* Skip to next line boundary to avoid partial lines */
     char c;
-    while (read(read_file, &c, 1) > 0 && c != '\n') {
+    while (platform_read(read_file, &c, 1) > 0 && c != '\n') {
       /* Skip characters until newline */
     }
 
@@ -85,7 +86,7 @@ static void rotate_log_if_needed(void) {
     snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
     int temp_file = SAFE_OPEN(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (temp_file < 0) {
-      close(read_file);
+      platform_close(read_file);
       /* Fall back to truncation */
       int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
@@ -97,11 +98,11 @@ static void rotate_log_if_needed(void) {
     char buffer[8192];
     ssize_t bytes_read;
     size_t new_size = 0;
-    while ((bytes_read = read(read_file, buffer, sizeof(buffer))) > 0) {
-      ssize_t written = write(temp_file, buffer, bytes_read);
+    while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
+      ssize_t written = platform_write(temp_file, buffer, bytes_read);
       if (written != bytes_read) {
-        close(read_file);
-        close(temp_file);
+        platform_close(read_file);
+        platform_close(temp_file);
         unlink(temp_filename);
         /* Fall back to truncation */
         int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
@@ -112,8 +113,8 @@ static void rotate_log_if_needed(void) {
       new_size += (size_t)bytes_read;
     }
 
-    close(read_file);
-    close(temp_file);
+    platform_close(read_file);
+    platform_close(temp_file);
 
     /* Replace original with temp file */
     if (rename(temp_filename, g_log.filename) != 0) {
@@ -139,7 +140,7 @@ static void rotate_log_if_needed(void) {
         int log_msg_len = snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
                                    "00:00:00.000000", new_size);
         if (log_msg_len > 0) {
-          ssize_t written = write(g_log.file, log_msg, (size_t)log_msg_len);
+          ssize_t written = platform_write(g_log.file, log_msg, (size_t)log_msg_len);
           (void)written; // suppress unused warning
         }
       }
@@ -162,7 +163,7 @@ void log_init(const char *filename, log_level_t level) {
 
   if (g_log.initialized) {
     if (g_log.file && g_log.file != STDERR_FILENO) {
-      close(g_log.file);
+      platform_close(g_log.file);
     }
   }
 
@@ -204,7 +205,7 @@ void log_destroy(void) {
   mutex_lock(&g_log.mutex);
 
   if (g_log.file && g_log.file != STDERR_FILENO) {
-    close(g_log.file);
+    platform_close(g_log.file);
   }
 
   g_log.file = 0;
@@ -323,12 +324,12 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
 
     // Write to file descriptor directly
-    ssize_t written = write(g_log.file, log_buffer, offset);
+    ssize_t written = platform_write(g_log.file, log_buffer, offset);
     if (written > 0) {
       g_log.current_size += (size_t)written;
     }
 
-    // No need to flush with direct write() - it bypasses stdio buffering
+    // No need to flush with direct platform_write() - it bypasses stdio buffering
   }
 
   // Handle stderr output separately - only if terminal output is enabled

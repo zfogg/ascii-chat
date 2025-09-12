@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "platform/abstraction.h"
-
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough.
 #ifndef UINT8_MAX
@@ -17,15 +15,6 @@ typedef unsigned long long uint64_t;
 #endif
 
 #include <stdlib.h>
-
-// Render mode enum (defined here to avoid circular dependencies)
-typedef enum {
-  RENDER_MODE_FOREGROUND = 0, // Use foreground colors only (default)
-  RENDER_MODE_BACKGROUND = 1, // Use background colors with contrasting foreground
-  RENDER_MODE_HALF_BLOCK = 2  // Use UTF-8 half-blocks (▀ █) for 2x vertical resolution
-} render_mode_t;
-
-#include "options.h"
 
 /* ============================================================================
  * Common Definitions
@@ -46,9 +35,10 @@ typedef enum {
   ASCIICHAT_ERR_TERMINAL = -9,
   ASCIICHAT_ERR_THREAD = -10,
   ASCIICHAT_ERR_AUDIO = -11,
-  ASCIICHAT_ERR_BUFFER_ACCESS = -12,
-  ASCIICHAT_ERR_BUFFER_OVERFLOW = -13,
-  ASCIICHAT_ERR_INVALID_FRAME = -14,
+  ASCIICHAT_ERR_DISPLAY = -12,
+  ASCIICHAT_ERR_BUFFER_ACCESS = -13,
+  ASCIICHAT_ERR_BUFFER_OVERFLOW = -14,
+  ASCIICHAT_ERR_INVALID_FRAME = -15,
 } asciichat_error_t;
 
 /* Error handling */
@@ -76,6 +66,8 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
     return "Thread error";
   case ASCIICHAT_ERR_AUDIO:
     return "Audio error";
+  case ASCIICHAT_ERR_DISPLAY:
+    return "Display error";
   case ASCIICHAT_ERR_INVALID_FRAME:
     return "Frame data error";
   default:
