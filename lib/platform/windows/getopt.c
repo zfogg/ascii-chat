@@ -1,6 +1,6 @@
 #ifdef _WIN32
 
-#include "getopt_windows.h"
+#include "getopt.h"
 #include <stdio.h>
 #include <string.h>
 

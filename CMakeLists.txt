@@ -1108,9 +1108,9 @@ if(WIN32)
         lib/os/windows/webcam_mediafoundation.c
     )
     
-    # Add getopt for Windows if needed
-    if(EXISTS "${CMAKE_SOURCE_DIR}/lib/getopt_windows.c")
-        list(APPEND PLATFORM_SRCS lib/getopt_windows.c)
+    # Add getopt for Windows (now in platform directory)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/lib/platform/windows/getopt.c")
+        list(APPEND PLATFORM_SRCS lib/platform/windows/getopt.c)
     endif()
 else()
     # POSIX platforms (Linux/macOS)
