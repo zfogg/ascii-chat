@@ -1,7 +1,6 @@
 #ifdef _WIN32
 
-#include "webcam.h"
-#include "webcam_platform.h"
+#include "os/webcam.h"
 #include "common.h"
 #include <windows.h>
 #include <stdio.h>

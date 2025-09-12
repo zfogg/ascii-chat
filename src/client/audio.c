@@ -76,12 +76,12 @@
  * @date 2025
  */
 
-#include "audio.h"
+#include "os/audio.h"
 #include "main.h"
 #include "server.h"
 
   
-#include "../lib/audio.h"  // lib/audio.h for PortAudio wrapper
+#include "os/audio.h"  // lib/os/audio.h for PortAudio wrapper
 #include "mixer.h"  // Audio processing functions
 #include "common.h"
 #include "options.h"

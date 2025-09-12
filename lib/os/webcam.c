@@ -2,11 +2,33 @@
 #include <stdlib.h>
 
 #include "webcam.h"
-#include "webcam_platform.h"
 #include "common.h"
 #include "options.h"
 
 static webcam_context_t *global_webcam_ctx = NULL;
+
+// Platform detection
+webcam_platform_type_t webcam_get_platform(void) {
+#ifdef __linux__
+  return WEBCAM_PLATFORM_V4L2;
+#elif defined(__APPLE__)
+  return WEBCAM_PLATFORM_AVFOUNDATION;
+#else
+  return WEBCAM_PLATFORM_UNKNOWN;
+#endif
+}
+
+const char *webcam_platform_name(webcam_platform_type_t platform) {
+  switch (platform) {
+  case WEBCAM_PLATFORM_V4L2:
+    return "V4L2 (Linux)";
+  case WEBCAM_PLATFORM_AVFOUNDATION:
+    return "AVFoundation (macOS)";
+  case WEBCAM_PLATFORM_UNKNOWN:
+  default:
+    return "Unknown";
+  }
+}
 
 int webcam_init(unsigned short int webcam_index) {
   webcam_platform_type_t platform = webcam_get_platform();
@@ -96,3 +118,32 @@ void webcam_cleanup(void) {
     log_info("Webcam was not opened, nothing to release");
   }
 }
+
+// Fallback implementations for unsupported platforms
+#if !defined(__linux__) && !defined(__APPLE__)
+int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
+  (void)ctx;
+  (void)device_index;
+  log_error("Webcam platform not supported on this system");
+  return -1;
+}
+
+void webcam_platform_cleanup(webcam_context_t *ctx) {
+  (void)ctx;
+  log_warn("Webcam cleanup called on unsupported platform");
+}
+
+image_t *webcam_platform_read(webcam_context_t *ctx) {
+  (void)ctx;
+  log_error("Webcam read not supported on this platform");
+  return NULL;
+}
+
+int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+  (void)ctx;
+  (void)width;
+  (void)height;
+  log_error("Webcam get dimensions not supported on this platform");
+  return -1;
+}
+#endif

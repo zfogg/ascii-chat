@@ -171,7 +171,7 @@
 #include "platform/init.h"
 #include "packet_queue.h"
 #include "mixer.h"
-#include "audio.h"
+#include "os/audio.h"
 
 /**
  * @brief Global shutdown flag from main.c - coordinate graceful thread termination

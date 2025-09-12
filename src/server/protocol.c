@@ -124,7 +124,7 @@
 #include "network.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
-#include "audio.h"
+#include "os/audio.h"
 #include "palette.h"
 #include "image2ascii/image.h"
 

@@ -95,7 +95,7 @@
 #include "main.h"
 #include "server.h"
 
-#include "webcam.h"
+#include "os/webcam.h"
 #include "image2ascii/image.h"
 #include "network.h"
 #include "common.h"
