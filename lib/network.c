@@ -5,12 +5,6 @@
 #include "terminal_detect.h"
 #include <stdint.h>
 #include <errno.h>
-#ifndef _WIN32
-#include <fcntl.h>
-#include <netinet/tcp.h>
-#include <sys/select.h>
-#include <unistd.h>
-#endif
 #include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -28,19 +22,11 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-#ifdef _WIN32
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)) < 0) {
-#else
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-#endif
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
     return -1;
   }
 
-#ifdef _WIN32
-  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout)) < 0) {
-#else
-  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
-#endif
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
     return -1;
   }
 
@@ -48,72 +34,11 @@ int set_socket_timeout(int sockfd, int timeout_seconds) {
 }
 
 int set_socket_keepalive(int sockfd) {
-  int keepalive = 1;
-#ifdef _WIN32
-  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) < 0) {
-#else
-  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0) {
-#endif
-    return -1;
-  }
-
-#ifdef __APPLE__
-  /* macOS: TCP_KEEPALIVE sets the idle time (in seconds) before sending probes */
-  {
-    int keepalive_idle = KEEPALIVE_IDLE;
-#ifdef _WIN32
-    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, (const char *)&keepalive_idle, sizeof(keepalive_idle));
-#else
-    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &keepalive_idle, sizeof(keepalive_idle));
-#endif
-    /* Interval/count tuning is not available via setsockopt on macOS; client/server PINGs handle liveness. */
-  }
-#endif
-
-#ifdef TCP_KEEPIDLE
-  int keepidle = KEEPALIVE_IDLE;
-#ifdef _WIN32
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, (const char *)&keepidle, sizeof(keepidle));
-#else
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
-#endif
-  // Not critical, continue if fail.
-#endif
-
-#ifdef TCP_KEEPINTVL
-  int keepintvl = KEEPALIVE_INTERVAL;
-#ifdef _WIN32
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, (const char *)&keepintvl, sizeof(keepintvl));
-#else
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
-#endif
-  // Not critical, continue if fail.
-#endif
-
-#ifdef TCP_KEEPCNT
-  int keepcnt = KEEPALIVE_COUNT;
-#ifdef _WIN32
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, (const char *)&keepcnt, sizeof(keepcnt));
-#else
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
-#endif
-  // Not critical, continue if fail.
-#endif
-
-  return 0;
+  return socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
 }
 
 int set_socket_nonblocking(int sockfd) {
-#ifdef _WIN32
-  u_long mode = 1; // 1 to enable non-blocking socket
-  return ioctlsocket(sockfd, FIONBIO, &mode);
-#else
-  int flags = fcntl(sockfd, F_GETFL, 0);
-  if (flags == -1) {
-    return -1;
-  }
-  return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
-#endif
+  return socket_set_nonblocking(sockfd, true);
 }
 
 bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen,
@@ -130,7 +55,9 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
     return true;
   }
 
-  if (errno != IN_PROGRESS_ERROR) {
+  // Check if socket operation would block (non-blocking connect in progress)
+  int last_error = socket_get_last_error();
+  if (last_error != SOCKET_ERROR_INPROGRESS && last_error != SOCKET_ERROR_WOULDBLOCK) {
     return false;
   }
 
@@ -155,11 +82,7 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
   // Check if connection was successful
   int error = 0;
   socklen_t len = sizeof(error);
-#ifdef _WIN32
-  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) < 0) {
-#else
-  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
-#endif
+  if (socket_getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
     return false;
   }
 

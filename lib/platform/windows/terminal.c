@@ -153,4 +153,165 @@ void terminal_enable_ansi(void) {
   }
 }
 
+// ============================================================================
+// Extended Terminal Control
+// ============================================================================
+
+/**
+ * @brief Set terminal buffering mode
+ * @param line_buffered True for line buffering, false for no buffering
+ * @return 0 on success, -1 on failure
+ */
+int terminal_set_buffering(bool line_buffered) {
+  // Windows console doesn't have direct line buffering control
+  // This is typically handled at the C runtime level
+  if (line_buffered) {
+    setvbuf(stdout, NULL, _IOLBF, 0);
+  } else {
+    setvbuf(stdout, NULL, _IONBF, 0);
+  }
+  return 0;
+}
+
+/**
+ * @brief Flush terminal output
+ * @return 0 on success, -1 on failure
+ */
+int terminal_flush(void) {
+  return fflush(stdout);
+}
+
+/**
+ * @brief Get current cursor position
+ * @param row Pointer to store row position
+ * @param col Pointer to store column position
+ * @return 0 on success, -1 on failure
+ */
+int terminal_get_cursor_position(int *row, int *col) {
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+  if (hOut == INVALID_HANDLE_VALUE) {
+    return -1;
+  }
+
+  if (!GetConsoleScreenBufferInfo(hOut, &csbi)) {
+    return -1;
+  }
+
+  if (row)
+    *row = csbi.dwCursorPosition.Y + 1; // Convert to 1-based
+  if (col)
+    *col = csbi.dwCursorPosition.X + 1; // Convert to 1-based
+
+  return 0;
+}
+
+/**
+ * @brief Save cursor position (using ANSI if available)
+ * @return 0 on success, -1 on failure
+ */
+int terminal_save_cursor(void) {
+  // Try ANSI escape sequence first (Windows 10+)
+  printf("\033[s");
+  fflush(stdout);
+  return 0;
+}
+
+/**
+ * @brief Restore cursor position (using ANSI if available)
+ * @return 0 on success, -1 on failure
+ */
+int terminal_restore_cursor(void) {
+  // Try ANSI escape sequence first (Windows 10+)
+  printf("\033[u");
+  fflush(stdout);
+  return 0;
+}
+
+/**
+ * @brief Set terminal window title
+ * @param title New window title
+ * @return 0 on success, -1 on failure
+ */
+int terminal_set_title(const char *title) {
+  if (SetConsoleTitleA(title)) {
+    return 0;
+  }
+  // Fallback to ANSI escape sequence
+  printf("\033]0;%s\007", title);
+  fflush(stdout);
+  return 0;
+}
+
+/**
+ * @brief Ring terminal bell
+ * @return 0 on success, -1 on failure
+ */
+int terminal_ring_bell(void) {
+  // Use Windows beep
+  Beep(800, 200); // 800Hz for 200ms
+  return 0;
+}
+
+/**
+ * @brief Hide or show cursor
+ * @param hide True to hide cursor, false to show
+ * @return 0 on success, -1 on failure
+ */
+int terminal_hide_cursor(bool hide) {
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_CURSOR_INFO cursorInfo;
+
+  if (hOut == INVALID_HANDLE_VALUE) {
+    // Fallback to ANSI
+    printf(hide ? "\033[?25l" : "\033[?25h");
+    fflush(stdout);
+    return 0;
+  }
+
+  if (!GetConsoleCursorInfo(hOut, &cursorInfo)) {
+    return -1;
+  }
+
+  cursorInfo.bVisible = !hide;
+
+  if (!SetConsoleCursorInfo(hOut, &cursorInfo)) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Set scroll region (using ANSI)
+ * @param top Top line of scroll region (1-based)
+ * @param bottom Bottom line of scroll region (1-based)
+ * @return 0 on success, -1 on failure
+ */
+int terminal_set_scroll_region(int top, int bottom) {
+  // Use ANSI escape sequence (Windows 10+ with VT processing enabled)
+  printf("\033[%d;%dr", top, bottom);
+  fflush(stdout);
+  return 0;
+}
+
+/**
+ * @brief Reset terminal to default state
+ * @return 0 on success, -1 on failure
+ */
+int terminal_reset(void) {
+  // Reset using ANSI escape sequence
+  printf("\033c"); // Full reset
+  fflush(stdout);
+
+  // Also reset Windows console attributes
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hOut != INVALID_HANDLE_VALUE) {
+    SetConsoleTextAttribute(hOut, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+  }
+
+  return 0;
+}
+
 #endif // _WIN32

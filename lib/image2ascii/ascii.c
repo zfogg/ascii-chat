@@ -9,6 +9,7 @@
 
 #if !PLATFORM_WINDOWS
 #include <ncurses.h>
+#include <termios.h>
 #endif
 
 #include "ascii.h"

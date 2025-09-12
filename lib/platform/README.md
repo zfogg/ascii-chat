@@ -11,9 +11,19 @@ The platform abstraction layer provides a unified, cross-platform API that enabl
 ```
 lib/platform/
 ├── README.md           # This file
-├── abstraction.h       # Main abstraction header with all API definitions
-├── abstraction.c       # Common implementation (currently minimal)
-├── init.h              # Platform initialization helpers and static init wrappers
+├── abstraction.h       # Main abstraction header - includes all component headers
+├── abstraction.c       # Common implementation (minimal)
+├── init.h              # Platform initialization and static synchronization helpers
+├── internal.h          # Internal helpers for implementation files
+├── thread.h            # Thread management interface
+├── mutex.h             # Mutex interface
+├── rwlock.h            # Read-write lock interface
+├── cond.h              # Condition variable interface
+├── socket.h            # Socket interface
+├── terminal.h          # Terminal I/O interface
+├── system.h            # System functions interface
+├── string.h            # String manipulation interface
+├── file.h              # File I/O interface
 ├── posix/              # POSIX implementation (Linux/macOS)
 │   ├── thread.c        # POSIX pthread implementation
 │   ├── mutex.c         # POSIX mutex implementation
@@ -34,39 +44,36 @@ lib/platform/
 
 ### Key Components
 
-#### 1. **abstraction.h** - Main API Header
-- Central header file that defines all platform abstraction interfaces
-- Provides compile-time platform detection (`PLATFORM_WINDOWS` vs `PLATFORM_POSIX`)
-- Defines all data structures and function prototypes
-- Includes platform-specific headers based on detected OS
+#### Core Headers (Modular Design)
 
-#### 2. **init.h** - Initialization Helpers
-- Static initialization wrappers for global synchronization primitives
-- Lazy initialization for Windows (which lacks PTHREAD_MUTEX_INITIALIZER equivalents)
-- Platform initialization/cleanup functions
-- Thread-safe initialization using atomic operations
+1. **abstraction.h** - Main include file that brings in all platform headers
+2. **thread.h** - Threading primitives (threads, thread IDs)
+3. **mutex.h** - Mutual exclusion locks
+4. **rwlock.h** - Read-write locks for concurrent access
+5. **cond.h** - Condition variables for thread synchronization
+6. **socket.h** - Network socket operations
+7. **terminal.h** - Terminal I/O and control
+8. **system.h** - System functions (process, environment, signals, TTY)
+9. **string.h** - Safe string manipulation
+10. **file.h** - File I/O operations
+11. **init.h** - Platform initialization and static initialization helpers
+12. **internal.h** - Internal implementation helpers
 
-#### 3. **posix/** - POSIX Implementation
-- Implements abstraction layer for Linux and macOS across multiple component files
-- **thread.c**: Wraps pthreads for threading
-- **socket.c**: BSD sockets for networking
-- **terminal.c**: Terminal I/O using termios
-- **mutex.c, rwlock.c, cond.c**: Synchronization primitives
-- **system.c**: System functions (sleep, process info, environment)
+#### Platform Implementations
 
-#### 4. **windows/** - Windows Implementation
-- Implements abstraction layer for Windows across multiple component files
-- **thread.c**: Wraps Windows Threading API
-- **mutex.c**: Critical Sections for mutexes
-- **rwlock.c**: SRW Locks for read-write locks
-- **cond.c**: Condition Variables
-- **socket.c**: Winsock2 for networking
-- **terminal.c**: Console API for terminal operations
-- **system.c**: Windows system functions
+**POSIX Implementation (posix/)**
+- Implements abstraction layer for Linux and macOS
+- Uses standard POSIX APIs (pthread, BSD sockets, termios)
+- Full signal support including SIGWINCH and SIGTERM
+
+**Windows Implementation (windows/)**
+- Implements abstraction layer for Windows
+- Uses Windows APIs (Critical Sections, SRW Locks, Winsock2)
+- Limited signal support (SIGWINCH/SIGTERM defined as no-ops)
 
 ## API Categories
 
-### Threading (`asciithread_t`, `mutex_t`, `rwlock_t`, `cond_t`)
+### Threading (`thread.h`)
 
 **Thread Management:**
 ```c
@@ -76,7 +83,10 @@ void ascii_thread_exit(void *retval);
 thread_id_t ascii_thread_self(void);
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2);
 uint64_t ascii_thread_current_id(void);
+bool ascii_thread_is_initialized(asciithread_t *thread);
 ```
+
+### Synchronization (`mutex.h`, `rwlock.h`, `cond.h`)
 
 **Mutexes:**
 ```c
@@ -94,6 +104,8 @@ int rwlock_destroy(rwlock_t *lock);
 int rwlock_rdlock(rwlock_t *lock);
 int rwlock_wrlock(rwlock_t *lock);
 int rwlock_unlock(rwlock_t *lock);
+int rwlock_rdunlock(rwlock_t *lock);  // Explicit read unlock
+int rwlock_wrunlock(rwlock_t *lock);  // Explicit write unlock
 ```
 
 **Condition Variables:**
@@ -106,7 +118,7 @@ int cond_signal(cond_t *cond);
 int cond_broadcast(cond_t *cond);
 ```
 
-### Networking (`socket_t`)
+### Networking (`socket.h`)
 
 **Socket Operations:**
 ```c
@@ -120,13 +132,22 @@ socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
 int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen);
 ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags);
 ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags);
+int socket_setsockopt(socket_t sock, int level, int optname, const void *optval, socklen_t optlen);
+int socket_getsockopt(socket_t sock, int level, int optname, void *optval, socklen_t *optlen);
 int socket_set_nonblocking(socket_t sock, bool nonblocking);
 int socket_set_reuseaddr(socket_t sock, bool reuse);
 int socket_set_nodelay(socket_t sock, bool nodelay);
-int socket_is_valid(socket_t sock);
+
+// Error handling
+int socket_get_error(socket_t sock);             // Get error for specific socket
+int socket_get_last_error(void);                 // Get last socket operation error
+const char *socket_get_error_string(void);       // Get error string
+int socket_is_valid(socket_t sock);              // Check if socket is valid
+int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);  // Poll sockets
+int socket_get_fd(socket_t sock);                // Get file descriptor from socket
 ```
 
-### Terminal I/O
+### Terminal I/O (`terminal.h`)
 
 **Terminal Operations:**
 ```c
@@ -138,9 +159,19 @@ bool terminal_supports_unicode(void);
 int terminal_clear_screen(void);
 int terminal_move_cursor(int row, int col);
 void terminal_enable_ansi(void);          // Enable ANSI on Windows 10+
+int terminal_set_buffering(bool line_buffered);
+int terminal_flush(void);
+int terminal_hide_cursor(bool hide);
+int terminal_get_cursor_position(int *row, int *col);
+int terminal_save_cursor(void);
+int terminal_restore_cursor(void);
+int terminal_set_title(const char *title);
+int terminal_ring_bell(void);
+int terminal_set_scroll_region(int top, int bottom);
+int terminal_reset(void);
 ```
 
-### System Functions
+### System Functions (`system.h`)
 
 **Process & Time:**
 ```c
@@ -157,79 +188,68 @@ const char *platform_getenv(const char *name);
 int platform_setenv(const char *name, const char *value);
 ```
 
+**TTY Functions:**
+```c
+int platform_isatty(int fd);
+const char *platform_ttyname(int fd);
+int platform_fsync(int fd);
+```
+
+**Debug/Stack Trace:**
+```c
+int platform_backtrace(void **buffer, int size);
+char **platform_backtrace_symbols(void *const *buffer, int size);
+void platform_backtrace_symbols_free(char **strings);
+```
+
+### String Operations (`string.h`)
+
+**Safe String Functions:**
+```c
+int platform_snprintf(char *str, size_t size, const char *format, ...);
+int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap);
+size_t platform_strlcpy(char *dst, const char *src, size_t size);
+size_t platform_strlcat(char *dst, const char *src, size_t size);
+int platform_strcasecmp(const char *s1, const char *s2);
+int platform_strncasecmp(const char *s1, const char *s2, size_t n);
+char *platform_strdup(const char *s);
+char *platform_strndup(const char *s, size_t n);
+char *platform_strtok_r(char *str, const char *delim, char **saveptr);
+```
+
+### File I/O (`file.h`)
+
+**File Operations:**
+```c
+int platform_open(const char *pathname, int flags, ...);
+ssize_t platform_read(int fd, void *buf, size_t count);
+ssize_t platform_write(int fd, const void *buf, size_t count);
+int platform_close(int fd);
+```
+
 ## Platform-Specific Features
 
 ### Windows Specifics
 
-- **Winsock Initialization**: Required before any socket operations
-- **ANSI Escape Sequences**: Must be explicitly enabled on Windows 10+
-- **SRW Locks**: Used for read-write locks (lighter than CRITICAL_SECTIONs)
-- **Console API**: Used for terminal size and cursor control
-- **Thread IDs**: Uses DWORD (32-bit) thread IDs
+- **Winsock Initialization**: Required before any socket operations (handled by `platform_init()`)
+- **ANSI Escape Sequences**: Automatically enabled on Windows 10+ via `terminal_enable_ansi()`
+- **SRW Locks**: Lightweight read-write locks (better than CRITICAL_SECTIONs)
+- **Console API**: Full terminal control including colors and cursor positioning
+- **Signal Limitations**: SIGWINCH and SIGTERM defined but non-functional
+- **Backtrace**: Returns stub implementation (no stack traces)
 
 ### POSIX Specifics
 
-- **pthreads**: Full pthread implementation for threading
-- **BSD Sockets**: Standard socket API
-- **termios**: Terminal control for raw mode and echo
-- **Signal Handling**: Full signal support with SIGPIPE ignored
+- **pthreads**: Full pthread implementation for all threading primitives
+- **BSD Sockets**: Standard socket API, no initialization needed
+- **termios**: Complete terminal control for raw mode, echo, etc.
+- **Signal Handling**: Full support for SIGWINCH (terminal resize) and SIGTERM
+- **Backtrace**: Full stack trace support via execinfo.h
 
-## Usage Examples
+## Static Initialization (`init.h`)
 
-### Basic Thread Creation
-```c
-#include "platform/abstraction.h"
+The platform layer provides static initialization helpers for global synchronization primitives:
 
-void* worker_thread(void* arg) {
-    printf("Worker thread running\n");
-    return NULL;
-}
-
-int main() {
-    // Initialize platform (required on Windows)
-    platform_init();
-    
-    asciithread_t thread;
-    if (ascii_thread_create(&thread, worker_thread, NULL) == 0) {
-        ascii_thread_join(&thread, NULL);
-    }
-    
-    // Cleanup (required on Windows)
-    platform_cleanup();
-    return 0;
-}
-```
-
-### Socket Server
-```c
-#include "platform/abstraction.h"
-
-int main() {
-    // Initialize sockets (required on Windows)
-    socket_init();
-    
-    socket_t server = socket_create(AF_INET, SOCK_STREAM, 0);
-    if (server != INVALID_SOCKET_VALUE) {
-        struct sockaddr_in addr = {0};
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(8080);
-        addr.sin_addr.s_addr = INADDR_ANY;
-        
-        socket_bind(server, (struct sockaddr*)&addr, sizeof(addr));
-        socket_listen(server, 5);
-        
-        // Accept connections...
-        
-        socket_close(server);
-    }
-    
-    // Cleanup sockets (required on Windows)
-    socket_cleanup();
-    return 0;
-}
-```
-
-### Static Mutex Initialization
 ```c
 #include "platform/init.h"
 
@@ -241,84 +261,149 @@ void critical_function() {
     // Critical section
     static_mutex_unlock(&g_mutex);
 }
+
+// Global read-write lock
+static_rwlock_t g_rwlock = STATIC_RWLOCK_INIT;
+
+void reader_function() {
+    static_rwlock_rdlock(&g_rwlock);
+    // Read data
+    static_rwlock_unlock(&g_rwlock);
+}
+
+// Global condition variable
+static_cond_t g_cond = STATIC_COND_INIT;
+static_mutex_t g_cond_mutex = STATIC_MUTEX_INIT;
+
+void wait_for_signal() {
+    static_mutex_lock(&g_cond_mutex);
+    static_cond_wait(&g_cond, &g_cond_mutex);
+    static_mutex_unlock(&g_cond_mutex);
+}
+```
+
+## Usage Examples
+
+### Complete Application Example
+```c
+#include "platform/abstraction.h"
+
+void* worker_thread(void* arg) {
+    printf("Worker thread %d running\n", *(int*)arg);
+    platform_sleep_ms(1000);
+    return NULL;
+}
+
+int main() {
+    // Initialize platform (required for Windows sockets)
+    platform_init();
+    
+    // Create multiple threads
+    asciithread_t threads[4];
+    int thread_ids[4];
+    
+    for (int i = 0; i < 4; i++) {
+        thread_ids[i] = i;
+        ascii_thread_create(&threads[i], worker_thread, &thread_ids[i]);
+    }
+    
+    // Wait for all threads
+    for (int i = 0; i < 4; i++) {
+        ascii_thread_join(&threads[i], NULL);
+    }
+    
+    // TTY operations
+    if (platform_isatty(STDOUT_FILENO)) {
+        printf("Running in terminal: %s\n", platform_ttyname(STDOUT_FILENO));
+    }
+    
+    // Terminal control
+    terminal_size_t size;
+    if (terminal_get_size(&size) == 0) {
+        printf("Terminal size: %dx%d\n", size.cols, size.rows);
+    }
+    
+    // Cleanup (required for Windows)
+    platform_cleanup();
+    return 0;
+}
 ```
 
 ## Build Integration
 
-### Makefile
+The platform abstraction is integrated into the build system:
+
+### Makefile (Unix/macOS)
 ```makefile
-# Platform abstraction sources - select based on OS
-PLATFORM_COMMON_SOURCES := $(LIB_DIR)/platform/abstraction.c
-
-ifeq ($(OS),Windows_NT)
-    PLATFORM_SOURCES := $(PLATFORM_COMMON_SOURCES) $(wildcard $(LIB_DIR)/platform/windows/*.c)
-else
-    PLATFORM_SOURCES := $(PLATFORM_COMMON_SOURCES) $(wildcard $(LIB_DIR)/platform/posix/*.c)
-endif
-
-# Files use explicit includes like "platform/abstraction.h"
-# No additional include path needed
+# Platform files are automatically selected based on OS
+# POSIX files for Unix/macOS, Windows files for Windows
 ```
 
-### CMake
+### CMake (Windows)
 ```cmake
-# Platform abstraction sources
-set(PLATFORM_SOURCES
-    lib/platform/abstraction.c
-)
-
-# Add platform-specific sources
-if(WIN32)
-    file(GLOB PLATFORM_WINDOWS_SOURCES "lib/platform/windows/*.c")
-    list(APPEND PLATFORM_SOURCES ${PLATFORM_WINDOWS_SOURCES})
-else()
-    file(GLOB PLATFORM_POSIX_SOURCES "lib/platform/posix/*.c")
-    list(APPEND PLATFORM_SOURCES ${PLATFORM_POSIX_SOURCES})
-endif()
-
-# Files use explicit includes like "platform/abstraction.h"
-# No additional include path needed
+# Platform files are automatically included based on WIN32 detection
 ```
+
+## Migration from Direct Platform Calls
+
+When migrating code to use the platform abstraction:
+
+1. **Replace direct includes:**
+   - `#include <pthread.h>` → `#include "platform/abstraction.h"`
+   - `#include <unistd.h>` → Already included via abstraction
+   - `#include <winsock2.h>` → Use platform/socket.h
+
+2. **Replace function calls:**
+   - `pthread_create()` → `ascii_thread_create()`
+   - `isatty()` → `platform_isatty()`
+   - `ttyname()` → `platform_ttyname()`
+   - `fsync()` → `platform_fsync()`
+   - `backtrace()` → `platform_backtrace()`
+
+3. **Replace signal handling:**
+   ```c
+   // Old:
+   #ifndef _WIN32
+   signal(SIGWINCH, handler);
+   #endif
+   
+   // New:
+   signal(SIGWINCH, handler);  // SIGWINCH defined on all platforms
+   ```
 
 ## Testing
 
 The platform abstraction layer is tested through:
 
-1. **Unit Tests**: Tests for individual functions (mutexes, threads, sockets)
-2. **Integration Tests**: Multi-threaded scenarios, client-server communication
+1. **Unit Tests**: Individual function tests in `tests/unit/`
+2. **Integration Tests**: Multi-threaded scenarios in `tests/integration/`
 3. **Cross-Platform CI**: Automated testing on Windows, Linux, and macOS
 
 ## Known Limitations
 
 ### Windows
-- SRW Locks don't track lock type (read vs write) for unlock operations
-- Sleep precision limited to milliseconds (no true microsecond sleep)
-- Some POSIX signals not available
+- SRW Locks don't distinguish between read/write unlock operations
+- No microsecond sleep precision (minimum ~15ms resolution)
+- SIGWINCH and SIGTERM are defined but non-functional
+- No backtrace implementation (returns 0)
 
 ### macOS
-- System header conflicts require asciithread_t naming (not thread_t)
-- Some Linux-specific features may not be available
-
-## Future Enhancements
-
-- [ ] Add spinlock support for high-performance scenarios
-- [ ] Implement thread pool abstraction
-- [ ] Add memory-mapped file abstraction
-- [ ] Support for asynchronous I/O operations
-- [ ] Add performance profiling hooks
-- [ ] Implement platform-specific optimizations
+- System header conflicts require `asciithread_t` naming (not `thread_t`)
+- Older GNU Make version (3.81) may have issues with pattern rules
 
 ## Contributing
 
 When adding new platform abstractions:
 
-1. Define the interface in `abstraction.h`
-2. Implement POSIX version in appropriate `posix/*.c` file
-3. Implement Windows version in appropriate `windows/*.c` file
-4. Add documentation to this README
-5. Write tests for both platforms
-6. Update build files (Makefile and CMakeLists.txt)
+1. Define the interface in the appropriate header file
+2. Add Doxygen documentation including @file, @brief, @param, @return
+3. Implement POSIX version in `posix/*.c`
+4. Implement Windows version in `windows/*.c`
+5. Update this README with the new functionality
+6. Write tests for both platforms
+7. Ensure all platform-specific code is isolated in platform files
 
-## License
+## Author
 
-This platform abstraction layer is part of ASCII-Chat and follows the same license as the main project.
+Platform abstraction layer developed by Zachary Fogg <me@zfo.gg>
+September 2025

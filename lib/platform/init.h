@@ -1,5 +1,15 @@
-#ifndef PLATFORM_INIT_H
-#define PLATFORM_INIT_H
+#pragma once
+
+/**
+ * @file init.h
+ * @brief Platform initialization and static synchronization helpers
+ *
+ * This header provides platform initialization functions and static initialization
+ * helpers for synchronization primitives that need to work before main().
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ */
 
 #include "platform/abstraction.h"
 
@@ -45,9 +55,9 @@ typedef struct {
 #define STATIC_RWLOCK_INIT {{0}, 0}
 #define STATIC_COND_INIT {{0}, 0}
 #else
-#define STATIC_MUTEX_INIT {{PTHREAD_MUTEX_INITIALIZER}, 1}
-#define STATIC_RWLOCK_INIT {{PTHREAD_RWLOCK_INITIALIZER}, 1}
-#define STATIC_COND_INIT {{PTHREAD_COND_INITIALIZER}, 1}
+#define STATIC_MUTEX_INIT {PTHREAD_MUTEX_INITIALIZER, 1}
+#define STATIC_RWLOCK_INIT {PTHREAD_RWLOCK_INITIALIZER, 1}
+#define STATIC_COND_INIT {PTHREAD_COND_INITIALIZER, 1}
 #endif
 
 // Lazy initialization functions
@@ -128,35 +138,7 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 // ============================================================================
 
 // Call this once at program startup
-static inline int platform_init(void) {
-  int ret = 0;
-
-#if PLATFORM_WINDOWS
-  // Initialize Winsock
-  ret = socket_init();
-  if (ret != 0) {
-    return ret;
-  }
-
-  // Enable ANSI escape sequences in console
-  terminal_enable_ansi();
-
-  // Set console to UTF-8
-  SetConsoleOutputCP(CP_UTF8);
-  SetConsoleCP(CP_UTF8);
-#else
-  // Install signal handlers for SIGPIPE
-  signal(SIGPIPE, SIG_IGN);
-#endif
-
-  return ret;
-}
+int platform_init(void);
 
 // Call this at program exit
-static inline void platform_cleanup(void) {
-#if PLATFORM_WINDOWS
-  socket_cleanup();
-#endif
-}
-
-#endif // PLATFORM_INIT_H
+void platform_cleanup(void);

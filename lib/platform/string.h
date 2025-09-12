@@ -1,11 +1,11 @@
 #pragma once
 
 /**
- * @file internal.h
- * @brief Internal implementation helpers for platform abstraction layer
+ * @file string.h
+ * @brief Cross-platform string manipulation interface for ASCII-Chat
  *
- * This header contains internal helpers and macros used by the platform
- * implementation files. Not for external use.
+ * This header provides safe string manipulation functions with consistent
+ * behavior across Windows and POSIX platforms.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025
@@ -16,10 +16,10 @@
 #include <stdbool.h>
 
 // ============================================================================
-// Platform-Internal Functions
+// Platform String & Memory Functions
 // ============================================================================
-// These functions are used internally by the platform abstraction layer
-// and by the main codebase for platform-safe operations.
+// Cross-platform string and memory operations with consistent behavior
+// across Windows, Linux, and macOS.
 
 // ============================================================================
 // String Operations
@@ -65,32 +65,3 @@ const char *platform_strerror(int errnum);
 // Last error code (errno on POSIX, GetLastError on Windows)
 int platform_get_last_error(void);
 void platform_set_last_error(int error);
-
-// ============================================================================
-// File Operations
-// ============================================================================
-
-// Safe file operations
-int platform_open(const char *pathname, int flags, ...);
-ssize_t platform_read(int fd, void *buf, size_t count);
-ssize_t platform_write(int fd, const void *buf, size_t count);
-int platform_close(int fd);
-
-// File mode helpers
-#ifdef _WIN32
-#define PLATFORM_O_RDONLY _O_RDONLY
-#define PLATFORM_O_WRONLY _O_WRONLY
-#define PLATFORM_O_RDWR _O_RDWR
-#define PLATFORM_O_CREAT _O_CREAT
-#define PLATFORM_O_TRUNC _O_TRUNC
-#define PLATFORM_O_APPEND _O_APPEND
-#define PLATFORM_O_BINARY _O_BINARY
-#else
-#define PLATFORM_O_RDONLY O_RDONLY
-#define PLATFORM_O_WRONLY O_WRONLY
-#define PLATFORM_O_RDWR O_RDWR
-#define PLATFORM_O_CREAT O_CREAT
-#define PLATFORM_O_TRUNC O_TRUNC
-#define PLATFORM_O_APPEND O_APPEND
-#define PLATFORM_O_BINARY 0 // Not needed on POSIX
-#endif

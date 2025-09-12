@@ -17,6 +17,7 @@
 #include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
+#include "platform/string.h"
 #include "terminal_detect.h"
 
 // Safely parse string to integer with validation
@@ -267,11 +268,7 @@ static int is_valid_ipv4(const char *ip) {
   temp[sizeof(temp) - 1] = '\0';
 
   char *saveptr;
-#ifdef _WIN32
-  char *token = strtok_s(temp, ".", &saveptr);
-#else
-  char *token = strtok_r(temp, ".", &saveptr);
-#endif
+  char *token = platform_strtok_r(temp, ".", &saveptr);
   while (token != NULL && count < 4) {
     char *endptr;
     long octet = strtol(token, &endptr, 10);
@@ -285,11 +282,7 @@ static int is_valid_ipv4(const char *ip) {
       return 0;
 
     // octets[count] = (int)octet;
-#ifdef _WIN32
-    token = strtok_s(NULL, ".", &saveptr);
-#else
-    token = strtok_r(NULL, ".", &saveptr);
-#endif
+    token = platform_strtok_r(NULL, ".", &saveptr);
     count++; // Increment count for each valid octet
   }
 

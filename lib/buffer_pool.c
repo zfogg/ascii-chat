@@ -1,11 +1,8 @@
 #include "buffer_pool.h"
 #include "common.h"
+#include "platform/abstraction.h"
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
-#include <unistd.h>
-#include <execinfo.h>
-#endif
 
 /* ============================================================================
  * Internal Buffer Pool Functions
@@ -213,14 +210,9 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
 
   // If no buffer from pool, use malloc
   if (!buffer) {
-#ifndef _WIN32
     void *callstack[3];
-    int frames = backtrace(callstack, 3);
-    char **symbols = backtrace_symbols(callstack, frames);
-#else
-    int frames = 0;
-    char **symbols = NULL;
-#endif
+    int frames = platform_backtrace(callstack, 3);
+    char **symbols = platform_backtrace_symbols(callstack, frames);
 
     // log_error("MALLOC FALLBACK ALLOC: size=%zu at %s:%d thread=%p", size, __FILE__, __LINE__,
     //         (void *)pthread_self());
@@ -229,9 +221,7 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     //   if (frames >= 3)
     //     log_error("  Called from: %s", symbols[2]);
     // }
-#ifndef _WIN32
-    free(symbols);
-#endif
+    platform_backtrace_symbols_free(symbols);
 
     SAFE_MALLOC(buffer, size, void *);
     // log_error("MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p", size, buffer,
