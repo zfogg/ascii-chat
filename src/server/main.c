@@ -238,6 +238,7 @@ static void sigint_handler(int sigint) {
       // On Windows, shutdown is needed to interrupt blocking recv()
       socket_shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
       socket_close(g_client_manager.clients[i].socket);
+      g_client_manager.clients[i].socket = INVALID_SOCKET_VALUE;
     }
   }
 

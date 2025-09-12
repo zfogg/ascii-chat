@@ -1430,16 +1430,27 @@ install(TARGETS ascii-chat-server ascii-chat-client
 # =============================================================================
 
 # Format target (matches Makefile format target)
+
+# Format target - cross-platform version
+file(GLOB_RECURSE ALL_SOURCE_FILES 
+    ${CMAKE_SOURCE_DIR}/src/*.c
+    ${CMAKE_SOURCE_DIR}/src/*.h
+    ${CMAKE_SOURCE_DIR}/lib/*.c
+    ${CMAKE_SOURCE_DIR}/lib/*.h
+    ${CMAKE_SOURCE_DIR}/tests/*.c
+    ${CMAKE_SOURCE_DIR}/tests/*.h
+)
+
+# Filter out third-party or generated files if needed
+list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX ".*\.m$")  # Exclude Objective-C files
+
 add_custom_target(format
-    COMMAND find ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/lib -name "*.c" -o -name "*.h" | xargs clang-format --Werror -i
+    COMMAND clang-format -i ${ALL_SOURCE_FILES}
     COMMENT "Formatting source code with clang-format"
+    VERBATIM
 )
 
 # Format check target
-add_custom_target(format-check
-    COMMAND find ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/lib -name "*.c" -o -name "*.h" | xargs clang-format --dry-run --Werror
-    COMMENT "Checking code formatting"
-)
 
 # Clean all target (matches Makefile clean)
 add_custom_target(clean_all

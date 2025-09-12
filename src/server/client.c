@@ -569,7 +569,7 @@ void *client_receive_thread(void *arg) {
   void *data = NULL; // Initialize to prevent static analyzer warning about uninitialized use
   size_t len;
 
-  while (!atomic_load(&g_should_exit) && client->active) {
+  while (!atomic_load(&g_should_exit) && client->active && client->socket != INVALID_SOCKET_VALUE) {
     // Receive packet from this client
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
 
