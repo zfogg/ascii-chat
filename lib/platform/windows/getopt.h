@@ -1,5 +1,4 @@
-#ifndef GETOPT_WINDOWS_H
-#define GETOPT_WINDOWS_H
+#pragma once
 
 #ifdef _WIN32
 
@@ -36,5 +35,3 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
 #endif
 
 #endif // _WIN32
-
-#endif // GETOPT_WINDOWS_H

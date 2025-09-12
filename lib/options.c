@@ -1,6 +1,6 @@
 #include "aspect_ratio.h"
 #ifdef _WIN32
-#include "getopt_windows.h"
+#include "platform/windows/getopt.h"
 #else
 #include <getopt.h>
 #endif
