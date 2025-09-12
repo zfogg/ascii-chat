@@ -208,10 +208,15 @@ int audio_init(audio_context_t *ctx) {
 }
 
 void audio_destroy(audio_context_t *ctx) {
-  if (!ctx || !ctx->initialized)
+  if (!ctx || !ctx->initialized) {
+    log_info("DEBUG: audio_destroy early return - ctx=%p, initialized=%s", ctx,
+             ctx ? (ctx->initialized ? "true" : "false") : "NULL");
     return;
+  }
 
+  log_info("DEBUG: audio_destroy starting - about to lock mutex");
   mutex_lock(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy acquired mutex lock");
 
   if (ctx->recording) {
     audio_stop_capture(ctx);
@@ -224,11 +229,16 @@ void audio_destroy(audio_context_t *ctx) {
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
 
+  log_info("DEBUG: audio_destroy about to call Pa_Terminate()");
   Pa_Terminate();
+  log_info("DEBUG: audio_destroy Pa_Terminate() completed");
   ctx->initialized = false;
 
+  log_info("DEBUG: audio_destroy about to unlock mutex");
   mutex_unlock(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy unlocked mutex, about to destroy");
   mutex_destroy(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy mutex destroyed");
 
   log_info("Audio system destroyed");
 }

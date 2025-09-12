@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int mutex_init(mutex_t *mutex) {
-  return pthread_mutex_init(&mutex->mutex, NULL);
+  return pthread_mutex_init(mutex, NULL);
 }
 
 /**
@@ -26,7 +26,7 @@ int mutex_init(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_destroy(mutex_t *mutex) {
-  return pthread_mutex_destroy(&mutex->mutex);
+  return pthread_mutex_destroy(mutex);
 }
 
 /**
@@ -35,7 +35,7 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock(mutex_t *mutex) {
-  return pthread_mutex_lock(&mutex->mutex);
+  return pthread_mutex_lock(mutex);
 }
 
 /**
@@ -44,7 +44,7 @@ int mutex_lock(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock(mutex_t *mutex) {
-  return pthread_mutex_trylock(&mutex->mutex);
+  return pthread_mutex_trylock(mutex);
 }
 
 /**
@@ -53,7 +53,7 @@ int mutex_trylock(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock(mutex_t *mutex) {
-  return pthread_mutex_unlock(&mutex->mutex);
+  return pthread_mutex_unlock(mutex);
 }
 
 #endif // !_WIN32

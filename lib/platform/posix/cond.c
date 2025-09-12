@@ -18,7 +18,7 @@
  * @return 0 on success, error code on failure
  */
 int cond_init(cond_t *cond) {
-  return pthread_cond_init(&cond->cond, NULL);
+  return pthread_cond_init(cond, NULL);
 }
 
 /**
@@ -27,7 +27,7 @@ int cond_init(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_destroy(cond_t *cond) {
-  return pthread_cond_destroy(&cond->cond);
+  return pthread_cond_destroy(cond);
 }
 
 /**
@@ -38,7 +38,7 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
-  return pthread_cond_wait(&cond->cond, &mutex->mutex);
+  return pthread_cond_wait(cond, mutex);
 }
 
 /**
@@ -58,7 +58,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
     ts.tv_sec++;
     ts.tv_nsec -= 1000000000;
   }
-  return pthread_cond_timedwait(&cond->cond, &mutex->mutex, &ts);
+  return pthread_cond_timedwait(cond, mutex, &ts);
 }
 
 /**
@@ -67,7 +67,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
-  return pthread_cond_signal(&cond->cond);
+  return pthread_cond_signal(cond);
 }
 
 /**
@@ -76,7 +76,7 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
-  return pthread_cond_broadcast(&cond->cond);
+  return pthread_cond_broadcast(cond);
 }
 
 #endif // !_WIN32

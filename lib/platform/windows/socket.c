@@ -227,4 +227,119 @@ int socket_get_fd(socket_t sock) {
   return (int)sock;
 }
 
+// ============================================================================
+// Extended Socket Options
+// ============================================================================
+
+/**
+ * @brief Set keepalive parameters for socket
+ * @param sock Socket descriptor
+ * @param enable Enable/disable keepalive
+ * @param idle Time before first keepalive probe (seconds)
+ * @param interval Interval between probes (seconds)
+ * @param count Number of probes before connection drop
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interval, int count) {
+  // First enable/disable keepalive
+  int keepalive = enable ? 1 : 0;
+  if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) != 0) {
+    return -1;
+  }
+
+  if (enable) {
+    // Windows Vista+ supports TCP keepalive parameters
+    struct tcp_keepalive {
+      ULONG onoff;
+      ULONG keepalivetime;
+      ULONG keepaliveinterval;
+    } keepalive_params;
+
+    keepalive_params.onoff = 1;
+    keepalive_params.keepalivetime = idle * 1000;         // Convert to milliseconds
+    keepalive_params.keepaliveinterval = interval * 1000; // Convert to milliseconds
+
+    DWORD bytes_returned;
+    if (WSAIoctl(sock, SIO_KEEPALIVE_VALS, &keepalive_params, sizeof(keepalive_params), NULL, 0, &bytes_returned, NULL,
+                 NULL) != 0) {
+      return -1;
+    }
+
+    // Note: Windows doesn't support setting probe count directly
+    (void)count;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Set linger options for socket
+ * @param sock Socket descriptor
+ * @param enable Enable/disable linger
+ * @param timeout Linger timeout in seconds
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_linger(socket_t sock, bool enable, int timeout) {
+  struct linger ling;
+  ling.l_onoff = enable ? 1 : 0;
+  ling.l_linger = timeout;
+  return setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char *)&ling, sizeof(ling));
+}
+
+/**
+ * @brief Set receive and send buffer sizes
+ * @param sock Socket descriptor
+ * @param recv_size Receive buffer size (0 to keep current)
+ * @param send_size Send buffer size (0 to keep current)
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_buffer_sizes(socket_t sock, int recv_size, int send_size) {
+  int result = 0;
+
+  if (recv_size > 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (const char *)&recv_size, sizeof(recv_size)) != 0) {
+      result = -1;
+    }
+  }
+
+  if (send_size > 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const char *)&send_size, sizeof(send_size)) != 0) {
+      result = -1;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * @brief Get peer address for connected socket
+ * @param sock Socket descriptor
+ * @param addr Address structure to fill
+ * @param addrlen Address structure size
+ * @return 0 on success, -1 on failure
+ */
+int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+  return getpeername(sock, addr, addrlen);
+}
+
+/**
+ * @brief Get last socket error (WSAGetLastError)
+ * @return Error code
+ */
+int socket_get_last_error(void) {
+  return WSAGetLastError();
+}
+
+/**
+ * @brief Get error string for last socket error
+ * @return Error string
+ */
+const char *socket_get_error_string(void) {
+  static __thread char error_buf[256];
+  int error = WSAGetLastError();
+  FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error,
+                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_buf, sizeof(error_buf), NULL);
+  return error_buf;
+}
+
 #endif // _WIN32

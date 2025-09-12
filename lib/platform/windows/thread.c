@@ -90,4 +90,11 @@ uint64_t ascii_thread_current_id(void) {
   return (uint64_t)GetCurrentThreadId();
 }
 
+bool ascii_thread_is_initialized(asciithread_t *thread) {
+  if (!thread)
+    return false;
+  // On Windows, check if thread handle is valid (not NULL and not INVALID_HANDLE_VALUE)
+  return (*thread != NULL && *thread != INVALID_HANDLE_VALUE);
+}
+
 #endif // _WIN32
