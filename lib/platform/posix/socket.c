@@ -143,4 +143,121 @@ int socket_get_fd(socket_t sock) {
   return sock;
 }
 
+// ============================================================================
+// Extended Socket Options
+// ============================================================================
+
+/**
+ * @brief Set keepalive parameters for socket
+ * @param sock Socket descriptor
+ * @param enable Enable/disable keepalive
+ * @param idle Time before first keepalive probe (seconds)
+ * @param interval Interval between probes (seconds)
+ * @param count Number of probes before connection drop
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interval, int count) {
+  // First enable/disable keepalive
+  int keepalive = enable ? 1 : 0;
+  if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) != 0) {
+    return -1;
+  }
+
+  if (enable) {
+#ifdef __linux__
+    // Linux supports TCP keepalive parameters
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)) != 0) {
+      return -1;
+    }
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval)) != 0) {
+      return -1;
+    }
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(count)) != 0) {
+      return -1;
+    }
+#elif defined(__APPLE__)
+    // macOS uses different names for keepalive parameters
+    if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle)) != 0) {
+      return -1;
+    }
+    // macOS doesn't support setting interval and count directly
+    (void)interval;
+    (void)count;
+#else
+    // Other POSIX systems may not support these parameters
+    (void)idle;
+    (void)interval;
+    (void)count;
+#endif
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Set linger options for socket
+ * @param sock Socket descriptor
+ * @param enable Enable/disable linger
+ * @param timeout Linger timeout in seconds
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_linger(socket_t sock, bool enable, int timeout) {
+  struct linger ling;
+  ling.l_onoff = enable ? 1 : 0;
+  ling.l_linger = timeout;
+  return setsockopt(sock, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+}
+
+/**
+ * @brief Set receive and send buffer sizes
+ * @param sock Socket descriptor
+ * @param recv_size Receive buffer size (0 to keep current)
+ * @param send_size Send buffer size (0 to keep current)
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_buffer_sizes(socket_t sock, int recv_size, int send_size) {
+  int result = 0;
+
+  if (recv_size > 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &recv_size, sizeof(recv_size)) != 0) {
+      result = -1;
+    }
+  }
+
+  if (send_size > 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &send_size, sizeof(send_size)) != 0) {
+      result = -1;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * @brief Get peer address for connected socket
+ * @param sock Socket descriptor
+ * @param addr Address structure to fill
+ * @param addrlen Address structure size
+ * @return 0 on success, -1 on failure
+ */
+int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+  return getpeername(sock, addr, addrlen);
+}
+
+/**
+ * @brief Get last socket error (errno)
+ * @return Error code
+ */
+int socket_get_last_error(void) {
+  return errno;
+}
+
+/**
+ * @brief Get error string for last socket error
+ * @return Error string
+ */
+const char *socket_get_error_string(void) {
+  return strerror(errno);
+}
+
 #endif // !_WIN32

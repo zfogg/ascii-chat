@@ -18,14 +18,6 @@ typedef unsigned long long uint64_t;
 
 #include <stdlib.h>
 
-// Define ssize_t for Windows
-#ifdef _WIN32
-#include <basetsd.h>
-typedef SSIZE_T ssize_t;
-#else
-#include <sys/types.h>
-#endif
-
 // Render mode enum (defined here to avoid circular dependencies)
 typedef enum {
   RENDER_MODE_FOREGROUND = 0, // Use foreground colors only (default)
@@ -191,77 +183,22 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   } while (0)
 
 /* Safe string copy */
-#ifdef _WIN32
-#define SAFE_STRNCPY(dst, src, size)                                                                                   \
-  do {                                                                                                                 \
-    strncpy_s((dst), (size), (src), (size) - 1);                                                                       \
-  } while (0)
-#else
-#define SAFE_STRNCPY(dst, src, size)                                                                                   \
-  do {                                                                                                                 \
-    strncpy((dst), (src), (size) - 1);                                                                                 \
-    (dst)[(size) - 1] = '\0';                                                                                          \
-  } while (0)
-#endif
+#include "platform/string.h"
+#define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
 /* Platform-safe environment variable access */
-#ifdef _WIN32
-static inline char *SAFE_GETENV(const char *name) {
-#pragma warning(push)
-#pragma warning(disable : 4996) // Disable deprecation warning for getenv
-  return getenv(name);
-#pragma warning(pop)
-}
-#else
-#define SAFE_GETENV(name) getenv(name)
-#endif
+#include "platform/system.h"
+#define SAFE_GETENV(name) ((char *)platform_getenv(name))
 
 /* Platform-safe sscanf */
-#ifdef _WIN32
-#define SAFE_SSCANF(str, format, ...) sscanf_s(str, format, __VA_ARGS__)
-#else
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
-#endif
 
 /* Platform-safe strerror */
-#ifdef _WIN32
-static inline const char *SAFE_STRERROR(int errnum) {
-  static __declspec(thread) char buffer[256]; // Thread-local storage on Windows
-  strerror_s(buffer, sizeof(buffer), errnum);
-  return buffer;
-}
-#else
-#define SAFE_STRERROR(errnum) strerror(errnum)
-#endif
+#define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
-/* Platform-safe file open for Windows */
-#ifdef _WIN32
-#include <share.h>
-#define SAFE_OPEN(path, flags, mode) _sopen_s_wrapper(path, flags, _SH_DENYNO, mode)
-
-static inline int _sopen_s_wrapper(const char *filename, int oflag, int shflag, int pmode) {
-  int fd;
-  errno_t err = _sopen_s(&fd, filename, oflag, shflag, pmode);
-  if (err != 0) {
-    errno = err;
-    return -1;
-  }
-  return fd;
-}
-#else
-#define SAFE_OPEN(path, flags, mode) open(path, flags, mode)
-#endif
-
-/* Min/Max macros (with guards for macOS Foundation.h) */
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-/* Array size */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+/* Platform-safe file open */
+#include "platform/file.h"
+#define SAFE_OPEN(path, flags, mode) platform_open(path, flags, mode)
 
 /* Logging functions */
 void log_init(const char *filename, log_level_t level);
