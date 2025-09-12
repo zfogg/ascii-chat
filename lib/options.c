@@ -39,7 +39,6 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
-static const unsigned short default_width = OPT_WIDTH_DEFAULT, default_height = OPT_HEIGHT_DEFAULT;
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
 bool auto_width = true, auto_height = true;
 
