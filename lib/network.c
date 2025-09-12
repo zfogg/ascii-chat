@@ -2,7 +2,7 @@
 #include "common.h"
 #include "buffer_pool.h"
 #include "crc32_hw.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include <stdint.h>
 #include <errno.h>
 #include "platform/abstraction.h"

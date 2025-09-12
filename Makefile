@@ -504,16 +504,19 @@ endif
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
 # Server modular source files  
 SERVER_C_FILES := $(wildcard $(SRC_DIR)/server/*.c)
-# Client and other source files
-CLIENT_AND_OTHER_C_FILES := $(SRC_DIR)/client.c
-C_FILES := $(SERVER_C_FILES) $(CLIENT_AND_OTHER_C_FILES) $(LIB_C_FILES) $(PLATFORM_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
+# Client modular source files
+CLIENT_C_FILES := $(wildcard $(SRC_DIR)/client/*.c)
+# Other source files (none - legacy client.c excluded from build)
+OTHER_C_FILES :=
+C_FILES := $(SERVER_C_FILES) $(CLIENT_C_FILES) $(OTHER_C_FILES) $(LIB_C_FILES) $(PLATFORM_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
 PLATFORM_H_FILES := $(wildcard $(LIB_DIR)/platform/*.h)
 SERVER_H_FILES := $(wildcard $(SRC_DIR)/server/*.h)
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(SERVER_H_FILES) $(LIB_H_FILES) $(PLATFORM_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
+CLIENT_H_FILES := $(wildcard $(SRC_DIR)/client/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(SERVER_H_FILES) $(CLIENT_H_FILES) $(LIB_H_FILES) $(PLATFORM_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 

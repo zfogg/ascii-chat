@@ -3,7 +3,7 @@
 #include "platform/abstraction.h"
 #include <stdbool.h>
 #include "common.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "crc32_hw.h"
 
 // Timeout constants (in seconds)

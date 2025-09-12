@@ -16,7 +16,7 @@
  * - File I/O operations (file.h)
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date September 2025
  */
 
 // ============================================================================
@@ -165,8 +165,10 @@ typedef unsigned long nfds_t;
 #endif
 #endif
 
-// Re-define write after declarations on Windows only
+// Use platform-safe write wrapper
+#ifndef write
 #define write _write
+#endif
 // Windows headers for POSIX-like functions
 #include <io.h>
 #include <fcntl.h>
@@ -186,6 +188,8 @@ int clock_gettime(int clk_id, struct timespec *tp);
 struct tm *gmtime_r(const time_t *timep, struct tm *result);
 // Windows usleep declaration (implemented in system.c)
 int usleep(unsigned int usec);
+// Define useconds_t for Windows
+typedef unsigned int useconds_t;
 
 // Missing POSIX file flags for Windows
 #ifndef O_CLOEXEC

@@ -7,7 +7,7 @@
 #include "network.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "palette.h"
 #include "hashtable.h"
 

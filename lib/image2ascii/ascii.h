@@ -28,7 +28,6 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
                     const char luminance_palette[256]);
 
 // Capability-aware ASCII conversion using terminal detection
-#include "terminal_detect.h"
 #include "platform/terminal.h"
 char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,

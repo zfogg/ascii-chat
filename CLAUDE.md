@@ -29,7 +29,7 @@ ASCII-Chat is a terminal-based video chat application that converts webcam video
 - Customizable ASCII palettes
 - Comprehensive test suite with Criterion framework
 
-## Project Structure (Updated January 2025)
+## Project Structure (Updated September 2025)
 
 ```
 ascii-chat/
@@ -132,7 +132,7 @@ ascii-chat/
 
 ## Platform Support and Building
 
-### Windows Support (NEW - January 2025)
+### Windows Support (NEW - September 2025)
 ASCII-Chat now has comprehensive Windows support through a platform abstraction layer:
 
 **Windows-specific features:**
@@ -531,7 +531,7 @@ Fixes #issue-number
 
 ## Architecture Notes
 
-### Per-Client Threading Architecture (January 2025)
+### Per-Client Threading Architecture (September 2025)
 ASCII-Chat uses a high-performance per-client threading model:
 - **Each client gets 2 dedicated threads**: 1 video render (60 FPS) + 1 audio render (172 FPS)
 - **Linear performance scaling**: No shared bottlenecks, scales to 9+ clients
@@ -620,7 +620,7 @@ Before committing any changes:
 ### Main Application
 6. **server.c**:
    - `video_broadcast_thread`: Mixes and sends video
-   - `audio_mixer_thread`: Mixes and sends audio  
+   - `audio_mixer_thread`: Mixes and sends audio
    - `client_thread_func`: Handles individual client
 7. **client.c**:
    - `handle_ascii_frame_packet`: Processes received video
@@ -638,7 +638,7 @@ Before committing any changes:
 14. **tests/unit/**: Unit test implementations
 15. **CMakeLists.txt**: Windows build configuration
 
-## Recent Updates (January 2025)
+## Recent Updates (September 2025)
 
 ### Windows Platform Support (PR #ea36dbb)
 - Comprehensive platform abstraction layer
@@ -673,7 +673,7 @@ Before committing any changes:
 2. **Phase 2**: Optimize string generation (snprintf → lookup tables)
 3. **Result**: SIMD pixel processing shows true performance
 
-### Current Performance (January 2025)
+### Current Performance (September 2025)
 - **Terminal 203×64**: 0.131ms/frame (FG), 0.189ms/frame (BG)
 - **10.5x string generation speedup** with lookup tables
 - **8.4x overall speedup** for terminal-sized frames

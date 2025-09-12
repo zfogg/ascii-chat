@@ -1,60 +1,60 @@
 /**
  * @file main.c
  * @brief ASCII-Chat Server - Main Entry Point and Connection Manager
- * 
+ *
  * This file serves as the core of the ASCII-Chat server's modular architecture,
  * replacing the original monolithic server.c (2408+ lines) with a clean, maintainable
  * design split across multiple specialized modules.
- * 
+ *
  * ARCHITECTURAL OVERVIEW:
  * ======================
  * This server implements a high-performance multi-client architecture where:
- * - Each client gets dedicated rendering threads (video @ 60fps + audio @ 172fps)  
+ * - Each client gets dedicated rendering threads (video @ 60fps + audio @ 172fps)
  * - Per-client packet queues eliminate shared bottlenecks and enable linear scaling
  * - Thread-safe design with proper mutex ordering prevents race conditions
  * - Platform abstraction supports Windows, Linux, and macOS seamlessly
- * 
+ *
  * MODULAR COMPONENTS:
  * ===================
  * - main.c (this file): Server initialization, signal handling, connection management
  * - client.c:           Per-client lifecycle, threading, and state management
- * - protocol.c:         Network packet processing and protocol implementation  
+ * - protocol.c:         Network packet processing and protocol implementation
  * - stream.c:           Video mixing, ASCII frame generation, and caching
  * - render.c:           Per-client rendering threads with rate limiting
  * - stats.c:            Performance monitoring and resource tracking
- * 
+ *
  * CONCURRENCY MODEL:
  * ==================
  * The server creates multiple thread types per client:
  * 1. Receive thread: Handles incoming packets from client (protocol.c functions)
  * 2. Send thread: Manages outgoing packet delivery (client.c)
- * 3. Video render thread: Generates ASCII frames at 60fps (render.c)  
+ * 3. Video render thread: Generates ASCII frames at 60fps (render.c)
  * 4. Audio render thread: Mixes audio streams at 172fps (render.c)
  * 5. Stats logger thread: Periodic performance reporting (stats.c)
- * 
+ *
  * CRITICAL THREAD SAFETY:
  * ========================
  * - Lock ordering: Always acquire g_client_manager_rwlock BEFORE per-client mutexes
  * - Snapshot pattern: Copy client state under mutex, then process without locks
  * - Signal-safe shutdown: SIGINT handler only sets flags and closes sockets
  * - Deterministic cleanup: Main thread waits for all worker threads before exit
- * 
+ *
  * WHY THE REFACTORING:
  * ====================
  * The original server.c became unmaintainable at 2408+ lines, making it:
- * - Too large for LLM context windows (limited AI-assisted development)  
+ * - Too large for LLM context windows (limited AI-assisted development)
  * - Difficult for humans to navigate and understand
- * - Slow to compile and modify  
+ * - Slow to compile and modify
  * - Hard to isolate bugs and add new features
- * 
+ *
  * The modular design enables:
  * - Faster development cycles (smaller compilation units)
  * - Better IDE support (jump-to-definition, IntelliSense)
  * - Easier testing and debugging (isolated components)
  * - Future extensibility (new protocols, renderers, optimizations)
- * 
- * @author ASCII-Chat Development Team
- * @date January 2025
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
  * @version 2.0 (Post-Modularization)
  */
 
@@ -80,10 +80,11 @@
 #include "network.h"
 #include "options.h"
 #include "buffer_pool.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "aspect_ratio.h"
 #include "mixer.h"
 #include "palette.h"
+#include "audio.h"
 
 #include "client.h"
 #include "protocol.h"
@@ -98,11 +99,11 @@
 
 /**
  * @brief Global atomic shutdown flag shared across all threads
- * 
+ *
  * This flag is the primary coordination mechanism for clean server shutdown.
  * It's atomic to ensure thread-safe access without mutexes, as it's checked
  * frequently in tight loops across all worker threads.
- * 
+ *
  * USAGE PATTERN:
  * - Set to true by signal handlers (SIGINT/SIGTERM) or main loop on error
  * - Checked by all worker threads to know when to exit gracefully
@@ -112,11 +113,11 @@ atomic_bool g_should_exit = false;
 
 /**
  * @brief Global audio mixer instance for multi-client audio processing
- * 
+ *
  * The mixer combines audio streams from multiple clients, excluding each client's
  * own audio from their outbound stream (preventing echo). Created once during
  * server initialization and shared by all audio render threads.
- * 
+ *
  * THREAD SAFETY: The mixer itself is thread-safe and can be used concurrently
  * by multiple render.c audio threads without external synchronization.
  */
@@ -124,7 +125,7 @@ mixer_t *g_audio_mixer = NULL;
 
 /**
  * @brief Platform-abstracted mutex for shutdown coordination
- * 
+ *
  * Used with g_shutdown_cond to implement interruptible sleep operations.
  * This allows threads to sleep for specific durations but wake immediately
  * when shutdown is requested, preventing long delays during server exit.
@@ -133,7 +134,7 @@ static_mutex_t g_shutdown_mutex = STATIC_MUTEX_INIT;
 
 /**
  * @brief Condition variable for fast thread wakeup during shutdown
- * 
+ *
  * Broadcasted by signal handlers to wake all sleeping threads immediately.
  * This enables responsive shutdown instead of waiting for timeouts to expire.
  * Used primarily by interruptible_usleep() functions throughout the codebase.
@@ -142,11 +143,11 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
 
 /**
  * @brief Main listening socket for accepting client connections
- * 
+ *
  * This socket is bound to the configured port and listens for incoming
  * client connections. Closed by signal handlers to interrupt accept()
  * calls during shutdown, ensuring the main loop exits promptly.
- * 
+ *
  * PLATFORM NOTE: Uses platform-abstracted socket_t type (SOCKET on Windows,
  * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
  */
@@ -154,7 +155,7 @@ static socket_t listenfd = INVALID_SOCKET_VALUE;
 
 /**
  * @brief Background thread handle for periodic statistics logging
- * 
+ *
  * Runs stats_logger_thread_func() from stats.c to provide periodic reports
  * on server performance, client counts, buffer usage, and resource metrics.
  * Essential for monitoring server health in production deployments.
@@ -163,7 +164,7 @@ static asciithread_t g_stats_logger_thread;
 
 /**
  * @brief Flag tracking whether stats logger thread was successfully created
- * 
+ *
  * Used to determine whether we need to wait for the stats thread during
  * shutdown cleanup. Prevents attempting to join a thread that was never
  * started due to initialization failures.
@@ -178,48 +179,48 @@ static bool g_stats_logger_thread_created = false;
 
 /**
  * @brief Critical signal handler for SIGINT (Ctrl+C) - initiates server shutdown
- * 
+ *
  * This handler is the primary entry point for graceful server shutdown. It's designed
  * to be signal-safe and perform minimal work to avoid deadlocks and undefined behavior
  * common in complex signal handlers.
- * 
+ *
  * SIGNAL SAFETY STRATEGY:
  * =======================
  * Signal handlers are severely restricted in what they can safely do:
  * - Only async-signal-safe functions are allowed
- * - No mutex operations (can deadlock if main thread holds mutex)  
+ * - No mutex operations (can deadlock if main thread holds mutex)
  * - No malloc/free (heap corruption if interrupted during allocation)
  * - No non-reentrant library calls (logging, printf, etc. are dangerous)
- * 
+ *
  * SHUTDOWN PROCESS:
  * =================
  * 1. Set atomic g_should_exit flag (signal-safe, checked by all threads)
  * 2. Use raw write() for immediate user feedback (async-signal-safe)
- * 3. Broadcast shutdown condition to wake sleeping threads  
+ * 3. Broadcast shutdown condition to wake sleeping threads
  * 4. Close all sockets to interrupt blocking I/O operations
  * 5. Return quickly - let main thread handle complex cleanup
- * 
+ *
  * SOCKET CLOSING RATIONALE:
  * =========================
  * Without socket closure, threads would remain blocked in:
  * - accept() in main loop (waiting for new connections)
- * - recv() in client receive threads (waiting for packets)  
+ * - recv() in client receive threads (waiting for packets)
  * - send() in client send threads (if network is slow)
- * 
+ *
  * Closing sockets causes these functions to return with error codes,
  * allowing threads to check g_should_exit and exit gracefully.
- * 
+ *
  * PLATFORM CONSIDERATIONS:
  * ========================
  * - Windows: socket_shutdown() required to interrupt blocked recv()
  * - POSIX: socket_close() alone typically suffices
  * - Both: Avoid mutex operations (signal may interrupt mutex holder)
- * 
- * @param sigint The signal number (unused, required by signal handler signature) 
+ *
+ * @param sigint The signal number (unused, required by signal handler signature)
  */
 static void sigint_handler(int sigint) {
   (void)(sigint);
-  
+
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_should_exit, true);
 
@@ -252,24 +253,24 @@ static void sigint_handler(int sigint) {
 
 /**
  * @brief Handler for SIGTERM (termination request) signals on POSIX systems
- * 
+ *
  * SIGTERM is the standard "please terminate gracefully" signal sent by process
  * managers, systemd, Docker, etc. Unlike SIGINT (user Ctrl+C), SIGTERM indicates
  * a system-initiated shutdown request that should be honored promptly.
- * 
+ *
  * IMPLEMENTATION STRATEGY:
  * This handler is intentionally more conservative than sigint_handler():
- * - Uses logging system (has built-in signal safety mechanisms)  
+ * - Uses logging system (has built-in signal safety mechanisms)
  * - Does NOT close client sockets (avoids potential race conditions)
  * - Relies on main thread cleanup for client socket management
  * - Focuses on minimal flag setting and thread wakeup
- * 
+ *
  * RATIONALE FOR CONSERVATIVE APPROACH:
  * SIGTERM often comes from automated systems that expect clean shutdown.
  * By being more careful and letting the main thread handle complex cleanup,
  * we reduce the risk of partial states or resource leaks that could affect
  * process monitoring systems.
- * 
+ *
  * @param sigterm The signal number (unused, required by signal handler signature)
  */
 #ifndef _WIN32
@@ -296,17 +297,17 @@ static void sigterm_handler(int sigterm) {
 
 /**
  * @brief Windows-compatible SIGTERM handler with limited signal support
- * 
+ *
  * Windows has limited POSIX signal support compared to Unix systems.
  * This handler provides basic termination handling but relies more heavily
  * on the main thread for complex cleanup operations.
- * 
+ *
  * WINDOWS SIGNAL LIMITATIONS:
  * - Signals run in separate threads (unlike POSIX inline execution)
  * - Limited set of supported signals (no SIGPIPE, limited SIGTERM)
  * - Different timing and delivery semantics
  * - Some async-signal-safe restrictions don't apply the same way
- * 
+ *
  * @param sigterm The signal number (unused, required by signal handler signature)
  */
 #ifdef _WIN32
@@ -314,10 +315,10 @@ static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_should_exit, true);
   log_info("SIGTERM received - shutting down server...");
-  
+
   // Wake up all sleeping threads immediately
   static_cond_broadcast(&g_shutdown_cond);
-  
+
   // Close listening socket to interrupt accept()
   if (listenfd != INVALID_SOCKET_VALUE) {
     socket_close(listenfd);
@@ -326,52 +327,52 @@ static void sigterm_handler(int sigterm) {
 #endif
 
 /* ============================================================================
- * Main Function  
+ * Main Function
  * ============================================================================
  */
 
 /**
  * @brief ASCII-Chat Server main entry point - orchestrates the entire server architecture
- * 
+ *
  * This function serves as the conductor of the ASCII-Chat server's modular architecture.
  * It replaces the original monolithic server design with a clean initialization sequence
  * followed by a robust multi-client connection management loop.
- * 
+ *
  * ARCHITECTURAL OVERVIEW:
  * =======================
  * The main function coordinates several major subsystems:
  * 1. Platform initialization (Windows/POSIX compatibility)
- * 2. Logging and configuration setup  
+ * 2. Logging and configuration setup
  * 3. Network socket creation and binding
  * 4. Global resource initialization (audio mixer, buffer pools, etc.)
  * 5. Background thread management (statistics logging)
  * 6. Main connection accept loop with client lifecycle management
  * 7. Graceful shutdown with proper resource cleanup
- * 
+ *
  * MODULAR COMPONENT INTEGRATION:
  * ==============================
  * This main function ties together the modular components:
  * - client.c: add_client(), remove_client() for client lifecycle
- * - protocol.c: Not directly called (used by client receive threads)  
+ * - protocol.c: Not directly called (used by client receive threads)
  * - stream.c: Not directly called (used by render threads)
  * - render.c: create_client_render_threads() called via client.c
  * - stats.c: stats_logger_thread_func() runs in background
- * 
- * CONCURRENCY STRATEGY:  
+ *
+ * CONCURRENCY STRATEGY:
  * =====================
  * Main thread responsibilities:
  * - Accept new connections (blocking with timeout)
  * - Manage client lifecycle (add/remove)
  * - Handle disconnection cleanup
  * - Coordinate graceful shutdown
- * 
+ *
  * Background thread responsibilities:
  * - Per-client receive: Handle incoming packets (client.c)
- * - Per-client send: Manage outgoing packets (client.c) 
+ * - Per-client send: Manage outgoing packets (client.c)
  * - Per-client video render: Generate ASCII frames (render.c)
  * - Per-client audio render: Mix audio streams (render.c)
  * - Stats logger: Monitor server performance (stats.c)
- * 
+ *
  * CLEANUP GUARANTEES:
  * ===================
  * The shutdown sequence ensures:
@@ -380,7 +381,7 @@ static void sigterm_handler(int sigterm) {
  * 3. Main thread waits for all threads to finish
  * 4. Resources cleaned up in reverse dependency order
  * 5. No memory leaks or hanging processes
- * 
+ *
  * @param argc Command line argument count
  * @param argv Command line argument vector
  * @return Exit code: 0 for success, non-zero for failure
@@ -437,11 +438,6 @@ int main(int argc, char *argv[]) {
   ascii_simd_init();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
   log_info("SERVER: RGB palettes precalculated");
-
-  // Handle terminal resize events
-  log_info("SERVER: Setting up signal handlers...");
-  // Handle terminal resize events (SIGWINCH is defined as no-op on Windows in platform/system.h)
-  signal(SIGWINCH, sigwinch_handler);
 
   // Simple signal handling (temporarily disable complex threading signal handling)
   log_info("SERVER: Setting up simple signal handlers...");
@@ -561,7 +557,7 @@ int main(int argc, char *argv[]) {
   // CRITICAL ORDERING: Client cleanup MUST happen before accept() to ensure
   // maximum connection slots are available. Otherwise, slots remain occupied
   // by dead connections, eventually preventing new clients from joining.
-  
+
   while (!atomic_load(&g_should_exit)) {
     // Rate-limited logging: Only show status when client count actually changes
     // This prevents log spam while maintaining visibility into server state
@@ -574,12 +570,12 @@ int main(int argc, char *argv[]) {
     // ====================================================================
     // PHASE 1: DISCONNECT CLEANUP - Free slots from terminated clients
     // ====================================================================
-    // 
+    //
     // This implements a lock-safe cleanup pattern to avoid infinite loops:
     // 1. Collect cleanup tasks under read lock (minimal critical section)
     // 2. Release lock before processing (prevents lock contention)
     // 3. Process each cleanup task without locks (allows other threads to continue)
-    // 
+    //
     // This pattern prevents deadlocks while ensuring all disconnected
     // clients are properly cleaned up before accepting new ones.
     typedef struct {
@@ -748,7 +744,7 @@ int main(int argc, char *argv[]) {
   mutex_destroy(&g_frame_cache_mutex);
   mutex_destroy(&g_client_manager.mutex);
 
-  // Close listen socket  
+  // Close listen socket
   if (listenfd != INVALID_SOCKET_VALUE) {
     socket_close(listenfd);
   }

@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "palette.h"
 
 #define OPTIONS_BUFF_SIZE 256
@@ -33,7 +33,7 @@ typedef enum {
   COLOR_MODE_TRUECOLOR = 4  // Force 24-bit truecolor
 } terminal_color_mode_t;
 
-// Render mode is now defined in terminal_detect.h
+// Render mode is now defined in platform/terminal.h
 
 extern terminal_color_mode_t opt_color_mode;     // Color mode override
 extern render_mode_t opt_render_mode;            // Render mode override
@@ -79,6 +79,6 @@ void usage(FILE *out_stream, bool is_client);
 void usage_client(FILE *out_stream);
 void usage_server(FILE *out_stream);
 
-// Terminal size detection functions (get_terminal_size moved to terminal_detect.h)
+// Terminal size detection functions (get_terminal_size moved to platform/terminal.h)
 void update_dimensions_for_full_height(void);
 void update_dimensions_to_terminal_size(void);

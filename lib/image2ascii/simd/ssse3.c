@@ -5,6 +5,7 @@
 #include "ssse3.h"
 #include "ascii_simd.h"
 #include "common.h"
+#include "../output_buffer.h"
 
 #ifdef SIMD_SUPPORT_SSSE3
 #include <tmmintrin.h>

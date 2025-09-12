@@ -417,7 +417,8 @@ else()
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
             # Windows x86_64 - try compile tests for SIMD features
             # Try to compile and run CPUID check for x86
-            if(NOT CMAKE_CROSSCOMPILING)
+            # Note: Clang on Windows may have issues with check_c_source_runs, so we use compile checks instead
+            if(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
                 # Check from highest to lowest, stop when we find support
                 # Higher instruction sets imply lower ones
                 
@@ -491,19 +492,33 @@ else()
                     endif()
                 endif()
             else()
-                # Cross-compiling, use compile-time checks
+                # Cross-compiling or Clang on Windows, use compile-time checks with appropriate flags
+                # Save current flags
+                set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
+                
+                # Test AVX2 with required flags
+                set(CMAKE_REQUIRED_FLAGS "-mavx2")
                 check_c_source_compiles("
                     #include <immintrin.h>
                     int main() { __m256i a = _mm256_setzero_si256(); return 0; }
                 " CAN_COMPILE_AVX2)
+                
+                # Test SSSE3 with required flags
+                set(CMAKE_REQUIRED_FLAGS "-mssse3")
                 check_c_source_compiles("
                     #include <tmmintrin.h>
                     int main() { __m128i a = _mm_setzero_si128(); a = _mm_abs_epi8(a); return 0; }
                 " CAN_COMPILE_SSSE3)
+                
+                # Test SSE2 with required flags
+                set(CMAKE_REQUIRED_FLAGS "-msse2")
                 check_c_source_compiles("
                     #include <emmintrin.h>
                     int main() { __m128i a = _mm_setzero_si128(); return 0; }
                 " CAN_COMPILE_SSE2)
+                
+                # Restore flags
+                set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
                 
                 # Enable all instruction sets that can be compiled
                 if(CAN_COMPILE_SSE2)
@@ -693,7 +708,11 @@ elseif(CRC32_HW STREQUAL "auto")
             endif()
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
             # Check for SSE4.2 support on x86_64
-            if(NOT CMAKE_CROSSCOMPILING)
+            # Note: Clang on Windows has issues with check_c_source_runs, so check SIMD flags first
+            if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_AVX512)
+                # Assume SSE4.2 if we have SSSE3 or better
+                set(ENABLE_CRC32_HW TRUE)
+            elseif(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
                 check_c_source_runs("
                     #include <intrin.h>
                     int main() {
@@ -707,9 +726,6 @@ elseif(CRC32_HW STREQUAL "auto")
                 if(HAS_SSE42_RUNTIME)
                     set(ENABLE_CRC32_HW TRUE)
                 endif()
-            elseif(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_AVX512)
-                # Assume SSE4.2 if we have SSSE3 or better
-                set(ENABLE_CRC32_HW TRUE)
             endif()
         endif()
     elseif(PLATFORM_DARWIN)
@@ -1070,7 +1086,6 @@ set(LIB_COMMON_SRCS
     lib/aspect_ratio.c
     lib/image2ascii/ascii.c
     lib/ansi_fast.c
-    lib/terminal_detect.c
     lib/webcam.c
     lib/palette.c
 )
@@ -1251,7 +1266,15 @@ add_executable(ascii-chat-server
 target_link_libraries(ascii-chat-server ascii-chat-lib)
 
 # Client executable
-add_executable(ascii-chat-client src/client.c)
+add_executable(ascii-chat-client
+    src/client/main.c
+    src/client/server.c
+    src/client/protocol.c
+    src/client/display.c
+    src/client/capture.c
+    src/client/audio.c
+    src/client/keepalive.c
+)
 target_link_libraries(ascii-chat-client ascii-chat-lib)
 
 # macOS Info.plist embedding (matches Makefile)
