@@ -69,6 +69,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
+#include "os/audio.h"
 #include "keepalive.h"
 
 #include "platform/abstraction.h"

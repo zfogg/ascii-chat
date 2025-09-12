@@ -12,7 +12,7 @@
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"
-#include "webcam.h"
+#include "os/webcam.h"
 #include "options.h"
 #include "simd/ascii_simd.h"
 

@@ -84,7 +84,7 @@
 #include "aspect_ratio.h"
 #include "mixer.h"
 #include "palette.h"
-#include "audio.h"
+#include "os/audio.h"
 
 #include "client.h"
 #include "protocol.h"

@@ -1,4 +1,4 @@
-#include "audio.h"
+#include "os/audio.h"
 #include "mixer.h"
 #include "common.h"
 #include <math.h>

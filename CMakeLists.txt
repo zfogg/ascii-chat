@@ -1080,13 +1080,13 @@ set(LIB_COMMON_SRCS
     lib/crypto.c
     lib/crc32_hw.c
     lib/mixer.c
-    lib/audio.c
+    lib/os/audio.c
     lib/image2ascii/image.c
     lib/image2ascii/output_buffer.c
     lib/aspect_ratio.c
     lib/image2ascii/ascii.c
     lib/ansi_fast.c
-    lib/webcam.c
+    lib/os/webcam.c
     lib/palette.c
 )
 
@@ -1105,7 +1105,7 @@ if(WIN32)
         lib/platform/windows/terminal.c
         lib/platform/windows/system.c
         lib/platform/windows/socket.c
-        lib/webcam_windows.c
+        lib/os/windows/webcam_mediafoundation.c
     )
     
     # Add getopt for Windows if needed
@@ -1123,16 +1123,15 @@ else()
         lib/platform/posix/terminal.c
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
-        lib/webcam_platform.c
     )
     
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
-            lib/webcam_avfoundation.m
+            lib/os/macos/webcam_avfoundation.c
         )
     else()
         list(APPEND PLATFORM_SRCS
-            lib/webcam_v4l2.c
+            lib/os/linux/webcam_v4l2.c
         )
     endif()
 endif()
