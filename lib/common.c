@@ -351,7 +351,7 @@ void debug_memory_report(void) {
     // fprintf(stderr, "realloc calls: %zu\n", atomic_load(&g_mem.realloc_calls));
     fprintf(stderr, "free calls: %zu\n", free_calls);
     size_t diff = (malloc_calls + calloc_calls) - free_calls;
-    fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zd\n", (ssize_t)diff);
+    fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff);
 
     /* Only show allocations if tracking is enabled */
     if (g_mem.track_allocations && g_mem.head) {

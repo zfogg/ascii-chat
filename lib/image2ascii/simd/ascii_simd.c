@@ -642,8 +642,10 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
 // Enhanced benchmark function with image source support
 simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
-                                                       const image_t *source_image, bool use_fast_path) {
+                                                       const image_t *source_image, bool use_256color) {
   simd_benchmark_t result = {0};
+  (void)background_mode;  // Suppress unused parameter warning
+  (void)use_256color;     // Suppress unused parameter warning
 
   int pixel_count = width * height;
 
@@ -730,7 +732,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   double start_sse2_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     char *result_str =
-        render_ascii_sse2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+        render_ascii_sse2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -744,7 +746,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   double start_ssse3_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     char *result_str =
-        render_ascii_ssse3_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+        render_ascii_ssse3_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -758,7 +760,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   double start_avx2_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     char *result_str =
-        render_ascii_avx2_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+        render_ascii_avx2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -772,7 +774,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   double start_neon_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     char *result_str =
-        render_ascii_neon_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+        render_ascii_neon_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -785,7 +787,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_sve_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str = render_ascii_sve_unified_optimized(frame, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+    char *result_str = render_ascii_sve_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -844,8 +846,9 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height,
                                                              int __attribute__((unused)) iterations,
                                                              bool background_mode, const image_t *source_image,
-                                                             bool use_fast_path) {
+                                                             bool use_256color) {
   simd_benchmark_t result = {0};
+  (void)use_256color;     // Suppress unused parameter warning
 
   int pixel_count = width * height;
   size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;
@@ -959,7 +962,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     if (test_image) {
       memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
       char *result_str =
-          render_ascii_sse2_unified_optimized(test_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+          render_ascii_sse2_unified_optimized(test_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
       if (result_str)
         free(result_str);
       image_destroy(test_image);
@@ -975,7 +978,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     if (test_image) {
       memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
       char *result_str =
-          render_ascii_ssse3_unified_optimized(test_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+          render_ascii_ssse3_unified_optimized(test_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
       if (result_str)
         free(result_str);
       image_destroy(test_image);
@@ -991,7 +994,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     if (test_image) {
       memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
       char *result_str =
-          render_ascii_avx2_unified_optimized(test_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+          render_ascii_avx2_unified_optimized(test_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
       if (result_str)
         free(result_str);
       image_destroy(test_image);
@@ -1006,7 +1009,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
     char *result =
-        render_ascii_neon_unified_optimized(&temp_image, background_mode, use_fast_path, DEFAULT_ASCII_PALETTE);
+        render_ascii_neon_unified_optimized(&temp_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result)
       free(result);
   }
@@ -1018,7 +1021,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
-    char *result = render_ascii_sve_unified_optimized(&temp_image, background_mode, use_fast_path);
+    char *result = render_ascii_sve_unified_optimized(&temp_image, background_mode, use_256color);
     if (result)
       free(result);
   }

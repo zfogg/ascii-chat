@@ -65,13 +65,13 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
   fd_set write_fds;
   struct timeval timeout;
 
-  FD_ZERO(&write_fds);
-  FD_SET(sockfd, &write_fds);
+  socket_fd_zero(&write_fds);
+  socket_fd_set(sockfd, &write_fds);
 
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
+  result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
   if (result <= 0) {
     if (errno == EINTR) {
       return false; // Interrupted by signal
@@ -97,18 +97,14 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
 
   while (total_sent < (ssize_t)len) {
     // Set up select for write timeout
-    FD_ZERO(&write_fds);
-    FD_SET(sockfd, &write_fds);
+    socket_fd_zero(&write_fds);
+    socket_fd_set(sockfd, &write_fds);
 
     timeout.tv_sec = timeout_seconds;
     timeout.tv_usec = 0;
 
-    // The first argument to select() should be set to the highest-numbered file descriptor in any of the fd_sets,
-    // plus 1. This is because select() internally checks all file descriptors from 0 up to (but not including) this
-    // value to see if they are ready. An fd_set is a data structure used by select() to represent a set of file
-    // descriptors (such as sockets or files) to be monitored for readiness (read, write, or error). In this case,
-    // sockfd is the only file descriptor in the write_fds set, so we pass sockfd + 1.
-    int result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
+    // Use platform-abstracted select wrapper that handles Windows/POSIX differences
+    int result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
     if (result <= 0) {
       // Timeout or error
       if (result == 0) {
@@ -152,13 +148,13 @@ ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds
 
   while (total_received < (ssize_t)len) {
     // Set up select for read timeout
-    FD_ZERO(&read_fds);
-    FD_SET(sockfd, &read_fds);
+    socket_fd_zero(&read_fds);
+    socket_fd_set(sockfd, &read_fds);
 
     timeout.tv_sec = timeout_seconds;
     timeout.tv_usec = 0;
 
-    int result = select(sockfd + 1, &read_fds, NULL, NULL, &timeout);
+    int result = socket_select(sockfd, &read_fds, NULL, NULL, &timeout);
     if (result <= 0) {
       // Timeout or error
       if (result == 0) {
@@ -192,13 +188,13 @@ int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen,
   fd_set read_fds;
   struct timeval timeout;
 
-  FD_ZERO(&read_fds);
-  FD_SET(listenfd, &read_fds);
+  socket_fd_zero(&read_fds);
+  socket_fd_set(listenfd, &read_fds);
 
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  int result = select(listenfd + 1, &read_fds, NULL, NULL, &timeout);
+  int result = socket_select(listenfd, &read_fds, NULL, NULL, &timeout);
   if (result <= 0) {
     // Timeout or error
     if (result == 0) {

@@ -261,3 +261,22 @@ const char *socket_get_error_string(void) {
 }
 
 #endif // !_WIN32
+// Platform-aware select wrapper
+int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout) {
+  // On POSIX, select() needs the max file descriptor + 1
+  return select(max_fd + 1, readfds, writefds, exceptfds, timeout);
+}
+
+// Platform-safe FD set wrappers  
+void socket_fd_zero(fd_set *set) {
+  FD_ZERO(set);
+}
+
+void socket_fd_set(socket_t sock, fd_set *set) {
+  // On POSIX, socket_t is int, so this works directly
+  FD_SET(sock, set);
+}
+
+int socket_fd_isset(socket_t sock, fd_set *set) {
+  return FD_ISSET(sock, set);
+}

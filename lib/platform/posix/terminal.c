@@ -146,24 +146,54 @@ void terminal_enable_ansi(void) {
 
 /**
  * @brief Flush terminal output buffer
+ * @param fd File descriptor for TTY output
  * @return 0 on success, -1 on failure
  */
-int terminal_flush(void) {
-  return fflush(stdout);
+int terminal_flush(int fd) {
+  return fsync(fd);
 }
 
 /**
  * @brief Show or hide terminal cursor
+ * @param fd File descriptor for TTY output
  * @param hide true to hide cursor, false to show
  * @return 0 on success, -1 on failure
  */
-int terminal_hide_cursor(bool hide) {
+int terminal_hide_cursor(int fd, bool hide) {
   if (hide) {
-    printf("\033[?25l");
+    if (dprintf(fd, "\033[?25l") < 0) {
+      return -1;
+    }
   } else {
-    printf("\033[?25h");
+    if (dprintf(fd, "\033[?25h") < 0) {
+      return -1;
+    }
   }
-  return fflush(stdout);
+  return fsync(fd);
+}
+
+/**
+ * @brief Move cursor to home position (0,0)
+ * @param fd File descriptor for TTY output
+ * @return 0 on success, -1 on failure
+ */
+int terminal_cursor_home(int fd) {
+  if (dprintf(fd, "\033[H") < 0) {
+    return -1;
+  }
+  return fsync(fd);
+}
+
+/**
+ * @brief Clear terminal scrollback buffer
+ * @param fd File descriptor for TTY output
+ * @return 0 on success, -1 on failure
+ */
+int terminal_clear_scrollback(int fd) {
+  if (dprintf(fd, "\033[3J") < 0) {
+    return -1;
+  }
+  return fsync(fd);
 }
 
 #endif // !_WIN32

@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int rwlock_init(rwlock_t *lock) {
-  InitializeSRWLock(&lock->lock);
+  InitializeSRWLock(lock);
   return 0;
 }
 
@@ -39,7 +39,7 @@ int rwlock_destroy(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdlock(rwlock_t *lock) {
-  AcquireSRWLockShared(&lock->lock);
+  AcquireSRWLockShared(lock);
   return 0;
 }
 
@@ -49,7 +49,7 @@ int rwlock_rdlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrlock(rwlock_t *lock) {
-  AcquireSRWLockExclusive(&lock->lock);
+  AcquireSRWLockExclusive(lock);
   return 0;
 }
 
@@ -63,7 +63,7 @@ int rwlock_wrlock(rwlock_t *lock) {
 int rwlock_unlock(rwlock_t *lock) {
   // Try to release as writer first, then as reader
   // This is a limitation of SRWLock - we don't track lock type
-  ReleaseSRWLockExclusive(&lock->lock);
+  ReleaseSRWLockExclusive(lock);
   return 0;
 }
 
@@ -73,7 +73,7 @@ int rwlock_unlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdunlock(rwlock_t *lock) {
-  ReleaseSRWLockShared(&lock->lock);
+  ReleaseSRWLockShared(lock);
   return 0;
 }
 
@@ -83,7 +83,7 @@ int rwlock_rdunlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrunlock(rwlock_t *lock) {
-  ReleaseSRWLockExclusive(&lock->lock);
+  ReleaseSRWLockExclusive(lock);
   return 0;
 }
 

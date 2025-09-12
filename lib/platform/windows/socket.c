@@ -222,6 +222,13 @@ int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   return result;
 }
 
+// Platform-aware select wrapper
+int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout) {
+  // On Windows, the first parameter is ignored by select()
+  (void)max_fd;  // Suppress unused parameter warning
+  return select(0, readfds, writefds, exceptfds, timeout);
+}
+
 // Get socket fd for use with native APIs
 int socket_get_fd(socket_t sock) {
   return (int)sock;
@@ -343,3 +350,16 @@ const char *socket_get_error_string(void) {
 }
 
 #endif // _WIN32
+// Platform-safe FD set wrappers
+void socket_fd_zero(fd_set *set) {
+  FD_ZERO(set);
+}
+
+void socket_fd_set(socket_t sock, fd_set *set) {
+  // On Windows, FD_SET handles SOCKET type correctly
+  FD_SET(sock, set);
+}
+
+int socket_fd_isset(socket_t sock, fd_set *set) {
+  return FD_ISSET(sock, set);
+}

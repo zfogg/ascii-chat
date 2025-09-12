@@ -34,7 +34,10 @@
  * ============================================================================
  */
 
-static volatile bool g_should_exit = false;
+// Use atomic operations on all platforms for consistent thread-safe access
+// This handles both Windows (where SIGINT runs in a new thread) and POSIX systems
+#include <stdatomic.h>
+static atomic_bool g_should_exit = false;
 
 // No emergency socket tracking needed - main shutdown sequence handles socket closure
 static static_mutex_t g_stats_mutex = STATIC_MUTEX_INIT;
@@ -46,17 +49,38 @@ static static_cond_t g_shutdown_cond = STATIC_COND_INIT;
 
 /* Interruptible sleep that respects shutdown signal */
 static void interruptible_usleep(unsigned int usec) {
-  if (g_should_exit)
+  static int call_count = 0;
+  call_count++;
+  
+  if (atomic_load(&g_should_exit)) {
+    if (call_count % 100 == 0) {
+      log_info("interruptible_usleep: Early return due to g_should_exit (call %d)", call_count);
+    }
     return;
+  }
 
+#ifdef _WIN32
+  // On Windows, Sleep(1) can sleep for up to 15.6ms, so we keep it simple
+  int total_ms = (int)(usec / 1000);
+  if (total_ms < 1) total_ms = 1;
+  
+  Sleep(total_ms); // Do the full sleep at once
+  
+  // Check again after sleep
+  if (atomic_load(&g_should_exit)) {
+    return;
+  }
+#else
+  // On POSIX, use condition variables for more responsive interruption
   static_mutex_lock(&g_shutdown_mutex);
-  if (!g_should_exit) {
+  if (!atomic_load(&g_should_exit)) {
     int timeout_ms = (int)(usec / 1000);
     if (timeout_ms == 0)
       timeout_ms = 1; // Ensure minimum 1ms
     static_cond_timedwait(&g_shutdown_cond, &g_shutdown_mutex, timeout_ms);
   }
   static_mutex_unlock(&g_shutdown_mutex);
+#endif
 }
 
 /* Performance statistics */
@@ -75,7 +99,7 @@ typedef struct {
  */
 
 typedef struct {
-  int socket;
+  socket_t socket;
   asciithread_t receive_thread; // Thread for receiving client data
   // Send thread removed - using broadcast thread for all sending
   uint32_t client_id;
@@ -207,7 +231,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame, size_t frame_size);
 
 // Client management functions
-int add_client(int socket, const char *client_ip, int port);
+int add_client(socket_t socket, const char *client_ip, int port);
 int remove_client(uint32_t client_id);
 // NEW: Per-client render thread lifecycle functions
 int create_client_render_threads(client_info_t *client);
@@ -235,7 +259,7 @@ static void sigwinch_handler(int sigwinch) {
 
 static void sigint_handler(int sigint) {
   (void)(sigint);
-  g_should_exit = true;
+  atomic_store(&g_should_exit, true);
 
   // Signal-safe logging - avoid log_info() which may not be signal-safe
   const char msg[] = "SIGINT received - shutting down server...\n";
@@ -247,8 +271,10 @@ static void sigint_handler(int sigint) {
   // Close all client sockets to interrupt blocking receive threads (signal-safe)
   // Note: This is done without mutex locking since signal handlers should be minimal
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].socket > 0) {
-      close(g_client_manager.clients[i].socket);
+    if (g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
+      // On Windows, shutdown is needed to interrupt blocking recv()
+      socket_shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
+      socket_close(g_client_manager.clients[i].socket);
     }
   }
 
@@ -264,7 +290,7 @@ static void sigint_handler(int sigint) {
 #ifndef _WIN32
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
-  g_should_exit = true;
+  atomic_store(&g_should_exit, true);
 
   // Use log system in signal handler - it has its own safety mechanisms
   log_info("SIGTERM received - shutting down server...");
@@ -280,6 +306,14 @@ static void sigterm_handler(int sigterm) {
   // NOTE: Client socket closure handled by main shutdown sequence (not signal handler)
   // Signal handler should be minimal - just set flag and wake threads
   // Main thread will properly close client sockets with mutex protection
+}
+#endif
+#ifdef _WIN32
+// Windows-compatible signal handlers (no-op implementations)
+static void sigterm_handler(int sigterm) {
+  (void)(sigterm);
+  atomic_store(&g_should_exit, true);
+  log_info("SIGTERM received (Windows no-op implementation)");
 }
 #endif
 
@@ -326,17 +360,69 @@ client_info_t *find_client_by_id(uint32_t client_id) {
  */
 
 void *stats_logger_thread_func(void *arg) {
+  printf("[DEBUG] stats_logger_thread_func: ENTRY - function called with arg=%p\n", arg);
+  fflush(stdout);
   (void)arg;
-  log_info("Statistics logger thread started");
-
-  while (!g_should_exit) {
-    // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
-    for (int i = 0; i < 3000 && !g_should_exit; i++) {
-      interruptible_usleep(10000); // 10ms sleep - can be interrupted by shutdown
-    }
-
-    if (g_should_exit)
+  
+  printf("[DEBUG] stats_logger_thread_func: About to call log_info\n");
+  fflush(stdout);
+  
+  // TEMPORARILY BYPASS log_info to test if it's causing the hang
+  printf("[INFO] Statistics logger thread started (bypassing log_info)\n");
+  fflush(stdout);
+  // log_info("Statistics logger thread started");
+  
+  printf("[DEBUG] stats_logger_thread_func: After log_info bypass, starting main loop\n");
+  fflush(stdout);
+  
+  int loop_count = 0;
+  while (1) {
+    // Check g_should_exit with explicit atomic read
+    bool should_exit = atomic_load(&g_should_exit);
+    printf("[DEBUG] stats thread loop %d: g_should_exit = %d\n", loop_count, should_exit);
+    fflush(stdout);
+    
+    if (should_exit) {
+      printf("[INFO] Stats thread: Detected g_should_exit at start of loop %d, breaking\n", loop_count);
+      fflush(stdout);
       break;
+    }
+    
+    // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
+    for (int i = 0; i < 3000; i++) {
+      if (i == 0 || i == 100 || i == 200) {
+        printf("[DEBUG] Stats thread: About to call interruptible_usleep, iteration %d\n", i);
+        fflush(stdout);
+      }
+      
+      interruptible_usleep(10000); // 10ms sleep - can be interrupted by shutdown
+      
+      // Check g_should_exit after EVERY sleep
+      should_exit = atomic_load(&g_should_exit);
+      if (should_exit) {
+        printf("[INFO] Stats thread: Detected g_should_exit=true in sleep loop at iteration %d\n", i);
+        fflush(stdout);
+        break;
+      }
+      
+      // Debug: print every 50 iterations to see if we're still looping
+      if (i % 50 == 0 && i > 0) {
+        printf("[DEBUG] Stats thread: Still in sleep loop, iteration %d, g_should_exit=%d\n", i, (int)should_exit);
+        fflush(stdout);
+      }
+    }
+    
+    printf("[DEBUG] Stats thread: Exited inner for loop, checking g_should_exit again\n");
+    fflush(stdout);
+
+    if (atomic_load(&g_should_exit)) {
+      printf("[INFO] Stats thread: Detected g_should_exit after sleep loop, breaking main loop\n");
+      fflush(stdout);
+      // log_info("Stats thread: Detected g_should_exit after sleep loop, breaking main loop");
+      break;
+    }
+    
+    loop_count++;
 
     log_info("=== Periodic Statistics Report ===");
 
@@ -396,8 +482,13 @@ void *stats_logger_thread_func(void *arg) {
     }
     rwlock_unlock(&g_client_manager_rwlock);
   }
+  
+  printf("[DEBUG] Stats thread: Exited main while loop\n");
+  fflush(stdout);
 
-  log_info("Statistics logger thread stopped");
+  printf("[INFO] Statistics logger thread stopped - about to return NULL\n");
+  fflush(stdout);
+  // log_info("Statistics logger thread stopped - about to return");
   return NULL;
 }
 
@@ -933,6 +1024,7 @@ int main(int argc, char *argv[]) {
   }
   atexit(platform_cleanup);
 
+
   options_init(argc, argv, false);
 
   // Initialize logging - use specified log file or default
@@ -1088,7 +1180,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Main multi-client connection loop
-  while (!g_should_exit) {
+  while (!atomic_load(&g_should_exit)) {
     // Only log when client count changes
     static int last_logged_count = -1;
     if (g_client_manager.client_count != last_logged_count) {
@@ -1133,13 +1225,14 @@ int main(int argc, char *argv[]) {
     }
 
     // Accept network connection with timeout
-    // log_debug("Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
+    log_debug("Main loop: Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
     int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
     int saved_errno = errno; // Capture errno immediately to prevent corruption
-    // log_debug("accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
-    //           client_sock < 0 ? strerror(saved_errno) : "success");
+    log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
+              client_sock < 0 ? strerror(saved_errno) : "success");
     if (client_sock < 0) {
       if (saved_errno == ETIMEDOUT) {
+        log_debug("Main loop: Accept timed out, checking g_should_exit=%d", g_should_exit);
         // Timeout is normal, just continue
         // log_debug("Accept timed out after %d seconds, continuing loop", ACCEPT_TIMEOUT);
 #ifdef DEBUG_MEMORY
@@ -1150,7 +1243,7 @@ int main(int argc, char *argv[]) {
       if (saved_errno == EINTR) {
         // Interrupted by signal - check if we should exit
         log_debug("accept() interrupted by signal");
-        if (g_should_exit) {
+        if (atomic_load(&g_should_exit)) {
           break;
         }
         continue;
@@ -1176,14 +1269,14 @@ int main(int argc, char *argv[]) {
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
 
     // Check if we should exit after processing this client
-    if (g_should_exit) {
+    if (atomic_load(&g_should_exit)) {
       break;
     }
   }
 
   // Cleanup
   log_info("Server shutting down...");
-  g_should_exit = true;
+  atomic_store(&g_should_exit, true);
 
   // Wake up all sleeping threads before waiting for them
   static_cond_broadcast(&g_shutdown_cond);
@@ -1192,11 +1285,11 @@ int main(int argc, char *argv[]) {
   log_info("Closing all client sockets to interrupt blocking I/O...");
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket > 0) {
+    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
       log_debug("Closing socket for client %u to interrupt receive thread", g_client_manager.clients[i].client_id);
-      shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
-      close(g_client_manager.clients[i].socket);
-      g_client_manager.clients[i].socket = -1;
+      socket_shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
+      socket_close(g_client_manager.clients[i].socket);
+      g_client_manager.clients[i].socket = INVALID_SOCKET_VALUE;
     }
   }
   rwlock_unlock(&g_client_manager_rwlock);
@@ -1204,7 +1297,9 @@ int main(int argc, char *argv[]) {
   // Wait for stats logger thread to finish
   if (g_stats_logger_thread_created) {
     log_info("Waiting for stats logger thread to finish...");
-    ascii_thread_join(&g_stats_logger_thread, NULL);
+    log_info("About to call ascii_thread_join for stats thread");
+    int join_result = ascii_thread_join(&g_stats_logger_thread, NULL);
+    log_info("ascii_thread_join returned: %d", join_result);
     log_info("Stats logger thread stopped");
     g_stats_logger_thread_created = false;
   }
@@ -1219,11 +1314,11 @@ int main(int argc, char *argv[]) {
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->active && client->socket > 0) {
+    if (client->active && client->socket != INVALID_SOCKET_VALUE) {
       log_debug("Closing socket for client %u to interrupt receive thread", client->client_id);
-      shutdown(client->socket, SHUT_RDWR);
-      close(client->socket);
-      client->socket = 0; // Mark as closed
+      socket_shutdown(client->socket, SHUT_RDWR);
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE; // Mark as closed
     }
   }
   rwlock_unlock(&g_client_manager_rwlock);
@@ -1368,7 +1463,7 @@ static void handle_image_frame_packet(client_info_t *client, void *data, size_t 
       }
     } else {
       // During shutdown, this is expected - don't spam error logs
-      if (!g_should_exit) {
+      if (!atomic_load(&g_should_exit)) {
         log_error("Client %u has no incoming video buffer!", client->client_id);
       } else {
         log_debug("Client %u: ignoring video packet during shutdown", client->client_id);
@@ -1440,7 +1535,7 @@ void *client_receive_thread_func(void *arg) {
   void *data = NULL; // Initialize to prevent static analyzer warning about uninitialized use
   size_t len;
 
-  while (!g_should_exit && client->active) {
+  while (!atomic_load(&g_should_exit) && client->active) {
     // Receive packet from this client
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
 
@@ -1674,7 +1769,7 @@ void *client_send_thread_func(void *arg) {
   // Mark thread as running
   client->send_thread_running = true;
 
-  while (!g_should_exit && client->active && client->send_thread_running) {
+  while (!atomic_load(&g_should_exit) && client->active && client->send_thread_running) {
     queued_packet_t *packet = NULL;
 
     // Try to get audio packet first (higher priority for low latency)
@@ -1707,7 +1802,7 @@ void *client_send_thread_func(void *arg) {
       ssize_t sent = send_with_timeout(client->socket, &packet->header, sizeof(packet->header), SEND_TIMEOUT);
       if (sent != sizeof(packet->header)) {
         // During shutdown, connection errors are expected - don't spam error logs
-        if (!g_should_exit) {
+        if (!atomic_load(&g_should_exit)) {
           log_error("Failed to send packet header to client %u: %zd/%zu bytes", client->client_id, sent,
                     sizeof(packet->header));
         } else {
@@ -1722,7 +1817,7 @@ void *client_send_thread_func(void *arg) {
         sent = send_with_timeout(client->socket, packet->data, packet->data_len, SEND_TIMEOUT);
         if (sent != (ssize_t)packet->data_len) {
           // During shutdown, connection errors are expected - don't spam error logs
-          if (!g_should_exit) {
+          if (!atomic_load(&g_should_exit)) {
             log_error("Failed to send packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
                       packet->data_len);
           } else {
@@ -1767,7 +1862,7 @@ void *client_video_render_thread_func(void *arg) {
   clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
   bool should_continue = true;
-  while (should_continue && !g_should_exit) {
+  while (should_continue && !atomic_load(&g_should_exit)) {
     // CRITICAL FIX: Check thread state with mutex protection
     mutex_lock(&client->client_state_mutex);
     should_continue = client->video_render_thread_running && client->active;
@@ -1852,7 +1947,7 @@ void *client_audio_render_thread_func(void *arg) {
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
 
   bool should_continue = true;
-  while (should_continue && !g_should_exit) {
+  while (should_continue && !atomic_load(&g_should_exit)) {
     // CRITICAL FIX: Check thread state with mutex protection
     mutex_lock(&client->client_state_mutex);
     should_continue = client->audio_render_thread_running && client->active;
@@ -2061,7 +2156,7 @@ void broadcast_server_state_to_all_clients(void) {
 }
 
 // Client management functions
-int add_client(int socket, const char *client_ip, int port) {
+int add_client(socket_t socket, const char *client_ip, int port) {
   rwlock_wrlock(&g_client_manager_rwlock);
 
   // Find empty slot - this is the authoritative check

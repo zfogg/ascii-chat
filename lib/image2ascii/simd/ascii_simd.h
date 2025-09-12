@@ -122,14 +122,14 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
 // Enhanced benchmark functions with image source support
 simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
-                                                       const image_t *source_image, bool use_fast_path);
+                                                       const image_t *source_image, bool use_256color);
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
-                                                             bool use_fast_path);
+                                                             bool use_256color);
 void print_simd_capabilities(void);
 
 char *image_print_simd(image_t *image, const char *ascii_chars);
-char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars);
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars);
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color

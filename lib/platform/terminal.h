@@ -35,12 +35,14 @@ void terminal_enable_ansi(void);
 
 // Extended terminal control
 int terminal_set_buffering(bool line_buffered);
-int terminal_flush(void);
+int terminal_flush(int fd);
 int terminal_get_cursor_position(int *row, int *col);
 int terminal_save_cursor(void);
 int terminal_restore_cursor(void);
 int terminal_set_title(const char *title);
 int terminal_ring_bell(void);
-int terminal_hide_cursor(bool hide);
+int terminal_hide_cursor(int fd, bool hide);
 int terminal_set_scroll_region(int top, int bottom);
 int terminal_reset(void);
+int terminal_cursor_home(int fd);
+int terminal_clear_scrollback(int fd);
