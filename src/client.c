@@ -29,28 +29,18 @@
 static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
-#ifdef _WIN32
-    // Simplified terminal reset for Windows to avoid hangs
-    printf("\033[2J\033[H\033[?25l"); // Clear screen, home cursor, hide cursor
-    fflush(stdout);
-#else
     terminal_reset(fd);
-    // terminal_clear_scrollback(fd);
     terminal_clear_screen();
-    cursor_reset(fd);
-    // FIXME: cursor_hide() and cursor_show() don't work with write()
-    // cursor_hide(fd);
-    printf("\e[?25l");
-    // Force output to terminal immediately
-    fsync(fd);
-#endif
+    terminal_move_cursor(1, 1);
+    terminal_hide_cursor(true);
+    terminal_flush();
   }
 }
 
 // ------ TTY INFO ------
 typedef struct {
   int fd;
-  char *path;
+  const char *path;
   bool owns_fd;
 } tty_info_t;
 
@@ -420,19 +410,15 @@ tty_info_t get_current_tty(void) {
     result.path = NULL;
   }
 
-  if (isatty(STDIN_FILENO)) {
+  if (platform_isatty(STDIN_FILENO)) {
     result.fd = STDIN_FILENO;
-  } else if (isatty(STDOUT_FILENO)) {
+  } else if (platform_isatty(STDOUT_FILENO)) {
     result.fd = STDOUT_FILENO;
-  } else if (isatty(STDERR_FILENO)) {
+  } else if (platform_isatty(STDERR_FILENO)) {
     result.fd = STDERR_FILENO;
   }
   if (result.fd != -1) {
-#ifndef _WIN32
-    result.path = ttyname(result.fd);
-#else
-    result.path = "CON"; // Windows console device
-#endif
+    result.path = platform_ttyname(result.fd);
     result.owns_fd = false;
     return result;
   }
@@ -477,11 +463,7 @@ void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
       cursor_reset(STDOUT_FILENO);
     }
     write(STDOUT_FILENO, frame_data, strlen(frame_data));
-#ifndef _WIN32
-    fsync(STDOUT_FILENO);
-#else
-    _commit(STDOUT_FILENO);
-#endif
+    platform_fsync(STDOUT_FILENO);
   }
 }
 
@@ -1053,7 +1035,7 @@ int main(int argc, char *argv[]) {
   // Additional TTY validation: if stdout is redirected but we have a controlling TTY,
   // we can still show interactive output on the terminal
   if (tty_info_g.fd >= 0) {
-    has_a_tty_g |= isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
+    has_a_tty_g |= platform_isatty(tty_info_g.fd) != 0; // We have a valid controlling terminal
   }
 
   // Initialize logging - use specified log file or default
@@ -1105,10 +1087,10 @@ int main(int argc, char *argv[]) {
   // Cleanup nicely on Ctrl+C.
   signal(SIGINT, sigint_handler);
 
-#ifndef _WIN32
-  // Handle terminal resize events (not available on Windows)
+  // Handle terminal resize events (SIGWINCH is defined as no-op on Windows in platform/system.h)
   signal(SIGWINCH, sigwinch_handler);
 
+#ifndef _WIN32
   // Ignore SIGPIPE - we'll handle write errors ourselves (not on Windows)
   signal(SIGPIPE, SIG_IGN);
 #endif

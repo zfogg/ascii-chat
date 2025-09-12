@@ -20,7 +20,7 @@
  * @return 0 on success, error code on failure
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
-  return pthread_create(&thread->thread, NULL, func, arg);
+  return pthread_create(thread, NULL, func, arg);
 }
 
 /**
@@ -30,7 +30,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, error code on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
-  return pthread_join(thread->thread, retval);
+  return pthread_join(*thread, retval);
 }
 
 /**
@@ -47,7 +47,7 @@ void ascii_thread_exit(void *retval) {
  * @return 0 on success, error code on failure
  */
 int ascii_thread_detach(asciithread_t *thread) {
-  return pthread_detach(thread->thread);
+  return pthread_detach(*thread);
 }
 
 /**
@@ -55,9 +55,7 @@ int ascii_thread_detach(asciithread_t *thread) {
  * @return Thread ID structure for current thread
  */
 thread_id_t ascii_thread_self(void) {
-  thread_id_t id;
-  id.thread = pthread_self();
-  return id;
+  return pthread_self();
 }
 
 /**
@@ -67,7 +65,7 @@ thread_id_t ascii_thread_self(void) {
  * @return Non-zero if equal, 0 if different
  */
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
-  return pthread_equal(t1.thread, t2.thread);
+  return pthread_equal(t1, t2);
 }
 
 /**
@@ -76,6 +74,13 @@ int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
  */
 uint64_t ascii_thread_current_id(void) {
   return (uint64_t)pthread_self();
+}
+
+bool ascii_thread_is_initialized(asciithread_t *thread) {
+  if (!thread)
+    return false;
+  // On POSIX, check if thread handle is non-zero
+  return (*thread != 0);
 }
 
 #endif // !_WIN32

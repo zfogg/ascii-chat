@@ -226,14 +226,12 @@ client_info_t *find_client_by_id_fast(uint32_t client_id); // O(1) hash table lo
  * ============================================================================
  */
 
-#ifndef _WIN32
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // Server terminal resize - we ignore this since we use client's terminal size
   // Only log that the event occurred
   log_debug("Server terminal resized (ignored - using client terminal size)");
 }
-#endif
 
 static void sigint_handler(int sigint) {
   (void)(sigint);
@@ -981,18 +979,18 @@ int main(int argc, char *argv[]) {
 
   // Handle terminal resize events
   log_info("SERVER: Setting up signal handlers...");
-#ifndef _WIN32
+  // Handle terminal resize events (SIGWINCH is defined as no-op on Windows in platform/system.h)
   signal(SIGWINCH, sigwinch_handler);
-#endif
 
   // Simple signal handling (temporarily disable complex threading signal handling)
   log_info("SERVER: Setting up simple signal handlers...");
 
   // Handle Ctrl+C for cleanup
   signal(SIGINT, sigint_handler);
-#ifndef _WIN32
+  // Handle termination signal (SIGTERM is defined with limited support on Windows)
   signal(SIGTERM, sigterm_handler);
 
+#ifndef _WIN32
   // Ignore SIGPIPE (not on Windows)
   signal(SIGPIPE, SIG_IGN);
 #endif

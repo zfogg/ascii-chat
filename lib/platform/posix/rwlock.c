@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int rwlock_init(rwlock_t *lock) {
-  return pthread_rwlock_init(&lock->lock, NULL);
+  return pthread_rwlock_init(lock, NULL);
 }
 
 /**
@@ -26,7 +26,7 @@ int rwlock_init(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_destroy(rwlock_t *lock) {
-  return pthread_rwlock_destroy(&lock->lock);
+  return pthread_rwlock_destroy(lock);
 }
 
 /**
@@ -35,7 +35,7 @@ int rwlock_destroy(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdlock(rwlock_t *lock) {
-  return pthread_rwlock_rdlock(&lock->lock);
+  return pthread_rwlock_rdlock(lock);
 }
 
 /**
@@ -44,7 +44,7 @@ int rwlock_rdlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrlock(rwlock_t *lock) {
-  return pthread_rwlock_wrlock(&lock->lock);
+  return pthread_rwlock_wrlock(lock);
 }
 
 /**
@@ -54,7 +54,7 @@ int rwlock_wrlock(rwlock_t *lock) {
  * @note This works for both read and write locks on POSIX systems
  */
 int rwlock_unlock(rwlock_t *lock) {
-  return pthread_rwlock_unlock(&lock->lock);
+  return pthread_rwlock_unlock(lock);
 }
 
 /**
@@ -63,7 +63,7 @@ int rwlock_unlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_rdunlock(rwlock_t *lock) {
-  return pthread_rwlock_unlock(&lock->lock);
+  return pthread_rwlock_unlock(lock);
 }
 
 /**
@@ -72,7 +72,7 @@ int rwlock_rdunlock(rwlock_t *lock) {
  * @return 0 on success, error code on failure
  */
 int rwlock_wrunlock(rwlock_t *lock) {
-  return pthread_rwlock_unlock(&lock->lock);
+  return pthread_rwlock_unlock(lock);
 }
 
 #endif // !_WIN32

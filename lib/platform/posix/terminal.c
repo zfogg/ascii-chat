@@ -144,4 +144,26 @@ void terminal_enable_ansi(void) {
   // No special enabling needed
 }
 
+/**
+ * @brief Flush terminal output buffer
+ * @return 0 on success, -1 on failure
+ */
+int terminal_flush(void) {
+  return fflush(stdout);
+}
+
+/**
+ * @brief Show or hide terminal cursor
+ * @param hide true to hide cursor, false to show
+ * @return 0 on success, -1 on failure
+ */
+int terminal_hide_cursor(bool hide) {
+  if (hide) {
+    printf("\033[?25l");
+  } else {
+    printf("\033[?25h");
+  }
+  return fflush(stdout);
+}
+
 #endif // !_WIN32
