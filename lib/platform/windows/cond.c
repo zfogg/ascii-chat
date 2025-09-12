@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int cond_init(cond_t *cond) {
-  InitializeConditionVariable(&cond->cv);
+  InitializeConditionVariable(cond);
   return 0;
 }
 
@@ -41,7 +41,7 @@ int cond_destroy(cond_t *cond) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_wait(cond_t *cond, mutex_t *mutex) {
-  return SleepConditionVariableCS(&cond->cv, &mutex->cs, INFINITE) ? 0 : -1;
+  return SleepConditionVariableCS(cond, mutex, INFINITE) ? 0 : -1;
 }
 
 /**
@@ -53,7 +53,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
-  return SleepConditionVariableCS(&cond->cv, &mutex->cs, timeout_ms) ? 0 : -1;
+  return SleepConditionVariableCS(cond, mutex, timeout_ms) ? 0 : -1;
 }
 
 /**
@@ -62,7 +62,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
  * @return 0 on success, error code on failure
  */
 int cond_signal(cond_t *cond) {
-  WakeConditionVariable(&cond->cv);
+  WakeConditionVariable(cond);
   return 0;
 }
 
@@ -72,7 +72,7 @@ int cond_signal(cond_t *cond) {
  * @return 0 on success, error code on failure
  */
 int cond_broadcast(cond_t *cond) {
-  WakeAllConditionVariable(&cond->cv);
+  WakeAllConditionVariable(cond);
   return 0;
 }
 

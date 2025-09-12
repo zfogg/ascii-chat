@@ -13,6 +13,39 @@
 #include <process.h>
 #include <stdint.h>
 
+// Thread wrapper structure to bridge POSIX and Windows thread APIs
+typedef struct {
+  void *(*posix_func)(void *);
+  void *arg;
+} thread_wrapper_t;
+
+// Windows thread wrapper function that calls POSIX-style function
+static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
+  thread_wrapper_t *wrapper = (thread_wrapper_t *)param;
+  printf("[DEBUG] windows_thread_wrapper: Starting, wrapper=%p\n", wrapper);
+  fflush(stdout);
+  
+  if (!wrapper) {
+    printf("[DEBUG] windows_thread_wrapper: ERROR - wrapper is NULL!\n");
+    fflush(stdout);
+    return 1;
+  }
+  
+  printf("[DEBUG] windows_thread_wrapper: wrapper->posix_func=%p, wrapper->arg=%p\n", 
+         wrapper->posix_func, wrapper->arg);
+  fflush(stdout);
+  
+  printf("[DEBUG] windows_thread_wrapper: About to call posix_func...\n");
+  fflush(stdout);
+  
+  void *result = wrapper->posix_func(wrapper->arg);
+  
+  printf("[DEBUG] windows_thread_wrapper: Thread function returned, result=%p\n", result);
+  fflush(stdout);
+  
+  free(wrapper);
+  return (DWORD)(uintptr_t)result;
+}
 /**
  * @brief Create a new thread
  * @param thread Pointer to thread structure to initialize
@@ -21,8 +54,23 @@
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
-  thread->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, &thread->id);
-  return (thread->handle != NULL) ? 0 : -1;
+  thread_wrapper_t *wrapper = malloc(sizeof(thread_wrapper_t));
+  if (!wrapper) {
+    return -1;
+  }
+  
+  wrapper->posix_func = func;
+  wrapper->arg = arg;
+  
+  DWORD thread_id;
+  (*thread) = CreateThread(NULL, 0, windows_thread_wrapper, wrapper, 0, &thread_id);
+  
+  if (*thread == NULL) {
+    free(wrapper);
+    return -1;
+  }
+  
+  return 0;
 }
 
 /**
@@ -32,13 +80,22 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
-  if (WaitForSingleObject(thread->handle, INFINITE) == WAIT_OBJECT_0) {
+  // Add logging to debug hanging issues
+  printf("[DEBUG] ascii_thread_join: Starting WaitForSingleObject with INFINITE timeout\n");
+  fflush(stdout);
+  
+  DWORD result = WaitForSingleObject((*thread), INFINITE);
+  
+  printf("[DEBUG] ascii_thread_join: WaitForSingleObject returned: %lu\n", result);
+  fflush(stdout);
+  
+  if (result == WAIT_OBJECT_0) {
     if (retval) {
       DWORD exit_code;
-      GetExitCodeThread(thread->handle, &exit_code);
+      GetExitCodeThread((*thread), &exit_code);
       *retval = (void *)(uintptr_t)exit_code;
     }
-    CloseHandle(thread->handle);
+    CloseHandle((*thread));
     return 0;
   }
   return -1;
@@ -58,7 +115,7 @@ void ascii_thread_exit(void *retval) {
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_detach(asciithread_t *thread) {
-  CloseHandle(thread->handle);
+  CloseHandle((*thread));
   return 0;
 }
 
@@ -68,7 +125,7 @@ int ascii_thread_detach(asciithread_t *thread) {
  */
 thread_id_t ascii_thread_self(void) {
   thread_id_t id;
-  id.id = GetCurrentThreadId();
+  id = GetCurrentThreadId();
   return id;
 }
 
@@ -79,7 +136,7 @@ thread_id_t ascii_thread_self(void) {
  * @return Non-zero if equal, 0 if different
  */
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
-  return t1.id == t2.id;
+  return t1 == t2;
 }
 
 /**

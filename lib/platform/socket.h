@@ -77,7 +77,11 @@ int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *add
 int socket_get_error(socket_t sock);
 int socket_get_last_error(void);
 const char *socket_get_error_string(void);
-int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);
+int socket_poll(struct pollfd *fds, unsigned long nfds, int timeout);
+int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+void socket_fd_zero(fd_set *set);
+void socket_fd_set(socket_t sock, fd_set *set);
+int socket_fd_isset(socket_t sock, fd_set *set);
 int socket_get_fd(socket_t sock);
 int socket_is_valid(socket_t sock);
 
@@ -102,6 +106,9 @@ int socket_is_valid(socket_t sock);
 #define POLLNVAL 0x020
 #endif
 
+// Windows 10 SDK already defines pollfd and nfds_t in winsock2.h
+// Only define them if not available (e.g., older Windows or custom builds)
+#if !defined(_WINSOCKAPI_) && !defined(_WINSOCK2API_)
 #ifndef HAVE_STRUCT_POLLFD
 struct pollfd {
   socket_t fd;
@@ -111,4 +118,5 @@ struct pollfd {
 #endif
 
 typedef unsigned long nfds_t;
+#endif
 #endif

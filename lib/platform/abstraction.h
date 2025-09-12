@@ -24,6 +24,13 @@
 // ============================================================================
 
 #ifdef _WIN32
+// Suppress Microsoft deprecation warnings for POSIX functions
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+#ifndef _CRT_NONSTDC_NO_WARNINGS
+#define _CRT_NONSTDC_NO_WARNINGS
+#endif
 #define PLATFORM_WINDOWS 1
 #define PLATFORM_POSIX 0
 #else
@@ -139,8 +146,61 @@
 #define SIGPIPE 13
 #endif
 
+// Standard file descriptor constants
+#ifndef STDIN_FILENO
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+// Windows socket types
+typedef unsigned long nfds_t;
+// Windows socket shutdown constants
+#ifndef SHUT_RDWR
+#define SHUT_RD   0
+#define SHUT_WR   1
+#define SHUT_RDWR 2
+// Windows socket control codes
+#ifndef SIO_KEEPALIVE_VALS
+#define SIO_KEEPALIVE_VALS _WSAIOW(IOC_VENDOR,4)
+#endif
+#endif
+#endif
+
 // Re-define write after declarations on Windows only
 #define write _write
+// Windows headers for POSIX-like functions
+#include <io.h>
+#include <fcntl.h>
+#include <process.h>
+// POSIX function aliases for Windows
+#define close _close
+#define lseek _lseek
+#define read _read
+#define unlink _unlink
+// Additional POSIX function aliases for Windows
+#define isatty _isatty
+#define getpid _getpid
+// Windows aligned_alloc declaration (implemented in system.c)
+void *aligned_alloc(size_t alignment, size_t size);
+// Windows POSIX time function declarations (implemented in system.c)
+int clock_gettime(int clk_id, struct timespec *tp);
+struct tm *gmtime_r(const time_t *timep, struct tm *result);
+// Windows usleep declaration (implemented in system.c)
+int usleep(unsigned int usec);
+
+// Missing POSIX file flags for Windows
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+// Missing POSIX time functions and constants for Windows
+#include <time.h>
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+#endif
+
+
 #else
 // POSIX-specific includes
 #include <unistd.h>

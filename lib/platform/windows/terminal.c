@@ -175,9 +175,11 @@ int terminal_set_buffering(bool line_buffered) {
 
 /**
  * @brief Flush terminal output
+ * @param fd File descriptor (ignored on Windows - console APIs use stdout)
  * @return 0 on success, -1 on failure
  */
-int terminal_flush(void) {
+int terminal_flush(int fd) {
+  (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
   return fflush(stdout);
 }
 
@@ -256,10 +258,12 @@ int terminal_ring_bell(void) {
 
 /**
  * @brief Hide or show cursor
+ * @param fd File descriptor (ignored on Windows - console APIs use stdout)
  * @param hide True to hide cursor, false to show
  * @return 0 on success, -1 on failure
  */
-int terminal_hide_cursor(bool hide) {
+int terminal_hide_cursor(int fd, bool hide) {
+  (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
   CONSOLE_CURSOR_INFO cursorInfo;
 
@@ -312,6 +316,34 @@ int terminal_reset(void) {
   }
 
   return 0;
+}
+
+/**
+ * @brief Move cursor to home position (0,0)
+ * @param fd File descriptor (ignored on Windows - console APIs use stdout)
+ * @return 0 on success, -1 on failure
+ */
+int terminal_cursor_home(int fd) {
+  (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
+  // Use ANSI escape sequence (Windows 10+ with VT processing enabled)
+  if (printf("\033[H") < 0) {
+    return -1;
+  }
+  return fflush(stdout);
+}
+
+/**
+ * @brief Clear terminal scrollback buffer
+ * @param fd File descriptor (ignored on Windows - console APIs use stdout)
+ * @return 0 on success, -1 on failure
+ */
+int terminal_clear_scrollback(int fd) {
+  (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
+  // Use ANSI escape sequence (Windows 10+ with VT processing enabled)
+  if (printf("\033[3J") < 0) {
+    return -1;
+  }
+  return fflush(stdout);
 }
 
 #endif // _WIN32

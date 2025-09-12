@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int mutex_init(mutex_t *mutex) {
-  InitializeCriticalSection(&mutex->cs);
+  InitializeCriticalSection(mutex);
   return 0;
 }
 
@@ -27,7 +27,7 @@ int mutex_init(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_destroy(mutex_t *mutex) {
-  DeleteCriticalSection(&mutex->cs);
+  DeleteCriticalSection(mutex);
   return 0;
 }
 
@@ -37,7 +37,7 @@ int mutex_destroy(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_lock(mutex_t *mutex) {
-  EnterCriticalSection(&mutex->cs);
+  EnterCriticalSection(mutex);
   return 0;
 }
 
@@ -47,7 +47,7 @@ int mutex_lock(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock(mutex_t *mutex) {
-  return TryEnterCriticalSection(&mutex->cs) ? 0 : EBUSY;
+  return TryEnterCriticalSection(mutex) ? 0 : EBUSY;
 }
 
 /**
@@ -56,7 +56,7 @@ int mutex_trylock(mutex_t *mutex) {
  * @return 0 on success, error code on failure
  */
 int mutex_unlock(mutex_t *mutex) {
-  LeaveCriticalSection(&mutex->cs);
+  LeaveCriticalSection(mutex);
   return 0;
 }
 

@@ -10,10 +10,11 @@
 #if !PLATFORM_WINDOWS
 #include <ncurses.h>
 #include <termios.h>
+#else
+#include <io.h>  // For Windows I/O functions
 #endif
 
 #include "ascii.h"
-#include "simd/ascii_simd.h"
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"
@@ -39,7 +40,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && reset_terminal && getenv("TESTING") == NULL) {
+  if (!opt_snapshot_mode && reset_terminal && SAFE_GETENV("TESTING") == NULL) {
     console_clear(fd);
     cursor_reset(fd);
 
@@ -264,7 +265,7 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && getenv("TESTING") == NULL) {
+  if (!opt_snapshot_mode && SAFE_GETENV("TESTING") == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -279,6 +280,9 @@ asciichat_error_t ascii_write(const char *frame) {
 }
 
 void ascii_write_destroy(int fd, bool reset_terminal) {
+#if PLATFORM_WINDOWS
+  (void)fd; // Unused on Windows - terminal operations use stdout directly
+#endif
   // console_clear(fd);
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is

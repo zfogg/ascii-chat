@@ -26,14 +26,17 @@
 #include "terminal_detect.h"
 #include "palette.h"
 
+// Include atomics for thread-safe shutdown signaling
+#include <stdatomic.h>
+
 static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
-    terminal_reset(fd);
-    terminal_clear_screen();
-    terminal_move_cursor(1, 1);
-    terminal_hide_cursor(true);
-    terminal_flush();
+    terminal_reset();
+    console_clear(fd);  // This calls terminal_clear_screen() + terminal_cursor_home(fd)
+    terminal_clear_scrollback(fd);  // Clear scrollback using the proper TTY fd
+    terminal_hide_cursor(fd, true);  // Hide cursor on the specific TTY
+    terminal_flush(fd);  // Flush the specific TTY fd
   }
 }
 
@@ -47,32 +50,34 @@ typedef struct {
 static tty_info_t tty_info_g;
 // ------
 
-static int sockfd = INVALID_SOCKET_VALUE;
-static volatile bool g_should_exit = false;
-static volatile bool g_first_connection = true;
-static volatile bool g_should_reconnect = false;
-static volatile bool g_connection_lost = false;
+static socket_t sockfd = INVALID_SOCKET_VALUE;
+
+// Use atomic operations on all platforms for consistent thread-safe access
+static atomic_bool g_should_exit = false;
+static atomic_bool g_first_connection = true;
+static atomic_bool g_should_reconnect = false;
+static atomic_bool g_connection_lost = false;
 
 static audio_context_t g_audio_context = {0};
 
 static asciithread_t g_data_thread;
 static bool g_data_thread_created = false;
-static volatile bool g_data_thread_exited = false;
+static atomic_bool g_data_thread_exited = false;
 
 // Ping thread for keepalive
 static asciithread_t g_ping_thread;
 static bool g_ping_thread_created = false;
-static volatile bool g_ping_thread_exited = false;
+static atomic_bool g_ping_thread_exited = false;
 
 // Webcam capture thread
 static asciithread_t g_capture_thread;
 static bool g_capture_thread_created = false;
-static volatile bool g_capture_thread_exited = false;
+static atomic_bool g_capture_thread_exited = false;
 
 // Audio capture thread
 static asciithread_t g_audio_capture_thread;
 static bool g_audio_capture_thread_created = false;
-static volatile bool g_audio_capture_thread_exited = false;
+static atomic_bool g_audio_capture_thread_exited = false;
 
 // Mutex to protect socket sends (prevent interleaved packets)
 static mutex_t g_send_mutex = {0};
@@ -132,7 +137,7 @@ static void *audio_capture_thread_func(void *arg);
 #define send_client_join_packet safe_send_client_join_packet
 
 // Thread-safe wrapper for network.h send_packet
-static int safe_send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
+static int safe_send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len) {
   mutex_lock(&g_send_mutex);
 #undef send_packet
   int result = send_packet(sockfd, type, data, len);
@@ -221,8 +226,8 @@ static int safe_send_client_join_packet(int socketfd, const char *display_name, 
   return result;
 }
 
-static int close_socket(int socketfd) {
-  if (socketfd != INVALID_SOCKET_VALUE && socketfd >= 0) {
+static int close_socket(socket_t socketfd) {
+  if (socket_is_valid(socketfd)) {
     log_info("Closing socket connection");
     if (socket_close(socketfd) != 0) {
       log_error("Failed to close socket: %s", network_error_string(errno));
@@ -249,8 +254,8 @@ static void shutdown_client() {
     log_info("Waiting for data reception thread to finish...");
 
     // Signal thread to stop first
-    g_should_exit = true;
-    g_connection_lost = true;
+    atomic_store(&g_should_exit, true);
+    atomic_store(&g_connection_lost, true);
 
     // Stop audio playback to help thread exit
     if (opt_audio_enabled) {
@@ -270,12 +275,12 @@ static void shutdown_client() {
     // Wait for thread to exit - but with a timeout check
     // Platform abstraction doesn't have timedjoin, we'll do a simple wait
     int wait_count = 0;
-    while (wait_count < 20 && !g_data_thread_exited) { // Wait up to 2 seconds
+    while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) { // Wait up to 2 seconds
       usleep(100000);                                  // 100ms
       wait_count++;
     }
 
-    if (!g_data_thread_exited) {
+    if (!atomic_load(&g_data_thread_exited)) {
       log_error("Data thread not responding - forcing termination");
       // Note: thread cancellation not available in platform abstraction
       // Thread should exit when g_should_exit is set
@@ -320,14 +325,14 @@ static void sigint_handler(int sigint) {
   if (!opt_quiet) {
     printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
   }
-  g_should_exit = true;
-  g_connection_lost = true; // Signal all threads to exit
+  atomic_store(&g_should_exit, true);
+  atomic_store(&g_connection_lost, true); // Signal all threads to exit
 
   // Close socket to interrupt recv operations
   if (sockfd != INVALID_SOCKET_VALUE) {
-    shutdown(sockfd, SHUT_RDWR); // More aggressive than close
-    close(sockfd);
-    sockfd = 0;
+    socket_shutdown(sockfd, SHUT_RDWR); // Platform-safe socket shutdown
+    socket_close(sockfd);               // Platform-safe socket close
+    sockfd = INVALID_SOCKET_VALUE;
   }
 }
 
@@ -352,6 +357,14 @@ static void sigwinch_handler(int sigwinch) {
       }
     }
   }
+}
+#endif
+#ifdef _WIN32
+// Windows-compatible signal handler (no-op implementation)
+static void sigwinch_handler(int sigwinch) {
+  (void)(sigwinch);
+  // Terminal resize signal not functional on Windows - no-op
+  log_debug("SIGWINCH received (Windows no-op implementation)");
 }
 #endif
 
@@ -575,7 +588,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       if (elapsed >= opt_snapshot_delay) {
         log_info("Snapshot captured after %.1f seconds!", elapsed);
         take_snapshot = true;
-        g_should_exit = true;
+        atomic_store(&g_should_exit, true);
       }
     }
   }
@@ -628,11 +641,11 @@ static void *data_reception_thread_func(void *arg) {
     int result = receive_packet(sockfd, &type, &data, &len);
     if (result < 0) {
       log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
-      g_connection_lost = true;
+      atomic_store(&g_connection_lost, true);
       break;
     } else if (result == 0) {
       log_info("CLIENT: Server closed connection");
-      g_connection_lost = true;
+      atomic_store(&g_connection_lost, true);
       break;
     }
 
@@ -685,7 +698,7 @@ static void *data_reception_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread stopped");
 #endif
-  g_data_thread_exited = true;
+  atomic_store(&g_data_thread_exited, true);
   return NULL;
 }
 
@@ -696,9 +709,9 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread started");
 #endif
 
-  while (!g_should_exit && !g_connection_lost) {
+  while (!atomic_load(&g_should_exit) && !atomic_load(&g_connection_lost)) {
     // Check if socket is still valid before sending
-    if (sockfd <= 0) {
+    if (sockfd == INVALID_SOCKET_VALUE) {
       log_debug("Socket closed, exiting ping thread");
       break;
     }
@@ -707,12 +720,12 @@ static void *ping_thread_func(void *arg) {
     if (send_ping_packet(sockfd) < 0) {
       log_debug("Failed to send ping packet");
       // Set connection lost flag so main loop knows to reconnect
-      g_connection_lost = true;
+      atomic_store(&g_connection_lost, true);
       break;
     }
 
     // Wait 3 seconds before next ping
-    for (int i = 0; i < 3 && !g_should_exit && !g_connection_lost && sockfd != INVALID_SOCKET_VALUE; i++) {
+    for (int i = 0; i < 3 && !atomic_load(&g_should_exit) && !atomic_load(&g_connection_lost) && sockfd != INVALID_SOCKET_VALUE; i++) {
       usleep(1000 * 1000); // 1 second
     }
   }
@@ -720,7 +733,7 @@ static void *ping_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Ping thread stopped");
 #endif
-  g_ping_thread_exited = true;
+  atomic_store(&g_ping_thread_exited, true);
   return NULL;
 }
 
@@ -729,8 +742,8 @@ static void *webcam_capture_thread_func(void *arg) {
 
   struct timespec last_capture_time = {0, 0};
 
-  while (!g_should_exit && !g_connection_lost) {
-    if (sockfd <= 0) {
+  while (!atomic_load(&g_should_exit) && !atomic_load(&g_connection_lost)) {
+    if (sockfd == INVALID_SOCKET_VALUE) {
       usleep(100 * 1000); // Wait for connection
       continue;
     }
@@ -831,7 +844,7 @@ static void *webcam_capture_thread_func(void *arg) {
     memcpy(packet_data + sizeof(uint32_t) * 2, image->pixels, rgb_size);
 
     // Check if socket is still valid before sending
-    if (sockfd <= 0) {
+    if (sockfd == INVALID_SOCKET_VALUE) {
       log_debug("Socket closed, stopping video send");
       free(packet_data);
       image_destroy(image);
@@ -843,7 +856,7 @@ static void *webcam_capture_thread_func(void *arg) {
     if (send_packet(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
       log_error("Failed to send video frame to server: %s", strerror(errno));
       // This is likely why we're disconnecting - set connection lost
-      g_connection_lost = true;
+      atomic_store(&g_connection_lost, true);
       free(packet_data);
       image_destroy(image);
       break;
@@ -857,7 +870,7 @@ static void *webcam_capture_thread_func(void *arg) {
   }
 
   log_info("Webcam capture thread stopped");
-  g_capture_thread_exited = true;
+  atomic_store(&g_capture_thread_exited, true);
   return NULL;
 }
 
@@ -888,8 +901,8 @@ static void *audio_capture_thread_func(void *arg) {
     processors_initialized = true;
   }
 
-  while (!g_should_exit && !g_connection_lost) {
-    if (sockfd <= 0) {
+  while (!atomic_load(&g_should_exit) && !atomic_load(&g_connection_lost)) {
+    if (sockfd == INVALID_SOCKET_VALUE) {
       usleep(100 * 1000); // Wait for connection
       continue;
     }
@@ -955,7 +968,7 @@ static void *audio_capture_thread_func(void *arg) {
   }
 
   log_info("Audio capture thread stopped");
-  g_audio_capture_thread_exited = true;
+  atomic_store(&g_audio_capture_thread_exited, true);
   return NULL;
 }
 
@@ -1127,13 +1140,13 @@ int main(int argc, char *argv[]) {
   /* Connection and reconnection loop */
   int reconnect_attempt = 0;
 
-  if (g_first_connection && !opt_snapshot_mode) {
+  if (atomic_load(&g_first_connection) && !opt_snapshot_mode) {
     // Complete terminal reset: clear screen, scrollback, and reset all attributes
     full_terminal_reset(tty_info_g.fd);
   }
 
   while (!g_should_exit) {
-    if (g_should_reconnect) {
+    if (atomic_load(&g_should_reconnect)) {
       // Connection broken - will loop back to reconnection logic
       log_info("Connection terminated, preparing to reconnect...");
       if (reconnect_attempt == 0) {
@@ -1143,7 +1156,7 @@ int main(int argc, char *argv[]) {
       reconnect_attempt++;
     }
 
-    if (g_first_connection || g_should_reconnect) {
+    if (atomic_load(&g_first_connection) || atomic_load(&g_should_reconnect)) {
       // Close any existing socket before attempting new connection
       if (close_socket(sockfd) < 0) {
         exit(ASCIICHAT_ERR_NETWORK);
@@ -1162,7 +1175,7 @@ int main(int argc, char *argv[]) {
       // try to open a socket
       if ((sockfd = socket_create(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET_VALUE) {
         log_error("Error: could not create socket: %s", strerror(errno));
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue; // try to connect again
       }
 
@@ -1176,14 +1189,14 @@ int main(int argc, char *argv[]) {
       // an error occurred when trying to set server address and port number
       if (inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
         log_error("Error: couldn't set the server address and port number: %s", network_error_string(errno));
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue; // try to connect again
       }
 
       // Try to connect to the server
       if (!connect_with_timeout(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr), CONNECT_TIMEOUT)) {
         log_warn("Connection failed: %s", network_error_string(errno));
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue; // try to connect again
       }
 
@@ -1205,7 +1218,7 @@ int main(int argc, char *argv[]) {
       // Send initial terminal capabilities to server
       if (send_terminal_size_with_auto_detect(sockfd, opt_width, opt_height) < 0) {
         log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue; // try to connect again
       }
 
@@ -1237,7 +1250,7 @@ int main(int argc, char *argv[]) {
 
       if (send_client_join_packet(sockfd, my_display_name, my_capabilities) < 0) {
         log_error("Failed to send client join packet: %s", network_error_string(errno));
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue; // try to connect again
       }
 
@@ -1247,37 +1260,37 @@ int main(int argc, char *argv[]) {
       }
 
       // Reset connection lost flag for new connection
-      g_connection_lost = false;
+      atomic_store(&g_connection_lost, false);
 
       // Reset server state tracking for new connection
       g_server_state_initialized = false;
       g_last_active_count = 0;
 
       // Start data reception thread
-      g_data_thread_exited = false; // Reset exit flag for new connection
+      atomic_store(&g_data_thread_exited, false); // Reset exit flag for new connection
       if (ascii_thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
         log_error("Failed to create data reception thread");
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue;
       } else {
         g_data_thread_created = true;
       }
 
       // Start ping thread for keepalive
-      g_ping_thread_exited = false; // Reset exit flag for new connection
+      atomic_store(&g_ping_thread_exited, false); // Reset exit flag for new connection
       if (ascii_thread_create(&g_ping_thread, ping_thread_func, NULL) != 0) {
         log_error("Failed to create ping thread");
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue;
       } else {
         g_ping_thread_created = true;
       }
 
       // Start webcam capture thread
-      g_capture_thread_exited = false;
+      atomic_store(&g_capture_thread_exited, false);
       if (ascii_thread_create(&g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
         log_error("Failed to create webcam capture thread");
-        g_should_reconnect = true;
+        atomic_store(&g_should_reconnect, true);
         continue;
       } else {
         g_capture_thread_created = true;
@@ -1290,7 +1303,7 @@ int main(int argc, char *argv[]) {
 
       // Start audio capture thread if audio is enabled
       if (opt_audio_enabled) {
-        g_audio_capture_thread_exited = false;
+        atomic_store(&g_audio_capture_thread_exited, false);
         if (ascii_thread_create(&g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
           log_error("Failed to create audio capture thread");
           // Non-fatal, continue without audio
@@ -1305,14 +1318,14 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      g_first_connection = false;
-      g_should_reconnect = false;
+      atomic_store(&g_first_connection, false);
+      atomic_store(&g_should_reconnect, false);
     }
 
     // Connection monitoring loop - wait for connection to break or shutdown
-    while (!g_should_exit && sockfd != INVALID_SOCKET_VALUE && !g_connection_lost) {
+    while (!atomic_load(&g_should_exit) && sockfd != INVALID_SOCKET_VALUE && !atomic_load(&g_connection_lost)) {
       // Check if data thread has exited (indicates connection lost)
-      if (g_data_thread_exited) {
+      if (atomic_load(&g_data_thread_exited)) {
         log_info("Data thread exited, connection lost");
         break;
       }
