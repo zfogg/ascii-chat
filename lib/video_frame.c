@@ -108,14 +108,12 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
   if (!vfb || !vfb->active)
     return NULL;
 
-  // Check if new frame is available
-  if (!atomic_exchange(&vfb->new_frame_available, false)) {
-    // No new frame since last read
-    return NULL;
-  }
+  // Mark that we've consumed any new frame
+  atomic_exchange(&vfb->new_frame_available, false);
 
-  // Return the front buffer (reader's copy)
-  // This is lock-free - we don't need mutex for reading
+  // Always return the front buffer (last valid frame)
+  // This prevents flickering - we keep showing the last frame
+  // until a new one arrives
   return vfb->front_buffer;
 }
 
