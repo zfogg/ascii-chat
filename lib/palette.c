@@ -4,8 +4,35 @@
 #include <wchar.h>
 #include <locale.h>
 #include <stdlib.h>
+#ifndef _WIN32
 #include <langinfo.h>
 #include <unistd.h>
+#else
+// Windows compatibility - wcwidth is not available
+static int wcwidth(wchar_t wc) {
+  // Simple implementation for Windows - most characters are width 1
+  // Wide characters (CJK) are width 2, control characters are -1
+  if (wc < 32)
+    return -1; // Control characters
+  if (wc >= 0x1100 && wc <= 0x115F)
+    return 2; // Hangul Jamo
+  if (wc >= 0x2E80 && wc <= 0x9FFF)
+    return 2; // CJK range
+  if (wc >= 0xAC00 && wc <= 0xD7AF)
+    return 2; // Hangul Syllables
+  if (wc >= 0xF900 && wc <= 0xFAFF)
+    return 2; // CJK Compatibility Ideographs
+  if (wc >= 0xFE10 && wc <= 0xFE19)
+    return 2; // Vertical forms
+  if (wc >= 0xFE30 && wc <= 0xFE6F)
+    return 2; // CJK Compatibility Forms
+  if (wc >= 0xFF00 && wc <= 0xFF60)
+    return 2; // Fullwidth Forms
+  if (wc >= 0xFFE0 && wc <= 0xFFE6)
+    return 2; // Fullwidth Forms
+  return 1;   // Most characters are width 1
+}
+#endif
 #include "palette.h"
 #include "common.h"
 #include "image2ascii/simd/ascii_simd.h"
@@ -132,10 +159,10 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
   memset(caps, 0, sizeof(utf8_capabilities_t));
 
   // Check environment variables
-  const char *lang = getenv("LANG");
-  const char *lc_all = getenv("LC_ALL");
-  const char *lc_ctype = getenv("LC_CTYPE");
-  const char *term = getenv("TERM");
+  const char *lang = SAFE_GETENV("LANG");
+  const char *lc_all = SAFE_GETENV("LC_ALL");
+  const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
+  const char *term = SAFE_GETENV("TERM");
 
   // Store terminal type
   if (term) {
@@ -151,6 +178,7 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
     // Try system locale detection
     char *old_locale = setlocale(LC_CTYPE, NULL);
     if (setlocale(LC_CTYPE, "")) {
+#ifndef _WIN32
       const char *codeset = nl_langinfo(CODESET);
       if (codeset) {
         SAFE_STRNCPY(caps->locale_encoding, codeset, sizeof(caps->locale_encoding));
@@ -158,6 +186,11 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
           caps->utf8_support = true;
         }
       }
+#else
+      // Windows defaults to UTF-8 support in modern terminals
+      SAFE_STRNCPY(caps->locale_encoding, "UTF-8", sizeof(caps->locale_encoding));
+      caps->utf8_support = true;
+#endif
       // Restore old locale
       if (old_locale) {
         setlocale(LC_CTYPE, old_locale);
@@ -384,7 +417,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   char old_locale[256] = {0};
   char *current_locale = setlocale(LC_CTYPE, NULL);
   if (current_locale) {
-    strncpy(old_locale, current_locale, sizeof(old_locale) - 1);
+    SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));
   }
   setlocale(LC_CTYPE, "");
 

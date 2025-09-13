@@ -31,13 +31,40 @@ override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
 # Compiler Flags
 # =============================================================================
 
-CSTD ?= c23
+# Use C17 on Windows, C23 on POSIX for better SIMD compatibility
+ifneq ($(shell uname),)
+  ifeq ($(findstring MINGW,$(shell uname)),)
+    ifeq ($(findstring MSYS,$(shell uname)),)
+      ifeq ($(findstring CYGWIN,$(shell uname)),)
+        CSTD ?= c23
+      else
+        CSTD ?= c17
+      endif
+    else
+      CSTD ?= c17
+    endif
+  else
+    CSTD ?= c17
+  endif
+else
+  CSTD ?= c17
+endif
 
 # Base flags
 override CFLAGS += -Wall -Wextra
 
+
 # Enable GNU extensions for POSIX functions (e.g. usleep) when compiling with strict C standards
-override CFLAGS += -D_GNU_SOURCE
+# Only enable on POSIX systems (Linux/macOS), not Windows
+ifneq ($(shell uname),)
+  ifeq ($(findstring MINGW,$(shell uname)),)
+    ifeq ($(findstring MSYS,$(shell uname)),)
+      ifeq ($(findstring CYGWIN,$(shell uname)),)
+        override CFLAGS += -D_GNU_SOURCE
+      endif
+    endif
+  endif
+endif
 
 # Get package-specific flags
 override CFLAGS += $(shell pkg-config --cflags $(PKG_CONFIG_LIBS))
@@ -301,13 +328,28 @@ endif
 
 # Apply SIMD flags based on detection
 ifdef ENABLE_SIMD_SSE2
-  SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
+  ifeq ($(shell uname),)
+    # Windows - disable MMX to avoid compiler bugs
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2 -mno-mmx
+  else
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSE2 -msse2
+  endif
 endif
 ifdef ENABLE_SIMD_SSSE3
-  SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
+  ifeq ($(shell uname),)
+    # Windows - disable MMX to avoid compiler bugs
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3 -mno-mmx
+  else
+    SIMD_CFLAGS += -DSIMD_SUPPORT_SSSE3 -mssse3
+  endif
 endif
 ifdef ENABLE_SIMD_AVX2
-  SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
+  ifeq ($(shell uname),)
+    # Windows - disable MMX to avoid compiler bugs
+    SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2 -mno-mmx
+  else
+    SIMD_CFLAGS += -DSIMD_SUPPORT_AVX2 -mavx2
+  endif
 endif
 ifdef ENABLE_SIMD_AVX512
   SIMD_CFLAGS += -DSIMD_SUPPORT_AVX512 -mavx512f -mavx512bw
@@ -424,26 +466,57 @@ else
 endif
 
 # Compose per-config flags cleanly (no filter-out hacks)
-DEBUG_FLAGS    := -g -O0 -DDEBUG -DDEBUG_MEMORY
+DEV_FLAGS      := -g -O0 -DDEBUG -DDEBUG_MEMORY -fstack-protector-strong
+# Comprehensive sanitizer flags for network/multimedia application
+# ASan: memory bugs (buffer overflow, use-after-free, leaks)
+# UBSan: undefined behavior (ALL checks - null, integer, bounds, etc)
+# Additional: better stack traces, no optimizations that hurt debugging
+SANITIZE_FLAGS := -fsanitize=address,undefined,leak,bounds-strict,integer-divide-by-zero,null,return,unreachable,vla-bound,signed-integer-overflow,shift,shift-exponent,shift-base,integer-divide-by-zero,unreachable,vla-bound,null,return,signed-integer-overflow,bounds,bounds-strict,alignment,object-size,float-divide-by-zero,float-cast-overflow,nonnull-attribute,returns-nonnull-attribute,bool,enum,vptr,pointer-overflow,builtin -fno-omit-frame-pointer -fno-optimize-sibling-calls -fstack-protector-all
+
+# Thread sanitizer flags (incompatible with ASan, but includes all other checks)
+# TSan: race conditions, deadlocks, thread synchronization issues
+# Plus all UBSan checks that are compatible with TSan
+TSAN_FLAGS := -fsanitize=thread,undefined,bounds-strict,integer-divide-by-zero,null,return,unreachable,vla-bound,signed-integer-overflow,shift,shift-exponent,shift-base,alignment,object-size,float-divide-by-zero,float-cast-overflow,nonnull-attribute,returns-nonnull-attribute,bool,enum,vptr,pointer-overflow,builtin -fno-omit-frame-pointer -fno-optimize-sibling-calls -fstack-protector-all
 COVERAGE_FLAGS := --coverage -fprofile-arcs -ftest-coverage -DCOVERAGE_BUILD
 RELEASE_FLAGS  := $(CPU_OPT_FLAGS) -DNDEBUG -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe -flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32
-SANITIZE_FLAGS := -fsanitize=address
 
 # =============================================================================
 # File Discovery
 # =============================================================================
 
 # Targets (executables)
-TARGETS := $(addprefix $(BIN_DIR)/, server client)
+TARGETS := $(addprefix $(BIN_DIR)/, ascii-chat-server ascii-chat-client)
+
+# Platform-specific source files
+PLATFORM_C_FILES_COMMON := $(wildcard $(LIB_DIR)/platform/*.c)
+ifeq ($(shell uname),Darwin)
+  # macOS: Use POSIX implementation
+  PLATFORM_C_FILES := $(PLATFORM_C_FILES_COMMON) $(wildcard $(LIB_DIR)/platform/posix/*.c)
+else ifeq ($(shell uname),Linux)
+  # Linux: Use POSIX implementation
+  PLATFORM_C_FILES := $(PLATFORM_C_FILES_COMMON) $(wildcard $(LIB_DIR)/platform/posix/*.c)
+else
+  # Windows: Use Windows implementation
+  PLATFORM_C_FILES := $(PLATFORM_C_FILES_COMMON) $(wildcard $(LIB_DIR)/platform/windows/*.c)
+endif
 
 # Source code files
 LIB_C_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.c, $(wildcard $(LIB_DIR)/*.c))
-C_FILES := $(wildcard $(SRC_DIR)/*.c) $(LIB_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
+# Server modular source files  
+SERVER_C_FILES := $(wildcard $(SRC_DIR)/server/*.c)
+# Client modular source files
+CLIENT_C_FILES := $(wildcard $(SRC_DIR)/client/*.c)
+# Other source files (none - legacy client.c excluded from build)
+OTHER_C_FILES :=
+C_FILES := $(SERVER_C_FILES) $(CLIENT_C_FILES) $(OTHER_C_FILES) $(LIB_C_FILES) $(PLATFORM_C_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.c) $(wildcard $(LIB_DIR)/image2ascii/simd/*.c) $(wildcard $(LIB_DIR)/tests/*.c)
 M_FILES := $(wildcard $(SRC_DIR)/*.m) $(wildcard $(LIB_DIR)/*.m)
 
 # Header files
 LIB_H_FILES := $(filter-out $(LIB_DIR)/ascii_simd_neon.h, $(wildcard $(LIB_DIR)/*.h))
-C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(LIB_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
+PLATFORM_H_FILES := $(wildcard $(LIB_DIR)/platform/*.h)
+SERVER_H_FILES := $(wildcard $(SRC_DIR)/server/*.h)
+CLIENT_H_FILES := $(wildcard $(SRC_DIR)/client/*.h)
+C_HEADERS := $(wildcard $(SRC_DIR)/*.h) $(SERVER_H_FILES) $(CLIENT_H_FILES) $(LIB_H_FILES) $(PLATFORM_H_FILES) $(wildcard $(LIB_DIR)/image2ascii/*.h) $(wildcard $(LIB_DIR)/image2ascii/simd/*.h) $(wildcard $(LIB_DIR)/tests/*.h)
 
 SOURCES := $(C_FILES) $(M_FILES) $(C_HEADERS)
 
@@ -460,11 +533,11 @@ OBJS_C_RELEASE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/release/src/%.o, $(fil
 OBJS_M_RELEASE := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/release/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
                   $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/release/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
-# Sanitize objects
-OBJS_C_SANITIZE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/sanitize/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
-                   $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/sanitize/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
-OBJS_M_SANITIZE := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/sanitize/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
-                   $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/sanitize/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
+# Dev objects (debug without sanitizers)
+OBJS_C_DEV := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/dev/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+              $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/dev/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M_DEV := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/dev/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+              $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/dev/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
 # Coverage objects
 OBJS_C_COVERAGE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/coverage/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
@@ -472,25 +545,44 @@ OBJS_C_COVERAGE := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/coverage/src/%.o, $(f
 OBJS_M_COVERAGE := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/coverage/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
                    $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/coverage/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
 
+# Thread sanitizer objects
+OBJS_C_TSAN := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/tsan/src/%.o, $(filter $(SRC_DIR)/%.c, $(C_FILES))) \
+               $(patsubst $(LIB_DIR)/%.c, $(BUILD_DIR)/tsan/lib/%.o, $(filter $(LIB_DIR)/%.c, $(C_FILES)))
+OBJS_M_TSAN := $(patsubst $(SRC_DIR)/%.m, $(BUILD_DIR)/tsan/src/%.o, $(filter $(SRC_DIR)/%.m, $(M_FILES))) \
+               $(patsubst $(LIB_DIR)/%.m, $(BUILD_DIR)/tsan/lib/%.o, $(filter $(LIB_DIR)/%.m, $(M_FILES)))
+
 # Default to debug for backward compatibility
 OBJS_C := $(OBJS_C_DEBUG)
 OBJS_M := $(OBJS_M_DEBUG)
 
 # All object files for server and client by configuration
 OBJS_DEBUG := $(OBJS_C_DEBUG) $(OBJS_M_DEBUG)
+OBJS_DEV := $(OBJS_C_DEV) $(OBJS_M_DEV)
 OBJS_RELEASE := $(OBJS_C_RELEASE) $(OBJS_M_RELEASE)
-OBJS_SANITIZE := $(OBJS_C_SANITIZE) $(OBJS_M_SANITIZE)
 OBJS_COVERAGE := $(OBJS_C_COVERAGE) $(OBJS_M_COVERAGE)
+OBJS_TSAN := $(OBJS_C_TSAN) $(OBJS_M_TSAN)
 
-# Non-target object files (files without main methods) by configuration
-OBJS_NON_TARGET_DEBUG := $(filter-out $(BUILD_DIR)/debug/src/server.o $(BUILD_DIR)/debug/src/client.o, $(OBJS_DEBUG))
-OBJS_NON_TARGET_RELEASE := $(filter-out $(BUILD_DIR)/release/src/server.o $(BUILD_DIR)/release/src/client.o, $(OBJS_RELEASE))
-OBJS_NON_TARGET_SANITIZE := $(filter-out $(BUILD_DIR)/sanitize/src/server.o $(BUILD_DIR)/sanitize/src/client.o, $(OBJS_SANITIZE))
-OBJS_NON_TARGET_COVERAGE := $(filter-out $(BUILD_DIR)/coverage/src/server.o $(BUILD_DIR)/coverage/src/client.o, $(OBJS_COVERAGE))
+# Server object files by configuration (all modules in src/server/)
+SERVER_OBJS_DEBUG := $(patsubst $(SRC_DIR)/server/%.c, $(BUILD_DIR)/debug/src/server/%.o, $(SERVER_C_FILES))
+SERVER_OBJS_DEV := $(patsubst $(SRC_DIR)/server/%.c, $(BUILD_DIR)/dev/src/server/%.o, $(SERVER_C_FILES))
+SERVER_OBJS_RELEASE := $(patsubst $(SRC_DIR)/server/%.c, $(BUILD_DIR)/release/src/server/%.o, $(SERVER_C_FILES))
+SERVER_OBJS_COVERAGE := $(patsubst $(SRC_DIR)/server/%.c, $(BUILD_DIR)/coverage/src/server/%.o, $(SERVER_C_FILES))
+SERVER_OBJS_TSAN := $(patsubst $(SRC_DIR)/server/%.c, $(BUILD_DIR)/tsan/src/server/%.o, $(SERVER_C_FILES))
+
+# Non-target object files (library files, excluding server and client main files)
+OBJS_NON_TARGET_DEBUG := $(filter-out $(SERVER_OBJS_DEBUG) $(BUILD_DIR)/debug/src/client.o, $(OBJS_DEBUG))
+OBJS_NON_TARGET_DEV := $(filter-out $(SERVER_OBJS_DEV) $(BUILD_DIR)/dev/src/client.o, $(OBJS_DEV))
+OBJS_NON_TARGET_RELEASE := $(filter-out $(SERVER_OBJS_RELEASE) $(BUILD_DIR)/release/src/client.o, $(OBJS_RELEASE))
+OBJS_NON_TARGET_COVERAGE := $(filter-out $(SERVER_OBJS_COVERAGE) $(BUILD_DIR)/coverage/src/client.o, $(OBJS_COVERAGE))
+OBJS_NON_TARGET_TSAN := $(filter-out $(SERVER_OBJS_TSAN) $(BUILD_DIR)/tsan/src/client.o, $(OBJS_TSAN))
 
 # Default to debug for backward compatibility
 OBJS := $(OBJS_DEBUG)
 OBJS_NON_TARGET := $(OBJS_NON_TARGET_DEBUG)
+
+# Dynamic object selection based on BUILD_MODE
+OBJS_CURRENT = $(OBJS_$(shell echo $(BUILD_MODE) | tr '[:lower:]' '[:upper:]'))
+OBJS_NON_TARGET_CURRENT = $(OBJS_NON_TARGET_$(shell echo $(BUILD_MODE) | tr '[:lower:]' '[:upper:]'))
 
 # Test files - exclude problematic tests for now
 TEST_C_FILES_ALL := $(wildcard $(TEST_DIR)/unit/*.c) $(wildcard $(TEST_DIR)/integration/*.c) $(wildcard $(TEST_DIR)/performance/*.c)
@@ -500,9 +592,10 @@ TEST_C_FILES := $(filter-out $(TEST_C_FILES_EXCLUDE), $(TEST_C_FILES_ALL))
 
 # Test objects by configuration
 TEST_OBJS_DEBUG := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/debug/%.o, $(TEST_C_FILES))
+TEST_OBJS_DEV := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/dev/%.o, $(TEST_C_FILES))
 TEST_OBJS_RELEASE := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/release/%.o, $(TEST_C_FILES))
-TEST_OBJS_SANITIZE := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/sanitize/%.o, $(TEST_C_FILES))
 TEST_OBJS_COVERAGE := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/coverage/%.o, $(TEST_C_FILES))
+TEST_OBJS_TSAN := $(patsubst $(TEST_DIR)/%.c, $(TEST_BUILD_DIR)/tsan/%.o, $(TEST_C_FILES))
 
 # Default to debug
 TEST_OBJS := $(TEST_OBJS_DEBUG)
@@ -515,35 +608,51 @@ TEST_EXECUTABLES := $(foreach file,$(TEST_C_FILES),$(BIN_DIR)/test_$(subst /,_,$
 # Build Rules
 # =============================================================================
 
+# Default build mode (debug with sanitizers)
+BUILD_MODE ?= debug
+
 # Main targets
 default: $(TARGETS)
 all: default
 
-debug: override CFLAGS += $(DEBUG_FLAGS)
-debug: override LDFLAGS +=
+# Debug mode WITH sanitizers (default, safe)
+debug: BUILD_MODE := debug
+debug: override CFLAGS += $(DEV_FLAGS) $(SANITIZE_FLAGS)
+debug: override LDFLAGS += $(SANITIZE_FLAGS)
 debug: $(TARGETS)
 
-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+# Dev mode - debug WITHOUT sanitizers (faster iteration)
+dev: BUILD_MODE := dev
+dev: override CFLAGS += $(DEV_FLAGS)
+dev: override LDFLAGS +=
+dev: $(TARGETS)
+
+coverage: BUILD_MODE := coverage
+coverage: override CFLAGS += $(DEV_FLAGS) $(COVERAGE_FLAGS)
 coverage: override LDFLAGS += $(COVERAGE_FLAGS)
 coverage: $(TARGETS)
 
+release: BUILD_MODE := release
 release: override CFLAGS += $(RELEASE_FLAGS)
 release: override LDFLAGS += -flto
-release: $(TARGETS)
+release: $(BIN_DIR)/ascii-chat-server-release $(BIN_DIR)/ascii-chat-client-release
 
-# Simplified coverage mode (debug-based only)
+# Thread sanitizer build mode (for finding race conditions)
+tsan: BUILD_MODE := tsan
+tsan: override CFLAGS += $(DEV_FLAGS) $(TSAN_FLAGS)
+tsan: override LDFLAGS += $(TSAN_FLAGS)
+tsan: $(TARGETS)
 
-sanitize: override CFLAGS  += $(DEBUG_FLAGS)
-sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
-sanitize: $(TARGETS)
+# Legacy sanitize target - now just an alias for debug
+sanitize: debug
 
-tests-debug: override CFLAGS += $(DEBUG_FLAGS)
-tests-debug: override LDFLAGS +=
-tests-debug: override TEST_LDFLAGS +=
+tests-debug: override CFLAGS += $(DEV_FLAGS) $(SANITIZE_FLAGS)
+tests-debug: override LDFLAGS += $(SANITIZE_FLAGS)
+tests-debug: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
 tests-debug: $(TEST_EXECUTABLES)
 
 tests-coverage: coverage
-tests-coverage: override CFLAGS += $(DEBUG_FLAGS) $(COVERAGE_FLAGS)
+tests-coverage: override CFLAGS += $(DEV_FLAGS) $(COVERAGE_FLAGS)
 tests-coverage: override LDFLAGS += $(COVERAGE_FLAGS)
 tests-coverage: override TEST_LDFLAGS += $(COVERAGE_FLAGS)
 tests-coverage: $(TEST_OBJS_COVERAGE) $(OBJS_NON_TARGET_COVERAGE)
@@ -554,7 +663,7 @@ tests-coverage: $(TEST_OBJS_COVERAGE) $(OBJS_NON_TARGET_COVERAGE)
 		test_base=$$(echo $$test_name | sed 's/_test$$//'); \
 		executable_name="test_$${test_category}_$${test_base}_coverage"; \
 		echo "Linking $$executable_name (coverage mode)..."; \
-		$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $(BIN_DIR)/$$executable_name $$test_obj $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS); \
+		$(CC) $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -o $(BIN_DIR)/$$executable_name $$test_obj $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS); \
 	done
 
 tests-release: override CFLAGS += $(RELEASE_FLAGS)
@@ -564,99 +673,126 @@ tests-release: $(TEST_EXECUTABLES)
 
 # Simplified tests-coverage mode
 
-tests-sanitize: sanitize
-tests-sanitize: override CFLAGS += $(DEBUG_FLAGS) $(SANITIZE_FLAGS)
-tests-sanitize: override LDFLAGS += $(SANITIZE_FLAGS)
-tests-sanitize: override TEST_LDFLAGS += $(SANITIZE_FLAGS)
-tests-sanitize: $(TEST_EXECUTABLES)
+tests-dev: dev
+tests-dev: override CFLAGS += $(DEV_FLAGS)
+tests-dev: override LDFLAGS +=
+tests-dev: override TEST_LDFLAGS +=
+tests-dev: $(TEST_EXECUTABLES)
 
-# Build executables - debug versions
-$(BIN_DIR)/server: $(BUILD_DIR)/debug/src/server.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+tests-tsan: tsan
+tests-tsan: override CFLAGS += $(DEV_FLAGS) $(TSAN_FLAGS)
+tests-tsan: override LDFLAGS += $(TSAN_FLAGS)
+tests-tsan: override TEST_LDFLAGS += $(TSAN_FLAGS)
+tests-tsan: $(TEST_EXECUTABLES)
+
+# Build executables - default to debug
+$(BIN_DIR)/ascii-chat-server: $(SERVER_OBJS_DEBUG) $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "Built $@ successfully!"
 
-$(BIN_DIR)/client: $(BUILD_DIR)/debug/src/client.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
+$(BIN_DIR)/ascii-chat-client: $(BUILD_DIR)/debug/src/client.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking $@ (debug)..."
 	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
+	@echo "Built $@ successfully!"
+
+# Release executables
+$(BIN_DIR)/ascii-chat-server-release: $(SERVER_OBJS_RELEASE) $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+	@echo "Linking $@ (release)..."
+	$(CC) -o $@ $^ $(LDFLAGS)
+	@cp $@ $(BIN_DIR)/ascii-chat-server
+	@echo "Built $@ successfully!"
+
+$(BIN_DIR)/ascii-chat-client-release: $(BUILD_DIR)/release/src/client.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
+	@echo "Linking $@ (release)..."
+	$(CC) -o $@ $^ $(LDFLAGS) $(INFO_PLIST_FLAGS)
+	@cp $@ $(BIN_DIR)/ascii-chat-client
 	@echo "Built $@ successfully!"
 
 # Compile C source files from src/ - debug
 $(BUILD_DIR)/debug/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/src
 	@echo "Compiling $< (debug)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Server subdirectory objects (debug)
+$(BUILD_DIR)/debug/src/server/%.o: $(SRC_DIR)/server/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/src/server
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile C source files from src/ - release
 $(BUILD_DIR)/release/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/src
 	@echo "Compiling $< (release)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
-# Compile C source files from src/ - sanitize
-$(BUILD_DIR)/sanitize/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/src
-	@echo "Compiling $< (sanitize)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+# Server subdirectory objects (release)
+$(BUILD_DIR)/release/src/server/%.o: $(SRC_DIR)/server/%.c $(C_HEADERS) | $(BUILD_DIR)/release/src/server
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile C source files from src/ - dev
+$(BUILD_DIR)/dev/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/src
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
+
+# Server subdirectory objects (dev)
+$(BUILD_DIR)/dev/src/server/%.o: $(SRC_DIR)/server/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/src/server
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
 
 # Compile C source files from src/ - coverage
 $(BUILD_DIR)/coverage/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/src
 	@echo "Compiling $< (coverage)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Server subdirectory objects (coverage)
+$(BUILD_DIR)/coverage/src/server/%.o: $(SRC_DIR)/server/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/src/server
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - debug
 $(BUILD_DIR)/debug/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/image2ascii
 	@echo "Compiling $< (debug)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - release
 $(BUILD_DIR)/release/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/image2ascii
 	@echo "Compiling $< (release)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - sanitize
-$(BUILD_DIR)/sanitize/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/image2ascii
-	@echo "Compiling $< (sanitize)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+$(BUILD_DIR)/dev/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib/image2ascii
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
 
 # Compile source files from lib/image2ascii/ - coverage
 $(BUILD_DIR)/coverage/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/image2ascii
 	@echo "Compiling $< (coverage)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - debug
 $(BUILD_DIR)/debug/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/image2ascii/simd
 	@echo "Compiling $< (debug)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - release
 $(BUILD_DIR)/release/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/image2ascii/simd
 	@echo "Compiling $< (release)..."
-	@mkdir -p $(dir $@)
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - sanitize
-$(BUILD_DIR)/sanitize/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/image2ascii/simd
-	@echo "Compiling $< (sanitize)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+$(BUILD_DIR)/dev/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib/image2ascii/simd
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
 
 # Compile SIMD source files from lib/image2ascii/simd/ - coverage
 $(BUILD_DIR)/coverage/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/image2ascii/simd
 	@echo "Compiling $< (coverage)..."
-	@mkdir -p $(dir $@)
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile C source files from lib/tests/ - debug
 $(BUILD_DIR)/debug/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/tests
 	@echo "Compiling $< (debug)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile C source files from lib/tests/ - release
 $(BUILD_DIR)/release/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/tests
@@ -664,43 +800,107 @@ $(BUILD_DIR)/release/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile C source files from lib/tests/ - sanitize
-$(BUILD_DIR)/sanitize/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib/tests
-	@echo "Compiling $< (sanitize)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+$(BUILD_DIR)/dev/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib/tests
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
 
 # Compile C source files from lib/tests/ - coverage
 $(BUILD_DIR)/coverage/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/tests
 	@echo "Compiling $< (coverage)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - debug
+# Compile platform source files - debug
+$(BUILD_DIR)/debug/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/platform
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile platform/posix source files - debug
+$(BUILD_DIR)/debug/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/platform/posix
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile platform/windows source files - debug
+$(BUILD_DIR)/debug/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib/platform/windows
+	@echo "Compiling $< (debug)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - debug
 $(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/debug/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (debug)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - release
-$(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib
-	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+# Compile platform source files - release
+$(BUILD_DIR)/release/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/platform
 	@echo "Compiling $< (release)..."
 	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - sanitize
-$(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
-	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
-	@echo "Compiling $< (sanitize)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+# Compile platform/posix source files - release
+$(BUILD_DIR)/release/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/platform/posix
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
 
-# Compile C source files from lib/ (not image2ascii/ or SIMD) - coverage
+# Compile platform/windows source files - release
+$(BUILD_DIR)/release/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib/platform/windows
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - release
+$(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/release/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
+	@echo "Compiling $< (release)..."
+	$(CC) -o $@ $(CFLAGS) $(RELEASE_FLAGS) -c $<
+
+# Compile platform source files - sanitize
+$(BUILD_DIR)/dev/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib/platform
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
+
+# Compile platform/posix source files - sanitize
+$(BUILD_DIR)/dev/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib/platform/posix
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
+
+# Compile platform/windows source files - sanitize
+$(BUILD_DIR)/dev/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib/platform/windows
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - sanitize
+$(BUILD_DIR)/dev/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/dev/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) -c $<
+
+# Compile platform source files - coverage
+$(BUILD_DIR)/coverage/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/platform
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile platform/posix source files - coverage
+$(BUILD_DIR)/coverage/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/platform/posix
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile platform/windows source files - coverage
+$(BUILD_DIR)/coverage/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib/platform/windows
+	@echo "Compiling $< (coverage)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - coverage
 $(BUILD_DIR)/coverage/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/coverage/lib
 	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
 	@echo "Compiling $< (coverage)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
 
 # Compile Objective-C source files from lib/ - debug
 $(BUILD_DIR)/debug/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/debug/lib
 	@echo "Compiling $< (debug)..."
-	$(CC) -o $@ $(OBJCFLAGS) $(DEBUG_FLAGS) -c $<
+	$(CC) -o $@ $(OBJCFLAGS) $(DEV_FLAGS) $(SANITIZE_FLAGS) -c $<
 
 # Compile Objective-C source files from lib/ - release
 $(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/release/lib
@@ -708,14 +908,68 @@ $(BUILD_DIR)/release/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/release
 	$(CC) -o $@ $(OBJCFLAGS) $(RELEASE_FLAGS) -c $<
 
 # Compile Objective-C source files from lib/ - sanitize
-$(BUILD_DIR)/sanitize/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/sanitize/lib
-	@echo "Compiling $< (sanitize)..."
-	$(CC) -o $@ $(OBJCFLAGS) $(DEBUG_FLAGS) $(SANITIZE_FLAGS) -c $<
+$(BUILD_DIR)/dev/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/dev/lib
+	@echo "Compiling $< (dev)..."
+	$(CC) -o $@ $(OBJCFLAGS) $(DEV_FLAGS) -c $<
 
 # Compile Objective-C source files from lib/ - coverage
 $(BUILD_DIR)/coverage/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/coverage/lib
 	@echo "Compiling $< (coverage)..."
-	$(CC) -o $@ $(OBJCFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -c $<
+	$(CC) -o $@ $(OBJCFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -c $<
+
+# =============================================================================
+# Thread Sanitizer Build Rules
+# =============================================================================
+
+# Compile C source files from src/ - tsan
+$(BUILD_DIR)/tsan/src/%.o: $(SRC_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/src
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Server subdirectory objects (tsan)
+$(BUILD_DIR)/tsan/src/server/%.o: $(SRC_DIR)/server/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/src/server
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Compile source files from lib/image2ascii/ - tsan
+$(BUILD_DIR)/tsan/lib/image2ascii/%.o: $(LIB_DIR)/image2ascii/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib/image2ascii
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Compile source files from lib/image2ascii/simd/ - tsan
+$(BUILD_DIR)/tsan/lib/image2ascii/simd/%.o: $(LIB_DIR)/image2ascii/simd/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib/image2ascii/simd
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Compile source files from lib/tests/ - tsan
+$(BUILD_DIR)/tsan/lib/tests/%.o: $(LIB_DIR)/tests/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib/tests
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Compile platform source files - tsan
+$(BUILD_DIR)/tsan/lib/platform/%.o: $(LIB_DIR)/platform/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib/platform
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+$(BUILD_DIR)/tsan/lib/platform/posix/%.o: $(LIB_DIR)/platform/posix/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib/platform/posix
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+$(BUILD_DIR)/tsan/lib/platform/windows/%.o: $(LIB_DIR)/platform/windows/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib/platform/windows
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Compile C source files from lib/ (not image2ascii/ or SIMD or platform) - tsan
+$(BUILD_DIR)/tsan/lib/%.o: $(LIB_DIR)/%.c $(C_HEADERS) | $(BUILD_DIR)/tsan/lib
+	$(if $(findstring image2ascii,$*),$(error This rule should not match image2ascii files: $*))
+	$(if $(filter platform/%,$*),$(error This rule should not match platform files: $*))
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
+
+# Compile Objective-C source files from lib/ - tsan
+$(BUILD_DIR)/tsan/lib/%.o: $(LIB_DIR)/%.m $(C_HEADERS) | $(BUILD_DIR)/tsan/lib
+	@echo "Compiling $< (tsan)..."
+	$(CC) -o $@ $(OBJCFLAGS) $(DEV_FLAGS) $(TSAN_FLAGS) -c $<
 
 # Build all object files without linking (useful for tooling like Bear/clangd)
 objs: $(OBJS_DEBUG) $(TEST_OBJS_DEBUG)
@@ -723,47 +977,110 @@ objs: $(OBJS_DEBUG) $(TEST_OBJS_DEBUG)
 # Ensure build and bin directories exist for each configuration
 $(BUILD_DIR)/debug/src:
 	@mkdir -p $@
+$(BUILD_DIR)/debug/src/server:
+	@mkdir -p $@
 $(BUILD_DIR)/release/src:
 	@mkdir -p $@
-$(BUILD_DIR)/sanitize/src:
+$(BUILD_DIR)/release/src/server:
+	@mkdir -p $@
+$(BUILD_DIR)/dev/src:
+	@mkdir -p $@
+$(BUILD_DIR)/dev/src/server:
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/src:
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/src/server:
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/src:
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/src/server:
 	@mkdir -p $@
 
 $(BUILD_DIR)/debug/lib:
 	@mkdir -p $@
 $(BUILD_DIR)/release/lib:
 	@mkdir -p $@
-$(BUILD_DIR)/sanitize/lib:
+$(BUILD_DIR)/dev/lib:
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib:
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib:
 	@mkdir -p $@
 
 $(BUILD_DIR)/debug/lib/image2ascii: | $(BUILD_DIR)/debug/lib
 	@mkdir -p $@
 $(BUILD_DIR)/release/lib/image2ascii: | $(BUILD_DIR)/release/lib
 	@mkdir -p $@
-$(BUILD_DIR)/sanitize/lib/image2ascii: | $(BUILD_DIR)/sanitize/lib
+$(BUILD_DIR)/dev/lib/image2ascii: | $(BUILD_DIR)/dev/lib
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib/image2ascii: | $(BUILD_DIR)/coverage/lib
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib/image2ascii: | $(BUILD_DIR)/tsan/lib
 	@mkdir -p $@
 
 $(BUILD_DIR)/debug/lib/image2ascii/simd: | $(BUILD_DIR)/debug/lib/image2ascii
 	@mkdir -p $@
 $(BUILD_DIR)/release/lib/image2ascii/simd: | $(BUILD_DIR)/release/lib/image2ascii
 	@mkdir -p $@
-$(BUILD_DIR)/sanitize/lib/image2ascii/simd: | $(BUILD_DIR)/sanitize/lib/image2ascii
+$(BUILD_DIR)/dev/lib/image2ascii/simd: | $(BUILD_DIR)/dev/lib/image2ascii
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib/image2ascii/simd: | $(BUILD_DIR)/coverage/lib/image2ascii
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib/image2ascii/simd: | $(BUILD_DIR)/tsan/lib/image2ascii
 	@mkdir -p $@
 
 $(BUILD_DIR)/debug/lib/tests: | $(BUILD_DIR)/debug/lib
 	@mkdir -p $@
 $(BUILD_DIR)/release/lib/tests: | $(BUILD_DIR)/release/lib
 	@mkdir -p $@
-$(BUILD_DIR)/sanitize/lib/tests: | $(BUILD_DIR)/sanitize/lib
+$(BUILD_DIR)/dev/lib/tests: | $(BUILD_DIR)/dev/lib
 	@mkdir -p $@
 $(BUILD_DIR)/coverage/lib/tests: | $(BUILD_DIR)/coverage/lib
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib/tests: | $(BUILD_DIR)/tsan/lib
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/platform: | $(BUILD_DIR)/debug/lib
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/platform: | $(BUILD_DIR)/release/lib
+	@mkdir -p $@
+$(BUILD_DIR)/dev/lib/platform: | $(BUILD_DIR)/dev/lib
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/platform: | $(BUILD_DIR)/coverage/lib
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib/platform: | $(BUILD_DIR)/tsan/lib
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/platform/posix: | $(BUILD_DIR)/debug/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/platform/posix: | $(BUILD_DIR)/release/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/dev/lib/platform/posix: | $(BUILD_DIR)/dev/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/platform/posix: | $(BUILD_DIR)/coverage/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib/platform/posix: | $(BUILD_DIR)/tsan/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+
+$(BUILD_DIR)/debug/lib/platform/windows: | $(BUILD_DIR)/debug/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/release/lib/platform/windows: | $(BUILD_DIR)/release/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/dev/lib/platform/windows: | $(BUILD_DIR)/dev/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/coverage/lib/platform/windows: | $(BUILD_DIR)/coverage/lib/platform
+	@echo "Creating directory $@"
+	@mkdir -p $@
+$(BUILD_DIR)/tsan/lib/platform/windows: | $(BUILD_DIR)/tsan/lib/platform
+	@echo "Creating directory $@"
 	@mkdir -p $@
 
 $(BIN_DIR):
@@ -802,12 +1119,12 @@ test-release: $(TEST_EXECUTABLES)
 # Unit tests - use debug objects by default
 $(BIN_DIR)/test_unit_%: $(TEST_BUILD_DIR)/debug/unit/%_test.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking test $@ (debug mode)..."
-	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) $(DEV_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
 
 # Integration tests use debug objects
 $(BIN_DIR)/test_integration_%: $(TEST_BUILD_DIR)/debug/integration/%_test.o $(OBJS_NON_TARGET_DEBUG) | $(BIN_DIR)
 	@echo "Linking test $@ (debug mode)..."
-	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) $(CFLAGS) $(DEV_FLAGS) -o $@ $< $(OBJS_NON_TARGET_DEBUG) $(LDFLAGS) $(TEST_LDFLAGS)
 
 # Performance tests use release objects for speed
 $(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/release/performance/%_test.o $(OBJS_NON_TARGET_RELEASE) | $(BIN_DIR)
@@ -817,12 +1134,12 @@ $(BIN_DIR)/test_performance_%: $(TEST_BUILD_DIR)/release/performance/%_test.o $(
 # Legacy coverage variants (kept for compatibility)
 $(BIN_DIR)/test_unit_%_coverage: $(TEST_BUILD_DIR)/coverage/unit/%_test.o $(OBJS_NON_TARGET_COVERAGE) | $(BIN_DIR)
 	@echo "Linking test $@ (coverage mode)..."
-	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
+	$(CC) $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
 
 # Integration tests with coverage (debug mode)
 $(BIN_DIR)/test_integration_%_coverage: $(TEST_BUILD_DIR)/coverage/integration/%_test.o $(OBJS_NON_TARGET_COVERAGE) | $(BIN_DIR)
 	@echo "Linking test $@ (coverage mode)..."
-	$(CC) $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
+	$(CC) $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) -o $@ $< $(OBJS_NON_TARGET_COVERAGE) $(LDFLAGS) $(TEST_LDFLAGS) $(COVERAGE_FLAGS)
 
 # Performance tests with coverage (release mode)
 # Coverage tests use debug-based coverage mode
@@ -833,12 +1150,12 @@ $(BIN_DIR)/test_integration_%_coverage: $(TEST_BUILD_DIR)/coverage/integration/%
 # Compile test files - unit tests in debug mode
 $(TEST_BUILD_DIR)/debug/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/debug/unit
 	@echo "Compiling test $< (debug)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(TEST_CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TEST_CFLAGS) -c $<
 
 # Compile test files - integration tests in debug mode
 $(TEST_BUILD_DIR)/debug/integration/%.o: $(TEST_DIR)/integration/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/debug/integration
 	@echo "Compiling test $< (debug)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(TEST_CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(TEST_CFLAGS) -c $<
 
 # Compile test files - performance tests in release mode
 $(TEST_BUILD_DIR)/release/performance/%.o: $(TEST_DIR)/performance/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/release/performance
@@ -848,17 +1165,17 @@ $(TEST_BUILD_DIR)/release/performance/%.o: $(TEST_DIR)/performance/%.c $(C_HEADE
 # Compile test files - unit tests with coverage
 $(TEST_BUILD_DIR)/coverage/unit/%.o: $(TEST_DIR)/unit/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/coverage/unit
 	@echo "Compiling test $< (coverage)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
 
 # Compile test files - integration tests with coverage
 $(TEST_BUILD_DIR)/coverage/integration/%.o: $(TEST_DIR)/integration/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/coverage/integration
 	@echo "Compiling test $< (coverage)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
 
 # Compile test files - performance tests with coverage (release mode)
 $(TEST_BUILD_DIR)/coverage/performance/%.o: $(TEST_DIR)/performance/%.c $(C_HEADERS) | $(TEST_BUILD_DIR)/coverage/performance
 	@echo "Compiling test $< (coverage)..."
-	$(CC) -o $@ $(CFLAGS) $(DEBUG_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) $(DEV_FLAGS) $(COVERAGE_FLAGS) $(TEST_CFLAGS) -c $<
 
 # Test directory creation
 $(TEST_BUILD_DIR)/debug/unit:
@@ -1030,7 +1347,7 @@ clang-tidy: compile_commands.json
 	@echo "Running clang-tidy with compile_commands.json..."
 	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) $(TEST_C_FILES)
 
-analyze:
+analyze: compile_commands.json
 	@echo "Running clang static analysis (C sources)..."
 	clang --analyze $(CFLAGS) $(C_FILES)
 	@echo "Running clang static analysis (Objective-C sources)..."

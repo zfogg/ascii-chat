@@ -15,16 +15,6 @@ typedef unsigned long long uint64_t;
 #endif
 
 #include <stdlib.h>
-#include <sys/types.h>
-
-// Render mode enum (defined here to avoid circular dependencies)
-typedef enum {
-  RENDER_MODE_FOREGROUND = 0, // Use foreground colors only (default)
-  RENDER_MODE_BACKGROUND = 1, // Use background colors with contrasting foreground
-  RENDER_MODE_HALF_BLOCK = 2  // Use UTF-8 half-blocks (▀ █) for 2x vertical resolution
-} render_mode_t;
-
-#include "options.h"
 
 /* ============================================================================
  * Common Definitions
@@ -45,9 +35,10 @@ typedef enum {
   ASCIICHAT_ERR_TERMINAL = -9,
   ASCIICHAT_ERR_THREAD = -10,
   ASCIICHAT_ERR_AUDIO = -11,
-  ASCIICHAT_ERR_BUFFER_ACCESS = -12,
-  ASCIICHAT_ERR_BUFFER_OVERFLOW = -13,
-  ASCIICHAT_ERR_INVALID_FRAME = -14,
+  ASCIICHAT_ERR_DISPLAY = -12,
+  ASCIICHAT_ERR_BUFFER_ACCESS = -13,
+  ASCIICHAT_ERR_BUFFER_OVERFLOW = -14,
+  ASCIICHAT_ERR_INVALID_FRAME = -15,
 } asciichat_error_t;
 
 /* Error handling */
@@ -75,6 +66,8 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
     return "Thread error";
   case ASCIICHAT_ERR_AUDIO:
     return "Audio error";
+  case ASCIICHAT_ERR_DISPLAY:
+    return "Display error";
   case ASCIICHAT_ERR_INVALID_FRAME:
     return "Frame data error";
   default:
@@ -182,22 +175,32 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   } while (0)
 
 /* Safe string copy */
-#define SAFE_STRNCPY(dst, src, size)                                                                                   \
+#include "platform/string.h"
+#define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
+
+/* Rate-limited debug logging - only logs every N calls */
+#define LOG_DEBUG_EVERY(name, count, fmt, ...)                                                                         \
   do {                                                                                                                 \
-    strncpy((dst), (src), (size) - 1);                                                                                 \
-    (dst)[(size) - 1] = '\0';                                                                                          \
+    static int name##_counter = 0;                                                                                     \
+    name##_counter++;                                                                                                  \
+    if (name##_counter % (count) == 0) {                                                                               \
+      log_debug(fmt, ##__VA_ARGS__);                                                                                   \
+    }                                                                                                                  \
   } while (0)
 
-/* Min/Max macros (with guards for macOS Foundation.h) */
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
+/* Platform-safe environment variable access */
+#include "platform/system.h"
+#define SAFE_GETENV(name) ((char *)platform_getenv(name))
 
-/* Array size */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+/* Platform-safe sscanf */
+#define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
+
+/* Platform-safe strerror */
+#define SAFE_STRERROR(errnum) platform_strerror(errnum)
+
+/* Platform-safe file open */
+#include "platform/file.h"
+#define SAFE_OPEN(path, flags, mode) platform_open(path, flags, mode)
 
 /* Logging functions */
 void log_init(const char *filename, log_level_t level);
@@ -219,8 +222,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
 
 /* New functions for coverage testing */
-void calculate_memory_stats(size_t *total_allocated, size_t *total_freed, size_t *current_usage);
-bool validate_memory_pattern(const void *ptr, size_t size, uint8_t expected_pattern);
 
 /* Memory debugging (only in debug builds) */
 #ifdef DEBUG_MEMORY

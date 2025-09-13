@@ -147,10 +147,10 @@ static inline char *emit_set_truecolor_bg_simple(char *pos, uint8_t r, uint8_t g
 
 // Thread-local storage for AVX2 working buffers
 // These stay in L1 cache and are reused across function calls
-static __thread uint8_t avx2_r_buffer[32] __attribute__((aligned(32)));
-static __thread uint8_t avx2_g_buffer[32] __attribute__((aligned(32)));
-static __thread uint8_t avx2_b_buffer[32] __attribute__((aligned(32)));
-static __thread uint8_t avx2_luminance_buffer[32] __attribute__((aligned(32)));
+static THREAD_LOCAL ALIGNED_32 uint8_t avx2_r_buffer[32];
+static THREAD_LOCAL ALIGNED_32 uint8_t avx2_g_buffer[32];
+static THREAD_LOCAL ALIGNED_32 uint8_t avx2_b_buffer[32];
+static THREAD_LOCAL ALIGNED_32 uint8_t avx2_luminance_buffer[32];
 
 // Optimized AVX2 function to load 32 RGB pixels and separate channels
 // Uses simple loop that auto-vectorizes to VMOVDQU + VPSHUFB

@@ -36,8 +36,8 @@ libcriterion-dev`
 - Clone this repo onto a computer with a webcam.
 - Install the dependencies.
 - Run `make`.
-- Run `./bin/server -p 9001` in one terminal, and then
-- Run `./bin/client -p 9001` in another.
+- Run `./bin/ascii-chat-server -p 9001` in one terminal, and then
+- Run `./bin/ascii-chat-client -p 9001` in another.
 
 Use `make -j debug` as you edit and test code (sometimes `make clean` too 😏).
 
@@ -51,7 +51,9 @@ Check the `Makefile` to see how it works.
 - `make debug-coverage` - Build with debug symbols and coverage
 - `make release` - Build with optimizations enabled
 - `make release-coverage` - Build with optimizations and coverage
-- `make sanitize` - Build with address sanitizer for debugging
+- `make debug` - Build with comprehensive sanitizers for debugging
+- `make dev` - Debug build without sanitizers (faster iteration)
+- `make tsan` - Build with thread sanitizer for race condition detection
 - `make clean` - Remove build artifacts
 
 ### Test Building Targets
@@ -116,7 +118,7 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 ./tests/scripts/run_tests.sh -b release
 ./tests/scripts/run_tests.sh -b debug-coverage
 ./tests/scripts/run_tests.sh -b release-coverage
-./tests/scripts/run_tests.sh -b sanitize
+./tests/scripts/run_tests.sh -b debug
 
 # Generate JUnit XML for CI
 ./tests/scripts/run_tests.sh -J
@@ -143,7 +145,7 @@ bin/test_ascii_simd_performance --filter "monochrome"
 - **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
 - **Coverage**: Code coverage reports generated in CI
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
-- **Memory Checking**: AddressSanitizer support via `-b sanitize` for detecting memory issues
+- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
 
 ## Cryptography
@@ -158,7 +160,7 @@ Good news though: we have **libsodium** installed and some code written for it.
 
 ### Client Options
 
-Run `./bin/client -h` to see all client options:
+Run `./bin/ascii-chat-client -h` to see all client options:
 
 - `-a --address ADDRESS`: IPv4 address to connect to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port (default: 27224)
@@ -183,7 +185,7 @@ Run `./bin/client -h` to see all client options:
 
 ### Server Options
 
-Run `./bin/server -h` to see all server options:
+Run `./bin/ascii-chat-server -h` to see all server options:
 
 - `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port to listen on (default: 27224)
@@ -199,12 +201,12 @@ Run `./bin/server -h` to see all server options:
 
 Start the server and wait for client connections:
 ```bash
-./bin/server [options]
+./bin/ascii-chat-server [options]
 ```
 
 Start the client and connect to a running server:
 ```bash
-./bin/client [options]
+./bin/ascii-chat-client [options]
 ```
 
 ## TODO

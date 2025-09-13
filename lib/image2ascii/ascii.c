@@ -4,18 +4,17 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
-#include <unistd.h>
-#include <termios.h>
 
-#include "curses.h"
+#include "platform/abstraction.h"
+#include "platform/terminal.h"
 
 #include "ascii.h"
-#include "simd/ascii_simd.h"
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"
-#include "webcam.h"
+#include "os/webcam.h"
 #include "options.h"
+#include "simd/ascii_simd.h"
 
 /* ============================================================================
  * ASCII Art Video Processing
@@ -36,25 +35,19 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && reset_terminal && getenv("TESTING") == NULL) {
+  if (!opt_snapshot_mode && reset_terminal && SAFE_GETENV("TESTING") == NULL) {
     console_clear(fd);
     cursor_reset(fd);
 
-    struct termios termios;
-    if (tcgetattr(fd, &termios) != 0) {
-      log_error("Failed to get terminal attributes for fd %d", fd);
+    // Disable echo using platform abstraction
+    if (terminal_set_echo(false) != 0) {
+      log_error("Failed to disable echo for fd %d", fd);
       return ASCIICHAT_ERR_TERMINAL;
     }
-    termios.c_lflag &= ~ECHO;
-    tcsetattr(fd, TCSANOW, &termios);
-    // Disable blink for the terminal cursor
-    if (curs_set(0) == ERR) {
-      log_warn("Failed to DISable cursor blink with curs_set(0)");
+    // Hide cursor using platform abstraction
+    if (terminal_hide_cursor(fd, true) != 0) {
+      log_warn("Failed to hide cursor");
     }
-
-    // FIXME: make cursor_hide() work
-    // cursor_hide(fd); // this doesn't work
-    printf("\e[?25l"); // this works
   }
   log_debug("ASCII writer initialized");
   return ASCIICHAT_OK;
@@ -257,7 +250,7 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && getenv("TESTING") == NULL) {
+  if (!opt_snapshot_mode && SAFE_GETENV("TESTING") == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -272,21 +265,21 @@ asciichat_error_t ascii_write(const char *frame) {
 }
 
 void ascii_write_destroy(int fd, bool reset_terminal) {
+#if PLATFORM_WINDOWS
+  (void)fd; // Unused on Windows - terminal operations use stdout directly
+#endif
   // console_clear(fd);
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
   if (!opt_snapshot_mode && reset_terminal) {
-    // FIXME: make cursor_show() work
-    // cursor_show(fd); // this doesn't work
-    printf("\033[?25h"); // this works
+    // Show cursor using platform abstraction
+    if (terminal_hide_cursor(fd, false) != 0) {
+      log_warn("Failed to show cursor");
+    }
 
-    struct termios termios;
-    tcgetattr(fd, &termios);
-    termios.c_lflag |= ECHO;
-    tcsetattr(fd, TCSANOW, &termios);
-    // Enable blink for the terminal cursor
-    if (curs_set(1) == ERR) {
-      log_warn("Failed to ENable cursor blink with curs_set(1)");
+    // Re-enable echo using platform abstraction
+    if (terminal_set_echo(true) != 0) {
+      log_warn("Failed to re-enable echo");
     }
   }
   log_debug("ASCII writer destroyed");

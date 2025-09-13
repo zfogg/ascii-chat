@@ -117,7 +117,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
 
 // UTF-8 palette cache system with min-heap eviction
 static hashtable_t *g_utf8_cache_table = NULL;
-static pthread_rwlock_t g_utf8_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static rwlock_t g_utf8_cache_rwlock = {0};
 
 // Min-heap for O(log n) intelligent eviction
 static utf8_palette_cache_t **g_utf8_heap = NULL;                 // Min-heap array
@@ -304,7 +304,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   uint32_t palette_hash = hash_palette_string(ascii_chars);
 
   // Fast path: Try read-only lookup first (most common case)
-  pthread_rwlock_rdlock(&g_utf8_cache_rwlock);
+  rwlock_rdlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
     utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
     if (cache) {
@@ -316,8 +316,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       // Every 10th access: Update heap position (amortized O(log n))
       if (new_access_count % 10 == 0) {
         // Need to upgrade to write lock for heap updates
-        pthread_rwlock_unlock(&g_utf8_cache_rwlock);
-        pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
+        rwlock_unlock(&g_utf8_cache_rwlock);
+        rwlock_wrlock(&g_utf8_cache_rwlock);
 
         // Recalculate score and update heap position
         uint64_t last_access = atomic_load(&cache->last_access_time);
@@ -326,18 +326,18 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
             calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
         utf8_heap_update_score(cache, new_score);
 
-        pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+        rwlock_unlock(&g_utf8_cache_rwlock);
         return cache;
       }
 
-      pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+      rwlock_unlock(&g_utf8_cache_rwlock);
       return cache;
     }
   }
-  pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_unlock(&g_utf8_cache_rwlock);
 
   // Slow path: Need to create cache entry, acquire write lock
-  pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
+  rwlock_wrlock(&g_utf8_cache_rwlock);
 
   init_utf8_cache_system();
 
@@ -353,8 +353,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     build_utf8_ramp64_cache(ascii_chars, cache->cache64, cache->char_index_ramp);
 
     // Store palette hash for validation
-    strncpy(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash) - 1);
-    cache->palette_hash[sizeof(cache->palette_hash) - 1] = '\0';
+    SAFE_STRNCPY(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash));
     cache->is_valid = true;
 
     // Initialize eviction tracking
@@ -367,14 +366,14 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     if (!try_insert_with_eviction_utf8(palette_hash, cache)) {
       log_error("UTF8_CACHE_CRITICAL: Failed to insert cache even after eviction - system overloaded");
       SAFE_FREE(cache);
-      pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+      rwlock_unlock(&g_utf8_cache_rwlock);
       return NULL;
     }
 
     log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
   }
 
-  pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_unlock(&g_utf8_cache_rwlock);
   return cache;
 }
 
@@ -505,7 +504,7 @@ void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
   // Destroy shared UTF-8 palette cache
-  pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
+  rwlock_wrlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
     // Free all UTF-8 cache entries before destroying hashtable
     hashtable_foreach(g_utf8_cache_table, free_utf8_cache_entry, NULL);
@@ -518,7 +517,7 @@ void simd_caches_destroy_all(void) {
     SAFE_FREE(g_utf8_heap);
     g_utf8_heap_size = 0;
   }
-  pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_unlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
 #ifdef SIMD_SUPPORT_NEON

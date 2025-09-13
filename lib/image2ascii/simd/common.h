@@ -5,12 +5,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "common.h"
 #include "../image.h"
-#include "ascii_simd.h"
-#include "../output_buffer.h"
 
 // Forward declarations for architecture-specific implementations
+// rgb_t should be available from image.h
 typedef rgb_t rgb_pixel_t;
 
 #define RAMP64_SIZE 64
@@ -90,39 +88,6 @@ char *append_sgr_reset(char *dst);
 // Helper: write decimal RGB triplet using dec3 cache
 // Note: This function is defined in ascii_simd.c to avoid circular dependencies
 size_t write_rgb_triplet(uint8_t value, char *dst);
-
-// Emit ANSI SGR for truecolor FG/BG - use fast manual builder
-static inline void emit_sgr(outbuf_t *out, int fr, int fg, int fb, int br, int bg, int bb) {
-  // Fast truecolor FG+BG SGR without sprintf
-  // Builds: "\x1b[38;2;FR;FG;FB;48;2;BR;BG;BBm"
-  ob_reserve(out, out->len + 40);
-  char *p = out->buf + out->len;
-
-  // FG prefix
-  memcpy(p, "\x1b[38;2;", 7);
-  p += 7;
-  p += write_rgb_triplet((uint8_t)fr, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)fg, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)fb, p);
-
-  // BG prefix
-  *p++ = ';';
-  *p++ = '4';
-  *p++ = '8';
-  *p++ = ';';
-  *p++ = '2';
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)br, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)bg, p);
-  *p++ = ';';
-  p += write_rgb_triplet((uint8_t)bb, p);
-  *p++ = 'm';
-
-  out->len = (size_t)(p - out->buf);
-}
 
 // Simple decimal writer for REP counts (can be larger than 255)
 static inline size_t write_decimal(int value, char *dst) {

@@ -1,19 +1,14 @@
 #pragma once
 
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
+#include <stdbool.h>
 
 // Compression settings
-#define COMPRESSION_RATIO_THRESHOLD 0.8f // Only send compressed if <80% original size
+#define COMPRESSION_RATIO_THRESHOLD 0.8f // Only use compression if <80% original size
 
-// Function declarations for unified packet system
-int send_ascii_frame_packet(int sockfd, const char *frame_data, size_t frame_size, int width, int height);
-int send_image_frame_packet(int sockfd, const void *pixel_data, size_t pixel_size, int width, int height,
-                            uint32_t pixel_format);
+// Pure compression/decompression utilities
+int compress_data(const void *input, size_t input_size, void **output, size_t *output_size);
+int decompress_data(const void *input, size_t input_size, void *output, size_t output_size);
+bool should_compress(size_t original_size, size_t compressed_size);
 
-// Legacy functions (deprecated - use unified packet functions above)
-int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size);
-
-// Note: compressed_frame_header_t has been removed in favor of
-// ascii_frame_packet_t and image_frame_packet_t in network.h
+// Note: Frame sending functions have been moved to network.h/network.c

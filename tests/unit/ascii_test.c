@@ -48,9 +48,9 @@ Test(ascii, ascii_convert_color) {
   cr_assert_not_null(img);
 
   // Fill with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};    // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};    // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};    // Blue
+  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
   img->pixels[3] = (rgb_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
@@ -213,18 +213,16 @@ Test(ascii, ascii_convert_with_capabilities_basic) {
     img->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
   }
 
-  terminal_capabilities_t caps = {
-    .capabilities = TERM_CAP_COLOR_256 | TERM_CAP_UTF8,
-    .color_level = TERM_COLOR_256,
-    .color_count = 256,
-    .utf8_support = true,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .term_type = "xterm-256color",
-    .colorterm = "truecolor",
-    .detection_reliable = true,
-    .palette_type = 0,
-    .palette_custom = ""
-  };
+  terminal_capabilities_t caps = {.capabilities = TERM_CAP_COLOR_256 | TERM_CAP_UTF8,
+                                  .color_level = TERM_COLOR_256,
+                                  .color_count = 256,
+                                  .utf8_support = true,
+                                  .render_mode = RENDER_MODE_FOREGROUND,
+                                  .term_type = "xterm-256color",
+                                  .colorterm = "truecolor",
+                                  .detection_reliable = true,
+                                  .palette_type = 0,
+                                  .palette_custom = ""};
 
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[256];
@@ -241,18 +239,16 @@ Test(ascii, ascii_convert_with_capabilities_basic) {
 }
 
 Test(ascii, ascii_convert_with_capabilities_null_image) {
-  terminal_capabilities_t caps = {
-    .capabilities = TERM_CAP_COLOR_256 | TERM_CAP_UTF8,
-    .color_level = TERM_COLOR_256,
-    .color_count = 256,
-    .utf8_support = true,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .term_type = "xterm-256color",
-    .colorterm = "truecolor",
-    .detection_reliable = true,
-    .palette_type = 0,
-    .palette_custom = ""
-  };
+  terminal_capabilities_t caps = {.capabilities = TERM_CAP_COLOR_256 | TERM_CAP_UTF8,
+                                  .color_level = TERM_COLOR_256,
+                                  .color_count = 256,
+                                  .utf8_support = true,
+                                  .render_mode = RENDER_MODE_FOREGROUND,
+                                  .term_type = "xterm-256color",
+                                  .colorterm = "truecolor",
+                                  .detection_reliable = true,
+                                  .palette_type = 0,
+                                  .palette_custom = ""};
 
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[256];
@@ -296,52 +292,46 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
   }
 
   // Test different color support levels
-  terminal_capabilities_t caps1 = {
-    .capabilities = 0,
-    .color_level = TERM_COLOR_NONE,
-    .color_count = 0,
-    .utf8_support = false,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .term_type = "dumb",
-    .colorterm = "",
-    .detection_reliable = true,
-    .palette_type = 0,
-    .palette_custom = ""
-  };
+  terminal_capabilities_t caps1 = {.capabilities = 0,
+                                   .color_level = TERM_COLOR_NONE,
+                                   .color_count = 0,
+                                   .utf8_support = false,
+                                   .render_mode = RENDER_MODE_FOREGROUND,
+                                   .term_type = "dumb",
+                                   .colorterm = "",
+                                   .detection_reliable = true,
+                                   .palette_type = 0,
+                                   .palette_custom = ""};
 
   char *result1 = ascii_convert_with_capabilities(img, 4, 4, &caps1, false, false, palette, luminance_palette);
   cr_assert_not_null(result1);
   free(result1);
 
-  terminal_capabilities_t caps2 = {
-    .capabilities = TERM_CAP_COLOR_16 | TERM_CAP_UTF8,
-    .color_level = TERM_COLOR_16,
-    .color_count = 16,
-    .utf8_support = true,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .term_type = "xterm",
-    .colorterm = "",
-    .detection_reliable = true,
-    .palette_type = 0,
-    .palette_custom = ""
-  };
+  terminal_capabilities_t caps2 = {.capabilities = TERM_CAP_COLOR_16 | TERM_CAP_UTF8,
+                                   .color_level = TERM_COLOR_16,
+                                   .color_count = 16,
+                                   .utf8_support = true,
+                                   .render_mode = RENDER_MODE_FOREGROUND,
+                                   .term_type = "xterm",
+                                   .colorterm = "",
+                                   .detection_reliable = true,
+                                   .palette_type = 0,
+                                   .palette_custom = ""};
 
   char *result2 = ascii_convert_with_capabilities(img, 4, 4, &caps2, false, false, palette, luminance_palette);
   cr_assert_not_null(result2);
   free(result2);
 
-  terminal_capabilities_t caps3 = {
-    .capabilities = TERM_CAP_COLOR_TRUE | TERM_CAP_UTF8,
-    .color_level = TERM_COLOR_TRUECOLOR,
-    .color_count = 16777216,
-    .utf8_support = true,
-    .render_mode = RENDER_MODE_FOREGROUND,
-    .term_type = "xterm-256color",
-    .colorterm = "truecolor",
-    .detection_reliable = true,
-    .palette_type = 0,
-    .palette_custom = ""
-  };
+  terminal_capabilities_t caps3 = {.capabilities = TERM_CAP_COLOR_TRUE | TERM_CAP_UTF8,
+                                   .color_level = TERM_COLOR_TRUECOLOR,
+                                   .color_count = 16777216,
+                                   .utf8_support = true,
+                                   .render_mode = RENDER_MODE_FOREGROUND,
+                                   .term_type = "xterm-256color",
+                                   .colorterm = "truecolor",
+                                   .detection_reliable = true,
+                                   .palette_type = 0,
+                                   .palette_custom = ""};
 
   char *result3 = ascii_convert_with_capabilities(img, 4, 4, &caps3, false, false, palette, luminance_palette);
   cr_assert_not_null(result3);

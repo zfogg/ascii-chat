@@ -32,9 +32,9 @@ jobs:
 
     - name: Run tests with AddressSanitizer
       run: |
-        make -j CSTD=c2x sanitize
-        make -j CSTD=c2x tests-sanitize
-        ./tests/scripts/run_tests.sh -t unit -b sanitize
+        make -j CSTD=c2x debug
+        make -j CSTD=c2x tests-debug
+        ./tests/scripts/run_tests.sh -t unit -b debug
 
   static-analysis:
     runs-on: ubuntu-latest

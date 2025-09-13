@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "common.h"
+#include "simd/common.h"
 
 // Dynamic output buffer (auto-expanding)
 typedef struct {

@@ -3,7 +3,9 @@
 #include "ansi_fast.h"
 #include <string.h>
 #include <time.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <limits.h>
 
 // 256-color lookup table (optional)
@@ -418,28 +420,5 @@ char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color
   default:
     // No color output for monochrome mode or auto mode (fallback)
     return dst;
-  }
-}
-
-// New function for coverage testing
-bool is_color_mode_supported(color_mode_t mode) {
-  switch (mode) {
-  case COLOR_MODE_TRUECOLOR:
-    return true; // Most modern terminals support truecolor
-
-  case COLOR_MODE_256_COLOR:
-    return true; // Most terminals support 256 colors
-
-  case COLOR_MODE_16_COLOR:
-    return true; // Basic color support
-
-  case COLOR_MODE_MONO:
-    return true; // Always supported
-
-  case COLOR_MODE_AUTO:
-    return true; // Auto-detection is always supported
-
-  default:
-    return false; // Unknown mode
   }
 }

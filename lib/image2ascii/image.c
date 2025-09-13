@@ -5,9 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
-#include "common.h"
+#include "../common.h"
+#include "output_buffer.h"
 #include "image.h"
 #include "ascii.h"
 #include "simd/ascii_simd.h"
@@ -642,7 +645,7 @@ char *image_print_16color(const image_t *p, const char *palette) {
     }
 
     // Add reset and newline at end of each row
-    strcpy(ptr, reset_code);
+    SAFE_STRNCPY(ptr, reset_code, 5);
     ptr += strlen(reset_code);
     if (y < h - 1) {
       *ptr++ = '\n';
@@ -735,7 +738,7 @@ char *image_print_16color_dithered(const image_t *p, const char *palette) {
     }
 
     // Add reset and newline at end of each row
-    strcpy(ptr, reset_code);
+    SAFE_STRNCPY(ptr, reset_code, 5);
     ptr += strlen(reset_code);
     if (y < h - 1) {
       *ptr++ = '\n';
@@ -845,7 +848,7 @@ char *image_print_16color_dithered_with_background(const image_t *p, bool use_ba
     }
 
     // Add reset and newline at end of each row
-    strcpy(ptr, reset_code);
+    SAFE_STRNCPY(ptr, reset_code, 5);
     ptr += strlen(reset_code);
     if (y < h - 1) {
       *ptr++ = '\n';

@@ -15,3 +15,6 @@ junit.xml
 *.gcno
 coverage.info
 coverage_html/
+
+/build/
+/build_*/

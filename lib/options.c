@@ -1,17 +1,24 @@
 #include "aspect_ratio.h"
+#ifdef _WIN32
+#include "platform/windows/getopt.h"
+#else
 #include <getopt.h>
+#endif
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#endif
 
 #include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
-#include "terminal_detect.h"
+#include "platform/string.h"
+#include "platform/terminal.h"
 
 // Safely parse string to integer with validation
 int strtoint_safe(const char *str) {
@@ -33,11 +40,10 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
-unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT,
+unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
+bool auto_width = true, auto_height = true;
 
-                   auto_width = 1, auto_height = 1;
-
-char opt_address[OPTIONS_BUFF_SIZE] = "0.0.0.0", opt_port[OPTIONS_BUFF_SIZE] = "27224";
+char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1", opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -63,7 +69,7 @@ unsigned short int opt_snapshot_mode = 0;
 // Snapshot delay in seconds (float) - default 3.0 for webcam warmup
 #if defined(__APPLE__)
 // their macbook webcams shows pure black first then fade up into a real color image over a few seconds
-#define SNAPSHOT_DELAY_DEFAULT 5.0f
+#define SNAPSHOT_DELAY_DEFAULT 4.0f
 #else
 #define SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif
@@ -151,6 +157,8 @@ void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
 
   if (get_terminal_size(&term_width, &term_height) == 0) {
+    log_debug("Terminal size detected: %dx%d, auto_width=%d, auto_height=%d", term_width, term_height, (int)auto_width,
+              (int)auto_height);
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (auto_height && auto_width) {
@@ -255,11 +263,11 @@ static int is_valid_ipv4(const char *ip) {
   // Copy to temp buffer to avoid modifying original
   if (strlen(ip) >= sizeof(temp))
     return 0;
-  strncpy(temp, ip, sizeof(temp) - 1);
+  SAFE_STRNCPY(temp, ip, sizeof(temp));
   temp[sizeof(temp) - 1] = '\0';
 
   char *saveptr;
-  char *token = strtok_r(temp, ".", &saveptr);
+  char *token = platform_strtok_r(temp, ".", &saveptr);
   while (token != NULL && count < 4) {
     char *endptr;
     long octet = strtol(token, &endptr, 10);
@@ -273,7 +281,7 @@ static int is_valid_ipv4(const char *ip) {
       return 0;
 
     // octets[count] = (int)octet;
-    token = strtok_r(NULL, ".", &saveptr);
+    token = platform_strtok_r(NULL, ".", &saveptr);
     count++; // Increment count for each valid octet
   }
 
@@ -283,6 +291,15 @@ static int is_valid_ipv4(const char *ip) {
 
 void options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
+
+  // Set different default addresses for client vs server
+  if (is_client) {
+    // Client connects to localhost by default
+    snprintf(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+  } else {
+    // Server binds to all interfaces by default
+    snprintf(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+  }
 
   // Use different option sets for client vs server
   const char *optstring;
@@ -339,7 +356,7 @@ void options_init(int argc, char **argv, bool is_client) {
         _exit(EXIT_FAILURE);
       }
       opt_width = (unsigned short int)width_val;
-      auto_width = 0; // Mark as manually set
+      auto_width = false; // Mark as manually set
       break;
     }
 
@@ -351,7 +368,7 @@ void options_init(int argc, char **argv, bool is_client) {
         _exit(EXIT_FAILURE);
       }
       opt_height = (unsigned short int)height_val;
-      auto_height = 0; // Mark as manually set
+      auto_height = false; // Mark as manually set
       break;
     }
 
@@ -443,7 +460,7 @@ void options_init(int argc, char **argv, bool is_client) {
                 sizeof(opt_palette_custom) - 1);
         _exit(EXIT_FAILURE);
       }
-      strncpy(opt_palette_custom, value_str, sizeof(opt_palette_custom) - 1);
+      SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
       opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
       opt_palette_custom_set = true;
       opt_palette_type = PALETTE_CUSTOM; // Automatically set to custom
@@ -524,7 +541,7 @@ void options_init(int argc, char **argv, bool is_client) {
               static char safe_buf[256];
               size_t len = eq - opt_name;
               if (len > 0 && len < sizeof(safe_buf) - 1) {
-                strncpy(safe_buf, opt_name, len);
+                SAFE_STRNCPY(safe_buf, opt_name, len + 1);
                 safe_buf[len] = '\0';
                 opt_name = safe_buf;
               }
@@ -575,7 +592,7 @@ void options_init(int argc, char **argv, bool is_client) {
 void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, "ascii-chat - client options\n");
   fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 0.0.0.0)\n");
+  fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
   fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
   fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
   fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");

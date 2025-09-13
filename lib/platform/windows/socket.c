@@ -1,0 +1,365 @@
+#ifdef _WIN32
+
+#include "platform/abstraction.h"
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#include <stdio.h>
+
+#pragma comment(lib, "ws2_32.lib")
+
+// Winsock initialization state
+static int winsock_initialized = 0;
+static WSADATA wsaData;
+
+// Socket implementation
+int socket_init(void) {
+  if (!winsock_initialized) {
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0) {
+      return -1;
+    }
+    winsock_initialized = 1;
+  }
+  return 0;
+}
+
+void socket_cleanup(void) {
+  if (winsock_initialized) {
+    WSACleanup();
+    winsock_initialized = 0;
+  }
+}
+
+socket_t socket_create(int domain, int type, int protocol) {
+  // Ensure Winsock is initialized
+  if (socket_init() != 0) {
+    return INVALID_SOCKET;
+  }
+
+  // Map POSIX constants to Windows constants
+  int win_domain = domain;
+  if (domain == AF_UNIX) {
+    // Windows doesn't support AF_UNIX in the same way
+    win_domain = AF_INET;
+  }
+
+  return socket(win_domain, type, protocol);
+}
+
+int socket_close(socket_t sock) {
+  if (sock != INVALID_SOCKET) {
+    return closesocket(sock);
+  }
+  return -1;
+}
+
+int socket_bind(socket_t sock, const struct sockaddr *addr, socklen_t addrlen) {
+  return bind(sock, addr, addrlen);
+}
+
+int socket_listen(socket_t sock, int backlog) {
+  return listen(sock, backlog);
+}
+
+socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+  return accept(sock, addr, addrlen);
+}
+
+int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen) {
+  return connect(sock, addr, addrlen);
+}
+
+ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags) {
+  return send(sock, (const char *)buf, (int)len, flags);
+}
+
+ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags) {
+  return recv(sock, (char *)buf, (int)len, flags);
+}
+
+ssize_t socket_sendto(socket_t sock, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
+                      socklen_t addrlen) {
+  return sendto(sock, (const char *)buf, (int)len, flags, dest_addr, addrlen);
+}
+
+ssize_t socket_recvfrom(socket_t sock, void *buf, size_t len, int flags, struct sockaddr *src_addr,
+                        socklen_t *addrlen) {
+  return recvfrom(sock, (char *)buf, (int)len, flags, src_addr, addrlen);
+}
+
+int socket_setsockopt(socket_t sock, int level, int optname, const void *optval, socklen_t optlen) {
+  // Map POSIX SOL_SOCKET to Windows
+  if (level == SOL_SOCKET) {
+    return setsockopt(sock, SOL_SOCKET, optname, (const char *)optval, optlen);
+  }
+  return setsockopt(sock, level, optname, (const char *)optval, optlen);
+}
+
+int socket_getsockopt(socket_t sock, int level, int optname, void *optval, socklen_t *optlen) {
+  return getsockopt(sock, level, optname, (char *)optval, optlen);
+}
+
+int socket_shutdown(socket_t sock, int how) {
+  return shutdown(sock, how);
+}
+
+int socket_getpeername(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+  return getpeername(sock, addr, addrlen);
+}
+
+int socket_getsockname(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+  return getsockname(sock, addr, addrlen);
+}
+
+// Socket utility functions
+int socket_set_nonblocking(socket_t sock, bool nonblocking) {
+  u_long mode = nonblocking ? 1 : 0;
+  return ioctlsocket(sock, FIONBIO, &mode);
+}
+
+int socket_set_blocking(socket_t sock) {
+  u_long mode = 0;
+  return ioctlsocket(sock, FIONBIO, &mode);
+}
+
+int socket_set_reuseaddr(socket_t sock, bool reuse) {
+  int yes = reuse ? 1 : 0;
+  return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
+}
+
+int socket_set_keepalive(socket_t sock, bool keepalive) {
+  int yes = keepalive ? 1 : 0;
+  return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (const char *)&yes, sizeof(yes));
+}
+
+int socket_set_nodelay(socket_t sock, bool nodelay) {
+  int yes = nodelay ? 1 : 0;
+  return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&yes, sizeof(yes));
+}
+
+// Error handling
+int socket_get_error(socket_t sock) {
+  (void)sock; // Windows doesn't need the socket for error retrieval
+  return WSAGetLastError();
+}
+
+const char *socket_error_string(int error) {
+  static char buffer[256];
+  FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error,
+                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, sizeof(buffer), NULL);
+  return buffer;
+}
+
+// Check if socket is valid
+int socket_is_valid(socket_t sock) {
+  return sock != INVALID_SOCKET;
+}
+
+// Poll/select implementation
+int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+  // Windows doesn't have poll(), use select() instead
+  fd_set readfds, writefds, exceptfds;
+  struct timeval tv;
+  struct timeval *tvp = NULL;
+  int max_fd = 0;
+  int result;
+
+  FD_ZERO(&readfds);
+  FD_ZERO(&writefds);
+  FD_ZERO(&exceptfds);
+
+  // Convert pollfd array to fd_sets
+  for (nfds_t i = 0; i < nfds; i++) {
+    SOCKET fd = fds[i].fd;
+    if (fd == INVALID_SOCKET)
+      continue;
+
+    if (fds[i].events & POLLIN) {
+      FD_SET(fd, &readfds);
+    }
+    if (fds[i].events & POLLOUT) {
+      FD_SET(fd, &writefds);
+    }
+    FD_SET(fd, &exceptfds);
+
+    if ((int)fd > max_fd) {
+      max_fd = (int)fd;
+    }
+
+    // Clear revents
+    fds[i].revents = 0;
+  }
+
+  // Set timeout
+  if (timeout >= 0) {
+    tv.tv_sec = timeout / 1000;
+    tv.tv_usec = (timeout % 1000) * 1000;
+    tvp = &tv;
+  }
+
+  result = select(max_fd + 1, &readfds, &writefds, &exceptfds, tvp);
+
+  if (result > 0) {
+    // Convert fd_sets back to pollfd revents
+    for (nfds_t i = 0; i < nfds; i++) {
+      SOCKET fd = fds[i].fd;
+      if (fd == INVALID_SOCKET)
+        continue;
+
+      if (FD_ISSET(fd, &readfds)) {
+        fds[i].revents |= POLLIN;
+      }
+      if (FD_ISSET(fd, &writefds)) {
+        fds[i].revents |= POLLOUT;
+      }
+      if (FD_ISSET(fd, &exceptfds)) {
+        fds[i].revents |= POLLERR;
+      }
+    }
+  }
+
+  return result;
+}
+
+// Platform-aware select wrapper
+int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout) {
+  // On Windows, the first parameter is ignored by select()
+  (void)max_fd; // Suppress unused parameter warning
+  return select(0, readfds, writefds, exceptfds, timeout);
+}
+
+// Get socket fd for use with native APIs
+int socket_get_fd(socket_t sock) {
+  return (int)sock;
+}
+
+// ============================================================================
+// Extended Socket Options
+// ============================================================================
+
+/**
+ * @brief Set keepalive parameters for socket
+ * @param sock Socket descriptor
+ * @param enable Enable/disable keepalive
+ * @param idle Time before first keepalive probe (seconds)
+ * @param interval Interval between probes (seconds)
+ * @param count Number of probes before connection drop
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interval, int count) {
+  // First enable/disable keepalive
+  int keepalive = enable ? 1 : 0;
+  if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive)) != 0) {
+    return -1;
+  }
+
+  if (enable) {
+    // Windows Vista+ supports TCP keepalive parameters
+    struct tcp_keepalive {
+      ULONG onoff;
+      ULONG keepalivetime;
+      ULONG keepaliveinterval;
+    } keepalive_params;
+
+    keepalive_params.onoff = 1;
+    keepalive_params.keepalivetime = idle * 1000;         // Convert to milliseconds
+    keepalive_params.keepaliveinterval = interval * 1000; // Convert to milliseconds
+
+    DWORD bytes_returned;
+    if (WSAIoctl(sock, SIO_KEEPALIVE_VALS, &keepalive_params, sizeof(keepalive_params), NULL, 0, &bytes_returned, NULL,
+                 NULL) != 0) {
+      return -1;
+    }
+
+    // Note: Windows doesn't support setting probe count directly
+    (void)count;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Set linger options for socket
+ * @param sock Socket descriptor
+ * @param enable Enable/disable linger
+ * @param timeout Linger timeout in seconds
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_linger(socket_t sock, bool enable, int timeout) {
+  struct linger ling;
+  ling.l_onoff = enable ? 1 : 0;
+  ling.l_linger = timeout;
+  return setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char *)&ling, sizeof(ling));
+}
+
+/**
+ * @brief Set receive and send buffer sizes
+ * @param sock Socket descriptor
+ * @param recv_size Receive buffer size (0 to keep current)
+ * @param send_size Send buffer size (0 to keep current)
+ * @return 0 on success, -1 on failure
+ */
+int socket_set_buffer_sizes(socket_t sock, int recv_size, int send_size) {
+  int result = 0;
+
+  if (recv_size > 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (const char *)&recv_size, sizeof(recv_size)) != 0) {
+      result = -1;
+    }
+  }
+
+  if (send_size > 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const char *)&send_size, sizeof(send_size)) != 0) {
+      result = -1;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * @brief Get peer address for connected socket
+ * @param sock Socket descriptor
+ * @param addr Address structure to fill
+ * @param addrlen Address structure size
+ * @return 0 on success, -1 on failure
+ */
+int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
+  return getpeername(sock, addr, addrlen);
+}
+
+/**
+ * @brief Get last socket error (WSAGetLastError)
+ * @return Error code
+ */
+int socket_get_last_error(void) {
+  return WSAGetLastError();
+}
+
+/**
+ * @brief Get error string for last socket error
+ * @return Error string
+ */
+const char *socket_get_error_string(void) {
+  static __thread char error_buf[256];
+  int error = WSAGetLastError();
+  FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error,
+                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_buf, sizeof(error_buf), NULL);
+  return error_buf;
+}
+
+#endif // _WIN32
+// Platform-safe FD set wrappers
+void socket_fd_zero(fd_set *set) {
+  FD_ZERO(set);
+}
+
+void socket_fd_set(socket_t sock, fd_set *set) {
+  // On Windows, FD_SET handles SOCKET type correctly
+  FD_SET(sock, set);
+}
+
+int socket_fd_isset(socket_t sock, fd_set *set) {
+  return FD_ISSET(sock, set);
+}

@@ -91,18 +91,18 @@ jobs:
 
           Start the server:
           ```bash
-          ./bin/server -p 90001
+          ./bin/ascii-chat-server -p 90001
           ```
 
           Connect with a client:
           ```bash
-          ./bin/client -p 90001 -a 127.0.0.1
+          ./bin/ascii-chat-client -p 90001 -a 127.0.0.1
           ```
 
           Enable color mode:
           ```bash
-          ./bin/server --color
-          ./bin/client --color
+          ./bin/ascii-chat-server --color
+          ./bin/ascii-chat-client --color
           ```
 
           ${{ steps.release_notes.outputs.CHANGELOG }}
@@ -132,7 +132,7 @@ jobs:
     - name: Create release package
       run: |
         mkdir -p release-package
-        cp bin/server bin/client release-package/
+        cp bin/ascii-chat-server bin/ascii-chat-client release-package/
         cp README.md release-package/
         echo "ASCII Chat $(date)" > release-package/BUILD_INFO.txt
         echo "OS: ${{ runner.os }}" >> release-package/BUILD_INFO.txt

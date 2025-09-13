@@ -4,14 +4,6 @@
 #include <stdint.h>
 #include "common.h"
 
-// Terminal color capability levels
-typedef enum {
-  TERM_COLOR_NONE = 0,     // Monochrome only
-  TERM_COLOR_16 = 1,       // Basic ANSI colors (16 colors)
-  TERM_COLOR_256 = 2,      // Extended color palette (256 colors)
-  TERM_COLOR_TRUECOLOR = 3 // 24-bit RGB support (16.7 million colors)
-} terminal_color_level_t;
-
 // Terminal capability flags (bitmask)
 #define TERM_CAP_COLOR_16 0x01   // Basic ANSI 16-color support
 #define TERM_CAP_COLOR_256 0x02  // 256-color palette support
@@ -35,6 +27,7 @@ typedef struct {
   // NEW: Client palette preferences
   uint32_t palette_type;   // palette_type_t enum value
   char palette_custom[64]; // Custom palette chars (if palette_type == PALETTE_CUSTOM)
+  bool wants_background;   // Whether to use background colors for rendering
 } terminal_capabilities_t;
 
 // Terminal size detection functions (moved from options.c)
