@@ -53,12 +53,15 @@ jobs:
       run: |
         # Use CMake build system
         BUILD_TYPE=${{ matrix.build_type == 'debug' && 'Debug' || 'Release' }}
-        CMAKE_FLAGS="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON"
 
-        # Add coverage flags for debug builds
+        # Set C flags based on build type
         if [ "${{ matrix.build_type }}" = "debug" ]; then
-          CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_C_FLAGS='-std=c2x --coverage'"
+          C_FLAGS="-std=c2x --coverage"
+        else
+          C_FLAGS="-std=c2x"
         fi
+
+        CMAKE_FLAGS="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='${C_FLAGS}' -DBUILD_TESTS=ON"
 
         echo "Building with CMake build type: ${BUILD_TYPE}"
         CC=clang CXX=clang++ cmake -B build -G Ninja \
