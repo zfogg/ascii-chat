@@ -148,19 +148,19 @@
 
 // Standard file descriptor constants
 #ifndef STDIN_FILENO
-#define STDIN_FILENO  0
+#define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
 // Windows socket types
 typedef unsigned long nfds_t;
 // Windows socket shutdown constants
 #ifndef SHUT_RDWR
-#define SHUT_RD   0
-#define SHUT_WR   1
+#define SHUT_RD 0
+#define SHUT_WR 1
 #define SHUT_RDWR 2
 // Windows socket control codes
 #ifndef SIO_KEEPALIVE_VALS
-#define SIO_KEEPALIVE_VALS _WSAIOW(IOC_VENDOR,4)
+#define SIO_KEEPALIVE_VALS _WSAIOW(IOC_VENDOR, 4)
 #endif
 #endif
 #endif
@@ -203,7 +203,6 @@ typedef unsigned int useconds_t;
 #define CLOCK_MONOTONIC 1
 #endif
 #endif
-
 
 #else
 // POSIX-specific includes

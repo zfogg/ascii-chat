@@ -102,15 +102,16 @@
 #include <time.h>
 #include <string.h>
 #include "platform/abstraction.h"
+
 /* ============================================================================
  * Capture Thread Management
  * ============================================================================ */
-/** Webcam capture thread handle */
 static asciithread_t g_capture_thread;
-/** Flag indicating if capture thread was created */
+
 static bool g_capture_thread_created = false;
-/** Atomic flag indicating capture thread has exited */
+
 static atomic_bool g_capture_thread_exited = false;
+
 /* ============================================================================
  * Frame Processing Constants
  * ============================================================================ */
@@ -120,6 +121,7 @@ static atomic_bool g_capture_thread_exited = false;
 #define MAX_FRAME_WIDTH 800
 /** Maximum frame height for network transmission */
 #define MAX_FRAME_HEIGHT 600
+
 /* ============================================================================
  * Frame Processing Functions
  * ============================================================================ */
@@ -144,9 +146,8 @@ static atomic_bool g_capture_thread_exited = false;
  * @param result_width Output parameter for calculated width
  * @param result_height Output parameter for calculated height
  */
-static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height,
-                                       ssize_t max_width, ssize_t max_height,
-                                       ssize_t *result_width, ssize_t *result_height) {
+static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height, ssize_t max_width,
+                                         ssize_t max_height, ssize_t *result_width, ssize_t *result_height) {
   // Calculate original aspect ratio
   float img_aspect = (float)original_width / (float)original_height;
   // Check if image needs resizing
@@ -179,16 +180,14 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * @param max_height Maximum allowed frame height
  * @return Processed image ready for transmission, or NULL on error
  */
-static image_t *process_frame_for_transmission(image_t *original_image, 
-                                             ssize_t max_width, ssize_t max_height) {
+static image_t *process_frame_for_transmission(image_t *original_image, ssize_t max_width, ssize_t max_height) {
   if (!original_image) {
     return NULL;
   }
   // Calculate optimal dimensions
   ssize_t resized_width, resized_height;
-  calculate_optimal_dimensions(original_image->w, original_image->h,
-                             max_width, max_height,
-                             &resized_width, &resized_height);
+  calculate_optimal_dimensions(original_image->w, original_image->h, max_width, max_height, &resized_width,
+                               &resized_height);
   // Check if resizing is needed
   if (original_image->w == resized_width && original_image->h == resized_height) {
     // No resizing needed - return original image
@@ -201,7 +200,13 @@ static image_t *process_frame_for_transmission(image_t *original_image,
     return NULL;
   }
   // Perform resizing operation
+  log_error("RESIZE: From %dx%d to %dx%d", original_image->w, original_image->h, resized_width, resized_height);
   image_resize(original_image, resized);
+  
+  // Sample first pixel after resize
+  log_error("AFTER RESIZE FIRST PIXEL: R=%d G=%d B=%d", 
+           resized->pixels[0].r, resized->pixels[0].g, resized->pixels[0].b);
+  
   // Destroy original image since we created a new one
   image_destroy(original_image);
   return resized;
@@ -272,44 +277,9 @@ static uint8_t *serialize_image_packet(image_t *image, size_t *packet_size) {
  * @param arg Unused thread argument
  * @return NULL on thread exit
  */
-// Minimal test version of webcam thread
-static void *webcam_capture_thread_func_minimal(void *arg) {
-  (void)arg;
-  int frame_count = 0;
-  
-  log_info("Webcam capture thread started");
-  
-  while (1) {
-    image_t *frame = webcam_read();
-    
-    if (frame) {
-      frame_count++;
-      if (frame_count <= 5 || frame_count % 30 == 0) {
-        log_debug("Got frame #%d: %dx%d", frame_count, frame->w, frame->h);
-      }
-      // TODO: Send frame to server here
-      image_destroy(frame);
-    }
-    
-    // ~30 FPS delay
-#ifdef _WIN32
-    Sleep(33);
-#else
-    usleep(33000);
-#endif
-  }
-  return NULL;
-}
 static void *webcam_capture_thread_func(void *arg) {
-  log_info("DEBUG: webcam_capture_thread_func() ENTERED");
   (void)arg;
-  log_info("DEBUG: About to initialize timespec");
   struct timespec last_capture_time = {0, 0};
-  log_info("DEBUG: timespec initialized successfully");
-  log_info("Webcam capture thread started");
-  log_info("DEBUG: Entering capture thread main loop");
-  log_info("DEBUG: About to check should_exit() = %s", should_exit() ? "true" : "false");
-  log_info("DEBUG: About to check server_connection_is_lost() = %s", server_connection_is_lost() ? "true" : "false");
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
     if (!server_connection_is_active()) {
@@ -317,7 +287,9 @@ static void *webcam_capture_thread_func(void *arg) {
       usleep(100 * 1000); // Wait for connection
       continue;
     }
+#ifdef DEBUG_THREADS
     log_info("DEBUG: Server connection is active, proceeding with capture");
+#endif
     // Frame rate limiting using monotonic clock
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
@@ -327,19 +299,17 @@ static void *webcam_capture_thread_func(void *arg) {
       usleep((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
       continue;
     }
+
     // Capture frame from webcam
-    log_info("DEBUG: About to call webcam_read()");
     image_t *image = webcam_read();
-    log_info("DEBUG: webcam_read() returned: %p", image);
+
     if (!image) {
       log_info("No frame available from webcam yet (webcam_read returned NULL)");
       usleep(10000); // 10ms delay before retry
       continue;
     }
     // Process frame for network transmission
-    image_t *processed_image = process_frame_for_transmission(image, 
-                                                            MAX_FRAME_WIDTH, 
-                                                            MAX_FRAME_HEIGHT);
+    image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
     if (!processed_image) {
       log_error("Failed to process frame for transmission");
       if (image) {
@@ -376,7 +346,11 @@ static void *webcam_capture_thread_func(void *arg) {
     free(packet_data);
     image_destroy(processed_image);
   }
+
+#ifdef DEBUG_THREADS
   log_info("Webcam capture thread stopped");
+#endif
+
   atomic_store(&g_capture_thread_exited, true);
   return NULL;
 }
@@ -414,21 +388,31 @@ int capture_start_thread() {
     log_warn("Capture thread already created");
     return 0;
   }
-  log_info("DEBUG: About to create webcam capture thread");
+
   // Start webcam capture thread
   atomic_store(&g_capture_thread_exited, false);
-  int result = ascii_thread_create(&g_capture_thread, webcam_capture_thread_func_minimal, NULL);
+  int result = ascii_thread_create(&g_capture_thread, webcam_capture_thread_func, NULL);
+
+#ifdef DEBUG_THREADS
   log_info("DEBUG: ascii_thread_create() returned %d, thread handle = %p", result, g_capture_thread);
+#endif
+
   if (result != 0) {
     log_error("Failed to create webcam capture thread");
     return -1;
   }
+
   g_capture_thread_created = true;
+
+#ifdef DEBUG_THREADS
   log_info("DEBUG: Webcam capture thread created successfully, handle = %p", g_capture_thread);
+#endif
+
   // Notify server we're starting to send video
   if (server_send_stream_start(STREAM_TYPE_VIDEO) < 0) {
     log_error("Failed to send stream start packet");
   }
+
   return 0;
 }
 /**
@@ -449,13 +433,14 @@ void capture_stop_thread() {
     usleep(100000); // 100ms
     wait_count++;
   }
+
   if (!atomic_load(&g_capture_thread_exited)) {
     log_error("Capture thread not responding - forcing join");
   }
+
   // Join the thread
   ascii_thread_join(&g_capture_thread, NULL);
   g_capture_thread_created = false;
-  log_info("Webcam capture thread stopped and joined");
 }
 /**
  * Check if capture thread has exited

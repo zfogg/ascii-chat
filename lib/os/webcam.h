@@ -17,4 +17,3 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
 void webcam_platform_cleanup(webcam_context_t *ctx);
 image_t *webcam_platform_read(webcam_context_t *ctx);
 int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *height);
-

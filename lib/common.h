@@ -178,6 +178,16 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 #include "platform/string.h"
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
+/* Rate-limited debug logging - only logs every N calls */
+#define LOG_DEBUG_EVERY(name, count, fmt, ...)                                                                         \
+  do {                                                                                                                 \
+    static int name##_counter = 0;                                                                                     \
+    name##_counter++;                                                                                                  \
+    if (name##_counter % (count) == 0) {                                                                               \
+      log_debug(fmt, ##__VA_ARGS__);                                                                                   \
+    }                                                                                                                  \
+  } while (0)
+
 /* Platform-safe environment variable access */
 #include "platform/system.h"
 #define SAFE_GETENV(name) ((char *)platform_getenv(name))

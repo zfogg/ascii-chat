@@ -256,22 +256,17 @@ uint64_t g_blank_frames_sent = 0;
  */
 
 void interruptible_usleep(unsigned int usec) {
-  static int call_count = 0;
-  call_count++;
-
   if (atomic_load(&g_should_exit)) {
-    if (call_count % 100 == 0) {
-      log_info("interruptible_usleep: Early return due to g_should_exit (call %d)", call_count);
-    }
     return;
   }
 
 #ifdef _WIN32
   // On Windows, Sleep(1) can sleep for up to 15.6ms, so we keep it simple
-  int total_ms = (int)(usec / 1000);
-  if (total_ms < 1) total_ms = 1;
+  int timeout_ms = (int)(usec / 1000);
+  if (timeout_ms < 1)
+    timeout_ms = 1;
 
-  Sleep(total_ms); // Do the full sleep at once
+  Sleep(timeout_ms); // Do the full sleep at once
 
   // Check again after sleep
   if (atomic_load(&g_should_exit)) {
@@ -402,7 +397,9 @@ void *client_video_render_thread(void *arg) {
     return NULL;
   }
 
+#ifdef DEBUG_THREADS
   log_info("Video render thread started for client %u (%s)", client->client_id, client->display_name);
+#endif
 
   const int base_frame_interval_ms = 1000 / VIDEO_RENDER_FPS; // 60 FPS base rate
   struct timespec last_render_time;
@@ -410,7 +407,6 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_should_exit)) {
-    // CRITICAL FIX: Check thread state with mutex protection
     mutex_lock(&client->client_state_mutex);
     should_continue = client->video_render_thread_running && client->active;
     mutex_unlock(&client->client_state_mutex);
@@ -430,7 +426,6 @@ void *client_video_render_thread(void *arg) {
       continue;
     }
 
-    // CRITICAL FIX: Protect client state access with per-client mutex
     mutex_lock(&client->client_state_mutex);
     uint32_t client_id_snapshot = client->client_id;
     unsigned short width_snapshot = client->width;
@@ -443,10 +438,14 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
+#ifdef DEBUG_THREADS
+    LOG_DEBUG_EVERY(video_render_thread, 100, "Video render thread: %s", client->display_name);
+#endif
+
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
-    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
-                                                            false, &frame_size);
+    char *ascii_frame =
+        create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
 
     // Phase 2 IMPLEMENTED: Queue frame for this specific client
     if (ascii_frame && frame_size > 0) {
@@ -476,7 +475,9 @@ void *client_video_render_thread(void *arg) {
     last_render_time = current_time;
   }
 
+#ifdef DEBUG_THREADS
   log_info("Video render thread stopped for client %u", client->client_id);
+#endif
   return NULL;
 }
 
@@ -598,7 +599,9 @@ void *client_audio_render_thread(void *arg) {
     return NULL;
   }
 
+#ifdef DEBUG_THREADS
   log_info("Audio render thread started for client %u (%s)", client->client_id, client->display_name);
+#endif
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
 
@@ -612,6 +615,7 @@ void *client_audio_render_thread(void *arg) {
     if (!should_continue) {
       break;
     }
+
     if (!g_audio_mixer) {
       interruptible_usleep(10000);
       continue;
@@ -629,9 +633,21 @@ void *client_audio_render_thread(void *arg) {
       break;
     }
 
+#ifdef DEBUG_THREADS
+    LOG_DEBUG_EVERY(mixer_process_excluding_source_calling, 100,
+                    "Audio render thread: Mixer process excluding source being called %d times",
+                    mixer_process_excluding_source_calling_counter);
+#endif
+
     // Create mix excluding THIS client's audio using snapshot data
     int samples_mixed =
         mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+
+#if defined(DEBUG_AUDIO) || defined(DEBUG_THREADS)
+    LOG_DEBUG_EVERY(mixer_process_excluding_source_called, 100,
+                    "Audio render thread: Mixer process excluding source called %d times",
+                    mixer_process_excluding_source_called_counter);
+#endif
 
     // Queue audio directly for this specific client using snapshot data
     if (samples_mixed > 0) {
@@ -639,6 +655,11 @@ void *client_audio_render_thread(void *arg) {
       int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO, mix_buffer, data_size, 0, true);
       if (result < 0) {
         log_debug("Failed to queue audio for client %u", client_id_snapshot);
+      } else {
+#ifdef DEBUG_AUDIO
+        LOG_DEBUG_EVERY(queue_count, 100, "Audio render thread: Successfully queued %d audio samples for client %u",
+                        samples_mixed, client_id_snapshot);
+#endif
       }
     }
 
@@ -646,7 +667,9 @@ void *client_audio_render_thread(void *arg) {
     interruptible_usleep(5800);
   }
 
+#ifdef DEBUG_THREADS
   log_info("Audio render thread stopped for client %u", client->client_id);
+#endif
   return NULL;
 }
 
@@ -668,7 +691,6 @@ void *client_audio_render_thread(void *arg) {
  *
  * 1. MUTEX INITIALIZATION:
  *    - client_state_mutex: Protects client state variables
- *    - cached_frame_mutex: Protects per-client frame cache
  *    - video_buffer_mutex: Protects video buffer access
  *
  * 2. THREAD CREATION:
@@ -733,23 +755,19 @@ int create_client_render_threads(client_info_t *client) {
     return -1;
   }
 
+#ifdef DEBUG_THREADS
+  log_info("Creating render threads for client %u", client->client_id);
+#endif
+
   // Initialize per-client mutex
   if (mutex_init(&client->client_state_mutex) != 0) {
     log_error("Failed to initialize client state mutex for client %u", client->client_id);
     return -1;
   }
 
-  // CONCURRENCY FIX: Initialize per-client cached frame mutex
-  if (mutex_init(&client->cached_frame_mutex) != 0) {
-    log_error("Failed to initialize cached frame mutex for client %u", client->client_id);
-    mutex_destroy(&client->client_state_mutex);
-    return -1;
-  }
-
   // THREAD-SAFE FRAMEBUFFER: Initialize per-client video buffer mutex
   if (mutex_init(&client->video_buffer_mutex) != 0) {
     log_error("Failed to initialize video buffer mutex for client %u", client->client_id);
-    mutex_destroy(&client->cached_frame_mutex);
     mutex_destroy(&client->client_state_mutex);
     return -1;
   }
@@ -762,9 +780,12 @@ int create_client_render_threads(client_info_t *client) {
   if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
     mutex_destroy(&client->video_buffer_mutex);
-    mutex_destroy(&client->cached_frame_mutex);
     mutex_destroy(&client->client_state_mutex);
     return -1;
+  } else {
+#ifdef DEBUG_THREADS
+    log_info("Created video render thread for client %u", client->client_id);
+#endif
   }
 
   // CRITICAL FIX: Protect thread_running flag with mutex
@@ -782,9 +803,12 @@ int create_client_render_threads(client_info_t *client) {
     // Note: thread cancellation not available in platform abstraction
     ascii_thread_join(&client->video_render_thread, NULL);
     mutex_destroy(&client->video_buffer_mutex);
-    mutex_destroy(&client->cached_frame_mutex);
     mutex_destroy(&client->client_state_mutex);
     return -1;
+  } else {
+#ifdef DEBUG_THREADS
+    log_info("Created audio render thread for client %u", client->client_id);
+#endif
   }
 
   // CRITICAL FIX: Protect thread_running flag with mutex
@@ -792,7 +816,10 @@ int create_client_render_threads(client_info_t *client) {
   client->audio_render_thread_running = true;
   mutex_unlock(&client->client_state_mutex);
 
+#ifdef DEBUG_THREADS
   log_info("Created render threads for client %u", client->client_id);
+#endif
+
   return 0;
 }
 
@@ -883,7 +910,9 @@ void stop_client_render_threads(client_info_t *client) {
     return;
   }
 
-  log_debug("Destroying render threads for client %u", client->client_id);
+#ifdef DEBUG_THREADS
+  log_info("Destroying render threads for client %u", client->client_id);
+#endif
 
   // Signal threads to stop - CRITICAL FIX: Protect with mutex
   mutex_lock(&client->client_state_mutex);
@@ -919,5 +948,7 @@ void stop_client_render_threads(client_info_t *client) {
   // Destroy per-client mutex
   mutex_destroy(&client->client_state_mutex);
 
-  log_debug("Successfully destroyed render threads for client %u", client->client_id);
+#ifdef DEBUG_THREADS
+  log_info("Successfully destroyed render threads for client %u", client->client_id);
+#endif
 }

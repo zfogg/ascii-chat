@@ -212,19 +212,19 @@ int terminal_clear_scrollback(int fd) {
 
 /**
  * @brief Get the current TTY device
- * 
+ *
  * Implements multi-method TTY detection with fallback strategy:
- * 1. Check $TTY environment variable (most specific on macOS) 
+ * 1. Check $TTY environment variable (most specific on macOS)
  * 2. Test standard file descriptors for TTY status
  * 3. Fall back to controlling terminal device (/dev/tty)
- * 
+ *
  * @return TTY information structure with file descriptor and path
  */
 tty_info_t get_current_tty(void) {
   tty_info_t result = {-1, NULL, false};
-  
+
   // Method 1: Check $TTY environment variable first (most specific on macOS)
-  const char* tty_env = getenv("TTY");
+  const char *tty_env = getenv("TTY");
   if (tty_env && strlen(tty_env) > 0 && is_valid_tty_path(tty_env)) {
     result.fd = open(tty_env, O_WRONLY);
     if (result.fd >= 0) {
@@ -234,7 +234,7 @@ tty_info_t get_current_tty(void) {
       return result;
     }
   }
-  
+
   // Method 2: Check standard file descriptors for TTY status
   if (isatty(STDIN_FILENO)) {
     result.fd = STDIN_FILENO;
@@ -255,7 +255,7 @@ tty_info_t get_current_tty(void) {
     log_debug("POSIX TTY from stderr: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
   }
-  
+
   // Method 3: Try controlling terminal device
   result.fd = open("/dev/tty", O_WRONLY);
   if (result.fd >= 0) {
@@ -264,30 +264,30 @@ tty_info_t get_current_tty(void) {
     log_debug("POSIX TTY from /dev/tty (fd=%d)", result.fd);
     return result;
   }
-  
+
   log_debug("POSIX TTY: No TTY available");
   return result; // No TTY available
 }
 
 /**
  * @brief Validate TTY device path
- * 
+ *
  * Checks if the given path represents a valid TTY device by attempting
  * to open it and verify it's a character device.
- * 
+ *
  * @param path Path to TTY device to validate
- * @return true if valid TTY path, false otherwise  
+ * @return true if valid TTY path, false otherwise
  */
 bool is_valid_tty_path(const char *path) {
   if (!path || strlen(path) == 0) {
     return false;
   }
-  
+
   int fd = open(path, O_WRONLY | O_NOCTTY);
   if (fd < 0) {
     return false;
   }
-  
+
   bool is_tty = isatty(fd);
   close(fd);
   return is_tty;
@@ -295,21 +295,21 @@ bool is_valid_tty_path(const char *path) {
 
 /**
  * @brief Get terminal size with multiple fallback methods
- * 
+ *
  * Attempts to determine terminal dimensions using multiple methods:
  * 1. ioctl(TIOCGWINSZ) - most reliable
  * 2. Environment variables ($LINES, $COLUMNS)
  * 3. Default fallback values
- * 
+ *
  * @param width Pointer to store terminal width
- * @param height Pointer to store terminal height  
+ * @param height Pointer to store terminal height
  * @return 0 on success, -1 on failure
  */
 int get_terminal_size(unsigned short int *width, unsigned short int *height) {
   if (!width || !height) {
     return -1;
   }
-  
+
   // Method 1: ioctl(TIOCGWINSZ)
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
@@ -320,10 +320,10 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       return 0;
     }
   }
-  
+
   // Method 2: Environment variables
-  const char* lines_env = getenv("LINES");
-  const char* cols_env = getenv("COLUMNS");
+  const char *lines_env = getenv("LINES");
+  const char *cols_env = getenv("COLUMNS");
   if (lines_env && cols_env) {
     int env_height = atoi(lines_env);
     int env_width = atoi(cols_env);
@@ -334,7 +334,7 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       return 0;
     }
   }
-  
+
   // Method 3: Default fallback
   *width = 80;
   *height = 24;
@@ -344,29 +344,29 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
 
 /**
  * @brief Detect comprehensive terminal capabilities
- * 
+ *
  * Performs detailed terminal capability detection including:
  * - Color support levels (16/256/truecolor)
- * - UTF-8 encoding support  
+ * - UTF-8 encoding support
  * - Terminal type and environment analysis
  * - Render mode recommendations
- * 
+ *
  * @return Complete terminal capabilities structure
  */
 terminal_capabilities_t detect_terminal_capabilities(void) {
   terminal_capabilities_t caps = {0};
-  
+
   // Get terminal type information
   const char *term = getenv("TERM");
   const char *colorterm = getenv("COLORTERM");
-  
+
   SAFE_STRNCPY(caps.term_type, term ? term : "unknown", sizeof(caps.term_type));
   SAFE_STRNCPY(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm));
-  
+
   // Detect color support level
   caps.color_level = TERM_COLOR_NONE;
   caps.color_count = 0;
-  
+
   if (colorterm) {
     if (strstr(colorterm, "truecolor") || strstr(colorterm, "24bit")) {
       caps.color_level = TERM_COLOR_TRUECOLOR;
@@ -375,35 +375,35 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
       log_debug("POSIX color detection: truecolor from $COLORTERM");
     }
   }
-  
+
   if (caps.color_level == TERM_COLOR_NONE && term) {
     if (strstr(term, "256color")) {
       caps.color_level = TERM_COLOR_256;
       caps.color_count = 256;
       caps.capabilities |= TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
       log_debug("POSIX color detection: 256-color from $TERM");
-    } else if (strstr(term, "color") || strstr(term, "xterm") || strstr(term, "screen") ||
-               strstr(term, "vt100") || strstr(term, "linux")) {
+    } else if (strstr(term, "color") || strstr(term, "xterm") || strstr(term, "screen") || strstr(term, "vt100") ||
+               strstr(term, "linux")) {
       caps.color_level = TERM_COLOR_16;
       caps.color_count = 16;
       caps.capabilities |= TERM_CAP_COLOR_16;
       log_debug("POSIX color detection: 16-color from $TERM");
     }
   }
-  
+
   // Detect UTF-8 support from locale
   caps.utf8_support = false;
   const char *lang = getenv("LANG");
   const char *lc_all = getenv("LC_ALL");
   const char *lc_ctype = getenv("LC_CTYPE");
-  
+
   const char *check = lc_all ? lc_all : (lc_ctype ? lc_ctype : lang);
   if (check && (strstr(check, "UTF-8") || strstr(check, "utf8"))) {
     caps.utf8_support = true;
     caps.capabilities |= TERM_CAP_UTF8;
     log_debug("POSIX UTF-8 detection: enabled from locale");
   }
-  
+
 #ifndef __APPLE__
   // Additional UTF-8 detection using langinfo (not available on macOS)
   if (!caps.utf8_support) {
@@ -415,7 +415,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
     }
   }
 #endif
-  
+
   // Determine render mode preference
   if (caps.color_level >= TERM_COLOR_16) {
     if (caps.utf8_support) {
@@ -427,116 +427,119 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   } else {
     caps.render_mode = RENDER_MODE_FOREGROUND; // Monochrome fallback
   }
-  
+
   // Mark detection as reliable (POSIX has good environment variable support)
   caps.detection_reliable = true;
-  
-  log_debug("POSIX capabilities: color=%s, utf8=%s, mode=%s", 
-            terminal_color_level_name(caps.color_level),
+
+  log_debug("POSIX capabilities: color=%s, utf8=%s, mode=%s", terminal_color_level_name(caps.color_level),
             caps.utf8_support ? "yes" : "no",
-            caps.render_mode == RENDER_MODE_HALF_BLOCK ? "half-block" : 
-            caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground");
-  
+            caps.render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
+            : caps.render_mode == RENDER_MODE_BACKGROUND ? "background"
+                                                         : "foreground");
+
   return caps;
 }
 
 /**
  * @brief Get human-readable color level name
- * 
+ *
  * @param level Terminal color support level
  * @return String description of color level
  */
 const char *terminal_color_level_name(terminal_color_level_t level) {
   switch (level) {
-    case TERM_COLOR_NONE: return "none";
-    case TERM_COLOR_16: return "16-color";
-    case TERM_COLOR_256: return "256-color"; 
-    case TERM_COLOR_TRUECOLOR: return "truecolor";
-    default: return "unknown";
+  case TERM_COLOR_NONE:
+    return "none";
+  case TERM_COLOR_16:
+    return "16-color";
+  case TERM_COLOR_256:
+    return "256-color";
+  case TERM_COLOR_TRUECOLOR:
+    return "truecolor";
+  default:
+    return "unknown";
   }
 }
 
 /**
  * @brief Generate capabilities summary string
- * 
+ *
  * Creates a concise summary of terminal capabilities for logging/debugging.
- * 
+ *
  * @param caps Terminal capabilities structure
  * @return Static string with capabilities summary
  */
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   static char summary[256];
-  snprintf(summary, sizeof(summary), 
-           "%s, %s, %s, %s", 
-           terminal_color_level_name(caps->color_level),
+  snprintf(summary, sizeof(summary), "%s, %s, %s, %s", terminal_color_level_name(caps->color_level),
            caps->utf8_support ? "UTF-8" : "ASCII",
-           caps->render_mode == RENDER_MODE_HALF_BLOCK ? "half-block" : 
-           caps->render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground",
+           caps->render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
+           : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
+                                                         : "foreground",
            caps->detection_reliable ? "reliable" : "fallback");
   return summary;
 }
 
 /**
  * @brief Print detailed terminal capabilities report
- * 
+ *
  * Outputs comprehensive terminal capability information for debugging
  * and user information purposes.
- * 
+ *
  * @param caps Terminal capabilities structure to report
  */
 void print_terminal_capabilities(const terminal_capabilities_t *caps) {
   log_info("Terminal Capabilities Report:");
   log_info("  Terminal Type: %s", caps->term_type);
   log_info("  Color Terminal: %s", strlen(caps->colorterm) ? caps->colorterm : "none");
-  log_info("  Color Support: %s (%u colors)", 
-           terminal_color_level_name(caps->color_level), caps->color_count);
+  log_info("  Color Support: %s (%u colors)", terminal_color_level_name(caps->color_level), caps->color_count);
   log_info("  UTF-8 Support: %s", caps->utf8_support ? "yes" : "no");
-  log_info("  Render Mode: %s", 
-           caps->render_mode == RENDER_MODE_HALF_BLOCK ? "half-block" : 
-           caps->render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground");
+  log_info("  Render Mode: %s", caps->render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
+                                : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
+                                                                              : "foreground");
   log_info("  Detection: %s", caps->detection_reliable ? "reliable" : "fallback");
   log_info("  Capability Flags: 0x%08X", caps->capabilities);
 }
 
 /**
  * @brief Test terminal output modes
- * 
+ *
  * Outputs test patterns to verify terminal color and Unicode support.
  * Used for capability validation and user verification.
  */
 void test_terminal_output_modes(void) {
   log_info("Testing terminal output modes:");
-  
+
   // Test basic colors (16-color)
   printf("16-color test: ");
   for (int i = 30; i < 38; i++) {
     printf("\033[%dm█\033[0m", i);
   }
   printf("\n");
-  
+
   // Test 256-color mode
   printf("256-color test: ");
   for (int i = 16; i < 24; i++) {
     printf("\033[38;5;%dm█\033[0m", i);
   }
   printf("\n");
-  
+
   // Test truecolor
   printf("Truecolor test: ");
   printf("\033[38;2;255;0;0m█\033[38;2;0;255;0m█\033[38;2;0;0;255m█\033[0m\n");
-  
+
   // Test Unicode half-blocks
   printf("Unicode test: ▀▄█▌▐░▒▓\n");
-  
+
   fflush(stdout);
 }
 
 /**
- * @brief Apply command-line color mode overrides  
- * 
+ * @brief Apply command-line color mode overrides
+ *
  * Modifies detected capabilities based on user command-line preferences.
  * Allows users to force specific color modes or disable features.
- * 
+ *
  * @param caps Original detected capabilities
  * @return Modified capabilities with overrides applied
  */
@@ -545,35 +548,34 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   if (opt_color_mode >= 0) {
     terminal_color_level_t override_level = (terminal_color_level_t)opt_color_mode;
     if (override_level != caps.color_level) {
-      log_debug("Color override: %s -> %s", 
-                terminal_color_level_name(caps.color_level),
+      log_debug("Color override: %s -> %s", terminal_color_level_name(caps.color_level),
                 terminal_color_level_name(override_level));
       caps.color_level = override_level;
-      
+
       // Update capabilities flags and count
       caps.capabilities &= ~(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
       switch (override_level) {
-        case TERM_COLOR_TRUECOLOR:
-          caps.capabilities |= TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
-          caps.color_count = 16777216;
-          break;
-        case TERM_COLOR_256:
-          caps.capabilities |= TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
-          caps.color_count = 256;
-          break;
-        case TERM_COLOR_16:
-          caps.capabilities |= TERM_CAP_COLOR_16;
-          caps.color_count = 16;
-          break;
-        case TERM_COLOR_NONE:
-          caps.color_count = 0;
-          break;
+      case TERM_COLOR_TRUECOLOR:
+        caps.capabilities |= TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
+        caps.color_count = 16777216;
+        break;
+      case TERM_COLOR_256:
+        caps.capabilities |= TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
+        caps.color_count = 256;
+        break;
+      case TERM_COLOR_16:
+        caps.capabilities |= TERM_CAP_COLOR_16;
+        caps.color_count = 16;
+        break;
+      case TERM_COLOR_NONE:
+        caps.color_count = 0;
+        break;
       }
-      
+
       caps.detection_reliable = false; // Mark as overridden
     }
   }
-  
+
   return caps;
 }
 

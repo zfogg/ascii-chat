@@ -12,7 +12,7 @@
  * 1. Collect video frames from all active clients
  * 2. Create composite video layouts (single client, 2x2, 3x3 grids)
  * 3. Generate client-specific ASCII art with terminal capability awareness
- * 4. Handle frame caching to prevent flicker during buffer underruns
+ * 4. Process latest frames from double-buffer system for real-time performance
  * 5. Manage memory efficiently with buffer pools and zero-copy operations
  * 6. Support advanced rendering modes (half-block, color, custom palettes)
  *
@@ -22,9 +22,9 @@
  *
  * 1. FRAME COLLECTION:
  *    - Scans all active clients for available video frames
- *    - Uses per-client frame buffers (ringbuffers) for burst handling
+ *    - Uses per-client double-buffer system for smooth frame handling
  *    - Implements aggressive frame dropping to maintain real-time performance
- *    - Caches most recent frame per client to prevent flicker
+ *    - Always uses the latest available frame for professional-grade performance
  *
  * 2. LAYOUT CALCULATION:
  *    - Determines grid size based on number of active video sources
@@ -59,7 +59,7 @@
  *
  * PERFORMANCE OPTIMIZATIONS:
  * - Per-client palette caches (avoid repeated initialization)
- * - Frame caching with intelligent invalidation
+ * - Double-buffer system for smooth frame delivery
  * - Buffer pool allocation to reduce malloc/free overhead
  * - Aggressive frame dropping under load
  * - Zero-copy operations where possible
@@ -69,7 +69,7 @@
  * This module operates in a high-concurrency environment:
  *
  * THREAD SAFETY MECHANISMS:
- * - Per-client cached frame mutexes (prevents corruption)
+ * - Double-buffer thread safety (atomic operations)
  * - Reader-writer locks on client manager (allows concurrent reads)
  * - Buffer pool thread safety (lock-free where possible)
  * - Atomic snapshot operations for client state
@@ -77,17 +77,17 @@
  * PERFORMANCE CHARACTERISTICS:
  * - Supports 60fps per client with linear scaling
  * - Handles burst traffic with frame buffer overruns
- * - Minimal CPU overhead in common case (cached frames)
+ * - Minimal CPU overhead with double-buffer system
  * - Memory usage scales with number of active clients
  *
  * FRAME BUFFER MANAGEMENT:
  * ========================
  *
- * CACHING STRATEGY:
- * Each client maintains a cached copy of their most recent frame:
- * - Prevents flicker when new frames aren't available
- * - Allows continued rendering during network issues
- * - Automatically updated when new frames arrive
+ * DOUBLE-BUFFER STRATEGY:
+ * Each client uses a double-buffer system for smooth frame delivery:
+ * - Always provides the latest available frame
+ * - No frame caching complexity or stale data concerns
+ * - Professional-grade real-time performance like Zoom/Google Meet
  * - Memory managed via buffer pools
  *
  * BUFFER OVERFLOW HANDLING:
@@ -122,7 +122,7 @@
  * ==============================
  * - All allocations use buffer pools where possible
  * - Frame data is reference-counted (avoid copies)
- * - Cached frames use deep copies (prevent corruption)
+ * - Double-buffer system eliminates need for frame copies
  * - Automatic cleanup on client disconnect
  * - Graceful degradation on allocation failures
  *
@@ -147,6 +147,7 @@
 #include "network.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
+#include "video_frame.h"
 #include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
 #include "aspect_ratio.h"
@@ -159,7 +160,7 @@
  * period to per-client frame caching. This will be removed once all code
  * paths use per-client caching exclusively.
  *
- * @deprecated Use per-client cached_frame_mutex instead
+ * @deprecated Use double-buffer system via video_frame.h instead
  */
 mutex_t g_frame_cache_mutex = {0};
 
@@ -169,70 +170,11 @@ mutex_t g_frame_cache_mutex = {0};
  * Contains cached frame data from the original single-output video system.
  * This is being phased out in favor of per-client frame caching.
  *
- * @deprecated Use client_info_t.last_valid_frame instead
+ * @deprecated Use double-buffer system via video_frame.h instead
  */
 frame_cache_entry_t g_frame_cache = {0};
 
-/**
- * @brief Legacy global frame cache variables (being phased out)
- *
- * These variables supported the original single-output video system where
- * all clients received the same ASCII frame. The new per-client system
- * generates customized frames for each client's terminal capabilities.
- *
- * MIGRATION STATUS:
- * - g_last_valid_frame: Replaced by client->last_valid_frame.data
- * - g_last_valid_frame_size: Replaced by client->last_valid_frame.size
- * - g_last_frame_width/height: Replaced by client capabilities
- * - g_last_frame_was_color: Replaced by per-client color detection
- *
- * @deprecated Use per-client frame caching in client_info_t
- */
-static char *g_last_valid_frame = NULL;           ///< Legacy cached frame data
-static size_t g_last_valid_frame_size = 0;        ///< Legacy cached frame size
-static unsigned short g_last_frame_width = 0;     ///< Legacy frame width
-static unsigned short g_last_frame_height = 0;    ///< Legacy frame height
-static bool g_last_frame_was_color = false;       ///< Legacy color flag
 
-/* ============================================================================
- * Legacy Frame Cache Management
- * ============================================================================
- */
-
-/**
- * @brief Clean up legacy global frame cache on server shutdown
- *
- * Frees the legacy global frame cache to prevent memory leaks during server
- * shutdown. This function will be removed once the transition to per-client
- * frame caching is complete.
- *
- * CLEANUP OPERATIONS:
- * - Frees cached frame data if allocated
- * - Resets all cache state variables to prevent stale data
- * - Thread-safe operation using global cache mutex
- *
- * THREAD SAFETY:
- * - Acquires g_frame_cache_mutex for atomic cleanup
- * - Safe to call multiple times (idempotent)
- * - Can be called concurrently with frame generation
- *
- * @deprecated This function supports legacy code paths only
- * @note Per-client frame caches are cleaned up in remove_client()
- */
-
-void cleanup_frame_cache() {
-  mutex_lock(&g_frame_cache_mutex);
-  if (g_last_valid_frame) {
-    free(g_last_valid_frame);
-    g_last_valid_frame = NULL;
-    g_last_valid_frame_size = 0;
-    // Reset other cache state to prevent stale data
-    g_last_frame_width = 0;
-    g_last_frame_height = 0;
-    g_last_frame_was_color = false;
-  }
-  mutex_unlock(&g_frame_cache_mutex);
-}
 
 /* ============================================================================
  * Client Lookup Utilities
@@ -275,7 +217,6 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
  * ============================================================================
  */
 
-
 /**
  * @brief Generate personalized ASCII frame for a specific client
  *
@@ -289,9 +230,9 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
  *
  * 1. FRAME COLLECTION PHASE:
  *    - Scan all active clients for available video frames
- *    - Use ringbuffer occupancy to determine frame reading strategy
+ *    - Use double-buffer system to get latest frames
  *    - Implement aggressive frame dropping under load (maintains real-time)
- *    - Cache most recent frame per client to prevent flicker
+ *    - Always use the most current frame for professional-grade quality
  *
  * 2. LAYOUT CALCULATION PHASE:
  *    - Determine grid dimensions based on active client count
@@ -312,14 +253,14 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
  * ==========================
  *
  * FRAME BUFFER MANAGEMENT:
- * - Aggressive frame dropping: >30% occupancy = read latest only
- * - Per-client frame caching: prevents flicker during underruns
+ * - Aggressive frame dropping: always read latest available
+ * - Double-buffer system: ensures smooth frame delivery
  * - Buffer pool allocation: reduces malloc/free overhead
  * - Zero-copy operations where possible
  *
  * CONCURRENCY OPTIMIZATIONS:
  * - Reader locks on client manager (allows parallel execution)
- * - Per-client cache mutexes (fine-grained locking)
+ * - Double-buffer atomic operations (lock-free access)
  * - Atomic snapshots of client state
  * - Thread-safe buffer operations
  *
@@ -403,170 +344,110 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       sources[source_count].image = NULL; // Will be set if video is available
       sources[source_count].has_video = false;
 
+      // Declare these outside the if block so they're accessible later
+      multi_source_frame_t current_frame = {0};
+      bool got_new_frame = false;
+
       // Only try to get video from clients that are actually sending it
       if (client->is_sending_video) {
-        // Skip clients who haven't sent their first real frame yet to avoid blank frames
-        if (!client->has_cached_frame && client->incoming_video_buffer) {
-          size_t occupancy = ringbuffer_size(client->incoming_video_buffer->rb);
-          if (occupancy == 0) {
-            // No frames available and no cached frame - client gets placeholder slot
-            source_count++;
-            continue;
-          }
-        }
-
-        // ENHANCED RINGBUFFER USAGE: Dynamic frame reading based on buffer occupancy
-        // Same logic as global version but with per-client optimizations
-        multi_source_frame_t current_frame = {0};
-        bool got_new_frame = false;
-        int frames_to_read = 1;
-
-        // Check buffer occupancy to determine reading strategy
+        // Use the new double-buffered video frame API
         if (client->incoming_video_buffer) {
-          size_t occupancy = ringbuffer_size(client->incoming_video_buffer->rb);
-          size_t capacity = client->incoming_video_buffer->rb->capacity;
-          double occupancy_ratio = (double)occupancy / (double)capacity;
+          // Get the latest frame (if available)
+          const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
 
-          if (occupancy_ratio > 0.3) {
-            // AGGRESSIVE: Skip to latest frame for ANY significant occupancy
-            frames_to_read = (int)occupancy - 1; // Read all but keep latest
-            if (frames_to_read > 20)
-              frames_to_read = 20; // Cap to avoid excessive processing
-            if (frames_to_read < 1)
-              frames_to_read = 1; // Always read at least 1
-          }
-
-          // Read frames (potentially multiple to drain buffer)
-          multi_source_frame_t discard_frame = {0};
-          for (int read_count = 0; read_count < frames_to_read; read_count++) {
-            bool frame_available = framebuffer_read_multi_frame(
-                client->incoming_video_buffer, (read_count == frames_to_read - 1) ? &current_frame : &discard_frame);
-            if (!frame_available) {
-              break; // No more frames available
+          if (frame && frame->data && frame->size > 0) {
+            // We have a new frame - copy it to our working structure
+            data_buffer_pool_t *pool = data_buffer_pool_get_global();
+            if (pool) {
+              current_frame.data = data_buffer_pool_alloc(pool, frame->size);
+            }
+            if (!current_frame.data) {
+              current_frame.data = malloc(frame->size);
             }
 
-            if (read_count == frames_to_read - 1) {
-              // This is the frame we'll use
+            if (current_frame.data) {
+              memcpy(current_frame.data, frame->data, frame->size);
+              current_frame.size = frame->size;
+              current_frame.source_client_id = client->client_id;
+              current_frame.timestamp = (uint32_t)(frame->capture_timestamp_us / 1000000);
               got_new_frame = true;
-            } else {
-              // This is a frame we're discarding to catch up
-              if (discard_frame.data) {
-                buffer_pool_free(discard_frame.data, discard_frame.size);
-                discard_frame.data = NULL;
+
+              // Get frame stats for monitoring
+              video_frame_stats_t stats;
+              video_frame_get_stats(client->incoming_video_buffer, &stats);
+              if (stats.drop_rate > 0.1f) {
+                log_debug("Client %u dropping frames: %.1f%% drop rate", client->client_id, stats.drop_rate * 100.0f);
               }
             }
           }
+        }
+      }
 
+      // Simple and professional: if we got a frame, use it
+      multi_source_frame_t *frame_to_use = got_new_frame ? &current_frame : NULL;
+
+      if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
+        // Parse the image data
+        // Format: [width:4][height:4][rgb_data:w*h*3]
+        uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
+        uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
+
+        // Validate dimensions are reasonable (max 4K resolution)
+        if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
+          log_error("Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)",
+                    client->client_id, img_width, img_height);
+          // Clean up the current frame if we got a new one
           if (got_new_frame) {
-            // CONCURRENCY FIX: Lock only THIS client's cached frame data
-            mutex_lock(&client->cached_frame_mutex);
-
-            // Got a new frame - update our cache
-            // Free old cached frame data if we had one
-            if (client->has_cached_frame && client->last_valid_frame.data) {
-              buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
-            }
-
-            // Cache this frame for future use (make a copy)
-            client->last_valid_frame.magic = current_frame.magic;
-            client->last_valid_frame.source_client_id = current_frame.source_client_id;
-            client->last_valid_frame.frame_sequence = current_frame.frame_sequence;
-            client->last_valid_frame.timestamp = current_frame.timestamp;
-            client->last_valid_frame.size = current_frame.size;
-
-            // Allocate and copy frame data for cache using buffer pool
-            client->last_valid_frame.data = buffer_pool_alloc(current_frame.size);
-            if (client->last_valid_frame.data) {
-              memcpy(client->last_valid_frame.data, current_frame.data, current_frame.size);
-              client->has_cached_frame = true;
+            data_buffer_pool_t *pool = data_buffer_pool_get_global();
+            if (pool) {
+              data_buffer_pool_free(pool, current_frame.data, current_frame.size);
             } else {
-              log_error("Failed to allocate cache buffer for client %u", client->client_id);
-              client->has_cached_frame = false;
+              free(current_frame.data);
             }
-
-            mutex_unlock(&client->cached_frame_mutex);
           }
+          source_count++;
+          continue;
         }
 
-        // Use either the new frame or the cached frame
-        multi_source_frame_t *frame_to_use = NULL;
-        bool using_cached_frame = false;
-        if (got_new_frame) {
-          frame_to_use = &current_frame;
-        } else {
-          // CONCURRENCY FIX: Lock THIS client's cached frame for reading
-          mutex_lock(&client->cached_frame_mutex);
-          if (client->has_cached_frame) {
-            frame_to_use = &client->last_valid_frame;
-            using_cached_frame = true;
+        // Validate that the frame size matches expected size
+        size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+        if (frame_to_use->size != expected_size) {
+          log_error("Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
+                    client->client_id, frame_to_use->size, expected_size, img_width, img_height);
+          // Clean up the current frame if we got a new one
+          if (got_new_frame) {
+            data_buffer_pool_t *pool = data_buffer_pool_get_global();
+            if (pool) {
+              data_buffer_pool_free(pool, current_frame.data, current_frame.size);
+            } else {
+              free(current_frame.data);
+            }
+          }
+          source_count++;
+          continue;
+        }
+
+        // Extract pixel data
+        rgb_t *pixels = (rgb_t *)(frame_to_use->data + sizeof(uint32_t) * 2);
+
+        // Create image from buffer pool for consistent video pipeline management
+        image_t *img = image_new_from_pool(img_width, img_height);
+        if (img) {
+          memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
+          sources[source_count].image = img;
+          sources[source_count].has_video = true;
+        }
+
+        // Free the current frame data after processing
+        // The double-buffer allocates this data and we must free it
+        if (got_new_frame && current_frame.data) {
+          data_buffer_pool_t *pool = data_buffer_pool_get_global();
+          if (pool) {
+            data_buffer_pool_free(pool, current_frame.data, current_frame.size);
           } else {
-            // No cached frame - unlock immediately since we won't use it
-            mutex_unlock(&client->cached_frame_mutex);
+            free(current_frame.data);
           }
-          // Note: If using_cached_frame=true, we keep the lock held while using the data
-        }
-
-        if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
-          // Parse the image data
-          // Format: [width:4][height:4][rgb_data:w*h*3]
-          uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
-          uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
-
-          // Validate dimensions are reasonable (max 4K resolution)
-          if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
-            log_error("Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)",
-                      client->client_id, img_width, img_height);
-            // Don't free cached frame, just skip this client
-            if (got_new_frame) {
-              buffer_pool_free(current_frame.data, current_frame.size);
-            }
-            // Unlock cached frame mutex if we were using cached data
-            if (using_cached_frame) {
-              mutex_unlock(&client->cached_frame_mutex);
-            }
-            source_count++;
-            continue;
-          }
-
-          // Validate that the frame size matches expected size
-          size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
-          if (frame_to_use->size != expected_size) {
-            log_error("Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
-                      client->client_id, frame_to_use->size, expected_size, img_width, img_height);
-            // Don't free cached frame, just skip this client
-            if (got_new_frame) {
-              buffer_pool_free(current_frame.data, current_frame.size);
-            }
-            // Unlock cached frame mutex if we were using cached data
-            if (using_cached_frame) {
-              mutex_unlock(&client->cached_frame_mutex);
-            }
-            source_count++;
-            continue;
-          }
-
-          // Extract pixel data
-          rgb_t *pixels = (rgb_t *)(frame_to_use->data + sizeof(uint32_t) * 2);
-
-          // Create image from buffer pool for consistent video pipeline management
-          image_t *img = image_new_from_pool(img_width, img_height);
-          if (img) {
-            memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
-            sources[source_count].image = img;
-            sources[source_count].has_video = true;
-          }
-
-          // Free the current frame data if we got a new one (cached frame persists)
-          // The framebuffer allocates this data via buffer_pool_alloc() and we must free it
-          if (got_new_frame && current_frame.data) {
-            buffer_pool_free(current_frame.data, current_frame.size);
-            current_frame.data = NULL; // Prevent double-free
-          }
-        }
-
-        // CONCURRENCY FIX: Unlock cached frame mutex if we were using cached data
-        if (using_cached_frame) {
-          mutex_unlock(&client->cached_frame_mutex);
+          current_frame.data = NULL; // Prevent double-free
         }
       } // End of if (client->is_sending_video)
 
@@ -818,7 +699,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   return ascii_frame;
 }
-
 
 /* ============================================================================
  * Frame Queuing and Delivery Functions

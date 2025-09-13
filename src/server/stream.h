@@ -29,6 +29,3 @@ typedef struct {
 } frame_cache_entry_t;
 
 extern frame_cache_entry_t g_frame_cache;
-
-// Cache cleanup
-void cleanup_frame_cache(void);

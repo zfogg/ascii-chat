@@ -95,7 +95,7 @@ static atomic_bool g_ping_thread_exited = false;
 /** Ping interval in seconds (must be less than server timeout) */
 #define PING_INTERVAL_SECONDS 3
 
-/** Sleep interval for ping timing loop (1 second) */  
+/** Sleep interval for ping timing loop (1 second) */
 #define PING_SLEEP_INTERVAL_SECONDS 1
 
 /* ============================================================================
@@ -150,10 +150,9 @@ static void *ping_thread_func(void *arg) {
 
     // Sleep with early wake capability for responsive shutdown
     // Break sleep into 1-second intervals to check shutdown flags
-    for (int i = 0; i < PING_INTERVAL_SECONDS && 
-         !should_exit() && 
-         !server_connection_is_lost() && 
-         server_connection_is_active(); i++) {
+    for (int i = 0;
+         i < PING_INTERVAL_SECONDS && !should_exit() && !server_connection_is_lost() && server_connection_is_active();
+         i++) {
       usleep(PING_SLEEP_INTERVAL_SECONDS * 1000 * 1000); // 1 second
     }
   }
@@ -161,7 +160,7 @@ static void *ping_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Ping thread stopped");
 #endif
-  
+
   atomic_store(&g_ping_thread_exited, true);
   return NULL;
 }

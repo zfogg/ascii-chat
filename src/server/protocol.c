@@ -124,6 +124,7 @@
 #include "network.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
+#include "video_frame.h"
 #include "os/audio.h"
 #include "palette.h"
 #include "image2ascii/image.h"
@@ -389,20 +390,32 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
       return;
     }
 
-    // Store the entire packet (including dimensions) in the buffer
-    // The mixing function will parse it
-    uint32_t timestamp = (uint32_t)time(NULL);
+    // Use the new double-buffered video frame API
     if (client->incoming_video_buffer) {
-      bool stored = framebuffer_write_multi_frame(client->incoming_video_buffer, (const char *)data, len,
-                                                  client->client_id, 0, timestamp);
-      if (stored) {
-        client->frames_received++;
+      // Get the write buffer
+      video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+      if (frame && frame->data) {
+        // Copy the frame data
+        if (len <= 2 * 1024 * 1024) { // Max 2MB frame size
+          memcpy(frame->data, data, len);
+          frame->size = len;
+          frame->width = img_width;
+          frame->height = img_height;
+          frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+          frame->sequence_number = ++client->frames_received;
+
+          // Commit the frame (atomic swap)
+          video_frame_commit(client->incoming_video_buffer);
+
 #ifdef DEBUG_THREADS
-        log_debug("Stored image from client %u (size=%zu, total=%llu)", client->client_id, len,
-                  client->frames_received);
+          log_debug("Stored image from client %u (size=%zu, seq=%llu)", client->client_id, len,
+                    client->frames_received);
 #endif
+        } else {
+          log_warn("Frame from client %u too large (%zu bytes)", client->client_id, len);
+        }
       } else {
-        log_warn("Failed to store image from client %u (buffer full?)", client->client_id);
+        log_warn("Failed to get write buffer for client %u", client->client_id);
       }
     } else {
       // During shutdown, this is expected - don't spam error logs

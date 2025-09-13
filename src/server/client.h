@@ -7,6 +7,7 @@
 #include "network.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
+#include "video_frame.h"
 #include "platform/terminal.h"
 #include "palette.h"
 #include "hashtable.h"
@@ -53,12 +54,10 @@ typedef struct {
   uint64_t frames_received; // Track incoming frames from this client
 
   // Buffers for incoming media (individual per client)
-  framebuffer_t *incoming_video_buffer;       // Buffer for this client's video
-  audio_ring_buffer_t *incoming_audio_buffer; // Buffer for this client's audio
+  video_frame_buffer_t *incoming_video_buffer; // Modern double-buffered video frame
+  audio_ring_buffer_t *incoming_audio_buffer;  // Buffer for this client's audio
 
-  // Cached frame for when buffer is empty (prevents flicker)
-  multi_source_frame_t last_valid_frame; // Cache of most recent valid frame
-  bool has_cached_frame;                 // Whether we have a valid cached frame
+  // Professional double-buffer system (no cached frames needed)
 
   // Packet queues for outgoing data (per-client queues for isolation)
   packet_queue_t *audio_queue; // Queue for audio packets to send to this client
@@ -80,8 +79,6 @@ typedef struct {
 
   // Per-client synchronization
   mutex_t client_state_mutex;
-  // CONCURRENCY FIX: Per-client cached frame protection for concurrent video generation
-  mutex_t cached_frame_mutex;
   // THREAD-SAFE FRAMEBUFFER: Per-client video buffer mutex for concurrent access
   mutex_t video_buffer_mutex;
 } client_info_t;

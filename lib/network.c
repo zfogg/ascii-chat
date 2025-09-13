@@ -110,7 +110,6 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
     return -1;
   }
 
-
   while (total_sent < (ssize_t)len) {
     // Set up select for write timeout
     socket_fd_zero(&write_fds);
@@ -144,9 +143,9 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
     if (bytes_to_send > INT_MAX) {
       bytes_to_send = INT_MAX;
     }
-    ssize_t sent = send(sockfd, (const char*)(data + total_sent), (int)bytes_to_send, 0);
+    ssize_t sent = send(sockfd, (const char *)(data + total_sent), (int)bytes_to_send, 0);
     if (sent < 0 && errno == EINVAL) {
-      log_error("Windows send() EINVAL debug: sockfd=%llu, bytes_to_send=%zu, total_sent=%zd, len=%zu", 
+      log_error("Windows send() EINVAL debug: sockfd=%llu, bytes_to_send=%zu, total_sent=%zd, len=%zu",
                 (unsigned long long)sockfd, bytes_to_send, total_sent, len);
     }
 #elif defined(MSG_NOSIGNAL)
@@ -395,7 +394,8 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
   // Send header first
   ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
   if (sent != sizeof(header)) {
-    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno, SAFE_STRERROR(errno));
+    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
+              SAFE_STRERROR(errno));
     return -1;
   }
 
@@ -882,7 +882,6 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
 int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, unsigned short height) {
   // Detect terminal capabilities automatically
   terminal_capabilities_t caps = detect_terminal_capabilities();
-
 
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
