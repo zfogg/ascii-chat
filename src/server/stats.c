@@ -309,7 +309,6 @@ extern uint64_t g_blank_frames_sent;
  * @note All statistics collection is non-blocking and read-only
  *
  * @warning Thread must be properly joined to prevent resource leaks
- * @see interruptible_usleep() For responsive shutdown sleep implementation
  */
 
 void *stats_logger_thread(void *arg) {
@@ -318,7 +317,7 @@ void *stats_logger_thread(void *arg) {
   while (!atomic_load(&g_should_exit)) {
     // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
     for (int i = 0; i < 3000 && !atomic_load(&g_should_exit); i++) {
-      interruptible_usleep(10000); // 10ms sleep - can be interrupted by shutdown
+      platform_sleep_usec(10000); // 10ms sleep
     }
 
     // Check exit condition before proceeding with statistics logging

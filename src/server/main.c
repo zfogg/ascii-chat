@@ -137,7 +137,6 @@ static_mutex_t g_shutdown_mutex = STATIC_MUTEX_INIT;
  *
  * Broadcasted by signal handlers to wake all sleeping threads immediately.
  * This enables responsive shutdown instead of waiting for timeouts to expire.
- * Used primarily by interruptible_usleep() functions throughout the codebase.
  */
 static_cond_t g_shutdown_cond = STATIC_COND_INIT;
 
@@ -395,8 +394,6 @@ int main(int argc, char *argv[]) {
   }
   atexit(platform_cleanup);
 
-  // Set up platform shutdown coordination for interruptible sleep
-  platform_set_shutdown_coordination(&g_should_exit, &g_shutdown_mutex, &g_shutdown_cond);
 
   options_init(argc, argv, false);
 

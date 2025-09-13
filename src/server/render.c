@@ -262,19 +262,8 @@ uint64_t g_blank_frames_sent = 0;
  * @see VIDEO_RENDER_FPS For video thread timing requirements
  */
 
-void interruptible_usleep(unsigned int usec) {
-  if (atomic_load(&g_should_exit)) {
-    return;
-  }
-
-  // Use platform abstraction for cross-platform sleep
-  platform_interruptible_sleep_usec(usec);
-
-  // Check again after sleep
-  if (atomic_load(&g_should_exit)) {
-    return;
-  }
-}
+// Removed interruptible_usleep - using regular platform_sleep_usec instead
+// Sleep interruption isn't needed for small delays and isn't truly possible anyway
 
 /* ============================================================================
  * Per-Client Video Rendering Implementation
@@ -382,38 +371,57 @@ void interruptible_usleep(unsigned int usec) {
  */
 
 void *client_video_render_thread(void *arg) {
+  log_info("Video render thread function called with arg=%p", arg);
+
   client_info_t *client = (client_info_t *)arg;
-  if (!client || client->socket <= 0) {
-    log_error("Invalid client info in video render thread");
+  if (!client) {
+    log_error("NULL client pointer in video render thread");
     return NULL;
   }
 
-#ifdef DEBUG_THREADS
+  log_info("Video render thread: client_id=%u, socket=%d", client->client_id, client->socket);
+
+  if (client->socket <= 0) {
+    log_error("Invalid socket (%d) in video render thread for client %u", client->socket, client->client_id);
+    return NULL;
+  }
+
   log_info("Video render thread started for client %u (%s)", client->client_id, client->display_name);
-#endif
 
   const int base_frame_interval_ms = 1000 / VIDEO_RENDER_FPS; // 60 FPS base rate
   struct timespec last_render_time;
   clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
   bool should_continue = true;
+  int loop_count = 0;
   while (should_continue && !atomic_load(&g_should_exit)) {
+    loop_count++;
+    log_info("Video render thread loop %d for client %u", loop_count, client->client_id);
+
     mutex_lock(&client->client_state_mutex);
     should_continue = client->video_render_thread_running && client->active;
     mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {
+      log_info("Video render thread stopping for client %u (should_continue=false)", client->client_id);
       break;
     }
+
     // Rate limiting
+    log_info("Video render thread: checking timing for client %u", client->client_id);
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
     long elapsed_ms = (current_time.tv_sec - last_render_time.tv_sec) * 1000 +
                       (current_time.tv_nsec - last_render_time.tv_nsec) / 1000000;
 
+    log_info("Video render thread: elapsed_ms=%ld, base_frame_interval_ms=%d", elapsed_ms, base_frame_interval_ms);
+
     if (elapsed_ms < base_frame_interval_ms) {
-      interruptible_usleep((base_frame_interval_ms - elapsed_ms) * 1000);
+      long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
+      log_info("Video render thread: sleeping for %ld us", sleep_us);
+      platform_sleep_usec(sleep_us);
+      log_info("Video render thread: woke up from sleep");
       continue;
     }
 
@@ -434,6 +442,7 @@ void *client_video_render_thread(void *arg) {
 #endif
 
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
+    log_info("Video render thread for client %u: generating frame (elapsed_ms=%ld)", client_id_snapshot, elapsed_ms);
     size_t frame_size = 0;
     char *ascii_frame =
         create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
@@ -608,7 +617,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     if (!g_audio_mixer) {
-      interruptible_usleep(10000);
+      platform_sleep_usec(10000);
       continue;
     }
 
@@ -655,7 +664,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Audio mixing rate - 5.8ms to match buffer size
-    interruptible_usleep(5800);
+    platform_sleep_usec(5800);
   }
 
 #ifdef DEBUG_THREADS
@@ -774,9 +783,7 @@ int create_client_render_threads(client_info_t *client) {
     mutex_destroy(&client->client_state_mutex);
     return -1;
   } else {
-#ifdef DEBUG_THREADS
     log_info("Created video render thread for client %u", client->client_id);
-#endif
   }
 
   // CRITICAL FIX: Protect thread_running flag with mutex
@@ -797,9 +804,7 @@ int create_client_render_threads(client_info_t *client) {
     mutex_destroy(&client->client_state_mutex);
     return -1;
   } else {
-#ifdef DEBUG_THREADS
     log_info("Created audio render thread for client %u", client->client_id);
-#endif
   }
 
   // CRITICAL FIX: Protect thread_running flag with mutex

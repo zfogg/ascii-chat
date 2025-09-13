@@ -10,7 +10,7 @@
 #include <windows.h>
 #include "common.h"
 #include "image2ascii/image.h"
-#include "os/windows/yuy2_simd.h"
+#include "image2ascii/simd/yuv.h"
 
 // High-resolution timer for Windows
 static double get_time_ms(void) {

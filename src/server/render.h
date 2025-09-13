@@ -17,6 +17,3 @@ void stop_client_render_threads(client_info_t *client);
 // Render utilities
 void calculate_render_interval(int target_fps, struct timespec *interval);
 void wait_for_next_render(struct timespec *last_render_time, const struct timespec *interval);
-
-// Utility function for interruptible sleep
-void interruptible_usleep(unsigned int usec);

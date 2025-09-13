@@ -23,15 +23,6 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
-// ============================================================================
-// Platform Shutdown Coordination
-// ============================================================================
-
-// Application shutdown coordination - set by platform_set_shutdown_coordination()
-static atomic_bool *g_platform_should_exit = NULL;
-static mutex_t *g_platform_shutdown_mutex = NULL;
-static cond_t *g_platform_shutdown_cond = NULL;
-
 /**
  * @brief Get username from environment variables
  * @return Username string or "unknown" if not found
@@ -93,63 +84,6 @@ void platform_sleep_us(unsigned int us) {
  */
 void platform_sleep_usec(unsigned int usec) {
   usleep(usec);
-}
-
-/**
- * @brief Initialize platform shutdown coordination with application globals
- * @param should_exit_flag Pointer to application's atomic_bool shutdown flag
- * @param shutdown_mutex Pointer to application's shutdown mutex
- * @param shutdown_cond Pointer to application's shutdown condition variable
- *
- * This function connects the platform abstraction layer to the application's
- * global shutdown coordination mechanism, enabling interruptible sleep operations.
- */
-void platform_set_shutdown_coordination(void *should_exit_flag, void *shutdown_mutex, void *shutdown_cond) {
-  g_platform_should_exit = (atomic_bool *)should_exit_flag;
-  g_platform_shutdown_mutex = (mutex_t *)shutdown_mutex;
-  g_platform_shutdown_cond = (cond_t *)shutdown_cond;
-}
-
-/**
- * @brief Interruptible sleep for render threads using POSIX condition variables
- * @param usec Number of microseconds to sleep
- *
- * POSIX implementation uses pthread_cond_timedwait for responsive interruption.
- * This allows threads to be woken up immediately during shutdown via condition
- * variable broadcast rather than waiting for the full sleep duration.
- *
- * The function respects the application's global shutdown flag and can be
- * interrupted by broadcasting the shutdown condition variable.
- */
-void platform_interruptible_sleep_usec(unsigned int usec) {
-  // Early exit if shutdown requested
-  if (g_platform_should_exit && atomic_load(g_platform_should_exit)) {
-    return;
-  }
-
-  // Shutdown coordination must be set up before using interruptible sleep
-  if (!g_platform_shutdown_mutex || !g_platform_shutdown_cond || !g_platform_should_exit) {
-    // Programming error - application must call platform_set_shutdown_coordination() first
-    log_error("FATAL: platform_interruptible_sleep_usec() called without shutdown coordination setup. "
-             "Application must call platform_set_shutdown_coordination() during initialization.");
-    abort();
-  }
-
-  // Use platform abstraction for interruptible sleep
-  mutex_lock(g_platform_shutdown_mutex);
-
-  // Check shutdown flag again after acquiring mutex
-  if (!g_platform_should_exit || !atomic_load(g_platform_should_exit)) {
-    // Convert timeout to milliseconds for platform abstraction
-    int timeout_ms = (int)(usec / 1000);
-    if (timeout_ms < 1)
-      timeout_ms = 1;
-
-    // Wait with timeout - will be interrupted by shutdown condition broadcast
-    cond_timedwait(g_platform_shutdown_cond, g_platform_shutdown_mutex, timeout_ms);
-  }
-
-  mutex_unlock(g_platform_shutdown_mutex);
 }
 
 /**

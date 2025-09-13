@@ -4,7 +4,7 @@
 #ifdef _WIN32
 
 #include "common.h"
-#include "image2ascii/image.h"
+#include "../image.h"
 #include <stdint.h>
 #include <string.h>
 

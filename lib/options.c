@@ -47,7 +47,7 @@ char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1", opt_port[OPTIONS_BUFF_SIZE] =
 
 unsigned short int opt_webcam_index = 0;
 
-bool opt_webcam_flip = false;
+bool opt_webcam_flip = true;
 
 // Terminal color mode and capability options
 terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
@@ -598,8 +598,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
   fprintf(desc,
           USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT "webcam device index (0-based) (default: 0)\n");
-  fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "horizontally flip the webcam "
-                             "image (default: [unset])\n");
+  fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
+                             "image (default: flipped)\n");
   fprintf(desc, USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
                              "(default: auto)\n");
   fprintf(desc,
