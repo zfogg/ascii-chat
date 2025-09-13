@@ -260,14 +260,10 @@ void log_truncate_if_large(void) {
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
+  // Simple approach: just check if initialized
+  // If not initialized, just don't log (main() should have initialized it)
   if (!g_log.initialized) {
-    // Preserve the current terminal output setting before auto-initialization
-    bool preserve_terminal_output = g_log.terminal_output_enabled;
-    // Use manually set level if available, otherwise default to LOG_INFO
-    log_level_t init_level = g_log.level_manually_set ? g_log.level : LOG_INFO;
-    log_init(NULL, init_level);
-    // Restore the terminal output setting after initialization
-    g_log.terminal_output_enabled = preserve_terminal_output;
+    return;  // Don't log if not initialized - this prevents the deadlock
   }
 
   if (level < g_log.level) {
@@ -329,7 +325,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       g_log.current_size += (size_t)written;
     }
 
-    // No need to flush with direct platform_write() - it bypasses stdio buffering
+    mutex_unlock(&g_log.mutex);
+
+    // NOTE: No need to flush with direct platform_write() - it bypasses stdio buffering
   }
 
   // Handle stderr output separately - only if terminal output is enabled
@@ -345,16 +343,23 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     fflush(log_file);
   }
 
-  /* Also print to stderr with colors if it's a terminal and terminal output is enabled */
-  if (g_log.terminal_output_enabled && isatty(STDERR_FILENO)) {
-    fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
-            line, func);
+  /* Print to stdout (INFO/DEBUG) or stderr (ERROR/WARN) with colors if terminal output is enabled */
+  if (g_log.terminal_output_enabled) {
+    /* Choose output stream based on log level */
+    FILE *output_stream = (level == LOG_ERROR || level == LOG_WARN) ? stderr : stdout;
+    int fd = (level == LOG_ERROR || level == LOG_WARN) ? STDERR_FILENO : STDOUT_FILENO;
 
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
+    if (isatty(fd)) {
+      fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
+              line, func);
 
-    fprintf(stderr, "\n");
+      va_list args;
+      va_start(args, fmt);
+      vfprintf(output_stream, fmt, args);
+      va_end(args);
+
+      fprintf(output_stream, "\n");
+      fflush(output_stream);
+    }
   }
 }

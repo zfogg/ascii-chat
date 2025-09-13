@@ -109,10 +109,6 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
     errno = EBADF;
     return -1;
   }
-  
-#ifdef _WIN32
-  log_error("DEBUG: send_with_timeout called with sockfd=%llu, len=%zu", (unsigned long long)sockfd, len);
-#endif
 
 
   while (total_sent < (ssize_t)len) {

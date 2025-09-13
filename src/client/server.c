@@ -198,17 +198,17 @@ static int safe_send_audio_batch_packet(socket_t sockfd, const float *samples, i
  * @return 0 on success, negative on error
  */
 static int safe_send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, unsigned short height) {
-  log_error("DEBUG: safe_send entry, errno=%d", errno);
+  log_debug("safe_send entry, errno=%d", errno);
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    log_error("DEBUG: connection inactive or invalid socket, errno=%d", errno);
+    log_debug("connection inactive or invalid socket, errno=%d", errno);
     return -1;
   }
 
-  log_error("DEBUG: acquiring send mutex, errno=%d", errno);
+  log_debug("acquiring send mutex, errno=%d", errno);
   mutex_lock(&g_send_mutex);
-  log_error("DEBUG: calling send_terminal_size_with_auto_detect, errno=%d", errno);
+  log_debug("calling send_terminal_size_with_auto_detect, errno=%d", errno);
   int result = send_terminal_size_with_auto_detect(sockfd, width, height);
-  log_error("DEBUG: send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
+  log_debug("send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
   mutex_unlock(&g_send_mutex);
 
   return result;
@@ -398,6 +398,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   } else {
     log_info("Connecting to %s:%d", address, port);
   }
+  log_info("DEBUG: About to create socket");
 
   // Create socket
   g_sockfd = socket_create(AF_INET, SOCK_STREAM, 0);
@@ -405,11 +406,14 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_error("Could not create socket: %s", network_error_string(errno));
     return -1;
   }
+  log_info("DEBUG: About to set up server address");
+  log_info("DEBUG: Socket created, fd=%d", g_sockfd);
 
   // Set up server address structure
   struct sockaddr_in serv_addr;
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
+  log_info("DEBUG: About to call inet_pton");
   serv_addr.sin_port = htons(port);
 
   // Convert address string to binary form
@@ -419,6 +423,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
   }
+  log_info("DEBUG: inet_pton succeeded, about to connect");
 
   // Attempt connection with timeout
   if (!connect_with_timeout(g_sockfd, (struct sockaddr *)&serv_addr,
@@ -455,9 +460,9 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Send initial terminal capabilities to server
-  log_error("DEBUG: About to call safe_send_terminal_size_with_auto_detect, errno=%d", errno);
+  log_debug("About to call safe_send_terminal_size_with_auto_detect, errno=%d", errno);
   int result = safe_send_terminal_size_with_auto_detect(g_sockfd, opt_width, opt_height);
-  log_error("DEBUG: safe_send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
+  log_debug("safe_send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
   if (result < 0) {
     log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
     close_socket(g_sockfd);

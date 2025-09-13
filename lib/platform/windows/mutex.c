@@ -17,7 +17,7 @@
  * @return 0 on success, error code on failure
  */
 int mutex_init(mutex_t *mutex) {
-  InitializeCriticalSection(mutex);
+  InitializeCriticalSectionAndSpinCount(mutex, 4000);
   return 0;
 }
 

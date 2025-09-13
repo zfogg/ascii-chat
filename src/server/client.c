@@ -733,11 +733,6 @@ void *client_send_thread_func(void *arg) {
         }
       }
 
-// Successfully sent packet
-#ifdef DEBUG_NETWORK
-      uint16_t pkt_type = ntohs(packet->header.type);
-      log_debug("Sent packet type=%d to client %u (len=%zu)", pkt_type, client->client_id, packet->data_len);
-#endif
 
       // Free the packet
       packet_queue_free_packet(packet);
