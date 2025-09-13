@@ -20,7 +20,11 @@ endif()
 # Speed up CMake's compiler tests by avoiding linking issues
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-project(ascii-chat LANGUAGES C CXX)
+if(APPLE)
+    project(ascii-chat LANGUAGES C CXX OBJC)
+else()
+    project(ascii-chat LANGUAGES C CXX)
+endif()
 
 # Generate compile_commands.json for IDE/tool integration (clangd, VSCode, etc.)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -126,6 +130,9 @@ endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions for POSIX compatibility
 
+
+# Option to build tests
+option(BUILD_TESTS "Build test executables" ON)
 
 # Build type (matches Makefile modes)
 if(NOT CMAKE_BUILD_TYPE)
@@ -869,7 +876,9 @@ else()
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
     
     # Test dependencies (matching TEST_PKG_CONFIG_LIBS in Makefile)
-    pkg_check_modules(CRITERION criterion)
+    if(BUILD_TESTS)
+        pkg_check_modules(CRITERION criterion)
+    endif()
 endif()
 
 # Windows SDK and MSVC detection for native Clang builds
@@ -1156,7 +1165,7 @@ else()
     
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
-            lib/os/macos/webcam_avfoundation.c
+            lib/os/macos/webcam_avfoundation.m
         )
     else()
         list(APPEND PLATFORM_SRCS
@@ -1317,7 +1326,7 @@ endif()
 # =============================================================================
 
 # Test framework setup
-if(CRITERION_FOUND)
+if(BUILD_TESTS AND CRITERION_FOUND)
     enable_testing()
     
     # Build test LDFLAGS systematically (matches Makefile complex setup)
@@ -1405,6 +1414,9 @@ if(CRITERION_FOUND)
         
         # Add test executable with test logging helper
         add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
+        
+        # Add Criterion include directories
+        target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
         
         # Link test dependencies (order matters for linking)
         target_link_libraries(${test_exe_name}

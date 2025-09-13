@@ -5,7 +5,7 @@
 #import <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
 
-#include "webcam_platform.h"
+#include "os/webcam.h"
 #include "common.h"
 
 // AVFoundation timeout configuration

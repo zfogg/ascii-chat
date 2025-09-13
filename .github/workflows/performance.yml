@@ -96,7 +96,7 @@ jobs:
         CC=clang CXX=clang++ cmake -B build_debug -G Ninja \
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x'
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
         cmake --build build_debug
         DEBUG_SERVER_SIZE=$(stat -f%z build_debug/bin/ascii-chat-server 2>/dev/null || stat -c%s build_debug/bin/ascii-chat-server)
         DEBUG_CLIENT_SIZE=$(stat -f%z build_debug/bin/ascii-chat-client 2>/dev/null || stat -c%s build_debug/bin/ascii-chat-client)
@@ -105,7 +105,7 @@ jobs:
         CC=clang CXX=clang++ cmake -B build_release -G Ninja \
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x'
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
         cmake --build build_release
         RELEASE_SERVER_SIZE=$(stat -f%z build_release/bin/ascii-chat-server 2>/dev/null || stat -c%s build_release/bin/ascii-chat-server)
         RELEASE_CLIENT_SIZE=$(stat -f%z build_release/bin/ascii-chat-client 2>/dev/null || stat -c%s build_release/bin/ascii-chat-client)

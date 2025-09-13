@@ -21,6 +21,7 @@ typedef SOCKET socket_t;
 #define INVALID_SOCKET_VALUE INVALID_SOCKET
 typedef int socklen_t;
 typedef int ssize_t;
+typedef unsigned long nfds_t;  // Windows doesn't have nfds_t
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -77,7 +78,7 @@ int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *add
 int socket_get_error(socket_t sock);
 int socket_get_last_error(void);
 const char *socket_get_error_string(void);
-int socket_poll(struct pollfd *fds, unsigned long nfds, int timeout);
+int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);
 int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 void socket_fd_zero(fd_set *set);
 void socket_fd_set(socket_t sock, fd_set *set);

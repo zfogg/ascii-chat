@@ -156,69 +156,20 @@ int socket_is_valid(socket_t sock) {
   return sock != INVALID_SOCKET;
 }
 
-// Poll/select implementation
+// Poll implementation using WSAPoll (available on Windows Vista+)
 int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
-  // Windows doesn't have poll(), use select() instead
-  fd_set readfds, writefds, exceptfds;
-  struct timeval tv;
-  struct timeval *tvp = NULL;
-  int max_fd = 0;
-  int result;
-
-  FD_ZERO(&readfds);
-  FD_ZERO(&writefds);
-  FD_ZERO(&exceptfds);
-
-  // Convert pollfd array to fd_sets
-  for (nfds_t i = 0; i < nfds; i++) {
-    SOCKET fd = fds[i].fd;
-    if (fd == INVALID_SOCKET)
-      continue;
-
-    if (fds[i].events & POLLIN) {
-      FD_SET(fd, &readfds);
-    }
-    if (fds[i].events & POLLOUT) {
-      FD_SET(fd, &writefds);
-    }
-    FD_SET(fd, &exceptfds);
-
-    if ((int)fd > max_fd) {
-      max_fd = (int)fd;
-    }
-
-    // Clear revents
-    fds[i].revents = 0;
+  // WSAPoll is the Windows equivalent of poll()
+  // It's available on Windows Vista and later
+  // The pollfd structure is compatible between poll() and WSAPoll()
+  
+  // WSAPoll takes ULONG for nfds parameter, cast our nfds_t
+  int result = WSAPoll((LPWSAPOLLFD)fds, (ULONG)nfds, timeout);
+  
+  if (result == SOCKET_ERROR) {
+    // WSAPoll returns SOCKET_ERROR (-1) on error, same as poll()
+    return -1;
   }
-
-  // Set timeout
-  if (timeout >= 0) {
-    tv.tv_sec = timeout / 1000;
-    tv.tv_usec = (timeout % 1000) * 1000;
-    tvp = &tv;
-  }
-
-  result = select(max_fd + 1, &readfds, &writefds, &exceptfds, tvp);
-
-  if (result > 0) {
-    // Convert fd_sets back to pollfd revents
-    for (nfds_t i = 0; i < nfds; i++) {
-      SOCKET fd = fds[i].fd;
-      if (fd == INVALID_SOCKET)
-        continue;
-
-      if (FD_ISSET(fd, &readfds)) {
-        fds[i].revents |= POLLIN;
-      }
-      if (FD_ISSET(fd, &writefds)) {
-        fds[i].revents |= POLLOUT;
-      }
-      if (FD_ISSET(fd, &exceptfds)) {
-        fds[i].revents |= POLLERR;
-      }
-    }
-  }
-
+  
   return result;
 }
 
