@@ -71,6 +71,8 @@
 #include "audio.h"
 #include "os/audio.h"
 #include "keepalive.h"
+#include "os/webcam.h"
+#include "image2ascii/image.h"
 
 #include "platform/abstraction.h"
 #include "platform/init.h"
@@ -90,6 +92,7 @@
 
 /** Global flag indicating shutdown has been requested */
 static atomic_bool g_should_exit = false;
+
 
 /**
  * Check if shutdown has been requested
@@ -331,6 +334,7 @@ int main(int argc, char *argv[]) {
   }
 
   log_info("ASCII-Chat client started");
+
 
   /* ========================================================================
    * Main Connection Loop

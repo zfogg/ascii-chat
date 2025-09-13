@@ -83,6 +83,7 @@
 #include "main.h"
 #include "server.h"
 #include "display.h"
+#include "capture.h"
 #include "audio.h"
 #include "os/audio.h"
 
@@ -466,12 +467,28 @@ int protocol_start_connection() {
   g_last_active_count = 0;
   g_should_clear_before_next_frame = false;
 
+#ifdef DEBUG_THREADS
+  log_info("DEBUG: Starting protocol connection - creating threads");
+#endif
+
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
   if (ascii_thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
     log_error("Failed to create data reception thread");
     return -1;
   }
+#ifdef DEBUG_THREADS
+  log_info("DEBUG: Data reception thread created successfully");
+#endif
+
+  // Start webcam capture thread
+  if (capture_start_thread() != 0) {
+    log_error("Failed to start webcam capture thread");
+    return -1;
+  }
+#ifdef DEBUG_THREADS
+  log_info("DEBUG: Webcam capture thread started successfully");
+#endif
 
   g_data_thread_created = true;
   return 0;
@@ -488,8 +505,18 @@ void protocol_stop_connection() {
     return;
   }
 
+#ifdef DEBUG_THREADS
+  log_info("DEBUG: Stopping protocol connection - stopping threads");
+#endif
+
   // Signal thread to stop
   signal_exit();
+
+  // Stop webcam capture thread
+  capture_stop_thread();
+#ifdef DEBUG_THREADS
+  log_info("DEBUG: Webcam capture thread stopped");
+#endif
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
@@ -506,7 +533,9 @@ void protocol_stop_connection() {
   ascii_thread_join(&g_data_thread, NULL);
   g_data_thread_created = false;
 
+#ifdef DEBUG_THREADS
   log_info("Data reception thread stopped and joined");
+#endif
 }
 
 /**
