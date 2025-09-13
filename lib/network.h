@@ -95,8 +95,8 @@ typedef struct {
 
 // Size packet for terminal size updates
 typedef struct {
-    uint32_t width;
-    uint32_t height;
+  uint32_t width;
+  uint32_t height;
 } size_packet_t;
 
 typedef struct {

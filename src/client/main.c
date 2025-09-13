@@ -93,7 +93,6 @@
 /** Global flag indicating shutdown has been requested */
 static atomic_bool g_should_exit = false;
 
-
 /**
  * Check if shutdown has been requested
  *
@@ -164,8 +163,7 @@ static void sigwinch_handler(int sigwinch) {
     // Send new size to server if connected
     if (server_connection_is_active()) {
       if (server_send_terminal_capabilities(opt_width, opt_height) < 0) {
-        log_warn("Failed to send terminal capabilities to server: %s",
-                 network_error_string(errno));
+        log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
       } else {
         display_full_reset();
       }
@@ -335,7 +333,6 @@ int main(int argc, char *argv[]) {
 
   log_info("ASCII-Chat client started");
 
-
   /* ========================================================================
    * Main Connection Loop
    * ========================================================================
@@ -346,10 +343,8 @@ int main(int argc, char *argv[]) {
 
   while (!should_exit()) {
     // Handle connection establishment or reconnection
-    int connection_result = server_connection_establish(opt_address,
-                                                        strtoint_safe(opt_port),
-                                                        reconnect_attempt,
-                                                        first_connection);
+    int connection_result =
+        server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt, first_connection);
 
     if (connection_result != 0) {
       // Connection failed - increment attempt counter and retry

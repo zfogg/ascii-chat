@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include "../image.h"
 
-
 // Forward declarations for architecture-specific implementations
 // rgb_t should be available from image.h
 typedef rgb_t rgb_pixel_t;
@@ -89,7 +88,6 @@ char *append_sgr_reset(char *dst);
 // Helper: write decimal RGB triplet using dec3 cache
 // Note: This function is defined in ascii_simd.c to avoid circular dependencies
 size_t write_rgb_triplet(uint8_t value, char *dst);
-
 
 // Simple decimal writer for REP counts (can be larger than 255)
 static inline size_t write_decimal(int value, char *dst) {

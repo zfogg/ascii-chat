@@ -124,6 +124,7 @@
 #include "os/audio.h"
 #include "mixer.h"
 #include "hashtable.h"
+#include "platform/abstraction.h"
 
 /**
  * @brief Global client manager singleton - central coordination point
@@ -159,8 +160,8 @@ client_manager_t g_client_manager = {0};
 rwlock_t g_client_manager_rwlock = {0};
 
 // External globals from main.c
-extern atomic_bool g_should_exit;    ///< Global shutdown flag from main.c
-extern mixer_t *g_audio_mixer;       ///< Global audio mixer from main.c
+extern atomic_bool g_should_exit; ///< Global shutdown flag from main.c
+extern mixer_t *g_audio_mixer;    ///< Global audio mixer from main.c
 
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
@@ -283,8 +284,8 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->connected_at = time(NULL);
   snprintf(client->display_name, sizeof(client->display_name), "Client%u", client->client_id);
 
-  // Create individual video buffer for this client
-  client->incoming_video_buffer = framebuffer_create_multi(64); // Increased to 64 frames to handle bursts
+  // Create individual video buffer for this client using modern double-buffering
+  client->incoming_video_buffer = video_frame_buffer_create(client->client_id);
   if (!client->incoming_video_buffer) {
     log_error("Failed to create video buffer for client %u", client->client_id);
     rwlock_unlock(&g_client_manager_rwlock);
@@ -295,7 +296,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->incoming_audio_buffer = audio_ring_buffer_create();
   if (!client->incoming_audio_buffer) {
     log_error("Failed to create audio buffer for client %u", client->client_id);
-    framebuffer_destroy(client->incoming_video_buffer);
+    video_frame_buffer_destroy(client->incoming_video_buffer);
     client->incoming_video_buffer = NULL;
     rwlock_unlock(&g_client_manager_rwlock);
     return -1;
@@ -307,7 +308,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
       packet_queue_create_with_pools(100, 200, false); // Max 100 audio packets, 200 nodes, NO local buffer pool
   if (!client->audio_queue) {
     log_error("Failed to create audio queue for client %u", client->client_id);
-    framebuffer_destroy(client->incoming_video_buffer);
+    video_frame_buffer_destroy(client->incoming_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     client->incoming_video_buffer = NULL;
     client->incoming_audio_buffer = NULL;
@@ -319,7 +320,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
       500, 1000, false); // Max 500 packets (both image frames in + ASCII frames out), 1000 nodes, NO local buffer pool
   if (!client->video_queue) {
     log_error("Failed to create video queue for client %u", client->client_id);
-    framebuffer_destroy(client->incoming_video_buffer);
+    video_frame_buffer_destroy(client->incoming_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     packet_queue_destroy(client->audio_queue);
     client->incoming_video_buffer = NULL;
@@ -387,7 +388,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   }
 #ifdef DEBUG_NETWORK
   log_info("Queued initial server state for client %u: %u connected clients", client->client_id,
-            state.connected_client_count);
+           state.connected_client_count);
 #endif
 
   // NEW: Create per-client rendering threads
@@ -415,28 +416,23 @@ int remove_client(uint32_t client_id) {
       client->active = false;
 
       // Clean up client resources
-      if (client->socket > 0) {
-        close(client->socket);
-        client->socket = 0;
+      if (client->socket != INVALID_SOCKET_VALUE) {
+        socket_close(client->socket);
+        client->socket = INVALID_SOCKET_VALUE;
       }
 
-      // Free cached frame if we have one
-      if (client->has_cached_frame && client->last_valid_frame.data) {
-        buffer_pool_free(client->last_valid_frame.data, client->last_valid_frame.size);
-        client->last_valid_frame.data = NULL;
-        client->has_cached_frame = false;
-      }
+      // No cached frames to free - using professional double-buffer system
 
       // Only destroy buffers if they haven't been destroyed already
       // Use temporary pointers to avoid race conditions
-      framebuffer_t *video_buffer = client->incoming_video_buffer;
+      video_frame_buffer_t *video_buffer = client->incoming_video_buffer;
       audio_ring_buffer_t *audio_buffer = client->incoming_audio_buffer;
 
       client->incoming_video_buffer = NULL;
       client->incoming_audio_buffer = NULL;
 
       if (video_buffer) {
-        framebuffer_destroy(video_buffer);
+        video_frame_buffer_destroy(video_buffer);
       }
 
       if (audio_buffer) {
@@ -465,17 +461,9 @@ int remove_client(uint32_t client_id) {
         }
       }
 
-      // Join receive thread if it exists and we're not in the receive thread context
-      // Note: simplified thread cleanup without thread_equal check
-      {
-        int join_result = ascii_thread_join(&client->receive_thread, NULL);
-        if (join_result == 0) {
-          log_debug("Receive thread for client %u has terminated", client_id);
-        } else {
-          log_warn("Failed to join receive thread for client %u: %d", client_id, join_result);
-          return -1;
-        }
-      }
+      // Receive thread is already joined by main.c before calling remove_client()
+      // No need to join again to prevent double-join errors
+      log_debug("Receive thread for client %u was already joined by main thread", client_id);
 
       // NEW: Destroy per-client render threads
       stop_client_render_threads(client);
@@ -511,7 +499,6 @@ int remove_client(uint32_t client_id) {
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
       // Destroy per-client mutexes
-      mutex_destroy(&client->cached_frame_mutex);
       mutex_destroy(&client->video_buffer_mutex);
       mutex_destroy(&client->client_state_mutex);
 
@@ -687,8 +674,9 @@ void *client_send_thread_func(void *arg) {
       packet = packet_queue_try_dequeue(client->video_queue);
       if (packet) {
 #ifdef DEBUG_THREADS
-        log_debug("SEND_THREAD_DEBUG: Client %u got video packet from queue, type=%d, data_len=%zu", client->client_id,
-                  packet->header.type, packet->data_len);
+        LOG_DEBUG_EVERY(send_thread, 100,
+                        "SEND_THREAD_DEBUG: Client %u got video packet from queue, type=%d, data_len=%zu",
+                        client->client_id, packet->header.type, packet->data_len);
 #endif
       }
     }
@@ -696,7 +684,8 @@ void *client_send_thread_func(void *arg) {
     // If still no packet, small sleep to prevent busy waiting
     if (!packet) {
 #ifdef DEBUG_THREADS
-      log_debug("SEND_THREAD_DEBUG: Client %u no packet found, sleeping briefly", client->client_id);
+      LOG_DEBUG_EVERY(send_thread, 100, "SEND_THREAD_DEBUG: Client %u no packet found, sleeping briefly",
+                      client->client_id);
 #endif
       interruptible_usleep(1000); // 1ms sleep instead of blocking indefinitely
     }
@@ -732,7 +721,6 @@ void *client_send_thread_func(void *arg) {
           break; // Socket error, exit thread
         }
       }
-
 
       // Free the packet
       packet_queue_free_packet(packet);
@@ -798,7 +786,8 @@ void broadcast_server_state_to_all_clients(void) {
  */
 
 void stop_client_threads(client_info_t *client) {
-  if (!client) return;
+  if (!client)
+    return;
 
   // Signal threads to stop
   client->active = false;
@@ -814,10 +803,11 @@ void stop_client_threads(client_info_t *client) {
 }
 
 void cleanup_client_media_buffers(client_info_t *client) {
-  if (!client) return;
+  if (!client)
+    return;
 
   if (client->incoming_video_buffer) {
-    framebuffer_destroy(client->incoming_video_buffer);
+    video_frame_buffer_destroy(client->incoming_video_buffer);
     client->incoming_video_buffer = NULL;
   }
 
@@ -828,7 +818,8 @@ void cleanup_client_media_buffers(client_info_t *client) {
 }
 
 void cleanup_client_packet_queues(client_info_t *client) {
-  if (!client) return;
+  if (!client)
+    return;
 
   if (client->audio_queue) {
     packet_queue_destroy(client->audio_queue);

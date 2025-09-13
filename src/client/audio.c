@@ -80,9 +80,8 @@
 #include "main.h"
 #include "server.h"
 
-  
-#include "os/audio.h"  // lib/os/audio.h for PortAudio wrapper
-#include "mixer.h"  // Audio processing functions
+#include "os/audio.h" // lib/os/audio.h for PortAudio wrapper
+#include "mixer.h"    // Audio processing functions
 #include "common.h"
 #include "options.h"
 
@@ -179,7 +178,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
  * processed samples to server via batching system.
  *
  * Capture Loop Operation:
- * 1. Check global shutdown flags and connection status  
+ * 1. Check global shutdown flags and connection status
  * 2. Read raw samples from microphone device
  * 3. Apply audio processing chain (filters, noise gate, clipping)
  * 4. Accumulate samples into transmission batches

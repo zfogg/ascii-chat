@@ -8,11 +8,12 @@
 void setup_crypto_network_quiet_logging(void);
 void restore_crypto_network_logging(void);
 
-TestSuite(crypto_network_integration, .init = setup_crypto_network_quiet_logging, .fini = restore_crypto_network_logging);
+TestSuite(crypto_network_integration, .init = setup_crypto_network_quiet_logging,
+          .fini = restore_crypto_network_logging);
 
 void setup_crypto_network_quiet_logging(void) {
-    // Set log level to FATAL to suppress all INFO/DEBUG messages
-    log_set_level(LOG_FATAL);
+  // Set log level to FATAL to suppress all INFO/DEBUG messages
+  log_set_level(LOG_FATAL);
 }
 
 void restore_crypto_network_logging(void) {

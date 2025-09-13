@@ -15,11 +15,11 @@ void restore_neon_logging(void);
 TestSuite(neon_color_renderers, .init = setup_neon_quiet_logging, .fini = restore_neon_logging);
 
 void setup_neon_quiet_logging(void) {
-    log_set_level(LOG_FATAL);
+  log_set_level(LOG_FATAL);
 }
 
 void restore_neon_logging(void) {
-    log_set_level(LOG_DEBUG);
+  log_set_level(LOG_DEBUG);
 }
 
 // Test helper: create a simple test image
@@ -65,7 +65,8 @@ static image_t *create_gradient_image(int width, int height) {
 
 static void cleanup_image(image_t *image) {
   if (image) {
-    if (image->pixels) free(image->pixels);
+    if (image->pixels)
+      free(image->pixels);
     free(image);
   }
 }
@@ -74,7 +75,7 @@ static void cleanup_image(image_t *image) {
 
 Test(neon_color_renderers, test_256color_solid_image) {
   // Test 256-color renderer with solid red image
-  image_t *image = create_test_image(32, 16, 255, 0, 0);  // Red image
+  image_t *image = create_test_image(32, 16, 255, 0, 0); // Red image
   const char *ascii_chars = " .:-=+*#%@";
 
   log_debug("=== DEBUG 256-COLOR SOLID RED TEST ===");
@@ -83,7 +84,7 @@ Test(neon_color_renderers, test_256color_solid_image) {
 
   char *result = render_ascii_neon_unified_optimized(image, false, true, ascii_chars);
 
-  log_debug("Result pointer: %p", (void*)result);
+  log_debug("Result pointer: %p", (void *)result);
   log_debug("Result length: %zu", result ? strlen(result) : 0);
 
   if (result && strlen(result) > 0) {
@@ -124,7 +125,7 @@ Test(neon_color_renderers, test_256color_gradient_image) {
 
 Test(neon_color_renderers, test_truecolor_solid_image) {
   // Test truecolor renderer with solid green image
-  image_t *image = create_test_image(32, 16, 0, 255, 0);  // Green image
+  image_t *image = create_test_image(32, 16, 0, 255, 0); // Green image
   const char *ascii_chars = " .:-=+*#%@";
 
   log_debug("=== DEBUG TRUECOLOR SOLID GREEN TEST ===");
@@ -133,7 +134,7 @@ Test(neon_color_renderers, test_truecolor_solid_image) {
 
   char *result = render_ascii_neon_unified_optimized(image, false, false, ascii_chars);
 
-  log_debug("Result pointer: %p", (void*)result);
+  log_debug("Result pointer: %p", (void *)result);
   log_debug("Result length: %zu", result ? strlen(result) : 0);
 
   if (result && strlen(result) > 0) {
@@ -174,7 +175,7 @@ Test(neon_color_renderers, test_truecolor_gradient_image) {
 
 Test(neon_color_renderers, test_background_mode_256color) {
   // Test 256-color renderer in background mode
-  image_t *image = create_test_image(16, 8, 0, 0, 255);  // Blue image
+  image_t *image = create_test_image(16, 8, 0, 0, 255); // Blue image
   const char *ascii_chars = " █";
 
   char *result = render_ascii_neon_unified_optimized(image, true, true, ascii_chars);
@@ -192,7 +193,7 @@ Test(neon_color_renderers, test_background_mode_256color) {
 
 Test(neon_color_renderers, test_background_mode_truecolor) {
   // Test truecolor renderer in background mode
-  image_t *image = create_test_image(16, 8, 255, 255, 0);  // Yellow image
+  image_t *image = create_test_image(16, 8, 255, 255, 0); // Yellow image
   const char *ascii_chars = " █";
 
   char *result = render_ascii_neon_unified_optimized(image, true, false, ascii_chars);
@@ -210,7 +211,7 @@ Test(neon_color_renderers, test_background_mode_truecolor) {
 
 Test(neon_color_renderers, test_unified_dispatcher_256color) {
   // Test unified dispatcher routing to 256-color
-  image_t *image = create_test_image(16, 8, 128, 64, 192);  // Purple image
+  image_t *image = create_test_image(16, 8, 128, 64, 192); // Purple image
   const char *ascii_chars = " .oO@";
 
   char *result = render_ascii_neon_unified_optimized(image, false, true, ascii_chars);
@@ -226,7 +227,7 @@ Test(neon_color_renderers, test_unified_dispatcher_256color) {
 
 Test(neon_color_renderers, test_unified_dispatcher_truecolor) {
   // Test unified dispatcher routing to truecolor
-  image_t *image = create_test_image(16, 8, 192, 128, 64);  // Orange image
+  image_t *image = create_test_image(16, 8, 192, 128, 64); // Orange image
   const char *ascii_chars = " .oO@";
 
   char *result = render_ascii_neon_unified_optimized(image, false, false, ascii_chars);
@@ -242,7 +243,7 @@ Test(neon_color_renderers, test_unified_dispatcher_truecolor) {
 
 Test(neon_color_renderers, test_direct_comparison) {
   // Direct comparison between 256-color and truecolor on same image
-  image_t *image = create_test_image(16, 8, 128, 64, 192);  // Purple image
+  image_t *image = create_test_image(16, 8, 128, 64, 192); // Purple image
   const char *ascii_chars = " .oO@";
 
   log_debug("=== DIRECT COMPARISON TEST ===");
@@ -251,7 +252,7 @@ Test(neon_color_renderers, test_direct_comparison) {
 
   log_debug("--- 256-COLOR MODE ---");
   char *result_256 = render_ascii_neon_unified_optimized(image, false, true, ascii_chars);
-  log_debug("256-color pointer: %p", (void*)result_256);
+  log_debug("256-color pointer: %p", (void *)result_256);
   log_debug("256-color length: %zu", result_256 ? strlen(result_256) : 0);
   if (result_256) {
     log_debug("256-color first 200 chars: '%.200s'", result_256);
@@ -260,7 +261,7 @@ Test(neon_color_renderers, test_direct_comparison) {
 
   log_debug("--- TRUECOLOR MODE ---");
   char *result_true = render_ascii_neon_unified_optimized(image, false, false, ascii_chars);
-  log_debug("Truecolor pointer: %p", (void*)result_true);
+  log_debug("Truecolor pointer: %p", (void *)result_true);
   log_debug("Truecolor length: %zu", result_true ? strlen(result_true) : 0);
   if (result_true) {
     log_debug("Truecolor first 200 chars: '%.200s'", result_true);
@@ -270,15 +271,17 @@ Test(neon_color_renderers, test_direct_comparison) {
   cr_assert_not_null(result_256, "256-color should return non-NULL");
   cr_assert_not_null(result_true, "Truecolor should return non-NULL");
 
-  if (result_256) free(result_256);
-  if (result_true) free(result_true);
+  if (result_256)
+    free(result_256);
+  if (result_true)
+    free(result_true);
   cleanup_image(image);
 }
 
 Test(neon_color_renderers, test_utf8_characters) {
   // Test with UTF-8 characters (should work with mixed lengths)
   image_t *image = create_gradient_image(24, 12);
-  const char *ascii_chars = " ░▒▓█🌑🌒🌓🌕";  // Mix of 1-byte and 4-byte UTF-8
+  const char *ascii_chars = " ░▒▓█🌑🌒🌓🌕"; // Mix of 1-byte and 4-byte UTF-8
 
   log_debug("=== UTF-8 TEST ===");
   log_debug("Gradient image: %dx%d pixels", image->w, image->h);
@@ -300,8 +303,10 @@ Test(neon_color_renderers, test_utf8_characters) {
   cr_assert_not_null(result_256, "256-color renderer should handle UTF-8 characters");
   cr_assert_not_null(result_true, "Truecolor renderer should handle UTF-8 characters");
 
-  if (result_256) free(result_256);
-  if (result_true) free(result_true);
+  if (result_256)
+    free(result_256);
+  if (result_true)
+    free(result_true);
   cleanup_image(image);
 }
 

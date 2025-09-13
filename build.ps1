@@ -5,6 +5,7 @@
 #   .\build.ps1 -Config Release    # Build in Release mode
 #   .\build.ps1 -BuildDir mybuild  # Use custom build directory
 #   .\build.ps1 -Clean             # Clean and rebuild
+#   .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"  # Add compiler flags
 
 param(
     [switch]$Clean,
@@ -12,11 +13,35 @@ param(
     [string]$BuildDir = "build",
     [switch]$MinGW,
     [switch]$Test,
-    [switch]$Verbose
+    [switch]$Verbose,
+    [string[]]$CFlags = @()
 )
 
 Write-Host "ASCII-Chat Build Script" -ForegroundColor Green
 Write-Host ""
+
+# Kill any running server/client processes before building
+Write-Host "Checking for running ASCII-Chat processes..." -ForegroundColor Cyan
+$processes = @("ascii-chat-server", "ascii-chat-client", "server", "client")
+$killed = $false
+
+foreach ($proc in $processes) {
+    $running = Get-Process -Name $proc -ErrorAction SilentlyContinue
+    if ($running) {
+        Write-Host "Killing running $proc processes..." -ForegroundColor Yellow
+        Stop-Process -Name $proc -Force -ErrorAction SilentlyContinue
+        Wait-Process -Name $proc -ErrorAction SilentlyContinue
+        $killed = $true
+    }
+}
+
+if ($killed) {
+    Write-Host "Processes terminated." -ForegroundColor Green
+    Write-Host ""
+} else {
+    Write-Host "No running ASCII-Chat processes found." -ForegroundColor Green
+    Write-Host ""
+}
 
 # Clean build directory if requested
 if ($Clean) {
@@ -86,6 +111,13 @@ if ($MinGW) {
     $cmakeArgs += "-DUSE_MINGW=ON"
     # Disable vcpkg for MinGW builds as vcpkg libraries are for MSVC
     $env:VCPKG_ROOT = ""
+}
+
+# Add compiler flags if provided
+if ($CFlags.Count -gt 0) {
+    $flagString = $CFlags -join " "
+    $cmakeArgs += "-DCMAKE_C_FLAGS=$flagString"
+    Write-Host "Using C flags: $flagString" -ForegroundColor Yellow
 }
 
 if ($Verbose) {

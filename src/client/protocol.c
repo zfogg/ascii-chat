@@ -509,8 +509,11 @@ void protocol_stop_connection() {
   log_info("DEBUG: Stopping protocol connection - stopping threads");
 #endif
 
-  // Signal thread to stop
-  signal_exit();
+  // Don't call signal_exit() here - that's for global shutdown only!
+  // We just want to stop threads for this connection, not exit the entire client
+
+  // Shutdown the socket to interrupt any blocking recv() in data thread
+  server_connection_shutdown();
 
   // Stop webcam capture thread
   capture_stop_thread();

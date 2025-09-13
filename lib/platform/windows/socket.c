@@ -225,7 +225,7 @@ int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
 // Platform-aware select wrapper
 int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout) {
   // On Windows, the first parameter is ignored by select()
-  (void)max_fd;  // Suppress unused parameter warning
+  (void)max_fd; // Suppress unused parameter warning
   return select(0, readfds, writefds, exceptfds, timeout);
 }
 

@@ -7,7 +7,6 @@
 
 static webcam_context_t *global_webcam_ctx = NULL;
 
-
 int webcam_init(unsigned short int webcam_index) {
 #ifdef __linux__
   log_info("Initializing webcam with V4L2 (Linux)");
@@ -64,17 +63,12 @@ image_t *webcam_read(void) {
   read_count++;
 
   if (read_count <= 5) {
-
   }
-
-
 
   if (!global_webcam_ctx) {
     log_error("[WEBCAM_READ] ERROR: Webcam not initialized - global_webcam_ctx is NULL");
     return NULL;
   }
-
-
 
   image_t *frame = webcam_platform_read(global_webcam_ctx);
 

@@ -240,7 +240,7 @@ include_directories(
 # Build type specific flags (matching Makefile logic)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug mode WITH sanitizers (default, safe)
-    add_definitions(-DDEBUG_MEMORY -DDEBUG_NETWORK)
+    add_definitions(-DDEBUG_MEMORY)
     if(MSVC)
         add_compile_options(/Od /Zi)
         add_definitions(-DDEBUG)
@@ -277,7 +277,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     # Dev mode - debug WITHOUT sanitizers (faster iteration)
-    add_definitions(-DDEBUG_MEMORY -DDEBUG_NETWORK)
+    add_definitions(-DDEBUG_MEMORY)
     if(MSVC)
         add_compile_options(/Od /Zi)
         add_definitions(-DDEBUG)
@@ -1076,6 +1076,7 @@ set(LIB_COMMON_SRCS
     lib/buffer_pool.c
     lib/hashtable.c
     lib/ringbuffer.c
+    lib/video_frame.c
     lib/compression.c
     lib/crypto.c
     lib/crc32_hw.c

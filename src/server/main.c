@@ -176,7 +176,6 @@ static bool g_stats_logger_thread_created = false;
  * ============================================================================
  */
 
-
 /**
  * @brief Critical signal handler for SIGINT (Ctrl+C) - initiates server shutdown
  *
@@ -691,9 +690,6 @@ int main(int argc, char *argv[]) {
     log_info("Stats logger thread stopped");
     g_stats_logger_thread_created = false;
   }
-
-  // Cleanup cached frames
-  cleanup_frame_cache();
 
   // Clean up all connected clients
   log_info("Cleaning up connected clients...");

@@ -165,9 +165,9 @@ Test(image, image_print_basic) {
   cr_assert_not_null(img);
 
   // Set up a simple 2x2 image with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};    // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};    // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};    // Blue
+  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
   img->pixels[3] = (rgb_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
@@ -185,9 +185,9 @@ Test(image, image_print_color_basic) {
   cr_assert_not_null(img);
 
   // Set up a simple 2x2 image with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};    // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};    // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};    // Blue
+  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
   img->pixels[3] = (rgb_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";

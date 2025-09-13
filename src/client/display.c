@@ -101,7 +101,6 @@ static bool g_has_tty = false;
  * TTY Detection and Initialization
  * ============================================================================ */
 
-
 /**
  * Detect and configure current TTY
  *
@@ -144,10 +143,10 @@ static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
     terminal_reset();
-    console_clear(fd);  // This calls terminal_clear_screen() + terminal_cursor_home(fd)
+    console_clear(fd);              // This calls terminal_clear_screen() + terminal_cursor_home(fd)
     terminal_clear_scrollback(fd);  // Clear scrollback using the proper TTY fd
-    terminal_hide_cursor(fd, true);  // Hide cursor on the specific TTY
-    terminal_flush(fd);  // Flush the specific TTY fd
+    terminal_hide_cursor(fd, true); // Hide cursor on the specific TTY
+    terminal_flush(fd);             // Flush the specific TTY fd
   }
 }
 

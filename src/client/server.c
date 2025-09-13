@@ -392,8 +392,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   // Apply reconnection delay if this is a retry
   if (reconnect_attempt > 0) {
     float delay = get_reconnect_delay(reconnect_attempt);
-    log_info("Reconnection attempt #%d to %s:%d in %.2f seconds...",
-             reconnect_attempt, address, port, delay / 1000.0 / 1000.0);
+    log_info("Reconnection attempt #%d to %s:%d in %.2f seconds...", reconnect_attempt, address, port,
+             delay / 1000.0 / 1000.0);
     usleep((useconds_t)delay);
   } else {
     log_info("Connecting to %s:%d", address, port);
@@ -426,8 +426,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   log_info("DEBUG: inet_pton succeeded, about to connect");
 
   // Attempt connection with timeout
-  if (!connect_with_timeout(g_sockfd, (struct sockaddr *)&serv_addr,
-                           sizeof(serv_addr), CONNECT_TIMEOUT)) {
+  if (!connect_with_timeout(g_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr), CONNECT_TIMEOUT)) {
     log_warn("Connection failed: %s", network_error_string(errno));
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;

@@ -267,7 +267,7 @@ int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *ex
   return select(max_fd + 1, readfds, writefds, exceptfds, timeout);
 }
 
-// Platform-safe FD set wrappers  
+// Platform-safe FD set wrappers
 void socket_fd_zero(fd_set *set) {
   FD_ZERO(set);
 }

@@ -315,10 +315,15 @@ extern uint64_t g_blank_frames_sent;
 void *stats_logger_thread(void *arg) {
   (void)arg;
 
-  while (1) {
+  while (!atomic_load(&g_should_exit)) {
     // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
-    for (int i = 0; i < 3000; i++) {
+    for (int i = 0; i < 3000 && !atomic_load(&g_should_exit); i++) {
       interruptible_usleep(10000); // 10ms sleep - can be interrupted by shutdown
+    }
+
+    // Check exit condition before proceeding with statistics logging
+    if (atomic_load(&g_should_exit)) {
+      break;
     }
 
     log_info("=== Periodic Statistics Report ===");
@@ -461,8 +466,7 @@ void update_server_stats(void) {
 void log_server_stats(void) {
   mutex_lock(&g_stats_mutex);
   log_info("Server Statistics: frames_captured=%llu, frames_sent=%llu, frames_dropped=%llu",
-           (unsigned long long)g_stats.frames_captured,
-           (unsigned long long)g_stats.frames_sent,
+           (unsigned long long)g_stats.frames_captured, (unsigned long long)g_stats.frames_sent,
            (unsigned long long)g_stats.frames_dropped);
   log_info("Average FPS: capture=%.2f, send=%.2f", g_stats.avg_capture_fps, g_stats.avg_send_fps);
   mutex_unlock(&g_stats_mutex);

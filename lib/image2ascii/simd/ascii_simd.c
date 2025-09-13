@@ -644,8 +644,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
                                                        const image_t *source_image, bool use_256color) {
   simd_benchmark_t result = {0};
-  (void)background_mode;  // Suppress unused parameter warning
-  (void)use_256color;     // Suppress unused parameter warning
+  (void)background_mode; // Suppress unused parameter warning
+  (void)use_256color;    // Suppress unused parameter warning
 
   int pixel_count = width * height;
 
@@ -731,8 +731,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_sse2_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str =
-        render_ascii_sse2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
+    char *result_str = render_ascii_sse2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -759,8 +758,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_avx2_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str =
-        render_ascii_avx2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
+    char *result_str = render_ascii_avx2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -773,8 +771,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   ensure_default_palette_ready();
   double start_neon_color = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
-    char *result_str =
-        render_ascii_neon_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
+    char *result_str = render_ascii_neon_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       free(result_str);
   }
@@ -848,7 +845,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
                                                              bool background_mode, const image_t *source_image,
                                                              bool use_256color) {
   simd_benchmark_t result = {0};
-  (void)use_256color;     // Suppress unused parameter warning
+  (void)use_256color; // Suppress unused parameter warning
 
   int pixel_count = width * height;
   size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;

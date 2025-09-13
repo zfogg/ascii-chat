@@ -263,7 +263,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // Simple approach: just check if initialized
   // If not initialized, just don't log (main() should have initialized it)
   if (!g_log.initialized) {
-    return;  // Don't log if not initialized - this prevents the deadlock
+    return; // Don't log if not initialized - this prevents the deadlock
   }
 
   if (level < g_log.level) {
@@ -350,8 +350,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     int fd = (level == LOG_ERROR || level == LOG_WARN) ? STDERR_FILENO : STDOUT_FILENO;
 
     if (isatty(fd)) {
-      fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
-              line, func);
+      fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms,
+              level_strings[level], file, line, func);
 
       va_list args;
       va_start(args, fmt);
