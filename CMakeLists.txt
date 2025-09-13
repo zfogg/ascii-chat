@@ -1303,7 +1303,7 @@ target_link_libraries(ascii-chat-client ascii-chat-lib)
 
 # macOS Info.plist embedding (matches Makefile)
 if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
-    set_target_properties(client PROPERTIES
+    set_target_properties(ascii-chat-client PROPERTIES
         LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_SOURCE_DIR}/Info.plist"
     )
 endif()
