@@ -586,7 +586,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
  */
 int terminal_reset(int fd) {
   // Reset using ANSI escape sequence
-  const char* reset_seq = "\033c"; // Full reset
+  const char *reset_seq = "\033c"; // Full reset
   if (write(fd, reset_seq, strlen(reset_seq)) < 0) {
     return -1;
   }

@@ -174,8 +174,6 @@ mutex_t g_frame_cache_mutex = {0};
  */
 frame_cache_entry_t g_frame_cache = {0};
 
-
-
 /* ============================================================================
  * Client Lookup Utilities
  * ============================================================================
@@ -396,9 +394,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
           log_error("UNINITIALIZED MEMORY DETECTED! First 16 bytes of frame data:");
           uint8_t *bytes = (uint8_t *)frame_to_use->data;
-          log_error("  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-                    bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+          log_error("  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", bytes[0],
+                    bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10],
+                    bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
         }
 
         // Validate dimensions are reasonable (max 4K resolution)

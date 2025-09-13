@@ -52,8 +52,7 @@ Test(terminal_detect, detect_terminal_capabilities_basic) {
   cr_assert_geq(caps.color_count, 0);
 
   // Render mode should be valid
-  cr_assert(caps.render_mode == RENDER_MODE_FOREGROUND ||
-            caps.render_mode == RENDER_MODE_BACKGROUND ||
+  cr_assert(caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND ||
             caps.render_mode == RENDER_MODE_HALF_BLOCK);
 }
 

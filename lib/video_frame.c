@@ -20,16 +20,16 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   // Pre-allocate frame data buffers (2MB each for HD video)
   const size_t frame_size = 2 * 1024 * 1024;
   data_buffer_pool_t *pool = data_buffer_pool_get_global();
-  
+
   // Initialize frames - size starts at 0 until actual data is written!
-  vfb->frames[0].size = 0;  // Start with 0 - will be set when data is written
-  vfb->frames[1].size = 0;  // Start with 0 - will be set when data is written
+  vfb->frames[0].size = 0; // Start with 0 - will be set when data is written
+  vfb->frames[1].size = 0; // Start with 0 - will be set when data is written
   vfb->frames[0].data = NULL;
   vfb->frames[1].data = NULL;
-  
+
   // Store the allocated buffer size for cleanup (different from data size!)
   vfb->allocated_buffer_size = frame_size;
-  
+
   if (pool) {
     vfb->frames[0].data = data_buffer_pool_alloc(pool, frame_size);
     vfb->frames[1].data = data_buffer_pool_alloc(pool, frame_size);

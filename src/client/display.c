@@ -142,7 +142,7 @@ static tty_info_t display_get_current_tty(void) {
 static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opt_snapshot_mode) {
-    terminal_reset(fd);              // Reset using the proper TTY fd
+    terminal_reset(fd);             // Reset using the proper TTY fd
     console_clear(fd);              // This calls terminal_clear_screen() + terminal_cursor_home(fd)
     terminal_clear_scrollback(fd);  // Clear scrollback using the proper TTY fd
     terminal_hide_cursor(fd, true); // Hide cursor on the specific TTY
