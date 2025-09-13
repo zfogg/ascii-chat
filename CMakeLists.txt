@@ -524,14 +524,16 @@ else()
                 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
                 
                 # Enable all instruction sets that can be compiled
-                if(CAN_COMPILE_SSE2)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                endif()
-                if(CAN_COMPILE_SSSE3)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                endif()
+                # Note: Higher SIMD levels include lower ones
                 if(CAN_COMPILE_AVX2)
                     set(ENABLE_SIMD_AVX2 TRUE)
+                    set(ENABLE_SIMD_SSSE3 TRUE)  # AVX2 includes SSSE3
+                    set(ENABLE_SIMD_SSE2 TRUE)   # AVX2 includes SSE2
+                elseif(CAN_COMPILE_SSSE3)
+                    set(ENABLE_SIMD_SSSE3 TRUE)
+                    set(ENABLE_SIMD_SSE2 TRUE)   # SSSE3 includes SSE2
+                elseif(CAN_COMPILE_SSE2)
+                    set(ENABLE_SIMD_SSE2 TRUE)
                 endif()
             endif()
         endif()
@@ -542,8 +544,10 @@ else()
             set(ENABLE_SIMD_NEON TRUE)
         elseif(IS_ROSETTA EQUAL 1)
             set(ENABLE_SIMD_SSSE3 TRUE)
+            set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
         else()
             set(ENABLE_SIMD_SSSE3 TRUE)
+            set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
         endif()
         
     elseif(PLATFORM_LINUX)
