@@ -3,7 +3,7 @@
 #ifdef _WIN32
 
 #include <stdint.h>
-#include "image2ascii/image.h"
+#include "../image.h"
 
 // Main optimized YUY2 to RGB conversion function
 // Automatically selects best SIMD implementation based on CPU capabilities

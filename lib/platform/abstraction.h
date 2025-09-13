@@ -215,16 +215,8 @@ typedef unsigned int useconds_t;
 // ============================================================================
 
 // High-precision sleep function with shutdown support
-// Microsecond precision sleep that can be interrupted for responsive shutdown
+// Microsecond precision sleep
 void platform_sleep_usec(unsigned int usec);
-
-// Interruptible sleep for render threads - uses condition variables for shutdown support
-// Similar to platform_sleep_usec but specifically designed for render thread timing
-void platform_interruptible_sleep_usec(unsigned int usec);
-
-// Initialize platform interruptible sleep with application shutdown coordination
-// Must be called once during application startup before using platform_interruptible_sleep_usec
-void platform_set_shutdown_coordination(void *should_exit_flag, void *shutdown_mutex, void *shutdown_cond);
 
 // ============================================================================
 // Utility Macros

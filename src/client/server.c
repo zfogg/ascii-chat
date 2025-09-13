@@ -482,12 +482,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Generate display name from username + PID
-#ifdef WIN32
-  char *os_username = getenv("USERNAME");
-#else
-  char *os_username = getenv("USER");
-#endif
-  char *display_name = os_username ? os_username : ASCIICHAT_DEFAULT_DISPLAY_NAME;
+  const char *display_name = platform_get_username();
 
   char my_display_name[MAX_DISPLAY_NAME_LEN];
   int pid = getpid();
