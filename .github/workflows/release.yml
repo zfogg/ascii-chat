@@ -127,12 +127,16 @@ jobs:
 
     - name: Build release
       run: |
-        make -j CSTD=c2x release
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x'
+        cmake --build build
 
     - name: Create release package
       run: |
         mkdir -p release-package
-        cp bin/ascii-chat-server bin/ascii-chat-client release-package/
+        cp build/bin/ascii-chat-server build/bin/ascii-chat-client release-package/
         cp README.md release-package/
         echo "ASCII Chat $(date)" > release-package/BUILD_INFO.txt
         echo "OS: ${{ runner.os }}" >> release-package/BUILD_INFO.txt
