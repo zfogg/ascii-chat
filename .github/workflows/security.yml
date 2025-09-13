@@ -48,7 +48,7 @@ jobs:
         CC=clang CXX=clang++ cmake -B build -G Ninja \
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x'
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
         cmake --build build
 
     - name: Perform CodeQL Analysis
@@ -140,5 +140,5 @@ jobs:
         CC=clang CXX=clang++ cmake -B build -G Ninja \
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x -Wformat -Wformat-security -Werror=format-security'
+          -DCMAKE_C_FLAGS='-std=c2x -Wformat -Wformat-security -Werror=format-security' -DBUILD_TESTS=OFF
         scan-build cmake --build build || true
