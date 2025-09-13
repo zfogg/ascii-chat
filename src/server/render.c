@@ -159,9 +159,6 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #include "render.h"
 #include "client.h"
@@ -270,29 +267,13 @@ void interruptible_usleep(unsigned int usec) {
     return;
   }
 
-#ifdef _WIN32
-  // On Windows, Sleep(1) can sleep for up to 15.6ms, so we keep it simple
-  int timeout_ms = (int)(usec / 1000);
-  if (timeout_ms < 1)
-    timeout_ms = 1;
-
-  Sleep(timeout_ms); // Do the full sleep at once
+  // Use platform abstraction for cross-platform sleep
+  platform_interruptible_sleep_usec(usec);
 
   // Check again after sleep
   if (atomic_load(&g_should_exit)) {
     return;
   }
-#else
-  // On POSIX, use condition variables for more responsive interruption
-  static_mutex_lock(&g_shutdown_mutex);
-  if (!atomic_load(&g_should_exit)) {
-    int timeout_ms = (int)(usec / 1000);
-    if (timeout_ms == 0)
-      timeout_ms = 1; // Ensure minimum 1ms
-    static_cond_timedwait(&g_shutdown_cond, &g_shutdown_mutex, timeout_ms);
-  }
-  static_mutex_unlock(&g_shutdown_mutex);
-#endif
 }
 
 /* ============================================================================

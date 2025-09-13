@@ -687,7 +687,7 @@ void *client_send_thread_func(void *arg) {
       LOG_DEBUG_EVERY(send_thread, 100, "SEND_THREAD_DEBUG: Client %u no packet found, sleeping briefly",
                       client->client_id);
 #endif
-      interruptible_usleep(1000); // 1ms sleep instead of blocking indefinitely
+      platform_interruptible_sleep_usec(1000); // 1ms sleep instead of blocking indefinitely
     }
 
     // If we got a packet, send it

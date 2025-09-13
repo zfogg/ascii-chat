@@ -394,7 +394,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     float delay = get_reconnect_delay(reconnect_attempt);
     log_info("Reconnection attempt #%d to %s:%d in %.2f seconds...", reconnect_attempt, address, port,
              delay / 1000.0 / 1000.0);
-    usleep((useconds_t)delay);
+    platform_sleep_usec((unsigned int)delay);
   } else {
     log_info("Connecting to %s:%d", address, port);
   }

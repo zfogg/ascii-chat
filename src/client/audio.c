@@ -223,7 +223,7 @@ static void *audio_capture_thread_func(void *arg) {
 
   while (!should_exit() && !server_connection_is_lost()) {
     if (!server_connection_is_active()) {
-      usleep(100 * 1000); // Wait for connection
+      platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
 
@@ -282,7 +282,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
     } else {
       // Small delay if no audio available
-      usleep(5 * 1000); // 5ms
+      platform_sleep_usec(5 * 1000); // 5ms
     }
   }
 
@@ -381,7 +381,7 @@ void audio_stop_thread() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_audio_capture_thread_exited)) {
-    usleep(100000); // 100ms
+    platform_sleep_usec(100000); // 100ms
     wait_count++;
   }
 

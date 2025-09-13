@@ -380,7 +380,7 @@ static void *data_reception_thread_func(void *arg) {
 
     if (sockfd == INVALID_SOCKET_VALUE || !server_connection_is_active()) {
       log_debug("CLIENT: Waiting for socket connection");
-      usleep(10 * 1000);
+      platform_sleep_usec(10 * 1000);
       continue;
     }
 
@@ -524,7 +524,7 @@ void protocol_stop_connection() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
-    usleep(100000); // 100ms
+    platform_sleep_usec(100000); // 100ms
     wait_count++;
   }
 
