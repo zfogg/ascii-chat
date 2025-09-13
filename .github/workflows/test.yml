@@ -61,7 +61,7 @@ jobs:
           C_FLAGS="-std=c2x"
         fi
 
-        CMAKE_FLAGS="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='${C_FLAGS}' -DBUILD_TESTS=ON"
+        CMAKE_FLAGS="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS=\"${C_FLAGS}\" -DBUILD_TESTS=ON"
 
         echo "Building with CMake build type: ${BUILD_TYPE}"
         CC=clang CXX=clang++ cmake -B build -G Ninja \
