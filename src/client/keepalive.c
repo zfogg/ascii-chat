@@ -153,7 +153,7 @@ static void *ping_thread_func(void *arg) {
     for (int i = 0;
          i < PING_INTERVAL_SECONDS && !should_exit() && !server_connection_is_lost() && server_connection_is_active();
          i++) {
-      usleep(PING_SLEEP_INTERVAL_SECONDS * 1000 * 1000); // 1 second
+      platform_sleep_usec(PING_SLEEP_INTERVAL_SECONDS * 1000 * 1000); // 1 second
     }
   }
 
@@ -211,7 +211,7 @@ void keepalive_stop_thread() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_ping_thread_exited)) {
-    usleep(100000); // 100ms
+    platform_sleep_usec(100000); // 100ms
     wait_count++;
   }
 

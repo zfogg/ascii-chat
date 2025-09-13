@@ -383,7 +383,7 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      usleep(100 * 1000); // 0.1 second monitoring interval
+      platform_sleep_usec(100 * 1000); // 0.1 second monitoring interval
     }
 
     if (should_exit()) {

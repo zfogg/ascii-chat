@@ -395,6 +395,9 @@ int main(int argc, char *argv[]) {
   }
   atexit(platform_cleanup);
 
+  // Set up platform shutdown coordination for interruptible sleep
+  platform_set_shutdown_coordination(&g_should_exit, &g_shutdown_mutex, &g_shutdown_cond);
+
   options_init(argc, argv, false);
 
   // Initialize logging - use specified log file or default

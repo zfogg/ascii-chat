@@ -284,7 +284,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Check connection status
     if (!server_connection_is_active()) {
       log_info("DEBUG: Server connection not active, waiting...");
-      usleep(100 * 1000); // Wait for connection
+      platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
 #ifdef DEBUG_THREADS
@@ -296,7 +296,7 @@ static void *webcam_capture_thread_func(void *arg) {
     long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
                       (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
     if (elapsed_ms < FRAME_INTERVAL_MS) {
-      usleep((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
+      platform_sleep_usec((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
       continue;
     }
 
@@ -305,7 +305,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     if (!image) {
       log_info("No frame available from webcam yet (webcam_read returned NULL)");
-      usleep(10000); // 10ms delay before retry
+      platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
     // Process frame for network transmission
@@ -430,7 +430,7 @@ void capture_stop_thread() {
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_capture_thread_exited)) {
-    usleep(100000); // 100ms
+    platform_sleep_usec(100000); // 100ms
     wait_count++;
   }
 
