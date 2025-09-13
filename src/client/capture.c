@@ -202,11 +202,11 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
   // Perform resizing operation
   log_error("RESIZE: From %dx%d to %dx%d", original_image->w, original_image->h, resized_width, resized_height);
   image_resize(original_image, resized);
-  
+
   // Sample first pixel after resize
-  log_error("AFTER RESIZE FIRST PIXEL: R=%d G=%d B=%d", 
-           resized->pixels[0].r, resized->pixels[0].g, resized->pixels[0].b);
-  
+  log_error("AFTER RESIZE FIRST PIXEL: R=%d G=%d B=%d", resized->pixels[0].r, resized->pixels[0].g,
+            resized->pixels[0].b);
+
   // Destroy original image since we created a new one
   image_destroy(original_image);
   return resized;

@@ -310,7 +310,7 @@ int terminal_set_scroll_region(int top, int bottom) {
  */
 int terminal_reset(int fd) {
   // Reset using ANSI escape sequence
-  const char* reset_seq = "\033c"; // Full reset
+  const char *reset_seq = "\033c"; // Full reset
   HANDLE h = (HANDLE)_get_osfhandle(fd);
 
   if (h != INVALID_HANDLE_VALUE) {

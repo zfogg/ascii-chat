@@ -207,13 +207,18 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
     hr = IMFMediaType_GetGUID(nativeType, &MF_MT_SUBTYPE, &subtype);
     if (SUCCEEDED(hr)) {
       // Accept common formats: YUY2, NV12, RGB24, RGB32, MJPEG
-      const char* format_name = "UNKNOWN";
-      if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) format_name = "YUY2";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) format_name = "NV12";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24)) format_name = "RGB24";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) format_name = "RGB32";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG)) format_name = "MJPEG";
-      
+      const char *format_name = "UNKNOWN";
+      if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2))
+        format_name = "YUY2";
+      else if (IsEqualGUID(&subtype, &MFVideoFormat_NV12))
+        format_name = "NV12";
+      else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24))
+        format_name = "RGB24";
+      else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32))
+        format_name = "RGB32";
+      else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG))
+        format_name = "MJPEG";
+
       if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2) || IsEqualGUID(&subtype, &MFVideoFormat_NV12) ||
           IsEqualGUID(&subtype, &MFVideoFormat_RGB24) || IsEqualGUID(&subtype, &MFVideoFormat_RGB32) ||
           IsEqualGUID(&subtype, &MFVideoFormat_MJPG)) {
@@ -403,9 +408,9 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
   }
 
   // Query the ACTUAL format from Media Foundation - NO GUESSING!
-  IMFMediaType* currentType = NULL;
+  IMFMediaType *currentType = NULL;
   HRESULT hr2 = IMFSourceReader_GetCurrentMediaType(ctx->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
-  
+
   if (FAILED(hr2)) {
     log_error("Failed to get current media type: 0x%08x", hr2);
     IMFMediaBuffer_Unlock(buffer);
@@ -413,7 +418,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     IMFSample_Release(sample);
     return NULL;
   }
-  
+
   // Get the actual format GUID
   GUID subtype = {0};
   HRESULT hrGuid = IMFMediaType_GetGUID(currentType, &MF_MT_SUBTYPE, &subtype);
@@ -425,7 +430,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     IMFSample_Release(sample);
     return NULL;
   }
-  
+
   // Get actual dimensions (packed as UINT64)
   UINT64 frameSize = 0;
   HRESULT hrSize = IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_SIZE, &frameSize);
@@ -437,23 +442,23 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     IMFSample_Release(sample);
     return NULL;
   }
-  
+
   UINT32 actualWidth = (UINT32)(frameSize >> 32);
   UINT32 actualHeight = (UINT32)(frameSize & 0xFFFFFFFF);
-  
+
   // Get the stride (bytes per row)
   UINT32 stride = 0;
   HRESULT hrStride = IMFMediaType_GetUINT32(currentType, &MF_MT_DEFAULT_STRIDE, &stride);
   if (FAILED(hrStride)) {
     // Calculate stride based on format
     if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) {
-      stride = actualWidth;  // NV12 Y plane stride
+      stride = actualWidth; // NV12 Y plane stride
     } else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) {
-      stride = actualWidth * 2;  // YUY2 stride
+      stride = actualWidth * 2; // YUY2 stride
     } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24)) {
-      stride = actualWidth * 3;  // RGB24 stride
+      stride = actualWidth * 3; // RGB24 stride
     } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) {
-      stride = actualWidth * 4;  // RGB32 stride
+      stride = actualWidth * 4; // RGB32 stride
     } else {
       log_error("Unknown format, cannot calculate stride");
       IMFMediaType_Release(currentType);
@@ -463,18 +468,23 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
       return NULL;
     }
   }
-  
+
   // Log the actual format we're dealing with
-  const char* formatName = "UNKNOWN";
-  if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) formatName = "NV12";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) formatName = "YUY2";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24)) formatName = "RGB24";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) formatName = "RGB32";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG)) formatName = "MJPEG";
-  
-  log_info("MF Format: %s %dx%d, stride=%u, buffer=%u bytes", 
-           formatName, actualWidth, actualHeight, stride, bufferLength);
-  
+  const char *formatName = "UNKNOWN";
+  if (IsEqualGUID(&subtype, &MFVideoFormat_NV12))
+    formatName = "NV12";
+  else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2))
+    formatName = "YUY2";
+  else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24))
+    formatName = "RGB24";
+  else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32))
+    formatName = "RGB32";
+  else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG))
+    formatName = "MJPEG";
+
+  log_info("MF Format: %s %dx%d, stride=%u, buffer=%u bytes", formatName, actualWidth, actualHeight, stride,
+           bufferLength);
+
   IMFMediaType_Release(currentType);
 
   // Create image_t structure with ACTUAL dimensions
@@ -494,7 +504,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
       img->pixels[i].r = bufferData[i * 3 + 2]; // R
     }
     log_info("Converted RGB24 frame");
-    
+
   } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) {
     // RGB32 format (BGRX order in Media Foundation)
     for (UINT32 i = 0; i < actualWidth * actualHeight; i++) {
@@ -504,37 +514,37 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
       // Skip alpha channel at [i * 4 + 3]
     }
     log_info("Converted RGB32 frame");
-    
+
   } else if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) {
     // NV12 format: Y plane followed by interleaved UV plane
     // Y plane: one byte per pixel
     // UV plane: two bytes (U,V) for each 2x2 pixel block
-    
-    BYTE* yPlane = bufferData;
-    BYTE* uvPlane = bufferData + (stride * actualHeight);  // UV plane starts after Y plane
-    
+
+    BYTE *yPlane = bufferData;
+    BYTE *uvPlane = bufferData + (stride * actualHeight); // UV plane starts after Y plane
+
     for (UINT32 y = 0; y < actualHeight; y++) {
       for (UINT32 x = 0; x < actualWidth; x++) {
         // Get Y value for this pixel
         int yValue = yPlane[y * stride + x];
-        
+
         // Get UV values (shared by 2x2 pixel blocks)
         UINT32 uvRow = y / 2;
         UINT32 uvCol = x / 2;
-        UINT32 uvIndex = uvRow * stride + uvCol * 2;  // UV pairs are interleaved
-        
+        UINT32 uvIndex = uvRow * stride + uvCol * 2; // UV pairs are interleaved
+
         int uValue = uvPlane[uvIndex];
         int vValue = uvPlane[uvIndex + 1];
-        
+
         // Convert YUV to RGB using ITU-R BT.601 coefficients
         int C = yValue - 16;
         int D = uValue - 128;
         int E = vValue - 128;
-        
+
         int R = (298 * C + 409 * E + 128) >> 8;
         int G = (298 * C - 100 * D - 208 * E + 128) >> 8;
         int B = (298 * C + 516 * D + 128) >> 8;
-        
+
         // Clamp and store
         UINT32 pixelIndex = y * actualWidth + x;
         img->pixels[pixelIndex].r = (R < 0) ? 0 : ((R > 255) ? 255 : R);
@@ -543,17 +553,17 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
       }
     }
     log_info("Converted NV12 frame");
-    
+
   } else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) {
     // YUY2 format: packed Y0 U Y1 V (4 bytes = 2 pixels)
     // Use the stride from Media Foundation for proper row alignment
-    
+
     for (UINT32 y = 0; y < actualHeight; y++) {
       for (UINT32 x = 0; x < actualWidth; x += 2) {
         // Calculate source index for this pixel pair
         // Use the ACTUAL stride from Media Foundation (includes padding)
         int src_idx = y * stride + x * 2;
-        
+
         // Bounds check to prevent buffer overrun
         if (src_idx + 3 >= (int)bufferLength) {
           break;
@@ -598,7 +608,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
     }
 
     log_info("Converted YUY2 frame");
-    
+
   } else {
     // Unsupported format
     log_error("Unsupported format from Media Foundation: %s", formatName);

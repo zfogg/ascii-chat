@@ -979,7 +979,28 @@ else()
         find_library(COREVIDEO_FRAMEWORK CoreVideo REQUIRED)
         find_package(Curses REQUIRED)
     elseif(PLATFORM_LINUX)
-        find_package(Curses REQUIRED)
+        # Linux ncurses/curses library detection - use pkg-config first
+        pkg_check_modules(NCURSES ncurses)
+        if(NOT NCURSES_FOUND)
+            # Fallback to manual search for Ubuntu systems
+            find_library(CURSES_LIBRARY
+                NAMES ncurses curses
+                PATHS /usr/lib/x86_64-linux-gnu /usr/lib /lib/x86_64-linux-gnu /lib
+            )
+            find_path(CURSES_INCLUDE_PATH
+                NAMES curses.h ncurses.h
+                PATHS /usr/include /usr/include/ncurses
+            )
+            if(CURSES_LIBRARY AND CURSES_INCLUDE_PATH)
+                set(CURSES_LIBRARIES ${CURSES_LIBRARY})
+                set(CURSES_INCLUDE_DIRS ${CURSES_INCLUDE_PATH})
+            else()
+                message(FATAL_ERROR "Could not find ncurses/curses library")
+            endif()
+        else()
+            set(CURSES_LIBRARIES ${NCURSES_LIBRARIES})
+            set(CURSES_INCLUDE_DIRS ${NCURSES_INCLUDE_DIRS})
+        endif()
         find_package(Threads REQUIRED)
         
         # Linux library search paths (matches Makefile)

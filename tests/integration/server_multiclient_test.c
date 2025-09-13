@@ -110,12 +110,10 @@ static int send_image_frame(int socket, int width, int height, int client_id) {
 
   // Use the send_image_frame_packet function from network.h
   // Just use 0 for pixel_format since IMAGE_FORMAT_RGB24 doesn't exist
-  int result = send_image_frame_packet(socket, image_data, width * height * sizeof(rgb_pixel_t),
-                                        width, height, 0);
+  int result = send_image_frame_packet(socket, image_data, width * height * sizeof(rgb_pixel_t), width, height, 0);
   free(image_data);
   return result;
 }
-
 
 static void cleanup_server(pid_t server_pid) {
   if (server_pid > 0) {
@@ -389,8 +387,6 @@ Test(server_multiclient, server_resource_limits) {
 // =============================================================================
 // Protocol-Specific Tests
 // =============================================================================
-
-
 
 // =============================================================================
 // Load and Stress Tests
