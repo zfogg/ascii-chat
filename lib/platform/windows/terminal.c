@@ -305,12 +305,22 @@ int terminal_set_scroll_region(int top, int bottom) {
 
 /**
  * @brief Reset terminal to default state
+ * @param fd File descriptor for the terminal
  * @return 0 on success, -1 on failure
  */
-int terminal_reset(void) {
+int terminal_reset(int fd) {
   // Reset using ANSI escape sequence
-  printf("\033c"); // Full reset
-  fflush(stdout);
+  const char* reset_seq = "\033c"; // Full reset
+  HANDLE h = (HANDLE)_get_osfhandle(fd);
+
+  if (h != INVALID_HANDLE_VALUE) {
+    DWORD written;
+    WriteConsole(h, reset_seq, (DWORD)strlen(reset_seq), &written, NULL);
+  } else {
+    // Fall back to stdout if handle is invalid
+    printf("%s", reset_seq);
+    fflush(stdout);
+  }
 
   // Also reset Windows console attributes
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);

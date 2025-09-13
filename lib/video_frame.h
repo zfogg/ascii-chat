@@ -62,6 +62,9 @@ typedef struct {
   // Client info
   uint32_t client_id;
   bool active;
+  
+  // Buffer management
+  size_t allocated_buffer_size;  // Size of allocated buffers (for cleanup)
 } video_frame_buffer_t;
 
 // API functions

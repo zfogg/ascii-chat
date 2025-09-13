@@ -10,7 +10,7 @@
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
 
-#include "webcam_platform.h"
+#include "os/webcam.h"
 #include "common.h"
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4

@@ -214,20 +214,6 @@ typedef unsigned int useconds_t;
 // Utility Macros
 // ============================================================================
 
-// Min/Max macros if not defined
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-// Array size macro
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#endif
-
 // Unused parameter macro
 #ifndef UNUSED
 #define UNUSED(x) ((void)(x))

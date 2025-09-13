@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "ringbuffer.h"
-#include "audio.h"
+#include "os/audio.h"
 #include "common.h"
 #include "tests/logging.h"
 

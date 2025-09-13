@@ -117,6 +117,19 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
     }                                                                                                                  \
   } while (0)
 
+/* Common utility macros */
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#endif
+
 /* Safe memory reallocation */
 #define SAFE_REALLOC(ptr, size, cast)                                                                                  \
   do {                                                                                                                 \

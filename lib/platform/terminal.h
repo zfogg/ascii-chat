@@ -44,7 +44,7 @@ int terminal_set_title(const char *title);
 int terminal_ring_bell(void);
 int terminal_hide_cursor(int fd, bool hide);
 int terminal_set_scroll_region(int top, int bottom);
-int terminal_reset(void);
+int terminal_reset(int fd);
 int terminal_cursor_home(int fd);
 int terminal_clear_scrollback(int fd);
 

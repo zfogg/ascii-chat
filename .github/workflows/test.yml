@@ -8,7 +8,7 @@ on:
       - '**.h'
       - '**.m'
       - 'tests/**'
-      - 'Makefile'
+      - 'CMakeLists.txt'
   pull_request:
     branches: [ '*' ]
     paths:
@@ -16,7 +16,7 @@ on:
       - '**.h'
       - '**.m'
       - 'tests/**'
-      - 'Makefile'
+      - 'CMakeLists.txt'
 
 permissions:
   contents: read
@@ -51,18 +51,28 @@ jobs:
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
-        # Use coverage for debug builds to enable coverage
-        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'coverage' || matrix.build_type }}
-        echo "Building with target: ${BUILD_TARGET}"
-        make -j CSTD=c2x ${BUILD_TARGET}
-        make -j CSTD=c2x tests-${BUILD_TARGET}
+        # Use CMake build system
+        BUILD_TYPE=${{ matrix.build_type == 'debug' && 'Debug' || 'Release' }}
+        CMAKE_FLAGS="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON"
+
+        # Add coverage flags for debug builds
+        if [ "${{ matrix.build_type }}" = "debug" ]; then
+          CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_C_FLAGS='-std=c2x --coverage'"
+        fi
+
+        echo "Building with CMake build type: ${BUILD_TYPE}"
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $CMAKE_FLAGS
+        cmake --build build
+
         echo "Test executables built:"
-        ls -la bin/test_* 2>/dev/null || echo "No test executables found in bin/"
-        echo "All files in bin:"
-        ls -la bin/ 2>/dev/null || echo "bin/ directory not found"
+        ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
+        echo "All files in build/bin:"
+        ls -la build/bin/ 2>/dev/null || echo "build/bin/ directory not found"
 
         # Debug: Check if coverage build actually created .gcno files
-        if [ "${BUILD_TARGET}" = "coverage" ]; then
+        if [ "${{ matrix.build_type }}" = "debug" ]; then
           echo "DEBUG: Coverage build - checking for .gcno files..."
           echo "DEBUG: Count of .gcno files after build: $(find . -name "*.gcno" -type f | wc -l)"
           echo "DEBUG: Sample .gcno files:"
@@ -71,14 +81,12 @@ jobs:
 
     - name: Run unit tests with JUnit XML generation
       run: |
-        # Use coverage for debug builds
-        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'coverage' || matrix.build_type }}
-        echo "Running tests with build type: ${BUILD_TARGET}"
+        echo "Running tests with build type: ${{ matrix.build_type }}"
         echo "Looking for test executables:"
         find . -name "test_unit_*" -type f 2>/dev/null | head -10
         # Save logs with descriptive filename
         LOG_FILE="unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log"
-        ./tests/scripts/run_tests.sh -t unit -b ${BUILD_TARGET} -J --log-file="${LOG_FILE}"
+        ./tests/scripts/run_tests.sh -t unit -b ${{ matrix.build_type }} -J --log-file="${LOG_FILE}"
         echo "Unit tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
 
@@ -197,8 +205,12 @@ jobs:
     - name: Build and run integration tests with coverage
       run: |
         echo "Running integration tests with coverage build..."
-        make -j CSTD=c2x coverage
-        make -j CSTD=c2x tests-coverage
+        # Use CMake build system with coverage
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x --coverage' -DBUILD_TESTS=ON
+        cmake --build build
         LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
         ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
         echo "Integration tests completed successfully"
@@ -277,8 +289,11 @@ jobs:
     - name: Build and run performance tests
       run: |
         # Build and run performance tests with release mode for accurate performance
-        make -j CSTD=c2x release
-        make -j CSTD=c2x tests-release
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        cmake --build build
         LOG_FILE="performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log"
         ./tests/scripts/run_tests.sh -t performance -b release -J --log-file="${LOG_FILE}"
         echo "Performance tests completed successfully"
@@ -319,8 +334,12 @@ jobs:
 
     - name: Build with AddressSanitizer
       run: |
-        make -j CSTD=c2x debug
-        make -j CSTD=c2x tests-debug
+        # Use CMake build system with AddressSanitizer
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x -fsanitize=address' -DBUILD_TESTS=ON
+        cmake --build build
 
     - name: Run tests with AddressSanitizer
       run: |
@@ -336,9 +355,9 @@ jobs:
         echo "Running memory leak detection..."
 
         # Test basic binary functionality for leaks
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/ascii-chat-server || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./build/bin/ascii-chat-server || true
         [ $? -eq 124 ] && echo "Server timed out" || false
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/ascii-chat-client || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./build/bin/ascii-chat-client || true
         [ $? -eq 124 ] && echo "Client timed out" || false
 
         echo "Memory leak detection completed"
@@ -372,7 +391,12 @@ jobs:
 
     - name: Build project
       run: |
-        make -j CSTD=c2x debug
+        # Use CMake build system
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        cmake --build build
 
     - name: Test server startup and shutdown
       env:
@@ -380,9 +404,9 @@ jobs:
       run: |
         # Set TERM for terminal detection in CI environment
         # Test server help (doesn't require terminal setup)
-        ./bin/ascii-chat-server --help
+        ./build/bin/ascii-chat-server --help
         # Test basic server startup (short timeout)
-        timeout 2s ./bin/ascii-chat-server --log-file /tmp/server_test.log || true
+        timeout 2s ./build/bin/ascii-chat-server --log-file /tmp/server_test.log || true
         echo "Server startup test passed"
 
     - name: Test client functionality
@@ -390,6 +414,6 @@ jobs:
         TERM: xterm-256color
       run: |
         # Test client help (doesn't require webcam)
-        timeout 3 ./bin/ascii-chat-server || true
+        timeout 3 ./build/bin/ascii-chat-server || true
         # Test client capabilities detection
-        ./bin/ascii-chat-client --show-capabilities
+        ./build/bin/ascii-chat-client --show-capabilities

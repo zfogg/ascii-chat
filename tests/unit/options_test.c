@@ -13,7 +13,7 @@
 
 #include "options.h"
 #include "common.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels

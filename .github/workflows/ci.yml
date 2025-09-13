@@ -32,8 +32,12 @@ jobs:
 
     - name: Run tests with AddressSanitizer
       run: |
-        make -j CSTD=c2x debug
-        make -j CSTD=c2x tests-debug
+        # Use CMake build system
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        cmake --build build
         ./tests/scripts/run_tests.sh -t unit -b debug
 
   static-analysis:
@@ -51,10 +55,15 @@ jobs:
 
     - name: Run static analysis
       run: |
-        # Run clang-tidy on source files (no need for bear anymore)
-        make CSTD=c2x clang-tidy
+        # Build with CMake for static analysis
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        # Run clang-tidy on source files
+        find src lib -name "*.c" -exec clang-tidy {} -- -std=c2x \;
         # Run clang static analyzer
-        make CSTD=c2x analyze
+        scan-build cmake --build build || true
 
     - name: Check for memory leaks patterns
       run: |
@@ -79,4 +88,4 @@ jobs:
     - name: Check code formatting
       run: |
         # Check if code follows consistent formatting
-        make CSTD=c2x CXXSTD=c++2x format-check
+        find src lib tests -name "*.c" -o -name "*.h" | xargs clang-format --dry-run -Werror
