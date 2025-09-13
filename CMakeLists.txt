@@ -1455,11 +1455,17 @@ install(TARGETS ascii-chat-server ascii-chat-client
 # Format target (matches Makefile format target)
 
 # Format target - cross-platform version
-file(GLOB_RECURSE ALL_SOURCE_FILES 
+file(GLOB_RECURSE ALL_SOURCE_FILES
+    ${CMAKE_SOURCE_DIR}/src/**/*.c
+    ${CMAKE_SOURCE_DIR}/src/**/*.h
     ${CMAKE_SOURCE_DIR}/src/*.c
     ${CMAKE_SOURCE_DIR}/src/*.h
+    ${CMAKE_SOURCE_DIR}/lib/**/*.c
+    ${CMAKE_SOURCE_DIR}/lib/**/*.h
     ${CMAKE_SOURCE_DIR}/lib/*.c
     ${CMAKE_SOURCE_DIR}/lib/*.h
+    ${CMAKE_SOURCE_DIR}/tests/**/*.c
+    ${CMAKE_SOURCE_DIR}/tests/**/*.h
     ${CMAKE_SOURCE_DIR}/tests/*.c
     ${CMAKE_SOURCE_DIR}/tests/*.h
 )

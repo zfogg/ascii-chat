@@ -62,7 +62,6 @@ image_t *webcam_read(void) {
   static int read_count = 0;
   read_count++;
 
-
   if (!global_webcam_ctx) {
     log_error("[WEBCAM_READ] ERROR: Webcam not initialized - global_webcam_ctx is NULL");
     return NULL;
