@@ -240,8 +240,9 @@ static int initialize_client_systems() {
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
 
-  // Control terminal log output based on quiet flag and TTY detection
-  log_set_terminal_output(display_has_tty() && !opt_quiet && !opt_snapshot_mode);
+  // Disable terminal output by default for client (logs interfere with ASCII display)
+  // Only show terminal output in snapshot mode for debugging
+  log_set_terminal_output(opt_snapshot_mode && !opt_quiet);
   log_truncate_if_large();
 
   // Initialize memory debugging if enabled
