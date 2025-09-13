@@ -213,22 +213,8 @@ EOF
 # System and Build Utilities
 # =============================================================================
 
-# Wrapper for make command with optional grc colorization
-function colored_make() {
-  # Determine which make command to use
-  local make_cmd="make"
-  
-  # On macOS, prefer gmake if available (GNU Make 4.x)
-  if [[ "$(uname -s)" == "Darwin" ]] && command -v gmake >/dev/null 2>&1; then
-    make_cmd="gmake"
-  fi
-  
-  if command -v grc >/dev/null 2>&1; then
-    grc --colour=on $make_cmd "$@"
-  else
-    $make_cmd "$@"
-  fi
-}
+# Note: colored_make function removed - now using CMake exclusively
+# CMake handles both initial builds and incremental updates efficiently
 
 # Detect number of CPU cores
 function detect_cpu_cores() {
@@ -258,11 +244,26 @@ function detect_cpu_cores() {
 function get_test_executables() {
   local category="$1"
   local build_type="${2:-debug}" # Optional build type parameter
-  local bin_dir="$PROJECT_ROOT/bin"
 
-  # Check if bin directory exists
-  if [[ ! -d "$bin_dir" ]]; then
-    log_verbose "bin directory not found at: $bin_dir"
+  # Try different bin directories in order of preference
+  local bin_dirs=(
+    "$PROJECT_ROOT/build_docker/bin"    # Docker CMake build
+    "$PROJECT_ROOT/build_clang/bin"     # Windows CMake build
+    "$PROJECT_ROOT/build/bin"           # Standard CMake build
+    "$PROJECT_ROOT/bin"                 # Make build (legacy)
+  )
+
+  local bin_dir=""
+  for dir in "${bin_dirs[@]}"; do
+    if [[ -d "$dir" ]]; then
+      bin_dir="$dir"
+      log_verbose "Using test executables from: $bin_dir"
+      break
+    fi
+  done
+
+  if [[ -z "$bin_dir" ]]; then
+    log_verbose "No bin directory found. Tried: ${bin_dirs[*]}"
     return
   fi
 
@@ -354,21 +355,77 @@ function ensure_tests_built() {
 
   cd "$PROJECT_ROOT"
 
-  case "$build_type" in
-  debug)
-    colored_make tests-debug
-    ;;
-  release)
-    colored_make tests-release
-    ;;
-  coverage)
-    colored_make tests-coverage
-    ;;
-  *)
-    log_error "Unknown build type: $build_type"
-    return 1
-    ;;
-  esac
+  # Determine build directory based on environment
+  local cmake_build_dir="build"
+  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
+    cmake_build_dir="build_docker"
+  elif [[ -d "build_clang" ]]; then
+    cmake_build_dir="build_clang"
+  fi
+
+  # Check if we have a build directory with CMake cache
+  if [[ -d "$cmake_build_dir" ]] && [[ -f "$cmake_build_dir/CMakeCache.txt" ]]; then
+    # Build directory exists, use CMake for incremental builds
+    log_info "Using CMake for incremental build (build directory exists: $cmake_build_dir)"
+    log_verbose "CMake build directory found, doing incremental build"
+
+    # Just rebuild everything with CMake (it's smart about incremental builds)
+    cmake --build "$cmake_build_dir"
+  else
+    # No build directory or CMake cache, use CMake for full build
+    log_info "Using CMake build system (no build directory found)"
+
+    if [[ ! -f "CMakeLists.txt" ]]; then
+      log_error "No CMakeLists.txt found and no build directory exists!"
+      return 1
+    fi
+
+    if ! command -v cmake >/dev/null 2>&1; then
+      log_error "CMake not found but required for initial build!"
+      return 1
+    fi
+
+    # Configure CMake with appropriate flags based on build type
+    local cmake_build_type
+    local cmake_flags="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON"
+
+    case "$build_type" in
+    debug)
+      cmake_build_type="Debug"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x -fsanitize=address'"
+      ;;
+    dev)
+      cmake_build_type="Debug"
+      # No sanitizers for dev builds
+      ;;
+    release)
+      cmake_build_type="Release"
+      ;;
+    coverage)
+      cmake_build_type="Debug"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x --coverage'"
+      ;;
+    tsan)
+      cmake_build_type="Debug"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x -fsanitize=thread'"
+      ;;
+    *)
+      log_error "Unknown build type: $build_type"
+      return 1
+      ;;
+    esac
+
+    log_info "Configuring CMake build in $cmake_build_dir (build type: $cmake_build_type)..."
+    CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+      -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags \
+      ${DOCKER_BUILD:+-DCURSES_LIBRARY=/usr/lib/x86_64-linux-gnu/libncurses.so} \
+      ${DOCKER_BUILD:+-DCURSES_INCLUDE_PATH=/usr/include}
+
+    # Build with CMake
+    log_info "Building tests with CMake..."
+    cmake --build "$cmake_build_dir"
+  fi
 }
 
 # =============================================================================
@@ -655,11 +712,21 @@ function spawn_test() {
   
   if [[ "$background" == "async" ]]; then
     # Background execution - return PID
-    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1 &
+    if [[ -n "$VERBOSE" ]]; then
+      # Show output in real-time for verbose mode
+      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log &
+    else
+      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1 &
+    fi
     echo $!  # Return PID
   else
     # Synchronous execution - return exit code
-    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1
+    if [[ -n "$VERBOSE" ]]; then
+      # Show output in real-time for verbose mode
+      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
+    else
+      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1
+    fi
     echo $?  # Return exit code
   fi
 }
@@ -690,7 +757,13 @@ function run_tests_sequential() {
     local start_time=$(date +%s.%N)
     local exit_code=$(spawn_test "$test_executable" "$jobs_per_test" "sync")
     local end_time=$(date +%s.%N)
-    local duration=$(echo "$end_time - $start_time" | bc -l)
+    local duration
+    if command -v bc >/dev/null 2>&1; then
+      duration=$(echo "$end_time - $start_time" | bc -l)
+    else
+      # Fallback: use awk for basic arithmetic if bc is not available
+      duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
+    fi
     
     # Report result
     if [[ $exit_code -eq 0 ]]; then
@@ -754,7 +827,13 @@ function run_tests_parallel() {
         local exit_code=$?
         local end_time=$(date +%s.%N)
         local start_time="${running_start_times[$i]:-$end_time}"
-        local duration=$(echo "$end_time - $start_time" | bc -l)
+        local duration
+        if command -v bc >/dev/null 2>&1; then
+          duration=$(echo "$end_time - $start_time" | bc -l)
+        else
+          # Fallback: use awk for basic arithmetic if bc is not available
+          duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
+        fi
         
         if [[ $exit_code -eq 0 ]]; then
           echo -e "✅ [TEST] \033[32mPASSED\033[0m: ${running_names[$i]} ($(printf "%.2f" $duration)s)"
@@ -860,21 +939,44 @@ function build_test_executable() {
   local test_name="$1"
   local build_type="$2"
 
-  # Always build the test executable (make will handle if it's up-to-date)
-  local make_target="bin/$test_name"
-  log_info "🔨 Building test: $make_target in $build_type mode"
+  log_info "🔨 Building test: $test_name in $build_type mode"
 
-  # Build the specific test executable (filter out "up to date" messages)
-  # Use PIPESTATUS to get make's exit code after piping through grep
-  colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done" || true
-  local make_exit_code=${PIPESTATUS[0]}
+  # Determine build directory based on environment
+  local cmake_build_dir="build"
+  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "$PROJECT_ROOT/build_docker" ]]; then
+    cmake_build_dir="build_docker"
+  elif [[ -d "$PROJECT_ROOT/build_clang" ]]; then
+    cmake_build_dir="build_clang"
+  fi
 
-  if [[ $make_exit_code -eq 0 ]]; then
-    log_success "Successfully built $make_target"
-    return 0
+  # Check if we have a build directory with CMake cache
+  if [[ -d "$PROJECT_ROOT/$cmake_build_dir" ]] && [[ -f "$PROJECT_ROOT/$cmake_build_dir/CMakeCache.txt" ]]; then
+    # Build directory exists, use CMake for incremental builds
+    log_info "Using CMake for incremental build of $test_name"
+    cd "$PROJECT_ROOT"
+    cmake --build "$cmake_build_dir" --target "$test_name"
+    local cmake_exit_code=$?
+
+    if [[ $cmake_exit_code -eq 0 ]]; then
+      log_success "Successfully built $test_name with CMake"
+      return 0
+    else
+      log_error "Failed to build test with CMake: $test_name"
+      return 1
+    fi
   else
-    log_error "Failed to build test: $make_target"
-    return 1
+    # No build directory, use ensure_tests_built to set everything up
+    log_info "No build directory found, using ensure_tests_built to configure CMake"
+    ensure_tests_built "$build_type" "all"
+    local ensure_exit_code=$?
+
+    if [[ $ensure_exit_code -eq 0 ]]; then
+      log_success "Successfully built $test_name with CMake via ensure_tests_built"
+      return 0
+    else
+      log_error "Failed to build test with CMake: $test_name"
+      return 1
+    fi
   fi
 }
 
@@ -1086,12 +1188,52 @@ function main() {
   local overall_start_time=$(date +%s.%N)
 
   if [[ -n "$SINGLE_TEST" ]]; then
-    # Single test mode - construct full path
-    all_tests_to_run=("$PROJECT_ROOT/bin/$SINGLE_TEST")
+    # Single test mode - find the test executable
+    local bin_dirs=(
+      "$PROJECT_ROOT/build_docker/bin"
+      "$PROJECT_ROOT/build_clang/bin"
+      "$PROJECT_ROOT/build/bin"
+      "$PROJECT_ROOT/bin"
+    )
+    local found_test=""
+    for bin_dir in "${bin_dirs[@]}"; do
+      if [[ -f "$bin_dir/$SINGLE_TEST" ]]; then
+        found_test="$bin_dir/$SINGLE_TEST"
+        break
+      fi
+    done
+    if [[ -n "$found_test" ]]; then
+      all_tests_to_run=("$found_test")
+    else
+      log_error "Test not found: $SINGLE_TEST"
+      exit 1
+    fi
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
-    # Multiple specific tests mode - construct full paths
+    # Multiple specific tests mode - find test executables
+    local bin_dirs=(
+      "$PROJECT_ROOT/build_docker/bin"
+      "$PROJECT_ROOT/build_clang/bin"
+      "$PROJECT_ROOT/build/bin"
+      "$PROJECT_ROOT/bin"
+    )
+    local bin_dir=""
+    for dir in "${bin_dirs[@]}"; do
+      if [[ -d "$dir" ]]; then
+        bin_dir="$dir"
+        break
+      fi
+    done
+    if [[ -z "$bin_dir" ]]; then
+      log_error "No bin directory found for tests"
+      exit 1
+    fi
     for test in "${MULTIPLE_TESTS[@]}"; do
-      all_tests_to_run+=("$PROJECT_ROOT/bin/$test")
+      if [[ -f "$bin_dir/$test" ]]; then
+        all_tests_to_run+=("$bin_dir/$test")
+      else
+        log_error "Test not found: $test"
+        exit 1
+      fi
     done
   else
     # Category mode - determine all categories to run
@@ -1130,38 +1272,8 @@ function main() {
     echo "<testsuites name=\"ASCII-Chat Tests\">" >>"$junit_file"
     fi
 
-  # Build all test executables
-    local test_targets=()
-  for test_executable in "${all_tests_to_run[@]}"; do
-    local test_name=$(basename "$test_executable")
-      test_targets+=("bin/$test_name")
-    done
-
-  log_info "🔨 Building ${#test_targets[@]} test executables..."
-    # Determine which make command to use
-    local make_binary="make"
-    if [[ "$(uname -s)" == "Darwin" ]] && command -v gmake >/dev/null 2>&1; then
-      make_binary="gmake"
-    fi
-    
-    local make_cmd="$make_binary -C $PROJECT_ROOT CSTD=c2x"
-    if [[ "$BUILD_TYPE" != "default" ]]; then
-      make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
-    fi
-    make_cmd="$make_cmd ${test_targets[*]}"
-
-  # Run make and capture output
-    local make_output
-    make_output=$(eval "$make_cmd" 2>&1)
-    local make_exit_code=$?
-
-    # Show non-"up to date" output
-    echo "$make_output" | grep -v "is up to date" || true
-
-    if [[ $make_exit_code -ne 0 ]]; then
-      log_error "Make command failed with exit code $make_exit_code"
-      exit 1
-    fi
+  # Build all test executables using ensure_tests_built
+  ensure_tests_built "$BUILD_TYPE" "$TEST_TYPE"
 
   # SINGLE DECISION POINT - Choose execution mode
   local total_cores=$(detect_cpu_cores)
@@ -1217,7 +1329,13 @@ function main() {
 
   # Final exit logic
   local overall_end_time=$(date +%s.%N)
-  local total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
+  local total_duration
+  if command -v bc >/dev/null 2>&1; then
+    total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
+  else
+    # Fallback: use awk for basic arithmetic if bc is not available
+    total_duration=$(awk "BEGIN {printf \"%.3f\", $overall_end_time - $overall_start_time}")
+  fi
 
   echo ""
   echo "=========================================="

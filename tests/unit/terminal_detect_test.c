@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "common.h"
 #include "options.h"
 #include "tests/logging.h"
@@ -40,32 +40,45 @@ Test(terminal_detect, get_terminal_size_null_pointers) {
 }
 
 /* ============================================================================
- * Environment Variable Detection Tests
+ * Terminal Capabilities Detection Tests
  * ============================================================================ */
 
-Test(terminal_detect, check_colorterm_variable) {
+Test(terminal_detect, detect_terminal_capabilities_basic) {
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+
+  // Basic sanity checks
+  cr_assert_not_null(caps.term_type);
+  cr_assert_leq(caps.color_level, TERM_COLOR_TRUECOLOR);
+  cr_assert_geq(caps.color_count, 0);
+
+  // Render mode should be valid
+  cr_assert(caps.render_mode == RENDER_MODE_FOREGROUND ||
+            caps.render_mode == RENDER_MODE_BACKGROUND ||
+            caps.render_mode == RENDER_MODE_HALF_BLOCK);
+}
+
+Test(terminal_detect, colorterm_variable_detection) {
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
 
   // Test with truecolor
   setenv("COLORTERM", "truecolor", 1);
-  bool result = check_colorterm_variable();
-  cr_assert(result);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_TRUECOLOR);
+  cr_assert_eq(caps.color_count, 16777216);
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
 
   // Test with 24bit
   setenv("COLORTERM", "24bit", 1);
-  result = check_colorterm_variable();
-  cr_assert(result);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_TRUECOLOR);
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
 
   // Test with other value
-  setenv("COLORTERM", "256color", 1);
-  result = check_colorterm_variable();
-  cr_assert_not(result);
-
-  // Test with unset variable
-  unsetenv("COLORTERM");
-  result = check_colorterm_variable();
-  cr_assert_not(result);
+  setenv("COLORTERM", "other", 1);
+  caps = detect_terminal_capabilities();
+  // Should not automatically detect truecolor
+  cr_assert_neq(caps.color_level, TERM_COLOR_TRUECOLOR);
 
   // Restore original environment
   if (original_colorterm) {
@@ -75,263 +88,93 @@ Test(terminal_detect, check_colorterm_variable) {
   }
 }
 
-Test(terminal_detect, check_term_variable_for_colors) {
+Test(terminal_detect, term_variable_color_detection) {
   // Save original environment
   char *original_term = getenv("TERM");
-
-  // Test with 256 color terminal
-  setenv("TERM", "xterm-256color", 1);
-  bool result = check_term_variable_for_colors();
-  cr_assert(result);
-
-  // Test with color terminal
-  setenv("TERM", "xterm-color", 1);
-  result = check_term_variable_for_colors();
-  cr_assert(result);
-
-  // Test with non-color terminal
-  setenv("TERM", "dumb", 1);
-  result = check_term_variable_for_colors();
-  cr_assert_not(result);
-
-  // Test with unset variable
-  unsetenv("TERM");
-  result = check_term_variable_for_colors();
-  cr_assert_not(result);
-
-  // Restore original environment
-  if (original_term) {
-    setenv("TERM", original_term, 1);
-  } else {
-    unsetenv("TERM");
-  }
-}
-
-Test(terminal_detect, get_terminfo_color_count) {
-  // Save original environment
-  char *original_term = getenv("TERM");
-
-  // Test with a known terminal type
-  setenv("TERM", "xterm-256color", 1);
-  int colors = get_terminfo_color_count();
-
-  // Should return a valid color count (may be -1 if terminfo fails)
-  cr_assert_geq(colors, -1);
-  if (colors > 0) {
-    cr_assert_leq(colors, 16777216); // Reasonable upper bound
-  }
-
-  // Test with unset TERM
-  unsetenv("TERM");
-  colors = get_terminfo_color_count();
-  cr_assert_eq(colors, -1);
-
-  // Restore original environment
-  if (original_term) {
-    setenv("TERM", original_term, 1);
-  } else {
-    unsetenv("TERM");
-  }
-}
-
-/* ============================================================================
- * Color Support Detection Tests
- * ============================================================================ */
-
-Test(terminal_detect, detect_truecolor_support) {
-  // Save original environment
   char *original_colorterm = getenv("COLORTERM");
-  char *original_term = getenv("TERM");
 
-  // Test 1: COLORTERM=truecolor should enable truecolor
-  setenv("COLORTERM", "truecolor", 1);
-  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
-  bool result = detect_truecolor_support();
-  cr_assert(result, "COLORTERM=truecolor should enable truecolor support");
-
-  // Test 2: COLORTERM=24bit should enable truecolor
-  setenv("COLORTERM", "24bit", 1);
-  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
-  result = detect_truecolor_support();
-  cr_assert(result, "COLORTERM=24bit should enable truecolor support");
-
-  // Test 3: COLORTERM with other values should not enable truecolor
-  setenv("COLORTERM", "256color", 1);
-  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
-  result = detect_truecolor_support();
-  cr_assert(result == false, "COLORTERM=256color should not enable truecolor support");
-
-  setenv("COLORTERM", "16color", 1);
-  unsetenv("TERM"); // Clear TERM to isolate COLORTERM test
-  result = detect_truecolor_support();
-  cr_assert(result == false, "COLORTERM=16color should not enable truecolor support");
-
-  unsetenv("COLORTERM"); // Clear COLORTERM
-  setenv("TERM", "iterm2", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "konsole", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "gnome-terminal", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "xfce4-terminal", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "alacritty", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "kitty", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  // Test 5: Non-truecolor terminals should not enable truecolor
-  unsetenv("COLORTERM"); // Clear COLORTERM
-  setenv("TERM", "dumb", 1);
-  result = detect_truecolor_support();
-  // Note: Some systems may have terminfo that reports high color counts even for "dumb"
-  // This is a limitation of the current detection method, so we just verify it doesn't crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "xterm", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  setenv("TERM", "screen", 1);
-  result = detect_truecolor_support();
-  // Note: This may or may not be true depending on terminfo, but should not crash
-  (void)result; // Suppress unused variable warning
-
-  // Test 6: No environment variables should not enable truecolor
+  // Clear COLORTERM to test TERM variable parsing
   unsetenv("COLORTERM");
-  unsetenv("TERM");
-  result = detect_truecolor_support();
-  cr_assert(result == false, "No COLORTERM or TERM should not enable truecolor support");
+
+  // Test 256 color terminals
+  setenv("TERM", "xterm-256color", 1);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_256);
+  cr_assert_eq(caps.color_count, 256);
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_256);
+
+  // Test basic color terminals
+  setenv("TERM", "xterm-color", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_16);
+  cr_assert_eq(caps.color_count, 16);
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_16);
+
+  // Test xterm (should support colors)
+  setenv("TERM", "xterm", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_16);
+
+  // Test screen
+  setenv("TERM", "screen", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_16);
+
+  // Test linux console
+  setenv("TERM", "linux", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_16);
+
+  // Test unknown terminal
+  setenv("TERM", "unknown", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.color_level, TERM_COLOR_NONE);
 
   // Restore original environment
+  if (original_term) {
+    setenv("TERM", original_term, 1);
+  } else {
+    unsetenv("TERM");
+  }
+
   if (original_colorterm) {
     setenv("COLORTERM", original_colorterm, 1);
-  } else {
-    unsetenv("COLORTERM");
-  }
-
-  if (original_term) {
-    setenv("TERM", original_term, 1);
-  } else {
-    unsetenv("TERM");
   }
 }
 
-Test(terminal_detect, detect_256color_support) {
-  // Save original environment
-  char *original_term = getenv("TERM");
-
-  // Test with 256 color terminal
-  setenv("TERM", "xterm-256color", 1);
-  bool result = detect_256color_support();
-  // May or may not be true depending on terminfo
-  (void)result; // Suppress unused variable warning
-
-  // Test with non-256 color terminal
-  setenv("TERM", "dumb", 1);
-  result = detect_256color_support();
-  cr_assert_not(result);
-
-  // Restore original environment
-  if (original_term) {
-    setenv("TERM", original_term, 1);
-  } else {
-    unsetenv("TERM");
-  }
-}
-
-Test(terminal_detect, detect_16color_support) {
-  // Save original environment
-  char *original_term = getenv("TERM");
-
-  // Test with color terminal
-  setenv("TERM", "xterm-color", 1);
-  bool result = detect_16color_support();
-  // May or may not be true depending on terminfo
-  (void)result; // Suppress unused variable warning
-
-  // Test with dumb terminal
-  setenv("TERM", "dumb", 1);
-  result = detect_16color_support();
-  cr_assert_not(result);
-
-  // Test with ansi terminal
-  setenv("TERM", "ansi", 1);
-  result = detect_16color_support();
-  // May or may not be true depending on terminfo
-  (void)result; // Suppress unused variable warning
-
-  // Restore original environment
-  if (original_term) {
-    setenv("TERM", original_term, 1);
-  } else {
-    unsetenv("TERM");
-  }
-}
-
-Test(terminal_detect, detect_color_support) {
-  terminal_color_level_t level = detect_color_support();
-
-  // Should return a valid color level
-  cr_assert_geq(level, TERM_COLOR_NONE);
-  cr_assert_leq(level, TERM_COLOR_TRUECOLOR);
-}
-
-/* ============================================================================
- * UTF-8 Support Detection Tests
- * ============================================================================ */
-
-Test(terminal_detect, detect_utf8_support) {
+Test(terminal_detect, utf8_support_detection) {
   // Save original environment
   char *original_lang = getenv("LANG");
   char *original_lc_all = getenv("LC_ALL");
   char *original_lc_ctype = getenv("LC_CTYPE");
 
-  // Test with UTF-8 locale
-  setenv("LANG", "en_US.UTF-8", 1);
-  bool result = detect_utf8_support();
-  // May or may not be true depending on system locale support
-  (void)result; // Suppress unused variable warning
-
-  // Test with LC_ALL
-  unsetenv("LANG");
-  setenv("LC_ALL", "en_US.UTF-8", 1);
-  result = detect_utf8_support();
-  // May or may not be true depending on system locale support
-  (void)result; // Suppress unused variable warning
-
-  // Test with LC_CTYPE
+  // Test UTF-8 detection via LANG
   unsetenv("LC_ALL");
-  setenv("LC_CTYPE", "en_US.UTF-8", 1);
-  result = detect_utf8_support();
-  // May or may not be true depending on system locale support
-  (void)result; // Suppress unused variable warning
-
-  // Test with non-UTF-8 locale
   unsetenv("LC_CTYPE");
-  setenv("LANG", "en_US.ISO-8859-1", 1);
-  result = detect_utf8_support();
-  // Note: This may still return true if the system has UTF-8 support through other means
-  // cr_assert_not(result);
-  (void)result; // Suppress unused variable warning
+  setenv("LANG", "en_US.UTF-8", 1);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  cr_assert(caps.utf8_support);
+  cr_assert(caps.capabilities & TERM_CAP_UTF8);
+
+  // Test UTF-8 detection via LC_ALL (takes precedence)
+  setenv("LC_ALL", "C.UTF-8", 1);
+  setenv("LANG", "C", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert(caps.utf8_support);
+
+  // Test UTF-8 detection via LC_CTYPE
+  unsetenv("LC_ALL");
+  setenv("LC_CTYPE", "en_US.utf8", 1);
+  setenv("LANG", "C", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert(caps.utf8_support);
+
+  // Test non-UTF-8 locale
+  unsetenv("LC_ALL");
+  unsetenv("LC_CTYPE");
+  setenv("LANG", "C", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.utf8_support, false);
 
   // Restore original environment
   if (original_lang) {
@@ -353,193 +196,32 @@ Test(terminal_detect, detect_utf8_support) {
   }
 }
 
-Test(terminal_detect, terminal_supports_unicode_blocks) {
-  bool result = terminal_supports_unicode_blocks();
-
-  // Should return a boolean value
-  cr_assert(result == true || result == false);
-}
-
-/* ============================================================================
- * Terminal Capabilities Detection Tests
- * ============================================================================ */
-
-Test(terminal_detect, detect_terminal_capabilities) {
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-
-  // Should return valid capabilities
-  cr_assert(caps.color_level >= TERM_COLOR_NONE);
-  cr_assert(caps.color_level <= TERM_COLOR_TRUECOLOR);
-  cr_assert(caps.color_count >= 0);
-  cr_assert(caps.color_count <= 16777216);
-
-  // Check that capabilities flags are reasonably consistent with color level
-  // Note: Some environments may not perfectly match expected capability flags
-  switch (caps.color_level) {
-  case TERM_COLOR_TRUECOLOR:
-    // For truecolor, we expect it to support all levels, but environment may vary
-    // Some environments may not set all capability flags correctly
-    // cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
-    break;
-  case TERM_COLOR_256:
-    // For 256-color, should support 256 and 16 but not truecolor
-    cr_assert(caps.capabilities & TERM_CAP_COLOR_16);
-    cr_assert_not(caps.capabilities & TERM_CAP_COLOR_TRUE);
-    break;
-  case TERM_COLOR_16:
-    // For 16-color, should support 16 but not higher levels
-    cr_assert(caps.capabilities & TERM_CAP_COLOR_16);
-    cr_assert_not(caps.capabilities & TERM_CAP_COLOR_256);
-    cr_assert_not(caps.capabilities & TERM_CAP_COLOR_TRUE);
-    break;
-  case TERM_COLOR_NONE:
-    // For monochrome, should not support any color capabilities
-    cr_assert_not(caps.capabilities & TERM_CAP_COLOR_16);
-    cr_assert_not(caps.capabilities & TERM_CAP_COLOR_256);
-    cr_assert_not(caps.capabilities & TERM_CAP_COLOR_TRUE);
-    break;
-  }
-
-  // UTF-8 support should be consistent, but environment may vary
-  // Note: Some environments may not perfectly sync utf8_support and TERM_CAP_UTF8
-  // if (caps.utf8_support) {
-  //   cr_assert(caps.capabilities & TERM_CAP_UTF8);
-  // } else {
-  //   cr_assert_not(caps.capabilities & TERM_CAP_UTF8);
-  // }
-
-  // Background support should be consistent with color level
-  // Note: Some environments may not set TERM_CAP_BACKGROUND correctly
-  // if (caps.color_level > TERM_COLOR_NONE) {
-  //   cr_assert(caps.capabilities & TERM_CAP_BACKGROUND);
-  // }
-}
-
-/* ============================================================================
- * Utility Function Tests
- * ============================================================================ */
-
-Test(terminal_detect, terminal_color_level_name) {
-  const char *name;
-
-  name = terminal_color_level_name(TERM_COLOR_NONE);
-  cr_assert_not_null(name);
-  cr_assert_eq(strcmp(name, "monochrome"), 0);
-
-  name = terminal_color_level_name(TERM_COLOR_16);
-  cr_assert_not_null(name);
-  cr_assert_eq(strcmp(name, "16-color"), 0);
-
-  name = terminal_color_level_name(TERM_COLOR_256);
-  cr_assert_not_null(name);
-  cr_assert_eq(strcmp(name, "256-color"), 0);
-
-  name = terminal_color_level_name(TERM_COLOR_TRUECOLOR);
-  cr_assert_not_null(name);
-  cr_assert_eq(strcmp(name, "truecolor"), 0);
-
-  // Test invalid level
-  name = terminal_color_level_name((terminal_color_level_t)999);
-  cr_assert_not_null(name);
-  cr_assert_eq(strcmp(name, "unknown"), 0);
-}
-
-Test(terminal_detect, terminal_capabilities_summary) {
-  terminal_capabilities_t caps = {0};
-  caps.color_level = TERM_COLOR_256;
-  caps.color_count = 256;
-  caps.utf8_support = true;
-  strncpy(caps.term_type, "xterm-256color", sizeof(caps.term_type) - 1);
-  strncpy(caps.colorterm, "256color", sizeof(caps.colorterm) - 1);
-
-  const char *summary = terminal_capabilities_summary(&caps);
-  cr_assert_not_null(summary);
-  cr_assert_gt(strlen(summary), 0);
-
-  // Should contain expected information
-  cr_assert(strstr(summary, "256-color") != NULL);
-  cr_assert(strstr(summary, "xterm-256color") != NULL);
-  cr_assert(strstr(summary, "256color") != NULL);
-}
-
-Test(terminal_detect, print_terminal_capabilities) {
-  terminal_capabilities_t caps = {0};
-  caps.color_level = TERM_COLOR_16;
-  caps.color_count = 16;
-  caps.utf8_support = false;
-  caps.capabilities = TERM_CAP_COLOR_16;
-  caps.render_mode = RENDER_MODE_FOREGROUND;
-  strncpy(caps.term_type, "dumb", sizeof(caps.term_type) - 1);
-  strncpy(caps.colorterm, "", sizeof(caps.colorterm) - 1);
-
-  // This function prints to stdout, so we just test that it doesn't crash
-  // Commented out to avoid cluttering test output
-  // print_terminal_capabilities(&caps);
-  cr_assert(true);
-}
-
-Test(terminal_detect, test_terminal_output_modes) {
-  // This function prints to stdout, so we just test that it doesn't crash
-  // Commented out to avoid cluttering test output
-  // test_terminal_output_modes();
-  cr_assert(true);
-}
-
-/* ============================================================================
- * TTY Path Validation Tests
- * ============================================================================ */
-
-Test(terminal_detect, is_valid_tty_path) {
-  // Test valid TTY paths
-  cr_assert(is_valid_tty_path("/dev/tty"));
-  cr_assert(is_valid_tty_path("/dev/tty0"));
-  cr_assert(is_valid_tty_path("/dev/pts/0"));
-  cr_assert(is_valid_tty_path("/dev/pts/1"));
-  cr_assert(is_valid_tty_path("/dev/console"));
-
-  // Test invalid paths
-  cr_assert_not(is_valid_tty_path(NULL));
-  cr_assert_not(is_valid_tty_path(""));
-  cr_assert_not(is_valid_tty_path("/dev"));
-  cr_assert_not(is_valid_tty_path("/dev/"));
-  cr_assert_not(is_valid_tty_path("/tmp/tty"));
-  // Note: "tty" should be invalid (too short), but implementation may vary
-  // cr_assert_not(is_valid_tty_path("tty"));
-  // Note: is_valid_tty_path returns true for any /dev/ path, so this test is adjusted
-  cr_assert(is_valid_tty_path("/dev/notatty")); // Function considers this valid
-
-  // Test edge cases
-  cr_assert_not(is_valid_tty_path("/dev"));
-  cr_assert_not(is_valid_tty_path("/dev/"));
-  // Note: is_valid_tty_path considers /dev/tt valid (contains /dev/)
-  cr_assert(is_valid_tty_path("/dev/tt"));
-}
-
-/* ============================================================================
- * Color Mode Override Tests
- * ============================================================================ */
-
-Test(terminal_detect, apply_color_mode_override) {
-  // Note: apply_color_mode_override function is declared but not implemented
-  // This test is removed to avoid linking errors
-}
-
-/* ============================================================================
- * Edge Cases and Stress Tests
- * ============================================================================ */
-
-Test(terminal_detect, edge_cases) {
-  // Test with very long environment variables
-  char long_term[1000];
-  memset(long_term, 'x', sizeof(long_term) - 1);
-  long_term[sizeof(long_term) - 1] = '\0';
-
+Test(terminal_detect, render_mode_selection) {
+  // Save original environment
   char *original_term = getenv("TERM");
-  setenv("TERM", long_term, 1);
+  char *original_lang = getenv("LANG");
+  char *original_colorterm = getenv("COLORTERM");
 
+  // Test half-block mode (color + UTF-8)
+  unsetenv("COLORTERM");
+  setenv("TERM", "xterm-256color", 1);
+  setenv("LANG", "en_US.UTF-8", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  cr_assert_geq(caps.color_level, TERM_COLOR_NONE);
-  cr_assert_leq(caps.color_level, TERM_COLOR_TRUECOLOR);
+  cr_assert_eq(caps.render_mode, RENDER_MODE_HALF_BLOCK);
+  cr_assert(caps.capabilities & TERM_CAP_BACKGROUND);
+
+  // Test foreground mode (color without UTF-8)
+  setenv("TERM", "xterm-color", 1);
+  setenv("LANG", "C", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);
+
+  // Test monochrome fallback
+  setenv("TERM", "dumb", 1);
+  setenv("LANG", "C", 1);
+  caps = detect_terminal_capabilities();
+  cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);
+  cr_assert_eq(caps.color_level, TERM_COLOR_NONE);
 
   // Restore original environment
   if (original_term) {
@@ -547,15 +229,84 @@ Test(terminal_detect, edge_cases) {
   } else {
     unsetenv("TERM");
   }
+
+  if (original_lang) {
+    setenv("LANG", original_lang, 1);
+  } else {
+    unsetenv("LANG");
+  }
+
+  if (original_colorterm) {
+    setenv("COLORTERM", original_colorterm, 1);
+  }
 }
 
-Test(terminal_detect, multiple_detection_calls) {
-  // Test that multiple calls return consistent results
-  terminal_capabilities_t caps1 = detect_terminal_capabilities();
-  terminal_capabilities_t caps2 = detect_terminal_capabilities();
+Test(terminal_detect, capability_flags) {
+  // Save original environment
+  char *original_colorterm = getenv("COLORTERM");
 
-  cr_assert_eq(caps1.color_level, caps2.color_level);
-  cr_assert_eq(caps1.color_count, caps2.color_count);
-  cr_assert_eq(caps1.utf8_support, caps2.utf8_support);
-  cr_assert_eq(caps1.capabilities, caps2.capabilities);
+  // Test truecolor capabilities
+  setenv("COLORTERM", "truecolor", 1);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_256);
+  cr_assert(caps.capabilities & TERM_CAP_COLOR_16);
+
+  // Test UTF-8 capability
+  if (caps.utf8_support) {
+    cr_assert(caps.capabilities & TERM_CAP_UTF8);
+  }
+
+  // Restore original environment
+  if (original_colorterm) {
+    setenv("COLORTERM", original_colorterm, 1);
+  } else {
+    unsetenv("COLORTERM");
+  }
+}
+
+Test(terminal_detect, terminal_type_storage) {
+  // Save original environment
+  char *original_term = getenv("TERM");
+  char *original_colorterm = getenv("COLORTERM");
+
+  // Test TERM storage
+  setenv("TERM", "xterm-256color", 1);
+  setenv("COLORTERM", "truecolor", 1);
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  cr_assert_str_eq(caps.term_type, "xterm-256color");
+  cr_assert_str_eq(caps.colorterm, "truecolor");
+
+  // Test unknown terminal
+  unsetenv("TERM");
+  unsetenv("COLORTERM");
+  caps = detect_terminal_capabilities();
+  cr_assert_str_eq(caps.term_type, "unknown");
+  cr_assert_str_eq(caps.colorterm, "");
+
+  // Restore original environment
+  if (original_term) {
+    setenv("TERM", original_term, 1);
+  }
+
+  if (original_colorterm) {
+    setenv("COLORTERM", original_colorterm, 1);
+  }
+}
+
+/* ============================================================================
+ * Helper Function Tests
+ * ============================================================================ */
+
+Test(terminal_detect, color_level_names) {
+  cr_assert_str_eq(terminal_color_level_name(TERM_COLOR_NONE), "none");
+  cr_assert_str_eq(terminal_color_level_name(TERM_COLOR_16), "16-color");
+  cr_assert_str_eq(terminal_color_level_name(TERM_COLOR_256), "256-color");
+  cr_assert_str_eq(terminal_color_level_name(TERM_COLOR_TRUECOLOR), "truecolor");
+}
+
+Test(terminal_detect, detection_reliability) {
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  // POSIX systems should generally have reliable detection
+  cr_assert(caps.detection_reliable);
 }

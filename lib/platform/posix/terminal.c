@@ -579,4 +579,18 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   return caps;
 }
 
+/**
+ * Reset the terminal to default state
+ * @param fd File descriptor for the terminal (e.g., from $TTY on macOS)
+ * @return 0 on success, -1 on failure
+ */
+int terminal_reset(int fd) {
+  // Reset using ANSI escape sequence
+  const char* reset_seq = "\033c"; // Full reset
+  if (write(fd, reset_seq, strlen(reset_seq)) < 0) {
+    return -1;
+  }
+  return 0;
+}
+
 #endif // !_WIN32

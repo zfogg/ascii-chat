@@ -119,9 +119,12 @@ endif()
 message(STATUS "Parallel build jobs: ${CPU_CORES}")
 
 # C standard selection - use latest C23 for future-proofing
-set(CMAKE_C_STANDARD 23)
+# Allow override for test compatibility
+if(NOT CMAKE_C_STANDARD)
+    set(CMAKE_C_STANDARD 23)
+endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)  # Use pure C23, not GNU extensions
+set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions for POSIX compatibility
 
 
 # Build type (matches Makefile modes)
@@ -1309,7 +1312,7 @@ if(CRITERION_FOUND)
             list(APPEND TEST_LDFLAGS ${NANOPB_LIBRARIES})
         elseif(NANOPB_LIBRARIES)
             list(APPEND TEST_LDFLAGS ${NANOPB_LIBRARIES})
-        else()
+        elseif(EXISTS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
             list(APPEND TEST_LDFLAGS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
         endif()
         
@@ -1351,7 +1354,6 @@ if(CRITERION_FOUND)
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
     set(TEST_EXCLUDES
-        tests/unit/ascii_simd_test.c
         tests/integration/server_multiclient_test.c
         tests/integration/video_pipeline_test.c
     )
@@ -1376,8 +1378,8 @@ if(CRITERION_FOUND)
         string(REPLACE "_test" "" test_base ${test_name})
         set(test_exe_name "test_${test_subdir}_${test_base}")
         
-        # Add test executable
-        add_executable(${test_exe_name} ${test_src})
+        # Add test executable with test logging helper
+        add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
         
         # Link test dependencies (order matters for linking)
         target_link_libraries(${test_exe_name}
@@ -1387,7 +1389,7 @@ if(CRITERION_FOUND)
         
         # Use release objects for performance tests (matches Makefile)
         if(test_subdir STREQUAL "performance")
-            target_compile_options(${test_exe_name} PRIVATE ${CMAKE_CXX_FLAGS_RELEASE})
+            target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
         
         # Add to CTest

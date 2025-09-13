@@ -191,6 +191,16 @@ extern atomic_bool g_should_exit;
 extern mixer_t *g_audio_mixer;
 
 /**
+ * @brief Global shutdown synchronization mutex from main.c
+ */
+extern static_mutex_t g_shutdown_mutex;
+
+/**
+ * @brief Global shutdown condition variable from main.c
+ */
+extern static_cond_t g_shutdown_cond;
+
+/**
  * @brief Global counter for blank frames sent across all clients
  *
  * Tracks the total number of blank/empty frames sent when no video sources

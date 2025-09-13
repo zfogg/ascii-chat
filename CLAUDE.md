@@ -6,7 +6,7 @@
 - Format code with `make format` after you edit it
 - Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
-- On Windows: use CMake for building (`cmake -B build && cmake --build build`)
+- On Windows: use PowerShell build script `./build.ps1` or CMake directly
 - Use `clang` instead of `gcc`
 - Don't use `git add .`, add all files individually
 - Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `make clean && make debug`
@@ -144,6 +144,46 @@ ASCII-Chat now has comprehensive Windows support through a platform abstraction 
 - Webcam stub implementation (test pattern mode)
 
 **Building on Windows:**
+
+The preferred method is using the PowerShell build script `build.ps1` which handles all configuration automatically:
+
+```powershell
+# Default build with Clang in native Windows mode
+./build.ps1
+
+# Build with MinGW mode (GCC or Clang)
+./build.ps1 -MinGW
+
+# Clean rebuild
+./build.ps1 -Clean
+
+# Release build
+./build.ps1 -Config Release
+
+# Custom build directory
+./build.ps1 -BuildDir mybuild
+
+# Add compiler flags (e.g., for debugging)
+./build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"
+
+# Verbose output
+./build.ps1 -Verbose
+
+# Run tests after building (requires Criterion - typically only works with MinGW)
+./build.ps1 -Test
+```
+
+**Note**: The Criterion test framework is primarily Unix-based and typically only works on Windows when using MinGW/MSYS2 with pkg-config installed. Native Windows builds usually cannot run the tests.
+
+The build script automatically:
+- Kills any running ASCII-Chat processes before building
+- Detects and uses the best available compiler (Clang > MSVC > GCC)
+- Uses Ninja if available for faster builds
+- Creates hard links in `bin/` directory for consistency with Unix builds
+- Copies runtime DLLs to the correct location
+- Links compile_commands.json to repo root for IDE integration
+
+Manual CMake build (if not using build.ps1):
 ```bash
 # Use CMake with Clang (recommended)
 cmake -B build_clang -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug

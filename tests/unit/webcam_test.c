@@ -5,8 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "webcam.h"
-#include "webcam_platform.h"
+#include "os/webcam.h"
 #include "common.h"
 #include "options.h"
 #include "image2ascii/image.h"

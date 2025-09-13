@@ -10,7 +10,7 @@
 #include "image2ascii/image.h"
 #include "common.h"
 #include "options.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with custom log levels

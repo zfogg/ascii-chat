@@ -392,6 +392,15 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
         uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
 
+        // Debug logging to understand the data
+        if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
+          log_error("UNINITIALIZED MEMORY DETECTED! First 16 bytes of frame data:");
+          uint8_t *bytes = (uint8_t *)frame_to_use->data;
+          log_error("  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                    bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+        }
+
         // Validate dimensions are reasonable (max 4K resolution)
         if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
           log_error("Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)",
