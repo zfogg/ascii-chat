@@ -1467,13 +1467,31 @@ file(GLOB_RECURSE ALL_SOURCE_FILES
 # Filter out third-party or generated files if needed
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX ".*\.m$")  # Exclude Objective-C files
 
-add_custom_target(format
-    COMMAND clang-format -i ${ALL_SOURCE_FILES}
-    COMMENT "Formatting source code with clang-format"
-    VERBATIM
-)
+# Find clang-format executable
+find_program(CLANG_FORMAT_EXECUTABLE NAMES clang-format)
 
-# Format check target
+if(CLANG_FORMAT_EXECUTABLE)
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+        COMMENT "Formatting source code with clang-format"
+        VERBATIM
+    )
+
+    # Format check target
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run -Werror ${ALL_SOURCE_FILES}
+        COMMENT "Checking code formatting"
+        VERBATIM
+    )
+else()
+    message(WARNING "clang-format not found. Format targets will not be available.")
+    add_custom_target(format
+        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+    )
+    add_custom_target(format-check
+        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+    )
+endif()
 
 # Clean all target (matches Makefile clean)
 add_custom_target(clean_all
@@ -1569,6 +1587,7 @@ if(CRITERION_FOUND)
     message(STATUS "  Run tests (CMake): cmake --build build --target test_all")
 endif()
 message(STATUS "  Format code:       cmake --build build --target format")
+message(STATUS "  Check formatting:  cmake --build build --target format-check")
 message(STATUS "  Install deps:      cmake --build build --target deps")
 message(STATUS "========================================")
 message(STATUS "")
