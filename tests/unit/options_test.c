@@ -203,10 +203,10 @@ Test(options, default_values) {
   cr_assert_eq(opt_height, 70);
   cr_assert_eq(auto_width, 1);
   cr_assert_eq(auto_height, 1);
-  cr_assert_str_eq(opt_address, "0.0.0.0");
+  cr_assert_str_eq(opt_address, "127.0.0.1");
   cr_assert_str_eq(opt_port, "27224");
   cr_assert_eq(opt_webcam_index, 0);
-  cr_assert_eq(opt_webcam_flip, false);
+  cr_assert_eq(opt_webcam_flip, true);
   cr_assert_eq(opt_color_mode, COLOR_MODE_AUTO);
   cr_assert_eq(opt_render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(opt_show_capabilities, 0);
@@ -253,7 +253,7 @@ GENERATE_OPTIONS_TEST(
         cr_assert_eq(opt_height, 70);
       }
       cr_assert_eq(opt_webcam_index, 0);
-      cr_assert_eq(opt_webcam_flip, false);
+      cr_assert_eq(opt_webcam_flip, true);
     },
     { cr_assert_eq(exit_code, 0, "Basic server options should not exit"); })
 
@@ -979,7 +979,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_eq(opt_encrypt_enabled, 1);
       cr_assert_eq(opt_force_utf8, 1);
       cr_assert_eq(opt_show_capabilities, 1);
-      cr_assert_eq(opt_webcam_flip, true);
+      cr_assert_eq(opt_webcam_flip, false);
     },
     { cr_assert_eq(exit_code, 0, "flag values should not cause exit"); })
 
@@ -1008,7 +1008,7 @@ GENERATE_OPTIONS_TEST(
     test_webcam_values, ARGV_LIST("client", "-c", "3", "-f"), true,
     {
       cr_assert_eq(opt_webcam_index, 3);
-      cr_assert_eq(opt_webcam_flip, true);
+      cr_assert_eq(opt_webcam_flip, false);
     },
     { cr_assert_eq(exit_code, 0, "webcam values should not cause exit"); })
 
@@ -1026,7 +1026,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_eq(opt_width, 200);
       cr_assert_eq(opt_height, 100);
       cr_assert_eq(opt_webcam_index, 2);
-      cr_assert_eq(opt_webcam_flip, true);
+      cr_assert_eq(opt_webcam_flip, false);
       cr_assert_eq(opt_color_mode, COLOR_MODE_256_COLOR);
       cr_assert_eq(opt_render_mode, RENDER_MODE_BACKGROUND);
       cr_assert_eq(opt_palette_type, PALETTE_DIGITAL);
@@ -1167,7 +1167,7 @@ GENERATE_OPTIONS_TEST(
     test_webcam_index_only, ARGV_LIST("client", "-c", "5"), true,
     {
       cr_assert_eq(opt_webcam_index, 5);
-      cr_assert_eq(opt_webcam_flip, false); // Should remain default
+      cr_assert_eq(opt_webcam_flip, true); // Should remain default
     },
     { cr_assert_eq(exit_code, 0, "webcam index should not cause exit"); })
 
@@ -1175,7 +1175,7 @@ GENERATE_OPTIONS_TEST(
     test_webcam_flip_only, ARGV_LIST("client", "-f"), true,
     {
       cr_assert_eq(opt_webcam_index, 0); // Should remain default
-      cr_assert_eq(opt_webcam_flip, true);
+      cr_assert_eq(opt_webcam_flip, false);
     },
     { cr_assert_eq(exit_code, 0, "webcam flip should not cause exit"); })
 
@@ -1193,7 +1193,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_eq(opt_width, 110);         // Should use default width
       cr_assert_eq(opt_height, 70);         // Should use default height
       cr_assert_eq(opt_webcam_index, 0);    // Should use default
-      cr_assert_eq(opt_webcam_flip, false); // Should use default
+      cr_assert_eq(opt_webcam_flip, true); // Should use default
     },
     { cr_assert_eq(exit_code, 0, "server basic options should not cause exit"); })
 
