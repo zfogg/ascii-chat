@@ -292,7 +292,10 @@ The test runner provides:
 ./tests/scripts/run_tests.sh unit buffer_pool packet_queue hashtable
 
 # Filter tests within a binary
-./tests/scripts/run_tests.sh test_unit_buffer_pool -f "creation"
+# IMPORTANT: Always use "*filter*" format with Criterion (wildcard matching on both sides)
+./tests/scripts/run_tests.sh test_unit_buffer_pool -f "*creation*"  # Correct format
+./tests/scripts/run_tests.sh test_unit_ascii -f "*convert*"        # Matches all tests with "convert" in name
+./tests/scripts/run_tests.sh test_unit_ascii -f "*read_init*"      # Matches ascii_read_init_basic, etc.
 ```
 
 ### Advanced Test Options

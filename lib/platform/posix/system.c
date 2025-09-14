@@ -47,7 +47,8 @@ const char *get_username_env(void) {
  * @note POSIX platforms don't need special initialization
  */
 int platform_init(void) {
-  // POSIX platforms don't need special initialization
+  // Install crash handlers for automatic backtrace on crashes
+  platform_install_crash_handler();
   return 0;
 }
 
@@ -65,14 +66,6 @@ void platform_cleanup(void) {
  */
 void platform_sleep_ms(unsigned int ms) {
   usleep(ms * 1000);
-}
-
-/**
- * @brief Sleep for specified microseconds
- * @param us Number of microseconds to sleep
- */
-void platform_sleep_us(unsigned int us) {
-  usleep(us);
 }
 
 /**
@@ -103,13 +96,25 @@ const char *platform_get_username(void) {
 }
 
 /**
- * @brief Set signal handler
+ * @brief Set signal handler using sigaction (thread-safe POSIX implementation)
  * @param sig Signal number
  * @param handler Signal handler function
  * @return Previous signal handler, or SIG_ERR on error
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler) {
-  return signal(sig, handler);
+  struct sigaction sa, old_sa;
+
+  // Set up new signal action
+  sa.sa_handler = handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART; // Restart interrupted system calls
+
+  // Install the signal handler
+  if (sigaction(sig, &sa, &old_sa) == -1) {
+    return SIG_ERR;
+  }
+
+  return old_sa.sa_handler;
 }
 
 /**
@@ -476,6 +481,75 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  */
 void platform_backtrace_symbols_free(char **strings) {
   free(strings);
+}
+
+// ============================================================================
+// Crash Handling
+// ============================================================================
+
+/**
+ * @brief Print backtrace to stderr
+ */
+void platform_print_backtrace(void) {
+  void *buffer[32];
+  int size = platform_backtrace(buffer, 32);
+
+  if (size > 0) {
+    fprintf(stderr, "\n=== BACKTRACE ===\n");
+    char **symbols = platform_backtrace_symbols(buffer, size);
+
+    for (int i = 0; i < size; i++) {
+      fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
+    }
+
+    platform_backtrace_symbols_free(symbols);
+    fprintf(stderr, "================\n\n");
+  }
+}
+
+/**
+ * @brief Crash signal handler
+ */
+static void crash_handler(int sig, siginfo_t *info, void *context) {
+  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  fprintf(stderr, "Signal: %d (%s)\n", sig,
+          sig == SIGSEGV ? "SIGSEGV" :
+          sig == SIGABRT ? "SIGABRT" :
+          sig == SIGFPE ? "SIGFPE" :
+          sig == SIGILL ? "SIGILL" :
+          sig == SIGBUS ? "SIGBUS" : "UNKNOWN");
+
+  if (info) {
+    fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n",
+            info->si_code, info->si_addr);
+  }
+
+  platform_print_backtrace();
+
+  // Restore default handler and re-raise signal
+  struct sigaction sa;
+  sa.sa_handler = SIG_DFL;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(sig, &sa, NULL);
+  raise(sig);
+}
+
+/**
+ * @brief Install crash handlers for common crash signals (thread-safe)
+ */
+void platform_install_crash_handler(void) {
+  struct sigaction sa;
+  sa.sa_sigaction = crash_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_SIGINFO | SA_RESTART;
+
+  // Install handlers for all crash signals
+  sigaction(SIGSEGV, &sa, NULL);  // Segmentation fault
+  sigaction(SIGABRT, &sa, NULL);  // Abort
+  sigaction(SIGFPE, &sa, NULL);   // Floating point exception
+  sigaction(SIGILL, &sa, NULL);   // Illegal instruction
+  sigaction(SIGBUS, &sa, NULL);   // Bus error
 }
 
 #endif // !_WIN32

@@ -26,7 +26,6 @@ void platform_cleanup(void);
 
 // Time functions
 void platform_sleep_ms(unsigned int ms);
-void platform_sleep_us(unsigned int us);
 
 // Process functions
 int platform_get_pid(void);
@@ -44,14 +43,11 @@ int platform_isatty(int fd);
 const char *platform_ttyname(int fd);
 int platform_fsync(int fd);
 
-// Signal constants for cross-platform use
-#ifdef _WIN32
-// Windows doesn't have these signals
-#define SIGWINCH 28 // Window size change (not supported on Windows)
-#define SIGTERM 15  // Termination signal (limited support on Windows)
-#endif
-
 // Debug/stack trace functions
 int platform_backtrace(void **buffer, int size);
 char **platform_backtrace_symbols(void *const *buffer, int size);
 void platform_backtrace_symbols_free(char **strings);
+
+// Crash handling
+void platform_install_crash_handler(void);
+void platform_print_backtrace(void);

@@ -87,7 +87,7 @@ cleanup:
   return hr;
 }
 
-int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
+int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   log_info("Opening Windows webcam with Media Foundation, device index %d", device_index);
 
   webcam_context_t *cam;
@@ -317,7 +317,7 @@ error:
   return -1;
 }
 
-void webcam_platform_cleanup(webcam_context_t *ctx) {
+void webcam_cleanup_context(webcam_context_t *ctx) {
   if (ctx) {
     if (ctx->reader) {
       IMFSourceReader_Release(ctx->reader);
@@ -340,7 +340,7 @@ void webcam_platform_cleanup(webcam_context_t *ctx) {
   }
 }
 
-image_t *webcam_platform_read(webcam_context_t *ctx) {
+image_t *webcam_read_context(webcam_context_t *ctx) {
   if (!ctx || !ctx->reader)
     return NULL;
 
@@ -627,7 +627,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
   return img;
 }
 
-int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)
     return -1;
 

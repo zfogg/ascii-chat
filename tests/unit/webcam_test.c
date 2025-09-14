@@ -15,61 +15,61 @@
 TEST_SUITE_WITH_QUIET_LOGGING(webcam);
 
 // Mock webcam platform functions
-static int mock_webcam_platform_init_calls = 0;
-static int mock_webcam_platform_init_result = 0;
-static int mock_webcam_platform_get_dimensions_calls = 0;
-static int mock_webcam_platform_get_dimensions_result = 0;
-static int mock_webcam_platform_read_calls = 0;
-static image_t *mock_webcam_platform_read_result = NULL;
-static int mock_webcam_platform_cleanup_calls = 0;
+static int mock_webcam_init_context_calls = 0;
+static int mock_webcam_init_context_result = 0;
+static int mock_webcam_get_dimensions_calls = 0;
+static int mock_webcam_get_dimensions_result = 0;
+static int mock_webcam_read_context_calls = 0;
+static image_t *mock_webcam_read_context_result = NULL;
+static int mock_webcam_cleanup_context_calls = 0;
 static webcam_context_t *mock_webcam_context = (webcam_context_t *)0x12345678;
 
 // Mock implementations
-int mock_webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
+int mock_webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   (void)device_index;
-  mock_webcam_platform_init_calls++;
+  mock_webcam_init_context_calls++;
   if (ctx) {
     *ctx = mock_webcam_context;
   }
-  return mock_webcam_platform_init_result;
+  return mock_webcam_init_context_result;
 }
 
-int mock_webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+int mock_webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   (void)ctx;
-  mock_webcam_platform_get_dimensions_calls++;
+  mock_webcam_get_dimensions_calls++;
   if (width)
     *width = 640;
   if (height)
     *height = 480;
-  return mock_webcam_platform_get_dimensions_result;
+  return mock_webcam_get_dimensions_result;
 }
 
-image_t *mock_webcam_platform_read(webcam_context_t *ctx) {
+image_t *mock_webcam_read_context(webcam_context_t *ctx) {
   (void)ctx;
-  mock_webcam_platform_read_calls++;
-  return mock_webcam_platform_read_result;
+  mock_webcam_read_context_calls++;
+  return mock_webcam_read_context_result;
 }
 
-void mock_webcam_platform_cleanup(webcam_context_t *ctx) {
+void mock_webcam_cleanup_context(webcam_context_t *ctx) {
   (void)ctx;
-  mock_webcam_platform_cleanup_calls++;
+  mock_webcam_cleanup_context_calls++;
 }
 
 // Override platform functions with mocks
-#define webcam_platform_init mock_webcam_platform_init
-#define webcam_platform_get_dimensions mock_webcam_platform_get_dimensions
-#define webcam_platform_read mock_webcam_platform_read
-#define webcam_platform_cleanup mock_webcam_platform_cleanup
+#define webcam_init_context mock_webcam_init_context
+#define webcam_get_dimensions mock_webcam_get_dimensions
+#define webcam_read_context mock_webcam_read_context
+#define webcam_cleanup_context mock_webcam_cleanup_context
 
 // Helper function to reset mock state
 static void reset_mock_state(void) {
-  mock_webcam_platform_init_calls = 0;
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_calls = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
-  mock_webcam_platform_read_calls = 0;
-  mock_webcam_platform_read_result = NULL;
-  mock_webcam_platform_cleanup_calls = 0;
+  mock_webcam_init_context_calls = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_calls = 0;
+  mock_webcam_get_dimensions_result = 0;
+  mock_webcam_read_context_calls = 0;
+  mock_webcam_read_context_result = NULL;
+  mock_webcam_cleanup_context_calls = 0;
 }
 
 // Helper function to create a test image
@@ -115,8 +115,8 @@ Test(webcam, init_success) {
   reset_mock_state();
 
   // Set up successful mock responses
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
 
   // Initialize global variables
   last_image_width = 0;
@@ -125,27 +125,13 @@ Test(webcam, init_success) {
   int result = webcam_init(0);
 
   cr_assert_eq(result, 0);
-  cr_assert_eq(mock_webcam_platform_init_calls, 1);
-  cr_assert_eq(mock_webcam_platform_get_dimensions_calls, 1);
+  cr_assert_eq(mock_webcam_init_context_calls, 1);
+  cr_assert_eq(mock_webcam_get_dimensions_calls, 1);
   cr_assert_eq(last_image_width, 640);
   cr_assert_eq(last_image_height, 480);
 
   // Clean up
   webcam_cleanup();
-}
-
-Test(webcam, init_platform_failure) {
-  reset_mock_state();
-
-  // Set up platform init failure
-  mock_webcam_platform_init_result = -1;
-
-  // This should call exit() due to the error handling in webcam_init
-  // We can't easily test this without forking, so we'll test the mock behavior
-  int result = mock_webcam_platform_init(NULL, 0);
-
-  cr_assert_eq(result, -1);
-  cr_assert_eq(mock_webcam_platform_init_calls, 1);
 }
 
 Test(webcam, init_dimensions_failure) {
@@ -155,8 +141,8 @@ Test(webcam, init_dimensions_failure) {
   reset_mock_state();
 
   // Set up successful init but failed dimensions
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = -1;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = -1;
 
   // Initialize global variables
   last_image_width = 0;
@@ -165,8 +151,8 @@ Test(webcam, init_dimensions_failure) {
   int result = webcam_init(1);
 
   cr_assert_eq(result, 0);
-  cr_assert_eq(mock_webcam_platform_init_calls, 1);
-  cr_assert_eq(mock_webcam_platform_get_dimensions_calls, 1);
+  cr_assert_eq(mock_webcam_init_context_calls, 1);
+  cr_assert_eq(mock_webcam_get_dimensions_calls, 1);
   // Dimensions should remain unchanged on failure
   cr_assert_eq(last_image_width, 0);
   cr_assert_eq(last_image_height, 0);
@@ -181,8 +167,8 @@ Test(webcam, init_different_indices) {
 
   reset_mock_state();
 
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
 
   // Test different webcam indices
   unsigned short int indices[] = {0, 1, 2, 5, 10, 255};
@@ -190,12 +176,12 @@ Test(webcam, init_different_indices) {
 
   for (int i = 0; i < num_indices; i++) {
     reset_mock_state();
-    mock_webcam_platform_init_result = 0;
-    mock_webcam_platform_get_dimensions_result = 0;
+    mock_webcam_init_context_result = 0;
+    mock_webcam_get_dimensions_result = 0;
 
     int result = webcam_init(indices[i]);
     cr_assert_eq(result, 0);
-    cr_assert_eq(mock_webcam_platform_init_calls, 1);
+    cr_assert_eq(mock_webcam_init_context_calls, 1);
 
     webcam_cleanup();
   }
@@ -212,14 +198,14 @@ Test(webcam, read_success) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Set up successful read
   image_t *test_image = create_test_image(320, 240);
   cr_assert_not_null(test_image);
-  mock_webcam_platform_read_result = test_image;
+  mock_webcam_read_context_result = test_image;
 
   // Set up global options
   opt_webcam_flip = false;
@@ -230,7 +216,7 @@ Test(webcam, read_success) {
 
   cr_assert_not_null(result);
   cr_assert_eq(result, test_image);
-  cr_assert_eq(mock_webcam_platform_read_calls, 1);
+  cr_assert_eq(mock_webcam_read_context_calls, 1);
   cr_assert_eq(last_image_width, 320);
   cr_assert_eq(last_image_height, 240);
 
@@ -246,7 +232,7 @@ Test(webcam, read_not_initialized) {
   image_t *result = webcam_read();
 
   cr_assert_null(result);
-  cr_assert_eq(mock_webcam_platform_read_calls, 0);
+  cr_assert_eq(mock_webcam_read_context_calls, 0);
 }
 
 Test(webcam, read_platform_returns_null) {
@@ -256,17 +242,17 @@ Test(webcam, read_platform_returns_null) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Set up platform read to return NULL
-  mock_webcam_platform_read_result = NULL;
+  mock_webcam_read_context_result = NULL;
 
   image_t *result = webcam_read();
 
   cr_assert_null(result);
-  cr_assert_eq(mock_webcam_platform_read_calls, 1);
+  cr_assert_eq(mock_webcam_read_context_calls, 1);
 
   // Clean up
   webcam_cleanup();
@@ -279,8 +265,8 @@ Test(webcam, read_with_horizontal_flip) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Create test image with known pattern
@@ -296,7 +282,7 @@ Test(webcam, read_with_horizontal_flip) {
     }
   }
 
-  mock_webcam_platform_read_result = test_image;
+  mock_webcam_read_context_result = test_image;
   opt_webcam_flip = true;
 
   image_t *result = webcam_read();
@@ -323,8 +309,8 @@ Test(webcam, read_without_horizontal_flip) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Create test image with known pattern
@@ -340,7 +326,7 @@ Test(webcam, read_without_horizontal_flip) {
     }
   }
 
-  mock_webcam_platform_read_result = test_image;
+  mock_webcam_read_context_result = test_image;
   opt_webcam_flip = false;
 
   image_t *result = webcam_read();
@@ -366,8 +352,8 @@ Test(webcam, read_multiple_calls) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Create multiple test images
@@ -381,7 +367,7 @@ Test(webcam, read_multiple_calls) {
 
   // Read multiple frames
   for (int i = 0; i < 5; i++) {
-    mock_webcam_platform_read_result = test_images[i];
+    mock_webcam_read_context_result = test_images[i];
     image_t *result = webcam_read();
 
     cr_assert_not_null(result);
@@ -390,7 +376,7 @@ Test(webcam, read_multiple_calls) {
     cr_assert_eq(last_image_height, 100 + i * 10);
   }
 
-  cr_assert_eq(mock_webcam_platform_read_calls, 5);
+  cr_assert_eq(mock_webcam_read_context_calls, 5);
 
   // Clean up
   for (int i = 0; i < 5; i++) {
@@ -410,15 +396,15 @@ Test(webcam, cleanup_success) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
-  cr_assert_eq(mock_webcam_platform_cleanup_calls, 0);
+  cr_assert_eq(mock_webcam_cleanup_context_calls, 0);
 
   webcam_cleanup();
 
-  cr_assert_eq(mock_webcam_platform_cleanup_calls, 1);
+  cr_assert_eq(mock_webcam_cleanup_context_calls, 1);
 }
 
 Test(webcam, cleanup_not_initialized) {
@@ -427,7 +413,7 @@ Test(webcam, cleanup_not_initialized) {
   // Don't initialize webcam
   webcam_cleanup();
 
-  cr_assert_eq(mock_webcam_platform_cleanup_calls, 0);
+  cr_assert_eq(mock_webcam_cleanup_context_calls, 0);
 }
 
 Test(webcam, cleanup_multiple_calls) {
@@ -437,8 +423,8 @@ Test(webcam, cleanup_multiple_calls) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Call cleanup multiple times
@@ -447,7 +433,7 @@ Test(webcam, cleanup_multiple_calls) {
   webcam_cleanup();
 
   // Should only call platform cleanup once (first time)
-  cr_assert_eq(mock_webcam_platform_cleanup_calls, 1);
+  cr_assert_eq(mock_webcam_cleanup_context_calls, 1);
 }
 
 /* ============================================================================
@@ -463,15 +449,15 @@ Test(webcam, init_read_cleanup_cycle) {
   // Test complete cycle multiple times
   for (int cycle = 0; cycle < 3; cycle++) {
     // Initialize
-    mock_webcam_platform_init_result = 0;
-    mock_webcam_platform_get_dimensions_result = 0;
+    mock_webcam_init_context_result = 0;
+    mock_webcam_get_dimensions_result = 0;
     int result = webcam_init(cycle);
     cr_assert_eq(result, 0);
 
     // Read
     image_t *test_image = create_test_image(320, 240);
     cr_assert_not_null(test_image);
-    mock_webcam_platform_read_result = test_image;
+    mock_webcam_read_context_result = test_image;
     opt_webcam_flip = false;
 
     image_t *read_result = webcam_read();
@@ -482,9 +468,9 @@ Test(webcam, init_read_cleanup_cycle) {
     free_test_image(test_image);
   }
 
-  cr_assert_eq(mock_webcam_platform_init_calls, 3);
-  cr_assert_eq(mock_webcam_platform_read_calls, 3);
-  cr_assert_eq(mock_webcam_platform_cleanup_calls, 3);
+  cr_assert_eq(mock_webcam_init_context_calls, 3);
+  cr_assert_eq(mock_webcam_read_context_calls, 3);
+  cr_assert_eq(mock_webcam_cleanup_context_calls, 3);
 }
 
 Test(webcam, read_with_odd_width_flip) {
@@ -494,8 +480,8 @@ Test(webcam, read_with_odd_width_flip) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Create test image with odd width (5 pixels)
@@ -511,7 +497,7 @@ Test(webcam, read_with_odd_width_flip) {
     }
   }
 
-  mock_webcam_platform_read_result = test_image;
+  mock_webcam_read_context_result = test_image;
   opt_webcam_flip = true;
 
   image_t *result = webcam_read();
@@ -538,8 +524,8 @@ Test(webcam, read_with_single_pixel_width) {
   reset_mock_state();
 
   // Set up successful initialization
-  mock_webcam_platform_init_result = 0;
-  mock_webcam_platform_get_dimensions_result = 0;
+  mock_webcam_init_context_result = 0;
+  mock_webcam_get_dimensions_result = 0;
   webcam_init(0);
 
   // Create test image with single pixel width
@@ -549,7 +535,7 @@ Test(webcam, read_with_single_pixel_width) {
   test_image->pixels[0].r = 100;
   test_image->pixels[1].r = 200;
 
-  mock_webcam_platform_read_result = test_image;
+  mock_webcam_read_context_result = test_image;
   opt_webcam_flip = true;
 
   image_t *result = webcam_read();

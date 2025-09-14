@@ -37,7 +37,7 @@ void segfault_handler(int sig) {
   backtrace_symbols_fd(array, size, STDERR_FILENO);
 
   // Re-raise the signal to get default behavior
-  signal(sig, SIG_DFL);
+  platform_signal(sig, SIG_DFL);
   raise(sig);
 }
 
@@ -46,9 +46,9 @@ void setup_cache_logging(void) {
   hashtable_set_stats_enabled(false); // Disable hashtable stats for this test
 
   // Install segfault handler
-  signal(SIGSEGV, segfault_handler);
-  signal(SIGBUS, segfault_handler);
-  signal(SIGABRT, segfault_handler);
+  platform_signal(SIGSEGV, segfault_handler);
+  platform_signal(SIGBUS, segfault_handler);
+  platform_signal(SIGABRT, segfault_handler);
 }
 
 void restore_cache_logging(void) {
@@ -56,9 +56,9 @@ void restore_cache_logging(void) {
   hashtable_set_stats_enabled(true); // Re-enable hashtable stats
 
   // Restore default signal handlers
-  signal(SIGSEGV, SIG_DFL);
-  signal(SIGBUS, SIG_DFL);
-  signal(SIGABRT, SIG_DFL);
+  platform_signal(SIGSEGV, SIG_DFL);
+  platform_signal(SIGBUS, SIG_DFL);
+  platform_signal(SIGABRT, SIG_DFL);
 }
 
 // =============================================================================

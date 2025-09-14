@@ -32,12 +32,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Configure MinGW mode for any compiler
 if(WIN32 AND USE_MINGW)
     message(STATUS "Configuring ${CMAKE_C_COMPILER_ID} for MinGW mode")
-    
+
     # Set MinGW target and system paths for Clang (GCC doesn't need this)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         set(CMAKE_C_COMPILER_TARGET x86_64-w64-mingw32)
         set(CMAKE_CXX_COMPILER_TARGET x86_64-w64-mingw32)
-        
+
         # Find MinGW system headers - check common installation paths
         set(MINGW_INCLUDE_PATHS
             "$ENV{USERPROFILE}/scoop/apps/gcc/current/include"  # Scoop GCC (current user)
@@ -50,7 +50,7 @@ if(WIN32 AND USE_MINGW)
             "${CMAKE_C_COMPILER}/../include"  # Relative to compiler
             "${CMAKE_C_COMPILER}/../../x86_64-w64-mingw32/include"  # GCC target include
         )
-        
+
         foreach(INCLUDE_PATH IN LISTS MINGW_INCLUDE_PATHS)
             if(EXISTS "${INCLUDE_PATH}/stdio.h")
                 include_directories(SYSTEM "${INCLUDE_PATH}")
@@ -59,33 +59,33 @@ if(WIN32 AND USE_MINGW)
             endif()
         endforeach()
     endif()
-    
+
     # Use MinGW linker for all compilers
     set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_COMPILER} <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_COMPILER} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-    
+
     # Override CMake's Windows-specific compile flags that are set by the platform module
     # These get added by CMake's Windows-Clang.cmake platform file
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreaded "")
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDLL "")
-    set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")  
+    set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebugDLL "")
     set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreaded "")
     set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDLL "")
-    set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")  
+    set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")
     set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebugDLL "")
-    
+
     # Clear the MSVC runtime library setting that adds -D_DEBUG -D_DLL -D_MT
     set(CMAKE_MSVC_RUNTIME_LIBRARY "")
-    
+
     # Override all the flag variables that CMake sets for Windows
     set(CMAKE_C_FLAGS "" CACHE STRING "C flags" FORCE)
-    set(CMAKE_CXX_FLAGS "" CACHE STRING "CXX flags" FORCE) 
+    set(CMAKE_CXX_FLAGS "" CACHE STRING "CXX flags" FORCE)
     set(CMAKE_C_FLAGS_DEBUG "-O0 -g -Wall -Wextra -DDEBUG" CACHE STRING "C Debug flags" FORCE)
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wextra -DDEBUG" CACHE STRING "CXX Debug flags" FORCE)
     set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "C Release flags" FORCE)
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "CXX Release flags" FORCE)
-    
+
     message(STATUS "MinGW build using clean compiler flags (no MSVC runtime flags)")
 endif()
 
@@ -103,7 +103,7 @@ elseif(WIN32)
     if(DEFINED ENV{NUMBER_OF_PROCESSORS})
         set(CPU_CORES $ENV{NUMBER_OF_PROCESSORS})
     else()
-        execute_process(COMMAND wmic cpu get NumberOfLogicalProcessors /value 
+        execute_process(COMMAND wmic cpu get NumberOfLogicalProcessors /value
                        OUTPUT_VARIABLE CPU_INFO OUTPUT_STRIP_TRAILING_WHITESPACE)
         string(REGEX MATCH "NumberOfLogicalProcessors=([0-9]+)" _ ${CPU_INFO})
         if(CMAKE_MATCH_1)
@@ -155,7 +155,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(PLATFORM_DARWIN TRUE)
     set(PLATFORM_POSIX TRUE)
-    
+
     # macOS SDK configuration (matches Makefile)
     execute_process(
         COMMAND xcrun --sdk macosx --show-sdk-path
@@ -167,7 +167,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         OUTPUT_VARIABLE CLANG_RESOURCE_DIR
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    
+
     # Apple Silicon and Rosetta detection
     execute_process(
         COMMAND sysctl -n hw.optional.arm64
@@ -181,27 +181,27 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
     )
-    
+
     if(NOT IS_APPLE_SILICON)
         set(IS_APPLE_SILICON 0)
     endif()
     if(NOT IS_ROSETTA)
         set(IS_ROSETTA 0)
     endif()
-    
+
     # Force arm64 when building natively on Apple Silicon
     if(IS_APPLE_SILICON EQUAL 1 AND NOT IS_ROSETTA EQUAL 1)
         set(CMAKE_OSX_ARCHITECTURES arm64)
     endif()
-    
+
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(PLATFORM_LINUX TRUE)
     set(PLATFORM_POSIX TRUE)
-    
+
 elseif(WIN32)
     add_definitions(-D_WIN32 -DWIN32_LEAN_AND_MEAN)
     set(PLATFORM_WINDOWS TRUE)
-    
+
     # Detect Windows architecture generically
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
         set(PLATFORM_WINDOWS_ARM64 TRUE)
@@ -259,12 +259,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message(STATUS "Skipping debug flag setup for MinGW (already configured)")
     else()
         add_compile_options(-g -O0 -DDEBUG)
-        
+
         # Always use sanitizers in Debug mode
         if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR (CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32))
             add_compile_options(-fsanitize=address,undefined)
             add_link_options(-fsanitize=address,undefined)
-            
+
             # On Windows with Clang, copy ASAN runtime DLL to output directory
             if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
                 # Find the ASAN DLL in the Clang installation
@@ -279,7 +279,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 endif()
             endif()
         endif()
-        
+
         if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
             # CodeView debug format is only supported by Clang on Windows (native mode)
             add_compile_options(-gcodeview)
@@ -297,7 +297,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     else()
         add_compile_options(-g -O0 -DDEBUG)
         # No sanitizers in Dev mode for faster compilation/runtime
-        
+
         if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
             # CodeView debug format is only supported by Clang on Windows (native mode)
             add_compile_options(-gcodeview)
@@ -333,7 +333,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         else()
             add_compile_options(-ffp-contract=fast)
         endif()
-        
+
         if(NOT WIN32)
             add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32)
             add_link_options(-flto)
@@ -344,7 +344,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR (CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32))
         add_compile_options(-g -O0 -fsanitize=address -fno-omit-frame-pointer)
         add_link_options(-fsanitize=address)
-        
+
         # On Windows with Clang, copy ASAN runtime DLL to output directory
         if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
             # Find the ASAN DLL in the Clang installation
@@ -403,7 +403,7 @@ if(NOT SIMD_MODE STREQUAL "auto")
     endif()
 else()
     # Auto-detect SIMD capabilities (cross-platform)
-    
+
     # Windows-specific detection
     if(WIN32)
         # Check processor architecture on Windows
@@ -431,7 +431,7 @@ else()
             if(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
                 # Check from highest to lowest, stop when we find support
                 # Higher instruction sets imply lower ones
-                
+
                 # Check for AVX512
                 check_c_source_runs("
                     #include <intrin.h>
@@ -443,7 +443,7 @@ else()
                         return 1;
                     }
                 " HAS_AVX512_RUNTIME)
-                
+
                 if(HAS_AVX512_RUNTIME)
                     set(ENABLE_SIMD_AVX512 TRUE)
                     set(ENABLE_SIMD_AVX2 TRUE)
@@ -461,7 +461,7 @@ else()
                             return 1;
                         }
                     " HAS_AVX2_RUNTIME)
-                    
+
                     if(HAS_AVX2_RUNTIME)
                         set(ENABLE_SIMD_AVX2 TRUE)
                         set(ENABLE_SIMD_SSSE3 TRUE)
@@ -478,7 +478,7 @@ else()
                                 return 1;
                             }
                         " HAS_SSSE3_RUNTIME)
-                        
+
                         if(HAS_SSSE3_RUNTIME)
                             set(ENABLE_SIMD_SSSE3 TRUE)
                             set(ENABLE_SIMD_SSE2 TRUE)
@@ -494,7 +494,7 @@ else()
                                     return 1;
                                 }
                             " HAS_SSE2_RUNTIME)
-                            
+
                             if(HAS_SSE2_RUNTIME)
                                 set(ENABLE_SIMD_SSE2 TRUE)
                             endif()
@@ -505,31 +505,31 @@ else()
                 # Cross-compiling or Clang on Windows, use compile-time checks with appropriate flags
                 # Save current flags
                 set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
-                
+
                 # Test AVX2 with required flags
                 set(CMAKE_REQUIRED_FLAGS "-mavx2")
                 check_c_source_compiles("
                     #include <immintrin.h>
                     int main() { __m256i a = _mm256_setzero_si256(); return 0; }
                 " CAN_COMPILE_AVX2)
-                
+
                 # Test SSSE3 with required flags
                 set(CMAKE_REQUIRED_FLAGS "-mssse3")
                 check_c_source_compiles("
                     #include <tmmintrin.h>
                     int main() { __m128i a = _mm_setzero_si128(); a = _mm_abs_epi8(a); return 0; }
                 " CAN_COMPILE_SSSE3)
-                
+
                 # Test SSE2 with required flags
                 set(CMAKE_REQUIRED_FLAGS "-msse2")
                 check_c_source_compiles("
                     #include <emmintrin.h>
                     int main() { __m128i a = _mm_setzero_si128(); return 0; }
                 " CAN_COMPILE_SSE2)
-                
+
                 # Restore flags
                 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-                
+
                 # Enable all instruction sets that can be compiled
                 # Note: Higher SIMD levels include lower ones
                 if(CAN_COMPILE_AVX2)
@@ -544,7 +544,7 @@ else()
                 endif()
             endif()
         endif()
-        
+
     elseif(PLATFORM_DARWIN)
         # macOS detection (native)
         if(IS_APPLE_SILICON EQUAL 1)
@@ -569,7 +569,7 @@ else()
                 set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
             endif()
         endif()
-        
+
     elseif(PLATFORM_LINUX)
         # Linux detection
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -619,7 +619,7 @@ endif()
 # Apply SIMD compile definitions and flags
 if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_AVX512 OR ENABLE_SIMD_NEON OR ENABLE_SIMD_SVE)
     add_definitions(-DSIMD_SUPPORT)
-    
+
     # Prefer wider vector widths for SIMD-heavy workloads
     if(ENABLE_SIMD_AVX2)
         add_compile_options(-mprefer-vector-width=256)
@@ -835,19 +835,19 @@ if(WIN32 AND NOT USE_MINGW)
         link_directories("${VCPKG_ROOT}/installed/x64-windows/lib")
         message(STATUS "Using vcpkg from: ${VCPKG_ROOT}")
     endif()
-    
+
     # Find packages using vcpkg (toolchain already configured at top of file)
     # Find zlib - vcpkg provides both debug and optimized libraries
     find_package(ZLIB REQUIRED)
     message(STATUS "Found ZLIB: ${ZLIB_VERSION_STRING}")
     # ZLIB_LIBRARIES from vcpkg contains generator expressions that automatically
-    # select the debug library (zlibd.lib) for Debug builds and the optimized 
+    # select the debug library (zlibd.lib) for Debug builds and the optimized
     # library (zlib.lib) for Release builds
-    
+
     # Find libsodium - try finding it directly to avoid import issues
     find_library(LIBSODIUM_LIBRARY NAMES libsodium sodium
                 PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
-    find_path(LIBSODIUM_INCLUDE_DIR NAMES sodium.h 
+    find_path(LIBSODIUM_INCLUDE_DIR NAMES sodium.h
              PATHS "${VCPKG_ROOT}/installed/x64-windows/include")
     if(LIBSODIUM_LIBRARY AND LIBSODIUM_INCLUDE_DIR)
         set(LIBSODIUM_LIBRARIES ${LIBSODIUM_LIBRARY})
@@ -863,31 +863,31 @@ if(WIN32 AND NOT USE_MINGW)
 elseif(WIN32 AND USE_MINGW)
     # MinGW on Windows - build with minimal dependencies for now
     message(STATUS "MinGW build - using minimal dependencies")
-    
+
     # For MinGW, we'll build without external dependencies to keep it simple
     # This allows testing the core functionality without library complexity
     set(ZLIB_FOUND FALSE)
     set(ZLIB_LIBRARIES "")
     set(ZLIB_INCLUDE_DIRS "")
-    
+
     set(LIBSODIUM_FOUND FALSE)
     set(LIBSODIUM_LIBRARIES "")
     set(LIBSODIUM_INCLUDE_DIRS "")
-    
+
     set(PORTAUDIO_FOUND FALSE)
     set(PORTAUDIO_LIBRARIES "")
     set(PORTAUDIO_INCLUDE_DIRS "")
-    
+
     message(STATUS "MinGW build configured without external dependencies")
 else()
     # Unix/Linux/macOS use pkg-config (matches Makefile)
     find_package(PkgConfig REQUIRED)
-    
+
     # Core dependencies (matching PKG_CONFIG_LIBS in Makefile)
     pkg_check_modules(ZLIB REQUIRED zlib)
     pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
-    
+
     # Test dependencies (matching TEST_PKG_CONFIG_LIBS in Makefile)
     if(BUILD_TESTS)
         pkg_check_modules(CRITERION criterion)
@@ -897,21 +897,21 @@ endif()
 # Windows SDK and MSVC detection for native Clang builds
 if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
     message(STATUS "Setting up native Windows build with Clang")
-    
+
     # Find Windows SDK
     set(WINDOWS_KIT_PATHS
         "C:/Program Files (x86)/Windows Kits/10"
         "C:/Program Files/Windows Kits/10"
         "$ENV{WindowsSdkDir}"
     )
-    
+
     foreach(KIT_PATH IN LISTS WINDOWS_KIT_PATHS)
         if(EXISTS "${KIT_PATH}" AND NOT WINDOWS_KITS_DIR)
             set(WINDOWS_KITS_DIR "${KIT_PATH}")
             break()
         endif()
     endforeach()
-    
+
     if(WINDOWS_KITS_DIR)
         # Find latest SDK version
         file(GLOB SDK_VERSIONS "${WINDOWS_KITS_DIR}/Lib/10.*")
@@ -919,49 +919,49 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
             list(SORT SDK_VERSIONS COMPARE NATURAL ORDER DESCENDING)
             list(GET SDK_VERSIONS 0 LATEST_SDK)
             get_filename_component(WINDOWS_SDK_VERSION ${LATEST_SDK} NAME)
-            
+
             # Validate SDK has required components
             if(EXISTS "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/ucrt" AND
                EXISTS "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/x64")
-                
+
                 # Architecture detection
                 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
                     set(WIN_ARCH x64)
                 else()
                     set(WIN_ARCH x86)
                 endif()
-                
+
                 # Add Windows SDK paths
                 include_directories(
                     "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/ucrt"
                     "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/um"
                     "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/shared"
                 )
-                
+
                 link_directories(
                     "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}"
                     "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/um/${WIN_ARCH}"
                 )
-                
+
                 message(STATUS "Found Windows SDK ${WINDOWS_SDK_VERSION}")
             endif()
         endif()
     endif()
-    
+
     # Find MSVC runtime libraries for Clang
     set(VS_PATHS
         "C:/Program Files/Microsoft Visual Studio/2022/*/VC/Tools/MSVC/*"
         "C:/Program Files/Microsoft Visual Studio/2019/*/VC/Tools/MSVC/*"
         "C:/Program Files (x86)/Microsoft Visual Studio/*/VC/Tools/MSVC/*"
     )
-    
+
     foreach(VS_PATTERN IN LISTS VS_PATHS)
         file(GLOB MSVC_VERSIONS "${VS_PATTERN}")
         if(MSVC_VERSIONS)
             list(SORT MSVC_VERSIONS COMPARE NATURAL ORDER DESCENDING)
             list(GET MSVC_VERSIONS 0 LATEST_MSVC)
             get_filename_component(MSVC_VERSION ${LATEST_MSVC} NAME)
-            
+
             if(EXISTS "${LATEST_MSVC}/lib/${WIN_ARCH}")
                 link_directories("${LATEST_MSVC}/lib/${WIN_ARCH}")
                 message(STATUS "Found MSVC ${MSVC_VERSION}")
@@ -976,12 +976,13 @@ if(WIN32 AND NOT USE_MINGW)
     set(WS2_32_LIB ws2_32)
     set(USER32_LIB user32)
     set(ADVAPI32_LIB advapi32)
+    set(DBGHELP_LIB dbghelp)
     set(MF_LIB mf)
     set(MFPLAT_LIB mfplat)
     set(MFREADWRITE_LIB mfreadwrite)
     set(MFUUID_LIB mfuuid)
     set(OLE32_LIB ole32)
-    
+
     # Find PortAudio - vcpkg provides appropriate library for each config
     find_package(portaudio CONFIG REQUIRED)
     set(PORTAUDIO_LIBRARIES portaudio)
@@ -991,6 +992,7 @@ elseif(WIN32 AND USE_MINGW)
     set(WS2_32_LIB ws2_32)
     set(USER32_LIB user32)
     set(ADVAPI32_LIB advapi32)
+    set(DBGHELP_LIB dbghelp)
     set(MF_LIB "")  # Media Foundation not used in MinGW
     set(MFPLAT_LIB "")
     set(MFREADWRITE_LIB "")
@@ -1028,13 +1030,13 @@ else()
             set(CURSES_INCLUDE_DIRS ${NCURSES_INCLUDE_DIRS})
         endif()
         find_package(Threads REQUIRED)
-        
+
         # Linux library search paths (matches Makefile)
         link_directories(/usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu)
-        
+
         # Check for JACK (optional, matches Makefile)
         pkg_check_modules(JACK jack)
-        
+
         # Additional Linux test dependencies (matching Makefile complex setup)
         if(CRITERION_FOUND)
             # Protobuf-C
@@ -1042,23 +1044,23 @@ else()
             if(NOT PROTOBUF_C_FOUND)
                 find_library(PROTOBUF_C_LIBRARIES protobuf-c)
             endif()
-            
+
             # Nanopb
             pkg_check_modules(NANOPB nanopb)
             if(NOT NANOPB_FOUND)
                 find_library(NANOPB_LIBRARIES protobuf-nanopb PATHS /usr/lib/x86_64-linux-gnu)
             endif()
-            
+
             # Boxfort (sandboxing for criterion)
             pkg_check_modules(BOXFORT boxfort)
             if(NOT BOXFORT_FOUND)
                 find_library(BOXFORT_LIBRARIES boxfort)
             endif()
-            
+
             # Optional: nanomsg, libgit2
             pkg_check_modules(NANOMSG nanomsg)
             pkg_check_modules(LIBGIT2 libgit2)
-            
+
             # GSSAPI/Kerberos support
             pkg_check_modules(KRB5_GSSAPI krb5-gssapi)
             if(NOT KRB5_GSSAPI_FOUND)
@@ -1104,7 +1106,7 @@ else()
     if(PORTAUDIO_CFLAGS_OTHER)
         add_compile_options(${PORTAUDIO_CFLAGS_OTHER})
     endif()
-    
+
     include_directories(
         ${ZLIB_INCLUDE_DIRS}
         ${LIBSODIUM_INCLUDE_DIRS}
@@ -1158,7 +1160,7 @@ if(WIN32)
         lib/platform/windows/socket.c
         lib/os/windows/webcam_mediafoundation.c
     )
-    
+
     # Add getopt for Windows (now in platform directory)
     if(EXISTS "${CMAKE_SOURCE_DIR}/lib/platform/windows/getopt.c")
         list(APPEND PLATFORM_SRCS lib/platform/windows/getopt.c)
@@ -1175,7 +1177,7 @@ else()
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
     )
-    
+
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
             lib/os/macos/webcam_avfoundation.m
@@ -1191,7 +1193,7 @@ endif()
 set(SIMD_SRCS)
 
 # Always include common SIMD files (matches Makefile)
-list(APPEND SIMD_SRCS 
+list(APPEND SIMD_SRCS
     lib/image2ascii/simd/ascii_simd.c
     lib/image2ascii/simd/ascii_simd_color.c
     lib/image2ascii/simd/common.c
@@ -1251,6 +1253,7 @@ if(WIN32)
         ${WS2_32_LIB}
         ${USER32_LIB}
         ${ADVAPI32_LIB}
+        ${DBGHELP_LIB}
         ${MF_LIB}
         ${MFPLAT_LIB}
         ${MFREADWRITE_LIB}
@@ -1263,7 +1266,7 @@ if(WIN32)
 else()
     # Build LDFLAGS systematically (matches Makefile logic)
     set(PLATFORM_LIBS)
-    
+
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_LIBS
             ${FOUNDATION_FRAMEWORK}
@@ -1277,20 +1280,20 @@ else()
             ${CURSES_LIBRARIES}
             ${CMAKE_THREAD_LIBS_INIT}
         )
-        
+
         # Add JACK if available (matching Makefile)
         if(JACK_FOUND)
             list(APPEND PLATFORM_LIBS ${JACK_LIBRARIES})
         endif()
     endif()
-    
+
     # Check if pkg-config already provides pthread (matches Makefile)
     string(FIND "${ZLIB_LDFLAGS};${LIBSODIUM_LDFLAGS};${PORTAUDIO_LDFLAGS}" "-lpthread" PTHREAD_PROVIDED)
     if(PTHREAD_PROVIDED EQUAL -1)
         find_package(Threads REQUIRED)
         list(APPEND PLATFORM_LIBS ${CMAKE_THREAD_LIBS_INIT})
     endif()
-    
+
     target_link_libraries(ascii-chat-lib
         ${ZLIB_LIBRARIES}
         ${LIBSODIUM_LIBRARIES}
@@ -1305,7 +1308,7 @@ endif()
 # =============================================================================
 
 # Server executable - now modular
-add_executable(ascii-chat-server 
+add_executable(ascii-chat-server
     src/server/main.c
     src/server/client.c
     src/server/protocol.c
@@ -1341,10 +1344,10 @@ endif()
 # Test framework setup
 if(BUILD_TESTS AND CRITERION_FOUND)
     enable_testing()
-    
+
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS ${CRITERION_LIBRARIES})
-    
+
     if(PLATFORM_LINUX)
         # Add Linux-specific test dependencies (matching Makefile order)
         if(PROTOBUF_C_FOUND)
@@ -1354,7 +1357,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         else()
             list(APPEND TEST_LDFLAGS protobuf-c)
         endif()
-        
+
         if(NANOPB_FOUND)
             list(APPEND TEST_LDFLAGS ${NANOPB_LIBRARIES})
         elseif(NANOPB_LIBRARIES)
@@ -1362,7 +1365,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         elseif(EXISTS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
             list(APPEND TEST_LDFLAGS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
         endif()
-        
+
         if(BOXFORT_FOUND)
             list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
         elseif(BOXFORT_LIBRARIES)
@@ -1370,7 +1373,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         else()
             list(APPEND TEST_LDFLAGS boxfort)
         endif()
-        
+
         # Optional dependencies
         if(NANOMSG_FOUND)
             list(APPEND TEST_LDFLAGS ${NANOMSG_LIBRARIES})
@@ -1378,7 +1381,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         if(LIBGIT2_FOUND)
             list(APPEND TEST_LDFLAGS ${LIBGIT2_LIBRARIES})
         endif()
-        
+
         # GSSAPI/Kerberos support
         if(KRB5_GSSAPI_FOUND)
             list(APPEND TEST_LDFLAGS ${KRB5_GSSAPI_LIBRARIES})
@@ -1387,7 +1390,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         else()
             list(APPEND TEST_LDFLAGS gssapi_krb5 krb5 k5crypto com_err)
         endif()
-        
+
         # Additional system libraries (matches Makefile)
         list(APPEND TEST_LDFLAGS ssl crypto ssh2 http_parser pcre2-8 dl resolv)
     elseif(PLATFORM_DARWIN)
@@ -1397,14 +1400,14 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             list(APPEND TEST_LDFLAGS "-L/opt/homebrew/lib" criterion)
         endif()
     endif()
-    
+
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
     set(TEST_EXCLUDES
         tests/integration/server_multiclient_test.c
         tests/integration/video_pipeline_test.c
     )
-    
+
     set(TEST_SRCS)
     foreach(test_src IN LISTS TEST_SRCS_ALL)
         list(FIND TEST_EXCLUDES ${test_src} IS_EXCLUDED)
@@ -1412,7 +1415,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             list(APPEND TEST_SRCS ${test_src})
         endif()
     endforeach()
-    
+
     # Create test executables (matches Makefile naming convention)
     foreach(test_src ${TEST_SRCS})
         # Transform test file paths to executable names with flattened structure
@@ -1421,48 +1424,48 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         get_filename_component(test_name ${test_src} NAME_WE)
         get_filename_component(test_dir ${test_src} DIRECTORY)
         get_filename_component(test_subdir ${test_dir} NAME)
-        
+
         string(REPLACE "_test" "" test_base ${test_name})
         set(test_exe_name "test_${test_subdir}_${test_base}")
-        
+
         # Add test executable with test logging helper
         add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
-        
+
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
-        
+
         # Link test dependencies (order matters for linking)
         target_link_libraries(${test_exe_name}
             ascii-chat-lib
             ${TEST_LDFLAGS}
         )
-        
+
         # Use release objects for performance tests (matches Makefile)
         if(test_subdir STREQUAL "performance")
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
-        
+
         # Add to CTest
         add_test(NAME ${test_exe_name} COMMAND ${test_exe_name})
     endforeach()
-    
+
     # Custom targets for different test modes (matches Makefile)
     add_custom_target(test_debug
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         COMMENT "Running tests in debug mode"
     )
-    
+
     add_custom_target(test_release
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release
         COMMENT "Running tests in release mode"
     )
-    
+
     # Overall test target
     add_custom_target(test_all
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         COMMENT "Running all tests"
     )
-    
+
 else()
     message(WARNING "Criterion testing framework not found. Tests will not be built.")
     message(STATUS "To enable tests on Linux: sudo apt-get install libcriterion-dev")
