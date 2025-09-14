@@ -161,15 +161,15 @@ int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   // WSAPoll is the Windows equivalent of poll()
   // It's available on Windows Vista and later
   // The pollfd structure is compatible between poll() and WSAPoll()
-  
+
   // WSAPoll takes ULONG for nfds parameter, cast our nfds_t
   int result = WSAPoll((LPWSAPOLLFD)fds, (ULONG)nfds, timeout);
-  
+
   if (result == SOCKET_ERROR) {
     // WSAPoll returns SOCKET_ERROR (-1) on error, same as poll()
     return -1;
   }
-  
+
   return result;
 }
 

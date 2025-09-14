@@ -58,7 +58,9 @@ Test(palette, get_builtin_palette_invalid) {
 
 Test(palette, palette_requires_utf8_encoding) {
   // ASCII palette should not require UTF-8
-  bool requires = palette_requires_utf8_encoding(PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD));
+  bool
+    requires
+  = palette_requires_utf8_encoding(PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD));
   cr_assert_eq(requires, false);
 
   // Minimal ASCII palette
