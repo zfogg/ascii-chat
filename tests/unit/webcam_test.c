@@ -11,11 +11,6 @@
 #include "image2ascii/image.h"
 #include "tests/logging.h"
 
-// Check if we're in a CI environment
-static int is_ci_environment(void) {
-  return getenv("CI") != NULL || getenv("GITHUB_ACTIONS") != NULL || getenv("TRAVIS") != NULL ||
-         getenv("CIRCLECI") != NULL || getenv("JENKINS_URL") != NULL;
-}
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(webcam);

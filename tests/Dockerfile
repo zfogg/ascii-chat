@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     git \
     bc \
+    grc \
     && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libcurses.so
 
@@ -44,18 +45,7 @@ WORKDIR /app
 
 # Don't copy or build in the image - we'll mount as volume
 # This makes the image smaller and faster to build
+# The build will be handled by run_tests.sh with proper incremental support
 
-# Create a script to ensure tests are built before running using CMake
-RUN echo '#!/bin/bash\n\
-if [ ! -d "build" ] || [ "$1" = "--rebuild" ]; then\n\
-    echo "Building tests with CMake..."\n\
-    rm -rf build\n\
-    cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON\n\
-    cmake --build build\n\
-fi\n\
-shift\n\
-exec ./tests/scripts/run_tests.sh "$@"' > /usr/local/bin/run-tests.sh && \
-    chmod +x /usr/local/bin/run-tests.sh
-
-# Default command runs the test wrapper
-CMD ["/usr/local/bin/run-tests.sh"]
+# Default command runs the test script directly
+CMD ["./tests/scripts/run_tests.sh"]

@@ -14,6 +14,7 @@ param(
     [Parameter(Mandatory=$false)][switch]$NoBuild,
     [Parameter(Mandatory=$false)][switch]$Interactive,
     [Parameter(Mandatory=$false)][switch]$VerboseOutput,
+    [Parameter(Mandatory=$false)][switch]$Clean,
     [Parameter(Mandatory=$false)][string]$BuildType = "debug",
     [Parameter(ValueFromRemainingArguments=$true, Position=0)]
     [string[]]$TestTargets
@@ -94,7 +95,29 @@ if ($Interactive) {
         $TestCommand += " " + ($TestTargets -join " ")
     }
 
-    $FullCommand = "rm -rf build_docker && CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON && cmake --build build_docker && $TestCommand"
+    # Build command that checks if build_docker exists and does incremental build
+    # Only do full rebuild if build_docker doesn't exist or -Clean is specified
+    if ($Clean) {
+        Write-Host "Clean rebuild requested - removing build_docker directory" -ForegroundColor Yellow
+        $BuildCommand = @"
+echo 'Clean rebuild - removing build_docker directory...'
+rm -rf build_docker
+CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+cmake --build build_docker
+"@
+    } else {
+        $BuildCommand = @"
+if [ ! -d build_docker ]; then
+    echo 'First time build - configuring CMake...'
+    CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+else
+    echo 'Using existing build_docker directory for incremental build'
+fi
+cmake --build build_docker
+"@
+    }
+
+    $FullCommand = "$BuildCommand && $TestCommand"
     $DockerFlags = "-t"
 
     Write-Host "Running tests in Docker container..." -ForegroundColor Cyan

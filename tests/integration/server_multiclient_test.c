@@ -95,6 +95,7 @@ static int send_test_frame(int socket, int frame_id) {
 }
 
 static int send_image_frame(int socket, int width, int height, int client_id) {
+  (void)client_id; // Unused parameter
   // Create test RGB image
   rgb_pixel_t *image_data;
   SAFE_MALLOC(image_data, width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
@@ -300,7 +301,7 @@ Test(server_multiclient, server_handles_malformed_packets) {
   sleep(1);
 
   // Try to send valid packet
-  int result = send_test_frame(client_socket, 1);
+  send_test_frame(client_socket, 1);
   // This might fail if server closed connection, which is valid behavior
 
   close(client_socket);

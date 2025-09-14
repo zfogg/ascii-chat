@@ -39,7 +39,7 @@ Test(audio, multiple_init_cleanup_cycles) {
     audio_context_t ctx;
     memset(&ctx, 0, sizeof(ctx));
 
-    int result = audio_init(&ctx);
+    audio_init(&ctx);
     // Should succeed or fail consistently
     audio_destroy(&ctx);
   }

@@ -22,6 +22,8 @@ void restore_neon_logging(void) {
   log_set_level(LOG_DEBUG);
 }
 
+#ifdef SIMD_SUPPORT_NEON
+
 // Test helper: create a simple test image
 static image_t *create_test_image(int width, int height, uint8_t r, uint8_t g, uint8_t b) {
   image_t *image;
@@ -70,8 +72,6 @@ static void cleanup_image(image_t *image) {
     free(image);
   }
 }
-
-#ifdef SIMD_SUPPORT_NEON
 
 Test(neon_color_renderers, test_256color_solid_image) {
   // Test 256-color renderer with solid red image

@@ -797,8 +797,6 @@ Test(simd_caches, min_heap_ordering_verification) {
   // Now test eviction order by creating pressure
   log_debug("Testing eviction order with cache pressure");
 
-  const char *evicted_order[num_entries];
-  int eviction_count = 0;
 
   // Create enough pressure to force multiple evictions
   for (int pressure = 0; pressure < 10; pressure++) {
@@ -829,7 +827,6 @@ Test(simd_caches, min_heap_ordering_verification) {
 
   // High score entries should survive, low score should be evicted
   utf8_palette_cache_t *high_score = get_utf8_palette_cache("high_score_🏆");
-  utf8_palette_cache_t *low_score = get_utf8_palette_cache("low_score_💀");
 
   cr_assert_not_null(high_score, "High score entry should survive heap eviction");
   // Low score might be evicted (depending on heap implementation completeness)
@@ -1024,8 +1021,6 @@ Test(simd_caches, heap_score_calculation_accuracy) {
   log_debug("Creating eviction pressure to test heap ordering");
 
   const int eviction_rounds = 25; // Should evict worst entries first
-  char evicted_names[eviction_rounds][32];
-  int evicted_count = 0;
 
   for (int round = 0; round < eviction_rounds; round++) {
     char pressure[64];
