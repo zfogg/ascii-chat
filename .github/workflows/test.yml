@@ -290,14 +290,22 @@ jobs:
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
-    - name: Build and run performance tests with coverage
+    - name: Build performance tests with coverage
       run: |
-        # Build and run performance tests with Release mode + coverage for accurate performance
+        # Build performance tests with Release mode + coverage for accurate performance
+        echo "Building performance tests with Release optimization and coverage instrumentation..."
         CC=clang CXX=clang++ cmake -B build -G Ninja \
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS='-std=c2x -O3 --coverage' -DBUILD_TESTS=ON
         cmake --build build
+        echo "Performance test executables built:"
+        ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
+
+    - name: Run performance tests
+      run: |
+        # Run performance tests
+        echo "Running performance tests..."
         LOG_FILE="performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log"
         ./tests/scripts/run_tests.sh -t performance -b release -J --log-file="${LOG_FILE}"
         echo "Performance tests completed successfully"
