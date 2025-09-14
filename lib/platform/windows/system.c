@@ -10,8 +10,8 @@
 
 #include "../abstraction.h"
 #include "../internal.h"
-#include "../../common.h" // For log_error()
 #include <windows.h>
+#include <dbghelp.h>
 #include <io.h>
 #include <fcntl.h>
 #include <process.h>
@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
+
 #include <stdatomic.h>
 
 /**
@@ -51,6 +52,9 @@ int platform_init(void) {
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stderr), _O_BINARY);
 
+  // Install crash handlers for automatic backtrace on crashes
+  platform_install_crash_handler();
+
   // Initialize Winsock will be done in socket_windows.c
   return 0;
 }
@@ -71,23 +75,17 @@ void platform_sleep_ms(unsigned int ms) {
 }
 
 /**
- * @brief Sleep for specified microseconds
- * @param us Number of microseconds to sleep
- * @note Windows Sleep only supports milliseconds, so we convert
- */
-void platform_sleep_us(unsigned int us) {
-  // Windows Sleep only supports milliseconds, so convert
-  Sleep((us + 999) / 1000);
-}
-
-/**
  * @brief POSIX-compatible usleep function for Windows
  * @param usec Number of microseconds to sleep
  * @return 0 on success
  */
 int usleep(unsigned int usec) {
-  // Use the platform function
-  platform_sleep_us(usec);
+  // Convert microseconds to milliseconds, minimum 1ms
+  int timeout_ms = (int)(usec / 1000);
+  if (timeout_ms == 0 && usec > 0) {
+    timeout_ms = 1; // Minimum 1ms on Windows
+  }
+  Sleep(timeout_ms);
   return 0;
 }
 
@@ -125,10 +123,11 @@ const char *platform_get_username(void) {
 }
 
 /**
- * @brief Set signal handler
+ * @brief Set signal handler (Windows implementation)
  * @param sig Signal number
  * @param handler Signal handler function
  * @return Previous signal handler, or SIG_ERR on error
+ * @note Windows signal() is thread-safe, unlike POSIX signal()
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler) {
   return signal(sig, handler);
@@ -190,38 +189,258 @@ int platform_fsync(int fd) {
 // ============================================================================
 
 /**
- * @brief Get stack trace (stub on Windows)
+ * @brief Get stack trace addresses using Windows StackWalk64 API
  * @param buffer Array to store trace addresses
  * @param size Maximum number of addresses to retrieve
- * @return Number of addresses retrieved (always 0 on Windows)
+ * @return Number of addresses retrieved
  */
 int platform_backtrace(void **buffer, int size) {
-  (void)buffer;
-  (void)size;
-  // Windows doesn't have a simple backtrace function
-  // Could use StackWalk64 API but it's complex
+  if (!buffer || size <= 0) {
+    return 0;
+  }
+
+  // Capture current context
+  CONTEXT context;
+  RtlCaptureContext(&context);
+
+  // Initialize symbol handler for current process
+  HANDLE process = GetCurrentProcess();
+  if (!SymInitialize(process, NULL, TRUE)) {
+    return 0;
+  }
+
+  // Set up stack frame based on architecture
+  STACKFRAME64 frame;
+  memset(&frame, 0, sizeof(frame));
+
+#ifdef _M_IX86
+  frame.AddrPC.Offset = context.Eip;
+  frame.AddrPC.Mode = AddrModeFlat;
+  frame.AddrStack.Offset = context.Esp;
+  frame.AddrStack.Mode = AddrModeFlat;
+  frame.AddrFrame.Offset = context.Ebp;
+  frame.AddrFrame.Mode = AddrModeFlat;
+#elif _M_X64
+  frame.AddrPC.Offset = context.Rip;
+  frame.AddrPC.Mode = AddrModeFlat;
+  frame.AddrStack.Offset = context.Rsp;
+  frame.AddrStack.Mode = AddrModeFlat;
+  frame.AddrFrame.Offset = context.Rbp;
+  frame.AddrFrame.Mode = AddrModeFlat;
+#else
+  // Unsupported architecture
+  SymCleanup(process);
   return 0;
+#endif
+
+  int count = 0;
+  while (count < size) {
+    BOOL result = StackWalk64(
+#ifdef _M_IX86
+      IMAGE_FILE_MACHINE_I386,
+#else
+      IMAGE_FILE_MACHINE_AMD64,
+#endif
+      process,
+      GetCurrentThread(),
+      &frame,
+      &context,
+      NULL,
+      SymFunctionTableAccess64,
+      SymGetModuleBase64,
+      NULL
+    );
+
+    if (!result || frame.AddrPC.Offset == 0) {
+      break;
+    }
+
+    buffer[count++] = (void*)(uintptr_t)frame.AddrPC.Offset;
+  }
+
+  SymCleanup(process);
+  return count;
 }
 
 /**
- * @brief Convert stack trace addresses to symbols (stub on Windows)
+ * @brief Convert stack trace addresses to symbols using Windows SymFromAddr
  * @param buffer Array of addresses from platform_backtrace
  * @param size Number of addresses in buffer
- * @return NULL on Windows
+ * @return Array of strings with symbol names (must be freed with platform_backtrace_symbols_free)
  */
 char **platform_backtrace_symbols(void *const *buffer, int size) {
-  (void)buffer;
-  (void)size;
-  return NULL;
+  if (!buffer || size <= 0) {
+    return NULL;
+  }
+
+  // Allocate array of strings
+  char **symbols = (char**)malloc(size * sizeof(char*));
+  if (!symbols) {
+    return NULL;
+  }
+
+  // Initialize symbol handler
+  HANDLE process = GetCurrentProcess();
+  if (!SymInitialize(process, NULL, TRUE)) {
+    free(symbols);
+    return NULL;
+  }
+
+  // Allocate symbol info structure
+  PSYMBOL_INFO symbol_info = (PSYMBOL_INFO)malloc(sizeof(SYMBOL_INFO) + 256);
+  if (!symbol_info) {
+    SymCleanup(process);
+    free(symbols);
+    return NULL;
+  }
+  symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
+  symbol_info->MaxNameLen = 255;
+
+  for (int i = 0; i < size; i++) {
+    DWORD64 address = (DWORD64)(uintptr_t)buffer[i];
+
+    // Try to get symbol name
+    if (SymFromAddr(process, address, NULL, symbol_info)) {
+      // Allocate string for symbol name
+      symbols[i] = (char*)malloc(symbol_info->MaxNameLen + 1);
+      if (symbols[i]) {
+        strcpy(symbols[i], symbol_info->Name);
+      } else {
+        symbols[i] = NULL;
+      }
+    } else {
+      // Format as hex address if symbol not found
+      symbols[i] = (char*)malloc(32);
+      if (symbols[i]) {
+        sprintf(symbols[i], "0x%llx", address);
+      }
+    }
+  }
+
+  free(symbol_info);
+  SymCleanup(process);
+  return symbols;
 }
 
 /**
- * @brief Free memory from platform_backtrace_symbols (no-op on Windows)
+ * @brief Free memory from platform_backtrace_symbols
  * @param strings Array returned by platform_backtrace_symbols
  */
 void platform_backtrace_symbols_free(char **strings) {
-  (void)strings;
-  // No-op on Windows since we return NULL
+  if (!strings) {
+    return;
+  }
+
+  // Free each individual string
+  for (int i = 0; strings[i] != NULL; i++) {
+    free(strings[i]);
+  }
+
+  // Free the array itself
+  free(strings);
+}
+
+// ============================================================================
+// Crash Handling
+// ============================================================================
+
+/**
+ * @brief Print backtrace to stderr
+ */
+void platform_print_backtrace(void) {
+  void *buffer[32];
+  int size = platform_backtrace(buffer, 32);
+
+  if (size > 0) {
+    fprintf(stderr, "\n=== BACKTRACE ===\n");
+    char **symbols = platform_backtrace_symbols(buffer, size);
+
+    for (int i = 0; i < size; i++) {
+      fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
+    }
+
+    platform_backtrace_symbols_free(symbols);
+    fprintf(stderr, "================\n\n");
+  }
+}
+
+/**
+ * @brief Windows structured exception handler for crashes
+ */
+static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
+  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
+
+  switch (exception_info->ExceptionRecord->ExceptionCode) {
+    case EXCEPTION_ACCESS_VIOLATION:
+      fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
+      break;
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+      fprintf(stderr, "Exception: Array Bounds Exceeded\n");
+      break;
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+      fprintf(stderr, "Exception: Data Type Misalignment\n");
+      break;
+    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+      fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
+      break;
+    case EXCEPTION_FLT_INVALID_OPERATION:
+      fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
+      break;
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+      fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
+      break;
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+      fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
+      break;
+    case EXCEPTION_STACK_OVERFLOW:
+      fprintf(stderr, "Exception: Stack Overflow\n");
+      break;
+    default:
+      fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
+      break;
+  }
+
+  platform_print_backtrace();
+
+  // Return EXCEPTION_EXECUTE_HANDLER to terminate the program
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+/**
+ * @brief Signal handler for Windows C runtime exceptions
+ */
+static void windows_signal_handler(int sig) {
+  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  switch (sig) {
+    case SIGABRT:
+      fprintf(stderr, "Signal: SIGABRT (Abort)\n");
+      break;
+    case SIGFPE:
+      fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
+      break;
+    case SIGILL:
+      fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
+      break;
+    default:
+      fprintf(stderr, "Signal: %d (Unknown)\n", sig);
+      break;
+  }
+  platform_print_backtrace();
+  exit(1);
+}
+
+/**
+ * @brief Install crash handlers for Windows
+ */
+void platform_install_crash_handler(void) {
+  // Install structured exception handler
+  SetUnhandledExceptionFilter(crash_handler);
+
+  // Also install signal handlers for C runtime exceptions
+  platform_signal(SIGABRT, windows_signal_handler);
+  platform_signal(SIGFPE, windows_signal_handler);
+  platform_signal(SIGILL, windows_signal_handler);
 }
 
 /**

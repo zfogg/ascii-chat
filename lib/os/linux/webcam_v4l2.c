@@ -132,7 +132,7 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
   return 0;
 }
 
-int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index) {
+int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   webcam_context_t *context;
   SAFE_MALLOC(context, sizeof(webcam_context_t), webcam_context_t *);
   if (!context) {
@@ -209,7 +209,7 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
   return 0;
 }
 
-void webcam_platform_cleanup(webcam_context_t *ctx) {
+void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;
 
@@ -232,7 +232,7 @@ void webcam_platform_cleanup(webcam_context_t *ctx) {
   log_info("V4L2 webcam cleaned up");
 }
 
-image_t *webcam_platform_read(webcam_context_t *ctx) {
+image_t *webcam_read_context(webcam_context_t *ctx) {
   if (!ctx)
     return NULL;
 
@@ -281,7 +281,7 @@ image_t *webcam_platform_read(webcam_context_t *ctx) {
   return img;
 }
 
-int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)
     return -1;
 

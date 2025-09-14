@@ -176,7 +176,6 @@ int terminal_reset(void);
 **Process & Time:**
 ```c
 void platform_sleep_ms(unsigned int ms);
-void platform_sleep_us(unsigned int us);
 int platform_get_pid(void);
 const char *platform_get_username(void);
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
@@ -200,6 +199,10 @@ int platform_fsync(int fd);
 int platform_backtrace(void **buffer, int size);
 char **platform_backtrace_symbols(void *const *buffer, int size);
 void platform_backtrace_symbols_free(char **strings);
+
+// Crash handling (automatically installed by platform_init)
+void platform_install_crash_handler(void);
+void platform_print_backtrace(void);
 ```
 
 ### String Operations (`string.h`)
@@ -297,32 +300,32 @@ void* worker_thread(void* arg) {
 int main() {
     // Initialize platform (required for Windows sockets)
     platform_init();
-    
+
     // Create multiple threads
     asciithread_t threads[4];
     int thread_ids[4];
-    
+
     for (int i = 0; i < 4; i++) {
         thread_ids[i] = i;
         ascii_thread_create(&threads[i], worker_thread, &thread_ids[i]);
     }
-    
+
     // Wait for all threads
     for (int i = 0; i < 4; i++) {
         ascii_thread_join(&threads[i], NULL);
     }
-    
+
     // TTY operations
     if (platform_isatty(STDOUT_FILENO)) {
         printf("Running in terminal: %s\n", platform_ttyname(STDOUT_FILENO));
     }
-    
+
     // Terminal control
     terminal_size_t size;
     if (terminal_get_size(&size) == 0) {
         printf("Terminal size: %dx%d\n", size.cols, size.rows);
     }
-    
+
     // Cleanup (required for Windows)
     platform_cleanup();
     return 0;
@@ -359,6 +362,7 @@ When migrating code to use the platform abstraction:
    - `ttyname()` → `platform_ttyname()`
    - `fsync()` → `platform_fsync()`
    - `backtrace()` → `platform_backtrace()`
+   - `signal()` → `platform_signal()` (thread-safe on all platforms)
 
 3. **Replace signal handling:**
    ```c
@@ -366,9 +370,9 @@ When migrating code to use the platform abstraction:
    #ifndef _WIN32
    signal(SIGWINCH, handler);
    #endif
-   
+
    // New:
-   signal(SIGWINCH, handler);  // SIGWINCH defined on all platforms
+   platform_signal(SIGWINCH, handler);  // Thread-safe, cross-platform
    ```
 
 ## Testing
@@ -379,13 +383,68 @@ The platform abstraction layer is tested through:
 2. **Integration Tests**: Multi-threaded scenarios in `tests/integration/`
 3. **Cross-Platform CI**: Automated testing on Windows, Linux, and macOS
 
+## Crash Handling
+
+The platform abstraction layer automatically installs crash handlers that capture backtraces when the program crashes:
+
+### Automatic Installation
+Crash handlers are automatically installed when `platform_init()` is called, which happens early in the application startup.
+
+### Supported Crash Types
+
+**POSIX (Linux/macOS):**
+- `SIGSEGV` - Segmentation fault (null pointer dereference, buffer overflow)
+- `SIGABRT` - Abort signal (assertion failures, `abort()` calls)
+- `SIGFPE` - Floating point exception (divide by zero)
+- `SIGILL` - Illegal instruction
+- `SIGBUS` - Bus error
+
+**Windows:**
+- `EXCEPTION_ACCESS_VIOLATION` - Access violation (equivalent to SIGSEGV)
+- `EXCEPTION_ARRAY_BOUNDS_EXCEEDED` - Array bounds exceeded
+- `EXCEPTION_DATATYPE_MISALIGNMENT` - Data type misalignment
+- `EXCEPTION_FLT_DIVIDE_BY_ZERO` - Floating point divide by zero
+- `EXCEPTION_FLT_INVALID_OPERATION` - Floating point invalid operation
+- `EXCEPTION_ILLEGAL_INSTRUCTION` - Illegal instruction
+- `EXCEPTION_INT_DIVIDE_BY_ZERO` - Integer divide by zero
+- `EXCEPTION_STACK_OVERFLOW` - Stack overflow
+- C runtime signals: `SIGABRT`, `SIGFPE`, `SIGILL`
+
+### Output Format
+When a crash occurs, the handler outputs:
+```
+*** CRASH DETECTED ***
+Signal: SIGSEGV (Segmentation fault)
+
+=== BACKTRACE ===
+ 0: main
+ 1: some_function
+ 2: another_function
+ 3: ???
+================
+```
+
+### Thread Safety
+The crash handlers work across **all threads** in the application:
+
+- **Windows**: Uses `SetUnhandledExceptionFilter()` which is process-wide and catches exceptions from all threads
+- **POSIX**: Uses `sigaction()` with `SA_SIGINFO` flag for thread-safe signal handling across all threads
+- **Backtrace**: Captures the call stack of the thread that crashed
+
+### Benefits
+- **Automatic**: No code changes needed - works out of the box
+- **Cross-platform**: Same interface on Windows, Linux, and macOS
+- **Thread-safe**: Works across all threads in the application
+- **Symbol resolution**: Shows function names when debug symbols are available
+- **Non-intrusive**: Only activates on crashes, no performance impact during normal operation
+
 ## Known Limitations
 
 ### Windows
 - SRW Locks don't distinguish between read/write unlock operations
 - No microsecond sleep precision (minimum ~15ms resolution)
 - SIGWINCH and SIGTERM are defined but non-functional
-- No backtrace implementation (returns 0)
+- Full backtrace implementation using StackWalk64 API
 
 ### macOS
 - System header conflicts require `asciithread_t` naming (not `thread_t`)

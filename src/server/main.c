@@ -74,22 +74,17 @@
 #include <stdatomic.h>
 
 #include "image2ascii/image.h"
-#include "image2ascii/ascii.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "common.h"
 #include "network.h"
 #include "options.h"
 #include "buffer_pool.h"
-#include "platform/terminal.h"
-#include "aspect_ratio.h"
 #include "mixer.h"
 #include "palette.h"
 #include "os/audio.h"
 
 #include "client.h"
-#include "protocol.h"
 #include "stream.h"
-#include "render.h"
 #include "stats.h"
 
 /* ============================================================================
@@ -251,7 +246,7 @@ static void sigint_handler(int sigint) {
 }
 
 /**
- * @brief Handler for SIGTERM (termination request) signals on POSIX systems
+ * @brief Handler for SIGTERM (termination request) signals
  *
  * SIGTERM is the standard "please terminate gracefully" signal sent by process
  * managers, systemd, Docker, etc. Unlike SIGINT (user Ctrl+C), SIGTERM indicates
@@ -272,7 +267,6 @@ static void sigint_handler(int sigint) {
  *
  * @param sigterm The signal number (unused, required by signal handler signature)
  */
-#ifndef _WIN32
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_should_exit, true);
@@ -292,38 +286,6 @@ static void sigterm_handler(int sigterm) {
   // Signal handler should be minimal - just set flag and wake threads
   // Main thread will properly close client sockets with mutex protection
 }
-#endif
-
-/**
- * @brief Windows-compatible SIGTERM handler with limited signal support
- *
- * Windows has limited POSIX signal support compared to Unix systems.
- * This handler provides basic termination handling but relies more heavily
- * on the main thread for complex cleanup operations.
- *
- * WINDOWS SIGNAL LIMITATIONS:
- * - Signals run in separate threads (unlike POSIX inline execution)
- * - Limited set of supported signals (no SIGPIPE, limited SIGTERM)
- * - Different timing and delivery semantics
- * - Some async-signal-safe restrictions don't apply the same way
- *
- * @param sigterm The signal number (unused, required by signal handler signature)
- */
-#ifdef _WIN32
-static void sigterm_handler(int sigterm) {
-  (void)(sigterm);
-  atomic_store(&g_should_exit, true);
-  log_info("SIGTERM received - shutting down server...");
-
-  // Wake up all sleeping threads immediately
-  static_cond_broadcast(&g_shutdown_cond);
-
-  // Close listening socket to interrupt accept()
-  if (listenfd != INVALID_SOCKET_VALUE) {
-    socket_close(listenfd);
-  }
-}
-#endif
 
 /* ============================================================================
  * Main Function
@@ -442,13 +404,12 @@ int main(int argc, char *argv[]) {
   log_info("SERVER: Setting up simple signal handlers...");
 
   // Handle Ctrl+C for cleanup
-  signal(SIGINT, sigint_handler);
+  platform_signal(SIGINT, sigint_handler);
   // Handle termination signal (SIGTERM is defined with limited support on Windows)
-  signal(SIGTERM, sigterm_handler);
-
+  platform_signal(SIGTERM, sigterm_handler);
 #ifndef _WIN32
-  // Ignore SIGPIPE (not on Windows)
-  signal(SIGPIPE, SIG_IGN);
+  // SIGPIPE not supported on Windows
+  platform_signal(SIGPIPE, SIG_IGN);
 #endif
   log_info("SERVER: Signal handling setup complete");
 

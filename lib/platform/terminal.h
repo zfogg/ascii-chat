@@ -15,6 +15,16 @@
 #include <stdint.h>
 
 // ============================================================================
+// Platform-Specific Signal Definitions
+// ============================================================================
+
+#ifdef _WIN32
+// Windows doesn't have these signals natively
+#define SIGWINCH 28 // Window size change (not supported on Windows)
+#define SIGTERM 15  // Termination signal (limited support on Windows)
+#endif
+
+// ============================================================================
 // Terminal Functions
 // ============================================================================
 

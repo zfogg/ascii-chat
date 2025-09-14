@@ -69,13 +69,10 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "os/audio.h"
-#include "keepalive.h"
-#include "os/webcam.h"
-#include "image2ascii/image.h"
 
 #include "platform/abstraction.h"
 #include "platform/init.h"
+#include "platform/terminal.h"
 #include "common.h"
 #include "options.h"
 #include "buffer_pool.h"
@@ -319,12 +316,12 @@ int main(int argc, char *argv[]) {
   atexit(shutdown_client);
 
   // Install signal handlers for graceful shutdown and terminal resize
-  signal(SIGINT, sigint_handler);
-  signal(SIGWINCH, sigwinch_handler);
+  platform_signal(SIGINT, sigint_handler);
+  platform_signal(SIGWINCH, sigwinch_handler);
 
 #ifndef _WIN32
   // Ignore SIGPIPE - we'll handle write errors ourselves (not available on Windows)
-  signal(SIGPIPE, SIG_IGN);
+  platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
   // Perform initial terminal reset if running interactively
