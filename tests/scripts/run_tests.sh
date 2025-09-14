@@ -648,49 +648,6 @@ function determine_test_failure() {
 # Process Control and Execution Functions
 # =============================================================================
 
-# Function to start a test in background
-function start_test_in_background() {
-  local test_executable=$1
-  local actual_jobs=$2
-  local generate_junit=$3
-  local test_log=$4
-  local test_junit=$5
-
-  # Build command line arguments for the test executable
-  local jobs_flag=""
-  if [[ -n "$actual_jobs" && "$actual_jobs" != "1" ]]; then
-    jobs_flag="--jobs=$actual_jobs"
-  fi
-
-  local verbose_flag=""
-  if [[ -n "$VERBOSE" ]]; then
-    verbose_flag="--verbose"
-  fi
-
-  local color_flag="--color=always"
-
-  # Build the command arguments array
-  local cmd_args=()
-  [[ -n "$jobs_flag" ]] && cmd_args+=("$jobs_flag")
-  [[ -n "$verbose_flag" ]] && cmd_args+=("$verbose_flag")
-  [[ -n "$color_flag" ]] && cmd_args+=("$color_flag")
-
-  # Set test environment variables for fast test mode
-  export TESTING=1
-  export CRITERION_TEST=1
-
-  # Run the test executable directly in background to maintain proper parent-child relationship
-  if [[ -n "$test_log" ]]; then
-    # Run test and append to log file
-    "$test_executable" "${cmd_args[@]}" >>"$test_log" 2>&1 &
-  else
-    "$test_executable" "${cmd_args[@]}" 2>&1 &
-  fi
-
-  local pid=$!
-  echo $pid # Return the PID of the background process
-}
-
 # Function to run tests in parallel with proper queue management
 # Old run_tests_in_parallel function removed - replaced with simplified architecture
 
@@ -705,28 +662,20 @@ function spawn_test() {
   local background="$3"  # "sync" or "async"
 
   local test_name=$(basename "$test_executable")
-  local test_args=("--jobs" "$jobs_per_test")
+  local test_args=("--jobs" "$jobs_per_test" "--color=always")
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
   fi
 
   if [[ "$background" == "async" ]]; then
     # Background execution - return PID
-    # For verbose mode, we need to handle the pipeline differently
-    # to get the correct PID of the test process, not tee
-    # Always show output in real-time for parallel tests too
-    # Create a subshell that runs the test and captures its exit code
-    # Use a different approach to avoid output mixing issues
-    (
-      # Run the test and capture both output and exit code
-      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" > /tmp/test_${test_name}_$$.log 2>&1
-      local test_exit_code=$?
-      echo $test_exit_code > /tmp/test_${test_name}_$$.exitcode
-      # Show the output after test completes - redirect to stderr to avoid mixing with PID
-      cat /tmp/test_${test_name}_$$.log >&2
-    ) &
+    # Create a wrapper that captures both output and exit code
+    {
+      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+      echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
+    } > /tmp/test_${test_name}_$$.log 2>&1 &
     local pid=$!
-    echo "$pid"  # Return PID of subshell
+    echo "$pid"  # Return PID of background process
   else
     # Synchronous execution - return exit code
     # Always show output in real-time
@@ -762,7 +711,7 @@ function run_tests_sequential() {
     local start_time=$(date +%s.%N)
     # Run test directly and capture exit code properly
     # Always show output in real-time, but add --verbose flag only if VERBOSE is set
-    local test_args=("--jobs" "$jobs_per_test")
+    local test_args=("--jobs" "$jobs_per_test" "--color=always")
     if [[ -n "$VERBOSE" ]]; then
       test_args+=(--verbose)
     fi
@@ -839,16 +788,15 @@ function run_tests_parallel() {
         # Finished - get results
         local test_name="${running_names[i]:-unknown}"
         wait "${running_pids[i]}" 2>/dev/null
-        local exit_code=$?
 
-        # Always get the actual exit code from the file
-        # because the subshell exits with tee's exit code (0), not the test's
+        # Get the actual exit code from the file
+        local exit_code=1  # Default to failure
         if [[ -f "/tmp/test_${test_name}_$$.exitcode" ]]; then
-          exit_code=$(cat "/tmp/test_${test_name}_$$.exitcode" 2>/dev/null)
+          local exit_line=$(cat "/tmp/test_${test_name}_$$.exitcode" 2>/dev/null)
+          if [[ "$exit_line" =~ EXIT_CODE:([0-9]+) ]]; then
+            exit_code="${BASH_REMATCH[1]}"
+          fi
           rm -f "/tmp/test_${test_name}_$$.exitcode"
-        else
-          # If no exit code file, assume failure
-          exit_code=1
         fi
 
         local end_time=$(date +%s.%N)
@@ -859,6 +807,12 @@ function run_tests_parallel() {
         else
           # Fallback: use awk for basic arithmetic if bc is not available
           duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
+        fi
+
+        # Show test output when it completes
+        if [[ -f "/tmp/test_${test_name}_$$.log" ]]; then
+          cat "/tmp/test_${test_name}_$$.log"
+          rm -f "/tmp/test_${test_name}_$$.log"
         fi
 
         if [[ $exit_code -eq 0 ]]; then
