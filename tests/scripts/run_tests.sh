@@ -28,6 +28,7 @@ INTERRUPTED=0
 TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_STARTED=0
+FAILED_TEST_NAMES=()  # Array to track failed test names
 
 # Check if wait -n is supported (bash 4.3+)
 WAIT_N_SUPPORTED=0
@@ -693,6 +694,7 @@ function run_tests_sequential() {
   local passed=0
   local failed=0
   local started=0
+  local failed_tests=()  # Array to track failed test names
 
   log_info "🔄 Running ${#test_list[@]} tests sequentially"
 
@@ -733,6 +735,7 @@ function run_tests_sequential() {
     else
       echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
       ((failed++))
+      failed_tests+=("$test_name")  # Track failed test name
     fi
   done
 
@@ -740,6 +743,7 @@ function run_tests_sequential() {
   TESTS_PASSED=$passed
   TESTS_FAILED=$failed
   TESTS_STARTED=$started
+  FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
 }
 
 # Function 2: Run tests in parallel (up to max_parallel at once)
@@ -751,6 +755,7 @@ function run_tests_parallel() {
   local passed=0
   local failed=0
   local started=0
+  local failed_tests=()  # Array to track failed test names
 
   log_info "🚀 Running ${#test_list[@]} tests in parallel (up to $max_parallel concurrent, $jobs_per_test jobs each)"
 
@@ -821,6 +826,7 @@ function run_tests_parallel() {
         else
           echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
           ((failed++))
+          failed_tests+=("$test_name")  # Track failed test name
         fi
       fi
     done
@@ -873,6 +879,7 @@ function run_tests_parallel() {
   TESTS_PASSED=$passed
   TESTS_FAILED=$failed
   TESTS_STARTED=$started
+  FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
 }
 
 # =============================================================================
@@ -1334,6 +1341,12 @@ function main() {
     log_info "📋 View test logs: cat $log_file"
   else
     log_error "Some tests failed!"
+    echo ""
+    echo "❌ FAILED TESTS:"
+    for failed_test in "${FAILED_TEST_NAMES[@]}"; do
+      echo -e "   • \033[31m$failed_test\033[0m"
+    done
+    echo ""
     log_info "View test logs: cat $log_file 📋"
     exit 1
   fi
