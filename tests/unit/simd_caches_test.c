@@ -797,7 +797,6 @@ Test(simd_caches, min_heap_ordering_verification) {
   // Now test eviction order by creating pressure
   log_debug("Testing eviction order with cache pressure");
 
-
   // Create enough pressure to force multiple evictions
   for (int pressure = 0; pressure < 10; pressure++) {
     char pressure_palette[64];

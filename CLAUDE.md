@@ -1,15 +1,15 @@
 # ASCII-Chat Development Guide for Claude
 
 ## Essential First Steps
-- **ALWAYS** read and understand the `README.md` and `Makefile` files first
-- Use the test runner script `./tests/scripts/run_tests.sh` instead of calling make directly for tests
-- Format code with `make format` after you edit it
+- **ALWAYS** read and understand the `README.md` and `CMakeLists.txt` files first
+- Use the test runner script `./tests/scripts/run_tests.sh` for running tests
+- Format code with `cmake --build . --target format` after you edit it
 - Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 - On Windows: use PowerShell build script `./build.ps1` or CMake directly
 - Use `clang` instead of `gcc`
 - Don't use `git add .`, add all files individually
-- Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `make clean && make debug`
+- Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
 - Use log_*() from logging.c and common.h for logging instead of printf()
 - When debugging and testing, make a test_whatever.sh and use that so you don't bother the developer by requesting to run commands over and over
 
@@ -34,8 +34,7 @@ ASCII-Chat is a terminal-based video chat application that converts webcam video
 ```
 ascii-chat/
 ├── bin/                        # Compiled binaries (ascii-chat-server, ascii-chat-client, tests)
-├── build/                      # Object files (.o) and build artifacts
-├── build_clang/                # Windows CMake build directory (NEW)
+├── build/                      # CMake build directory (all platforms)
 ├── notes/                      # Development notes and documentation
 ├── todo/                       # Experimental code and future features
 ├── tests/                      # Comprehensive test suite using Criterion
@@ -124,8 +123,7 @@ ascii-chat/
 │   ├── webcam_v4l2.c                               # Linux webcam implementation (Video4Linux2)
 │   ├── webcam_windows.c                            # Windows webcam implementation stub (NEW)
 │   └── round.h                                     # Rounding utilities
-├── Makefile                                        # Build configuration with test support (Unix)
-├── CMakeLists.txt                                  # CMake build configuration (Windows) (NEW)
+├── CMakeLists.txt                                  # CMake build configuration (all platforms)
 ├── Info.plist                                      # macOS application metadata
 └── CLAUDE.md                                       # Development guide (this file)
 ```
@@ -186,62 +184,52 @@ The build script automatically:
 Manual CMake build (if not using build.ps1):
 ```bash
 # Use CMake with Clang (recommended)
-cmake -B build_clang -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
-cmake --build build_clang
+cmake -B build -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
 
 # Or with Visual Studio
 cmake -B build -G "Visual Studio 17 2022"
 cmake --build build --config Debug
 
 # Run server and client
-./build_clang/bin/ascii-chat-server.exe
-./build_clang/bin/ascii-chat-client.exe
+./build/bin/ascii-chat-server.exe
+./build/bin/ascii-chat-client.exe
 ```
 
 ### Unix/macOS Building
 
-**macOS Make Compatibility Note:**
-macOS ships with GNU Make 3.81 (from 2006) which has known bugs with order-only prerequisites and pattern rules. For reliable builds on macOS, use GNU Make 4.x (`gmake`):
-
-```bash
-# Install GNU Make 4.x on macOS
-brew install make  # Installs as 'gmake' to avoid conflicts
-
-# Use gmake for building on macOS
-gmake clean && gmake debug  # macOS with GNU Make 4.x
-make clean && make debug    # Linux or macOS with Make 3.81 (may have issues)
-```
-
-The GitHub Actions macOS runner has `gmake` pre-installed via the install-deps action. The test runner script (`tests/scripts/run_tests.sh`) automatically detects and uses `gmake` when available on macOS.
-
 **Standard Build Commands:**
 ```bash
-# Clean build (always do this when debugging issues)
-make clean && make debug     # Linux - Debug with AddressSanitizer (default, safe)
-gmake clean && gmake debug   # macOS - Debug with AddressSanitizer (recommended)
+# Configure and build (creates build directory if needed)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug  # Debug with AddressSanitizer
+cmake --build build
+
+# Different build types
+cmake -B build -DCMAKE_BUILD_TYPE=Release  # Optimized release build
+cmake -B build -DCMAKE_BUILD_TYPE=Dev      # Debug symbols only, no sanitizers
+
+# Clean rebuild
+rm -rf build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
 
 # Format code after changes
-make format
+cmake --build build --target format
 
-# Dev build (debug symbols only, no sanitizers - faster iteration)
-make clean && make dev
-
-# Debug build with AddressSanitizer (default, catches memory bugs)
-make clean && make debug
-
-# Build tests
-make tests
+# Build and run tests
+cmake --build build
+./tests/scripts/run_tests.sh
 ```
 
 ### Essential Commands
 ```bash
 # Start server (listens on port 8080)
 ./bin/ascii-chat-server  # Unix/macOS
-./build_clang/bin/ascii-chat-server.exe  # Windows
+./build/bin/ascii-chat-server.exe  # Windows
 
 # Start client (connects to localhost by default)
 ./bin/ascii-chat-client  # Unix/macOS
-./build_clang/bin/ascii-chat-client.exe  # Windows
+./build/bin/ascii-chat-client.exe  # Windows
 
 # Connect to a server
 ./bin/ascii-chat-client --address 127.0.0.1 --port 8080
@@ -272,12 +260,12 @@ make tests
 ## Testing Framework (UPDATED - Use run_tests.sh!)
 
 ### The Test Runner Script
-**IMPORTANT**: Always use `./tests/scripts/run_tests.sh` instead of calling make directly for tests!
+**IMPORTANT**: Always use `./tests/scripts/run_tests.sh` for running tests!
 
-**Note**: The test script automatically calls `make` to build any tests it needs to run, so you never need to manually run `make tests` or `make bin/test_unit_options`. Just run the test script with your desired options and it handles all compilation automatically based on the build mode you select.
+**Note**: The test script automatically builds any tests it needs to run, so you never need to manually build test targets. Just run the test script with your desired options and it handles all compilation automatically based on the build mode you select.
 
 The test runner provides:
-- **Automatic test compilation** - builds tests as needed, no manual make required
+- **Automatic test compilation** - builds tests as needed, no manual build required
 - **Parallel test execution** with automatic CPU core detection
 - **Worker pool architecture** for efficient resource utilization
 - **JUnit XML generation** for CI/CD integration
@@ -438,7 +426,7 @@ SAFE_STRNCPY(dest, src, sizeof(dest));
 ### 2. Enable Debug Logging
 Add these defines to see detailed logs:
 ```c
-/*#define DEBUG_MEMORY*/     // Memory debugging (enabled by default with make debug)
+/*#define DEBUG_MEMORY*/     // Memory debugging (enabled by default with CMAKE_BUILD_TYPE=Debug)
 #define DEBUG_NETWORK        // Network packet details
 #define DEBUG_COMPRESSION    // Compression statistics
 #define DEBUG_AUDIO          // Audio packet info
@@ -452,7 +440,7 @@ Add these defines to see detailed logs:
 - **Socket initialization**: Always check for `INVALID_SOCKET_VALUE` not -1 or 0
 - **File descriptor issues**: Use `socket_close()` not `close()` for sockets
 - **Assertion failures**: Check for proper initialization (`sockfd = INVALID_SOCKET_VALUE`)
-- **Build errors**: Use CMake on Windows, not make
+- **Build errors**: Use CMake for all platforms
 
 **"Unknown packet type" errors:**
 - Check packet type enum values in network.h
@@ -467,7 +455,7 @@ Add these defines to see detailed logs:
 **Memory crashes:**
 - Always use SAFE_MALLOC() macro instead of malloc()
 - Check framebuffer operations - common source of use-after-free
-- Build with AddressSanitizer: `make clean && make debug`
+- Build with AddressSanitizer: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
 
 ### 4. Debugging Tools
 
@@ -617,8 +605,8 @@ if (client->active && client->has_video) {  // RACE CONDITION!
 ## Manual Testing Checklist
 
 Before committing any changes:
-1. [ ] `make clean && make debug` (Unix - with sanitizers) or rebuild with CMake (Windows)
-2. [ ] `make format` - code is properly formatted
+1. [ ] `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build` - rebuild with sanitizers
+2. [ ] `cmake --build build --target format` - code is properly formatted
 3. [ ] **Run tests**: `./tests/scripts/run_tests.sh`
 4. [ ] Start server, connect 2+ clients
 5. [ ] Video displays in correct grid layout

@@ -424,16 +424,13 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   }
 #endif
 
-  // Determine render mode preference
+  // Determine render mode preference - default to foreground
+  // Half-block mode should only be used when explicitly requested via --render-mode
+  caps.render_mode = RENDER_MODE_FOREGROUND;
+
+  // Check if background colors are supported for potential future use
   if (caps.color_level >= TERM_COLOR_16) {
-    if (caps.utf8_support) {
-      caps.render_mode = RENDER_MODE_HALF_BLOCK; // Best quality
-      caps.capabilities |= TERM_CAP_BACKGROUND;
-    } else {
-      caps.render_mode = RENDER_MODE_FOREGROUND; // Color without Unicode
-    }
-  } else {
-    caps.render_mode = RENDER_MODE_FOREGROUND; // Monochrome fallback
+    caps.capabilities |= TERM_CAP_BACKGROUND;
   }
 
   // Mark detection as reliable (POSIX has good environment variable support)
@@ -497,16 +494,19 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
  * @param caps Terminal capabilities structure to report
  */
 void print_terminal_capabilities(const terminal_capabilities_t *caps) {
-  log_info("Terminal Capabilities Report:");
-  log_info("  Terminal Type: %s", caps->term_type);
-  log_info("  Color Terminal: %s", strlen(caps->colorterm) ? caps->colorterm : "none");
-  log_info("  Color Support: %s (%u colors)", terminal_color_level_name(caps->color_level), caps->color_count);
-  log_info("  UTF-8 Support: %s", caps->utf8_support ? "yes" : "no");
-  log_info("  Render Mode: %s", caps->render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
+  // Use printf instead of log_info since logging may not be initialized
+  printf("Terminal Capabilities:\n");
+  printf("  Color Level: %s\n", terminal_color_level_name(caps->color_level));
+  printf("  Max Colors: %u\n", caps->color_count);
+  printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
+  printf("  Background Colors: %s\n", caps->render_mode == RENDER_MODE_BACKGROUND ? "Yes" : "No");
+  printf("  Render Mode: %s\n", caps->render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
                                 : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
                                                                               : "foreground");
-  log_info("  Detection: %s", caps->detection_reliable ? "reliable" : "fallback");
-  log_info("  Capability Flags: 0x%08X", caps->capabilities);
+  printf("  TERM: %s\n", caps->term_type);
+  printf("  COLORTERM: %s\n", strlen(caps->colorterm) ? caps->colorterm : "(not set)");
+  printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
+  printf("  Capabilities Bitmask: 0x%08x\n", caps->capabilities);
 }
 
 /**
@@ -552,8 +552,8 @@ void test_terminal_output_modes(void) {
  * @return Modified capabilities with overrides applied
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
-  // Apply color mode override if specified in options
-  if (opt_color_mode >= 0) {
+  // Apply color mode override if specified in options (not auto mode)
+  if (opt_color_mode != COLOR_MODE_AUTO) {
     terminal_color_level_t override_level = (terminal_color_level_t)opt_color_mode;
     if (override_level != caps.color_level) {
       log_debug("Color override: %s -> %s", terminal_color_level_name(caps.color_level),
@@ -583,6 +583,10 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
       caps.detection_reliable = false; // Mark as overridden
     }
   }
+
+  // Apply render mode from options (user can override via --render-mode)
+  // The default opt_render_mode is RENDER_MODE_FOREGROUND which is what we want
+  caps.render_mode = opt_render_mode;
 
   return caps;
 }

@@ -22,10 +22,9 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 
 ## Dependencies
-- Most people: `apt-get install build-essential clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev
-libcriterion-dev`
-- ArchLinux masterrace: `pacman -S clang pkg-config v4l-utils zlib portaudio libsodium libcriterion`
-- macOS: `brew install pkg-config zlib portaudio libsodium criterion`
+- Most people: `apt-get install build-essential clang cmake ninja-build pkg-config libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- ArchLinux masterrace: `pacman -S clang cmake ninja pkg-config v4l-utils zlib portaudio libsodium libcriterion`
+- macOS: `brew install cmake ninja pkg-config zlib portaudio libsodium criterion`
 
 **Note:** OpenCV is no longer required! The project now uses native platform APIs:
 - **Linux**: V4L2 (Video4Linux2)
@@ -35,60 +34,49 @@ libcriterion-dev`
 ## Build and run
 - Clone this repo onto a computer with a webcam.
 - Install the dependencies.
-- Run `make`.
-- Run `./bin/ascii-chat-server -p 9001` in one terminal, and then
-- Run `./bin/ascii-chat-client -p 9001` in another.
+- Run `cmake -B build && cmake --build build`
+- Run `./build/bin/ascii-chat-server -p 9001` in one terminal, and then
+- Run `./build/bin/ascii-chat-client -p 9001` in another.
 
-Use `make -j debug` as you edit and test code (sometimes `make clean` too 😏).
+For development, use `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`.
 
-Check the `Makefile` to see how it works.
+Check the `CMakeLists.txt` to see how it works.
 
-## Available Make Targets
+## Available CMake Build Types
 
-### Build Targets
-- `make` or `make all` - Build all targets with default flags
-- `make debug` - Build with debug symbols and no optimization
-- `make debug-coverage` - Build with debug symbols and coverage
-- `make release` - Build with optimizations enabled
-- `make release-coverage` - Build with optimizations and coverage
-- `make debug` - Build with comprehensive sanitizers for debugging
-- `make dev` - Debug build without sanitizers (faster iteration)
-- `make tsan` - Build with thread sanitizer for race condition detection
-- `make clean` - Remove build artifacts
+### Build Types
+- `cmake -B build -DCMAKE_BUILD_TYPE=Debug` - Debug build with AddressSanitizer
+- `cmake -B build -DCMAKE_BUILD_TYPE=Release` - Optimized release build
+- `cmake -B build -DCMAKE_BUILD_TYPE=Dev` - Debug symbols without sanitizers (faster iteration)
+- `cmake -B build -DCMAKE_BUILD_TYPE=Coverage` - Build with coverage instrumentation
+- `cmake -B build -DCMAKE_BUILD_TYPE=Sanitize` - Build with comprehensive sanitizers
 
-### Test Building Targets
-- `make tests-debug` - Build test executables with debug flags
-- `make tests-release` - Build test executables with release flags
-- `make tests-debug-coverage` - Build test executables with debug + coverage
-- `make tests-release-coverage` - Build test executables with release + coverage
+### Building
+```bash
+# Configure (only needed once or when CMakeLists.txt changes)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
-### Test Running Targets
-- `make test` - Run all tests in debug mode
-- `make test-release` - Run all tests in release mode
+# Build
+cmake --build build
+
+# Clean rebuild
+rm -rf build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+```
 
 ### Development Tools
-- `make format` - Format source code using clang-format
-- `make format-check` - Check code formatting without modifying files
-- `make clang-tidy` - Run clang-tidy on sources
-- `make analyze` - Run static analysis (clang --analyze, cppcheck)
-- `make scan-build` - Run scan-build static analyzer
-- `make cloc` - Count lines of code
-- `make compile_commands.json` - Generate compile_commands.json for IDE support
+- `cmake --build build --target format` - Format source code using clang-format
+- `cmake --build build --target format-check` - Check code formatting
+- `cmake --build build --target clang-tidy` - Run clang-tidy on sources
+- `cmake --build build --target scan-build` - Run scan-build static analyzer
 
-## Utility Targets
-- `make help` - Show all available targets and configuration
-- `make install-hooks` - Install git hooks from git-hooks/ directory
-- `make uninstall-hooks` - Remove installed git hooks
-- `make todo` - Build the ./todo subproject
-- `make todo-clean` - Clean the ./todo subproject
-
-### Configuration
-The Makefile supports several configuration options:
-- `CC=clang` - Set compiler (default: clang)
-- `CSTD=c23` - Set C standard (default: c23)
-- `SIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
-- `CRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
-- `MAKEFLAGS=-j$(nproc)` - Parallel build jobs (Linux) or `-j$(sysctl -n hw.logicalcpu)` (macOS)
+### Configuration Options
+CMake supports several configuration options:
+- `-DCMAKE_C_COMPILER=clang` - Set compiler (default: auto-detected)
+- `-DSIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
+- `-DCRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
+- Ninja automatically uses all available CPU cores for parallel builds
 
 ## Testing
 
@@ -96,7 +84,8 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 
 ### Quick Start
 1. Have the dependencies installed.
-2. Run `make test` (debug mode) or `make test-release` (release mode).
+2. Build the project: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
+3. Run tests: `./tests/scripts/run_tests.sh`
 
 ### Test Types
 - **Unit Tests**: Test individual components in isolation
@@ -133,12 +122,12 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 ### Manual Test Execution
 You can also run individual test executables directly:
 ```bash
-# Build test executables first
-make tests-debug
+# Build the project first
+cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build
 
 # Run individual tests
-bin/test_mixer --verbose
-bin/test_ascii_simd_performance --filter "monochrome"
+build/bin/test_unit_mixer --verbose
+build/bin/test_performance_ascii_simd --filter "monochrome"
 ```
 
 ### Testing Framework

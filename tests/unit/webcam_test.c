@@ -11,7 +11,6 @@
 #include "image2ascii/image.h"
 #include "tests/logging.h"
 
-
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(webcam);
 
