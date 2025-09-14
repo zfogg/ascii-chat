@@ -25,13 +25,9 @@ static void generate_sine_wave(float *buffer, int num_samples, float frequency, 
   }
 }
 
-static void generate_silence(float *buffer, int num_samples) {
-  memset(buffer, 0, num_samples * sizeof(float));
-}
-
 static void generate_noise(float *buffer, int num_samples, float amplitude) {
   for (int i = 0; i < num_samples; i++) {
-    buffer[i] = amplitude * ((float)rand() / RAND_MAX - 0.5f) * 2.0f;
+    buffer[i] = amplitude * ((float)rand() / (float)RAND_MAX - 0.5f) * 2.0f;
   }
 }
 
@@ -44,13 +40,6 @@ static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int 
   cr_assert_eq(written, num_samples);
 
   return buffer;
-}
-
-// Helper to verify audio buffer contains expected data
-static void verify_audio_buffer(const float *actual, const float *expected, int num_samples, float tolerance) {
-  for (int i = 0; i < num_samples; i++) {
-    cr_assert_float_eq(actual[i], expected[i], tolerance, "Sample %d: expected %f, got %f", i, expected[i], actual[i]);
-  }
 }
 
 /* ============================================================================

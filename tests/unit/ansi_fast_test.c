@@ -640,7 +640,7 @@ Test(ansi_fast, performance_truecolor_generation) {
     pos = append_truecolor_fg(pos, i % 256, (i * 2) % 256, (i * 3) % 256);
   }
 
-  cr_assert_lt(pos - buffer, sizeof(buffer), "Should not overflow buffer");
+  cr_assert_lt((size_t)(pos - buffer), sizeof(buffer), "Should not overflow buffer");
   cr_assert_gt(pos - buffer, 0, "Should generate some output");
 }
 

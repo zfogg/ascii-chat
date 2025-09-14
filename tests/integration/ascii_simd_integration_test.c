@@ -364,7 +364,6 @@ Test(ascii_simd_integration, various_image_sizes_performance) {
   for (int size_idx = 0; size_idx < num_sizes; size_idx++) {
     int width = test_sizes[size_idx].width;
     int height = test_sizes[size_idx].height;
-    double expected_speedup = test_sizes[size_idx].min_speedup;
 
     // Create test image
     image_t *test_image = image_new(width, height);
@@ -1822,10 +1821,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
                 width, height, scalar_ms, simd_cold_ms, cold_speedup, simd_hot_ms, hot_speedup, cache_benefit);
 
       // Performance validation - allow UTF-8 and very small images to be slower
-      double min_cold_speedup = 0.5; // Very small images may be slower due to SIMD overhead
-      if (width >= 80 && strstr(palette, "αβγδ") == NULL && strstr(palette, "🌑") == NULL) {
-        min_cold_speedup = 1.0; // ASCII with reasonable size should beat scalar
-      }
+      // Skip performance check for small or UTF-8 palettes
       // Log performance for debugging, but don't assert speedup in integration tests
       log_debug("Performance: %s-%s cold speedup = %.2fx, hot speedup = %.2fx", palette_name, size_name, cold_speedup,
                 hot_speedup);

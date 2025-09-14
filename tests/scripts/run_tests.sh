@@ -217,6 +217,19 @@ EOF
 # Note: colored_make function removed - now using CMake exclusively
 # CMake handles both initial builds and incremental updates efficiently
 
+# Run cmake --build with optional grc colorization
+function cmake_build() {
+  local build_dir="$1"
+  shift  # Remove first argument, pass the rest to cmake
+
+  # Use grc for colored output if available (works with Ninja)
+  if command -v grc >/dev/null 2>&1; then
+    grc --colour=auto cmake --build "$build_dir" "$@"
+  else
+    cmake --build "$build_dir" "$@"
+  fi
+}
+
 # Detect number of CPU cores
 function detect_cpu_cores() {
   if [[ -n "$JOBS" ]]; then
@@ -371,7 +384,7 @@ function ensure_tests_built() {
     log_verbose "CMake build directory found, doing incremental build"
 
     # Just rebuild everything with CMake (it's smart about incremental builds)
-    cmake --build "$cmake_build_dir"
+    cmake_build "$cmake_build_dir"
   else
     # No build directory or CMake cache, use CMake for full build
     log_info "Using CMake build system (no build directory found)"
@@ -423,7 +436,7 @@ function ensure_tests_built() {
 
     # Build with CMake
     log_info "Building tests with CMake..."
-    cmake --build "$cmake_build_dir"
+    cmake_build "$cmake_build_dir"
   fi
 }
 
@@ -965,7 +978,7 @@ function build_test_executable() {
     # Build directory exists, use CMake for incremental builds
     log_info "Using CMake for incremental build of $test_name"
     cd "$PROJECT_ROOT"
-    cmake --build "$cmake_build_dir" --target "$test_name"
+    cmake_build "$cmake_build_dir" --target "$test_name"
     local cmake_exit_code=$?
 
     if [[ $cmake_exit_code -eq 0 ]]; then
