@@ -708,9 +708,10 @@ function spawn_test() {
     # Log the EXACT command being executed
     echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
     log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
-    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
+    # Redirect test output to stderr so it's visible but not captured in the return value
+    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
     local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
-    echo $exit_code  # Return only the exit code
+    echo $exit_code  # Return only the exit code to stdout
   fi
 }
 

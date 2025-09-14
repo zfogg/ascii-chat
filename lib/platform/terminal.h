@@ -30,6 +30,7 @@ int terminal_set_raw_mode(bool enable);
 int terminal_set_echo(bool enable);
 bool terminal_supports_color(void);
 bool terminal_supports_unicode(void);
+bool terminal_supports_utf8(void);
 int terminal_clear_screen(void);
 int terminal_move_cursor(int row, int col);
 void terminal_enable_ansi(void);
