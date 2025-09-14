@@ -6,9 +6,7 @@ FROM ubuntu:22.04
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Set environment variables to help CMake find ncurses
-ENV CURSES_LIBRARY=/usr/lib/x86_64-linux-gnu/libncurses.so
-ENV CURSES_INCLUDE_PATH=/usr/include
+# Set CMAKE_PREFIX_PATH for package discovery
 ENV CMAKE_PREFIX_PATH=/usr
 
 # Use Clang as the default compiler

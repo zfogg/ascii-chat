@@ -82,7 +82,7 @@ if ($Interactive) {
     }
 
     if ($VerboseOutput) {
-        $TestCommand += " -v"
+        $TestCommand += " --verbose"
     }
 
     if ($Filter) {
@@ -94,7 +94,7 @@ if ($Interactive) {
         $TestCommand += " " + ($TestTargets -join " ")
     }
 
-    $FullCommand = "rm -rf build_docker && CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON -DCURSES_LIBRARY=/usr/lib/x86_64-linux-gnu/libncurses.so -DCURSES_INCLUDE_PATH=/usr/include && cmake --build build_docker && $TestCommand"
+    $FullCommand = "rm -rf build_docker && CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON && cmake --build build_docker && $TestCommand"
     $DockerFlags = "-t"
 
     Write-Host "Running tests in Docker container..." -ForegroundColor Cyan

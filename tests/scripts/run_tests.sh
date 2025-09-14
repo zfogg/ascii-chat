@@ -419,9 +419,7 @@ function ensure_tests_built() {
     log_info "Configuring CMake build in $cmake_build_dir (build type: $cmake_build_type)..."
     CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-      -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags \
-      ${DOCKER_BUILD:+-DCURSES_LIBRARY=/usr/lib/x86_64-linux-gnu/libncurses.so} \
-      ${DOCKER_BUILD:+-DCURSES_INCLUDE_PATH=/usr/include}
+      -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags
 
     # Build with CMake
     log_info "Building tests with CMake..."
@@ -666,20 +664,37 @@ function spawn_test() {
   local test_args=("--jobs" "$jobs_per_test" "--color=always")
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
+    log_verbose "Adding --verbose flag to $test_name (VERBOSE=$VERBOSE)"
   fi
 
   if [[ "$background" == "async" ]]; then
     # Background execution - return PID
-    # Create a wrapper that captures both output and exit code
-    {
-      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
-      echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
-    } > /tmp/test_${test_name}_$$.log 2>&1 &
+    # Log the command BEFORE redirecting output
+    echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
+    log_verbose "EXECUTING ASYNC: $test_executable ${test_args[*]}"
+
+    if [[ -n "$VERBOSE" ]]; then
+      # In verbose mode, show output in real-time
+      {
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
+      } 2>&1 &
+    else
+      # In non-verbose mode, capture output to file
+      {
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
+      } > /tmp/test_${test_name}_$$.log 2>&1 &
+    fi
     local pid=$!
-    echo "$pid"  # Return PID of background process
+    # Write PID to file to avoid mixing with test output
+    echo "$pid" > /tmp/test_${test_name}_$$.pid
   else
     # Synchronous execution - return exit code
     # Always show output in real-time
+    # Log the EXACT command being executed
+    echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
+    log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
     TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
     local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     echo $exit_code  # Return only the exit code
@@ -711,14 +726,8 @@ function run_tests_sequential() {
 
     # Run test synchronously using shared spawning function
     local start_time=$(date +%s.%N)
-    # Run test directly and capture exit code properly
-    # Always show output in real-time, but add --verbose flag only if VERBOSE is set
-    local test_args=("--jobs" "$jobs_per_test" "--color=always")
-    if [[ -n "$VERBOSE" ]]; then
-      test_args+=(--verbose)
-    fi
-    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
-    local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
+    # Use the shared spawn_test function for consistency - it handles verbose flag properly
+    local exit_code=$(spawn_test "$test_executable" "$jobs_per_test" "sync")
     local end_time=$(date +%s.%N)
     local duration
     if command -v bc >/dev/null 2>&1; then
@@ -814,9 +823,10 @@ function run_tests_parallel() {
           duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
         fi
 
-        # Show test output when it completes
+        # Show test output when it completes (only in non-verbose mode since verbose shows real-time)
         if [[ -f "/tmp/test_${test_name}_$$.log" ]]; then
-          cat "/tmp/test_${test_name}_$$.log"
+          # Only show summary in non-verbose mode (verbose already showed everything)
+          tail -5 "/tmp/test_${test_name}_$$.log" | grep -E "Synthesis:|PASSED|FAILED|Error" || tail -5 "/tmp/test_${test_name}_$$.log"
           rm -f "/tmp/test_${test_name}_$$.log"
         fi
 
@@ -857,7 +867,14 @@ function run_tests_parallel() {
 
       # Run test asynchronously using shared spawning function
       local start_time=$(date +%s.%N)
-      local test_pid=$(spawn_test "$test_executable" "$jobs_per_test" "async")
+      spawn_test "$test_executable" "$jobs_per_test" "async"
+
+      # Read PID from file
+      local test_pid=""
+      if [[ -f "/tmp/test_${test_name}_$$.pid" ]]; then
+        test_pid=$(cat "/tmp/test_${test_name}_$$.pid")
+        rm -f "/tmp/test_${test_name}_$$.pid"
+      fi
 
       # Only add to arrays if we got a valid PID
       if [[ -n "$test_pid" ]] && [[ "$test_pid" =~ ^[0-9]+$ ]]; then
@@ -1072,37 +1089,42 @@ function main() {
       # Single argument - it's a test name
       SINGLE_TEST="$arg"
     fi
-  elif [[ ${#positional_args[@]} -eq 2 ]]; then
-    # Two arguments - first is test type, second is test name
-    local type_arg="${positional_args[0]}"
-    local name_arg="${positional_args[1]}"
+  elif [[ ${#positional_args[@]} -ge 2 ]]; then
+    # Two or more arguments - check if first is a test type or a test binary name
+    local first_arg="${positional_args[0]}"
 
-    # Check if first argument is a valid test type
-    if [[ "$type_arg" =~ ^(unit|integration|performance)$ ]]; then
-      # Construct the full test name for single test
-      SINGLE_TEST="test_${type_arg}_${name_arg}"
-    else
-      log_error "Invalid test type: $type_arg (must be unit, integration, or performance)"
-      exit 1
-    fi
-  elif [[ ${#positional_args[@]} -gt 2 ]]; then
-    # Three or more arguments - first is test type, rest are test names
-    local type_arg="${positional_args[0]}"
-
-    # Check if first argument is a valid test type
-    if [[ "$type_arg" =~ ^(unit|integration|performance)$ ]]; then
-      # Multiple tests to run - store them in an array
+    # Check if first argument looks like a test binary name (starts with test_ or contains test)
+    if [[ "$first_arg" =~ ^test_ ]] || [[ "$first_arg" =~ test ]]; then
+      # All arguments are test binary names - run them all
       MULTIPLE_TESTS=()
-      for ((i = 1; i < ${#positional_args[@]}; i++)); do
-        local test_name="${positional_args[i]}"
-        # Construct the full test name
-        MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+      for arg in "${positional_args[@]}"; do
+        MULTIPLE_TESTS+=("$arg")
       done
-      # Set a flag to indicate we're running multiple specific tests
       MULTIPLE_TEST_MODE=1
+    elif [[ "$first_arg" =~ ^(unit|integration|performance)$ ]]; then
+      # First arg is a test type, rest are test names within that type
+      local type_arg="$first_arg"
+      if [[ ${#positional_args[@]} -eq 2 ]]; then
+        # Two arguments: type and single test name
+        local name_arg="${positional_args[1]}"
+        SINGLE_TEST="test_${type_arg}_${name_arg}"
+      else
+        # Three or more: type and multiple test names
+        MULTIPLE_TESTS=()
+        for ((i = 1; i < ${#positional_args[@]}; i++)); do
+          local test_name="${positional_args[i]}"
+          # Construct the full test name
+          MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+        done
+        MULTIPLE_TEST_MODE=1
+      fi
     else
-      log_error "Invalid test type: $type_arg (must be unit, integration, or performance)"
-      exit 1
+      # Not a test type and doesn't look like a test binary - assume all are test names
+      MULTIPLE_TESTS=()
+      for arg in "${positional_args[@]}"; do
+        MULTIPLE_TESTS+=("$arg")
+      done
+      MULTIPLE_TEST_MODE=1
     fi
   fi
 
