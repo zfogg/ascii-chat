@@ -411,7 +411,7 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_PING:
       // Respond with PONG
-      if (server_send_pong() < 0) {
+      if (threaded_send_pong_packet() < 0) {
         log_error("Failed to send PONG response");
       }
       break;

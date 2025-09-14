@@ -80,6 +80,15 @@ bool server_connection_is_lost();
  */
 void server_connection_cleanup();
 
+// Thread-safe network functions
+int threaded_send_packet(packet_type_t type, const void *data, size_t len);
+int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count);
+int threaded_send_ping_packet(void);
+int threaded_send_pong_packet(void);
+int threaded_send_stream_start_packet(uint32_t stream_type);
+int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height);
+int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities);
+
 /* ============================================================================
  * Thread-Safe Packet Sending Functions
  * ============================================================================ */

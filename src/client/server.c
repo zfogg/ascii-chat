@@ -120,195 +120,6 @@ static float get_reconnect_delay(unsigned int reconnect_attempt) {
 }
 
 /* ============================================================================
- * Thread-Safe Packet Sending Functions
- * ============================================================================ */
-
-/**
- * Thread-safe wrapper for network.h send_packet
- *
- * Protects the underlying send_packet call with a mutex to prevent
- * multiple threads from sending packets simultaneously, which could
- * result in interleaved packet data on the wire.
- *
- * @param sockfd Socket file descriptor
- * @param type Packet type identifier
- * @param data Packet payload data
- * @param len Length of payload data
- * @return 0 on success, negative on error
- */
-static int safe_send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_packet(sockfd, type, data, len);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_audio_packet
- *
- * @param sockfd Socket file descriptor
- * @param samples Audio sample data
- * @param num_samples Number of samples in buffer
- * @return 0 on success, negative on error
- */
-static int safe_send_audio_packet(socket_t sockfd, const float *samples, int num_samples) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_audio_packet(sockfd, samples, num_samples);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_audio_batch_packet
- *
- * @param sockfd Socket file descriptor
- * @param samples Batched audio sample data
- * @param num_samples Total number of samples in batch
- * @param batch_count Number of individual packets in batch
- * @return 0 on success, negative on error
- */
-static int safe_send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_terminal_size_with_auto_detect
- *
- * @param sockfd Socket file descriptor
- * @param width Terminal width in characters
- * @param height Terminal height in characters
- * @return 0 on success, negative on error
- */
-static int safe_send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, unsigned short height) {
-  log_debug("safe_send entry, errno=%d", errno);
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    log_debug("connection inactive or invalid socket, errno=%d", errno);
-    return -1;
-  }
-
-  log_debug("acquiring send mutex, errno=%d", errno);
-  mutex_lock(&g_send_mutex);
-  log_debug("calling send_terminal_size_with_auto_detect, errno=%d", errno);
-  int result = send_terminal_size_with_auto_detect(sockfd, width, height);
-  log_debug("send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_pong_packet
- *
- * @param sockfd Socket file descriptor
- * @return 0 on success, negative on error
- */
-static int safe_send_pong_packet(socket_t sockfd) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_pong_packet(sockfd);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_ping_packet
- *
- * @param sockfd Socket file descriptor
- * @return 0 on success, negative on error
- */
-static int safe_send_ping_packet(socket_t sockfd) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_ping_packet(sockfd);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_stream_start_packet
- *
- * @param sockfd Socket file descriptor
- * @param stream_type Type of stream being started (audio/video)
- * @return 0 on success, negative on error
- */
-static int safe_send_stream_start_packet(socket_t sockfd, uint32_t stream_type) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_stream_start_packet(sockfd, stream_type);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_stream_stop_packet
- *
- * @param sockfd Socket file descriptor
- * @param stream_type Type of stream being stopped (audio/video)
- * @return 0 on success, negative on error
- */
-static int safe_send_stream_stop_packet(socket_t sockfd, uint32_t stream_type) {
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_stream_stop_packet(sockfd, stream_type);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/**
- * Thread-safe wrapper for network.h send_client_join_packet
- *
- * @param socketfd Socket file descriptor
- * @param display_name Client display name for identification
- * @param capabilities Bitmask of client capabilities
- * @return 0 on success, negative on error
- */
-static int safe_send_client_join_packet(socket_t socketfd, const char *display_name, uint32_t capabilities) {
-  if (!atomic_load(&g_connection_active) || socketfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
-
-  mutex_lock(&g_send_mutex);
-  int result = send_client_join_packet(socketfd, display_name, capabilities);
-  mutex_unlock(&g_send_mutex);
-
-  return result;
-}
-
-/* ============================================================================
  * Socket Management Functions
  * ============================================================================ */
 
@@ -398,7 +209,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   } else {
     log_info("Connecting to %s:%d", address, port);
   }
-  log_info("DEBUG: About to create socket");
 
   // Create socket
   g_sockfd = socket_create(AF_INET, SOCK_STREAM, 0);
@@ -406,14 +216,11 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_error("Could not create socket: %s", network_error_string(errno));
     return -1;
   }
-  log_info("DEBUG: About to set up server address");
-  log_info("DEBUG: Socket created, fd=%d", g_sockfd);
 
   // Set up server address structure
   struct sockaddr_in serv_addr;
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
-  log_info("DEBUG: About to call inet_pton");
   serv_addr.sin_port = htons(port);
 
   // Convert address string to binary form
@@ -423,7 +230,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
   }
-  log_info("DEBUG: inet_pton succeeded, about to connect");
 
   // Attempt connection with timeout
   if (!connect_with_timeout(g_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr), CONNECT_TIMEOUT)) {
@@ -446,8 +252,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   int local_port = ntohs(local_addr.sin_port);
   g_my_client_id = (uint32_t)local_port;
 
-  log_info("Connected to server %s:%d (local port: %d)", address, port, local_port);
-
   // Mark connection as active immediately after successful socket connection
   atomic_store(&g_connection_active, true);
   atomic_store(&g_connection_lost, false);
@@ -459,9 +263,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Send initial terminal capabilities to server
-  log_debug("About to call safe_send_terminal_size_with_auto_detect, errno=%d", errno);
-  int result = safe_send_terminal_size_with_auto_detect(g_sockfd, opt_width, opt_height);
-  log_debug("safe_send_terminal_size_with_auto_detect returned %d, errno=%d", result, errno);
+  int result = threaded_send_terminal_size_with_auto_detect(opt_width, opt_height);
   if (result < 0) {
     log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
     close_socket(g_sockfd);
@@ -488,7 +290,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   int pid = getpid();
   snprintf(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
 
-  if (safe_send_client_join_packet(g_sockfd, my_display_name, my_capabilities) < 0) {
+  if (threaded_send_client_join_packet(my_display_name, my_capabilities) < 0) {
     log_error("Failed to send client join packet: %s", network_error_string(errno));
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
@@ -594,89 +396,94 @@ void server_connection_cleanup() {
 }
 
 /* ============================================================================
- * Public Packet Sending Interface
+ * Thread Safety Interface
  * ============================================================================ */
 
 /**
- * Send general packet through current connection
- *
- * @param type Packet type identifier
- * @param data Packet payload
- * @param len Payload length
- * @return 0 on success, negative on error
+ * Thread-safe wrapper functions for network operations
  */
-int server_send_packet(packet_type_t type, const void *data, size_t len) {
-  return safe_send_packet(g_sockfd, type, data, len);
+int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_packet(sockfd, type, data, len);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send audio data packet
- *
- * @param samples Audio sample buffer
- * @param num_samples Number of samples in buffer
- * @return 0 on success, negative on error
- */
-int server_send_audio(const float *samples, int num_samples) {
-  return safe_send_audio_packet(g_sockfd, samples, num_samples);
+int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send batched audio data packet
- *
- * @param samples Batched audio sample buffer
- * @param num_samples Total number of samples
- * @param batch_count Number of packets in batch
- * @return 0 on success, negative on error
- */
-int server_send_audio_batch(const float *samples, int num_samples, int batch_count) {
-  return safe_send_audio_batch_packet(g_sockfd, samples, num_samples, batch_count);
+int threaded_send_ping_packet(void) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_ping_packet(sockfd);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send terminal capabilities update
- *
- * @param width Terminal width in characters
- * @param height Terminal height in characters
- * @return 0 on success, negative on error
- */
-int server_send_terminal_capabilities(unsigned short width, unsigned short height) {
-  return safe_send_terminal_size_with_auto_detect(g_sockfd, width, height);
+int threaded_send_pong_packet(void) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_pong_packet(sockfd);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send ping keepalive packet
- *
- * @return 0 on success, negative on error
- */
-int server_send_ping() {
-  return safe_send_ping_packet(g_sockfd);
+int threaded_send_stream_start_packet(uint32_t stream_type) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_stream_start_packet(sockfd, stream_type);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send pong response packet
- *
- * @return 0 on success, negative on error
- */
-int server_send_pong() {
-  return safe_send_pong_packet(g_sockfd);
+int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_terminal_size_with_auto_detect(sockfd, width, height);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send stream start notification
- *
- * @param stream_type Type of stream being started
- * @return 0 on success, negative on error
- */
-int server_send_stream_start(uint32_t stream_type) {
-  return safe_send_stream_start_packet(g_sockfd, stream_type);
+int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  mutex_lock(&g_send_mutex);
+  int result = send_client_join_packet(sockfd, display_name, capabilities);
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
-/**
- * Send stream stop notification
- *
- * @param stream_type Type of stream being stopped
- * @return 0 on success, negative on error
- */
-int server_send_stream_stop(uint32_t stream_type) {
-  return safe_send_stream_stop_packet(g_sockfd, stream_type);
-}
+

@@ -332,7 +332,7 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
     // Send frame packet to server
-    if (server_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
+    if (threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
       log_error("Failed to send video frame to server: %s", strerror(errno));
       // Signal connection loss for reconnection
       server_connection_lost();
@@ -409,7 +409,7 @@ int capture_start_thread() {
 #endif
 
   // Notify server we're starting to send video
-  if (server_send_stream_start(STREAM_TYPE_VIDEO) < 0) {
+  if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {
     log_error("Failed to send stream start packet");
   }
 

@@ -141,7 +141,7 @@ static void *ping_thread_func(void *arg) {
 
     // Send ping packet every PING_INTERVAL_SECONDS to keep connection alive
     // Server timeout is 5 seconds, so 3-second pings provide safety margin
-    if (server_send_ping() < 0) {
+    if (threaded_send_ping_packet() < 0) {
       log_debug("Failed to send ping packet");
       // Set connection lost flag so main loop knows to reconnect
       server_connection_lost();
