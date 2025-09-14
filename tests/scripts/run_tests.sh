@@ -294,7 +294,7 @@ function get_test_executables() {
       for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
         if [[ -f "$test_file" ]]; then
           test_name=$(basename "$test_file" _test.c)
-          executable_name="test_unit_${test_name}_coverage"
+          executable_name="test_unit_${test_name}"
           echo "$bin_dir/$executable_name"
         fi
       done | sort
@@ -304,7 +304,7 @@ function get_test_executables() {
       for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
         if [[ -f "$test_file" ]]; then
           test_name=$(basename "$test_file" _test.c)
-          executable_name="test_integration_${test_name}_coverage"
+          executable_name="test_integration_${test_name}"
           echo "$bin_dir/$executable_name"
         fi
       done | sort
@@ -314,14 +314,14 @@ function get_test_executables() {
       for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
         if [[ -f "$test_file" ]]; then
           test_name=$(basename "$test_file" _test.c)
-          executable_name="test_performance_${test_name}_coverage"
+          executable_name="test_performance_${test_name}"
           echo "$bin_dir/$executable_name"
         fi
       done | sort
       ;;
     all)
       # All coverage tests
-      for f in "$bin_dir"/test_*_coverage; do
+      for f in "$bin_dir"/test_*; do
         [[ -f "$f" ]] && echo "$f"
       done | sort
       ;;
@@ -820,7 +820,11 @@ function run_tests_sequential() {
   TESTS_TIMEDOUT=$timedout
   TESTS_STARTED=$started
   FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
-  TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
+  if [ ${#timedout_tests[@]} -gt 0 ]; then
+    TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
+  else
+    TIMEDOUT_TEST_NAMES=()  # Initialize as empty array if no timed-out tests
+  fi
 }
 
 # Function 2: Run tests in parallel (up to max_parallel at once)
@@ -972,7 +976,11 @@ function run_tests_parallel() {
   TESTS_TIMEDOUT=$timedout
   TESTS_STARTED=$started
   FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
-  TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
+  if [ ${#timedout_tests[@]} -gt 0 ]; then
+    TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
+  else
+    TIMEDOUT_TEST_NAMES=()  # Initialize as empty array if no timed-out tests
+  fi
 }
 
 # =============================================================================
