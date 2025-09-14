@@ -59,9 +59,6 @@ int webcam_init(unsigned short int webcam_index) {
 }
 
 image_t *webcam_read(void) {
-  static int read_count = 0;
-  read_count++;
-
   if (!global_webcam_ctx) {
     log_error("[WEBCAM_READ] ERROR: Webcam not initialized - global_webcam_ctx is NULL");
     return NULL;
@@ -114,17 +111,20 @@ int webcam_platform_init(webcam_context_t **ctx, unsigned short int device_index
   (void)ctx;
   (void)device_index;
   log_error("Webcam platform not supported on this system");
+  exit(ASCIICHAT_ERR_WEBCAM);
   return -1;
 }
 
 void webcam_platform_cleanup(webcam_context_t *ctx) {
   (void)ctx;
+  exit(ASCIICHAT_ERR_WEBCAM);
   log_warn("Webcam cleanup called on unsupported platform");
 }
 
 image_t *webcam_platform_read(webcam_context_t *ctx) {
   (void)ctx;
   log_error("Webcam read not supported on this platform");
+  exit(ASCIICHAT_ERR_WEBCAM);
   return NULL;
 }
 
@@ -133,6 +133,7 @@ int webcam_platform_get_dimensions(webcam_context_t *ctx, int *width, int *heigh
   (void)width;
   (void)height;
   log_error("Webcam get dimensions not supported on this platform");
+  exit(ASCIICHAT_ERR_WEBCAM);
   return -1;
 }
 #endif
