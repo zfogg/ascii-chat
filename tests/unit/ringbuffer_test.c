@@ -224,15 +224,16 @@ Test(ringbuffer, power_of_two_capacity) {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 5);
   cr_assert_not_null(rb);
   cr_assert_eq(rb->capacity, 8); // Should be rounded up to 8
+  ringbuffer_destroy(rb);
 
   rb = ringbuffer_create(sizeof(int), 3);
   cr_assert_not_null(rb);
   cr_assert_eq(rb->capacity, 4); // Should be rounded up to 4
+  ringbuffer_destroy(rb);
 
   rb = ringbuffer_create(sizeof(int), 1);
   cr_assert_not_null(rb);
   cr_assert_eq(rb->capacity, 1); // 1 is already a power of 2
-
   ringbuffer_destroy(rb);
 }
 
