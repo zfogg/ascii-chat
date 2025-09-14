@@ -819,7 +819,11 @@ function run_tests_sequential() {
   TESTS_FAILED=$failed
   TESTS_TIMEDOUT=$timedout
   TESTS_STARTED=$started
-  FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  if [ ${#failed_tests[@]} -gt 0 ]; then
+    FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  else
+    FAILED_TEST_NAMES=()  # Initialize as empty array if no failed tests
+  fi
   if [ ${#timedout_tests[@]} -gt 0 ]; then
     TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
   else
@@ -975,7 +979,11 @@ function run_tests_parallel() {
   TESTS_FAILED=$failed
   TESTS_TIMEDOUT=$timedout
   TESTS_STARTED=$started
-  FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  if [ ${#failed_tests[@]} -gt 0 ]; then
+    FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  else
+    FAILED_TEST_NAMES=()  # Initialize as empty array if no failed tests
+  fi
   if [ ${#timedout_tests[@]} -gt 0 ]; then
     TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
   else
