@@ -27,8 +27,13 @@ INTERRUPTED=0
 # Global test result variables (no subshells needed!)
 TESTS_PASSED=0
 TESTS_FAILED=0
+TESTS_TIMEDOUT=0
 TESTS_STARTED=0
 FAILED_TEST_NAMES=()  # Array to track failed test names
+TIMEDOUT_TEST_NAMES=()  # Array to track timed-out test names
+
+# Test timeout in seconds
+TEST_TIMEOUT=25
 
 # Check if wait -n is supported (bash 4.3+)
 WAIT_N_SUPPORTED=0
@@ -535,7 +540,7 @@ function generate_junit_xml() {
 
       if [[ $test_exit_code -eq 124 ]]; then
         failure_type="Timeout"
-        failure_msg="Test timed out after 300 seconds"
+        failure_msg="Test timed out after ${TEST_TIMEOUT} seconds"
       elif [[ $test_exit_code -gt 128 ]]; then
         # Exit code > 128 usually means killed by signal
         local signal=$((test_exit_code - 128))
@@ -639,7 +644,7 @@ function determine_test_failure() {
       echo "$emoji [TEST] CANCELLED: $test_name"
     elif [[ $test_exit_code -eq 124 ]]; then
       failure_type="Timeout"
-      failure_msg="Test timed out after 300 seconds"
+      failure_msg="Test timed out after ${TEST_TIMEOUT} seconds"
       emoji="⏱️"
       echo "$emoji [TEST] FAILED: $test_name (${duration}s, exit code: $test_exit_code)"
     elif [[ $test_exit_code -gt 128 ]]; then
@@ -662,6 +667,47 @@ function determine_test_failure() {
 
 # Function to run tests in parallel with proper queue management
 # Old run_tests_in_parallel function removed - replaced with simplified architecture
+
+# =============================================================================
+# Timeout Function - Portable across Linux and macOS
+# =============================================================================
+
+# Portable timeout function that works on both Linux and macOS
+# Returns: 124 if timed out (like GNU timeout), actual exit code otherwise
+function portable_timeout() {
+  local timeout_seconds=$1
+  shift
+  local command=("$@")
+
+  # Check if gtimeout is available (macOS with coreutils)
+  if command -v gtimeout >/dev/null 2>&1; then
+    gtimeout --preserve-status "$timeout_seconds" "${command[@]}"
+    return $?
+  fi
+
+  # Check if GNU timeout is available (Linux or some macOS setups)
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --preserve-status "$timeout_seconds" "${command[@]}"
+    return $?
+  fi
+
+  # Fallback: Use perl for timeout (available on both Linux and macOS)
+  if command -v perl >/dev/null 2>&1; then
+    perl -e '
+      use POSIX ":sys_wait_h";
+      $SIG{ALRM} = sub { kill "TERM", -$$; exit 124; };
+      alarm shift;
+      exec @ARGV or die "exec failed: $!";
+    ' "$timeout_seconds" "${command[@]}"
+    local exit_code=$?
+    return $exit_code
+  fi
+
+  # Last resort: Run without timeout and warn
+  log_warn "No timeout command available, running test without timeout"
+  "${command[@]}"
+  return $?
+}
 
 # =============================================================================
 # SIMPLIFIED TEST EXECUTION - SHARED SPAWNING + TWO EXECUTION MODES
@@ -689,13 +735,13 @@ function spawn_test() {
     if [[ -n "$VERBOSE" ]]; then
       # In verbose mode, show output in real-time
       {
-        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        TESTING=1 CRITERION_TEST=1 portable_timeout "$TEST_TIMEOUT" "$test_executable" "${test_args[@]}"
         echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
       } 2>&1 &
     else
       # In non-verbose mode, capture output to file
       {
-        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        TESTING=1 CRITERION_TEST=1 portable_timeout "$TEST_TIMEOUT" "$test_executable" "${test_args[@]}"
         echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
       } > /tmp/test_${test_name}_$$.log 2>&1 &
     fi
@@ -706,10 +752,10 @@ function spawn_test() {
     # Synchronous execution - return exit code
     # Always show output in real-time
     # Log the EXACT command being executed
-    echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
+    echo "FINAL COMMAND: $test_executable ${test_args[*]} (timeout: ${TEST_TIMEOUT}s)" >&2
     log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
     # Redirect test output to stderr so it's visible but not captured in the return value
-    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
+    TESTING=1 CRITERION_TEST=1 portable_timeout "$TEST_TIMEOUT" "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
     local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     echo $exit_code  # Return only the exit code to stdout
   fi
@@ -722,8 +768,10 @@ function run_tests_sequential() {
   local test_list=("$@")
   local passed=0
   local failed=0
+  local timedout=0
   local started=0
   local failed_tests=()  # Array to track failed test names
+  local timedout_tests=()  # Array to track timed-out test names
 
   log_info "🔄 Running ${#test_list[@]} tests sequentially"
 
@@ -755,6 +803,10 @@ function run_tests_sequential() {
     if [[ $exit_code -eq 0 ]]; then
       echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
       ((passed++))
+    elif [[ $exit_code -eq 124 ]]; then
+      echo -e "⏱️ [TEST] \033[33mTIMEOUT\033[0m: $test_name (exceeded ${TEST_TIMEOUT}s)"
+      ((timedout++))
+      timedout_tests+=("$test_name")  # Track timed-out test name
     else
       echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
       ((failed++))
@@ -765,8 +817,10 @@ function run_tests_sequential() {
   # Return results via global variables (no subshell needed)
   TESTS_PASSED=$passed
   TESTS_FAILED=$failed
+  TESTS_TIMEDOUT=$timedout
   TESTS_STARTED=$started
   FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
 }
 
 # Function 2: Run tests in parallel (up to max_parallel at once)
@@ -777,8 +831,10 @@ function run_tests_parallel() {
   local test_list=("$@")
   local passed=0
   local failed=0
+  local timedout=0
   local started=0
   local failed_tests=()  # Array to track failed test names
+  local timedout_tests=()  # Array to track timed-out test names
 
   log_info "🚀 Running ${#test_list[@]} tests in parallel (up to $max_parallel concurrent, $jobs_per_test jobs each)"
 
@@ -847,6 +903,10 @@ function run_tests_parallel() {
         if [[ $exit_code -eq 0 ]]; then
           echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
           ((passed++))
+        elif [[ $exit_code -eq 124 ]]; then
+          echo -e "⏱️ [TEST] \033[33mTIMEOUT\033[0m: $test_name (exceeded ${TEST_TIMEOUT}s)"
+          ((timedout++))
+          timedout_tests+=("$test_name")  # Track timed-out test name
         else
           echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
           ((failed++))
@@ -909,8 +969,10 @@ function run_tests_parallel() {
   # Return results via global variables (no subshell needed)
   TESTS_PASSED=$passed
   TESTS_FAILED=$failed
+  TESTS_TIMEDOUT=$timedout
   TESTS_STARTED=$started
   FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
 }
 
 # =============================================================================
@@ -1323,6 +1385,7 @@ function main() {
   # Results are now in global variables (no subshell issues!)
   local passed_tests=$TESTS_PASSED
   local failed_tests=$TESTS_FAILED
+  local timedout_tests=$TESTS_TIMEDOUT
   local tests_that_started=$TESTS_STARTED
 
   # Close JUnit XML
@@ -1348,11 +1411,11 @@ function main() {
   # Report results
         echo ""
         echo "=========================================="
-  if [[ $failed_tests -eq 0 ]]; then
-    echo "✅ Tests completed: $passed_tests passed, $failed_tests failed"
+  if [[ $failed_tests -eq 0 && $timedout_tests -eq 0 ]]; then
+    echo "✅ Tests completed: $passed_tests passed, $failed_tests failed, $timedout_tests timed out"
       overall_failed=0
     else
-    echo "❌ Tests completed: $passed_tests passed, $failed_tests failed"
+    echo "❌ Tests completed: $passed_tests passed, $failed_tests failed, $timedout_tests timed out"
       overall_failed=1
     fi
   echo "=========================================="
@@ -1377,11 +1440,20 @@ function main() {
     log_info "📋 View test logs: cat $log_file"
   else
     log_error "Some tests failed!"
-    echo ""
-    echo "❌ FAILED TESTS:"
-    for failed_test in "${FAILED_TEST_NAMES[@]}"; do
-      echo -e "   • \033[31m$failed_test\033[0m"
-    done
+    if [[ ${#FAILED_TEST_NAMES[@]} -gt 0 ]]; then
+      echo ""
+      echo "❌ FAILED TESTS:"
+      for failed_test in "${FAILED_TEST_NAMES[@]}"; do
+        echo -e "   • \033[31m$failed_test\033[0m"
+      done
+    fi
+    if [[ ${#TIMEDOUT_TEST_NAMES[@]} -gt 0 ]]; then
+      echo ""
+      echo "⏱️ TIMED OUT TESTS:"
+      for timedout_test in "${TIMEDOUT_TEST_NAMES[@]}"; do
+        echo -e "   • \033[33m$timedout_test\033[0m"
+      done
+    fi
     echo ""
     log_info "View test logs: cat $log_file 📋"
     exit 1
