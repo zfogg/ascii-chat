@@ -215,12 +215,13 @@ Test(terminal_detect, render_mode_selection) {
   char *original_lang = getenv("LANG");
   char *original_colorterm = getenv("COLORTERM");
 
-  // Test half-block mode (color + UTF-8)
+  // Test default render mode with color + UTF-8
+  // Note: Half-block mode is only used when explicitly requested via --render-mode
   unsetenv("COLORTERM");
   setenv("TERM", "xterm-256color", 1);
   setenv("LANG", "en_US.UTF-8", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.render_mode, RENDER_MODE_HALF_BLOCK);
+  cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);  // Always defaults to foreground
   cr_assert_neq(caps.capabilities & TERM_CAP_BACKGROUND, 0);
 
   // Test foreground mode (color without UTF-8)
