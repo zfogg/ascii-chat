@@ -712,22 +712,36 @@ function spawn_test() {
   
   if [[ "$background" == "async" ]]; then
     # Background execution - return PID
+    # For verbose mode, we need to handle the pipeline differently
+    # to get the correct PID of the test process, not tee
     if [[ -n "$VERBOSE" ]]; then
-      # Show output in real-time for verbose mode
-      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log &
+      # Create a subshell that runs the test and captures its exit code
+      # The tee output needs to go to the terminal AND the log file
+      (
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" > /tmp/test_${test_name}_$$.log 2>&1
+        echo $? > /tmp/test_${test_name}_$$.exitcode
+        # Show the output after test completes - output to stderr so it doesn't get captured
+        cat /tmp/test_${test_name}_$$.log >&2
+      ) &
+      local pid=$!
+      echo "$pid"  # Return PID of subshell
     else
       TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1 &
+      local pid=$!
+      echo "$pid"  # Return PID
     fi
-    echo $!  # Return PID
   else
     # Synchronous execution - return exit code
+    local exit_code
     if [[ -n "$VERBOSE" ]]; then
-      # Show output in real-time for verbose mode
+      # Show output in real-time for verbose mode (but don't capture it)
       TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
+      exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     else
       TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1
+      exit_code=$?
     fi
-    echo $?  # Return exit code
+    echo $exit_code  # Return only the exit code
   fi
 }
 
@@ -755,7 +769,15 @@ function run_tests_sequential() {
     
     # Run test synchronously using shared spawning function
     local start_time=$(date +%s.%N)
-    local exit_code=$(spawn_test "$test_executable" "$jobs_per_test" "sync")
+    # Run test directly and capture exit code properly
+    if [[ -n "$VERBOSE" ]]; then
+      # Show output in real-time for verbose mode
+      TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" --verbose 2>&1 | tee /tmp/test_${test_name}_$$.log
+      local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
+    else
+      TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" >/tmp/test_${test_name}_$$.log 2>&1
+      local exit_code=$?
+    fi
     local end_time=$(date +%s.%N)
     local duration
     if command -v bc >/dev/null 2>&1; then
@@ -811,22 +833,38 @@ function run_tests_parallel() {
       break
     fi
     
-    # Clean up finished tests
+    # Clean up finished tests - use numeric iteration to avoid sparse array issues
     local new_pids=()
     local new_names=()
     local new_start_times=()
+    # Iterate over actual indices that exist in the arrays
     for i in "${!running_pids[@]}"; do
-      if kill -0 "${running_pids[$i]}" 2>/dev/null; then
+      # Check if process is still running
+      if kill -0 "${running_pids[i]}" 2>/dev/null; then
         # Still running
-        new_pids+=("${running_pids[$i]}")
-        new_names+=("${running_names[$i]}")
-        new_start_times+=("${running_start_times[$i]}")
+        new_pids+=("${running_pids[i]}")
+        new_names+=("${running_names[i]:-unknown}")
+        new_start_times+=("${running_start_times[i]:-$(date +%s.%N)}")
       else
         # Finished - get results
-        wait "${running_pids[$i]}" 2>/dev/null
+        local test_name="${running_names[i]:-unknown}"
+        wait "${running_pids[i]}" 2>/dev/null
         local exit_code=$?
+        
+        # In verbose mode, ALWAYS get the actual exit code from the file
+        # because the subshell exits with cat's exit code (0), not the test's
+        if [[ -n "$VERBOSE" ]]; then
+          if [[ -f "/tmp/test_${test_name}_$$.exitcode" ]]; then
+            exit_code=$(cat "/tmp/test_${test_name}_$$.exitcode" 2>/dev/null)
+            rm -f "/tmp/test_${test_name}_$$.exitcode"
+          else
+            # If no exit code file, assume failure
+            exit_code=1
+          fi
+        fi
+        
         local end_time=$(date +%s.%N)
-        local start_time="${running_start_times[$i]:-$end_time}"
+        local start_time="${running_start_times[i]:-$end_time}"
         local duration
         if command -v bc >/dev/null 2>&1; then
           duration=$(echo "$end_time - $start_time" | bc -l)
@@ -836,14 +874,15 @@ function run_tests_parallel() {
         fi
         
         if [[ $exit_code -eq 0 ]]; then
-          echo -e "✅ [TEST] \033[32mPASSED\033[0m: ${running_names[$i]} ($(printf "%.2f" $duration)s)"
+          echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
           ((passed++))
         else
-          echo -e "❌ [TEST] \033[31mFAILED\033[0m: ${running_names[$i]} (exit: $exit_code, $(printf "%.2f" $duration)s)"
+          echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
           ((failed++))
         fi
       fi
     done
+    
     if [[ ${#new_pids[@]} -gt 0 ]]; then
       running_pids=("${new_pids[@]}")
       running_names=("${new_names[@]}")
@@ -872,9 +911,15 @@ function run_tests_parallel() {
       local start_time=$(date +%s.%N)
       local test_pid=$(spawn_test "$test_executable" "$jobs_per_test" "async")
       
-      running_pids+=($test_pid)
-      running_names+=($test_name)
-      running_start_times+=($start_time)
+      # Only add to arrays if we got a valid PID
+      if [[ -n "$test_pid" ]] && [[ "$test_pid" =~ ^[0-9]+$ ]]; then
+        running_pids+=($test_pid)
+        running_names+=($test_name)
+        running_start_times+=($start_time)
+      else
+        echo "❌ [TEST] Failed to spawn: $test_name"
+        ((failed++))
+      fi
       ((test_index++))
     done
     
