@@ -3,7 +3,7 @@
 ## Essential First Steps
 - **ALWAYS** read and understand the `README.md` and `CMakeLists.txt` files first
 - Use the test runner script `./tests/scripts/run_tests.sh` for running tests
-- Format code with `cmake --build . --target format` after you edit it
+- Format code with `cmake --build build --target format` after you edit it
 - Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 - On Windows: use PowerShell build script `./build.ps1` or CMake directly
@@ -33,7 +33,7 @@ ASCII-Chat is a terminal-based video chat application that converts webcam video
 
 ```
 ascii-chat/
-├── bin/                        # Compiled binaries (ascii-chat-server, ascii-chat-client, tests)
+├── bin/                        # Hard links to compiled binaries for convenience
 ├── build/                      # CMake build directory (all platforms)
 ├── notes/                      # Development notes and documentation
 ├── todo/                       # Experimental code and future features
@@ -224,37 +224,37 @@ cmake --build build
 ### Essential Commands
 ```bash
 # Start server (listens on port 8080)
-./bin/ascii-chat-server  # Unix/macOS
+./build/bin/ascii-chat-server  # Unix/macOS
 ./build/bin/ascii-chat-server.exe  # Windows
 
 # Start client (connects to localhost by default)
-./bin/ascii-chat-client  # Unix/macOS
+./build/bin/ascii-chat-client  # Unix/macOS
 ./build/bin/ascii-chat-client.exe  # Windows
 
 # Connect to a server
-./bin/ascii-chat-client --address 127.0.0.1 --port 8080
+./build/bin/ascii-chat-client --address 127.0.0.1 --port 8080
 
 # Run with custom dimensions (by default it uses terminal size)
-./bin/ascii-chat-client --width 80 --height 24
+./build/bin/ascii-chat-client --width 80 --height 24
 
 # Color and audio support
-./bin/ascii-chat-server --color --audio
-./bin/ascii-chat-client --color --audio
+./build/bin/ascii-chat-server --color --audio
+./build/bin/ascii-chat-client --color --audio
 
 # Help and options
-./bin/ascii-chat-server --help
-./bin/ascii-chat-client --help
+./build/bin/ascii-chat-server --help
+./build/bin/ascii-chat-client --help
 ```
 
 ### Debug Helpers
 ```bash
 # --log-file helps with debugging (better than pipe redirects)
-./bin/ascii-chat-server --log-file /tmp/server-test.log
-./bin/ascii-chat-client --log-file /tmp/client-test.log
+./build/bin/ascii-chat-server --log-file /tmp/server-test.log
+./build/bin/ascii-chat-client --log-file /tmp/client-test.log
 
 # --snapshot mode for testing without continuous capture
-./bin/ascii-chat-client --snapshot                    # Single frame and exit
-./bin/ascii-chat-client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
+./build/bin/ascii-chat-client --snapshot                    # Single frame and exit
+./build/bin/ascii-chat-client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
 ```
 
 ## Testing Framework (UPDATED - Use run_tests.sh!)
@@ -469,14 +469,14 @@ sudo tcpdump -i lo port 8080 -X    # Linux
 netsh trace start capture=yes tracefile=trace.etl provider=Microsoft-Windows-TCPIP # Windows
 
 # Memory debugging
-leaks --atExit -- ./bin/ascii-chat-server     # macOS
-valgrind ./bin/ascii-chat-server               # Linux
+leaks --atExit -- ./build/bin/ascii-chat-server     # macOS
+valgrind ./build/bin/ascii-chat-server               # Linux
 # Windows: Use Visual Studio diagnostics or Application Verifier
 
 # Debuggers
-lldb ./bin/ascii-chat-server                   # macOS (NOT gdb!)
-gdb ./bin/ascii-chat-server                    # Linux
-windbg ./build_clang/bin/ascii-chat-server.exe # Windows
+lldb ./build/bin/ascii-chat-server                   # macOS (NOT gdb!)
+gdb ./build/bin/ascii-chat-server                    # Linux
+windbg ./build/bin/ascii-chat-server.exe # Windows
 
 # Process monitoring
 lsof -p $(pgrep server)             # Unix file descriptors
@@ -667,7 +667,7 @@ Before committing any changes:
 ### Testing Infrastructure
 13. **tests/scripts/run_tests.sh**: Main test runner - USE THIS!
 14. **tests/unit/**: Unit test implementations
-15. **CMakeLists.txt**: Windows build configuration
+15. **CMakeLists.txt**: Cross-platform build configuration
 
 ## Recent Updates (September 2025)
 

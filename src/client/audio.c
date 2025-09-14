@@ -252,7 +252,7 @@ static void *audio_capture_thread_func(void *arg) {
         if (batch_chunks_collected >= AUDIO_BATCH_COUNT ||
             batch_samples_collected + AUDIO_SAMPLES_PER_PACKET > AUDIO_BATCH_SAMPLES) {
 
-          if (server_send_audio_batch(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
+          if (threaded_send_audio_batch_packet(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
             log_debug("Failed to send audio batch to server");
             // Don't set connection lost here as receive thread will detect it
           }
@@ -268,7 +268,7 @@ static void *audio_capture_thread_func(void *arg) {
         }
       } else if (batch_samples_collected > 0) {
         // Gate closed but we have pending samples - send what we have
-        if (server_send_audio_batch(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
+        if (threaded_send_audio_batch_packet(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
           log_debug("Failed to send final audio batch to server");
         }
 #ifdef DEBUG_AUDIO
@@ -357,7 +357,7 @@ int audio_start_thread() {
   g_audio_capture_thread_created = true;
 
   // Notify server we're starting to send audio
-  if (server_send_stream_start(STREAM_TYPE_AUDIO) < 0) {
+  if (threaded_send_stream_start_packet(STREAM_TYPE_AUDIO) < 0) {
     log_error("Failed to send audio stream start packet");
   }
 
