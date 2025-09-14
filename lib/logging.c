@@ -325,8 +325,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       g_log.current_size += (size_t)written;
     }
 
-    mutex_unlock(&g_log.mutex);
-
     // NOTE: No need to flush with direct platform_write() - it bypasses stdio buffering
   }
 
@@ -342,6 +340,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     fprintf(log_file, "\n");
     fflush(log_file);
   }
+
+  // Always unlock the mutex - this was missing for stderr output
+  mutex_unlock(&g_log.mutex);
 
   /* Print to stdout (INFO/DEBUG) or stderr (ERROR/WARN) with colors if terminal output is enabled */
   if (g_log.terminal_output_enabled) {
