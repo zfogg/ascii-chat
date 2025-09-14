@@ -69,7 +69,7 @@ function handle_interrupt() {
       kill -9 -"$pid" >/dev/null 2>&1 || true  # Kill process group too
     done
   fi
-  
+
   # Kill only our direct child processes (jobs started by this script instance)
   jobs -p | xargs -r kill -9 >/dev/null 2>&1 || true
 
@@ -701,46 +701,37 @@ function start_test_in_background() {
 # Shared function to spawn a single test (sync or async)
 function spawn_test() {
   local test_executable="$1"
-  local jobs_per_test="$2" 
+  local jobs_per_test="$2"
   local background="$3"  # "sync" or "async"
-  
+
   local test_name=$(basename "$test_executable")
   local test_args=("--jobs" "$jobs_per_test")
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
   fi
-  
+
   if [[ "$background" == "async" ]]; then
     # Background execution - return PID
     # For verbose mode, we need to handle the pipeline differently
     # to get the correct PID of the test process, not tee
-    if [[ -n "$VERBOSE" ]]; then
-      # Create a subshell that runs the test and captures its exit code
-      # The tee output needs to go to the terminal AND the log file
-      (
-        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" > /tmp/test_${test_name}_$$.log 2>&1
-        echo $? > /tmp/test_${test_name}_$$.exitcode
-        # Show the output after test completes - output to stderr so it doesn't get captured
-        cat /tmp/test_${test_name}_$$.log >&2
-      ) &
-      local pid=$!
-      echo "$pid"  # Return PID of subshell
-    else
-      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1 &
-      local pid=$!
-      echo "$pid"  # Return PID
-    fi
+    # Always show output in real-time for parallel tests too
+    # Create a subshell that runs the test and captures its exit code
+    # Use a different approach to avoid output mixing issues
+    (
+      # Run the test and capture both output and exit code
+      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" > /tmp/test_${test_name}_$$.log 2>&1
+      local test_exit_code=$?
+      echo $test_exit_code > /tmp/test_${test_name}_$$.exitcode
+      # Show the output after test completes - redirect to stderr to avoid mixing with PID
+      cat /tmp/test_${test_name}_$$.log >&2
+    ) &
+    local pid=$!
+    echo "$pid"  # Return PID of subshell
   else
     # Synchronous execution - return exit code
-    local exit_code
-    if [[ -n "$VERBOSE" ]]; then
-      # Show output in real-time for verbose mode (but don't capture it)
-      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
-      exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
-    else
-      TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" >/tmp/test_${test_name}_$$.log 2>&1
-      exit_code=$?
-    fi
+    # Always show output in real-time
+    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
+    local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     echo $exit_code  # Return only the exit code
   fi
 }
@@ -753,31 +744,30 @@ function run_tests_sequential() {
   local passed=0
   local failed=0
   local started=0
-  
+
   log_info "🔄 Running ${#test_list[@]} tests sequentially"
-  
+
   for test_executable in "${test_list[@]}"; do
     # Check for interrupt before each test
     if [[ $INTERRUPTED -eq 1 ]]; then
       log_info "❌ Tests interrupted by user"
       break
     fi
-    
+
     local test_name=$(basename "$test_executable")
     echo "🚀 [TEST] Starting: $test_name"
     ((started++))
-    
+
     # Run test synchronously using shared spawning function
     local start_time=$(date +%s.%N)
     # Run test directly and capture exit code properly
+    # Always show output in real-time, but add --verbose flag only if VERBOSE is set
+    local test_args=("--jobs" "$jobs_per_test")
     if [[ -n "$VERBOSE" ]]; then
-      # Show output in real-time for verbose mode
-      TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" --verbose 2>&1 | tee /tmp/test_${test_name}_$$.log
-      local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
-    else
-      TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" >/tmp/test_${test_name}_$$.log 2>&1
-      local exit_code=$?
+      test_args+=(--verbose)
     fi
+    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log
+    local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     local end_time=$(date +%s.%N)
     local duration
     if command -v bc >/dev/null 2>&1; then
@@ -786,7 +776,7 @@ function run_tests_sequential() {
       # Fallback: use awk for basic arithmetic if bc is not available
       duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
     fi
-    
+
     # Report result
     if [[ $exit_code -eq 0 ]]; then
       echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
@@ -796,10 +786,10 @@ function run_tests_sequential() {
       ((failed++))
     fi
   done
-  
+
   # Return results via global variables (no subshell needed)
   TESTS_PASSED=$passed
-  TESTS_FAILED=$failed  
+  TESTS_FAILED=$failed
   TESTS_STARTED=$started
 }
 
@@ -812,14 +802,14 @@ function run_tests_parallel() {
   local passed=0
   local failed=0
   local started=0
-  
+
   log_info "🚀 Running ${#test_list[@]} tests in parallel (up to $max_parallel concurrent, $jobs_per_test jobs each)"
-  
+
   local running_pids=()
   local running_names=()
   local running_start_times=()
   local test_index=0
-  
+
   # Main execution loop - NO SUBSHELLS
   while [[ $test_index -lt ${#test_list[@]} ]] || [[ ${#running_pids[@]} -gt 0 ]]; do
     # Check for interrupt - this will work since we're in main process
@@ -832,7 +822,7 @@ function run_tests_parallel() {
       done
       break
     fi
-    
+
     # Clean up finished tests - use numeric iteration to avoid sparse array issues
     local new_pids=()
     local new_names=()
@@ -850,19 +840,17 @@ function run_tests_parallel() {
         local test_name="${running_names[i]:-unknown}"
         wait "${running_pids[i]}" 2>/dev/null
         local exit_code=$?
-        
-        # In verbose mode, ALWAYS get the actual exit code from the file
-        # because the subshell exits with cat's exit code (0), not the test's
-        if [[ -n "$VERBOSE" ]]; then
-          if [[ -f "/tmp/test_${test_name}_$$.exitcode" ]]; then
-            exit_code=$(cat "/tmp/test_${test_name}_$$.exitcode" 2>/dev/null)
-            rm -f "/tmp/test_${test_name}_$$.exitcode"
-          else
-            # If no exit code file, assume failure
-            exit_code=1
-          fi
+
+        # Always get the actual exit code from the file
+        # because the subshell exits with tee's exit code (0), not the test's
+        if [[ -f "/tmp/test_${test_name}_$$.exitcode" ]]; then
+          exit_code=$(cat "/tmp/test_${test_name}_$$.exitcode" 2>/dev/null)
+          rm -f "/tmp/test_${test_name}_$$.exitcode"
+        else
+          # If no exit code file, assume failure
+          exit_code=1
         fi
-        
+
         local end_time=$(date +%s.%N)
         local start_time="${running_start_times[i]:-$end_time}"
         local duration
@@ -872,7 +860,7 @@ function run_tests_parallel() {
           # Fallback: use awk for basic arithmetic if bc is not available
           duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
         fi
-        
+
         if [[ $exit_code -eq 0 ]]; then
           echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
           ((passed++))
@@ -882,7 +870,7 @@ function run_tests_parallel() {
         fi
       fi
     done
-    
+
     if [[ ${#new_pids[@]} -gt 0 ]]; then
       running_pids=("${new_pids[@]}")
       running_names=("${new_names[@]}")
@@ -892,25 +880,25 @@ function run_tests_parallel() {
       running_names=()
       running_start_times=()
     fi
-    
+
     # Check for interrupt again before launching new tests
     if [[ $INTERRUPTED -eq 1 ]]; then
       log_info "❌ Tests interrupted by user - stopping new test launches"
       break
     fi
-    
+
     # Launch new tests if we have room
     while [[ ${#running_pids[@]} -lt $max_parallel ]] && [[ $test_index -lt ${#test_list[@]} ]] && [[ $INTERRUPTED -eq 0 ]]; do
       local test_executable="${test_list[$test_index]}"
       local test_name=$(basename "$test_executable")
-      
+
       echo "🚀 [TEST] Starting: $test_name"
       ((started++))
-      
+
       # Run test asynchronously using shared spawning function
       local start_time=$(date +%s.%N)
       local test_pid=$(spawn_test "$test_executable" "$jobs_per_test" "async")
-      
+
       # Only add to arrays if we got a valid PID
       if [[ -n "$test_pid" ]] && [[ "$test_pid" =~ ^[0-9]+$ ]]; then
         running_pids+=($test_pid)
@@ -922,11 +910,11 @@ function run_tests_parallel() {
       fi
       ((test_index++))
     done
-    
+
     # Very short sleep to be EXTREMELY responsive to Ctrl-C
     sleep 0.01
   done
-  
+
   # Return results via global variables (no subshell needed)
   TESTS_PASSED=$passed
   TESTS_FAILED=$failed
@@ -1326,7 +1314,7 @@ function main() {
   local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
   local max_parallel_tests=${allocation[0]}
   local jobs_per_test=${allocation[1]}
-  
+
   if [[ "$NO_PARALLEL" == "1" ]] || [[ ${#all_tests_to_run[@]} -eq 1 ]]; then
     # Run sequentially
     run_tests_sequential "$jobs_per_test" "${all_tests_to_run[@]}"
@@ -1334,7 +1322,7 @@ function main() {
     # Run in parallel
     run_tests_parallel "$max_parallel_tests" "$jobs_per_test" "${all_tests_to_run[@]}"
   fi
-  
+
   # Results are now in global variables (no subshell issues!)
   local passed_tests=$TESTS_PASSED
   local failed_tests=$TESTS_FAILED

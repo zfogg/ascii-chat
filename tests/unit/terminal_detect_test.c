@@ -10,6 +10,7 @@
 #include "tests/logging.h"
 
 // Use the enhanced macro with stdout/stderr enabled for debugging
+// Note: We don't disable stdout/stderr because terminal detection needs them
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(terminal_detect, LOG_FATAL, LOG_DEBUG, false, false);
 
 /* ============================================================================
@@ -59,19 +60,26 @@ Test(terminal_detect, detect_terminal_capabilities_basic) {
 Test(terminal_detect, colorterm_variable_detection) {
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
+  char *original_term = getenv("TERM");
+
+  // Clear TERM to test COLORTERM in isolation
+  unsetenv("TERM");
 
   // Test with truecolor
   setenv("COLORTERM", "truecolor", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
+
   cr_assert_eq(caps.color_level, TERM_COLOR_TRUECOLOR);
   cr_assert_eq(caps.color_count, 16777216);
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
+  uint32_t result = caps.capabilities & TERM_CAP_COLOR_TRUE;
+  cr_assert_neq(result, 0, "Expected (caps.capabilities & TERM_CAP_COLOR_TRUE) to be non-zero, but was 0");
 
   // Test with 24bit
   setenv("COLORTERM", "24bit", 1);
   caps = detect_terminal_capabilities();
   cr_assert_eq(caps.color_level, TERM_COLOR_TRUECOLOR);
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
+  uint32_t result24 = caps.capabilities & TERM_CAP_COLOR_TRUE;
+  cr_assert_neq(result24, 0, "Expected (caps.capabilities & TERM_CAP_COLOR_TRUE) to be non-zero for 24bit, but was 0");
 
   // Test with other value
   setenv("COLORTERM", "other", 1);
@@ -84,6 +92,12 @@ Test(terminal_detect, colorterm_variable_detection) {
     setenv("COLORTERM", original_colorterm, 1);
   } else {
     unsetenv("COLORTERM");
+  }
+
+  if (original_term) {
+    setenv("TERM", original_term, 1);
+  } else {
+    unsetenv("TERM");
   }
 }
 
@@ -100,14 +114,14 @@ Test(terminal_detect, term_variable_color_detection) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
   cr_assert_eq(caps.color_level, TERM_COLOR_256);
   cr_assert_eq(caps.color_count, 256);
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_256);
+  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_256, 0);
 
   // Test basic color terminals
   setenv("TERM", "xterm-color", 1);
   caps = detect_terminal_capabilities();
   cr_assert_eq(caps.color_level, TERM_COLOR_16);
   cr_assert_eq(caps.color_count, 16);
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_16);
+  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_16, 0);
 
   // Test xterm (should support colors)
   setenv("TERM", "xterm", 1);
@@ -153,7 +167,7 @@ Test(terminal_detect, utf8_support_detection) {
   setenv("LANG", "en_US.UTF-8", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
   cr_assert(caps.utf8_support);
-  cr_assert(caps.capabilities & TERM_CAP_UTF8);
+  cr_assert_neq(caps.capabilities & TERM_CAP_UTF8, 0);
 
   // Test UTF-8 detection via LC_ALL (takes precedence)
   setenv("LC_ALL", "C.UTF-8", 1);
@@ -207,11 +221,13 @@ Test(terminal_detect, render_mode_selection) {
   setenv("LANG", "en_US.UTF-8", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
   cr_assert_eq(caps.render_mode, RENDER_MODE_HALF_BLOCK);
-  cr_assert(caps.capabilities & TERM_CAP_BACKGROUND);
+  cr_assert_neq(caps.capabilities & TERM_CAP_BACKGROUND, 0);
 
   // Test foreground mode (color without UTF-8)
   setenv("TERM", "xterm-color", 1);
   setenv("LANG", "C", 1);
+  unsetenv("LC_ALL");  // Clear LC_ALL which takes precedence
+  unsetenv("LC_CTYPE"); // Clear LC_CTYPE which also affects UTF-8 detection
   caps = detect_terminal_capabilities();
   cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);
 
@@ -243,17 +259,21 @@ Test(terminal_detect, render_mode_selection) {
 Test(terminal_detect, capability_flags) {
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
+  char *original_term = getenv("TERM");
+
+  // Clear TERM to test COLORTERM in isolation
+  unsetenv("TERM");
 
   // Test truecolor capabilities
   setenv("COLORTERM", "truecolor", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_TRUE);
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_256);
-  cr_assert(caps.capabilities & TERM_CAP_COLOR_16);
+  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_TRUE, 0);
+  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_256, 0);
+  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_16, 0);
 
   // Test UTF-8 capability
   if (caps.utf8_support) {
-    cr_assert(caps.capabilities & TERM_CAP_UTF8);
+    cr_assert_neq(caps.capabilities & TERM_CAP_UTF8, 0);
   }
 
   // Restore original environment
@@ -261,6 +281,12 @@ Test(terminal_detect, capability_flags) {
     setenv("COLORTERM", original_colorterm, 1);
   } else {
     unsetenv("COLORTERM");
+  }
+
+  if (original_term) {
+    setenv("TERM", original_term, 1);
+  } else {
+    unsetenv("TERM");
   }
 }
 
