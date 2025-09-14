@@ -328,21 +328,23 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // NOTE: No need to flush with direct platform_write() - it bypasses stdio buffering
   }
 
+  // Create va_list once and reuse it
+  va_list args;
+  va_start(args, fmt);
+
   // Handle stderr output separately - only if terminal output is enabled
   if (log_file != NULL && log_file == stderr && g_log.terminal_output_enabled) {
     fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
 
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(log_file, fmt, args);
-    va_end(args);
+    // Create a copy of va_list for this use
+    va_list args_copy;
+    va_copy(args_copy, args);
+    vfprintf(log_file, fmt, args_copy);
+    va_end(args_copy);
 
     fprintf(log_file, "\n");
     fflush(log_file);
   }
-
-  // Always unlock the mutex - this was missing for stderr output
-  mutex_unlock(&g_log.mutex);
 
   /* Print to stdout (INFO/DEBUG) or stderr (ERROR/WARN) with colors if terminal output is enabled */
   if (g_log.terminal_output_enabled) {
@@ -354,13 +356,20 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms,
               level_strings[level], file, line, func);
 
-      va_list args;
-      va_start(args, fmt);
-      vfprintf(output_stream, fmt, args);
-      va_end(args);
+      // Create a copy of va_list for this use
+      va_list args_copy2;
+      va_copy(args_copy2, args);
+      vfprintf(output_stream, fmt, args_copy2);
+      va_end(args_copy2);
 
       fprintf(output_stream, "\n");
       fflush(output_stream);
     }
   }
+
+  // Clean up the original va_list
+  va_end(args);
+
+  // Always unlock the mutex after ALL output is complete
+  mutex_unlock(&g_log.mutex);
 }
