@@ -130,6 +130,14 @@ bool terminal_supports_unicode(void) {
 }
 
 /**
+ * @brief Check if terminal supports UTF-8 output (alias for unicode)
+ * @return True if UTF-8 is supported, false otherwise
+ */
+bool terminal_supports_utf8(void) {
+  return terminal_supports_unicode();
+}
+
+/**
  * @brief Clear the terminal screen
  * @return 0 on success, non-zero on failure
  */

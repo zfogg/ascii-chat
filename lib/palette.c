@@ -36,6 +36,7 @@ static int wcwidth(wchar_t wc) {
 #include "palette.h"
 #include "common.h"
 #include "image2ascii/simd/ascii_simd.h"
+#include "platform/terminal.h"
 
 /* Default palette constants for legacy functions */
 const char DEFAULT_ASCII_PALETTE[] = PALETTE_CHARS_STANDARD;
@@ -159,9 +160,6 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
   memset(caps, 0, sizeof(utf8_capabilities_t));
 
   // Check environment variables
-  const char *lang = SAFE_GETENV("LANG");
-  const char *lc_all = SAFE_GETENV("LC_ALL");
-  const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
   const char *term = SAFE_GETENV("TERM");
 
   // Store terminal type
@@ -169,27 +167,23 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
     SAFE_STRNCPY(caps->terminal_type, term, sizeof(caps->terminal_type));
   }
 
-  // Check for UTF-8 in locale environment variables
-  if ((lang && strstr(lang, "UTF-8")) || (lc_all && strstr(lc_all, "UTF-8")) ||
-      (lc_ctype && strstr(lc_ctype, "UTF-8"))) {
-    caps->utf8_support = true;
+  // Use platform-specific UTF-8 detection from platform abstraction layer
+  caps->utf8_support = terminal_supports_utf8();
+
+  if (caps->utf8_support) {
     SAFE_STRNCPY(caps->locale_encoding, "UTF-8", sizeof(caps->locale_encoding));
   } else {
-    // Try system locale detection
+    // Try to detect encoding via locale
     char *old_locale = setlocale(LC_CTYPE, NULL);
     if (setlocale(LC_CTYPE, "")) {
 #ifndef _WIN32
       const char *codeset = nl_langinfo(CODESET);
       if (codeset) {
         SAFE_STRNCPY(caps->locale_encoding, codeset, sizeof(caps->locale_encoding));
-        if (strcmp(codeset, "UTF-8") == 0 || strcmp(codeset, "utf8") == 0) {
-          caps->utf8_support = true;
-        }
       }
 #else
-      // Windows defaults to UTF-8 support in modern terminals
-      SAFE_STRNCPY(caps->locale_encoding, "UTF-8", sizeof(caps->locale_encoding));
-      caps->utf8_support = true;
+      // Windows may not have locale set but still support UTF-8
+      SAFE_STRNCPY(caps->locale_encoding, "CP1252", sizeof(caps->locale_encoding));
 #endif
       // Restore old locale
       if (old_locale) {

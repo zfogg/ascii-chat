@@ -13,6 +13,10 @@ ENV CMAKE_PREFIX_PATH=/usr
 ENV CC=clang
 ENV CXX=clang++
 
+# Set UTF-8 locale for proper Unicode support
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
 # Install build dependencies and test framework
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -20,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     ninja-build \
     clang \
     libcriterion-dev \
+    locales \
     libportaudio2 \
     portaudio19-dev \
     zlib1g-dev \
