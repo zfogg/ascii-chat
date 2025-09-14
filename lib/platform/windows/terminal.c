@@ -108,13 +108,13 @@ bool terminal_supports_utf8(void) {
   // Check for Windows Terminal via environment variable
   const char *wt_session = SAFE_GETENV("WT_SESSION");
   if (wt_session != NULL) {
-    return true;  // Windows Terminal always supports UTF-8
+    return true; // Windows Terminal always supports UTF-8
   }
 
   // Check for ConEmu
   const char *conemu = SAFE_GETENV("ConEmuPID");
   if (conemu != NULL) {
-    return true;  // ConEmu supports UTF-8
+    return true; // ConEmu supports UTF-8
   }
 
   // Check for newer Windows Console Host with VT support
@@ -124,12 +124,12 @@ bool terminal_supports_utf8(void) {
     if (GetConsoleMode(hOut, &mode)) {
       // ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004) indicates modern console
       if (mode & 0x0004) {
-        return true;  // Modern Windows console with VT support likely has UTF-8
+        return true; // Modern Windows console with VT support likely has UTF-8
       }
     }
   }
 
-  return false;  // Default to no UTF-8 support
+  return false; // Default to no UTF-8 support
 }
 
 /**

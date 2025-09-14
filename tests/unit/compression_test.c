@@ -23,8 +23,7 @@ TEST_SUITE_WITH_QUIET_LOGGING(compression);
 static int mock_send_packet_calls = 0;
 static int mock_send_packet_result = 1; // Default to success
 
-__attribute__((unused))
-static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size) {
+__attribute__((unused)) static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size) {
   (void)sockfd; // Suppress unused parameter warning
   (void)type;
   (void)data;

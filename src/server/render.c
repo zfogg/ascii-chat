@@ -371,8 +371,6 @@ uint64_t g_blank_frames_sent = 0;
  */
 
 void *client_video_render_thread(void *arg) {
-  log_info("Video render thread function called with arg=%p", arg);
-
   client_info_t *client = (client_info_t *)arg;
   if (!client) {
     log_error("NULL client pointer in video render thread");
@@ -386,18 +384,12 @@ void *client_video_render_thread(void *arg) {
     return NULL;
   }
 
-  log_info("Video render thread started for client %u (%s)", client->client_id, client->display_name);
-
   const int base_frame_interval_ms = 1000 / VIDEO_RENDER_FPS; // 60 FPS base rate
   struct timespec last_render_time;
   clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
   bool should_continue = true;
-  int loop_count = 0;
   while (should_continue && !atomic_load(&g_should_exit)) {
-    loop_count++;
-    log_info("Video render thread loop %d for client %u", loop_count, client->client_id);
-
     mutex_lock(&client->client_state_mutex);
     should_continue = client->video_render_thread_running && client->active;
     mutex_unlock(&client->client_state_mutex);
@@ -408,20 +400,15 @@ void *client_video_render_thread(void *arg) {
     }
 
     // Rate limiting
-    log_info("Video render thread: checking timing for client %u", client->client_id);
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    long elapsed_ms = (current_time.tv_sec - last_render_time.tv_sec) * 1000 +
-                      (current_time.tv_nsec - last_render_time.tv_nsec) / 1000000;
-
-    log_info("Video render thread: elapsed_ms=%ld, base_frame_interval_ms=%d", elapsed_ms, base_frame_interval_ms);
+    long elapsed_ms = ((current_time.tv_sec - last_render_time.tv_sec) * 1000) +
+                      ((current_time.tv_nsec - last_render_time.tv_nsec) / 1000000);
 
     if (elapsed_ms < base_frame_interval_ms) {
       long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
-      log_info("Video render thread: sleeping for %ld us", sleep_us);
       platform_sleep_usec(sleep_us);
-      log_info("Video render thread: woke up from sleep");
       continue;
     }
 
@@ -442,7 +429,6 @@ void *client_video_render_thread(void *arg) {
 #endif
 
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
-    log_info("Video render thread for client %u: generating frame (elapsed_ms=%ld)", client_id_snapshot, elapsed_ms);
     size_t frame_size = 0;
     char *ascii_frame =
         create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
@@ -452,24 +438,17 @@ void *client_video_render_thread(void *arg) {
       int queue_result = queue_ascii_frame_for_client(client, ascii_frame, frame_size);
       if (queue_result == 0) {
         // Successfully queued frame - log occasionally for monitoring
-        static int success_count = 0;
-        success_count++;
-        if (success_count == 1 || success_count % (30 * 60) == 0) { // Log every ~4 seconds at 60fps
-          char pretty_size[64];
-          format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
-          log_info("Per-client render: Successfully queued %d ASCII frames for client %u (%ux%u, %s)", success_count,
-                   client->client_id, client->width, client->height, pretty_size);
-        }
+        char pretty_size[64];
+        format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
+        LOG_DEBUG_EVERY(queue_count, 30 * 60,
+                        "Per-client render: Successfully queued %d ASCII frames for client %u (%ux%u, %s)",
+                        queue_count_counter, client->client_id, client->width, client->height, pretty_size);
       }
       free(ascii_frame);
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
-      static int no_frame_count = 0;
-      no_frame_count++;
-      if (no_frame_count % 300 == 0) { // Log every ~10 seconds at 30fps
-        log_debug("Per-client render: No video sources available for client %u (%d attempts)", client->client_id,
-                  no_frame_count);
-      }
+      LOG_DEBUG_EVERY(no_frame_count, 300, "Per-client render: No video sources available for client %u (%d attempts)",
+                      client->client_id, no_frame_count_counter);
     }
 
     last_render_time = current_time;
@@ -478,6 +457,7 @@ void *client_video_render_thread(void *arg) {
 #ifdef DEBUG_THREADS
   log_info("Video render thread stopped for client %u", client->client_id);
 #endif
+
   return NULL;
 }
 
@@ -609,7 +589,7 @@ void *client_audio_render_thread(void *arg) {
   while (should_continue && !atomic_load(&g_should_exit)) {
     // CRITICAL FIX: Check thread state with mutex protection
     mutex_lock(&client->client_state_mutex);
-    should_continue = client->audio_render_thread_running && client->active;
+    should_continue = (((int)client->audio_render_thread_running != 0) && ((int)client->active != 0));
     mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {

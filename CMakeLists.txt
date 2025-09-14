@@ -553,8 +553,21 @@ else()
             set(ENABLE_SIMD_SSSE3 TRUE)
             set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
         else()
-            set(ENABLE_SIMD_SSSE3 TRUE)
-            set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
+            # Intel Mac - check for AVX2 support
+            execute_process(
+                COMMAND sysctl -n hw.optional.avx2_0
+                OUTPUT_VARIABLE HAS_AVX2_MAC
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(HAS_AVX2_MAC EQUAL 1)
+                set(ENABLE_SIMD_AVX2 TRUE)
+                set(ENABLE_SIMD_SSSE3 TRUE)  # AVX2 includes SSSE3
+                set(ENABLE_SIMD_SSE2 TRUE)   # AVX2 includes SSE2
+            else()
+                set(ENABLE_SIMD_SSSE3 TRUE)
+                set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
+            endif()
         endif()
         
     elseif(PLATFORM_LINUX)
@@ -1512,6 +1525,74 @@ else()
     )
     add_custom_target(format-check
         COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+    )
+endif()
+
+# Find clang-tidy executable
+find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
+
+if(CLANG_TIDY_EXECUTABLE)
+    # Create .clang-tidy config file if it doesn't exist
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/.clang-tidy")
+        file(WRITE "${CMAKE_SOURCE_DIR}/.clang-tidy"
+"Checks: '-*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -cert-err33-c'
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+AnalyzeTemporaryDtors: false
+FormatStyle: file
+")
+    endif()
+
+    add_custom_target(clang-tidy
+        COMMAND ${CLANG_TIDY_EXECUTABLE}
+            -p ${CMAKE_BINARY_DIR}
+            ${ALL_SOURCE_FILES}
+        COMMENT "Running clang-tidy static analysis"
+        VERBATIM
+    )
+else()
+    message(WARNING "clang-tidy not found. Clang-tidy target will not be available.")
+    add_custom_target(clang-tidy
+        COMMAND ${CMAKE_COMMAND} -E echo "clang-tidy not found. Please install clang-tidy."
+    )
+endif()
+
+# Find scan-build executable
+find_program(SCAN_BUILD_EXECUTABLE NAMES scan-build)
+
+if(SCAN_BUILD_EXECUTABLE)
+    add_custom_target(scan-build
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/scan-build-results
+        COMMAND ${SCAN_BUILD_EXECUTABLE}
+            --use-analyzer=${CMAKE_C_COMPILER}
+            -o ${CMAKE_BINARY_DIR}/scan-build-results
+            ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat-server ascii-chat-client
+        COMMENT "Running scan-build static analyzer"
+        VERBATIM
+    )
+
+    add_custom_target(scan-build-view
+        COMMAND ${CMAKE_COMMAND} -E echo "Opening scan-build results in browser..."
+        COMMAND open ${CMAKE_BINARY_DIR}/scan-build-results/*/index.html || xdg-open ${CMAKE_BINARY_DIR}/scan-build-results/*/index.html || start ${CMAKE_BINARY_DIR}/scan-build-results/*/index.html
+        DEPENDS scan-build
+        COMMENT "Opening scan-build results"
+        VERBATIM
+    )
+else()
+    message(WARNING "scan-build not found. Scan-build targets will not be available.")
+    add_custom_target(scan-build
+        COMMAND ${CMAKE_COMMAND} -E echo "scan-build not found. Please install clang static analyzer."
     )
 endif()
 
