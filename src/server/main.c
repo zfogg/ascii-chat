@@ -394,7 +394,6 @@ int main(int argc, char *argv[]) {
   }
   atexit(platform_cleanup);
 
-
   options_init(argc, argv, false);
 
   // Initialize logging - use specified log file or default

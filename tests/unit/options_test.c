@@ -1190,9 +1190,9 @@ GENERATE_OPTIONS_TEST(
       cr_assert_str_eq(opt_address, "127.0.0.1");
       cr_assert_str_eq(opt_port, "8080");
       // Server should use default values for client-only options
-      cr_assert_eq(opt_width, 110);         // Should use default width
-      cr_assert_eq(opt_height, 70);         // Should use default height
-      cr_assert_eq(opt_webcam_index, 0);    // Should use default
+      cr_assert_eq(opt_width, 110);        // Should use default width
+      cr_assert_eq(opt_height, 70);        // Should use default height
+      cr_assert_eq(opt_webcam_index, 0);   // Should use default
       cr_assert_eq(opt_webcam_flip, true); // Should use default
     },
     { cr_assert_eq(exit_code, 0, "server basic options should not cause exit"); })

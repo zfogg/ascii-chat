@@ -226,7 +226,7 @@ Test(terminal_detect, render_mode_selection) {
   // Test foreground mode (color without UTF-8)
   setenv("TERM", "xterm-color", 1);
   setenv("LANG", "C", 1);
-  unsetenv("LC_ALL");  // Clear LC_ALL which takes precedence
+  unsetenv("LC_ALL");   // Clear LC_ALL which takes precedence
   unsetenv("LC_CTYPE"); // Clear LC_CTYPE which also affects UTF-8 detection
   caps = detect_terminal_capabilities();
   cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);

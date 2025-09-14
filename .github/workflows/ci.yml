@@ -83,7 +83,7 @@ jobs:
       uses: ./.github/actions/install-deps
       with:
         os: ubuntu
-        extra-packages: clang-format make
+        extra-packages: clang-format
 
     - name: Check code formatting
       run: |
