@@ -303,17 +303,6 @@ jobs:
         echo "Performance tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
 
-    - name: Publish Test Results and Coverage
-      uses: ./.github/actions/publish-test-results
-      if: always()
-      with:
-        test-type: performance
-        os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        junit-file: junit.xml
-        coverage-files: './*.gcov'
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        upload-coverage: 'true'
-
     - name: Generate coverage report for performance tests
       if: always()
       run: |
@@ -334,6 +323,17 @@ jobs:
         find . -name "*.gcov" -type f -exec mv {} . \;
         echo "Generated coverage files:"
         find . -name "*.gcov" -type f | head -20
+
+    - name: Publish Test Results and Coverage
+      uses: ./.github/actions/publish-test-results
+      if: always()
+      with:
+        test-type: performance
+        os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        junit-file: junit.xml
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
     - name: Upload performance test artifacts
       if: always()
