@@ -4,7 +4,7 @@
 staged_files=$(git diff --cached --name-only --diff-filter=ACM)
 
 # Run formatting
-make format
+cmake --build build --target format
 
 # Check which of the staged files were modified by formatting
 formatted_files=""
