@@ -4,7 +4,7 @@
 #include <math.h>
 
 #include "mixer.h"
-#include "os/audio.h"
+#include "audio.h"
 #include "common.h"
 #include "tests/logging.h"
 

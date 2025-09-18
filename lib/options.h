@@ -24,6 +24,8 @@ extern unsigned short int opt_webcam_index;
 
 extern bool opt_webcam_flip;
 
+extern bool opt_test_pattern;  // Use test pattern instead of real webcam
+
 // Terminal color mode override (client only)
 typedef enum {
   COLOR_MODE_AUTO = 0,      // Auto-detect terminal capabilities (default)

@@ -8,6 +8,9 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 #include "common.h"
 #include "network.h"
@@ -37,15 +40,45 @@ static pid_t start_test_server(int port) {
     char port_str[16];
     snprintf(port_str, sizeof(port_str), "%d", port);
 
-    // Redirect server output to avoid test noise
-    int dev_null = open("/dev/null", O_WRONLY);
-    if (dev_null >= 0) {
-      dup2(dev_null, STDOUT_FILENO);
-      dup2(dev_null, STDERR_FILENO);
-      close(dev_null);
+    // Redirect server output to log file for debugging
+    FILE *log_file = fopen("/tmp/test_server_startup.log", "w");
+    if (log_file) {
+      dup2(fileno(log_file), STDOUT_FILENO);
+      dup2(fileno(log_file), STDERR_FILENO);
+      fclose(log_file);
     }
 
-    execl("./bin/server", "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
+    // Check if we're running in Docker container
+    bool in_docker = (access("/.dockerenv", F_OK) == 0);
+    const char *build_dir = getenv("BUILD_DIR");
+
+    char server_path[256];
+
+    // Use BUILD_DIR if set, otherwise use appropriate default
+    if (build_dir) {
+        snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
+    } else if (in_docker) {
+        // In Docker, use docker_build directory
+        snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
+    } else {
+        // Local testing, use build directory
+        snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
+    }
+
+    // Check if the server binary exists and is executable
+    if (access(server_path, F_OK) != 0) {
+        fprintf(stderr, "Server binary does not exist at: %s\n", server_path);
+    } else if (access(server_path, X_OK) != 0) {
+        fprintf(stderr, "Server binary exists but is not executable: %s\n", server_path);
+    } else {
+        fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
+    }
+
+    execl(server_path, "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
+
+    // If execl fails, print error
+    fprintf(stderr, "Failed to execute server at: %s\n", server_path);
+    perror("execl");
     exit(1); // If exec fails
   }
 

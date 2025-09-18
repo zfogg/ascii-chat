@@ -4,10 +4,21 @@
 #include "webcam.h"
 #include "common.h"
 #include "options.h"
+#include "image2ascii/image.h"
 
 static webcam_context_t *global_webcam_ctx = NULL;
 
 int webcam_init(unsigned short int webcam_index) {
+  // Check if test pattern mode is enabled
+  if (opt_test_pattern) {
+    log_info("Test pattern mode enabled - not opening real webcam");
+    // Set standard webcam dimensions for test pattern
+    last_image_width = 1280;
+    last_image_height = 720;
+    log_info("Test pattern resolution: %dx%d", last_image_width, last_image_height);
+    return 0;
+  }
+
 #ifdef __linux__
   log_info("Initializing webcam with V4L2 (Linux)");
   log_info("Attempting to open webcam with index %d using V4L2 (Linux)...", webcam_index);
@@ -40,6 +51,25 @@ int webcam_init(unsigned short int webcam_index) {
     log_error("   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
               "access your camera.");
     log_error("   Then just run this program again.");
+#elif defined(_WIN32)
+    if (result == ASCIICHAT_ERR_WEBCAM_IN_USE) {
+      // Device is in use by another application - this is a fatal error on Windows
+      log_error("Webcam is already in use by another application.");
+      log_error("Windows allows only one application to access the webcam at a time.");
+      log_error("");
+      log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
+      log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
+      log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
+      log_error("");
+      log_error("Example: ascii-chat-client --test-pattern");
+      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+    } else {
+      // Other webcam errors - general failure
+      log_error("On Windows, this might be because:");
+      log_error("* Camera permissions are not granted");
+      log_error("* Camera driver issues");
+      log_error("* No webcam device found");
+    }
 #endif
 
     exit(ASCIICHAT_ERR_WEBCAM);
@@ -59,6 +89,101 @@ int webcam_init(unsigned short int webcam_index) {
 }
 
 image_t *webcam_read(void) {
+  // Check if test pattern mode is enabled
+  if (opt_test_pattern) {
+    // Generate a test pattern image
+    static int frame_counter = 0;
+    frame_counter++;
+
+    // Create a new image with standard webcam dimensions (1280x720)
+    image_t *test_frame = image_new(1280, 720);
+    if (!test_frame) {
+      log_error("Failed to allocate test pattern frame");
+      return NULL;
+    }
+
+    // Generate a colorful test pattern with moving elements
+    for (int y = 0; y < test_frame->h; y++) {
+      for (int x = 0; x < test_frame->w; x++) {
+        rgb_t *pixel = &test_frame->pixels[y * test_frame->w + x];
+
+        // Create a grid pattern with color bars and animated elements
+        int grid_x = x / 160;  // 8 vertical sections
+        // int grid_y = y / 120;  // 6 horizontal sections (unused for now)
+
+        // Base pattern: color bars
+        switch (grid_x) {
+          case 0: // Red
+            pixel->r = 255; pixel->g = 0; pixel->b = 0;
+            break;
+          case 1: // Green
+            pixel->r = 0; pixel->g = 255; pixel->b = 0;
+            break;
+          case 2: // Blue
+            pixel->r = 0; pixel->g = 0; pixel->b = 255;
+            break;
+          case 3: // Yellow
+            pixel->r = 255; pixel->g = 255; pixel->b = 0;
+            break;
+          case 4: // Cyan
+            pixel->r = 0; pixel->g = 255; pixel->b = 255;
+            break;
+          case 5: // Magenta
+            pixel->r = 255; pixel->g = 0; pixel->b = 255;
+            break;
+          case 6: // White
+            pixel->r = 255; pixel->g = 255; pixel->b = 255;
+            break;
+          case 7: // Gray gradient
+          default:
+            uint8_t gray = (uint8_t)((y * 255) / test_frame->h);
+            pixel->r = gray; pixel->g = gray; pixel->b = gray;
+            break;
+        }
+
+        // Add a moving diagonal pattern
+        int diagonal = (x + y + frame_counter * 10) % 256;
+        pixel->r = (pixel->r + diagonal) / 2;
+        pixel->g = (pixel->g + diagonal) / 2;
+        pixel->b = (pixel->b + diagonal) / 2;
+
+        // Add grid lines for visual separation
+        if (x % 160 == 0 || y % 120 == 0) {
+          pixel->r = 0; pixel->g = 0; pixel->b = 0;
+        }
+      }
+    }
+
+    // Add a center cross to help with alignment
+    int center_x = test_frame->w / 2;
+    int center_y = test_frame->h / 2;
+    for (int i = 0; i < test_frame->w; i++) {
+      rgb_t *pixel = &test_frame->pixels[center_y * test_frame->w + i];
+      pixel->r = 255; pixel->g = 255; pixel->b = 255;
+    }
+    for (int i = 0; i < test_frame->h; i++) {
+      rgb_t *pixel = &test_frame->pixels[i * test_frame->w + center_x];
+      pixel->r = 255; pixel->g = 255; pixel->b = 255;
+    }
+
+    // Apply horizontal flip if requested (same as real webcam)
+    if (opt_webcam_flip) {
+      for (int y = 0; y < test_frame->h; y++) {
+        for (int x = 0; x < test_frame->w / 2; x++) {
+          rgb_t temp = test_frame->pixels[y * test_frame->w + x];
+          test_frame->pixels[y * test_frame->w + x] = test_frame->pixels[y * test_frame->w + (test_frame->w - 1 - x)];
+          test_frame->pixels[y * test_frame->w + (test_frame->w - 1 - x)] = temp;
+        }
+      }
+    }
+
+    // Update dimensions for aspect ratio calculations
+    last_image_width = (unsigned short int)test_frame->w;
+    last_image_height = (unsigned short int)test_frame->h;
+
+    return test_frame;
+  }
+
   if (!global_webcam_ctx) {
     log_error("[WEBCAM_READ] ERROR: Webcam not initialized - global_webcam_ctx is NULL");
     return NULL;
@@ -96,6 +221,11 @@ image_t *webcam_read(void) {
 }
 
 void webcam_cleanup(void) {
+  if (opt_test_pattern) {
+    log_info("Test pattern mode - no webcam resources to release");
+    return;
+  }
+
   if (global_webcam_ctx) {
     webcam_cleanup_context(global_webcam_ctx);
     global_webcam_ctx = NULL;

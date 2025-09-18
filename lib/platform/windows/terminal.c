@@ -573,8 +573,16 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   SAFE_STRNCPY(caps.term_type, term ? term : "windows-console", sizeof(caps.term_type) - 1);
   SAFE_STRNCPY(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm) - 1);
 
-  log_debug("Windows terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s", caps.color_level,
-            caps.capabilities, caps.utf8_support ? "yes" : "no");
+  // Set default FPS for Windows terminals (conservative)
+  extern int g_max_fps;
+  if (g_max_fps > 0) {
+    caps.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  } else {
+    caps.desired_fps = DEFAULT_MAX_FPS;  // 30 FPS on Windows by default
+  }
+
+  log_debug("Windows terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", caps.color_level,
+            caps.capabilities, caps.utf8_support ? "yes" : "no", caps.desired_fps);
 
   return caps;
 }

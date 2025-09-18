@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
-#include <unistd.h> // For STDOUT_FILENO
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"

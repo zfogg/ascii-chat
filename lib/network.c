@@ -872,6 +872,8 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
   net_caps.utf8_support = htonl(caps->utf8_support);
   memcpy(net_caps.palette_custom, caps->palette_custom, sizeof(net_caps.palette_custom));
 
+  // Add the desired FPS field
+  net_caps.desired_fps = caps->desired_fps;
   memset(net_caps.reserved, 0, sizeof(net_caps.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_CAPABILITIES, &net_caps, sizeof(net_caps));
@@ -917,6 +919,14 @@ int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, u
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
     memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+  }
+
+  // Set desired FPS from global variable or use the detected/default value
+  extern int g_max_fps;
+  if (g_max_fps > 0) {
+    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  } else {
+    net_packet.desired_fps = caps.desired_fps;
   }
 
   // log_debug("NETWORK DEBUG: About to send capabilities packet with width=%u, height=%u", width, height);

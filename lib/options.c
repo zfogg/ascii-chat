@@ -49,6 +49,8 @@ unsigned short int opt_webcam_index = 0;
 
 bool opt_webcam_flip = true;
 
+bool opt_test_pattern = false;  // Use test pattern instead of real webcam
+
 // Terminal color mode and capability options
 terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
 render_mode_t opt_render_mode = RENDER_MODE_FOREGROUND; // Foreground by default
@@ -120,6 +122,8 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"height", required_argument, NULL, 'y'},
                                          {"webcam-index", required_argument, NULL, 'c'},
                                          {"webcam-flip", no_argument, NULL, 'f'},
+                                         {"test-pattern", no_argument, NULL, 1004},
+                                         {"fps", required_argument, NULL, 1003},
                                          {"color-mode", required_argument, NULL, 1000},
                                          {"show-capabilities", no_argument, NULL, 1001},
                                          {"utf8", no_argument, NULL, 1002},
@@ -415,6 +419,32 @@ void options_init(int argc, char **argv, bool is_client) {
       opt_force_utf8 = 1;
       break;
 
+    case 1003: { // --fps (client only - sets client's desired frame rate)
+      if (!is_client) {
+        fprintf(stderr, "Error: --fps is a client-only option.\n");
+        _exit(EXIT_FAILURE);
+      }
+      extern int g_max_fps; // From common.c
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "fps", is_client);
+      int fps_val = strtoint_safe(value_str);
+      if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
+        fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
+        _exit(EXIT_FAILURE);
+      }
+      g_max_fps = fps_val;
+      break;
+    }
+
+    case 1004: { // --test-pattern (client only - use test pattern instead of webcam)
+      if (!is_client) {
+        fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
+        _exit(EXIT_FAILURE);
+      }
+      opt_test_pattern = true;
+      log_info("Using test pattern mode - webcam will not be opened");
+      break;
+    }
+
     case 'M': { // --render-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
       if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
@@ -600,6 +630,14 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
           USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT "webcam device index (0-based) (default: 0)\n");
   fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
                              "image (default: flipped)\n");
+  fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "
+                             "(for testing multiple clients)\n");
+  fprintf(desc, USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 "
+#ifdef _WIN32
+                             "(default: 30 for Windows)\n");
+#else
+                             "(default: 60 for Unix)\n");
+#endif
   fprintf(desc, USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
                              "(default: auto)\n");
   fprintf(desc,

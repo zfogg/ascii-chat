@@ -388,8 +388,14 @@ function ensure_tests_built() {
     log_info "Using CMake for incremental build (build directory exists: $cmake_build_dir)"
     log_verbose "CMake build directory found, doing incremental build"
 
-    # Just rebuild everything with CMake (it's smart about incremental builds)
+    # Build test executables
     cmake_build "$cmake_build_dir"
+
+    # For integration tests, also build server and client binaries
+    if [[ "$test_type" == "integration" ]] || [[ "$test_type" == "all" ]]; then
+      log_info "🔨 Building server and client binaries for integration tests..."
+      cmake_build "$cmake_build_dir" --target ascii-chat-server ascii-chat-client
+    fi
   else
     # No build directory or CMake cache, use CMake for full build
     log_info "Using CMake build system (no build directory found)"
@@ -442,6 +448,12 @@ function ensure_tests_built() {
     # Build with CMake
     log_info "Building tests with CMake..."
     cmake_build "$cmake_build_dir"
+
+    # For integration tests, also build server and client binaries
+    if [[ "$test_type" == "integration" ]] || [[ "$test_type" == "all" ]]; then
+      log_info "🔨 Building server and client binaries for integration tests..."
+      cmake_build "$cmake_build_dir" --target ascii-chat-server ascii-chat-client
+    fi
   fi
 }
 

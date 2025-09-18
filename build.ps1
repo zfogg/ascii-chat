@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # PowerShell build script for ASCII-Chat on Windows
 # Usage: 
 #   .\build.ps1                    # Build with Clang in native Windows mode

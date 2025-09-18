@@ -18,3 +18,5 @@ coverage_html/
 
 /build/
 /build_*/
+
+/tests/fixtures/*

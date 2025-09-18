@@ -85,7 +85,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "os/audio.h"
+#include "audio.h"
 
 #include "network.h"
 #include "buffer_pool.h"

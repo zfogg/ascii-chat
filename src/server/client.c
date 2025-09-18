@@ -121,7 +121,7 @@
 #include "network.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
-#include "os/audio.h"
+#include "audio.h"
 #include "mixer.h"
 #include "hashtable.h"
 #include "platform/abstraction.h"

@@ -100,6 +100,7 @@ typedef struct {
   bool wants_background;              // True if background colors preferred
   int palette_type;                   // Palette type enum value
   char palette_custom[64];            // Custom palette characters
+  uint8_t desired_fps;                // Client's desired frame rate (1-144 FPS)
 } terminal_capabilities_t;
 
 // TTY detection and management
