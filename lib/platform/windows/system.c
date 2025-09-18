@@ -237,25 +237,17 @@ int platform_backtrace(void **buffer, int size) {
   while (count < size) {
     BOOL result = StackWalk64(
 #ifdef _M_IX86
-      IMAGE_FILE_MACHINE_I386,
+        IMAGE_FILE_MACHINE_I386,
 #else
-      IMAGE_FILE_MACHINE_AMD64,
+        IMAGE_FILE_MACHINE_AMD64,
 #endif
-      process,
-      GetCurrentThread(),
-      &frame,
-      &context,
-      NULL,
-      SymFunctionTableAccess64,
-      SymGetModuleBase64,
-      NULL
-    );
+        process, GetCurrentThread(), &frame, &context, NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL);
 
     if (!result || frame.AddrPC.Offset == 0) {
       break;
     }
 
-    buffer[count++] = (void*)(uintptr_t)frame.AddrPC.Offset;
+    buffer[count++] = (void *)(uintptr_t)frame.AddrPC.Offset;
   }
 
   SymCleanup(process);
@@ -274,7 +266,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
   }
 
   // Allocate array of strings
-  char **symbols = (char**)malloc(size * sizeof(char*));
+  char **symbols = (char **)malloc(size * sizeof(char *));
   if (!symbols) {
     return NULL;
   }
@@ -302,7 +294,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     // Try to get symbol name
     if (SymFromAddr(process, address, NULL, symbol_info)) {
       // Allocate string for symbol name
-      symbols[i] = (char*)malloc(symbol_info->MaxNameLen + 1);
+      symbols[i] = (char *)malloc(symbol_info->MaxNameLen + 1);
       if (symbols[i]) {
         strcpy(symbols[i], symbol_info->Name);
       } else {
@@ -310,7 +302,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
       }
     } else {
       // Format as hex address if symbol not found
-      symbols[i] = (char*)malloc(32);
+      symbols[i] = (char *)malloc(32);
       if (symbols[i]) {
         sprintf(symbols[i], "0x%llx", address);
       }
@@ -372,33 +364,33 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
   fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
 
   switch (exception_info->ExceptionRecord->ExceptionCode) {
-    case EXCEPTION_ACCESS_VIOLATION:
-      fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
-      break;
-    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-      fprintf(stderr, "Exception: Array Bounds Exceeded\n");
-      break;
-    case EXCEPTION_DATATYPE_MISALIGNMENT:
-      fprintf(stderr, "Exception: Data Type Misalignment\n");
-      break;
-    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-      fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
-      break;
-    case EXCEPTION_FLT_INVALID_OPERATION:
-      fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
-      break;
-    case EXCEPTION_ILLEGAL_INSTRUCTION:
-      fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
-      break;
-    case EXCEPTION_INT_DIVIDE_BY_ZERO:
-      fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
-      break;
-    case EXCEPTION_STACK_OVERFLOW:
-      fprintf(stderr, "Exception: Stack Overflow\n");
-      break;
-    default:
-      fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
-      break;
+  case EXCEPTION_ACCESS_VIOLATION:
+    fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
+    break;
+  case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+    fprintf(stderr, "Exception: Array Bounds Exceeded\n");
+    break;
+  case EXCEPTION_DATATYPE_MISALIGNMENT:
+    fprintf(stderr, "Exception: Data Type Misalignment\n");
+    break;
+  case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+    fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
+    break;
+  case EXCEPTION_FLT_INVALID_OPERATION:
+    fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
+    break;
+  case EXCEPTION_ILLEGAL_INSTRUCTION:
+    fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
+    break;
+  case EXCEPTION_INT_DIVIDE_BY_ZERO:
+    fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
+    break;
+  case EXCEPTION_STACK_OVERFLOW:
+    fprintf(stderr, "Exception: Stack Overflow\n");
+    break;
+  default:
+    fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
+    break;
   }
 
   platform_print_backtrace();
@@ -413,18 +405,18 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
 static void windows_signal_handler(int sig) {
   fprintf(stderr, "\n*** CRASH DETECTED ***\n");
   switch (sig) {
-    case SIGABRT:
-      fprintf(stderr, "Signal: SIGABRT (Abort)\n");
-      break;
-    case SIGFPE:
-      fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
-      break;
-    case SIGILL:
-      fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
-      break;
-    default:
-      fprintf(stderr, "Signal: %d (Unknown)\n", sig);
-      break;
+  case SIGABRT:
+    fprintf(stderr, "Signal: SIGABRT (Abort)\n");
+    break;
+  case SIGFPE:
+    fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
+    break;
+  case SIGILL:
+    fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
+    break;
+  default:
+    fprintf(stderr, "Signal: %d (Unknown)\n", sig);
+    break;
   }
   platform_print_backtrace();
   exit(1);

@@ -513,15 +513,15 @@ void platform_print_backtrace(void) {
 static void crash_handler(int sig, siginfo_t *info, void *context) {
   fprintf(stderr, "\n*** CRASH DETECTED ***\n");
   fprintf(stderr, "Signal: %d (%s)\n", sig,
-          sig == SIGSEGV ? "SIGSEGV" :
-          sig == SIGABRT ? "SIGABRT" :
-          sig == SIGFPE ? "SIGFPE" :
-          sig == SIGILL ? "SIGILL" :
-          sig == SIGBUS ? "SIGBUS" : "UNKNOWN");
+          sig == SIGSEGV   ? "SIGSEGV"
+          : sig == SIGABRT ? "SIGABRT"
+          : sig == SIGFPE  ? "SIGFPE"
+          : sig == SIGILL  ? "SIGILL"
+          : sig == SIGBUS  ? "SIGBUS"
+                           : "UNKNOWN");
 
   if (info) {
-    fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n",
-            info->si_code, info->si_addr);
+    fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n", info->si_code, info->si_addr);
   }
 
   platform_print_backtrace();
@@ -545,11 +545,11 @@ void platform_install_crash_handler(void) {
   sa.sa_flags = SA_SIGINFO | SA_RESTART;
 
   // Install handlers for all crash signals
-  sigaction(SIGSEGV, &sa, NULL);  // Segmentation fault
-  sigaction(SIGABRT, &sa, NULL);  // Abort
-  sigaction(SIGFPE, &sa, NULL);   // Floating point exception
-  sigaction(SIGILL, &sa, NULL);   // Illegal instruction
-  sigaction(SIGBUS, &sa, NULL);   // Bus error
+  sigaction(SIGSEGV, &sa, NULL); // Segmentation fault
+  sigaction(SIGABRT, &sa, NULL); // Abort
+  sigaction(SIGFPE, &sa, NULL);  // Floating point exception
+  sigaction(SIGILL, &sa, NULL);  // Illegal instruction
+  sigaction(SIGBUS, &sa, NULL);  // Bus error
 }
 
 #endif // !_WIN32

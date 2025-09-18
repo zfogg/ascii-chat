@@ -886,8 +886,9 @@ int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, u
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
 
-  // Check if detection was reliable, use fallback if not
-  if (!caps.detection_reliable) {
+  // Check if detection was reliable, use fallback only for auto-detection
+  // Don't override user's explicit color mode choices
+  if (!caps.detection_reliable && opt_color_mode == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");
     // Use minimal fallback capabilities
     memset(&caps, 0, sizeof(caps));

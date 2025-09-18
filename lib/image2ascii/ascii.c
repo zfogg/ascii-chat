@@ -1,9 +1,12 @@
+#include <stdint.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h> // For STDOUT_FILENO
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
@@ -461,9 +464,69 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // Multiple sources: create grid layout
-  // Calculate grid dimensions (try to make it roughly square)
-  int grid_cols = (int)ceil(sqrt(source_count));
-  int grid_rows = (int)ceil((double)source_count / grid_cols);
+  // Calculate grid dimensions that maximize the use of terminal space
+  // Character aspect ratio: terminal chars are typically ~2x taller than wide
+  float char_aspect = 2.0f;
+
+  int grid_cols, grid_rows;
+  float best_score = -1.0f;
+  int best_cols = 1;
+  int best_rows = source_count;
+
+  // Try all possible grid configurations
+  for (int test_cols = 1; test_cols <= source_count; test_cols++) {
+    int test_rows = (int)ceil((double)source_count / test_cols);
+
+    // Skip configurations with too many empty cells
+    int empty_cells = (test_cols * test_rows) - source_count;
+    if (empty_cells > source_count / 2)
+      continue; // Don't waste more than 50% space
+
+    // Calculate the size each cell would have
+    int cell_width = (width - (test_cols - 1)) / test_cols;   // -1 per separator
+    int cell_height = (height - (test_rows - 1)) / test_rows; // -1 per separator
+
+    // Skip if cells would be too small
+    if (cell_width < 10 || cell_height < 3)
+      continue;
+
+    // Calculate the aspect ratio of each cell (accounting for char aspect)
+    float cell_aspect = ((float)cell_width / (float)cell_height) / char_aspect;
+
+    // Score based on how close to square (1:1) each video cell would be
+    // This naturally adapts to any terminal size
+    float aspect_score = 1.0f - fabsf(logf(cell_aspect)); // log makes it symmetric around 1
+    if (aspect_score < 0)
+      aspect_score = 0;
+
+    // Bonus for better space utilization
+    float utilization = (float)source_count / (float)(test_cols * test_rows);
+
+    // For 2 clients specifically, heavily weight the aspect score
+    // This makes 2 clients naturally go horizontal on wide terminals and vertical on tall ones
+    float total_score;
+    if (source_count == 2) {
+      // For 2 clients, we want the layout that gives the most square-ish cells
+      total_score = aspect_score * 0.9f + utilization * 0.1f;
+    } else {
+      // For 3+ clients, balance aspect ratio with space utilization
+      total_score = aspect_score * 0.7f + utilization * 0.3f;
+    }
+
+    // Small bonus for simpler grids (prefer 2x2 over 3x1, etc.)
+    if (test_cols == test_rows) {
+      total_score += 0.05f; // Slight preference for square grids
+    }
+
+    if (total_score > best_score) {
+      best_score = total_score;
+      best_cols = test_cols;
+      best_rows = test_rows;
+    }
+  }
+
+  grid_cols = best_cols;
+  grid_rows = best_rows;
 
   // Calculate dimensions for each cell (leave 1 char for separators)
   int cell_width = (width - (grid_cols - 1)) / grid_cols;
