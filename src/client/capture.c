@@ -370,7 +370,7 @@ int capture_init() {
   int webcam_index = opt_webcam_index;
   if (webcam_init(webcam_index) != 0) {
     log_error("Failed to initialize webcam");
-    return -1;
+    return ASCIICHAT_ERR_WEBCAM;
   }
   return 0;
 }

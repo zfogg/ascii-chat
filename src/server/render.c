@@ -168,7 +168,7 @@
 #include "platform/init.h"
 #include "packet_queue.h"
 #include "mixer.h"
-#include "os/audio.h"
+#include "audio.h"
 
 /**
  * @brief Global shutdown flag from main.c - coordinate graceful thread termination
@@ -399,6 +399,12 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_should_exit)) {
+    // Check for immediate shutdown
+    if (atomic_load(&g_should_exit)) {
+      log_info("Video render thread stopping for client %u (g_should_exit)", client->client_id);
+      break;
+    }
+
     mutex_lock(&client->client_state_mutex);
     should_continue = client->video_render_thread_running && client->active;
     mutex_unlock(&client->client_state_mutex);
@@ -418,13 +424,21 @@ void *client_video_render_thread(void *arg) {
     if (elapsed_ms < base_frame_interval_ms) {
       long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
       // Sleep in small chunks to be more responsive to shutdown
-      const long max_sleep_chunk = 10000; // 10ms chunks
-      while (sleep_us > 0 && !atomic_load(&g_should_exit)) {
+      const long max_sleep_chunk = 1000; // 1ms chunks for faster shutdown response
+      while (sleep_us > 0) {
+        // Check for shutdown before each sleep
+        if (atomic_load(&g_should_exit)) {
+          break;
+        }
+
         long chunk = sleep_us > max_sleep_chunk ? max_sleep_chunk : sleep_us;
         platform_sleep_usec(chunk);
         sleep_us -= chunk;
 
         // Check if we should stop
+        if (atomic_load(&g_should_exit)) {
+          break;
+        }
         mutex_lock(&client->client_state_mutex);
         bool still_running = client->video_render_thread_running && client->active;
         mutex_unlock(&client->client_state_mutex);
@@ -608,6 +622,12 @@ void *client_audio_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_should_exit)) {
+    // Check for immediate shutdown
+    if (atomic_load(&g_should_exit)) {
+      log_info("Audio render thread stopping for client %u (g_should_exit)", client->client_id);
+      break;
+    }
+
     // CRITICAL FIX: Check thread state with mutex protection
     mutex_lock(&client->client_state_mutex);
     should_continue = (((int)client->audio_render_thread_running != 0) && ((int)client->active != 0));
@@ -923,26 +943,47 @@ void stop_client_render_threads(client_info_t *client) {
   mutex_unlock(&client->client_state_mutex);
 
   // Wait for threads to finish (deterministic cleanup)
+  // During shutdown, don't wait forever for threads to join
+  bool is_shutting_down = atomic_load(&g_should_exit);
+
   if (ascii_thread_is_initialized(&client->video_render_thread)) {
+    if (is_shutting_down) {
+      // During shutdown, give thread a brief chance to exit cleanly
+      // but don't wait forever - the thread should have already seen g_should_exit
+      log_debug("Shutdown mode: joining video render thread for client %u with brief wait", client->client_id);
+    }
     int result = ascii_thread_join(&client->video_render_thread, NULL);
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Video render thread joined for client %u", client->client_id);
 #endif
     } else {
-      log_error("Failed to join video render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
+      if (is_shutting_down) {
+        log_warn("Failed to join video render thread for client %u during shutdown (continuing): %s",
+                 client->client_id, SAFE_STRERROR(result));
+      } else {
+        log_error("Failed to join video render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
+      }
     }
     memset(&client->video_render_thread, 0, sizeof(asciithread_t));
   }
 
   if (ascii_thread_is_initialized(&client->audio_render_thread)) {
+    if (is_shutting_down) {
+      log_debug("Shutdown mode: joining audio render thread for client %u with brief wait", client->client_id);
+    }
     int result = ascii_thread_join(&client->audio_render_thread, NULL);
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Audio render thread joined for client %u", client->client_id);
 #endif
     } else {
-      log_error("Failed to join audio render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
+      if (is_shutting_down) {
+        log_warn("Failed to join audio render thread for client %u during shutdown (continuing): %s",
+                 client->client_id, SAFE_STRERROR(result));
+      } else {
+        log_error("Failed to join audio render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
+      }
     }
     memset(&client->audio_render_thread, 0, sizeof(asciithread_t));
   }

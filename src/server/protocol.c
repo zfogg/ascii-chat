@@ -125,7 +125,7 @@
 #include "packet_queue.h"
 #include "ringbuffer.h"
 #include "video_frame.h"
-#include "os/audio.h"
+#include "audio.h"
 #include "palette.h"
 #include "image2ascii/image.h"
 
@@ -673,6 +673,9 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
                  sizeof(client->terminal_caps.palette_custom));
 
+    // Store client's desired FPS
+    client->terminal_caps.desired_fps = caps->desired_fps;
+
     // Initialize client's per-client palette cache
     const char *custom_chars =
         (client->terminal_caps.palette_type == PALETTE_CUSTOM && client->terminal_caps.palette_custom[0])
@@ -697,14 +700,14 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     mutex_unlock(&client->client_state_mutex);
 
     log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
-             "render_mode=%s, reliable=%s",
+             "render_mode=%s, reliable=%s, fps=%u",
              client->client_id, client->width, client->height,
              terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
              client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
              (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
                   ? "half-block"
                   : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
-             client->terminal_caps.detection_reliable ? "yes" : "no");
+             client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
   } else {
     log_error("Invalid client capabilities packet size: %zu, expected %zu", len,
               sizeof(terminal_capabilities_packet_t));

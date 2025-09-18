@@ -1364,7 +1364,7 @@ set(LIB_COMMON_SRCS
     lib/crypto.c
     lib/crc32_hw.c
     lib/mixer.c
-    lib/os/audio.c
+    lib/audio.c
     lib/image2ascii/image.c
     lib/image2ascii/output_buffer.c
     lib/aspect_ratio.c
@@ -1699,8 +1699,6 @@ if(BUILD_TESTS AND CRITERION_FOUND)
 
 else()
     message(WARNING "Criterion testing framework not found. Tests will not be built.")
-    message(STATUS "To enable tests on Linux: sudo apt-get install libcriterion-dev")
-    message(STATUS "To enable tests on macOS: brew install criterion")
 endif()
 
 # =============================================================================

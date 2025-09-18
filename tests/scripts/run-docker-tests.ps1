@@ -9,6 +9,8 @@
 #   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation" # Run specific test case
 
 param(
+    [Parameter(Mandatory=$false)][string]$Suite = "",  # Test suite: all, unit, integration, performance
+    [Parameter(Mandatory=$false)][string]$Test = "",   # Specific test name
     [Parameter(Mandatory=$false)][string]$Filter = "",
     [Parameter(Mandatory=$false)][switch]$Build,
     [Parameter(Mandatory=$false)][switch]$NoBuild,
@@ -90,8 +92,14 @@ if ($Interactive) {
         $TestCommand += " -f `"$Filter`""
     }
 
-    # Add test targets (positional arguments) after options
-    if ($TestTargets.Count -gt 0) {
+    # Use Suite and Test parameters if provided
+    if ($Suite) {
+        $TestCommand += " $Suite"
+        if ($Test) {
+            $TestCommand += " $Test"
+        }
+    } elseif ($TestTargets.Count -gt 0) {
+        # Fall back to positional arguments for backward compatibility
         $TestCommand += " " + ($TestTargets -join " ")
     }
 
@@ -104,6 +112,9 @@ echo 'Clean rebuild - removing build_docker directory...'
 rm -rf build_docker
 CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
 cmake --build build_docker
+# Build server and client binaries for integration tests
+echo 'Building server and client binaries for integration tests...'
+cmake --build build_docker --target ascii-chat-server ascii-chat-client
 "@
     } else {
         $BuildCommand = @"
@@ -114,6 +125,9 @@ else
     echo 'Using existing build_docker directory for incremental build'
 fi
 cmake --build build_docker
+# Build server and client binaries for integration tests
+echo 'Building server and client binaries for integration tests...'
+cmake --build build_docker --target ascii-chat-server ascii-chat-client
 "@
     }
 

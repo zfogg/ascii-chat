@@ -5,7 +5,7 @@
 #include <time.h>
 
 #include "common.h"
-#include "os/audio.h"
+#include "audio.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging

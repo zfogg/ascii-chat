@@ -136,7 +136,8 @@ typedef struct {
   uint32_t utf8_support;      // 0=no UTF-8, 1=UTF-8 supported
   uint32_t palette_type;      // palette_type_t enum value
   char palette_custom[64];    // Custom palette chars (if palette_type == PALETTE_CUSTOM)
-  uint8_t reserved[3];        // Padding for alignment (reduced from reserved[3])
+  uint8_t desired_fps;        // Client's desired frame rate (1-144 FPS)
+  uint8_t reserved[2];        // Padding for alignment
 } PACKED_ATTR terminal_capabilities_packet_t;
 
 // ============================================================================

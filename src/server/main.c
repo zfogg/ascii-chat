@@ -81,7 +81,7 @@
 #include "buffer_pool.h"
 #include "mixer.h"
 #include "palette.h"
-#include "os/audio.h"
+#include "audio.h"
 
 #include "client.h"
 #include "stream.h"

@@ -39,6 +39,7 @@ typedef enum {
   ASCIICHAT_ERR_BUFFER_ACCESS = -13,
   ASCIICHAT_ERR_BUFFER_OVERFLOW = -14,
   ASCIICHAT_ERR_INVALID_FRAME = -15,
+  ASCIICHAT_ERR_WEBCAM_IN_USE = -16,
 } asciichat_error_t;
 
 /* Error handling */
@@ -70,6 +71,8 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
     return "Display error";
   case ASCIICHAT_ERR_INVALID_FRAME:
     return "Frame data error";
+  case ASCIICHAT_ERR_WEBCAM_IN_USE:
+    return "Webcam already in use by another application";
   default:
     return "Unknown error";
   }
@@ -77,7 +80,16 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
 
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
-#define MAX_FPS 120 // Reduced from 120 to avoid network congestion
+// Frame rate configuration - Windows terminals struggle with high FPS
+#ifdef _WIN32
+#define DEFAULT_MAX_FPS 30  // Windows terminals can't handle more than this
+#else
+#define DEFAULT_MAX_FPS 60  // macOS/Linux terminals can handle higher rates
+#endif
+
+// Allow runtime override via environment variable or command line
+extern int g_max_fps;
+#define MAX_FPS (g_max_fps > 0 ? g_max_fps : DEFAULT_MAX_FPS)
 
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
 
