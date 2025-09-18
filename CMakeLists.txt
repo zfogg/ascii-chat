@@ -11,14 +11,150 @@ endif()
 
 
 
-# Force Ninja generator on Windows for faster builds
-if(WIN32 AND NOT CMAKE_GENERATOR)
-    set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator")
-    message(STATUS "Using Ninja generator for faster Windows builds")
+# Use Ninja generator by default on all platforms for faster builds
+if(NOT CMAKE_GENERATOR)
+    find_program(NINJA_EXECUTABLE ninja)
+    if(NINJA_EXECUTABLE)
+        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator")
+        message(STATUS "Using Ninja generator for faster builds")
+    endif()
+endif()
+
+# On macOS, prefer gmake over make when using Unix Makefiles generator
+if(APPLE AND CMAKE_GENERATOR MATCHES "Unix Makefiles")
+    find_program(GMAKE_EXECUTABLE gmake)
+    if(GMAKE_EXECUTABLE)
+        set(CMAKE_MAKE_PROGRAM "${GMAKE_EXECUTABLE}" CACHE FILEPATH "Make program" FORCE)
+        message(STATUS "Using gmake: ${GMAKE_EXECUTABLE}")
+    endif()
 endif()
 
 # Speed up CMake's compiler tests by avoiding linking issues
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
+# =============================================================================
+# Compiler detection: Respect environment variables first, then auto-detect
+# =============================================================================
+
+# 1. First priority: Respect CC/CXX environment variables if set
+if(DEFINED ENV{CC} AND NOT CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER "$ENV{CC}" CACHE FILEPATH "C compiler from environment")
+    message(STATUS "Using C compiler from CC environment variable: $ENV{CC}")
+endif()
+
+if(DEFINED ENV{CXX} AND NOT CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER "$ENV{CXX}" CACHE FILEPATH "C++ compiler from environment")
+    message(STATUS "Using C++ compiler from CXX environment variable: $ENV{CXX}")
+endif()
+
+# 2. Respect CFLAGS, CPPFLAGS, LDFLAGS from environment
+if(DEFINED ENV{CFLAGS})
+    set(CMAKE_C_FLAGS "$ENV{CFLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags")
+    message(STATUS "Using CFLAGS from environment: $ENV{CFLAGS}")
+endif()
+
+if(DEFINED ENV{CPPFLAGS})
+    # CPPFLAGS should be added to both C and CXX flags for preprocessor directives
+    set(CMAKE_C_FLAGS "$ENV{CPPFLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags")
+    set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS} ${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compiler flags")
+    message(STATUS "Using CPPFLAGS from environment: $ENV{CPPFLAGS}")
+endif()
+
+if(DEFINED ENV{LDFLAGS})
+    set(CMAKE_EXE_LINKER_FLAGS "$ENV{LDFLAGS} ${CMAKE_EXE_LINKER_FLAGS}" CACHE STRING "Linker flags")
+    set(CMAKE_SHARED_LINKER_FLAGS "$ENV{LDFLAGS} ${CMAKE_SHARED_LINKER_FLAGS}" CACHE STRING "Shared linker flags")
+    message(STATUS "Using LDFLAGS from environment: $ENV{LDFLAGS}")
+endif()
+
+# 3. macOS: Auto-detect and prefer Homebrew LLVM over system compiler
+if(APPLE)
+    # Check if Homebrew LLVM is installed
+    set(HOMEBREW_LLVM_PREFIX "")
+
+    # Check common Homebrew installation paths
+    if(EXISTS "/usr/local/opt/llvm/bin/clang")
+        set(HOMEBREW_LLVM_PREFIX "/usr/local/opt/llvm")
+    elseif(EXISTS "/opt/homebrew/opt/llvm/bin/clang")
+        set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
+    endif()
+
+    if(HOMEBREW_LLVM_PREFIX)
+        message(STATUS "Found Homebrew LLVM at: ${HOMEBREW_LLVM_PREFIX}")
+
+        # Check if we should use Homebrew LLVM
+        set(USE_HOMEBREW_LLVM TRUE)
+
+        # Only skip if user explicitly set CMAKE_C_COMPILER to a non-system compiler
+        if(DEFINED CMAKE_C_COMPILER)
+            # Check if it's a ccache wrapper or system compiler
+            if(NOT CMAKE_C_COMPILER MATCHES "ccache" AND
+               NOT CMAKE_C_COMPILER MATCHES "^/usr/bin" AND
+               NOT CMAKE_C_COMPILER MATCHES "Xcode" AND
+               NOT CMAKE_C_COMPILER STREQUAL "CMAKE_C_COMPILER-NOTFOUND" AND
+               CMAKE_C_COMPILER MATCHES "llvm")
+                # User explicitly set LLVM compiler, respect it
+                set(USE_HOMEBREW_LLVM FALSE)
+                message(STATUS "Using user-specified LLVM compiler: ${CMAKE_C_COMPILER}")
+            endif()
+        endif()
+
+        if(USE_HOMEBREW_LLVM)
+            message(STATUS "Configuring to use Homebrew LLVM")
+
+            # Check for ccache and use it if available
+            find_program(CCACHE_PROGRAM ccache)
+            if(CCACHE_PROGRAM)
+                message(STATUS "Found ccache: ${CCACHE_PROGRAM}")
+                set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
+                set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C++ compiler launcher" FORCE)
+                # Set the actual compilers (ccache will wrap them via the launcher)
+                set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
+                set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "C++ compiler" FORCE)
+                message(STATUS "Using ccache with Homebrew LLVM")
+            else()
+                # No ccache, use LLVM directly
+                set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
+                set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "C++ compiler" FORCE)
+            endif()
+
+            # Add LLVM bin directory to PATH for tools like llvm-ar, llvm-ranlib, etc.
+            set(CMAKE_PREFIX_PATH "${HOMEBREW_LLVM_PREFIX}" ${CMAKE_PREFIX_PATH})
+
+            # Add LLVM CMake modules to module path for advanced features
+            if(EXISTS "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
+                list(APPEND CMAKE_MODULE_PATH "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
+                message(STATUS "Added LLVM CMake modules: ${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
+            endif()
+
+            # Set LLVM tool paths
+            set(CMAKE_AR "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ar" CACHE FILEPATH "Archiver" FORCE)
+            set(CMAKE_RANLIB "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ranlib" CACHE FILEPATH "Ranlib" FORCE)
+
+            message(STATUS "Configured Homebrew LLVM: ${CMAKE_C_COMPILER}")
+        endif()
+    else()
+        message(STATUS "Homebrew LLVM not found, using system compiler")
+    endif()
+endif()
+
+# 4. Handle ccache wrapper if present
+if(CMAKE_C_COMPILER)
+    # Check if compiler is a ccache wrapper
+    if(CMAKE_C_COMPILER MATCHES "ccache")
+        # Try to find the real compiler
+        execute_process(
+            COMMAND ${CMAKE_C_COMPILER} -print-prog-name=clang
+            OUTPUT_VARIABLE REAL_C_COMPILER
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(REAL_C_COMPILER AND NOT REAL_C_COMPILER STREQUAL "clang")
+            message(STATUS "Detected ccache wrapper, real compiler: ${REAL_C_COMPILER}")
+            # Don't override CMAKE_C_COMPILER but note for sanitizer setup
+            set(CCACHE_DETECTED TRUE)
+        endif()
+    endif()
+endif()
 
 if(APPLE)
     project(ascii-chat LANGUAGES C CXX OBJC)
@@ -28,6 +164,50 @@ endif()
 
 # Generate compile_commands.json for IDE/tool integration (clangd, VSCode, etc.)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Configure Homebrew LLVM paths after project() if compiler was set
+if(APPLE)
+    # Check if we're using Homebrew LLVM (either auto-detected or user-specified)
+    if(CMAKE_C_COMPILER)
+        get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+        get_filename_component(COMPILER_PREFIX "${COMPILER_DIR}" DIRECTORY)
+
+        # Also check for ccache wrapper pointing to Homebrew LLVM
+        set(IS_HOMEBREW_LLVM FALSE)
+        if(COMPILER_PREFIX MATCHES "/(usr/local|opt/homebrew)/opt/llvm")
+            set(IS_HOMEBREW_LLVM TRUE)
+        elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/usr/local/opt/llvm/bin/clang")
+            # ccache wrapper detected, check if underlying compiler is Homebrew LLVM
+            set(COMPILER_PREFIX "/usr/local/opt/llvm")
+            set(IS_HOMEBREW_LLVM TRUE)
+        elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/opt/homebrew/opt/llvm/bin/clang")
+            set(COMPILER_PREFIX "/opt/homebrew/opt/llvm")
+            set(IS_HOMEBREW_LLVM TRUE)
+        endif()
+
+        if(IS_HOMEBREW_LLVM)
+            message(STATUS "Configuring Homebrew LLVM paths at: ${COMPILER_PREFIX}")
+
+            # Add LLVM include paths (equivalent to CPPFLAGS="-I/usr/local/opt/llvm/include")
+            include_directories(SYSTEM "${COMPILER_PREFIX}/include")
+
+            # Add LLVM library paths and libraries (equivalent to LDFLAGS from brew info llvm)
+            link_directories("${COMPILER_PREFIX}/lib")
+
+            # Add the full LDFLAGS as recommended by brew info llvm
+            # This includes libc++, libunwind which are needed for full LLVM toolchain
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind" CACHE STRING "Linker flags" FORCE)
+            set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind" CACHE STRING "Shared linker flags" FORCE)
+
+            # Store for later sanitizer configuration
+            set(HOMEBREW_LLVM_LIB_DIR "${COMPILER_PREFIX}/lib")
+
+            message(STATUS "Applied Homebrew LLVM toolchain flags:")
+            message(STATUS "  Include: -I${COMPILER_PREFIX}/include")
+            message(STATUS "  Link: -L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind")
+        endif()
+    endif()
+endif()
 
 # Configure MinGW mode for any compiler
 if(WIN32 AND USE_MINGW)
@@ -93,6 +273,44 @@ endif()
 # Configuration
 # =============================================================================
 
+# Define colors for terminal output
+if(NOT WIN32)
+    string(ASCII 27 Esc)
+    set(ColorReset "${Esc}[m")
+    set(ColorBold "${Esc}[1m")
+    set(Red "${Esc}[31m")
+    set(Green "${Esc}[32m")
+    set(Yellow "${Esc}[33m")
+    set(Blue "${Esc}[34m")
+    set(Magenta "${Esc}[35m")
+    set(Cyan "${Esc}[36m")
+    set(White "${Esc}[37m")
+    set(BoldRed "${Esc}[1;31m")
+    set(BoldGreen "${Esc}[1;32m")
+    set(BoldYellow "${Esc}[1;33m")
+    set(BoldBlue "${Esc}[1;34m")
+    set(BoldMagenta "${Esc}[1;35m")
+    set(BoldCyan "${Esc}[1;36m")
+    set(BoldWhite "${Esc}[1;37m")
+else()
+    set(ColorReset "")
+    set(ColorBold "")
+    set(Red "")
+    set(Green "")
+    set(Yellow "")
+    set(Blue "")
+    set(Magenta "")
+    set(Cyan "")
+    set(White "")
+    set(BoldRed "")
+    set(BoldGreen "")
+    set(BoldYellow "")
+    set(BoldBlue "")
+    set(BoldMagenta "")
+    set(BoldCyan "")
+    set(BoldWhite "")
+endif()
+
 # Detect CPU cores for parallel builds
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     execute_process(COMMAND sysctl -n hw.logicalcpu OUTPUT_VARIABLE CPU_CORES OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -155,18 +373,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(PLATFORM_DARWIN TRUE)
     set(PLATFORM_POSIX TRUE)
-
-    # macOS SDK configuration (matches Makefile)
-    execute_process(
-        COMMAND xcrun --sdk macosx --show-sdk-path
-        OUTPUT_VARIABLE SDKROOT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    execute_process(
-        COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
-        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
 
     # Apple Silicon and Rosetta detection
     execute_process(
@@ -235,10 +441,8 @@ if(MSVC)
     add_compile_options(/experimental:c11atomics)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 elseif(PLATFORM_DARWIN)
-    # macOS specific flags (matches Makefile)
-    if(SDKROOT AND CLANG_RESOURCE_DIR)
-        add_compile_options(-isysroot ${SDKROOT} -isystem ${CLANG_RESOURCE_DIR}/include)
-    endif()
+    # Let CMake handle SDK paths automatically for cross-generator compatibility
+    # No manual SDK configuration needed
 endif()
 
 # Include directories (matches Makefile)
@@ -264,6 +468,21 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR (CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32))
             add_compile_options(-fsanitize=address,undefined)
             add_link_options(-fsanitize=address,undefined)
+
+            # macOS: Fix ASan runtime linking for Homebrew LLVM
+            if(APPLE AND DEFINED HOMEBREW_LLVM_LIB_DIR)
+                # Find the clang version directory dynamically
+                file(GLOB CLANG_VERSION_DIRS "${HOMEBREW_LLVM_LIB_DIR}/clang/*")
+                if(CLANG_VERSION_DIRS)
+                    list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
+                    get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
+                    # Explicitly link against the correct ASan runtime from Homebrew LLVM
+                    add_link_options(-L${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+                    # Force rpath for ASan runtime
+                    add_link_options(-rpath ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+                    message(STATUS "Using ASan runtime from: ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin")
+                endif()
+            endif()
 
             # On Windows with Clang, copy ASAN runtime DLL to output directory
             if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -884,6 +1103,18 @@ else()
     find_package(PkgConfig REQUIRED)
 
     # Core dependencies (matching PKG_CONFIG_LIBS in Makefile)
+    # On macOS, prefer Homebrew zlib over system zlib for consistency
+    if(APPLE)
+        # Check for Homebrew zlib first
+        if(EXISTS "/usr/local/opt/zlib/lib/pkgconfig/zlib.pc")
+            set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/zlib/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+            message(STATUS "Using Homebrew zlib from /usr/local/opt/zlib")
+        elseif(EXISTS "/opt/homebrew/opt/zlib/lib/pkgconfig/zlib.pc")
+            set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/zlib/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+            message(STATUS "Using Homebrew zlib from /opt/homebrew/opt/zlib")
+        endif()
+    endif()
+
     pkg_check_modules(ZLIB REQUIRED zlib)
     pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
@@ -1610,7 +1841,7 @@ add_custom_target(clean_all
 # Dependency installation targets (matches Makefile deps targets)
 if(PLATFORM_DARWIN)
     add_custom_target(deps
-        COMMAND brew install portaudio libsodium criterion zlib coreutils || true
+        COMMAND brew install portaudio libsodium criterion zlib coreutils make || true
         COMMENT "Installing macOS dependencies via Homebrew"
     )
     add_custom_target(deps-test
@@ -1642,9 +1873,35 @@ message(STATUS "========================================")
 message(STATUS "  Build type:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C Standard:        C${CMAKE_C_STANDARD}")
 message(STATUS "  C Compiler:        ${CMAKE_C_COMPILER}")
+message(STATUS "  C++ Compiler:      ${CMAKE_CXX_COMPILER}")
+if(CMAKE_C_COMPILER_LAUNCHER)
+    message(STATUS "  Compiler Launcher: ${CMAKE_C_COMPILER_LAUNCHER}")
+endif()
+message(STATUS "  Compiler ID:       ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "  Archiver:          ${CMAKE_AR}")
+message(STATUS "  Ranlib:            ${CMAKE_RANLIB}")
 message(STATUS "  Platform:          ${CMAKE_SYSTEM_NAME}")
 message(STATUS "  Processor:         ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "  CPU Cores:         ${CPU_CORES}")
+
+# Determine build tool information
+message(STATUS "  Build Tool:        ${CMAKE_GENERATOR}")
+if(CMAKE_GENERATOR STREQUAL "Ninja")
+    message(STATUS "  Build Binary:      ninja")
+elseif(CMAKE_GENERATOR MATCHES "Unix Makefiles")
+    if(CMAKE_MAKE_PROGRAM)
+        get_filename_component(MAKE_BINARY "${CMAKE_MAKE_PROGRAM}" NAME)
+        message(STATUS "  Build Binary:      ${MAKE_BINARY}")
+    else()
+        message(STATUS "  Build Binary:      make")
+    endif()
+elseif(CMAKE_GENERATOR MATCHES "Visual Studio")
+    message(STATUS "  Build Binary:      msbuild")
+elseif(CMAKE_GENERATOR MATCHES "Xcode")
+    message(STATUS "  Build Binary:      xcodebuild")
+else()
+    message(STATUS "  Build Binary:      ${CMAKE_GENERATOR}")
+endif()
 if(WIN32)
     if(WINDOWS_SDK_VERSION)
         message(STATUS "  Windows SDK:       ${WINDOWS_SDK_VERSION}")
@@ -1660,40 +1917,106 @@ elseif(PLATFORM_DARWIN)
     message(STATUS "  Apple Silicon:     ${IS_APPLE_SILICON}")
     message(STATUS "  Rosetta:           ${IS_ROSETTA}")
 endif()
+
+# Display environment configuration if set
+if(DEFINED ENV{CC} OR DEFINED ENV{CFLAGS} OR DEFINED ENV{CPPFLAGS} OR DEFINED ENV{LDFLAGS})
+    message(STATUS "")
+    message(STATUS "Environment Configuration:")
+    if(DEFINED ENV{CC})
+        message(STATUS "  CC:                $ENV{CC}")
+    endif()
+    if(DEFINED ENV{CXX})
+        message(STATUS "  CXX:               $ENV{CXX}")
+    endif()
+    if(DEFINED ENV{CFLAGS})
+        message(STATUS "  CFLAGS:            $ENV{CFLAGS}")
+    endif()
+    if(DEFINED ENV{CPPFLAGS})
+        message(STATUS "  CPPFLAGS:          $ENV{CPPFLAGS}")
+    endif()
+    if(DEFINED ENV{LDFLAGS})
+        message(STATUS "  LDFLAGS:           $ENV{LDFLAGS}")
+    endif()
+endif()
+
 message(STATUS "")
 message(STATUS "Hardware Acceleration:")
 message(STATUS "  SIMD Mode:         ${SIMD_MODE}")
-message(STATUS "  SSE2:              ${ENABLE_SIMD_SSE2}")
-message(STATUS "  SSSE3:             ${ENABLE_SIMD_SSSE3}")
-message(STATUS "  AVX2:              ${ENABLE_SIMD_AVX2}")
-message(STATUS "  AVX512:            ${ENABLE_SIMD_AVX512}")
-message(STATUS "  NEON:              ${ENABLE_SIMD_NEON}")
-message(STATUS "  SVE:               ${ENABLE_SIMD_SVE}")
-message(STATUS "  CRC32 HW:          ${ENABLE_CRC32_HW}")
+if(ENABLE_SIMD_SSE2)
+    message(STATUS "  SSE2:              ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  SSE2:              ${Red}Disabled${ColorReset}")
+endif()
+if(ENABLE_SIMD_SSSE3)
+    message(STATUS "  SSSE3:             ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  SSSE3:             ${Red}Disabled${ColorReset}")
+endif()
+if(ENABLE_SIMD_AVX2)
+    message(STATUS "  AVX2:              ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  AVX2:              ${Red}Disabled${ColorReset}")
+endif()
+if(ENABLE_SIMD_AVX512)
+    message(STATUS "  AVX512:            ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  AVX512:            ${Red}Disabled${ColorReset}")
+endif()
+if(ENABLE_SIMD_NEON)
+    message(STATUS "  NEON:              ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  NEON:              ${Red}Disabled${ColorReset}")
+endif()
+if(ENABLE_SIMD_SVE)
+    message(STATUS "  SVE:               ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  SVE:               ${Red}Disabled${ColorReset}")
+endif()
+if(ENABLE_CRC32_HW)
+    message(STATUS "  CRC32 HW:          ${Green}Enabled${ColorReset}")
+else()
+    message(STATUS "  CRC32 HW:          ${Red}Disabled${ColorReset}")
+endif()
 message(STATUS "")
 message(STATUS "Dependencies:")
-message(STATUS "  Tests:             ${CRITERION_FOUND}")
-message(STATUS "  zlib:              ${ZLIB_FOUND}")
-message(STATUS "  libsodium:         ${LIBSODIUM_FOUND}")
-message(STATUS "  PortAudio:         Found")
+if(CRITERION_FOUND)
+    message(STATUS "  Tests:             ${Green}Found${ColorReset}")
+else()
+    message(STATUS "  Tests:             ${Red}Not Found${ColorReset}")
+endif()
+if(ZLIB_FOUND)
+    message(STATUS "  zlib:              ${Green}Found${ColorReset}")
+else()
+    message(STATUS "  zlib:              ${Red}Not Found${ColorReset}")
+endif()
+if(LIBSODIUM_FOUND)
+    message(STATUS "  libsodium:         ${Green}Found${ColorReset}")
+else()
+    message(STATUS "  libsodium:         ${Red}Not Found${ColorReset}")
+endif()
+if(PORTAUDIO_FOUND)
+    message(STATUS "  PortAudio:         ${Green}Found${ColorReset}")
+else()
+    message(STATUS "  PortAudio:         ${Red}Not Found${ColorReset}")
+endif()
 if(JACK_FOUND)
-    message(STATUS "  JACK:              ${JACK_FOUND}")
+    message(STATUS "  JACK:              ${Green}Found${ColorReset}")
 endif()
 message(STATUS "")
 message(STATUS "Build Commands:")
-message(STATUS "  Configure Debug:   cmake -B build -DCMAKE_BUILD_TYPE=Debug     # With sanitizers (default)")
-message(STATUS "  Configure Dev:     cmake -B build -DCMAKE_BUILD_TYPE=Dev       # Debug without sanitizers (faster)")
-message(STATUS "  Configure Release: cmake -B build -DCMAKE_BUILD_TYPE=Release")
-message(STATUS "  Configure Coverage:cmake -B build -DCMAKE_BUILD_TYPE=Coverage")
-message(STATUS "  Build:             cmake --build build")
-message(STATUS "  Run server:        ./build/bin/ascii-chat-server")
-message(STATUS "  Run client:        ./build/bin/ascii-chat-client")
+message(STATUS "  Configure Debug:     cmake -B build -DCMAKE_BUILD_TYPE=Debug     # With sanitizers (default)")
+message(STATUS "  Configure Dev:       cmake -B build -DCMAKE_BUILD_TYPE=Dev       # Debug without sanitizers (faster)")
+message(STATUS "  Configure Release:   cmake -B build -DCMAKE_BUILD_TYPE=Release")
+message(STATUS "  Configure Coverage:  cmake -B build -DCMAKE_BUILD_TYPE=Coverage")
+message(STATUS "  Build:               cmake --build build")
+message(STATUS "  Run server:          ./build/bin/ascii-chat-server")
+message(STATUS "  Run client:          ./build/bin/ascii-chat-client")
 if(CRITERION_FOUND)
-    message(STATUS "  Run tests:         ./tests/scripts/run_tests.sh")
-    message(STATUS "  Run tests (CMake): cmake --build build --target test_all")
+    message(STATUS "  Run tests:           ./tests/scripts/run_tests.sh")
+    message(STATUS "  Run tests (CMake):   cmake --build build --target test_all")
 endif()
-message(STATUS "  Format code:       cmake --build build --target format")
-message(STATUS "  Check formatting:  cmake --build build --target format-check")
-message(STATUS "  Install deps:      cmake --build build --target deps")
+message(STATUS "  Format code:         cmake --build build --target format")
+message(STATUS "  Check formatting:    cmake --build build --target format-check")
+message(STATUS "  Install deps:        cmake --build build --target deps")
 message(STATUS "========================================")
 message(STATUS "")
