@@ -635,16 +635,20 @@ void *client_receive_thread(void *arg) {
     data = NULL;
   }
 
-  // Mark client as inactive and stop send thread first to avoid race conditions
-  // Set send_thread_running to false to signal send thread to stop
+  // Mark client as inactive and stop all threads
+  // CRITICAL: Must stop render threads when client disconnects
+  mutex_lock(&client->client_state_mutex);
   client->active = false;
   client->send_thread_running = false;
+  client->video_render_thread_running = false;
+  client->audio_render_thread_running = false;
+  mutex_unlock(&client->client_state_mutex);
 
   // Don't call remove_client() from the receive thread itself - this causes a deadlock
   // because main thread may be trying to join this thread via remove_client()
   // The main cleanup code will handle client removal after threads exit
 
-  log_info("Receive thread for client %u terminated", client->client_id);
+  log_info("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
   return NULL;
 }
 
