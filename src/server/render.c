@@ -384,7 +384,16 @@ void *client_video_render_thread(void *arg) {
     return NULL;
   }
 
-  const int base_frame_interval_ms = 1000 / VIDEO_RENDER_FPS; // 60 FPS base rate
+  // Get client's desired FPS from capabilities or use default
+  int client_fps = VIDEO_RENDER_FPS;  // Default to 60 FPS
+  mutex_lock(&client->client_state_mutex);
+  if (client->has_terminal_caps && client->terminal_caps.desired_fps > 0) {
+    client_fps = client->terminal_caps.desired_fps;
+    log_info("Client %u using FPS %d", client->client_id, client_fps);
+  }
+  mutex_unlock(&client->client_state_mutex);
+
+  int base_frame_interval_ms = 1000 / client_fps;
   struct timespec last_render_time;
   clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
@@ -408,7 +417,19 @@ void *client_video_render_thread(void *arg) {
 
     if (elapsed_ms < base_frame_interval_ms) {
       long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
-      platform_sleep_usec(sleep_us);
+      // Sleep in small chunks to be more responsive to shutdown
+      const long max_sleep_chunk = 10000; // 10ms chunks
+      while (sleep_us > 0 && !atomic_load(&g_should_exit)) {
+        long chunk = sleep_us > max_sleep_chunk ? max_sleep_chunk : sleep_us;
+        platform_sleep_usec(chunk);
+        sleep_us -= chunk;
+
+        // Check if we should stop
+        mutex_lock(&client->client_state_mutex);
+        bool still_running = client->video_render_thread_running && client->active;
+        mutex_unlock(&client->client_state_mutex);
+        if (!still_running) break;
+      }
       continue;
     }
 
@@ -597,6 +618,8 @@ void *client_audio_render_thread(void *arg) {
     }
 
     if (!g_audio_mixer) {
+      // Check shutdown flag while waiting
+      if (atomic_load(&g_should_exit)) break;
       platform_sleep_usec(10000);
       continue;
     }
@@ -644,7 +667,10 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Audio mixing rate - 5.8ms to match buffer size
-    platform_sleep_usec(5800);
+    // Check for shutdown while sleeping
+    if (!atomic_load(&g_should_exit)) {
+      platform_sleep_usec(5800);
+    }
   }
 
 #ifdef DEBUG_THREADS
@@ -921,8 +947,8 @@ void stop_client_render_threads(client_info_t *client) {
     memset(&client->audio_render_thread, 0, sizeof(asciithread_t));
   }
 
-  // Destroy per-client mutex
-  mutex_destroy(&client->client_state_mutex);
+  // DO NOT destroy the mutex here - client.c will handle it
+  // mutex_destroy(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
   log_info("Successfully destroyed render threads for client %u", client->client_id);
