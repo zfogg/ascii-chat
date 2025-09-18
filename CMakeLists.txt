@@ -196,15 +196,26 @@ if(APPLE)
 
             # Add the full LDFLAGS as recommended by brew info llvm
             # This includes libc++, libunwind which are needed for full LLVM toolchain
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind" CACHE STRING "Linker flags" FORCE)
-            set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind" CACHE STRING "Shared linker flags" FORCE)
+            # Only add if not already present in environment LDFLAGS to avoid duplicates
+            set(HOMEBREW_LLVM_LDFLAGS "-L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind")
+            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-lunwind")
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${HOMEBREW_LLVM_LDFLAGS}" CACHE STRING "Linker flags" FORCE)
+                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${HOMEBREW_LLVM_LDFLAGS}" CACHE STRING "Shared linker flags" FORCE)
+                message(STATUS "Added Homebrew LLVM linker flags (not in environment)")
+            else()
+                message(STATUS "Skipping Homebrew LLVM linker flags (already in LDFLAGS environment variable)")
+            endif()
 
             # Store for later sanitizer configuration
             set(HOMEBREW_LLVM_LIB_DIR "${COMPILER_PREFIX}/lib")
 
             message(STATUS "Applied Homebrew LLVM toolchain flags:")
             message(STATUS "  Include: -I${COMPILER_PREFIX}/include")
-            message(STATUS "  Link: -L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind")
+            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-lunwind")
+                message(STATUS "  Link: ${HOMEBREW_LLVM_LDFLAGS}")
+            else()
+                message(STATUS "  Link: (using LDFLAGS environment variable)")
+            endif()
         endif()
     endif()
 endif()
