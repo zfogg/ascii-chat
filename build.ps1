@@ -200,6 +200,13 @@ if ($dlls) {
     Write-Host "Copied runtime DLLs to bin/" -ForegroundColor Green
 }
 
+# Copy PDB files for debugging support
+$pdbs = Get-ChildItem "build\bin\*.pdb" -ErrorAction SilentlyContinue
+if ($pdbs) {
+    Copy-Item "build\bin\*.pdb" "bin\" -Force
+    Write-Host "Copied debug symbols (PDB files) to bin/" -ForegroundColor Green
+}
+
 Write-Host ""
 Write-Host "Build complete!" -ForegroundColor Green
 Write-Host ""
