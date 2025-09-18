@@ -221,7 +221,7 @@ Test(terminal_detect, render_mode_selection) {
   setenv("TERM", "xterm-256color", 1);
   setenv("LANG", "en_US.UTF-8", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND);  // Always defaults to foreground
+  cr_assert_eq(caps.render_mode, RENDER_MODE_FOREGROUND); // Always defaults to foreground
   cr_assert_neq(caps.capabilities & TERM_CAP_BACKGROUND, 0);
 
   // Test foreground mode (color without UTF-8)

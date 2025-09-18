@@ -1,14 +1,7 @@
-#include <criterion/criterion.h>
-#include <criterion/new/assert.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include "../common.h"
 #include <time.h>
 #include <math.h>
-
 #include "aspect_ratio.h"
-#include "common.h"
-#include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(aspect_ratio);
