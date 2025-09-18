@@ -1,16 +1,7 @@
-#include <criterion/criterion.h>
-#include <criterion/new/assert.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <unistd.h>
-
+#include "../common.h"
 #include "image2ascii/ascii.h"
 #include "image2ascii/image.h"
-#include "common.h"
 #include "platform/terminal.h"
-#include "tests/logging.h"
 
 // Custom test suite setup function to initialize globals
 void ascii_custom_init(void) {
@@ -49,11 +40,11 @@ Test(ascii, ascii_convert_basic) {
   }
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, false, false, palette, luminance_palette);
   cr_assert_not_null(result, "ascii_convert returned NULL for valid 4x4 image");
@@ -74,11 +65,11 @@ Test(ascii, ascii_convert_color) {
   img->pixels[3] = (rgb_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, true, false, false, palette, luminance_palette);
   cr_assert_not_null(result);
@@ -90,11 +81,11 @@ Test(ascii, ascii_convert_color) {
 
 Test(ascii, ascii_convert_null_image) {
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(NULL, 4, 4, false, false, false, palette, luminance_palette);
   cr_assert_null(result);
@@ -104,11 +95,11 @@ Test(ascii, ascii_convert_null_palette) {
   image_t *img = image_new(4, 4);
   cr_assert_not_null(img);
 
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = 'A';
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, false, false, NULL, luminance_palette);
   cr_assert_null(result);
@@ -133,11 +124,11 @@ Test(ascii, ascii_convert_zero_dimensions) {
   cr_assert_not_null(img);
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 0, 0, false, false, false, palette, luminance_palette);
   if (result) {
@@ -157,11 +148,11 @@ Test(ascii, ascii_convert_different_sizes) {
   }
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   // Test different output sizes
   char *result1 = ascii_convert(img, 4, 4, false, false, false, palette, luminance_palette);
@@ -189,11 +180,11 @@ Test(ascii, ascii_convert_with_aspect_ratio) {
   }
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, true, false, palette, luminance_palette);
   cr_assert_not_null(result);
@@ -213,11 +204,11 @@ Test(ascii, ascii_convert_with_stretch) {
   }
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, false, true, palette, luminance_palette);
   cr_assert_not_null(result);
@@ -252,11 +243,11 @@ Test(ascii, ascii_convert_with_capabilities_basic) {
                                   .palette_custom = ""};
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert_with_capabilities(img, 4, 4, &caps, false, false, palette, luminance_palette);
   cr_assert_not_null(result);
@@ -279,11 +270,11 @@ Test(ascii, ascii_convert_with_capabilities_null_image) {
                                   .palette_custom = ""};
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert_with_capabilities(NULL, 4, 4, &caps, false, false, palette, luminance_palette);
   cr_assert_null(result);
@@ -294,11 +285,11 @@ Test(ascii, ascii_convert_with_capabilities_null_caps) {
   cr_assert_not_null(img);
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert_with_capabilities(img, 4, 4, NULL, false, false, palette, luminance_palette);
   cr_assert_null(result);
@@ -316,11 +307,11 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
   }
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   // Test different color support levels
   terminal_capabilities_t caps1 = {.capabilities = 0,
@@ -682,11 +673,11 @@ Test(ascii, ascii_operations_with_extreme_values) {
   cr_assert_not_null(img);
 
   const char *palette = "@#$%&*+=-:. ";
-  char luminance_palette[257];  // Extra byte for null terminator
+  char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
     luminance_palette[i] = palette[i % strlen(palette)];
   }
-  luminance_palette[256] = '\0';  // Null terminate
+  luminance_palette[256] = '\0'; // Null terminate
 
   // Test with extreme dimensions
   char *result = ascii_convert(img, INT_MAX, INT_MAX, false, false, false, palette, luminance_palette);

@@ -464,8 +464,18 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
   rwlock_unlock(&g_client_manager_rwlock);
 
+  // Count sources that actually have video data
+  int sources_with_video = 0;
+  for (int i = 0; i < source_count; i++) {
+    if (sources[i].has_video && sources[i].image) {
+      sources_with_video++;
+    }
+  }
+
+  log_info("Active clients: %d, sources with video: %d", source_count, sources_with_video);
+
   // No active video sources - don't generate placeholder frames
-  if (source_count == 0) {
+  if (sources_with_video == 0) {
     log_debug("Per-client %u: No video sources available - returning NULL frame", target_client_id);
     *out_size = 0;
     return NULL;
@@ -474,7 +484,21 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   // Create composite image for multiple sources with grid layout (same logic as global version)
   image_t *composite = NULL;
 
-  if (source_count == 1 && sources[0].image) {
+  if (sources_with_video == 1) {
+    // Find the single source with video
+    image_t *single_source = NULL;
+    for (int i = 0; i < source_count; i++) {
+      if (sources[i].has_video && sources[i].image) {
+        single_source = sources[i].image;
+        break;
+      }
+    }
+
+    if (!single_source) {
+      log_error("Logic error: sources_with_video=1 but no source found");
+      *out_size = 0;
+      return NULL;
+    }
     // Single source - check if target client wants half-block mode for 2x resolution
     client_info_t *target_client = find_client_by_id_fast(target_client_id);
     bool use_half_block = target_client && target_client->has_terminal_caps &&
@@ -488,7 +512,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       composite_height_px = height * 2;
     } else {
       // Normal modes: use aspect-ratio fitted dimensions
-      calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &composite_width_px,
+      calculate_fit_dimensions_pixel(single_source->w, single_source->h, width, height, &composite_width_px,
                                      &composite_height_px);
     }
 
@@ -547,16 +571,17 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       }
     } else {
       // Normal modes: simple resize to fit calculated dimensions
-      image_resize(sources[0].image, composite);
+      image_resize(single_source, composite);
     }
-  } else if (source_count > 1) {
+  } else if (sources_with_video > 1) {
     // Multiple sources - create grid layout
     client_info_t *target_client = find_client_by_id_fast(target_client_id);
     bool use_half_block_multi = target_client && target_client->has_terminal_caps &&
                                 target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
 
+    // Start with terminal width, will be adjusted for vertical layout
     int composite_width_px = width;
-    int composite_height_px = use_half_block_multi ? height * 2 : height;
+    int composite_height_px = use_half_block_multi ? height * 2 : height; // Will fix this after grid calculation
 
     composite = image_new_from_pool(composite_width_px, composite_height_px);
     if (!composite) {
@@ -570,42 +595,168 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
     image_clear(composite);
 
-    // Calculate grid dimensions based on source count
-    int grid_cols = (source_count == 2) ? 2 : (source_count <= 4) ? 2 : 3;
-    int grid_rows = (source_count + grid_cols - 1) / grid_cols;
+    // Calculate grid dimensions based on terminal aspect ratio and source count
+    float terminal_aspect = (float)width / (float)height;
+
+    int grid_cols, grid_rows;
+
+    if (sources_with_video == 2) {
+      // For 2 sources, prefer vertical stacking for better space utilization
+      // Most webcam images are landscape oriented, so stacking vertically makes sense
+      grid_cols = 1;
+      grid_rows = 2;
+    } else {
+      // For 3+ sources, calculate optimal grid based on aspect ratio
+      // Test all reasonable grid configurations and pick the best one
+      int best_cols = 1;
+      int best_rows = sources_with_video;
+      float best_score = 0.0f;
+
+      // Try different grid configurations
+      for (int test_cols = 1; test_cols <= sources_with_video; test_cols++) {
+        int test_rows = (sources_with_video + test_cols - 1) / test_cols;
+
+        // Skip configurations that are too extreme
+        if (test_rows > sources_with_video)
+          continue;
+
+        // Calculate how well this grid matches the terminal aspect ratio
+        float grid_aspect = (float)test_cols / (float)test_rows;
+        float aspect_match =
+            (grid_aspect > terminal_aspect) ? terminal_aspect / grid_aspect : grid_aspect / terminal_aspect;
+
+        // Also consider space utilization (prefer configurations that fill more cells)
+        float utilization = (float)sources_with_video / (float)(test_cols * test_rows);
+
+        // Combined score: aspect match weighted with utilization
+        float score = aspect_match * 0.7f + utilization * 0.3f;
+
+        if (score > best_score) {
+          best_score = score;
+          best_cols = test_cols;
+          best_rows = test_rows;
+        }
+      }
+
+      grid_cols = best_cols;
+      grid_rows = best_rows;
+    }
+
+    // Debug logging to verify grid calculation
+    log_info("Grid calculation: %d sources with video, terminal %dx%d (aspect %.2f), grid %dx%d, cells %dx%d",
+             sources_with_video, width, height, terminal_aspect, grid_cols, grid_rows, width / grid_cols,
+             height / grid_rows);
 
     // Calculate cell dimensions in characters (for layout)
     int cell_width_chars = width / grid_cols;
     int cell_height_chars = height / grid_rows;
 
     // Convert cell dimensions to pixels for image operations
-    int cell_width_px = cell_width_chars;       // 1:1 mapping
-    int cell_height_px = cell_height_chars * 2; // 2:1 mapping to match composite dimensions
+    int cell_width_px = cell_width_chars; // 1:1 mapping
+
+    // For vertical layouts, fill the entire height without gaps
+    int cell_height_px;
+    int required_height;
+    if (sources_with_video == 2 && grid_cols == 1 && grid_rows == 2) {
+      // Vertical 1x2 layout: each cell gets full terminal height
+      cell_height_px = height;                      // Use full terminal height per cell
+      required_height = grid_rows * cell_height_px; // Total composite height
+    } else {
+      // Standard grid: use character-based height
+      cell_height_px = cell_height_chars * 2; // 2:1 mapping to match composite dimensions
+      required_height = grid_rows * cell_height_px;
+    }
+    // For vertical layout, we'll adjust composite width after calculating target size
+    int optimal_width_for_vertical = composite_width_px; // Will be set later
+
+    if (composite->h != required_height || composite->w != composite_width_px) {
+      // Recreate composite with correct dimensions
+      image_destroy_to_pool(composite);
+      composite = image_new_from_pool(composite_width_px, required_height);
+      if (!composite) {
+        log_error("Failed to recreate composite with correct height");
+        for (int i = 0; i < source_count; i++) {
+          image_destroy_to_pool(sources[i].image);
+        }
+        return NULL;
+      }
+      image_clear(composite);
+    }
 
     // Place each source in the grid
-    for (int i = 0; i < source_count && i < 9; i++) { // Max 9 sources in 3x3 grid
+    int video_source_index = 0;                                        // Track only sources with video
+    for (int i = 0; i < source_count && video_source_index < 9; i++) { // Max 9 sources in 3x3 grid
       if (!sources[i].image)
         continue;
 
-      int row = i / grid_cols;
-      int col = i % grid_cols;
+      int row = video_source_index / grid_cols;
+      int col = video_source_index % grid_cols;
+      video_source_index++;
 
       // Calculate cell position in pixels
       int cell_x_offset_px = col * cell_width_px;
       int cell_y_offset_px = row * cell_height_px;
 
+      log_info(
+          "GRID PLACEMENT: source_i=%d, video_idx=%d, row=%d, col=%d, cell_offset=(%d,%d), cell_size=%dx%d, grid=%dx%d",
+          i, video_source_index - 1, row, col, cell_x_offset_px, cell_y_offset_px, cell_width_px, cell_height_px,
+          grid_cols, grid_rows);
+
       float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
       float cell_aspect = (float)cell_width_px / (float)cell_height_px;
 
       int target_width_px, target_height_px;
-      if (src_aspect > cell_aspect) {
-        // Image is wider than cell - fit to width
-        target_width_px = cell_width_px;
-        target_height_px = (int)(cell_width_px / src_aspect + 0.5f);
+
+      // For 2-client vertical layout, use proper aspect-ratio fitting that maximizes space
+      if (sources_with_video == 2 && grid_cols == 1 && grid_rows == 2) {
+        // Calculate both possible scalings
+        int width_constrained_w = cell_width_px;
+        int width_constrained_h = (int)(cell_width_px / src_aspect + 0.5f);
+
+        int height_constrained_h = cell_height_px;
+        int height_constrained_w = (int)(cell_height_px * src_aspect + 0.5f);
+
+        // For vertical layout, prefer width-constrained to maximize usage of available space
+        if (width_constrained_h <= cell_height_px) {
+          // Width-constrained scaling fits and gives better space utilization
+          target_width_px = width_constrained_w;
+          target_height_px = width_constrained_h;
+        } else {
+          // Fall back to height-constrained if width-constrained is too tall
+          target_width_px = height_constrained_w;
+          target_height_px = height_constrained_h;
+        }
+
+        // For vertical layout, adjust composite width to match content width to eliminate gaps
+        if (video_source_index == 1) { // First source, set the composite width
+          optimal_width_for_vertical = target_width_px;
+          // Recreate composite with optimal width
+          if (composite->w != optimal_width_for_vertical) {
+            image_destroy_to_pool(composite);
+            composite = image_new_from_pool(optimal_width_for_vertical, required_height);
+            if (!composite) {
+              log_error("Failed to recreate composite with optimal width");
+              for (int j = 0; j < source_count; j++) {
+                image_destroy_to_pool(sources[j].image);
+              }
+              return NULL;
+            }
+            image_clear(composite);
+            // CRITICAL: Update composite_width_px for stride calculations
+            composite_width_px = optimal_width_for_vertical;
+          }
+        }
       } else {
-        // Image is taller than cell - fit to height
-        target_height_px = cell_height_px;
-        target_width_px = (int)(cell_height_px * src_aspect + 0.5f);
+        // Normal aspect ratio fitting for other layouts
+        if (src_aspect > cell_aspect) {
+          // Image is wider than cell - fit to width
+          target_width_px = cell_width_px;
+          target_height_px = (int)(cell_width_px / src_aspect + 0.5f);
+        } else {
+          // Image is taller than cell - fit to height
+          target_height_px = cell_height_px;
+          target_width_px = (int)(cell_height_px * src_aspect + 0.5f);
+        }
       }
 
       // Ensure target dimensions don't exceed cell dimensions
@@ -619,9 +770,23 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       if (resized) {
         image_resize(sources[i].image, resized);
 
-        // Center the resized image within the cell (pixel coordinates)
-        int x_padding_px = (cell_width_px - target_width_px) / 2;
-        int y_padding_px = (cell_height_px - target_height_px) / 2;
+        // For 2-client vertical layout, center horizontally (stripe is gone due to wider images)
+        int x_padding_px, y_padding_px;
+        if (sources_with_video == 2 && grid_cols == 1 && grid_rows == 2) {
+          // No horizontal padding - composite width matches content width
+          x_padding_px = 0;
+          y_padding_px = (cell_height_px - target_height_px) / 2;
+        } else {
+          // Center the resized image within the cell (pixel coordinates)
+          x_padding_px = (cell_width_px - target_width_px) / 2;
+          y_padding_px = (cell_height_px - target_height_px) / 2;
+        }
+
+        log_info(
+            "COPYING: target_size=%dx%d, padding=(%d,%d), final_dst_range=(%d,%d) to (%d,%d), composite_size=%dx%d",
+            target_width_px, target_height_px, x_padding_px, y_padding_px, cell_x_offset_px + x_padding_px,
+            cell_y_offset_px + y_padding_px, cell_x_offset_px + x_padding_px + target_width_px - 1,
+            cell_y_offset_px + y_padding_px + target_height_px - 1, composite->w, composite->h);
 
         // Copy resized image to composite with proper bounds checking
         for (int y = 0; y < target_height_px; y++) {
@@ -634,9 +799,12 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             int dst_idx = dst_y * composite_width_px + dst_x;
 
             // Bounds checking with correct composite dimensions
-            if (src_idx >= 0 && src_idx < resized->w * resized->h && dst_idx >= 0 &&
-                dst_idx < composite->w * composite->h && dst_x >= 0 && dst_x < composite_width_px && dst_y >= 0 &&
-                dst_y < composite_height_px) {
+            bool src_ok = src_idx >= 0 && src_idx < resized->w * resized->h;
+            bool dst_idx_ok = dst_idx >= 0 && dst_idx < composite->w * composite->h;
+            bool dst_x_ok = dst_x >= 0 && dst_x < composite->w;
+            bool dst_y_ok = dst_y >= 0 && dst_y < composite->h;
+
+            if (src_ok && dst_idx_ok && dst_x_ok && dst_y_ok) {
               composite->pixels[dst_idx] = resized->pixels[src_idx];
             }
           }
@@ -673,8 +841,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                                       target_client->client_palette_chars,
                                                       target_client->client_luminance_palette);
       } else {
-        ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
-                                                      target_client->client_palette_chars,
+        // Use composite dimensions for ASCII conversion (full composite height for vertical layout)
+        ascii_frame = ascii_convert_with_capabilities(composite, composite->w, composite->h, &caps_snapshot, true,
+                                                      false, target_client->client_palette_chars,
                                                       target_client->client_luminance_palette);
       }
     } else {

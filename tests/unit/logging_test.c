@@ -1,15 +1,4 @@
-#include <criterion/criterion.h>
-#include <criterion/new/assert.h>
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <stdint.h>
-
-#include "common.h"
-#include "tests/logging.h"
+#include "../common.h"
 
 // Global setup to reduce verbose output during tests
 void setup_quiet_logging(void);

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "logging.h"
 #include <stdio.h>
 #include <unistd.h>
