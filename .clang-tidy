@@ -2,9 +2,52 @@
 # clang-tidy configuration for ascii-chat project
 # Based on Makefile configuration and desired check categories
 
-# Enable specific check categories while disabling all others
-# Suppress false positives from Intel CET system headers
-Checks: '-*,readability-*,performance-*,portability-*,bugprone-*,-clang-analyzer-core.uninitialized.Assign,-clang-analyzer-core.CallAndMessage,-clang-analyzer-core.NonNullParamChecker'
+# Enable comprehensive static analysis checks equivalent to scan-build
+# This includes all clang-analyzer checks (same as scan-build) plus additional modern checks
+Checks: '-*,
+readability-*,
+performance-*,
+portability-*,
+bugprone-*,
+clang-analyzer-*,
+misc-*,
+cert-*,
+-readability-identifier-length,
+-readability-magic-numbers,
+-readability-function-cognitive-complexity,
+-readability-uppercase-literal-suffix,
+-readability-braces-around-statements,
+-readability-avoid-const-params-in-decls,
+-readability-use-concise-preprocessor-directives,
+-readability-duplicate-include,
+-readability-implicit-bool-conversion,
+-readability-function-size,
+-readability-redundant-declaration,
+-readability-non-const-parameter,
+-readability-isolate-declaration,
+-bugprone-easily-swappable-parameters,
+-bugprone-reserved-identifier,
+-bugprone-narrowing-conversions,
+-bugprone-implicit-widening-of-multiplication-result,
+-portability-avoid-pragma-once,
+-misc-no-recursion,
+-misc-include-cleaner,
+-cert-env33-c,
+-cert-dcl37-c,
+-cert-dcl51-cpp,
+-cert-oop*,
+-modernize-*,
+-cppcoreguidelines-*,
+-google-*,
+-hicpp-*,
+-fuchsia-*,
+-llvm-*,
+-zircon-*,
+-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+-cppcoreguidelines-avoid-non-const-global-variables,
+-modernize-macro-to-enum,
+-readability-math-missing-parentheses,
+-cppcoreguidelines-init-variables'
 
 # Filter headers to check (only project headers, not system/external headers)
 HeaderFilterRegex: '.*ascii-chat/.*\.(h|hpp)$'

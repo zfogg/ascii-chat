@@ -9,6 +9,7 @@
 #ifdef _WIN32
 
 #include "../abstraction.h"
+#include "../../common.h"
 #include <windows.h>
 #include <process.h>
 #include <stdint.h>
@@ -141,7 +142,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
     }
 #ifdef DEBUG_THREADS
     char debug_msg[256];
-    sprintf(debug_msg, "DEBUG: CreateThread failed, error=%lu\n", error);
+    SAFE_SNPRINTF(debug_msg, 256, "DEBUG: CreateThread failed, error=%lu\n", error);
     OutputDebugStringA(debug_msg);
 #endif
     free(wrapper);
@@ -155,7 +156,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
 
 #ifdef DEBUG_THREADS
   char debug_msg[256];
-  sprintf(debug_msg, "DEBUG: CreateThread succeeded, handle=%p, thread_id=%lu\n", *thread, thread_id);
+  SAFE_SNPRINTF(debug_msg, 256, "DEBUG: CreateThread succeeded, handle=%p, thread_id=%lu\n", *thread, thread_id);
   OutputDebugStringA(debug_msg);
 #endif
 
@@ -179,6 +180,30 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
     }
     CloseHandle((*thread));
     return 0;
+  }
+  return -1;
+}
+
+/**
+ * @brief Join a thread with timeout
+ * @param thread Thread handle to join
+ * @param retval Optional return value from thread
+ * @param timeout_ms Timeout in milliseconds
+ * @return 0 on success, -1 on timeout/error
+ */
+int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t timeout_ms) {
+  DWORD result = WaitForSingleObject((*thread), timeout_ms);
+
+  if (result == WAIT_OBJECT_0) {
+    if (retval) {
+      DWORD exit_code;
+      GetExitCodeThread((*thread), &exit_code);
+      *retval = (void *)(uintptr_t)exit_code;
+    }
+    CloseHandle((*thread));
+    return 0;
+  } else if (result == WAIT_TIMEOUT) {
+    return -2; // Special return code for timeout
   }
   return -1;
 }

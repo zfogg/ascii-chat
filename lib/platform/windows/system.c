@@ -10,6 +10,7 @@
 
 #include "../abstraction.h"
 #include "../internal.h"
+#include "../../common.h"
 #include <windows.h>
 #include <dbghelp.h>
 #include <io.h>
@@ -17,6 +18,9 @@
 #include <process.h>
 #include <signal.h>
 #include <string.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -72,6 +76,14 @@ void platform_cleanup(void) {
  */
 void platform_sleep_ms(unsigned int ms) {
   Sleep(ms);
+}
+
+int platform_localtime(const time_t *timer, struct tm *result) {
+  if (!timer || !result) {
+    return EINVAL;
+  }
+  errno_t err = localtime_s(result, timer);
+  return err;
 }
 
 /**
@@ -265,10 +277,15 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Allocate array of strings
-  char **symbols = (char **)malloc(size * sizeof(char *));
+  // Allocate array of strings (size + 1 for NULL terminator)
+  char **symbols = (char **)malloc((size + 1) * sizeof(char *));
   if (!symbols) {
     return NULL;
+  }
+
+  // Initialize all pointers to NULL
+  for (int i = 0; i <= size; i++) {
+    symbols[i] = NULL;
   }
 
   // Initialize symbol handler
@@ -296,7 +313,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
       // Allocate string for symbol name
       symbols[i] = (char *)malloc(symbol_info->MaxNameLen + 1);
       if (symbols[i]) {
-        strcpy(symbols[i], symbol_info->Name);
+        SAFE_STRCPY(symbols[i], symbol_info->MaxNameLen + 1, symbol_info->Name);
       } else {
         symbols[i] = NULL;
       }
@@ -304,7 +321,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
       // Format as hex address if symbol not found
       symbols[i] = (char *)malloc(32);
       if (symbols[i]) {
-        sprintf(symbols[i], "0x%llx", address);
+        SAFE_SNPRINTF(symbols[i], 32, "0x%llx", address);
       }
     }
   }
@@ -437,21 +454,45 @@ void platform_install_crash_handler(void) {
 
 /**
  * @brief clock_gettime implementation for Windows
- * @param clk_id Clock ID (unused)
+ * @param clk_id Clock ID (CLOCK_REALTIME or CLOCK_MONOTONIC)
  * @param tp Pointer to timespec structure to fill
  * @return 0 on success, -1 on failure
  */
 int clock_gettime(int clk_id, struct timespec *tp) {
-  LARGE_INTEGER freq, counter;
-  (void)clk_id; // Unused parameter
-
-  if (!QueryPerformanceFrequency(&freq) || !QueryPerformanceCounter(&counter)) {
+  if (!tp) {
     return -1;
   }
 
-  // Convert to seconds and nanoseconds
-  tp->tv_sec = counter.QuadPart / freq.QuadPart;
-  tp->tv_nsec = ((counter.QuadPart % freq.QuadPart) * 1000000000) / freq.QuadPart;
+  if (clk_id == CLOCK_REALTIME) {
+    // Get current wall clock time (Unix epoch time)
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+
+    // Convert to 64-bit value
+    ULARGE_INTEGER ull;
+    ull.LowPart = ft.dwLowDateTime;
+    ull.HighPart = ft.dwHighDateTime;
+
+// Windows file time is 100ns intervals since January 1, 1601
+// Unix epoch is January 1, 1970
+// The difference is 11644473600 seconds
+#define WINDOWS_TICK 10000000ULL
+#define SEC_TO_UNIX_EPOCH 11644473600ULL
+
+    tp->tv_sec = (time_t)((ull.QuadPart / WINDOWS_TICK) - SEC_TO_UNIX_EPOCH);
+    tp->tv_nsec = (long)((ull.QuadPart % WINDOWS_TICK) * 100);
+  } else {
+    // For CLOCK_MONOTONIC or other clocks, use QueryPerformanceCounter
+    LARGE_INTEGER freq, counter;
+
+    if (!QueryPerformanceFrequency(&freq) || !QueryPerformanceCounter(&counter)) {
+      return -1;
+    }
+
+    // Convert to seconds and nanoseconds
+    tp->tv_sec = counter.QuadPart / freq.QuadPart;
+    tp->tv_nsec = ((counter.QuadPart % freq.QuadPart) * 1000000000) / freq.QuadPart;
+  }
 
   return 0;
 }
@@ -720,6 +761,148 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
  */
 int platform_close(int fd) {
   return _close(fd);
+}
+
+// ============================================================================
+// Safe String Functions
+// ============================================================================
+
+int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
+  if (!buffer || buffer_size == 0 || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use Windows _vsnprintf_s for enhanced security
+  int result = _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args);
+
+  va_end(args);
+
+  // Ensure null termination even if truncated
+  buffer[buffer_size - 1] = '\0';
+
+  return result;
+}
+
+int safe_fprintf(FILE *stream, const char *format, ...) {
+  if (!stream || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use Windows vfprintf_s for enhanced security
+  int result = vfprintf_s(stream, format, args);
+
+  va_end(args);
+
+  return result;
+}
+
+// ============================================================================
+// Safe Memory Functions
+// ============================================================================
+
+int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
+  // Validate parameters
+  if (!dest || !src) {
+    return -1; // Invalid pointers
+  }
+
+  if (count > dest_size) {
+    return -1; // Buffer overflow protection
+  }
+
+#ifdef __STDC_LIB_EXT1__
+  // Use memcpy_s if available (C11 Annex K)
+  errno_t err = memcpy_s(dest, dest_size, src, count);
+  return err; // Returns 0 on success, non-zero on error
+#else
+  // Fallback to standard memcpy with bounds already checked
+  memcpy(dest, src, count);
+  return 0; // Success
+#endif
+}
+
+int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
+  // Validate parameters
+  if (!dest) {
+    return -1; // Invalid pointer
+  }
+
+  if (count > dest_size) {
+    return -1; // Buffer overflow protection
+  }
+
+#ifdef __STDC_LIB_EXT1__
+  // Use memset_s if available (C11 Annex K)
+  errno_t err = memset_s(dest, dest_size, ch, count);
+  return err; // Returns 0 on success, non-zero on error
+#else
+  // Fallback to standard memset with bounds already checked
+  memset(dest, ch, count);
+  return 0; // Success
+#endif
+}
+
+int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
+  // Validate parameters
+  if (!dest || !src) {
+    return -1; // Invalid pointers
+  }
+
+  if (count > dest_size) {
+    return -1; // Buffer overflow protection
+  }
+
+#ifdef __STDC_LIB_EXT1__
+  // Use memmove_s if available (C11 Annex K)
+  errno_t err = memmove_s(dest, dest_size, src, count);
+  return err; // Returns 0 on success, non-zero on error
+#else
+  // Fallback to standard memmove with bounds already checked
+  memmove(dest, src, count);
+  return 0; // Success
+#endif
+}
+
+/**
+ * Platform-safe strcpy wrapper
+ *
+ * Uses strcpy_s on Windows when available (C11) and strncpy with bounds checking on POSIX.
+ * Always null-terminates the destination string.
+ *
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @param src Source string
+ * @return 0 on success, non-zero on error
+ */
+int platform_strcpy(char *dest, size_t dest_size, const char *src) {
+  if (!dest || !src) {
+    return -1;
+  }
+  if (dest_size == 0) {
+    return -1;
+  }
+
+  size_t src_len = strlen(src);
+  if (src_len >= dest_size) {
+    return -1; // Not enough space including null terminator
+  }
+
+#ifdef __STDC_LIB_EXT1__
+  // Use strcpy_s if available (C11 Annex K)
+  errno_t err = strcpy_s(dest, dest_size, src);
+  return err; // Returns 0 on success, non-zero on error
+#else
+  // Fallback to strncpy with bounds checking
+  strncpy(dest, src, dest_size - 1);
+  dest[dest_size - 1] = '\0'; // Ensure null termination
+  return 0;                   // Success
+#endif
 }
 
 #endif // _WIN32

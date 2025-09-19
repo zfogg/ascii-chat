@@ -1,8 +1,12 @@
 #include "common.h"
 #include "platform/abstraction.h"
+#include "platform/system.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
 
 // Global frame rate variable - can be set via command line
 int g_max_fps = 0; // 0 means use default
@@ -13,17 +17,99 @@ void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double TB = GB * 1024.0;
 
   if ((double)bytes < MB) {
-    snprintf(out, out_capacity, "%zu B", bytes);
+    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%zu B", bytes));
   } else if ((double)bytes < GB) {
     double value = (double)bytes / MB;
-    snprintf(out, out_capacity, "%.2f MB", value);
+    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f MB", value));
   } else if ((double)bytes < TB) {
     double value = (double)bytes / GB;
-    snprintf(out, out_capacity, "%.2f GB", value);
+    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f GB", value));
   } else {
     double value = (double)bytes / TB;
-    snprintf(out, out_capacity, "%.2f TB", value);
+    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f TB", value));
   }
+}
+
+/* ============================================================================
+ * Safe Parsing Functions using strtoul
+ * ============================================================================
+ */
+
+int safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
+  if (!message || !width || !height) {
+    return -1;
+  }
+
+  // Check if message starts with "SIZE:"
+  if (strncmp(message, "SIZE:", 5) != 0) {
+    return -1;
+  }
+
+  const char *ptr = message + 5; // Skip "SIZE:"
+  char *endptr;
+
+  // Parse first number (width)
+  errno = 0;
+  unsigned long w = strtoul(ptr, &endptr, 10);
+  if (errno != 0 || endptr == ptr || w > UINT_MAX || w == 0) {
+    return -1;
+  }
+
+  // Check for comma separator
+  if (*endptr != ',') {
+    return -1;
+  }
+  ptr = endptr + 1;
+
+  // Parse second number (height)
+  errno = 0;
+  unsigned long h = strtoul(ptr, &endptr, 10);
+  if (errno != 0 || endptr == ptr || h > UINT_MAX || h == 0) {
+    return -1;
+  }
+
+  // Should end with newline or null terminator
+  if (*endptr != '\n' && *endptr != '\0') {
+    return -1;
+  }
+
+  // Additional bounds checking
+  if (w > 65535 || h > 65535) {
+    return -1;
+  }
+
+  *width = (unsigned int)w;
+  *height = (unsigned int)h;
+  return 0;
+}
+
+int safe_parse_audio_message(const char *message, unsigned int *num_samples) {
+  if (!message || !num_samples) {
+    return -1;
+  }
+
+  // Check if message starts with "AUDIO:"
+  if (strncmp(message, "AUDIO:", 6) != 0) {
+    return -1;
+  }
+
+  const char *ptr = message + 6; // Skip "AUDIO:"
+  char *endptr;
+
+  // Parse number
+  errno = 0;
+  unsigned long samples = strtoul(ptr, &endptr, 10);
+  if (errno != 0 || endptr == ptr || samples > UINT_MAX || samples == 0) {
+    return -1;
+  }
+
+  // Should end with newline or null terminator
+  if (*endptr != '\n' && *endptr != '\0') {
+    return -1;
+  }
+
+  *num_samples = (unsigned int)samples;
+  return 0;
 }
 
 /* ============================================================================
@@ -54,7 +140,6 @@ static struct {
   mutex_t mutex; /* Only for linked list operations */
   bool mutex_initialized;
   bool quiet_mode;        /* Control stderr output for memory report */
-  bool track_allocations; /* Whether to maintain the linked list */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
            .total_freed = 0,
@@ -65,12 +150,7 @@ static struct {
            .calloc_calls = 0,
            .realloc_calls = 0,
            .mutex_initialized = false,
-           .quiet_mode = false,
-#ifdef DEBUG_MEMORY_FULL_TRACKING
-           .track_allocations = true
-#else
-           .track_allocations = false
-#endif
+           .quiet_mode = false
 };
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
@@ -103,23 +183,21 @@ void *debug_malloc(size_t size, const char *file, int line) {
       break;
   }
 
-  /* Only track individual allocations if enabled */
-  if (g_mem.track_allocations) {
-    ensure_mutex_initialized();
-    mutex_lock(&g_mem.mutex);
+  /* Track individual allocations for detailed leak reporting */
+  ensure_mutex_initialized();
+  mutex_lock(&g_mem.mutex);
 
-    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-    if (block) {
-      block->ptr = ptr;
-      block->size = size;
-      SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-      block->line = line;
-      block->next = g_mem.head;
-      g_mem.head = block;
-    }
-
-    mutex_unlock(&g_mem.mutex);
+  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+  if (block) {
+    block->ptr = ptr;
+    block->size = size;
+    SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+    block->line = line;
+    block->next = g_mem.head;
+    g_mem.head = block;
   }
+
+  mutex_unlock(&g_mem.mutex);
 
   return ptr;
 }
@@ -133,42 +211,56 @@ void debug_free(void *ptr, const char *file, int line) {
   size_t freed_size = 0;
   bool found = false;
 
-  /* Only search for allocation if tracking is enabled */
-  if (g_mem.track_allocations) {
-    ensure_mutex_initialized();
-    mutex_lock(&g_mem.mutex);
+  /* Search for allocation in linked list */
+  ensure_mutex_initialized();
+  mutex_lock(&g_mem.mutex);
 
-    mem_block_t *prev = NULL;
-    mem_block_t *curr = g_mem.head;
+  mem_block_t *prev = NULL;
+  mem_block_t *curr = g_mem.head;
 
-    while (curr) {
-      if (curr->ptr == ptr) {
-        if (prev) {
-          prev->next = curr->next;
-        } else {
-          g_mem.head = curr->next;
-        }
-
-        freed_size = curr->size;
-        found = true;
-        free(curr);
-        break;
+  while (curr) {
+    if (curr->ptr == ptr) {
+      if (prev) {
+        prev->next = curr->next;
+      } else {
+        g_mem.head = curr->next;
       }
-      prev = curr;
-      curr = curr->next;
-    }
 
-    if (!found && g_mem.track_allocations) {
-      log_warn("Freeing untracked pointer %p at %s:%d", ptr, file, line);
+      freed_size = curr->size;
+      found = true;
+      free(curr);
+      break;
     }
-
-    mutex_unlock(&g_mem.mutex);
+    prev = curr;
+    curr = curr->next;
   }
 
-  /* Update stats atomically after releasing mutex */
+  if (!found) {
+    log_warn("Freeing untracked pointer %p at %s:%d", ptr, file, line);
+  }
+
+  mutex_unlock(&g_mem.mutex);
+
+  /* Update freed stats - use exact size from tracking or platform function */
   if (found) {
+    /* We know the exact size from tracking */
     atomic_fetch_add(&g_mem.total_freed, freed_size);
     atomic_fetch_sub(&g_mem.current_usage, freed_size);
+  } else {
+    /* No tracking - use platform functions to get real allocation size */
+    size_t real_size = 0;
+#ifdef _WIN32
+    /* Windows: Use _msize to get actual allocation size */
+    real_size = _msize(ptr);
+#elif defined(__GLIBC__) || defined(__APPLE__)
+    /* Linux/macOS: Use malloc_usable_size */
+    real_size = malloc_usable_size(ptr);
+#endif
+
+    if (real_size > 0) {
+      atomic_fetch_add(&g_mem.total_freed, real_size);
+      atomic_fetch_sub(&g_mem.current_usage, real_size);
+    }
   }
 
   free(ptr);
@@ -192,23 +284,21 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
       break;
   }
 
-  /* Only track individual allocations if enabled */
-  if (g_mem.track_allocations) {
-    ensure_mutex_initialized();
-    mutex_lock(&g_mem.mutex);
+  /* Track individual allocations for detailed leak reporting */
+  ensure_mutex_initialized();
+  mutex_lock(&g_mem.mutex);
 
-    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-    if (block) {
-      block->ptr = ptr;
-      block->size = total;
-      SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-      block->line = line;
-      block->next = g_mem.head;
-      g_mem.head = block;
-    }
-
-    mutex_unlock(&g_mem.mutex);
+  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+  if (block) {
+    block->ptr = ptr;
+    block->size = total;
+    SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+    block->line = line;
+    block->next = g_mem.head;
+    g_mem.head = block;
   }
+
+  mutex_unlock(&g_mem.mutex);
 
   return ptr;
 }
@@ -228,23 +318,21 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   size_t old_size = 0;
   mem_block_t *curr = NULL;
 
-  /* Find the old allocation if tracking is enabled */
-  if (g_mem.track_allocations) {
-    ensure_mutex_initialized();
-    mutex_lock(&g_mem.mutex);
+  /* Find the old allocation */
+  ensure_mutex_initialized();
+  mutex_lock(&g_mem.mutex);
 
-    mem_block_t *prev = NULL;
-    curr = g_mem.head;
-    while (curr && curr->ptr != ptr) {
-      prev = curr;
-      curr = curr->next;
-    }
-    if (curr) {
-      old_size = curr->size;
-    }
-    (void)prev; // Unused variable (for now 🤔 what could i do with this...)
-    mutex_unlock(&g_mem.mutex);
+  mem_block_t *prev = NULL;
+  curr = g_mem.head;
+  while (curr && curr->ptr != ptr) {
+    prev = curr;
+    curr = curr->next;
   }
+  if (curr) {
+    old_size = curr->size;
+  }
+  (void)prev; // Unused variable (for now 🤔 what could i do with this...)
+  mutex_unlock(&g_mem.mutex);
 
   void *new_ptr = realloc(ptr, size);
   if (!new_ptr) {
@@ -282,37 +370,35 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     }
   }
 
-  /* Update the linked list if tracking is enabled */
-  if (g_mem.track_allocations) {
-    ensure_mutex_initialized();
-    mutex_lock(&g_mem.mutex);
+  /* Update the linked list */
+  ensure_mutex_initialized();
+  mutex_lock(&g_mem.mutex);
 
-    /* Find the block again (it might have changed) */
-    curr = g_mem.head;
-    while (curr && curr->ptr != ptr) {
-      curr = curr->next;
-    }
-
-    if (curr) {
-      curr->ptr = new_ptr;
-      curr->size = size;
-      SAFE_STRNCPY(curr->file, file, sizeof(curr->file) - 1);
-      curr->file[sizeof(curr->file) - 1] = '\0';
-      curr->line = line;
-    } else {
-      mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-      if (block) {
-        block->ptr = new_ptr;
-        block->size = size;
-        SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-        block->line = line;
-        block->next = g_mem.head;
-        g_mem.head = block;
-      }
-    }
-
-    mutex_unlock(&g_mem.mutex);
+  /* Find the block again (it might have changed) */
+  curr = g_mem.head;
+  while (curr && curr->ptr != ptr) {
+    curr = curr->next;
   }
+
+  if (curr) {
+    curr->ptr = new_ptr;
+    curr->size = size;
+    SAFE_STRNCPY(curr->file, file, sizeof(curr->file) - 1);
+    curr->file[sizeof(curr->file) - 1] = '\0';
+    curr->line = line;
+  } else {
+    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+    if (block) {
+      block->ptr = new_ptr;
+      block->size = size;
+      SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+      block->line = line;
+      block->next = g_mem.head;
+      g_mem.head = block;
+    }
+  }
+
+  mutex_unlock(&g_mem.mutex);
 
   return new_ptr;
 }
@@ -321,11 +407,20 @@ void debug_memory_set_quiet_mode(bool quiet) {
   g_mem.quiet_mode = quiet;
 }
 
+static const char* strip_project_path(const char* full_path) {
+  const char* project_marker = "ascii-chat/";
+  const char* found = strstr(full_path, project_marker);
+  if (found) {
+    return found + strlen(project_marker);
+  }
+  return full_path;
+}
+
 void debug_memory_report(void) {
   bool quiet = g_mem.quiet_mode;
   if (!quiet) {
     // NOTE: Write directly to stderr in case logging is already destroyed at exit
-    fprintf(stderr, "\n=== Memory Report ===\n");
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n=== Memory Report ===\n"));
 
     /* Read atomic values once */
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
@@ -345,28 +440,28 @@ void debug_memory_report(void) {
     format_bytes_pretty(current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
 
-    fprintf(stderr, "Total allocated: %s\n", pretty_total);
-    fprintf(stderr, "Total freed: %s\n", pretty_freed);
-    fprintf(stderr, "Current usage: %s\n", pretty_current);
-    fprintf(stderr, "Peak usage: %s\n", pretty_peak);
-    fprintf(stderr, "malloc calls: %zu\n", malloc_calls);
-    fprintf(stderr, "calloc calls: %zu\n", calloc_calls);
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total allocated: %s\n", pretty_total));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total freed: %s\n", pretty_freed));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Current usage: %s\n", pretty_current));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Peak usage: %s\n", pretty_peak));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "malloc calls: %zu\n", malloc_calls));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "calloc calls: %zu\n", calloc_calls));
     // fprintf(stderr, "realloc calls: %zu\n", atomic_load(&g_mem.realloc_calls));
-    fprintf(stderr, "free calls: %zu\n", free_calls);
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "free calls: %zu\n", free_calls));
     size_t diff = (malloc_calls + calloc_calls) - free_calls;
-    fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff);
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff));
 
-    /* Only show allocations if tracking is enabled */
-    if (g_mem.track_allocations && g_mem.head) {
+    /* Show current allocations if any exist */
+    if (g_mem.head) {
       ensure_mutex_initialized();
       mutex_lock(&g_mem.mutex);
 
-      fprintf(stderr, "\nCurrent allocations:\n");
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\nCurrent allocations:\n"));
       mem_block_t *curr = g_mem.head;
       while (curr) {
         char pretty_size[64];
         format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-        fprintf(stderr, "  - %s:%d - %s\n", curr->file, curr->line, pretty_size);
+        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
         curr = curr->next;
       }
 

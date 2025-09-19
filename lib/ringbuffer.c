@@ -91,7 +91,7 @@ bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
   size_t next_head = (head + 1) & rb->capacity_mask;
 
   /* Copy data */
-  memcpy(rb->buffer + (head * rb->element_size), data, rb->element_size);
+  SAFE_MEMCPY(rb->buffer + (head * rb->element_size), rb->element_size, data, rb->element_size);
 
   /* Update head and size atomically */
   atomic_store(&rb->head, next_head);
@@ -113,7 +113,7 @@ bool ringbuffer_read(ringbuffer_t *rb, void *data) {
   size_t next_tail = (tail + 1) & rb->capacity_mask;
 
   /* Copy data */
-  memcpy(data, rb->buffer + (tail * rb->element_size), rb->element_size);
+  SAFE_MEMCPY(data, rb->element_size, rb->buffer + (tail * rb->element_size), rb->element_size);
 
   /* Update tail and size atomically */
   atomic_store(&rb->tail, next_tail);
@@ -134,7 +134,7 @@ bool ringbuffer_peek(ringbuffer_t *rb, void *data) {
   size_t tail = atomic_load(&rb->tail);
 
   /* Copy data without updating tail */
-  memcpy(data, rb->buffer + (tail * rb->element_size), rb->element_size);
+  SAFE_MEMCPY(data, rb->element_size, rb->buffer + (tail * rb->element_size), rb->element_size);
 
   return true;
 }
@@ -285,7 +285,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     return false;
   }
 
-  memcpy(frame_copy, frame_data, frame_size);
+  SAFE_MEMCPY(frame_copy, frame_size, frame_data, frame_size);
   frame_copy[frame_size] = '\0'; // Ensure null termination
 
   // Create a frame_t struct with the copy (store allocated size for proper cleanup)
@@ -387,7 +387,7 @@ void framebuffer_clear(framebuffer_t *fb) {
 
   // Zero out the entire buffer to prevent any dangling pointers
   if (fb->rb->buffer) {
-    memset(fb->rb->buffer, 0, fb->rb->capacity * fb->rb->element_size);
+    SAFE_MEMSET(fb->rb->buffer, fb->rb->capacity * fb->rb->element_size, 0, fb->rb->capacity * fb->rb->element_size);
   }
 }
 
@@ -407,7 +407,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   }
 
   // Copy frame data
-  memcpy(data_copy, frame_data, frame_size);
+  SAFE_MEMCPY(data_copy, frame_size, frame_data, frame_size);
 
   // Create multi-source frame
   multi_source_frame_t multi_frame = {.magic = FRAME_MAGIC,
@@ -504,7 +504,7 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
       mutex_unlock(&fb->mutex);
       return false;
     }
-    memcpy(data_copy, frame->data, frame->size);
+    SAFE_MEMCPY(data_copy, frame->size, frame->data, frame->size);
     frame->data = data_copy;
   }
 

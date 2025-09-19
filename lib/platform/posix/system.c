@@ -79,6 +79,14 @@ void platform_sleep_usec(unsigned int usec) {
   usleep(usec);
 }
 
+int platform_localtime(const time_t *timer, struct tm *result) {
+  if (!timer || !result) {
+    return EINVAL;
+  }
+  struct tm *tm_result = localtime_r(timer, result);
+  return tm_result ? 0 : errno;
+}
+
 /**
  * @brief Get current process ID
  * @return Process ID as integer
@@ -480,7 +488,8 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  * @param strings Array returned by platform_backtrace_symbols
  */
 void platform_backtrace_symbols_free(char **strings) {
-  free(strings);
+  void *temp_strings = (void *)strings;
+  SAFE_FREE(temp_strings);
 }
 
 // ============================================================================
@@ -495,33 +504,45 @@ void platform_print_backtrace(void) {
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    fprintf(stderr, "\n=== BACKTRACE ===\n");
+    (void)fprintf(stderr, "\n=== BACKTRACE ===\n");
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     for (int i = 0; i < size; i++) {
-      fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
+      (void)fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
     }
 
     platform_backtrace_symbols_free(symbols);
-    fprintf(stderr, "================\n\n");
+    (void)fprintf(stderr, "================\n\n");
   }
 }
 
 /**
  * @brief Crash signal handler
  */
+static const char *get_signal_name(int sig) {
+  switch (sig) {
+  case SIGSEGV:
+    return "SIGSEGV";
+  case SIGABRT:
+    return "SIGABRT";
+  case SIGFPE:
+    return "SIGFPE";
+  case SIGILL:
+    return "SIGILL";
+  case SIGBUS:
+    return "SIGBUS";
+  default:
+    return "UNKNOWN";
+  }
+}
+
 static void crash_handler(int sig, siginfo_t *info, void *context) {
-  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
-  fprintf(stderr, "Signal: %d (%s)\n", sig,
-          sig == SIGSEGV   ? "SIGSEGV"
-          : sig == SIGABRT ? "SIGABRT"
-          : sig == SIGFPE  ? "SIGFPE"
-          : sig == SIGILL  ? "SIGILL"
-          : sig == SIGBUS  ? "SIGBUS"
-                           : "UNKNOWN");
+  (void)context; // Suppress unused parameter warning
+  (void)fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  (void)fprintf(stderr, "Signal: %d (%s)\n", sig, get_signal_name(sig));
 
   if (info) {
-    fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n", info->si_code, info->si_addr);
+    (void)fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n", info->si_code, info->si_addr);
   }
 
   platform_print_backtrace();
@@ -531,8 +552,8 @@ static void crash_handler(int sig, siginfo_t *info, void *context) {
   sa.sa_handler = SIG_DFL;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = 0;
-  sigaction(sig, &sa, NULL);
-  raise(sig);
+  (void)sigaction(sig, &sa, NULL);
+  (void)raise(sig);
 }
 
 /**
@@ -553,3 +574,123 @@ void platform_install_crash_handler(void) {
 }
 
 #endif // !_WIN32
+
+// ============================================================================
+// Safe String Functions
+// ============================================================================
+
+#include <stdarg.h>
+
+int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
+  if (!buffer || buffer_size == 0 || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use standard vsnprintf with size checking
+  int result = vsnprintf(buffer, buffer_size, format, args);
+
+  va_end(args);
+
+  // Ensure null termination (vsnprintf guarantees this but be explicit)
+  buffer[buffer_size - 1] = '\0';
+
+  return result;
+}
+
+int safe_fprintf(FILE *stream, const char *format, ...) {
+  if (!stream || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use standard vfprintf
+  int result = vfprintf(stream, format, args);
+
+  va_end(args);
+
+  return result;
+}
+
+// ============================================================================
+// Safe Memory Functions
+// ============================================================================
+
+int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
+  // Validate parameters
+  if (!dest || !src) {
+    return -1; // Invalid pointers
+  }
+
+  if (count > dest_size) {
+    return -1; // Buffer overflow protection
+  }
+
+  // Use standard memcpy with bounds checking already done
+  memcpy(dest, src, count);
+  return 0; // Success
+}
+
+int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
+  // Validate parameters
+  if (!dest) {
+    return -1; // Invalid pointer
+  }
+
+  if (count > dest_size) {
+    return -1; // Buffer overflow protection
+  }
+
+  // Use standard memset with bounds checking already done
+  memset(dest, ch, count);
+  return 0; // Success
+}
+
+int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
+  // Validate parameters
+  if (!dest || !src) {
+    return -1; // Invalid pointers
+  }
+
+  if (count > dest_size) {
+    return -1; // Buffer overflow protection
+  }
+
+  // Use standard memmove with bounds checking already done
+  memmove(dest, src, count);
+  return 0; // Success
+}
+
+/**
+ * Platform-safe strcpy wrapper
+ *
+ * Uses strcpy_s on Windows when available (C11) and strncpy with bounds checking on POSIX.
+ * Always null-terminates the destination string.
+ *
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @param src Source string
+ * @return 0 on success, non-zero on error
+ */
+int platform_strcpy(char *dest, size_t dest_size, const char *src) {
+  if (!dest || !src) {
+    return -1;
+  }
+  if (dest_size == 0) {
+    return -1;
+  }
+
+  size_t src_len = strlen(src);
+  if (src_len >= dest_size) {
+    return -1; // Not enough space including null terminator
+  }
+
+  // Use strncpy with bounds checking and ensure null termination
+  strncpy(dest, src, dest_size - 1);
+  dest[dest_size - 1] = '\0'; // Ensure null termination
+  return 0;                   // Success
+}

@@ -409,42 +409,60 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
+  log_error("DEBUG_TERMINAL: get_terminal_size() called");
+
   if (console_handle == INVALID_HANDLE_VALUE) {
-    log_debug("Failed to get console handle");
+    DWORD error = GetLastError();
+    log_error("DEBUG_TERMINAL: Failed to get console handle, error=%lu", error);
     goto fallback;
   }
+
+  log_error("DEBUG_TERMINAL: Got console handle=%p, calling GetConsoleScreenBufferInfo", console_handle);
 
   if (GetConsoleScreenBufferInfo(console_handle, &csbi)) {
     // Use window size, not buffer size
     *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
     *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-    log_debug("Windows console size: %dx%d", *width, *height);
+    log_error("DEBUG_TERMINAL: SUCCESS! Windows console size: %dx%d", *width, *height);
+    log_error("DEBUG_TERMINAL: Window coords: Left=%d, Top=%d, Right=%d, Bottom=%d", csbi.srWindow.Left,
+              csbi.srWindow.Top, csbi.srWindow.Right, csbi.srWindow.Bottom);
+    log_error("DEBUG_TERMINAL: Buffer size: %dx%d", csbi.dwSize.X, csbi.dwSize.Y);
     return 0;
   }
 
-  log_debug("GetConsoleScreenBufferInfo failed: %lu", GetLastError());
+  DWORD error = GetLastError();
+  log_error("DEBUG_TERMINAL: GetConsoleScreenBufferInfo FAILED: error=%lu", error);
 
 fallback:
+  log_error("DEBUG_TERMINAL: Entering fallback mode for terminal size detection");
+
   // Environment variable fallback
   char *cols_str = SAFE_GETENV("COLUMNS");
   char *lines_str = SAFE_GETENV("LINES");
 
+  log_error("DEBUG_TERMINAL: Environment variables: COLUMNS='%s', LINES='%s'", cols_str ? cols_str : "NULL",
+            lines_str ? lines_str : "NULL");
+
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
+
+  log_error("DEBUG_TERMINAL: Set default dimensions: %dx%d", *width, *height);
 
   if (cols_str && lines_str) {
     int env_width = atoi(cols_str);
     int env_height = atoi(lines_str);
 
+    log_error("DEBUG_TERMINAL: Parsed environment: width=%d, height=%d", env_width, env_height);
+
     if (env_width > 0 && env_height > 0) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
-      log_debug("Terminal size from environment: %dx%d", *width, *height);
+      log_error("DEBUG_TERMINAL: Using environment size: %dx%d", *width, *height);
       return 0;
     }
   }
 
-  log_debug("Windows terminal size fallback: %dx%d", *width, *height);
+  log_error("DEBUG_TERMINAL: FINAL FALLBACK: Using default dimensions %dx%d", *width, *height);
   return -1;
 }
 
@@ -578,7 +596,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   if (g_max_fps > 0) {
     caps.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
   } else {
-    caps.desired_fps = DEFAULT_MAX_FPS;  // 30 FPS on Windows by default
+    caps.desired_fps = DEFAULT_MAX_FPS; // 30 FPS on Windows by default
   }
 
   log_debug("Windows terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", caps.color_level,

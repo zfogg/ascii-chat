@@ -9,6 +9,9 @@
 #include <stdbool.h>
 #include "image2ascii/image.h"
 
+// Forward declare the webcam context type
+typedef struct webcam_context_t webcam_context_t;
+
 // Mock function declarations (match webcam.h signatures)
 int mock_webcam_init(unsigned short int webcam_index);
 image_t *mock_webcam_read(void);

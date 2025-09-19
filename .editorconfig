@@ -64,6 +64,13 @@ indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 
+# CMake files
+[{CMakeLists.txt,*.cmake}]
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+max_line_length = 120
+
 # Header guards and preprocessor
 [*.{h,hpp}]
 indent_style = space

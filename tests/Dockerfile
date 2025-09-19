@@ -1,7 +1,7 @@
 # Dockerfile for running ASCII-Chat tests on Windows via Docker
 # Uses Ubuntu as base to ensure full Criterion compatibility
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -23,6 +23,10 @@ RUN apt-get update && apt-get install -y \
     cmake \
     ninja-build \
     clang \
+    clang-format \
+    clang-tidy \
+    clang-tools \
+    llvm \
     libcriterion-dev \
     locales \
     libportaudio2 \

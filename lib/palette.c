@@ -92,7 +92,12 @@ bool validate_palette_chars(const char *chars, size_t len) {
   }
 
   // Set locale for UTF-8 support
-  char *old_locale = setlocale(LC_CTYPE, NULL);
+  char *current_locale = setlocale(LC_CTYPE, NULL);
+  char *old_locale = NULL;
+  if (current_locale) {
+    // Copy the locale string before calling setlocale again (CERT ENV30-C)
+    SAFE_STRDUP(old_locale, current_locale);
+  }
   if (!setlocale(LC_CTYPE, "")) {
     log_warn("Failed to set locale for UTF-8 validation, continuing anyway");
   }
@@ -109,7 +114,8 @@ bool validate_palette_chars(const char *chars, size_t len) {
       log_error("Palette validation failed: invalid UTF-8 sequence at position %zu", char_count);
       // Restore old locale
       if (old_locale) {
-        setlocale(LC_CTYPE, old_locale);
+        (void)setlocale(LC_CTYPE, old_locale);
+        SAFE_FREE(old_locale);
       }
       return false;
     }
@@ -121,17 +127,19 @@ bool validate_palette_chars(const char *chars, size_t len) {
                 char_count, width);
       // Restore old locale
       if (old_locale) {
-        setlocale(LC_CTYPE, old_locale);
+        (void)setlocale(LC_CTYPE, old_locale);
+        SAFE_FREE(old_locale);
       }
       return false;
     }
 
-    // Check for control characters (except space)
-    if (wc < 32 && wc != ' ' && wc != '\t') {
+    // Check for control characters (except tab)
+    if (wc < 32 && wc != '\t') {
       log_error("Palette validation failed: control character at position %zu", char_count);
       // Restore old locale
       if (old_locale) {
-        setlocale(LC_CTYPE, old_locale);
+        (void)setlocale(LC_CTYPE, old_locale);
+        SAFE_FREE(old_locale);
       }
       return false;
     }
@@ -143,7 +151,8 @@ bool validate_palette_chars(const char *chars, size_t len) {
 
   // Restore old locale
   if (old_locale) {
-    setlocale(LC_CTYPE, old_locale);
+    (void)setlocale(LC_CTYPE, old_locale);
+    SAFE_FREE(old_locale);
   }
 
   log_debug("Palette validation successful: %zu characters validated", char_count);
@@ -157,7 +166,7 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
   }
 
   // Initialize structure
-  memset(caps, 0, sizeof(utf8_capabilities_t));
+  SAFE_MEMSET(caps, sizeof(utf8_capabilities_t), 0, sizeof(utf8_capabilities_t));
 
   // Check environment variables
   const char *term = SAFE_GETENV("TERM");
@@ -174,7 +183,11 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
     SAFE_STRNCPY(caps->locale_encoding, "UTF-8", sizeof(caps->locale_encoding));
   } else {
     // Try to detect encoding via locale
-    char *old_locale = setlocale(LC_CTYPE, NULL);
+    char *current_locale = setlocale(LC_CTYPE, NULL);
+    char *old_locale = NULL;
+    if (current_locale) {
+      SAFE_STRDUP(old_locale, current_locale);
+    }
     if (setlocale(LC_CTYPE, "")) {
 #ifndef _WIN32
       const char *codeset = nl_langinfo(CODESET);
@@ -187,8 +200,12 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
 #endif
       // Restore old locale
       if (old_locale) {
-        setlocale(LC_CTYPE, old_locale);
+        (void)setlocale(LC_CTYPE, old_locale);
       }
+    }
+    // Always free old_locale regardless of setlocale success
+    if (old_locale) {
+      SAFE_FREE(old_locale);
     }
   }
 
@@ -236,9 +253,8 @@ palette_type_t select_compatible_palette(palette_type_t requested, bool client_u
     case PALETTE_BLOCKS:
     case PALETTE_DIGITAL:
     case PALETTE_COOL:
-      return PALETTE_STANDARD; // ASCII equivalent
     default:
-      return PALETTE_STANDARD; // Safe default
+      return PALETTE_STANDARD; // ASCII equivalent
     }
   }
 
@@ -336,7 +352,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
   }
 
   // Copy palette to client cache
-  memcpy(client_palette_chars, chars_to_use, len_to_use);
+  SAFE_MEMCPY(client_palette_chars, len_to_use, chars_to_use, len_to_use);
   client_palette_chars[len_to_use] = '\0';
   *client_palette_len = len_to_use;
 
@@ -398,7 +414,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   SAFE_MALLOC(palette->chars, char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
   SAFE_MALLOC(palette->raw_string, total_bytes + 1, char *);
 
-  memcpy(palette->raw_string, palette_string, total_bytes + 1);
+  SAFE_MEMCPY(palette->raw_string, total_bytes + 1, palette_string, total_bytes + 1);
   palette->char_count = char_count;
   palette->total_bytes = total_bytes; // Use strlen() value
 
@@ -413,7 +429,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   if (current_locale) {
     SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));
   }
-  setlocale(LC_CTYPE, "");
+  (void)setlocale(LC_CTYPE, "");
 
   while (char_idx < char_count && bytes_processed < total_bytes) {
     utf8_char_info_t *char_info = &palette->chars[char_idx];
@@ -438,9 +454,9 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
     }
 
     // Copy bytes and null-terminate
-    memcpy(char_info->bytes, p, bytes);
+    SAFE_MEMCPY(char_info->bytes, bytes, p, bytes);
     if (bytes < 4) {
-      memset(char_info->bytes + bytes, 0, 4 - bytes);
+      SAFE_MEMSET(char_info->bytes + bytes, 4 - bytes, 0, 4 - bytes);
     }
     char_info->byte_len = bytes;
 
@@ -460,7 +476,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
 
   // Restore locale
   if (old_locale[0] != '\0') {
-    setlocale(LC_CTYPE, old_locale);
+    (void)setlocale(LC_CTYPE, old_locale);
   }
 
   return palette;

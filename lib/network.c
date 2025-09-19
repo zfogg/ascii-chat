@@ -10,7 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
 #include "options.h"
+
 
 // Check if we're in a test environment
 static int is_test_environment(void) {
@@ -100,6 +102,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
 }
 
 ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int timeout_seconds) {
+
   fd_set write_fds;
   struct timeval timeout;
   ssize_t total_sent = 0;
@@ -135,19 +138,37 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
       return -1;
     }
 
-    // Try to send data
-    // On Windows, send() takes int for length, not size_t
+    // Try to send data with reasonable chunking
+    // Limit chunk size to 64KB to avoid TCP issues and ensure data actually gets sent
     size_t bytes_to_send = len - total_sent;
+    const size_t MAX_CHUNK_SIZE = 65536; // 64KB chunks for reliable TCP transmission
+    if (bytes_to_send > MAX_CHUNK_SIZE) {
+      bytes_to_send = MAX_CHUNK_SIZE;
+    }
+
 #ifdef _WIN32
     // Windows send() expects int for length and const char* for buffer
     if (bytes_to_send > INT_MAX) {
       bytes_to_send = INT_MAX;
     }
-    ssize_t sent = send(sockfd, (const char *)(data + total_sent), (int)bytes_to_send, 0);
-    if (sent < 0 && errno == EINVAL) {
-      log_error("Windows send() EINVAL debug: sockfd=%llu, bytes_to_send=%zu, total_sent=%zd, len=%zu",
-                (unsigned long long)sockfd, bytes_to_send, total_sent, len);
+    int raw_sent = send(sockfd, (const char *)(data + total_sent), (int)bytes_to_send, 0);
+    // CRITICAL FIX: Check for SOCKET_ERROR before casting to avoid corruption
+    ssize_t sent;
+    if (raw_sent == SOCKET_ERROR) {
+      sent = -1;
+      // On Windows, use WSAGetLastError() instead of errno
+      errno = WSAGetLastError();
+      log_debug("Windows send() failed: WSAGetLastError=%d, sockfd=%llu, bytes_to_send=%zu", errno,
+                (unsigned long long)sockfd, bytes_to_send);
+    } else {
+      sent = (ssize_t)raw_sent;
+      // CORRUPTION DETECTION: Check Windows send() return value
+      if (raw_sent > (int)bytes_to_send) {
+        log_error("CRITICAL: Windows send() returned more than requested: raw_sent=%d > bytes_to_send=%zu", raw_sent,
+                  bytes_to_send);
+      }
     }
+
 #elif defined(MSG_NOSIGNAL)
     ssize_t sent = send(sockfd, data + total_sent, bytes_to_send, MSG_NOSIGNAL);
 #else
@@ -211,7 +232,8 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
         continue; // Try again
       }
       return -1; // Real error
-    } else if (received == 0) {
+    }
+    if (received == 0) {
       // Connection closed
       return total_received;
     }
@@ -278,7 +300,7 @@ const char *network_error_string(int error_code) {
 
 int send_size_message(socket_t sockfd, unsigned short width, unsigned short height) {
   char message[SIZE_MESSAGE_MAX_LEN];
-  int len = snprintf(message, sizeof(message), SIZE_MESSAGE_FORMAT, width, height);
+  int len = SAFE_SNPRINTF(message, sizeof(message), SIZE_MESSAGE_FORMAT, width, height);
 
   if (len >= (int)sizeof(message)) {
     return -1; // Message too long
@@ -302,10 +324,10 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
     return -1;
   }
 
-  // Parse the width,height values
-  int w, h;
-  int parsed = SAFE_SSCANF(message, SIZE_MESSAGE_FORMAT, &w, &h);
-  if (parsed != 2 || w <= 0 || h <= 0 || w > 65535 || h > 65535) {
+  // Parse the width,height values using safe parsing
+  unsigned int w;
+  unsigned int h;
+  if (safe_parse_size_message(message, &w, &h) != 0) {
     return -1;
   }
 
@@ -320,7 +342,7 @@ int send_audio_data(socket_t sockfd, const float *samples, int num_samples) {
   }
 
   char header[AUDIO_MESSAGE_MAX_LEN];
-  int header_len = snprintf(header, sizeof(header), AUDIO_MESSAGE_FORMAT, num_samples);
+  int header_len = SAFE_SNPRINTF(header, sizeof(header), AUDIO_MESSAGE_FORMAT, num_samples);
 
   if (header_len >= (int)sizeof(header)) {
     return -1;
@@ -357,9 +379,9 @@ int receive_audio_data(socket_t sockfd, float *samples, int max_samples) {
     return -1;
   }
 
-  int num_samples;
-  int parsed = SAFE_SSCANF(header, AUDIO_MESSAGE_FORMAT, &num_samples);
-  if (parsed != 1 || num_samples <= 0 || num_samples > max_samples || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+  unsigned int num_samples;
+  if (safe_parse_audio_message(header, &num_samples) != 0 || num_samples > (unsigned int)max_samples ||
+      num_samples > AUDIO_SAMPLES_PER_PACKET) {
     return -1;
   }
 
@@ -369,7 +391,7 @@ int receive_audio_data(socket_t sockfd, float *samples, int max_samples) {
     return -1;
   }
 
-  return num_samples;
+  return (int)num_samples;
 }
 
 /* ============================================================================
@@ -659,8 +681,8 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   SAFE_MALLOC(buffer, total_size, uint8_t *);
 
   // Copy header and samples to buffer
-  memcpy(buffer, &header, header_size);
-  memcpy(buffer + header_size, samples, samples_size);
+  SAFE_MEMCPY(buffer, total_size, &header, header_size);
+  SAFE_MEMCPY(buffer + header_size, samples_size, samples, samples_size);
 
 #ifdef DEBUG_AUDIO
   log_debug("Sending audio batch: %d chunks, %d total samples, %zu bytes", batch_count, num_samples, total_size);
@@ -675,10 +697,10 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
 int send_client_join_packet(socket_t sockfd, const char *display_name, uint32_t capabilities) {
   client_info_packet_t join_packet;
-  memset(&join_packet, 0, sizeof(join_packet));
+  SAFE_MEMSET(&join_packet, sizeof(join_packet), 0, sizeof(join_packet));
 
   join_packet.client_id = 0; // Will be assigned by server
-  snprintf(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
+  SAFE_SNPRINTF(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
   join_packet.capabilities = capabilities;
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
@@ -720,6 +742,17 @@ int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client
   ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
   if (sent != sizeof(header)) {
     log_error("Failed to send packet header with client ID: %zd/%zu bytes", sent, sizeof(header));
+
+    // MEMORY CORRUPTION DETECTION: Print stack trace if sent value is suspiciously large
+    if (sent > 1000000) { // 1MB+ is definitely corruption
+      log_error("CRITICAL: CLIENT detected memory corruption in send_with_timeout (with client ID)!");
+      log_error("Expected sizeof(header)=%zu, got sent=%zd", sizeof(header), sent);
+      log_error("Header details: magic=0x%x, type=%u, length=%u, crc32=0x%x, client_id=%u", ntohl(header.magic),
+                ntohs(header.type), ntohl(header.length), ntohl(header.crc32), ntohl(header.client_id));
+      log_error("Stack trace follows:");
+      platform_print_backtrace();
+    }
+
     return -1;
   }
 
@@ -842,7 +875,7 @@ int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state
   server_state_packet_t net_state;
   net_state.connected_client_count = htonl(state->connected_client_count);
   net_state.active_client_count = htonl(state->active_client_count);
-  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+  SAFE_MEMSET(net_state.reserved, sizeof(net_state.reserved), 0, sizeof(net_state.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state));
 }
@@ -851,6 +884,10 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
   if (!caps) {
     return -1;
   }
+
+  log_error("DEBUG_CAPABILITIES: Sending terminal capabilities to server");
+  log_error("DEBUG_CAPABILITIES: Original dimensions: %dx%d", caps->width, caps->height);
+  log_error("DEBUG_CAPABILITIES: Color level: %d, capabilities: 0x%x", caps->color_level, caps->capabilities);
 
   // Convert to network byte order
   terminal_capabilities_packet_t net_caps;
@@ -861,20 +898,24 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
   net_caps.width = htons(caps->width);
   net_caps.height = htons(caps->height);
 
+  log_error("DEBUG_CAPABILITIES: Network byte order dimensions: width=%d (0x%x), height=%d (0x%x)",
+            ntohs(net_caps.width), net_caps.width, ntohs(net_caps.height), net_caps.height);
+
   // Copy strings directly (no byte order conversion needed)
-  memcpy(net_caps.term_type, caps->term_type, sizeof(net_caps.term_type));
-  memcpy(net_caps.colorterm, caps->colorterm, sizeof(net_caps.colorterm));
+  SAFE_MEMCPY(net_caps.term_type, sizeof(net_caps.term_type), caps->term_type, sizeof(net_caps.term_type));
+  SAFE_MEMCPY(net_caps.colorterm, sizeof(net_caps.colorterm), caps->colorterm, sizeof(net_caps.colorterm));
 
   net_caps.detection_reliable = caps->detection_reliable;
 
   // NEW: Include palette information
   net_caps.palette_type = htonl(caps->palette_type);
   net_caps.utf8_support = htonl(caps->utf8_support);
-  memcpy(net_caps.palette_custom, caps->palette_custom, sizeof(net_caps.palette_custom));
+  SAFE_MEMCPY(net_caps.palette_custom, sizeof(net_caps.palette_custom), caps->palette_custom,
+              sizeof(net_caps.palette_custom));
 
   // Add the desired FPS field
   net_caps.desired_fps = caps->desired_fps;
-  memset(net_caps.reserved, 0, sizeof(net_caps.reserved));
+  SAFE_MEMSET(net_caps.reserved, sizeof(net_caps.reserved), 0, sizeof(net_caps.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_CAPABILITIES, &net_caps, sizeof(net_caps));
 }
@@ -893,7 +934,7 @@ int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, u
   if (!caps.detection_reliable && opt_color_mode == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");
     // Use minimal fallback capabilities
-    memset(&caps, 0, sizeof(caps));
+    SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
     caps.color_level = TERM_COLOR_NONE;
     caps.color_count = 2;
     caps.capabilities = 0; // No special capabilities
@@ -918,15 +959,20 @@ int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, u
     SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
-    memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
   }
 
   // Set desired FPS from global variable or use the detected/default value
-  extern int g_max_fps;
   if (g_max_fps > 0) {
     net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
   } else {
     net_packet.desired_fps = caps.desired_fps;
+  }
+
+  // Fallback: ensure FPS is never 0
+  if (net_packet.desired_fps == 0) {
+    net_packet.desired_fps = DEFAULT_MAX_FPS;
+    log_warn("desired_fps was 0, using fallback DEFAULT_MAX_FPS=%d", DEFAULT_MAX_FPS);
   }
 
   // log_debug("NETWORK DEBUG: About to send capabilities packet with width=%u, height=%u", width, height);
@@ -946,10 +992,10 @@ int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, u
     SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
-    memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
   }
 
-  memset(net_packet.reserved, 0, sizeof(net_packet.reserved));
+  SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 
   return send_terminal_capabilities_packet(sockfd, &net_packet);
 }
@@ -961,7 +1007,6 @@ int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, u
 #include <time.h>
 #include <zlib.h>
 #include "compression.h"
-#include "options.h"
 
 // Rate-limit compression debug logs to once every 5 seconds
 static time_t g_last_compression_log_time = 0;
@@ -975,7 +1020,7 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
   }
 
   // Check for suspicious frame size
-  if (frame_size > 10 * 1024 * 1024) { // 10MB seems unreasonable for ASCII art
+  if (frame_size > (size_t)10 * 1024 * 1024) { // 10MB seems unreasonable for ASCII art
     log_error("Suspicious frame_size=%zu, might be corrupted", frame_size);
     return -1;
   }
@@ -991,7 +1036,7 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
 
   // Try compression using deflate
   z_stream strm;
-  memset(&strm, 0, sizeof(strm));
+  SAFE_MEMSET(&strm, sizeof(strm), 0, sizeof(strm));
 
   int ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
   if (ret != Z_OK) {
@@ -1018,7 +1063,7 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
   deflateEnd(&strm);
 
   // Check if compression is worthwhile
-  float compression_ratio = (float)compressed_size / frame_size;
+  float compression_ratio = (float)compressed_size / (float)frame_size;
   bool use_compression = compression_ratio < COMPRESSION_RATIO_THRESHOLD;
 
   // Build the ASCII frame packet header
@@ -1046,8 +1091,8 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
     }
 
     // Copy header and compressed data
-    memcpy(packet_data, &frame_header, sizeof(ascii_frame_packet_t));
-    memcpy((char *)packet_data + sizeof(ascii_frame_packet_t), compressed_data, compressed_size);
+    SAFE_MEMCPY(packet_data, packet_size, &frame_header, sizeof(ascii_frame_packet_t));
+    SAFE_MEMCPY((char *)packet_data + sizeof(ascii_frame_packet_t), compressed_size, compressed_data, compressed_size);
 
     time_t now = time(NULL);
     if (now - g_last_compression_log_time >= 5) {
@@ -1067,8 +1112,8 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
     }
 
     // Copy header and uncompressed data
-    memcpy(packet_data, &frame_header, sizeof(ascii_frame_packet_t));
-    memcpy((char *)packet_data + sizeof(ascii_frame_packet_t), frame_data, frame_size);
+    SAFE_MEMCPY(packet_data, packet_size, &frame_header, sizeof(ascii_frame_packet_t));
+    SAFE_MEMCPY((char *)packet_data + sizeof(ascii_frame_packet_t), frame_size, frame_data, frame_size);
 
     time_t now = time(NULL);
     if (now - g_last_compression_log_time >= 5) {
@@ -1083,7 +1128,14 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
   free(packet_data);
   free(compressed_data);
 
-  return result < 0 ? -1 : (use_compression ? (long)compressed_size : (long)frame_size);
+  if (result < 0) {
+    return -1;
+  }
+
+  if (use_compression) {
+    return (int)compressed_size;
+  }
+  return (int)frame_size;
 }
 
 // Send image frame using the new unified packet structure
@@ -1113,8 +1165,8 @@ int send_image_frame_packet(socket_t sockfd, const void *pixel_data, size_t pixe
   }
 
   // Copy header and pixel data
-  memcpy(packet_data, &frame_header, sizeof(image_frame_packet_t));
-  memcpy((char *)packet_data + sizeof(image_frame_packet_t), pixel_data, pixel_size);
+  SAFE_MEMCPY(packet_data, packet_size, &frame_header, sizeof(image_frame_packet_t));
+  SAFE_MEMCPY((char *)packet_data + sizeof(image_frame_packet_t), pixel_size, pixel_data, pixel_size);
 
   // Send as a single unified packet
   int result = send_packet(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);

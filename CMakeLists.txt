@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Set up vcpkg toolchain if available (must be before project())
-# Skip vcpkg for MinGW builds as vcpkg libraries are built for MSVC
+# Skip vcpkg for MinGW builds as we use system package manager for MinGW
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND NOT USE_MINGW)
     if(DEFINED ENV{VCPKG_ROOT})
         set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
@@ -12,10 +12,11 @@ endif()
 
 
 # Use Ninja generator by default on all platforms for faster builds
-if(NOT CMAKE_GENERATOR)
+# Only set Ninja if no generator was explicitly specified via -G flag
+if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
     find_program(NINJA_EXECUTABLE ninja)
     if(NINJA_EXECUTABLE)
-        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator")
+        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
         message(STATUS "Using Ninja generator for faster builds")
     endif()
 endif()
@@ -33,18 +34,98 @@ endif()
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # =============================================================================
+# Project Declaration
+# =============================================================================
+
+
+# Set languages based on platform
+if(APPLE)
+    set(PROJECT_LANGUAGES C OBJC)
+else()
+    set(PROJECT_LANGUAGES C)
+endif()
+
+project(ascii-chat
+    VERSION 2.0.0
+    DESCRIPTION "Real-time terminal-based video chat with ASCII art conversion"
+    HOMEPAGE_URL "https://github.com/zfogg/ascii-chat"
+    LANGUAGES ${PROJECT_LANGUAGES}
+)
+
+# =============================================================================
+# Windows-Specific Linking Fixes (must come after project())
+# =============================================================================
+
+# Fix Windows-Clang platform issues with -nostartfiles and -nostdlib
+if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    # CMake's Windows-Clang platform files incorrectly add -nostartfiles -nostdlib
+    # These flags are inappropriate for normal userspace applications like ASCII-Chat
+    # and prevent AddressSanitizer from finding required runtime libraries
+
+    # Remove the problematic flags if they exist in CMAKE_C_STANDARD_LIBRARIES
+    string(REPLACE "-nostdlib" "" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
+    string(REPLACE "-nostartfiles" "" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
+
+    # Remove from linker flags too
+    string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REPLACE "-nostdlib" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+    string(REPLACE "-nostartfiles" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+
+    # For Debug builds with sanitizers, ensure standard runtime libraries are available
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # AddressSanitizer requires access to Visual Studio runtime libraries
+        # Try to find MSVC installation in common locations and editions
+        set(MSVC_LIB_PATH "")
+
+        # Try different Visual Studio editions and years
+        set(VS_EDITIONS "Community" "Professional" "Enterprise" "BuildTools" "Insiders")
+        set(VS_YEARS "18" "2026" "2022" "2019" "2017")
+
+        foreach(VS_YEAR ${VS_YEARS})
+            foreach(VS_EDITION ${VS_EDITIONS})
+                set(VS_PATH "C:/Program Files/Microsoft Visual Studio/${VS_YEAR}/${VS_EDITION}/VC/Tools/MSVC")
+                if(EXISTS "${VS_PATH}")
+                    file(GLOB MSVC_VERSIONS "${VS_PATH}/*")
+                    if(MSVC_VERSIONS)
+                        list(GET MSVC_VERSIONS -1 MSVC_VERSION_DIR)  # Get the latest version
+                        set(MSVC_LIB_CANDIDATE "${MSVC_VERSION_DIR}/lib/x64")
+                        if(EXISTS "${MSVC_LIB_CANDIDATE}")
+                            set(MSVC_LIB_PATH "${MSVC_LIB_CANDIDATE}")
+                            message(STATUS "Found MSVC libraries at: ${MSVC_LIB_PATH}")
+                            break()
+                        endif()
+                    endif()
+                endif()
+            endforeach()
+            if(MSVC_LIB_PATH)
+                break()
+            endif()
+        endforeach()
+
+        if(MSVC_LIB_PATH)
+            link_directories("${MSVC_LIB_PATH}")
+            message(STATUS "Added MSVC library path for AddressSanitizer: ${MSVC_LIB_PATH}")
+        else()
+            message(FATAL_ERROR "Visual Studio MSVC libraries not found! AddressSanitizer requires Visual Studio runtime libraries.\n"
+                              "Please install Visual Studio 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, Build Tools, or Insiders).\n"
+                              "Alternatively, build without sanitizers using: cmake -B build -DCMAKE_BUILD_TYPE=Dev")
+        endif()
+
+        message(STATUS "Debug build: Preserving standard libraries for AddressSanitizer")
+    endif()
+
+    message(STATUS "Applied Windows-Clang linking fixes for normal userspace application")
+endif()
+
+# =============================================================================
 # Compiler detection: Respect environment variables first, then auto-detect
 # =============================================================================
 
-# 1. First priority: Respect CC/CXX environment variables if set
+# 1. First priority: Respect CC environment variables if set
 if(DEFINED ENV{CC} AND NOT CMAKE_C_COMPILER)
     set(CMAKE_C_COMPILER "$ENV{CC}" CACHE FILEPATH "C compiler from environment")
     message(STATUS "Using C compiler from CC environment variable: $ENV{CC}")
-endif()
-
-if(DEFINED ENV{CXX} AND NOT CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER "$ENV{CXX}" CACHE FILEPATH "C++ compiler from environment")
-    message(STATUS "Using C++ compiler from CXX environment variable: $ENV{CXX}")
 endif()
 
 # 2. Respect CFLAGS, CPPFLAGS, LDFLAGS from environment
@@ -54,9 +135,8 @@ if(DEFINED ENV{CFLAGS})
 endif()
 
 if(DEFINED ENV{CPPFLAGS})
-    # CPPFLAGS should be added to both C and CXX flags for preprocessor directives
+    # CPPFLAGS should be added to both C flags for preprocessor directives
     set(CMAKE_C_FLAGS "$ENV{CPPFLAGS} ${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags")
-    set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS} ${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compiler flags")
     message(STATUS "Using CPPFLAGS from environment: $ENV{CPPFLAGS}")
 endif()
 
@@ -66,7 +146,25 @@ if(DEFINED ENV{LDFLAGS})
     message(STATUS "Using LDFLAGS from environment: $ENV{LDFLAGS}")
 endif()
 
-# 3. macOS: Auto-detect and prefer Homebrew LLVM over system compiler
+# 3. Set default compilers to Clang if not explicitly set
+# This ensures the project works with no arguments: cmake -B build && cmake --build build
+if(NOT CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
+    find_program(CLANG_EXECUTABLE clang)
+    if(CLANG_EXECUTABLE)
+        set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler")
+        message(STATUS "Set default C compiler to: ${CLANG_EXECUTABLE}")
+    else()
+        message(WARNING "clang not found in PATH. You may need to install LLVM/Clang.")
+    endif()
+endif()
+
+# 4. Set default build type to Debug if not specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build" FORCE)
+    message(STATUS "Set default build type to Debug")
+endif()
+
+# 5. macOS: Auto-detect and prefer Homebrew LLVM over system compiler
 if(APPLE)
     # Check if Homebrew LLVM is installed
     set(HOMEBREW_LLVM_PREFIX "")
@@ -106,15 +204,12 @@ if(APPLE)
             if(CCACHE_PROGRAM)
                 message(STATUS "Found ccache: ${CCACHE_PROGRAM}")
                 set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
-                set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C++ compiler launcher" FORCE)
                 # Set the actual compilers (ccache will wrap them via the launcher)
                 set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
-                set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "C++ compiler" FORCE)
                 message(STATUS "Using ccache with Homebrew LLVM")
             else()
                 # No ccache, use LLVM directly
                 set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
-                set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "C++ compiler" FORCE)
             endif()
 
             # Add LLVM bin directory to PATH for tools like llvm-ar, llvm-ranlib, etc.
@@ -156,14 +251,50 @@ if(CMAKE_C_COMPILER)
     endif()
 endif()
 
-if(APPLE)
-    project(ascii-chat LANGUAGES C CXX OBJC)
-else()
-    project(ascii-chat LANGUAGES C CXX)
-endif()
-
 # Generate compile_commands.json for IDE/tool integration (clangd, VSCode, etc.)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Automatically copy or symlink compile_commands.json to project root
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    if(NOT CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
+        # Only do this if we're doing an out-of-source build
+        set(COMPILE_COMMANDS_SOURCE "${CMAKE_BINARY_DIR}/compile_commands.json")
+        set(COMPILE_COMMANDS_DEST "${CMAKE_SOURCE_DIR}/compile_commands.json")
+
+        # Create a post-configuration script that will be run automatically
+        if(WIN32)
+            # On Windows, copy the file after CMake generates it
+            file(WRITE "${CMAKE_BINARY_DIR}/copy_compile_commands.cmake"
+"execute_process(
+    COMMAND \"${CMAKE_COMMAND}\" -E copy_if_different
+        \"${COMPILE_COMMANDS_SOURCE}\"
+        \"${COMPILE_COMMANDS_DEST}\"
+    RESULT_VARIABLE result
+)
+if(result EQUAL 0)
+    message(STATUS \"Copied compile_commands.json to project root\")
+endif()")
+        else()
+            # On Unix-like systems, create a symlink after CMake generates it
+            file(WRITE "${CMAKE_BINARY_DIR}/copy_compile_commands.cmake"
+"execute_process(
+    COMMAND \"${CMAKE_COMMAND}\" -E create_symlink
+        \"${COMPILE_COMMANDS_SOURCE}\"
+        \"${COMPILE_COMMANDS_DEST}\"
+    RESULT_VARIABLE result
+)
+if(result EQUAL 0)
+    message(STATUS \"Symlinked compile_commands.json to project root\")
+endif()")
+        endif()
+
+        # Execute the script at the end of the CMake run
+        # This deferred call ensures compile_commands.json exists before we try to copy/link it
+        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL execute_process
+            COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_BINARY_DIR}/copy_compile_commands.cmake"
+        )
+    endif()
+endif()
 
 # Configure Homebrew LLVM paths after project() if compiler was set
 if(APPLE)
@@ -227,7 +358,6 @@ if(WIN32 AND USE_MINGW)
     # Set MinGW target and system paths for Clang (GCC doesn't need this)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         set(CMAKE_C_COMPILER_TARGET x86_64-w64-mingw32)
-        set(CMAKE_CXX_COMPILER_TARGET x86_64-w64-mingw32)
 
         # Find MinGW system headers - check common installation paths
         set(MINGW_INCLUDE_PATHS
@@ -253,31 +383,30 @@ if(WIN32 AND USE_MINGW)
 
     # Use MinGW linker for all compilers
     set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_COMPILER} <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_COMPILER} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 
     # Override CMake's Windows-specific compile flags that are set by the platform module
     # These get added by CMake's Windows-Clang.cmake platform file
+
+    # Override all the flag variables that CMake sets for Windows
+    set(CMAKE_C_FLAGS "" CACHE STRING "C flags" FORCE)
+    set(CMAKE_C_FLAGS_DEBUG "-O0 -g -Wall -Wextra -DDEBUG" CACHE STRING "C Debug flags" FORCE)
+    set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "C Release flags" FORCE)
+
+    message(STATUS "MinGW build using clean compiler flags")
+endif()
+
+# Clear Windows-specific CMake flags for native Clang builds
+if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
+    # CMake automatically adds MSVC runtime flags even for Clang, clear them
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreaded "")
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDLL "")
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebugDLL "")
-    set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreaded "")
-    set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDLL "")
-    set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebug "")
-    set(CMAKE_CXX_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDebugDLL "")
 
-    # Clear the MSVC runtime library setting that adds -D_DEBUG -D_DLL -D_MT
+    # Clear the runtime library setting that adds -D_DEBUG -D_DLL -D_MT
     set(CMAKE_MSVC_RUNTIME_LIBRARY "")
 
-    # Override all the flag variables that CMake sets for Windows
-    set(CMAKE_C_FLAGS "" CACHE STRING "C flags" FORCE)
-    set(CMAKE_CXX_FLAGS "" CACHE STRING "CXX flags" FORCE)
-    set(CMAKE_C_FLAGS_DEBUG "-O0 -g -Wall -Wextra -DDEBUG" CACHE STRING "C Debug flags" FORCE)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wextra -DDEBUG" CACHE STRING "CXX Debug flags" FORCE)
-    set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "C Release flags" FORCE)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "CXX Release flags" FORCE)
-
-    message(STATUS "MinGW build using clean compiler flags (no MSVC runtime flags)")
+    message(STATUS "Cleared CMake Windows runtime flags for Clang-only build")
 endif()
 
 # =============================================================================
@@ -351,13 +480,29 @@ if(NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
 endif()
 message(STATUS "Parallel build jobs: ${CPU_CORES}")
 
-# C standard selection - use latest C23 for future-proofing
-# Allow override for test compatibility
+# C standard selection - intelligently detect the best available standard
+# Try C23 first (newer compilers), fall back to C2X for compatibility
 if(NOT CMAKE_C_STANDARD)
-    set(CMAKE_C_STANDARD 23)
+    # Check if compiler supports C23 standard
+    include(CheckCCompilerFlag)
+
+    # First try -std=c23 (newer compilers like Clang 18+, GCC 14+)
+    check_c_compiler_flag("-std=c23" COMPILER_SUPPORTS_C23)
+
+    if(COMPILER_SUPPORTS_C23)
+        set(CMAKE_C_STANDARD 23)
+        message(STATUS "Compiler supports C23 standard")
+    else()
+        # Fall back to C2X for older compilers (GitHub Actions Ubuntu 22.04)
+        set(CMAKE_C_STANDARD 23)  # CMake will translate this to c2x if c23 isn't available
+        message(STATUS "Using C2X standard (C23 preview)")
+    endif()
 endif()
+
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions for POSIX compatibility
+# Enable GNU extensions for POSIX compatibility (strdup, getopt_long, etc.)
+# With C23, this gives us -std=gnu23 or -std=gnu2x
+set(CMAKE_C_EXTENSIONS ON)
 
 
 # Option to build tests
@@ -419,6 +564,8 @@ elseif(WIN32)
     add_definitions(-D_WIN32 -DWIN32_LEAN_AND_MEAN)
     set(PLATFORM_WINDOWS TRUE)
 
+    # Windows SDK version detection will be handled by the comprehensive detection below
+
     # Detect Windows architecture generically
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
         set(PLATFORM_WINDOWS_ARM64 TRUE)
@@ -440,18 +587,11 @@ endif()
 # Compiler Flags (matching Makefile logic)
 # =============================================================================
 
-# Base warning flags for all non-MSVC compilers
-if(NOT MSVC)
-    add_compile_options(-Wall -Wextra)
-endif()
+# Base warning flags for Clang/GCC compilers
+add_compile_options(-Wall -Wextra)
 
 # Platform-specific compiler flags
-if(MSVC)
-    add_compile_options(/W4)
-    # Enable C11 atomic support in MSVC and disable warnings
-    add_compile_options(/experimental:c11atomics)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-elseif(PLATFORM_DARWIN)
+if(PLATFORM_DARWIN)
     # Let CMake handle SDK paths automatically for cross-generator compatibility
     # No manual SDK configuration needed
 endif()
@@ -466,10 +606,7 @@ include_directories(
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug mode WITH sanitizers (default, safe)
     add_definitions(-DDEBUG_MEMORY)
-    if(MSVC)
-        add_compile_options(/Od /Zi)
-        add_definitions(-DDEBUG)
-    elseif(WIN32 AND USE_MINGW)
+    if(WIN32 AND USE_MINGW)
         # MinGW mode already has flags set - skip to avoid conflicts
         message(STATUS "Skipping debug flag setup for MinGW (already configured)")
     else()
@@ -518,10 +655,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     # Dev mode - debug WITHOUT sanitizers (faster iteration)
     add_definitions(-DDEBUG_MEMORY)
-    if(MSVC)
-        add_compile_options(/Od /Zi)
-        add_definitions(-DDEBUG)
-    elseif(WIN32 AND USE_MINGW)
+    if(WIN32 AND USE_MINGW)
         # MinGW mode already has flags set - skip to avoid conflicts
         message(STATUS "Skipping dev flag setup for MinGW (already configured)")
     else()
@@ -535,39 +669,33 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
     add_definitions(-DDEBUG_MEMORY -DCOVERAGE_BUILD)
-    if(NOT MSVC)
-        add_compile_options(-g -O0 --coverage -fprofile-arcs -ftest-coverage)
-        add_link_options(--coverage)
-    endif()
+    add_compile_options(-g -O0 --coverage -fprofile-arcs -ftest-coverage)
+    add_link_options(--coverage)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_definitions(-DNDEBUG)
-    if(MSVC)
-        add_compile_options(/O2)
-    else()
-        # CPU-aware optimization flags (matches Makefile)
-        add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
-        if(PLATFORM_DARWIN)
-            if(IS_ROSETTA EQUAL 1)
-                add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-            elseif(IS_APPLE_SILICON EQUAL 1)
-                add_compile_options(-march=native -mcpu=native -ffast-math -ffp-contract=fast)
-            else()
-                add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-            endif()
-        elseif(PLATFORM_LINUX)
-            if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-                add_compile_options(-mcpu=native -ffp-contract=fast -ffinite-math-only)
-            else()
-                add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-            endif()
+    # CPU-aware optimization flags (matches Makefile)
+    add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
+    if(PLATFORM_DARWIN)
+        if(IS_ROSETTA EQUAL 1)
+            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
+        elseif(IS_APPLE_SILICON EQUAL 1)
+            add_compile_options(-march=native -mcpu=native -ffast-math -ffp-contract=fast)
         else()
-            add_compile_options(-ffp-contract=fast)
+            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
         endif()
+    elseif(PLATFORM_LINUX)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+            add_compile_options(-mcpu=native -ffp-contract=fast -ffinite-math-only)
+        else()
+            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
+        endif()
+    else()
+        add_compile_options(-ffp-contract=fast)
+    endif()
 
-        if(NOT WIN32)
-            add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32)
-            add_link_options(-flto)
-        endif()
+    if(NOT WIN32)
+        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32)
+        add_link_options(-flto)
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
     add_definitions(-DDEBUG_MEMORY)
@@ -859,65 +987,50 @@ endif()
 # Apply specific SIMD flags
 if(ENABLE_SIMD_SSE2)
     add_definitions(-DSIMD_SUPPORT_SSE2)
-    if(NOT MSVC)
-        if(WIN32)
-            add_compile_options(-msse2 -mno-mmx)  # Disable MMX on Windows
-        else()
-            add_compile_options(-msse2)
-        endif()
+    if(WIN32)
+        add_compile_options(-msse2 -mno-mmx)  # Disable MMX on Windows
+    else()
+        add_compile_options(-msse2)
     endif()
 endif()
 
 if(ENABLE_SIMD_SSSE3)
     add_definitions(-DSIMD_SUPPORT_SSSE3)
-    if(NOT MSVC)
-        if(WIN32)
-            add_compile_options(-mssse3 -mno-mmx)  # Disable MMX on Windows
-        else()
-            add_compile_options(-mssse3)
-        endif()
+    if(WIN32)
+        add_compile_options(-mssse3 -mno-mmx)  # Disable MMX on Windows
+    else()
+        add_compile_options(-mssse3)
     endif()
 endif()
 
 if(ENABLE_SIMD_AVX2)
     add_definitions(-DSIMD_SUPPORT_AVX2)
-    if(NOT MSVC)
-        if(WIN32)
-            add_compile_options(-mavx2 -mno-mmx)  # Disable MMX on Windows
-        else()
-            add_compile_options(-mavx2)
-        endif()
-    elseif(MSVC)
-        add_compile_options(/arch:AVX2)
+    if(WIN32)
+        add_compile_options(-mavx2 -mno-mmx)  # Disable MMX on Windows
+    else()
+        add_compile_options(-mavx2)
     endif()
 endif()
 
 if(ENABLE_SIMD_AVX512)
     add_definitions(-DSIMD_SUPPORT_AVX512)
-    if(NOT MSVC)
-        add_compile_options(-mavx512f -mavx512bw)
-    elseif(MSVC)
-        add_compile_options(/arch:AVX512)
-    endif()
+    add_compile_options(-mavx512f -mavx512bw)
 endif()
 
 if(ENABLE_SIMD_NEON)
     add_definitions(-DSIMD_SUPPORT_NEON)
-    # Windows ARM64 with MSVC or Clang needs proper arch flags
+    # Windows ARM64 with Clang needs proper arch flags
     if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64")
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             # Clang on Windows ARM might need explicit flags
             add_compile_options(-march=armv8-a+simd)
         endif()
-        # MSVC on ARM automatically enables NEON
     endif()
 endif()
 
 if(ENABLE_SIMD_SVE)
     add_definitions(-DSIMD_SUPPORT_SVE)
-    if(NOT MSVC)
-        add_compile_options(-march=armv8-a+sve)
-    endif()
+    add_compile_options(-march=armv8-a+sve)
 endif()
 
 # CRC32 Hardware Acceleration
@@ -1036,17 +1149,14 @@ endif()
 if(ENABLE_CRC32_HW)
     add_definitions(-DHAVE_CRC32_HW)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-        if(NOT MSVC)
-            add_compile_options(-msse4.2)
-        endif()
+        add_compile_options(-msse4.2)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64|aarch64")
         # ARM CRC32 requires specific compiler flags
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             add_compile_options(-march=armv8-a+crc)
         elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
             add_compile_options(-march=armv8-a+crc)
         endif()
-        # MSVC on ARM should handle CRC32 automatically if available
     endif()
 endif()
 
@@ -1056,7 +1166,7 @@ endif()
 
 # Platform-specific package management and library linking
 if(WIN32 AND NOT USE_MINGW)
-    # Native Windows with MSVC/Clang - use vcpkg
+    # Native Windows with Clang - use vcpkg
     # Setup vcpkg paths if available
     if(DEFINED ENV{VCPKG_ROOT})
         set(VCPKG_ROOT $ENV{VCPKG_ROOT})
@@ -1136,12 +1246,21 @@ else()
     endif()
 endif()
 
-# Windows SDK and MSVC detection for native Clang builds
+# Windows SDK detection for native Clang builds
 if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
     message(STATUS "Setting up native Windows build with Clang")
 
-    # Find Windows SDK
-    set(WINDOWS_KIT_PATHS
+    # Find Windows SDK - check Visual Studio preferences first, then standard locations
+    set(WINDOWS_KIT_PATHS)
+
+    # Check if Visual Studio has a preferred SDK version via MSBuild
+    if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
+        set(PREFERRED_SDK_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
+        message(STATUS "Visual Studio preferred SDK version: ${PREFERRED_SDK_VERSION}")
+    endif()
+
+    # Check standard Windows Kits locations
+    list(APPEND WINDOWS_KIT_PATHS
         "C:/Program Files (x86)/Windows Kits/10"
         "C:/Program Files/Windows Kits/10"
         "$ENV{WindowsSdkDir}"
@@ -1155,12 +1274,57 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
     endforeach()
 
     if(WINDOWS_KITS_DIR)
-        # Find latest SDK version
+        # Find SDK version - prioritize Visual Studio preferred version if available
         file(GLOB SDK_VERSIONS "${WINDOWS_KITS_DIR}/Lib/10.*")
         if(SDK_VERSIONS)
-            list(SORT SDK_VERSIONS COMPARE NATURAL ORDER DESCENDING)
-            list(GET SDK_VERSIONS 0 LATEST_SDK)
-            get_filename_component(WINDOWS_SDK_VERSION ${LATEST_SDK} NAME)
+            # Check if Visual Studio has a preferred SDK version and it's available
+            if(PREFERRED_SDK_VERSION)
+                set(PREFERRED_SDK_PATH "${WINDOWS_KITS_DIR}/Lib/${PREFERRED_SDK_VERSION}")
+                if(EXISTS "${PREFERRED_SDK_PATH}")
+                    set(WINDOWS_SDK_VERSION ${PREFERRED_SDK_VERSION})
+                    message(STATUS "Using Visual Studio preferred SDK version: ${WINDOWS_SDK_VERSION}")
+                else()
+                    message(STATUS "Visual Studio preferred SDK version ${PREFERRED_SDK_VERSION} not found, selecting latest available")
+                endif()
+            endif()
+
+            # If no preferred version or preferred version not found, select latest
+            if(NOT WINDOWS_SDK_VERSION)
+                # Sort SDK versions properly by parsing version numbers
+                set(SORTED_SDK_VERSIONS)
+                foreach(sdk_path ${SDK_VERSIONS})
+                    get_filename_component(sdk_version ${sdk_path} NAME)
+                    # Extract version components (e.g., "10.0.22621.0" -> 10, 0, 22621, 0)
+                    string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)" version_match "${sdk_version}")
+                    if(version_match)
+                        set(major ${CMAKE_MATCH_1})
+                        set(minor ${CMAKE_MATCH_2})
+                        set(build ${CMAKE_MATCH_3})
+                        set(revision ${CMAKE_MATCH_4})
+                        # Create sortable version string (pad with zeros for proper sorting)
+                        string(LENGTH ${build} build_len)
+                        string(LENGTH ${revision} revision_len)
+                        if(build_len LESS 5)
+                            string(REPEAT "0" 5 build_pad)
+                            string(SUBSTRING ${build_pad} 0 $[5-${build_len}] build_pad)
+                            set(build "${build_pad}${build}")
+                        endif()
+                        if(revision_len LESS 3)
+                            string(REPEAT "0" 3 revision_pad)
+                            string(SUBSTRING ${revision_pad} 0 $[3-${revision_len}] revision_pad)
+                            set(revision "${revision_pad}${revision}")
+                        endif()
+                        set(sort_key "${major}.${minor}.${build}.${revision}")
+                        list(APPEND SORTED_SDK_VERSIONS "${sort_key}|${sdk_version}")
+                    endif()
+                endforeach()
+
+                # Sort by the sortable key
+                list(SORT SORTED_SDK_VERSIONS COMPARE NATURAL ORDER DESCENDING)
+                list(GET SORTED_SDK_VERSIONS 0 LATEST_SDK_ENTRY)
+                string(REGEX REPLACE "^[^|]*\\|" "" WINDOWS_SDK_VERSION "${LATEST_SDK_ENTRY}")
+                message(STATUS "Selected latest available SDK version: ${WINDOWS_SDK_VERSION}")
+            endif()
 
             # Validate SDK has required components
             if(EXISTS "${WINDOWS_KITS_DIR}/Include/${WINDOWS_SDK_VERSION}/ucrt" AND
@@ -1186,31 +1350,123 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
                 )
 
                 message(STATUS "Found Windows SDK ${WINDOWS_SDK_VERSION}")
+
+                # Validate Windows SDK version
+                string(REGEX MATCH "^([0-9]+)\\.([0-9]+)" SDK_VERSION_MATCH "${WINDOWS_SDK_VERSION}")
+                if(SDK_VERSION_MATCH)
+                    set(SDK_MAJOR ${CMAKE_MATCH_1})
+                    set(SDK_MINOR ${CMAKE_MATCH_2})
+
+                    # Check for minimum version 10.0
+                    if(SDK_MAJOR LESS 10)
+                        message(FATAL_ERROR "\n"
+                            "================================================================================\n"
+                            "ERROR: Insufficient Windows SDK Version\n"
+                            "================================================================================\n"
+                            "ASCII-Chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
+                            "Current version detected: ${WINDOWS_SDK_VERSION}\n"
+                            "\n"
+                            "To install Windows SDK 10.0 or higher:\n"
+                            "\n"
+                            "METHOD 1 - Visual Studio Installer (Recommended):\n"
+                            "  1. Open Visual Studio Installer\n"
+                            "  2. Click 'Modify' on your Visual Studio installation\n"
+                            "  3. Go to 'Individual Components' tab\n"
+                            "  4. Search for 'Windows 10 SDK' or 'Windows 11 SDK'\n"
+                            "  5. Select the latest version (10.0.22621.0 or newer)\n"
+                            "  6. Click 'Modify' to install\n"
+                            "\n"
+                            "METHOD 2 - Standalone Installer:\n"
+                            "  1. Download from: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+                            "  2. Run the installer and select 'Windows SDK for Desktop C++ Development'\n"
+                            "\n"
+                            "METHOD 3 - Command Line (winget):\n"
+                            "  winget install Microsoft.WindowsSDK\n"
+                            "\n"
+                            "After installation, restart your command prompt and try building again.\n"
+                            "================================================================================")
+                    else()
+                        message(STATUS "Windows SDK version ${WINDOWS_SDK_VERSION} detected - sufficient for ASCII-Chat")
+                    endif()
+                else()
+                    message(WARNING "Could not parse Windows SDK version: ${WINDOWS_SDK_VERSION}")
+                endif()
+            else()
+                message(WARNING "Windows SDK ${WINDOWS_SDK_VERSION} found but missing required components (ucrt)")
             endif()
+        else()
+            message(WARNING "\n"
+                "================================================================================\n"
+                "WARNING: Could not detect Windows SDK version\n"
+                "================================================================================\n"
+                "ASCII-Chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
+                "If you encounter build errors related to missing headers (mfapi.h, mfidl.h),\n"
+                "please install Windows SDK 10.0 or higher using one of these methods:\n"
+                "\n"
+                "METHOD 1 - Visual Studio Installer (Recommended):\n"
+                "  1. Open Visual Studio Installer\n"
+                "  2. Click 'Modify' on your Visual Studio installation\n"
+                "  3. Go to 'Individual Components' tab\n"
+                "  4. Search for 'Windows 10 SDK' or 'Windows 11 SDK'\n"
+                "  5. Select the latest version (10.0.22621.0 or newer)\n"
+                "  6. Click 'Modify' to install\n"
+                "\n"
+                "METHOD 2 - Standalone Installer:\n"
+                "  Download from: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+                "\n"
+                "METHOD 3 - Command Line (winget):\n"
+                "  winget install Microsoft.WindowsSDK\n"
+                "================================================================================")
         endif()
+    else()
+        message(WARNING "\n"
+            "================================================================================\n"
+            "WARNING: Could not find Windows Kits directory\n"
+            "================================================================================\n"
+            "ASCII-Chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
+            "Please install Windows SDK 10.0 or higher using one of these methods:\n"
+            "\n"
+            "METHOD 1 - Visual Studio Installer (Recommended):\n"
+            "  1. Open Visual Studio Installer\n"
+            "  2. Click 'Modify' on your Visual Studio installation\n"
+            "  3. Go to 'Individual Components' tab\n"
+            "  4. Search for 'Windows 10 SDK' or 'Windows 11 SDK'\n"
+            "  5. Select the latest version (10.0.22621.0 or newer)\n"
+            "  6. Click 'Modify' to install\n"
+            "\n"
+            "METHOD 2 - Standalone Installer:\n"
+            "  Download from: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+            "\n"
+            "METHOD 3 - Command Line (winget):\n"
+            "  winget install Microsoft.WindowsSDK\n"
+            "================================================================================")
     endif()
 
-    # Find MSVC runtime libraries for Clang
-    set(VS_PATHS
-        "C:/Program Files/Microsoft Visual Studio/2022/*/VC/Tools/MSVC/*"
-        "C:/Program Files/Microsoft Visual Studio/2019/*/VC/Tools/MSVC/*"
-        "C:/Program Files (x86)/Microsoft Visual Studio/*/VC/Tools/MSVC/*"
-    )
+    # Override CMake's Windows-Clang platform settings that add -nostartfiles -nostdlib
+    # These flags prevent linking to oldnames.lib and cause link errors
+    # CMake automatically adds these in the Windows-Clang toolchain but they're incorrect for our use case
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        # Clear the CMake flags that cause -nostartfiles -nostdlib to be added
+        set(CMAKE_C_CREATE_SHARED_LIBRARY "<CMAKE_C_COMPILER> <CMAKE_SHARED_LIBRARY_C_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
+        set(CMAKE_C_CREATE_SHARED_MODULE "${CMAKE_C_CREATE_SHARED_LIBRARY}")
+        set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 
-    foreach(VS_PATTERN IN LISTS VS_PATHS)
-        file(GLOB MSVC_VERSIONS "${VS_PATTERN}")
-        if(MSVC_VERSIONS)
-            list(SORT MSVC_VERSIONS COMPARE NATURAL ORDER DESCENDING)
-            list(GET MSVC_VERSIONS 0 LATEST_MSVC)
-            get_filename_component(MSVC_VERSION ${LATEST_MSVC} NAME)
+        # Disable runtime library selection that adds libcmt.lib and oldnames.lib
+        # These are legacy compatibility libraries not needed for modern C code with Clang
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "")
+        set(CMAKE_C_STANDARD_LIBRARIES "")
 
-            if(EXISTS "${LATEST_MSVC}/lib/${WIN_ARCH}")
-                link_directories("${LATEST_MSVC}/lib/${WIN_ARCH}")
-                message(STATUS "Found MSVC ${MSVC_VERSION}")
-                break()
-            endif()
-        endif()
-    endforeach()
+        # Also clear any runtime library flags that might be set by CMake for Windows
+        set(CMAKE_C_STANDARD_LIBRARIES_INIT "")
+        set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
+
+        # Don't add any additional runtime libraries - let Clang use its defaults
+        # The key fix was removing -nostartfiles -nostdlib, now standard linking should work
+
+        message(STATUS "Overrode CMake Windows-Clang linking rules to prevent -nostartfiles -nostdlib")
+        message(STATUS "Removed oldnames.lib from standard libraries (legacy compatibility library not needed)")
+    endif()
+
 endif()
 # Find Windows-specific libraries (native mode only)
 if(WIN32 AND NOT USE_MINGW)
@@ -1400,6 +1656,7 @@ if(WIN32)
         lib/platform/windows/terminal.c
         lib/platform/windows/system.c
         lib/platform/windows/socket.c
+        lib/platform/windows/string.c
         lib/os/windows/webcam_mediafoundation.c
     )
 
@@ -1418,6 +1675,7 @@ else()
         lib/platform/posix/terminal.c
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
+        lib/platform/posix/string.c
     )
 
     if(PLATFORM_DARWIN)
@@ -1453,16 +1711,12 @@ endif()
 if(ENABLE_SIMD_AVX2)
     list(APPEND SIMD_SRCS lib/image2ascii/simd/avx2.c)
     # Set specific compile flags for AVX2 files
-    if(NOT MSVC)
-        set_source_files_properties(lib/image2ascii/simd/avx2.c PROPERTIES COMPILE_FLAGS "-mavx2")
-    endif()
+    set_source_files_properties(lib/image2ascii/simd/avx2.c PROPERTIES COMPILE_FLAGS "-mavx2")
 endif()
 
 if(ENABLE_SIMD_AVX512)
     list(APPEND SIMD_SRCS lib/image2ascii/simd/avx512.c)
-    if(NOT MSVC)
-        set_source_files_properties(lib/image2ascii/simd/avx512.c PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw")
-    endif()
+    set_source_files_properties(lib/image2ascii/simd/avx512.c PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw")
 endif()
 
 if(ENABLE_SIMD_NEON)
@@ -1471,9 +1725,7 @@ endif()
 
 if(ENABLE_SIMD_SVE)
     list(APPEND SIMD_SRCS lib/image2ascii/simd/sve.c)
-    if(NOT MSVC)
-        set_source_files_properties(lib/image2ascii/simd/sve.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve")
-    endif()
+    set_source_files_properties(lib/image2ascii/simd/sve.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve")
 endif()
 
 # Combine all library sources
@@ -1742,14 +1994,55 @@ file(GLOB_RECURSE ALL_SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/tests/*.h
 )
 
+# Include Objective-C files on Apple platforms
+if(APPLE)
+    file(GLOB_RECURSE OBJC_SOURCE_FILES
+        ${CMAKE_SOURCE_DIR}/lib/**/*.m
+        ${CMAKE_SOURCE_DIR}/lib/*.m
+        ${CMAKE_SOURCE_DIR}/src/**/*.m
+        ${CMAKE_SOURCE_DIR}/src/*.m
+    )
+    list(APPEND ALL_SOURCE_FILES ${OBJC_SOURCE_FILES})
+endif()
+
+# Create production source files list (exclude tests for clang-tidy)
+file(GLOB_RECURSE PRODUCTION_SOURCE_FILES
+    ${CMAKE_SOURCE_DIR}/src/**/*.c
+    ${CMAKE_SOURCE_DIR}/src/**/*.h
+    ${CMAKE_SOURCE_DIR}/src/*.c
+    ${CMAKE_SOURCE_DIR}/src/*.h
+    ${CMAKE_SOURCE_DIR}/lib/**/*.c
+    ${CMAKE_SOURCE_DIR}/lib/**/*.h
+    ${CMAKE_SOURCE_DIR}/lib/*.c
+    ${CMAKE_SOURCE_DIR}/lib/*.h
+)
+
+# Include Objective-C files in production source files on Apple platforms
+if(APPLE)
+    file(GLOB_RECURSE OBJC_PRODUCTION_FILES
+        ${CMAKE_SOURCE_DIR}/lib/**/*.m
+        ${CMAKE_SOURCE_DIR}/lib/*.m
+        ${CMAKE_SOURCE_DIR}/src/**/*.m
+        ${CMAKE_SOURCE_DIR}/src/*.m
+    )
+    list(APPEND PRODUCTION_SOURCE_FILES ${OBJC_PRODUCTION_FILES})
+endif()
+
 # Filter out third-party or generated files if needed
-list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX ".*\.m$")  # Exclude Objective-C files
+# Note: Objective-C files (.m) are included for Apple platforms
 
 # Find clang-format executable
 find_program(CLANG_FORMAT_EXECUTABLE NAMES clang-format)
 
 if(CLANG_FORMAT_EXECUTABLE)
     add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+        COMMENT "Formatting source code with clang-format"
+        VERBATIM
+    )
+
+    # Alias target: clang-format (same as format)
+    add_custom_target(clang-format
         COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
         COMMENT "Formatting source code with clang-format"
         VERBATIM
@@ -1766,6 +2059,9 @@ else()
     add_custom_target(format
         COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
     )
+    add_custom_target(clang-format
+        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+    )
     add_custom_target(format-check
         COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
     )
@@ -1775,33 +2071,13 @@ endif()
 find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
 
 if(CLANG_TIDY_EXECUTABLE)
-    # Create .clang-tidy config file if it doesn't exist
-    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/.clang-tidy")
-        file(WRITE "${CMAKE_SOURCE_DIR}/.clang-tidy"
-"Checks: '-*,
-  bugprone-*,
-  cert-*,
-  clang-analyzer-*,
-  misc-*,
-  modernize-*,
-  performance-*,
-  portability-*,
-  readability-*,
-  -modernize-use-trailing-return-type,
-  -readability-magic-numbers,
-  -cert-err33-c'
-WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
-AnalyzeTemporaryDtors: false
-FormatStyle: file
-")
-    endif()
-
     add_custom_target(clang-tidy
         COMMAND ${CLANG_TIDY_EXECUTABLE}
+            --config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
             -p ${CMAKE_BINARY_DIR}
-            ${ALL_SOURCE_FILES}
-        COMMENT "Running clang-tidy static analysis"
+            ${PRODUCTION_SOURCE_FILES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy static analysis on production code (excluding tests)"
         VERBATIM
     )
 else()
@@ -1882,7 +2158,6 @@ message(STATUS "========================================")
 message(STATUS "  Build type:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C Standard:        C${CMAKE_C_STANDARD}")
 message(STATUS "  C Compiler:        ${CMAKE_C_COMPILER}")
-message(STATUS "  C++ Compiler:      ${CMAKE_CXX_COMPILER}")
 if(CMAKE_C_COMPILER_LAUNCHER)
     message(STATUS "  Compiler Launcher: ${CMAKE_C_COMPILER_LAUNCHER}")
 endif()
@@ -1933,9 +2208,6 @@ if(DEFINED ENV{CC} OR DEFINED ENV{CFLAGS} OR DEFINED ENV{CPPFLAGS} OR DEFINED EN
     message(STATUS "Environment Configuration:")
     if(DEFINED ENV{CC})
         message(STATUS "  CC:                $ENV{CC}")
-    endif()
-    if(DEFINED ENV{CXX})
-        message(STATUS "  CXX:               $ENV{CXX}")
     endif()
     if(DEFINED ENV{CFLAGS})
         message(STATUS "  CFLAGS:            $ENV{CFLAGS}")

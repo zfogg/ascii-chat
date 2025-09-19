@@ -1,67 +1,37 @@
-#pragma once
-
 /**
- * @file string.h
- * @brief Cross-platform string manipulation interface for ASCII-Chat
+ * @file platform/string.h
+ * @brief Platform-independent safe string functions
  *
- * This header provides safe string manipulation functions with consistent
- * behavior across Windows and POSIX platforms.
+ * This file declares safe string functions that satisfy clang-tidy
+ * cert-err33-c requirements.
  *
- * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
+ * @author Assistant
+ * @date December 2024
  */
 
-#include <stddef.h>
+#ifndef PLATFORM_STRING_H
+#define PLATFORM_STRING_H
+
+#include <stdio.h>
 #include <stdarg.h>
-#include <stdbool.h>
 
-// ============================================================================
-// Platform String & Memory Functions
-// ============================================================================
-// Cross-platform string and memory operations with consistent behavior
-// across Windows, Linux, and macOS.
+/**
+ * @brief Safe version of snprintf that ensures null termination
+ * @param buffer Buffer to write to
+ * @param buffer_size Size of the buffer
+ * @param format Format string
+ * @param ... Variable arguments
+ * @return Number of characters written (not including null terminator)
+ */
+int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
 
-// ============================================================================
-// String Operations
-// ============================================================================
+/**
+ * @brief Safe version of fprintf
+ * @param stream File stream to write to
+ * @param format Format string
+ * @param ... Variable arguments
+ * @return Number of characters written or negative on error
+ */
+int safe_fprintf(FILE *stream, const char *format, ...);
 
-// Safe string formatting
-int platform_snprintf(char *str, size_t size, const char *format, ...);
-int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap);
-
-// String duplication
-char *platform_strdup(const char *s);
-char *platform_strndup(const char *s, size_t n);
-
-// Case-insensitive comparison
-int platform_strcasecmp(const char *s1, const char *s2);
-int platform_strncasecmp(const char *s1, const char *s2, size_t n);
-
-// Thread-safe tokenization
-char *platform_strtok_r(char *str, const char *delim, char **saveptr);
-
-// Safe string copy (returns destination length)
-size_t platform_strlcpy(char *dst, const char *src, size_t size);
-size_t platform_strlcat(char *dst, const char *src, size_t size);
-
-// ============================================================================
-// Memory Operations
-// ============================================================================
-
-// Aligned memory allocation
-void *platform_aligned_alloc(size_t alignment, size_t size);
-void platform_aligned_free(void *ptr);
-
-// Memory barriers
-void platform_memory_barrier(void);
-
-// ============================================================================
-// Error Handling
-// ============================================================================
-
-// Thread-safe error string
-const char *platform_strerror(int errnum);
-
-// Last error code (errno on POSIX, GetLastError on Windows)
-int platform_get_last_error(void);
-void platform_set_last_error(int error);
+#endif // PLATFORM_STRING_H

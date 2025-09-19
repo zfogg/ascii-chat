@@ -75,9 +75,9 @@ static void convert_yuy2_to_rgb_scalar(const uint8_t *yuy2, rgb_t *rgb, int widt
     int g = y0 - ((87 * cb) >> 8) - ((183 * cr) >> 8);
     int b = y0 + ((444 * cb) >> 8);
 
-    rgb[out_idx].r = (r < 0) ? 0 : ((r > 255) ? 255 : r);
-    rgb[out_idx].g = (g < 0) ? 0 : ((g > 255) ? 255 : g);
-    rgb[out_idx].b = (b < 0) ? 0 : ((b > 255) ? 255 : b);
+    rgb[out_idx].r = clamp_rgb(r);
+    rgb[out_idx].g = clamp_rgb(g);
+    rgb[out_idx].b = clamp_rgb(b);
     out_idx++;
 
     // Second pixel
@@ -86,9 +86,9 @@ static void convert_yuy2_to_rgb_scalar(const uint8_t *yuy2, rgb_t *rgb, int widt
       g = y1 - ((87 * cb) >> 8) - ((183 * cr) >> 8);
       b = y1 + ((444 * cb) >> 8);
 
-      rgb[out_idx].r = (r < 0) ? 0 : ((r > 255) ? 255 : r);
-      rgb[out_idx].g = (g < 0) ? 0 : ((g > 255) ? 255 : g);
-      rgb[out_idx].b = (b < 0) ? 0 : ((b > 255) ? 255 : b);
+      rgb[out_idx].r = clamp_rgb(r);
+      rgb[out_idx].g = clamp_rgb(g);
+      rgb[out_idx].b = clamp_rgb(b);
       out_idx++;
     }
   }

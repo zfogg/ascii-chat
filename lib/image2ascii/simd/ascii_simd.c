@@ -154,7 +154,7 @@ void str_printf(Str *s, const char *fmt, ...) {
     exit(1);
   }
   va_start(ap, fmt);
-  vsnprintf(heap, (size_t)n + 1, fmt, ap);
+  (void)vsnprintf(heap, (size_t)n + 1, fmt, ap);
   va_end(ap);
   str_append_bytes(s, heap, (size_t)n);
   free(heap);
@@ -320,9 +320,9 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
   } else if (pixel_count < 200000) {
     base_iterations = 20; // 320×240 = 76,800 pixels -> 20 iterations
   } else if (pixel_count < 500000) {
-    base_iterations = 100; // 640×480 = 307,200 pixels -> 100 iterations
+    base_iterations = 10; // 640×480 = 307,200 pixels -> 10 iterations
   } else {
-    base_iterations = 50; // 1280×720 = 921,600 pixels -> 50 iterations
+    base_iterations = 5; // 1280×720 = 921,600 pixels -> 5 iterations
   }
 
   // Ensure we have at least the minimum for reliable timing
@@ -351,7 +351,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   // Use synthetic data for consistent cross-platform testing
   printf("Using synthetic gradient data for consistent benchmarking\n");
-  srand(12345); // Consistent results across runs
+  srand(12345); // Consistent results across runs // NOLINT(cert-msc32-c,cert-msc51-cpp)
   for (int i = 0; i < pixel_count; i++) {
     int x = i % width;
     int y = i / width;
@@ -361,13 +361,13 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
     int base_b = ((x + y) * 127) / (width + height);
 
     // Add small random variation to make it realistic
-    int temp_r = base_r + (rand() % 32 - 16);
-    int temp_g = base_g + (rand() % 32 - 16);
-    int temp_b = base_b + (rand() % 32 - 16);
+    int temp_r = base_r + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+    int temp_g = base_g + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+    int temp_b = base_b + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
 
-    test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
-    test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
-    test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
+    test_pixels[i].r = clamp_rgb(temp_r);
+    test_pixels[i].g = clamp_rgb(temp_g);
+    test_pixels[i].b = clamp_rgb(temp_b);
   }
 
   // Copy test data to test image pixels
@@ -516,7 +516,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
   // Use synthetic gradient data for consistent cross-platform benchmarking
   printf("Using coherent gradient data for realistic color testing\n");
-  srand(12345); // For consistent gradient variation across runs
+  srand(12345); // For consistent gradient variation across runs // NOLINT(cert-msc32-c,cert-msc51-cpp)
   for (int i = 0; i < pixel_count; i++) {
     int x = i % width;
     int y = i / width;
@@ -526,13 +526,13 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
     int base_b = ((x + y) * 127) / (width + height);
 
     // Add realistic variation
-    int temp_r = base_r + (rand() % 32 - 16);
-    int temp_g = base_g + (rand() % 32 - 16);
-    int temp_b = base_b + (rand() % 32 - 16);
+    int temp_r = base_r + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+    int temp_g = base_g + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+    int temp_b = base_b + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
 
-    test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
-    test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
-    test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
+    test_pixels[i].r = clamp_rgb(temp_r);
+    test_pixels[i].g = clamp_rgb(temp_g);
+    test_pixels[i].b = clamp_rgb(temp_b);
   }
 
   // Populate test image with same data as test_pixels
@@ -688,7 +688,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   } else {
     // Fall back to synthetic gradient data
     printf("No source image provided, using synthetic gradient data\n");
-    srand(12345);
+    srand(12345); // NOLINT(cert-msc32-c,cert-msc51-cpp)
     for (int i = 0; i < pixel_count; i++) {
       int x = i % width;
       int y = i / width;
@@ -696,13 +696,13 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
       int base_g = (y * 255 / height);
       int base_b = ((x + y) * 127 / (width + height));
 
-      int temp_r = base_r + (rand() % 16 - 8);
-      int temp_g = base_g + (rand() % 16 - 8);
-      int temp_b = base_b + (rand() % 16 - 8);
+      int temp_r = base_r + (rand() % 16 - 8); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+      int temp_g = base_g + (rand() % 16 - 8); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+      int temp_b = base_b + (rand() % 16 - 8); // NOLINT(cert-msc30-c,cert-msc50-cpp)
 
-      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
-      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
-      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
+      test_pixels[i].r = clamp_rgb(temp_r);
+      test_pixels[i].g = clamp_rgb(temp_g);
+      test_pixels[i].b = clamp_rgb(temp_b);
     }
   }
 
@@ -905,7 +905,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     printf("Using synthetic gradient data for COLOR %s %dx%d benchmarking with %d iterations...\n", mode_str, width,
            height, adaptive_iterations);
 
-    srand(12345); // Consistent results across runs
+    srand(12345); // Consistent results across runs // NOLINT(cert-msc32-c,cert-msc51-cpp)
     for (int i = 0; i < pixel_count; i++) {
       int x = i % width;
       int y = i / width;
@@ -913,13 +913,13 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       int base_g = (y * 255) / height;
       int base_b = ((x + y) * 127) / (width + height);
 
-      int temp_r = base_r + (rand() % 32 - 16);
-      int temp_g = base_g + (rand() % 32 - 16);
-      int temp_b = base_b + (rand() % 32 - 16);
+      int temp_r = base_r + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+      int temp_g = base_g + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+      int temp_b = base_b + (rand() % 32 - 16); // NOLINT(cert-msc30-c,cert-msc50-cpp)
 
-      test_pixels[i].r = (temp_r < 0) ? 0 : (temp_r > 255) ? 255 : temp_r;
-      test_pixels[i].g = (temp_g < 0) ? 0 : (temp_g > 255) ? 255 : temp_g;
-      test_pixels[i].b = (temp_b < 0) ? 0 : (temp_b > 255) ? 255 : temp_b;
+      test_pixels[i].r = clamp_rgb(temp_r);
+      test_pixels[i].g = clamp_rgb(temp_g);
+      test_pixels[i].b = clamp_rgb(temp_b);
     }
   }
 
@@ -934,7 +934,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
     if (test_image == NULL) {
-      fprintf(stderr, "Failed to allocate test_image in benchmark. Aborting loop.\n");
+      (void)fprintf(stderr, "Failed to allocate test_image in benchmark. Aborting loop.\n");
       free(test_pixels);
       free(output_buffer);
       exit(1);

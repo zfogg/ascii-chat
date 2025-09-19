@@ -16,4 +16,3 @@ void handle_client_leave_packet(client_info_t *client);
 
 // Protocol utility functions
 int send_server_state_to_client(client_info_t *client);
-int send_clear_console_to_client(client_info_t *client);

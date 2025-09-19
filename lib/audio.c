@@ -35,10 +35,12 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     if (ctx->playback_buffer != NULL) {
       int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
-        memset(output + samples_read, 0, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
+        SAFE_MEMSET(output + samples_read, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float), 0,
+                    (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
       }
     } else {
-      memset(output, 0, framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
+      SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
+                  framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
     }
   }
 
@@ -54,7 +56,7 @@ audio_ring_buffer_t *audio_ring_buffer_create(void) {
     return NULL;
   }
 
-  memset(rb->data, 0, sizeof(rb->data));
+  SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
   rb->write_index = 0;
   rb->read_index = 0;
 
@@ -102,11 +104,12 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
 
   if (samples <= remaining) {
     // Can copy in one chunk
-    memcpy(&rb->data[write_idx], data, samples * sizeof(float));
+    SAFE_MEMCPY(&rb->data[write_idx], samples * sizeof(float), data, samples * sizeof(float));
   } else {
     // Need to wrap around - copy in two chunks
-    memcpy(&rb->data[write_idx], data, remaining * sizeof(float));
-    memcpy(&rb->data[0], &data[remaining], (samples - remaining) * sizeof(float));
+    SAFE_MEMCPY(&rb->data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
+    SAFE_MEMCPY(&rb->data[0], (samples - remaining) * sizeof(float), &data[remaining],
+                (samples - remaining) * sizeof(float));
   }
 
   rb->write_index = (write_idx + samples) % AUDIO_RING_BUFFER_SIZE;
@@ -130,11 +133,12 @@ int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
 
   if (to_read <= remaining) {
     // Can copy in one chunk
-    memcpy(data, &rb->data[read_idx], to_read * sizeof(float));
+    SAFE_MEMCPY(data, to_read * sizeof(float), &rb->data[read_idx], to_read * sizeof(float));
   } else {
     // Need to wrap around - copy in two chunks
-    memcpy(data, &rb->data[read_idx], remaining * sizeof(float));
-    memcpy(&data[remaining], &rb->data[0], (to_read - remaining) * sizeof(float));
+    SAFE_MEMCPY(data, remaining * sizeof(float), &rb->data[read_idx], remaining * sizeof(float));
+    SAFE_MEMCPY(&data[remaining], (to_read - remaining) * sizeof(float), &rb->data[0],
+                (to_read - remaining) * sizeof(float));
   }
 
   rb->read_index = (read_idx + to_read) % AUDIO_RING_BUFFER_SIZE;
@@ -153,9 +157,8 @@ int audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
 
   if (write_idx >= read_idx) {
     return write_idx - read_idx;
-  } else {
-    return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
   }
+  return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
 }
 
 int audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
@@ -171,7 +174,7 @@ int audio_init(audio_context_t *ctx) {
     return -1;
   }
 
-  memset(ctx, 0, sizeof(audio_context_t));
+  SAFE_MEMSET(ctx, sizeof(audio_context_t), 0, sizeof(audio_context_t));
 
   if (mutex_init(&ctx->state_mutex) != 0) {
     log_error("Failed to initialize audio context mutex");

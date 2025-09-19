@@ -163,6 +163,7 @@ static void sigwinch_handler(int sigwinch) {
         log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
       } else {
         display_full_reset();
+        log_set_terminal_output(false);
       }
     }
   }
@@ -215,10 +216,10 @@ static void shutdown_client() {
 static int initialize_client_systems() {
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
-    fprintf(stderr, "FATAL: Failed to initialize platform\n");
+    (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
     return 1;
   }
-  atexit(platform_cleanup);
+  (void)atexit(platform_cleanup);
 
   // Initialize palette based on command line options
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
@@ -237,22 +238,22 @@ static int initialize_client_systems() {
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
 
-  // Disable terminal output by default for client (logs interfere with ASCII display)
-  // Only show terminal output in snapshot mode for debugging
-  log_set_terminal_output(opt_snapshot_mode && !opt_quiet);
+  // Start with terminal output disabled for clean ASCII display
+  // It will be enabled only for initial connection attempts and errors
+  log_set_terminal_output(true);
   log_truncate_if_large();
 
   // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
   debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
   if (!opt_snapshot_mode) {
-    atexit(debug_memory_report);
+    (void)atexit(debug_memory_report);
   }
 #endif
 
   // Initialize global shared buffer pool
   data_buffer_pool_init_global();
-  atexit(data_buffer_pool_cleanup_global);
+  (void)atexit(data_buffer_pool_cleanup_global);
 
   // Initialize server connection management
   if (server_connection_init() != 0) {
@@ -313,7 +314,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Register cleanup function for graceful shutdown
-  atexit(shutdown_client);
+  (void)atexit(shutdown_client);
 
   // Install signal handlers for graceful shutdown and terminal resize
   platform_signal(SIGINT, sigint_handler);
@@ -327,9 +328,13 @@ int main(int argc, char *argv[]) {
   // Perform initial terminal reset if running interactively
   if (!opt_snapshot_mode && display_has_tty()) {
     display_full_reset();
+    log_set_terminal_output(false);
   }
 
-  log_info("ASCII-Chat client started");
+  // Track if we've ever successfully connected during this session
+  static bool has_ever_connected = false;
+
+  // Startup message only logged to file (terminal output is disabled by default)
 
   /* ========================================================================
    * Main Connection Loop
@@ -338,18 +343,45 @@ int main(int argc, char *argv[]) {
 
   int reconnect_attempt = 0;
   bool first_connection = true;
+  const int MAX_RECONNECT_ATTEMPTS = 10; // Give up after 10 failed attempts
 
   while (!should_exit()) {
     // Handle connection establishment or reconnection
     int connection_result =
-        server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt, first_connection);
+        server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt, first_connection, has_ever_connected);
 
     if (connection_result != 0) {
       // Connection failed - increment attempt counter and retry
       reconnect_attempt++;
-      if (reconnect_attempt == 1) {
-        // Clear console on first reconnection attempt
+
+      if (has_ever_connected) {
         display_full_reset();
+        log_set_terminal_output(true);
+      } else {
+        // Add newline to separate from ASCII art display for first-time connection failures
+        printf("\n");
+      }
+
+      if (has_ever_connected) {
+        log_info("Reconnection attempt #%d...", reconnect_attempt);
+      } else {
+        log_info("Connection attempt #%d...", reconnect_attempt);
+      }
+
+      // Give up after maximum attempts
+      if (reconnect_attempt >= MAX_RECONNECT_ATTEMPTS) {
+        log_error("Failed to connect after %d attempts. Giving up.", MAX_RECONNECT_ATTEMPTS);
+        display_full_reset();
+        // Ensure terminal logging is ON when giving up on connection
+        log_set_terminal_output(true);
+        printf("\n=== ASCII-Chat Client ===\n");
+        printf("Connection failed after %d attempts.\n", MAX_RECONNECT_ATTEMPTS);
+        printf("Press Ctrl+C to exit.\n\n");
+        // Wait for user signal instead of infinite retry
+        while (!should_exit()) {
+          platform_sleep_usec(100000); // Sleep 100ms
+        }
+        break;
       }
       continue;
     }
@@ -358,7 +390,18 @@ int main(int argc, char *argv[]) {
     reconnect_attempt = 0;
     first_connection = false;
 
-    log_info("Connected successfully, starting worker threads");
+    // Show appropriate connection message based on whether this is first connection or reconnection
+    if (!has_ever_connected) {
+      log_info("Connected successfully, starting worker threads");
+      has_ever_connected = true;
+    } else {
+      log_info("Reconnected successfully, starting worker threads");
+    }
+
+    log_set_terminal_output(false);
+
+    // Clear terminal to remove reconnection logs before ASCII art starts
+    display_full_reset();
 
     // Start all worker threads for this connection
     if (protocol_start_connection() != 0) {
@@ -390,6 +433,13 @@ int main(int argc, char *argv[]) {
 
     // Connection broken - clean up this connection and prepare for reconnect
     log_info("Connection lost, cleaning up for reconnection");
+
+    // Re-enable terminal logging when connection is lost for debugging reconnection
+    // (but only if we've ever successfully connected before)
+    if (has_ever_connected) {
+      printf("\n");
+      log_set_terminal_output(true);
+    }
 
     protocol_stop_connection();
     server_connection_close();

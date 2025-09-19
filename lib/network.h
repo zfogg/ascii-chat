@@ -8,7 +8,7 @@
 
 // Timeout constants (in seconds)
 #define CONNECT_TIMEOUT 10
-#define SEND_TIMEOUT 10
+#define SEND_TIMEOUT 2
 #define RECV_TIMEOUT 30
 #define ACCEPT_TIMEOUT 10
 
@@ -56,7 +56,7 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 
 /* Packet-based communication protocol */
 #define PACKET_MAGIC 0xDEADBEEF
-#define MAX_PACKET_SIZE (5 * 1024 * 1024) // 5MB max packet size
+#define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024) // 5MB max packet size
 
 typedef enum {
   // Unified frame packets (header + data in single packet)

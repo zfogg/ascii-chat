@@ -170,12 +170,25 @@ static void full_terminal_reset(int fd) {
  * @param use_direct_tty Whether to use direct TTY output or stdout
  */
 static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
+  // Safety check for NULL or empty data
+  if (!frame_data) {
+    log_error("write_frame_to_output: NULL frame_data");
+    return;
+  }
+
+  // Calculate length safely to avoid potential segfault in strlen
+  size_t frame_len = strnlen(frame_data, 1024 * 1024); // Max 1MB frame
+  if (frame_len == 0) {
+    log_debug("write_frame_to_output: Empty frame data");
+    return;
+  }
+
   if (use_direct_tty) {
     // Direct TTY for interactive use
     if (g_tty_info.fd >= 0) {
       // Always position cursor for TTY output (even in snapshot mode)
       cursor_reset(g_tty_info.fd);
-      write(g_tty_info.fd, frame_data, strlen(frame_data));
+      write(g_tty_info.fd, frame_data, frame_len);
     } else {
       log_error("Failed to open TTY: %s", g_tty_info.path ? g_tty_info.path : "unknown");
     }
@@ -185,8 +198,11 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
     if (!opt_snapshot_mode) {
       cursor_reset(STDOUT_FILENO);
     }
-    write(STDOUT_FILENO, frame_data, strlen(frame_data));
-    platform_fsync(STDOUT_FILENO);
+    write(STDOUT_FILENO, frame_data, frame_len);
+    // Only fsync if we have a valid file descriptor and not on Windows console
+    if (!platform_isatty(STDOUT_FILENO)) {
+      platform_fsync(STDOUT_FILENO);
+    }
   }
 }
 

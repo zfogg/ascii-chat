@@ -45,10 +45,10 @@ typedef struct {
   bool client_palette_initialized;    // Whether client's palette is set up
 
   // Stream dimensions
-  unsigned short width, height;
+  atomic_ushort width, height;
 
   // Statistics
-  bool active;
+  atomic_bool active;
   time_t connected_at;
   uint64_t frames_sent;
   uint64_t frames_received; // Track incoming frames from this client
@@ -57,21 +57,25 @@ typedef struct {
   video_frame_buffer_t *incoming_video_buffer; // Modern double-buffered video frame
   audio_ring_buffer_t *incoming_audio_buffer;  // Buffer for this client's audio
 
-  // Professional double-buffer system (no cached frames needed)
+  // Professional double-buffer system for outgoing frames
+  video_frame_buffer_t *outgoing_video_buffer; // Double buffer for ASCII frames to send
 
-  // Packet queues for outgoing data (per-client queues for isolation)
+  // Packet queue for audio only (video uses double buffer now)
   packet_queue_t *audio_queue; // Queue for audio packets to send to this client
-  packet_queue_t *video_queue; // Queue for video packets to send to this client
 
   // Dedicated send thread for this client
   asciithread_t send_thread;
   bool send_thread_running;
 
+  // Pre-allocated buffers to avoid malloc/free in send thread (prevents deadlocks)
+  void *send_buffer;
+  size_t send_buffer_size;
+
   // Per-client rendering threads
   asciithread_t video_render_thread;
   asciithread_t audio_render_thread;
-  bool video_render_thread_running;
-  bool audio_render_thread_running;
+  atomic_bool video_render_thread_running;
+  atomic_bool audio_render_thread_running;
 
   // Per-client processing state
   struct timespec last_video_render_time;

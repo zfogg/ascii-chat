@@ -223,7 +223,7 @@ cmake --build build
 
 ### Essential Commands
 ```bash
-# Start server (listens on port 8080)
+# Start server (listens on dynamic port - check server logs for actual port)
 ./build/bin/ascii-chat-server  # Unix/macOS
 ./build/bin/ascii-chat-server.exe  # Windows
 
@@ -232,7 +232,7 @@ cmake --build build
 ./build/bin/ascii-chat-client.exe  # Windows
 
 # Connect to a server
-./build/bin/ascii-chat-client --address 127.0.0.1 --port 8080
+./build/bin/ascii-chat-client --address 127.0.0.1 --port 27224
 
 # Run with custom dimensions (by default it uses terminal size)
 ./build/bin/ascii-chat-client --width 80 --height 24

@@ -14,7 +14,7 @@ int compress_data(const void *input, size_t input_size, void **output, size_t *o
 
   // Calculate maximum compressed size
   uLongf compressed_size = compressBound(input_size);
-  unsigned char *compressed_data;
+  unsigned char *compressed_data = NULL;
   SAFE_MALLOC(compressed_data, compressed_size, unsigned char *);
 
   if (!compressed_data) {
@@ -52,6 +52,6 @@ bool should_compress(size_t original_size, size_t compressed_size) {
   if (original_size == 0)
     return false;
 
-  float ratio = (float)compressed_size / original_size;
+  float ratio = (float)compressed_size / (float)original_size;
   return ratio < COMPRESSION_RATIO_THRESHOLD;
 }

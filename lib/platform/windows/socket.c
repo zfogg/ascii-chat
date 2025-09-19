@@ -1,10 +1,12 @@
 #ifdef _WIN32
 
-#include "platform/abstraction.h"
+#include "platform/socket.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <mstcpip.h>
 #include <windows.h>
 #include <stdio.h>
+#include "common.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -63,7 +65,48 @@ int socket_listen(socket_t sock, int backlog) {
 }
 
 socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
-  return accept(sock, addr, addrlen);
+  socket_t client_sock = accept(sock, addr, addrlen);
+  if (client_sock == INVALID_SOCKET) {
+    return client_sock;
+  }
+
+  // Automatically optimize all accepted sockets for high-throughput video streaming
+  // 1. Disable Nagle algorithm - CRITICAL for real-time video
+  int nodelay = 1;
+  setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&nodelay, sizeof(nodelay));
+
+  // 2. Increase send buffer for video streaming (2MB with fallbacks)
+  int send_buffer = 2 * 1024 * 1024; // 2MB
+  if (setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, (const char *)&send_buffer, sizeof(send_buffer)) != 0) {
+    send_buffer = 512 * 1024; // 512KB fallback
+    if (setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, (const char *)&send_buffer, sizeof(send_buffer)) != 0) {
+      send_buffer = 128 * 1024; // 128KB fallback
+      setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, (const char *)&send_buffer, sizeof(send_buffer));
+    }
+  }
+
+  // 3. Increase receive buffer (2MB with fallbacks)
+  int recv_buffer = 2 * 1024 * 1024; // 2MB
+  if (setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, (const char *)&recv_buffer, sizeof(recv_buffer)) != 0) {
+    recv_buffer = 512 * 1024; // 512KB fallback
+    if (setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, (const char *)&recv_buffer, sizeof(recv_buffer)) != 0) {
+      recv_buffer = 128 * 1024; // 128KB fallback
+      setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, (const char *)&recv_buffer, sizeof(recv_buffer));
+    }
+  }
+
+  // 4. Set timeouts to prevent blocking
+  DWORD send_timeout = 5000; // 5 seconds
+  setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&send_timeout, sizeof(send_timeout));
+
+  DWORD recv_timeout = 10000; // 10 seconds
+  setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&recv_timeout, sizeof(recv_timeout));
+
+  // 5. Enable keepalive (optional)
+  int keepalive = 1;
+  setsockopt(client_sock, SOL_SOCKET, SO_KEEPALIVE, (const char *)&keepalive, sizeof(keepalive));
+
+  return client_sock;
 }
 
 int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen) {
@@ -293,14 +336,33 @@ int socket_get_last_error(void) {
  * @return Error string
  */
 const char *socket_get_error_string(void) {
-  static __thread char error_buf[256];
-  int error = WSAGetLastError();
-  FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error,
-                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_buf, sizeof(error_buf), NULL);
-  return error_buf;
+  return socket_error_string(WSAGetLastError());
 }
 
-#endif // _WIN32
+/**
+ * @brief Robust socket optimization for high-throughput video streaming on Windows
+ *
+ * This function applies critical TCP optimizations for real-time video streaming.
+ * It is designed to be resilient - partial failures are logged but do not prevent
+ * the connection from working. Only critical failures cause the function to fail.
+ *
+ * OPTIMIZATIONS APPLIED:
+ * ======================
+ * 1. TCP_NODELAY: Disables Nagle algorithm for low latency (CRITICAL)
+ * 2. Large send/receive buffers: 2MB each for high throughput (IMPORTANT)
+ * 3. Keepalive: Faster detection of dead connections (NICE TO HAVE)
+ * 4. Linger settings: Clean connection shutdown (NICE TO HAVE)
+ * 5. Send/receive timeouts: Prevent blocking on slow clients (IMPORTANT)
+ *
+ * ERROR HANDLING STRATEGY:
+ * ========================
+ * - Critical options (TCP_NODELAY): Function fails if these fail
+ * - Important options (buffers, timeouts): Logged but continue
+ * - Nice-to-have options (keepalive): Ignored if they fail
+ *
+ * @param sock Socket descriptor to optimize
+ * @return 0 on success, -1 on critical failure
+ */
 // Platform-safe FD set wrappers
 void socket_fd_zero(fd_set *set) {
   FD_ZERO(set);
@@ -314,3 +376,5 @@ void socket_fd_set(socket_t sock, fd_set *set) {
 int socket_fd_isset(socket_t sock, fd_set *set) {
   return FD_ISSET(sock, set);
 }
+
+#endif // _WIN32

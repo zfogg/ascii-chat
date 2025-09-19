@@ -15,6 +15,12 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+// Define ssize_t for Windows
+#ifdef _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 // ============================================================================
 // Platform-Internal Functions
 // ============================================================================

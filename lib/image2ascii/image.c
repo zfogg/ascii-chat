@@ -129,7 +129,8 @@ void image_clear(image_t *p) {
     log_error("image_clear: p or p->pixels is NULL");
     return;
   }
-  memset(p->pixels, 0, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t));
+  SAFE_MEMSET(p->pixels, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t), 0,
+              (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t));
 }
 
 inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
@@ -453,13 +454,13 @@ char *image_print_color(const image_t *p, const char *palette) {
 // RGB to ANSI color conversion functions
 char *rgb_to_ansi_fg(int r, int g, int b) {
   _Thread_local static char color_code[20]; // \033[38;2;255;255;255m + \0 = 20 bytes max
-  snprintf(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
+  SAFE_SNPRINTF(color_code, sizeof(color_code), "\033[38;2;%d;%d;%dm", r, g, b);
   return color_code;
 }
 
 char *rgb_to_ansi_bg(int r, int g, int b) {
   _Thread_local static char color_code[20]; // \033[48;2;255;255;255m + \0 = 20 bytes max
-  snprintf(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
+  SAFE_SNPRINTF(color_code, sizeof(color_code), "\033[48;2;%d;%d;%dm", r, g, b);
   return color_code;
 }
 
@@ -556,33 +557,33 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 }
 
 // 256-color image printing function using existing SIMD optimized code
-char *image_print_256color(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    log_error("image_print_256color: p or p->pixels or palette is NULL");
+char *image_print_256color(const image_t *image, const char *palette) {
+  if (!image || !image->pixels || !palette) {
+    log_error("image_print_256color: image or image->pixels or palette is NULL");
     // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
   // Use the existing optimized SIMD colored printing (no background for 256-color mode)
 #ifdef SIMD_SUPPORT
-  char *result = image_print_color_simd((image_t *)p, false, true, palette);
+  char *result = image_print_color_simd((image_t *)image, false, true, palette);
 #else
-  char *result = image_print_color(p, palette);
+  char *result = image_print_color(image, palette);
 #endif
 
   return result;
 }
 
 // 16-color image printing function using ansi_fast color conversion
-char *image_print_16color(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    log_error("image_print_16color: p or p->pixels or palette is NULL");
+char *image_print_16color(const image_t *image, const char *palette) {
+  if (!image || !image->pixels || !palette) {
+    log_error("image_print_16color: image or image->pixels or palette is NULL");
     // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
-  int h = p->h;
-  int w = p->w;
+  int h = image->h;
+  int w = image->w;
 
   if (h <= 0 || w <= 0) {
     log_error("image_print_16color: invalid dimensions h=%d, w=%d", h, w);
@@ -606,7 +607,7 @@ char *image_print_16color(const image_t *p, const char *palette) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      rgb_t pixel = p->pixels[y * w + x];
+      rgb_t pixel = image->pixels[y * w + x];
 
       // Convert RGB to 16-color index and generate ANSI sequence
       uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
@@ -657,15 +658,15 @@ char *image_print_16color(const image_t *p, const char *palette) {
 }
 
 // 16-color image printing with Floyd-Steinberg dithering
-char *image_print_16color_dithered(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    log_error("image_print_16color_dithered: p or p->pixels or palette is NULL");
+char *image_print_16color_dithered(const image_t *image, const char *palette) {
+  if (!image || !image->pixels || !palette) {
+    log_error("image_print_16color_dithered: image or image->pixels or palette is NULL");
     // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
-  int h = p->h;
-  int w = p->w;
+  int h = image->h;
+  int w = image->w;
 
   if (h <= 0 || w <= 0) {
     log_error("image_print_16color_dithered: invalid dimensions h=%d, w=%d", h, w);
@@ -699,7 +700,7 @@ char *image_print_16color_dithered(const image_t *p, const char *palette) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      rgb_t pixel = p->pixels[y * w + x];
+      rgb_t pixel = image->pixels[y * w + x];
 
       // Convert RGB to 16-color index using dithering
       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
@@ -751,15 +752,15 @@ char *image_print_16color_dithered(const image_t *p, const char *palette) {
 }
 
 // 16-color image printing with Floyd-Steinberg dithering and background mode support
-char *image_print_16color_dithered_with_background(const image_t *p, bool use_background, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    log_error("image_print_16color_dithered_with_background: p or p->pixels or palette is NULL");
+char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette) {
+  if (!image || !image->pixels || !palette) {
+    log_error("image_print_16color_dithered_with_background: image or image->pixels or palette is NULL");
     // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
-  int h = p->h;
-  int w = p->w;
+  int h = image->h;
+  int w = image->w;
 
   if (h <= 0 || w <= 0) {
     log_error("image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d", h, w);
@@ -794,7 +795,7 @@ char *image_print_16color_dithered_with_background(const image_t *p, bool use_ba
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      rgb_t pixel = p->pixels[y * w + x];
+      rgb_t pixel = image->pixels[y * w + x];
 
       // Convert RGB to 16-color index using dithering
       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
