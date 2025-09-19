@@ -3,6 +3,7 @@
 # Usage: 
 #   .\build.ps1                    # Build with Clang in native Windows mode
 #   .\build.ps1 -MinGW            # Build with GCC or Clang in MinGW mode  
+#   .\build.ps1 -VSWithClang      # Build with Clang using Visual Studio 17 2022 generator
 #   .\build.ps1 -Config Release    # Build in Release mode
 #   .\build.ps1 -BuildDir mybuild  # Use custom build directory
 #   .\build.ps1 -Clean             # Clean and rebuild
@@ -15,6 +16,7 @@ param(
     [switch]$MinGW,
     [switch]$Test,
     [switch]$Verbose,
+    [switch]$VSWithClang,
     [string[]]$CFlags = @()
 )
 
@@ -59,7 +61,7 @@ Write-Host "Configuring project ($Config build) in $BuildDir..." -ForegroundColo
 # Build CMake arguments
 $cmakeArgs = @("-B", $BuildDir)
 
-# Always use Ninja if available for faster builds
+# Always use Ninja if available for faster builds (unless using Visual Studio generator)
 if (Get-Command ninja -ErrorAction SilentlyContinue) {
     $cmakeArgs += "-G", "Ninja"
 }
@@ -69,7 +71,32 @@ $cmakeArgs += "-DCMAKE_BUILD_TYPE=$Config"
 
 # Set compiler based on mode
 if (-not $env:CC) {
-    if ($MinGW) {
+    if ($VSWithClang) {
+        # Visual Studio generator with Clang toolset
+        if (Get-Command clang -ErrorAction SilentlyContinue) {
+            $env:CC = "clang"
+            $env:CXX = "clang++"
+            # Remove Ninja generator and use Visual Studio generator with Clang toolset
+            $cmakeArgs = $cmakeArgs | Where-Object { $_ -ne "Ninja" -and $_ -ne "-G" }
+            $cmakeArgs += "-G", "Visual Studio 17 2022"
+            # Use Clang toolset for Visual Studio generator
+            $cmakeArgs += "-T", "ClangCL"
+            # Explicitly set Clang compiler for Visual Studio generator
+            $cmakeArgs += "-DCMAKE_C_COMPILER=clang"
+            $cmakeArgs += "-DCMAKE_CXX_COMPILER=clang++"
+            # Force C23 standard
+            $cmakeArgs += "-DCMAKE_C_STANDARD=17"
+            $cmakeArgs += "-DCMAKE_C_STANDARD_REQUIRED=ON"
+            # Prevent CMakeLists.txt from overriding the generator to Ninja
+            $cmakeArgs += "-DCMAKE_GENERATOR=Visual Studio 17 2022"
+            Write-Host "Using Clang compiler with Visual Studio 17 2022 generator (ClangCL toolset, C23 standard)" -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "ERROR: Clang not found! Please install Clang via Scoop: scoop install llvm" -ForegroundColor Red
+            exit 1
+        }
+    }
+    elseif ($MinGW) {
         # MinGW mode - prefer GCC
         if (Get-Command gcc -ErrorAction SilentlyContinue) {
             $env:CC = "gcc"
@@ -92,7 +119,9 @@ if (-not $env:CC) {
         }
         elseif (Get-Command cl -ErrorAction SilentlyContinue) {
             # Use MSVC if available
-            $cmakeArgs[3] = "Visual Studio 17 2022"  # Change generator for MSVC
+            # Remove Ninja generator and use Visual Studio generator
+            $cmakeArgs = $cmakeArgs | Where-Object { $_ -ne "Ninja" -and $_ -ne "-G" }
+            $cmakeArgs += "-G", "Visual Studio 17 2022"
             Write-Host "Using MSVC compiler" -ForegroundColor Yellow
         }
         elseif (Get-Command gcc -ErrorAction SilentlyContinue) {
@@ -149,63 +178,20 @@ if ($Test) {
     & ctest --test-dir build -C $Config --output-on-failure
 }
 
-# Create symlinks in ./bin/ directory for consistency with Unix builds
+# Copy all build outputs to ./bin/ directory
 Write-Host ""
-Write-Host "Creating symlinks in bin/ directory..." -ForegroundColor Cyan
+Write-Host "Copying build outputs to bin/ directory..." -ForegroundColor Cyan
 
 # Create bin directory if it doesn't exist
 if (!(Test-Path "bin")) {
     New-Item -ItemType Directory -Path "bin" | Out-Null
 }
 
-# Remove old symlinks/files if they exist
-if (Test-Path "bin\ascii-chat-server.exe") { Remove-Item "bin\ascii-chat-server.exe" -Force }
-if (Test-Path "bin\ascii-chat-client.exe") { Remove-Item "bin\ascii-chat-client.exe" -Force }
-# Also remove old names if they exist
-if (Test-Path "bin\server.exe") { Remove-Item "bin\server.exe" -Force }
-if (Test-Path "bin\client.exe") { Remove-Item "bin\client.exe" -Force }
+# Copy everything from build/bin to bin
+Copy-Item "build\bin\*" "bin\" -Force -Recurse
+Write-Host "Copied build outputs to bin/" -ForegroundColor Green
 
-# Create hard links (no admin needed, same volume required)
-New-Item -ItemType HardLink -Path "bin\ascii-chat-server.exe" -Target "$PWD\build\bin\ascii-chat-server.exe" | Out-Null
-New-Item -ItemType HardLink -Path "bin\ascii-chat-client.exe" -Target "$PWD\build\bin\ascii-chat-client.exe" | Out-Null
-Write-Host "Created hard links in bin/" -ForegroundColor Green
-
-# Link compile_commands.json to repo root for IDE/tool integration
-if (Test-Path "$BuildDir\compile_commands.json") {
-    Write-Host ""
-    Write-Host "Linking compile_commands.json to repo root..." -ForegroundColor Cyan
-    
-    # Remove old link/file if it exists
-    if (Test-Path "compile_commands.json") { 
-        Remove-Item "compile_commands.json" -Force 
-    }
-    
-    # Create hard link (no admin needed, works across drives)
-    # Use symbolic link if on different volumes (requires admin on Windows)
-    try {
-        New-Item -ItemType HardLink -Path "compile_commands.json" -Target "$PWD\$BuildDir\compile_commands.json" -ErrorAction Stop | Out-Null
-        Write-Host "Created hard link for compile_commands.json" -ForegroundColor Green
-    }
-    catch {
-        # Fall back to copying if hard link fails (e.g., different volumes)
-        Copy-Item "$BuildDir\compile_commands.json" "compile_commands.json" -Force
-        Write-Host "Copied compile_commands.json (hard link failed, possibly different volumes)" -ForegroundColor Yellow
-    }
-}
-
-# Copy DLLs to bin/ directory so binaries can find them
-$dlls = Get-ChildItem "build\bin\*.dll" -ErrorAction SilentlyContinue
-if ($dlls) {
-    Copy-Item "build\bin\*.dll" "bin\" -Force
-    Write-Host "Copied runtime DLLs to bin/" -ForegroundColor Green
-}
-
-# Copy PDB files for debugging support
-$pdbs = Get-ChildItem "build\bin\*.pdb" -ErrorAction SilentlyContinue
-if ($pdbs) {
-    Copy-Item "build\bin\*.pdb" "bin\" -Force
-    Write-Host "Copied debug symbols (PDB files) to bin/" -ForegroundColor Green
-}
+# compile_commands.json is now automatically handled by CMake (see CMakeLists.txt)
 
 Write-Host ""
 Write-Host "Build complete!" -ForegroundColor Green

@@ -180,7 +180,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Handle compression if needed
   if (header.flags & FRAME_FLAG_IS_COMPRESSED && header.compressed_size > 0) {
-#ifndef NO_COMPRESSION
     // Compressed frame - decompress it
     if (frame_data_len != header.compressed_size) {
       log_error("Compressed frame size mismatch: expected %u, got %zu", header.compressed_size, frame_data_len);
@@ -204,11 +203,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 #ifdef COMPRESSION_DEBUG
     log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, header.original_size);
 #endif
-#else
-    // Compression is disabled - cannot handle compressed frames
-    log_error("Received compressed frame but compression support is disabled");
-    return;
-#endif
   } else {
     // Uncompressed frame
     if (frame_data_len != header.original_size) {
@@ -216,9 +210,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    SAFE_MALLOC(frame_data, frame_data_len + 1, char *);
-    memcpy(frame_data, frame_data_ptr, frame_data_len);
-    frame_data[frame_data_len] = '\0';
+    // Ensure we don't have buffer overflow - use the actual header size for allocation
+    size_t alloc_size = header.original_size + 1;
+    SAFE_MALLOC(frame_data, alloc_size, char *);
+
+    // Only copy the actual amount of data we received
+    size_t copy_size = (frame_data_len > header.original_size) ? header.original_size : frame_data_len;
+    memcpy(frame_data, frame_data_ptr, copy_size);
+    frame_data[header.original_size] = '\0';
   }
 
   // Verify checksum
@@ -264,7 +263,15 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     g_should_clear_before_next_frame = false;
   }
 
-  // Render frame through display subsystem
+  // Safety check before rendering
+  if (!frame_data || header.original_size == 0) {
+    log_error("Invalid frame data for rendering: frame_data=%p, size=%u", frame_data, header.original_size);
+    if (frame_data) {
+      free(frame_data);
+    }
+    return;
+  }
+
   display_render_frame(frame_data, take_snapshot);
 
   free(frame_data);
@@ -388,18 +395,26 @@ static void *data_reception_thread_func(void *arg) {
     void *data;
     size_t len;
 
+    struct timespec receive_start_ts, receive_end_ts;
+    clock_gettime(CLOCK_MONOTONIC, &receive_start_ts);
+    uint64_t receive_start = receive_start_ts.tv_sec * 1000 + receive_start_ts.tv_nsec / 1000000;
+
     int result = receive_packet(sockfd, &type, &data, &len);
+
+    clock_gettime(CLOCK_MONOTONIC, &receive_end_ts);
+    uint64_t receive_end = receive_end_ts.tv_sec * 1000 + receive_end_ts.tv_nsec / 1000000;
+
     if (result < 0) {
       log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
       server_connection_lost();
       break;
-    } else if (result == 0) {
+    }
+    if (result == 0) {
       log_info("CLIENT: Server closed connection");
       server_connection_lost();
       break;
     }
 
-    // Dispatch packet to appropriate handler
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
       handle_ascii_frame_packet(data, len);

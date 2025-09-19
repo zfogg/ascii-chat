@@ -19,7 +19,7 @@
 #define CRYPTO_MAC_SIZE crypto_box_MACBYTES                  // 16 bytes
 
 // Maximum sizes for encrypted data
-#define CRYPTO_MAX_PLAINTEXT_SIZE (1024 * 1024) // 1MB max
+#define CRYPTO_MAX_PLAINTEXT_SIZE ((size_t)1024 * 1024) // 1MB max
 #define CRYPTO_MAX_CIPHERTEXT_SIZE (CRYPTO_MAX_PLAINTEXT_SIZE + CRYPTO_MAC_SIZE)
 
 // Key exchange packet types (for network protocol integration)
@@ -134,7 +134,7 @@ const char *crypto_result_to_string(crypto_result_t result);
 void crypto_get_status(const crypto_context_t *ctx, char *status_buffer, size_t buffer_size);
 
 // Secure comparison of byte arrays (constant-time)
-bool crypto_secure_compare(const uint8_t *a, const uint8_t *b, size_t len);
+bool crypto_secure_compare(const uint8_t *lhs, const uint8_t *rhs, size_t len);
 
 // Generate cryptographically secure random bytes
 crypto_result_t crypto_random_bytes(uint8_t *buffer, size_t len);

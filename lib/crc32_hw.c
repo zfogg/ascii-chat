@@ -58,7 +58,7 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
   // Process 8 bytes at a time using CRC32X (64-bit)
   while (i + 8 <= len) {
     uint64_t chunk;
-    memcpy(&chunk, bytes + i, 8);
+    SAFE_MEMCPY(&chunk, 8, bytes + i, 8);
     crc = __crc32d(crc, chunk);
     i += 8;
   }
@@ -66,7 +66,7 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
   // Process 4 bytes using CRC32W (32-bit)
   if (i + 4 <= len) {
     uint32_t chunk;
-    memcpy(&chunk, bytes + i, 4);
+    SAFE_MEMCPY(&chunk, 4, bytes + i, 4);
     crc = __crc32w(crc, chunk);
     i += 4;
   }
@@ -74,7 +74,7 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
   // Process 2 bytes using CRC32H (16-bit)
   if (i + 2 <= len) {
     uint16_t chunk;
-    memcpy(&chunk, bytes + i, 2);
+    SAFE_MEMCPY(&chunk, 2, bytes + i, 2);
     crc = __crc32h(crc, chunk);
     i += 2;
   }
@@ -99,7 +99,7 @@ static uint32_t crc32_intel_hw(const void *data, size_t len) {
   // Process 8 bytes at a time using CRC32Q (64-bit)
   while (i + 8 <= len) {
     uint64_t chunk;
-    memcpy(&chunk, bytes + i, 8);
+    SAFE_MEMCPY(&chunk, 8, bytes + i, 8);
     crc = (uint32_t)_mm_crc32_u64(crc, chunk);
     i += 8;
   }
@@ -107,7 +107,7 @@ static uint32_t crc32_intel_hw(const void *data, size_t len) {
   // Process 4 bytes using CRC32L (32-bit)
   if (i + 4 <= len) {
     uint32_t chunk;
-    memcpy(&chunk, bytes + i, 4);
+    SAFE_MEMCPY(&chunk, 4, bytes + i, 4);
     crc = _mm_crc32_u32(crc, chunk);
     i += 4;
   }
@@ -115,7 +115,7 @@ static uint32_t crc32_intel_hw(const void *data, size_t len) {
   // Process 2 bytes using CRC32W (16-bit)
   if (i + 2 <= len) {
     uint16_t chunk;
-    memcpy(&chunk, bytes + i, 2);
+    SAFE_MEMCPY(&chunk, 2, bytes + i, 2);
     crc = _mm_crc32_u16(crc, chunk);
     i += 2;
   }

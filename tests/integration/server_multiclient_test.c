@@ -56,22 +56,22 @@ static pid_t start_test_server(int port) {
 
     // Use BUILD_DIR if set, otherwise use appropriate default
     if (build_dir) {
-        snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
+      snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
     } else if (in_docker) {
-        // In Docker, use docker_build directory
-        snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
+      // In Docker, use docker_build directory
+      snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
     } else {
-        // Local testing, use build directory
-        snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
+      // Local testing, use build directory
+      snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
     }
 
     // Check if the server binary exists and is executable
     if (access(server_path, F_OK) != 0) {
-        fprintf(stderr, "Server binary does not exist at: %s\n", server_path);
+      fprintf(stderr, "Server binary does not exist at: %s\n", server_path);
     } else if (access(server_path, X_OK) != 0) {
-        fprintf(stderr, "Server binary exists but is not executable: %s\n", server_path);
+      fprintf(stderr, "Server binary exists but is not executable: %s\n", server_path);
     } else {
-        fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
+      fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
     }
 
     execl(server_path, "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);

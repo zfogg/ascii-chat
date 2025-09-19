@@ -187,7 +187,7 @@ int server_connection_init() {
  * @param first_connection True if this is the initial connection attempt
  * @return 0 on success, negative on error
  */
-int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection) {
+int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection, bool has_ever_connected) {
   (void)first_connection; // Currently unused
   if (!address || port <= 0) {
     log_error("Invalid address or port parameters");
@@ -203,11 +203,10 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   // Apply reconnection delay if this is a retry
   if (reconnect_attempt > 0) {
     float delay = get_reconnect_delay(reconnect_attempt);
-    log_info("Reconnection attempt #%d to %s:%d in %.2f seconds...", reconnect_attempt, address, port,
-             delay / 1000.0 / 1000.0);
+    // Reconnection attempt logged only to file
     platform_sleep_usec((unsigned int)delay);
   } else {
-    log_info("Connecting to %s:%d", address, port);
+    // Initial connection logged only to file
   }
 
   // Create socket
@@ -257,6 +256,19 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   atomic_store(&g_connection_lost, false);
   atomic_store(&g_should_reconnect, false);
 
+  // Turn OFF terminal logging when successfully connected to server
+  // Exception: Keep logging enabled in snapshot mode for debugging
+  // Exception: Keep logging enabled for first-time connections so user can see initial connection message
+  if (!opt_snapshot_mode && has_ever_connected) {
+    log_set_terminal_output(false);
+    log_info("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
+  } else if (!opt_snapshot_mode) {
+    // First connection - we'll disable logging after main.c shows the "Connected successfully" message
+    log_info("Connected to server - terminal logging will be disabled after initial setup");
+  } else {
+    log_info("Connected to server - terminal logging kept enabled for snapshot mode");
+  }
+
   // Configure socket options for optimal performance
   if (set_socket_keepalive(g_sockfd) < 0) {
     log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
@@ -288,7 +300,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   char my_display_name[MAX_DISPLAY_NAME_LEN];
   int pid = getpid();
-  snprintf(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
+  SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
 
   if (threaded_send_client_join_packet(my_display_name, my_capabilities) < 0) {
     log_error("Failed to send client join packet: %s", network_error_string(errno));
@@ -344,6 +356,11 @@ void server_connection_close() {
   }
 
   g_my_client_id = 0;
+
+  // Turn ON terminal logging when connection is closed
+  printf("\n");
+  log_set_terminal_output(true);
+  log_info("Connection closed - terminal logging re-enabled");
 }
 
 /**
@@ -362,6 +379,11 @@ void server_connection_shutdown() {
     socket_close(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
   }
+
+  // Turn ON terminal logging when connection is shutdown
+  printf("\n");
+  log_set_terminal_output(true);
+  log_info("Connection shutdown - terminal logging re-enabled");
 }
 
 /**
@@ -373,6 +395,11 @@ void server_connection_shutdown() {
 void server_connection_lost() {
   atomic_store(&g_connection_lost, true);
   atomic_store(&g_connection_active, false);
+
+  // Turn ON terminal logging when connection is lost
+  printf("\n");
+  log_set_terminal_output(true);
+  log_info("Connection lost - terminal logging re-enabled");
 }
 
 /**
@@ -485,5 +512,3 @@ int threaded_send_client_join_packet(const char *display_name, uint32_t capabili
   mutex_unlock(&g_send_mutex);
   return result;
 }
-
-

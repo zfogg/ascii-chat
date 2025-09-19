@@ -24,7 +24,7 @@ extern unsigned short int opt_webcam_index;
 
 extern bool opt_webcam_flip;
 
-extern bool opt_test_pattern;  // Use test pattern instead of real webcam
+extern bool opt_test_pattern; // Use test pattern instead of real webcam
 
 // Terminal color mode override (client only)
 typedef enum {
@@ -77,9 +77,9 @@ extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
 void options_init(int argc, char **argv, bool is_client);
 
-void usage(FILE *out_stream, bool is_client);
-void usage_client(FILE *out_stream);
-void usage_server(FILE *out_stream);
+void usage(FILE *desc, bool is_client);
+void usage_client(FILE *desc);
+void usage_server(FILE *desc);
 
 // Terminal size detection functions (get_terminal_size moved to platform/terminal.h)
 void update_dimensions_for_full_height(void);

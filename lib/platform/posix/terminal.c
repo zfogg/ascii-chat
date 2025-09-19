@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <locale.h>
 
 #ifdef __linux__
@@ -74,7 +75,8 @@ int terminal_set_raw_mode(bool enable) {
     raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     return tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-  } else if (saved) {
+  }
+  if (saved) {
     return tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
   }
   return 0;
@@ -122,7 +124,14 @@ bool terminal_supports_unicode(void) {
   const char *lc_all = getenv("LC_ALL");
   const char *lc_ctype = getenv("LC_CTYPE");
 
-  const char *check = lc_all ? lc_all : (lc_ctype ? lc_ctype : lang);
+  const char *check;
+  if (lc_all) {
+    check = lc_all;
+  } else if (lc_ctype) {
+    check = lc_ctype;
+  } else {
+    check = lang;
+  }
   if (!check)
     return false;
 
@@ -153,7 +162,7 @@ int terminal_clear_screen(void) {
  */
 int terminal_move_cursor(int row, int col) {
   printf("\033[%d;%dH", row + 1, col + 1);
-  fflush(stdout);
+  (void)fflush(stdout);
   return 0;
 }
 
@@ -250,13 +259,15 @@ tty_info_t get_current_tty(void) {
     result.owns_fd = false;
     log_debug("POSIX TTY from stdin: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
-  } else if (isatty(STDOUT_FILENO)) {
+  }
+  if (isatty(STDOUT_FILENO)) {
     result.fd = STDOUT_FILENO;
     result.path = ttyname(STDOUT_FILENO);
     result.owns_fd = false;
     log_debug("POSIX TTY from stdout: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
-  } else if (isatty(STDERR_FILENO)) {
+  }
+  if (isatty(STDERR_FILENO)) {
     result.fd = STDERR_FILENO;
     result.path = ttyname(STDERR_FILENO);
     result.owns_fd = false;
@@ -333,14 +344,19 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
   const char *lines_env = getenv("LINES");
   const char *cols_env = getenv("COLUMNS");
   if (lines_env && cols_env) {
-    int env_height = atoi(lines_env);
-    int env_width = atoi(cols_env);
-    if (env_height > 0 && env_width > 0) {
+    char *endptr_height, *endptr_width;
+    long env_height = strtol(lines_env, &endptr_height, 10);
+    long env_width = strtol(cols_env, &endptr_width, 10);
+
+    // Validate conversion was successful and values are reasonable
+    if (endptr_height != lines_env && endptr_width != cols_env && env_height > 0 && env_width > 0 &&
+        env_height <= USHRT_MAX && env_width <= USHRT_MAX) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
       log_debug("POSIX terminal size from env: %dx%d", *width, *height);
       return 0;
     }
+    log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
   }
 
   // Method 3: Default fallback
@@ -405,7 +421,14 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   const char *lc_all = getenv("LC_ALL");
   const char *lc_ctype = getenv("LC_CTYPE");
 
-  const char *check = lc_all ? lc_all : (lc_ctype ? lc_ctype : lang);
+  const char *check;
+  if (lc_all) {
+    check = lc_all;
+  } else if (lc_ctype) {
+    check = lc_ctype;
+  } else {
+    check = lang;
+  }
   if (check && (strstr(check, "UTF-8") || strstr(check, "utf8"))) {
     caps.utf8_support = true;
     caps.capabilities |= TERM_CAP_UTF8;
@@ -476,12 +499,18 @@ const char *terminal_color_level_name(terminal_color_level_t level) {
  */
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   static char summary[256];
-  snprintf(summary, sizeof(summary), "%s, %s, %s, %s", terminal_color_level_name(caps->color_level),
-           caps->utf8_support ? "UTF-8" : "ASCII",
-           caps->render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
-           : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
-                                                         : "foreground",
-           caps->detection_reliable ? "reliable" : "fallback");
+  const char *render_mode_str;
+  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+    render_mode_str = "half-block";
+  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
+    render_mode_str = "background";
+  } else {
+    render_mode_str = "foreground";
+  }
+
+  SAFE_SNPRINTF(summary, sizeof(summary), "%s, %s, %s, %s", terminal_color_level_name(caps->color_level),
+                caps->utf8_support ? "UTF-8" : "ASCII", render_mode_str,
+                caps->detection_reliable ? "reliable" : "fallback");
   return summary;
 }
 
@@ -500,9 +529,15 @@ void print_terminal_capabilities(const terminal_capabilities_t *caps) {
   printf("  Max Colors: %u\n", caps->color_count);
   printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
   printf("  Background Colors: %s\n", caps->render_mode == RENDER_MODE_BACKGROUND ? "Yes" : "No");
-  printf("  Render Mode: %s\n", caps->render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
-                                : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
-                                                                              : "foreground");
+  const char *render_mode_str_print;
+  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+    render_mode_str_print = "half-block";
+  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
+    render_mode_str_print = "background";
+  } else {
+    render_mode_str_print = "foreground";
+  }
+  printf("  Render Mode: %s\n", render_mode_str_print);
   printf("  TERM: %s\n", caps->term_type);
   printf("  COLORTERM: %s\n", strlen(caps->colorterm) ? caps->colorterm : "(not set)");
   printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
@@ -539,7 +574,7 @@ void test_terminal_output_modes(void) {
   // Test Unicode half-blocks
   printf("Unicode test: ▀▄█▌▐░▒▓\n");
 
-  fflush(stdout);
+  (void)fflush(stdout);
 }
 
 /**
@@ -593,7 +628,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   if (g_max_fps > 0) {
     caps.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
   } else {
-    caps.desired_fps = DEFAULT_MAX_FPS;  // 60 FPS on Unix by default
+    caps.desired_fps = DEFAULT_MAX_FPS; // 60 FPS on Unix by default
   }
 
   return caps;

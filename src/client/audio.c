@@ -81,9 +81,10 @@
 #include "server.h"
 
 #include "../lib/audio.h" // lib/audio.h for PortAudio wrapper
-#include "mixer.h"    // Audio processing functions
+#include "mixer.h"        // Audio processing functions
 #include "common.h"
 #include "options.h"
+#include "platform/system.h" // For platform_memcpy
 
 #include <stdatomic.h>
 #include <string.h>
@@ -152,10 +153,12 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   for (int i = 0; i < num_samples; i++) {
     audio_buffer[i] = samples[i] * AUDIO_VOLUME_BOOST;
     // Clamp to prevent distortion
-    if (audio_buffer[i] > 1.0f)
-      audio_buffer[i] = 1.0f;
-    if (audio_buffer[i] < -1.0f)
-      audio_buffer[i] = -1.0f;
+    if (audio_buffer[i] > 1.0F) {
+      audio_buffer[i] = 1.0F;
+    }
+    if (audio_buffer[i] < -1.0F) {
+      audio_buffer[i] = -1.0F;
+    }
   }
 
   // Submit to audio playback system
@@ -214,9 +217,9 @@ static void *audio_capture_thread_func(void *arg) {
   // Initialize audio processors on first run
   if (!processors_initialized) {
     noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE); // Use correct sample rate
-    noise_gate_set_params(&noise_gate, 0.01f, 2.0f, 50.0f, 0.9f);
+    noise_gate_set_params(&noise_gate, 0.01F, 2.0F, 50.0F, 0.9F);
 
-    highpass_filter_init(&hp_filter, 80.0f, AUDIO_SAMPLE_RATE); // Use correct sample rate
+    highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE); // Use correct sample rate
 
     processors_initialized = true;
   }
@@ -239,12 +242,17 @@ static void *audio_capture_thread_func(void *arg) {
       noise_gate_process_buffer(&noise_gate, audio_buffer, samples_read);
 
       // 3. Soft clipping to prevent harsh distortion
-      soft_clip_buffer(audio_buffer, samples_read, 0.95f);
+      soft_clip_buffer(audio_buffer, samples_read, 0.95F);
 
       // Only batch if gate is open (reduces network traffic for silence)
       if (noise_gate_is_open(&noise_gate)) {
-        // Copy processed samples to batch buffer
-        memcpy(&batch_buffer[batch_samples_collected], audio_buffer, samples_read * sizeof(float));
+        // Copy processed samples to batch buffer using platform-safe memcpy
+        size_t copy_size = samples_read * sizeof(float);
+        size_t dest_space = (AUDIO_BATCH_SAMPLES - batch_samples_collected) * sizeof(float);
+        if (platform_memcpy(&batch_buffer[batch_samples_collected], dest_space, audio_buffer, copy_size) != 0) {
+          log_error("Failed to copy audio samples to batch buffer");
+          continue;
+        }
         batch_samples_collected += samples_read;
         batch_chunks_collected++;
 

@@ -17,7 +17,7 @@
 #include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
-#include "platform/string.h"
+#include "platform/system.h"
 #include "platform/terminal.h"
 
 // Safely parse string to integer with validation
@@ -49,7 +49,7 @@ unsigned short int opt_webcam_index = 0;
 
 bool opt_webcam_flip = true;
 
-bool opt_test_pattern = false;  // Use test pattern instead of real webcam
+bool opt_test_pattern = false; // Use test pattern instead of real webcam
 
 // Terminal color mode and capability options
 terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
@@ -203,7 +203,7 @@ static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer
   if (!optarg)
     return NULL;
 
-  snprintf(buffer, buffer_size, "%s", optarg);
+  SAFE_SNPRINTF(buffer, buffer_size, "%s", optarg);
   char *value_str = buffer;
   if (value_str[0] == '=') {
     value_str++; // Skip the equals sign
@@ -240,8 +240,8 @@ static char *get_required_argument(const char *optarg, char *buffer, size_t buff
   return value_str;
 
 error:
-  fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", option_name);
-  fflush(stderr);
+  (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", option_name);
+  (void)fflush(stderr);
   _exit(EXIT_FAILURE);
 }
 
@@ -299,10 +299,10 @@ void options_init(int argc, char **argv, bool is_client) {
   // Set different default addresses for client vs server
   if (is_client) {
     // Client connects to localhost by default
-    snprintf(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
   } else {
     // Server binds to all interfaces by default
-    snprintf(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
   }
 
   // Use different option sets for client vs server
@@ -332,10 +332,11 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'a': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
       if (!is_valid_ipv4(value_str)) {
-        fprintf(stderr, "Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.\n", value_str);
+        (void)fprintf(stderr, "Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.\n",
+                      value_str);
         _exit(EXIT_FAILURE);
       }
-      snprintf(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
@@ -345,10 +346,10 @@ void options_init(int argc, char **argv, bool is_client) {
       char *endptr;
       long port_num = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
-        fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
+        (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
         _exit(EXIT_FAILURE);
       }
-      snprintf(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
@@ -356,7 +357,7 @@ void options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "width", is_client);
       int width_val = strtoint_safe(value_str);
       if (width_val == INT_MIN || width_val <= 0) {
-        fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
+        (void)fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
         _exit(EXIT_FAILURE);
       }
       opt_width = (unsigned short int)width_val;
@@ -368,7 +369,7 @@ void options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "height", is_client);
       int height_val = strtoint_safe(value_str);
       if (height_val == INT_MIN || height_val <= 0) {
-        fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
+        (void)fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
         _exit(EXIT_FAILURE);
       }
       opt_height = (unsigned short int)height_val;
@@ -380,7 +381,8 @@ void options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", is_client);
       int parsed_index = strtoint_safe(value_str);
       if (parsed_index == INT_MIN || parsed_index < 0) {
-        fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n", value_str);
+        (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n",
+                      value_str);
         _exit(EXIT_FAILURE);
       }
       opt_webcam_index = (unsigned short int)parsed_index;
@@ -406,7 +408,8 @@ void options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
         opt_color_mode = COLOR_MODE_TRUECOLOR;
       } else {
-        fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n", value_str);
+        (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n",
+                      value_str);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -421,14 +424,14 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 1003: { // --fps (client only - sets client's desired frame rate)
       if (!is_client) {
-        fprintf(stderr, "Error: --fps is a client-only option.\n");
+        (void)fprintf(stderr, "Error: --fps is a client-only option.\n");
         _exit(EXIT_FAILURE);
       }
       extern int g_max_fps; // From common.c
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "fps", is_client);
       int fps_val = strtoint_safe(value_str);
       if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
-        fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
+        (void)fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
         _exit(EXIT_FAILURE);
       }
       g_max_fps = fps_val;
@@ -437,7 +440,7 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 1004: { // --test-pattern (client only - use test pattern instead of webcam)
       if (!is_client) {
-        fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
+        (void)fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
         _exit(EXIT_FAILURE);
       }
       opt_test_pattern = true;
@@ -454,8 +457,8 @@ void options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
         opt_render_mode = RENDER_MODE_HALF_BLOCK;
       } else {
-        fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
-                value_str);
+        (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
+                      value_str);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -476,8 +479,9 @@ void options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "custom") == 0) {
         opt_palette_type = PALETTE_CUSTOM;
       } else {
-        fprintf(stderr, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
-                value_str);
+        (void)fprintf(stderr,
+                      "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
+                      value_str);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -486,8 +490,8 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'C': { // --palette-chars
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", is_client);
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
-        fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
-                sizeof(opt_palette_custom) - 1);
+        (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
+                      sizeof(opt_palette_custom) - 1);
         _exit(EXIT_FAILURE);
       }
       SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
@@ -518,13 +522,13 @@ void options_init(int argc, char **argv, bool is_client) {
       char *endptr;
       opt_snapshot_delay = strtof(value_str, &endptr);
       if (*endptr != '\0' || value_str == endptr) {
-        fprintf(stderr, "Invalid snapshot delay value '%s'. Snapshot delay must be a number.\n", value_str);
-        fflush(stderr);
+        (void)fprintf(stderr, "Invalid snapshot delay value '%s'. Snapshot delay must be a number.\n", value_str);
+        (void)fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       if (opt_snapshot_delay < 0.0f) {
-        fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
-        fflush(stderr);
+        (void)fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
+        (void)fflush(stderr);
         _exit(EXIT_FAILURE);
       }
       break;
@@ -532,7 +536,7 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'L': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", is_client);
-      snprintf(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
@@ -542,14 +546,14 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'K': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
-      snprintf(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
       break;
     }
 
     case 'F': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", is_client);
-      snprintf(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
       break;
     }
@@ -578,7 +582,7 @@ void options_init(int argc, char **argv, bool is_client) {
             }
           }
         }
-        fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", opt_name);
+        (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", opt_name);
       } else {
         // Short option - try to find the corresponding long option name
         const char *long_name = NULL;
@@ -589,15 +593,15 @@ void options_init(int argc, char **argv, bool is_client) {
           }
         }
         if (long_name) {
-          fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", long_name);
+          (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", long_name);
         } else {
-          fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
+          (void)fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
         }
       }
       _exit(EXIT_FAILURE);
 
     case '?':
-      fprintf(stderr, "Unknown option %c\n", optopt);
+      (void)fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr, is_client);
       _exit(EXIT_FAILURE);
 
@@ -620,73 +624,78 @@ void options_init(int argc, char **argv, bool is_client) {
 #define USAGE_INDENT "    "
 
 void usage_client(FILE *desc /* stdout|stderr*/) {
-  fprintf(desc, "ascii-chat - client options\n");
-  fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
-  fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
-  fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
-  fprintf(desc, USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
-  fprintf(desc,
-          USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT "webcam device index (0-based) (default: 0)\n");
-  fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
-                             "image (default: flipped)\n");
-  fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "
-                             "(for testing multiple clients)\n");
-  fprintf(desc, USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 "
+  (void)fprintf(desc, "ascii-chat - client options\n");
+  (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
+  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
+  (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
+  (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
+  (void)fprintf(desc, USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT
+                                   "webcam device index (0-based) (default: 0)\n");
+  (void)fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
+                                   "image (default: flipped)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "
+                                   "(for testing multiple clients)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 "
 #ifdef _WIN32
-                             "(default: 30 for Windows)\n");
+                                   "(default: 30 for Windows)\n");
 #else
-                             "(default: 60 for Unix)\n");
+                                   "(default: 60 for Unix)\n");
 #endif
-  fprintf(desc, USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
+  (void)fprintf(desc,
+                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
                              "(default: auto)\n");
-  fprintf(desc,
-          USAGE_INDENT "   --show-capabilities       " USAGE_INDENT "show detected terminal capabilities and exit\n");
-  fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
-  fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
-                             "foreground, background, half-block (default: foreground)\n");
-  fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
-                             "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
-  fprintf(desc,
-          USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT "Custom palette characters for --palette=custom "
-                       "(implies --palette=custom)\n");
-  fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
-                             "enable audio capture and playback (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
-                             "(ignore aspect ratio) (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
-                             "disable console logging (log only to file) (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
-                             "capture single frame and exit (default: [unset])\n");
-  fprintf(desc,
-          USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
-          SNAPSHOT_DELAY_DEFAULT);
-  fprintf(desc, USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
-  fprintf(desc,
-          USAGE_INDENT "-E --encrypt                 " USAGE_INDENT "enable packet encryption (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-K --key PASSWORD            " USAGE_INDENT
-                             "encryption passphrase (implies --encrypt) (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
-                             "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
+                                   "show detected terminal capabilities and exit\n");
+  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
+  (void)fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
+                                   "foreground, background, half-block (default: foreground)\n");
+  (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
+                                   "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
+  (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
+                                   "Custom palette characters for --palette=custom "
+                                   "(implies --palette=custom)\n");
+  (void)fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
+                                   "enable audio capture and playback (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
+                                   "(ignore aspect ratio) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
+                                   "disable console logging (log only to file) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
+                                   "capture single frame and exit (default: [unset])\n");
+  (void)fprintf(
+      desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
+      SNAPSHOT_DELAY_DEFAULT);
+  (void)fprintf(desc,
+                USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
+                                   "enable packet encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-K --key PASSWORD            " USAGE_INDENT
+                                   "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
+                                   "(implies --encrypt) (default: [unset])\n");
 }
 
 void usage_server(FILE *desc /* stdout|stderr*/) {
-  fprintf(desc, "ascii-chat - server options\n");
-  fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
-  fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
-  fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
-  fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
-                             "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
-  fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS " USAGE_INDENT "Custom palette characters for --palette=custom "
+  (void)fprintf(desc, "ascii-chat - server options\n");
+  (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
+  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
+  (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
+  (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
+                                   "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-C --palette-chars CHARS " USAGE_INDENT "Custom palette characters for --palette=custom "
                              "(implies --palette=custom)\n");
-  fprintf(desc,
-          USAGE_INDENT "-A --audio           " USAGE_INDENT "enable audio streaming to clients (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-K --key PASSWORD    " USAGE_INDENT
-                             "encryption passphrase (implies --encrypt) (default: [unset])\n");
-  fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
-                             "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-A --audio           " USAGE_INDENT
+                                   "enable audio streaming to clients (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-K --key PASSWORD    " USAGE_INDENT
+                                   "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
+                                   "(implies --encrypt) (default: [unset])\n");
 }
 
 void usage(FILE *desc /* stdout|stderr*/, bool is_client) {

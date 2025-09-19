@@ -44,6 +44,43 @@ static const char *level_colors[] = {
     "\x1b[35m"  /* FATAL: Magenta */
 };
 
+/* Helper function to extract relative path from absolute path */
+static const char *extract_relative_path(const char *file) {
+  if (!file)
+    return "unknown";
+
+  /* Look for ascii-chat repository root directory */
+  const char *repo_name = "ascii-chat";
+  const char *repo_pos = strstr(file, repo_name);
+
+  if (repo_pos) {
+    /* Move past the repo name and directory separator */
+    const char *after_repo = repo_pos + strlen(repo_name);
+
+    /* Skip the path separator if present */
+    if (*after_repo == '/' || *after_repo == '\\') {
+      after_repo++;
+    }
+
+    /* Return the path relative to repo root */
+    if (*after_repo != '\0') {
+      return after_repo;
+    }
+  }
+
+  /* Fallback: try to find just the filename */
+  const char *last_slash = strrchr(file, '/');
+  const char *last_backslash = strrchr(file, '\\');
+  const char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
+
+  if (last_sep) {
+    return last_sep + 1;
+  }
+
+  /* If no separators found, return the original string */
+  return file;
+}
+
 /* Log rotation function - keeps the tail (recent entries) */
 static void rotate_log_if_needed(void) {
   if (!g_log.file || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
@@ -56,7 +93,7 @@ static void rotate_log_if_needed(void) {
     /* Open file for reading to get the tail */
     int read_file = SAFE_OPEN(g_log.filename, O_RDONLY, 0);
     if (read_file < 0) {
-      fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
+      (void)fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
       int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
@@ -83,7 +120,7 @@ static void rotate_log_if_needed(void) {
 
     /* Read the tail into a temporary file */
     char temp_filename[512];
-    snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
+    SAFE_SNPRINTF(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
     int temp_file = SAFE_OPEN(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (temp_file < 0) {
       platform_close(read_file);
@@ -129,7 +166,7 @@ static void rotate_log_if_needed(void) {
     /* Reopen for appending */
     g_log.file = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     if (g_log.file < 0) {
-      fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
+      (void)fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
       g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0';
     } else {
@@ -137,8 +174,8 @@ static void rotate_log_if_needed(void) {
       /* Log the rotation event */
       {
         char log_msg[256];
-        int log_msg_len = snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
-                                   "00:00:00.000000", new_size);
+        int log_msg_len = SAFE_SNPRINTF(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
+                                        "00:00:00.000000", new_size);
         if (log_msg_len > 0) {
           ssize_t written = platform_write(g_log.file, log_msg, (size_t)log_msg_len);
           (void)written; // suppress unused warning
@@ -173,20 +210,17 @@ void log_init(const char *filename, log_level_t level) {
   if (filename) {
     /* Store filename for rotation */
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
-    int fd = SAFE_OPEN(filename, O_CREAT | O_RDWR | O_APPEND, 0600);
+    int fd = SAFE_OPEN(filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
     g_log.file = fd;
     if (!g_log.file) {
       if (preserve_terminal_output) {
-        fprintf(stderr, "Failed to open log file: %s\n", filename);
+        (void)fprintf(stderr, "Failed to open log file: %s\n", filename);
       }
       g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0'; /* Clear filename on failure */
     } else {
-      /* Get current file size */
-      struct stat st;
-      if (fstat(g_log.file, &st) == 0) {
-        g_log.current_size = (size_t)st.st_size;
-      }
+      /* File was truncated, so size starts at 0 */
+      g_log.current_size = 0;
     }
   } else {
     g_log.file = STDERR_FILENO;
@@ -272,15 +306,15 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   mutex_lock(&g_log.mutex);
 
-  /* Get current time using clock_gettime (avoids localtime) */
+  /* Get current time in local timezone */
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
 
   struct tm tm_info;
-  gmtime_r(&ts.tv_sec, &tm_info); /* UTC time; gmtime_r is thread-safe */
+  platform_localtime(&ts.tv_sec, &tm_info);
 
   char time_buf[32];
-  strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_info);
+  (void)strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_info);
 
   char time_buf_ms[64]; // Increased size to prevent truncation
   long microseconds = ts.tv_nsec / 1000;
@@ -289,7 +323,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     microseconds = 0;
   if (microseconds > 999999)
     microseconds = 999999;
-  snprintf(time_buf_ms, sizeof(time_buf_ms), "%s.%06ld", time_buf, microseconds);
+  SAFE_SNPRINTF(time_buf_ms, sizeof(time_buf_ms), "%s.%06ld", time_buf, microseconds);
 
   /* Check if log rotation is needed */
   rotate_log_if_needed();
@@ -305,8 +339,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     int offset = 0;
 
     // Add timestamp, level, location
-    offset = snprintf(log_buffer, sizeof(log_buffer), "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level],
-                      file, line, func);
+    const char *rel_file = extract_relative_path(file);
+    offset = SAFE_SNPRINTF(log_buffer, sizeof(log_buffer), "[%s] [%s] %s:%d in %s(): ", time_buf_ms,
+                           level_strings[level], rel_file, line, func);
 
     // Add the actual message
     va_list args;
@@ -334,16 +369,17 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   // Handle stderr output separately - only if terminal output is enabled
   if (log_file != NULL && log_file == stderr && g_log.terminal_output_enabled) {
-    fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
+    const char *rel_file = extract_relative_path(file);
+    (void)fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], rel_file, line, func);
 
     // Create a copy of va_list for this use
     va_list args_copy;
     va_copy(args_copy, args);
-    vfprintf(log_file, fmt, args_copy);
+    (void)vfprintf(log_file, fmt, args_copy);
     va_end(args_copy);
 
-    fprintf(log_file, "\n");
-    fflush(log_file);
+    (void)fprintf(log_file, "\n");
+    (void)fflush(log_file);
   }
 
   /* Print to stdout (INFO/DEBUG) or stderr (ERROR/WARN) with colors if terminal output is enabled */
@@ -353,17 +389,18 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     int fd = (level == LOG_ERROR || level == LOG_WARN) ? STDERR_FILENO : STDOUT_FILENO;
 
     if (isatty(fd)) {
-      fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms,
-              level_strings[level], file, line, func);
+      const char *rel_file = extract_relative_path(file);
+      (void)fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms,
+                    level_strings[level], rel_file, line, func);
 
       // Create a copy of va_list for this use
       va_list args_copy2;
       va_copy(args_copy2, args);
-      vfprintf(output_stream, fmt, args_copy2);
+      (void)vfprintf(output_stream, fmt, args_copy2);
       va_end(args_copy2);
 
-      fprintf(output_stream, "\n");
-      fflush(output_stream);
+      (void)fprintf(output_stream, "\n");
+      (void)fflush(output_stream);
     }
   }
 

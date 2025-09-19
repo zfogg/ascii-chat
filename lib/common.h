@@ -78,13 +78,22 @@ static inline const char *asciichat_error_string(asciichat_error_t error) {
   }
 }
 
+// RGB value clamping utility function
+static inline uint8_t clamp_rgb(int value) {
+  if (value < 0)
+    return 0;
+  if (value > 255)
+    return 255;
+  return (uint8_t)value;
+}
+
 #define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
 
 // Frame rate configuration - Windows terminals struggle with high FPS
 #ifdef _WIN32
-#define DEFAULT_MAX_FPS 30  // Windows terminals can't handle more than this
+#define DEFAULT_MAX_FPS 30 // Windows terminals can't handle more than this
 #else
-#define DEFAULT_MAX_FPS 60  // macOS/Linux terminals can handle higher rates
+#define DEFAULT_MAX_FPS 60 // macOS/Linux terminals can handle higher rates
 #endif
 
 // Allow runtime override via environment variable or command line
@@ -200,8 +209,29 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   } while (0)
 
 /* Safe string copy */
-#include "platform/string.h"
+#include "platform/system.h"
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
+
+/* Safe string duplication with platform compatibility */
+#ifdef _WIN32
+#define SAFE_STRDUP(dst, src)                                                                                          \
+  do {                                                                                                                 \
+    (dst) = _strdup(src);                                                                                              \
+    if (!(dst)) {                                                                                                      \
+      log_error("String duplication failed for: %s", (src) ? (src) : "(null)");                                        \
+      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+#else
+#define SAFE_STRDUP(dst, src)                                                                                          \
+  do {                                                                                                                 \
+    (dst) = strdup(src);                                                                                               \
+    if (!(dst)) {                                                                                                      \
+      log_error("String duplication failed for: %s", (src) ? (src) : "(null)");                                        \
+      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+#endif
 
 /* Rate-limited debug logging - only logs every N calls */
 #define LOG_DEBUG_EVERY(name, count, fmt, ...)                                                                         \
@@ -221,11 +251,21 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
 
 /* Platform-safe strerror */
+#include "platform/internal.h"
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Platform-safe file open */
 #include "platform/file.h"
 #define SAFE_OPEN(path, flags, mode) platform_open(path, flags, mode)
+
+/* Safe memory functions */
+#define SAFE_MEMCPY(dest, dest_size, src, count) platform_memcpy((dest), (dest_size), (src), (count))
+#define SAFE_MEMSET(dest, dest_size, ch, count) platform_memset((dest), (dest_size), (ch), (count))
+#define SAFE_MEMMOVE(dest, dest_size, src, count) platform_memmove((dest), (dest_size), (src), (count))
+#define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
+
+/* Safe string formatting */
+#define SAFE_SNPRINTF(buffer, buffer_size, ...) safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
 
 /* Logging functions */
 void log_init(const char *filename, log_level_t level);
@@ -245,6 +285,10 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 #define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
+
+/* Safe parsing functions using strtoul instead of sscanf */
+int safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height);
+int safe_parse_audio_message(const char *message, unsigned int *num_samples);
 
 /* New functions for coverage testing */
 

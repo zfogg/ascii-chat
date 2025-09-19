@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include <sys/types.h>
+#include "internal.h" // For ssize_t definition on Windows
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -20,7 +21,6 @@
 typedef SOCKET socket_t;
 #define INVALID_SOCKET_VALUE INVALID_SOCKET
 typedef int socklen_t;
-typedef int ssize_t;
 typedef unsigned long nfds_t; // Windows doesn't have nfds_t
 #else
 #include <sys/socket.h>

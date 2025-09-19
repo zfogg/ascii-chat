@@ -283,10 +283,9 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
     double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
     utf8_heap_insert(new_cache, initial_score);
     return true;
-  } else {
-    log_error("UTF8_CACHE_CRITICAL: Failed to insert after eviction");
-    return false;
   }
+  log_error("UTF8_CACHE_CRITICAL: Failed to insert after eviction");
+  return false;
 }
 
 // char_ramp_cache functions removed - data already available in utf8_palette_cache_t
@@ -395,10 +394,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
   while (*p && char_count < 255) {
     char_infos[char_count].start = p;
 
-    if ((*p & 0x80) == 0) {
-      char_infos[char_count].byte_len = 1;
-      p++;
-    } else if ((*p & 0xE0) == 0xC0) {
+    if ((*p & 0xE0) == 0xC0) {
       char_infos[char_count].byte_len = 2;
       p += 2;
     } else if ((*p & 0xF0) == 0xE0) {
@@ -408,6 +404,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
       char_infos[char_count].byte_len = 4;
       p += 4;
     } else {
+      // ASCII characters (0x00-0x7F) and invalid sequences: treat as single byte
       char_infos[char_count].byte_len = 1;
       p++;
     }
@@ -449,10 +446,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
   while (*p && char_count < 255) {
     char_infos[char_count].start = p;
 
-    if ((*p & 0x80) == 0) {
-      char_infos[char_count].byte_len = 1;
-      p++;
-    } else if ((*p & 0xE0) == 0xC0) {
+    if ((*p & 0xE0) == 0xC0) {
       char_infos[char_count].byte_len = 2;
       p += 2;
     } else if ((*p & 0xF0) == 0xE0) {
@@ -462,6 +456,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
       char_infos[char_count].byte_len = 4;
       p += 4;
     } else {
+      // ASCII characters (0x00-0x7F) and invalid sequences: treat as single byte
       char_infos[char_count].byte_len = 1;
       p++;
     }
@@ -514,7 +509,9 @@ void simd_caches_destroy_all(void) {
   }
   // Clean up heap arrays
   if (g_utf8_heap) {
-    SAFE_FREE(g_utf8_heap);
+    void *temp_heap = (void *)g_utf8_heap;
+    SAFE_FREE(temp_heap);
+    g_utf8_heap = NULL;
     g_utf8_heap_size = 0;
   }
   rwlock_unlock(&g_utf8_cache_rwlock);

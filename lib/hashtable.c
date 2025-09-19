@@ -46,7 +46,7 @@ hashtable_t *hashtable_create(void) {
   SAFE_MALLOC(ht, sizeof(hashtable_t), hashtable_t *);
 
   // Initialize buckets to NULL
-  memset(ht->buckets, 0, sizeof(ht->buckets));
+  SAFE_MEMSET((void *)ht->buckets, sizeof(ht->buckets), 0, sizeof(ht->buckets));
 
   // Pre-allocate entry pool
   ht->pool_size = HASHTABLE_MAX_ENTRIES;

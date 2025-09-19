@@ -39,7 +39,48 @@ int socket_listen(socket_t sock, int backlog) {
 }
 
 socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen) {
-  return accept(sock, addr, addrlen);
+  socket_t client_sock = accept(sock, addr, addrlen);
+  if (client_sock == INVALID_SOCKET_VALUE) {
+    return client_sock;
+  }
+
+  // Automatically optimize all accepted sockets for high-throughput video streaming
+  // 1. Disable Nagle algorithm - CRITICAL for real-time video
+  int nodelay = 1;
+  setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+
+  // 2. Increase send buffer for video streaming (2MB with fallbacks)
+  int send_buffer = 2 * 1024 * 1024; // 2MB
+  if (setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
+    send_buffer = 512 * 1024; // 512KB fallback
+    if (setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
+      send_buffer = 128 * 1024; // 128KB fallback
+      setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer));
+    }
+  }
+
+  // 3. Increase receive buffer (2MB with fallbacks)
+  int recv_buffer = 2 * 1024 * 1024; // 2MB
+  if (setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer)) != 0) {
+    recv_buffer = 512 * 1024; // 512KB fallback
+    if (setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer)) != 0) {
+      recv_buffer = 128 * 1024; // 128KB fallback
+      setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer));
+    }
+  }
+
+  // 4. Set timeouts to prevent blocking (POSIX uses struct timeval)
+  struct timeval send_timeout = {.tv_sec = 5, .tv_usec = 0}; // 5 seconds
+  setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
+
+  struct timeval recv_timeout = {.tv_sec = 10, .tv_usec = 0}; // 10 seconds
+  setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout));
+
+  // 5. Enable keepalive (optional)
+  int keepalive = 1;
+  setsockopt(client_sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
+
+  return client_sock;
 }
 
 int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen) {
@@ -91,9 +132,8 @@ int socket_set_nonblocking(socket_t sock, bool nonblocking) {
     return -1;
   if (nonblocking) {
     return fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-  } else {
-    return fcntl(sock, F_SETFL, flags & ~O_NONBLOCK);
   }
+  return fcntl(sock, F_SETFL, flags & ~O_NONBLOCK);
 }
 
 int socket_set_blocking(socket_t sock) {

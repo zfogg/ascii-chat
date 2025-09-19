@@ -15,21 +15,21 @@ static bool color256_initialized = false;
 // Fast foreground color: \033[38;2;R;G;Bm
 char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
   // Static prefix - 7 bytes
-  memcpy(dst, "\033[38;2;", 7);
+  SAFE_MEMCPY(dst, 7, "\033[38;2;", 7);
   dst += 7;
 
   // Red component + semicolon
-  memcpy(dst, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[r].len, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
   dst += g_dec3_cache.dec3_table[r].len;
   *dst++ = ';';
 
   // Green component + semicolon
-  memcpy(dst, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[g].len, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
   dst += g_dec3_cache.dec3_table[g].len;
   *dst++ = ';';
 
   // Blue component + suffix
-  memcpy(dst, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[b].len, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
   dst += g_dec3_cache.dec3_table[b].len;
   *dst++ = 'm';
 
@@ -38,18 +38,18 @@ char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
 
 // Fast background color: \033[48;2;R;G;Bm
 char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  memcpy(dst, "\033[48;2;", 7);
+  SAFE_MEMCPY(dst, 7, "\033[48;2;", 7);
   dst += 7;
 
-  memcpy(dst, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[r].len, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
   dst += g_dec3_cache.dec3_table[r].len;
   *dst++ = ';';
 
-  memcpy(dst, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[g].len, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
   dst += g_dec3_cache.dec3_table[g].len;
   *dst++ = ';';
 
-  memcpy(dst, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[b].len, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
   dst += g_dec3_cache.dec3_table[b].len;
   *dst++ = 'm';
 
@@ -59,34 +59,40 @@ char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
 // Combined foreground + background: \033[38;2;R;G;B;48;2;r;g;bm
 char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g,
                              uint8_t bg_b) {
-  memcpy(dst, "\033[38;2;", 7);
+  SAFE_MEMCPY(dst, 7, "\033[38;2;", 7);
   dst += 7;
 
   // Foreground RGB
-  memcpy(dst, g_dec3_cache.dec3_table[fg_r].s, g_dec3_cache.dec3_table[fg_r].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[fg_r].len, g_dec3_cache.dec3_table[fg_r].s,
+              g_dec3_cache.dec3_table[fg_r].len);
   dst += g_dec3_cache.dec3_table[fg_r].len;
   *dst++ = ';';
 
-  memcpy(dst, g_dec3_cache.dec3_table[fg_g].s, g_dec3_cache.dec3_table[fg_g].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[fg_g].len, g_dec3_cache.dec3_table[fg_g].s,
+              g_dec3_cache.dec3_table[fg_g].len);
   dst += g_dec3_cache.dec3_table[fg_g].len;
   *dst++ = ';';
 
-  memcpy(dst, g_dec3_cache.dec3_table[fg_b].s, g_dec3_cache.dec3_table[fg_b].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[fg_b].len, g_dec3_cache.dec3_table[fg_b].s,
+              g_dec3_cache.dec3_table[fg_b].len);
   dst += g_dec3_cache.dec3_table[fg_b].len;
 
   // Background RGB
-  memcpy(dst, ";48;2;", 6);
+  SAFE_MEMCPY(dst, 6, ";48;2;", 6);
   dst += 6;
 
-  memcpy(dst, g_dec3_cache.dec3_table[bg_r].s, g_dec3_cache.dec3_table[bg_r].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[bg_r].len, g_dec3_cache.dec3_table[bg_r].s,
+              g_dec3_cache.dec3_table[bg_r].len);
   dst += g_dec3_cache.dec3_table[bg_r].len;
   *dst++ = ';';
 
-  memcpy(dst, g_dec3_cache.dec3_table[bg_g].s, g_dec3_cache.dec3_table[bg_g].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[bg_g].len, g_dec3_cache.dec3_table[bg_g].s,
+              g_dec3_cache.dec3_table[bg_g].len);
   dst += g_dec3_cache.dec3_table[bg_g].len;
   *dst++ = ';';
 
-  memcpy(dst, g_dec3_cache.dec3_table[bg_b].s, g_dec3_cache.dec3_table[bg_b].len);
+  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[bg_b].len, g_dec3_cache.dec3_table[bg_b].s,
+              g_dec3_cache.dec3_table[bg_b].len);
   dst += g_dec3_cache.dec3_table[bg_b].len;
   *dst++ = 'm';
 
@@ -144,7 +150,7 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
 void ansi_rle_finish(ansi_rle_context_t *ctx) {
   // Add reset sequence
   if (ctx->length + 5 < ctx->capacity) {
-    memcpy(ctx->buffer + ctx->length, "\033[0m", 4);
+    SAFE_MEMCPY(ctx->buffer + ctx->length, 4, "\033[0m", 4);
     ctx->length += 4;
   }
 
@@ -160,7 +166,7 @@ void ansi_fast_init_256color(void) {
     return;
 
   for (int i = 0; i < 256; i++) {
-    snprintf(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
+    SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
   }
 
   color256_initialized = true;
@@ -170,7 +176,7 @@ void ansi_fast_init_256color(void) {
 char *append_256color_fg(char *dst, uint8_t color_index) {
   const char *color_str = color256_strings[color_index];
   int len = strlen(color_str);
-  memcpy(dst, color_str, len);
+  SAFE_MEMCPY(dst, len, color_str, len);
   return dst + len;
 }
 
@@ -212,8 +218,8 @@ void ansi_fast_init_16color(void) {
                             "100", "101", "102", "103", "104", "105", "106", "107"}; // Bright colors (100-107)
 
   for (int i = 0; i < 16; i++) {
-    snprintf(color16_fg_strings[i], sizeof(color16_fg_strings[i]), "\033[%sm", fg_codes[i]);
-    snprintf(color16_bg_strings[i], sizeof(color16_bg_strings[i]), "\033[%sm", bg_codes[i]);
+    SAFE_SNPRINTF(color16_fg_strings[i], sizeof(color16_fg_strings[i]), "\033[%sm", fg_codes[i]);
+    SAFE_SNPRINTF(color16_bg_strings[i], sizeof(color16_bg_strings[i]), "\033[%sm", bg_codes[i]);
   }
 
   color16_initialized = true;
@@ -342,9 +348,21 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
   }
 
   // Clamp values to [0, 255]
-  r = (r < 0) ? 0 : (r > 255) ? 255 : r;
-  g = (g < 0) ? 0 : (g > 255) ? 255 : g;
-  b = (b < 0) ? 0 : (b > 255) ? 255 : b;
+  if (r < 0) {
+    r = 0;
+  } else if (r > 255) {
+    r = 255;
+  }
+  if (g < 0) {
+    g = 0;
+  } else if (g > 255) {
+    g = 255;
+  }
+  if (b < 0) {
+    b = 0;
+  } else if (b > 255) {
+    b = 255;
+  }
 
   // Find the closest 16-color match
   uint8_t closest_color = rgb_to_16color((uint8_t)r, (uint8_t)g, (uint8_t)b);

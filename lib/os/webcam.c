@@ -33,8 +33,8 @@ int webcam_init(unsigned short int webcam_index) {
   log_info("Attempting to open webcam with index %d using Unknown platform...", webcam_index);
 #endif
 
-  int result = -1;
-  if ((result = webcam_init_context(&global_webcam_ctx, webcam_index)) != 0) {
+  int result = webcam_init_context(&global_webcam_ctx, webcam_index);
+  if (result != 0) {
     log_error("Failed to connect to webcam");
 
     // Platform-specific error messages
@@ -108,37 +108,54 @@ image_t *webcam_read(void) {
         rgb_t *pixel = &test_frame->pixels[y * test_frame->w + x];
 
         // Create a grid pattern with color bars and animated elements
-        int grid_x = x / 160;  // 8 vertical sections
+        int grid_x = x / 160; // 8 vertical sections
         // int grid_y = y / 120;  // 6 horizontal sections (unused for now)
 
         // Base pattern: color bars
         switch (grid_x) {
-          case 0: // Red
-            pixel->r = 255; pixel->g = 0; pixel->b = 0;
-            break;
-          case 1: // Green
-            pixel->r = 0; pixel->g = 255; pixel->b = 0;
-            break;
-          case 2: // Blue
-            pixel->r = 0; pixel->g = 0; pixel->b = 255;
-            break;
-          case 3: // Yellow
-            pixel->r = 255; pixel->g = 255; pixel->b = 0;
-            break;
-          case 4: // Cyan
-            pixel->r = 0; pixel->g = 255; pixel->b = 255;
-            break;
-          case 5: // Magenta
-            pixel->r = 255; pixel->g = 0; pixel->b = 255;
-            break;
-          case 6: // White
-            pixel->r = 255; pixel->g = 255; pixel->b = 255;
-            break;
-          case 7: // Gray gradient
-          default:
-            uint8_t gray = (uint8_t)((y * 255) / test_frame->h);
-            pixel->r = gray; pixel->g = gray; pixel->b = gray;
-            break;
+        case 0: // Red
+          pixel->r = 255;
+          pixel->g = 0;
+          pixel->b = 0;
+          break;
+        case 1: // Green
+          pixel->r = 0;
+          pixel->g = 255;
+          pixel->b = 0;
+          break;
+        case 2: // Blue
+          pixel->r = 0;
+          pixel->g = 0;
+          pixel->b = 255;
+          break;
+        case 3: // Yellow
+          pixel->r = 255;
+          pixel->g = 255;
+          pixel->b = 0;
+          break;
+        case 4: // Cyan
+          pixel->r = 0;
+          pixel->g = 255;
+          pixel->b = 255;
+          break;
+        case 5: // Magenta
+          pixel->r = 255;
+          pixel->g = 0;
+          pixel->b = 255;
+          break;
+        case 6: // White
+          pixel->r = 255;
+          pixel->g = 255;
+          pixel->b = 255;
+          break;
+        case 7: // Gray gradient
+        default: {
+          uint8_t gray = (uint8_t)((y * 255) / test_frame->h);
+          pixel->r = gray;
+          pixel->g = gray;
+          pixel->b = gray;
+          break;
+        }
         }
 
         // Add a moving diagonal pattern
@@ -149,7 +166,9 @@ image_t *webcam_read(void) {
 
         // Add grid lines for visual separation
         if (x % 160 == 0 || y % 120 == 0) {
-          pixel->r = 0; pixel->g = 0; pixel->b = 0;
+          pixel->r = 0;
+          pixel->g = 0;
+          pixel->b = 0;
         }
       }
     }
@@ -159,11 +178,15 @@ image_t *webcam_read(void) {
     int center_y = test_frame->h / 2;
     for (int i = 0; i < test_frame->w; i++) {
       rgb_t *pixel = &test_frame->pixels[center_y * test_frame->w + i];
-      pixel->r = 255; pixel->g = 255; pixel->b = 255;
+      pixel->r = 255;
+      pixel->g = 255;
+      pixel->b = 255;
     }
     for (int i = 0; i < test_frame->h; i++) {
       rgb_t *pixel = &test_frame->pixels[i * test_frame->w + center_x];
-      pixel->r = 255; pixel->g = 255; pixel->b = 255;
+      pixel->r = 255;
+      pixel->g = 255;
+      pixel->b = 255;
     }
 
     // Apply horizontal flip if requested (same as real webcam)

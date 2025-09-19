@@ -1,24 +1,31 @@
+#!/usr/bin/env pwsh
 # PowerShell script to run ASCII-Chat tests via Docker
 # Usage:
 #   ./tests/scripts/run-docker-tests.ps1                          # Run all tests
 #   ./tests/scripts/run-docker-tests.ps1 unit                     # Run all unit tests
 #   ./tests/scripts/run-docker-tests.ps1 integration              # Run all integration tests
 #   ./tests/scripts/run-docker-tests.ps1 performance              # Run all performance tests
+#   ./tests/scripts/run-docker-tests.ps1 -ClangTidy               # Run clang-tidy analysis on all files
+#   ./tests/scripts/run-docker-tests.ps1 clang-tidy               # Run clang-tidy analysis on all files
+#   ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c  # Run clang-tidy on specific file
 #   ./tests/scripts/run-docker-tests.ps1 unit options             # Run unit tests: options
 #   ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect # Run unit tests: options and terminal_detect
 #   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation" # Run specific test case
 
+[CmdletBinding()]
 param(
-    [Parameter(Mandatory=$false)][string]$Suite = "",  # Test suite: all, unit, integration, performance
-    [Parameter(Mandatory=$false)][string]$Test = "",   # Specific test name
-    [Parameter(Mandatory=$false)][string]$Filter = "",
-    [Parameter(Mandatory=$false)][switch]$Build,
-    [Parameter(Mandatory=$false)][switch]$NoBuild,
-    [Parameter(Mandatory=$false)][switch]$Interactive,
-    [Parameter(Mandatory=$false)][switch]$VerboseOutput,
-    [Parameter(Mandatory=$false)][switch]$Clean,
-    [Parameter(Mandatory=$false)][string]$BuildType = "debug",
-    [Parameter(ValueFromRemainingArguments=$true, Position=0)]
+    [string]$Suite = "",
+    [string]$Test = "",
+    [string]$Filter = "",
+    [switch]$Build,
+    [switch]$NoBuild,
+    [switch]$Interactive,
+    [switch]$VerboseOutput,
+    [switch]$Clean,
+    [string]$BuildType = "debug",
+    [int]$ScanPort = 8080,
+    [switch]$ClangTidy,
+    [Parameter(ValueFromRemainingArguments=$true)]
     [string[]]$TestTargets
 )
 
@@ -71,7 +78,158 @@ $ErrorActionPreference = "SilentlyContinue"
 docker rm -f $ContainerName 2>$null | Out-Null
 $ErrorActionPreference = "Stop"
 
-# Prepare the command to run
+# Check if this is a clang-tidy request (switch, Suite, or TestTargets)
+$IsClangTidy = $ClangTidy -or ($Suite -eq "clang-tidy") -or ($TestTargets -contains "clang-tidy")
+if ($IsClangTidy) {
+    Write-Host "Running clang-tidy static analysis..." -ForegroundColor Cyan
+    Write-Host "This will analyze all source code using clang-tidy" -ForegroundColor Gray
+    Write-Host ""
+
+    # Create a temporary script file with clang-tidy implementation
+    $TempScript = "${RepoRoot}\temp-clang-tidy.sh"
+    $ScriptContent = @'
+#!/bin/bash
+set -e
+
+echo '=== Starting ASCII-Chat clang-tidy Analysis ==='
+echo ""
+
+# Check if build_tidy exists and is recent
+if [ ! -d "build_tidy" ] || [ ! -f "build_tidy/compile_commands.json" ] || \
+   [ "CMakeLists.txt" -nt "build_tidy/compile_commands.json" ] || \
+   [ "$(find lib src -name '*.c' -o -name '*.h' | head -1)" -nt "build_tidy/compile_commands.json" ]; then
+
+    echo 'Configuring build for clang-tidy...'
+    # Configure with clang to generate compile_commands.json
+    CC=clang CXX=clang++ cmake -B build_tidy -G Ninja \
+        -DCMAKE_C_COMPILER=clang \
+        -DCMAKE_CXX_COMPILER=clang++ \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DBUILD_TESTS=OFF
+
+    echo 'Building project to ensure compilation database is complete...'
+    cmake --build build_tidy --target ascii-chat-server ascii-chat-client
+else
+    echo 'Using cached build (build_tidy exists and is up to date)'
+fi
+
+echo 'Running clang-tidy analysis...'
+echo ""
+
+# Check if specific files were provided as arguments
+if [ $# -gt 0 ]; then
+    echo "Analyzing specific files: $@"
+    # Analyze specific files provided as arguments
+    for file in "$@"; do
+        if [[ "$file" == *.c ]] && [[ -f "$file" ]]; then
+            echo "=== Analyzing: $file ==="
+
+            # Run clang-tidy on the specific file using .clang-tidy configuration
+            if ! clang-tidy "$file" -p=build_tidy --format-style=none 2>&1; then
+                echo "Failed to analyze $file"
+            fi
+            echo ""
+        else
+            echo "Skipping $file (not a .c file or doesn't exist)"
+        fi
+    done
+else
+    echo "No specific files provided, analyzing all C files"
+    # Find all C source files and run clang-tidy using .clang-tidy config
+    find src lib -name "*.c" -not -path "*/tests/*" | while read -r file; do
+        echo "=== Analyzing: $file ==="
+
+        # Run clang-tidy on each file using .clang-tidy configuration
+        if ! clang-tidy "$file" -p=build_tidy --format-style=none 2>&1; then
+            echo "Failed to analyze $file"
+        fi
+        echo ""
+    done
+fi
+
+echo ""
+echo "=== clang-tidy Analysis Complete ==="
+echo ""
+echo "Summary of analysis completed for ASCII-Chat source files."
+echo "Any issues found have been reported above."
+echo ""
+'@
+
+    # Write script with proper line endings
+    $ScriptContent -replace "`r`n", "`n" | Out-File -FilePath $TempScript -Encoding UTF8 -NoNewline
+
+    # Run container and stream output directly (no web server needed)
+    Write-Host "Starting clang-tidy analysis container..." -ForegroundColor Yellow
+
+    # When Suite is "clang-tidy", combine Test and TestTargets for file arguments
+    $FilesToCheck = @()
+    if ($Test -and $Test -ne "") {
+        $FilesToCheck += $Test
+    }
+    if ($TestTargets -and $TestTargets.Count -gt 0) {
+        $FilesToCheck += $TestTargets
+    }
+
+    $ScriptArgs = ""
+    if ($FilesToCheck.Count -gt 0) {
+        $ProcessedFiles = @()
+
+        foreach ($Item in $FilesToCheck) {
+            $TestPath = Join-Path $RepoRoot $Item
+
+            if (Test-Path $TestPath) {
+                if (Test-Path $TestPath -PathType Container) {
+                    # It's a directory - find all .c files in it
+                    Write-Host "Finding .c files in directory: $Item" -ForegroundColor Gray
+                    $DirCFiles = Get-ChildItem -Path $TestPath -Filter "*.c" -Recurse |
+                                 ForEach-Object { $_.FullName.Replace("$RepoRoot\", "").Replace("\", "/") }
+                    if ($DirCFiles) {
+                        $ProcessedFiles += $DirCFiles
+                    } else {
+                        Write-Host "Warning: No .c files found in directory: $Item" -ForegroundColor Yellow
+                    }
+                } elseif ($Item -match '\.c$') {
+                    # It's a .c file
+                    $ProcessedFiles += $Item
+                } else {
+                    Write-Host "Warning: Skipping non-.c file: $Item" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "Warning: Path does not exist: $Item" -ForegroundColor Yellow
+            }
+        }
+
+        if ($ProcessedFiles.Count -gt 0) {
+            $ScriptArgs = " " + ($ProcessedFiles -join " ")
+        }
+    }
+
+    docker run `
+        --rm `
+        --name $ContainerName `
+        -v "${RepoRoot}:/app" `
+        -w /app `
+        $ImageName `
+        bash -c "/app/temp-clang-tidy.sh$ScriptArgs"
+
+    $ExitCode = $LASTEXITCODE
+
+    # Clean up temporary script
+    Remove-Item $TempScript -ErrorAction SilentlyContinue
+
+    if ($ExitCode -eq 0) {
+        Write-Host ""
+        Write-Host "clang-tidy analysis completed successfully!" -ForegroundColor Green
+    } else {
+        Write-Host ""
+        Write-Host "clang-tidy analysis failed with exit code: $ExitCode" -ForegroundColor Red
+    }
+
+    exit $ExitCode
+}
+
+# Prepare the command to run (for non-scan-build modes)
 if ($Interactive) {
     $DockerFlags = "-it"
     Write-Host "Starting interactive shell in test container..." -ForegroundColor Cyan

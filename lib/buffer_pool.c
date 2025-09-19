@@ -368,7 +368,7 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
     return;
   }
 
-  memset(stats, 0, sizeof(*stats));
+  SAFE_MEMSET(stats, sizeof(*stats), 0, sizeof(*stats));
 
   mutex_lock(&pool->pool_mutex);
 

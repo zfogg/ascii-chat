@@ -414,8 +414,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   call_count++;
 
   if (!ctx || !ctx->reader) {
-    log_error("DEBUG: webcam_read_context call #%d - NULL context or reader (ctx=%p, reader=%p)",
-              call_count, ctx, ctx ? ctx->reader : NULL);
+    log_error("DEBUG: webcam_read_context call #%d - NULL context or reader (ctx=%p, reader=%p)", call_count, ctx,
+              ctx ? ctx->reader : NULL);
     return NULL;
   }
 
@@ -476,6 +476,19 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       if (null_count == 1) {
         log_info("No sample available yet (this is normal during startup)");
       }
+    } else if (null_count > 50) {
+      // Too many consecutive NULL samples - likely exclusive access issue
+      log_error("CRITICAL: Received %d consecutive NULL samples from webcam", null_count);
+      log_error("This usually indicates the webcam is in use by another application.");
+      log_error("Windows allows only one application to access the webcam at a time.");
+      log_error("");
+      log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
+      log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
+      log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
+      log_error("");
+      log_error("Example: ascii-chat-client --test-pattern");
+      log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
+      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
     }
     return NULL;
   }
@@ -484,7 +497,16 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   IMFMediaBuffer *buffer = NULL;
   hr = IMFSample_ConvertToContiguousBuffer(sample, &buffer);
   if (FAILED(hr)) {
-    log_debug("Failed to get contiguous buffer: 0x%08x", hr);
+    static int buffer_fail_count = 0;
+    buffer_fail_count++;
+    log_debug("Failed to get contiguous buffer: 0x%08x (failure #%d)", hr, buffer_fail_count);
+
+    if (buffer_fail_count > 20) {
+      log_error("CRITICAL: Failed to get media buffer %d times - webcam likely in use", buffer_fail_count);
+      log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
+      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+    }
+
     IMFSample_Release(sample);
     return NULL;
   }
@@ -494,7 +516,16 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   DWORD bufferLength = 0;
   hr = IMFMediaBuffer_Lock(buffer, &bufferData, NULL, &bufferLength);
   if (FAILED(hr)) {
-    log_debug("Failed to lock MF buffer: 0x%08x", hr);
+    static int lock_fail_count = 0;
+    lock_fail_count++;
+    log_debug("Failed to lock MF buffer: 0x%08x (failure #%d)", hr, lock_fail_count);
+
+    if (lock_fail_count > 20) {
+      log_error("CRITICAL: Failed to lock media buffer %d times - webcam likely in use", lock_fail_count);
+      log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
+      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+    }
+
     IMFMediaBuffer_Release(buffer);
     IMFSample_Release(sample);
     return NULL;
@@ -640,9 +671,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
         // Clamp and store
         UINT32 pixelIndex = y * actualWidth + x;
-        img->pixels[pixelIndex].r = (R < 0) ? 0 : ((R > 255) ? 255 : R);
-        img->pixels[pixelIndex].g = (G < 0) ? 0 : ((G > 255) ? 255 : G);
-        img->pixels[pixelIndex].b = (B < 0) ? 0 : ((B > 255) ? 255 : B);
+        img->pixels[pixelIndex].r = clamp_rgb(R);
+        img->pixels[pixelIndex].g = clamp_rgb(G);
+        img->pixels[pixelIndex].b = clamp_rgb(B);
       }
     }
     log_info("Converted NV12 frame");
@@ -681,9 +712,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
         // Store first pixel
         UINT32 pixelIndex = y * actualWidth + x;
-        img->pixels[pixelIndex].r = (R < 0) ? 0 : ((R > 255) ? 255 : R);
-        img->pixels[pixelIndex].g = (G < 0) ? 0 : ((G > 255) ? 255 : G);
-        img->pixels[pixelIndex].b = (B < 0) ? 0 : ((B > 255) ? 255 : B);
+        img->pixels[pixelIndex].r = clamp_rgb(R);
+        img->pixels[pixelIndex].g = clamp_rgb(G);
+        img->pixels[pixelIndex].b = clamp_rgb(B);
 
         // Second pixel (if within bounds)
         if (x + 1 < actualWidth) {
@@ -693,9 +724,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
           B = (298 * C + 516 * D + 128) >> 8;
 
           pixelIndex = y * actualWidth + (x + 1);
-          img->pixels[pixelIndex].r = (R < 0) ? 0 : ((R > 255) ? 255 : R);
-          img->pixels[pixelIndex].g = (G < 0) ? 0 : ((G > 255) ? 255 : G);
-          img->pixels[pixelIndex].b = (B < 0) ? 0 : ((B > 255) ? 255 : B);
+          img->pixels[pixelIndex].r = clamp_rgb(R);
+          img->pixels[pixelIndex].g = clamp_rgb(G);
+          img->pixels[pixelIndex].b = clamp_rgb(B);
         }
       }
     }

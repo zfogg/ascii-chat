@@ -18,7 +18,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   vfb->back_buffer = &vfb->frames[1];
 
   // Pre-allocate frame data buffers (2MB each for HD video)
-  const size_t frame_size = 2 * 1024 * 1024;
+  const size_t frame_size = (size_t)2 * 1024 * 1024;
   data_buffer_pool_t *pool = data_buffer_pool_get_global();
 
   // Initialize frames - size starts at 0 until actual data is written!
@@ -98,12 +98,9 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   // Check if reader has consumed the previous frame
   if (atomic_load(&vfb->new_frame_available)) {
     // Reader hasn't consumed yet - we're dropping a frame
-    uint64_t drops = atomic_fetch_add(&vfb->total_frames_dropped, 1) + 1;
-    // Throttle drop logging - only log every 100 drops to avoid spam
-    if (drops == 1 || drops % 100 == 0) {
-      log_debug("Dropping frame for client %u (reader too slow, total drops: %llu)",
-                vfb->client_id, (unsigned long long)drops);
-    }
+    // This is EXPECTED behavior in a double-buffer system when producer/consumer rates differ
+    atomic_fetch_add(&vfb->total_frames_dropped, 1);
+    // Don't log these drops - they're normal operation when rates differ
   }
 
   // Atomic pointer swap - this is the key operation
@@ -149,7 +146,7 @@ simple_frame_swap_t *simple_frame_swap_create(void) {
     return NULL;
 
   // Pre-allocate both frames
-  const size_t frame_size = 2 * 1024 * 1024;
+  const size_t frame_size = (size_t)2 * 1024 * 1024;
   sfs->frame_a.data = malloc(frame_size);
   sfs->frame_b.data = malloc(frame_size);
 
@@ -176,8 +173,8 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
   video_frame_t *write_frame = use_a ? &sfs->frame_a : &sfs->frame_b;
 
   // Copy data to write frame
-  if (size <= 2 * 1024 * 1024) {
-    memcpy(write_frame->data, data, size);
+  if (size <= (size_t)2 * 1024 * 1024) {
+    SAFE_MEMCPY(write_frame->data, size, data, size);
     write_frame->size = size;
     write_frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
 
@@ -192,5 +189,6 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
 const video_frame_t *simple_frame_swap_get(simple_frame_swap_t *sfs) {
   if (!sfs)
     return NULL;
-  return (const video_frame_t *)atomic_load(&sfs->current_frame);
+  uintptr_t frame_ptr = atomic_load(&sfs->current_frame);
+  return (const video_frame_t *)(void *)frame_ptr; // NOLINT(bugprone-casting-through-void,performance-no-int-to-ptr)
 }

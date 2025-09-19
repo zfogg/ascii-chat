@@ -33,7 +33,7 @@ static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
   // Use counter in first 8 bytes, random in remaining 16 bytes
   // This prevents nonce reuse while maintaining security
   uint64_t counter = ctx->nonce_counter++;
-  memcpy(nonce_out, &counter, 8);
+  SAFE_MEMCPY(nonce_out, 8, &counter, 8);
   randombytes_buf(nonce_out + 8, CRYPTO_NONCE_SIZE - 8);
 }
 
@@ -144,7 +144,7 @@ crypto_result_t crypto_get_public_key(const crypto_context_t *ctx, uint8_t *publ
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  memcpy(public_key_out, ctx->public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  SAFE_MEMCPY(public_key_out, CRYPTO_PUBLIC_KEY_SIZE, ctx->public_key, CRYPTO_PUBLIC_KEY_SIZE);
   return CRYPTO_OK;
 }
 
@@ -154,7 +154,7 @@ crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t 
   }
 
   // Store peer's public key
-  memcpy(ctx->peer_public_key, peer_public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  SAFE_MEMCPY(ctx->peer_public_key, CRYPTO_PUBLIC_KEY_SIZE, peer_public_key, CRYPTO_PUBLIC_KEY_SIZE);
   ctx->peer_key_received = true;
 
   // Compute shared secret using X25519
@@ -263,10 +263,10 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   // Generate nonce and place at beginning of ciphertext
   uint8_t nonce[CRYPTO_NONCE_SIZE];
   generate_nonce(ctx, nonce);
-  memcpy(ciphertext_out, nonce, CRYPTO_NONCE_SIZE);
+  SAFE_MEMCPY(ciphertext_out, CRYPTO_NONCE_SIZE, nonce, CRYPTO_NONCE_SIZE);
 
   // Choose encryption key (prefer shared key over password key)
-  const uint8_t *encryption_key;
+  const uint8_t *encryption_key = NULL;
   if (ctx->key_exchange_complete) {
     encryption_key = ctx->shared_key;
   } else if (ctx->has_password) {
@@ -313,7 +313,7 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   const uint8_t *encrypted_data = ciphertext + CRYPTO_NONCE_SIZE;
 
   // Choose decryption key (prefer shared key over password key)
-  const uint8_t *decryption_key;
+  const uint8_t *decryption_key = NULL;
   if (ctx->key_exchange_complete) {
     decryption_key = ctx->shared_key;
   } else if (ctx->has_password) {
@@ -379,23 +379,23 @@ void crypto_get_status(const crypto_context_t *ctx, char *status_buffer, size_t 
   }
 
   if (!ctx->initialized) {
-    snprintf(status_buffer, buffer_size, "Not initialized");
+    SAFE_SNPRINTF(status_buffer, buffer_size, "Not initialized");
     return;
   }
 
-  snprintf(status_buffer, buffer_size,
-           "Initialized: %s, Password: %s, Key Exchange: %s, Ready: %s, "
-           "Encrypted: %" PRIu64 " bytes, Decrypted: %" PRIu64 " bytes, Nonce: %" PRIu64,
-           ctx->initialized ? "yes" : "no", ctx->has_password ? "yes" : "no",
-           ctx->key_exchange_complete ? "complete" : "incomplete", crypto_is_ready(ctx) ? "yes" : "no",
-           ctx->bytes_encrypted, ctx->bytes_decrypted, ctx->nonce_counter);
+  SAFE_SNPRINTF(status_buffer, buffer_size,
+                "Initialized: %s, Password: %s, Key Exchange: %s, Ready: %s, "
+                "Encrypted: %" PRIu64 " bytes, Decrypted: %" PRIu64 " bytes, Nonce: %" PRIu64,
+                ctx->initialized ? "yes" : "no", ctx->has_password ? "yes" : "no",
+                ctx->key_exchange_complete ? "complete" : "incomplete", crypto_is_ready(ctx) ? "yes" : "no",
+                ctx->bytes_encrypted, ctx->bytes_decrypted, ctx->nonce_counter);
 }
 
-bool crypto_secure_compare(const uint8_t *a, const uint8_t *b, size_t len) {
-  if (!a || !b) {
+bool crypto_secure_compare(const uint8_t *lhs, const uint8_t *rhs, size_t len) {
+  if (!lhs || !rhs) {
     return false;
   }
-  return sodium_memcmp(a, b, len) == 0;
+  return sodium_memcmp(lhs, rhs, len) == 0;
 }
 
 crypto_result_t crypto_random_bytes(uint8_t *buffer, size_t len) {
@@ -429,8 +429,8 @@ crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uin
 
   // Pack packet: [type:4][public_key:32]
   uint32_t packet_type = CRYPTO_PACKET_PUBLIC_KEY;
-  memcpy(packet_out, &packet_type, sizeof(packet_type));
-  memcpy(packet_out + sizeof(packet_type), ctx->public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  SAFE_MEMCPY(packet_out, sizeof(packet_type), &packet_type, sizeof(packet_type));
+  SAFE_MEMCPY(packet_out + sizeof(packet_type), CRYPTO_PUBLIC_KEY_SIZE, ctx->public_key, CRYPTO_PUBLIC_KEY_SIZE);
 
   *packet_len_out = required_size;
   return CRYPTO_OK;
@@ -448,7 +448,7 @@ crypto_result_t crypto_process_public_key_packet(crypto_context_t *ctx, const ui
 
   // Unpack packet: [type:4][public_key:32]
   uint32_t packet_type;
-  memcpy(&packet_type, packet, sizeof(packet_type));
+  SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
 
   if (packet_type != CRYPTO_PACKET_PUBLIC_KEY) {
     return CRYPTO_ERROR_INVALID_PARAMS;
@@ -488,8 +488,8 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
   uint32_t packet_type = CRYPTO_PACKET_ENCRYPTED_DATA;
   uint32_t data_length = (uint32_t)ciphertext_len;
 
-  memcpy(packet_out, &packet_type, sizeof(packet_type));
-  memcpy(packet_out + sizeof(packet_type), &data_length, sizeof(data_length));
+  SAFE_MEMCPY(packet_out, sizeof(packet_type), &packet_type, sizeof(packet_type));
+  SAFE_MEMCPY(packet_out + sizeof(packet_type), sizeof(data_length), &data_length, sizeof(data_length));
 
   *packet_len_out = required_size;
   return CRYPTO_OK;
@@ -510,9 +510,10 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
   }
 
   // Unpack packet: [type:4][length:4][encrypted_data:var]
-  uint32_t packet_type, data_length;
-  memcpy(&packet_type, packet, sizeof(packet_type));
-  memcpy(&data_length, packet + sizeof(packet_type), sizeof(data_length));
+  uint32_t packet_type;
+  uint32_t data_length;
+  SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+  SAFE_MEMCPY(&data_length, sizeof(data_length), packet + sizeof(packet_type), sizeof(data_length));
 
   if (packet_type != CRYPTO_PACKET_ENCRYPTED_DATA) {
     return CRYPTO_ERROR_INVALID_PARAMS;

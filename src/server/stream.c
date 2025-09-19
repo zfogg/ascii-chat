@@ -153,27 +153,6 @@
 #include "aspect_ratio.h"
 #include "crc32_hw.h"
 
-/**
- * @brief Global frame cache mutex for legacy frame caching system
- *
- * Protects access to the legacy global frame cache during the transition
- * period to per-client frame caching. This will be removed once all code
- * paths use per-client caching exclusively.
- *
- * @deprecated Use double-buffer system via video_frame.h instead
- */
-mutex_t g_frame_cache_mutex = {0};
-
-/**
- * @brief Global frame cache entry for legacy system
- *
- * Contains cached frame data from the original single-output video system.
- * This is being phased out in favor of per-client frame caching.
- *
- * @deprecated Use double-buffer system via video_frame.h instead
- */
-frame_cache_entry_t g_frame_cache = {0};
-
 /* ============================================================================
  * Client Lookup Utilities
  * ============================================================================
@@ -313,10 +292,21 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
                                           bool wants_stretch, size_t *out_size) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
+
+  // DEBUG: Track frame generation attempts
+  static uint64_t frame_gen_count = 0;
+  frame_gen_count++;
+
   if (!out_size || width == 0 || height == 0) {
     log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
               height, out_size);
     return NULL;
+  }
+
+  // DEBUG: Log every 30 frames (1 second at 30fps) to track frame generation
+  if (frame_gen_count % 30 == 0) {
+    log_info("DEBUG_FRAME_GEN: [%llu] Starting frame generation for client %u (%ux%u)",
+             frame_gen_count, target_client_id, width, height);
   }
 
   // Collect all active clients and their image sources
@@ -334,10 +324,25 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   // Multiple video generation threads can safely access client list concurrently
   rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
+    // Check for shutdown while holding the lock
+    if (atomic_load(&g_should_exit)) {
+      rwlock_unlock(&g_client_manager_rwlock);
+      *out_size = 0;
+      return NULL;
+    }
+
     client_info_t *client = &g_client_manager.clients[i];
 
+    // Skip empty client slots to avoid mutex contention
+    if (client->client_id == 0) {
+      continue;
+    }
+
     // Include ALL active clients in the grid, not just those sending video
-    if (client->active && source_count < MAX_CLIENTS) {
+    // Thread-safe check for active client - use atomic read to avoid deadlock
+    bool is_active = atomic_load(&client->active);
+
+    if (is_active && source_count < MAX_CLIENTS) {
       sources[source_count].client_id = client->client_id;
       sources[source_count].image = NULL; // Will be set if video is available
       sources[source_count].has_video = false;
@@ -370,12 +375,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
               current_frame.timestamp = (uint32_t)(frame->capture_timestamp_us / 1000000);
               got_new_frame = true;
 
-              // Get frame stats for monitoring
-              video_frame_stats_t stats;
-              video_frame_get_stats(client->incoming_video_buffer, &stats);
-              if (stats.drop_rate > 0.1f) {
-                log_debug("Client %u dropping frames: %.1f%% drop rate", client->client_id, stats.drop_rate * 100.0f);
-              }
+              // Don't log frame stats - drops are normal with double buffering
             }
           }
         }
@@ -435,7 +435,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         }
 
         // Extract pixel data
-        rgb_t *pixels = (rgb_t *)(frame_to_use->data + sizeof(uint32_t) * 2);
+        rgb_t *pixels = (rgb_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
 
         // Create image from buffer pool for consistent video pipeline management
         image_t *img = image_new_from_pool(img_width, img_height);
@@ -472,10 +472,15 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
   }
 
-  log_info("Active clients: %d, sources with video: %d", source_count, sources_with_video);
-
   // No active video sources - don't generate placeholder frames
   if (sources_with_video == 0) {
+    // DEBUG: Track when no video sources are available
+    static uint64_t no_sources_count = 0;
+    no_sources_count++;
+    if (no_sources_count % 30 == 0) { // Log every 30 occurrences (1 second at 30fps)
+      log_info("DEBUG_NO_SOURCES: [%llu] No video sources available for client %u (total_clients=%d, sources_with_video=%d)",
+               no_sources_count, target_client_id, source_count, sources_with_video);
+    }
     log_debug("Per-client %u: No video sources available - returning NULL frame", target_client_id);
     *out_size = 0;
     return NULL;
@@ -557,10 +562,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         // Copy fitted image to center of composite
         for (int y = 0; y < fitted_height; y++) {
           for (int x = 0; x < fitted_width; x++) {
-            int src_idx = y * fitted_width + x;
+            int src_idx = (y * fitted_width) + x;
             int dst_x = x_offset + x;
             int dst_y = y_offset + y;
-            int dst_idx = dst_y * composite_width_px + dst_x;
+            int dst_idx = (dst_y * composite_width_px) + dst_x;
 
             if (dst_x >= 0 && dst_x < composite_width_px && dst_y >= 0 && dst_y < composite_height_px) {
               composite->pixels[dst_idx] = fitted->pixels[src_idx];
@@ -629,7 +634,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         float utilization = (float)sources_with_video / (float)(test_cols * test_rows);
 
         // Combined score: aspect match weighted with utilization
-        float score = aspect_match * 0.7f + utilization * 0.3f;
+        float score = (aspect_match * 0.7f) + (utilization * 0.3f);
 
         if (score > best_score) {
           best_score = score;
@@ -641,11 +646,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       grid_cols = best_cols;
       grid_rows = best_rows;
     }
-
-    // Debug logging to verify grid calculation
-    log_info("Grid calculation: %d sources with video, terminal %dx%d (aspect %.2f), grid %dx%d, cells %dx%d",
-             sources_with_video, width, height, terminal_aspect, grid_cols, grid_rows, width / grid_cols,
-             height / grid_rows);
 
     // Calculate cell dimensions in characters (for layout)
     int cell_width_chars = width / grid_cols;
@@ -666,8 +666,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       cell_height_px = cell_height_chars * 2; // 2:1 mapping to match composite dimensions
       required_height = grid_rows * cell_height_px;
     }
+
+    // Debug logging with actual cell dimensions used
+    log_info("Grid calculation: %d sources with video, terminal %dx%d (aspect %.2f), grid %dx%d, actual_cells %dx%d",
+             sources_with_video, width, height, terminal_aspect, grid_cols, grid_rows, cell_width_px, cell_height_px);
+
     // For vertical layout, we'll adjust composite width after calculating target size
-    int optimal_width_for_vertical = composite_width_px; // Will be set later
+    int optimal_width_for_vertical; // Will be set later
 
     if (composite->h != required_height || composite->w != composite_width_px) {
       // Recreate composite with correct dimensions
@@ -711,10 +716,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       if (sources_with_video == 2 && grid_cols == 1 && grid_rows == 2) {
         // Calculate both possible scalings
         int width_constrained_w = cell_width_px;
-        int width_constrained_h = (int)(cell_width_px / src_aspect + 0.5f);
+        int width_constrained_h = (int)((cell_width_px / src_aspect) + 0.5f);
 
         int height_constrained_h = cell_height_px;
-        int height_constrained_w = (int)(cell_height_px * src_aspect + 0.5f);
+        int height_constrained_w = (int)((cell_height_px * src_aspect) + 0.5f);
 
         // For vertical layout, prefer width-constrained to maximize usage of available space
         if (width_constrained_h <= cell_height_px) {
@@ -751,11 +756,11 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         if (src_aspect > cell_aspect) {
           // Image is wider than cell - fit to width
           target_width_px = cell_width_px;
-          target_height_px = (int)(cell_width_px / src_aspect + 0.5f);
+          target_height_px = (int)((cell_width_px / src_aspect) + 0.5f);
         } else {
           // Image is taller than cell - fit to height
           target_height_px = cell_height_px;
-          target_width_px = (int)(cell_height_px * src_aspect + 0.5f);
+          target_width_px = (int)((cell_height_px * src_aspect) + 0.5f);
         }
       }
 
@@ -791,12 +796,12 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         // Copy resized image to composite with proper bounds checking
         for (int y = 0; y < target_height_px; y++) {
           for (int x = 0; x < target_width_px; x++) {
-            int src_idx = y * target_width_px + x;
+            int src_idx = (y * target_width_px) + x;
             int dst_x = cell_x_offset_px + x_padding_px + x;
             int dst_y = cell_y_offset_px + y_padding_px + y;
 
             // CRITICAL FIX: Use correct stride for composite image
-            int dst_idx = dst_y * composite_width_px + dst_x;
+            int dst_idx = (dst_y * composite_width_px) + dst_x;
 
             // Bounds checking with correct composite dimensions
             bool src_ok = src_idx >= 0 && src_idx < resized->w * resized->h;
@@ -860,7 +865,21 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
+    // DEBUG: Track successful frame generation
+    static uint64_t success_count = 0;
+    success_count++;
+    if (success_count % 30 == 0) { // Log every 30 successful frames (1 second at 30fps)
+      log_info("DEBUG_FRAME_SUCCESS: [%llu] Successfully generated ASCII frame for client %u (size=%zu)",
+               success_count, target_client_id, *out_size);
+    }
   } else {
+    // DEBUG: Track frame generation failures
+    static uint64_t fail_count = 0;
+    fail_count++;
+    if (fail_count % 30 == 0) { // Log every 30 failures
+      log_info("DEBUG_FRAME_FAIL: [%llu] Failed to convert image to ASCII for client %u",
+               fail_count, target_client_id);
+    }
     log_error("Per-client %u: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;
   }
@@ -939,45 +958,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
  * @see packet_queue_enqueue() For underlying queue implementation
  * @see asciichat_crc32() For checksum generation
  */
-int queue_ascii_frame_for_client(client_info_t *client, const char *ascii_frame, size_t frame_size) {
-  if (!client || !client->video_queue || !ascii_frame || frame_size == 0) {
-    return -1;
-  }
-
-  // Create ASCII frame packet header with metadata
-  ascii_frame_packet_t frame_header = {
-      .width = htonl(client->width),
-      .height = htonl(client->height),
-      .original_size = htonl((uint32_t)frame_size),
-      .compressed_size = htonl(0), // Not using compression for per-client frames yet
-      .checksum = htonl(asciichat_crc32(ascii_frame, frame_size)),
-      .flags = htonl((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
-
-  // Allocate buffer for complete packet (header + data)
-  size_t packet_size = sizeof(ascii_frame_packet_t) + frame_size;
-  char *packet_buffer = malloc(packet_size);
-  if (!packet_buffer) {
-    log_error("Failed to allocate packet buffer for client %u", client->client_id);
-    return -1;
-  }
-
-  // Copy header and frame data into single buffer
-  memcpy(packet_buffer, &frame_header, sizeof(ascii_frame_packet_t));
-  memcpy(packet_buffer + sizeof(ascii_frame_packet_t), ascii_frame, frame_size);
-
-  // Queue the complete frame as a single packet
-  int result = packet_queue_enqueue(client->video_queue, PACKET_TYPE_ASCII_FRAME, packet_buffer, packet_size, 0, true);
-
-  // Free the temporary packet buffer (packet_queue_enqueue copies data when copy=true)
-  free(packet_buffer);
-
-  if (result < 0) {
-    log_debug("Failed to queue ASCII frame for client %u: queue full or shutdown", client->client_id);
-    return -1;
-  }
-
-  return 0;
-}
+// REMOVED: queue_ascii_frame_for_client - video now uses double buffer directly in client->outgoing_video_buffer
 
 /**
  * @brief Queue audio data for delivery to specific client

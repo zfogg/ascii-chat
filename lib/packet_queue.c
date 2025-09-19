@@ -242,7 +242,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
         node->packet.data = buffer_pool_alloc(data_len);
         node->packet.buffer_pool = data_buffer_pool_get_global();
       }
-      memcpy(node->packet.data, data, data_len);
+      SAFE_MEMCPY(node->packet.data, data_len, data, data_len);
       node->packet.owns_data = true;
     } else {
       // Use the data pointer directly (caller must ensure it stays valid)
@@ -321,7 +321,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   packet_node_t *node = node_pool_get(queue->node_pool);
 
   // Copy the packet header
-  memcpy(&node->packet, packet, sizeof(queued_packet_t));
+  SAFE_MEMCPY(&node->packet, sizeof(queued_packet_t), packet, sizeof(queued_packet_t));
 
   // Deep copy the data if needed
   if (packet->data && packet->data_len > 0 && packet->owns_data) {
@@ -336,7 +336,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
       data_copy = buffer_pool_alloc(packet->data_len);
       node->packet.buffer_pool = data_buffer_pool_get_global();
     }
-    memcpy(data_copy, packet->data, packet->data_len);
+    SAFE_MEMCPY(data_copy, packet->data_len, packet->data, packet->data_len);
     node->packet.data = data_copy;
     node->packet.owns_data = true;
   } else {
@@ -442,7 +442,7 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
     // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
-    memcpy(packet, &node->packet, sizeof(queued_packet_t));
+    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
     node_pool_put(queue->node_pool, node);
     return packet;
   }
@@ -518,7 +518,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
-    memcpy(packet, &node->packet, sizeof(queued_packet_t));
+    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
     node_pool_put(queue->node_pool, node);
     return packet;
   }

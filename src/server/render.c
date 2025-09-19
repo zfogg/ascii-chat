@@ -385,7 +385,7 @@ void *client_video_render_thread(void *arg) {
   }
 
   // Get client's desired FPS from capabilities or use default
-  int client_fps = VIDEO_RENDER_FPS;  // Default to 60 FPS
+  int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
   mutex_lock(&client->client_state_mutex);
   if (client->has_terminal_caps && client->terminal_caps.desired_fps > 0) {
     client_fps = client->terminal_caps.desired_fps;
@@ -397,6 +397,8 @@ void *client_video_render_thread(void *arg) {
   struct timespec last_render_time;
   clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
+  // Track queue pressure for dynamic throttling
+
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_should_exit)) {
     // Check for immediate shutdown
@@ -406,7 +408,7 @@ void *client_video_render_thread(void *arg) {
     }
 
     mutex_lock(&client->client_state_mutex);
-    should_continue = client->video_render_thread_running && client->active;
+    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
     mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {
@@ -414,7 +416,7 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    // Rate limiting
+    // Rate limiting with better shutdown responsiveness
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
@@ -423,36 +425,31 @@ void *client_video_render_thread(void *arg) {
 
     if (elapsed_ms < base_frame_interval_ms) {
       long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
-      // Sleep in small chunks to be more responsive to shutdown
-      const long max_sleep_chunk = 1000; // 1ms chunks for faster shutdown response
-      while (sleep_us > 0) {
-        // Check for shutdown before each sleep
-        if (atomic_load(&g_should_exit)) {
-          break;
-        }
-
+      // Sleep in small chunks for reasonable shutdown response (balance performance vs responsiveness)
+      const long max_sleep_chunk = 5000; // 5ms chunks for good shutdown response without destroying performance
+      while (sleep_us > 0 && !atomic_load(&g_should_exit)) {
         long chunk = sleep_us > max_sleep_chunk ? max_sleep_chunk : sleep_us;
         platform_sleep_usec(chunk);
         sleep_us -= chunk;
 
-        // Check if we should stop
-        if (atomic_load(&g_should_exit)) {
+        // Check all shutdown conditions after each tiny sleep
+        if (atomic_load(&g_should_exit))
           break;
-        }
+
         mutex_lock(&client->client_state_mutex);
-        bool still_running = client->video_render_thread_running && client->active;
+        bool still_running = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
         mutex_unlock(&client->client_state_mutex);
-        if (!still_running) break;
+        if (!still_running)
+          break;
       }
       continue;
     }
 
-    mutex_lock(&client->client_state_mutex);
+    // Use atomic operations to avoid mutex deadlocks
     uint32_t client_id_snapshot = client->client_id;
-    unsigned short width_snapshot = client->width;
-    unsigned short height_snapshot = client->height;
-    bool active_snapshot = client->active;
-    mutex_unlock(&client->client_state_mutex);
+    unsigned short width_snapshot = atomic_load(&client->width);
+    unsigned short height_snapshot = atomic_load(&client->height);
+    bool active_snapshot = atomic_load(&client->active);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
@@ -465,19 +462,53 @@ void *client_video_render_thread(void *arg) {
 
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
+
+    // DEBUG: Track render thread frame generation attempts
+    static uint64_t render_attempts = 0;
+    render_attempts++;
+    if (render_attempts % 30 == 0) { // Log every 30 attempts (1 second at 30fps)
+      log_info("DEBUG_RENDER: [%llu] Render thread attempting frame generation for client %u",
+               render_attempts, client_id_snapshot);
+    }
+
     char *ascii_frame =
         create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
 
-    // Phase 2 IMPLEMENTED: Queue frame for this specific client
+    // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
-      int queue_result = queue_ascii_frame_for_client(client, ascii_frame, frame_size);
-      if (queue_result == 0) {
-        // Successfully queued frame - log occasionally for monitoring
-        char pretty_size[64];
-        format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
-        LOG_DEBUG_EVERY(queue_count, 30 * 60,
-                        "Per-client render: Successfully queued %d ASCII frames for client %u (%ux%u, %s)",
-                        queue_count_counter, client->client_id, client->width, client->height, pretty_size);
+      // Write to outgoing video buffer - this is a double buffer that never drops frames
+      if (client->outgoing_video_buffer) {
+        video_frame_t *write_frame = video_frame_begin_write(client->outgoing_video_buffer);
+        if (write_frame) {
+          // Copy ASCII frame data to the back buffer
+          if (write_frame->data && frame_size <= client->outgoing_video_buffer->allocated_buffer_size) {
+            memcpy(write_frame->data, ascii_frame, frame_size);
+            write_frame->size = frame_size;
+            write_frame->capture_timestamp_us = (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
+
+            // Commit the frame (swaps buffers atomically)
+            video_frame_commit(client->outgoing_video_buffer);
+
+            // Log occasionally for monitoring
+            char pretty_size[64];
+            format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
+
+            // DEBUG: Track successful frame writes to buffer
+            static uint64_t buffer_write_count = 0;
+            buffer_write_count++;
+            if (buffer_write_count % 30 == 0) { // Log every 30 writes (1 second at 30fps)
+              log_info("DEBUG_BUFFER_WRITE: [%llu] Successfully wrote ASCII frame to buffer for client %u (size=%s)",
+                       buffer_write_count, client->client_id, pretty_size);
+            }
+
+            LOG_DEBUG_EVERY(queue_count, 30 * 60,
+                            "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",
+                            queue_count_counter, client->client_id, client->width, client->height, pretty_size);
+          } else {
+            log_warn("Frame too large for buffer: %zu > %zu", frame_size,
+                     client->outgoing_video_buffer->allocated_buffer_size);
+          }
+        }
       }
       free(ascii_frame);
     } else {
@@ -630,7 +661,7 @@ void *client_audio_render_thread(void *arg) {
 
     // CRITICAL FIX: Check thread state with mutex protection
     mutex_lock(&client->client_state_mutex);
-    should_continue = (((int)client->audio_render_thread_running != 0) && ((int)client->active != 0));
+    should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) && ((int)atomic_load(&client->active) != 0));
     mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {
@@ -639,7 +670,8 @@ void *client_audio_render_thread(void *arg) {
 
     if (!g_audio_mixer) {
       // Check shutdown flag while waiting
-      if (atomic_load(&g_should_exit)) break;
+      if (atomic_load(&g_should_exit))
+        break;
       platform_sleep_usec(10000);
       continue;
     }
@@ -647,7 +679,7 @@ void *client_audio_render_thread(void *arg) {
     // CRITICAL FIX: Protect client state access with per-client mutex
     mutex_lock(&client->client_state_mutex);
     uint32_t client_id_snapshot = client->client_id;
-    bool active_snapshot = client->active;
+    bool active_snapshot = atomic_load(&client->active);
     packet_queue_t *audio_queue_snapshot = client->audio_queue;
     mutex_unlock(&client->client_state_mutex);
 
@@ -687,9 +719,23 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Audio mixing rate - 5.8ms to match buffer size
-    // Check for shutdown while sleeping
-    if (!atomic_load(&g_should_exit)) {
-      platform_sleep_usec(5800);
+    // Sleep in small chunks for better shutdown responsiveness
+    long remaining_sleep_us = 5800;
+    const long sleep_chunk = 1000; // 1ms chunks for reasonable shutdown response
+    while (remaining_sleep_us > 0 && !atomic_load(&g_should_exit)) {
+      long chunk = remaining_sleep_us > sleep_chunk ? sleep_chunk : remaining_sleep_us;
+      platform_sleep_usec(chunk);
+      remaining_sleep_us -= chunk;
+
+      // Check all shutdown conditions
+      if (atomic_load(&g_should_exit))
+        break;
+
+      mutex_lock(&client->client_state_mutex);
+      bool still_running = atomic_load(&client->audio_render_thread_running) && atomic_load(&client->active);
+      mutex_unlock(&client->client_state_mutex);
+      if (!still_running)
+        break;
     }
   }
 
@@ -799,8 +845,8 @@ int create_client_render_threads(client_info_t *client) {
   }
 
   // Initialize render thread control flags
-  client->video_render_thread_running = false;
-  client->audio_render_thread_running = false;
+  atomic_store(&client->video_render_thread_running, false);
+  atomic_store(&client->audio_render_thread_running, false);
 
   // Create video rendering thread
   if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
@@ -808,13 +854,12 @@ int create_client_render_threads(client_info_t *client) {
     mutex_destroy(&client->video_buffer_mutex);
     mutex_destroy(&client->client_state_mutex);
     return -1;
-  } else {
-    log_info("Created video render thread for client %u", client->client_id);
   }
+  log_info("Created video render thread for client %u", client->client_id);
 
   // CRITICAL FIX: Protect thread_running flag with mutex
   mutex_lock(&client->client_state_mutex);
-  client->video_render_thread_running = true;
+  atomic_store(&client->video_render_thread_running, true);
   mutex_unlock(&client->client_state_mutex);
 
   // Create audio rendering thread
@@ -822,20 +867,19 @@ int create_client_render_threads(client_info_t *client) {
     log_error("Failed to create audio render thread for client %u", client->client_id);
     // Clean up video thread
     mutex_lock(&client->client_state_mutex);
-    client->video_render_thread_running = false;
+    atomic_store(&client->video_render_thread_running, false);
     mutex_unlock(&client->client_state_mutex);
     // Note: thread cancellation not available in platform abstraction
     ascii_thread_join(&client->video_render_thread, NULL);
     mutex_destroy(&client->video_buffer_mutex);
     mutex_destroy(&client->client_state_mutex);
     return -1;
-  } else {
-    log_info("Created audio render thread for client %u", client->client_id);
   }
+  log_info("Created audio render thread for client %u", client->client_id);
 
   // CRITICAL FIX: Protect thread_running flag with mutex
   mutex_lock(&client->client_state_mutex);
-  client->audio_render_thread_running = true;
+  atomic_store(&client->audio_render_thread_running, true);
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
@@ -932,14 +976,12 @@ void stop_client_render_threads(client_info_t *client) {
     return;
   }
 
-#ifdef DEBUG_THREADS
-  log_info("Destroying render threads for client %u", client->client_id);
-#endif
+  log_info("stop_client_render_threads: Starting for client %u", client->client_id);
 
   // Signal threads to stop - CRITICAL FIX: Protect with mutex
   mutex_lock(&client->client_state_mutex);
-  client->video_render_thread_running = false;
-  client->audio_render_thread_running = false;
+  atomic_store(&client->video_render_thread_running, false);
+  atomic_store(&client->audio_render_thread_running, false);
   mutex_unlock(&client->client_state_mutex);
 
   // Wait for threads to finish (deterministic cleanup)
@@ -947,20 +989,34 @@ void stop_client_render_threads(client_info_t *client) {
   bool is_shutting_down = atomic_load(&g_should_exit);
 
   if (ascii_thread_is_initialized(&client->video_render_thread)) {
+    log_info("stop_client_render_threads: Joining video render thread for client %u", client->client_id);
+    int result;
     if (is_shutting_down) {
-      // During shutdown, give thread a brief chance to exit cleanly
-      // but don't wait forever - the thread should have already seen g_should_exit
-      log_debug("Shutdown mode: joining video render thread for client %u with brief wait", client->client_id);
+      // During shutdown, give thread a brief chance to exit cleanly with timeout
+      log_debug("Shutdown mode: joining video render thread for client %u with 100ms timeout", client->client_id);
+      result = ascii_thread_join_timeout(&client->video_render_thread, NULL, 100);
+      if (result == -2) {
+        log_warn("Video render thread for client %u timed out during shutdown (continuing)", client->client_id);
+        // Don't call CloseHandle/cleanup on timeout - thread might still be running
+        memset(&client->video_render_thread, 0, sizeof(asciithread_t));
+        return; // Skip audio thread join to prevent further hangs
+      }
+    } else {
+      log_info("stop_client_render_threads: Calling ascii_thread_join for video thread of client %u",
+               client->client_id);
+      result = ascii_thread_join(&client->video_render_thread, NULL);
+      log_info("stop_client_render_threads: ascii_thread_join returned %d for video thread of client %u", result,
+               client->client_id);
     }
-    int result = ascii_thread_join(&client->video_render_thread, NULL);
+
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Video render thread joined for client %u", client->client_id);
 #endif
-    } else {
+    } else if (result != -2) { // Don't log timeout errors again
       if (is_shutting_down) {
-        log_warn("Failed to join video render thread for client %u during shutdown (continuing): %s",
-                 client->client_id, SAFE_STRERROR(result));
+        log_warn("Failed to join video render thread for client %u during shutdown (continuing): %s", client->client_id,
+                 SAFE_STRERROR(result));
       } else {
         log_error("Failed to join video render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
       }
@@ -969,18 +1025,27 @@ void stop_client_render_threads(client_info_t *client) {
   }
 
   if (ascii_thread_is_initialized(&client->audio_render_thread)) {
+    int result;
     if (is_shutting_down) {
-      log_debug("Shutdown mode: joining audio render thread for client %u with brief wait", client->client_id);
+      log_debug("Shutdown mode: joining audio render thread for client %u with 100ms timeout", client->client_id);
+      result = ascii_thread_join_timeout(&client->audio_render_thread, NULL, 100);
+      if (result == -2) {
+        log_warn("Audio render thread for client %u timed out during shutdown (continuing)", client->client_id);
+        memset(&client->audio_render_thread, 0, sizeof(asciithread_t));
+        return; // Don't continue with cleanup if threads won't exit
+      }
+    } else {
+      result = ascii_thread_join(&client->audio_render_thread, NULL);
     }
-    int result = ascii_thread_join(&client->audio_render_thread, NULL);
+
     if (result == 0) {
 #ifdef DEBUG_THREADS
       log_debug("Audio render thread joined for client %u", client->client_id);
 #endif
-    } else {
+    } else if (result != -2) { // Don't log timeout errors again
       if (is_shutting_down) {
-        log_warn("Failed to join audio render thread for client %u during shutdown (continuing): %s",
-                 client->client_id, SAFE_STRERROR(result));
+        log_warn("Failed to join audio render thread for client %u during shutdown (continuing): %s", client->client_id,
+                 SAFE_STRERROR(result));
       } else {
         log_error("Failed to join audio render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
       }

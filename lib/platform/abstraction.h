@@ -85,7 +85,7 @@
 #include "platform/terminal.h"
 
 // String and memory functions
-#include "platform/string.h"
+#include "platform/system.h"
 
 // System functions
 #include "platform/system.h"

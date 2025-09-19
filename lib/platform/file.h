@@ -12,20 +12,13 @@
  */
 
 #include <sys/types.h>
-
-#ifdef _WIN32
-typedef int ssize_t;
-#endif
+#include "internal.h" // For ssize_t definition on Windows
 
 // ============================================================================
 // File Operations
 // ============================================================================
 
-// Safe file operations
-int platform_open(const char *pathname, int flags, ...);
-ssize_t platform_read(int fd, void *buf, size_t count);
-ssize_t platform_write(int fd, const void *buf, size_t count);
-int platform_close(int fd);
+// Safe file operations (declared in internal.h)
 
 // File mode helpers
 #ifdef _WIN32
