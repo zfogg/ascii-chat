@@ -120,7 +120,6 @@
 #include "buffer_pool.h"
 #include "network.h"
 #include "packet_queue.h"
-#include "ringbuffer.h"
 #include "audio.h"
 #include "mixer.h"
 #include "video_frame.h"
@@ -128,6 +127,11 @@
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "crc32_hw.h"
+
+// Debug flags
+#define DEBUG_NETWORK 1
+#define DEBUG_THREADS 1
+#define DEBUG_MEMORY 1
 
 /**
  * @brief Global client manager singleton - central coordination point
@@ -217,7 +221,7 @@ client_info_t *find_client_by_id(uint32_t client_id) {
  * PERFORMANCE CHARACTERISTICS:
  * - Time Complexity: O(n) where n = number of active clients
  * - Space Complexity: O(1)
- * - Thread Safety: Requires external read lock on g_client_manager_rwlock
+ * - Thread Safety: Internally acquires read lock on g_client_manager_rwlock
  *
  * USAGE PATTERNS:
  * - Connection establishment during add_client() processing
@@ -227,15 +231,21 @@ client_info_t *find_client_by_id(uint32_t client_id) {
  * @param socket Platform-abstracted socket descriptor to search for
  * @return Pointer to client_info_t if found, NULL if not found
  *
- * @warning Requires caller to hold g_client_manager_rwlock read lock
  * @note Only searches active clients (avoids returning stale entries)
+ * @note Caller should use snapshot pattern when accessing returned client data
  */
 client_info_t *find_client_by_socket(socket_t socket) {
+  rwlock_rdlock(&g_client_manager_rwlock);
+
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].socket == socket && g_client_manager.clients[i].active) {
-      return &g_client_manager.clients[i];
+    if (g_client_manager.clients[i].socket == socket && atomic_load(&g_client_manager.clients[i].active)) {
+      client_info_t *client = &g_client_manager.clients[i];
+      rwlock_rdunlock(&g_client_manager_rwlock);
+      return client;
     }
   }
+
+  rwlock_rdunlock(&g_client_manager_rwlock);
   return NULL;
 }
 
@@ -251,7 +261,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   int slot = -1;
   int existing_count = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].client_id == 0) {
+    if (atomic_load(&g_client_manager.clients[i].client_id) == 0) {
       if (slot == -1) {
         slot = i; // Take first available slot
       }
@@ -261,7 +271,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   }
 
   if (slot == -1) {
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_wrunlock(&g_client_manager_rwlock);
     log_error("No available client slots (all %d slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
@@ -279,30 +289,58 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   memset(client, 0, sizeof(client_info_t));
 
   client->socket = socket;
-  client->client_id = ++g_client_manager.next_client_id;
+  atomic_store(&client->client_id, ++g_client_manager.next_client_id);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   atomic_store(&client->active, true);
-  log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", client->client_id, slot, socket);
+  log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
+           socket);
   client->connected_at = time(NULL);
+
+  // Configure socket options for optimal performance
+  if (set_socket_keepalive(socket) < 0) {
+    log_warn("Failed to set socket keepalive for client %u: %s", atomic_load(&client->client_id),
+             network_error_string(errno));
+  }
+
+  // Set socket buffer sizes for large data transmission
+  int send_buffer_size = 1024 * 1024; // 1MB send buffer
+  int recv_buffer_size = 1024 * 1024; // 1MB receive buffer
+
+  if (socket_setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
+    log_warn("Failed to set send buffer size for client %u: %s", atomic_load(&client->client_id),
+             network_error_string(errno));
+  }
+
+  if (socket_setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
+    log_warn("Failed to set receive buffer size for client %u: %s", atomic_load(&client->client_id),
+             network_error_string(errno));
+  }
+
+  // Enable TCP_NODELAY to reduce latency for large packets
+  int nodelay = 1;
+  if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
+    log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id),
+             network_error_string(errno));
+  }
   SAFE_IGNORE_PRINTF_RESULT(
-      safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", client->client_id));
+      safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id)));
 
   // Create individual video buffer for this client using modern double-buffering
-  client->incoming_video_buffer = video_frame_buffer_create(client->client_id);
+  client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
   if (!client->incoming_video_buffer) {
-    log_error("Failed to create video buffer for client %u", client->client_id);
-    rwlock_unlock(&g_client_manager_rwlock);
+    log_error("Failed to create video buffer for client %u", atomic_load(&client->client_id));
+    rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
   }
 
   // Create individual audio buffer for this client
   client->incoming_audio_buffer = audio_ring_buffer_create();
   if (!client->incoming_audio_buffer) {
-    log_error("Failed to create audio buffer for client %u", client->client_id);
+    log_error("Failed to create audio buffer for client %u", atomic_load(&client->client_id));
     video_frame_buffer_destroy(client->incoming_video_buffer);
     client->incoming_video_buffer = NULL;
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
   }
 
@@ -311,34 +349,34 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->audio_queue =
       packet_queue_create_with_pools(100, 200, false); // Max 100 audio packets, 200 nodes, NO local buffer pool
   if (!client->audio_queue) {
-    log_error("Failed to create audio queue for client %u", client->client_id);
+    log_error("Failed to create audio queue for client %u", atomic_load(&client->client_id));
     video_frame_buffer_destroy(client->incoming_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     client->incoming_video_buffer = NULL;
     client->incoming_audio_buffer = NULL;
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
   }
 
   // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
-  client->outgoing_video_buffer = video_frame_buffer_create(client->client_id);
+  client->outgoing_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
   if (!client->outgoing_video_buffer) {
-    log_error("Failed to create outgoing video buffer for client %u", client->client_id);
+    log_error("Failed to create outgoing video buffer for client %u", atomic_load(&client->client_id));
     video_frame_buffer_destroy(client->incoming_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     packet_queue_destroy(client->audio_queue);
     client->incoming_video_buffer = NULL;
     client->incoming_audio_buffer = NULL;
     client->audio_queue = NULL;
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
   client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
-  SAFE_MALLOC(client->send_buffer, client->send_buffer_size, void*);
+  SAFE_MALLOC(client->send_buffer, client->send_buffer_size, void *);
   if (!client->send_buffer) {
-    log_error("Failed to allocate send buffer for client %u", client->client_id);
+    log_error("Failed to allocate send buffer for client %u", atomic_load(&client->client_id));
     video_frame_buffer_destroy(client->incoming_video_buffer);
     video_frame_buffer_destroy(client->outgoing_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
@@ -347,43 +385,43 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     client->outgoing_video_buffer = NULL;
     client->incoming_audio_buffer = NULL;
     client->audio_queue = NULL;
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
   log_info("CLIENT COUNT UPDATED: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
-           client->client_id, slot);
+           atomic_load(&client->client_id), slot);
 
   // Add client to hash table for O(1) lookup
-  if (!hashtable_insert(g_client_manager.client_hashtable, client->client_id, client)) {
-    log_error("Failed to add client %u to hash table", client->client_id);
+  if (!hashtable_insert(g_client_manager.client_hashtable, atomic_load(&client->client_id), client)) {
+    log_error("Failed to add client %u to hash table", atomic_load(&client->client_id));
     // Continue anyway - hash table is optimization, not critical
   }
 
   // Register this client's audio buffer with the mixer
   if (g_audio_mixer && client->incoming_audio_buffer) {
-    if (mixer_add_source(g_audio_mixer, client->client_id, client->incoming_audio_buffer) < 0) {
-      log_warn("Failed to add client %u to audio mixer", client->client_id);
+    if (mixer_add_source(g_audio_mixer, atomic_load(&client->client_id), client->incoming_audio_buffer) < 0) {
+      log_warn("Failed to add client %u to audio mixer", atomic_load(&client->client_id));
     } else {
 #ifdef DEBUG_AUDIO
-      log_debug("Added client %u to audio mixer", client->client_id);
+      log_debug("Added client %u to audio mixer", atomic_load(&client->client_id));
 #endif
     }
   }
 
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Start threads for this client
   if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
-    log_error("Failed to create receive thread for client %u", client->client_id);
-    remove_client(client->client_id);
+    log_error("Failed to create receive thread for client %u", atomic_load(&client->client_id));
+    remove_client(atomic_load(&client->client_id));
     return -1;
   }
 
   // Start send thread for this client
   if (ascii_thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
-    log_error("Failed to create send thread for client %u", client->client_id);
+    log_error("Failed to create send thread for client %u", atomic_load(&client->client_id));
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
@@ -406,7 +444,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   // TODO: Send initial server state directly via socket
   (void)net_state; // Suppress unused variable warning
 #ifdef DEBUG_NETWORK
-  log_info("Queued initial server state for client %u: %u connected clients", client->client_id,
+  log_info("Queued initial server state for client %u: %u connected clients", atomic_load(&client->client_id),
            state.connected_client_count);
 #endif
 
@@ -459,14 +497,14 @@ int remove_client(uint32_t client_id) {
 
   // If client not found, unlock and return
   if (!target_client) {
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_wrunlock(&g_client_manager_rwlock);
     log_warn("Cannot remove client %u: not found", client_id);
     return -1;
   }
 
   // CRITICAL: Release write lock before joining threads
   // This prevents deadlock with render threads that need read locks
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Phase 2: Join threads without holding any locks
 
@@ -476,17 +514,20 @@ int remove_client(uint32_t client_id) {
     int join_result;
 
     if (is_shutting_down) {
-      log_debug("Shutdown mode: joining send thread for client %u with 100ms timeout", client_id);
+      log_info("DEBUG_REMOVE_CLIENT: Shutdown mode: joining send thread for client %u with 100ms timeout", client_id);
       join_result = ascii_thread_join_timeout(&target_client->send_thread, NULL, 100);
       if (join_result == -2) {
         log_warn("Send thread for client %u timed out during shutdown (continuing)", client_id);
         memset(&target_client->send_thread, 0, sizeof(asciithread_t));
       }
+      log_info("DEBUG_REMOVE_CLIENT: Send thread join completed for client %u", client_id);
     } else {
+      log_info("DEBUG_REMOVE_CLIENT: Joining send thread for client %u", client_id);
       join_result = ascii_thread_join(&target_client->send_thread, NULL);
       if (join_result != 0) {
         log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
       }
+      log_info("DEBUG_REMOVE_CLIENT: Send thread join completed for client %u", client_id);
     }
   }
 
@@ -494,9 +535,9 @@ int remove_client(uint32_t client_id) {
   log_debug("Receive thread for client %u was already joined by main thread", client_id);
 
   // Stop render threads (this joins them)
-  log_info("Stopping render threads for client %u", client_id);
+  log_info("DEBUG_REMOVE_CLIENT: Stopping render threads for client %u", client_id);
   stop_client_render_threads(target_client);
-  log_info("Render threads stopped for client %u", client_id);
+  log_info("DEBUG_REMOVE_CLIENT: Render threads stopped for client %u", client_id);
 
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -537,7 +578,7 @@ int remove_client(uint32_t client_id) {
   log_info("CLIENT REMOVED: client_id=%u (%s) removed, remaining clients: %d", client_id, display_name_copy,
            remaining_count);
 
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Broadcast updated state
   broadcast_server_state_to_all_clients();
@@ -570,7 +611,10 @@ void *client_receive_thread(void *arg) {
 
   while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
     // Receive packet from this client
+    log_debug("Client %u receive thread: calling receive_packet_with_client", atomic_load(&client->client_id));
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+    log_debug("Client %u receive thread: received packet, type=%d, len=%zu, result=%d", atomic_load(&client->client_id),
+              type, len, result);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_should_exit)) {
@@ -603,14 +647,17 @@ void *client_receive_thread(void *arg) {
     // Handle different packet types from client
     switch (type) {
     case PACKET_TYPE_CLIENT_JOIN:
+      log_debug("Client %u receive thread: handling CLIENT_JOIN packet", atomic_load(&client->client_id));
       handle_client_join_packet(client, data, len);
       break;
 
     case PACKET_TYPE_STREAM_START:
+      log_debug("Client %u receive thread: handling STREAM_START packet", atomic_load(&client->client_id));
       handle_stream_start_packet(client, data, len);
       break;
 
     case PACKET_TYPE_STREAM_STOP:
+      log_debug("Client %u receive thread: handling STREAM_STOP packet", atomic_load(&client->client_id));
       handle_stream_stop_packet(client, data, len);
       break;
 
@@ -660,12 +707,11 @@ void *client_receive_thread(void *arg) {
 
   // Mark client as inactive and stop all threads
   // CRITICAL: Must stop render threads when client disconnects
-  mutex_lock(&client->client_state_mutex);
+  // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
   atomic_store(&client->active, false);
-  client->send_thread_running = false;
+  atomic_store(&client->send_thread_running, false);
   atomic_store(&client->video_render_thread_running, false);
   atomic_store(&client->audio_render_thread_running, false);
-  mutex_unlock(&client->client_state_mutex);
 
   // Don't call remove_client() from the receive thread itself - this causes a deadlock
   // because main thread may be trying to join this thread via remove_client()
@@ -686,13 +732,13 @@ void *client_send_thread_func(void *arg) {
   log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
 
   // Mark thread as running
-  client->send_thread_running = true;
+  atomic_store(&client->send_thread_running, true);
 
   // Track timing for video frame sends
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
 
-  while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->send_thread_running) {
+  while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && atomic_load(&client->send_thread_running)) {
     bool sent_something = false;
 
     // Try to get audio packet first (higher priority for low latency)
@@ -704,7 +750,8 @@ void *client_send_thread_func(void *arg) {
     // Send audio packet if we have one
     if (audio_packet) {
       // Send header
-      ssize_t sent = send_with_timeout(client->socket, &audio_packet->header, sizeof(audio_packet->header), SEND_TIMEOUT);
+      ssize_t sent =
+          send_with_timeout(client->socket, &audio_packet->header, sizeof(audio_packet->header), SEND_TIMEOUT);
       if (sent != sizeof(audio_packet->header)) {
         if (!atomic_load(&g_should_exit)) {
           log_error("Failed to send audio packet header to client %u: %zd/%zu bytes", client->client_id, sent,
@@ -744,8 +791,8 @@ void *client_send_thread_func(void *arg) {
           static uint64_t send_attempts = 0;
           send_attempts++;
           if (send_attempts % 30 == 0) { // Log every 30 attempts (1 second at 30fps)
-            log_info("DEBUG_SEND: [%llu] Send thread attempting to send frame for client %u (size=%zu)",
-                     send_attempts, client->client_id, frame->size);
+            log_info("DEBUG_SEND: [%llu] Send thread attempting to send frame for client %u (size=%zu)", send_attempts,
+                     client->client_id, frame->size);
           }
           // Build ASCII frame packet
           ascii_frame_packet_t frame_header = {
@@ -760,13 +807,13 @@ void *client_send_thread_func(void *arg) {
           packet_header_t header = {.magic = htonl(PACKET_MAGIC),
                                     .type = htons(PACKET_TYPE_ASCII_FRAME),
                                     .length = htonl((uint32_t)(sizeof(ascii_frame_packet_t) + frame->size)),
-                                    .crc32 = 0, // Will be calculated below
+                                    .crc32 = 0,             // Will be calculated below
                                     .client_id = htonl(0)}; // Server sends as client_id 0
 
           // Use pre-allocated buffer to avoid malloc/free (prevents deadlocks)
           size_t payload_size = sizeof(ascii_frame_packet_t) + frame->size;
           if (payload_size <= client->send_buffer_size) {
-            uint8_t *payload = (uint8_t*)client->send_buffer;
+            uint8_t *payload = (uint8_t *)client->send_buffer;
             memcpy(payload, &frame_header, sizeof(ascii_frame_packet_t));
             memcpy(payload + sizeof(ascii_frame_packet_t), frame->data, frame->size);
             header.crc32 = htonl(asciichat_crc32(payload, payload_size));
@@ -813,15 +860,14 @@ void *client_send_thread_func(void *arg) {
       static uint64_t no_frame_count = 0;
       no_frame_count++;
       if (no_frame_count % 300 == 0) { // Log every 300 occurrences (10 seconds at 30fps)
-        log_info("DEBUG_NO_FRAME: [%llu] No frame available to send for client %u",
-                 no_frame_count, client->client_id);
+        log_info("DEBUG_NO_FRAME: [%llu] No frame available to send for client %u", no_frame_count, client->client_id);
       }
       platform_sleep_usec(1000); // 1ms sleep
     }
   }
 
   // Mark thread as stopped
-  client->send_thread_running = false;
+  atomic_store(&client->send_thread_running, false);
   log_info("Send thread for client %u terminated", client->client_id);
   return NULL;
 }
@@ -838,7 +884,7 @@ void broadcast_server_state_to_all_clients(void) {
 
   rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active && g_client_manager.clients[i].is_sending_video) {
+    if (g_client_manager.clients[i].active && atomic_load(&g_client_manager.clients[i].is_sending_video)) {
       active_video_count++;
     }
   }
@@ -857,11 +903,10 @@ void broadcast_server_state_to_all_clients(void) {
 
   // Send to all active clients
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
     // TODO: Send server state updates directly via socket
     (void)net_state; // Suppress unused variable warning
   }
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_rdunlock(&g_client_manager_rwlock);
 
   log_info("Broadcast server state to all clients: %d connected, %d active with video", state.connected_client_count,
            active_video_count);
@@ -878,7 +923,7 @@ void stop_client_threads(client_info_t *client) {
 
   // Signal threads to stop
   atomic_store(&client->active, false);
-  client->send_thread_running = false;
+  atomic_store(&client->send_thread_running, false);
 
   // Wait for threads to finish
   if (ascii_thread_is_initialized(&client->send_thread)) {

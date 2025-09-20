@@ -97,6 +97,10 @@
 #include <time.h>
 #include <zlib.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 /* ============================================================================
  * Thread State Management
  * ============================================================================ */
@@ -259,8 +263,16 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Check if we need to clear console before rendering this frame
   if (g_should_clear_before_next_frame) {
+    // Disable terminal logging before clearing display for clean ASCII display
+    log_set_terminal_output(false);
+    // Clear display and render first frame
     display_full_reset();
     g_should_clear_before_next_frame = false;
+  } else if (!g_server_state_initialized) {
+    // First frame received before any state packet - clear display and disable logging
+    log_set_terminal_output(false);
+    display_full_reset();
+    g_server_state_initialized = true; // Mark as initialized to prevent repeated clearing
   }
 
   // Safety check before rendering
@@ -342,6 +354,8 @@ static void handle_server_state_packet(const void *data, size_t len) {
   } else {
     // First state packet received
     g_server_state_initialized = true;
+    // Clear terminal before the very first frame
+    g_should_clear_before_next_frame = true;
   }
 
   g_last_active_count = active_count;
@@ -395,14 +409,7 @@ static void *data_reception_thread_func(void *arg) {
     void *data;
     size_t len;
 
-    struct timespec receive_start_ts, receive_end_ts;
-    clock_gettime(CLOCK_MONOTONIC, &receive_start_ts);
-    uint64_t receive_start = receive_start_ts.tv_sec * 1000 + receive_start_ts.tv_nsec / 1000000;
-
     int result = receive_packet(sockfd, &type, &data, &len);
-
-    clock_gettime(CLOCK_MONOTONIC, &receive_end_ts);
-    uint64_t receive_end = receive_end_ts.tv_sec * 1000 + receive_end_ts.tv_nsec / 1000000;
 
     if (result < 0) {
       log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
@@ -482,6 +489,9 @@ int protocol_start_connection() {
   g_last_active_count = 0;
   g_should_clear_before_next_frame = false;
 
+  // Reset display state for new connection
+  display_reset_for_new_connection();
+
 #ifdef DEBUG_THREADS
   log_info("DEBUG: Starting protocol connection - creating threads");
 #endif
@@ -536,7 +546,7 @@ void protocol_stop_connection() {
   log_info("DEBUG: Webcam capture thread stopped");
 #endif
 
-  // Wait for thread to exit gracefully
+  // Wait for thread to exit gracefully with timeout
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
     platform_sleep_usec(100000); // 100ms
@@ -544,11 +554,29 @@ void protocol_stop_connection() {
   }
 
   if (!atomic_load(&g_data_thread_exited)) {
-    log_error("Data thread not responding - forcing join");
+    log_warn("Data thread not responding after 2 seconds - forcing join with timeout");
   }
 
-  // Join the thread
-  ascii_thread_join(&g_data_thread, NULL);
+  // Join the thread with timeout to prevent hanging
+  void *thread_retval = NULL;
+  int join_result = ascii_thread_join_timeout(&g_data_thread, &thread_retval, 5000); // 5 second timeout
+
+  if (join_result == -2) {
+    log_error("Data thread join timed out - thread may be stuck, forcing termination");
+    // Force close the thread handle to prevent resource leak
+    if (g_data_thread) {
+      CloseHandle(g_data_thread);
+      g_data_thread = NULL;
+    }
+  } else if (join_result != 0) {
+    log_error("Failed to join data thread, result=%d", join_result);
+    // Still force close the handle to prevent leak
+    if (g_data_thread) {
+      CloseHandle(g_data_thread);
+      g_data_thread = NULL;
+    }
+  }
+
   g_data_thread_created = false;
 
 #ifdef DEBUG_THREADS

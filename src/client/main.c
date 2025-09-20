@@ -325,11 +325,9 @@ int main(int argc, char *argv[]) {
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
-  // Perform initial terminal reset if running interactively
-  if (!opt_snapshot_mode && display_has_tty()) {
-    display_full_reset();
-    log_set_terminal_output(false);
-  }
+  // Keep terminal logging enabled so user can see connection attempts
+  // It will be disabled after first successful connection
+  // Note: No initial terminal reset - display will only be cleared when first frame arrives
 
   // Track if we've ever successfully connected during this session
   static bool has_ever_connected = false;
@@ -347,8 +345,8 @@ int main(int argc, char *argv[]) {
 
   while (!should_exit()) {
     // Handle connection establishment or reconnection
-    int connection_result =
-        server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt, first_connection, has_ever_connected);
+    int connection_result = server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt,
+                                                        first_connection, has_ever_connected);
 
     if (connection_result != 0) {
       // Connection failed - increment attempt counter and retry
@@ -398,17 +396,16 @@ int main(int argc, char *argv[]) {
       log_info("Reconnected successfully, starting worker threads");
     }
 
-    log_set_terminal_output(false);
-
-    // Clear terminal to remove reconnection logs before ASCII art starts
-    display_full_reset();
-
     // Start all worker threads for this connection
     if (protocol_start_connection() != 0) {
       log_error("Failed to start connection protocols");
       server_connection_close();
       continue;
     }
+
+    // Terminal logging is now disabled - ASCII display can begin cleanly
+    // Don't clear terminal here - let the first frame handler clear it
+    // This prevents clearing the terminal before we're ready to display content
 
     /* ====================================================================
      * Connection Monitoring Loop
@@ -443,6 +440,12 @@ int main(int argc, char *argv[]) {
 
     protocol_stop_connection();
     server_connection_close();
+
+    // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
+    if (has_ever_connected) {
+      log_info("Waiting 1 second before attempting reconnection...");
+      platform_sleep_usec(1000000); // 1 second delay
+    }
 
     log_info("Cleanup complete, will attempt reconnection");
   }

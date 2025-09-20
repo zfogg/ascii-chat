@@ -21,7 +21,7 @@
 typedef struct {
   socket_t socket;
   asciithread_t receive_thread; // Thread for receiving client data
-  uint32_t client_id;
+  atomic_uint client_id;        // Thread-safe client ID
   char display_name[MAX_DISPLAY_NAME_LEN];
   char client_ip[INET_ADDRSTRLEN];
   int port;
@@ -29,9 +29,9 @@ typedef struct {
   // Media capabilities
   bool can_send_video;
   bool can_send_audio;
-  bool wants_stretch; // Client wants stretched output (ignore aspect ratio)
-  bool is_sending_video;
-  bool is_sending_audio;
+  bool wants_stretch;           // Client wants stretched output (ignore aspect ratio)
+  atomic_bool is_sending_video; // Thread-safe video stream state
+  atomic_bool is_sending_audio; // Thread-safe audio stream state
 
   // Terminal capabilities (for rendering appropriate ASCII frames)
   terminal_capabilities_t terminal_caps;
@@ -65,7 +65,7 @@ typedef struct {
 
   // Dedicated send thread for this client
   asciithread_t send_thread;
-  bool send_thread_running;
+  atomic_bool send_thread_running;
 
   // Pre-allocated buffers to avoid malloc/free in send thread (prevents deadlocks)
   void *send_buffer;

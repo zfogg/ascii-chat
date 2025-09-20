@@ -73,6 +73,11 @@
 #include <sys/types.h>
 #include <stdatomic.h>
 
+// Debug flags
+#define DEBUG_NETWORK 1
+#define DEBUG_THREADS 1
+#define DEBUG_MEMORY 1
+
 /* ============================================================================
  * Connection State Management
  * ============================================================================ */
@@ -187,7 +192,8 @@ int server_connection_init() {
  * @param first_connection True if this is the initial connection attempt
  * @return 0 on success, negative on error
  */
-int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection, bool has_ever_connected) {
+int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
+                                bool has_ever_connected) {
   (void)first_connection; // Currently unused
   if (!address || port <= 0) {
     log_error("Invalid address or port parameters");
@@ -257,13 +263,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   atomic_store(&g_should_reconnect, false);
 
   // Turn OFF terminal logging when successfully connected to server
-  // Exception: Keep logging enabled in snapshot mode for debugging
-  // Exception: Keep logging enabled for first-time connections so user can see initial connection message
-  if (!opt_snapshot_mode && has_ever_connected) {
-    log_set_terminal_output(false);
-    log_info("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
-  } else if (!opt_snapshot_mode) {
-    // First connection - we'll disable logging after main.c shows the "Connected successfully" message
+  // First connection - we'll disable logging after main.c shows the "Connected successfully" message
+  if (!opt_snapshot_mode) {
     log_info("Connected to server - terminal logging will be disabled after initial setup");
   } else {
     log_info("Connected to server - terminal logging kept enabled for snapshot mode");
@@ -274,13 +275,37 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
   }
 
-  // Send initial terminal capabilities to server
+  // Set socket buffer sizes for large data transmission
+  int send_buffer_size = 1024 * 1024; // 1MB send buffer
+  int recv_buffer_size = 1024 * 1024; // 1MB receive buffer
+
+  if (socket_setsockopt(g_sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
+    log_warn("Failed to set send buffer size: %s", network_error_string(errno));
+  }
+
+  if (socket_setsockopt(g_sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
+    log_warn("Failed to set receive buffer size: %s", network_error_string(errno));
+  }
+
+  // Enable TCP_NODELAY to reduce latency for large packets
+  int nodelay = 1;
+  if (socket_setsockopt(g_sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
+    log_warn("Failed to set TCP_NODELAY: %s", network_error_string(errno));
+  }
+
+  // Send initial terminal capabilities to server (this may generate debug logs)
   int result = threaded_send_terminal_size_with_auto_detect(opt_width, opt_height);
   if (result < 0) {
     log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
+  }
+
+  // Now disable terminal logging after capabilities are sent (for reconnections)
+  if (!opt_snapshot_mode && has_ever_connected) {
+    log_set_terminal_output(false);
+    log_info("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
   }
 
   // Send client join packet for multi-user support

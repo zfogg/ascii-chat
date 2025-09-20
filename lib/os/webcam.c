@@ -39,36 +39,51 @@ int webcam_init(unsigned short int webcam_index) {
 
     // Platform-specific error messages
 #ifdef __linux__
-    log_error("On Linux, make sure:");
-    log_error("* Your user is in the 'video' group: sudo usermod -a -G video $USER");
-    log_error("* The camera device exists: ls /dev/video*");
-    log_error("* No other application is using the camera");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "On Linux, make sure:\n");
+    fprintf(stderr, "* Your user is in the 'video' group: sudo usermod -a -G video $USER\n");
+    fprintf(stderr, "* The camera device exists: ls /dev/video*\n");
+    fprintf(stderr, "* No other application is using the camera\n");
+    fflush(stderr);
+    exit(ASCIICHAT_ERR_WEBCAM);
 #elif defined(__APPLE__)
-    log_error("On macOS, you may need to grant camera permissions:");
-    log_error("* Say \"yes\" to the popup about system camera access that you see when running this program for the "
-              "first time.");
-    log_error("* If you said \"no\" to the popup, go to System Preferences > Security & Privacy > Privacy > Camera.");
-    log_error("   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
-              "access your camera.");
-    log_error("   Then just run this program again.");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "On macOS, you may need to grant camera permissions:\n");
+    fprintf(stderr,
+            "* Say \"yes\" to the popup about system camera access that you see when running this program for the "
+            "first time.\n");
+    fprintf(stderr,
+            "* If you said \"no\" to the popup, go to System Preferences > Security & Privacy > Privacy > Camera.\n");
+    fprintf(stderr,
+            "   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
+            "access your camera.\n");
+    fprintf(stderr, "   Then just run this program again.\n");
+    fflush(stderr);
+    exit(ASCIICHAT_ERR_WEBCAM);
+    i
 #elif defined(_WIN32)
     if (result == ASCIICHAT_ERR_WEBCAM_IN_USE) {
       // Device is in use by another application - this is a fatal error on Windows
-      log_error("Webcam is already in use by another application.");
-      log_error("Windows allows only one application to access the webcam at a time.");
-      log_error("");
-      log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
-      log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
-      log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
-      log_error("");
-      log_error("Example: ascii-chat-client --test-pattern");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "Webcam is already in use by another application.\n");
+      fprintf(stderr, "Windows allows only one application to access the webcam at a time.\n");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "To use ASCII-Chat with multiple clients, try these alternatives:\n");
+      fprintf(stderr, "  --test-pattern    Generate a colorful test pattern instead of using webcam\n");
+      fprintf(stderr, "  --file VIDEO.mp4  Use a video file as input (to be implemented)\n");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "Example: ascii-chat-client --test-pattern\n");
+      fflush(stderr);
       exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
     } else {
       // Other webcam errors - general failure
-      log_error("On Windows, this might be because:");
-      log_error("* Camera permissions are not granted");
-      log_error("* Camera driver issues");
-      log_error("* No webcam device found");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "On Windows, this might be because:\n");
+      fprintf(stderr, "* Camera permissions are not granted\n");
+      fprintf(stderr, "* Camera driver issues\n");
+      fprintf(stderr, "* No webcam device found\n");
+      fflush(stderr);
+      exit(ASCIICHAT_ERR_WEBCAM);
     }
 #endif
 

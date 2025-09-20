@@ -147,6 +147,7 @@
 #include "buffer_pool.h"
 #include "hashtable.h"
 #include "packet_queue.h"
+#include "lock_debug.h"
 
 /**
  * @brief Global server statistics structure
@@ -315,8 +316,8 @@ void *stats_logger_thread(void *arg) {
   (void)arg;
 
   while (!atomic_load(&g_should_exit)) {
-    // Log buffer pool statistics every 30 seconds with fast exit checking (10ms intervals)
-    for (int i = 0; i < 3000 && !atomic_load(&g_should_exit); i++) {
+    // Log buffer pool statistics every 10 seconds with fast exit checking (10ms intervals)
+    for (int i = 0; i < 1000 && !atomic_load(&g_should_exit); i++) {
       platform_sleep_usec(10000); // 10ms sleep
     }
 
@@ -327,7 +328,25 @@ void *stats_logger_thread(void *arg) {
 
     log_info("=== Periodic Statistics Report ===");
 
+    // Log lock debug statistics directly
+    if (lock_debug_is_initialized()) {
+      // Print lock debug information directly instead of using trigger
+      printf("=== LOCK DEBUG: Lock Status Report ===\n");
+
+      uint64_t total_acquired = 0, total_released = 0;
+      uint32_t currently_held = 0;
+      lock_debug_get_stats(&total_acquired, &total_released, &currently_held);
+
+      printf("Historical Statistics:\n");
+      printf("  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
+      printf("  Total locks released: %llu\n", (unsigned long long)total_released);
+      printf("  Currently held: %u\n", currently_held);
+      printf("  Net locks (acquired - released): %lld\n", (long long)total_acquired - (long long)total_released);
+      printf("=== End Lock Debug ===\n");
+    }
+
     // Log global buffer pool stats
+    printf("=== Buffer Pool Global Stats ===\n");
     buffer_pool_log_global_stats();
 
     // Log client statistics
@@ -337,7 +356,7 @@ void *stats_logger_thread(void *arg) {
     int clients_with_video = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
-      if (g_client_manager.clients[i].active) {
+      if (atomic_load(&g_client_manager.clients[i].active)) {
         active_clients++;
         if (g_client_manager.clients[i].audio_queue) {
           clients_with_audio++;
@@ -347,7 +366,7 @@ void *stats_logger_thread(void *arg) {
         }
       }
     }
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_rdunlock(&g_client_manager_rwlock);
 
     log_info("Active clients: %d, Audio: %d, Video: %d", active_clients, clients_with_audio, clients_with_video);
     log_info("Blank frames sent: %llu", (unsigned long long)g_blank_frames_sent);
@@ -361,11 +380,10 @@ void *stats_logger_thread(void *arg) {
     rwlock_rdlock(&g_client_manager_rwlock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
-      // Thread-safe check for active client
-      mutex_lock(&client->client_state_mutex);
-      bool is_active = atomic_load(&client->active);
-      uint32_t client_id_snapshot = client->client_id;
-      mutex_unlock(&client->client_state_mutex);
+      // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
+      // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
+      bool is_active = atomic_load(&client->active);                 // Use atomic read to avoid deadlock
+      uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
 
       if (is_active && client_id_snapshot != 0) {
         // Log packet queue stats if available
@@ -388,7 +406,7 @@ void *stats_logger_thread(void *arg) {
         }
       }
     }
-    rwlock_unlock(&g_client_manager_rwlock);
+    rwlock_rdunlock(&g_client_manager_rwlock);
   }
 
   return NULL;

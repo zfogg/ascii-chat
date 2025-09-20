@@ -30,11 +30,11 @@ int mutex_destroy(mutex_t *mutex) {
 }
 
 /**
- * @brief Lock a mutex (blocking)
+ * @brief Lock a mutex (blocking) - implementation function
  * @param mutex Pointer to mutex to lock
  * @return 0 on success, error code on failure
  */
-int mutex_lock(mutex_t *mutex) {
+int mutex_lock_impl(mutex_t *mutex) {
   return pthread_mutex_lock(mutex);
 }
 
@@ -48,11 +48,11 @@ int mutex_trylock(mutex_t *mutex) {
 }
 
 /**
- * @brief Unlock a mutex
+ * @brief Unlock a mutex - implementation function
  * @param mutex Pointer to mutex to unlock
  * @return 0 on success, error code on failure
  */
-int mutex_unlock(mutex_t *mutex) {
+int mutex_unlock_impl(mutex_t *mutex) {
   return pthread_mutex_unlock(mutex);
 }
 

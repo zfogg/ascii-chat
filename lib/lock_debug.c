@@ -1,0 +1,1265 @@
+/**
+ * @file lock_debug.c
+ * @brief Lock debugging and deadlock detection system implementation
+ *
+ * This file implements the lock tracking system that helps identify deadlocks
+ * by monitoring all mutex and rwlock acquisitions with call stack backtraces.
+ * Uses the existing hashtable.c implementation for efficient lock record storage.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2025
+ */
+
+#include "lock_debug.h"
+#include "common.h"
+#include "platform/abstraction.h"
+#include "hashtable.h" // Need access to hashtable internals
+#include <stdlib.h>
+#include <time.h>
+#include <stdatomic.h>
+#include <string.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <conio.h>
+#include <windows.h> // For ReleaseSRWLockShared
+#else
+#include <sys/select.h>
+#include <unistd.h>
+#endif
+
+// ============================================================================
+// Global State
+// ============================================================================
+
+static lock_debug_manager_t g_lock_debug_manager = {0};
+static atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
+
+// ============================================================================
+// Lock Record Management
+// ============================================================================
+
+/**
+ * @brief Create or update usage statistics for a code location
+ * @param file_name Source file name
+ * @param line_number Source line number
+ * @param function_name Function name
+ * @param lock_type Type of lock
+ * @param hold_time_ns Time the lock was held in nanoseconds
+ */
+static void update_usage_stats(const char *file_name, int line_number, const char *function_name, lock_type_t lock_type,
+                               uint64_t hold_time_ns) {
+  if (!g_lock_debug_manager.usage_stats) {
+    return;
+  }
+
+  uint32_t key = usage_stats_key(file_name, line_number, function_name, lock_type);
+
+  hashtable_write_lock(g_lock_debug_manager.usage_stats);
+
+  lock_usage_stats_t *stats = (lock_usage_stats_t *)hashtable_lookup(g_lock_debug_manager.usage_stats, key);
+
+  if (!stats) {
+    // Create new stats record
+    stats = calloc(1, sizeof(lock_usage_stats_t));
+    if (!stats) {
+      hashtable_write_unlock(g_lock_debug_manager.usage_stats);
+      return;
+    }
+
+    stats->file_name = file_name;
+    stats->line_number = line_number;
+    stats->function_name = function_name;
+    stats->lock_type = lock_type;
+    stats->total_acquisitions = 1;
+    stats->total_hold_time_ns = hold_time_ns;
+    stats->max_hold_time_ns = hold_time_ns;
+    stats->min_hold_time_ns = hold_time_ns;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &stats->first_acquisition) == 0) {
+      stats->last_acquisition = stats->first_acquisition;
+    }
+
+    hashtable_insert(g_lock_debug_manager.usage_stats, key, stats);
+  } else {
+    // Update existing stats
+    stats->total_acquisitions++;
+    stats->total_hold_time_ns += hold_time_ns;
+    if (hold_time_ns > stats->max_hold_time_ns) {
+      stats->max_hold_time_ns = hold_time_ns;
+    }
+    if (hold_time_ns < stats->min_hold_time_ns) {
+      stats->min_hold_time_ns = hold_time_ns;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &stats->last_acquisition);
+  }
+
+  hashtable_write_unlock(g_lock_debug_manager.usage_stats);
+}
+
+/**
+ * @brief Create a new lock record with backtrace
+ * @param lock_address Address of the lock object
+ * @param lock_type Type of lock
+ * @param file_name Source file name
+ * @param line_number Source line number
+ * @param function_name Function name
+ * @return Pointer to new lock record or NULL on failure
+ */
+static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_type, const char *file_name,
+                                         int line_number, const char *function_name) {
+  lock_record_t *record = calloc(1, sizeof(lock_record_t));
+  if (!record) {
+    log_error("Failed to allocate lock record");
+    return NULL;
+  }
+
+  // Fill in basic information
+  record->lock_address = lock_address;
+  record->lock_type = lock_type;
+  record->thread_id = ascii_thread_current_id();
+  record->file_name = file_name;
+  record->line_number = line_number;
+  record->function_name = function_name;
+
+  // Get current time
+  if (clock_gettime(CLOCK_MONOTONIC, &record->acquisition_time) != 0) {
+    log_error("Failed to get acquisition time");
+    free(record);
+    return NULL;
+  }
+
+  // Capture backtrace
+  record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
+  if (record->backtrace_size > 0) {
+    record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
+    if (!record->backtrace_symbols) {
+      log_error("Failed to symbolize backtrace for lock record");
+    }
+  }
+
+  return record;
+}
+
+/**
+ * @brief Free a lock record and its associated memory
+ * @param record Lock record to free
+ */
+static void free_lock_record(lock_record_t *record) {
+  if (!record) {
+    return;
+  }
+
+  // Free symbolized backtrace
+  if (record->backtrace_symbols) {
+    platform_backtrace_symbols_free(record->backtrace_symbols);
+  }
+
+  free(record);
+}
+
+// ============================================================================
+// Callback Functions
+// ============================================================================
+
+/**
+ * @brief Callback function for printing lock records
+ * @param key Hashtable key (unused)
+ * @param value Lock record pointer
+ * @param user_data Pointer to total_locks counter
+ */
+static void print_lock_record_callback(uint32_t key, void *value, void *user_data) {
+  UNUSED(key);
+  lock_record_t *record = (lock_record_t *)value;
+  uint32_t *count = (uint32_t *)user_data;
+  (*count)++;
+
+  // Print lock information
+  const char *lock_type_str = "UNKNOWN";
+  switch (record->lock_type) {
+  case LOCK_TYPE_MUTEX:
+    lock_type_str = "MUTEX";
+    break;
+  case LOCK_TYPE_RWLOCK_READ:
+    lock_type_str = "RWLOCK_READ";
+    break;
+  case LOCK_TYPE_RWLOCK_WRITE:
+    lock_type_str = "RWLOCK_WRITE";
+    break;
+  }
+
+  log_info("Lock #%u: %s at %p", *count, lock_type_str, record->lock_address);
+  log_info("  Thread ID: %llu", (unsigned long long)record->thread_id);
+  log_info("  Acquired: %s:%d in %s()", record->file_name, record->line_number, record->function_name);
+  // Calculate how long the lock has been held
+  struct timespec current_time;
+  if (clock_gettime(CLOCK_MONOTONIC, &current_time) == 0) {
+    long long held_sec = current_time.tv_sec - record->acquisition_time.tv_sec;
+    long held_nsec = current_time.tv_nsec - record->acquisition_time.tv_nsec;
+
+    // Handle nanosecond underflow
+    if (held_nsec < 0) {
+      held_sec--;
+      held_nsec += 1000000000;
+    }
+
+    log_info("  Held for: %lld.%09ld seconds", held_sec, held_nsec);
+  } else {
+    log_info("  Acquired at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
+             record->acquisition_time.tv_nsec);
+  }
+
+  // Print backtrace using platform symbol resolution
+  if (record->backtrace_size > 0) {
+    log_info("  Call stack (%d frames):", record->backtrace_size);
+
+    // Use platform backtrace symbols for proper symbol resolution
+    char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
+
+    for (int j = 0; j < record->backtrace_size; j++) {
+      // Build the full line for each stack frame
+      if (symbols && symbols[j]) {
+        log_info("    %2d: %p %s", j, record->backtrace_buffer[j], symbols[j]);
+      } else {
+        log_info("    %2d: %p <unresolved>", j, record->backtrace_buffer[j]);
+      }
+    }
+
+    // Clean up symbols
+    if (symbols) {
+      platform_backtrace_symbols_free(symbols);
+    }
+  } else {
+    log_info("  Call stack: <capture failed>");
+  }
+}
+
+/**
+ * @brief Callback function for cleaning up lock records
+ * @param key Hashtable key (unused)
+ * @param value Lock record pointer
+ * @param user_data Unused
+ */
+static void cleanup_lock_record_callback(uint32_t key, void *value, void *user_data) {
+  UNUSED(key);
+  UNUSED(user_data);
+  lock_record_t *record = (lock_record_t *)value;
+  free_lock_record(record);
+}
+
+/**
+ * @brief Callback function for printing usage statistics
+ * @param key Hashtable key (unused)
+ * @param value Usage statistics pointer
+ * @param user_data Pointer to total_stats counter
+ */
+static void print_usage_stats_callback(uint32_t key, void *value, void *user_data) {
+  UNUSED(key);
+  lock_usage_stats_t *stats = (lock_usage_stats_t *)value;
+  uint32_t *count = (uint32_t *)user_data;
+  (*count)++;
+
+  // Print lock type
+  const char *lock_type_str = "UNKNOWN";
+  switch (stats->lock_type) {
+  case LOCK_TYPE_MUTEX:
+    lock_type_str = "MUTEX";
+    break;
+  case LOCK_TYPE_RWLOCK_READ:
+    lock_type_str = "RWLOCK_READ";
+    break;
+  case LOCK_TYPE_RWLOCK_WRITE:
+    lock_type_str = "RWLOCK_WRITE";
+    break;
+  }
+
+  // Calculate average hold time
+  uint64_t avg_hold_time_ns = stats->total_hold_time_ns / stats->total_acquisitions;
+
+  log_info("Usage #%u: %s at %s:%d in %s()", *count, lock_type_str, stats->file_name, stats->line_number,
+           stats->function_name);
+  log_info("  Total acquisitions: %llu", (unsigned long long)stats->total_acquisitions);
+  log_info("  Total hold time: %llu.%03llu ms", (unsigned long long)(stats->total_hold_time_ns / 1000000),
+           (unsigned long long)((stats->total_hold_time_ns % 1000000) / 1000));
+  log_info("  Average hold time: %llu.%03llu ms", (unsigned long long)(avg_hold_time_ns / 1000000),
+           (unsigned long long)((avg_hold_time_ns % 1000000) / 1000));
+  log_info("  Max hold time: %llu.%03llu ms", (unsigned long long)(stats->max_hold_time_ns / 1000000),
+           (unsigned long long)((stats->max_hold_time_ns % 1000000) / 1000));
+  log_info("  Min hold time: %llu.%03llu ms", (unsigned long long)(stats->min_hold_time_ns / 1000000),
+           (unsigned long long)((stats->min_hold_time_ns % 1000000) / 1000));
+  log_info("  First acquisition: %lld.%09ld", (long long)stats->first_acquisition.tv_sec,
+           stats->first_acquisition.tv_nsec);
+  log_info("  Last acquisition: %lld.%09ld", (long long)stats->last_acquisition.tv_sec,
+           stats->last_acquisition.tv_nsec);
+}
+
+/**
+ * @brief Callback function for cleaning up usage statistics
+ * @param key Hashtable key (unused)
+ * @param value Usage statistics pointer
+ * @param user_data Unused
+ */
+static void cleanup_usage_stats_callback(uint32_t key, void *value, void *user_data) {
+  UNUSED(key);
+  UNUSED(user_data);
+  lock_usage_stats_t *stats = (lock_usage_stats_t *)value;
+  free(stats);
+}
+
+/**
+ * @brief Callback function for printing orphaned releases
+ * @param key Hashtable key (unused)
+ * @param value Orphaned release record pointer
+ * @param user_data Pointer to total_orphans counter
+ */
+void print_orphaned_release_callback(uint32_t key, void *value, void *user_data) {
+  UNUSED(key);
+  lock_record_t *record = (lock_record_t *)value;
+  uint32_t *count = (uint32_t *)user_data;
+  (*count)++;
+
+  // Debug: Always log when callback is called (use printf during shutdown)
+  printf("[DEBUG] print_orphaned_release_callback called: count=%u, record=%p\n", *count, record);
+  fflush(stdout);
+
+  // Print lock information
+  const char *lock_type_str = "UNKNOWN";
+  switch (record->lock_type) {
+  case LOCK_TYPE_MUTEX:
+    lock_type_str = "MUTEX";
+    break;
+  case LOCK_TYPE_RWLOCK_READ:
+    lock_type_str = "RWLOCK_READ";
+    break;
+  case LOCK_TYPE_RWLOCK_WRITE:
+    lock_type_str = "RWLOCK_WRITE";
+    break;
+  }
+
+  printf("Orphaned Release #%u: %s at %p\n", *count, lock_type_str, record->lock_address);
+  printf("  Thread ID: %llu\n", (unsigned long long)record->thread_id);
+  printf("  Released: %s:%d in %s()\n", record->file_name, record->line_number, record->function_name);
+  printf("  Released at: %lld.%09ld seconds (monotonic)\n", (long long)record->acquisition_time.tv_sec,
+           record->acquisition_time.tv_nsec);
+  fflush(stdout);
+
+  // Print backtrace for the orphaned release
+  if (record->backtrace_size > 0) {
+    printf("  Release call stack (%d frames):\n", record->backtrace_size);
+
+    // Use platform backtrace symbols for proper symbol resolution
+    char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
+
+    for (int j = 0; j < record->backtrace_size; j++) {
+      // Build the full line for each stack frame
+      if (symbols && symbols[j]) {
+        printf("    %2d: %p %s\n", j, record->backtrace_buffer[j], symbols[j]);
+      } else {
+        printf("    %2d: %p <unresolved>\n", j, record->backtrace_buffer[j]);
+      }
+    }
+
+    // Clean up symbols
+    if (symbols) {
+      platform_backtrace_symbols_free(symbols);
+    }
+  } else {
+    printf("  Release call stack: <capture failed>\n");
+  }
+  fflush(stdout);
+}
+
+// ============================================================================
+// Debug Thread Functions
+// ============================================================================
+
+/**
+ * @brief Print all currently held locks with their backtraces and historical stats
+ */
+void print_all_held_locks(void) {
+  log_info("[LOCK_DEBUG] print_all_held_locks() called from thread %llu",
+           (unsigned long long)ascii_thread_current_id());
+  log_info("=== LOCK DEBUG: Lock Status Report ===");
+
+  if (!g_lock_debug_manager.lock_records) {
+    log_warn("Lock debug system not initialized.");
+    return;
+  }
+
+  // Use implementation function directly to avoid recursion
+  rwlock_rdlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+
+  // Read counters atomically while holding the lock to ensure consistency with lock records
+  uint64_t total_acquired = atomic_load(&g_lock_debug_manager.total_locks_acquired);
+  uint64_t total_released = atomic_load(&g_lock_debug_manager.total_locks_released);
+  uint32_t currently_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+
+  log_info("Historical Statistics:");
+  log_info("  Total locks acquired: %llu", (unsigned long long)total_acquired);
+  log_info("  Total locks released: %llu", (unsigned long long)total_released);
+  log_info("  Currently held: %u", currently_held);
+
+  // Check for underflow before subtraction to avoid UB
+  if (total_acquired >= total_released) {
+    log_info("  Net locks (acquired - released): %lld", (long long)(total_acquired - total_released));
+  } else {
+    // This shouldn't happen - means more releases than acquires
+    log_error("  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***",
+              (unsigned long long)total_released, (unsigned long long)total_acquired,
+              (long long)(total_released - total_acquired));
+    log_error("  *** This indicates lock tracking was not enabled for some acquires ***");
+  }
+
+  uint32_t active_locks = 0;
+  hashtable_foreach(g_lock_debug_manager.lock_records, print_lock_record_callback, &active_locks);
+
+  rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+
+  log_info("Currently Active Locks:");
+  if (active_locks == 0) {
+    log_info("  No locks currently held.");
+    // Check for consistency issues
+    if (currently_held > 0) {
+      log_warn("  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***", currently_held);
+      log_warn("  *** This may indicate a crash during lock acquisition or hashtable corruption. ***");
+
+      // Additional debug: Check hashtable statistics
+      log_debug("  *** DEBUG: Hashtable stats for lock_records: ***");
+      if (g_lock_debug_manager.lock_records) {
+        size_t count = hashtable_size(g_lock_debug_manager.lock_records);
+        log_debug("  *** Hashtable size: %zu ***", count);
+        if (count > 0) {
+          log_warn("  *** Hashtable has entries but foreach didn't find them! ***");
+        }
+      } else {
+        log_error("  *** Hashtable is NULL! ***");
+      }
+    }
+  } else {
+    log_info("  Active locks: %u", active_locks);
+    // Verify consistency the other way
+    if (active_locks != currently_held) {
+      log_warn("  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***", active_locks,
+               currently_held);
+    }
+  }
+
+  // Print usage statistics by code location
+  log_info("Lock Usage Statistics by Code Location:");
+  if (g_lock_debug_manager.usage_stats) {
+    rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+
+    uint32_t total_usage_locations = 0;
+    hashtable_foreach(g_lock_debug_manager.usage_stats, print_usage_stats_callback, &total_usage_locations);
+
+    rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+
+    if (total_usage_locations == 0) {
+      log_info("  No lock usage statistics available.");
+    } else {
+      log_info("  Total code locations with lock usage: %u", total_usage_locations);
+    }
+  } else {
+    log_info("  Usage statistics not available.");
+  }
+
+  // Print orphaned releases (unlocks without corresponding locks)
+  log_info("Orphaned Releases (unlocks without corresponding locks):");
+  if (g_lock_debug_manager.orphaned_releases) {
+    log_info("[DEBUG] About to call hashtable_foreach on orphaned_releases");
+    rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+
+    uint32_t total_orphaned_releases = 0;
+    hashtable_foreach(g_lock_debug_manager.orphaned_releases, print_orphaned_release_callback, &total_orphaned_releases);
+    log_info("[DEBUG] hashtable_foreach completed, total_orphaned_releases=%u", total_orphaned_releases);
+
+    rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+
+    if (total_orphaned_releases == 0) {
+      log_info("  No orphaned releases found.");
+    } else {
+      log_info("  Total orphaned releases: %u", total_orphaned_releases);
+      log_warn("  *** WARNING: %u releases without corresponding locks detected! ***", total_orphaned_releases);
+      log_warn("  *** This indicates double unlocks or missing lock acquisitions! ***");
+    }
+  } else {
+    log_info("  Orphaned release tracking not available.");
+  }
+
+  log_info("=== End Lock Debug ===");
+}
+
+/**
+ * @brief Debug thread function - monitors for lock print requests and keyboard input
+ * @param arg Thread argument (unused)
+ * @return Thread return value
+ */
+static void *debug_thread_func(void *arg) {
+  UNUSED(arg);
+
+  log_info("Lock debug thread started - press '?' to print held locks");
+
+  while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
+    // Allow external trigger via flag (non-blocking)
+    if (atomic_exchange(&g_lock_debug_manager.should_print_locks, false)) {
+      print_all_held_locks();
+    }
+
+    // Check for keyboard input first
+#ifdef _WIN32
+    if (_kbhit()) {
+      int ch = _getch();
+      if (ch == '?') {
+        print_all_held_locks();
+      }
+    }
+
+    // Small sleep to prevent CPU spinning
+    platform_sleep_ms(10);
+#else
+    // POSIX: use select() for non-blocking input
+    fd_set readfds;
+    struct timeval timeout;
+
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 100000; // 100ms timeout
+
+    int result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+    if (result > 0 && FD_ISSET(STDIN_FILENO, &readfds)) {
+      char input[2];
+      if (read(STDIN_FILENO, input, 1) == 1) {
+        if (input[0] == '?') {
+          print_all_held_locks();
+        }
+      }
+    }
+#endif
+
+    platform_sleep_ms(100);
+  }
+
+  // Thread exiting
+  return NULL;
+}
+
+// ============================================================================
+// Public API Implementation
+// ============================================================================
+
+int lock_debug_init(void) {
+  log_info("Starting lock debug system initialization...");
+
+  if (atomic_load(&g_lock_debug_manager.initialized)) {
+    log_info("Lock debug system already initialized");
+    return 0; // Already initialized
+  }
+
+  log_info("Setting initialization flag...");
+  // Set initialization flag to prevent tracking during init
+  atomic_store(&g_initializing, true);
+
+  log_info("Creating hashtable for lock records...");
+  // Create hashtable for lock records
+  g_lock_debug_manager.lock_records = hashtable_create();
+  if (!g_lock_debug_manager.lock_records) {
+    atomic_store(&g_initializing, false);
+    log_error("Failed to create lock records hashtable");
+    return -1;
+  }
+
+  log_info("Creating hashtable for usage statistics...");
+  // Create hashtable for usage statistics
+  g_lock_debug_manager.usage_stats = hashtable_create();
+  if (!g_lock_debug_manager.usage_stats) {
+    hashtable_destroy(g_lock_debug_manager.lock_records);
+    g_lock_debug_manager.lock_records = NULL;
+    atomic_store(&g_initializing, false);
+    log_error("Failed to create usage statistics hashtable");
+    return -1;
+  }
+
+  log_info("Creating hashtable for orphaned releases...");
+  // Create hashtable for orphaned releases
+  g_lock_debug_manager.orphaned_releases = hashtable_create();
+  if (!g_lock_debug_manager.orphaned_releases) {
+    hashtable_destroy(g_lock_debug_manager.lock_records);
+    hashtable_destroy(g_lock_debug_manager.usage_stats);
+    g_lock_debug_manager.lock_records = NULL;
+    g_lock_debug_manager.usage_stats = NULL;
+    atomic_store(&g_initializing, false);
+    log_error("Failed to create orphaned releases hashtable");
+    return -1;
+  }
+
+  log_info("Initializing atomic variables...");
+  // Initialize atomic variables
+  atomic_store(&g_lock_debug_manager.total_locks_acquired, 0);
+  atomic_store(&g_lock_debug_manager.total_locks_released, 0);
+  atomic_store(&g_lock_debug_manager.current_locks_held, 0);
+  atomic_store(&g_lock_debug_manager.debug_thread_running, false);
+  atomic_store(&g_lock_debug_manager.should_print_locks, false);
+
+  // Initialize thread handle to invalid value
+#ifdef _WIN32
+  g_lock_debug_manager.debug_thread = NULL;
+#else
+  // On POSIX, pthread_t doesn't have a standard "invalid" value
+  // but we'll rely on the debug_thread_running flag
+#endif
+
+  log_debug("[LOCK_DEBUG] System initialized: initialized=%d, initializing=%d",
+            atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing));
+
+  log_info("Clearing initialization flag...");
+  // Clear initialization flag FIRST, then mark as initialized
+  // This prevents race condition where initialized=true but initializing=true
+  atomic_store(&g_initializing, false);
+  atomic_store(&g_lock_debug_manager.initialized, true);
+
+  log_debug("[LOCK_DEBUG] After clearing init flag: initialized=%d, initializing=%d",
+            atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing));
+
+  log_info("[LOCK_DEBUG] *** LOCK TRACKING IS NOW ENABLED ***");
+
+  // Note: lock_debug_cleanup() will be called during normal shutdown sequence
+  // and lock_debug_cleanup_thread() will be called as one of the last things before exit
+
+  // log_info("Lock debug system initialized with hashtable");
+  return 0;
+}
+
+int lock_debug_start_thread(void) {
+  log_info("Attempting to start lock debug thread...");
+
+  if (!atomic_load(&g_lock_debug_manager.initialized)) {
+    return -1;
+  }
+
+  if (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
+    return 0; // Already running
+  }
+
+  atomic_store(&g_lock_debug_manager.debug_thread_running, true);
+
+  int thread_result = ascii_thread_create(&g_lock_debug_manager.debug_thread, debug_thread_func, NULL);
+
+  if (thread_result != 0) {
+    log_error("Failed to create lock debug thread: %d", thread_result);
+    atomic_store(&g_lock_debug_manager.debug_thread_running, false);
+    return -1;
+  }
+
+  log_info("========================================");
+  log_info("Press '?' key to print currently held locks");
+  log_info("========================================");
+  return 0;
+}
+
+void lock_debug_trigger_print(void) {
+  if (atomic_load(&g_lock_debug_manager.initialized)) {
+    atomic_store(&g_lock_debug_manager.should_print_locks, true);
+  }
+}
+
+void lock_debug_cleanup(void) {
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() starting...");
+
+  // Use atomic exchange to ensure cleanup only runs once
+  // This prevents double-cleanup from both atexit() and manual calls
+  bool was_initialized = atomic_exchange(&g_lock_debug_manager.initialized, false);
+  if (!was_initialized) {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - system not initialized or already cleaned up, returning");
+    return;
+  }
+
+  // Signal debug thread to stop but don't join it yet
+  // Thread joining will happen later in lock_debug_cleanup_thread()
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - signaling debug thread to stop...");
+  if (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - setting debug thread running flag to false");
+    atomic_store(&g_lock_debug_manager.debug_thread_running, false);
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - debug thread signaled to stop (will be joined later)");
+  } else {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - debug thread was not running");
+  }
+
+  // Clean up all remaining lock records
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up lock records...");
+
+  if (g_lock_debug_manager.lock_records) {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on lock_records hashtable...");
+    rwlock_wrlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all lock records...");
+    // Free all lock records
+    hashtable_foreach(g_lock_debug_manager.lock_records, cleanup_lock_record_callback, NULL);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on lock_records hashtable...");
+    rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying lock_records hashtable...");
+    hashtable_destroy(g_lock_debug_manager.lock_records);
+    g_lock_debug_manager.lock_records = NULL;
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - lock_records hashtable destroyed");
+  } else {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - lock_records hashtable was NULL");
+  }
+
+  // Clean up usage statistics
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up usage statistics...");
+
+  if (g_lock_debug_manager.usage_stats) {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on usage_stats hashtable...");
+    rwlock_wrlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all usage statistics...");
+    // Free all usage statistics
+    hashtable_foreach(g_lock_debug_manager.usage_stats, cleanup_usage_stats_callback, NULL);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on usage_stats hashtable...");
+    rwlock_wrunlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying usage_stats hashtable...");
+    hashtable_destroy(g_lock_debug_manager.usage_stats);
+    g_lock_debug_manager.usage_stats = NULL;
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - usage_stats hashtable destroyed");
+  } else {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - usage_stats hashtable was NULL");
+  }
+
+  // Clean up orphaned releases
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up orphaned releases...");
+
+  if (g_lock_debug_manager.orphaned_releases) {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on orphaned_releases hashtable...");
+    rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all orphaned releases...");
+    // Free all orphaned release records
+    hashtable_foreach(g_lock_debug_manager.orphaned_releases, cleanup_lock_record_callback, NULL);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on orphaned_releases hashtable...");
+    rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying orphaned_releases hashtable...");
+    hashtable_destroy(g_lock_debug_manager.orphaned_releases);
+    g_lock_debug_manager.orphaned_releases = NULL;
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases hashtable destroyed");
+  } else {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases hashtable was NULL");
+  }
+
+  // initialized flag already set to false at the beginning via atomic_exchange
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - calling log_info...");
+  log_info("Lock debug system cleaned up");
+
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - completed successfully");
+}
+
+void lock_debug_cleanup_thread(void) {
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() starting...");
+
+  // Check if thread is/was running and join it
+  if (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
+    log_warn("[LOCK_DEBUG] lock_debug_cleanup_thread() - thread still running, this shouldn't happen");
+    atomic_store(&g_lock_debug_manager.debug_thread_running, false);
+  }
+
+#ifdef _WIN32
+  // On Windows, check if thread handle is valid before joining
+  if (g_lock_debug_manager.debug_thread != NULL) {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - joining debug thread (handle=%p)...",
+              g_lock_debug_manager.debug_thread);
+    int join_result = ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
+    if (join_result == 0) {
+      log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
+      // Thread handle is now NULL due to cleanup in ascii_thread_join
+    } else {
+      log_warn("[LOCK_DEBUG] lock_debug_cleanup_thread() - failed to join debug thread");
+      // Force cleanup if join failed
+      g_lock_debug_manager.debug_thread = NULL;
+    }
+  } else {
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread handle is NULL, nothing to join");
+  }
+#else
+  // On POSIX, always attempt join if we have a thread
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - joining debug thread...");
+  ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
+#endif
+
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - completed successfully");
+}
+
+// ============================================================================
+// Common Helper Functions
+// ============================================================================
+
+/**
+ * @brief Common validation and filtering logic for all debug lock functions
+ * @param lock_ptr Pointer to lock object
+ * @param file_name Source file name
+ * @param function_name Function name
+ * @return true if tracking should be skipped, false if tracking should proceed
+ */
+static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_name, const char *function_name) {
+  // Special debug logging for handle_client_capabilities_packet
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_SKIP] handle_client_capabilities_packet called: lock_ptr=%p, file=%s, func=%s",
+             lock_ptr, file_name, function_name);
+  }
+
+  if (!lock_ptr || !file_name || !function_name) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_SKIP] handle_client_capabilities_packet SKIPPED: null parameters");
+    }
+    return true;
+  }
+
+  // Skip tracking if system is not fully initialized or during initialization/shutdown
+  extern atomic_bool g_should_exit;
+  bool initialized = atomic_load(&g_lock_debug_manager.initialized);
+  bool initializing = atomic_load(&g_initializing);
+  bool should_exit = atomic_load(&g_should_exit);
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_SKIP] handle_client_capabilities_packet state: initialized=%d, initializing=%d, should_exit=%d",
+             initialized, initializing, should_exit);
+  }
+
+  if (!initialized || initializing || should_exit) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_SKIP] handle_client_capabilities_packet SKIPPED: system not ready");
+    }
+    return true;
+  }
+
+  // Filter out ALL functions that our lock debug system uses internally
+  // to prevent infinite recursion
+  if (strstr(function_name, "log_") != NULL || strstr(function_name, "platform_") != NULL ||
+      strstr(function_name, "hashtable_") != NULL || strstr(function_name, "create_lock_record") != NULL ||
+      strstr(function_name, "update_usage_stats") != NULL || strstr(function_name, "print_") != NULL ||
+      strstr(function_name, "debug_") != NULL || strstr(function_name, "lock_debug") != NULL ||
+      strstr(function_name, "ascii_thread") != NULL) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_SKIP] handle_client_capabilities_packet SKIPPED: filtered function");
+    }
+    return true;
+  }
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_SKIP] handle_client_capabilities_packet NOT SKIPPED: will track");
+  }
+
+  return false;
+}
+
+
+/**
+ * @brief Common logic for decrementing lock counters with underflow protection
+ * @return The new held count after decrement
+ */
+static uint32_t debug_decrement_lock_counter(void) {
+  uint32_t current = atomic_load(&g_lock_debug_manager.current_locks_held);
+  uint32_t held = 0;
+  if (current > 0) {
+    uint32_t expected = current;
+    while (expected > 0 && !atomic_compare_exchange_weak(&g_lock_debug_manager.current_locks_held, &expected, expected - 1)) {
+      // CAS failed, reload current value and retry
+    }
+    held = expected > 0 ? expected - 1 : 0;
+  }
+  return held;
+}
+
+/**
+ * @brief Common logic for creating and inserting lock records
+ * @param lock_address Address of the lock object
+ * @param lock_type Type of lock (MUTEX, RWLOCK_READ, RWLOCK_WRITE)
+ * @param lock_type_str String description of lock type
+ * @param file_name Source file name
+ * @param line_number Source line number
+ * @param function_name Function name
+ * @return true if record was created and inserted successfully
+ */
+static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t lock_type, const char *lock_type_str,
+                                               const char *file_name, int line_number, const char *function_name) {
+#ifndef DEBUG_LOCKS
+  UNUSED(lock_address); UNUSED(lock_type); UNUSED(lock_type_str);
+  UNUSED(file_name); UNUSED(line_number); UNUSED(function_name);
+#endif
+
+  lock_record_t *record = calloc(1, sizeof(lock_record_t));
+  if (record) {
+    record->lock_address = lock_address;
+    record->lock_type = lock_type;
+    record->thread_id = ascii_thread_current_id();
+    record->file_name = file_name;
+    record->line_number = line_number;
+    record->function_name = function_name;
+    clock_gettime(CLOCK_MONOTONIC, &record->acquisition_time);
+
+    // Capture backtrace using platform-specific functions
+#ifdef _WIN32
+    record->backtrace_size = CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, record->backtrace_buffer, NULL);
+#else
+    record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
+#endif
+
+    if (record->backtrace_size > 0) {
+      record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
+    }
+
+    uint32_t key = lock_record_key(lock_address, lock_type);
+    bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
+
+    if (inserted) {
+      uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
+      uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
+      log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
+                lock_type_str, lock_address, key, file_name, line_number, function_name,
+                (unsigned long long)acquired, held);
+      return true;
+    }
+    // Hashtable insert failed - clean up the record and log an error
+    log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()",
+              lock_type_str, lock_address, key, file_name, line_number, function_name);
+    free_lock_record(record);
+  } else {
+    // Record allocation failed - log an error
+    log_debug("[LOCK_DEBUG] ERROR: Failed to allocate %s record for %p at %s:%d in %s()",
+              lock_type_str, lock_address, file_name, line_number, function_name);
+  }
+  return false;
+}
+
+/**
+ * @brief Common logic for processing tracked rwlock unlock
+ * @param rwlock Pointer to rwlock
+ * @param key Lock record key
+ * @param lock_type_str String description of lock type ("READ" or "WRITE")
+ * @param file_name Source file name
+ * @param line_number Source line number
+ * @param function_name Function name
+ * @return true if record was found and removed, false otherwise
+ */
+static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str,
+                                        const char *file_name, int line_number, const char *function_name) {
+#ifndef DEBUG_LOCKS
+  UNUSED(lock_ptr); UNUSED(lock_type_str); UNUSED(file_name); UNUSED(line_number); UNUSED(function_name);
+#endif
+
+  lock_record_t *record = (lock_record_t *)hashtable_lookup(g_lock_debug_manager.lock_records, key);
+  if (record) {
+    if (hashtable_remove(g_lock_debug_manager.lock_records, key)) {
+      free_lock_record(record);
+      uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
+      uint32_t held = debug_decrement_lock_counter();
+      log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
+                lock_type_str, lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Common logic for processing untracked rwlock unlock
+ * @param lock_ptr Pointer to lock
+ * @param key Lock record key
+ * @param lock_type_str String description of lock type ("READ" or "WRITE")
+ * @param file_name Source file name
+ * @param line_number Source line number
+ * @param function_name Function name
+ */
+static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str,
+                                          const char *file_name, int line_number, const char *function_name) {
+  uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
+  uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+  uint32_t held = 0;
+  if (current_held > 0) {
+    held = debug_decrement_lock_counter();
+  } else {
+    log_error("[LOCK_DEBUG] *** ERROR: Attempting to release %s lock when no locks held! ***", lock_type_str);
+    log_error("%s:%d in %s()", file_name, line_number, function_name);
+  }
+  log_error("[LOCK_DEBUG] %s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
+            lock_type_str, lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
+  log_error("[LOCK_DEBUG] *** WARNING: %s lock was acquired and tracked but record was lost! ***", lock_type_str);
+
+  // Create an orphaned release record to track this problematic unlock
+  lock_record_t *orphan_record = calloc(1, sizeof(lock_record_t));
+  if (orphan_record) {
+    orphan_record->lock_address = lock_ptr;
+    if (strcmp(lock_type_str, "MUTEX") == 0) {
+      orphan_record->lock_type = LOCK_TYPE_MUTEX;
+    } else if (strcmp(lock_type_str, "READ") == 0) {
+      orphan_record->lock_type = LOCK_TYPE_RWLOCK_READ;
+    } else if (strcmp(lock_type_str, "WRITE") == 0) {
+      orphan_record->lock_type = LOCK_TYPE_RWLOCK_WRITE;
+    }
+    orphan_record->thread_id = ascii_thread_current_id();
+    orphan_record->file_name = file_name;
+    orphan_record->line_number = line_number;
+    orphan_record->function_name = function_name;
+    clock_gettime(CLOCK_MONOTONIC, &orphan_record->acquisition_time); // Use release time
+
+    // Capture backtrace for this orphaned release
+#ifdef _WIN32
+    orphan_record->backtrace_size = CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, orphan_record->backtrace_buffer, NULL);
+#else
+    orphan_record->backtrace_size = platform_backtrace(orphan_record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
+#endif
+
+    if (orphan_record->backtrace_size > 0) {
+      orphan_record->backtrace_symbols = platform_backtrace_symbols(orphan_record->backtrace_buffer, orphan_record->backtrace_size);
+    }
+
+    // Store in orphaned releases hashtable for later analysis
+    if (g_lock_debug_manager.orphaned_releases) {
+      hashtable_insert(g_lock_debug_manager.orphaned_releases, key, orphan_record);
+    } else {
+      free_lock_record(orphan_record);
+    }
+  }
+}
+
+// ============================================================================
+// Tracked Lock Functions Implementation
+// ============================================================================
+
+int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
+    return mutex_lock_impl(mutex);
+  }
+
+  // Acquire the actual lock first (call implementation to avoid recursion)
+  int result = mutex_lock_impl(mutex);
+  if (result != 0) {
+    return result;
+  }
+
+  // Create and add lock record
+  debug_create_and_insert_lock_record(mutex, LOCK_TYPE_MUTEX, "MUTEX", file_name, line_number, function_name);
+
+  return 0;
+}
+
+int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
+    return mutex_unlock_impl(mutex);
+  }
+
+  // Look for mutex lock record specifically
+  uint32_t key = lock_record_key(mutex, LOCK_TYPE_MUTEX);
+  if (!debug_process_tracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name)) {
+    // No record found - check if this is because the lock was filtered or because of a tracking error
+    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+
+    if (current_held > 0) {
+      // We have tracked locks but can't find this specific one - this is a tracking error
+      debug_process_untracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name);
+    } else {
+      // No tracked locks - this means the lock was filtered during lock operation
+      static atomic_int debug_count = 0;
+
+      int current_count = atomic_fetch_add(&debug_count, 1);
+      if (current_count < 3) {
+        log_debug("[LOCK_DEBUG] FILTERED UNLOCK #%d: mutex=%p, key=%u at %s:%d in %s()", current_count + 1, mutex, key,
+                  file_name, line_number, function_name);
+      } else if (current_count == 50) {
+        log_debug("[LOCK_DEBUG] Suppressed further filtered unlock messages after 50 calls");
+      }
+    }
+  }
+
+  // Unlock the actual mutex (call implementation to avoid recursion)
+  return mutex_unlock_impl(mutex);
+}
+
+int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  // Always log when this function is called for handle_client_capabilities_packet
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDLOCK] *** ENTRY *** handle_client_capabilities_packet rdlock called: rwlock=%p, file=%s:%d",
+             rwlock, file_name, line_number);
+  }
+
+  // Also log ALL calls to this function to see if it's being called at all
+  log_info("[DEBUG_RDLOCK] debug_rwlock_rdlock called: func=%s, file=%s:%d", function_name, file_name, line_number);
+
+  if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_RDLOCK] handle_client_capabilities_packet rdlock SKIPPED");
+    }
+    return rwlock_rdlock_impl(rwlock);
+  }
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDLOCK] handle_client_capabilities_packet rdlock TRACKING");
+  }
+
+  // Acquire the actual lock first (call implementation to avoid recursion)
+  int result = rwlock_rdlock_impl(rwlock);
+  if (result != 0) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_RDLOCK] handle_client_capabilities_packet rdlock FAILED: result=%d", result);
+    }
+    return result;
+  }
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDLOCK] handle_client_capabilities_packet rdlock SUCCESS, creating record");
+  }
+
+  // Create and add lock record
+  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_READ, "RWLOCK READ", file_name, line_number, function_name);
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDLOCK] handle_client_capabilities_packet rdlock COMPLETE");
+  }
+
+  return 0;
+}
+
+int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    return rwlock_wrlock_impl(rwlock);
+  }
+
+  // Acquire the actual lock first (call implementation to avoid recursion)
+  int result = rwlock_wrlock_impl(rwlock);
+  if (result != 0) {
+    return result;
+  }
+
+  // Create and add lock record
+  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_WRITE, "RWLOCK WRITE", file_name, line_number, function_name);
+
+  return 0;
+}
+
+
+
+int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  // Special debug logging for handle_client_capabilities_packet
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock called: rwlock=%p, file=%s:%d",
+             rwlock, file_name, line_number);
+  }
+
+  if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock SKIPPED");
+    }
+    return rwlock_rdunlock_impl(rwlock);
+  }
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock TRACKING");
+  }
+
+  // Look for read lock record specifically
+  uint32_t read_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock looking for key=%u", read_key);
+  }
+
+  if (!debug_process_tracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name)) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock NO RECORD FOUND - processing as untracked");
+    }
+    debug_process_untracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name);
+  } else {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock RECORD FOUND");
+    }
+  }
+
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock COMPLETE");
+  }
+
+  return rwlock_rdunlock_impl(rwlock);
+}
+
+int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    return rwlock_wrunlock_impl(rwlock);
+  }
+
+  // Look for write lock record specifically
+  uint32_t write_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
+  if (!debug_process_tracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name)) {
+    debug_process_untracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name);
+  }
+
+  return rwlock_wrunlock_impl(rwlock);
+}
+
+int debug_rwlock_unlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
+    return rwlock_unlock_impl(rwlock);
+  }
+
+  // Generic unlock - try to find either read or write lock record
+  uint32_t read_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
+  uint32_t write_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
+
+  // Try read lock first, then write lock
+  if (!debug_process_tracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name) &&
+      !debug_process_tracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name)) {
+    // No lock record found - log as generic untracked
+    uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
+    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+    uint32_t held = 0;
+    if (current_held > 0) {
+      held = debug_decrement_lock_counter();
+    } else {
+      log_error("[LOCK_DEBUG] *** ERROR: Attempting to release when no locks held! ***");
+      log_error("%s:%d in %s()", file_name, line_number, function_name);
+    }
+    log_error(
+        "[LOCK_DEBUG] RWLOCK UNTRACKED RELEASED: %p (read_key=%u, write_key=%u) at %s:%d in %s() - total=%llu, held=%u",
+        rwlock, read_key, write_key, file_name, line_number, function_name, (unsigned long long)released, held);
+    log_error("[LOCK_DEBUG] *** WARNING: Lock was acquired and tracked but record was lost! ***");
+  }
+
+  // Generic unlock - use implementation
+  return rwlock_unlock_impl(rwlock);
+}
+
+// ============================================================================
+// Statistics Functions
+// ============================================================================
+
+void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
+  if (total_acquired) {
+    *total_acquired = atomic_load(&g_lock_debug_manager.total_locks_acquired);
+  }
+  if (total_released) {
+    *total_released = atomic_load(&g_lock_debug_manager.total_locks_released);
+  }
+  if (currently_held) {
+    *currently_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+  }
+}
+
+bool lock_debug_is_initialized(void) {
+  bool initialized = atomic_load(&g_lock_debug_manager.initialized);
+  bool initializing = atomic_load(&g_initializing);
+  bool result = initialized && !initializing;
+
+  return result;
+}
+
+void lock_debug_print_state(void) {
+  log_debug("[LOCK_DEBUG] State: initialized=%d, initializing=%d, result=%d",
+            atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing), lock_debug_is_initialized());
+  log_debug("[LOCK_DEBUG] Stats: acquired=%llu, released=%llu, held=%u",
+            (unsigned long long)atomic_load(&g_lock_debug_manager.total_locks_acquired),
+            (unsigned long long)atomic_load(&g_lock_debug_manager.total_locks_released),
+            atomic_load(&g_lock_debug_manager.current_locks_held));
+}

@@ -139,7 +139,7 @@ static struct {
   atomic_size_t realloc_calls;
   mutex_t mutex; /* Only for linked list operations */
   bool mutex_initialized;
-  bool quiet_mode;        /* Control stderr output for memory report */
+  bool quiet_mode; /* Control stderr output for memory report */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
            .total_freed = 0,
@@ -150,8 +150,7 @@ static struct {
            .calloc_calls = 0,
            .realloc_calls = 0,
            .mutex_initialized = false,
-           .quiet_mode = false
-};
+           .quiet_mode = false};
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
 #undef malloc
@@ -407,9 +406,9 @@ void debug_memory_set_quiet_mode(bool quiet) {
   g_mem.quiet_mode = quiet;
 }
 
-static const char* strip_project_path(const char* full_path) {
-  const char* project_marker = "ascii-chat/";
-  const char* found = strstr(full_path, project_marker);
+static const char *strip_project_path(const char *full_path) {
+  const char *project_marker = "ascii-chat/";
+  const char *found = strstr(full_path, project_marker);
   if (found) {
     return found + strlen(project_marker);
   }
@@ -461,7 +460,8 @@ void debug_memory_report(void) {
       while (curr) {
         char pretty_size[64];
         format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
+        SAFE_IGNORE_PRINTF_RESULT(
+            safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
         curr = curr->next;
       }
 

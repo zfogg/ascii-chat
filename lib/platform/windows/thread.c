@@ -22,77 +22,57 @@ typedef struct {
 
 // Windows thread wrapper function that calls POSIX-style function
 static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
-  // Single debug log file that gets overwritten
-  FILE *debug_file = fopen("debug.log", "w");
-  if (debug_file) {
-    fprintf(debug_file, "[THREAD_WRAPPER] Entered at %llu, thread_id=%lu\n", (unsigned long long)time(NULL),
-            GetCurrentThreadId());
-    fflush(debug_file);
-  }
-
   thread_wrapper_t *wrapper = (thread_wrapper_t *)param;
 
   if (!wrapper) {
-    if (debug_file) {
-      fprintf(debug_file, "[THREAD_WRAPPER] ERROR: NULL wrapper\n");
-      fclose(debug_file);
-    }
+    printf("[THREAD_WRAPPER] ERROR: NULL wrapper\n");
+    fflush(stdout);
     return 1;
   }
 
-  if (debug_file) {
-    fprintf(debug_file, "[THREAD_WRAPPER] wrapper=%p, func=%p, arg=%p\n", wrapper, wrapper->posix_func, wrapper->arg);
+  printf("[THREAD_WRAPPER] wrapper=%p, func=%p, arg=%p, thread_id=%lu\n", wrapper, wrapper->posix_func, wrapper->arg,
+         GetCurrentThreadId());
+  fflush(stdout);
 
-    // Check if function pointer is valid
-    if (!wrapper->posix_func) {
-      fprintf(debug_file, "[THREAD_WRAPPER] ERROR: NULL function pointer!\n");
-      fclose(debug_file);
-      free(wrapper);
-      return 1;
-    }
-
-    // Try to verify the function pointer is in valid memory range
-    MEMORY_BASIC_INFORMATION mbi;
-    if (VirtualQuery(wrapper->posix_func, &mbi, sizeof(mbi))) {
-      fprintf(debug_file, "[THREAD_WRAPPER] Function memory: base=%p, size=%zu, state=0x%lX, protect=0x%lX\n",
-              mbi.BaseAddress, mbi.RegionSize, (unsigned long)mbi.State, (unsigned long)mbi.Protect);
-    } else {
-      fprintf(debug_file, "[THREAD_WRAPPER] ERROR: Cannot query function memory\n");
-    }
-
-    fprintf(debug_file, "[THREAD_WRAPPER] About to call POSIX function...\n");
-    fflush(debug_file);
-    fclose(debug_file);
+  // Check if function pointer is valid
+  if (!wrapper->posix_func) {
+    printf("[THREAD_WRAPPER] ERROR: NULL function pointer!\n");
+    fflush(stdout);
+    free(wrapper);
+    return 1;
   }
 
-  // Reopen in append mode for function execution
-  debug_file = fopen("debug.log", "a");
-  if (debug_file) {
-    fprintf(debug_file, "[THREAD_WRAPPER] Calling function NOW\n");
-    fflush(debug_file);
-    fclose(debug_file);
-  }
+  printf("[THREAD_WRAPPER] About to call POSIX function...\n");
+  fflush(stdout);
 
   void *result = NULL;
   __try {
     result = wrapper->posix_func(wrapper->arg);
   } __except (EXCEPTION_EXECUTE_HANDLER) {
-    debug_file = fopen("debug.log", "a");
-    if (debug_file) {
-      fprintf(debug_file, "[THREAD_WRAPPER] EXCEPTION caught! Code: 0x%lX\n", (unsigned long)GetExceptionCode());
-      fclose(debug_file);
-    }
+    printf("[THREAD_WRAPPER] EXCEPTION caught! Code: 0x%lX\n", (unsigned long)GetExceptionCode());
+    fflush(stdout);
+    // Use raw free to match raw malloc used in allocation
+#ifdef DEBUG_MEMORY
+#undef free
     free(wrapper);
+#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#else
+    free(wrapper);
+#endif
     return 1;
   }
 
-  debug_file = fopen("debug.log", "a");
-  if (debug_file) {
-    fprintf(debug_file, "[THREAD_WRAPPER] Function returned: %p\n", result);
-    fclose(debug_file);
-  }
+  printf("[THREAD_WRAPPER] Function returned: %p\n", result);
+  fflush(stdout);
 
+  // Use raw free to match raw malloc used in allocation
+#ifdef DEBUG_MEMORY
+#undef free
   free(wrapper);
+#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#else
+  free(wrapper);
+#endif
   return (DWORD)(uintptr_t)result;
 }
 /**
@@ -103,11 +83,28 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
+  printf("ENTER ascii_thread_create: thread=%p, func=%p, arg=%p\n", thread, func, arg);
+  fflush(stdout);
+
 #ifdef DEBUG_THREADS
   OutputDebugStringA("DEBUG: ascii_thread_create() called\n");
 #endif
 
-  thread_wrapper_t *wrapper = malloc(sizeof(thread_wrapper_t));
+  printf("DEBUG: About to malloc wrapper (size=%zu)\n", sizeof(thread_wrapper_t));
+  fflush(stdout);
+
+  // CRITICAL: Use real malloc, not debug_malloc to avoid deadlock during thread creation
+#ifdef DEBUG_MEMORY
+#undef malloc
+  thread_wrapper_t *wrapper = (thread_wrapper_t *)malloc(sizeof(thread_wrapper_t));
+#define malloc(size) debug_malloc(size, __FILE__, __LINE__)
+#else
+  thread_wrapper_t *wrapper;
+  SAFE_MALLOC(wrapper, sizeof(thread_wrapper_t), thread_wrapper_t *);
+#endif
+
+  printf("DEBUG: malloc returned wrapper=%p\n", wrapper);
+  fflush(stdout);
   if (!wrapper) {
 #ifdef DEBUG_THREADS
     OutputDebugStringA("DEBUG: malloc failed for thread wrapper\n");
@@ -124,22 +121,19 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
 
   DWORD thread_id;
 
-  // Append to same debug log
-  FILE *debug_log = fopen("debug.log", "a");
-  if (debug_log) {
-    fprintf(debug_log, "\n[CREATE_THREAD] Before CreateThread: wrapper=%p, func=%p, arg=%p\n", wrapper,
-            wrapper->posix_func, wrapper->arg);
-    fflush(debug_log);
-  }
+  printf("[CREATE_THREAD] Before CreateThread: wrapper=%p, func=%p, arg=%p\n", wrapper, wrapper->posix_func,
+         wrapper->arg);
+  fflush(stdout);
 
   (*thread) = CreateThread(NULL, 0, windows_thread_wrapper, wrapper, 0, &thread_id);
 
+  printf("[CREATE_THREAD] After CreateThread: handle=%p, thread_id=%lu\n", *thread, thread_id);
+  fflush(stdout);
+
   if (*thread == NULL) {
     DWORD error = GetLastError();
-    if (debug_log) {
-      fprintf(debug_log, "[CREATE_THREAD] FAILED, error=%lu\n", error);
-      fclose(debug_log);
-    }
+    printf("[CREATE_THREAD] FAILED, error=%lu\n", error);
+    fflush(stdout);
 #ifdef DEBUG_THREADS
     char debug_msg[256];
     SAFE_SNPRINTF(debug_msg, 256, "DEBUG: CreateThread failed, error=%lu\n", error);
@@ -149,16 +143,23 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
     return -1;
   }
 
-  if (debug_log) {
-    fprintf(debug_log, "[CREATE_THREAD] SUCCESS: handle=%p, thread_id=%lu\n", *thread, thread_id);
-    fclose(debug_log);
-  }
+  printf("[CREATE_THREAD] SUCCESS: handle=%p, thread_id=%lu\n", *thread, thread_id);
+  fflush(stdout);
 
 #ifdef DEBUG_THREADS
   char debug_msg[256];
   SAFE_SNPRINTF(debug_msg, 256, "DEBUG: CreateThread succeeded, handle=%p, thread_id=%lu\n", *thread, thread_id);
   OutputDebugStringA(debug_msg);
 #endif
+
+  printf("DEBUG: ascii_thread_create about to return 0\n");
+  fflush(stdout);
+
+  printf("DEBUG: Actually returning from ascii_thread_create now\n");
+  fflush(stdout);
+
+  // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
+  MemoryBarrier();
 
   return 0;
 }
@@ -170,6 +171,10 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
+  if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
+    return -1;
+  }
+
   DWORD result = WaitForSingleObject((*thread), INFINITE);
 
   if (result == WAIT_OBJECT_0) {
@@ -179,6 +184,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
       *retval = (void *)(uintptr_t)exit_code;
     }
     CloseHandle((*thread));
+    *thread = NULL; // Clear the handle to prevent reuse
     return 0;
   }
   return -1;

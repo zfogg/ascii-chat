@@ -8,9 +8,9 @@
 
 // Timeout constants (in seconds)
 #define CONNECT_TIMEOUT 10
-#define SEND_TIMEOUT 2
+#define SEND_TIMEOUT 10
 #define RECV_TIMEOUT 30
-#define ACCEPT_TIMEOUT 10
+#define ACCEPT_TIMEOUT 1 // Reduced from 10 to allow faster shutdown on SIGINT
 
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60

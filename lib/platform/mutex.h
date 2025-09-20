@@ -27,6 +27,15 @@ typedef pthread_mutex_t mutex_t;
 
 int mutex_init(mutex_t *mutex);
 int mutex_destroy(mutex_t *mutex);
-int mutex_lock(mutex_t *mutex);
+int mutex_lock_impl(mutex_t *mutex);
 int mutex_trylock(mutex_t *mutex);
-int mutex_unlock(mutex_t *mutex);
+int mutex_unlock_impl(mutex_t *mutex);
+
+// Debug-enabled macros that capture caller context
+// These macros ensure __FILE__, __LINE__, and __func__ resolve to the caller's location
+// rather than the platform implementation file location
+#define mutex_lock(mutex)                                                                                              \
+  (lock_debug_is_initialized() ? debug_mutex_lock(mutex, __FILE__, __LINE__, __func__) : mutex_lock_impl(mutex))
+
+#define mutex_unlock(mutex)                                                                                            \
+  (lock_debug_is_initialized() ? debug_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))

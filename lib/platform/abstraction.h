@@ -84,11 +84,11 @@
 // Terminal I/O
 #include "platform/terminal.h"
 
-// String and memory functions
-#include "platform/system.h"
-
 // System functions
 #include "platform/system.h"
+
+// Lock debugging
+#include "lock_debug.h"
 
 // File I/O
 #include "platform/file.h"
