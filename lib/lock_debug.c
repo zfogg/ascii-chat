@@ -892,8 +892,16 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
   UNUSED(file_name); UNUSED(line_number); UNUSED(function_name);
 #endif
 
+  // Special debug logging for handle_client_capabilities_packet
+  if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+    log_info("[DEBUG_CREATE] handle_client_capabilities_packet creating record: lock=%p, type=%s", lock_address, lock_type_str);
+  }
+
   lock_record_t *record = calloc(1, sizeof(lock_record_t));
   if (record) {
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_CREATE] handle_client_capabilities_packet record allocated successfully");
+    }
     record->lock_address = lock_address;
     record->lock_type = lock_type;
     record->thread_id = ascii_thread_current_id();
@@ -914,15 +922,39 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
     }
 
     uint32_t key = lock_record_key(lock_address, lock_type);
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_CREATE] handle_client_capabilities_packet about to insert record: key=%u", key);
+    }
     bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
 
+    if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+      log_info("[DEBUG_CREATE] handle_client_capabilities_packet hashtable_insert returned: %d", inserted);
+    }
+
     if (inserted) {
+      if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+        log_info("[DEBUG_CREATE] handle_client_capabilities_packet record inserted successfully");
+      }
       uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
       uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
-      log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
+      if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+        log_info("[DEBUG_CREATE] handle_client_capabilities_packet about to log ACQUIRED message");
+      }
+      // CRITICAL TEST: Add a simple log message to see if we reach this point
+      if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+        log_info("[DEBUG_CREATE] handle_client_capabilities_packet CRITICAL TEST: About to call log_info for ACQUIRED");
+      }
+      log_info("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
                 lock_type_str, lock_address, key, file_name, line_number, function_name,
                 (unsigned long long)acquired, held);
+      if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+        log_info("[DEBUG_CREATE] handle_client_capabilities_packet ACQUIRED message logged");
+      }
       return true;
+    } else {
+      if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
+        log_info("[DEBUG_CREATE] handle_client_capabilities_packet record insert FAILED");
+      }
     }
     // Hashtable insert failed - clean up the record and log an error
     log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()",
