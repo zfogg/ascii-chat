@@ -133,6 +133,13 @@ static const size_t g_utf8_heap_capacity = HASHTABLE_MAX_ENTRIES; // Max heap si
 
 // Initialize UTF-8 cache system with min-heap
 static void init_utf8_cache_system(void) {
+  static bool initialized = false;
+  if (!initialized) {
+    // Initialize the rwlock first
+    rwlock_init(&g_utf8_cache_rwlock);
+    initialized = true;
+  }
+
   if (!g_utf8_cache_table) {
     g_utf8_cache_table = hashtable_create();
 
@@ -307,6 +314,13 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   // Create hash of palette for cache key
   uint32_t palette_hash = hash_palette_string(ascii_chars);
 
+  // Ensure the cache system is initialized (including the rwlock)
+  static _Atomic(bool) ensure_init = false;
+  if (!atomic_load(&ensure_init)) {
+    init_utf8_cache_system();
+    atomic_store(&ensure_init, true);
+  }
+
   // Fast path: Try read-only lookup first (most common case)
   rwlock_rdlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
@@ -338,7 +352,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       return cache;
     }
   }
-  rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_rdunlock(&g_utf8_cache_rwlock);
 
   // Slow path: Need to create cache entry, acquire write lock
   rwlock_wrlock(&g_utf8_cache_rwlock);

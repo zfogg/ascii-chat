@@ -35,10 +35,10 @@
  * ## Frame Rate Management
  *
  * Implements intelligent frame rate limiting:
- * - **Target Rate**: 30 FPS for smooth video (33ms intervals)
+ * - **Capture Rate**: 144 FPS to support high-refresh displays (~6.9ms intervals)
  * - **Timing Control**: Monotonic clock for accurate frame intervals
  * - **Adaptive Delays**: Dynamic sleep adjustment for consistent timing
- * - **Bandwidth Optimization**: Balance quality vs network utilization
+ * - **Display Support**: High capture rate enables smooth playback on promotion displays
  *
  * ## Image Resizing Strategy
  *
@@ -339,7 +339,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
   while (!should_exit() && !server_connection_is_lost()) {
     capture_loop_count++;
-    if (capture_loop_count % 30 == 0) { // Log every 30 iterations (1 second at 30fps)
+    if (capture_loop_count % 144 == 0) { // Log every 144 iterations (1 second at 144fps)
       log_info("DEBUG_CAPTURE_LOOP: [%llu] Capture thread loop iteration", capture_loop_count);
     }
     // Check connection status
@@ -352,12 +352,14 @@ static void *webcam_capture_thread_func(void *arg) {
     log_info("DEBUG: Server connection is active, proceeding with capture");
 #endif
     // Frame rate limiting using monotonic clock
+    // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
+    const long CAPTURE_INTERVAL_MS = 1000 / 144; // ~6.94ms for 144fps
     struct timespec current_time;
     clock_gettime(CLOCK_MONOTONIC, &current_time);
     long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
                       (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
-    if (elapsed_ms < FRAME_INTERVAL_MS) {
-      platform_sleep_usec((FRAME_INTERVAL_MS - elapsed_ms) * 1000);
+    if (elapsed_ms < CAPTURE_INTERVAL_MS) {
+      platform_sleep_usec((CAPTURE_INTERVAL_MS - elapsed_ms) * 1000);
       continue;
     }
 
@@ -365,7 +367,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // DEBUG: Track webcam_read calls
     static uint64_t webcam_read_count = 0;
     webcam_read_count++;
-    if (webcam_read_count % 30 == 0) { // Log every 30 calls (1 second at 30fps)
+    if (webcam_read_count % 144 == 0) { // Log every 144 calls (1 second at 144fps)
       log_info("DEBUG_WEBCAM_READ: [%llu] Calling webcam_read()", webcam_read_count);
     }
 
@@ -375,7 +377,7 @@ static void *webcam_capture_thread_func(void *arg) {
       // DEBUG: Track webcam_read failures
       static uint64_t webcam_read_fail_count = 0;
       webcam_read_fail_count++;
-      if (webcam_read_fail_count % 30 == 0) { // Log every 30 failures
+      if (webcam_read_fail_count % 144 == 0) { // Log every 144 failures
         log_info("DEBUG_WEBCAM_READ_FAIL: [%llu] webcam_read() returned NULL", webcam_read_fail_count);
       }
       log_info("No frame available from webcam yet (webcam_read returned NULL)");
@@ -574,17 +576,27 @@ void capture_stop_thread() {
   if (join_result == -2) {
     log_error("Capture thread join timed out - thread may be stuck, forcing termination");
     // Force close the thread handle to prevent resource leak
+#ifdef _WIN32
     if (g_capture_thread) {
       CloseHandle(g_capture_thread);
       g_capture_thread = NULL;
     }
+#else
+    // On POSIX, threads clean up automatically after join
+    g_capture_thread = 0;
+#endif
   } else if (join_result != 0) {
     log_error("Failed to join capture thread, result=%d", join_result);
     // Still force close the handle to prevent leak
+#ifdef _WIN32
     if (g_capture_thread) {
       CloseHandle(g_capture_thread);
       g_capture_thread = NULL;
     }
+#else
+    // On POSIX, threads clean up automatically after join
+    g_capture_thread = 0;
+#endif
   }
 
   g_capture_thread_created = false;

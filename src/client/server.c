@@ -72,6 +72,9 @@
 #include <time.h>
 #include <sys/types.h>
 #include <stdatomic.h>
+#ifndef _WIN32
+#include <netinet/tcp.h>
+#endif
 
 // Debug flags
 #define DEBUG_NETWORK 1

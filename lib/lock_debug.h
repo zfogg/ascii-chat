@@ -1,5 +1,7 @@
 #pragma once
 
+#include "platform/thread.h" // For ascii_thread_self()
+
 /**
  * @file lock_debug.h
  * @brief Lock debugging and deadlock detection system for ASCII-Chat
@@ -168,7 +170,13 @@ extern atomic_bool g_initializing;
  * @brief Generate a unique key for a lock record
  * @param lock_address Address of the lock object
  * @param lock_type Type of lock (mutex, rwlock read/write)
+ * @param thread_id Thread ID that holds/held the lock
  * @return Unique 32-bit key for hashtable lookup
+ *
+ * IMPORTANT: The key must include thread_id because:
+ * - Multiple threads can hold read locks on the same rwlock
+ * - Each thread's lock must be tracked separately
+ * - Unlock must match the exact thread that locked
  */
 static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type) {
   // Combine lock address, type, and thread ID into a unique key
@@ -306,7 +314,6 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
  */
-int debug_rwlock_unlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 
 // ============================================================================
 // Convenience Macros
@@ -340,7 +347,6 @@ int debug_rwlock_unlock(rwlock_t *rwlock, const char *file_name, int line_number
  * @brief Convenience macro for tracked rwlock unlock
  * @param rwlock Pointer to rwlock to unlock
  */
-#define DEBUG_RWLOCK_UNLOCK(rwlock) debug_rwlock_unlock(rwlock, __FILE__, __LINE__, __func__)
 
 // ============================================================================
 // Statistics and Information Functions

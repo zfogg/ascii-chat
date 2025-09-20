@@ -31,7 +31,6 @@ int rwlock_init_impl(rwlock_t *lock);
 int rwlock_destroy_impl(rwlock_t *lock);
 int rwlock_rdlock_impl(rwlock_t *lock);
 int rwlock_wrlock_impl(rwlock_t *lock);
-int rwlock_unlock_impl(rwlock_t *lock);
 int rwlock_rdunlock_impl(rwlock_t *lock);
 int rwlock_wrunlock_impl(rwlock_t *lock);
 
@@ -43,9 +42,6 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 
 #define rwlock_wrlock(lock)                                                                                            \
   (lock_debug_is_initialized() ? debug_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
-
-#define rwlock_unlock(lock)                                                                                            \
-  (lock_debug_is_initialized() ? debug_rwlock_unlock(lock, __FILE__, __LINE__, __func__) : rwlock_unlock_impl(lock))
 
 #define rwlock_rdunlock(lock)                                                                                          \
   (lock_debug_is_initialized() ? debug_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))

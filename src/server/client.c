@@ -111,6 +111,9 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#ifndef _WIN32
+#include <netinet/tcp.h>
+#endif
 
 #include "client.h"
 #include "protocol.h"
@@ -126,6 +129,7 @@
 #include "hashtable.h"
 #include "platform/abstraction.h"
 #include "platform/string.h"
+#include "platform/socket.h"
 #include "crc32_hw.h"
 
 // Debug flags
@@ -293,6 +297,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   atomic_store(&client->active, true);
+  atomic_store(&client->shutting_down, false);
   log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
            socket);
   client->connected_at = time(NULL);
@@ -472,15 +477,18 @@ int remove_client(uint32_t client_id) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->client_id == client_id && client->client_id != 0) {
-      // Mark as inactive immediately to stop new operations
+      // Mark as shutting down and inactive immediately to stop new operations
+      atomic_store(&client->shutting_down, true);
       atomic_store(&client->active, false);
       target_client = client;
 
       // Store display name before clearing
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
-      // Close socket to trigger receive thread exit
+      // Shutdown socket to unblock I/O operations, then close
       if (client->socket != INVALID_SOCKET_VALUE) {
+        // Shutdown both send and receive operations to unblock any pending I/O
+        socket_shutdown(client->socket, 2); // 2 = SHUT_RDWR on POSIX, SD_BOTH on Windows
         socket_close(client->socket);
         client->socket = INVALID_SOCKET_VALUE;
       }
@@ -559,8 +567,8 @@ int remove_client(uint32_t client_id) {
     log_warn("Failed to remove client %u from hash table", client_id);
   }
 
-  // Destroy mutexes
-  mutex_destroy(&target_client->video_buffer_mutex);
+  // Destroy mutexes and rwlocks
+  rwlock_destroy(&target_client->video_buffer_rwlock);
   mutex_destroy(&target_client->client_state_mutex);
 
   // Clear client structure
@@ -738,7 +746,8 @@ void *client_send_thread_func(void *arg) {
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
 
-  while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && atomic_load(&client->send_thread_running)) {
+  while (!atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
+         atomic_load(&client->send_thread_running)) {
     bool sent_something = false;
 
     // Try to get audio packet first (higher priority for low latency)
@@ -784,6 +793,8 @@ void *client_send_thread_func(void *arg) {
     uint64_t current_time = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
     if (current_time - last_video_send_time >= video_send_interval_us) {
       // Try to get latest video frame from double buffer
+      // CRITICAL: Protect video buffer access with read lock to prevent use-after-free
+      rwlock_rdlock(&client->video_buffer_rwlock);
       if (client->outgoing_video_buffer) {
         const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
         if (frame && frame->data && frame->size > 0) {
@@ -852,6 +863,7 @@ void *client_send_thread_func(void *arg) {
           }
         }
       }
+      rwlock_rdunlock(&client->video_buffer_rwlock);
     }
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
@@ -904,6 +916,8 @@ void broadcast_server_state_to_all_clients(void) {
   // Send to all active clients
   for (int i = 0; i < MAX_CLIENTS; i++) {
     // TODO: Send server state updates directly via socket
+    // client_info_t *client = &g_client_manager.clients[i];
+    (void)i;         // Suppress unused variable warning for now
     (void)net_state; // Suppress unused variable warning
   }
   rwlock_rdunlock(&g_client_manager_rwlock);
@@ -944,10 +958,12 @@ void cleanup_client_media_buffers(client_info_t *client) {
   }
 
   // Clean up outgoing video buffer (for ASCII frames)
+  rwlock_wrlock(&client->video_buffer_rwlock);
   if (client->outgoing_video_buffer) {
     video_frame_buffer_destroy(client->outgoing_video_buffer);
     client->outgoing_video_buffer = NULL;
   }
+  rwlock_wrunlock(&client->video_buffer_rwlock);
 
   // Clean up pre-allocated send buffer
   if (client->send_buffer) {

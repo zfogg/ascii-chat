@@ -373,10 +373,14 @@ void *client_video_render_thread(void *arg) {
     return NULL;
   }
 
-  log_info("Video render thread: client_id=%u, socket=%d", client->client_id, client->socket);
+  // Take snapshot of client ID and socket at start to avoid race conditions
+  uint32_t thread_client_id = client->client_id;
+  int thread_socket = client->socket;
 
-  if (client->socket <= 0) {
-    log_error("Invalid socket (%d) in video render thread for client %u", client->socket, client->client_id);
+  log_info("Video render thread: client_id=%u, socket=%d", thread_client_id, thread_socket);
+
+  if (thread_socket <= 0) {
+    log_error("Invalid socket (%d) in video render thread for client %u", thread_socket, thread_client_id);
     return NULL;
   }
 
@@ -397,17 +401,18 @@ void *client_video_render_thread(void *arg) {
   // Track queue pressure for dynamic throttling
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_should_exit)) {
+  while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
     // Check for immediate shutdown
     if (atomic_load(&g_should_exit)) {
-      log_info("Video render thread stopping for client %u (g_should_exit)", client->client_id);
+      log_info("Video render thread stopping for client %u (g_should_exit)", thread_client_id);
       break;
     }
 
-    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
+    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
+                      !atomic_load(&client->shutting_down);
 
     if (!should_continue) {
-      log_info("Video render thread stopping for client %u (should_continue=false)", client->client_id);
+      log_info("Video render thread stopping for client %u (should_continue=false)", thread_client_id);
       break;
     }
 
@@ -468,8 +473,8 @@ void *client_video_render_thread(void *arg) {
     static uint64_t render_attempts = 0;
     render_attempts++;
     if (render_attempts % 30 == 0) { // Log every 30 attempts (1 second at 30fps)
-      log_info("DEBUG_RENDER: [%llu] Render thread attempting frame generation for client %u", render_attempts,
-               client_id_snapshot);
+      log_info("DEBUG_RENDER: [%llu] Render thread attempting frame generation for client %u",
+               (unsigned long long)render_attempts, client_id_snapshot);
     }
 
     char *ascii_frame =
@@ -478,6 +483,8 @@ void *client_video_render_thread(void *arg) {
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
       // Write to outgoing video buffer - this is a double buffer that never drops frames
+      // CRITICAL: Protect video buffer access with write lock to prevent use-after-free
+      rwlock_wrlock(&client->video_buffer_rwlock);
       if (client->outgoing_video_buffer) {
         video_frame_t *write_frame = video_frame_begin_write(client->outgoing_video_buffer);
         if (write_frame) {
@@ -500,30 +507,31 @@ void *client_video_render_thread(void *arg) {
             buffer_write_count++;
             if (buffer_write_count % 30 == 0) { // Log every 30 writes (1 second at 30fps)
               log_info("DEBUG_BUFFER_WRITE: [%llu] Successfully wrote ASCII frame to buffer for client %u (size=%s)",
-                       buffer_write_count, client->client_id, pretty_size);
+                       (unsigned long long)buffer_write_count, client_id_snapshot, pretty_size);
             }
 
             LOG_DEBUG_EVERY(queue_count, 30 * 60,
                             "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",
-                            queue_count_counter, client->client_id, client->width, client->height, pretty_size);
+                            queue_count_counter, client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
           } else {
             log_warn("Frame too large for buffer: %zu > %zu", frame_size,
                      client->outgoing_video_buffer->allocated_buffer_size);
           }
         }
       }
+      rwlock_wrunlock(&client->video_buffer_rwlock);
       free(ascii_frame);
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
       LOG_DEBUG_EVERY(no_frame_count, 300, "Per-client render: No video sources available for client %u (%d attempts)",
-                      client->client_id, no_frame_count_counter);
+                      client_id_snapshot, no_frame_count_counter);
     }
 
     last_render_time = current_time;
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Video render thread stopped for client %u", client->client_id);
+  log_info("Video render thread stopped for client %u", thread_client_id);
 #endif
 
   return NULL;
@@ -647,23 +655,30 @@ void *client_audio_render_thread(void *arg) {
     return NULL;
   }
 
+  // Take snapshot of client ID and display name at start to avoid race conditions
+  uint32_t thread_client_id = client->client_id;
+  char thread_display_name[64];
+  mutex_lock(&client->client_state_mutex);
+  SAFE_STRNCPY(thread_display_name, client->display_name, sizeof(thread_display_name));
+  mutex_unlock(&client->client_state_mutex);
+
 #ifdef DEBUG_THREADS
-  log_info("Audio render thread started for client %u (%s)", client->client_id, client->display_name);
+  log_info("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
 #endif
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_should_exit)) {
+  while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
     // Check for immediate shutdown
     if (atomic_load(&g_should_exit)) {
-      log_info("Audio render thread stopping for client %u (g_should_exit)", client->client_id);
+      log_info("Audio render thread stopping for client %u (g_should_exit)", thread_client_id);
       break;
     }
 
-    // Use atomic operations to avoid mutex deadlocks
-    should_continue =
-        (((int)atomic_load(&client->audio_render_thread_running) != 0) && ((int)atomic_load(&client->active) != 0));
+    // Check thread state including shutting_down flag
+    should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) &&
+                       ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
 
     if (!should_continue) {
       break;
@@ -745,7 +760,7 @@ void *client_audio_render_thread(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Audio render thread stopped for client %u", client->client_id);
+  log_info("Audio render thread stopped for client %u", thread_client_id);
 #endif
   return NULL;
 }
@@ -768,7 +783,7 @@ void *client_audio_render_thread(void *arg) {
  *
  * 1. MUTEX INITIALIZATION:
  *    - client_state_mutex: Protects client state variables
- *    - video_buffer_mutex: Protects video buffer access
+ *    - video_buffer_rwlock: Protects video buffer access (allows concurrent reads)
  *
  * 2. THREAD CREATION:
  *    - Create video rendering thread (60fps)
@@ -842,9 +857,9 @@ int create_client_render_threads(client_info_t *client) {
     return -1;
   }
 
-  // THREAD-SAFE FRAMEBUFFER: Initialize per-client video buffer mutex
-  if (mutex_init(&client->video_buffer_mutex) != 0) {
-    log_error("Failed to initialize video buffer mutex for client %u", client->client_id);
+  // THREAD-SAFE FRAMEBUFFER: Initialize per-client video buffer rwlock
+  if (rwlock_init(&client->video_buffer_rwlock) != 0) {
+    log_error("Failed to initialize video buffer rwlock for client %u", client->client_id);
     mutex_destroy(&client->client_state_mutex);
     return -1;
   }
@@ -856,7 +871,7 @@ int create_client_render_threads(client_info_t *client) {
   // Create video rendering thread
   if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
-    mutex_destroy(&client->video_buffer_mutex);
+    rwlock_destroy(&client->video_buffer_rwlock);
     mutex_destroy(&client->client_state_mutex);
     return -1;
   }
@@ -872,7 +887,7 @@ int create_client_render_threads(client_info_t *client) {
     atomic_store(&client->video_render_thread_running, false);
     // Note: thread cancellation not available in platform abstraction
     ascii_thread_join(&client->video_render_thread, NULL);
-    mutex_destroy(&client->video_buffer_mutex);
+    rwlock_destroy(&client->video_buffer_rwlock);
     mutex_destroy(&client->client_state_mutex);
     return -1;
   }

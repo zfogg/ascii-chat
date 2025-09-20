@@ -32,8 +32,8 @@
 // Global State
 // ============================================================================
 
-static lock_debug_manager_t g_lock_debug_manager = {0};
-static atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
+lock_debug_manager_t g_lock_debug_manager = {0};
+atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
 
 // ============================================================================
 // Lock Record Management
@@ -340,7 +340,7 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
   printf("  Thread ID: %llu\n", (unsigned long long)record->thread_id);
   printf("  Released: %s:%d in %s()\n", record->file_name, record->line_number, record->function_name);
   printf("  Released at: %lld.%09ld seconds (monotonic)\n", (long long)record->acquisition_time.tv_sec,
-           record->acquisition_time.tv_nsec);
+         record->acquisition_time.tv_nsec);
   fflush(stdout);
 
   // Print backtrace for the orphaned release
@@ -470,7 +470,8 @@ void print_all_held_locks(void) {
     rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
 
     uint32_t total_orphaned_releases = 0;
-    hashtable_foreach(g_lock_debug_manager.orphaned_releases, print_orphaned_release_callback, &total_orphaned_releases);
+    hashtable_foreach(g_lock_debug_manager.orphaned_releases, print_orphaned_release_callback,
+                      &total_orphaned_releases);
     log_info("[DEBUG] hashtable_foreach completed, total_orphaned_releases=%u", total_orphaned_releases);
 
     rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
@@ -808,8 +809,8 @@ void lock_debug_cleanup_thread(void) {
 static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_name, const char *function_name) {
   // Special debug logging for handle_client_capabilities_packet
   if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
-    log_info("[DEBUG_SKIP] handle_client_capabilities_packet called: lock_ptr=%p, file=%s, func=%s",
-             lock_ptr, file_name, function_name);
+    log_info("[DEBUG_SKIP] handle_client_capabilities_packet called: lock_ptr=%p, file=%s, func=%s", lock_ptr,
+             file_name, function_name);
   }
 
   if (!lock_ptr || !file_name || !function_name) {
@@ -857,7 +858,6 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
   return false;
 }
 
-
 /**
  * @brief Common logic for decrementing lock counters with underflow protection
  * @return The new held count after decrement
@@ -867,7 +867,8 @@ static uint32_t debug_decrement_lock_counter(void) {
   uint32_t held = 0;
   if (current > 0) {
     uint32_t expected = current;
-    while (expected > 0 && !atomic_compare_exchange_weak(&g_lock_debug_manager.current_locks_held, &expected, expected - 1)) {
+    while (expected > 0 &&
+           !atomic_compare_exchange_weak(&g_lock_debug_manager.current_locks_held, &expected, expected - 1)) {
       // CAS failed, reload current value and retry
     }
     held = expected > 0 ? expected - 1 : 0;
@@ -886,15 +887,20 @@ static uint32_t debug_decrement_lock_counter(void) {
  * @return true if record was created and inserted successfully
  */
 static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t lock_type, const char *lock_type_str,
-                                               const char *file_name, int line_number, const char *function_name) {
+                                                const char *file_name, int line_number, const char *function_name) {
 #ifndef DEBUG_LOCKS
-  UNUSED(lock_address); UNUSED(lock_type); UNUSED(lock_type_str);
-  UNUSED(file_name); UNUSED(line_number); UNUSED(function_name);
+  UNUSED(lock_address);
+  UNUSED(lock_type);
+  UNUSED(lock_type_str);
+  UNUSED(file_name);
+  UNUSED(line_number);
+  UNUSED(function_name);
 #endif
 
   // Special debug logging for handle_client_capabilities_packet
   if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
-    log_info("[DEBUG_CREATE] handle_client_capabilities_packet creating record: lock=%p, type=%s", lock_address, lock_type_str);
+    log_info("[DEBUG_CREATE] handle_client_capabilities_packet creating record: lock=%p, type=%s", lock_address,
+             lock_type_str);
   }
 
   lock_record_t *record = calloc(1, sizeof(lock_record_t));
@@ -944,9 +950,8 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
       if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
         log_info("[DEBUG_CREATE] handle_client_capabilities_packet CRITICAL TEST: About to call log_info for ACQUIRED");
       }
-      log_info("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
-                lock_type_str, lock_address, key, file_name, line_number, function_name,
-                (unsigned long long)acquired, held);
+      log_info("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
+               lock_address, key, file_name, line_number, function_name, (unsigned long long)acquired, held);
       if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
         log_info("[DEBUG_CREATE] handle_client_capabilities_packet ACQUIRED message logged");
       }
@@ -957,13 +962,13 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
       }
     }
     // Hashtable insert failed - clean up the record and log an error
-    log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()",
-              lock_type_str, lock_address, key, file_name, line_number, function_name);
+    log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()", lock_type_str,
+              lock_address, key, file_name, line_number, function_name);
     free_lock_record(record);
   } else {
     // Record allocation failed - log an error
-    log_debug("[LOCK_DEBUG] ERROR: Failed to allocate %s record for %p at %s:%d in %s()",
-              lock_type_str, lock_address, file_name, line_number, function_name);
+    log_debug("[LOCK_DEBUG] ERROR: Failed to allocate %s record for %p at %s:%d in %s()", lock_type_str, lock_address,
+              file_name, line_number, function_name);
   }
   return false;
 }
@@ -978,10 +983,14 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
  * @param function_name Function name
  * @return true if record was found and removed, false otherwise
  */
-static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str,
-                                        const char *file_name, int line_number, const char *function_name) {
+static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str, const char *file_name,
+                                         int line_number, const char *function_name) {
 #ifndef DEBUG_LOCKS
-  UNUSED(lock_ptr); UNUSED(lock_type_str); UNUSED(file_name); UNUSED(line_number); UNUSED(function_name);
+  UNUSED(lock_ptr);
+  UNUSED(lock_type_str);
+  UNUSED(file_name);
+  UNUSED(line_number);
+  UNUSED(function_name);
 #endif
 
   lock_record_t *record = (lock_record_t *)hashtable_lookup(g_lock_debug_manager.lock_records, key);
@@ -990,8 +999,8 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
       free_lock_record(record);
       uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
       uint32_t held = debug_decrement_lock_counter();
-      log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
-                lock_type_str, lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
+      log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str, lock_ptr,
+                key, file_name, line_number, function_name, (unsigned long long)released, held);
       return true;
     }
   }
@@ -1008,7 +1017,7 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
  * @param function_name Function name
  */
 static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str,
-                                          const char *file_name, int line_number, const char *function_name) {
+                                           const char *file_name, int line_number, const char *function_name) {
   uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
   uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
   uint32_t held = 0;
@@ -1018,8 +1027,8 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     log_error("[LOCK_DEBUG] *** ERROR: Attempting to release %s lock when no locks held! ***", lock_type_str);
     log_error("%s:%d in %s()", file_name, line_number, function_name);
   }
-  log_error("[LOCK_DEBUG] %s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u",
-            lock_type_str, lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
+  log_error("[LOCK_DEBUG] %s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
+            lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
   log_error("[LOCK_DEBUG] *** WARNING: %s lock was acquired and tracked but record was lost! ***", lock_type_str);
 
   // Create an orphaned release record to track this problematic unlock
@@ -1041,13 +1050,15 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
 
     // Capture backtrace for this orphaned release
 #ifdef _WIN32
-    orphan_record->backtrace_size = CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, orphan_record->backtrace_buffer, NULL);
+    orphan_record->backtrace_size =
+        CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, orphan_record->backtrace_buffer, NULL);
 #else
     orphan_record->backtrace_size = platform_backtrace(orphan_record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
 #endif
 
     if (orphan_record->backtrace_size > 0) {
-      orphan_record->backtrace_symbols = platform_backtrace_symbols(orphan_record->backtrace_buffer, orphan_record->backtrace_size);
+      orphan_record->backtrace_symbols =
+          platform_backtrace_symbols(orphan_record->backtrace_buffer, orphan_record->backtrace_size);
     }
 
     // Store in orphaned releases hashtable for later analysis
@@ -1147,7 +1158,15 @@ int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number
   }
 
   // Create and add lock record
-  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_READ, "RWLOCK READ", file_name, line_number, function_name);
+  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_READ, "RWLOCK READ", file_name, line_number,
+                                      function_name);
+
+  // Debug: Log the key being used for this lock
+  uint32_t key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
+  if (strstr(function_name, "get_utf8_palette_cache") != NULL) {
+    log_info("[LOCK_DEBUG] READ LOCK acquired: rwlock=%p, key=%u, thread=%llu, at %s:%d", rwlock, key,
+             (unsigned long long)ascii_thread_self(), file_name, line_number);
+  }
 
   if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
     log_info("[DEBUG_RDLOCK] handle_client_capabilities_packet rdlock COMPLETE");
@@ -1168,18 +1187,24 @@ int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number
   }
 
   // Create and add lock record
-  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_WRITE, "RWLOCK WRITE", file_name, line_number, function_name);
+  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_WRITE, "RWLOCK WRITE", file_name, line_number,
+                                      function_name);
+
+  // Debug: Log the key being used for this lock
+  uint32_t key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
+  if (strstr(function_name, "get_utf8_palette_cache") != NULL) {
+    log_info("[LOCK_DEBUG] WRITE LOCK acquired: rwlock=%p, key=%u, thread=%llu, at %s:%d", rwlock, key,
+             (unsigned long long)ascii_thread_self(), file_name, line_number);
+  }
 
   return 0;
 }
 
-
-
 int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
   // Special debug logging for handle_client_capabilities_packet
   if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
-    log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock called: rwlock=%p, file=%s:%d",
-             rwlock, file_name, line_number);
+    log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock called: rwlock=%p, file=%s:%d", rwlock,
+             file_name, line_number);
   }
 
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
@@ -1197,6 +1222,10 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
   uint32_t read_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
   if (strstr(function_name, "handle_client_capabilities_packet") != NULL) {
     log_info("[DEBUG_RDUNLOCK] handle_client_capabilities_packet rdunlock looking for key=%u", read_key);
+  }
+  if (strstr(function_name, "get_utf8_palette_cache") != NULL) {
+    log_info("[LOCK_DEBUG] READ UNLOCK attempt: rwlock=%p, key=%u, thread=%llu, at %s:%d", rwlock, read_key,
+             (unsigned long long)ascii_thread_self(), file_name, line_number);
   }
 
   if (!debug_process_tracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name)) {
@@ -1224,6 +1253,10 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
 
   // Look for write lock record specifically
   uint32_t write_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
+  if (strstr(function_name, "get_utf8_palette_cache") != NULL) {
+    log_info("[LOCK_DEBUG] WRITE UNLOCK attempt: rwlock=%p, key=%u, thread=%llu, at %s:%d", rwlock, write_key,
+             (unsigned long long)ascii_thread_self(), file_name, line_number);
+  }
   if (!debug_process_tracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name)) {
     debug_process_untracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name);
   }
@@ -1231,37 +1264,8 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
   return rwlock_wrunlock_impl(rwlock);
 }
 
-int debug_rwlock_unlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
-  if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
-    return rwlock_unlock_impl(rwlock);
-  }
-
-  // Generic unlock - try to find either read or write lock record
-  uint32_t read_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_READ);
-  uint32_t write_key = lock_record_key(rwlock, LOCK_TYPE_RWLOCK_WRITE);
-
-  // Try read lock first, then write lock
-  if (!debug_process_tracked_unlock(rwlock, read_key, "READ", file_name, line_number, function_name) &&
-      !debug_process_tracked_unlock(rwlock, write_key, "WRITE", file_name, line_number, function_name)) {
-    // No lock record found - log as generic untracked
-    uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
-    uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
-    uint32_t held = 0;
-    if (current_held > 0) {
-      held = debug_decrement_lock_counter();
-    } else {
-      log_error("[LOCK_DEBUG] *** ERROR: Attempting to release when no locks held! ***");
-      log_error("%s:%d in %s()", file_name, line_number, function_name);
-    }
-    log_error(
-        "[LOCK_DEBUG] RWLOCK UNTRACKED RELEASED: %p (read_key=%u, write_key=%u) at %s:%d in %s() - total=%llu, held=%u",
-        rwlock, read_key, write_key, file_name, line_number, function_name, (unsigned long long)released, held);
-    log_error("[LOCK_DEBUG] *** WARNING: Lock was acquired and tracked but record was lost! ***");
-  }
-
-  // Generic unlock - use implementation
-  return rwlock_unlock_impl(rwlock);
-}
+// Removed debug_rwlock_unlock - generic unlock is ambiguous and problematic
+// Use debug_rwlock_rdunlock or debug_rwlock_wrunlock instead
 
 // ============================================================================
 // Statistics Functions

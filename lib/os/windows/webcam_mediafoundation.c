@@ -473,7 +473,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Query the ACTUAL format from Media Foundation - NO GUESSING!
   IMFMediaType *currentType = NULL;
-  HRESULT hr2 = IMFSourceReader_GetCurrentMediaType(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
+  HRESULT hr2 =
+      IMFSourceReader_GetCurrentMediaType(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
 
   if (FAILED(hr2)) {
     log_error("Failed to get current media type: 0x%08x", hr2);

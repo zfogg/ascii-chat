@@ -17,7 +17,6 @@
 #define DEBUG_NETWORK 1
 #define DEBUG_THREADS 1
 #define DEBUG_MEMORY 1
-
 // Check if we're in a test environment
 static int is_test_environment(void) {
   return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
