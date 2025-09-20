@@ -171,9 +171,11 @@ extern atomic_bool g_initializing;
  * @return Unique 32-bit key for hashtable lookup
  */
 static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type) {
-  // Combine lock address and type into a unique key
+  // Combine lock address, type, and thread ID into a unique key
+  // This prevents key collisions when the same lock is used by different threads
   uintptr_t addr = (uintptr_t)lock_address;
-  return (uint32_t)((addr >> 2) ^ (uint32_t)lock_type);
+  uint64_t thread_id = ascii_thread_current_id();
+  return (uint32_t)((addr >> 2) ^ (uint32_t)lock_type ^ (uint32_t)(thread_id & 0xFFFFFFFF));
 }
 
 /**

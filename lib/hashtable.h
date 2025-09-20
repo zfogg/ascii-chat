@@ -15,7 +15,7 @@
  */
 
 // Hash table configuration
-#define HASHTABLE_BUCKET_COUNT 16 // Must be power of 2, > MAX_CLIENTS (10)
+#define HASHTABLE_BUCKET_COUNT 1024 // Must be power of 2, increased to reduce collisions
 #define HASHTABLE_MAX_ENTRIES 32  // Pool size for pre-allocated entries
 
 // Hash table entry (for collision chaining)
