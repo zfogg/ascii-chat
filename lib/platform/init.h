@@ -93,10 +93,6 @@ static inline void static_rwlock_wrlock(static_rwlock_t *l) {
   rwlock_wrlock(&l->lock);
 }
 
-static inline void static_rwlock_unlock(static_rwlock_t *l) {
-  rwlock_unlock(&l->lock);
-}
-
 static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
 #if PLATFORM_WINDOWS
   if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {

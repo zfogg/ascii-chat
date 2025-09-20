@@ -488,8 +488,16 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  * @param strings Array returned by platform_backtrace_symbols
  */
 void platform_backtrace_symbols_free(char **strings) {
-  void *temp_strings = (void *)strings;
-  SAFE_FREE(temp_strings);
+  // Use system free() for memory allocated by backtrace_symbols()
+  // since it uses system malloc() not our debug wrapper
+  // We need to bypass the debug_free macro by undefining it temporarily
+#ifdef DEBUG_MEMORY
+#undef free
+  free(strings);
+#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#else
+  free(strings);
+#endif
 }
 
 // ============================================================================

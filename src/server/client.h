@@ -49,6 +49,7 @@ typedef struct {
 
   // Statistics
   atomic_bool active;
+  atomic_bool shutting_down; // Set when client is being removed
   time_t connected_at;
   uint64_t frames_sent;
   uint64_t frames_received; // Track incoming frames from this client
@@ -83,8 +84,8 @@ typedef struct {
 
   // Per-client synchronization
   mutex_t client_state_mutex;
-  // THREAD-SAFE FRAMEBUFFER: Per-client video buffer mutex for concurrent access
-  mutex_t video_buffer_mutex;
+  // THREAD-SAFE FRAMEBUFFER: Per-client video buffer rwlock for concurrent reads
+  rwlock_t video_buffer_rwlock;
 } client_info_t;
 
 /* ============================================================================

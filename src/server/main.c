@@ -316,7 +316,6 @@ static void sigusr1_handler(int sigusr1) {
   // Trigger lock debugging output (signal-safe)
   lock_debug_trigger_print();
 }
-
 /* ============================================================================
  * Main Function
  * ============================================================================
@@ -462,7 +461,6 @@ int main(int argc, char *argv[]) {
   } else {
     log_error("Failed to start lock debug thread");
   }
-
   // Start statistics logging thread for periodic performance monitoring
   log_info("SERVER: Creating statistics logger thread...");
   if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL) != 0) {
@@ -680,7 +678,8 @@ main_loop:
       bool is_shutting_down = atomic_load(&g_should_exit);
       if (is_shutting_down) {
         // During shutdown, give receive thread a brief chance to exit cleanly with timeout
-        log_info("DEBUG_CLEANUP: Shutdown mode: joining receive thread for client %u with 200ms timeout", cleanup_tasks[i].client_id);
+        log_info("DEBUG_CLEANUP: Shutdown mode: joining receive thread for client %u with 200ms timeout",
+                 cleanup_tasks[i].client_id);
         int join_result = ascii_thread_join_timeout(&cleanup_tasks[i].receive_thread, NULL, 200);
         if (join_result == -2) {
           log_warn("Receive thread for client %u timed out during shutdown (continuing)", cleanup_tasks[i].client_id);

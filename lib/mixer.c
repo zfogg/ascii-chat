@@ -323,7 +323,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   }
 
   if (slot == -1) {
-    rwlock_unlock(&mixer->source_lock);
+    rwlock_wrunlock(&mixer->source_lock);
     log_warn("Mixer: No available slots for client %u", client_id);
     return -1;
   }
@@ -337,7 +337,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
   mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
 
-  rwlock_unlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 
   log_info("Mixer: Added source for client %u at slot %d", client_id, slot);
   return slot;
@@ -365,14 +365,14 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->ducking.envelope[i] = 0.0f;
       mixer->ducking.gain[i] = 1.0f;
 
-      rwlock_unlock(&mixer->source_lock);
+      rwlock_wrunlock(&mixer->source_lock);
 
       log_info("Mixer: Removed source for client %u from slot %d", client_id, i);
       return;
     }
   }
 
-  rwlock_unlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 }
 
 void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
@@ -393,13 +393,13 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
         mixer->active_sources_mask &= ~(1ULL << i); // Clear bit
       }
 
-      rwlock_unlock(&mixer->source_lock);
+      rwlock_wrunlock(&mixer->source_lock);
       log_debug("Mixer: Set source %u active=%d", client_id, active);
       return;
     }
   }
 
-  rwlock_unlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 }
 
 int mixer_process(mixer_t *mixer, float *output, int num_samples) {

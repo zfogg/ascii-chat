@@ -331,14 +331,22 @@ if(APPLE)
 
             # Add the full LDFLAGS as recommended by brew info llvm
             # This includes libc++, libunwind which are needed for full LLVM toolchain
-            # Only add if not already present in environment LDFLAGS to avoid duplicates
-            set(HOMEBREW_LLVM_LDFLAGS "-L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind -lunwind")
-            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-lunwind")
-                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${HOMEBREW_LLVM_LDFLAGS}" CACHE STRING "Linker flags" FORCE)
-                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${HOMEBREW_LLVM_LDFLAGS}" CACHE STRING "Shared linker flags" FORCE)
-                message(STATUS "Added Homebrew LLVM linker flags (not in environment)")
+            # Store the flags but don't add -lunwind globally to avoid duplication
+            set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind")
+            set(HOMEBREW_LLVM_LIBS "unwind")
+
+            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
+                # Add only the library search paths globally (not the actual libraries)
+                # Check if paths are already present to avoid duplication
+                if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib/unwind")
+                    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_DIRS}" CACHE STRING "Linker flags" FORCE)
+                    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_DIRS}" CACHE STRING "Shared linker flags" FORCE)
+                    message(STATUS "Added Homebrew LLVM library paths (not in environment)")
+                else()
+                    message(STATUS "Homebrew LLVM library paths already present in linker flags")
+                endif()
             else()
-                message(STATUS "Skipping Homebrew LLVM linker flags (already in LDFLAGS environment variable)")
+                message(STATUS "Skipping Homebrew LLVM library paths (already in LDFLAGS environment variable)")
             endif()
 
             # Store for later sanitizer configuration
@@ -346,8 +354,8 @@ if(APPLE)
 
             message(STATUS "Applied Homebrew LLVM toolchain flags:")
             message(STATUS "  Include: -I${COMPILER_PREFIX}/include")
-            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-lunwind")
-                message(STATUS "  Link: ${HOMEBREW_LLVM_LDFLAGS}")
+            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
+                message(STATUS "  Link: ${HOMEBREW_LLVM_LINK_DIRS}")
             else()
                 message(STATUS "  Link: (using LDFLAGS environment variable)")
             endif()
@@ -1904,6 +1912,11 @@ else()
         list(APPEND PLATFORM_LIBS ${CMAKE_THREAD_LIBS_INIT})
     endif()
 
+    # Add unwind library if using Homebrew LLVM (to avoid duplicate -lunwind flags)
+    if(DEFINED HOMEBREW_LLVM_LIBS)
+        list(APPEND PLATFORM_LIBS ${HOMEBREW_LLVM_LIBS})
+    endif()
+
     target_link_libraries(ascii-chat-lib
         ${ZLIB_LIBRARIES}
         ${LIBSODIUM_LIBRARIES}
@@ -2039,7 +2052,12 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         set(test_exe_name "test_${test_subdir}_${test_base}")
 
         # Add test executable with test logging helper
-        add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
+        # Special handling for client_mock test which needs webcam mock
+        if(test_name STREQUAL "client_mock_test")
+            add_executable(${test_exe_name} ${test_src} lib/tests/logging.c tests/mocks/webcam_mock.c)
+        else()
+            add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
+        endif()
 
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})

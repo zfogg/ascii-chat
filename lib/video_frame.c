@@ -98,9 +98,12 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   // Check if reader has consumed the previous frame
   if (atomic_load(&vfb->new_frame_available)) {
     // Reader hasn't consumed yet - we're dropping a frame
-    // This is EXPECTED behavior in a double-buffer system when producer/consumer rates differ
-    atomic_fetch_add(&vfb->total_frames_dropped, 1);
-    // Don't log these drops - they're normal operation when rates differ
+    uint64_t drops = atomic_fetch_add(&vfb->total_frames_dropped, 1) + 1;
+    // Throttle drop logging - only log every 100 drops to avoid spam
+    if (drops == 1 || drops % 100 == 0) {
+      log_debug("Dropping frame for client %u (reader too slow, total drops: %llu)", vfb->client_id,
+                (unsigned long long)drops);
+    }
   }
 
   // Atomic pointer swap - this is the key operation

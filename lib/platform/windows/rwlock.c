@@ -64,20 +64,6 @@ int rwlock_wrlock_impl(rwlock_t *lock) {
 }
 
 /**
- * @brief Release a read-write lock (generic unlock) - implementation function
- * @param lock Pointer to read-write lock to release
- * @return 0 on success, error code on failure
- * @note This is a limitation of SRWLock - we don't track lock type
- *       so we try to release as writer first, then as reader
- */
-int rwlock_unlock_impl(rwlock_t *lock) {
-  // Try to release as writer first, then as reader
-  // This is a limitation of SRWLock - we don't track lock type
-  ReleaseSRWLockExclusive(lock);
-  return 0;
-}
-
-/**
  * @brief Release a read lock (explicit read unlock) - implementation function
  * @param lock Pointer to read-write lock to release from read mode
  * @return 0 on success, error code on failure

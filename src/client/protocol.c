@@ -284,6 +284,37 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     return;
   }
 
+  // Client-side FPS limiting for rendering (display)
+  // Server may send at 144fps for high-refresh displays, but this client renders at its requested FPS
+  static struct timespec last_render_time = {0, 0};
+
+  // Don't limit frame rate in snapshot mode - always render the final frame
+  if (!take_snapshot) {
+    // Get the client's desired FPS (what we told the server we can display)
+    int client_display_fps = MAX_FPS; // This respects the --fps command line flag
+    long render_interval_ms = 1000 / client_display_fps;
+
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+    // Calculate elapsed time since last render
+    long elapsed_ms = 0;
+    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
+      elapsed_ms = (current_time.tv_sec - last_render_time.tv_sec) * 1000 +
+                   (current_time.tv_nsec - last_render_time.tv_nsec) / 1000000;
+    }
+
+    // Skip rendering if not enough time has passed (frame rate limiting)
+    if (elapsed_ms > 0 && elapsed_ms < render_interval_ms) {
+      // Drop this frame to maintain display FPS limit
+      free(frame_data);
+      return;
+    }
+
+    // Update last render time
+    last_render_time = current_time;
+  }
+
   display_render_frame(frame_data, take_snapshot);
 
   free(frame_data);
@@ -409,8 +440,17 @@ static void *data_reception_thread_func(void *arg) {
     void *data;
     size_t len;
 
+    struct timespec receive_start_ts, receive_end_ts;
+    clock_gettime(CLOCK_MONOTONIC, &receive_start_ts);
+    // uint64_t receive_start = receive_start_ts.tv_sec * 1000 + receive_start_ts.tv_nsec / 1000000;
+
     int result = receive_packet(sockfd, &type, &data, &len);
 
+    clock_gettime(CLOCK_MONOTONIC, &receive_end_ts);
+    // uint64_t receive_end = receive_end_ts.tv_sec * 1000 + receive_end_ts.tv_nsec / 1000000;
+    // TODO: Use timing data for performance monitoring
+    (void)receive_start_ts;
+    (void)receive_end_ts;
     if (result < 0) {
       log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
       server_connection_lost();
@@ -564,17 +604,27 @@ void protocol_stop_connection() {
   if (join_result == -2) {
     log_error("Data thread join timed out - thread may be stuck, forcing termination");
     // Force close the thread handle to prevent resource leak
+#ifdef _WIN32
     if (g_data_thread) {
       CloseHandle(g_data_thread);
       g_data_thread = NULL;
     }
+#else
+    // On POSIX, threads clean up automatically after join
+    g_data_thread = 0;
+#endif
   } else if (join_result != 0) {
     log_error("Failed to join data thread, result=%d", join_result);
     // Still force close the handle to prevent leak
+#ifdef _WIN32
     if (g_data_thread) {
       CloseHandle(g_data_thread);
       g_data_thread = NULL;
     }
+#else
+    // On POSIX, threads clean up automatically after join
+    g_data_thread = 0;
+#endif
   }
 
   g_data_thread_created = false;

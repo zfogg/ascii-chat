@@ -60,7 +60,6 @@ int webcam_init(unsigned short int webcam_index) {
     fprintf(stderr, "   Then just run this program again.\n");
     fflush(stderr);
     exit(ASCIICHAT_ERR_WEBCAM);
-    i
 #elif defined(_WIN32)
     if (result == ASCIICHAT_ERR_WEBCAM_IN_USE) {
       // Device is in use by another application - this is a fatal error on Windows

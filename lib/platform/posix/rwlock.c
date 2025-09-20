@@ -57,16 +57,6 @@ int rwlock_wrlock_impl(rwlock_t *lock) {
 }
 
 /**
- * @brief Release a read-write lock (generic unlock) - implementation function
- * @param lock Pointer to read-write lock to release
- * @return 0 on success, error code on failure
- * @note This works for both read and write locks on POSIX systems
- */
-int rwlock_unlock_impl(rwlock_t *lock) {
-  return pthread_rwlock_unlock(lock);
-}
-
-/**
  * @brief Release a read lock (explicit read unlock) - implementation function
  * @param lock Pointer to read-write lock to release from read mode
  * @return 0 on success, error code on failure

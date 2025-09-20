@@ -1,8 +1,7 @@
 // Mock webcam implementation for testing
 // Provides video file playback or test pattern generation
 
-#include "common.h"
-#include "logging.h"
+#include "../../lib/common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -22,11 +21,11 @@
 #endif
 
 // Include mock header first to get overrides
-#include "tests/mocks/webcam_mock.h"
+#include "webcam_mock.h"
 
 // Now include the actual types
 typedef struct webcam_context_t webcam_context_t;
-#include "image2ascii/image.h"
+#include "../../lib/image2ascii/image.h"
 
 // Mock context structure
 typedef struct mock_webcam_context {
@@ -274,7 +273,7 @@ static bool init_video_playback(mock_webcam_context_t *ctx, const char *video_pa
   ctx->height = ctx->codec_ctx->height;
 
   int num_bytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, ctx->width, ctx->height, 1);
-  ctx->frame_buffer = SAFE_MALLOC(num_bytes);
+  SAFE_MALLOC(ctx->frame_buffer, num_bytes, uint8_t *);
 
   av_image_fill_arrays(ctx->rgb_frame->data, ctx->rgb_frame->linesize, ctx->frame_buffer, AV_PIX_FMT_RGB24, ctx->width,
                        ctx->height, 1);
@@ -317,7 +316,8 @@ int mock_webcam_init_context(webcam_context_t **ctx, unsigned short int device_i
 
   log_info("Mock: Initializing webcam context");
 
-  mock_webcam_context_t *mock = SAFE_CALLOC(1, sizeof(mock_webcam_context_t));
+  mock_webcam_context_t *mock;
+  SAFE_CALLOC(mock, 1, sizeof(mock_webcam_context_t), mock_webcam_context_t *);
   if (!mock) {
     return -1;
   }
@@ -345,7 +345,7 @@ int mock_webcam_init_context(webcam_context_t **ctx, unsigned short int device_i
 #endif
 
   if (mock->use_test_pattern) {
-    mock->frame_buffer = SAFE_MALLOC(mock->width * mock->height * 3);
+    SAFE_MALLOC(mock->frame_buffer, mock->width * mock->height * 3, uint8_t *);
     log_info("Mock: Using test pattern (%dx%d)", mock->width, mock->height);
   }
 
@@ -380,13 +380,14 @@ image_t *mock_webcam_read_context(webcam_context_t *ctx) {
   if (!mock)
     return NULL;
 
-  image_t *img = SAFE_MALLOC(sizeof(image_t));
+  image_t *img;
+  SAFE_MALLOC(img, sizeof(image_t), image_t *);
   if (!img)
     return NULL;
 
   img->w = mock->width;
   img->h = mock->height;
-  img->pixels = SAFE_MALLOC(mock->width * mock->height * sizeof(rgb_t));
+  SAFE_MALLOC(img->pixels, mock->width * mock->height * sizeof(rgb_t), rgb_t *);
 
   if (!img->pixels) {
     SAFE_FREE(img);
@@ -396,7 +397,8 @@ image_t *mock_webcam_read_context(webcam_context_t *ctx) {
 #ifdef HAVE_FFMPEG
   if (mock->format_ctx && !mock->use_test_pattern) {
     // Create a temporary buffer for FFmpeg data and convert to rgb_t
-    uint8_t *temp_buffer = SAFE_MALLOC(mock->width * mock->height * 3);
+    uint8_t *temp_buffer;
+    SAFE_MALLOC(temp_buffer, mock->width * mock->height * 3, uint8_t *);
     if (read_video_frame(mock, temp_buffer)) {
       // Convert from raw RGB buffer to rgb_t array
       for (int i = 0; i < mock->width * mock->height; i++) {
