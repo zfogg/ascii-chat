@@ -266,6 +266,123 @@ int platform_backtrace(void **buffer, int size) {
   return count;
 }
 
+// Global variables for Windows symbol resolution
+static atomic_bool g_symbols_initialized = false;
+static HANDLE g_process_handle = NULL;
+
+// Forward declaration
+static void cleanup_windows_symbols(void);
+
+// Function to initialize Windows symbol resolution once
+static void init_windows_symbols(void) {
+  if (atomic_load(&g_symbols_initialized)) {
+    return; // Already initialized
+  }
+
+  g_process_handle = GetCurrentProcess();
+
+  // Set symbol options for better debugging
+  SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+
+  if (SymInitialize(g_process_handle, NULL, TRUE)) {
+    atomic_store(&g_symbols_initialized, true);
+    // Register cleanup function to be called on exit
+    atexit(cleanup_windows_symbols);
+  }
+}
+
+// Function to cleanup Windows symbol resolution
+static void cleanup_windows_symbols(void) {
+  if (atomic_load(&g_symbols_initialized) && g_process_handle) {
+    SymCleanup(g_process_handle);
+    atomic_store(&g_symbols_initialized, false);
+    g_process_handle = NULL;
+  }
+}
+
+// Function to resolve a single symbol
+static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size) {
+  if (!atomic_load(&g_symbols_initialized)) {
+    snprintf(buffer, buffer_size, "0x%llx", (DWORD64)(uintptr_t)addr);
+    return;
+  }
+
+  DWORD64 address = (DWORD64)(uintptr_t)addr;
+
+  // Allocate symbol info structure with space for name (large buffer for very long C++ symbols)
+  PSYMBOL_INFO symbol_info = (PSYMBOL_INFO)malloc(sizeof(SYMBOL_INFO) + 4096);
+  if (!symbol_info) {
+    snprintf(buffer, buffer_size, "0x%llx", address);
+    return;
+  }
+  symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
+  symbol_info->MaxNameLen = 4095;
+
+  // Line info structure
+  IMAGEHLP_LINE64 line_info;
+  line_info.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+  DWORD displacement = 0;
+
+  // Try to get symbol name and line info
+  bool got_symbol = SymFromAddr(g_process_handle, address, NULL, symbol_info);
+  bool got_line = SymGetLineFromAddr64(g_process_handle, address, &displacement, &line_info);
+
+  if (got_symbol && got_line) {
+    // Get just the filename without path
+    char *filename = strrchr(line_info.FileName, '\\');
+    if (!filename)
+      filename = strrchr(line_info.FileName, '/');
+    if (!filename)
+      filename = line_info.FileName;
+    else
+      filename++;
+
+    // Ensure symbol name is null-terminated within our buffer
+    symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
+
+    // Calculate required space and truncate symbol name if needed
+    size_t symbol_len = strlen(symbol_info->Name);
+    size_t filename_len = strlen(filename);
+    size_t required = symbol_len + filename_len + 32; // extra space for " (:%lu)"
+
+    if (required > buffer_size) {
+      // Truncate symbol name to fit
+      size_t max_symbol_len = buffer_size - filename_len - 32;
+      if (max_symbol_len > 0) {
+        snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_info->Name, filename,
+                 line_info.LineNumber);
+      } else {
+        snprintf(buffer, buffer_size, "0x%llx", address);
+      }
+    } else {
+      snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_info->Name, filename, line_info.LineNumber);
+    }
+  } else if (got_symbol) {
+    // Ensure symbol name is null-terminated within our buffer
+    symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
+
+    // Calculate required space and truncate if needed
+    size_t symbol_len = strlen(symbol_info->Name);
+    size_t required = symbol_len + 32; // extra space for "+0x%llx"
+
+    if (required > buffer_size) {
+      size_t max_symbol_len = buffer_size - 32;
+      if (max_symbol_len > 0) {
+        snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+                 address - symbol_info->Address);
+      } else {
+        snprintf(buffer, buffer_size, "0x%llx", address);
+      }
+    } else {
+      snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
+    }
+  } else {
+    snprintf(buffer, buffer_size, "0x%llx", address);
+  }
+
+  free(symbol_info);
+}
+
 /**
  * @brief Convert stack trace addresses to symbols using Windows SymFromAddr
  * @param buffer Array of addresses from platform_backtrace
@@ -276,6 +393,9 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
   if (!buffer || size <= 0) {
     return NULL;
   }
+
+  // Initialize Windows symbols once
+  init_windows_symbols();
 
   // Allocate array of strings (size + 1 for NULL terminator)
   char **symbols = (char **)malloc((size + 1) * sizeof(char *));
@@ -288,46 +408,14 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     symbols[i] = NULL;
   }
 
-  // Initialize symbol handler
-  HANDLE process = GetCurrentProcess();
-  if (!SymInitialize(process, NULL, TRUE)) {
-    free(symbols);
-    return NULL;
-  }
-
-  // Allocate symbol info structure
-  PSYMBOL_INFO symbol_info = (PSYMBOL_INFO)malloc(sizeof(SYMBOL_INFO) + 256);
-  if (!symbol_info) {
-    SymCleanup(process);
-    free(symbols);
-    return NULL;
-  }
-  symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
-  symbol_info->MaxNameLen = 255;
-
+  // Resolve each symbol
   for (int i = 0; i < size; i++) {
-    DWORD64 address = (DWORD64)(uintptr_t)buffer[i];
-
-    // Try to get symbol name
-    if (SymFromAddr(process, address, NULL, symbol_info)) {
-      // Allocate string for symbol name
-      symbols[i] = (char *)malloc(symbol_info->MaxNameLen + 1);
-      if (symbols[i]) {
-        SAFE_STRCPY(symbols[i], symbol_info->MaxNameLen + 1, symbol_info->Name);
-      } else {
-        symbols[i] = NULL;
-      }
-    } else {
-      // Format as hex address if symbol not found
-      symbols[i] = (char *)malloc(32);
-      if (symbols[i]) {
-        SAFE_SNPRINTF(symbols[i], 32, "0x%llx", address);
-      }
+    symbols[i] = (char *)malloc(1024); // Increased buffer size for longer symbol names
+    if (symbols[i]) {
+      resolve_windows_symbol(buffer[i], symbols[i], 1024);
     }
   }
 
-  free(symbol_info);
-  SymCleanup(process);
   return symbols;
 }
 

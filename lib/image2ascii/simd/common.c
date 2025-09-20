@@ -107,7 +107,12 @@ static inline uint32_t hash_palette_string(const char *palette) {
   uint32_t hash = 5381; // djb2 hash algorithm
   const char *p = palette;
   while (*p) {
-    hash = ((hash << 5) + hash) + *p++; // hash * 33 + c
+    // Use explicit unsigned arithmetic to avoid UB warnings
+    // The wrapping behavior is intentional for hash functions
+    uint32_t c = (unsigned char)*p++;
+    // Use multiplication instead of shift to avoid UBSan warning
+    // The compiler will optimize this to the same code
+    hash = (hash * 33U) + c; // Intentional wrap-around for hash distribution
   }
   return hash;
 }
@@ -315,7 +320,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       // Every 10th access: Update heap position (amortized O(log n))
       if (new_access_count % 10 == 0) {
         // Need to upgrade to write lock for heap updates
-        rwlock_unlock(&g_utf8_cache_rwlock);
+        rwlock_rdunlock(&g_utf8_cache_rwlock);
         rwlock_wrlock(&g_utf8_cache_rwlock);
 
         // Recalculate score and update heap position
@@ -325,11 +330,11 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
             calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
         utf8_heap_update_score(cache, new_score);
 
-        rwlock_unlock(&g_utf8_cache_rwlock);
+        rwlock_wrunlock(&g_utf8_cache_rwlock);
         return cache;
       }
 
-      rwlock_unlock(&g_utf8_cache_rwlock);
+      rwlock_rdunlock(&g_utf8_cache_rwlock);
       return cache;
     }
   }
@@ -365,14 +370,14 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     if (!try_insert_with_eviction_utf8(palette_hash, cache)) {
       log_error("UTF8_CACHE_CRITICAL: Failed to insert cache even after eviction - system overloaded");
       SAFE_FREE(cache);
-      rwlock_unlock(&g_utf8_cache_rwlock);
+      rwlock_wrunlock(&g_utf8_cache_rwlock);
       return NULL;
     }
 
     log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
   }
 
-  rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_wrunlock(&g_utf8_cache_rwlock);
   return cache;
 }
 
@@ -514,7 +519,7 @@ void simd_caches_destroy_all(void) {
     g_utf8_heap = NULL;
     g_utf8_heap_size = 0;
   }
-  rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_wrunlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
 #ifdef SIMD_SUPPORT_NEON

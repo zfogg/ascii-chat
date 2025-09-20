@@ -170,6 +170,9 @@
 #include "mixer.h"
 #include "audio.h"
 
+// Global client manager lock for thread-safe access
+extern rwlock_t g_client_manager_rwlock;
+
 /**
  * @brief Global shutdown flag from main.c - coordinate graceful thread termination
  *
@@ -187,15 +190,8 @@ extern atomic_bool g_should_exit;
  */
 extern mixer_t *g_audio_mixer;
 
-/**
- * @brief Global shutdown synchronization mutex from main.c
- */
-extern static_mutex_t g_shutdown_mutex;
-
-/**
- * @brief Global shutdown condition variable from main.c
- */
-extern static_cond_t g_shutdown_cond;
+// REMOVED: Unused shutdown synchronization primitives
+// All threads now use atomic g_should_exit checks for lock-free shutdown coordination
 
 /**
  * @brief Global counter for blank frames sent across all clients
@@ -386,12 +382,13 @@ void *client_video_render_thread(void *arg) {
 
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
-  mutex_lock(&client->client_state_mutex);
-  if (client->has_terminal_caps && client->terminal_caps.desired_fps > 0) {
-    client_fps = client->terminal_caps.desired_fps;
+  // Use snapshot pattern to avoid mutex in render thread
+  bool has_caps = client->has_terminal_caps;
+  int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
+  if (has_caps && desired_fps > 0) {
+    client_fps = desired_fps;
     log_info("Client %u using FPS %d", client->client_id, client_fps);
   }
-  mutex_unlock(&client->client_state_mutex);
 
   int base_frame_interval_ms = 1000 / client_fps;
   struct timespec last_render_time;
@@ -407,9 +404,7 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    mutex_lock(&client->client_state_mutex);
     should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
-    mutex_unlock(&client->client_state_mutex);
 
     if (!should_continue) {
       log_info("Video render thread stopping for client %u (should_continue=false)", client->client_id);
@@ -436,20 +431,26 @@ void *client_video_render_thread(void *arg) {
         if (atomic_load(&g_should_exit))
           break;
 
-        mutex_lock(&client->client_state_mutex);
         bool still_running = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
-        mutex_unlock(&client->client_state_mutex);
         if (!still_running)
           break;
       }
       continue;
     }
 
-    // Use atomic operations to avoid mutex deadlocks
+    // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
+    // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
+    rwlock_rdlock(&g_client_manager_rwlock);
+    mutex_lock(&client->client_state_mutex);
+
+    // Snapshot client state while holding both locks
     uint32_t client_id_snapshot = client->client_id;
-    unsigned short width_snapshot = atomic_load(&client->width);
-    unsigned short height_snapshot = atomic_load(&client->height);
-    bool active_snapshot = atomic_load(&client->active);
+    unsigned short width_snapshot = client->width;   // Direct read under mutex protection
+    unsigned short height_snapshot = client->height; // Direct read under mutex protection
+    bool active_snapshot = client->active;           // Direct read under mutex protection
+
+    mutex_unlock(&client->client_state_mutex);
+    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
@@ -467,8 +468,8 @@ void *client_video_render_thread(void *arg) {
     static uint64_t render_attempts = 0;
     render_attempts++;
     if (render_attempts % 30 == 0) { // Log every 30 attempts (1 second at 30fps)
-      log_info("DEBUG_RENDER: [%llu] Render thread attempting frame generation for client %u",
-               render_attempts, client_id_snapshot);
+      log_info("DEBUG_RENDER: [%llu] Render thread attempting frame generation for client %u", render_attempts,
+               client_id_snapshot);
     }
 
     char *ascii_frame =
@@ -484,7 +485,8 @@ void *client_video_render_thread(void *arg) {
           if (write_frame->data && frame_size <= client->outgoing_video_buffer->allocated_buffer_size) {
             memcpy(write_frame->data, ascii_frame, frame_size);
             write_frame->size = frame_size;
-            write_frame->capture_timestamp_us = (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
+            write_frame->capture_timestamp_us =
+                (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
 
             // Commit the frame (swaps buffers atomically)
             video_frame_commit(client->outgoing_video_buffer);
@@ -659,10 +661,9 @@ void *client_audio_render_thread(void *arg) {
       break;
     }
 
-    // CRITICAL FIX: Check thread state with mutex protection
-    mutex_lock(&client->client_state_mutex);
-    should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) && ((int)atomic_load(&client->active) != 0));
-    mutex_unlock(&client->client_state_mutex);
+    // Use atomic operations to avoid mutex deadlocks
+    should_continue =
+        (((int)atomic_load(&client->audio_render_thread_running) != 0) && ((int)atomic_load(&client->active) != 0));
 
     if (!should_continue) {
       break;
@@ -676,12 +677,18 @@ void *client_audio_render_thread(void *arg) {
       continue;
     }
 
-    // CRITICAL FIX: Protect client state access with per-client mutex
+    // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
+    // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
+    rwlock_rdlock(&g_client_manager_rwlock);
     mutex_lock(&client->client_state_mutex);
-    uint32_t client_id_snapshot = client->client_id;
-    bool active_snapshot = atomic_load(&client->active);
-    packet_queue_t *audio_queue_snapshot = client->audio_queue;
+
+    // Snapshot client state while holding both locks
+    uint32_t client_id_snapshot = client->client_id;            // client_id is set once and never changed
+    bool active_snapshot = client->active;                      // Direct read under mutex protection
+    packet_queue_t *audio_queue_snapshot = client->audio_queue; // audio_queue is set once and never changed
+
     mutex_unlock(&client->client_state_mutex);
+    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
@@ -731,9 +738,7 @@ void *client_audio_render_thread(void *arg) {
       if (atomic_load(&g_should_exit))
         break;
 
-      mutex_lock(&client->client_state_mutex);
       bool still_running = atomic_load(&client->audio_render_thread_running) && atomic_load(&client->active);
-      mutex_unlock(&client->client_state_mutex);
       if (!still_running)
         break;
     }
@@ -857,18 +862,14 @@ int create_client_render_threads(client_info_t *client) {
   }
   log_info("Created video render thread for client %u", client->client_id);
 
-  // CRITICAL FIX: Protect thread_running flag with mutex
-  mutex_lock(&client->client_state_mutex);
+  // Set thread running flag (atomic operation, no mutex needed)
   atomic_store(&client->video_render_thread_running, true);
-  mutex_unlock(&client->client_state_mutex);
 
   // Create audio rendering thread
   if (ascii_thread_create(&client->audio_render_thread, client_audio_render_thread, client) != 0) {
     log_error("Failed to create audio render thread for client %u", client->client_id);
-    // Clean up video thread
-    mutex_lock(&client->client_state_mutex);
+    // Clean up video thread (atomic operation, no mutex needed)
     atomic_store(&client->video_render_thread_running, false);
-    mutex_unlock(&client->client_state_mutex);
     // Note: thread cancellation not available in platform abstraction
     ascii_thread_join(&client->video_render_thread, NULL);
     mutex_destroy(&client->video_buffer_mutex);
@@ -877,10 +878,8 @@ int create_client_render_threads(client_info_t *client) {
   }
   log_info("Created audio render thread for client %u", client->client_id);
 
-  // CRITICAL FIX: Protect thread_running flag with mutex
-  mutex_lock(&client->client_state_mutex);
+  // Set thread running flag (atomic operation, no mutex needed)
   atomic_store(&client->audio_render_thread_running, true);
-  mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
   log_info("Created render threads for client %u", client->client_id);
@@ -978,11 +977,9 @@ void stop_client_render_threads(client_info_t *client) {
 
   log_info("stop_client_render_threads: Starting for client %u", client->client_id);
 
-  // Signal threads to stop - CRITICAL FIX: Protect with mutex
-  mutex_lock(&client->client_state_mutex);
+  // Signal threads to stop (atomic operations, no mutex needed)
   atomic_store(&client->video_render_thread_running, false);
   atomic_store(&client->audio_render_thread_running, false);
-  mutex_unlock(&client->client_state_mutex);
 
   // Wait for threads to finish (deterministic cleanup)
   // During shutdown, don't wait forever for threads to join

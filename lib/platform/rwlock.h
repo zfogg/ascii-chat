@@ -27,6 +27,28 @@ typedef pthread_rwlock_t rwlock_t;
 
 int rwlock_init(rwlock_t *lock);
 int rwlock_destroy(rwlock_t *lock);
-int rwlock_rdlock(rwlock_t *lock);
-int rwlock_wrlock(rwlock_t *lock);
-int rwlock_unlock(rwlock_t *lock);
+int rwlock_init_impl(rwlock_t *lock);
+int rwlock_destroy_impl(rwlock_t *lock);
+int rwlock_rdlock_impl(rwlock_t *lock);
+int rwlock_wrlock_impl(rwlock_t *lock);
+int rwlock_unlock_impl(rwlock_t *lock);
+int rwlock_rdunlock_impl(rwlock_t *lock);
+int rwlock_wrunlock_impl(rwlock_t *lock);
+
+// Debug-enabled macros that capture caller context
+// These macros ensure __FILE__, __LINE__, and __func__ resolve to the caller's location
+// rather than the platform implementation file location
+#define rwlock_rdlock(lock)                                                                                            \
+  (lock_debug_is_initialized() ? debug_rwlock_rdlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdlock_impl(lock))
+
+#define rwlock_wrlock(lock)                                                                                            \
+  (lock_debug_is_initialized() ? debug_rwlock_wrlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrlock_impl(lock))
+
+#define rwlock_unlock(lock)                                                                                            \
+  (lock_debug_is_initialized() ? debug_rwlock_unlock(lock, __FILE__, __LINE__, __func__) : rwlock_unlock_impl(lock))
+
+#define rwlock_rdunlock(lock)                                                                                          \
+  (lock_debug_is_initialized() ? debug_rwlock_rdunlock(lock, __FILE__, __LINE__, __func__) : rwlock_rdunlock_impl(lock))
+
+#define rwlock_wrunlock(lock)                                                                                          \
+  (lock_debug_is_initialized() ? debug_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))

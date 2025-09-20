@@ -84,6 +84,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 /* ============================================================================
  * TTY Management
@@ -96,6 +97,9 @@ static tty_info_t g_tty_info = {-1, NULL, false};
 
 /** Flag indicating if we have a valid TTY for interactive output */
 static bool g_has_tty = false;
+
+/** Flag indicating if this is the first frame of the current connection */
+static atomic_bool g_is_first_frame_of_connection = true;
 
 /* ============================================================================
  * TTY Detection and Initialization
@@ -260,6 +264,18 @@ bool display_has_tty() {
 void display_full_reset() {
   if (g_tty_info.fd >= 0) {
     full_terminal_reset(g_tty_info.fd);
+  }
+}
+
+void display_reset_for_new_connection() {
+  atomic_store(&g_is_first_frame_of_connection, true);
+}
+
+void display_disable_logging_for_first_frame() {
+  // Disable terminal logging before clearing display and rendering first frame
+  if (atomic_load(&g_is_first_frame_of_connection)) {
+    log_set_terminal_output(false);
+    atomic_store(&g_is_first_frame_of_connection, false);
   }
 }
 

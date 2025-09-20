@@ -72,9 +72,9 @@ if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
     string(REPLACE "-nostdlib" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
     string(REPLACE "-nostartfiles" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 
-    # For Debug builds with sanitizers, ensure standard runtime libraries are available
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        # AddressSanitizer requires access to Visual Studio runtime libraries
+    # For Debug and Dev builds, ensure standard runtime libraries are available
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+        # Standard runtime libraries are required for Windows builds
         # Try to find MSVC installation in common locations and editions
         set(MSVC_LIB_PATH "")
 
@@ -105,14 +105,18 @@ if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
         if(MSVC_LIB_PATH)
             link_directories("${MSVC_LIB_PATH}")
-            message(STATUS "Added MSVC library path for AddressSanitizer: ${MSVC_LIB_PATH}")
+            message(STATUS "Added MSVC library path: ${MSVC_LIB_PATH}")
         else()
-            message(FATAL_ERROR "Visual Studio MSVC libraries not found! AddressSanitizer requires Visual Studio runtime libraries.\n"
+            message(FATAL_ERROR "Visual Studio MSVC libraries not found! Windows builds require Visual Studio runtime libraries.\n"
                               "Please install Visual Studio 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, Build Tools, or Insiders).\n"
-                              "Alternatively, build without sanitizers using: cmake -B build -DCMAKE_BUILD_TYPE=Dev")
+                              "Alternatively, try building with MinGW: ./build.ps1 -MinGW")
         endif()
 
-        message(STATUS "Debug build: Preserving standard libraries for AddressSanitizer")
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            message(STATUS "Debug build: Preserving standard libraries for AddressSanitizer")
+        else()
+            message(STATUS "Dev build: Using standard libraries without sanitizers")
+        endif()
     endif()
 
     message(STATUS "Applied Windows-Clang linking fixes for normal userspace application")
@@ -514,7 +518,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Valid build types (matching Makefile)
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Dev" "Release" "Coverage")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Dev" "Release" "Coverage" "TSan")
 
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -613,37 +617,123 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         add_compile_options(-g -O0 -DDEBUG)
 
         # Always use sanitizers in Debug mode
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR (CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32))
-            add_compile_options(-fsanitize=address,undefined)
-            add_link_options(-fsanitize=address,undefined)
-
-            # macOS: Fix ASan runtime linking for Homebrew LLVM
-            if(APPLE AND DEFINED HOMEBREW_LLVM_LIB_DIR)
-                # Find the clang version directory dynamically
-                file(GLOB CLANG_VERSION_DIRS "${HOMEBREW_LLVM_LIB_DIR}/clang/*")
-                if(CLANG_VERSION_DIRS)
-                    list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
-                    get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
-                    # Explicitly link against the correct ASan runtime from Homebrew LLVM
-                    add_link_options(-L${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
-                    # Force rpath for ASan runtime
-                    add_link_options(-rpath ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
-                    message(STATUS "Using ASan runtime from: ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin")
-                endif()
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            if(WIN32)
+                # Windows with Clang - use all sanitizers that work on Windows
+                # AddressSanitizer + comprehensive UndefinedBehaviorSanitizer checks
+                add_compile_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                    -fsanitize-address-use-after-scope
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                add_link_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                )
+                message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+            elseif(APPLE)
+                # macOS - all sanitizers except thread (conflicts with address)
+                add_compile_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                    -fsanitize-address-use-after-scope
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                add_link_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                )
+                message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+            else()
+                # Linux - all sanitizers except thread (conflicts with address)
+                add_compile_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                    -fsanitize-address-use-after-scope
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                add_link_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                )
+                message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
             endif()
+        elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
+            # GCC on Unix - use available sanitizers
+            add_compile_options(
+                -fsanitize=address
+                -fsanitize=undefined
+                -fsanitize=leak
+                -fsanitize-address-use-after-scope
+                -fno-omit-frame-pointer
+                -fno-optimize-sibling-calls
+            )
+            add_link_options(
+                -fsanitize=address
+                -fsanitize=undefined
+                -fsanitize=leak
+            )
+            message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan (GCC)")
+        endif()
 
-            # On Windows with Clang, copy ASAN runtime DLL to output directory
-            if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-                # Find the ASAN DLL in the Clang installation
-                get_filename_component(CLANG_DIR ${CMAKE_C_COMPILER} DIRECTORY)
-                get_filename_component(CLANG_ROOT ${CLANG_DIR} DIRECTORY)
-                file(GLOB_RECURSE ASAN_DLL "${CLANG_ROOT}/lib/clang/*/lib/windows/clang_rt.asan_dynamic-x86_64.dll")
-                if(ASAN_DLL)
-                    # Copy ASAN DLL to build output directory
-                    list(GET ASAN_DLL 0 ASAN_DLL_PATH)
-                    file(COPY ${ASAN_DLL_PATH} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-                    message(STATUS "Copied ASAN runtime for Debug build: ${ASAN_DLL_PATH}")
-                endif()
+        # macOS: Fix ASan runtime linking for Homebrew LLVM
+        if(APPLE AND DEFINED HOMEBREW_LLVM_LIB_DIR)
+            # Find the clang version directory dynamically
+            file(GLOB CLANG_VERSION_DIRS "${HOMEBREW_LLVM_LIB_DIR}/clang/*")
+            if(CLANG_VERSION_DIRS)
+                list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
+                get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
+                # Explicitly link against the correct ASan runtime from Homebrew LLVM
+                add_link_options(-L${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+                # Force rpath for ASan runtime
+                add_link_options(-rpath ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+                message(STATUS "Using ASan runtime from: ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin")
+            endif()
+        endif()
+
+        # On Windows with Clang, copy ASAN runtime DLL to output directory
+        if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Find the ASAN DLL in the Clang installation
+            get_filename_component(CLANG_DIR ${CMAKE_C_COMPILER} DIRECTORY)
+            get_filename_component(CLANG_ROOT ${CLANG_DIR} DIRECTORY)
+            file(GLOB_RECURSE ASAN_DLL "${CLANG_ROOT}/lib/clang/*/lib/windows/clang_rt.asan_dynamic-x86_64.dll")
+            if(ASAN_DLL)
+                # Copy ASAN DLL to build output directory
+                list(GET ASAN_DLL 0 ASAN_DLL_PATH)
+                file(COPY ${ASAN_DLL_PATH} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+                message(STATUS "Copied ASAN runtime for Debug build: ${ASAN_DLL_PATH}")
             endif()
         endif()
 
@@ -722,6 +812,31 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
         # Fallback for compilers without sanitizer support
         add_compile_options(-g -O0)
         message(WARNING "AddressSanitizer not available for this compiler/platform combination")
+    endif()
+elseif(CMAKE_BUILD_TYPE STREQUAL "TSan")
+    # Thread Sanitizer for race condition detection
+    add_definitions(-DDEBUG_MEMORY -DDEBUG_THREADS)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        if(WIN32)
+            # ThreadSanitizer has limited support on Windows with Clang
+            # It may not work fully, but we can try
+            add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer)
+            add_link_options(-fsanitize=thread)
+            message(WARNING "ThreadSanitizer has limited support on Windows. Consider using Linux/macOS for full TSan support.")
+        else()
+            # Full TSan support on Unix-like systems
+            add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
+            add_link_options(-fsanitize=thread -pie)
+        endif()
+    elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
+        # GCC TSan support (Unix only)
+        add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
+        add_link_options(-fsanitize=thread -pie)
+    else()
+        # Fallback for compilers without TSan support
+        add_compile_options(-g -O1)
+        message(WARNING "ThreadSanitizer not available for this compiler/platform combination")
+        message(STATUS "Consider using Clang or GCC on Linux/macOS for ThreadSanitizer support")
     endif()
 endif()
 
@@ -1637,6 +1752,7 @@ set(LIB_COMMON_SRCS
     lib/aspect_ratio.c
     lib/image2ascii/ascii.c
     lib/ansi_fast.c
+    lib/lock_debug.c
     lib/os/webcam.c
     lib/palette.c
 )

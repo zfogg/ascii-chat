@@ -104,6 +104,10 @@
 #include <string.h>
 #include "platform/abstraction.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 /* ============================================================================
  * Capture Thread Management
  * ============================================================================ */
@@ -227,18 +231,28 @@ static uint8_t *serialize_image_packet(image_t *image, size_t *packet_size) {
   // Calculate RGB data size
   size_t rgb_size = (size_t)image->w * (size_t)image->h * sizeof(rgb_t);
 
-  // Try compression
+  // Try compression to reduce packet size
   void *compressed_data = NULL;
   size_t compressed_size = 0;
   bool use_compression = false;
 
   if (compress_data(image->pixels, rgb_size, &compressed_data, &compressed_size) == 0) {
+    float compression_ratio = (float)compressed_size / (float)rgb_size;
+    log_info("DEBUG_COMPRESSION: Original=%zu, Compressed=%zu, Ratio=%.2f, Threshold=%.2f", rgb_size, compressed_size,
+             compression_ratio, COMPRESSION_RATIO_THRESHOLD);
+
     if (should_compress(rgb_size, compressed_size)) {
       use_compression = true;
+      log_info("DEBUG_COMPRESSION: Using compression (ratio %.2f < %.2f)", compression_ratio,
+               COMPRESSION_RATIO_THRESHOLD);
     } else {
       free(compressed_data);
       compressed_data = NULL;
+      log_info("DEBUG_COMPRESSION: Not using compression (ratio %.2f >= %.2f)", compression_ratio,
+               COMPRESSION_RATIO_THRESHOLD);
     }
+  } else {
+    log_info("DEBUG_COMPRESSION: Compression failed, using uncompressed data");
   }
 
   // Calculate final packet size
@@ -423,7 +437,8 @@ static void *webcam_capture_thread_func(void *arg) {
       static uint64_t connection_fail_count = 0;
       connection_fail_count++;
       if (connection_fail_count % 30 == 0) { // Log every 30 failures
-        log_info("DEBUG_CONNECTION_FAIL: [%llu] Server connection not active, stopping transmission", connection_fail_count);
+        log_info("DEBUG_CONNECTION_FAIL: [%llu] Server connection not active, stopping transmission",
+                 connection_fail_count);
       }
       log_debug("Connection lost, stopping video transmission");
       free(packet_data);
@@ -435,8 +450,8 @@ static void *webcam_capture_thread_func(void *arg) {
     static uint64_t client_frame_send_count = 0;
     client_frame_send_count++;
     if (client_frame_send_count % 30 == 0) { // Log every 30 frames (1 second at 30fps)
-      log_info("DEBUG_CLIENT_SEND: [%llu] Sending video frame to server (size=%zu)",
-               client_frame_send_count, packet_size);
+      log_info("DEBUG_CLIENT_SEND: [%llu] Sending video frame to server (size=%zu)", client_frame_send_count,
+               packet_size);
     }
 
     if (threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
@@ -444,8 +459,8 @@ static void *webcam_capture_thread_func(void *arg) {
       static uint64_t packet_send_fail_count = 0;
       packet_send_fail_count++;
       if (packet_send_fail_count % 30 == 0) { // Log every 30 failures
-        log_info("DEBUG_PACKET_SEND_FAIL: [%llu] Failed to send video frame to server: %s",
-                 packet_send_fail_count, strerror(errno));
+        log_info("DEBUG_PACKET_SEND_FAIL: [%llu] Failed to send video frame to server: %s", packet_send_fail_count,
+                 strerror(errno));
       }
       log_error("Failed to send video frame to server: %s", strerror(errno));
       // Signal connection loss for reconnection
@@ -549,11 +564,29 @@ void capture_stop_thread() {
   }
 
   if (!atomic_load(&g_capture_thread_exited)) {
-    log_error("Capture thread not responding - forcing join");
+    log_warn("Capture thread not responding after 2 seconds - forcing join with timeout");
   }
 
-  // Join the thread
-  ascii_thread_join(&g_capture_thread, NULL);
+  // Join the thread with timeout to prevent hanging
+  void *thread_retval = NULL;
+  int join_result = ascii_thread_join_timeout(&g_capture_thread, &thread_retval, 5000); // 5 second timeout
+
+  if (join_result == -2) {
+    log_error("Capture thread join timed out - thread may be stuck, forcing termination");
+    // Force close the thread handle to prevent resource leak
+    if (g_capture_thread) {
+      CloseHandle(g_capture_thread);
+      g_capture_thread = NULL;
+    }
+  } else if (join_result != 0) {
+    log_error("Failed to join capture thread, result=%d", join_result);
+    // Still force close the handle to prevent leak
+    if (g_capture_thread) {
+      CloseHandle(g_capture_thread);
+      g_capture_thread = NULL;
+    }
+  }
+
   g_capture_thread_created = false;
 }
 /**

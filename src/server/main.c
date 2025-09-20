@@ -58,6 +58,7 @@
  * @version 2.0 (Post-Modularization)
  */
 
+#include "hashtable.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
@@ -129,19 +130,11 @@ atomic_bool g_should_exit = false;
 mixer_t *g_audio_mixer = NULL;
 
 /**
- * @brief Platform-abstracted mutex for shutdown coordination
+ * @brief Global shutdown condition variable for waking blocked threads
  *
- * Used with g_shutdown_cond to implement interruptible sleep operations.
- * This allows threads to sleep for specific durations but wake immediately
- * when shutdown is requested, preventing long delays during server exit.
- */
-static_mutex_t g_shutdown_mutex = STATIC_MUTEX_INIT;
-
-/**
- * @brief Condition variable for fast thread wakeup during shutdown
- *
- * Broadcasted by signal handlers to wake all sleeping threads immediately.
- * This enables responsive shutdown instead of waiting for timeouts to expire.
+ * Used to wake up threads that might be blocked on condition variables
+ * (like packet queues) during shutdown. This ensures responsive shutdown
+ * even when threads are waiting on blocking operations.
  */
 static_cond_t g_shutdown_cond = STATIC_COND_INIT;
 
@@ -155,7 +148,7 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  * PLATFORM NOTE: Uses platform-abstracted socket_t type (SOCKET on Windows,
  * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
  */
-static socket_t listenfd = INVALID_SOCKET_VALUE;
+static volatile socket_t listenfd = INVALID_SOCKET_VALUE;
 
 /**
  * @brief Global client manager for signal handler access
@@ -236,38 +229,36 @@ static void sigint_handler(int sigint) {
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_should_exit, true);
 
-  // STEP 2: Log the signal handler call
-  log_info("DEBUG_SIGNAL: SIGINT handler called - setting shutdown flag");
-  log_info("SIGINT received - shutting down server...");
+  // STEP 2: Use printf for output (user says it's fine)
+  printf("\nSIGINT received - shutting down server...\n");
+  fflush(stdout);
 
-  // STEP 3: CRITICAL - Close listening socket to interrupt accept() calls
-  // This is signal-safe and will immediately wake up the main loop
+  // STEP 3: Close listening socket to interrupt accept() in main loop
+  // This is signal-safe on Windows and necessary to wake up blocked accept()
   if (listenfd != INVALID_SOCKET_VALUE) {
+    printf("DEBUG: Signal handler closing listening socket %d\n", (int)listenfd);
+    fflush(stdout);
     socket_close(listenfd);
     listenfd = INVALID_SOCKET_VALUE;
   }
 
-  // STEP 4: CRITICAL - Close all client sockets to interrupt blocking recv() calls
-  // This is signal-safe and will immediately wake up all client threads
-  // NOTE: We cannot use locks in signal handlers as they may cause deadlocks
-  // The main thread will handle proper cleanup after detecting g_should_exit
+  // STEP 4: DO NOT access client data structures in signal handler
+  // Signal handlers CANNOT safely use mutexes, rwlocks, or access complex data structures
+  // This causes deadlocks and memory access violations because:
+  // 1. Signal may interrupt a thread that already holds these locks
+  // 2. Attempting to acquire locks in signal handler = instant deadlock
+  // 3. Client array might be in an inconsistent state during modification
+  //
+  // SOLUTION: The listening socket closure above is sufficient to unblock accept_with_timeout()
+  // The main thread will detect g_should_exit and properly close client sockets with timeouts
 
-  // DEBUG: Track socket closing
-  log_info("DEBUG_SIGNAL: Closing client sockets to interrupt network operations");
+  // Debug message to see if handler completes
+  printf("DEBUG: Signal handler completed\n");
+  fflush(stdout);
 
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
-      socket_shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
-      socket_close(g_client_manager.clients[i].socket);
-      g_client_manager.clients[i].socket = INVALID_SOCKET_VALUE;
-    }
-  }
+  fflush(stdout);
 
-  // STEP 5: Return immediately - signal handlers must be minimal
-  // The main thread will detect g_should_exit and perform complete shutdown:
-  // - Wake up condition variables safely (static_cond_broadcast uses mutexes)
-  // - Join all threads properly
-  // This approach prevents async-signal-safety violations and deadlocks
+  log_destroy();
 }
 
 /**
@@ -310,6 +301,21 @@ static void sigterm_handler(int sigterm) {
   // Main thread will detect g_should_exit and perform complete shutdown
 }
 
+/**
+ * @brief Handler for SIGUSR1 - triggers lock debugging output
+ *
+ * This signal handler allows external triggering of lock debugging output
+ * by sending SIGUSR1 to the server process. This is useful for debugging
+ * deadlocks without modifying the running server.
+ *
+ * @param sigusr1 The signal number (unused, required by signal handler signature)
+ */
+static void sigusr1_handler(int sigusr1) {
+  (void)(sigusr1);
+
+  // Trigger lock debugging output (signal-safe)
+  lock_debug_trigger_print();
+}
 
 /* ============================================================================
  * Main Function
@@ -386,6 +392,15 @@ int main(int argc, char *argv[]) {
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   log_init(log_filename, LOG_DEBUG);
 
+  // Initialize lock debugging system after logging is fully set up
+  log_info("SERVER: Initializing lock debug system...");
+  int lock_debug_result = lock_debug_init();
+  if (lock_debug_result != 0) {
+    log_fatal("Failed to initialize lock debug system");
+    exit(1);
+  }
+  log_info("SERVER: Lock debug system initialized successfully");
+
   // Initialize palette based on command line options
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
   if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
@@ -399,8 +414,6 @@ int main(int argc, char *argv[]) {
   debug_memory_set_quiet_mode(opt_quiet);
 #endif
 
-  (void)atexit(log_destroy);
-
 #ifdef DEBUG_MEMORY
   (void)atexit(debug_memory_report);
 #endif
@@ -411,7 +424,7 @@ int main(int argc, char *argv[]) {
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
-  log_info("SERVER: Options initialized, using log file: %s", log_filename);
+  // log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = strtoint_safe(opt_port);
   if (port == INT_MIN) {
     log_error("Invalid port configuration: %s", opt_port);
@@ -431,12 +444,24 @@ int main(int argc, char *argv[]) {
   platform_signal(SIGINT, sigint_handler);
   // Handle termination signal (SIGTERM is defined with limited support on Windows)
   platform_signal(SIGTERM, sigterm_handler);
+  // Handle lock debugging trigger signal
+#ifndef _WIN32
+  platform_signal(SIGUSR1, sigusr1_handler);
+#endif
 #ifndef _WIN32
   // SIGPIPE not supported on Windows
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
   log_info("SERVER: Signal handling setup complete");
 
+  // Start the lock debug thread (system already initialized earlier)
+  log_info("SERVER: Starting lock debug thread...");
+  int thread_result = lock_debug_start_thread();
+  if (thread_result == 0) {
+    log_info("SERVER: Lock debug thread started - press '?' to print held locks");
+  } else {
+    log_error("Failed to start lock debug thread");
+  }
 
   // Start statistics logging thread for periodic performance monitoring
   log_info("SERVER: Creating statistics logger thread...");
@@ -500,28 +525,62 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  // Lock debug system already initialized earlier in main()
+
+  // Check if SIGINT was received during initialization
+  if (atomic_load(&g_should_exit)) {
+    printf("DEBUG: g_should_exit is true after lock debug init, breaking to main loop...\n");
+    fflush(stdout);
+    // Skip rest of initialization and go straight to main loop
+    // which will detect g_should_exit and exit cleanly
+    goto main_loop;
+  }
+
+  // Lock debug thread already started earlier in main()
+
+  printf("DEBUG: About to initialize client manager\n");
+  fflush(stdout);
+
   // Initialize client manager
   memset(&g_client_manager, 0, sizeof(g_client_manager));
+  if (!atomic_load(&g_should_exit)) {
+    log_info("DEBUG: About to init client manager mutex");
+  }
   mutex_init(&g_client_manager.mutex);
+  if (!atomic_load(&g_should_exit)) {
+    log_info("DEBUG: Client manager mutex initialized");
+  }
   g_client_manager.next_client_id = 0;
 
+  if (!atomic_load(&g_should_exit)) {
+    log_info("DEBUG: About to create client hashtable");
+  }
   // Initialize client hash table for O(1) lookup
   g_client_manager.client_hashtable = hashtable_create();
+  if (!atomic_load(&g_should_exit)) {
+    log_info("DEBUG: Client hashtable created");
+  }
   if (!g_client_manager.client_hashtable) {
-    log_fatal("Failed to create client hash table");
+    if (!atomic_load(&g_should_exit)) {
+      log_fatal("Failed to create client hash table");
+    }
     exit(1);
   }
 
   // Initialize audio mixer if audio is enabled
-  if (opt_audio_enabled) {
+  if (opt_audio_enabled && !atomic_load(&g_should_exit)) {
     log_info("SERVER: Initializing audio mixer for per-client audio rendering...");
     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
     if (!g_audio_mixer) {
-      log_error("Failed to initialize audio mixer");
+      if (!atomic_load(&g_should_exit)) {
+        log_error("Failed to initialize audio mixer");
+      }
     } else {
-      log_info("SERVER: Audio mixer initialized successfully for per-client audio rendering");
+      if (!atomic_load(&g_should_exit)) {
+        log_info("SERVER: Audio mixer initialized successfully for per-client audio rendering");
+      }
     }
-  } else {
+  } else if (!atomic_load(&g_should_exit)) {
     log_info("SERVER: Audio disabled, skipping audio mixer initialization");
   }
 
@@ -539,7 +598,22 @@ int main(int argc, char *argv[]) {
   // maximum connection slots are available. Otherwise, slots remain occupied
   // by dead connections, eventually preventing new clients from joining.
 
+main_loop:
+  printf("DEBUG: Entering main connection loop - g_should_exit=%d\n", atomic_load(&g_should_exit));
+  fflush(stdout);
+
   while (!atomic_load(&g_should_exit)) {
+    // Debug: Log loop iteration
+    printf("DEBUG: Main loop iteration - g_should_exit=%d, listenfd=%d\n", atomic_load(&g_should_exit), (int)listenfd);
+    fflush(stdout);
+
+    // Check if we received a shutdown signal
+    if (atomic_load(&g_should_exit)) {
+      printf("SIGINT detected in main loop - breaking...\n");
+      fflush(stdout);
+      break;
+    }
+
     // Rate-limited logging: Only show status when client count actually changes
     // This prevents log spam while maintaining visibility into server state
     static int last_logged_count = -1;
@@ -567,20 +641,26 @@ int main(int argc, char *argv[]) {
     cleanup_task_t cleanup_tasks[MAX_CLIENTS];
     int cleanup_count = 0;
 
-    rwlock_rdlock(&g_client_manager_rwlock);
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      client_info_t *client = &g_client_manager.clients[i];
-      // Check if this client has been marked inactive by its receive thread
-      // Only check clients that have been initialized (client_id != 0)
-      if (client->client_id != 0) {
-        // Thread-safe check for client state
-        mutex_lock(&client->client_state_mutex);
-        uint32_t client_id_snapshot = client->client_id;
-        bool is_active = atomic_load(&client->active);
-        mutex_unlock(&client->client_state_mutex);
-        if (client_id_snapshot != 0 && !is_active && ascii_thread_is_initialized(&client->receive_thread)) {
+    // FIXED: Only do cleanup if there are actually clients connected
+    if (g_client_manager.client_count > 0) {
+      rwlock_rdlock(&g_client_manager_rwlock);
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        client_info_t *client = &g_client_manager.clients[i];
+        // Check if this client has been marked inactive by its receive thread
+        // Only check clients that have been initialized (client_id != 0)
+        // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
+        if (atomic_load(&client->client_id) == 0) {
+          continue; // Skip uninitialized clients
+        }
+
+        // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
+        // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
+        uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
+        bool is_active = atomic_load(&client->active);                 // Use atomic read to avoid deadlock
+
+        if (!is_active && ascii_thread_is_initialized(&client->receive_thread)) {
           // Collect cleanup task
-          cleanup_tasks[cleanup_count].client_id = client->client_id;
+          cleanup_tasks[cleanup_count].client_id = client_id_snapshot;
           cleanup_tasks[cleanup_count].receive_thread = client->receive_thread;
           cleanup_count++;
 
@@ -588,39 +668,78 @@ int main(int argc, char *argv[]) {
           memset(&client->receive_thread, 0, sizeof(asciithread_t));
         }
       }
+      rwlock_rdunlock(&g_client_manager_rwlock);
     }
-    rwlock_unlock(&g_client_manager_rwlock);
 
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
-      log_info("Cleaning up disconnected client %u", cleanup_tasks[i].client_id);
-      // Wait for receive thread to finish
-      log_info("Joining receive thread for client %u", cleanup_tasks[i].client_id);
-      ascii_thread_join(&cleanup_tasks[i].receive_thread, NULL);
-      log_info("Receive thread joined for client %u, calling remove_client", cleanup_tasks[i].client_id);
+      log_info("DEBUG_CLEANUP: Cleaning up disconnected client %u", cleanup_tasks[i].client_id);
+      // Wait for receive thread to finish - use timeout during shutdown since sockets are closed
+      log_info("DEBUG_CLEANUP: Joining receive thread for client %u", cleanup_tasks[i].client_id);
+
+      bool is_shutting_down = atomic_load(&g_should_exit);
+      if (is_shutting_down) {
+        // During shutdown, give receive thread a brief chance to exit cleanly with timeout
+        log_info("DEBUG_CLEANUP: Shutdown mode: joining receive thread for client %u with 200ms timeout", cleanup_tasks[i].client_id);
+        int join_result = ascii_thread_join_timeout(&cleanup_tasks[i].receive_thread, NULL, 200);
+        if (join_result == -2) {
+          log_warn("Receive thread for client %u timed out during shutdown (continuing)", cleanup_tasks[i].client_id);
+          // Don't try to remove client if thread didn't exit cleanly
+          continue;
+        }
+      } else {
+        ascii_thread_join(&cleanup_tasks[i].receive_thread, NULL);
+      }
+
+      log_info("DEBUG_CLEANUP: Receive thread joined for client %u, calling remove_client", cleanup_tasks[i].client_id);
       // Remove the client and clean up resources
       remove_client(cleanup_tasks[i].client_id);
-      log_info("Client %u removed successfully", cleanup_tasks[i].client_id);
+      log_info("DEBUG_CLEANUP: Client %u removed successfully", cleanup_tasks[i].client_id);
     }
 
     // Check if listening socket was closed by signal handler
+    log_info("DEBUG: Checking listenfd - value=%d, INVALID=%d", (int)listenfd, INVALID_SOCKET_VALUE);
     if (listenfd == INVALID_SOCKET_VALUE) {
-      log_debug("Listening socket closed by signal handler, exiting main loop");
+      log_info("DEBUG: Listening socket closed by signal handler, breaking loop");
       break;
     }
 
     // Accept network connection with timeout
-#ifdef DEBUG_NETWORK
-    log_debug("Main loop: Calling accept_with_timeout on fd=%d with timeout=%d", listenfd, ACCEPT_TIMEOUT);
-#endif
+    printf("DEBUG: About to call accept_with_timeout - listenfd=%d, timeout=%d, g_should_exit=%d\n", (int)listenfd,
+           ACCEPT_TIMEOUT, atomic_load(&g_should_exit));
+    fflush(stdout);
+
+    // Check g_should_exit right before accept
+    if (atomic_load(&g_should_exit)) {
+      printf("DEBUG: g_should_exit is true BEFORE accept_with_timeout, breaking...\n");
+      fflush(stdout);
+      break;
+    }
+
     int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
-    int saved_errno = errno; // Capture errno immediately to prevent corruption
+
+    printf("DEBUG: accept_with_timeout returned - client_sock=%d, g_should_exit=%d\n", client_sock,
+           atomic_load(&g_should_exit));
+    fflush(stdout);
+#ifdef _WIN32
+    int saved_errno = (client_sock < 0) ? WSAGetLastError() : 0; // Windows socket error
+#else
+    int saved_errno = errno; // POSIX errno
+#endif
 #ifdef DEBUG_NETWORK
     log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
               client_sock < 0 ? strerror(saved_errno) : "success");
 #endif
     if (client_sock < 0) {
-      if (saved_errno == ETIMEDOUT) {
+      // Always log the error for debugging
+      log_info("accept_with_timeout failed: errno=%d, g_should_exit=%d, listenfd=%d", saved_errno,
+               atomic_load(&g_should_exit), listenfd);
+
+      if (saved_errno == ETIMEDOUT
+#ifdef _WIN32
+          || saved_errno == WSAETIMEDOUT
+#endif
+      ) {
 #ifdef DEBUG_NETWORK
         log_debug("Main loop: Accept timed out, checking g_should_exit=%d", atomic_load(&g_should_exit));
 #endif
@@ -638,9 +757,19 @@ int main(int argc, char *argv[]) {
         }
         continue;
       }
-      if (saved_errno == EBADF || saved_errno == ENOTSOCK) {
+      if (saved_errno == EBADF || saved_errno == ENOTSOCK
+#ifdef _WIN32
+          || saved_errno == WSAENOTSOCK || saved_errno == WSAEBADF || saved_errno == WSAEINVAL
+#endif
+      ) {
         // Socket was closed by signal handler
+#ifdef _WIN32
+        char error_buf[256];
+        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL, saved_errno, 0, error_buf, sizeof(error_buf), NULL);
+        log_debug("accept() failed because socket was closed: %s", error_buf);
+#else
         log_debug("accept() failed because socket was closed: %s", strerror(saved_errno));
+#endif
         break;
       }
       // log_error("Network accept failed: %s", network_error_string(saved_errno));
@@ -665,112 +794,112 @@ int main(int argc, char *argv[]) {
 
     // Check if we should exit after processing this client
     if (atomic_load(&g_should_exit)) {
+      log_info("DEBUG: Breaking loop due to g_should_exit=true at end of iteration");
       break;
     }
+
+    log_info("DEBUG: End of main loop iteration - g_should_exit=%d", atomic_load(&g_should_exit));
   }
 
   // Cleanup
   log_info("Server shutting down...");
   atomic_store(&g_should_exit, true);
 
-  // CRITICAL: Close all client sockets to interrupt blocking recv() calls
-  // This ensures all client threads wake up and can check g_should_exit
-  log_info("Closing all client sockets to interrupt blocking I/O...");
-  rwlock_wrlock(&g_client_manager_rwlock);
+  // Wake up any threads that might be blocked on condition variables
+  // (like packet queues) to ensure responsive shutdown
+  // This must happen BEFORE client cleanup to wake up any blocked threads
+  static_cond_broadcast(&g_shutdown_cond);
+  cond_destroy(&g_shutdown_cond.cond);
+
+  // CRITICAL: Close all client sockets immediately to unblock receive threads
+  // The signal handler only closed the listening socket, but client receive threads
+  // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
+  log_info("Closing all client sockets to unblock receive threads...");
+
+  rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
-      log_debug("Closing socket for client %u to interrupt receive thread", g_client_manager.clients[i].client_id);
-      socket_shutdown(g_client_manager.clients[i].socket, SHUT_RDWR);
-      socket_close(g_client_manager.clients[i].socket);
-      g_client_manager.clients[i].socket = INVALID_SOCKET_VALUE;
+    client_info_t *client = &g_client_manager.clients[i];
+    if (atomic_load(&client->client_id) != 0 && client->socket != INVALID_SOCKET_VALUE) {
+      log_info("DEBUG_SHUTDOWN: Closing socket %d for client %u", (int)client->socket, atomic_load(&client->client_id));
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
     }
   }
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_rdunlock(&g_client_manager_rwlock);
 
-  // Wake up all sleeping threads before waiting for them
-  static_cond_broadcast(&g_shutdown_cond);
+  log_info("Signaling all clients to stop (sockets closed, g_should_exit set)...");
 
   // Wait for stats logger thread to finish
   if (g_stats_logger_thread_created) {
-    log_info("Waiting for stats logger thread to finish...");
-    log_info("About to call ascii_thread_join for stats thread");
-    int join_result = ascii_thread_join(&g_stats_logger_thread, NULL);
-    log_info("ascii_thread_join returned: %d", join_result);
-    log_info("Stats logger thread stopped");
+    log_info("DEBUG_SHUTDOWN: Waiting for stats logger thread to finish...");
+    ascii_thread_join(&g_stats_logger_thread, NULL);
+    log_info("DEBUG_SHUTDOWN: ascii_thread_join(&g_stats_logger_thread) completed");
     g_stats_logger_thread_created = false;
   }
 
   // Clean up all connected clients
   log_info("Cleaning up connected clients...");
+  // FIXED: Simplified to collect client IDs first, then remove them without holding locks
+  uint32_t clients_to_remove[MAX_CLIENTS];
+  int client_count = 0;
 
-  // First, close all client sockets to interrupt receive threads
-  rwlock_wrlock(&g_client_manager_rwlock);
+  rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
 
-    // Only attempt to lock mutex for clients that were actually connected
+    // Only attempt to clean up clients that were actually connected
     // (client_id is 0 for uninitialized clients, starts from 1 for connected clients)
-    if (client->client_id != 0) {
-      // Thread-safe check for client state in shutdown
-      mutex_lock(&client->client_state_mutex);
-      bool is_active = client->active;
-      uint32_t client_id_snapshot = client->client_id;
-      socket_t socket_snapshot = client->socket;
-      mutex_unlock(&client->client_state_mutex);
-
-      if (is_active && socket_snapshot != INVALID_SOCKET_VALUE) {
-        log_debug("Closing socket for client %u", client_id_snapshot);
-        socket_shutdown(socket_snapshot, SHUT_RDWR);
-        socket_close(socket_snapshot);
-        // Update client socket safely
-        mutex_lock(&client->client_state_mutex);
-        client->socket = INVALID_SOCKET_VALUE;
-        mutex_unlock(&client->client_state_mutex);
-      }
+    // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
+    if (atomic_load(&client->client_id) == 0) {
+      continue; // Skip uninitialized clients
     }
-  }
-  rwlock_unlock(&g_client_manager_rwlock);
 
-  // Collect active clients to clean up (without holding lock during cleanup)
-  uint32_t active_clients[MAX_CLIENTS];
-  int active_count = 0;
-  rwlock_rdlock(&g_client_manager_rwlock);
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    // Only attempt to lock mutex for clients that were actually connected
-    if (g_client_manager.clients[i].client_id != 0) {
-      // Thread-safe check for client state in cleanup collection
-      mutex_lock(&g_client_manager.clients[i].client_state_mutex);
-      uint32_t client_id_snapshot = g_client_manager.clients[i].client_id;
-      mutex_unlock(&g_client_manager.clients[i].client_state_mutex);
+    // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
+    // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
 
-      // Clean up ANY client that was allocated, whether active or not
-      // (disconnected clients may not be active but still have resources)
-      active_clients[active_count++] = client_id_snapshot;
-    }
+    // Clean up ANY client that was allocated, whether active or not
+    // (disconnected clients may not be active but still have resources)
+    clients_to_remove[client_count++] = client_id_snapshot;
   }
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_rdunlock(&g_client_manager_rwlock);
 
-  // Clean up each active client
-  for (int i = 0; i < active_count; i++) {
-    log_info("Removing client %u", active_clients[i]);
-    remove_client(active_clients[i]);
+  // Remove all clients without holding any locks
+  log_info("DEBUG_SHUTDOWN: Found %d clients to remove", client_count);
+  for (int i = 0; i < client_count; i++) {
+    log_info("DEBUG_SHUTDOWN: Removing client %u", clients_to_remove[i]);
+    remove_client(clients_to_remove[i]);
+    log_info("DEBUG_SHUTDOWN: Client %u removed successfully", clients_to_remove[i]);
   }
+  log_info("DEBUG_SHUTDOWN: All clients removed, proceeding to cleanup");
 
   // Clean up hash table
+  log_info("DEBUG_SHUTDOWN: Destroying client hashtable...");
   if (g_client_manager.client_hashtable) {
     hashtable_destroy(g_client_manager.client_hashtable);
     g_client_manager.client_hashtable = NULL;
   }
+  log_info("DEBUG_SHUTDOWN: Client hashtable destroyed");
 
   // Clean up audio mixer
+  log_info("DEBUG_SHUTDOWN: Destroying audio mixer...");
   if (g_audio_mixer) {
     mixer_destroy(g_audio_mixer);
     g_audio_mixer = NULL;
   }
+  log_info("DEBUG_SHUTDOWN: Audio mixer destroyed");
 
   // Clean up synchronization primitives
+  log_info("DEBUG_SHUTDOWN: Destroying synchronization primitives...");
   rwlock_destroy(&g_client_manager_rwlock);
   mutex_destroy(&g_client_manager.mutex);
+  log_info("DEBUG_SHUTDOWN: Synchronization primitives destroyed");
+
+  // Clean up lock debugging system
+  log_info("DEBUG_SHUTDOWN: Cleaning up lock debug system...");
+  lock_debug_print_state();
+  lock_debug_cleanup();
+  log_info("DEBUG_SHUTDOWN: Lock debug system cleaned up");
 
   // Close listen socket
   if (listenfd != INVALID_SOCKET_VALUE) {
@@ -780,6 +909,13 @@ int main(int argc, char *argv[]) {
   // Clean up SIMD caches
   simd_caches_destroy_all();
 
+  // Join the lock debug thread as one of the very last things before exit
+  log_info("DEBUG_SHUTDOWN: Joining lock debug thread...");
+  lock_debug_cleanup_thread();
+  log_info("DEBUG_SHUTDOWN: Lock debug thread joined");
+
   log_info("Server shutdown complete");
+
+  log_destroy();
   return 0;
 }

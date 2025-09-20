@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "platform/abstraction.h"
+#include "platform/rwlock.h"
 
 /*
  * Simple Hash Table Implementation

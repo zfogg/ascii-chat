@@ -13,6 +13,10 @@
 #include <stdatomic.h>
 #include "options.h"
 
+// Debug flags
+#define DEBUG_NETWORK 1
+#define DEBUG_THREADS 1
+#define DEBUG_MEMORY 1
 
 // Check if we're in a test environment
 static int is_test_environment(void) {
@@ -107,6 +111,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
   struct timeval timeout;
   ssize_t total_sent = 0;
   const char *data = (const char *)buf;
+  time_t start_time = time(NULL);
 
   if (sockfd == INVALID_SOCKET_VALUE) {
     errno = EBADF;
@@ -114,11 +119,23 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
   }
 
   while (total_sent < (ssize_t)len) {
+    // Calculate remaining timeout time
+    time_t current_time = time(NULL);
+    int elapsed_seconds = (int)(current_time - start_time);
+    int remaining_timeout = timeout_seconds - elapsed_seconds;
+
+    if (remaining_timeout <= 0) {
+      errno = ETIMEDOUT;
+      log_error("send_with_timeout: total timeout exceeded (%d seconds) - elapsed=%d, remaining=%d", timeout_seconds,
+                elapsed_seconds, remaining_timeout);
+      return -1;
+    }
+
     // Set up select for write timeout
     socket_fd_zero(&write_fds);
     socket_fd_set(sockfd, &write_fds);
 
-    timeout.tv_sec = timeout_seconds;
+    timeout.tv_sec = remaining_timeout;
     timeout.tv_usec = 0;
 
     // Use platform-abstracted select wrapper that handles Windows/POSIX differences
@@ -127,7 +144,8 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
       // Timeout or error
       if (result == 0) {
         errno = ETIMEDOUT;
-        log_error("send_with_timeout: select timeout");
+        log_error("send_with_timeout: select timeout - socket not writable after %d seconds (sent %zd/%zu bytes)",
+                  remaining_timeout, total_sent, len);
       } else if (errno == EINTR) {
         // Interrupted by signal
         log_debug("send_with_timeout: select interrupted");
@@ -245,6 +263,9 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
 }
 
 int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
+  printf("DEBUG: accept_with_timeout ENTER - listenfd=%d, timeout=%d\n", (int)listenfd, timeout_seconds);
+  fflush(stdout);
+
   fd_set read_fds;
   struct timeval timeout;
 
@@ -254,19 +275,42 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
+  printf("DEBUG: Calling socket_select...\n");
+  fflush(stdout);
   int result = socket_select(listenfd, &read_fds, NULL, NULL, &timeout);
+  printf("DEBUG: socket_select returned %d\n", result);
+  fflush(stdout);
+
   if (result <= 0) {
     // Timeout or error
     if (result == 0) {
       errno = ETIMEDOUT;
+      printf("DEBUG: socket_select timed out\n");
+      fflush(stdout);
     } else if (errno == EINTR) {
       // Interrupted by signal - this is expected during shutdown
+      printf("DEBUG: socket_select interrupted by signal\n");
+      fflush(stdout);
       return -1;
+    } else {
+#ifdef _WIN32
+      int wsa_error = WSAGetLastError();
+      printf("DEBUG: socket_select error - result=%d, WSAError=%d\n", result, wsa_error);
+      fflush(stdout);
+#else
+      printf("DEBUG: socket_select error - result=%d, errno=%d\n", result, errno);
+      fflush(stdout);
+#endif
     }
     return -1;
   }
 
-  return accept(listenfd, addr, addrlen);
+  printf("DEBUG: Calling accept...\n");
+  fflush(stdout);
+  int accept_result = accept(listenfd, addr, addrlen);
+  printf("DEBUG: accept returned %d\n", accept_result);
+  fflush(stdout);
+  return accept_result;
 }
 
 const char *network_error_string(int error_code) {
@@ -401,6 +445,33 @@ int receive_audio_data(socket_t sockfd, float *samples, int max_samples) {
 
 // CRC32 implementation moved to crc32_hw.c for hardware acceleration
 
+/**
+ * Calculate timeout based on packet size
+ * Large packets need more time to transmit reliably
+ */
+static int calculate_packet_timeout(size_t packet_size) {
+  int base_timeout = is_test_environment() ? 1 : SEND_TIMEOUT;
+
+  // For large packets, increase timeout proportionally
+  if (packet_size > 100000) { // 100KB threshold
+    // Add 0.8 seconds per 1MB above the threshold
+    int extra_timeout = (int)((packet_size - 100000) / 1000000.0 * 0.8) + 1;
+    int total_timeout = base_timeout + extra_timeout;
+
+    // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
+    // Add 10 seconds buffer to account for server processing delays
+    int min_timeout = 40; // 30s server timeout + 10s buffer
+    if (total_timeout < min_timeout) {
+      total_timeout = min_timeout;
+    }
+
+    // Cap at 60 seconds maximum
+    return (total_timeout > 60) ? 60 : total_timeout;
+  }
+
+  return base_timeout;
+}
+
 int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len) {
   if (len > MAX_PACKET_SIZE) {
     log_error("Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
@@ -413,8 +484,14 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
                             .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0),
                             .client_id = htonl(0)}; // Always initialize client_id to 0 in network byte order
 
+  // Calculate timeout based on packet size
+  int timeout = calculate_packet_timeout(len);
+  if (len > 100000) { // Only log for large packets
+    log_info("DEBUG_TIMEOUT: Packet size=%zu, calculated timeout=%d seconds", len, timeout);
+  }
+
   // Send header first
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
   if (sent != sizeof(header)) {
     log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
               SAFE_STRERROR(errno));
@@ -423,7 +500,7 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
 
   // Send payload if present
   if (len > 0 && data) {
-    sent = send_with_timeout(sockfd, data, len, is_test_environment() ? 1 : SEND_TIMEOUT);
+    sent = send_with_timeout(sockfd, data, len, timeout);
     if (sent != (ssize_t)len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
@@ -738,8 +815,14 @@ int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client
   }
   header.crc32 = htonl(crc);
 
+  // Calculate timeout based on packet size
+  int timeout = calculate_packet_timeout(len);
+  if (len > 100000) { // Only log for large packets
+    log_info("DEBUG_TIMEOUT: Packet size=%zu, calculated timeout=%d seconds", len, timeout);
+  }
+
   // Send header
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
   if (sent != sizeof(header)) {
     log_error("Failed to send packet header with client ID: %zd/%zu bytes", sent, sizeof(header));
 
@@ -758,7 +841,7 @@ int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client
 
   // Send payload if present
   if (len > 0 && data) {
-    sent = send_with_timeout(sockfd, data, len, is_test_environment() ? 1 : SEND_TIMEOUT);
+    sent = send_with_timeout(sockfd, data, len, timeout);
     if (sent != (ssize_t)len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
@@ -781,6 +864,7 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
   packet_header_t header;
 
   // Read header
+  log_debug("DEBUG_RECV: Starting to receive packet header from socket %d", sockfd);
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received != sizeof(header)) {
     if (received == 0) {
@@ -828,9 +912,13 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
       return -1;
     }
 
-    received = recv_with_timeout(sockfd, *data, pkt_len, is_test_environment() ? 1 : RECV_TIMEOUT);
+    // Use adaptive timeout for large packets
+    int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    log_debug("DEBUG_RECV: Using adaptive timeout %d seconds for packet size %u", recv_timeout, pkt_len);
+    received = recv_with_timeout(sockfd, *data, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
-      log_error("Failed to receive packet payload: %zd/%u bytes", received, pkt_len);
+      log_error("Failed to receive packet payload: %zd/%u bytes, errno=%d (%s)", received, pkt_len, errno,
+                SAFE_STRERROR(errno));
       buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
@@ -885,10 +973,6 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
     return -1;
   }
 
-  log_error("DEBUG_CAPABILITIES: Sending terminal capabilities to server");
-  log_error("DEBUG_CAPABILITIES: Original dimensions: %dx%d", caps->width, caps->height);
-  log_error("DEBUG_CAPABILITIES: Color level: %d, capabilities: 0x%x", caps->color_level, caps->capabilities);
-
   // Convert to network byte order
   terminal_capabilities_packet_t net_caps;
   net_caps.capabilities = htonl(caps->capabilities);
@@ -897,9 +981,6 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
   net_caps.render_mode = htonl(caps->render_mode);
   net_caps.width = htons(caps->width);
   net_caps.height = htons(caps->height);
-
-  log_error("DEBUG_CAPABILITIES: Network byte order dimensions: width=%d (0x%x), height=%d (0x%x)",
-            ntohs(net_caps.width), net_caps.width, ntohs(net_caps.height), net_caps.height);
 
   // Copy strings directly (no byte order conversion needed)
   SAFE_MEMCPY(net_caps.term_type, sizeof(net_caps.term_type), caps->term_type, sizeof(net_caps.term_type));

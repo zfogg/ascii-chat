@@ -31,6 +31,18 @@ bool display_has_tty();
 void display_full_reset();
 
 /**
+ * @brief Reset display state for new connection
+ * Call this when starting a new connection to reset first frame tracking
+ */
+void display_reset_for_new_connection();
+
+/**
+ * @brief Check if this is the first frame and disable terminal logging if so
+ * Call this before clearing the display for the first frame
+ */
+void display_disable_logging_for_first_frame();
+
+/**
  * @brief Render ASCII frame to display
  * @param frame_data ASCII frame data to render
  * @param is_snapshot_frame Whether this is the final snapshot frame

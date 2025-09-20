@@ -305,8 +305,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   // DEBUG: Log every 30 frames (1 second at 30fps) to track frame generation
   if (frame_gen_count % 30 == 0) {
-    log_info("DEBUG_FRAME_GEN: [%llu] Starting frame generation for client %u (%ux%u)",
-             frame_gen_count, target_client_id, width, height);
+    log_info("DEBUG_FRAME_GEN: [%llu] Starting frame generation for client %u (%ux%u)", frame_gen_count,
+             target_client_id, width, height);
   }
 
   // Collect all active clients and their image sources
@@ -319,31 +319,35 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   image_source_t sources[MAX_CLIENTS];
   int source_count = 0; // This will be ALL active clients, not just those with video
 
+  // Check for shutdown before acquiring locks to prevent lock corruption
+  if (atomic_load(&g_should_exit)) {
+    log_debug("create_mixed_ascii_frame_for_client: shutdown detected, aborting frame generation");
+    return NULL;
+  }
+
   // CONCURRENCY FIX: Now using READ lock since framebuffer operations are thread-safe
   // framebuffer_read_multi_frame() now uses internal mutex for thread safety
   // Multiple video generation threads can safely access client list concurrently
   rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    // Check for shutdown while holding the lock
-    if (atomic_load(&g_should_exit)) {
-      rwlock_unlock(&g_client_manager_rwlock);
-      *out_size = 0;
-      return NULL;
-    }
-
     client_info_t *client = &g_client_manager.clients[i];
 
     // Skip empty client slots to avoid mutex contention
-    if (client->client_id == 0) {
-      continue;
+    // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
+    if (atomic_load(&client->client_id) == 0) {
+      continue; // Skip uninitialized clients
     }
+
+    // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
+    // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
 
     // Include ALL active clients in the grid, not just those sending video
     // Thread-safe check for active client - use atomic read to avoid deadlock
     bool is_active = atomic_load(&client->active);
 
     if (is_active && source_count < MAX_CLIENTS) {
-      sources[source_count].client_id = client->client_id;
+      sources[source_count].client_id = client_id_snapshot;
       sources[source_count].image = NULL; // Will be set if video is available
       sources[source_count].has_video = false;
 
@@ -351,15 +355,16 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       multi_source_frame_t current_frame = {0};
       bool got_new_frame = false;
 
-      // Only try to get video from clients that are actually sending it
-      if (client->is_sending_video) {
+      // Always try to get the last available video frame for consistent ASCII generation
+      // The double buffer ensures we always have the last valid frame
+      if (atomic_load(&client->is_sending_video)) {
         // Use the new double-buffered video frame API
         if (client->incoming_video_buffer) {
-          // Get the latest frame (if available)
+          // Get the latest frame (always available from double buffer)
           const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
 
           if (frame && frame->data && frame->size > 0) {
-            // We have a new frame - copy it to our working structure
+            // We have frame data - copy it to our working structure
             data_buffer_pool_t *pool = data_buffer_pool_get_global();
             if (pool) {
               current_frame.data = data_buffer_pool_alloc(pool, frame->size);
@@ -371,7 +376,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             if (current_frame.data) {
               memcpy(current_frame.data, frame->data, frame->size);
               current_frame.size = frame->size;
-              current_frame.source_client_id = client->client_id;
+              current_frame.source_client_id = client_id_snapshot;
               current_frame.timestamp = (uint32_t)(frame->capture_timestamp_us / 1000000);
               got_new_frame = true;
 
@@ -381,9 +386,19 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         }
       }
 
-      // Simple and professional: if we got a frame, use it
+      // Always use the last available frame data for consistent ASCII generation
+      // The double buffer ensures we always have the last valid frame
+      // We should always try to generate frames from available video data
+      // FIX: Always try to process the last available frame, not just when it's "new"
+      // The double buffer always provides the last valid frame, so we should always use it
+      // Always use the last available frame data for consistent ASCII generation
+      // The double buffer ensures we always have the last valid frame
+      // We should always try to generate frames from available video data
+      // FIX: Always try to process the last available frame, not just when it's "new"
+      // The double buffer always provides the last valid frame, so we should always use it
       multi_source_frame_t *frame_to_use = got_new_frame ? &current_frame : NULL;
 
+      // If we have valid frame data, always process it for consistent ASCII generation
       if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
         // Parse the image data
         // Format: [width:4][height:4][rgb_data:w*h*3]
@@ -402,7 +417,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         // Validate dimensions are reasonable (max 4K resolution)
         if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
           log_error("Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)",
-                    client->client_id, img_width, img_height);
+                    client_id_snapshot, img_width, img_height);
           // Clean up the current frame if we got a new one
           if (got_new_frame) {
             data_buffer_pool_t *pool = data_buffer_pool_get_global();
@@ -420,7 +435,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
         if (frame_to_use->size != expected_size) {
           log_error("Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
-                    client->client_id, frame_to_use->size, expected_size, img_width, img_height);
+                    client_id_snapshot, frame_to_use->size, expected_size, img_width, img_height);
           // Clean up the current frame if we got a new one
           if (got_new_frame) {
             data_buffer_pool_t *pool = data_buffer_pool_get_global();
@@ -462,7 +477,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       source_count++;
     }
   }
-  rwlock_unlock(&g_client_manager_rwlock);
+  rwlock_rdunlock(&g_client_manager_rwlock);
 
   // Count sources that actually have video data
   int sources_with_video = 0;
@@ -478,11 +493,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     static uint64_t no_sources_count = 0;
     no_sources_count++;
     if (no_sources_count % 30 == 0) { // Log every 30 occurrences (1 second at 30fps)
-      log_info("DEBUG_NO_SOURCES: [%llu] No video sources available for client %u (total_clients=%d, sources_with_video=%d)",
-               no_sources_count, target_client_id, source_count, sources_with_video);
+      log_info(
+          "DEBUG_NO_SOURCES: [%llu] No video sources available for client %u (total_clients=%d, sources_with_video=%d)",
+          no_sources_count, target_client_id, source_count, sources_with_video);
     }
     log_debug("Per-client %u: No video sources available - returning NULL frame", target_client_id);
     *out_size = 0;
+    rwlock_rdunlock(&g_client_manager_rwlock);
     return NULL;
   }
 
@@ -502,6 +519,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (!single_source) {
       log_error("Logic error: sources_with_video=1 but no source found");
       *out_size = 0;
+      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
     // Single source - check if target client wants half-block mode for 2x resolution
@@ -529,6 +547,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       for (int i = 0; i < source_count; i++) {
         image_destroy_to_pool(sources[i].image);
       }
+      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
 
@@ -595,6 +614,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       for (int i = 0; i < source_count; i++) {
         image_destroy_to_pool(sources[i].image);
       }
+      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
 
@@ -683,6 +703,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         for (int i = 0; i < source_count; i++) {
           image_destroy_to_pool(sources[i].image);
         }
+        rwlock_rdunlock(&g_client_manager_rwlock);
         return NULL;
       }
       image_clear(composite);
@@ -744,6 +765,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
               for (int j = 0; j < source_count; j++) {
                 image_destroy_to_pool(sources[j].image);
               }
+              rwlock_rdunlock(&g_client_manager_rwlock);
               return NULL;
             }
             image_clear(composite);
@@ -824,6 +846,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (!composite) {
       log_error("Per-client %u: Failed to create empty image", target_client_id);
       *out_size = 0;
+      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
     image_clear(composite);
@@ -833,33 +856,44 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   client_info_t *target_client = find_client_by_id_fast(target_client_id);
   char *ascii_frame = NULL;
 
-  if (target_client && target_client->has_terminal_caps) {
-    // Use capability-aware ASCII conversion for better terminal compatibility
+  if (target_client) {
+    // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
+    // This prevents deadlocks when called concurrently with other functions that follow proper ordering
+    rwlock_rdlock(&g_client_manager_rwlock);
     mutex_lock(&target_client->client_state_mutex);
+    uint32_t client_id_snapshot = atomic_load(&target_client->client_id);
+    bool has_terminal_caps_snapshot = target_client->has_terminal_caps;
     terminal_capabilities_t caps_snapshot = target_client->terminal_caps;
     mutex_unlock(&target_client->client_state_mutex);
+    rwlock_rdunlock(&g_client_manager_rwlock);
 
-    if (target_client->client_palette_initialized) {
-      // Render with client's custom palette using enhanced capabilities
-      if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
-        ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false,
-                                                      target_client->client_palette_chars,
-                                                      target_client->client_luminance_palette);
+    if (client_id_snapshot != 0 && has_terminal_caps_snapshot) {
+      if (target_client->client_palette_initialized) {
+        // Render with client's custom palette using enhanced capabilities
+        if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
+          ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false,
+                                                        target_client->client_palette_chars,
+                                                        target_client->client_luminance_palette);
+        } else {
+          // Use composite dimensions for ASCII conversion (full composite height for vertical layout)
+          ascii_frame = ascii_convert_with_capabilities(composite, composite->w, composite->h, &caps_snapshot, true,
+                                                        false, target_client->client_palette_chars,
+                                                        target_client->client_luminance_palette);
+        }
       } else {
-        // Use composite dimensions for ASCII conversion (full composite height for vertical layout)
-        ascii_frame = ascii_convert_with_capabilities(composite, composite->w, composite->h, &caps_snapshot, true,
-                                                      false, target_client->client_palette_chars,
-                                                      target_client->client_luminance_palette);
+        // Client palette not initialized - this is an error condition
+        log_error("Client %u palette not initialized - cannot render frame", target_client_id);
+        ascii_frame = NULL;
       }
     } else {
-      // Client palette not initialized - this is an error condition
-      log_error("Client %u palette not initialized - cannot render frame", target_client_id);
+      // Don't send frames until we receive client capabilities - saves bandwidth and CPU
+      log_debug("Per-client %u: Waiting for terminal capabilities before sending frames (no capabilities received yet)",
+                target_client_id);
       ascii_frame = NULL;
     }
   } else {
-    // Don't send frames until we receive client capabilities - saves bandwidth and CPU
-    log_debug("Per-client %u: Waiting for terminal capabilities before sending frames (no capabilities received yet)",
-              target_client_id);
+    // Target client not found
+    log_debug("Per-client %u: Target client not found", target_client_id);
     ascii_frame = NULL;
   }
 
@@ -869,16 +903,15 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     static uint64_t success_count = 0;
     success_count++;
     if (success_count % 30 == 0) { // Log every 30 successful frames (1 second at 30fps)
-      log_info("DEBUG_FRAME_SUCCESS: [%llu] Successfully generated ASCII frame for client %u (size=%zu)",
-               success_count, target_client_id, *out_size);
+      log_info("DEBUG_FRAME_SUCCESS: [%llu] Successfully generated ASCII frame for client %u (size=%zu)", success_count,
+               target_client_id, *out_size);
     }
   } else {
     // DEBUG: Track frame generation failures
     static uint64_t fail_count = 0;
     fail_count++;
     if (fail_count % 30 == 0) { // Log every 30 failures
-      log_info("DEBUG_FRAME_FAIL: [%llu] Failed to convert image to ASCII for client %u",
-               fail_count, target_client_id);
+      log_info("DEBUG_FRAME_FAIL: [%llu] Failed to convert image to ASCII for client %u", fail_count, target_client_id);
     }
     log_error("Per-client %u: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;

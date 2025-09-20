@@ -161,9 +161,8 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   }
 
   // Create media source for the specified device
-  log_error("DEBUG: About to activate device %d of %d total devices", device_index, count);
   hr = IMFActivate_ActivateObject(devices[device_index], &IID_IMFMediaSource, (void **)&cam->device);
-  log_error("DEBUG: ActivateObject returned: 0x%08x", hr);
+  log_info("IMFActivate_ActivateObject returned: 0x%08x", hr);
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to activate MF device: 0x%08x", hr);
@@ -171,48 +170,27 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     log_error("  0x80070005 = E_ACCESSDENIED (device in use)");
     log_error("  0xc00d3704 = Device already in use");
     log_error("  0xc00d3e85 = MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED");
-
-    // Exit immediately on ANY failure - device is likely in use
-    log_error("Camera is already in use by another application.");
-    log_error("");
-    log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
-    log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
-    log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
-    log_error("");
-    log_error("Example: ascii-chat-client --test-pattern");
-    log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
-    exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+    result = ASCIICHAT_ERR_WEBCAM_IN_USE;
+    goto error;
   }
 
   // Create source reader
-  log_error("DEBUG: About to create source reader from media source");
   hr = MFCreateSourceReaderFromMediaSource(cam->device, NULL, &cam->reader);
-  log_error("DEBUG: MFCreateSourceReaderFromMediaSource returned: 0x%08x", hr);
+  log_info("MFCreateSourceReaderFromMediaSource returned: 0x%08x", hr);
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
-
-    // Exit immediately on ANY failure
-    log_error("Camera became unavailable (possibly in use by another application).");
-    log_error("");
-    log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
-    log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
-    log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
-    log_error("");
-    log_error("Example: ascii-chat-client --test-pattern");
-    log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
-    exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+    result = ASCIICHAT_ERR_WEBCAM_IN_USE;
+    goto error;
   }
 
   // IMPORTANT: Select the video stream first before configuring
-  log_info("About to call IMFSourceReader_SetStreamSelection (deselect all)");
   hr = IMFSourceReader_SetStreamSelection(cam->reader, MF_SOURCE_READER_ALL_STREAMS, FALSE);
   log_info("SetStreamSelection (deselect all) returned: 0x%08x", hr);
   if (FAILED(hr)) {
     log_warn("Failed to deselect all streams: 0x%08x", hr);
   }
 
-  log_info("About to call IMFSourceReader_SetStreamSelection (select video stream)");
   hr = IMFSourceReader_SetStreamSelection(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, TRUE);
   log_info("SetStreamSelection (select video) returned: 0x%08x", hr);
   if (FAILED(hr)) {
@@ -250,12 +228,12 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG))
         format_name = "MJPEG";
 
+      log_info("Found format %s at index %d, attempting to set", format_name, mediaTypeIndex);
+
       if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2) || IsEqualGUID(&subtype, &MFVideoFormat_NV12) ||
           IsEqualGUID(&subtype, &MFVideoFormat_RGB24) || IsEqualGUID(&subtype, &MFVideoFormat_RGB32) ||
           IsEqualGUID(&subtype, &MFVideoFormat_MJPG)) {
 
-        log_info("Found format %s at index %d, attempting to set", format_name, mediaTypeIndex);
-        log_info("About to call IMFSourceReader_SetCurrentMediaType at index %d", mediaTypeIndex);
         hr = IMFSourceReader_SetCurrentMediaType(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, nativeType);
         log_info("SetCurrentMediaType returned: 0x%08x", hr);
         if (SUCCEEDED(hr)) {
@@ -274,7 +252,6 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   }
 
   // Flush the reader to clear any buffered data
-  log_info("About to call IMFSourceReader_Flush");
   hr = IMFSourceReader_Flush(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM);
   log_info("IMFSourceReader_Flush returned: 0x%08x", hr);
   if (FAILED(hr)) {
@@ -304,10 +281,6 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     log_warn("Could not get media type, using default 640x480");
   }
 
-  // Test exclusive access by attempting to read a frame immediately
-  // This will fail if another process already has the webcam open
-  log_error("DEBUG: Testing exclusive webcam access by attempting to read a frame...");
-
   DWORD streamIndex, flags;
   LONGLONG timestamp;
   IMFSample *sample = NULL;
@@ -318,16 +291,6 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read test frame during initialization: 0x%08x", hr);
-
-    // Print user-friendly message to stderr so user can see it
-    fprintf(stderr, "\nERROR: Camera is already in use by another application.\n");
-    fprintf(stderr, "Windows allows only one application to access the webcam at a time.\n\n");
-    fprintf(stderr, "To use ASCII-Chat with multiple clients, try these alternatives:\n");
-    fprintf(stderr, "  --test-pattern    Generate a colorful test pattern instead of using webcam\n");
-    fprintf(stderr, "  --file VIDEO.mp4  Use a video file as input (to be implemented)\n\n");
-    fprintf(stderr, "Example: ascii-chat-client --test-pattern\n\n");
-
-    // Clean up allocated resources before exiting
     result = ASCIICHAT_ERR_WEBCAM_IN_USE;
     goto error;
   }
@@ -336,8 +299,6 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   if (sample) {
     IMFSample_Release(sample);
   }
-
-  log_info("Webcam exclusive access confirmed - test read succeeded");
 
   // Cleanup enumeration resources on success
   if (devices) {
@@ -382,7 +343,9 @@ error:
   if (cam->com_initialized) {
     CoUninitialize();
   }
-  SAFE_FREE(cam);
+  if (cam) {
+    SAFE_FREE(cam);
+  }
   return result;
 }
 
@@ -419,8 +382,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  log_error("DEBUG: webcam_read_context call #%d - attempting to read from reader=%p", call_count, ctx->reader);
-
   HRESULT hr;
   IMFSample *sample = NULL;
   DWORD streamIndex, flags;
@@ -428,11 +389,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Read a sample from the source reader
   // Use 0 for synchronous blocking read (DRAIN flag was wrong - that's for EOF)
-  hr = IMFSourceReader_ReadSample(ctx->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+  hr = IMFSourceReader_ReadSample(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
                                   0, // Regular synchronous read
                                   &streamIndex, &flags, &timestamp, &sample);
-
-  log_error("DEBUG: ReadSample returned hr=0x%08x, flags=0x%08x, sample=%p", hr, flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {
@@ -456,15 +415,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     log_error("  0xc00d36c4 = MF_E_HW_MFT_FAILED_START_STREAMING");
 
     // Exit immediately on FIRST error - device is likely in use
-    log_error("Unable to read from webcam - device is in use by another application.");
-    log_error("Windows allows only one application to access the webcam at a time.");
-    log_error("");
-    log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
-    log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
-    log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
-    log_error("");
-    log_error("Example: ascii-chat-client --test-pattern");
-    log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
     exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
   }
 
@@ -478,16 +428,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
     } else if (null_count > 50) {
       // Too many consecutive NULL samples - likely exclusive access issue
-      log_error("CRITICAL: Received %d consecutive NULL samples from webcam", null_count);
-      log_error("This usually indicates the webcam is in use by another application.");
-      log_error("Windows allows only one application to access the webcam at a time.");
-      log_error("");
-      log_error("To use ASCII-Chat with multiple clients, try these alternatives:");
-      log_error("  --test-pattern    Generate a colorful test pattern instead of using webcam");
-      log_error("  --file VIDEO.mp4  Use a video file as input (to be implemented)");
-      log_error("");
-      log_error("Example: ascii-chat-client --test-pattern");
-      log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
       exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
     }
     return NULL;
@@ -533,7 +473,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Query the ACTUAL format from Media Foundation - NO GUESSING!
   IMFMediaType *currentType = NULL;
-  HRESULT hr2 = IMFSourceReader_GetCurrentMediaType(ctx->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
+  HRESULT hr2 = IMFSourceReader_GetCurrentMediaType(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
 
   if (FAILED(hr2)) {
     log_error("Failed to get current media type: 0x%08x", hr2);
@@ -606,9 +546,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG))
     formatName = "MJPEG";
 
-  log_info("MF Format: %s %dx%d, stride=%u, buffer=%u bytes", formatName, actualWidth, actualHeight, stride,
-           bufferLength);
-
   IMFMediaType_Release(currentType);
 
   // Create image_t structure with ACTUAL dimensions
@@ -627,8 +564,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       img->pixels[i].g = bufferData[i * 3 + 1]; // G
       img->pixels[i].r = bufferData[i * 3 + 2]; // R
     }
-    log_info("Converted RGB24 frame");
-
   } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) {
     // RGB32 format (BGRX order in Media Foundation)
     for (UINT32 i = 0; i < actualWidth * actualHeight; i++) {
@@ -637,8 +572,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       img->pixels[i].r = bufferData[i * 4 + 2]; // R
       // Skip alpha channel at [i * 4 + 3]
     }
-    log_info("Converted RGB32 frame");
-
   } else if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) {
     // NV12 format: Y plane followed by interleaved UV plane
     // Y plane: one byte per pixel
@@ -676,8 +609,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
         img->pixels[pixelIndex].b = clamp_rgb(B);
       }
     }
-    log_info("Converted NV12 frame");
-
   } else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) {
     // YUY2 format: packed Y0 U Y1 V (4 bytes = 2 pixels)
     // Use the stride from Media Foundation for proper row alignment
@@ -730,9 +661,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
         }
       }
     }
-
-    log_info("Converted YUY2 frame");
-
   } else {
     // Unsupported format
     log_error("Unsupported format from Media Foundation: %s", formatName);

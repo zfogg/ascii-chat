@@ -34,7 +34,8 @@ int server_connection_init();
  * @param first_connection True if this is the initial connection
  * @return 0 on success, negative on error
  */
-int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection, bool has_ever_connected);
+int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
+                                bool has_ever_connected);
 
 /**
  * @brief Check if server connection is currently active
