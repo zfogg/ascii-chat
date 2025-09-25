@@ -1,3 +1,13 @@
+// Platform-specific malloc size headers - MUST come before common.h
+// to avoid conflicts with debug memory macros
+#ifdef _WIN32
+#include <malloc.h> // For _msize
+#elif defined(__APPLE__)
+#include <malloc/malloc.h> // For malloc_size on macOS
+#elif defined(__GLIBC__)
+#include <malloc.h> // For malloc_usable_size on Linux
+#endif
+
 #include "common.h"
 #include "platform/abstraction.h"
 #include "platform/system.h"
@@ -7,15 +17,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
-
-// Platform-specific malloc size headers
-#ifdef _WIN32
-#include <malloc.h> // For _msize
-#elif defined(__APPLE__)
-#include <malloc/malloc.h> // For malloc_size on macOS
-#elif defined(__GLIBC__)
-#include <malloc.h> // For malloc_usable_size on Linux
-#endif
 
 // Global frame rate variable - can be set via command line
 int g_max_fps = 0; // 0 means use default
