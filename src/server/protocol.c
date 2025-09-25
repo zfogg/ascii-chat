@@ -250,10 +250,8 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   // Handle stream start request
   if (len == sizeof(uint32_t)) {
     uint32_t stream_type = ntohl(*(uint32_t *)data);
-    log_info("DEBUG_STREAM_START: stream_type=0x%X (VIDEO=%d, AUDIO=%d)",
-             stream_type,
-             (stream_type & STREAM_TYPE_VIDEO) ? 1 : 0,
-             (stream_type & STREAM_TYPE_AUDIO) ? 1 : 0);
+    log_info("DEBUG_STREAM_START: stream_type=0x%X (VIDEO=%d, AUDIO=%d)", stream_type,
+             (stream_type & STREAM_TYPE_VIDEO) ? 1 : 0, (stream_type & STREAM_TYPE_AUDIO) ? 1 : 0);
 
     // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
     // This prevents deadlocks and ensures thread safety for client state modifications
@@ -264,7 +262,8 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
       // Don't set is_sending_video=true here - wait for first IMAGE_FRAME
       // This prevents the race condition where server tries to generate frames
       // before client has sent any video data
-      log_info("DEBUG_STREAM_START: Client %u announced intention to send video (waiting for first frame)", atomic_load(&client->client_id));
+      log_info("DEBUG_STREAM_START: Client %u announced intention to send video (waiting for first frame)",
+               atomic_load(&client->client_id));
     }
     if (stream_type & STREAM_TYPE_AUDIO) {
       atomic_store(&client->is_sending_audio, true);

@@ -272,7 +272,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     log_set_terminal_output(false);
     display_full_reset();
     first_frame_rendered = true;
-    g_server_state_initialized = true; // Mark as initialized
+    g_server_state_initialized = true;        // Mark as initialized
     g_should_clear_before_next_frame = false; // Clear any pending clear request
     log_debug("CLIENT_DISPLAY: Display cleared, ready for ASCII frames");
   } else if (g_should_clear_before_next_frame) {

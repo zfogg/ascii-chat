@@ -373,8 +373,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           if (frame && frame->data && frame->size > 0) {
             // DEBUG: Log successful frame retrieval
             if (frame_gen_count % 30 == 0) {
-              log_info("DEBUG_FRAME_RETRIEVED: Client %u has video frame available (size=%zu)",
-                       client_id_snapshot, frame->size);
+              log_info("DEBUG_FRAME_RETRIEVED: Client %u has video frame available (size=%zu)", client_id_snapshot,
+                       frame->size);
             }
             // We have frame data - copy it to our working structure
             data_buffer_pool_t *pool = data_buffer_pool_get_global();
