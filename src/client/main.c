@@ -88,7 +88,7 @@
  * ============================================================================ */
 
 /** Global flag indicating shutdown has been requested */
-static atomic_bool g_should_exit = false;
+atomic_bool g_should_exit = false;
 
 /**
  * Check if shutdown has been requested

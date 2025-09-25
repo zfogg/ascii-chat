@@ -262,17 +262,25 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // Check if we need to clear console before rendering this frame
-  if (g_should_clear_before_next_frame) {
-    // Disable terminal logging before clearing display for clean ASCII display
+  // IMPORTANT: We track if this is the first frame to ensure proper initialization
+  static bool first_frame_rendered = false;
+
+  if (!first_frame_rendered) {
+    // Always clear display and disable logging before rendering the first frame
+    // This ensures clean ASCII display regardless of packet arrival order
+    log_info("CLIENT_DISPLAY: First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
-    // Clear display and render first frame
+    display_full_reset();
+    first_frame_rendered = true;
+    g_server_state_initialized = true; // Mark as initialized
+    g_should_clear_before_next_frame = false; // Clear any pending clear request
+    log_debug("CLIENT_DISPLAY: Display cleared, ready for ASCII frames");
+  } else if (g_should_clear_before_next_frame) {
+    // Subsequent clear request from server (e.g., after client list changes)
+    log_debug("CLIENT_DISPLAY: Clearing display for layout change");
+    log_set_terminal_output(false);
     display_full_reset();
     g_should_clear_before_next_frame = false;
-  } else if (!g_server_state_initialized) {
-    // First frame received before any state packet - clear display and disable logging
-    log_set_terminal_output(false);
-    display_full_reset();
-    g_server_state_initialized = true; // Mark as initialized to prevent repeated clearing
   }
 
   // Safety check before rendering
@@ -315,7 +323,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     last_render_time = current_time;
   }
 
+  log_debug("CLIENT_RENDER: Calling display_render_frame with %u bytes", header.original_size);
   display_render_frame(frame_data, take_snapshot);
+  log_debug("CLIENT_RENDER: Frame rendered successfully");
 
   free(frame_data);
 }
@@ -462,8 +472,12 @@ static void *data_reception_thread_func(void *arg) {
       break;
     }
 
+    // DEBUG: Log all packet types received
+    log_debug("CLIENT_RECV: Received packet type=%d, len=%zu", type, len);
+
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
+      log_debug("CLIENT_RECV: Processing ASCII_FRAME packet, len=%zu", len);
       handle_ascii_frame_packet(data, len);
       break;
 

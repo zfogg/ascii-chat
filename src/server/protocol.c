@@ -220,8 +220,8 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * - Bitmask containing STREAM_TYPE_VIDEO and/or STREAM_TYPE_AUDIO
  *
  * STATE CHANGES PERFORMED:
- * - Sets client->is_sending_video = true if STREAM_TYPE_VIDEO present
- * - Sets client->is_sending_audio = true if STREAM_TYPE_AUDIO present
+ * - VIDEO: Records intention to send video (is_sending_video set by first IMAGE_FRAME)
+ * - AUDIO: Sets client->is_sending_audio = true if STREAM_TYPE_AUDIO present
  * - Enables render threads to include this client in output generation
  *
  * PROTOCOL BEHAVIOR:
@@ -245,9 +245,15 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
+  log_info("DEBUG_STREAM_START: Received STREAM_START packet from client %u", atomic_load(&client->client_id));
+
   // Handle stream start request
   if (len == sizeof(uint32_t)) {
     uint32_t stream_type = ntohl(*(uint32_t *)data);
+    log_info("DEBUG_STREAM_START: stream_type=0x%X (VIDEO=%d, AUDIO=%d)",
+             stream_type,
+             (stream_type & STREAM_TYPE_VIDEO) ? 1 : 0,
+             (stream_type & STREAM_TYPE_AUDIO) ? 1 : 0);
 
     // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
     // This prevents deadlocks and ensures thread safety for client state modifications
@@ -255,10 +261,14 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
     mutex_lock(&client->client_state_mutex);
 
     if (stream_type & STREAM_TYPE_VIDEO) {
-      atomic_store(&client->is_sending_video, true);
+      // Don't set is_sending_video=true here - wait for first IMAGE_FRAME
+      // This prevents the race condition where server tries to generate frames
+      // before client has sent any video data
+      log_info("DEBUG_STREAM_START: Client %u announced intention to send video (waiting for first frame)", atomic_load(&client->client_id));
     }
     if (stream_type & STREAM_TYPE_AUDIO) {
       atomic_store(&client->is_sending_audio, true);
+      log_info("DEBUG_STREAM_START: Set is_sending_audio=true for client %u", atomic_load(&client->client_id));
     }
 
     mutex_unlock(&client->client_state_mutex);
@@ -266,11 +276,13 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 
     // Log after releasing locks to avoid holding locks during I/O
     if (stream_type & STREAM_TYPE_VIDEO) {
-      log_info("Client %u started video stream", atomic_load(&client->client_id));
+      log_info("Client %u announced video stream (waiting for first frame)", atomic_load(&client->client_id));
     }
     if (stream_type & STREAM_TYPE_AUDIO) {
       log_info("Client %u started audio stream", atomic_load(&client->client_id));
     }
+  } else {
+    log_error("DEBUG_STREAM_START: Invalid packet length %zu (expected %zu)", len, sizeof(uint32_t));
   }
 }
 

@@ -540,8 +540,11 @@ int capture_start_thread() {
 #endif
 
   // Notify server we're starting to send video
+  log_info("DEBUG_STREAM_START: Sending STREAM_START packet to server (STREAM_TYPE_VIDEO)");
   if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {
     log_error("Failed to send stream start packet");
+  } else {
+    log_info("DEBUG_STREAM_START: Successfully sent STREAM_START packet");
   }
 
   return 0;

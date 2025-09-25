@@ -293,9 +293,7 @@ void log_truncate_if_large(void) {
   mutex_unlock(&g_log.mutex);
 }
 
-// Check if we're shutting down - defined in server/main.c and client/main.c
-// We use a weak symbol so it's optional - if not linked, it's NULL
-__attribute__((weak)) extern atomic_bool g_should_exit;
+extern atomic_bool g_should_exit;
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
   // Simple approach: just check if initialized
@@ -305,8 +303,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   // Skip logging entirely if we're shutting down to avoid mutex issues
-  // The weak symbol might be NULL if not linked with server/client
-  if (&g_should_exit && atomic_load(&g_should_exit)) {
+  if (atomic_load(&g_should_exit)) {
     return; // Don't try to log during shutdown - avoids deadlocks
   }
 
