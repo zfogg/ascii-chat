@@ -1,9 +1,14 @@
 #include <stdint.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include "logging.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+
+// Define g_should_exit for test builds to satisfy linker
+atomic_bool g_should_exit = false;
 
 // Global variables to store original file descriptors for restoration
 static int original_stdout_fd = -1;
