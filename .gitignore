@@ -20,3 +20,7 @@ coverage_html/
 /build_*/
 
 /tests/fixtures/*
+
+/nul
+
+/logs/

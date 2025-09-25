@@ -415,11 +415,27 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     }
   }
 
+  // Initialize mutexes BEFORE creating any threads to prevent race conditions
+  // These mutexes might be accessed by receive thread which starts before render threads
+  if (mutex_init(&client->client_state_mutex) != 0) {
+    log_error("Failed to initialize client state mutex for client %u", atomic_load(&client->client_id));
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    return -1;
+  }
+
+  if (rwlock_init(&client->video_buffer_rwlock) != 0) {
+    log_error("Failed to initialize video buffer rwlock for client %u", atomic_load(&client->client_id));
+    mutex_destroy(&client->client_state_mutex);
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    return -1;
+  }
+
   rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Start threads for this client
   if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
     log_error("Failed to create receive thread for client %u", atomic_load(&client->client_id));
+    // Don't destroy mutexes here - remove_client() will handle it
     remove_client(atomic_load(&client->client_id));
     return -1;
   }
@@ -568,10 +584,14 @@ int remove_client(uint32_t client_id) {
   }
 
   // Destroy mutexes and rwlocks
+  // IMPORTANT: Always destroy these even if threads didn't join properly
+  // to prevent issues when the slot is reused
   rwlock_destroy(&target_client->video_buffer_rwlock);
   mutex_destroy(&target_client->client_state_mutex);
 
   // Clear client structure
+  // NOTE: After memset, the mutex handles are zeroed but the OS resources
+  // have been released by the destroy calls above
   memset(target_client, 0, sizeof(client_info_t));
 
   // Recalculate client count

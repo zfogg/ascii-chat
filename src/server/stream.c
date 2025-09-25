@@ -345,6 +345,13 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     // Include ALL active clients in the grid, not just those sending video
     // Thread-safe check for active client - use atomic read to avoid deadlock
     bool is_active = atomic_load(&client->active);
+    bool is_sending_video = atomic_load(&client->is_sending_video);
+
+    // DEBUG: Log client state for tracking intermittent bug
+    if (frame_gen_count % 30 == 0 && is_active) {
+      log_info("DEBUG_CLIENT_STATE: Client %u - active=%d, is_sending_video=%d, checking_for_source",
+               client_id_snapshot, is_active, is_sending_video);
+    }
 
     if (is_active && source_count < MAX_CLIENTS) {
       sources[source_count].client_id = client_id_snapshot;
@@ -357,13 +364,18 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
       // Always try to get the last available video frame for consistent ASCII generation
       // The double buffer ensures we always have the last valid frame
-      if (atomic_load(&client->is_sending_video)) {
+      if (is_sending_video) {
         // Use the new double-buffered video frame API
         if (client->incoming_video_buffer) {
           // Get the latest frame (always available from double buffer)
           const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
 
           if (frame && frame->data && frame->size > 0) {
+            // DEBUG: Log successful frame retrieval
+            if (frame_gen_count % 30 == 0) {
+              log_info("DEBUG_FRAME_RETRIEVED: Client %u has video frame available (size=%zu)",
+                       client_id_snapshot, frame->size);
+            }
             // We have frame data - copy it to our working structure
             data_buffer_pool_t *pool = data_buffer_pool_get_global();
             if (pool) {

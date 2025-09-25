@@ -851,18 +851,8 @@ int create_client_render_threads(client_info_t *client) {
   log_info("Creating render threads for client %u", client->client_id);
 #endif
 
-  // Initialize per-client mutex
-  if (mutex_init(&client->client_state_mutex) != 0) {
-    log_error("Failed to initialize client state mutex for client %u", client->client_id);
-    return -1;
-  }
-
-  // THREAD-SAFE FRAMEBUFFER: Initialize per-client video buffer rwlock
-  if (rwlock_init(&client->video_buffer_rwlock) != 0) {
-    log_error("Failed to initialize video buffer rwlock for client %u", client->client_id);
-    mutex_destroy(&client->client_state_mutex);
-    return -1;
-  }
+  // NOTE: Mutexes are already initialized in add_client() before any threads start
+  // This prevents race conditions where receive thread tries to use uninitialized mutexes
 
   // Initialize render thread control flags
   atomic_store(&client->video_render_thread_running, false);
@@ -871,8 +861,7 @@ int create_client_render_threads(client_info_t *client) {
   // Create video rendering thread
   if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
-    rwlock_destroy(&client->video_buffer_rwlock);
-    mutex_destroy(&client->client_state_mutex);
+    // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
   log_info("Created video render thread for client %u", client->client_id);
@@ -887,8 +876,7 @@ int create_client_render_threads(client_info_t *client) {
     atomic_store(&client->video_render_thread_running, false);
     // Note: thread cancellation not available in platform abstraction
     ascii_thread_join(&client->video_render_thread, NULL);
-    rwlock_destroy(&client->video_buffer_rwlock);
-    mutex_destroy(&client->client_state_mutex);
+    // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
   log_info("Created audio render thread for client %u", client->client_id);
@@ -1011,7 +999,7 @@ void stop_client_render_threads(client_info_t *client) {
         log_warn("Video render thread for client %u timed out during shutdown (continuing)", client->client_id);
         // Don't call CloseHandle/cleanup on timeout - thread might still be running
         memset(&client->video_render_thread, 0, sizeof(asciithread_t));
-        return; // Skip audio thread join to prevent further hangs
+        // Continue with audio thread join and cleanup instead of returning early
       }
     } else {
       log_info("stop_client_render_threads: Calling ascii_thread_join for video thread of client %u",
@@ -1044,7 +1032,7 @@ void stop_client_render_threads(client_info_t *client) {
       if (result == -2) {
         log_warn("Audio render thread for client %u timed out during shutdown (continuing)", client->client_id);
         memset(&client->audio_render_thread, 0, sizeof(asciithread_t));
-        return; // Don't continue with cleanup if threads won't exit
+        // Continue with cleanup even if thread timed out
       }
     } else {
       result = ascii_thread_join(&client->audio_render_thread, NULL);

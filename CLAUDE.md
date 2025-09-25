@@ -413,6 +413,16 @@ SAFE_STRNCPY(dest, src, sizeof(dest));
 
 ## Debugging Techniques
 
+### Windows Command Execution Notes
+
+**IMPORTANT**: When working in the Windows bash environment:
+- You are running in a bash shell, NOT PowerShell or CMD
+- To run PowerShell commands, use: `powershell -Command "Your-Command"`
+- To run PowerShell scripts, use: `./script.ps1` or `powershell ./script.ps1`
+- Use double slashes for Windows command flags: `taskkill //F //IM` not `/F /IM`
+- For delays, use `sleep` (bash) not `Start-Sleep` (PowerShell)
+- Background processes: use `&` at the end of commands
+
 ### 1. Environment Variables
 
 **Supported Environment Variables:**
@@ -482,7 +492,11 @@ windbg ./build/bin/ascii-chat-server.exe # Windows
 lsof -p $(pgrep server)             # Unix file descriptors
 ps -M $(pgrep server)               # macOS threads
 ps -eLf | grep server               # Linux threads
-tasklist /FI "IMAGENAME eq server.exe" # Windows processes
+tasklist //FI "IMAGENAME eq server.exe" # Windows processes (NOTE: double slashes from bash!)
+
+# Windows process termination (NOTE: Use double slashes from bash!)
+taskkill //F //IM ascii-chat-server.exe   # Force kill by image name
+taskkill //F //IM ascii-chat-client.exe   # Force kill client
 ```
 
 ## Network Protocol

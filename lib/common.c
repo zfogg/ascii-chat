@@ -20,9 +20,6 @@
 // Global frame rate variable - can be set via command line
 int g_max_fps = 0; // 0 means use default
 
-// Weak definition of g_should_exit for library/test builds
-// This can be overridden by the actual server/client definitions
-__attribute__((weak)) atomic_bool g_should_exit = false;
 
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double MB = 1024.0 * 1024.0;
