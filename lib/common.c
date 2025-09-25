@@ -20,7 +20,6 @@
 // Global frame rate variable - can be set via command line
 int g_max_fps = 0; // 0 means use default
 
-
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double MB = 1024.0 * 1024.0;
   const double GB = MB * 1024.0;
