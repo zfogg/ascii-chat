@@ -153,6 +153,10 @@
 #include "aspect_ratio.h"
 #include "crc32_hw.h"
 
+// Global client manager from client.c - needed for any_clients_sending_video()
+extern rwlock_t g_client_manager_rwlock;
+extern client_manager_t g_client_manager;
+
 /* ============================================================================
  * Client Lookup Utilities
  * ============================================================================
@@ -1030,4 +1034,40 @@ int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t
   }
 
   return packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO, audio_data, data_size, 0, true);
+}
+
+/**
+ * @brief Check if any connected clients are currently sending video
+ *
+ * This function scans all active clients to determine if at least one is
+ * sending video frames. Used by render threads to avoid generating frames
+ * when no video sources are available (e.g., during webcam warmup).
+ *
+ * @return true if at least one client has is_sending_video flag set, false otherwise
+ */
+bool any_clients_sending_video(void) {
+  bool has_video = false;
+
+  // Acquire read lock to check all clients
+  rwlock_rdlock(&g_client_manager_rwlock);
+
+  // Iterate through all client slots
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+
+    // Skip uninitialized clients
+    if (atomic_load(&client->client_id) == 0) {
+      continue;
+    }
+
+    // Check if client is active and sending video
+    if (atomic_load(&client->active) && atomic_load(&client->is_sending_video)) {
+      has_video = true;
+      break;
+    }
+  }
+
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  return has_video;
 }

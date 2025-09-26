@@ -6,11 +6,11 @@
 #include "platform/terminal.h"
 #include "crc32_hw.h"
 
-// Timeout constants (in seconds)
-#define CONNECT_TIMEOUT 10
-#define SEND_TIMEOUT 10
-#define RECV_TIMEOUT 30
-#define ACCEPT_TIMEOUT 1 // Reduced from 10 to allow faster shutdown on SIGINT
+// Timeout constants (in seconds) - tuned for real-time video streaming
+#define CONNECT_TIMEOUT 15 // Initial connection can take time on slow networks
+#define SEND_TIMEOUT 5     // Video frames need timely delivery
+#define RECV_TIMEOUT 15    // If no data in 15 sec, connection is likely dead
+#define ACCEPT_TIMEOUT 3   // Balance between responsiveness and CPU usage
 
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60

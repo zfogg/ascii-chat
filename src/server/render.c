@@ -473,6 +473,16 @@ void *client_video_render_thread(void *arg) {
     static uint64_t render_attempts = 0;
     render_attempts++;
 
+    // Check if any clients are sending video before attempting to generate frames
+    // This prevents unnecessary processing during webcam warmup
+    if (!any_clients_sending_video()) {
+      // No clients sending video yet - wait for webcam warmup
+      // Sleep a bit longer to reduce CPU usage during warmup
+      platform_sleep_usec(50000); // 50ms - reduce polling frequency during warmup
+      last_render_time = current_time;
+      continue;
+    }
+
     char *ascii_frame =
         create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
 

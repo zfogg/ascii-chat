@@ -479,7 +479,7 @@ int main(int argc, char *argv[]) {
   log_info("SERVER: Creating listen socket...");
   listenfd = socket_create(AF_INET, SOCK_STREAM, 0);
   if (listenfd == INVALID_SOCKET_VALUE) {
-    log_fatal("Failed to create socket: %s", strerror(errno));
+    log_fatal("Failed to create socket: %s", SAFE_STRERROR(errno));
     exit(1);
   }
   log_info("SERVER: Listen socket created (fd=%d)", listenfd);
@@ -493,24 +493,24 @@ int main(int argc, char *argv[]) {
   // Set socket options
   int yes = 1;
   if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-    log_fatal("setsockopt SO_REUSEADDR failed: %s", strerror(errno));
+    log_fatal("setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
     exit(ASCIICHAT_ERR_NETWORK);
   }
 
   // If we Set keep-alive on the listener before accept(), connfd will inherit it.
   if (set_socket_keepalive(listenfd) < 0) {
-    log_warn("Failed to set keep-alive on listener: %s", strerror(errno));
+    log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
   }
 
   // Bind socket
   if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    log_fatal("Socket bind failed: %s", strerror(errno));
+    log_fatal("Socket bind failed: %s", SAFE_STRERROR(errno));
     exit(1);
   }
 
   // Listen for connections
   if (socket_listen(listenfd, 10) < 0) {
-    log_fatal("Connection listen failed: %s", strerror(errno));
+    log_fatal("Connection listen failed: %s", SAFE_STRERROR(errno));
     exit(1);
   }
 
