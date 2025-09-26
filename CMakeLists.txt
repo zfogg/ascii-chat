@@ -853,14 +853,13 @@ include(CheckCSourceCompiles)
 include(CheckCSourceRuns)
 
 # User override controls
-set(SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve")
-set_property(CACHE SIMD_MODE PROPERTY STRINGS "auto" "sse2" "ssse3" "avx2" "avx512" "neon" "sve")
+set(SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, neon, sve")
+set_property(CACHE SIMD_MODE PROPERTY STRINGS "auto" "sse2" "ssse3" "avx2" "neon" "sve")
 
 # Initialize SIMD flags
 set(ENABLE_SIMD_SSE2 FALSE)
 set(ENABLE_SIMD_SSSE3 FALSE)
 set(ENABLE_SIMD_AVX2 FALSE)
-set(ENABLE_SIMD_AVX512 FALSE)
 set(ENABLE_SIMD_NEON FALSE)
 set(ENABLE_SIMD_SVE FALSE)
 
@@ -873,8 +872,6 @@ if(NOT SIMD_MODE STREQUAL "auto")
         set(ENABLE_SIMD_SSSE3 TRUE)
     elseif(SIMD_MODE STREQUAL "avx2")
         set(ENABLE_SIMD_AVX2 TRUE)
-    elseif(SIMD_MODE STREQUAL "avx512")
-        set(ENABLE_SIMD_AVX512 TRUE)
     elseif(SIMD_MODE STREQUAL "neon")
         set(ENABLE_SIMD_NEON TRUE)
     elseif(SIMD_MODE STREQUAL "sve")
@@ -911,72 +908,53 @@ else()
                 # Check from highest to lowest, stop when we find support
                 # Higher instruction sets imply lower ones
 
-                # Check for AVX512
+                # Check for AVX2
                 check_c_source_runs("
                     #include <intrin.h>
                     int main() {
                         int info[4];
                         __cpuidex(info, 7, 0);
-                        if (info[1] & (1 << 16) && info[1] & (1 << 30)) // AVX512F and AVX512BW
+                        if (info[1] & (1 << 5)) // AVX2
                             return 0;
                         return 1;
                     }
-                " HAS_AVX512_RUNTIME)
+                " HAS_AVX2_RUNTIME)
 
-                if(HAS_AVX512_RUNTIME)
-                    set(ENABLE_SIMD_AVX512 TRUE)
+                if(HAS_AVX2_RUNTIME)
                     set(ENABLE_SIMD_AVX2 TRUE)
                     set(ENABLE_SIMD_SSSE3 TRUE)
                     set(ENABLE_SIMD_SSE2 TRUE)
                 else()
-                    # Check for AVX2
+                    # Check for SSSE3
                     check_c_source_runs("
                         #include <intrin.h>
                         int main() {
                             int info[4];
-                            __cpuidex(info, 7, 0);
-                            if (info[1] & (1 << 5)) // AVX2
+                            __cpuid(info, 1);
+                            if (info[2] & (1 << 9)) // SSSE3
                                 return 0;
                             return 1;
                         }
-                    " HAS_AVX2_RUNTIME)
+                    " HAS_SSSE3_RUNTIME)
 
-                    if(HAS_AVX2_RUNTIME)
-                        set(ENABLE_SIMD_AVX2 TRUE)
+                    if(HAS_SSSE3_RUNTIME)
                         set(ENABLE_SIMD_SSSE3 TRUE)
                         set(ENABLE_SIMD_SSE2 TRUE)
                     else()
-                        # Check for SSSE3
+                        # Check for SSE2 (baseline for x86_64)
                         check_c_source_runs("
                             #include <intrin.h>
                             int main() {
                                 int info[4];
                                 __cpuid(info, 1);
-                                if (info[2] & (1 << 9)) // SSSE3
+                                if (info[3] & (1 << 26)) // SSE2
                                     return 0;
                                 return 1;
                             }
-                        " HAS_SSSE3_RUNTIME)
+                        " HAS_SSE2_RUNTIME)
 
-                        if(HAS_SSSE3_RUNTIME)
-                            set(ENABLE_SIMD_SSSE3 TRUE)
+                        if(HAS_SSE2_RUNTIME)
                             set(ENABLE_SIMD_SSE2 TRUE)
-                        else()
-                            # Check for SSE2 (baseline for x86_64)
-                            check_c_source_runs("
-                                #include <intrin.h>
-                                int main() {
-                                    int info[4];
-                                    __cpuid(info, 1);
-                                    if (info[3] & (1 << 26)) // SSE2
-                                        return 0;
-                                    return 1;
-                                }
-                            " HAS_SSE2_RUNTIME)
-
-                            if(HAS_SSE2_RUNTIME)
-                                set(ENABLE_SIMD_SSE2 TRUE)
-                            endif()
                         endif()
                     endif()
                 endif()
@@ -1075,12 +1053,7 @@ else()
             if(EXISTS "/proc/cpuinfo")
                 file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
                 # Check from highest to lowest, set all implied instruction sets
-                if(CPUINFO_CONTENT MATCHES "avx512f" AND CPUINFO_CONTENT MATCHES "avx512bw")
-                    set(ENABLE_SIMD_AVX512 TRUE)
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                elseif(CPUINFO_CONTENT MATCHES "avx2")
+                if(CPUINFO_CONTENT MATCHES "avx2")
                     set(ENABLE_SIMD_AVX2 TRUE)
                     set(ENABLE_SIMD_SSSE3 TRUE)
                     set(ENABLE_SIMD_SSE2 TRUE)
@@ -1096,7 +1069,7 @@ else()
 endif()
 
 # Apply SIMD compile definitions and flags
-if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_AVX512 OR ENABLE_SIMD_NEON OR ENABLE_SIMD_SVE)
+if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_NEON OR ENABLE_SIMD_SVE)
     add_definitions(-DSIMD_SUPPORT)
 
     # Prefer wider vector widths for SIMD-heavy workloads
@@ -1131,11 +1104,6 @@ if(ENABLE_SIMD_AVX2)
     else()
         add_compile_options(-mavx2)
     endif()
-endif()
-
-if(ENABLE_SIMD_AVX512)
-    add_definitions(-DSIMD_SUPPORT_AVX512)
-    add_compile_options(-mavx512f -mavx512bw)
 endif()
 
 if(ENABLE_SIMD_NEON)
@@ -1200,7 +1168,7 @@ elseif(CRC32_HW STREQUAL "auto")
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
             # Check for SSE4.2 support on x86_64
             # Note: Clang on Windows has issues with check_c_source_runs, so check SIMD flags first
-            if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_AVX512)
+            if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
                 # Assume SSE4.2 if we have SSSE3 or better
                 set(ENABLE_CRC32_HW TRUE)
             elseif(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
@@ -1261,7 +1229,7 @@ elseif(CRC32_HW STREQUAL "auto")
         endif()
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
         # Linux x86_64 - assume SSE4.2 if we have SSSE3
-        if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_AVX512)
+        if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
             set(ENABLE_CRC32_HW TRUE)
         endif()
     endif()
@@ -1836,11 +1804,6 @@ if(ENABLE_SIMD_AVX2)
     set_source_files_properties(lib/image2ascii/simd/avx2.c PROPERTIES COMPILE_FLAGS "-mavx2")
 endif()
 
-if(ENABLE_SIMD_AVX512)
-    list(APPEND SIMD_SRCS lib/image2ascii/simd/avx512.c)
-    set_source_files_properties(lib/image2ascii/simd/avx512.c PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw")
-endif()
-
 if(ENABLE_SIMD_NEON)
     list(APPEND SIMD_SRCS lib/image2ascii/simd/neon.c)
 endif()
@@ -2369,11 +2332,6 @@ if(ENABLE_SIMD_AVX2)
     message(STATUS "  AVX2:              ${Green}Enabled${ColorReset}")
 else()
     message(STATUS "  AVX2:              ${Red}Disabled${ColorReset}")
-endif()
-if(ENABLE_SIMD_AVX512)
-    message(STATUS "  AVX512:            ${Green}Enabled${ColorReset}")
-else()
-    message(STATUS "  AVX512:            ${Red}Disabled${ColorReset}")
 endif()
 if(ENABLE_SIMD_NEON)
     message(STATUS "  NEON:              ${Green}Enabled${ColorReset}")
