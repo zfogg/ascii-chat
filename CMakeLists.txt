@@ -650,11 +650,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 )
                 message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
             elseif(APPLE)
-                # macOS - all sanitizers except thread (conflicts with address)
+                # macOS - all sanitizers except thread and leak (not supported on ARM64)
                 add_compile_options(
                     -fsanitize=address
                     -fsanitize=undefined
-                    -fsanitize=leak
                     -fsanitize=integer
                     -fsanitize=nullability
                     -fsanitize=implicit-conversion
@@ -666,13 +665,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 add_link_options(
                     -fsanitize=address
                     -fsanitize=undefined
-                    -fsanitize=leak
                     -fsanitize=integer
                     -fsanitize=nullability
                     -fsanitize=implicit-conversion
                     -fsanitize=float-divide-by-zero
                 )
-                message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
             else()
                 # Linux - all sanitizers except thread (conflicts with address)
                 add_compile_options(
