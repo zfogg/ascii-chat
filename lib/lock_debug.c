@@ -986,8 +986,13 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
     bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
 
     if (inserted) {
+#ifdef DEBUG_LOCKS
       uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
       uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
+#else
+      atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
+      atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
+#endif
 #ifdef DEBUG_LOCKS
       log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
                 lock_address, key, file_name, line_number, function_name, (unsigned long long)acquired, held);
@@ -1034,8 +1039,13 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   if (record) {
     if (hashtable_remove(g_lock_debug_manager.lock_records, key)) {
       free_lock_record(record);
+#ifdef DEBUG_LOCKS
       uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
       uint32_t held = debug_decrement_lock_counter();
+#else
+      atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
+      debug_decrement_lock_counter();
+#endif
 #ifdef DEBUG_LOCKS
       log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str, lock_ptr,
                 key, file_name, line_number, function_name, (unsigned long long)released, held);
@@ -1057,11 +1067,21 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
  */
 static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const char *lock_type_str,
                                            const char *file_name, int line_number, const char *function_name) {
+#ifdef DEBUG_LOCKS
   uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
+#else
+  atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
+#endif
   uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+#ifdef DEBUG_LOCKS
   uint32_t held = 0;
+#endif
   if (current_held > 0) {
+#ifdef DEBUG_LOCKS
     held = debug_decrement_lock_counter();
+#else
+    debug_decrement_lock_counter();
+#endif
   } else {
 #ifdef DEBUG_LOCKS
     log_error("[LOCK_DEBUG] *** ERROR: Attempting to release %s lock when no locks held! ***", lock_type_str);
