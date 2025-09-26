@@ -550,12 +550,25 @@ flags:
 github_checks:
   annotations: true
 
+# Test Analytics configuration
+test_analytics:
+  # Enable test analytics for JUnit XML processing
+  enabled: true
+  # Specify file patterns to look for
+  file_pattern: "junit*.xml"
+
+# CLI upload arguments configuration
+cli:
+  # Args for codecov uploads
+  args:
+    verbose: true
+
 # Profiling configuration for YAML reporting
 profiling:
   # Enable YAML report customization
   critical_files_paths:
     - "src/server.c"
-    - "src/client.c" 
+    - "src/client.c"
     - "lib/ascii*.c"
     - "lib/network.c"
     - "lib/crypto.c"
