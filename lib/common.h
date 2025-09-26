@@ -179,7 +179,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
 /* Linux/other platforms use aligned_alloc() (C11) */
 #define SAFE_MALLOC_ALIGNED(ptr, size, alignment, cast)                                                                \
   do {                                                                                                                 \
-    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
+    size_t aligned_size = (((size) + (alignment)-1) / (alignment)) * (alignment);                                      \
     (ptr) = (cast)aligned_alloc((alignment), aligned_size);                                                            \
     if (!(ptr)) {                                                                                                      \
       log_error("Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size, (size_t)(alignment));      \

@@ -313,8 +313,8 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
 // Continue to actual NEON functions (helper functions already defined above)
 
 // NEON helper: True vectorized UTF-8 compaction - eliminate NUL bytes completely
-static inline void __attribute__((unused)) compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths,
-                                                                   char **pos) {
+static inline void __attribute__((unused))
+compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths, char **pos) {
   // Calculate total valid bytes using NEON horizontal sum
   uint8_t total_bytes = (uint8_t)neon_horizontal_sum_u8(lengths);
 
