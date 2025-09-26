@@ -472,10 +472,6 @@ void *client_video_render_thread(void *arg) {
     // DEBUG: Track render thread frame generation attempts
     static uint64_t render_attempts = 0;
     render_attempts++;
-    if (render_attempts % 30 == 0) { // Log every 30 attempts (1 second at 30fps)
-      log_info("DEBUG_RENDER: [%llu] Render thread attempting frame generation for client %u",
-               (unsigned long long)render_attempts, client_id_snapshot);
-    }
 
     char *ascii_frame =
         create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
@@ -501,14 +497,6 @@ void *client_video_render_thread(void *arg) {
             // Log occasionally for monitoring
             char pretty_size[64];
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
-
-            // DEBUG: Track successful frame writes to buffer
-            static uint64_t buffer_write_count = 0;
-            buffer_write_count++;
-            if (buffer_write_count % 30 == 0) { // Log every 30 writes (1 second at 30fps)
-              log_info("DEBUG_BUFFER_WRITE: [%llu] Successfully wrote ASCII frame to buffer for client %u (size=%s)",
-                       (unsigned long long)buffer_write_count, client_id_snapshot, pretty_size);
-            }
 
             LOG_DEBUG_EVERY(queue_count, 30 * 60,
                             "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",

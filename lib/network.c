@@ -863,7 +863,6 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
   packet_header_t header;
 
   // Read header
-  log_debug("DEBUG_RECV: Starting to receive packet header from socket %d", sockfd);
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received != sizeof(header)) {
     if (received == 0) {
@@ -913,7 +912,6 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
 
     // Use adaptive timeout for large packets
     int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
-    log_debug("DEBUG_RECV: Using adaptive timeout %d seconds for packet size %u", recv_timeout, pkt_len);
     received = recv_with_timeout(sockfd, *data, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       log_error("Failed to receive packet payload: %zd/%u bytes, errno=%d (%s)", received, pkt_len, errno,
