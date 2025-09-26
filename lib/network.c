@@ -521,10 +521,15 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
 
   // Read header
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
-  if (received != sizeof(header)) {
+  // Check for error first to avoid signed/unsigned comparison issues
+  if (received < 0) {
+    // recv_with_timeout returned an error
+    return -1;
+  }
+  if ((size_t)received != sizeof(header)) {
     if (received == 0) {
       log_info("Connection closed while reading packet header");
-    } else if (received > 0) {
+    } else {
       log_error("Partial packet header received: %zd/%zu bytes", received, sizeof(header));
     }
     return received == 0 ? 0 : -1;
@@ -864,10 +869,15 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
 
   // Read header
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
-  if (received != sizeof(header)) {
+  // Check for error first to avoid signed/unsigned comparison issues
+  if (received < 0) {
+    // recv_with_timeout returned an error
+    return -1;
+  }
+  if ((size_t)received != sizeof(header)) {
     if (received == 0) {
       log_info("Connection closed while reading packet header");
-    } else if (received > 0) {
+    } else {
       log_error("Partial packet header received: %zd/%zu bytes", received, sizeof(header));
     }
     return received == 0 ? 0 : -1;

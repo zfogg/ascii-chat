@@ -49,8 +49,61 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
   __try {
     result = wrapper->posix_func(wrapper->arg);
   } __except (EXCEPTION_EXECUTE_HANDLER) {
-    printf("[THREAD_WRAPPER] EXCEPTION caught! Code: 0x%lX\n", (unsigned long)GetExceptionCode());
+    DWORD exceptionCode = GetExceptionCode();
+    printf("\n[THREAD_WRAPPER] ====== EXCEPTION CAUGHT! ======\n");
+    printf("[THREAD_WRAPPER] Exception Code: 0x%lX\n", (unsigned long)exceptionCode);
+    printf("[THREAD_WRAPPER] Thread ID: %lu\n", GetCurrentThreadId());
+
+    // Decode common exception codes
+    const char* exceptionName = "UNKNOWN";
+    switch(exceptionCode) {
+      case EXCEPTION_ACCESS_VIOLATION:
+        exceptionName = "ACCESS_VIOLATION (segfault)";
+        break;
+      case EXCEPTION_STACK_OVERFLOW:
+        exceptionName = "STACK_OVERFLOW";
+        break;
+      case EXCEPTION_INT_DIVIDE_BY_ZERO:
+        exceptionName = "DIVIDE_BY_ZERO";
+        break;
+      case EXCEPTION_ILLEGAL_INSTRUCTION:
+        exceptionName = "ILLEGAL_INSTRUCTION";
+        break;
+      case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+        exceptionName = "ARRAY_BOUNDS_EXCEEDED";
+        break;
+    }
+    printf("[THREAD_WRAPPER] Exception Type: %s\n", exceptionName);
+
+    // Get the current context to extract stack info
+    CONTEXT context;
+    RtlCaptureContext(&context);
+
+    printf("[THREAD_WRAPPER] Register State:\n");
+    printf("  RIP: 0x%llX\n", context.Rip);  // Instruction pointer
+    printf("  RSP: 0x%llX\n", context.Rsp);  // Stack pointer
+    printf("  RBP: 0x%llX\n", context.Rbp);  // Base pointer
+
+    // Try to get module information for the crash address
+    HMODULE hModule;
+    CHAR moduleName[MAX_PATH];
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                          GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          (LPCTSTR)context.Rip, &hModule)) {
+      if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
+        // Extract just the filename from the full path
+        char* lastSlash = strrchr(moduleName, '\\');
+        char* fileName = lastSlash ? lastSlash + 1 : moduleName;
+        printf("  Module: %s\n", fileName);
+        printf("  Offset: 0x%llX\n", context.Rip - (DWORD64)hModule);
+      }
+    }
+
+    printf("[THREAD_WRAPPER] ================================\n");
+    printf("[THREAD_WRAPPER] To debug: Run with debugger and break at address 0x%llX\n", context.Rip);
+    printf("[THREAD_WRAPPER] Or use: addr2line -e ascii-chat-server.exe 0x%llX\n", context.Rip);
     fflush(stdout);
+
     // Use raw free to match raw malloc used in allocation
 #ifdef DEBUG_MEMORY
 #undef free
