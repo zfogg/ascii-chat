@@ -4,12 +4,14 @@
 #include <malloc.h> // For _msize
 #elif defined(__APPLE__)
 #include <malloc/malloc.h> // For malloc_size on macOS
-#elif defined(__GLIBC__)
-// On Linux, _GNU_SOURCE must be defined to get malloc_usable_size
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
+#elif defined(__linux__)
+// For Linux systems - need GNU extensions for malloc_usable_size
+#include <features.h>
+#include <malloc.h>
+// If _GNU_SOURCE is not defined or we don't have glibc, declare it ourselves
+#if !defined(_GNU_SOURCE) || !defined(__GLIBC__)
+extern size_t malloc_usable_size(void *ptr);
 #endif
-#include <malloc.h> // For malloc_usable_size on Linux
 #endif
 
 #include "common.h"
@@ -268,7 +270,7 @@ void debug_free(void *ptr, const char *file, int line) {
 #elif defined(__APPLE__)
     /* macOS: Use malloc_size */
     real_size = malloc_size(ptr);
-#elif defined(__GLIBC__)
+#elif defined(__linux__)
     /* Linux: Use malloc_usable_size */
     real_size = malloc_usable_size(ptr);
 #endif
