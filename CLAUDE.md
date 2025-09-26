@@ -1,5 +1,9 @@
 # ASCII-Chat Development Guide for Claude
 
+## Repository Information
+- **Repository Owner**: zfogg (GitHub username)
+- **Repository**: ascii-chat
+
 ## Essential First Steps
 - **ALWAYS** read and understand the `README.md` and `CMakeLists.txt` files first
 - Use the test runner script `./tests/scripts/run_tests.sh` for running tests
