@@ -591,10 +591,10 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
 
   // Test various UTF-8 palettes
   const char *utf8_palettes[] = {
-      "   ._-=/=08WX🧠",      // Mixed ASCII + emoji
-      "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐",       // Pure emoji
-      "αβγδεζηθικλμνξοπ",       // Greek letters
-      "   ...',;:clodxkO0KXNWM" // Pure ASCII for comparison
+      "   ._-=/=08WX🧠",                  // Mixed ASCII + emoji
+      "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐", // Pure emoji
+      "αβγδεζηθικλμνξοπ",                 // Greek letters
+      "   ...',;:clodxkO0KXNWM"           // Pure ASCII for comparison
   };
 
   const int num_palettes = sizeof(utf8_palettes) / sizeof(utf8_palettes[0]);
@@ -1096,8 +1096,8 @@ Test(ascii_simd_integration, utf8_padding_performance_penalty) {
   }
 
   // Test pure ASCII vs UTF-8 emoji performance gap
-  const char *ascii_palette = "   ...',;:clodxkO0KXNWM"; // Pure ASCII
-  const char *emoji_palette = "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐";        // 4-byte UTF-8
+  const char *ascii_palette = "   ...',;:clodxkO0KXNWM";          // Pure ASCII
+  const char *emoji_palette = "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐"; // 4-byte UTF-8
 
   // Benchmark ASCII palette (should be fast)
   struct timespec start, end;
@@ -1159,8 +1159,8 @@ Test(ascii_simd_integration, palette_system_integration) {
   // Test built-in palettes
   const char *builtin_palettes[] = {
       DEFAULT_ASCII_PALETTE,
-      "█▉▊▋▌▍▎▏ ",       // Block characters
-      "●◐◑◒◓◔◕○",        // Circle characters
+      "█▉▊▋▌▍▎▏ ",                       // Block characters
+      "●◐◑◒◓◔◕○",                        // Circle characters
       "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐" // Emoji characters
   };
 
@@ -1693,8 +1693,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       // Pure byte-length categories
       {"Pure ASCII", "   .':,;clodxkO0KXN@#", "1-byte only (16 chars)", 90, 4.0},
       {"Pure Greek", "αβγδεζηθικλμνξοπρστυφχψω", "2-byte only (24 chars)", 85, 3.0},
-      {"Pure Emoji", "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐🌠💫⚡🔥💧❄️",
-       "4-byte only (23 chars)", 80, 2.5},
+      {"Pure Emoji", "🌑🌒🌓🌔🌕🌖🌗🌘🌙🌚🌛🌜🌝🌞🌟⭐🌠💫⚡🔥💧❄️", "4-byte only (23 chars)", 80, 2.5},
 
       // Mixed byte-length categories (critical for testing mixed paths)
       {"ASCII+Emoji", " .:,;🌑🌒🌓🌔🌟⭐💫⚡", "1+4 byte mix (16 chars)", 70, 3.5},
@@ -1709,8 +1708,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
 
       // Performance stress cases
       {"Large ASCII", "   ...',;:clodxkO0KXNWMQqwerty12345", "Large ASCII palette (35 chars)", 85, 4.5},
-      {"Dense Mixed", "αβγδεζ🌑🌒🌓🌔🌕🌖♠♣♥♦⚡🔥💧❄️🌀🌈",
-       "Dense mixed palette (38 chars)", 45, 2.3}};
+      {"Dense Mixed", "αβγδεζ🌑🌒🌓🌔🌕🌖♠♣♥♦⚡🔥💧❄️🌀🌈", "Dense mixed palette (38 chars)", 45, 2.3}};
 
   const int num_palettes = sizeof(comprehensive_palettes) / sizeof(comprehensive_palettes[0]);
 
