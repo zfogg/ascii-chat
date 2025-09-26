@@ -235,9 +235,9 @@ Test(simd_caches, utf8_character_cache_correctness) {
     int expected_first_byte;
   } utf8_tests[] = {
       {"ASCII", "   ...',;:clodxkO0KXNWM", ' '},
-      {"Emoji", "🌑🌒🌓🌔🌕", 0xF0}, // 4-byte UTF-8 starts with 0xF0
-      {"Greek", "αβγδεζηθι", 0xCE},  // 2-byte UTF-8 starts with 0xCE
-      {"Mixed", "   .🧠αβ", ' '},    // Mixed ASCII + UTF-8
+      {"Emoji", "🌑🌒🌓🌔🌕", 0xF0},       // 4-byte UTF-8 starts with 0xF0
+      {"Greek", "αβγδεζηθι", 0xCE},   // 2-byte UTF-8 starts with 0xCE
+      {"Mixed", "   .🧠αβ", ' '}, // Mixed ASCII + UTF-8
   };
 
   const int num_tests = sizeof(utf8_tests) / sizeof(utf8_tests[0]);
@@ -474,11 +474,11 @@ Test(simd_caches, eviction_fairness_algorithm) {
     int access_count;
     int age_delay_ms;
   } test_scenarios[] = {
-      {"Old Popular", "old_popular_🎨🎭🎪", 25, 5000},      // High frequency, old
-      {"Recent Rare", "recent_rare_🔍🔎🕵️", 2, 100},        // Low frequency, recent
-      {"Old Rare", "old_rare_📱💻🖥️", 1, 4000},             // Low frequency, old
-      {"Recent Popular", "recent_popular_🎵🎶🎼", 15, 200}, // High frequency, recent
-      {"Medium", "medium_🌍🌎🌏", 8, 2000},                 // Medium frequency, medium age
+      {"Old Popular", "old_popular_🎨🎭🎪", 25, 5000},           // High frequency, old
+      {"Recent Rare", "recent_rare_🔍🔎🕵️", 2, 100}, // Low frequency, recent
+      {"Old Rare", "old_rare_📱💻🖥️", 1, 4000},      // Low frequency, old
+      {"Recent Popular", "recent_popular_🎵🎶🎼", 15, 200},      // High frequency, recent
+      {"Medium", "medium_🌍🌎🌏", 8, 2000},                      // Medium frequency, medium age
   };
 
   const int num_scenarios = sizeof(test_scenarios) / sizeof(test_scenarios[0]);
@@ -540,11 +540,11 @@ Test(simd_caches, animation_palette_cycling_realistic) {
   // Test realistic animation scenario: 5 palettes cycling for 10 seconds
 
   const char *animation_palettes[] = {
-      "🌑🌒🌓🌔🌕", // Moon cycle 1
-      "🌖🌗🌘🌙🌚", // Moon cycle 2
-      "🌛🌜🌝🌞🌟", // Moon cycle 3
-      "⭐🌠💫⚡🔥", // Effects 1
-      "💧❄️🌀🌈☀️"    // Effects 2
+      "🌑🌒🌓🌔🌕",                   // Moon cycle 1
+      "🌖🌗🌘🌙🌚",                   // Moon cycle 2
+      "🌛🌜🌝🌞🌟",                   // Moon cycle 3
+      "⭐🌠💫⚡🔥",                   // Effects 1
+      "💧❄️🌀🌈☀️" // Effects 2
   };
 
   const int num_palettes = sizeof(animation_palettes) / sizeof(animation_palettes[0]);
@@ -1116,11 +1116,11 @@ Test(simd_caches, palette_cycling_animation_simulation) {
 
   // Simulate animation with 5 cycling palettes
   const char *animation_palettes[] = {
-      "🌑🌒🌓🌔🌕", // Moon phases 1
-      "🌖🌗🌘🌙🌚", // Moon phases 2
-      "🌛🌜🌝🌞🌟", // Moon phases 3
-      "⭐🌠💫⚡🔥", // Effects 1
-      "💧❄️🌀🌈☀️"    // Effects 2
+      "🌑🌒🌓🌔🌕",                   // Moon phases 1
+      "🌖🌗🌘🌙🌚",                   // Moon phases 2
+      "🌛🌜🌝🌞🌟",                   // Moon phases 3
+      "⭐🌠💫⚡🔥",                   // Effects 1
+      "💧❄️🌀🌈☀️" // Effects 2
   };
 
   const int num_animation_palettes = 5;
