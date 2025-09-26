@@ -5,6 +5,10 @@
 #elif defined(__APPLE__)
 #include <malloc/malloc.h> // For malloc_size on macOS
 #elif defined(__GLIBC__)
+// On Linux, _GNU_SOURCE must be defined to get malloc_usable_size
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <malloc.h> // For malloc_usable_size on Linux
 #endif
 
