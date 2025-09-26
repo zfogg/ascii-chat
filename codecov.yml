@@ -550,13 +550,6 @@ flags:
 github_checks:
   annotations: true
 
-# Test Analytics configuration
-test_analytics:
-  # Enable test analytics for JUnit XML processing
-  enabled: true
-  # Specify file patterns to look for
-  file_pattern: "junit*.xml"
-
 # Profiling configuration for YAML reporting
 profiling:
   # Enable YAML report customization
