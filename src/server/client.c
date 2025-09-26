@@ -639,14 +639,10 @@ void *client_receive_thread(void *arg) {
 
   while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
     // Receive packet from this client
-    log_debug("Client %u receive thread: calling receive_packet_with_client", atomic_load(&client->client_id));
     int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
-    log_debug("Client %u receive thread: received packet, type=%d, len=%zu, result=%d", atomic_load(&client->client_id),
-              type, len, result);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_should_exit)) {
-      log_debug("Client %u receive thread: shutdown requested during network call, exiting", client->client_id);
       // Free any data that might have been allocated
       if (data) {
         buffer_pool_free(data, len);
@@ -675,17 +671,14 @@ void *client_receive_thread(void *arg) {
     // Handle different packet types from client
     switch (type) {
     case PACKET_TYPE_CLIENT_JOIN:
-      log_debug("Client %u receive thread: handling CLIENT_JOIN packet", atomic_load(&client->client_id));
       handle_client_join_packet(client, data, len);
       break;
 
     case PACKET_TYPE_STREAM_START:
-      log_debug("Client %u receive thread: handling STREAM_START packet", atomic_load(&client->client_id));
       handle_stream_start_packet(client, data, len);
       break;
 
     case PACKET_TYPE_STREAM_STOP:
-      log_debug("Client %u receive thread: handling STREAM_STOP packet", atomic_load(&client->client_id));
       handle_stream_stop_packet(client, data, len);
       break;
 
@@ -727,8 +720,6 @@ void *client_receive_thread(void *arg) {
 
   // CRITICAL: Cleanup any remaining allocated packet data if thread exited loop early during shutdown
   if (data) {
-    log_debug("Client %u receive thread: freeing orphaned packet data %zu bytes during shutdown", client->client_id,
-              len);
     buffer_pool_free(data, len);
     data = NULL;
   }
@@ -821,10 +812,6 @@ void *client_send_thread_func(void *arg) {
           // DEBUG: Track send thread frame sending attempts
           static uint64_t send_attempts = 0;
           send_attempts++;
-          if (send_attempts % 30 == 0) { // Log every 30 attempts (1 second at 30fps)
-            log_info("DEBUG_SEND: [%llu] Send thread attempting to send frame for client %u (size=%zu)", send_attempts,
-                     client->client_id, frame->size);
-          }
           // Build ASCII frame packet
           ascii_frame_packet_t frame_header = {
               .width = htonl(atomic_load(&client->width)),
@@ -867,10 +854,6 @@ void *client_send_thread_func(void *arg) {
               // DEBUG: Track successful frame sends
               static uint64_t send_success_count = 0;
               send_success_count++;
-              if (send_success_count % 30 == 0) { // Log every 30 successful sends (1 second at 30fps)
-                log_info("DEBUG_SEND_SUCCESS: [%llu] Successfully sent frame to client %u (size=%zu)",
-                         send_success_count, client->client_id, payload_size);
-              }
             } else {
               if (!atomic_load(&g_should_exit)) {
                 log_error("Failed to send video frame header to client %u: %zd/%zu bytes", client->client_id, sent,

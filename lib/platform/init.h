@@ -51,31 +51,13 @@ typedef struct {
 
 // Initialization macros
 #if PLATFORM_WINDOWS
-#define STATIC_MUTEX_INIT  \
-  {                        \
-    {0}, 0                 \
-  }
-#define STATIC_RWLOCK_INIT \
-  {                        \
-    {0}, 0                 \
-  }
-#define STATIC_COND_INIT   \
-  {                        \
-    {0}, 0                 \
-  }
+#define STATIC_MUTEX_INIT {{0}, 0}
+#define STATIC_RWLOCK_INIT {{0}, 0}
+#define STATIC_COND_INIT {{0}, 0}
 #else
-#define STATIC_MUTEX_INIT          \
-  {                                \
-    PTHREAD_MUTEX_INITIALIZER, 1  \
-  }
-#define STATIC_RWLOCK_INIT         \
-  {                                \
-    PTHREAD_RWLOCK_INITIALIZER, 1 \
-  }
-#define STATIC_COND_INIT           \
-  {                                \
-    PTHREAD_COND_INITIALIZER, 1   \
-  }
+#define STATIC_MUTEX_INIT {PTHREAD_MUTEX_INITIALIZER, 1}
+#define STATIC_RWLOCK_INIT {PTHREAD_RWLOCK_INITIALIZER, 1}
+#define STATIC_COND_INIT {PTHREAD_COND_INITIALIZER, 1}
 #endif
 
 // Lazy initialization functions

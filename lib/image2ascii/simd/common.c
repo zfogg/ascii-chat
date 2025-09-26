@@ -110,9 +110,10 @@ static inline uint32_t hash_palette_string(const char *palette) {
     // Use explicit unsigned arithmetic to avoid UB warnings
     // The wrapping behavior is intentional for hash functions
     uint32_t c = (unsigned char)*p++;
-    // Use multiplication instead of shift to avoid UBSan warning
-    // The compiler will optimize this to the same code
-    hash = (hash * 33U) + c; // Intentional wrap-around for hash distribution
+    // Use 64-bit arithmetic to avoid overflow, then truncate
+    // This silences UBSan while maintaining the same behavior
+    uint64_t temp = ((uint64_t)hash * 33ULL) + c;
+    hash = (uint32_t)(temp & 0xFFFFFFFFULL); // Explicit truncation
   }
   return hash;
 }

@@ -303,12 +303,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     return NULL;
   }
 
-  // DEBUG: Log every 30 frames (1 second at 30fps) to track frame generation
-  if (frame_gen_count % 30 == 0) {
-    log_info("DEBUG_FRAME_GEN: [%llu] Starting frame generation for client %u (%ux%u)", frame_gen_count,
-             target_client_id, width, height);
-  }
-
   // Collect all active clients and their image sources
   typedef struct {
     image_t *image;
@@ -348,10 +342,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     bool is_sending_video = atomic_load(&client->is_sending_video);
 
     // DEBUG: Log client state for tracking intermittent bug
-    if (frame_gen_count % 30 == 0 && is_active) {
-      log_info("DEBUG_CLIENT_STATE: Client %u - active=%d, is_sending_video=%d, checking_for_source",
-               client_id_snapshot, is_active, is_sending_video);
-    }
 
     if (is_active && source_count < MAX_CLIENTS) {
       sources[source_count].client_id = client_id_snapshot;
@@ -372,10 +362,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
           if (frame && frame->data && frame->size > 0) {
             // DEBUG: Log successful frame retrieval
-            if (frame_gen_count % 30 == 0) {
-              log_info("DEBUG_FRAME_RETRIEVED: Client %u has video frame available (size=%zu)", client_id_snapshot,
-                       frame->size);
-            }
             // We have frame data - copy it to our working structure
             data_buffer_pool_t *pool = data_buffer_pool_get_global();
             if (pool) {
@@ -505,9 +491,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     static uint64_t no_sources_count = 0;
     no_sources_count++;
     if (no_sources_count % 30 == 0) { // Log every 30 occurrences (1 second at 30fps)
-      log_info(
-          "DEBUG_NO_SOURCES: [%llu] No video sources available for client %u (total_clients=%d, sources_with_video=%d)",
-          no_sources_count, target_client_id, source_count, sources_with_video);
     }
     log_debug("Per-client %u: No video sources available - returning NULL frame", target_client_id);
     *out_size = 0;
@@ -914,17 +897,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     // DEBUG: Track successful frame generation
     static uint64_t success_count = 0;
     success_count++;
-    if (success_count % 30 == 0) { // Log every 30 successful frames (1 second at 30fps)
-      log_info("DEBUG_FRAME_SUCCESS: [%llu] Successfully generated ASCII frame for client %u (size=%zu)", success_count,
-               target_client_id, *out_size);
-    }
   } else {
     // DEBUG: Track frame generation failures
     static uint64_t fail_count = 0;
     fail_count++;
-    if (fail_count % 30 == 0) { // Log every 30 failures
-      log_info("DEBUG_FRAME_FAIL: [%llu] Failed to convert image to ASCII for client %u", fail_count, target_client_id);
-    }
     log_error("Per-client %u: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;
   }
