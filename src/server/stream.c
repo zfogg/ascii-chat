@@ -638,8 +638,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       } else {
         // Neither fits perfectly - choose the one that uses more of the available space
         // Calculate utilization percentages
-        float width_utilization = (float)(width_constrained_w * width_constrained_h) / (float)(cell_width_px * cell_height_px);
-        float height_utilization = (float)(height_constrained_w * height_constrained_h) / (float)(cell_width_px * cell_height_px);
+        float width_utilization =
+            (float)(width_constrained_w * width_constrained_h) / (float)(cell_width_px * cell_height_px);
+        float height_utilization =
+            (float)(height_constrained_w * height_constrained_h) / (float)(cell_width_px * cell_height_px);
 
         if (width_utilization >= height_utilization) {
           target_width_px = width_constrained_w;
@@ -665,10 +667,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         int x_padding_px = (cell_width_px - target_width_px) / 2;
         int y_padding_px = (cell_height_px - target_height_px) / 2;
 
-        log_info(
-            "SINGLE CLIENT: target_size=%dx%d, padding=(%d,%d), terminal_size=%dx%d, src_aspect=%.3f",
-            target_width_px, target_height_px, x_padding_px, y_padding_px,
-            cell_width_px, cell_height_px, src_aspect);
+        log_info("SINGLE CLIENT: target_size=%dx%d, padding=(%d,%d), terminal_size=%dx%d, src_aspect=%.3f",
+                 target_width_px, target_height_px, x_padding_px, y_padding_px, cell_width_px, cell_height_px,
+                 src_aspect);
 
         // Copy resized image to composite with centering
         for (int y = 0; y < target_height_px; y++) {

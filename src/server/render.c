@@ -509,7 +509,7 @@ void *client_video_render_thread(void *arg) {
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
             LOG_DEBUG_EVERY(queue_count, 30 * 60,
-                            "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",
+                            "Per-client render: [%d] Written ASCII frame to double buffer for client %u (%ux%u, %s)",
                             queue_count_counter, client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
           } else {
             log_warn("Frame too large for buffer: %zu > %zu", frame_size,
