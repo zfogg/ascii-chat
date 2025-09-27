@@ -55,23 +55,23 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     printf("[THREAD_WRAPPER] Thread ID: %lu\n", GetCurrentThreadId());
 
     // Decode common exception codes
-    const char* exceptionName = "UNKNOWN";
-    switch(exceptionCode) {
-      case EXCEPTION_ACCESS_VIOLATION:
-        exceptionName = "ACCESS_VIOLATION (segfault)";
-        break;
-      case EXCEPTION_STACK_OVERFLOW:
-        exceptionName = "STACK_OVERFLOW";
-        break;
-      case EXCEPTION_INT_DIVIDE_BY_ZERO:
-        exceptionName = "DIVIDE_BY_ZERO";
-        break;
-      case EXCEPTION_ILLEGAL_INSTRUCTION:
-        exceptionName = "ILLEGAL_INSTRUCTION";
-        break;
-      case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-        exceptionName = "ARRAY_BOUNDS_EXCEEDED";
-        break;
+    const char *exceptionName = "UNKNOWN";
+    switch (exceptionCode) {
+    case EXCEPTION_ACCESS_VIOLATION:
+      exceptionName = "ACCESS_VIOLATION (segfault)";
+      break;
+    case EXCEPTION_STACK_OVERFLOW:
+      exceptionName = "STACK_OVERFLOW";
+      break;
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+      exceptionName = "DIVIDE_BY_ZERO";
+      break;
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+      exceptionName = "ILLEGAL_INSTRUCTION";
+      break;
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+      exceptionName = "ARRAY_BOUNDS_EXCEEDED";
+      break;
     }
     printf("[THREAD_WRAPPER] Exception Type: %s\n", exceptionName);
 
@@ -80,20 +80,19 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     RtlCaptureContext(&context);
 
     printf("[THREAD_WRAPPER] Register State:\n");
-    printf("  RIP: 0x%llX\n", context.Rip);  // Instruction pointer
-    printf("  RSP: 0x%llX\n", context.Rsp);  // Stack pointer
-    printf("  RBP: 0x%llX\n", context.Rbp);  // Base pointer
+    printf("  RIP: 0x%llX\n", context.Rip); // Instruction pointer
+    printf("  RSP: 0x%llX\n", context.Rsp); // Stack pointer
+    printf("  RBP: 0x%llX\n", context.Rbp); // Base pointer
 
     // Try to get module information for the crash address
     HMODULE hModule;
     CHAR moduleName[MAX_PATH];
-    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-                          GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                           (LPCTSTR)context.Rip, &hModule)) {
       if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
         // Extract just the filename from the full path
-        char* lastSlash = strrchr(moduleName, '\\');
-        char* fileName = lastSlash ? lastSlash + 1 : moduleName;
+        char *lastSlash = strrchr(moduleName, '\\');
+        char *fileName = lastSlash ? lastSlash + 1 : moduleName;
         printf("  Module: %s\n", fileName);
         printf("  Offset: 0x%llX\n", context.Rip - (DWORD64)hModule);
       }
