@@ -36,3 +36,4 @@ thread_id_t ascii_thread_self(void);
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2);
 uint64_t ascii_thread_current_id(void);
 bool ascii_thread_is_initialized(asciithread_t *thread);
+void ascii_thread_init(asciithread_t *thread);

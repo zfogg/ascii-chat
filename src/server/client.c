@@ -542,7 +542,8 @@ int remove_client(uint32_t client_id) {
       join_result = ascii_thread_join_timeout(&target_client->send_thread, NULL, 100);
       if (join_result == -2) {
         log_warn("Send thread for client %u timed out during shutdown (continuing)", client_id);
-        memset(&target_client->send_thread, 0, sizeof(asciithread_t));
+        // Clear thread handle using platform abstraction
+        ascii_thread_init(&target_client->send_thread);
       }
       log_info("DEBUG_REMOVE_CLIENT: Send thread join completed for client %u", client_id);
     } else {
@@ -683,6 +684,7 @@ void *client_receive_thread(void *arg) {
       break;
 
     case PACKET_TYPE_IMAGE_FRAME:
+      log_debug("Received IMAGE_FRAME packet from client %u (len=%zu)", client->client_id, len);
       handle_image_frame_packet(client, data, len);
       break;
 
@@ -846,6 +848,7 @@ void *client_send_thread_func(void *arg) {
                   log_error("Failed to send video frame payload to client %u: %zd/%zu bytes", client->client_id, sent,
                             payload_size);
                 }
+                rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
                 break; // Socket error
               }
               sent_something = true;
@@ -859,6 +862,7 @@ void *client_send_thread_func(void *arg) {
                 log_error("Failed to send video frame header to client %u: %zd/%zu bytes", client->client_id, sent,
                           sizeof(header));
               }
+              rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
               break; // Socket error
             }
           } else {

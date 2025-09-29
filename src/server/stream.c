@@ -499,7 +499,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     }
     log_debug("Per-client %u: No video sources available - returning NULL frame", target_client_id);
     *out_size = 0;
-    rwlock_rdunlock(&g_client_manager_rwlock);
     return NULL;
   }
 
@@ -534,10 +533,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       composite_width_px = width;
       composite_height_px = height * 2;
     } else {
-      // Normal modes: use full terminal dimensions to maximize space usage
-      // Single client gets the entire terminal - prioritize space usage over strict aspect ratio
-      composite_width_px = width;
-      composite_height_px = height;
+      // Normal modes: use aspect-ratio fitted dimensions
+      calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &composite_width_px,
+                                     &composite_height_px);
     }
 
     // Create composite from buffer pool for consistent memory management
@@ -585,9 +583,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             int src_idx = (y * fitted_width) + x;
             int dst_x = x_offset + x;
             int dst_y = y_offset + y;
-            int dst_idx = (dst_y * composite_width_px) + dst_x;
+            int dst_idx = (dst_y * composite->w) + dst_x;
 
-            if (dst_x >= 0 && dst_x < composite_width_px && dst_y >= 0 && dst_y < composite_height_px) {
+            if (dst_x >= 0 && dst_x < composite->w && dst_y >= 0 && dst_y < composite->h) {
               composite->pixels[dst_idx] = fitted->pixels[src_idx];
             }
           }
@@ -595,104 +593,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         image_destroy_to_pool(fitted);
       }
     } else {
-      // Normal modes: maximize space while respecting aspect ratio and centering
-      // Single client gets the full terminal space with proper aspect ratio handling
-      float src_aspect = (float)single_source->w / (float)single_source->h;
-
-      // Use the full terminal as the available space
-      int cell_width_px = composite_width_px;
-      int cell_height_px = composite_height_px;
-
-      // Calculate target dimensions to maximize space while respecting aspect ratio
-      int target_width_px, target_height_px;
-
-      // Try both width-constrained and height-constrained scaling
-      int width_constrained_w = cell_width_px;
-      int width_constrained_h = (int)((cell_width_px / src_aspect) + 0.5f);
-
-      int height_constrained_h = cell_height_px;
-      int height_constrained_w = (int)((cell_height_px * src_aspect) + 0.5f);
-
-      // Choose the scaling that maximizes space utilization (largest area that fits)
-      // Always prioritize the option that uses more space
-      if (width_constrained_h <= cell_height_px && height_constrained_w <= cell_width_px) {
-        // Both options fit - choose the one with the larger area (maximize space usage)
-        int width_area = width_constrained_w * width_constrained_h;
-        int height_area = height_constrained_w * height_constrained_h;
-
-        if (width_area >= height_area) {
-          target_width_px = width_constrained_w;
-          target_height_px = width_constrained_h;
-        } else {
-          target_width_px = height_constrained_w;
-          target_height_px = height_constrained_h;
-        }
-      } else if (width_constrained_h <= cell_height_px) {
-        // Only width-constrained fits
-        target_width_px = width_constrained_w;
-        target_height_px = width_constrained_h;
-      } else if (height_constrained_w <= cell_width_px) {
-        // Only height-constrained fits
-        target_width_px = height_constrained_w;
-        target_height_px = height_constrained_h;
-      } else {
-        // Neither fits perfectly - choose the one that uses more of the available space
-        // Calculate utilization percentages
-        float width_utilization =
-            (float)(width_constrained_w * width_constrained_h) / (float)(cell_width_px * cell_height_px);
-        float height_utilization =
-            (float)(height_constrained_w * height_constrained_h) / (float)(cell_width_px * cell_height_px);
-
-        if (width_utilization >= height_utilization) {
-          target_width_px = width_constrained_w;
-          target_height_px = width_constrained_h;
-        } else {
-          target_width_px = height_constrained_w;
-          target_height_px = height_constrained_h;
-        }
-      }
-
-      // Ensure target dimensions don't exceed cell dimensions
-      if (target_width_px > cell_width_px)
-        target_width_px = cell_width_px;
-      if (target_height_px > cell_height_px)
-        target_height_px = cell_height_px;
-
-      // Create resized image
-      image_t *resized = image_new_from_pool(target_width_px, target_height_px);
-      if (resized) {
-        image_resize(single_source, resized);
-
-        // Center the resized image within the full terminal
-        int x_padding_px = (cell_width_px - target_width_px) / 2;
-        int y_padding_px = (cell_height_px - target_height_px) / 2;
-
-        log_info("SINGLE CLIENT: target_size=%dx%d, padding=(%d,%d), terminal_size=%dx%d, src_aspect=%.3f",
-                 target_width_px, target_height_px, x_padding_px, y_padding_px, cell_width_px, cell_height_px,
-                 src_aspect);
-
-        // Copy resized image to composite with centering
-        for (int y = 0; y < target_height_px; y++) {
-          for (int x = 0; x < target_width_px; x++) {
-            int src_idx = (y * target_width_px) + x;
-            int dst_x = x_padding_px + x;
-            int dst_y = y_padding_px + y;
-            int dst_idx = (dst_y * composite_width_px) + dst_x;
-
-            // Bounds checking
-            bool src_ok = src_idx >= 0 && src_idx < resized->w * resized->h;
-            bool dst_idx_ok = dst_idx >= 0 && dst_idx < composite->w * composite->h;
-            bool dst_x_ok = dst_x >= 0 && dst_x < composite->w;
-            bool dst_y_ok = dst_y >= 0 && dst_y < composite->h;
-
-            if (src_ok && dst_idx_ok && dst_x_ok && dst_y_ok) {
-              composite->pixels[dst_idx] = resized->pixels[src_idx];
-            }
-          }
-        }
-
-        image_destroy_to_pool(resized);
-      }
+      // Normal modes: Simple resize to fitted dimensions
+      image_resize(sources[0].image, composite);
     }
   } else if (sources_with_video > 1) {
     // Multiple sources - create grid layout
@@ -982,8 +884,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             int dst_x = cell_x_offset_px + x_padding_px + x;
             int dst_y = cell_y_offset_px + y_padding_px + y;
 
-            // CRITICAL FIX: Use correct stride for composite image
-            int dst_idx = (dst_y * composite_width_px) + dst_x;
+            // CRITICAL FIX: Use composite->w for stride, NOT composite_width_px
+            // composite_width_px is the initial width but composite can be recreated
+            // with different dimensions (e.g. optimal_width_for_vertical on line 798)
+            int dst_idx = (dst_y * composite->w) + dst_x;
 
             // Bounds checking with correct composite dimensions
             bool src_ok = src_idx >= 0 && src_idx < resized->w * resized->h;
@@ -1035,8 +939,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                                         target_client->client_palette_chars,
                                                         target_client->client_luminance_palette);
         } else {
-          // Use composite dimensions for ASCII conversion (full composite height for vertical layout)
-          ascii_frame = ascii_convert_with_capabilities(composite, composite->w, composite->h, &caps_snapshot, true,
+          // Use terminal dimensions for ASCII conversion to ensure full screen usage
+          ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true,
                                                         false, target_client->client_palette_chars,
                                                         target_client->client_luminance_palette);
         }

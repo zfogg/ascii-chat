@@ -14,6 +14,7 @@
 #include <time.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <string.h>
 
 /**
  * @brief Create a new thread
@@ -124,6 +125,12 @@ bool ascii_thread_is_initialized(asciithread_t *thread) {
     return false;
   // On POSIX, check if thread handle is non-zero
   return (*thread != 0);
+}
+
+void ascii_thread_init(asciithread_t *thread) {
+  if (thread) {
+    memset(thread, 0, sizeof(asciithread_t));  // On POSIX, zero-init the pthread_t
+  }
 }
 
 #endif // !_WIN32

@@ -663,7 +663,8 @@ main_loop:
           cleanup_count++;
 
           // Clear the thread handle immediately to avoid double-join
-          memset(&client->receive_thread, 0, sizeof(asciithread_t));
+          // Use platform-safe thread initialization
+          ascii_thread_init(&client->receive_thread);
         }
       }
       rwlock_rdunlock(&g_client_manager_rwlock);

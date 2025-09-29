@@ -158,12 +158,12 @@ int socket_getsockname(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
 // Socket utility functions
 int socket_set_nonblocking(socket_t sock, bool nonblocking) {
   u_long mode = nonblocking ? 1 : 0;
-  return ioctlsocket(sock, FIONBIO, &mode);
+  return ioctlsocket(sock, (long)FIONBIO, &mode);
 }
 
 int socket_set_blocking(socket_t sock) {
   u_long mode = 0;
-  return ioctlsocket(sock, FIONBIO, &mode);
+  return ioctlsocket(sock, (long)FIONBIO, &mode);
 }
 
 int socket_set_reuseaddr(socket_t sock, bool reuse) {

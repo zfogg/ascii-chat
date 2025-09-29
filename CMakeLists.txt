@@ -758,9 +758,20 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
         add_compile_options(-g -O0 -DDEBUG)
         # No sanitizers in Dev mode for faster compilation/runtime
 
-        if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
-            # CodeView debug format is only supported by Clang on Windows (native mode)
-            add_compile_options(-gcodeview)
+        if(WIN32)
+            if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
+                # CodeView debug format is only supported by Clang on Windows (native mode)
+                # Use -g2 for full debug info and ensure PDB generation
+                add_compile_options(-g2 -gcodeview)
+                # Ensure PDB files are generated - linker will create them by default with /DEBUG
+                add_link_options(-Wl,/DEBUG:FULL)
+                message(STATUS "Dev build: Enabled PDB generation with full debug info")
+            elseif(MSVC)
+                # For MSVC, explicitly enable PDB generation
+                add_compile_options(/Zi)
+                add_link_options(/DEBUG:FULL)
+                message(STATUS "Dev build: Enabled MSVC PDB generation")
+            endif()
         endif()
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")

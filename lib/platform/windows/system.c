@@ -368,13 +368,24 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     if (required > buffer_size) {
       size_t max_symbol_len = buffer_size - 32;
       if (max_symbol_len > 0) {
-        snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
-                 address - symbol_info->Address);
+        // Check for underflow before subtraction
+        if (address >= symbol_info->Address) {
+          snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+                   address - symbol_info->Address);
+        } else {
+          snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+                   symbol_info->Address - address);
+        }
       } else {
         snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
-      snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
+      // Check for underflow before subtraction
+      if (address >= symbol_info->Address) {
+        snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
+      } else {
+        snprintf(buffer, buffer_size, "%s-0x%llx", symbol_info->Name, symbol_info->Address - address);
+      }
     }
   } else {
     snprintf(buffer, buffer_size, "0x%llx", address);

@@ -719,7 +719,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   // Handle render mode overrides
   switch (opt_render_mode) {
   case RENDER_MODE_FOREGROUND:
-    caps.capabilities &= ~TERM_CAP_BACKGROUND;
+    caps.capabilities &= ~(uint32_t)TERM_CAP_BACKGROUND;
     break;
 
   case RENDER_MODE_BACKGROUND:

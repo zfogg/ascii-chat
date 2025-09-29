@@ -13,12 +13,42 @@
 #include <windows.h>
 #include <process.h>
 #include <stdint.h>
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
 
 // Thread wrapper structure to bridge POSIX and Windows thread APIs
 typedef struct {
   void *(*posix_func)(void *);
   void *arg;
 } thread_wrapper_t;
+
+// Global to hold exception info from filter
+static EXCEPTION_POINTERS* g_exception_pointers = NULL;
+
+// Global symbol initialization
+static BOOL g_symbols_initialized = FALSE;
+static void initialize_symbol_handler(void) {
+  if (!g_symbols_initialized) {
+    HANDLE hProcess = GetCurrentProcess();
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES |
+                 SYMOPT_FAIL_CRITICAL_ERRORS | SYMOPT_NO_PROMPTS);
+    SymCleanup(hProcess);  // Clean any previous session
+    if (SymInitialize(hProcess, NULL, TRUE)) {
+      g_symbols_initialized = TRUE;
+      printf("[DEBUG] Symbol handler initialized at startup\n");
+      fflush(stdout);
+    }
+  }
+}
+
+// Exception filter that captures exception information
+static LONG WINAPI exception_filter(EXCEPTION_POINTERS* exception_info) {
+  // Store the exception info for use in the handler
+  g_exception_pointers = exception_info;
+
+  // Return EXCEPTION_EXECUTE_HANDLER to handle the exception
+  return EXCEPTION_EXECUTE_HANDLER;
+}
 
 // Windows thread wrapper function that calls POSIX-style function
 static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
@@ -48,7 +78,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
   void *result = NULL;
   __try {
     result = wrapper->posix_func(wrapper->arg);
-  } __except (EXCEPTION_EXECUTE_HANDLER) {
+  } __except (exception_filter(GetExceptionInformation())) {
     DWORD exceptionCode = GetExceptionCode();
     printf("\n[THREAD_WRAPPER] ====== EXCEPTION CAUGHT! ======\n");
     printf("[THREAD_WRAPPER] Exception Code: 0x%lX\n", (unsigned long)exceptionCode);
@@ -75,32 +105,210 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     }
     printf("[THREAD_WRAPPER] Exception Type: %s\n", exceptionName);
 
-    // Get the current context to extract stack info
-    CONTEXT context;
-    RtlCaptureContext(&context);
+    // Try to get a simple backtrace
+    printf("[THREAD_WRAPPER] Attempting to get stack trace...\n");
+    fflush(stdout);
 
-    printf("[THREAD_WRAPPER] Register State:\n");
-    printf("  RIP: 0x%llX\n", context.Rip); // Instruction pointer
-    printf("  RSP: 0x%llX\n", context.Rsp); // Stack pointer
-    printf("  RBP: 0x%llX\n", context.Rbp); // Base pointer
+    // Use the captured exception info from the filter
+    if (g_exception_pointers && g_exception_pointers->ContextRecord) {
+      PCONTEXT pContext = g_exception_pointers->ContextRecord;
 
-    // Try to get module information for the crash address
-    HMODULE hModule;
-    CHAR moduleName[MAX_PATH];
-    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                          (LPCTSTR)context.Rip, &hModule)) {
-      if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
-        // Extract just the filename from the full path
-        char *lastSlash = strrchr(moduleName, '\\');
-        char *fileName = lastSlash ? lastSlash + 1 : moduleName;
-        printf("  Module: %s\n", fileName);
-        printf("  Offset: 0x%llX\n", context.Rip - (DWORD64)hModule);
+      printf("[THREAD_WRAPPER] Exception occurred at:\n");
+#ifdef _M_X64
+      printf("  RIP: 0x%016llX\n", pContext->Rip);
+
+      // Try to resolve the symbol at the crash address
+      HANDLE hProcess = GetCurrentProcess();
+      DWORD64 dwDisplacement = 0;
+      char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+      PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
+
+      pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+      pSymbol->MaxNameLen = MAX_SYM_NAME;
+
+      // Make sure symbols are initialized (should already be done at thread creation)
+      if (!g_symbols_initialized) {
+        initialize_symbol_handler();
       }
+
+      if (g_symbols_initialized && SymFromAddr(hProcess, pContext->Rip, &dwDisplacement, pSymbol)) {
+        printf("  Function: %s + 0x%llX\n", pSymbol->Name, dwDisplacement);
+      } else {
+        // Try to at least get the module name
+        HMODULE hModule;
+        CHAR moduleName[MAX_PATH];
+        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                             (LPCTSTR)pContext->Rip, &hModule)) {
+          if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
+            char* lastSlash = strrchr(moduleName, '\\');
+            char* fileName = lastSlash ? lastSlash + 1 : moduleName;
+            printf("  Module: %s + 0x%llX\n", fileName, pContext->Rip - (DWORD64)hModule);
+          }
+        }
+      }
+
+      // Now walk the stack from the exception context
+      // Also try manual stack walk from raw addresses in case StackWalk64 fails
+      printf("\n[MANUAL STACK TRACE - Walking from RSP]\n");
+      DWORD64* stackPtr = (DWORD64*)pContext->Rsp;
+      for (int i = 0; i < 100; i++) {  // Increased to walk further up the stack
+        DWORD64 addr = 0;
+        // Safe memory read with exception handling
+        __try {
+          addr = stackPtr[i];
+        } __except(EXCEPTION_EXECUTE_HANDLER) {
+          break;
+        }
+
+        // Check if this looks like a code address
+        if (addr > 0x10000 && addr < 0x7FFFFFFFFFFF) {
+          // Try to resolve symbol
+          DWORD64 displacement = 0;
+          char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+          PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
+          pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+          pSymbol->MaxNameLen = MAX_SYM_NAME;
+
+          if (SymFromAddr(hProcess, addr, &displacement, pSymbol)) {
+            // Also try to get line info
+            IMAGEHLP_LINE64 line = {0};
+            line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+            DWORD lineDisplacement = 0;
+            BOOL hasLineInfo = SymGetLineFromAddr64(hProcess, addr, &lineDisplacement, &line);
+
+            // Check if this is OUR code (not system libraries)
+            BOOL isOurCode = FALSE;
+            if (hasLineInfo && line.FileName) {
+              const char* fileName = line.FileName;
+              // Check if path contains our source directories
+              if (strstr(fileName, "\\src\\") || strstr(fileName, "\\lib\\") ||
+                  strstr(fileName, "ascii-chat")) {
+                isOurCode = TRUE;
+              }
+            } else if (pSymbol->Name) {
+              // Check symbol name for our functions
+              if (!strstr(pSymbol->Name, "ntdll") && !strstr(pSymbol->Name, "kernel32") &&
+                  !strstr(pSymbol->Name, "ucrtbase") && !strstr(pSymbol->Name, "msvcrt")) {
+                isOurCode = TRUE;
+              }
+            }
+
+            if (hasLineInfo) {
+              const char* shortName = strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName;
+              if (isOurCode) {
+                // Highlight our code with >>> prefix
+                printf(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]\n",
+                       i*8, addr, pSymbol->Name, displacement, shortName, line.LineNumber);
+              } else {
+                printf("  RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]\n",
+                       i*8, addr, pSymbol->Name, displacement, shortName, line.LineNumber);
+              }
+            } else {
+              if (isOurCode) {
+                printf(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX\n", i*8, addr, pSymbol->Name, displacement);
+              } else {
+                printf("  RSP+0x%03X: 0x%016llX %s + 0x%llX\n", i*8, addr, pSymbol->Name, displacement);
+              }
+            }
+          } else {
+            // Try to at least get module name
+            HMODULE hModule;
+            if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                 GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                 (LPCTSTR)addr, &hModule)) {
+              CHAR moduleName[MAX_PATH];
+              if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
+                char* lastSlash = strrchr(moduleName, '\\');
+                char* fileName = lastSlash ? lastSlash + 1 : moduleName;
+                printf("  RSP+0x%03X: 0x%016llX %s + 0x%llX\n",
+                       i*8, addr, fileName, addr - (DWORD64)hModule);
+              }
+            }
+          }
+        }
+      }
+
+      printf("\n[STACK TRACE]\n");
+      STACKFRAME64 stackFrame = {0};
+      stackFrame.AddrPC.Offset = pContext->Rip;
+      stackFrame.AddrPC.Mode = AddrModeFlat;
+      stackFrame.AddrStack.Offset = pContext->Rsp;
+      stackFrame.AddrStack.Mode = AddrModeFlat;
+      stackFrame.AddrFrame.Offset = pContext->Rbp;
+      stackFrame.AddrFrame.Mode = AddrModeFlat;
+
+      // Create a copy of the context for stack walking
+      CONTEXT contextCopy = *pContext;
+      HANDLE hThread = GetCurrentThread();
+
+      for (int frameNum = 0; frameNum < 50; frameNum++) {
+        // Validate stack frame before walking to prevent crashes on corrupted stack
+        if (stackFrame.AddrStack.Offset == 0 || stackFrame.AddrStack.Offset > 0x7FFFFFFFFFFF) {
+          printf("  #%02d [Stack corrupted or end reached]\n", frameNum);
+          break;
+        }
+
+        // Use the context copy for stack walking
+        if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, hProcess, hThread, &stackFrame, &contextCopy,
+                        NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL)) {
+          DWORD error = GetLastError();
+          if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
+            printf("  #%02d [StackWalk64 failed: %lu]\n", frameNum, error);
+          }
+          break;
+        }
+
+        if (stackFrame.AddrPC.Offset == 0) {
+          break;
+        }
+
+        printf("  #%02d 0x%016llX ", frameNum, stackFrame.AddrPC.Offset);
+
+        // Try to get symbol name
+        DWORD64 symDisplacement = 0;
+        char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+        PSYMBOL_INFO pSym = (PSYMBOL_INFO)symBuffer;
+        pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
+        pSym->MaxNameLen = MAX_SYM_NAME;
+
+        if (g_symbols_initialized && SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &symDisplacement, pSym)) {
+          printf("%s + 0x%llX", pSym->Name, symDisplacement);
+
+          // Try to get source file and line info
+          IMAGEHLP_LINE64 line = {0};
+          line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+          DWORD lineDisplacement = 0;
+          if (SymGetLineFromAddr64(hProcess, stackFrame.AddrPC.Offset, &lineDisplacement, &line)) {
+            printf(" [%s:%lu]", line.FileName ? strrchr(line.FileName, '\\') + 1 : "??", line.LineNumber);
+          }
+        } else {
+          // Try to get module name at least
+          HMODULE hMod;
+          CHAR modName[MAX_PATH];
+          if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                               GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCTSTR)stackFrame.AddrPC.Offset, &hMod)) {
+            if (GetModuleFileNameA(hMod, modName, sizeof(modName))) {
+              char* slash = strrchr(modName, '\\');
+              char* name = slash ? slash + 1 : modName;
+              printf("%s!0x%llX", name, stackFrame.AddrPC.Offset - (DWORD64)hMod);
+            } else {
+              printf("???");
+            }
+          } else {
+            printf("???");
+          }
+        }
+        printf("\n");
+      }
+      printf("\n");
+#endif
+    } else {
+      printf("[THREAD_WRAPPER] Could not get exception context\n");
     }
 
     printf("[THREAD_WRAPPER] ================================\n");
-    printf("[THREAD_WRAPPER] To debug: Run with debugger and break at address 0x%llX\n", context.Rip);
-    printf("[THREAD_WRAPPER] Or use: addr2line -e ascii-chat-server.exe 0x%llX\n", context.Rip);
     fflush(stdout);
 
     // Use raw free to match raw malloc used in allocation
@@ -135,6 +343,9 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
+  // Initialize symbol handler on first thread creation
+  initialize_symbol_handler();
+
   printf("ENTER ascii_thread_create: thread=%p, func=%p, arg=%p\n", thread, func, arg);
   fflush(stdout);
 
@@ -317,6 +528,12 @@ bool ascii_thread_is_initialized(asciithread_t *thread) {
     return false;
   // On Windows, check if thread handle is valid (not NULL and not INVALID_HANDLE_VALUE)
   return (*thread != NULL && *thread != INVALID_HANDLE_VALUE);
+}
+
+void ascii_thread_init(asciithread_t *thread) {
+  if (thread) {
+    *thread = NULL;  // On Windows, NULL is the uninitialized state
+  }
 }
 
 #endif // _WIN32
