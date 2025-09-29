@@ -1,7 +1,7 @@
 # Dockerfile for running ASCII-Chat tests on Windows via Docker
 # Uses Ubuntu as base to ensure full Criterion compatibility
 
-FROM ubuntu:24.04
+FROM ubuntu:25.10
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive

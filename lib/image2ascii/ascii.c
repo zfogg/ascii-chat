@@ -388,7 +388,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
 
   // If no sources, return empty frame
 
-  // If only one source, ensure it fills the target dimensions
+  // If only one source, center it properly to maintain aspect ratio and look good
   if (source_count == 1) {
     // Create a frame of the target size filled with spaces
     size_t target_size = width * height + height + 1; // +height for newlines, +1 for null

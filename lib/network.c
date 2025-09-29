@@ -306,10 +306,17 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 
   printf("DEBUG: Calling accept...\n");
   fflush(stdout);
-  int accept_result = accept(listenfd, addr, addrlen);
-  printf("DEBUG: accept returned %d\n", accept_result);
+  socket_t accept_result = accept(listenfd, addr, addrlen);
+  printf("DEBUG: accept returned %lld\n", (long long)accept_result);
   fflush(stdout);
-  return accept_result;
+
+  // Properly handle INVALID_SOCKET on Windows
+  if (accept_result == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  // Explicit cast is safe after checking for INVALID_SOCKET
+  return (int)accept_result;
 }
 
 const char *network_error_string(int error_code) {
@@ -491,7 +498,13 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
 
   // Send header first
   ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
-  if (sent != sizeof(header)) {
+  // Check for error first to avoid signed/unsigned comparison issues
+  if (sent < 0) {
+    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
+              SAFE_STRERROR(errno));
+    return -1;
+  }
+  if ((size_t)sent != sizeof(header)) {
     log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
               SAFE_STRERROR(errno));
     return -1;
@@ -500,7 +513,12 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
   // Send payload if present
   if (len > 0 && data) {
     sent = send_with_timeout(sockfd, data, len, timeout);
-    if (sent != (ssize_t)len) {
+    // Check for error first to avoid signed/unsigned comparison issues
+    if (sent < 0) {
+      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      return -1;
+    }
+    if ((size_t)sent != len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
     }
@@ -846,7 +864,12 @@ int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client
   // Send payload if present
   if (len > 0 && data) {
     sent = send_with_timeout(sockfd, data, len, timeout);
-    if (sent != (ssize_t)len) {
+    // Check for error first to avoid signed/unsigned comparison issues
+    if (sent < 0) {
+      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      return -1;
+    }
+    if ((size_t)sent != len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
     }
