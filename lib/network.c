@@ -76,12 +76,20 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
+  // socket_select expects max_fd as the highest fd value (sockfd in this case)
+  // On Windows it's ignored, but on POSIX it's crucial
   result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
   if (result <= 0) {
+    if (result == 0) {
+      // Timeout occurred
+      errno = ETIMEDOUT;
+      return false;
+    }
     if (errno == EINTR) {
       return false; // Interrupted by signal
     }
-    return false; // Timeout or error
+    // Some other error occurred
+    return false;
   }
 
   // Check if connection was successful
@@ -92,6 +100,8 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   }
 
   if (error != 0) {
+    // Set errno to the actual socket error so caller gets correct error message
+    errno = error;
     return false;
   }
 
@@ -145,12 +155,26 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
         errno = ETIMEDOUT;
         log_error("send_with_timeout: select timeout - socket not writable after %d seconds (sent %zd/%zu bytes)",
                   remaining_timeout, total_sent, len);
-      } else if (errno == EINTR) {
-        // Interrupted by signal
-        log_debug("send_with_timeout: select interrupted");
-        return -1;
       } else {
-        log_error("send_with_timeout: select failed with errno=%d", errno);
+#ifdef _WIN32
+        int error = WSAGetLastError();
+        if (error == WSAEINTR) {
+          // Interrupted by signal
+          log_debug("send_with_timeout: select interrupted");
+          return -1;
+        } else {
+          log_error("send_with_timeout: select failed with WSAError=%d", error);
+          errno = error;
+        }
+#else
+        if (errno == EINTR) {
+          // Interrupted by signal
+          log_debug("send_with_timeout: select interrupted");
+          return -1;
+        } else {
+          log_error("send_with_timeout: select failed with errno=%d", errno);
+        }
+#endif
       }
       return -1;
     }
@@ -235,9 +259,20 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
       // Timeout or error
       if (result == 0) {
         errno = ETIMEDOUT;
-      } else if (errno == EINTR) {
-        // Interrupted by signal
-        return -1;
+      } else {
+#ifdef _WIN32
+        int error = WSAGetLastError();
+        if (error == WSAEINTR) {
+          // Interrupted by signal
+          return -1;
+        }
+        errno = error;
+#else
+        if (errno == EINTR) {
+          // Interrupted by signal
+          return -1;
+        }
+#endif
       }
       return -1;
     }
@@ -245,9 +280,17 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
     // Try to receive data
     ssize_t received = recv(sockfd, data + total_received, len - total_received, 0);
     if (received < 0) {
+#ifdef _WIN32
+      int error = WSAGetLastError();
+      if (error == WSAEWOULDBLOCK) {
+        continue; // Try again
+      }
+      errno = error; // Set errno for caller
+#else
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         continue; // Try again
       }
+#endif
       return -1; // Real error
     }
     if (received == 0) {
