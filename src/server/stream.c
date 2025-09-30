@@ -518,7 +518,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (!single_source) {
       log_error("Logic error: sources_with_video=1 but no source found");
       *out_size = 0;
-      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
     // Single source - check if target client wants half-block mode for 2x resolution
@@ -546,7 +545,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       for (int i = 0; i < source_count; i++) {
         image_destroy_to_pool(sources[i].image);
       }
-      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
 
@@ -613,7 +611,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       for (int i = 0; i < source_count; i++) {
         image_destroy_to_pool(sources[i].image);
       }
-      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
 
@@ -739,7 +736,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         for (int i = 0; i < source_count; i++) {
           image_destroy_to_pool(sources[i].image);
         }
-        rwlock_rdunlock(&g_client_manager_rwlock);
         return NULL;
       }
       image_clear(composite);
@@ -801,7 +797,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
               for (int j = 0; j < source_count; j++) {
                 image_destroy_to_pool(sources[j].image);
               }
-              rwlock_rdunlock(&g_client_manager_rwlock);
               return NULL;
             }
             image_clear(composite);
@@ -910,7 +905,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (!composite) {
       log_error("Per-client %u: Failed to create empty image", target_client_id);
       *out_size = 0;
-      rwlock_rdunlock(&g_client_manager_rwlock);
       return NULL;
     }
     image_clear(composite);
