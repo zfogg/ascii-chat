@@ -10,7 +10,7 @@
 
 #include "../abstraction.h"
 #include "../../common.h"
-#include <windows.h>
+#include "../windows_compat.h"
 #include <process.h>
 #include <stdint.h>
 #include <dbghelp.h>

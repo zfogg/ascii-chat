@@ -11,7 +11,7 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../../common.h"
-#include <windows.h>
+#include "../windows_compat.h"
 #include <dbghelp.h>
 #include <io.h>
 #include <fcntl.h>

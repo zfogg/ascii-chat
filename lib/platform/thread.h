@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #ifdef _WIN32
-#include <windows.h>
+#include "windows_compat.h"
 typedef HANDLE asciithread_t;
 typedef DWORD thread_id_t;
 #else

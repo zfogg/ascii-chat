@@ -14,7 +14,7 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
-#include <windows.h>
+#include "windows_compat.h"
 typedef CRITICAL_SECTION mutex_t;
 #else
 #include <pthread.h>

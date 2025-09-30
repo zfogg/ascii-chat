@@ -9,7 +9,7 @@
 #ifdef _WIN32
 
 #include "../abstraction.h"
-#include <windows.h>
+#include "../windows_compat.h"
 
 /**
  * @brief Initialize a mutex

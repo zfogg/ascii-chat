@@ -15,7 +15,7 @@
 #include "mutex.h"
 
 #ifdef _WIN32
-#include <windows.h>
+#include "windows_compat.h"
 typedef CONDITION_VARIABLE cond_t;
 #else
 #include <pthread.h>

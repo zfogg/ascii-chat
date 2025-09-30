@@ -64,7 +64,7 @@
 #include "platform/init.h"
 
 #ifdef _WIN32
-#include <windows.h>
+#include "platform/windows_compat.h"
 #include <io.h>
 #else
 #include <unistd.h>

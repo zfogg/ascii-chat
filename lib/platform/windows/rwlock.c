@@ -10,7 +10,7 @@
 
 #include "../abstraction.h"
 #include "common.h"
-#include <windows.h>
+#include "../windows_compat.h"
 
 /**
  * @brief Initialize a read-write lock

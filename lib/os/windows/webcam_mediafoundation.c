@@ -3,7 +3,7 @@
 #define COBJMACROS
 #include "os/webcam.h"
 #include "common.h"
-#include <windows.h>
+#include "platform/windows_compat.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>

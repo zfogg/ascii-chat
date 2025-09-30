@@ -98,7 +98,7 @@
 #include <zlib.h>
 
 #ifdef _WIN32
-#include <windows.h>
+#include "platform/windows_compat.h"
 #endif
 
 /* ============================================================================
