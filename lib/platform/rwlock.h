@@ -14,7 +14,7 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
-#include <windows.h>
+#include "windows_compat.h"
 typedef SRWLOCK rwlock_t;
 #else
 #include <pthread.h>

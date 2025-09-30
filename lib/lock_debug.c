@@ -22,7 +22,7 @@
 #ifdef _WIN32
 #include <io.h>
 #include <conio.h>
-#include <windows.h> // For ReleaseSRWLockShared
+#include "platform/windows_compat.h" // For ReleaseSRWLockShared
 #else
 #include <sys/select.h>
 #include <unistd.h>

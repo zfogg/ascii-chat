@@ -608,6 +608,9 @@ if(PLATFORM_DARWIN)
     # No manual SDK configuration needed
 endif()
 
+# Windows-specific: No special compiler flags needed
+# Struct packing is handled via #pragma pack directives in windows_compat.h
+
 # Include directories (matches Makefile)
 include_directories(
     ${CMAKE_SOURCE_DIR}/lib

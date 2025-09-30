@@ -10,7 +10,7 @@
 
 #include "../../options.h"
 #include "../../common.h"
-#include <windows.h>
+#include "../windows_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>
