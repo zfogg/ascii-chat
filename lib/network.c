@@ -608,13 +608,6 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
       return -1;
     }
     break;
-  case PACKET_TYPE_PALETTE_CONFIG:
-    // Palette config must be exactly the struct size
-    if (pkt_len != sizeof(palette_config_packet_t)) {
-      log_error("Invalid palette config packet size: %u (expected %zu)", pkt_len, sizeof(palette_config_packet_t));
-      return -1;
-    }
-    break;
   case PACKET_TYPE_PING:
   case PACKET_TYPE_PONG:
     if (pkt_len > 64) { // Ping/pong shouldn't be large

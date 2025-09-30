@@ -7,9 +7,11 @@
 #include "../platform/abstraction.h"
 #include "../common.h"
 
+PACKED_STRUCT_BEGIN
 typedef struct rgb_t {
   uint8_t r, g, b;
 } PACKED_ATTR rgb_t;
+PACKED_STRUCT_END
 
 // SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
 typedef struct rgb_pixel_simd_t {
