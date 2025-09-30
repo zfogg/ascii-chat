@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef _WIN32
+#pragma pack(push, 1)
+#endif
+
 #include "platform/abstraction.h"
 #include <stdbool.h>
 #include "common.h"
@@ -7,10 +11,10 @@
 #include "crc32_hw.h"
 
 // Timeout constants (in seconds) - tuned for real-time video streaming
-#define CONNECT_TIMEOUT 15 // Initial connection can take time on slow networks
-#define SEND_TIMEOUT 5     // Video frames need timely delivery
-#define RECV_TIMEOUT 15    // If no data in 15 sec, connection is likely dead
-#define ACCEPT_TIMEOUT 3   // Balance between responsiveness and CPU usage
+#define CONNECT_TIMEOUT 3 // Reduced for faster connection attempts
+#define SEND_TIMEOUT 5    // Video frames need timely delivery
+#define RECV_TIMEOUT 15   // If no data in 15 sec, connection is likely dead
+#define ACCEPT_TIMEOUT 3  // Balance between responsiveness and CPU usage
 
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60
@@ -79,7 +83,6 @@ typedef enum {
   PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
 } packet_type_t;
 
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t magic;     // PACKET_MAGIC for packet validation
   uint16_t type;      // packet_type_t
@@ -87,8 +90,6 @@ typedef struct {
   uint32_t crc32;     // payload checksum
   uint32_t client_id; // which client this packet is from (0 = server)
 } PACKED_ATTR packet_header_t;
-PACKED_STRUCT_END
-
 // Multi-user protocol structures
 #define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
 #define MAX_DISPLAY_NAME_LEN 32
@@ -100,40 +101,27 @@ typedef struct {
   uint32_t height;
 } size_packet_t;
 
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t client_id;                      // Unique client identifier
   char display_name[MAX_DISPLAY_NAME_LEN]; // User display name
   uint32_t capabilities;                   // Bitmask: VIDEO_CAPABLE | AUDIO_CAPABLE
 } PACKED_ATTR client_info_packet_t;
-PACKED_STRUCT_END
-
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t client_id;   // Which client this stream is from
   uint32_t stream_type; // VIDEO_STREAM | AUDIO_STREAM
   uint32_t timestamp;   // When frame was captured
 } PACKED_ATTR stream_header_t;
-PACKED_STRUCT_END
-
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t client_count;                     // Number of clients in list
   client_info_packet_t clients[MAX_CLIENTS]; // Client info array
 } PACKED_ATTR client_list_packet_t;
-PACKED_STRUCT_END
-
 // Server state packet - sent to clients when state changes
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t connected_client_count; // Number of currently connected clients
   uint32_t active_client_count;    // Number of clients actively sending video
   uint32_t reserved[6];            // Reserved for future use
 } PACKED_ATTR server_state_packet_t;
-PACKED_STRUCT_END
-
 // Terminal capabilities packet - sent by client to inform server of capabilities
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t capabilities;      // Bitmask of TERM_CAP_* flags
   uint32_t color_level;       // terminal_color_level_t enum value
@@ -149,15 +137,12 @@ typedef struct {
   uint8_t desired_fps;        // Client's desired frame rate (1-144 FPS)
   uint8_t reserved[2];        // Padding for alignment
 } PACKED_ATTR terminal_capabilities_packet_t;
-PACKED_STRUCT_END
-
 // ============================================================================
 // Unified Frame Packet Structures
 // ============================================================================
 
 // ASCII frame packet - contains complete ASCII art frame with metadata
 // This replaces the old two-packet system (VIDEO_HEADER + VIDEO)
-PACKED_STRUCT_BEGIN
 typedef struct {
   // Frame metadata
   uint32_t width;           // Terminal width in characters
@@ -171,11 +156,8 @@ typedef struct {
   // If compressed_size > 0, data is zlib compressed
   // Format: char data[original_size] or compressed_data[compressed_size]
 } PACKED_ATTR ascii_frame_packet_t;
-PACKED_STRUCT_END
-
 // Image frame packet - contains raw RGB image with dimensions
 // Used when client sends camera frames to server
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t width;           // Image width in pixels
   uint32_t height;          // Image height in pixels
@@ -187,8 +169,6 @@ typedef struct {
   // The actual pixel data follows this header in the packet payload
   // Format: rgb_t pixels[width * height] or compressed data
 } PACKED_ATTR image_frame_packet_t;
-PACKED_STRUCT_END
-
 // Frame flags for ascii_frame_packet_t
 #define FRAME_FLAG_HAS_COLOR 0x01      // Frame includes ANSI color codes
 #define FRAME_FLAG_IS_COMPRESSED 0x02  // Frame data is zlib compressed
@@ -202,7 +182,6 @@ PACKED_STRUCT_END
 #define PIXEL_FORMAT_BGRA 3
 
 // Audio batch packet - contains multiple audio chunks for efficiency
-PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t batch_count;   // Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT)
   uint32_t total_samples; // Total samples across all chunks
@@ -210,8 +189,6 @@ typedef struct {
   uint32_t channels;      // Number of channels (1=mono, 2=stereo)
   // The actual audio data follows: float samples[total_samples]
 } PACKED_ATTR audio_batch_packet_t;
-PACKED_STRUCT_END
-
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
 #define CLIENT_CAP_AUDIO 0x02
@@ -263,3 +240,7 @@ int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t fram
 int send_image_frame_packet(socket_t sockfd, const void *pixel_data, size_t pixel_size, int width, int height,
                             uint32_t pixel_format);
 int send_compressed_frame(socket_t sockfd, const char *frame_data, size_t frame_size);
+
+#ifdef _WIN32
+#pragma pack(pop)
+#endif
