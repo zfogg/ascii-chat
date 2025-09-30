@@ -129,7 +129,7 @@ bool ascii_thread_is_initialized(asciithread_t *thread) {
 
 void ascii_thread_init(asciithread_t *thread) {
   if (thread) {
-    memset(thread, 0, sizeof(asciithread_t));  // On POSIX, zero-init the pthread_t
+    memset(thread, 0, sizeof(asciithread_t)); // On POSIX, zero-init the pthread_t
   }
 }
 

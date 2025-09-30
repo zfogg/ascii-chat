@@ -849,7 +849,7 @@ void *client_send_thread_func(void *arg) {
                             payload_size);
                 }
                 rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
-                break; // Socket error
+                break;                                         // Socket error
               }
               sent_something = true;
               last_video_send_time = current_time;
@@ -863,7 +863,7 @@ void *client_send_thread_func(void *arg) {
                           sizeof(header));
               }
               rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
-              break; // Socket error
+              break;                                         // Socket error
             }
           } else {
             log_warn("Video frame too large for send buffer: %zu > %zu", payload_size, client->send_buffer_size);

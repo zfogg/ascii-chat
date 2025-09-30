@@ -76,10 +76,10 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
-  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
-  PACKET_TYPE_PALETTE_CONFIG = 14 // Server broadcasts palette configuration to clients
+  PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
 } packet_type_t;
 
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t magic;     // PACKET_MAGIC for packet validation
   uint16_t type;      // packet_type_t
@@ -87,6 +87,7 @@ typedef struct {
   uint32_t crc32;     // payload checksum
   uint32_t client_id; // which client this packet is from (0 = server)
 } PACKED_ATTR packet_header_t;
+PACKED_STRUCT_END
 
 // Multi-user protocol structures
 #define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
@@ -99,31 +100,40 @@ typedef struct {
   uint32_t height;
 } size_packet_t;
 
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t client_id;                      // Unique client identifier
   char display_name[MAX_DISPLAY_NAME_LEN]; // User display name
   uint32_t capabilities;                   // Bitmask: VIDEO_CAPABLE | AUDIO_CAPABLE
 } PACKED_ATTR client_info_packet_t;
+PACKED_STRUCT_END
 
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t client_id;   // Which client this stream is from
   uint32_t stream_type; // VIDEO_STREAM | AUDIO_STREAM
   uint32_t timestamp;   // When frame was captured
 } PACKED_ATTR stream_header_t;
+PACKED_STRUCT_END
 
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t client_count;                     // Number of clients in list
   client_info_packet_t clients[MAX_CLIENTS]; // Client info array
 } PACKED_ATTR client_list_packet_t;
+PACKED_STRUCT_END
 
 // Server state packet - sent to clients when state changes
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t connected_client_count; // Number of currently connected clients
   uint32_t active_client_count;    // Number of clients actively sending video
   uint32_t reserved[6];            // Reserved for future use
 } PACKED_ATTR server_state_packet_t;
+PACKED_STRUCT_END
 
 // Terminal capabilities packet - sent by client to inform server of capabilities
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t capabilities;      // Bitmask of TERM_CAP_* flags
   uint32_t color_level;       // terminal_color_level_t enum value
@@ -139,6 +149,7 @@ typedef struct {
   uint8_t desired_fps;        // Client's desired frame rate (1-144 FPS)
   uint8_t reserved[2];        // Padding for alignment
 } PACKED_ATTR terminal_capabilities_packet_t;
+PACKED_STRUCT_END
 
 // ============================================================================
 // Unified Frame Packet Structures
@@ -146,6 +157,7 @@ typedef struct {
 
 // ASCII frame packet - contains complete ASCII art frame with metadata
 // This replaces the old two-packet system (VIDEO_HEADER + VIDEO)
+PACKED_STRUCT_BEGIN
 typedef struct {
   // Frame metadata
   uint32_t width;           // Terminal width in characters
@@ -159,9 +171,11 @@ typedef struct {
   // If compressed_size > 0, data is zlib compressed
   // Format: char data[original_size] or compressed_data[compressed_size]
 } PACKED_ATTR ascii_frame_packet_t;
+PACKED_STRUCT_END
 
 // Image frame packet - contains raw RGB image with dimensions
 // Used when client sends camera frames to server
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t width;           // Image width in pixels
   uint32_t height;          // Image height in pixels
@@ -173,6 +187,7 @@ typedef struct {
   // The actual pixel data follows this header in the packet payload
   // Format: rgb_t pixels[width * height] or compressed data
 } PACKED_ATTR image_frame_packet_t;
+PACKED_STRUCT_END
 
 // Frame flags for ascii_frame_packet_t
 #define FRAME_FLAG_HAS_COLOR 0x01      // Frame includes ANSI color codes
@@ -187,6 +202,7 @@ typedef struct {
 #define PIXEL_FORMAT_BGRA 3
 
 // Audio batch packet - contains multiple audio chunks for efficiency
+PACKED_STRUCT_BEGIN
 typedef struct {
   uint32_t batch_count;   // Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT)
   uint32_t total_samples; // Total samples across all chunks
@@ -194,14 +210,7 @@ typedef struct {
   uint32_t channels;      // Number of channels (1=mono, 2=stereo)
   // The actual audio data follows: float samples[total_samples]
 } PACKED_ATTR audio_batch_packet_t;
-
-// Palette configuration packet - sent by server to synchronize palette across clients
-typedef struct {
-  uint32_t palette_type;   // palette_type_t enum value
-  uint32_t palette_length; // Number of characters in palette
-  uint32_t requires_utf8;  // 0=ASCII only, 1=needs UTF-8 support
-  char palette_chars[256]; // The actual palette characters (UTF-8)
-} PACKED_ATTR palette_config_packet_t;
+PACKED_STRUCT_END
 
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
