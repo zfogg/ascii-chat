@@ -1,5 +1,5 @@
-// Test client.c with mocked webcam
-// This shows how to use the mock with real client code
+// Test webcam functionality with test pattern mode
+// Uses real webcam API with --test-pattern instead of mocks
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
@@ -10,85 +10,64 @@
 #include <unistd.h>
 #endif
 
-// CRITICAL: Include mock BEFORE any webcam headers!
-// This must come first to override the real webcam functions
-#define WEBCAM_MOCK_ENABLED 1
-#include "../mocks/webcam_mock.h"
-
-// Now include the rest of the headers
 #include "common.h"
-#include "network.h"
+#include "os/webcam.h"
 #include "options.h"
+#include "image2ascii/image.h"
+#include "tests/logging.h"
 
-// To test client.c, we have two approaches:
+// Suite setup: enable test pattern mode
+void client_test_setup(void) {
+  log_set_level(LOG_FATAL);
+  test_logging_disable(true, true);
+  opt_test_pattern = true;
+}
 
-// APPROACH 1: Include client.c directly (compile-time mocking)
-// This allows testing internal functions
-#ifdef TEST_CLIENT_INTERNALS
+// Suite teardown: restore settings
+void client_test_teardown(void) {
+  opt_test_pattern = false;
+  log_set_level(LOG_DEBUG);
+  test_logging_restore();
+}
 
-// The mock overrides are already in place from webcam_mock.h
-// Now when we include client.c, it will use the mocked functions
-#include "../../src/client.c"
+TestSuite(client_test_pattern, .init = client_test_setup, .fini = client_test_teardown);
 
-Test(client_mock, test_video_capture_with_mock) {
-  // Configure the mock
-  mock_webcam_set_test_pattern(true);
-  mock_webcam_set_dimensions(640, 480);
-
-  // Initialize options (client.c needs this)
-  options_t opts = {0};
-  opts.width = 640;
-  opts.height = 480;
-  opts.address = "127.0.0.1";
-  opts.port = 8080;
-
-  // Now any webcam_* calls in client.c will use the mock
-  webcam_context_t *ctx = NULL;
-  int result = webcam_init_context(&ctx, 0);
-  cr_assert_eq(result, 0, "Mock webcam should initialize");
+Test(client_test_pattern, test_video_capture_with_test_pattern) {
+  // Initialize with test pattern
+  int result = webcam_init(0);
+  cr_assert_eq(result, 0, "Test pattern webcam should initialize");
 
   // Read a frame
-  image_t *frame = webcam_read_context(ctx);
-  cr_assert_not_null(frame, "Mock should return a frame");
-  cr_assert_eq(frame->w, 640);
-  cr_assert_eq(frame->h, 480);
+  image_t *frame = webcam_read();
+  cr_assert_not_null(frame, "Test pattern should return a frame");
+  cr_assert_eq(frame->w, 1280, "Test pattern width should be 1280");
+  cr_assert_eq(frame->h, 720, "Test pattern height should be 720");
 
   // Cleanup
   image_destroy(frame);
-  webcam_cleanup_context(ctx);
+  webcam_cleanup();
 }
 
-#endif
+Test(client_test_pattern, test_client_with_test_pattern_video) {
+  // Initialize with test pattern
+  int result = webcam_init(0);
+  cr_assert_eq(result, 0, "Test pattern init should succeed");
 
-// APPROACH 2: Link-time mocking (better for integration tests)
-// Compile client.c separately with -DUSE_WEBCAM_MOCK
+  // Verify dimensions
+  cr_assert_eq(last_image_width, 1280, "Width should be 1280");
+  cr_assert_eq(last_image_height, 720, "Height should be 720");
 
-Test(client_mock, test_client_with_mock_video) {
-  // Set up mock to use a specific test pattern
-  mock_webcam_set_test_pattern(true);
-  mock_webcam_set_dimensions(320, 240);
-
-  // Test that client can capture from mock
-  webcam_context_t *ctx = NULL;
-  int result = webcam_init_context(&ctx, 0);
-  cr_assert_eq(result, 0, "Mock init should succeed");
-
-  int width, height;
-  webcam_get_dimensions(ctx, &width, &height);
-  cr_assert_eq(width, 320);
-  cr_assert_eq(height, 240);
-
-  // Simulate multiple frame captures
+  // Simulate multiple frame captures with test pattern
   for (int i = 0; i < 10; i++) {
-    image_t *frame = webcam_read_context(ctx);
+    image_t *frame = webcam_read();
     cr_assert_not_null(frame, "Frame %d should be captured", i);
-    cr_assert_eq(frame->w, 320);
-    cr_assert_eq(frame->h, 240);
-    cr_assert_not_null(frame->pixels);
+    cr_assert_eq(frame->w, 1280, "Width should be 1280");
+    cr_assert_eq(frame->h, 720, "Height should be 720");
+    cr_assert_not_null(frame->pixels, "Should have pixel data");
 
-    // Verify test pattern data exists
+    // Verify test pattern data exists (check further in to avoid grid lines)
     bool has_data = false;
-    for (int j = 0; j < 100; j++) {
+    for (int j = 1000; j < 2000; j++) {
       if (frame->pixels[j].r != 0 || frame->pixels[j].g != 0 || frame->pixels[j].b != 0) {
         has_data = true;
         break;
@@ -99,51 +78,19 @@ Test(client_mock, test_client_with_mock_video) {
     image_destroy(frame);
   }
 
-  webcam_cleanup_context(ctx);
+  webcam_cleanup();
 }
 
-Test(client_mock, test_mock_with_video_file) {
-  // Configure mock to use a video file
-  mock_webcam_set_video_file("tests/fixtures/test_pattern.mp4");
+Test(client_test_pattern, test_multiple_init_cleanup_cycles) {
+  // Test that webcam can be initialized and cleaned up multiple times
+  for (int cycle = 0; cycle < 3; cycle++) {
+    int result = webcam_init(cycle);
+    cr_assert_eq(result, 0, "Init should succeed for cycle %d", cycle);
 
-  webcam_context_t *ctx = NULL;
-  int result = webcam_init_context(&ctx, 0);
+    image_t *frame = webcam_read();
+    cr_assert_not_null(frame, "Should get frame in cycle %d", cycle);
 
-  // If FFmpeg is not available or file doesn't exist, it falls back to test pattern
-  // So this test should always pass
-  cr_assert_eq(result, 0, "Mock should initialize even without video file");
-
-  image_t *frame = webcam_read_context(ctx);
-  cr_assert_not_null(frame, "Should get frame from mock");
-
-  image_destroy(frame);
-  webcam_cleanup_context(ctx);
-}
-
-Test(client_mock, test_mock_reset) {
-  // Test that mock can be reconfigured
-  mock_webcam_set_dimensions(1920, 1080);
-
-  webcam_context_t *ctx1 = NULL;
-  webcam_init_context(&ctx1, 0);
-
-  int width, height;
-  webcam_get_dimensions(ctx1, &width, &height);
-  cr_assert_eq(width, 1920);
-  cr_assert_eq(height, 1080);
-
-  webcam_cleanup_context(ctx1);
-
-  // Reset and try different settings
-  mock_webcam_reset();
-  mock_webcam_set_dimensions(800, 600);
-
-  webcam_context_t *ctx2 = NULL;
-  webcam_init_context(&ctx2, 0);
-
-  webcam_get_dimensions(ctx2, &width, &height);
-  cr_assert_eq(width, 800);
-  cr_assert_eq(height, 600);
-
-  webcam_cleanup_context(ctx2);
+    image_destroy(frame);
+    webcam_cleanup();
+  }
 }

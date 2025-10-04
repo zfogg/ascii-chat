@@ -2,6 +2,7 @@
 #include "image2ascii/ascii.h"
 #include "image2ascii/image.h"
 #include "platform/terminal.h"
+#include "options.h"
 
 // Custom test suite setup function to initialize globals
 void ascii_custom_init(void) {
@@ -596,18 +597,25 @@ Test(ascii, ascii_write_empty_data) {
  * ============================================================================ */
 
 Test(ascii, ascii_read_init_basic) {
-  // Skip in CI or Docker environments (no webcam available)
-  if (getenv("CI") != NULL || access("/.dockerenv", F_OK) == 0) {
-    cr_skip("Skipping test in CI/Docker environment");
-    return;
+  // In CI, Docker, or WSL environments, use test pattern mode (no real webcam available)
+  bool use_test_pattern = test_is_in_headless_environment();
+
+  // Enable test pattern mode if needed
+  if (use_test_pattern) {
+    opt_test_pattern = true;
   }
 
   asciichat_error_t result = ascii_read_init(0);
 
-  // Should succeed or fail gracefully (depends on webcam availability)
-  cr_assert(result == ASCIICHAT_OK || result < 0);
+  // Should succeed with test pattern or real webcam
+  cr_assert_eq(result, ASCIICHAT_OK, "ascii_read_init should succeed with test pattern or webcam");
 
   ascii_read_destroy();
+
+  // Restore test pattern setting
+  if (use_test_pattern) {
+    opt_test_pattern = false;
+  }
 }
 
 Test(ascii, ascii_write_init_basic) {
