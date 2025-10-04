@@ -751,31 +751,36 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       int col = video_source_index % grid_cols;
       video_source_index++;
 
+      // Use actual composite dimensions for cell calculations, since composite
+      // may be recreated with different width (e.g. for vertical layouts)
+      int actual_cell_width_px = composite->w / grid_cols;
+      int actual_cell_height_px = composite->h / grid_rows;
+
       // Calculate cell position in pixels
-      int cell_x_offset_px = col * cell_width_px;
-      int cell_y_offset_px = row * cell_height_px;
+      int cell_x_offset_px = col * actual_cell_width_px;
+      int cell_y_offset_px = row * actual_cell_height_px;
 
       log_info(
           "GRID PLACEMENT: source_i=%d, video_idx=%d, row=%d, col=%d, cell_offset=(%d,%d), cell_size=%dx%d, grid=%dx%d",
-          i, video_source_index - 1, row, col, cell_x_offset_px, cell_y_offset_px, cell_width_px, cell_height_px,
-          grid_cols, grid_rows);
+          i, video_source_index - 1, row, col, cell_x_offset_px, cell_y_offset_px, actual_cell_width_px,
+          actual_cell_height_px, grid_cols, grid_rows);
 
       float src_aspect = (float)sources[i].image->w / (float)sources[i].image->h;
-      float cell_aspect = (float)cell_width_px / (float)cell_height_px;
+      float cell_aspect = (float)actual_cell_width_px / (float)actual_cell_height_px;
 
       int target_width_px, target_height_px;
 
       // For 2-client vertical layout, use proper aspect-ratio fitting that maximizes space
       if (sources_with_video == 2 && grid_cols == 1 && grid_rows == 2) {
         // Calculate both possible scalings
-        int width_constrained_w = cell_width_px;
-        int width_constrained_h = (int)((cell_width_px / src_aspect) + 0.5f);
+        int width_constrained_w = actual_cell_width_px;
+        int width_constrained_h = (int)((actual_cell_width_px / src_aspect) + 0.5f);
 
-        int height_constrained_h = cell_height_px;
-        int height_constrained_w = (int)((cell_height_px * src_aspect) + 0.5f);
+        int height_constrained_h = actual_cell_height_px;
+        int height_constrained_w = (int)((actual_cell_height_px * src_aspect) + 0.5f);
 
         // For vertical layout, prefer width-constrained to maximize usage of available space
-        if (width_constrained_h <= cell_height_px) {
+        if (width_constrained_h <= actual_cell_height_px) {
           // Width-constrained scaling fits and gives better space utilization
           target_width_px = width_constrained_w;
           target_height_px = width_constrained_h;
@@ -800,28 +805,30 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
               return NULL;
             }
             image_clear(composite);
-            // CRITICAL: Update composite_width_px for stride calculations
             composite_width_px = optimal_width_for_vertical;
+            // Recalculate cell dimensions after composite recreation
+            actual_cell_width_px = composite->w / grid_cols;
+            actual_cell_height_px = composite->h / grid_rows;
           }
         }
       } else if (sources_with_video == 1) {
         // Single client: maximize space while respecting aspect ratio
         // Try both width-constrained and height-constrained scaling
-        int width_constrained_w = cell_width_px;
-        int width_constrained_h = (int)((cell_width_px / src_aspect) + 0.5f);
+        int width_constrained_w = actual_cell_width_px;
+        int width_constrained_h = (int)((actual_cell_width_px / src_aspect) + 0.5f);
 
-        int height_constrained_h = cell_height_px;
-        int height_constrained_w = (int)((cell_height_px * src_aspect) + 0.5f);
+        int height_constrained_h = actual_cell_height_px;
+        int height_constrained_w = (int)((actual_cell_height_px * src_aspect) + 0.5f);
 
         // Choose the scaling that uses the most space (largest area)
         int width_area = width_constrained_w * width_constrained_h;
         int height_area = height_constrained_w * height_constrained_h;
 
-        if (width_constrained_h <= cell_height_px && width_area >= height_area) {
+        if (width_constrained_h <= actual_cell_height_px && width_area >= height_area) {
           // Width-constrained scaling fits and gives equal or better space utilization
           target_width_px = width_constrained_w;
           target_height_px = width_constrained_h;
-        } else if (height_constrained_w <= cell_width_px) {
+        } else if (height_constrained_w <= actual_cell_width_px) {
           // Height-constrained scaling fits
           target_width_px = height_constrained_w;
           target_height_px = height_constrained_h;
@@ -834,37 +841,29 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         // Normal aspect ratio fitting for other layouts
         if (src_aspect > cell_aspect) {
           // Image is wider than cell - fit to width
-          target_width_px = cell_width_px;
-          target_height_px = (int)((cell_width_px / src_aspect) + 0.5f);
+          target_width_px = actual_cell_width_px;
+          target_height_px = (int)((actual_cell_width_px / src_aspect) + 0.5f);
         } else {
           // Image is taller than cell - fit to height
-          target_height_px = cell_height_px;
-          target_width_px = (int)((cell_height_px * src_aspect) + 0.5f);
+          target_height_px = actual_cell_height_px;
+          target_width_px = (int)((actual_cell_height_px * src_aspect) + 0.5f);
         }
       }
 
       // Ensure target dimensions don't exceed cell dimensions
-      if (target_width_px > cell_width_px)
-        target_width_px = cell_width_px;
-      if (target_height_px > cell_height_px)
-        target_height_px = cell_height_px;
+      if (target_width_px > actual_cell_width_px)
+        target_width_px = actual_cell_width_px;
+      if (target_height_px > actual_cell_height_px)
+        target_height_px = actual_cell_height_px;
 
       // Create resized image with standard allocation
       image_t *resized = image_new_from_pool(target_width_px, target_height_px);
       if (resized) {
         image_resize(sources[i].image, resized);
 
-        // For 2-client vertical layout, center horizontally (stripe is gone due to wider images)
-        int x_padding_px, y_padding_px;
-        if (sources_with_video == 2 && grid_cols == 1 && grid_rows == 2) {
-          // No horizontal padding - composite width matches content width
-          x_padding_px = 0;
-          y_padding_px = (cell_height_px - target_height_px) / 2;
-        } else {
-          // Center the resized image within the cell (pixel coordinates)
-          x_padding_px = (cell_width_px - target_width_px) / 2;
-          y_padding_px = (cell_height_px - target_height_px) / 2;
-        }
+        // Center the resized image within the cell
+        int x_padding_px = (actual_cell_width_px - target_width_px) / 2;
+        int y_padding_px = (actual_cell_height_px - target_height_px) / 2;
 
         log_info(
             "COPYING: target_size=%dx%d, padding=(%d,%d), final_dst_range=(%d,%d) to (%d,%d), composite_size=%dx%d",
@@ -878,10 +877,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
             int src_idx = (y * target_width_px) + x;
             int dst_x = cell_x_offset_px + x_padding_px + x;
             int dst_y = cell_y_offset_px + y_padding_px + y;
-
-            // CRITICAL FIX: Use composite->w for stride, NOT composite_width_px
-            // composite_width_px is the initial width but composite can be recreated
-            // with different dimensions (e.g. optimal_width_for_vertical on line 798)
             int dst_idx = (dst_y * composite->w) + dst_x;
 
             // Bounds checking with correct composite dimensions
