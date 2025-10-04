@@ -1969,7 +1969,11 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         elseif(BOXFORT_LIBRARIES)
             list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
         else()
-            list(APPEND TEST_LDFLAGS boxfort)
+            # Boxfort is optional - only add if library exists
+            find_library(BOXFORT_LIB boxfort)
+            if(BOXFORT_LIB)
+                list(APPEND TEST_LDFLAGS boxfort)
+            endif()
         endif()
 
         # Optional dependencies
@@ -1990,7 +1994,13 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         endif()
 
         # Additional system libraries (matches Makefile)
-        list(APPEND TEST_LDFLAGS ssl crypto ssh2 http_parser pcre2-8 dl resolv)
+        # Make these optional - only link if available
+        foreach(lib ssl crypto ssh2 http_parser pcre2-8 dl resolv)
+            find_library(${lib}_LIB ${lib})
+            if(${lib}_LIB)
+                list(APPEND TEST_LDFLAGS ${lib})
+            endif()
+        endforeach()
     elseif(PLATFORM_DARWIN)
         # macOS test linking (simpler, matches Makefile)
         if(NOT CRITERION_LIBRARIES)
