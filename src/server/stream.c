@@ -554,7 +554,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       composite_height_px = height * 2;
     } else {
       // Normal modes: use aspect-ratio fitted dimensions
-      calculate_fit_dimensions_pixel(sources[0].image->w, sources[0].image->h, width, height, &composite_width_px,
+      calculate_fit_dimensions_pixel(single_source->w, single_source->h, width, height, &composite_width_px,
                                      &composite_height_px);
     }
 
@@ -573,7 +573,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
     if (use_half_block) {
       // Half-block mode: manual aspect ratio and centering to preserve 2x resolution
-      float src_aspect = (float)sources[0].image->w / (float)sources[0].image->h;
+      float src_aspect = (float)single_source->w / (float)single_source->h;
       float target_aspect = (float)composite_width_px / (float)composite_height_px;
 
       int fitted_width, fitted_height;
@@ -594,7 +594,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       // Create fitted image from buffer pool
       image_t *fitted = image_new_from_pool(fitted_width, fitted_height);
       if (fitted) {
-        image_resize(sources[0].image, fitted);
+        image_resize(single_source, fitted);
 
         // Copy fitted image to center of composite
         for (int y = 0; y < fitted_height; y++) {
@@ -613,7 +613,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       }
     } else {
       // Normal modes: Simple resize to fitted dimensions
-      image_resize(sources[0].image, composite);
+      image_resize(single_source, composite);
     }
   } else if (sources_with_video > 1) {
     // Multiple sources - create grid layout
