@@ -143,6 +143,7 @@
 
 #include "stream.h"
 #include "client.h"
+#include "protocol.h"
 #include "common.h"
 #include "buffer_pool.h"
 #include "network.h"
@@ -157,6 +158,9 @@
 // Global client manager from client.c - needed for any_clients_sending_video()
 extern rwlock_t g_client_manager_rwlock;
 extern client_manager_t g_client_manager;
+
+// Track previous active video source count for grid layout change detection
+static atomic_int g_previous_active_video_count = 0;
 
 /* ============================================================================
  * Client Lookup Utilities
@@ -487,6 +491,23 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   for (int i = 0; i < source_count; i++) {
     if (sources[i].has_video && sources[i].image) {
       sources_with_video++;
+    }
+  }
+
+  // GRID LAYOUT CHANGE DETECTION:
+  // Check if the number of active video sources has changed - if so, broadcast
+  // CLEAR_CONSOLE to all clients to prevent visual artifacts from old content
+  // when the grid layout changes (1 client -> 2 clients -> 3 clients, etc.)
+  int previous_count = atomic_load(&g_previous_active_video_count);
+  if (sources_with_video != previous_count) {
+    // Use compare-and-swap to ensure only ONE thread broadcasts per change
+    // This prevents multiple render threads from broadcasting simultaneously
+    if (atomic_compare_exchange_strong(&g_previous_active_video_count, &previous_count, sources_with_video)) {
+      // We successfully updated the count - we are responsible for broadcasting
+      log_info("Grid layout changing: %d -> %d active video sources - broadcasting CLEAR_CONSOLE", previous_count,
+               sources_with_video);
+      broadcast_clear_console_to_all_clients();
+      // The next frame generated will use the new grid layout on clean displays
     }
   }
 
@@ -861,9 +882,28 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       if (resized) {
         image_resize(sources[i].image, resized);
 
-        // Center the resized image within the cell
-        int x_padding_px = (actual_cell_width_px - target_width_px) / 2;
-        int y_padding_px = (actual_cell_height_px - target_height_px) / 2;
+        // Grid centering strategy:
+        // - Multi-client: Apply padding ONLY to edge cells to center the grid as a whole
+        //   (left column gets left padding, right column gets right padding)
+        //   (top row gets top padding, bottom row gets bottom padding)
+        //   This keeps cells edge-to-edge while centering the entire grid
+        // - Single client: Center the image within the cell
+        int x_padding_px, y_padding_px;
+
+        if (sources_with_video > 1) {
+          // Multi-client grid: edge-only padding for grid centering
+          int base_x_padding = (actual_cell_width_px - target_width_px) / 2;
+          int base_y_padding = (actual_cell_height_px - target_height_px) / 2;
+
+          // Apply left padding only to leftmost column (col == 0)
+          x_padding_px = (col == 0) ? base_x_padding : 0;
+          // Apply top padding only to top row (row == 0)
+          y_padding_px = (row == 0) ? base_y_padding : 0;
+        } else {
+          // Single client: center within cell
+          x_padding_px = (actual_cell_width_px - target_width_px) / 2;
+          y_padding_px = (actual_cell_height_px - target_height_px) / 2;
+        }
 
         log_info(
             "COPYING: target_size=%dx%d, padding=(%d,%d), final_dst_range=(%d,%d) to (%d,%d), composite_size=%dx%d",

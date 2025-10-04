@@ -539,8 +539,8 @@ int main(int argc, char *argv[]) {
   printf("DEBUG: About to initialize client manager\n");
   fflush(stdout);
 
-  // Initialize client manager
-  memset(&g_client_manager, 0, sizeof(g_client_manager));
+  // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
+  // We only need to initialize the mutex
   if (!atomic_load(&g_should_exit)) {
     log_info("DEBUG: About to init client manager mutex");
   }
@@ -548,7 +548,6 @@ int main(int argc, char *argv[]) {
   if (!atomic_load(&g_should_exit)) {
     log_info("DEBUG: Client manager mutex initialized");
   }
-  g_client_manager.next_client_id = 0;
 
   if (!atomic_load(&g_should_exit)) {
     log_info("DEBUG: About to create client hashtable");
