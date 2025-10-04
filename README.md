@@ -22,52 +22,87 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 
 ## Dependencies
-- Most people: `apt-get install build-essential clang cmake ninja-build libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- ArchLinux masterrace: `pacman -S clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
-- macOS: `brew install cmake ninja zlib portaudio libsodium criterion`
+
+### Linux
+- **Ubuntu/Debian**: `apt-get install build-essential clang cmake ninja-build libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **ArchLinux**: `pacman -S clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
+
+### macOS
+- `brew install cmake ninja zlib portaudio libsodium criterion`
+
+### Windows
+1. **Install Scoop** (if not already installed):
+   ```powershell
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+   irm get.scoop.sh | iex
+   ```
+
+2. **Install build tools via Scoop**:
+   ```powershell
+   scoop install cmake ninja llvm
+   ```
+
+3. **Install Windows SDK**:
+   - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+   - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
+
+4. **Install dependencies via vcpkg**:
+   ```powershell
+   # Install vcpkg (if not already installed)
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   .\bootstrap-vcpkg.bat
+
+   # Install required packages
+   .\vcpkg install zlib:x64-windows portaudio:x64-windows libsodium:x64-windows
+   ```
 
 **Note:** OpenCV is no longer required! The project now uses native platform APIs:
 - **Linux**: V4L2 (Video4Linux2)
 - **macOS**: AVFoundation
+- **Windows**: Media Foundation
 
 
 ## Build and run
 - Clone this repo onto a computer with a webcam.
-- Install the dependencies.
-- Run `cmake -B build && cmake --build build`
-- Run `./build/bin/ascii-chat-server -p 9001` in one terminal, and then
-- Run `./build/bin/ascii-chat-client -p 9001` in another.
+- Install the dependencies for your OS (instructions listed above).
+- Run `cmake --preset default && cmake --build --preset default`
+- Run `./build/bin/ascii-chat-server` in your terminal.
+- Open a second terminal window/tab/split/pane and run `./build/bin/ascii-chat-client`.
 
-For development, use `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`.
+For development, use `cmake --preset debug && cmake --build --preset debug`.
 
 Check the `CMakeLists.txt` to see how it works.
 
-## Available CMake Build Types
+## Available CMake Presets
 
-### Build Types
-- `cmake -B build -DCMAKE_BUILD_TYPE=Debug` - Debug build with AddressSanitizer
-- `cmake -B build -DCMAKE_BUILD_TYPE=Release` - Optimized release build
-- `cmake -B build -DCMAKE_BUILD_TYPE=Dev` - Debug symbols without sanitizers (faster iteration)
-- `cmake -B build -DCMAKE_BUILD_TYPE=Coverage` - Build with coverage instrumentation
+### Build Presets
+- `cmake --preset default` - Default configuration (Debug build with AddressSanitizer)
+- `cmake --preset debug` - Debug build with AddressSanitizer
+- `cmake --preset release` - Optimized release build
+- `cmake --preset dev` - Debug symbols without sanitizers (faster iteration)
+- `cmake --preset coverage` - Build with coverage instrumentation
 
 ### Building
 ```bash
-# Configure (only needed once or when CMakeLists.txt changes)
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
+# Configure and build using presets
+cmake --preset debug
+cmake --build --preset debug
 
-# Build
-cmake --build build
+# Or use the default preset
+cmake --preset default
+cmake --build --preset default
 
 # Clean rebuild
 rm -rf build
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
+cmake --preset debug
+cmake --build --preset debug
 ```
 
 ### Development Tools
-- `cmake --build build --target format` - Format source code using clang-format
-- `cmake --build build --target format-check` - Check code formatting
-- `cmake --build build --target clang-tidy` - Run clang-tidy on sources
+- `cmake --build --preset debug --target format` - Format source code using clang-format
+- `cmake --build --preset debug --target format-check` - Check code formatting
+- `cmake --build --preset debug --target clang-tidy` - Run clang-tidy on sources
 
 ### Configuration Options
 CMake supports several configuration options:
@@ -82,7 +117,7 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 
 ### Quick Start
 1. Have the dependencies installed.
-2. Build the project: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
+2. Build the project: `cmake --preset debug && cmake --build --preset debug`
 3. Run tests: `./tests/scripts/run_tests.sh`
 
 ### Test Types
@@ -120,7 +155,7 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 You can also run individual test executables directly:
 ```bash
 # Build the project first
-cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build
+cmake --preset debug && cmake --build --preset debug
 
 # Run individual tests
 build/bin/test_unit_mixer --verbose

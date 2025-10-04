@@ -162,7 +162,7 @@ Usage: $0 [OPTIONS] [TEST_NAME]
 OPTIONS:
     -t, --type TYPE         Test type: all, unit, integration, performance (default: all)
     -b, --build TYPE        Build type: debug, dev, release, coverage, tsan (default: debug)
-    -j, --jobs N            Number of parallel test executables to run (default: auto-detect CPU cores)
+    -j, --jobs N            Number of parallel test executables to run and jobs per test (default: auto-detect CPU cores and auto-detected jobs)
     -J, --junit             Generate JUnit XML output
     -l, --log-file PATH     Save test output to specified log file (default: tests.log in current dir)
     -v, --verbose           Verbose output
@@ -674,65 +674,23 @@ function determine_test_failure() {
 }
 
 # =============================================================================
-# Process Control and Execution Functions
-# =============================================================================
-
-# Function to run tests in parallel with proper queue management
-# Old run_tests_in_parallel function removed - replaced with simplified architecture
-
-# =============================================================================
-# Timeout Function - Portable across Linux and macOS
-# =============================================================================
-
-# Portable timeout function that works on both Linux and macOS
-# Returns: 124 if timed out (like GNU timeout), actual exit code otherwise
-function portable_timeout() {
-  local timeout_seconds=$1
-  shift
-  local command=("$@")
-
-  # Check if gtimeout is available (macOS with coreutils)
-  if command -v gtimeout >/dev/null 2>&1; then
-    gtimeout --preserve-status "$timeout_seconds" "${command[@]}"
-    return $?
-  fi
-
-  # Check if GNU timeout is available (Linux or some macOS setups)
-  if command -v timeout >/dev/null 2>&1; then
-    timeout --preserve-status "$timeout_seconds" "${command[@]}"
-    return $?
-  fi
-
-  # Fallback: Use perl for timeout (available on both Linux and macOS)
-  if command -v perl >/dev/null 2>&1; then
-    perl -e '
-      use POSIX ":sys_wait_h";
-      $SIG{ALRM} = sub { kill "TERM", -$$; exit 124; };
-      alarm shift;
-      exec @ARGV or die "exec failed: $!";
-    ' "$timeout_seconds" "${command[@]}"
-    local exit_code=$?
-    return $exit_code
-  fi
-
-  # Last resort: Run without timeout and warn
-  log_warn "No timeout command available, running test without timeout"
-  "${command[@]}"
-  return $?
-}
-
-# =============================================================================
 # SIMPLIFIED TEST EXECUTION - SHARED SPAWNING + TWO EXECUTION MODES
 # =============================================================================
 
 # Shared function to spawn a single test (sync or async)
 function spawn_test() {
   local test_executable="$1"
-  local jobs_per_test="$2"
-  local background="$3"  # "sync" or "async"
+  local background="$2"  # "sync" or "async"
 
   local test_name=$(basename "$test_executable")
-  local test_args=("--jobs" "$jobs_per_test" "--color=always")
+
+  # Use JOBS if specified, otherwise use 0 for auto-detection
+  local jobs_arg="0"
+  if [[ -n "$JOBS" ]] && [[ "$JOBS" -gt 0 ]]; then
+    jobs_arg="$JOBS"
+  fi
+
+  local test_args=("--jobs" "$jobs_arg" "--timeout" "$TEST_TIMEOUT" "--color=always")
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
     log_verbose "Adding --verbose flag to $test_name (VERBOSE=$VERBOSE)"
@@ -747,13 +705,13 @@ function spawn_test() {
     if [[ -n "$VERBOSE" ]]; then
       # In verbose mode, show output in real-time
       {
-        TESTING=1 CRITERION_TEST=1 portable_timeout "$TEST_TIMEOUT" "$test_executable" "${test_args[@]}"
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
         echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
       } 2>&1 &
     else
       # In non-verbose mode, capture output to file
       {
-        TESTING=1 CRITERION_TEST=1 portable_timeout "$TEST_TIMEOUT" "$test_executable" "${test_args[@]}"
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
         echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
       } > /tmp/test_${test_name}_$$.log 2>&1 &
     fi
@@ -764,10 +722,10 @@ function spawn_test() {
     # Synchronous execution - return exit code
     # Always show output in real-time
     # Log the EXACT command being executed
-    echo "FINAL COMMAND: $test_executable ${test_args[*]} (timeout: ${TEST_TIMEOUT}s)" >&2
+    echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
     log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
     # Redirect test output to stderr so it's visible but not captured in the return value
-    TESTING=1 CRITERION_TEST=1 portable_timeout "$TEST_TIMEOUT" "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
+    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
     local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     echo $exit_code  # Return only the exit code to stdout
   fi
@@ -775,8 +733,6 @@ function spawn_test() {
 
 # Function 1: Run tests sequentially (no parallelism)
 function run_tests_sequential() {
-  local jobs_per_test=$1
-  shift
   local test_list=("$@")
   local passed=0
   local failed=0
@@ -801,7 +757,7 @@ function run_tests_sequential() {
     # Run test synchronously using shared spawning function
     local start_time=$(date +%s.%N)
     # Use the shared spawn_test function for consistency - it handles verbose flag properly
-    local exit_code=$(spawn_test "$test_executable" "$jobs_per_test" "sync")
+    local exit_code=$(spawn_test "$test_executable" "sync")
     local end_time=$(date +%s.%N)
     local duration
     if command -v bc >/dev/null 2>&1; then
@@ -846,8 +802,7 @@ function run_tests_sequential() {
 # Function 2: Run tests in parallel (up to max_parallel at once)
 function run_tests_parallel() {
   local max_parallel=$1
-  local jobs_per_test=$2
-  shift 2
+  shift
   local test_list=("$@")
   local passed=0
   local failed=0
@@ -856,7 +811,7 @@ function run_tests_parallel() {
   local failed_tests=()  # Array to track failed test names
   local timedout_tests=()  # Array to track timed-out test names
 
-  log_info "🚀 Running ${#test_list[@]} tests in parallel (up to $max_parallel concurrent, $jobs_per_test jobs each)"
+  log_info "🚀 Running ${#test_list[@]} tests in parallel (up to $max_parallel concurrent)"
 
   local running_pids=()
   local running_names=()
@@ -961,7 +916,7 @@ function run_tests_parallel() {
 
       # Run test asynchronously using shared spawning function
       local start_time=$(date +%s.%N)
-      spawn_test "$test_executable" "$jobs_per_test" "async"
+      spawn_test "$test_executable" "async"
 
       # Read PID from file
       local test_pid=""
@@ -1014,28 +969,22 @@ function calculate_resource_allocation() {
   local jobs=$3 # Optional: explicitly specified jobs
 
   local max_parallel_tests
-  local jobs_per_test
 
   # If jobs explicitly specified, use that for parallel tests
   if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
     max_parallel_tests=$jobs
-    jobs_per_test=1 # Default to 1 if manually specified
   else
-    # Always use CORES/2 parallel executables with CORES jobs each for maximum CPU utilization
+    # Always use CORES/2 parallel executables for maximum CPU utilization
     max_parallel_tests=$((total_cores / 2))
-    jobs_per_test=$total_cores
 
-    # Ensure at least 1 parallel test and 1 job per test
+    # Ensure at least 1 parallel test
     if [[ $max_parallel_tests -lt 1 ]]; then
       max_parallel_tests=1
     fi
-    if [[ $jobs_per_test -lt 1 ]]; then
-      jobs_per_test=1
-    fi
   fi
 
-  # Return values as a space-separated string
-  echo "$max_parallel_tests $jobs_per_test"
+  # Return the max parallel tests value
+  echo "$max_parallel_tests"
 }
 
 # =============================================================================
@@ -1398,16 +1347,14 @@ function main() {
   # SINGLE DECISION POINT - Choose execution mode
   local total_cores=$(detect_cpu_cores)
   local num_tests=${#all_tests_to_run[@]}
-  local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
-  local max_parallel_tests=${allocation[0]}
-  local jobs_per_test=${allocation[1]}
+  local max_parallel_tests=$(calculate_resource_allocation $num_tests $total_cores "$jobs")
 
   if [[ "$NO_PARALLEL" == "1" ]] || [[ ${#all_tests_to_run[@]} -eq 1 ]]; then
     # Run sequentially
-    run_tests_sequential "$jobs_per_test" "${all_tests_to_run[@]}"
+    run_tests_sequential "${all_tests_to_run[@]}"
   else
     # Run in parallel
-    run_tests_parallel "$max_parallel_tests" "$jobs_per_test" "${all_tests_to_run[@]}"
+    run_tests_parallel "$max_parallel_tests" "${all_tests_to_run[@]}"
   fi
 
   # Results are now in global variables (no subshell issues!)
