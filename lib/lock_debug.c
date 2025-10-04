@@ -927,17 +927,18 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
  * @return The new held count after decrement
  */
 static uint32_t debug_decrement_lock_counter(void) {
-  uint32_t current = atomic_load(&g_lock_debug_manager.current_locks_held);
-  uint32_t held = 0;
+  // Use the actual atomic type to avoid size mismatch
+  _Atomic(uint_fast32_t) *counter = &g_lock_debug_manager.current_locks_held;
+  uint_fast32_t current = atomic_load(counter);
+  uint_fast32_t held = 0;
   if (current > 0) {
-    uint32_t expected = current;
-    while (expected > 0 &&
-           !atomic_compare_exchange_weak(&g_lock_debug_manager.current_locks_held, &expected, expected - 1)) {
+    uint_fast32_t expected = current;
+    while (expected > 0 && !atomic_compare_exchange_weak(counter, &expected, expected - 1)) {
       // CAS failed, reload current value and retry
     }
     held = expected > 0 ? expected - 1 : 0;
   }
-  return held;
+  return (uint32_t)held;
 }
 
 /**
