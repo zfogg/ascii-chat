@@ -2037,12 +2037,8 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         set(test_exe_name "test_${test_subdir}_${test_base}")
 
         # Add test executable with test logging helper
-        # Special handling for client_mock test which needs webcam mock
-        if(test_name STREQUAL "client_mock_test")
-            add_executable(${test_exe_name} ${test_src} lib/tests/logging.c tests/mocks/webcam_mock.c)
-        else()
-            add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
-        endif()
+        # All tests use the same setup now (no more special webcam mock handling)
+        add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
 
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})

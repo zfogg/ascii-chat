@@ -18,3 +18,40 @@
 // Project headers - use relative paths from tests directory
 #include "../lib/common.h"
 #include "../lib/tests/logging.h"
+
+// =============================================================================
+// Test Environment Detection
+// =============================================================================
+
+/**
+ * Check if we're running in an environment without webcam support
+ * (CI, Docker, or WSL)
+ *
+ * @return true if running in CI/Docker/WSL, false otherwise
+ */
+static inline bool test_is_in_headless_environment(void) {
+  // Check for CI environment
+  if (getenv("CI") != NULL) {
+    return true;
+  }
+
+  // Check for Docker
+  if (access("/.dockerenv", F_OK) == 0) {
+    return true;
+  }
+
+  // Check for WSL (look for "microsoft" or "WSL" in /proc/version)
+  FILE *version_file = fopen("/proc/version", "r");
+  if (version_file) {
+    char version_buf[256];
+    if (fgets(version_buf, sizeof(version_buf), version_file)) {
+      if (strstr(version_buf, "microsoft") || strstr(version_buf, "Microsoft") || strstr(version_buf, "WSL")) {
+        fclose(version_file);
+        return true;
+      }
+    }
+    fclose(version_file);
+  }
+
+  return false;
+}
