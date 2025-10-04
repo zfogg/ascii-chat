@@ -1071,41 +1071,47 @@ int send_server_state_to_client(client_info_t *client) {
 }
 
 /**
- * @brief Send console clear command to a specific client
+ * @brief Signal all active clients to clear their displays before next video frame
  *
- * Queues a CLEAR_CONSOLE packet that instructs the client to clear its
- * terminal display. This is typically used before major layout changes
- * to prevent visual artifacts and ensure clean rendering.
+ * Sets the needs_display_clear flag for all currently connected and active clients.
+ * This is used when the grid layout changes (clients join/leave) to ensure
+ * all clients clear their displays before receiving frames with the new layout.
  *
- * PACKET STRUCTURE:
- * - CLEAR_CONSOLE packets have no payload (header only)
- * - Client interprets this as a request to clear screen
+ * ARCHITECTURE:
+ * - Uses atomic flag (needs_display_clear) instead of packet queue
+ * - Send thread checks flag and sends CLEAR_CONSOLE before next video frame
+ * - Guarantees CLEAR_CONSOLE arrives before new grid layout frame
  *
- * USAGE SCENARIOS:
- * - Before changing grid layout (client joins/leaves)
- * - Recovery from rendering errors or corruption
- * - Transitioning between different display modes
+ * SYNCHRONIZATION:
+ * - Acquires g_client_manager_rwlock for reading
+ * - Uses atomic operations for flag setting (no mutex needed)
+ * - Thread-safe access to client list
  *
- * CLIENT BEHAVIOR EXPECTED:
- * - Client should clear its entire terminal display
- * - Cursor should be reset to home position
- * - Ready to receive new frame data
+ * USAGE SCENARIO:
+ * - Called when active video source count changes
+ * - Ensures all clients clear before new grid layout is sent
+ * - Prevents visual artifacts from old content
  *
- * IMPLEMENTATION DETAILS:
- * - Uses client's video queue for delivery
- * - Non-blocking operation (queues for later delivery)
- * - No client state changes required
- *
- * ERROR HANDLING:
- * - Returns -1 if client or queue is invalid
- * - Queue overflow handled by packet_queue_enqueue()
- * - Safe to call multiple times
- *
- * @param client Target client to receive clear console command
- * @return 0 on successful queuing, -1 on error
- *
- * @note Used sparingly to avoid excessive screen clearing
- * @note Delivery happens asynchronously via send thread
- * @see packet_queue_enqueue() For queuing implementation
+ * @note This function iterates all clients but only flags active ones
+ * @note Non-blocking - just sets atomic flags
  */
-// REMOVED: send_clear_console_to_client - not used, console clearing handled differently
+void broadcast_clear_console_to_all_clients(void) {
+  rwlock_rdlock(&g_client_manager_rwlock);
+
+  int flagged_count = 0;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+
+    // Only flag active clients
+    if (atomic_load(&client->active)) {
+      atomic_store(&client->needs_display_clear, true);
+      flagged_count++;
+    }
+  }
+
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  if (flagged_count > 0) {
+    log_info("Flagged %d clients to clear display before next video frame (grid layout change)", flagged_count);
+  }
+}

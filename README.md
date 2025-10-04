@@ -22,9 +22,9 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 
 ## Dependencies
-- Most people: `apt-get install build-essential clang cmake ninja-build pkg-config libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- ArchLinux masterrace: `pacman -S clang cmake ninja pkg-config v4l-utils zlib portaudio libsodium libcriterion`
-- macOS: `brew install cmake ninja pkg-config zlib portaudio libsodium criterion`
+- Most people: `apt-get install build-essential clang cmake ninja-build libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- ArchLinux masterrace: `pacman -S clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
+- macOS: `brew install cmake ninja zlib portaudio libsodium criterion`
 
 **Note:** OpenCV is no longer required! The project now uses native platform APIs:
 - **Linux**: V4L2 (Video4Linux2)
@@ -49,7 +49,6 @@ Check the `CMakeLists.txt` to see how it works.
 - `cmake -B build -DCMAKE_BUILD_TYPE=Release` - Optimized release build
 - `cmake -B build -DCMAKE_BUILD_TYPE=Dev` - Debug symbols without sanitizers (faster iteration)
 - `cmake -B build -DCMAKE_BUILD_TYPE=Coverage` - Build with coverage instrumentation
-- `cmake -B build -DCMAKE_BUILD_TYPE=Sanitize` - Build with comprehensive sanitizers
 
 ### Building
 ```bash
@@ -69,7 +68,6 @@ cmake --build build
 - `cmake --build build --target format` - Format source code using clang-format
 - `cmake --build build --target format-check` - Check code formatting
 - `cmake --build build --target clang-tidy` - Run clang-tidy on sources
-- `cmake --build build --target scan-build` - Run scan-build static analyzer
 
 ### Configuration Options
 CMake supports several configuration options:
@@ -107,7 +105,6 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 ./tests/scripts/run_tests.sh -b release
 ./tests/scripts/run_tests.sh -b debug-coverage
 ./tests/scripts/run_tests.sh -b release-coverage
-./tests/scripts/run_tests.sh -b debug
 
 # Generate JUnit XML for CI
 ./tests/scripts/run_tests.sh -J
@@ -127,7 +124,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build
 
 # Run individual tests
 build/bin/test_unit_mixer --verbose
-build/bin/test_performance_ascii_simd --filter "monochrome"
+build/bin/test_performance_ascii_simd --filter "*monochrome*"
 ```
 
 ### Testing Framework

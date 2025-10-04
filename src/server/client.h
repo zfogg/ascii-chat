@@ -68,6 +68,9 @@ typedef struct {
   asciithread_t send_thread;
   atomic_bool send_thread_running;
 
+  // Grid layout change flag - send CLEAR_CONSOLE before next video frame
+  atomic_bool needs_display_clear;
+
   // Pre-allocated buffers to avoid malloc/free in send thread (prevents deadlocks)
   void *send_buffer;
   size_t send_buffer_size;

@@ -230,8 +230,4 @@ void platform_sleep_usec(unsigned int usec);
 // ============================================================================
 // Restore Default Packing for Application Code
 // ============================================================================
-#ifdef _WIN32
-// Pop the pack(8) that was set in windows_compat.h
-// This ensures application structs use default compiler alignment
-#pragma pack(pop)
-#endif
+// NOTE: windows_compat.h now handles pack(pop) automatically
