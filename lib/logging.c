@@ -9,6 +9,11 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+/* Windows compatibility for strcasecmp */
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 /* ============================================================================
  * Logging Implementation
  * ============================================================================
