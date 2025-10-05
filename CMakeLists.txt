@@ -265,38 +265,53 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
         set(COMPILE_COMMANDS_SOURCE "${CMAKE_BINARY_DIR}/compile_commands.json")
         set(COMPILE_COMMANDS_DEST "${CMAKE_SOURCE_DIR}/compile_commands.json")
 
-        # Create a post-configuration script that will be run automatically
         if(WIN32)
-            # On Windows, copy the file after CMake generates it
-            file(WRITE "${CMAKE_BINARY_DIR}/copy_compile_commands.cmake"
-"execute_process(
-    COMMAND \"${CMAKE_COMMAND}\" -E copy_if_different
-        \"${COMPILE_COMMANDS_SOURCE}\"
-        \"${COMPILE_COMMANDS_DEST}\"
-    RESULT_VARIABLE result
-)
-if(result EQUAL 0)
-    message(STATUS \"Copied compile_commands.json to project root\")
-endif()")
-        else()
-            # On Unix-like systems, create a symlink after CMake generates it
-            file(WRITE "${CMAKE_BINARY_DIR}/copy_compile_commands.cmake"
-"execute_process(
-    COMMAND \"${CMAKE_COMMAND}\" -E create_symlink
-        \"${COMPILE_COMMANDS_SOURCE}\"
-        \"${COMPILE_COMMANDS_DEST}\"
-    RESULT_VARIABLE result
-)
-if(result EQUAL 0)
-    message(STATUS \"Symlinked compile_commands.json to project root\")
-endif()")
-        endif()
+            # On Windows, create a junction/symlink at configure time
+            # This way the file will be available as soon as Ninja generates it
+            # Remove existing file/link first
+            if(EXISTS "${COMPILE_COMMANDS_DEST}")
+                file(REMOVE "${COMPILE_COMMANDS_DEST}")
+            endif()
 
-        # Execute the script at the end of the CMake run
-        # This deferred call ensures compile_commands.json exists before we try to copy/link it
-        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL execute_process
-            COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_BINARY_DIR}/copy_compile_commands.cmake"
-        )
+            # Try to create a symlink (requires developer mode or admin on Windows)
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" -E create_symlink
+                    "${COMPILE_COMMANDS_SOURCE}"
+                    "${COMPILE_COMMANDS_DEST}"
+                RESULT_VARIABLE symlink_result
+                ERROR_QUIET
+            )
+
+            if(symlink_result EQUAL 0)
+                message(STATUS "Created symlink for compile_commands.json in project root")
+            else()
+                # Symlink failed, we'll copy it as a custom target instead
+                message(STATUS "Will copy compile_commands.json to project root after build")
+                add_custom_target(copy_compile_commands ALL
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        "${COMPILE_COMMANDS_SOURCE}"
+                        "${COMPILE_COMMANDS_DEST}"
+                    COMMENT "Copying compile_commands.json to project root"
+                    VERBATIM
+                )
+            endif()
+        else()
+            # On Unix-like systems, symlinks work reliably
+            if(EXISTS "${COMPILE_COMMANDS_DEST}")
+                file(REMOVE "${COMPILE_COMMANDS_DEST}")
+            endif()
+
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" -E create_symlink
+                    "${COMPILE_COMMANDS_SOURCE}"
+                    "${COMPILE_COMMANDS_DEST}"
+                RESULT_VARIABLE symlink_result
+            )
+
+            if(symlink_result EQUAL 0)
+                message(STATUS "Created symlink for compile_commands.json in project root")
+            endif()
+        endif()
     endif()
 endif()
 
