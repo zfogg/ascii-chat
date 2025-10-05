@@ -55,7 +55,7 @@ else {
 if ($Clean) {
   Write-Host "Cleaning build directory: $BuildDir" -ForegroundColor Yellow
   if (Test-Path $BuildDir) {
-    Remove-Item -Recurse -Force $BuildDir
+    Remove-Item -Recurse -Force $BuildDir -ProgressAction SilentlyContinue
   }
   Write-Host ""
 }

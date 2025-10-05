@@ -8,12 +8,10 @@
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             },
             "environment": {
-                "CC": "clang",
-                "CXX": "clang++"
+                "CC": "clang"
             }
         },
         {
