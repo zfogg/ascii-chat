@@ -688,7 +688,6 @@ void *client_receive_thread(void *arg) {
       break;
 
     case PACKET_TYPE_IMAGE_FRAME:
-      log_debug("Received IMAGE_FRAME packet from client %u (len=%zu)", client->client_id, len);
       handle_image_frame_packet(client, data, len);
       break;
 
