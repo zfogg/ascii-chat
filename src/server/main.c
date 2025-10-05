@@ -231,13 +231,13 @@ static void sigint_handler(int sigint) {
 
   // STEP 2: Use printf for output (user says it's fine)
   printf("\nSIGINT received - shutting down server...\n");
-  fflush(stdout);
+  (void)fflush(stdout);
 
   // STEP 3: Close listening socket to interrupt accept() in main loop
   // This is signal-safe on Windows and necessary to wake up blocked accept()
   if (listenfd != INVALID_SOCKET_VALUE) {
     printf("DEBUG: Signal handler closing listening socket %d\n", (int)listenfd);
-    fflush(stdout);
+    (void)fflush(stdout);
     socket_close(listenfd);
     listenfd = INVALID_SOCKET_VALUE;
   }
@@ -254,9 +254,7 @@ static void sigint_handler(int sigint) {
 
   // Debug message to see if handler completes
   printf("DEBUG: Signal handler completed\n");
-  fflush(stdout);
-
-  fflush(stdout);
+  (void)fflush(stdout);
 
   log_destroy();
 }
@@ -310,12 +308,13 @@ static void sigterm_handler(int sigterm) {
  *
  * @param sigusr1 The signal number (unused, required by signal handler signature)
  */
-static void sigusr1_handler(int sigusr1) {
-  (void)(sigusr1);
+//static void sigusr1_handler(int sigusr1) {
+//  (void)(sigusr1);
+//
+//  // Trigger lock debugging output (signal-safe)
+//  lock_debug_trigger_print();
+//}
 
-  // Trigger lock debugging output (signal-safe)
-  lock_debug_trigger_print();
-}
 /* ============================================================================
  * Main Function
  * ============================================================================
@@ -515,7 +514,7 @@ int main(int argc, char *argv[]) {
   }
 
   struct timespec last_stats_time;
-  clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock) != 0) {
@@ -527,17 +526,12 @@ int main(int argc, char *argv[]) {
 
   // Check if SIGINT was received during initialization
   if (atomic_load(&g_should_exit)) {
-    printf("DEBUG: g_should_exit is true after lock debug init, breaking to main loop...\n");
-    fflush(stdout);
     // Skip rest of initialization and go straight to main loop
     // which will detect g_should_exit and exit cleanly
     goto main_loop;
   }
 
   // Lock debug thread already started earlier in main()
-
-  printf("DEBUG: About to initialize client manager\n");
-  fflush(stdout);
 
   // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
   // We only need to initialize the mutex
@@ -596,18 +590,10 @@ int main(int argc, char *argv[]) {
   // by dead connections, eventually preventing new clients from joining.
 
 main_loop:
-  printf("DEBUG: Entering main connection loop - g_should_exit=%d\n", atomic_load(&g_should_exit));
-  fflush(stdout);
-
   while (!atomic_load(&g_should_exit)) {
     // Debug: Log loop iteration
-    printf("DEBUG: Main loop iteration - g_should_exit=%d, listenfd=%d\n", atomic_load(&g_should_exit), (int)listenfd);
-    fflush(stdout);
-
     // Check if we received a shutdown signal
     if (atomic_load(&g_should_exit)) {
-      printf("SIGINT detected in main loop - breaking...\n");
-      fflush(stdout);
       break;
     }
 
@@ -692,7 +678,7 @@ main_loop:
 
       log_info("DEBUG_CLEANUP: Receive thread joined for client %u, calling remove_client", cleanup_tasks[i].client_id);
       // Remove the client and clean up resources
-      remove_client(cleanup_tasks[i].client_id);
+      (void)remove_client(cleanup_tasks[i].client_id);
       log_info("DEBUG_CLEANUP: Client %u removed successfully", cleanup_tasks[i].client_id);
     }
 
@@ -704,22 +690,14 @@ main_loop:
     }
 
     // Accept network connection with timeout
-    printf("DEBUG: About to call accept_with_timeout - listenfd=%d, timeout=%d, g_should_exit=%d\n", (int)listenfd,
-           ACCEPT_TIMEOUT, atomic_load(&g_should_exit));
-    fflush(stdout);
 
     // Check g_should_exit right before accept
     if (atomic_load(&g_should_exit)) {
-      printf("DEBUG: g_should_exit is true BEFORE accept_with_timeout, breaking...\n");
-      fflush(stdout);
       break;
     }
 
     int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
 
-    printf("DEBUG: accept_with_timeout returned - client_sock=%d, g_should_exit=%d\n", client_sock,
-           atomic_load(&g_should_exit));
-    fflush(stdout);
 #ifdef _WIN32
     int saved_errno = (client_sock < 0) ? WSAGetLastError() : 0; // Windows socket error
 #else
@@ -867,7 +845,7 @@ main_loop:
   log_info("DEBUG_SHUTDOWN: Found %d clients to remove", client_count);
   for (int i = 0; i < client_count; i++) {
     log_info("DEBUG_SHUTDOWN: Removing client %u", clients_to_remove[i]);
-    remove_client(clients_to_remove[i]);
+    (void)remove_client(clients_to_remove[i]);
     log_info("DEBUG_SHUTDOWN: Client %u removed successfully", clients_to_remove[i]);
   }
   log_info("DEBUG_SHUTDOWN: All clients removed, proceeding to cleanup");

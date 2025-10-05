@@ -690,7 +690,7 @@ function spawn_test() {
     jobs_arg="$JOBS"
   fi
 
-  local test_args=("--jobs" "$jobs_arg" "--timeout" "$TEST_TIMEOUT" "--color=always")
+  local test_args=("--jobs" "$jobs_arg" "--timeout" "$TEST_TIMEOUT" "--color=always" "--short-filename")
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
     log_verbose "Adding --verbose flag to $test_name (VERBOSE=$VERBOSE)"
