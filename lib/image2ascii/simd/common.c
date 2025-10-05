@@ -83,17 +83,21 @@ uint64_t get_current_time_ns(void) {
 
 double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
                                       uint64_t current_time) {
-  uint64_t age_seconds = (current_time - last_access_time) / 1000000000ULL;
-  uint64_t total_age_seconds = (current_time - creation_time) / 1000000000ULL;
+  // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
+  uint64_t age_ns = (current_time >= last_access_time) ? (current_time - last_access_time) : 0;
+  uint64_t total_age_ns = (current_time >= creation_time) ? (current_time - creation_time) : 0;
+
+  uint64_t age_seconds = age_ns / 1000000000ULL;
+  uint64_t total_age_seconds = total_age_ns / 1000000000ULL;
 
   // Frequency factor: high-use palettes get protection (logarithmic scaling)
   double frequency_factor = 1.0 + log10(1.0 + access_count);
 
   // Aging factor: frequency bonus decays over time (5-minute half-life)
-  double aging_factor = exp(-age_seconds / CACHE_FREQUENCY_DECAY_TIME);
+  double aging_factor = exp(-(double)age_seconds / CACHE_FREQUENCY_DECAY_TIME);
 
   // Recent access bonus: strong protection for recently used (1-minute protection)
-  double recency_bonus = exp(-age_seconds / CACHE_RECENCY_SCALE);
+  double recency_bonus = exp(-(double)age_seconds / CACHE_RECENCY_SCALE);
 
   // Cache lifetime penalty: prevent immortal caches (1-hour max lifetime)
   double lifetime_penalty = total_age_seconds > CACHE_MAX_LIFETIME ? 0.5 : 1.0;
