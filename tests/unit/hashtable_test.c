@@ -28,15 +28,13 @@ typedef struct {
   bool should_succeed;
 } hashtable_key_test_case_t;
 
-static hashtable_key_test_case_t hashtable_key_cases[] = {
-  {1, "Small positive key", true},
-  {100, "Medium positive key", true},
-  {1000, "Large positive key", true},
-  {0, "Zero key", true},
-  {UINT32_MAX, "Maximum key", true},
-  {HASHTABLE_BUCKET_COUNT, "Bucket count key", true},
-  {HASHTABLE_BUCKET_COUNT + 1, "Bucket count + 1 key", true}
-};
+static hashtable_key_test_case_t hashtable_key_cases[] = {{1, "Small positive key", true},
+                                                          {100, "Medium positive key", true},
+                                                          {1000, "Large positive key", true},
+                                                          {0, "Zero key", true},
+                                                          {UINT32_MAX, "Maximum key", true},
+                                                          {HASHTABLE_BUCKET_COUNT, "Bucket count key", true},
+                                                          {HASHTABLE_BUCKET_COUNT + 1, "Bucket count + 1 key", true}};
 
 ParameterizedTestParameters(hashtable, key_operations) {
   size_t nb_cases = sizeof(hashtable_key_cases) / sizeof(hashtable_key_cases[0]);
@@ -56,8 +54,8 @@ ParameterizedTest(hashtable_key_test_case_t *tc, hashtable, key_operations) {
 
   // Test insert
   bool insert_result = hashtable_insert(ht, tc->key, data);
-  cr_assert_eq(insert_result, tc->should_succeed, "Insert should %s for %s",
-               tc->should_succeed ? "succeed" : "fail", tc->description);
+  cr_assert_eq(insert_result, tc->should_succeed, "Insert should %s for %s", tc->should_succeed ? "succeed" : "fail",
+               tc->description);
 
   if (tc->should_succeed) {
     cr_assert_eq(hashtable_size(ht), 1, "Size should be 1 after successful insert");
@@ -88,13 +86,14 @@ typedef struct {
 } hashtable_collision_test_case_t;
 
 static hashtable_collision_test_case_t hashtable_collision_cases[] = {
-  {{1, HASHTABLE_BUCKET_COUNT + 1, HASHTABLE_BUCKET_COUNT * 2 + 1, HASHTABLE_BUCKET_COUNT * 3 + 1},
-   "Sequential collision keys", true},
-  {{0, HASHTABLE_BUCKET_COUNT, HASHTABLE_BUCKET_COUNT * 2, HASHTABLE_BUCKET_COUNT * 3},
-   "Aligned collision keys", true},
-  {{100, 200, 300, 400}, "Non-colliding keys", true},
-  {{1, 1, 2, 2}, "Duplicate keys", false}
-};
+    {{1, HASHTABLE_BUCKET_COUNT + 1, HASHTABLE_BUCKET_COUNT * 2 + 1, HASHTABLE_BUCKET_COUNT * 3 + 1},
+     "Sequential collision keys",
+     true},
+    {{0, HASHTABLE_BUCKET_COUNT, HASHTABLE_BUCKET_COUNT * 2, HASHTABLE_BUCKET_COUNT * 3},
+     "Aligned collision keys",
+     true},
+    {{100, 200, 300, 400}, "Non-colliding keys", true},
+    {{1, 1, 2, 2}, "Duplicate keys", false}};
 
 ParameterizedTestParameters(hashtable, collision_scenarios) {
   size_t nb_cases = sizeof(hashtable_collision_cases) / sizeof(hashtable_collision_cases[0]);

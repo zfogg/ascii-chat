@@ -275,7 +275,7 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
   log_info("  Thread ID: %llu", (unsigned long long)record->thread_id);
   log_info("  Released: %s:%d in %s()", record->file_name, record->line_number, record->function_name);
   log_info("  Released at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
-         record->acquisition_time.tv_nsec);
+           record->acquisition_time.tv_nsec);
 
   // Print backtrace for the orphaned release
   if (record->backtrace_size > 0) {
