@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <time.h>
 #include <math.h>
@@ -227,47 +228,51 @@ Test(simd_caches, concurrent_cache_access) {
 // UTF-8 Specific Cache Tests
 // =============================================================================
 
-Test(simd_caches, utf8_character_cache_correctness) {
-  // Test various UTF-8 character types are cached correctly
-  const struct {
-    const char *name;
-    const char *palette;
-    int expected_first_byte;
-  } utf8_tests[] = {
-      {"ASCII", "   ...',;:clodxkO0KXNWM", ' '},
-      {"Emoji", "🌑🌒🌓🌔🌕", 0xF0}, // 4-byte UTF-8 starts with 0xF0
-      {"Greek", "αβγδεζηθι", 0xCE},  // 2-byte UTF-8 starts with 0xCE
-      {"Mixed", "   .🧠αβ", ' '},    // Mixed ASCII + UTF-8
-  };
+// Parameterized test for UTF-8 character cache correctness
+typedef struct {
+  char name[16];
+  char palette[64];
+  int expected_first_byte;
+  bool check_first_byte;
+  char description[64];
+} utf8_cache_test_case_t;
 
-  const int num_tests = sizeof(utf8_tests) / sizeof(utf8_tests[0]);
+static utf8_cache_test_case_t utf8_cache_cases[] = {
+    {"ASCII", "   ...',;:clodxkO0KXNWM", ' ', true, "ASCII palette with space"},
+    {"Emoji", "🌑🌒🌓🌔🌕", 0xF0, true, "Emoji palette (4-byte UTF-8)"},
+    {"Greek", "αβγδεζηθι", 0xCE, true, "Greek palette (2-byte UTF-8)"},
+    {"Mixed", "   .🧠αβ", ' ', false, "Mixed ASCII + UTF-8"},
+};
 
-  for (int t = 0; t < num_tests; t++) {
-    utf8_palette_cache_t *cache = get_utf8_palette_cache(utf8_tests[t].palette);
-    cr_assert_not_null(cache, "%s palette should be cached", utf8_tests[t].name);
+ParameterizedTestParameters(simd_caches, utf8_character_cache_correctness) {
+  return cr_make_param_array(utf8_cache_test_case_t, utf8_cache_cases,
+                             sizeof(utf8_cache_cases) / sizeof(utf8_cache_cases[0]));
+}
 
-    // Check first character in cache64 - fix sign extension
-    uint8_t actual_first_byte = (uint8_t)cache->cache64[0].utf8_bytes[0];
-    log_debug("%s: Expected first byte=0x%02x, Actual=0x%02x", utf8_tests[t].name, utf8_tests[t].expected_first_byte,
-              actual_first_byte);
+ParameterizedTest(utf8_cache_test_case_t *tc, simd_caches, utf8_character_cache_correctness) {
+  utf8_palette_cache_t *cache = get_utf8_palette_cache(tc->palette);
+  cr_assert_not_null(cache, "%s: palette should be cached", tc->name);
 
-    // For mixed palettes, the first character might be ASCII space, not UTF-8
-    if (strcmp(utf8_tests[t].name, "Mixed") != 0) {
-      cr_assert_eq(actual_first_byte, utf8_tests[t].expected_first_byte,
-                   "%s: First cached character should have correct first byte", utf8_tests[t].name);
-    }
+  // Check first character in cache64 - fix sign extension
+  uint8_t actual_first_byte = (uint8_t)cache->cache64[0].utf8_bytes[0];
+  log_debug("%s: Expected first byte=0x%02x, Actual=0x%02x", tc->name, tc->expected_first_byte, actual_first_byte);
 
-    // Verify cache64 and cache consistency
-    for (int i = 0; i < 64; i++) {
-      cr_assert_gt(cache->cache64[i].byte_len, 0, "%s: Cache64[%d] should have valid length", utf8_tests[t].name, i);
-      cr_assert_leq(cache->cache64[i].byte_len, 4, "%s: Cache64[%d] length should be ≤4", utf8_tests[t].name, i);
-    }
+  // For mixed palettes, the first character might be ASCII space, not UTF-8
+  if (tc->check_first_byte) {
+    cr_assert_eq(actual_first_byte, tc->expected_first_byte,
+                 "%s: First cached character should have correct first byte", tc->name);
+  }
 
-    // Verify luminance cache
-    for (int i = 0; i < 256; i++) {
-      cr_assert_gt(cache->cache[i].byte_len, 0, "%s: Cache[%d] should have valid length", utf8_tests[t].name, i);
-      cr_assert_leq(cache->cache[i].byte_len, 4, "%s: Cache[%d] length should be ≤4", utf8_tests[t].name, i);
-    }
+  // Verify cache64 and cache consistency
+  for (int i = 0; i < 64; i++) {
+    cr_assert_gt(cache->cache64[i].byte_len, 0, "%s: Cache64[%d] should have valid length", tc->name, i);
+    cr_assert_leq(cache->cache64[i].byte_len, 4, "%s: Cache64[%d] length should be ≤4", tc->name, i);
+  }
+
+  // Verify luminance cache
+  for (int i = 0; i < 256; i++) {
+    cr_assert_gt(cache->cache[i].byte_len, 0, "%s: Cache[%d] should have valid length", tc->name, i);
+    cr_assert_leq(cache->cache[i].byte_len, 4, "%s: Cache[%d] length should be ≤4", tc->name, i);
   }
 }
 

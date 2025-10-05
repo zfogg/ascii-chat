@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <arpa/inet.h> // For htonl/ntohl
 
@@ -477,30 +478,45 @@ Test(packet_queue, clear_operation) {
 // Different Packet Types Tests
 // =============================================================================
 
-Test(packet_queue, different_packet_types) {
+// Parameterized test for different packet types
+typedef struct {
+  packet_type_t packet_type;
+  char type_name[32];
+  uint32_t client_id;
+  char description[64];
+} packet_type_test_case_t;
+
+static packet_type_test_case_t packet_type_cases[] = {
+    {PACKET_TYPE_AUDIO, "AUDIO", 100, "Audio packet type"},
+    {PACKET_TYPE_ASCII_FRAME, "ASCII_FRAME", 101, "ASCII frame packet type"},
+    {PACKET_TYPE_IMAGE_FRAME, "IMAGE_FRAME", 102, "Image frame packet type"},
+    {PACKET_TYPE_PING, "PING", 103, "Ping packet type"},
+    {PACKET_TYPE_PONG, "PONG", 104, "Pong packet type"},
+    {PACKET_TYPE_CLIENT_CAPABILITIES, "CLIENT_CAPABILITIES", 105, "Client capabilities packet type"},
+};
+
+ParameterizedTestParameters(packet_queue, different_packet_types) {
+  return cr_make_param_array(packet_type_test_case_t, packet_type_cases,
+                             sizeof(packet_type_cases) / sizeof(packet_type_cases[0]));
+}
+
+ParameterizedTest(packet_type_test_case_t *tc, packet_queue, different_packet_types) {
   packet_queue_t *queue = packet_queue_create(10);
   cr_assert_not_null(queue, "Queue creation should succeed");
 
-  // Enqueue different packet types
-  packet_type_t types[] = {PACKET_TYPE_AUDIO, PACKET_TYPE_ASCII_FRAME, PACKET_TYPE_IMAGE_FRAME,
-                           PACKET_TYPE_PING,  PACKET_TYPE_PONG,        PACKET_TYPE_CLIENT_CAPABILITIES};
-
   char data[] = "Test data";
 
-  for (int i = 0; i < 6; i++) {
-    int result = packet_queue_enqueue(queue, types[i], data, sizeof(data), i + 100, true);
-    cr_assert_eq(result, 0, "Enqueue type %d should succeed", types[i]);
-  }
+  // Enqueue packet with specific type
+  int result = packet_queue_enqueue(queue, tc->packet_type, data, sizeof(data), tc->client_id, true);
+  cr_assert_eq(result, 0, "%s: Enqueue should succeed", tc->type_name);
 
-  // Dequeue and verify types
-  for (int i = 0; i < 6; i++) {
-    queued_packet_t *packet = packet_queue_dequeue(queue);
-    cr_assert_not_null(packet, "Dequeue %d should succeed", i);
-    cr_assert_eq(ntohs(packet->header.type), types[i], "Packet type %d should match", i);
-    cr_assert_eq(ntohl(packet->header.client_id), (uint32_t)(i + 100), "Client ID should match");
-    packet_queue_free_packet(packet);
-  }
+  // Dequeue and verify type
+  queued_packet_t *packet = packet_queue_dequeue(queue);
+  cr_assert_not_null(packet, "%s: Dequeue should succeed", tc->type_name);
+  cr_assert_eq(ntohs(packet->header.type), tc->packet_type, "%s: Packet type should match", tc->type_name);
+  cr_assert_eq(ntohl(packet->header.client_id), tc->client_id, "%s: Client ID should match", tc->type_name);
 
+  packet_queue_free_packet(packet);
   packet_queue_destroy(queue);
 }
 

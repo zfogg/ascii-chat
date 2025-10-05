@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -132,106 +133,71 @@ Test(output_buffer, ob_term_basic) {
  * Number Formatting Tests
  * ============================================================================ */
 
-Test(output_buffer, ob_u8_basic) {
+// Parameterized test for ob_u8 with different values
+typedef struct {
+  uint8_t value;
+  char expected_output[8];
+  char description[64];
+} ob_u8_test_case_t;
+
+static ob_u8_test_case_t ob_u8_cases[] = {
+    {0, "0", "Zero value"},
+    {5, "5", "Single digit value"},
+    {42, "42", "Double digit value"},
+    {255, "255", "Maximum uint8_t value"},
+    {9, "9", "Boundary: single to double digit"},
+    {10, "10", "Boundary: first double digit"},
+    {99, "99", "Boundary: double to triple digit"},
+    {100, "100", "Boundary: first triple digit"},
+};
+
+ParameterizedTestParameters(output_buffer, ob_u8_values) {
+  return cr_make_param_array(ob_u8_test_case_t, ob_u8_cases, sizeof(ob_u8_cases) / sizeof(ob_u8_cases[0]));
+}
+
+ParameterizedTest(ob_u8_test_case_t *tc, output_buffer, ob_u8_values) {
   outbuf_t ob = {0};
 
-  ob_u8(&ob, 0);
+  ob_u8(&ob, tc->value);
   ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "0");
+  cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
+                   ob.buf);
 
   free(ob.buf);
 }
 
-Test(output_buffer, ob_u8_single_digit) {
-  outbuf_t ob = {0};
+// Parameterized test for ob_u32 with different values
+typedef struct {
+  uint32_t value;
+  char expected_output[16];
+  char description[64];
+} ob_u32_test_case_t;
 
-  ob_u8(&ob, 5);
-  ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "5");
+static ob_u32_test_case_t ob_u32_cases[] = {
+    {0, "0", "Zero value"},
+    {42, "42", "Small value"},
+    {4294967295U, "4294967295", "Maximum uint32_t value"},
+    {9, "9", "Boundary: single to double digit"},
+    {10, "10", "Boundary: first double digit"},
+    {99, "99", "Boundary: double to triple digit"},
+    {100, "100", "Boundary: first triple digit"},
+    {999, "999", "Boundary: triple to quadruple digit"},
+    {1000, "1000", "Boundary: first quadruple digit"},
+    {9999, "9999", "Boundary: quadruple to quintuple digit"},
+    {10000, "10000", "Boundary: first quintuple digit"},
+};
 
-  free(ob.buf);
+ParameterizedTestParameters(output_buffer, ob_u32_values) {
+  return cr_make_param_array(ob_u32_test_case_t, ob_u32_cases, sizeof(ob_u32_cases) / sizeof(ob_u32_cases[0]));
 }
 
-Test(output_buffer, ob_u8_double_digit) {
+ParameterizedTest(ob_u32_test_case_t *tc, output_buffer, ob_u32_values) {
   outbuf_t ob = {0};
 
-  ob_u8(&ob, 42);
+  ob_u32(&ob, tc->value);
   ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "42");
-
-  free(ob.buf);
-}
-
-Test(output_buffer, ob_u8_triple_digit) {
-  outbuf_t ob = {0};
-
-  ob_u8(&ob, 255);
-  ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "255");
-
-  free(ob.buf);
-}
-
-Test(output_buffer, ob_u8_boundary_values) {
-  outbuf_t ob = {0};
-
-  // Test boundary values
-  ob_u8(&ob, 9);
-  ob_u8(&ob, 10);
-  ob_u8(&ob, 99);
-  ob_u8(&ob, 100);
-  ob_term(&ob);
-
-  cr_assert_str_eq(ob.buf, "91099100");
-
-  free(ob.buf);
-}
-
-Test(output_buffer, ob_u32_basic) {
-  outbuf_t ob = {0};
-
-  ob_u32(&ob, 0);
-  ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "0");
-
-  free(ob.buf);
-}
-
-Test(output_buffer, ob_u32_small) {
-  outbuf_t ob = {0};
-
-  ob_u32(&ob, 42);
-  ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "42");
-
-  free(ob.buf);
-}
-
-Test(output_buffer, ob_u32_large) {
-  outbuf_t ob = {0};
-
-  ob_u32(&ob, 4294967295U);
-  ob_term(&ob);
-  cr_assert_str_eq(ob.buf, "4294967295");
-
-  free(ob.buf);
-}
-
-Test(output_buffer, ob_u32_boundary_values) {
-  outbuf_t ob = {0};
-
-  // Test various boundary values
-  ob_u32(&ob, 9);
-  ob_u32(&ob, 10);
-  ob_u32(&ob, 99);
-  ob_u32(&ob, 100);
-  ob_u32(&ob, 999);
-  ob_u32(&ob, 1000);
-  ob_u32(&ob, 9999);
-  ob_u32(&ob, 10000);
-  ob_term(&ob);
-
-  cr_assert_str_eq(ob.buf, "910991009991000999910000");
+  cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
+                   ob.buf);
 
   free(ob.buf);
 }
