@@ -749,8 +749,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
              sources_with_video, width, height, terminal_aspect_ratio, grid_cols, grid_rows, cell_width_px,
              cell_height_px);
 
-    // For vertical layout, we'll adjust composite width after calculating target size
-    int optimal_width_for_vertical; // Will be set later
+    // For vertical and horizontal layouts, we'll adjust composite dimensions after calculating target sizes
+    int optimal_width_for_vertical;   // Will be set for 1x2 vertical layout
+    int optimal_width_for_horizontal; // Will be set for 2x1 horizontal layout
 
     if (composite->h != required_height || composite->w != composite_width_px) {
       // Recreate composite with correct dimensions
@@ -861,6 +862,29 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           target_width_px = width_constrained_w;
           target_height_px = width_constrained_h;
         }
+      } else if (sources_with_video == 2 && grid_cols == 2 && grid_rows == 1) {
+        // 2x1 horizontal layout: fit to height while respecting aspect ratio
+        target_height_px = actual_cell_height_px;
+        target_width_px = (int)((actual_cell_height_px * src_aspect) + 0.5f);
+
+        // Resize composite to fit actual content width (eliminate gaps)
+        if (video_source_index == 1) { // First source
+          optimal_width_for_horizontal = target_width_px * grid_cols;
+          if (composite->w != optimal_width_for_horizontal) {
+            image_destroy_to_pool(composite);
+            composite = image_new_from_pool(optimal_width_for_horizontal, required_height);
+            if (!composite) {
+              log_error("Failed to recreate composite with optimal width for 2x1");
+              for (int j = 0; j < source_count; j++) {
+                image_destroy_to_pool(sources[j].image);
+              }
+              return NULL;
+            }
+            image_clear(composite);
+            actual_cell_width_px = composite->w / grid_cols;
+            log_info("2x1 HORIZONTAL: Resized composite to %dx%d (eliminates gaps)", composite->w, composite->h);
+          }
+        }
       } else {
         // Normal aspect ratio fitting for other layouts
         if (src_aspect > cell_aspect) {
@@ -893,31 +917,23 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         // - Single client: Center the image within the cell
         int x_padding_px, y_padding_px;
 
-        if (sources_with_video > 1) {
-          // Multi-client grid: edge-only padding for grid centering
-          int base_x_padding = (actual_cell_width_px - target_width_px) / 2;
-          int base_y_padding = (actual_cell_height_px - target_height_px) / 2;
-
-          // Apply left padding only to leftmost column (col == 0)
-          x_padding_px = (col == 0) ? base_x_padding : 0;
-          // Apply top padding only to top row (row == 0)
-          y_padding_px = (row == 0) ? base_y_padding : 0;
-        } else {
-          // Single client: center within cell
-          x_padding_px = (actual_cell_width_px - target_width_px) / 2;
-          y_padding_px = (actual_cell_height_px - target_height_px) / 2;
-        }
+        // Center images within their cells for all layouts
+        // This prevents gaps/stripes between clients
+        x_padding_px = (actual_cell_width_px - target_width_px) / 2;
+        y_padding_px = (actual_cell_height_px - target_height_px) / 2;
 
         log_info(
-            "COPYING: target_size=%dx%d, padding=(%d,%d), final_dst_range=(%d,%d) to (%d,%d), composite_size=%dx%d",
-            target_width_px, target_height_px, x_padding_px, y_padding_px, cell_x_offset_px + x_padding_px,
-            cell_y_offset_px + y_padding_px, cell_x_offset_px + x_padding_px + target_width_px - 1,
-            cell_y_offset_px + y_padding_px + target_height_px - 1, composite->w, composite->h);
+            "COPYING: target_size=%dx%d, resized_actual=%dx%d, padding=(%d,%d), final_dst_range=(%d,%d) to (%d,%d), "
+            "composite_size=%dx%d",
+            target_width_px, target_height_px, resized->w, resized->h, x_padding_px, y_padding_px,
+            cell_x_offset_px + x_padding_px, cell_y_offset_px + y_padding_px,
+            cell_x_offset_px + x_padding_px + resized->w - 1, cell_y_offset_px + y_padding_px + resized->h - 1,
+            composite->w, composite->h);
 
         // Copy resized image to composite with proper bounds checking
-        for (int y = 0; y < target_height_px; y++) {
-          for (int x = 0; x < target_width_px; x++) {
-            int src_idx = (y * target_width_px) + x;
+        for (int y = 0; y < resized->h; y++) {
+          for (int x = 0; x < resized->w; x++) {
+            int src_idx = (y * resized->w) + x;
             int dst_x = cell_x_offset_px + x_padding_px + x;
             int dst_y = cell_y_offset_px + y_padding_px + y;
             int dst_idx = (dst_y * composite->w) + dst_x;
