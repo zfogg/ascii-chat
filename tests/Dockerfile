@@ -32,11 +32,14 @@ RUN pacman -Sy --noconfirm \
     cmake \
     ninja \
     ccache \
+    musl \
+    mimalloc \
     v4l-utils \
     zlib \
     portaudio \
     libsodium \
     criterion \
+    protobuf-c \
     bc \
     && pacman -Scc --noconfirm \
     && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
