@@ -1,14 +1,15 @@
 #pragma once
 
-#ifdef _WIN32
-#pragma pack(push, 1)
-#endif
-
 #include "platform/abstraction.h"
 #include <stdbool.h>
 #include "common.h"
 #include "platform/terminal.h"
 #include "crc32_hw.h"
+
+// Pack network protocol structures tightly for wire format
+#ifdef _WIN32
+#pragma pack(push, 1)
+#endif
 
 // Timeout constants (in seconds) - tuned for real-time video streaming
 #define CONNECT_TIMEOUT 3 // Reduced for faster connection attempts
