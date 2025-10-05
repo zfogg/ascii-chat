@@ -79,7 +79,11 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
 }
 
 crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *password) {
-  if (!ctx || !password || strlen(password) == 0) {
+  if (!ctx || !password) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  if (strlen(password) == 0) {
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
