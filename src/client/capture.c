@@ -355,7 +355,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
     const long CAPTURE_INTERVAL_MS = 1000 / 144; // ~6.94ms for 144fps
     struct timespec current_time;
-    clock_gettime(CLOCK_MONOTONIC, &current_time);
+    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
     long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
                       (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
     if (elapsed_ms < CAPTURE_INTERVAL_MS) {

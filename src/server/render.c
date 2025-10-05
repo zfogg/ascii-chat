@@ -396,7 +396,7 @@ void *client_video_render_thread(void *arg) {
 
   int base_frame_interval_ms = 1000 / client_fps;
   struct timespec last_render_time;
-  clock_gettime(CLOCK_MONOTONIC, &last_render_time);
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
   // Track queue pressure for dynamic throttling
 
@@ -418,7 +418,7 @@ void *client_video_render_thread(void *arg) {
 
     // Rate limiting with better shutdown responsiveness
     struct timespec current_time;
-    clock_gettime(CLOCK_MONOTONIC, &current_time);
+    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
     long elapsed_ms = ((current_time.tv_sec - last_render_time.tv_sec) * 1000) +
                       ((current_time.tv_nsec - last_render_time.tv_nsec) / 1000000);
@@ -468,10 +468,6 @@ void *client_video_render_thread(void *arg) {
 
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
-
-    // DEBUG: Track render thread frame generation attempts
-    static uint64_t render_attempts = 0;
-    render_attempts++;
 
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();

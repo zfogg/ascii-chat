@@ -303,7 +303,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     long render_interval_ms = 1000 / client_display_fps;
 
     struct timespec current_time;
-    clock_gettime(CLOCK_MONOTONIC, &current_time);
+    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
     // Calculate elapsed time since last render
     long elapsed_ms = 0;
@@ -450,17 +450,8 @@ static void *data_reception_thread_func(void *arg) {
     void *data;
     size_t len;
 
-    struct timespec receive_start_ts, receive_end_ts;
-    clock_gettime(CLOCK_MONOTONIC, &receive_start_ts);
-    // uint64_t receive_start = receive_start_ts.tv_sec * 1000 + receive_start_ts.tv_nsec / 1000000;
-
     int result = receive_packet(sockfd, &type, &data, &len);
 
-    clock_gettime(CLOCK_MONOTONIC, &receive_end_ts);
-    // uint64_t receive_end = receive_end_ts.tv_sec * 1000 + receive_end_ts.tv_nsec / 1000000;
-    // TODO: Use timing data for performance monitoring
-    (void)receive_start_ts;
-    (void)receive_end_ts;
     if (result < 0) {
       log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
       server_connection_lost();

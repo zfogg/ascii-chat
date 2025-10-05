@@ -15,7 +15,7 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 🆕 Audio streaming is now supported via PortAudio, with a custom mixer with features like compression, ducking, crowd scaling, noise gating, hi/lo-pass filtering, and soft clipping.
 
-![Animated demonstration: monochrome](http://i.imgur.com/E4OuqvX.gif)
+![Animated demonstration: monochrome](https://i.imgur.com/E4OuqvX.gif)
 
 ![Animated demonstration: color](https://github.com/user-attachments/assets/3bbaaad0-2e62-46e8-9653-bd5201c4b7df)
 
@@ -23,9 +23,14 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 ## Dependencies
 
+**Update**: OpenCV is no longer required! The project now uses ✨ native platform APIs 🪄:
+- **Linux**: V4L2 (Video4Linux2)
+- **macOS**: AVFoundation
+- **Windows**: Media Foundation
+
 ### Linux
 - **Ubuntu/Debian**: `apt-get install build-essential clang cmake ninja-build libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **ArchLinux**: `pacman -S clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
+- **Arch**: `pacman -S clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
 
 ### macOS
 - `brew install cmake ninja zlib portaudio libsodium criterion`
@@ -57,20 +62,17 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
    .\vcpkg install zlib:x64-windows portaudio:x64-windows libsodium:x64-windows
    ```
 
-**Note:** OpenCV is no longer required! The project now uses native platform APIs:
-- **Linux**: V4L2 (Video4Linux2)
-- **macOS**: AVFoundation
-- **Windows**: Media Foundation
+‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
 
 
 ## Build and run
-- Clone this repo onto a computer with a webcam.
-- Install the dependencies for your OS (instructions listed above).
-- Run `cmake --preset default && cmake --build --preset default`
-- Run `./build/bin/ascii-chat-server` in your terminal.
-- Open a second terminal window/tab/split/pane and run `./build/bin/ascii-chat-client`.
-
-For development, use `cmake --preset debug && cmake --build --preset debug`.
+1. Clone this repo onto a computer with a webcam and `cd` to its directory.
+2. Install the dependencies for your OS (instructions listed above).
+3. Run `cmake --preset default && cmake --build --preset default`.
+4. Run `./build/bin/ascii-chat-server`.
+5. Open a second terminal window/tab/split/pane.
+6. Run `./build/bin/ascii-chat-client`.
+7. *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat-client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
 
 Check the `CMakeLists.txt` to see how it works.
 
@@ -150,6 +152,42 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 # Verbose output
 ./tests/scripts/run_tests.sh -v
 ```
+
+### Windows Docker Testing
+On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
+
+```powershell
+# Run all tests
+./tests/scripts/run-docker-tests.ps1
+
+# Run specific test types
+./tests/scripts/run-docker-tests.ps1 unit
+./tests/scripts/run-docker-tests.ps1 integration
+./tests/scripts/run-docker-tests.ps1 performance
+
+# Run specific tests
+./tests/scripts/run-docker-tests.ps1 unit options
+./tests/scripts/run-docker-tests.ps1 unit buffer_pool packet_queue
+
+# Run with verbose output
+./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+
+# Run with different build types
+./tests/scripts/run-docker-tests.ps1 unit -BuildType release
+
+# Run clang-tidy static analysis
+./tests/scripts/run-docker-tests.ps1 clang-tidy
+./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+
+# Interactive shell for debugging
+./tests/scripts/run-docker-tests.ps1 -Interactive
+```
+
+The Docker script automatically:
+- Builds the test container if needed
+- Mounts your source code for live testing
+- Handles incremental builds
+- Provides the same test interface as the native script
 
 ### Manual Test Execution
 You can also run individual test executables directly:

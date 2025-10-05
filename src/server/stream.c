@@ -302,10 +302,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
                                           bool wants_stretch, size_t *out_size) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
-  // DEBUG: Track frame generation attempts
-  static uint64_t frame_gen_count = 0;
-  frame_gen_count++;
-
   if (!out_size || width == 0 || height == 0) {
     log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
               height, out_size);
@@ -661,8 +657,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       float target_aspect = 2.0f;
 
       // Choose layout that gives cells closest to target aspect ratio
-      float diff_1x2 = fabs(cell_aspect_1x2 - target_aspect);
-      float diff_2x1 = fabs(cell_aspect_2x1 - target_aspect);
+      float diff_1x2 = fabsf(cell_aspect_1x2 - target_aspect);
+      float diff_2x1 = fabsf(cell_aspect_2x1 - target_aspect);
 
       if (diff_1x2 <= diff_2x1) {
         // 1x2 layout (stacked vertically)
@@ -701,7 +697,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
         // Calculate aspect ratio of cells
         float cell_aspect = (float)cell_width / (float)cell_height;
-        float aspect_diff = fabs(cell_aspect - target_aspect);
+        float aspect_diff = fabsf(cell_aspect - target_aspect);
 
         // Prefer configurations with better aspect ratios
         if (aspect_diff < best_aspect_diff) {
@@ -826,7 +822,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
               return NULL;
             }
             image_clear(composite);
-            composite_width_px = optimal_width_for_vertical;
             // Recalculate cell dimensions after composite recreation
             actual_cell_width_px = composite->w / grid_cols;
             actual_cell_height_px = composite->h / grid_rows;
@@ -992,13 +987,7 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
-    // DEBUG: Track successful frame generation
-    static uint64_t success_count = 0;
-    success_count++;
   } else {
-    // DEBUG: Track frame generation failures
-    static uint64_t fail_count = 0;
-    fail_count++;
     log_error("Per-client %u: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;
   }

@@ -437,7 +437,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
     log_error("Failed to create receive thread for client %u", atomic_load(&client->client_id));
     // Don't destroy mutexes here - remove_client() will handle it
-    remove_client(atomic_load(&client->client_id));
+    (void)remove_client(atomic_load(&client->client_id));
     return -1;
   }
 
@@ -447,7 +447,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
-    remove_client(client->client_id);
+    (void)remove_client(client->client_id);
     return -1;
   }
 
@@ -473,7 +473,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   // NEW: Create per-client rendering threads
   if (create_client_render_threads(client) != 0) {
     log_error("Failed to create render threads for client %u", client->client_id);
-    remove_client(client->client_id);
+    (void)remove_client(client->client_id);
     return -1;
   }
 
@@ -803,7 +803,7 @@ void *client_send_thread_func(void *arg) {
 
     // Check if it's time to send a video frame (60fps rate limiting)
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    (void)clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t current_time = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
     if (current_time - last_video_send_time >= video_send_interval_us) {
       // GRID LAYOUT CHANGE: Check if we need to send CLEAR_CONSOLE before next video frame
@@ -838,9 +838,6 @@ void *client_send_thread_func(void *arg) {
       if (client->outgoing_video_buffer) {
         const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
         if (frame && frame->data && frame->size > 0) {
-          // DEBUG: Track send thread frame sending attempts
-          static uint64_t send_attempts = 0;
-          send_attempts++;
           // Build ASCII frame packet
           ascii_frame_packet_t frame_header = {
               .width = htonl(atomic_load(&client->width)),
@@ -880,10 +877,6 @@ void *client_send_thread_func(void *arg) {
               }
               sent_something = true;
               last_video_send_time = current_time;
-
-              // DEBUG: Track successful frame sends
-              static uint64_t send_success_count = 0;
-              send_success_count++;
             } else {
               if (!atomic_load(&g_should_exit)) {
                 log_error("Failed to send video frame header to client %u: %zd/%zu bytes", client->client_id, sent,
