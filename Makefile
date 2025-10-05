@@ -39,29 +39,29 @@ cloc:
 
 format:
 	@if [ -n "$(FILE)" ]; then \
-		echo "Formatting $(FILE)..."; \
-		clang-format -i $(FILE); \
+		echo "Formatting $(FILE) with .clang-format..."; \
+		clang-format -style=file:.clang-format -i $(FILE); \
 	else \
-		echo "Formatting all source files..."; \
-		find src lib -name '*.c' -o -name '*.h' | xargs clang-format -i; \
+		echo "Formatting all source files (including tests) with .clang-format..."; \
+		find src lib tests \( -name '*.c' -o -name '*.h' \) | xargs clang-format -style=file:.clang-format -i; \
 	fi
 
 format-check:
 	@if [ -n "$(FILE)" ]; then \
-		echo "Checking format of $(FILE)..."; \
-		clang-format --dry-run --Werror $(FILE); \
+		echo "Checking format of $(FILE) with .clang-format..."; \
+		clang-format -style=file:.clang-format --dry-run --Werror $(FILE); \
 	else \
-		echo "Checking format of all source files..."; \
-		find src lib -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror; \
+		echo "Checking format of all source files (including tests) with .clang-format..."; \
+		find src lib tests \( -name '*.c' -o -name '*.h' \) | xargs clang-format -style=file:.clang-format --dry-run --Werror; \
 	fi
 
 tidy:
 	@if [ -n "$(FILE)" ]; then \
-		echo "Running clang-tidy on $(FILE)..."; \
-		clang-tidy $(FILE) -- -I./lib -I./src; \
+		echo "Running clang-tidy on $(FILE) with .clang-tidy..."; \
+		clang-tidy --config-file=.clang-tidy $(FILE) -- @.clang -I./lib -I./src; \
 	else \
-		echo "Running clang-tidy on all source files..."; \
-		find src lib -name '*.c' | xargs -n1 -P8 clang-tidy -- -I./lib -I./src; \
+		echo "Running clang-tidy on all lib/ and src/ files with .clang-tidy..."; \
+		find src lib \( -name '*.c' -o -name '*.h' \) | xargs -n1 -P8 clang-tidy --config-file=.clang-tidy -- @.clang -I./lib -I./src; \
 	fi
 
 scan-build:
