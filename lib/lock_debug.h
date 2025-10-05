@@ -197,17 +197,18 @@ static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type
 static inline uint32_t usage_stats_key(const char *file_name, int line_number, const char *function_name,
                                        lock_type_t lock_type) {
   // Create a hash from file name, line number, function name, and lock type
+  // Use explicit wrapping arithmetic to avoid UBSan warnings on intentional overflow
   uint32_t hash = 0;
   const char *p = file_name;
   while (*p) {
-    hash = hash * 31 + *p++;
+    hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)*p++);
   }
-  hash = hash * 31 + (uint32_t)line_number;
+  hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)line_number);
   p = function_name;
   while (*p) {
-    hash = hash * 31 + *p++;
+    hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)*p++);
   }
-  hash = hash * 31 + (uint32_t)lock_type;
+  hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)lock_type);
   return hash;
 }
 
