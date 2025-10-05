@@ -76,19 +76,49 @@ Test(common, safe_realloc_basic) {
 }
 
 // =============================================================================
-// Error Code Tests
+// Error Code Tests - Parameterized
 // =============================================================================
 
-Test(common, error_codes) {
-  // Test that error constants are defined
-  cr_assert_neq(ASCIICHAT_ERR_NETWORK, 0, "ASCIICHAT_ERR_NETWORK should be non-zero");
-  cr_assert_neq(ASCIICHAT_ERR_MALLOC, 0, "ASCIICHAT_ERR_MALLOC should be non-zero");
-  cr_assert_neq(ASCIICHAT_ERR_INVALID_PARAM, 0, "ASCIICHAT_ERR_INVALID_PARAM should be non-zero");
+typedef struct {
+  int error_code;
+  char error_name[64];
+  char description[64];
+} error_code_test_case_t;
 
-  // Error codes should be distinct
-  cr_assert_neq(ASCIICHAT_ERR_NETWORK, ASCIICHAT_ERR_MALLOC, "Error codes should be distinct");
-  cr_assert_neq(ASCIICHAT_ERR_NETWORK, ASCIICHAT_ERR_INVALID_PARAM, "Error codes should be distinct");
-  cr_assert_neq(ASCIICHAT_ERR_MALLOC, ASCIICHAT_ERR_INVALID_PARAM, "Error codes should be distinct");
+static error_code_test_case_t error_code_cases[] = {
+    {ASCIICHAT_OK, "ASCIICHAT_OK", "Success code"},
+    {ASCIICHAT_ERR_NETWORK, "ASCIICHAT_ERR_NETWORK", "Network error code"},
+    {ASCIICHAT_ERR_MALLOC, "ASCIICHAT_ERR_MALLOC", "Memory allocation error code"},
+    {ASCIICHAT_ERR_INVALID_PARAM, "ASCIICHAT_ERR_INVALID_PARAM", "Invalid parameter error code"},
+    {ASCIICHAT_ERR_BUFFER_FULL, "ASCIICHAT_ERR_BUFFER_FULL", "Buffer full error code"},
+};
+
+ParameterizedTestParameters(common, error_code_definitions) {
+  return cr_make_param_array(error_code_test_case_t, error_code_cases,
+                             sizeof(error_code_cases) / sizeof(error_code_cases[0]));
+}
+
+ParameterizedTest(error_code_test_case_t *tc, common, error_code_definitions) {
+  // Error codes should be defined
+  cr_assert(tc->error_code != -999999, "%s should be defined", tc->error_name);
+
+  // Get error string
+  const char *error_str = asciichat_error_string(tc->error_code);
+  cr_assert_not_null(error_str, "%s error string should not be NULL", tc->error_name);
+  cr_assert(strlen(error_str) > 0, "%s error string should not be empty", tc->error_name);
+}
+
+Test(common, error_codes_are_distinct) {
+  // Test that all error codes are distinct from each other
+  int codes[] = {ASCIICHAT_OK, ASCIICHAT_ERR_NETWORK, ASCIICHAT_ERR_MALLOC, ASCIICHAT_ERR_INVALID_PARAM,
+                 ASCIICHAT_ERR_BUFFER_FULL};
+  size_t count = sizeof(codes) / sizeof(codes[0]);
+
+  for (size_t i = 0; i < count; i++) {
+    for (size_t j = i + 1; j < count; j++) {
+      cr_assert_neq(codes[i], codes[j], "Error codes at index %zu and %zu should be distinct", i, j);
+    }
+  }
 }
 
 // =============================================================================
@@ -153,24 +183,6 @@ Test(common, array_size_macro) {
 
   char string_array[] = "hello";
   cr_assert_eq(ARRAY_SIZE(string_array), 6, "ARRAY_SIZE should include null terminator");
-}
-
-// =============================================================================
-// Error String Tests
-// =============================================================================
-
-Test(common, error_string_function) {
-  const char *ok_str = asciichat_error_string(ASCIICHAT_OK);
-  const char *network_str = asciichat_error_string(ASCIICHAT_ERR_NETWORK);
-  const char *memory_str = asciichat_error_string(ASCIICHAT_ERR_MALLOC);
-
-  cr_assert_not_null(ok_str, "Error string should not be NULL");
-  cr_assert_not_null(network_str, "Error string should not be NULL");
-  cr_assert_not_null(memory_str, "Error string should not be NULL");
-
-  cr_assert(strlen(ok_str) > 0, "Error string should not be empty");
-  cr_assert(strlen(network_str) > 0, "Error string should not be empty");
-  cr_assert(strlen(memory_str) > 0, "Error string should not be empty");
 }
 
 // =============================================================================

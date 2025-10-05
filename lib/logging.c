@@ -25,6 +25,7 @@ static struct {
   size_t current_size;          /* Track current file size */
   bool terminal_output_enabled; /* Control stderr output to terminal */
   bool level_manually_set;      /* Track if level was set manually */
+  bool env_checked;             /* Track if we've checked environment */
 } g_log = {.file = 0,
            .level = LOG_INFO,
            .mutex = {0},
@@ -32,7 +33,8 @@ static struct {
            .filename = {0},
            .current_size = 0,
            .terminal_output_enabled = true,
-           .level_manually_set = false};
+           .level_manually_set = false,
+           .env_checked = false};
 
 static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
@@ -43,6 +45,37 @@ static const char *level_colors[] = {
     "\x1b[31m", /* ERROR: Red */
     "\x1b[35m"  /* FATAL: Magenta */
 };
+
+/* Parse LOG_LEVEL environment variable */
+static log_level_t parse_log_level_from_env(void) {
+  const char *env_level = SAFE_GETENV("LOG_LEVEL");
+  if (!env_level) {
+    return LOG_INFO; // Default level
+  }
+
+  // Protect against maliciously large environment variables (DoS prevention)
+  // Max reasonable length for log level is "DEBUG" (5 chars) or numeric (1 char)
+  size_t len = strnlen(env_level, 64);
+  if (len >= 64) {
+    return LOG_INFO; // Invalid - too long, use default
+  }
+
+  // Case-insensitive comparison
+  if (strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "0") == 0) {
+    return LOG_DEBUG;
+  } else if (strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
+    return LOG_INFO;
+  } else if (strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
+    return LOG_WARN;
+  } else if (strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
+    return LOG_ERROR;
+  } else if (strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
+    return LOG_FATAL;
+  }
+
+  // Invalid value - return default
+  return LOG_INFO;
+}
 
 /* Helper function to extract relative path from absolute path */
 static const char *extract_relative_path(const char *file) {
@@ -204,7 +237,33 @@ void log_init(const char *filename, log_level_t level) {
     }
   }
 
-  g_log.level = level;
+  // Check LOG_LEVEL environment variable on first initialization
+  // log_init() is an explicit call, so it overrides manual level setting
+  if (!g_log.env_checked) {
+    const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+    if (env_level_str) {
+      // Environment variable is set - use it
+      log_level_t env_level = parse_log_level_from_env();
+      g_log.level = env_level;
+    } else {
+      // Environment variable not set - use the provided level parameter
+      g_log.level = level;
+    }
+    g_log.env_checked = true;
+  } else {
+    // On subsequent calls to log_init, check if env var is set
+    const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+    if (env_level_str) {
+      // Environment variable takes precedence
+      log_level_t env_level = parse_log_level_from_env();
+      g_log.level = env_level;
+    } else {
+      // No env var - use the provided level parameter
+      g_log.level = level;
+    }
+  }
+  // Reset the manual flag since log_init() is an explicit call
+  g_log.level_manually_set = false;
   g_log.current_size = 0;
 
   if (filename) {
@@ -305,6 +364,23 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // Skip logging entirely if we're shutting down to avoid mutex issues
   if (atomic_load(&g_should_exit)) {
     return; // Don't try to log during shutdown - avoids deadlocks
+  }
+
+  // Check environment variable on first log call if not already checked
+  // This handles the case where log_msg is called before log_init
+  if (!g_log.env_checked && !g_log.level_manually_set) {
+    mutex_lock(&g_log.mutex);
+    if (!g_log.env_checked && !g_log.level_manually_set) {
+      const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+      if (env_level_str) {
+        // Environment variable is set - use it
+        log_level_t env_level = parse_log_level_from_env();
+        g_log.level = env_level;
+      }
+      // Otherwise keep the default LOG_INFO from static initialization
+      g_log.env_checked = true;
+    }
+    mutex_unlock(&g_log.mutex);
   }
 
   if (level < g_log.level) {

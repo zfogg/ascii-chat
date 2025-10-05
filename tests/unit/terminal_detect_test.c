@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -58,7 +59,28 @@ Test(terminal_detect, detect_terminal_capabilities_basic) {
             caps.render_mode == RENDER_MODE_HALF_BLOCK);
 }
 
-Test(terminal_detect, colorterm_variable_detection) {
+// Parameterized test for COLORTERM variable detection
+typedef struct {
+  char colorterm_value[32];
+  terminal_color_level_t expected_color_level;
+  uint32_t expected_color_count;
+  bool should_have_truecolor_cap;
+  char description[64];
+} colorterm_test_case_t;
+
+static colorterm_test_case_t colorterm_cases[] = {
+    {"truecolor", TERM_COLOR_TRUECOLOR, 16777216, true, "COLORTERM=truecolor"},
+    {"24bit", TERM_COLOR_TRUECOLOR, 16777216, true, "COLORTERM=24bit"},
+    {"", TERM_COLOR_NONE, 0, false, "COLORTERM empty (unset)"},
+    {"other", TERM_COLOR_NONE, 0, false, "COLORTERM=other (unknown value)"},
+};
+
+ParameterizedTestParameters(terminal_detect, colorterm_variable_detection_parameterized) {
+  return cr_make_param_array(colorterm_test_case_t, colorterm_cases,
+                             sizeof(colorterm_cases) / sizeof(colorterm_cases[0]));
+}
+
+ParameterizedTest(colorterm_test_case_t *tc, terminal_detect, colorterm_variable_detection_parameterized) {
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
   char *original_term = getenv("TERM");
@@ -66,27 +88,27 @@ Test(terminal_detect, colorterm_variable_detection) {
   // Clear TERM to test COLORTERM in isolation
   unsetenv("TERM");
 
-  // Test with truecolor
-  setenv("COLORTERM", "truecolor", 1);
+  // Set COLORTERM value (empty string means unset)
+  if (tc->colorterm_value[0] == '\0') {
+    unsetenv("COLORTERM");
+  } else {
+    setenv("COLORTERM", tc->colorterm_value, 1);
+  }
+
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  cr_assert_eq(caps.color_level, TERM_COLOR_TRUECOLOR);
-  cr_assert_eq(caps.color_count, 16777216);
-  uint32_t result = caps.capabilities & TERM_CAP_COLOR_TRUE;
-  cr_assert_neq(result, 0, "Expected (caps.capabilities & TERM_CAP_COLOR_TRUE) to be non-zero, but was 0");
+  cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
+               tc->expected_color_level, caps.color_level);
 
-  // Test with 24bit
-  setenv("COLORTERM", "24bit", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_TRUECOLOR);
-  uint32_t result24 = caps.capabilities & TERM_CAP_COLOR_TRUE;
-  cr_assert_neq(result24, 0, "Expected (caps.capabilities & TERM_CAP_COLOR_TRUE) to be non-zero for 24bit, but was 0");
+  if (tc->expected_color_count > 0) {
+    cr_assert_eq(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description,
+                 tc->expected_color_count, caps.color_count);
+  }
 
-  // Test with other value
-  setenv("COLORTERM", "other", 1);
-  caps = detect_terminal_capabilities();
-  // Should not automatically detect truecolor
-  cr_assert_neq(caps.color_level, TERM_COLOR_TRUECOLOR);
+  if (tc->should_have_truecolor_cap) {
+    uint32_t result = caps.capabilities & TERM_CAP_COLOR_TRUE;
+    cr_assert_neq(result, 0, "%s: expected TERM_CAP_COLOR_TRUE capability", tc->description);
+  }
 
   // Restore original environment
   if (original_colorterm) {
@@ -102,48 +124,55 @@ Test(terminal_detect, colorterm_variable_detection) {
   }
 }
 
-// TODO: Convert to parameterized test (needs investigation of Criterion compatibility with env vars)
-Test(terminal_detect, term_variable_color_detection) {
+// Parameterized test for TERM variable color detection
+typedef struct {
+  char term_value[32];
+  terminal_color_level_t expected_color_level;
+  uint32_t expected_color_count;
+  uint32_t expected_capability_flag;
+  char description[64];
+} term_color_test_case_t;
+
+static term_color_test_case_t term_color_cases[] = {
+    {"xterm-256color", TERM_COLOR_256, 256, TERM_CAP_COLOR_256, "TERM=xterm-256color"},
+    {"xterm-color", TERM_COLOR_16, 16, TERM_CAP_COLOR_16, "TERM=xterm-color"},
+    {"xterm", TERM_COLOR_16, 16, TERM_CAP_COLOR_16, "TERM=xterm"},
+    {"screen", TERM_COLOR_16, 16, TERM_CAP_COLOR_16, "TERM=screen"},
+    {"linux", TERM_COLOR_16, 16, TERM_CAP_COLOR_16, "TERM=linux"},
+    {"unknown", TERM_COLOR_NONE, 0, 0, "TERM=unknown"},
+    {"dumb", TERM_COLOR_NONE, 0, 0, "TERM=dumb"},
+};
+
+ParameterizedTestParameters(terminal_detect, term_variable_color_detection_parameterized) {
+  return cr_make_param_array(term_color_test_case_t, term_color_cases,
+                             sizeof(term_color_cases) / sizeof(term_color_cases[0]));
+}
+
+ParameterizedTest(term_color_test_case_t *tc, terminal_detect, term_variable_color_detection_parameterized) {
   // Save original environment
   char *original_term = getenv("TERM");
   char *original_colorterm = getenv("COLORTERM");
 
-  // Clear COLORTERM to test TERM variable parsing
+  // Clear COLORTERM to test TERM variable parsing in isolation
   unsetenv("COLORTERM");
 
-  // Test 256 color terminals
-  setenv("TERM", "xterm-256color", 1);
+  // Set TERM value
+  setenv("TERM", tc->term_value, 1);
+
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_256);
-  cr_assert_eq(caps.color_count, 256);
-  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_256, 0);
 
-  // Test basic color terminals
-  setenv("TERM", "xterm-color", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_16);
-  cr_assert_eq(caps.color_count, 16);
-  cr_assert_neq(caps.capabilities & TERM_CAP_COLOR_16, 0);
+  cr_assert_eq(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
+               tc->expected_color_level, caps.color_level);
 
-  // Test xterm (should support colors)
-  setenv("TERM", "xterm", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_16);
+  if (tc->expected_color_count > 0) {
+    cr_assert_eq(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description,
+                 tc->expected_color_count, caps.color_count);
+  }
 
-  // Test screen
-  setenv("TERM", "screen", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_16);
-
-  // Test linux console
-  setenv("TERM", "linux", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_16);
-
-  // Test unknown terminal
-  setenv("TERM", "unknown", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.color_level, TERM_COLOR_NONE);
+  if (tc->expected_capability_flag != 0) {
+    cr_assert_neq(caps.capabilities & tc->expected_capability_flag, 0, "%s: expected capability flag 0x%x",
+                  tc->description, tc->expected_capability_flag);
+  }
 
   // Restore original environment
   if (original_term) {
@@ -154,42 +183,66 @@ Test(terminal_detect, term_variable_color_detection) {
 
   if (original_colorterm) {
     setenv("COLORTERM", original_colorterm, 1);
+  } else {
+    unsetenv("COLORTERM");
   }
 }
 
-Test(terminal_detect, utf8_support_detection) {
+// Parameterized test for UTF-8 support detection
+typedef struct {
+  char lang_value[32];
+  char lc_all_value[32];
+  char lc_ctype_value[32];
+  bool expected_utf8_support;
+  char description[64];
+} utf8_test_case_t;
+
+static utf8_test_case_t utf8_cases[] = {
+    {"en_US.UTF-8", "", "", true, "LANG=en_US.UTF-8"},
+    {"C.UTF-8", "", "", true, "LANG=C.UTF-8"},
+    {"C", "C.UTF-8", "", true, "LC_ALL=C.UTF-8 (takes precedence over LANG)"},
+    {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"},
+    {"C", "", "", false, "LANG=C (no UTF-8)"},
+    {"", "", "", false, "All locale vars unset"},
+};
+
+ParameterizedTestParameters(terminal_detect, utf8_support_detection_parameterized) {
+  return cr_make_param_array(utf8_test_case_t, utf8_cases, sizeof(utf8_cases) / sizeof(utf8_cases[0]));
+}
+
+ParameterizedTest(utf8_test_case_t *tc, terminal_detect, utf8_support_detection_parameterized) {
   // Save original environment
   char *original_lang = getenv("LANG");
   char *original_lc_all = getenv("LC_ALL");
   char *original_lc_ctype = getenv("LC_CTYPE");
 
-  // Test UTF-8 detection via LANG
-  unsetenv("LC_ALL");
-  unsetenv("LC_CTYPE");
-  setenv("LANG", "en_US.UTF-8", 1);
+  // Set environment variables (empty string means unset)
+  if (tc->lang_value[0] == '\0') {
+    unsetenv("LANG");
+  } else {
+    setenv("LANG", tc->lang_value, 1);
+  }
+
+  if (tc->lc_all_value[0] == '\0') {
+    unsetenv("LC_ALL");
+  } else {
+    setenv("LC_ALL", tc->lc_all_value, 1);
+  }
+
+  if (tc->lc_ctype_value[0] == '\0') {
+    unsetenv("LC_CTYPE");
+  } else {
+    setenv("LC_CTYPE", tc->lc_ctype_value, 1);
+  }
+
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  cr_assert(caps.utf8_support);
-  cr_assert_neq(caps.capabilities & TERM_CAP_UTF8, 0);
 
-  // Test UTF-8 detection via LC_ALL (takes precedence)
-  setenv("LC_ALL", "C.UTF-8", 1);
-  setenv("LANG", "C", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert(caps.utf8_support);
+  cr_assert_eq(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description,
+               tc->expected_utf8_support, caps.utf8_support);
 
-  // Test UTF-8 detection via LC_CTYPE
-  unsetenv("LC_ALL");
-  setenv("LC_CTYPE", "en_US.utf8", 1);
-  setenv("LANG", "C", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert(caps.utf8_support);
-
-  // Test non-UTF-8 locale
-  unsetenv("LC_ALL");
-  unsetenv("LC_CTYPE");
-  setenv("LANG", "C", 1);
-  caps = detect_terminal_capabilities();
-  cr_assert_eq(caps.utf8_support, false);
+  if (tc->expected_utf8_support) {
+    cr_assert_neq(caps.capabilities & TERM_CAP_UTF8, 0, "%s: expected TERM_CAP_UTF8 capability", tc->description);
+  }
 
   // Restore original environment
   if (original_lang) {

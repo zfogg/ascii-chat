@@ -653,34 +653,49 @@ Test(logging, log_rotation_simulation) {
 }
 
 /* ============================================================================
- * Log Initialization Edge Cases
+ * Log Initialization Edge Cases - Parameterized
  * ============================================================================ */
 
-Test(logging, log_initialization_edge_cases) {
-  // Test various initialization scenarios
+typedef struct {
+  log_level_t level;
+  char level_name[16];
+  char description[64];
+} log_init_test_case_t;
 
-  // Test initialization with different levels
-  log_init(NULL, LOG_DEBUG);
-  log_debug("Debug message after init");
+static log_init_test_case_t log_init_cases[] = {
+    {LOG_DEBUG, "DEBUG", "Initialization with DEBUG level"}, {LOG_INFO, "INFO", "Initialization with INFO level"},
+    {LOG_WARN, "WARN", "Initialization with WARN level"},    {LOG_ERROR, "ERROR", "Initialization with ERROR level"},
+    {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
+};
+
+ParameterizedTestParameters(logging, log_initialization_variations) {
+  return cr_make_param_array(log_init_test_case_t, log_init_cases, sizeof(log_init_cases) / sizeof(log_init_cases[0]));
+}
+
+ParameterizedTest(log_init_test_case_t *tc, logging, log_initialization_variations) {
+  log_init(NULL, tc->level);
+
+  // Log message appropriate to the level
+  switch (tc->level) {
+  case LOG_DEBUG:
+    log_debug("%s message after init", tc->level_name);
+    break;
+  case LOG_INFO:
+    log_info("%s message after init", tc->level_name);
+    break;
+  case LOG_WARN:
+    log_warn("%s message after init", tc->level_name);
+    break;
+  case LOG_ERROR:
+    log_error("%s message after init", tc->level_name);
+    break;
+  case LOG_FATAL:
+    log_fatal("%s message after init", tc->level_name);
+    break;
+  }
+
   log_destroy();
-
-  log_init(NULL, LOG_INFO);
-  log_info("Info message after init");
-  log_destroy();
-
-  log_init(NULL, LOG_WARN);
-  log_warn("Warning message after init");
-  log_destroy();
-
-  log_init(NULL, LOG_ERROR);
-  log_error("Error message after init");
-  log_destroy();
-
-  log_init(NULL, LOG_FATAL);
-  log_fatal("Fatal message after init");
-  log_destroy();
-
-  cr_assert(true, "Log initialization edge cases should work");
+  cr_assert(true, "%s should work", tc->description);
 }
 
 Test(logging, log_destroy_without_init) {

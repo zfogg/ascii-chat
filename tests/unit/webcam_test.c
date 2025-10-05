@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -48,18 +49,31 @@ Test(webcam, init_success) {
   webcam_cleanup();
 }
 
-Test(webcam, init_different_indices) {
-  // Test pattern mode should work with any webcam index
-  unsigned short int indices[] = {0, 1, 2};
-  int num_indices = sizeof(indices) / sizeof(indices[0]);
+// Parameterized test for different webcam indices
+typedef struct {
+  unsigned short int webcam_index;
+  int expected_width;
+  int expected_height;
+  char description[64];
+} webcam_index_test_case_t;
 
-  for (int i = 0; i < num_indices; i++) {
-    int result = webcam_init(indices[i]);
-    cr_assert_eq(result, 0, "Init should succeed for index %d", indices[i]);
-    cr_assert_eq(last_image_width, 1280, "Width should be 1280 for index %d", indices[i]);
-    cr_assert_eq(last_image_height, 720, "Height should be 720 for index %d", indices[i]);
-    webcam_cleanup();
-  }
+static webcam_index_test_case_t webcam_index_cases[] = {
+    {0, 1280, 720, "Webcam index 0 (test pattern)"},
+    {1, 1280, 720, "Webcam index 1 (test pattern)"},
+    {2, 1280, 720, "Webcam index 2 (test pattern)"},
+};
+
+ParameterizedTestParameters(webcam, init_different_indices) {
+  return cr_make_param_array(webcam_index_test_case_t, webcam_index_cases,
+                             sizeof(webcam_index_cases) / sizeof(webcam_index_cases[0]));
+}
+
+ParameterizedTest(webcam_index_test_case_t *tc, webcam, init_different_indices) {
+  int result = webcam_init(tc->webcam_index);
+  cr_assert_eq(result, 0, "%s: Init should succeed", tc->description);
+  cr_assert_eq(last_image_width, tc->expected_width, "%s: Width should be %d", tc->description, tc->expected_width);
+  cr_assert_eq(last_image_height, tc->expected_height, "%s: Height should be %d", tc->description, tc->expected_height);
+  webcam_cleanup();
 }
 
 /* ============================================================================
