@@ -298,6 +298,8 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
  * @see framebuffer_read_multi_frame() For frame buffer operations
  * @see calculate_fit_dimensions_pixel() For aspect ratio calculations
  */
+// Compute hash of all active video sources for cache invalidation
+// Uses hardware-accelerated CRC32 for ultra-fast hashing
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
                                           bool wants_stretch, size_t *out_size, bool *out_grid_changed) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
@@ -947,32 +949,32 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   // Find the target client to get their terminal capabilities
-  client_info_t *target_client = find_client_by_id_fast(target_client_id);
+  client_info_t *render_client = find_client_by_id_fast(target_client_id);
   char *ascii_frame = NULL;
 
-  if (target_client) {
+  if (render_client) {
     // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
     // This prevents deadlocks when called concurrently with other functions that follow proper ordering
     rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&target_client->client_state_mutex);
-    uint32_t client_id_snapshot = atomic_load(&target_client->client_id);
-    bool has_terminal_caps_snapshot = target_client->has_terminal_caps;
-    terminal_capabilities_t caps_snapshot = target_client->terminal_caps;
-    mutex_unlock(&target_client->client_state_mutex);
+    mutex_lock(&render_client->client_state_mutex);
+    uint32_t client_id_snapshot = atomic_load(&render_client->client_id);
+    bool has_terminal_caps_snapshot = render_client->has_terminal_caps;
+    terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
+    mutex_unlock(&render_client->client_state_mutex);
     rwlock_rdunlock(&g_client_manager_rwlock);
 
     if (client_id_snapshot != 0 && has_terminal_caps_snapshot) {
-      if (target_client->client_palette_initialized) {
+      if (render_client->client_palette_initialized) {
         // Render with client's custom palette using enhanced capabilities
         if (caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK) {
           ascii_frame = ascii_convert_with_capabilities(composite, width, height * 2, &caps_snapshot, true, false,
-                                                        target_client->client_palette_chars,
-                                                        target_client->client_luminance_palette);
+                                                        render_client->client_palette_chars,
+                                                        render_client->client_luminance_palette);
         } else {
           // Use terminal dimensions for ASCII conversion to ensure full screen usage
           ascii_frame = ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false,
-                                                        target_client->client_palette_chars,
-                                                        target_client->client_luminance_palette);
+                                                        render_client->client_palette_chars,
+                                                        render_client->client_luminance_palette);
         }
       } else {
         // Client palette not initialized - this is an error condition
