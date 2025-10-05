@@ -298,7 +298,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->port = port;
   atomic_store(&client->active, true);
   atomic_store(&client->shutting_down, false);
-  atomic_store(&client->needs_display_clear, false); // Grid layout flag - cleared on init
+  atomic_store(&client->needs_display_clear, true); // New clients need display clear before first frame
   log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
            socket);
   client->connected_at = time(NULL);
