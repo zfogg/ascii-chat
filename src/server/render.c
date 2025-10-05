@@ -560,12 +560,16 @@ void *client_video_render_thread(void *arg) {
           uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
 
           // Log error if frame took too long to generate
+          static int lag_counter = 0;
           if (video_frame_count > 1 && frame_interval_us > lag_threshold_us) {
-            log_error("SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
-                      "fps: %.1f)",
-                      thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
-                      (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
-                      1000000.0f / frame_interval_us);
+            lag_counter++;
+            if (lag_counter % 10 == 0) {
+              log_error("SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
+                        "fps: %.1f)",
+                        thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
+                        (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
+                        1000000.0f / frame_interval_us);
+            }
           }
 
           // Report FPS every 5 seconds
@@ -590,10 +594,10 @@ void *client_video_render_thread(void *arg) {
 
       free(ascii_frame);
 
-      // PROFILING: Calculate and log timing breakdown every second
+      // PROFILING: Calculate and log timing breakdown
       static uint64_t profile_count = 0;
       profile_count++;
-      if (profile_count % 60 == 0) {
+      if (profile_count % (60 * 5) == 0) {
         uint64_t lock_time_us =
             ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
             ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
