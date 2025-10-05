@@ -813,9 +813,9 @@ void *client_send_thread_func(void *arg) {
         packet_header_t clear_header = {
             .magic = htonl(PACKET_MAGIC),
             .type = htons(PACKET_TYPE_CLEAR_CONSOLE),
-            .length = htonl(0),    // No payload
-            .crc32 = htonl(0),     // No payload to checksum
-            .client_id = htonl(0)  // From server
+            .length = htonl(0),   // No payload
+            .crc32 = htonl(0),    // No payload to checksum
+            .client_id = htonl(0) // From server
         };
 
         ssize_t sent = send_with_timeout(client->socket, &clear_header, sizeof(clear_header), SEND_TIMEOUT);
