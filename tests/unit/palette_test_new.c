@@ -13,8 +13,8 @@ TEST_SUITE_WITH_QUIET_LOGGING(palette);
 // Test case structure for builtin palette tests
 typedef struct {
   palette_type_t type;
-  const char *expected_name;
-  const char *expected_chars;
+  char expected_name[64];
+  char expected_chars[128];
   bool expected_utf8;
 } palette_test_case_t;
 
@@ -42,7 +42,7 @@ ParameterizedTest(palette_test_case_t *tc, palette, builtin_palette_tests) {
 // Test case structure for invalid palette tests
 typedef struct {
   palette_type_t type;
-  const char *description;
+  char description[64];
 } invalid_palette_test_case_t;
 
 static invalid_palette_test_case_t invalid_palette_cases[] = {
@@ -60,8 +60,8 @@ ParameterizedTest(invalid_palette_test_case_t *tc, palette, invalid_palette_test
 
 // Test case structure for UTF-8 encoding tests
 typedef struct {
-  const char *palette_chars;
-  const char *description;
+  char palette_chars[128];
+  char description[64];
   bool expected_utf8;
 } utf8_test_case_t;
 
@@ -83,9 +83,9 @@ ParameterizedTest(utf8_test_case_t *tc, palette, utf8_encoding_tests) {
 
 // Test case structure for palette validation tests
 typedef struct {
-  const char *palette_chars;
+  char palette_chars[128];
   size_t palette_len;
-  const char *description;
+  char description[64];
   bool expected_valid;
 } validation_test_case_t;
 
@@ -93,7 +93,7 @@ static validation_test_case_t validation_test_cases[] = {
     {PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD), "Valid standard palette", true},
     {PALETTE_CHARS_BLOCKS, strlen(PALETTE_CHARS_BLOCKS), "Valid UTF-8 palette", true},
     {"A", 1, "Single character", true},
-    {NULL, 10, "NULL palette", false},
+    {"", 10, "NULL palette", false},
     {"", 0, "Empty palette", false}};
 
 ParameterizedTestParameters(palette, validation_tests) {
@@ -102,7 +102,8 @@ ParameterizedTestParameters(palette, validation_tests) {
 }
 
 ParameterizedTest(validation_test_case_t *tc, palette, validation_tests) {
-  bool valid = validate_palette_chars(tc->palette_chars, tc->palette_len);
+  const char *chars_to_test = tc->palette_chars[0] != '\0' ? tc->palette_chars : NULL;
+  bool valid = validate_palette_chars(chars_to_test, tc->palette_len);
   cr_assert_eq(valid, tc->expected_valid, "Validation should match for %s", tc->description);
 }
 
@@ -110,7 +111,7 @@ ParameterizedTest(validation_test_case_t *tc, palette, validation_tests) {
 typedef struct {
   palette_type_t requested_type;
   bool has_utf8_support;
-  const char *description;
+  char description[64];
   palette_type_t expected_type;
 } compatibility_test_case_t;
 
@@ -136,8 +137,8 @@ ParameterizedTest(compatibility_test_case_t *tc, palette, compatibility_tests) {
 
 // Test case structure for UTF-8 palette creation tests
 typedef struct {
-  const char *palette_string;
-  const char *description;
+  char palette_string[128];
+  char description[64];
   size_t expected_char_count;
   size_t expected_total_bytes;
   bool should_succeed;
@@ -147,7 +148,7 @@ static utf8_palette_test_case_t utf8_palette_test_cases[] = {
     {" .:-=+*#%@", "ASCII palette", 10, 10, true},
     {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
     {"A→B", "Mixed ASCII/UTF-8", 3, 5, true},     // A(1) + →(3) + B(1)
-    {NULL, "NULL string", 0, 0, false},
+    {"", "NULL string", 0, 0, false},
     {"", "Empty string", 0, 0, false}};
 
 ParameterizedTestParameters(palette, utf8_palette_creation_tests) {
@@ -163,7 +164,7 @@ ParameterizedTest(utf8_palette_test_case_t *tc, palette, utf8_palette_creation_t
     cr_assert_eq(utf8_palette_get_char_count(palette), tc->expected_char_count, "Char count should match for %s",
                  tc->description);
     cr_assert_eq(palette->total_bytes, tc->expected_total_bytes, "Total bytes should match for %s", tc->description);
-    if (tc->palette_string) {
+    if (tc->palette_string[0] != '\0') {
       cr_assert_str_eq(palette->raw_string, tc->palette_string, "Raw string should match for %s", tc->description);
     }
     utf8_palette_destroy(palette);
@@ -174,9 +175,9 @@ ParameterizedTest(utf8_palette_test_case_t *tc, palette, utf8_palette_creation_t
 
 // Test case structure for UTF-8 palette character access tests
 typedef struct {
-  const char *palette_string;
+  char palette_string[128];
   size_t char_index;
-  const char *description;
+  char description[64];
   bool should_succeed;
   size_t expected_byte_len;
 } utf8_char_test_case_t;
@@ -210,10 +211,10 @@ ParameterizedTest(utf8_char_test_case_t *tc, palette, utf8_char_access_tests) {
 
 // Test case structure for UTF-8 palette character search tests
 typedef struct {
-  const char *palette_string;
-  const char *search_char;
+  char palette_string[128];
+  char search_char[16];
   size_t search_len;
-  const char *description;
+  char description[64];
   bool should_contain;
   size_t expected_index;
 } utf8_search_test_case_t;

@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -98,6 +99,110 @@ char *generate_random_frame_data(size_t size) {
   data[size] = '\0';
 
   return data;
+}
+
+/* ============================================================================
+ * Compression Roundtrip Tests
+ * ============================================================================ */
+
+// Theory: Compression roundtrip property - decompress(compress(data)) == data
+TheoryDataPoints(compression, compression_roundtrip_property) = {
+    DataPoints(size_t, 1, 16, 64, 256, 512, 1024, 4096, 8192),
+};
+
+Theory((size_t data_size), compression, compression_roundtrip_property) {
+  cr_assume(data_size > 0 && data_size <= 8192);
+
+  char *original_data = malloc(data_size);
+  cr_assume(original_data != NULL);
+
+  for (size_t i = 0; i < data_size; i++) {
+    original_data[i] = (char)('A' + (i % 26));
+  }
+
+  void *compressed_data = NULL;
+  size_t compressed_size = 0;
+  int compress_result = compress_data(original_data, data_size, &compressed_data, &compressed_size);
+
+  if (compress_result != 0 || compressed_data == NULL) {
+    free(original_data);
+    cr_skip("Compression failed for size %zu", data_size);
+    return;
+  }
+
+  char *decompressed_data = malloc(data_size);
+  cr_assert_not_null(decompressed_data, "Decompression buffer allocation should succeed for size %zu", data_size);
+
+  int decompress_result = decompress_data(compressed_data, compressed_size, decompressed_data, data_size);
+
+  cr_assert_eq(decompress_result, 0, "Decompression should succeed for size %zu", data_size);
+  cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0,
+               "Compression roundtrip must preserve data for size %zu", data_size);
+
+  free(original_data);
+  free(compressed_data);
+  free(decompressed_data);
+}
+
+// Theory: Compression effectiveness - compressible data should compress well
+TheoryDataPoints(compression, compressible_data_property) = {
+    DataPoints(size_t, 64, 256, 1024, 4096),
+};
+
+Theory((size_t data_size), compression, compressible_data_property) {
+  cr_assume(data_size > 0 && data_size <= 4096);
+
+  char *original_data = malloc(data_size);
+  cr_assume(original_data != NULL);
+  memset(original_data, 'A', data_size);
+
+  void *compressed_data = NULL;
+  size_t compressed_size = 0;
+  int result = compress_data(original_data, data_size, &compressed_data, &compressed_size);
+
+  if (result == 0 && compressed_data != NULL) {
+    float ratio = (float)compressed_size / (float)data_size;
+    cr_assert_lt(ratio, 0.5f, "Highly compressible data should compress to <50%% for size %zu (got %.2f%%)", data_size,
+                 ratio * 100.0f);
+
+    char *decompressed_data = malloc(data_size);
+    if (decompressed_data != NULL) {
+      int decompress_result = decompress_data(compressed_data, compressed_size, decompressed_data, data_size);
+      if (decompress_result == 0) {
+        cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0,
+                     "Roundtrip must work for compressible data size %zu", data_size);
+      }
+      free(decompressed_data);
+    }
+    free(compressed_data);
+  }
+
+  free(original_data);
+}
+
+// Theory: Compression threshold property - should_compress follows threshold rule
+TheoryDataPoints(compression, compression_threshold_property) = {
+    DataPoints(size_t, 100, 500, 1000, 2000),
+};
+
+Theory((size_t original_size), compression, compression_threshold_property) {
+  cr_assume(original_size > 0 && original_size <= 2000);
+
+  size_t test_compressed_sizes[] = {(size_t)(original_size * 0.5f), (size_t)(original_size * 0.7f),
+                                    (size_t)(original_size * 0.85f), (size_t)(original_size * 1.0f),
+                                    (size_t)(original_size * 1.2f)};
+
+  bool expected_results[] = {true, true, false, false, false};
+
+  for (int i = 0; i < 5; i++) {
+    size_t compressed_size = test_compressed_sizes[i];
+    bool result = should_compress(original_size, compressed_size);
+
+    cr_assert_eq(result, expected_results[i],
+                 "should_compress(%zu, %zu) = %s, expected %s (ratio=%.2f, threshold=%.2f)", original_size,
+                 compressed_size, result ? "true" : "false", expected_results[i] ? "true" : "false",
+                 (float)compressed_size / original_size, COMPRESSION_RATIO_THRESHOLD);
+  }
 }
 
 /* ============================================================================

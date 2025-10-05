@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -101,6 +102,7 @@ Test(terminal_detect, colorterm_variable_detection) {
   }
 }
 
+// TODO: Convert to parameterized test (needs investigation of Criterion compatibility with env vars)
 Test(terminal_detect, term_variable_color_detection) {
   // Save original environment
   char *original_term = getenv("TERM");

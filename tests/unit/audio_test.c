@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -187,6 +188,47 @@ ParameterizedTest(ringbuffer_capacity_test_case_t *tc, audio, ringbuffer_capacit
 // Ringbuffer Tests
 // =============================================================================
 
+// Theory: Ringbuffer roundtrip property - write(N) then read(N) should return same data
+TheoryDataPoints(audio, ringbuffer_roundtrip_property) = {
+    DataPoints(int, 10, 50, 100, 256, 512, 1024),
+};
+
+Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
+  cr_assume(sample_count > 0 && sample_count <= 1024);
+
+  audio_ring_buffer_t *rb = audio_ring_buffer_create();
+  cr_assume(rb != NULL);
+
+  float *test_data = malloc(sample_count * sizeof(float));
+  float *read_data = malloc(sample_count * sizeof(float));
+  cr_assume(test_data != NULL && read_data != NULL);
+
+  // Fill test data with sine wave
+  for (int i = 0; i < sample_count; i++) {
+    test_data[i] = sinf(2.0f * M_PI * 440.0f * i / 44100.0f);
+  }
+
+  // Write data
+  int written = audio_ring_buffer_write(rb, test_data, sample_count);
+  cr_assert_gt(written, 0, "Should write some samples for count=%d", sample_count);
+  cr_assert_leq(written, sample_count, "Should not write more than requested");
+
+  // Read data back
+  int read = audio_ring_buffer_read(rb, read_data, written);
+  cr_assert_eq(read, written, "Should read all written samples for count=%d", sample_count);
+
+  // PROPERTY: Roundtrip must preserve data
+  for (int i = 0; i < read; i++) {
+    cr_assert_float_eq(read_data[i], test_data[i], 0.0001f,
+                       "Ringbuffer roundtrip must preserve sample %d/%d (expected %.6f, got %.6f)", i, read,
+                       test_data[i], read_data[i]);
+  }
+
+  free(test_data);
+  free(read_data);
+  audio_ring_buffer_destroy(rb);
+}
+
 Test(audio, ringbuffer_basic_operations) {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
@@ -225,6 +267,37 @@ Test(audio, ringbuffer_write_read) {
                        test_data[i], read_data[i]);
   }
 
+  audio_ring_buffer_destroy(rb);
+}
+
+// Theory: Ringbuffer overflow property - writes should not exceed available space
+TheoryDataPoints(audio, ringbuffer_overflow_property) = {
+    DataPoints(int, 500, 1000, 2000, 4000, 8000),
+};
+
+Theory((int write_size), audio, ringbuffer_overflow_property) {
+  cr_assume(write_size > 0 && write_size <= 8000);
+
+  audio_ring_buffer_t *rb = audio_ring_buffer_create();
+  cr_assume(rb != NULL);
+
+  float *test_data = malloc(write_size * sizeof(float));
+  cr_assume(test_data != NULL);
+
+  for (int i = 0; i < write_size; i++) {
+    test_data[i] = i * 0.001f;
+  }
+
+  int available_space = audio_ring_buffer_available_write(rb);
+  cr_assert_gt(available_space, 0, "Buffer should have write space");
+
+  // PROPERTY: Write should not exceed available space
+  int written = audio_ring_buffer_write(rb, test_data, write_size);
+  cr_assert_leq(written, available_space, "Should not write more than available space (requested=%d, available=%d)",
+                write_size, available_space);
+  cr_assert_geq(written, 0, "Should not return negative for write_size=%d", write_size);
+
+  free(test_data);
   audio_ring_buffer_destroy(rb);
 }
 
