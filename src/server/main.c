@@ -300,12 +300,12 @@ static void sigterm_handler(int sigterm) {
  *
  * @param sigusr1 The signal number (unused, required by signal handler signature)
  */
-//static void sigusr1_handler(int sigusr1) {
-//  (void)(sigusr1);
-//
-//  // Trigger lock debugging output (signal-safe)
-//  lock_debug_trigger_print();
-//}
+static void sigusr1_handler(int sigusr1) {
+  (void)(sigusr1);
+
+  // Trigger lock debugging output (signal-safe)
+  lock_debug_trigger_print();
+}
 
 /* ============================================================================
  * Main Function
@@ -437,6 +437,8 @@ int main(int argc, char *argv[]) {
   // Handle lock debugging trigger signal
 #ifndef _WIN32
   platform_signal(SIGUSR1, sigusr1_handler);
+#else
+  UNUSED(sigusr1_handler);
 #endif
 #ifndef _WIN32
   // SIGPIPE not supported on Windows
