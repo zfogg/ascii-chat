@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <time.h>
 #include <math.h>
@@ -260,72 +261,71 @@ Test(ascii_simd_performance, utf8_palette_performance_impact) {
 // Image Size Performance Tests
 // =============================================================================
 
-Test(ascii_simd_performance, various_image_sizes_performance) {
-  const struct {
-    const char *name;
-    int width;
-    int height;
-    double min_speedup;
-    int pattern_type; // Use different image types for different sizes
-  } test_sizes[] = {
-      {"Small", 60, 20, 1.5, 1},    // Random pattern
-      {"Medium", 120, 36, 2.0, 2},  // High contrast pattern
-      {"Large", 240, 72, 2.0, 4},   // Photo-realistic pattern
-      {"Webcam", 480, 360, 2.0, 6}, // Radial pattern
-  };
+// Parameterized test for various image sizes performance
+typedef struct {
+  char name[16];
+  int width;
+  int height;
+  double min_speedup;
+  int pattern_type;
+  char description[64];
+} image_size_perf_test_case_t;
 
-  const int num_sizes = sizeof(test_sizes) / sizeof(test_sizes[0]);
+static image_size_perf_test_case_t image_size_perf_cases[] = {
+    {"Small", 60, 20, 1.5, 1, "Small image - Random pattern"},
+    {"Medium", 120, 36, 2.0, 2, "Medium image - High contrast"},
+    {"Large", 240, 72, 2.0, 4, "Large image - Photo-realistic"},
+    {"Webcam", 480, 360, 2.0, 6, "Webcam size - Radial pattern"},
+};
+
+ParameterizedTestParameters(ascii_simd_performance, various_image_sizes_performance) {
+  return cr_make_param_array(image_size_perf_test_case_t, image_size_perf_cases,
+                             sizeof(image_size_perf_cases) / sizeof(image_size_perf_cases[0]));
+}
+
+ParameterizedTest(image_size_perf_test_case_t *tc, ascii_simd_performance, various_image_sizes_performance) {
   const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
 
-  for (int size_idx = 0; size_idx < num_sizes; size_idx++) {
-    int width = test_sizes[size_idx].width;
-    int height = test_sizes[size_idx].height;
-    // double expected_speedup = test_sizes[size_idx].min_speedup; // Unused
-    int pattern_type = test_sizes[size_idx].pattern_type;
+  image_t *test_image = image_new(tc->width, tc->height);
+  cr_assert_not_null(test_image, "Should create %s test image", tc->name);
 
-    image_t *test_image = image_new(width, height);
-    cr_assert_not_null(test_image, "Should create %s test image", test_sizes[size_idx].name);
+  create_test_image(test_image, tc->pattern_type);
 
-    create_test_image(test_image, pattern_type);
+  const int iterations = (tc->width * tc->height < 10000) ? 50 : 20;
 
-    const int iterations = (width * height < 10000) ? 50 : 20;
-
-    // Benchmark scalar
-    double start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print(test_image, ascii_palette);
-      cr_assert_not_null(result, "Scalar should produce output for %s", test_sizes[size_idx].name);
-      free(result);
-    }
-    double scalar_time = get_time_seconds() - start_time;
-
-    // Benchmark SIMD
-    start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print_simd(test_image, ascii_palette);
-      cr_assert_not_null(result, "SIMD should produce output for %s", test_sizes[size_idx].name);
-      free(result);
-    }
-    double simd_time = get_time_seconds() - start_time;
-
-    double speedup = scalar_time / simd_time;
-    double scalar_fps = iterations / scalar_time;
-    double simd_fps = iterations / simd_time;
-
-    log_info("%s (%dx%d): Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", test_sizes[size_idx].name,
-             width, height, scalar_time, scalar_fps, simd_time, simd_fps, speedup);
-
-    // Performance assertions - SIMD should be at least as fast as scalar
-    cr_assert_gt(scalar_fps, 0.1, "%s: Scalar should achieve at least 0.1 FPS", test_sizes[size_idx].name);
-    cr_assert_gt(simd_fps, 0.1, "%s: SIMD should achieve at least 0.1 FPS", test_sizes[size_idx].name);
-
-    // For now, just ensure SIMD is not significantly slower (allow some tolerance)
-    // The goal is to ensure all image types work correctly, not necessarily faster
-    cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
-                 test_sizes[size_idx].name, speedup);
-
-    image_destroy(test_image);
+  // Benchmark scalar
+  double start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print(test_image, ascii_palette);
+    cr_assert_not_null(result, "Scalar should produce output for %s", tc->name);
+    free(result);
   }
+  double scalar_time = get_time_seconds() - start_time;
+
+  // Benchmark SIMD
+  start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print_simd(test_image, ascii_palette);
+    cr_assert_not_null(result, "SIMD should produce output for %s", tc->name);
+    free(result);
+  }
+  double simd_time = get_time_seconds() - start_time;
+
+  double speedup = scalar_time / simd_time;
+  double scalar_fps = iterations / scalar_time;
+  double simd_fps = iterations / simd_time;
+
+  log_info("%s (%dx%d): Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", tc->name, tc->width,
+           tc->height, scalar_time, scalar_fps, simd_time, simd_fps, speedup);
+
+  // Performance assertions - SIMD should be at least as fast as scalar
+  cr_assert_gt(scalar_fps, 0.1, "%s: Scalar should achieve at least 0.1 FPS", tc->name);
+  cr_assert_gt(simd_fps, 0.1, "%s: SIMD should achieve at least 0.1 FPS", tc->name);
+
+  // For now, just ensure SIMD is not significantly slower (allow some tolerance)
+  cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (got %.2fx)", tc->name, speedup);
+
+  image_destroy(test_image);
 }
 
 // =============================================================================
@@ -598,7 +598,34 @@ Test(ascii_simd_performance, mixed_utf8_palette_performance) {
 // Comprehensive Palette Performance Tests
 // =============================================================================
 
-Test(ascii_simd_performance, palette_byte_length_performance) {
+// Parameterized test for palette byte length performance
+typedef struct {
+  char name[24];
+  char palette[128];
+  int expected_bytes_per_char;
+  char description[64];
+} palette_byte_length_test_case_t;
+
+static palette_byte_length_test_case_t palette_byte_length_cases[] = {
+    {"1-byte ASCII", " .:-=+*#%@", 1, "Pure ASCII characters"},
+    {"2-byte Latin", " .:-=+*#%@αβγδεζηθ", 2, "ASCII + 2-byte Latin Extended"},
+    {"3-byte Symbols", " .:-=+*#%@♠♣♥♦♤♧♡♢", 3, "ASCII + 3-byte symbols"},
+    {"4-byte Emojis", " .:-=+*#%@🌑🌒🌓🌔🌕", 4, "ASCII + 4-byte emojis"},
+    {"Mixed 1-2", " .:-=+*#%@αβγδεζηθ", 2, "1-byte ASCII + 2-byte Greek"},
+    {"Mixed 1-3", " .:-=+*#%@♠♣♥♦♤♧♡♢", 3, "1-byte ASCII + 3-byte symbols"},
+    {"Mixed 1-4", " .:-=+*#%@🌑🌒🌓🌔🌕", 4, "1-byte ASCII + 4-byte emojis"},
+    {"Mixed 2-3", "αβγδεζηθ♠♣♥♦♤♧♡♢", 3, "2-byte Greek + 3-byte symbols"},
+    {"Mixed 2-4", "αβγδεζηθ🌑🌒🌓🌔🌕", 4, "2-byte Greek + 4-byte emojis"},
+    {"Mixed 3-4", "♠♣♥♦♤♧♡♢🌑🌒🌓🌔🌕", 4, "3-byte symbols + 4-byte emojis"},
+    {"All Mixed", " .α♠🌑:-=+*#%@βγ♣🌒δεζηθ♥♦♤♧♡♢🌓🌔🌕", 4, "All byte lengths mixed"},
+};
+
+ParameterizedTestParameters(ascii_simd_performance, palette_byte_length_performance) {
+  return cr_make_param_array(palette_byte_length_test_case_t, palette_byte_length_cases,
+                             sizeof(palette_byte_length_cases) / sizeof(palette_byte_length_cases[0]));
+}
+
+ParameterizedTest(palette_byte_length_test_case_t *tc, ascii_simd_performance, palette_byte_length_performance) {
   const int width = 120, height = 36;
   const int iterations = 15;
 
@@ -607,69 +634,67 @@ Test(ascii_simd_performance, palette_byte_length_performance) {
 
   create_test_image(test_image, 6); // Radial pattern
 
-  // Test palettes with different byte lengths
-  const struct {
-    const char *name;
-    const char *palette;
-    int expected_bytes_per_char;
-    const char *description;
-  } byte_length_palettes[] = {
-      {"1-byte ASCII", " .:-=+*#%@", 1, "Pure ASCII characters"},
-      {"2-byte Latin", " .:-=+*#%@αβγδεζηθ", 2, "ASCII + 2-byte Latin Extended"},
-      {"3-byte Symbols", " .:-=+*#%@♠♣♥♦♤♧♡♢", 3, "ASCII + 3-byte symbols"},
-      {"4-byte Emojis", " .:-=+*#%@🌑🌒🌓🌔🌕", 4, "ASCII + 4-byte emojis"},
-      {"Mixed 1-2", " .:-=+*#%@αβγδεζηθ", 2, "1-byte ASCII + 2-byte Greek"},
-      {"Mixed 1-3", " .:-=+*#%@♠♣♥♦♤♧♡♢", 3, "1-byte ASCII + 3-byte symbols"},
-      {"Mixed 1-4", " .:-=+*#%@🌑🌒🌓🌔🌕", 4, "1-byte ASCII + 4-byte emojis"},
-      {"Mixed 2-3", "αβγδεζηθ♠♣♥♦♤♧♡♢", 3, "2-byte Greek + 3-byte symbols"},
-      {"Mixed 2-4", "αβγδεζηθ🌑🌒🌓🌔🌕", 4, "2-byte Greek + 4-byte emojis"},
-      {"Mixed 3-4", "♠♣♥♦♤♧♡♢🌑🌒🌓🌔🌕", 4, "3-byte symbols + 4-byte emojis"},
-      {"All Mixed", " .α♠🌑:-=+*#%@βγ♣🌒δεζηθ♥♦♤♧♡♢🌓🌔🌕", 4, "All byte lengths mixed"},
-  };
-
-  const int num_palettes = sizeof(byte_length_palettes) / sizeof(byte_length_palettes[0]);
-
   log_info("Palette Byte Length Performance (%dx%d, %d iterations):", width, height, iterations);
 
-  for (int p = 0; p < num_palettes; p++) {
-    const char *palette = byte_length_palettes[p].palette;
+  const char *palette = tc->palette;
 
-    // Benchmark scalar implementation
-    double start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print(test_image, palette);
-      cr_assert_not_null(result, "Scalar should work with %s", byte_length_palettes[p].name);
-      free(result);
-    }
-    double scalar_time = get_time_seconds() - start_time;
-
-    // Benchmark SIMD implementation
-    start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print_simd(test_image, palette);
-      cr_assert_not_null(result, "SIMD should work with %s", byte_length_palettes[p].name);
-      free(result);
-    }
-    double simd_time = get_time_seconds() - start_time;
-
-    double speedup = scalar_time / simd_time;
-    double scalar_fps = iterations / scalar_time;
-    double simd_fps = iterations / simd_time;
-
-    log_info("  %s: Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", byte_length_palettes[p].name,
-             scalar_time, scalar_fps, simd_time, simd_fps, speedup);
-
-    // Performance assertions - SIMD should be at least as fast as scalar
-    cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", byte_length_palettes[p].name);
-    cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", byte_length_palettes[p].name);
-    cr_assert_gt(speedup, 0.5, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
-                 byte_length_palettes[p].name, speedup);
+  // Benchmark scalar implementation
+  double start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print(test_image, palette);
+    cr_assert_not_null(result, "Scalar should work with %s", tc->name);
+    free(result);
   }
+  double scalar_time = get_time_seconds() - start_time;
+
+  // Benchmark SIMD implementation
+  start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print_simd(test_image, palette);
+    cr_assert_not_null(result, "SIMD should work with %s", tc->name);
+    free(result);
+  }
+  double simd_time = get_time_seconds() - start_time;
+
+  double speedup = scalar_time / simd_time;
+  double scalar_fps = iterations / scalar_time;
+  double simd_fps = iterations / simd_time;
+
+  log_info("  %s: Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", tc->name, scalar_time, scalar_fps,
+           simd_time, simd_fps, speedup);
+
+  // Performance assertions - SIMD should be at least as fast as scalar
+  cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", tc->name);
+  cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", tc->name);
+  cr_assert_gt(speedup, 0.5, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
+               tc->name, speedup);
 
   image_destroy(test_image);
 }
 
-Test(ascii_simd_performance, palette_length_variation_performance) {
+// Parameterized test for palette length variation performance
+typedef struct {
+  char name[16];
+  char palette[80];
+  int length;
+  char description[64];
+} palette_length_test_case_t;
+
+static palette_length_test_case_t palette_length_cases[] = {
+    {"Tiny", " .", 2, "Minimal 2-character palette"},
+    {"Small", " .:-=+*", 7, "Small 7-character palette"},
+    {"Medium", " .:-=+*#%@", 10, "Medium 10-character palette"},
+    {"Large", " .:-=+*#%@ABCDEFGHIJKLMNOPQRSTUVWXYZ", 36, "Large 36-character palette"},
+    {"Huge", " .:-=+*#%@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 72,
+     "Huge 72-character palette"},
+};
+
+ParameterizedTestParameters(ascii_simd_performance, palette_length_variation_performance) {
+  return cr_make_param_array(palette_length_test_case_t, palette_length_cases,
+                             sizeof(palette_length_cases) / sizeof(palette_length_cases[0]));
+}
+
+ParameterizedTest(palette_length_test_case_t *tc, ascii_simd_performance, palette_length_variation_performance) {
   const int width = 120, height = 36;
   const int iterations = 15;
 
@@ -678,131 +703,110 @@ Test(ascii_simd_performance, palette_length_variation_performance) {
 
   create_test_image(test_image, 0); // Gradient pattern (keep this one as gradient for comparison)
 
-  // Test palettes of different lengths (all 1-byte ASCII for fair comparison)
-  const struct {
-    const char *name;
-    const char *palette;
-    int length;
-    const char *description;
-  } length_palettes[] = {
-      {"Tiny", " .", 2, "Minimal 2-character palette"},
-      {"Small", " .:-=+*", 7, "Small 7-character palette"},
-      {"Medium", " .:-=+*#%@", 10, "Medium 10-character palette"},
-      {"Large", " .:-=+*#%@ABCDEFGHIJKLMNOPQRSTUVWXYZ", 36, "Large 36-character palette"},
-      {"Huge", " .:-=+*#%@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 72,
-       "Huge 72-character palette"},
-  };
-
-  const int num_palettes = sizeof(length_palettes) / sizeof(length_palettes[0]);
-
   log_info("Palette Length Variation Performance (%dx%d, %d iterations):", width, height, iterations);
 
-  for (int p = 0; p < num_palettes; p++) {
-    const char *palette = length_palettes[p].palette;
+  const char *palette = tc->palette;
 
-    // Benchmark scalar implementation
-    double start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print(test_image, palette);
-      cr_assert_not_null(result, "Scalar should work with %s", length_palettes[p].name);
-      free(result);
-    }
-    double scalar_time = get_time_seconds() - start_time;
-
-    // Benchmark SIMD implementation
-    start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print_simd(test_image, palette);
-      cr_assert_not_null(result, "SIMD should work with %s", length_palettes[p].name);
-      free(result);
-    }
-    double simd_time = get_time_seconds() - start_time;
-
-    double speedup = scalar_time / simd_time;
-    double scalar_fps = iterations / scalar_time;
-    double simd_fps = iterations / simd_time;
-
-    log_info("  %s (%d chars): Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx",
-             length_palettes[p].name, length_palettes[p].length, scalar_time, scalar_fps, simd_time, simd_fps, speedup);
-
-    // Performance assertions
-    cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", length_palettes[p].name);
-    cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", length_palettes[p].name);
-    cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
-                 length_palettes[p].name, speedup);
+  // Benchmark scalar implementation
+  double start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print(test_image, palette);
+    cr_assert_not_null(result, "Scalar should work with %s", tc->name);
+    free(result);
   }
+  double scalar_time = get_time_seconds() - start_time;
+
+  // Benchmark SIMD implementation
+  start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print_simd(test_image, palette);
+    cr_assert_not_null(result, "SIMD should work with %s", tc->name);
+    free(result);
+  }
+  double simd_time = get_time_seconds() - start_time;
+
+  double speedup = scalar_time / simd_time;
+  double scalar_fps = iterations / scalar_time;
+  double simd_fps = iterations / simd_time;
+
+  log_info("  %s (%d chars): Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", tc->name, tc->length,
+           scalar_time, scalar_fps, simd_time, simd_fps, speedup);
+
+  // Performance assertions
+  cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", tc->name);
+  cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", tc->name);
+  cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (expected >0.5x, got %.2fx)",
+               tc->name, speedup);
 
   image_destroy(test_image);
 }
 
-Test(ascii_simd_performance, synthetic_image_types_performance) {
+// Parameterized test for synthetic image types performance
+typedef struct {
+  char name[24];
+  int pattern_type;
+  char description[64];
+  double min_speedup;
+} image_type_perf_test_case_t;
+
+static image_type_perf_test_case_t image_type_perf_cases[] = {
+    {"Gradient", 0, "Linear gradient patterns", 1.0},
+    {"Random", 1, "Pure random noise", 1.0},
+    {"High Contrast", 2, "Black and white checkerboard", 1.0},
+    {"Solid", 3, "Uniform solid colors", 1.0},
+    {"Photo-realistic", 4, "Simulated natural scenes", 1.0},
+    {"Noise+Structure", 5, "Random noise with structure", 1.0},
+    {"Radial", 6, "Radial gradient from center", 1.0},
+};
+
+ParameterizedTestParameters(ascii_simd_performance, synthetic_image_types_performance) {
+  return cr_make_param_array(image_type_perf_test_case_t, image_type_perf_cases,
+                             sizeof(image_type_perf_cases) / sizeof(image_type_perf_cases[0]));
+}
+
+ParameterizedTest(image_type_perf_test_case_t *tc, ascii_simd_performance, synthetic_image_types_performance) {
   const int width = 120, height = 36;
   const int iterations = 15;
-
   const char *ascii_palette = "   ...',;:clodxkO0KXNWM";
 
-  // Test different synthetic image types
-  const struct {
-    const char *name;
-    int pattern_type;
-    const char *description;
-    double min_speedup; // Minimum expected speedup for this image type
-  } image_types[] = {
-      {"Gradient", 0, "Linear gradient patterns", 1.0},
-      {"Random", 1, "Pure random noise", 1.0},
-      {"High Contrast", 2, "Black and white checkerboard", 1.0},
-      {"Solid", 3, "Uniform solid colors", 1.0},
-      {"Photo-realistic", 4, "Simulated natural scenes (sky, skin, grass)", 1.0},
-      {"Noise+Structure", 5, "Random noise with underlying structure", 1.0},
-      {"Radial", 6, "Radial gradient from center", 1.0},
-  };
+  image_t *test_image = image_new(width, height);
+  cr_assert_not_null(test_image, "Should create %s test image", tc->name);
 
-  const int num_types = sizeof(image_types) / sizeof(image_types[0]);
+  create_test_image(test_image, tc->pattern_type);
 
-  log_info("Synthetic Image Types Performance (%dx%d, %d iterations):", width, height, iterations);
-
-  for (int t = 0; t < num_types; t++) {
-    image_t *test_image = image_new(width, height);
-    cr_assert_not_null(test_image, "Should create %s test image", image_types[t].name);
-
-    create_test_image(test_image, image_types[t].pattern_type);
-
-    // Benchmark scalar implementation
-    double start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print(test_image, ascii_palette);
-      cr_assert_not_null(result, "Scalar should work with %s", image_types[t].name);
-      free(result);
-    }
-    double scalar_time = get_time_seconds() - start_time;
-
-    // Benchmark SIMD implementation
-    start_time = get_time_seconds();
-    for (int i = 0; i < iterations; i++) {
-      char *result = image_print_simd(test_image, ascii_palette);
-      cr_assert_not_null(result, "SIMD should work with %s", image_types[t].name);
-      free(result);
-    }
-    double simd_time = get_time_seconds() - start_time;
-
-    double speedup = scalar_time / simd_time;
-    double scalar_fps = iterations / scalar_time;
-    double simd_fps = iterations / simd_time;
-
-    log_info("  %s: Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", image_types[t].name, scalar_time,
-             scalar_fps, simd_time, simd_fps, speedup);
-
-    // Performance assertions - SIMD should be at least as fast as scalar
-    cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", image_types[t].name);
-    cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", image_types[t].name);
-
-    // For now, just ensure SIMD is not significantly slower (allow some tolerance)
-    // The goal is to ensure all image types work correctly, not necessarily faster
-    cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (got %.2fx)",
-                 image_types[t].name, speedup);
-
-    image_destroy(test_image);
+  // Benchmark scalar implementation
+  double start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print(test_image, ascii_palette);
+    cr_assert_not_null(result, "Scalar should work with %s", tc->name);
+    free(result);
   }
+  double scalar_time = get_time_seconds() - start_time;
+
+  // Benchmark SIMD implementation
+  start_time = get_time_seconds();
+  for (int i = 0; i < iterations; i++) {
+    char *result = image_print_simd(test_image, ascii_palette);
+    cr_assert_not_null(result, "SIMD should work with %s", tc->name);
+    free(result);
+  }
+  double simd_time = get_time_seconds() - start_time;
+
+  double speedup = scalar_time / simd_time;
+  double scalar_fps = iterations / scalar_time;
+  double simd_fps = iterations / simd_time;
+
+  log_info("%s: Scalar=%.3fs (%.1f FPS) | SIMD=%.3fs (%.1f FPS) | Speedup=%.2fx", tc->name, scalar_time, scalar_fps,
+           simd_time, simd_fps, speedup);
+
+  // Performance assertions - SIMD should be at least as fast as scalar
+  cr_assert_gt(scalar_fps, 0.5, "%s: Scalar should achieve at least 0.5 FPS", tc->name);
+  cr_assert_gt(simd_fps, 0.5, "%s: SIMD should achieve at least 0.5 FPS", tc->name);
+
+  // For now, just ensure SIMD is not significantly slower (allow some tolerance)
+  cr_assert_gt(speedup, 1.0, "%s: SIMD should not be more than 1x slower than scalar (got %.2fx)", tc->name, speedup);
+
+  image_destroy(test_image);
 }
 
 Test(ascii_simd_performance, all_image_types_comprehensive_performance) {
