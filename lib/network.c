@@ -171,9 +171,8 @@ ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int time
           // Interrupted by signal
           log_debug("send_with_timeout: select interrupted");
           return -1;
-        } else {
-          log_error("send_with_timeout: select failed with errno=%d", errno);
         }
+        log_error("send_with_timeout: select failed with errno=%d", errno);
 #endif
       }
       return -1;
@@ -305,9 +304,6 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
 }
 
 int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
-  printf("DEBUG: accept_with_timeout ENTER - listenfd=%d, timeout=%d\n", (int)listenfd, timeout_seconds);
-  fflush(stdout);
-
   fd_set read_fds;
   struct timeval timeout;
 
@@ -317,41 +313,27 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  printf("DEBUG: Calling socket_select...\n");
-  fflush(stdout);
   int result = socket_select(listenfd, &read_fds, NULL, NULL, &timeout);
-  printf("DEBUG: socket_select returned %d\n", result);
-  fflush(stdout);
 
   if (result <= 0) {
     // Timeout or error
     if (result == 0) {
       errno = ETIMEDOUT;
-      printf("DEBUG: socket_select timed out\n");
-      fflush(stdout);
     } else if (errno == EINTR) {
       // Interrupted by signal - this is expected during shutdown
-      printf("DEBUG: socket_select interrupted by signal\n");
-      fflush(stdout);
       return -1;
     } else {
 #ifdef _WIN32
       int wsa_error = WSAGetLastError();
-      printf("DEBUG: socket_select error - result=%d, WSAError=%d\n", result, wsa_error);
-      fflush(stdout);
+      log_info("DEBUG: socket_select error - result=%d, WSAError=%d", result, wsa_error);
 #else
-      printf("DEBUG: socket_select error - result=%d, errno=%d\n", result, errno);
-      fflush(stdout);
+      log_info("DEBUG: socket_select error - result=%d, errno=%d", result, errno);
 #endif
     }
     return -1;
   }
 
-  printf("DEBUG: Calling accept...\n");
-  fflush(stdout);
   socket_t accept_result = accept(listenfd, addr, addrlen);
-  printf("DEBUG: accept returned %lld\n", (long long)accept_result);
-  fflush(stdout);
 
   // Properly handle INVALID_SOCKET on Windows
   if (accept_result == INVALID_SOCKET_VALUE) {

@@ -50,7 +50,7 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
 // Use pthread_tryjoin_np with polling as fallback
 #ifdef __linux__
   struct timespec timeout;
-  clock_gettime(CLOCK_REALTIME, &timeout);
+  (void)clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_sec += timeout_ms / 1000;
   timeout.tv_nsec += (timeout_ms % 1000) * 1000000;
 

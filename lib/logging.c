@@ -315,7 +315,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   /* Get current time in local timezone */
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  (void)clock_gettime(CLOCK_REALTIME, &ts);
 
   struct tm tm_info;
   platform_localtime(&ts.tv_sec, &tm_info);

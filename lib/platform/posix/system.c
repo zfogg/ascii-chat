@@ -493,7 +493,7 @@ void platform_backtrace_symbols_free(char **strings) {
   // We need to bypass the debug_free macro by undefining it temporarily
 #ifdef DEBUG_MEMORY
 #undef free
-  free(strings);
+  free((void *)strings);
 #define free(ptr) debug_free(ptr, __FILE__, __LINE__)
 #else
   free(strings);

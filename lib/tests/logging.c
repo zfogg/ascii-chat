@@ -38,9 +38,9 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
     }
     dup2(dev_null_fd, STDOUT_FILENO);
     // Reopen stdout to use the redirected file descriptor
-    freopen("/dev/null", "w", stdout);
+    (void)freopen("/dev/null", "w", stdout);
     // Make stdout unbuffered to ensure immediate redirection
-    setvbuf(stdout, NULL, _IONBF, 0);
+    (void)setvbuf(stdout, NULL, _IONBF, 0);
   }
 
   if (disable_stderr) {
@@ -58,9 +58,9 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
     }
     dup2(dev_null_fd, STDERR_FILENO);
     // Reopen stderr to use the redirected file descriptor
-    freopen("/dev/null", "w", stderr);
+    (void)freopen("/dev/null", "w", stderr);
     // Make stderr unbuffered to ensure immediate redirection
-    setvbuf(stderr, NULL, _IONBF, 0);
+    (void)setvbuf(stderr, NULL, _IONBF, 0);
   }
 
   logging_disabled = true;
@@ -77,9 +77,9 @@ int test_logging_restore(void) {
   if (original_stdout_fd != -1) {
     dup2(original_stdout_fd, STDOUT_FILENO);
     // Reopen stdout to use the restored file descriptor
-    freopen("/dev/stdout", "w", stdout);
+    (void)freopen("/dev/stdout", "w", stdout);
     // Restore line buffering for stdout
-    setvbuf(stdout, NULL, _IOLBF, 0);
+    (void)setvbuf(stdout, NULL, _IOLBF, 0);
     close(original_stdout_fd);
     original_stdout_fd = -1;
   }
@@ -88,9 +88,9 @@ int test_logging_restore(void) {
   if (original_stderr_fd != -1) {
     dup2(original_stderr_fd, STDERR_FILENO);
     // Reopen stderr to use the restored file descriptor
-    freopen("/dev/stderr", "w", stderr);
+    (void)freopen("/dev/stderr", "w", stderr);
     // Restore unbuffered mode for stderr
-    setvbuf(stderr, NULL, _IONBF, 0);
+    (void)setvbuf(stderr, NULL, _IONBF, 0);
     close(original_stderr_fd);
     original_stderr_fd = -1;
   }
