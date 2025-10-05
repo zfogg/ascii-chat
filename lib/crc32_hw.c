@@ -152,16 +152,19 @@ bool crc32_hw_is_available(void) {
   return crc32_hw_available;
 }
 
-// Software fallback implementation (original)
+// Software fallback implementation using CRC32-C (Castagnoli) polynomial
+// This matches the hardware implementations (__crc32* and _mm_crc32_*)
 uint32_t asciichat_crc32_sw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
 
+  // CRC32-C (Castagnoli) polynomial: 0x1EDC6F41
+  // Reversed (for LSB-first): 0x82F63B78
   for (size_t i = 0; i < len; i++) {
     crc ^= bytes[i];
     for (int j = 0; j < 8; j++) {
       if (crc & 1) {
-        crc = (crc >> 1) ^ 0xEDB88320;
+        crc = (crc >> 1) ^ 0x82F63B78; // CRC32-C polynomial (reversed)
       } else {
         crc >>= 1;
       }

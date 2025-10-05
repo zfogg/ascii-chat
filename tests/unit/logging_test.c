@@ -738,3 +738,434 @@ Test(logging, log_message_format_specifiers) {
 
   cr_assert(true, "Log message format specifiers should work");
 }
+
+/* ============================================================================
+ * LOG_LEVEL Environment Variable Tests
+ * ============================================================================ */
+
+// Helper to safely set/unset environment variables
+static void safe_setenv(const char *name, const char *value) {
+  if (value) {
+#ifdef _WIN32
+    _putenv_s(name, value);
+#else
+    setenv(name, value, 1);
+#endif
+  } else {
+#ifdef _WIN32
+    _putenv_s(name, "");
+#else
+    unsetenv(name);
+#endif
+  }
+}
+
+Test(logging, log_level_env_string_values) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_strings_%d.log", getpid());
+
+  // Test DEBUG
+  safe_setenv("LOG_LEVEL", "DEBUG");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL); // Should be overridden by env var
+  log_set_terminal_output(false);
+  log_debug("Debug message");
+  log_destroy();
+
+  // Check that debug message was logged
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug message")) {
+      found_debug = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_debug, "DEBUG level from LOG_LEVEL should log debug messages");
+
+  // Test INFO
+  safe_setenv("LOG_LEVEL", "INFO");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_info("Info message");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_info = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info message")) {
+      found_info = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_info, "INFO level from LOG_LEVEL should log info messages");
+
+  // Test WARN
+  safe_setenv("LOG_LEVEL", "WARN");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_warn("Warn message");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_warn = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Warn message")) {
+      found_warn = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_warn, "WARN level from LOG_LEVEL should log warn messages");
+
+  // Test ERROR
+  safe_setenv("LOG_LEVEL", "ERROR");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_error("Error message");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_error = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Error message")) {
+      found_error = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_error, "ERROR level from LOG_LEVEL should log error messages");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_case_insensitive) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_case_%d.log", getpid());
+
+  // Test lowercase "debug"
+  safe_setenv("LOG_LEVEL", "debug");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_debug("Debug lowercase");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug lowercase")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "Lowercase 'debug' should work");
+
+  // Test mixed case "DeBuG"
+  safe_setenv("LOG_LEVEL", "DeBuG");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_debug("Debug mixed case");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug mixed case")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "Mixed case 'DeBuG' should work");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_numeric_values) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_numeric_%d.log", getpid());
+
+  // Test "0" (DEBUG)
+  safe_setenv("LOG_LEVEL", "0");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_debug("Debug numeric 0");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug numeric 0")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "Numeric '0' should set DEBUG level");
+
+  // Test "2" (WARN)
+  safe_setenv("LOG_LEVEL", "2");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_warn("Warn numeric 2");
+  log_debug("Debug should not appear");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_warn = false;
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Warn numeric 2")) {
+      found_warn = true;
+    }
+    if (strstr(buf, "Debug should not appear")) {
+      found_debug = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_warn, "Numeric '2' should log WARN messages");
+  cr_assert_not(found_debug, "Numeric '2' should not log DEBUG messages");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_unset_uses_default) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_unset_%d.log", getpid());
+
+  // Ensure LOG_LEVEL is not set
+  safe_setenv("LOG_LEVEL", NULL);
+  log_destroy();
+  log_init(test_log_file, LOG_WARN); // Should use this level
+  log_set_terminal_output(false);
+
+  log_warn("Warn should appear");
+  log_info("Info should not appear");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_warn = false;
+  bool found_info = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Warn should appear")) {
+      found_warn = true;
+    }
+    if (strstr(buf, "Info should not appear")) {
+      found_info = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_warn, "Without LOG_LEVEL, should use log_init parameter (WARN)");
+  cr_assert_not(found_info, "Without LOG_LEVEL, should respect log_init parameter");
+}
+
+Test(logging, log_level_env_invalid_uses_default) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_invalid_%d.log", getpid());
+
+  // Set invalid LOG_LEVEL values
+  safe_setenv("LOG_LEVEL", "INVALID_VALUE");
+  log_destroy();
+  log_init(test_log_file, LOG_INFO); // Should use default (INFO) when env is invalid
+  log_set_terminal_output(false);
+
+  log_info("Info should appear");
+  log_debug("Debug should not appear");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_info = false;
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info should appear")) {
+      found_info = true;
+    }
+    if (strstr(buf, "Debug should not appear")) {
+      found_debug = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_info, "Invalid LOG_LEVEL should use default INFO level");
+  cr_assert_not(found_debug, "Invalid LOG_LEVEL should not log DEBUG");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_dos_protection) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_dos_%d.log", getpid());
+
+  // Create a very large string (1000 characters)
+  char large_value[1001];
+  memset(large_value, 'A', 1000);
+  large_value[1000] = '\0';
+
+  safe_setenv("LOG_LEVEL", large_value);
+  log_destroy();
+
+  // Should not hang or crash, should use default (INFO)
+  log_init(test_log_file, LOG_INFO);
+  log_set_terminal_output(false);
+  log_info("Info after large LOG_LEVEL");
+  log_debug("Debug should not appear");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_info = false;
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info after large LOG_LEVEL")) {
+      found_info = true;
+    }
+    if (strstr(buf, "Debug should not appear")) {
+      found_debug = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO");
+  cr_assert_not(found_debug, "Large LOG_LEVEL should not change default behavior");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_boundary_64_chars) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_boundary_%d.log", getpid());
+
+  // Test exactly 64 characters (should trigger protection)
+  char exactly_64[65];
+  memset(exactly_64, 'X', 64);
+  exactly_64[64] = '\0';
+
+  safe_setenv("LOG_LEVEL", exactly_64);
+  log_destroy();
+  log_init(test_log_file, LOG_INFO);
+  log_set_terminal_output(false);
+  log_info("Info with 64 char env");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info with 64 char env")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "64 character LOG_LEVEL should use default INFO");
+
+  // Test 63 characters (should still be invalid but processed)
+  char exactly_63[64];
+  memset(exactly_63, 'Y', 63);
+  exactly_63[63] = '\0';
+
+  safe_setenv("LOG_LEVEL", exactly_63);
+  log_destroy();
+  log_init(test_log_file, LOG_INFO);
+  log_set_terminal_output(false);
+  log_info("Info with 63 char env");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info with 63 char env")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "63 character LOG_LEVEL (invalid value) should use default INFO");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_before_init) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_before_init_%d.log", getpid());
+
+  // Set LOG_LEVEL before any log_init call
+  safe_setenv("LOG_LEVEL", "DEBUG");
+  log_destroy();
+
+  // Call log_msg before log_init
+  // This should check environment variable
+  log_set_terminal_output(false);
+  log_debug("Debug before init");
+
+  // Now properly init
+  log_init(test_log_file, LOG_FATAL); // Should still respect LOG_LEVEL=DEBUG
+  log_debug("Debug after init");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_after = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug after init")) {
+      found_after = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_after, "LOG_LEVEL should be respected even when log_msg called before init");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
