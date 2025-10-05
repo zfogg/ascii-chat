@@ -388,14 +388,8 @@ function ensure_tests_built() {
     log_info "Using CMake for incremental build (build directory exists: $cmake_build_dir)"
     log_verbose "CMake build directory found, doing incremental build"
 
-    # Build test executables
-    cmake_build "$cmake_build_dir"
-
-    # For integration tests, also build server and client binaries
-    if [[ "$test_type" == "integration" ]] || [[ "$test_type" == "all" ]]; then
-      log_info "🔨 Building server and client binaries for integration tests..."
-      cmake_build "$cmake_build_dir" --target ascii-chat-server ascii-chat-client
-    fi
+    # No need to build anything here - we'll build specific test targets later
+    # The static library will be built automatically as a dependency
   else
     # No build directory or CMake cache, use CMake for full build
     log_info "Using CMake build system (no build directory found)"
@@ -698,8 +692,6 @@ function spawn_test() {
 
   if [[ "$background" == "async" ]]; then
     # Background execution - return PID
-    # Log the command BEFORE redirecting output
-    echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
     log_verbose "EXECUTING ASYNC: $test_executable ${test_args[*]}"
 
     if [[ -n "$VERBOSE" ]]; then
@@ -721,8 +713,6 @@ function spawn_test() {
   else
     # Synchronous execution - return exit code
     # Always show output in real-time
-    # Log the EXACT command being executed
-    echo "FINAL COMMAND: $test_executable ${test_args[*]}" >&2
     log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
     # Redirect test output to stderr so it's visible but not captured in the return value
     TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
@@ -1341,8 +1331,34 @@ function main() {
     echo "<testsuites name=\"ASCII-Chat Tests\">" >>"$junit_file"
     fi
 
-  # Build all test executables using ensure_tests_built
+  # Ensure build directory is configured
   ensure_tests_built "$BUILD_TYPE" "$TEST_TYPE"
+
+  # Build all test executables in one parallel ninja command
+  # Extract just the test target names from full paths
+  local test_targets=()
+  for test_path in "${all_tests_to_run[@]}"; do
+    local test_name=$(basename "$test_path")
+    test_targets+=("$test_name")
+  done
+
+  # Determine build directory
+  local cmake_build_dir="build"
+  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
+    cmake_build_dir="build_docker"
+  elif [[ -d "build_clang" ]]; then
+    cmake_build_dir="build_clang"
+  fi
+
+  if [[ ${#test_targets[@]} -gt 0 ]]; then
+    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
+    # Build all test targets in one command - ninja will parallelize and handle dependencies
+    local build_output
+    build_output=$(cmake --build "$cmake_build_dir" --target "${test_targets[@]}" 2>&1)
+    if [[ "$build_output" != *"ninja: no work to do"* ]] || [[ -n "$VERBOSE" ]]; then
+      echo "$build_output"
+    fi
+  fi
 
   # SINGLE DECISION POINT - Choose execution mode
   local total_cores=$(detect_cpu_cores)
