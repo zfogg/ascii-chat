@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 
 #include "common.h"
@@ -15,6 +16,130 @@ typedef struct {
   char name[32];
   double value;
 } test_data_t;
+
+// =============================================================================
+// Parameterized Tests for Hashtable Operations
+// =============================================================================
+
+// Test case structure for hashtable key operations
+typedef struct {
+  uint32_t key;
+  const char *description;
+  bool should_succeed;
+} hashtable_key_test_case_t;
+
+static hashtable_key_test_case_t hashtable_key_cases[] = {
+  {1, "Small positive key", true},
+  {100, "Medium positive key", true},
+  {1000, "Large positive key", true},
+  {0, "Zero key", true},
+  {UINT32_MAX, "Maximum key", true},
+  {HASHTABLE_BUCKET_COUNT, "Bucket count key", true},
+  {HASHTABLE_BUCKET_COUNT + 1, "Bucket count + 1 key", true}
+};
+
+ParameterizedTestParameters(hashtable, key_operations) {
+  size_t nb_cases = sizeof(hashtable_key_cases) / sizeof(hashtable_key_cases[0]);
+  return cr_make_param_array(hashtable_key_test_case_t, hashtable_key_cases, nb_cases);
+}
+
+ParameterizedTest(hashtable_key_test_case_t *tc, hashtable, key_operations) {
+  hashtable_t *ht = hashtable_create();
+  cr_assert_not_null(ht, "Hashtable creation should succeed");
+
+  // Create test data
+  test_data_t *data;
+  SAFE_MALLOC(data, sizeof(test_data_t), test_data_t *);
+  data->id = (int)tc->key;
+  snprintf(data->name, sizeof(data->name), "Test %u", tc->key);
+  data->value = tc->key * 1.5;
+
+  // Test insert
+  bool insert_result = hashtable_insert(ht, tc->key, data);
+  cr_assert_eq(insert_result, tc->should_succeed, "Insert should %s for %s",
+               tc->should_succeed ? "succeed" : "fail", tc->description);
+
+  if (tc->should_succeed) {
+    cr_assert_eq(hashtable_size(ht), 1, "Size should be 1 after successful insert");
+    cr_assert(hashtable_contains(ht, tc->key), "Should contain key %u", tc->key);
+
+    // Test lookup
+    test_data_t *found = (test_data_t *)hashtable_lookup(ht, tc->key);
+    cr_assert_not_null(found, "Lookup should find key %u", tc->key);
+    cr_assert_eq(found, data, "Found data should be the same pointer");
+    cr_assert_eq(found->id, (int)tc->key, "Found data ID should match key");
+
+    // Test remove
+    bool remove_result = hashtable_remove(ht, tc->key);
+    cr_assert(remove_result, "Remove should succeed for key %u", tc->key);
+    cr_assert_eq(hashtable_size(ht), 0, "Size should be 0 after remove");
+    cr_assert_null(hashtable_lookup(ht, tc->key), "Lookup should fail after remove");
+  }
+
+  free(data);
+  hashtable_destroy(ht);
+}
+
+// Test case structure for hashtable collision scenarios
+typedef struct {
+  uint32_t keys[4];
+  const char *description;
+  bool should_all_succeed;
+} hashtable_collision_test_case_t;
+
+static hashtable_collision_test_case_t hashtable_collision_cases[] = {
+  {{1, HASHTABLE_BUCKET_COUNT + 1, HASHTABLE_BUCKET_COUNT * 2 + 1, HASHTABLE_BUCKET_COUNT * 3 + 1},
+   "Sequential collision keys", true},
+  {{0, HASHTABLE_BUCKET_COUNT, HASHTABLE_BUCKET_COUNT * 2, HASHTABLE_BUCKET_COUNT * 3},
+   "Aligned collision keys", true},
+  {{100, 200, 300, 400}, "Non-colliding keys", true},
+  {{1, 1, 2, 2}, "Duplicate keys", false}
+};
+
+ParameterizedTestParameters(hashtable, collision_scenarios) {
+  size_t nb_cases = sizeof(hashtable_collision_cases) / sizeof(hashtable_collision_cases[0]);
+  return cr_make_param_array(hashtable_collision_test_case_t, hashtable_collision_cases, nb_cases);
+}
+
+ParameterizedTest(hashtable_collision_test_case_t *tc, hashtable, collision_scenarios) {
+  hashtable_t *ht = hashtable_create();
+  cr_assert_not_null(ht, "Hashtable creation should succeed");
+
+  test_data_t *items[4];
+  int successful_inserts = 0;
+
+  // Insert all keys
+  for (int i = 0; i < 4; i++) {
+    SAFE_MALLOC(items[i], sizeof(test_data_t), test_data_t *);
+    items[i]->id = (int)tc->keys[i];
+    snprintf(items[i]->name, sizeof(items[i]->name), "Item %u", tc->keys[i]);
+
+    bool result = hashtable_insert(ht, tc->keys[i], items[i]);
+    if (result) {
+      successful_inserts++;
+    }
+  }
+
+  if (tc->should_all_succeed) {
+    cr_assert_eq(successful_inserts, 4, "All inserts should succeed for %s", tc->description);
+    cr_assert_eq(hashtable_size(ht), 4, "Size should be 4 for %s", tc->description);
+
+    // Verify all can be found
+    for (int i = 0; i < 4; i++) {
+      test_data_t *found = (test_data_t *)hashtable_lookup(ht, tc->keys[i]);
+      cr_assert_not_null(found, "Item %u should be found for %s", tc->keys[i], tc->description);
+    }
+  } else {
+    // For duplicate keys, only some should succeed
+    cr_assert_lt(successful_inserts, 4, "Not all inserts should succeed for %s", tc->description);
+  }
+
+  // Clean up
+  for (int i = 0; i < 4; i++) {
+    free(items[i]);
+  }
+  hashtable_destroy(ht);
+}
 
 // =============================================================================
 // Hashtable Creation and Destruction Tests
