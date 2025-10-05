@@ -63,6 +63,12 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     return NULL;
   }
 
+  // Check for empty strings
+  if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
+    log_error("ascii_convert: empty palette strings");
+    return NULL;
+  }
+
   // Start with the target dimensions requested by the user (or detected from
   // the terminal). These can be modified by aspect_ratio() if stretching is
   // disabled and one of the dimensions was left to be calculated

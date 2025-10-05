@@ -135,8 +135,8 @@ bool test_logging_is_disabled(void);
   void restore_test_logging_##suite_name(void) {                                                                       \
     test_logging_restore();                                                                                            \
   }                                                                                                                    \
-  TestSuite(suite_name, .init = setup_quiet_test_logging_##suite_name,                                                 \
-            .fini = restore_test_logging_##suite_name __VA_ARGS__);
+  TestSuite(suite_name, .init = setup_quiet_test_logging_##suite_name, .fini = restore_test_logging_##suite_name,      \
+            ##__VA_ARGS__);
 
 /**
  * @brief Macro to create a complete test suite with quiet logging and log level control (default levels)

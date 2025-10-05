@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 
 #include "common.h"
@@ -143,36 +144,57 @@ Test(crypto, password_verification) {
 // Encryption/Decryption Tests
 // =============================================================================
 
-Test(crypto, encrypt_decrypt_password_based) {
-  const char *password = "test-encryption-password";
-  const char *plaintext = "Hello, Criterion! This is a test message for crypto testing.";
-  size_t plaintext_len = strlen(plaintext);
+// Theory: Encryption roundtrip property - decrypt(encrypt(data)) == data
+// Replaces: encrypt_decrypt_password_based and encrypt_decrypt_key_exchange
+TheoryDataPoints(crypto, encryption_roundtrip_property) = {
+    DataPoints(size_t, 1, 16, 64, 256, 512, 1024, 2048),
+};
 
-  crypto_result_t result = crypto_init_with_password(&ctx1, password);
-  cr_assert_eq(result, CRYPTO_OK, "Password init should succeed");
+Theory((size_t data_size), crypto, encryption_roundtrip_property) {
+  cr_assume(data_size > 0 && data_size <= 2048);
 
-  // Encrypt
-  uint8_t ciphertext[1024];
+  crypto_context_t ctx;
+  memset(&ctx, 0, sizeof(ctx));
+  crypto_result_t result = crypto_init_with_password(&ctx, "test-password-for-theory");
+  cr_assert_eq(result, CRYPTO_OK, "Context init should succeed for size %zu", data_size);
+
+  uint8_t *plaintext;
+  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  for (size_t i = 0; i < data_size; i++) {
+    plaintext[i] = (uint8_t)(i % 256);
+  }
+
+  uint8_t ciphertext[4096];
   size_t ciphertext_len;
-  result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed");
-  cr_assert_gt(ciphertext_len, plaintext_len, "Ciphertext should be larger (includes nonce + MAC)");
+  result = crypto_encrypt(&ctx, plaintext, data_size, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed for size %zu", data_size);
+  cr_assert_gt(ciphertext_len, data_size, "Ciphertext should be larger than plaintext for size %zu", data_size);
 
-  // Decrypt
-  uint8_t decrypted[1024];
+  uint8_t decrypted[4096];
   size_t decrypted_len;
-  result = crypto_decrypt(&ctx1, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
-  cr_assert_eq(result, CRYPTO_OK, "Decryption should succeed");
-  cr_assert_eq(decrypted_len, plaintext_len, "Decrypted length should match plaintext");
-  cr_assert_eq(memcmp(decrypted, plaintext, plaintext_len), 0, "Decrypted text should match plaintext");
+  result = crypto_decrypt(&ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
+  cr_assert_eq(result, CRYPTO_OK, "Decryption should succeed for size %zu", data_size);
+
+  cr_assert_eq(decrypted_len, data_size, "Decrypted length must match plaintext length for size %zu", data_size);
+  cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0,
+               "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
+
+  free(plaintext);
+  crypto_cleanup(&ctx);
 }
 
-Test(crypto, encrypt_decrypt_key_exchange) {
-  const char *plaintext = "Key exchange encryption test message";
-  size_t plaintext_len = strlen(plaintext);
+// Theory: Key exchange encryption roundtrip
+TheoryDataPoints(crypto, key_exchange_roundtrip_property) = {
+    DataPoints(size_t, 1, 32, 128, 512, 1024),
+};
 
-  // Set up key exchange
+Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
+  cr_assume(data_size > 0 && data_size <= 1024);
+
+  crypto_context_t ctx1, ctx2;
+  memset(&ctx1, 0, sizeof(ctx1));
+  memset(&ctx2, 0, sizeof(ctx2));
+
   crypto_init(&ctx1);
   crypto_init(&ctx2);
 
@@ -181,24 +203,32 @@ Test(crypto, encrypt_decrypt_key_exchange) {
 
   crypto_get_public_key(&ctx1, pub_key1);
   crypto_get_public_key(&ctx2, pub_key2);
-
   crypto_set_peer_public_key(&ctx1, pub_key2);
   crypto_set_peer_public_key(&ctx2, pub_key1);
 
-  // Encrypt with ctx1
-  uint8_t ciphertext[1024];
-  size_t ciphertext_len;
-  crypto_result_t result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed");
+  uint8_t *plaintext;
+  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  for (size_t i = 0; i < data_size; i++) {
+    plaintext[i] = (uint8_t)((i * 7) % 256);
+  }
 
-  // Decrypt with ctx2
-  uint8_t decrypted[1024];
+  uint8_t ciphertext[2048];
+  size_t ciphertext_len;
+  crypto_result_t result = crypto_encrypt(&ctx1, plaintext, data_size, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed for key exchange size %zu", data_size);
+
+  uint8_t decrypted[2048];
   size_t decrypted_len;
   result = crypto_decrypt(&ctx2, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
-  cr_assert_eq(result, CRYPTO_OK, "Decryption should succeed");
-  cr_assert_eq(decrypted_len, plaintext_len, "Decrypted length should match");
-  cr_assert_eq(memcmp(decrypted, plaintext, plaintext_len), 0, "Decrypted should match plaintext");
+  cr_assert_eq(result, CRYPTO_OK, "Decryption should succeed for key exchange size %zu", data_size);
+
+  cr_assert_eq(decrypted_len, data_size, "Decrypted length must match for key exchange size %zu", data_size);
+  cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0, "Key exchange roundtrip must preserve data for size %zu",
+               data_size);
+
+  free(plaintext);
+  crypto_cleanup(&ctx1);
+  crypto_cleanup(&ctx2);
 }
 
 Test(crypto, encrypt_not_ready) {
@@ -369,22 +399,36 @@ Test(crypto, get_status) {
 // Edge Case and Security Tests
 // =============================================================================
 
-Test(crypto, nonce_uniqueness) {
-  crypto_init_with_password(&ctx1, "password");
+// Theory: Nonce uniqueness property - same plaintext encrypted twice produces different ciphertext
+TheoryDataPoints(crypto, nonce_uniqueness_property) = {
+    DataPoints(size_t, 8, 64, 256),
+};
 
-  const char *plaintext = "test message";
-  size_t plaintext_len = strlen(plaintext);
+Theory((size_t data_size), crypto, nonce_uniqueness_property) {
+  cr_assume(data_size > 0 && data_size <= 256);
+
+  crypto_context_t ctx;
+  memset(&ctx, 0, sizeof(ctx));
+  crypto_init_with_password(&ctx, "nonce-test-password");
+
+  uint8_t *plaintext;
+  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  for (size_t i = 0; i < data_size; i++) {
+    plaintext[i] = 0xAA;
+  }
 
   uint8_t ciphertext1[1024], ciphertext2[1024];
   size_t ciphertext1_len, ciphertext2_len;
 
-  // Encrypt the same message twice
-  crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext1, sizeof(ciphertext1), &ciphertext1_len);
-  crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext2, sizeof(ciphertext2), &ciphertext2_len);
+  crypto_encrypt(&ctx, plaintext, data_size, ciphertext1, sizeof(ciphertext1), &ciphertext1_len);
+  crypto_encrypt(&ctx, plaintext, data_size, ciphertext2, sizeof(ciphertext2), &ciphertext2_len);
 
-  // Ciphertexts should be different (different nonces)
-  cr_assert_neq(memcmp(ciphertext1, ciphertext2, ciphertext1_len < ciphertext2_len ? ciphertext1_len : ciphertext2_len),
-                0, "Same plaintext should produce different ciphertexts (different nonces)");
+  size_t min_len = ciphertext1_len < ciphertext2_len ? ciphertext1_len : ciphertext2_len;
+  cr_assert_neq(memcmp(ciphertext1, ciphertext2, min_len), 0,
+                "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
+
+  free(plaintext);
+  crypto_cleanup(&ctx);
 }
 
 Test(crypto, buffer_size_checks) {
@@ -519,8 +563,8 @@ ParameterizedTest(crypto_error_test_case_t *tc, crypto, error_conditions) {
 
 // Test case structure for crypto initialization tests
 typedef struct {
-  const char *description;
-  const char *password;
+  char description[64];
+  char password[128];
   bool should_succeed;
   crypto_result_t expected_result;
 } crypto_init_test_case_t;
@@ -555,17 +599,17 @@ ParameterizedTest(crypto_init_test_case_t *tc, crypto, init_conditions) {
 
 // Test case structure for crypto password verification tests
 typedef struct {
-  const char *description;
-  const char *correct_password;
-  const char *test_password;
   bool should_verify;
+  char correct_password[128];
+  char test_password[128];
+  char description[64];
 } crypto_verify_test_case_t;
 
-static crypto_verify_test_case_t crypto_verify_cases[] = {{"Correct password", "my-password", "my-password", true},
-                                                          {"Wrong password", "my-password", "wrong-password", false},
-                                                          {"Empty test password", "my-password", "", false},
-                                                          {"Case sensitive", "MyPassword", "mypassword", false},
-                                                          {"Extra spaces", "password", " password ", false}};
+static crypto_verify_test_case_t crypto_verify_cases[] = {{true, "my-password", "my-password", "Correct password"},
+                                                          {false, "my-password", "wrong-password", "Wrong password"},
+                                                          {false, "my-password", "", "Empty test password"},
+                                                          {false, "MyPassword", "mypassword", "Case sensitive"},
+                                                          {false, "password", " password ", "Extra spaces"}};
 
 ParameterizedTestParameters(crypto, password_verification_comprehensive) {
   size_t nb_cases = sizeof(crypto_verify_cases) / sizeof(crypto_verify_cases[0]);
@@ -590,16 +634,16 @@ ParameterizedTest(crypto_verify_test_case_t *tc, crypto, password_verification_c
 // Test case structure for crypto result string tests
 typedef struct {
   crypto_result_t result;
-  const char *expected_string;
-  const char *description;
+  char expected_string[64];
+  char description[64];
 } crypto_result_string_test_case_t;
 
 static crypto_result_string_test_case_t crypto_result_string_cases[] = {
     {CRYPTO_OK, "Success", "Success result"},
     {CRYPTO_ERROR_INVALID_PARAMS, "Invalid parameters", "Invalid params result"},
-    {CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Key exchange incomplete", "Key exchange incomplete result"},
+    {CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Key exchange not complete", "Key exchange incomplete result"},
     {CRYPTO_ERROR_BUFFER_TOO_SMALL, "Buffer too small", "Buffer too small result"},
-    {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce exhausted", "Nonce exhausted result"},
+    {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce counter exhausted", "Nonce exhausted result"},
     {(crypto_result_t)999, "Unknown error", "Unknown result"}};
 
 ParameterizedTestParameters(crypto, result_strings) {

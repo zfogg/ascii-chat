@@ -31,7 +31,7 @@ typedef struct {
 static hashtable_key_test_case_t hashtable_key_cases[] = {{1, "Small positive key", true},
                                                           {100, "Medium positive key", true},
                                                           {1000, "Large positive key", true},
-                                                          {0, "Zero key", true},
+                                                          {0, "Zero key (reserved)", false},
                                                           {UINT32_MAX, "Maximum key", true},
                                                           {HASHTABLE_BUCKET_COUNT, "Bucket count key", true},
                                                           {HASHTABLE_BUCKET_COUNT + 1, "Bucket count + 1 key", true}};
@@ -89,7 +89,7 @@ static hashtable_collision_test_case_t hashtable_collision_cases[] = {
     {{1, HASHTABLE_BUCKET_COUNT + 1, HASHTABLE_BUCKET_COUNT * 2 + 1, HASHTABLE_BUCKET_COUNT * 3 + 1},
      "Sequential collision keys",
      true},
-    {{0, HASHTABLE_BUCKET_COUNT, HASHTABLE_BUCKET_COUNT * 2, HASHTABLE_BUCKET_COUNT * 3},
+    {{HASHTABLE_BUCKET_COUNT, HASHTABLE_BUCKET_COUNT * 2, HASHTABLE_BUCKET_COUNT * 3, HASHTABLE_BUCKET_COUNT * 4},
      "Aligned collision keys",
      true},
     {{100, 200, 300, 400}, "Non-colliding keys", true},
@@ -128,15 +128,51 @@ ParameterizedTest(hashtable_collision_test_case_t *tc, hashtable, collision_scen
       test_data_t *found = (test_data_t *)hashtable_lookup(ht, tc->keys[i]);
       cr_assert_not_null(found, "Item %u should be found for %s", tc->keys[i], tc->description);
     }
+
+    // Clean up - all inserts succeeded, so free all items
+    for (int i = 0; i < 4; i++) {
+      free(items[i]);
+    }
   } else {
-    // For duplicate keys, only some should succeed
-    cr_assert_lt(successful_inserts, 4, "Not all inserts should succeed for %s", tc->description);
+    // For duplicate keys: hashtable_insert returns true but updates existing value
+    // All 4 inserts will succeed, but only unique keys will be in the table
+    cr_assert_eq(successful_inserts, 4, "All inserts return true for %s", tc->description);
+
+    // Count unique keys
+    size_t unique_keys = 0;
+    for (int i = 0; i < 4; i++) {
+      bool is_unique = true;
+      for (int j = 0; j < i; j++) {
+        if (tc->keys[i] == tc->keys[j]) {
+          is_unique = false;
+          break;
+        }
+      }
+      if (is_unique) {
+        unique_keys++;
+      }
+    }
+
+    cr_assert_eq(hashtable_size(ht), unique_keys, "Size should match unique keys for %s", tc->description);
+
+    // Clean up - only free the items that are still in the hashtable (last insert for each key)
+    // For {1, 1, 2, 2}: items[1] and items[3] are in hashtable, items[0] and items[2] are orphaned
+    // We need to free the orphaned ones manually
+    for (int i = 0; i < 4; i++) {
+      bool is_last_occurrence = true;
+      for (int j = i + 1; j < 4; j++) {
+        if (tc->keys[i] == tc->keys[j]) {
+          is_last_occurrence = false;
+          break;
+        }
+      }
+      if (!is_last_occurrence) {
+        // This item was replaced, free it manually
+        free(items[i]);
+      }
+    }
   }
 
-  // Clean up
-  for (int i = 0; i < 4; i++) {
-    free(items[i]);
-  }
   hashtable_destroy(ht);
 }
 

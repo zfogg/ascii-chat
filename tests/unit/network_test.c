@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,6 +21,138 @@ static int create_test_socket(void) {
   return socket(AF_INET, SOCK_STREAM, 0);
 }
 
+// =============================================================================
+// Invalid Socket Parameter Tests - Parameterized
+// =============================================================================
+
+typedef enum {
+  OP_SET_TIMEOUT,
+  OP_SET_KEEPALIVE,
+  OP_SET_NONBLOCKING,
+  OP_CONNECT_TIMEOUT,
+  OP_SEND_TIMEOUT,
+  OP_RECV_TIMEOUT,
+  OP_SEND_PACKET,
+  OP_RECEIVE_PACKET,
+  OP_SEND_AUDIO,
+  OP_RECEIVE_AUDIO,
+  OP_SEND_CLIENT_JOIN,
+  OP_SEND_PING,
+  OP_SEND_PONG
+} socket_operation_t;
+
+typedef struct {
+  socket_operation_t operation;
+  const char *description;
+} invalid_socket_test_case_t;
+
+static invalid_socket_test_case_t invalid_socket_cases[] = {
+    {OP_SET_TIMEOUT, "set_socket_timeout with invalid socket"},
+    {OP_SET_KEEPALIVE, "set_socket_keepalive with invalid socket"},
+    {OP_SET_NONBLOCKING, "set_socket_nonblocking with invalid socket"},
+    {OP_CONNECT_TIMEOUT, "connect_with_timeout with invalid socket"},
+    {OP_SEND_TIMEOUT, "send_with_timeout with invalid socket"},
+    {OP_RECV_TIMEOUT, "recv_with_timeout with invalid socket"},
+    {OP_SEND_PACKET, "send_packet with invalid socket"},
+    {OP_RECEIVE_PACKET, "receive_packet with invalid socket"},
+    {OP_SEND_AUDIO, "send_audio_data with invalid socket"},
+    {OP_RECEIVE_AUDIO, "receive_audio_data with invalid socket"},
+    {OP_SEND_CLIENT_JOIN, "send_client_join_packet with invalid socket"},
+    {OP_SEND_PING, "send_ping_packet with invalid socket"},
+    {OP_SEND_PONG, "send_pong_packet with invalid socket"},
+};
+
+ParameterizedTestParameters(network, invalid_socket_operations) {
+  return cr_make_param_array(invalid_socket_test_case_t, invalid_socket_cases,
+                             sizeof(invalid_socket_cases) / sizeof(invalid_socket_cases[0]));
+}
+
+ParameterizedTest(invalid_socket_test_case_t *tc, network, invalid_socket_operations) {
+  int result;
+  ssize_t sresult;
+  bool bresult;
+
+  switch (tc->operation) {
+  case OP_SET_TIMEOUT:
+    result = set_socket_timeout(-1, 1);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  case OP_SET_KEEPALIVE:
+    result = set_socket_keepalive(-1);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  case OP_SET_NONBLOCKING:
+    result = set_socket_nonblocking(-1);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  case OP_CONNECT_TIMEOUT: {
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_port = htons(8080);
+    bresult = connect_with_timeout(-1, (struct sockaddr *)&addr, sizeof(addr), 1);
+    cr_assert_eq(bresult, false, "%s should fail", tc->description);
+    break;
+  }
+  case OP_SEND_TIMEOUT: {
+    const char *data = "test data";
+    sresult = send_with_timeout(-1, data, strlen(data), 1);
+    cr_assert_eq(sresult, -1, "%s should fail", tc->description);
+    break;
+  }
+  case OP_RECV_TIMEOUT: {
+    char buffer[1024];
+    sresult = recv_with_timeout(-1, buffer, sizeof(buffer), 1);
+    cr_assert_eq(sresult, -1, "%s should fail", tc->description);
+    break;
+  }
+  case OP_SEND_PACKET: {
+    const char *data = "test data";
+    result = send_packet(-1, PACKET_TYPE_PING, data, strlen(data));
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  }
+  case OP_RECEIVE_PACKET: {
+    packet_type_t type;
+    void *data;
+    size_t len;
+    result = receive_packet(-1, &type, &data, &len);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  }
+  case OP_SEND_AUDIO: {
+    float samples[256];
+    memset(samples, 0, sizeof(samples));
+    result = send_audio_data(-1, samples, 256);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  }
+  case OP_RECEIVE_AUDIO: {
+    float samples[256];
+    result = receive_audio_data(-1, samples, 256);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  }
+  case OP_SEND_CLIENT_JOIN:
+    result = send_client_join_packet(-1, "TestUser", CLIENT_CAP_VIDEO);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  case OP_SEND_PING:
+    result = send_ping_packet(-1);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  case OP_SEND_PONG:
+    result = send_pong_packet(-1);
+    cr_assert_eq(result, -1, "%s should fail", tc->description);
+    break;
+  }
+}
+
+// =============================================================================
+// Valid Socket Operation Tests
+// =============================================================================
+
 Test(network, set_socket_timeout_valid) {
   int sockfd = create_test_socket();
   cr_assert_geq(sockfd, 0);
@@ -30,10 +163,7 @@ Test(network, set_socket_timeout_valid) {
   close(sockfd);
 }
 
-Test(network, set_socket_timeout_invalid_socket) {
-  int result = set_socket_timeout(-1, 1);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
 Test(network, set_socket_keepalive_valid) {
   int sockfd = create_test_socket();
@@ -45,10 +175,7 @@ Test(network, set_socket_keepalive_valid) {
   close(sockfd);
 }
 
-Test(network, set_socket_keepalive_invalid_socket) {
-  int result = set_socket_keepalive(-1);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
 Test(network, set_socket_nonblocking_valid) {
   int sockfd = create_test_socket();
@@ -60,37 +187,13 @@ Test(network, set_socket_nonblocking_valid) {
   close(sockfd);
 }
 
-Test(network, set_socket_nonblocking_invalid_socket) {
-  int result = set_socket_nonblocking(-1);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
-Test(network, connect_with_timeout_invalid_socket) {
-  log_debug("Starting connect_with_timeout_invalid_socket test");
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  addr.sin_port = htons(8080);
+// Replaced by parameterized test: invalid_socket_operations
 
-  log_debug("Calling connect_with_timeout with invalid socket");
-  bool result = connect_with_timeout(-1, (struct sockaddr *)&addr, sizeof(addr), 1);
-  log_debug("connect_with_timeout returned: %s", result ? "true" : "false");
-  cr_assert_eq(result, false);
-  log_debug("connect_with_timeout_invalid_socket test completed");
-}
+// Replaced by parameterized test: invalid_socket_operations
 
-Test(network, send_with_timeout_invalid_socket) {
-  const char *data = "test data";
-  ssize_t result = send_with_timeout(-1, data, strlen(data), 1);
-  cr_assert_eq(result, -1);
-}
-
-Test(network, recv_with_timeout_invalid_socket) {
-  char buffer[1024];
-  ssize_t result = recv_with_timeout(-1, buffer, sizeof(buffer), 1);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
 Test(network, parse_size_message_valid) {
   unsigned short width, height;
@@ -115,50 +218,19 @@ Test(network, parse_size_message_null_pointers) {
   cr_assert_eq(result, -1);
 }
 
-Test(network, send_packet_invalid_socket) {
-  const char *data = "test data";
-  int result = send_packet(-1, PACKET_TYPE_PING, data, strlen(data));
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
-Test(network, receive_packet_invalid_socket) {
-  packet_type_t type;
-  void *data;
-  size_t len;
+// Replaced by parameterized test: invalid_socket_operations
 
-  int result = receive_packet(-1, &type, &data, &len);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
-Test(network, send_audio_data_invalid_socket) {
-  float samples[256];
-  memset(samples, 0, sizeof(samples));
+// Replaced by parameterized test: invalid_socket_operations
 
-  int result = send_audio_data(-1, samples, 256);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
-Test(network, receive_audio_data_invalid_socket) {
-  float samples[256];
+// Replaced by parameterized test: invalid_socket_operations
 
-  int result = receive_audio_data(-1, samples, 256);
-  cr_assert_eq(result, -1);
-}
-
-Test(network, send_client_join_packet_invalid_socket) {
-  int result = send_client_join_packet(-1, "TestUser", CLIENT_CAP_VIDEO);
-  cr_assert_eq(result, -1);
-}
-
-Test(network, send_ping_packet_invalid_socket) {
-  int result = send_ping_packet(-1);
-  cr_assert_eq(result, -1);
-}
-
-Test(network, send_pong_packet_invalid_socket) {
-  int result = send_pong_packet(-1);
-  cr_assert_eq(result, -1);
-}
+// Replaced by parameterized test: invalid_socket_operations
 
 Test(network, network_error_string_valid_codes) {
   const char *error1 = network_error_string(0);

@@ -1,5 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
+#include <criterion/logging.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,6 +52,10 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
                                                                                                                        \
     /* Test option values in main process (only if no exit expected) */                                                \
     if (exit_code == 0) {                                                                                              \
+      /* Reset getopt state before calling options_init again */                                                       \
+      optind = 1;                                                                                                      \
+      opterr = 1;                                                                                                      \
+      optopt = 0;                                                                                                      \
       options_init(argc, argv, is_client_val);                                                                         \
       option_assertions                                                                                                \
     }                                                                                                                  \
@@ -299,6 +305,58 @@ GENERATE_OPTIONS_TEST(
     },
     { cr_assert_eq(exit_code, 1, "Invalid IP 192.168.1.abc should cause exit with code 1"); })
 
+// =============================================================================
+// IP Address Validation Tests - Parameterized (replaces 6 individual tests above)
+// =============================================================================
+
+typedef struct {
+  char address[32];
+  bool should_succeed;
+  int expected_exit_code;
+  char description[64];
+} ip_validation_test_case_t;
+
+static ip_validation_test_case_t ip_validation_cases[] = {
+    {"192.168.1.1", true, 0, "Valid IP 192.168.1.1"},         {"127.0.0.1", true, 0, "Valid IP 127.0.0.1"},
+    {"255.255.255.255", true, 0, "Valid IP 255.255.255.255"}, {"256.1.1.1", false, 1, "Invalid IP - octet too large"},
+    {"192.168.1", false, 1, "Invalid IP - too few octets"},   {"192.168.1.abc", false, 1, "Invalid IP - non-numeric"},
+};
+
+ParameterizedTestParameters(options, ip_address_validation) {
+  size_t count = sizeof(ip_validation_cases) / sizeof(ip_validation_cases[0]);
+  return cr_make_param_array(ip_validation_test_case_t, ip_validation_cases, count);
+}
+
+ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation) {
+  char *argv[] = {"client", "-a", (char *)tc->address, NULL};
+  int argc = 3;
+  options_backup_t backup;
+  save_options(&backup);
+
+  // Test exit behavior with fork
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+
+  // Test option values in main process (only if no exit expected)
+  if (tc->should_succeed) {
+    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc->description);
+    // Reset getopt state before calling options_init again
+    optind = 1;
+    opterr = 1;
+    optopt = 0;
+    options_init(argc, argv, true);
+    cr_assert_str_eq(opt_address, tc->address, "%s should set address correctly", tc->description);
+  } else {
+    cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
+                 tc->expected_exit_code);
+  }
+
+  restore_options(&backup);
+}
+
+// =============================================================================
+// Port Validation Tests
+// =============================================================================
+
 GENERATE_OPTIONS_TEST(
     valid_port_80, ARGV_LIST("client", "-p", "80"), true, { cr_assert_str_eq(opt_port, "80"); },
     { cr_assert_eq(exit_code, 0, "Valid port 80 should not cause exit"); })
@@ -330,6 +388,56 @@ GENERATE_OPTIONS_TEST(
       cr_fail("Should not reach this point - invalid port should cause exit");
     },
     { cr_assert_eq(exit_code, 1, "Invalid port abc should cause exit with code 1"); })
+
+// =============================================================================
+// Port Validation Tests - Parameterized (replaces 5 individual tests above)
+// =============================================================================
+
+typedef struct {
+  char port[16];
+  bool should_succeed;
+  int expected_exit_code;
+  char description[64];
+} port_validation_test_case_t;
+
+static port_validation_test_case_t port_validation_cases[] = {
+    {"80", true, 0, "Valid port 80"},
+    {"65535", true, 0, "Valid port 65535"},
+    {"0", false, 1, "Invalid port - too low (0)"},
+    {"65536", false, 1, "Invalid port - too high (65536)"},
+    {"abc", false, 1, "Invalid port - non-numeric"},
+};
+
+ParameterizedTestParameters(options, port_validation) {
+  return cr_make_param_array(port_validation_test_case_t, port_validation_cases,
+                             sizeof(port_validation_cases) / sizeof(port_validation_cases[0]));
+}
+
+ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
+  char *argv[] = {"client", "-p", (char *)tc->port, NULL};
+  int argc = 3;
+  options_backup_t backup;
+  save_options(&backup);
+
+  // Test exit behavior with fork
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+
+  // Test option values in main process (only if no exit expected)
+  if (tc->should_succeed) {
+    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc->description);
+    // Reset getopt state before calling options_init again
+    optind = 1;
+    opterr = 1;
+    optopt = 0;
+    options_init(argc, argv, true);
+    cr_assert_str_eq(opt_port, tc->port, "%s should set port correctly", tc->description);
+  } else {
+    cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
+                 tc->expected_exit_code);
+  }
+
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Dimension Tests
@@ -394,30 +502,60 @@ GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "-f"), true, {/* fl
  * Color Mode Tests
  * ============================================================================ */
 
-Test(options, valid_color_modes) {
+// =============================================================================
+// Color Mode Validation Tests - Parameterized (replaces loop-based tests)
+// =============================================================================
+
+typedef struct {
+  char mode_string[32];
+  bool should_succeed;
+  int expected_exit_code;
+  char description[64];
+} color_mode_test_case_t;
+
+static color_mode_test_case_t color_mode_cases[] = {
+    // Valid modes
+    {"auto", true, 0, "Valid mode: auto"},
+    {"mono", true, 0, "Valid mode: mono"},
+    {"monochrome", true, 0, "Valid mode: monochrome"},
+    {"16", true, 0, "Valid mode: 16"},
+    {"16color", true, 0, "Valid mode: 16color"},
+    {"256", true, 0, "Valid mode: 256"},
+    {"256color", true, 0, "Valid mode: 256color"},
+    {"truecolor", true, 0, "Valid mode: truecolor"},
+    {"24bit", true, 0, "Valid mode: 24bit"},
+    // Invalid modes
+    {"invalid", false, 1, "Invalid mode: invalid"},
+    {"32", false, 1, "Invalid mode: 32"},
+    {"512", false, 1, "Invalid mode: 512"},
+    {"fullcolor", false, 1, "Invalid mode: fullcolor"},
+    {"rgb", false, 1, "Invalid mode: rgb"},
+    {"", false, 1, "Invalid mode: empty string"},
+};
+
+ParameterizedTestParameters(options, color_mode_validation) {
+  return cr_make_param_array(color_mode_test_case_t, color_mode_cases,
+                             sizeof(color_mode_cases) / sizeof(color_mode_cases[0]));
+}
+
+ParameterizedTest(color_mode_test_case_t *tc, options, color_mode_validation) {
+  char *argv[] = {"client", "--color-mode", (char *)tc->mode_string, NULL};
+  int argc = 3;
   options_backup_t backup;
   save_options(&backup);
 
-  char *valid_modes[] = {"auto", "mono", "monochrome", "16", "16color", "256", "256color", "truecolor", "24bit"};
+  // Test exit behavior with fork
+  int exit_code = test_options_init_with_fork(argv, argc, true);
 
-  for (int i = 0; i < 9; i++) {
-    char *argv[] = {"client", "--color-mode", valid_modes[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 0, "Valid color mode %s should not cause exit", valid_modes[i]);
-  }
+  cr_assert_eq(exit_code, tc->expected_exit_code, "%s should %s", tc->description,
+               tc->should_succeed ? "not cause exit" : "cause exit");
 
   restore_options(&backup);
 }
 
-Test(options, invalid_color_modes) {
-  char *invalid_modes[] = {"invalid", "32", "512", "fullcolor", "rgb", ""};
-
-  for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "--color-mode", invalid_modes[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
-    cr_assert_eq(result, 1, "Invalid color mode %s should cause exit with code 1", invalid_modes[i]);
-  }
-}
+// Original loop-based tests replaced by parameterized version above
+// Test(options, valid_color_modes) { ... }
+// Test(options, invalid_color_modes) { ... }
 
 /* ============================================================================
  * Render Mode Tests

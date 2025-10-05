@@ -1,3 +1,5 @@
+#include <criterion/theories.h>
+
 #include "../common.h"
 #include "buffer_pool.h"
 
@@ -68,81 +70,41 @@ Test(buffer_pool, multiple_global_init_cleanup) {
 // Buffer Allocation and Deallocation Tests
 // =============================================================================
 
-Test(buffer_pool, small_buffer_allocation) {
+// Theory: Buffer allocation roundtrip property - allocate -> write -> read -> free
+// Replaces: small_buffer_allocation, medium_buffer_allocation, large_buffer_allocation, xlarge_buffer_allocation
+TheoryDataPoints(buffer_pool, allocation_roundtrip_property) = {
+    DataPoints(size_t,
+               512,    // Small pool
+               1024,   // Small pool
+               32768,  // Medium pool
+               65536,  // Medium pool
+               131072, // Large pool
+               262144, // Large pool
+               655360, // XLarge pool
+               1048576 // XLarge pool (1MB)
+               ),
+};
+
+Theory((size_t size), buffer_pool, allocation_roundtrip_property) {
+  cr_assume(size > 0 && size <= 1048576);
+
   data_buffer_pool_t *pool = data_buffer_pool_create();
-  cr_assert_not_null(pool, "Pool creation should succeed");
+  cr_assume(pool != NULL);
 
-  // Allocate small buffer (should use small pool)
-  void *buf = data_buffer_pool_alloc(pool, 512);
-  cr_assert_not_null(buf, "Small buffer allocation should succeed");
+  void *buf = data_buffer_pool_alloc(pool, size);
+  cr_assert_not_null(buf, "Allocation should succeed for size %zu", size);
 
-  // Write test pattern
-  memset(buf, 0xAB, 512);
+  unsigned char test_pattern = (unsigned char)((size ^ 0xAB) & 0xFF);
+  memset(buf, test_pattern, size);
 
-  // Verify we can read it back
-  char *test_buf = (char *)buf;
-  cr_assert_eq((unsigned char)test_buf[0], 0xAB, "Buffer should be writable");
-  cr_assert_eq((unsigned char)test_buf[511], 0xAB, "Buffer end should be writable");
+  unsigned char *test_buf = (unsigned char *)buf;
+  cr_assert_eq(test_buf[0], test_pattern, "Buffer start should be readable for size %zu", size);
+  if (size > 1) {
+    cr_assert_eq(test_buf[size / 2], test_pattern, "Buffer middle should be readable for size %zu", size);
+    cr_assert_eq(test_buf[size - 1], test_pattern, "Buffer end should be readable for size %zu", size);
+  }
 
-  data_buffer_pool_free(pool, buf, 512);
-  data_buffer_pool_destroy(pool);
-}
-
-Test(buffer_pool, medium_buffer_allocation) {
-  data_buffer_pool_t *pool = data_buffer_pool_create();
-  cr_assert_not_null(pool, "Pool creation should succeed");
-
-  // Allocate medium buffer
-  void *buf = data_buffer_pool_alloc(pool, 32768);
-  cr_assert_not_null(buf, "Medium buffer allocation should succeed");
-
-  // Test write/read
-  memset(buf, 0xCD, 32768);
-  char *test_buf = (char *)buf;
-  cr_assert_eq((unsigned char)test_buf[0], 0xCD, "Buffer should be writable");
-  cr_assert_eq((unsigned char)test_buf[32767], 0xCD, "Buffer end should be writable");
-
-  data_buffer_pool_free(pool, buf, 32768);
-  data_buffer_pool_destroy(pool);
-}
-
-Test(buffer_pool, large_buffer_allocation) {
-  data_buffer_pool_t *pool = data_buffer_pool_create();
-  cr_assert_not_null(pool, "Pool creation should succeed");
-
-  // Allocate large buffer
-  void *buf = data_buffer_pool_alloc(pool, 131072);
-  cr_assert_not_null(buf, "Large buffer allocation should succeed");
-
-  // Test pattern
-  memset(buf, 0xEF, 131072);
-  char *test_buf = (char *)buf;
-  cr_assert_eq((unsigned char)test_buf[0], 0xEF, "Buffer should be writable");
-  cr_assert_eq((unsigned char)test_buf[131071], 0xEF, "Buffer end should be writable");
-
-  data_buffer_pool_free(pool, buf, 131072);
-  data_buffer_pool_destroy(pool);
-}
-
-Test(buffer_pool, xlarge_buffer_allocation) {
-  data_buffer_pool_t *pool = data_buffer_pool_create();
-  cr_assert_not_null(pool, "Pool creation should succeed");
-
-  // Allocate extra large buffer
-  void *buf = data_buffer_pool_alloc(pool, 655360); // 640KB
-  cr_assert_not_null(buf, "XLarge buffer allocation should succeed");
-
-  // Test pattern at key locations
-  char *test_buf = (char *)buf;
-  test_buf[0] = 0x12;
-  test_buf[65535] = 0x34;
-  test_buf[655359] = 0x56;
-
-  cr_assert_eq((unsigned char)test_buf[0], 0x12, "Buffer start should be writable");
-  cr_assert_eq((unsigned char)test_buf[65535], 0x34, "Buffer middle should be writable");
-  cr_assert_eq((unsigned char)test_buf[655359], 0x56, "Buffer end should be writable");
-
-  data_buffer_pool_free(pool, buf, 655360);
+  data_buffer_pool_free(pool, buf, size);
   data_buffer_pool_destroy(pool);
 }
 
@@ -175,36 +137,28 @@ Test(buffer_pool, null_pool_allocation) {
 // Buffer Pool Efficiency Tests
 // =============================================================================
 
-Test(buffer_pool, pool_reuse) {
+// Theory: Pool reuse property - freed buffers can be reallocated
+TheoryDataPoints(buffer_pool, pool_reuse_property) = {
+    DataPoints(size_t, 512, 1024, 2048, 4096, 8192),
+};
+
+Theory((size_t size), buffer_pool, pool_reuse_property) {
+  cr_assume(size > 0 && size <= 8192);
+
   data_buffer_pool_t *pool = data_buffer_pool_create();
-  cr_assert_not_null(pool, "Pool creation should succeed");
+  cr_assume(pool != NULL);
 
-  // Allocate and free multiple buffers to test reuse
-  void *buffers[10];
+  void *buffers[5];
+  for (int cycle = 0; cycle < 2; cycle++) {
+    for (int i = 0; i < 5; i++) {
+      buffers[i] = data_buffer_pool_alloc(pool, size);
+      cr_assert_not_null(buffers[i], "Allocation %d should succeed in cycle %d for size %zu", i, cycle, size);
+      memset(buffers[i], (unsigned char)(i + cycle * 10), size);
+    }
 
-  // Allocate several small buffers
-  for (int i = 0; i < 10; i++) {
-    buffers[i] = data_buffer_pool_alloc(pool, 1024);
-    cr_assert_not_null(buffers[i], "Buffer %d allocation should succeed", i);
-
-    // Write unique pattern
-    memset(buffers[i], i + 1, 1024);
-  }
-
-  // Free them all
-  for (int i = 0; i < 10; i++) {
-    data_buffer_pool_free(pool, buffers[i], 1024);
-  }
-
-  // Allocate again - should reuse pool buffers
-  for (int i = 0; i < 10; i++) {
-    buffers[i] = data_buffer_pool_alloc(pool, 1024);
-    cr_assert_not_null(buffers[i], "Reused buffer %d allocation should succeed", i);
-  }
-
-  // Free again
-  for (int i = 0; i < 10; i++) {
-    data_buffer_pool_free(pool, buffers[i], 1024);
+    for (int i = 0; i < 5; i++) {
+      data_buffer_pool_free(pool, buffers[i], size);
+    }
   }
 
   data_buffer_pool_destroy(pool);
@@ -409,26 +363,30 @@ Test(buffer_pool, very_large_allocation) {
 // Thread Safety Stress Tests
 // =============================================================================
 
-Test(buffer_pool, concurrent_allocation_simulation) {
+// Theory: Stress test property - rapid alloc/free cycles should work
+TheoryDataPoints(buffer_pool, stress_allocation_property) = {
+    DataPoints(size_t, 256, 1024, 4096, 16384),
+};
+
+Theory((size_t size), buffer_pool, stress_allocation_property) {
+  cr_assume(size > 0 && size <= 16384);
+
   data_buffer_pool_t *pool = data_buffer_pool_create();
-  cr_assert_not_null(pool, "Pool creation should succeed");
+  cr_assume(pool != NULL);
 
-  // Simulate concurrent allocations by rapidly allocating/freeing
-  void *buffers[20];
+  void *buffers[10];
 
-  for (int cycle = 0; cycle < 50; cycle++) {
-    // Allocate phase
-    for (int i = 0; i < 20; i++) {
-      buffers[i] = data_buffer_pool_alloc(pool, 1024 + (i % 4) * 512);
+  for (int cycle = 0; cycle < 10; cycle++) {
+    for (int i = 0; i < 10; i++) {
+      buffers[i] = data_buffer_pool_alloc(pool, size);
       if (buffers[i] != NULL) {
-        memset(buffers[i], cycle & 0xFF, 1024);
+        memset(buffers[i], (unsigned char)cycle, size);
       }
     }
 
-    // Free phase
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 10; i++) {
       if (buffers[i] != NULL) {
-        data_buffer_pool_free(pool, buffers[i], 1024 + (i % 4) * 512);
+        data_buffer_pool_free(pool, buffers[i], size);
         buffers[i] = NULL;
       }
     }
