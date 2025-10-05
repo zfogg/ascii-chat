@@ -229,7 +229,9 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
   // Use malloc for output buffer (will be freed by caller)
-  size_t output_size = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
+  // Each pixel can produce: 4 bytes UTF-8 + 6 bytes RLE escape (\x1b[999b) = 10 bytes max
+  // Plus 1 newline per row
+  size_t output_size = (size_t)h * ((size_t)w * 10 + 1);
 
   char *output = (char *)malloc(output_size);
   if (!output) {
