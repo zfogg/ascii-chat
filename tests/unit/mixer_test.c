@@ -1,5 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <math.h>
 
@@ -56,30 +58,29 @@ Test(mixer, create_and_destroy) {
   mixer_destroy(mixer);
 }
 
-Test(mixer, create_with_invalid_params) {
-  // Set a breakpoint on this line for debugging
-  printf("DEBUG: Starting create_with_invalid_params test\n");
+// Parameterized test for invalid mixer creation parameters
+typedef struct {
+  int max_sources;
+  int sample_rate;
+  char description[64];
+} mixer_invalid_params_test_case_t;
 
-  // Add a simple pause to give debugger time to attach
-  for (int i = 0; i < 1000000; i++) {
-    // Simple delay loop
-  }
+static mixer_invalid_params_test_case_t mixer_invalid_params_cases[] = {
+    {0, 44100, "Zero max_sources"},
+    {4, 0, "Zero sample_rate"},
+    {-1, 44100, "Negative max_sources"},
+    {4, -1, "Negative sample_rate"},
+    {MIXER_MAX_SOURCES + 1, 44100, "Exceeds MIXER_MAX_SOURCES"},
+};
 
-  mixer_t *mixer = mixer_create(0, 44100);
-  printf("DEBUG: mixer_create(0, 44100) returned: %p\n", mixer);
-  cr_assert_null(mixer);
+ParameterizedTestParameters(mixer, create_with_invalid_params) {
+  return cr_make_param_array(mixer_invalid_params_test_case_t, mixer_invalid_params_cases,
+                             sizeof(mixer_invalid_params_cases) / sizeof(mixer_invalid_params_cases[0]));
+}
 
-  mixer = mixer_create(4, 0);
-  cr_assert_null(mixer);
-
-  mixer = mixer_create(-1, 44100);
-  cr_assert_null(mixer);
-
-  mixer = mixer_create(4, -1);
-  cr_assert_null(mixer);
-
-  mixer = mixer_create(MIXER_MAX_SOURCES + 1, 44100);
-  cr_assert_null(mixer);
+ParameterizedTest(mixer_invalid_params_test_case_t *tc, mixer, create_with_invalid_params) {
+  mixer_t *mixer = mixer_create(tc->max_sources, tc->sample_rate);
+  cr_assert_null(mixer, "%s should return NULL", tc->description);
 }
 
 Test(mixer, add_and_remove_sources) {
@@ -280,25 +281,75 @@ Test(mixer, process_no_sources) {
  * Utility Function Tests
  * ============================================================================ */
 
-Test(mixer_utils, db_to_linear_conversion) {
-  cr_assert_float_eq(db_to_linear(0.0f), 1.0f, 1e-6f);
-  cr_assert_float_eq(db_to_linear(-6.0f), 0.5f, 0.01f);
-  cr_assert_float_eq(db_to_linear(-20.0f), 0.1f, 1e-3f);
-  cr_assert_float_eq(db_to_linear(-40.0f), 0.01f, 1e-4f);
+// Test case structure for dB to linear conversion
+typedef struct {
+  float db_value;
+  float expected_linear;
+  float epsilon;
+  char description[64];
+} db_to_linear_test_case_t;
+
+static db_to_linear_test_case_t db_to_linear_cases[] = {
+    {0.0f, 1.0f, 1e-6f, "0 dB equals unity gain"},       {-6.0f, 0.5f, 0.01f, "-6 dB equals half gain"},
+    {-20.0f, 0.1f, 1e-3f, "-20 dB equals 0.1 gain"},     {-40.0f, 0.01f, 1e-4f, "-40 dB equals 0.01 gain"},
+    {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
+
+ParameterizedTestParameters(mixer_utils, db_to_linear_conversion_param) {
+  size_t nb_cases = sizeof(db_to_linear_cases) / sizeof(db_to_linear_cases[0]);
+  return cr_make_param_array(db_to_linear_test_case_t, db_to_linear_cases, nb_cases);
 }
 
-Test(mixer_utils, linear_to_db_conversion) {
-  cr_assert_float_eq(linear_to_db(1.0f), 0.0f, 1e-6f);
-  cr_assert_float_eq(linear_to_db(0.5f), -6.0f, 0.1f);
-  cr_assert_float_eq(linear_to_db(0.1f), -20.0f, 1e-3f);
-  cr_assert_float_eq(linear_to_db(0.01f), -40.0f, 1e-3f);
+ParameterizedTest(db_to_linear_test_case_t *tc, mixer_utils, db_to_linear_conversion_param) {
+  float result = db_to_linear(tc->db_value);
+  cr_assert_float_eq(result, tc->expected_linear, tc->epsilon, "%s should be correct", tc->description);
 }
 
-Test(mixer_utils, clamp_float) {
-  cr_assert_float_eq(clamp_float(0.5f, 0.0f, 1.0f), 0.5f, 1e-6f);
-  cr_assert_float_eq(clamp_float(-0.5f, 0.0f, 1.0f), 0.0f, 1e-6f);
-  cr_assert_float_eq(clamp_float(1.5f, 0.0f, 1.0f), 1.0f, 1e-6f);
-  cr_assert_float_eq(clamp_float(0.0f, -1.0f, 1.0f), 0.0f, 1e-6f);
+// Test case structure for linear to dB conversion
+typedef struct {
+  float linear_value;
+  float expected_db;
+  float epsilon;
+  char description[64];
+} linear_to_db_test_case_t;
+
+static linear_to_db_test_case_t linear_to_db_cases[] = {
+    {1.0f, 0.0f, 1e-6f, "Unity gain equals 0 dB"},       {0.5f, -6.0f, 0.1f, "Half gain equals -6 dB"},
+    {0.1f, -20.0f, 1e-3f, "0.1 gain equals -20 dB"},     {0.01f, -40.0f, 1e-3f, "0.01 gain equals -40 dB"},
+    {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
+
+ParameterizedTestParameters(mixer_utils, linear_to_db_conversion_param) {
+  size_t nb_cases = sizeof(linear_to_db_cases) / sizeof(linear_to_db_cases[0]);
+  return cr_make_param_array(linear_to_db_test_case_t, linear_to_db_cases, nb_cases);
+}
+
+ParameterizedTest(linear_to_db_test_case_t *tc, mixer_utils, linear_to_db_conversion_param) {
+  float result = linear_to_db(tc->linear_value);
+  cr_assert_float_eq(result, tc->expected_db, tc->epsilon, "%s should be correct", tc->description);
+}
+
+// Test case structure for clamp_float
+typedef struct {
+  float value;
+  float min;
+  float max;
+  float expected;
+  char description[64];
+} clamp_float_test_case_t;
+
+static clamp_float_test_case_t clamp_float_cases[] = {
+    {0.5f, 0.0f, 1.0f, 0.5f, "Value within range"},       {-0.5f, 0.0f, 1.0f, 0.0f, "Value below min"},
+    {1.5f, 0.0f, 1.0f, 1.0f, "Value above max"},          {0.0f, -1.0f, 1.0f, 0.0f, "Zero in symmetric range"},
+    {-2.0f, -1.0f, 1.0f, -1.0f, "Clamp to negative min"}, {2.0f, -1.0f, 1.0f, 1.0f, "Clamp to positive max"},
+    {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
+
+ParameterizedTestParameters(mixer_utils, clamp_float_param) {
+  size_t nb_cases = sizeof(clamp_float_cases) / sizeof(clamp_float_cases[0]);
+  return cr_make_param_array(clamp_float_test_case_t, clamp_float_cases, nb_cases);
+}
+
+ParameterizedTest(clamp_float_test_case_t *tc, mixer_utils, clamp_float_param) {
+  float result = clamp_float(tc->value, tc->min, tc->max);
+  cr_assert_float_eq(result, tc->expected, 1e-6f, "%s should be correct", tc->description);
 }
 
 /* ============================================================================
@@ -644,6 +695,58 @@ Test(mixer_integration, stress_test_multiple_sources) {
 
   // Clean up
   for (int i = 0; i < MIXER_MAX_SOURCES; i++) {
+    audio_ring_buffer_destroy(buffers[i]);
+  }
+  mixer_destroy(mixer);
+}
+
+// =============================================================================
+// Audio Mixing Property-Based Tests
+// =============================================================================
+
+// Theory: Mixed audio output should always be bounded to [-1.0, 1.0] range
+// regardless of number of sources or their amplitudes
+TheoryDataPoints(mixer_integration, audio_bounds_property) = {
+    DataPoints(size_t, 1, 2, 3, 4, 8),         // num_sources
+    DataPoints(float, 0.1f, 0.5f, 1.0f, 2.0f), // amplitude per source
+};
+
+Theory((size_t num_sources, float amplitude), mixer_integration, audio_bounds_property) {
+  cr_assume(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES);
+  cr_assume(amplitude > 0.0f && amplitude <= 2.0f);
+
+  mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 48000);
+  cr_assume(mixer != NULL);
+
+  // Create sources with specified amplitude
+  audio_ring_buffer_t *buffers[MIXER_MAX_SOURCES];
+  for (size_t i = 0; i < num_sources; i++) {
+    buffers[i] = audio_ring_buffer_create();
+    cr_assume(buffers[i] != NULL);
+
+    // Generate test signal with specified amplitude
+    float test_data[256];
+    generate_sine_wave(test_data, 256, 440.0f + (float)i * 100.0f, 48000.0f, amplitude);
+
+    audio_ring_buffer_write(buffers[i], test_data, 256);
+    mixer_add_source(mixer, 100 + (uint32_t)i, buffers[i]);
+  }
+
+  // Process mixed output
+  float output[256];
+  int processed = mixer_process(mixer, output, 256);
+  cr_assert_eq(processed, 256, "Should process all samples");
+
+  // Verify property: ALL output samples must be in [-1.0, 1.0] range
+  for (int i = 0; i < 256; i++) {
+    cr_assert_geq(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
+                  num_sources, amplitude, output[i]);
+    cr_assert_leq(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
+                  num_sources, amplitude, output[i]);
+  }
+
+  // Clean up
+  for (size_t i = 0; i < num_sources; i++) {
     audio_ring_buffer_destroy(buffers[i]);
   }
   mixer_destroy(mixer);

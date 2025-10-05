@@ -195,27 +195,47 @@ Test(network, set_socket_nonblocking_valid) {
 
 // Replaced by parameterized test: invalid_socket_operations
 
-Test(network, parse_size_message_valid) {
-  unsigned short width, height;
-  const char *message = "SIZE:80,24\n";
+// Parameterized test for parse_size_message
+typedef struct {
+  char message[32];
+  bool use_null_pointers;
+  int expected_result;
+  unsigned short expected_width;
+  unsigned short expected_height;
+  char description[64];
+} parse_size_message_test_case_t;
 
-  int result = parse_size_message(message, &width, &height);
-  cr_assert_eq(result, 0);
-  cr_assert_eq(width, 80);
-  cr_assert_eq(height, 24);
+static parse_size_message_test_case_t parse_size_message_cases[] = {
+    {"SIZE:80,24\n", false, 0, 80, 24, "Valid message"},  {"SIZE:160,48\n", false, 0, 160, 48, "Valid large size"},
+    {"SIZE:1,1\n", false, 0, 1, 1, "Valid minimal size"}, {"INVALID:80,24\n", false, -1, 0, 0, "Invalid format"},
+    {"SIZE:80\n", false, -1, 0, 0, "Missing dimension"},  {"80,24\n", false, -1, 0, 0, "Missing SIZE prefix"},
+    {"SIZE:80,24\n", true, -1, 0, 0, "NULL pointers"},
+};
+
+ParameterizedTestParameters(network, parse_size_message_variations) {
+  return cr_make_param_array(parse_size_message_test_case_t, parse_size_message_cases,
+                             sizeof(parse_size_message_cases) / sizeof(parse_size_message_cases[0]));
 }
 
-Test(network, parse_size_message_invalid_format) {
-  unsigned short width, height;
-  const char *message = "INVALID:80,24\n";
+ParameterizedTest(parse_size_message_test_case_t *tc, network, parse_size_message_variations) {
+  unsigned short width = 0, height = 0;
+  int result;
 
-  int result = parse_size_message(message, &width, &height);
-  cr_assert_eq(result, -1);
-}
+  if (tc->use_null_pointers) {
+    result = parse_size_message(tc->message, NULL, NULL);
+  } else {
+    result = parse_size_message(tc->message, &width, &height);
+  }
 
-Test(network, parse_size_message_null_pointers) {
-  int result = parse_size_message("SIZE:80,24\n", NULL, NULL);
-  cr_assert_eq(result, -1);
+  cr_assert_eq(result, tc->expected_result, "%s: expected result %d, got %d", tc->description, tc->expected_result,
+               result);
+
+  if (tc->expected_result == 0 && !tc->use_null_pointers) {
+    cr_assert_eq(width, tc->expected_width, "%s: expected width %d, got %d", tc->description, tc->expected_width,
+                 width);
+    cr_assert_eq(height, tc->expected_height, "%s: expected height %d, got %d", tc->description, tc->expected_height,
+                 height);
+  }
 }
 
 // Replaced by parameterized test: invalid_socket_operations

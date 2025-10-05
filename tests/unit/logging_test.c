@@ -1,3 +1,8 @@
+#include <criterion/criterion.h>
+#include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
+#include <string.h>
+#include <stdbool.h>
 #include "../common.h"
 
 // Global setup to reduce verbose output during tests
@@ -28,79 +33,100 @@ void restore_logging(void) {
 }
 
 // =============================================================================
-// Basic Logging Tests
+// Basic Logging Tests - Parameterized
 // =============================================================================
 
-Test(logging, log_levels) {
-  // Test that we can call logging functions without crashing
-  log_debug("Debug message test");
-  log_info("Info message test");
-  log_warn("Warning message test");
-  log_error("Error message test");
+// Test case structure for message content variations
+typedef struct {
+  char message[1100]; // Large enough for long messages + format
+  bool use_format;    // Whether to use formatted logging
+  char description[64];
+} log_message_test_case_t;
 
-  // If we reach here, basic logging works
-  cr_assert(true, "Basic logging functions should not crash");
+static log_message_test_case_t log_message_cases[] = {
+    {"Simple message test", false, "Simple message"},
+    {"Debug with string: %s, number: %d", true, "Formatted message"},
+    {"", false, "Empty message"},
+    {".", false, "Single character"},
+};
+
+// Special case for long message (build at runtime)
+static void init_long_message_case(log_message_test_case_t *tc) {
+  memset(tc->message, 'A', 1023);
+  tc->message[1023] = '\0';
+  tc->use_format = false;
+  SAFE_STRNCPY(tc->description, "Long message", sizeof(tc->description));
 }
 
-Test(logging, log_with_format) {
-  const char *test_string = "test";
-  int test_number = 42;
+ParameterizedTestParameters(logging, log_message_variations) {
+  static log_message_test_case_t all_cases[5];
 
-  // Test formatted logging
-  log_debug("Debug with string: %s, number: %d", test_string, test_number);
-  log_info("Info with string: %s, number: %d", test_string, test_number);
-  log_warn("Warning with string: %s, number: %d", test_string, test_number);
-  log_error("Error with string: %s, number: %d", test_string, test_number);
+  // Copy standard cases
+  for (int i = 0; i < 4; i++) {
+    all_cases[i] = log_message_cases[i];
+  }
 
-  // Test passes if no crash occurs
-  cr_assert(true, "Formatted logging should work");
+  // Add long message case
+  init_long_message_case(&all_cases[4]);
+
+  return cr_make_param_array(log_message_test_case_t, all_cases, 5);
 }
 
-Test(logging, log_empty_messages) {
-  // Test logging empty or minimal messages
-  log_debug("");
-  log_info("");
-  log_warn("");
-  log_error("");
+ParameterizedTest(log_message_test_case_t *tc, logging, log_message_variations) {
+  // Test all log levels with this message
+  if (tc->use_format) {
+    log_debug(tc->message, "test", 42);
+    log_info(tc->message, "test", 42);
+    log_warn(tc->message, "test", 42);
+    log_error(tc->message, "test", 42);
+  } else {
+    log_debug("%s", tc->message);
+    log_info("%s", tc->message);
+    log_warn("%s", tc->message);
+    log_error("%s", tc->message);
+  }
 
-  log_debug(".");
-  log_info(".");
-  log_warn(".");
-  log_error(".");
-
-  cr_assert(true, "Empty message logging should not crash");
-}
-
-Test(logging, log_long_messages) {
-  // Test with reasonably long message
-  char long_message[1024];
-  memset(long_message, 'A', sizeof(long_message) - 1);
-  long_message[sizeof(long_message) - 1] = '\0';
-
-  log_debug("Long debug message: %s", long_message);
-  log_info("Long info message: %s", long_message);
-  log_warn("Long warning message: %s", long_message);
-  log_error("Long error message: %s", long_message);
-
-  cr_assert(true, "Long message logging should not crash");
+  cr_assert(true, "%s should not crash", tc->description);
 }
 
 // =============================================================================
-// Special Characters and Edge Cases
+// Special Characters and Edge Cases - Parameterized
 // =============================================================================
 
-Test(logging, log_special_characters) {
-  // Test with special characters that might cause issues
-  log_debug("Message with newlines\n\n");
-  log_info("Message with tabs\t\t");
-  log_warn("Message with quotes: \"test\" and 'test'");
-  log_error("Message with unicode: café naïve résumé");
+typedef struct {
+  char message[128];
+  bool use_format;
+  char description[64];
+} log_special_char_test_case_t;
 
-  // Test with format specifiers in the message (should be handled safely)
-  log_debug("Message with percent signs: 100%% complete");
-  log_info("Message with format chars: %s %d %f (but no args)", "test", 42, 3.14);
+static log_special_char_test_case_t log_special_char_cases[] = {
+    {"Message with newlines\n\n", false, "Newlines"},
+    {"Message with tabs\t\t", false, "Tabs"},
+    {"Message with quotes: \"test\" and 'test'", false, "Quotes"},
+    {"Message with unicode: café naïve résumé", false, "Unicode"},
+    {"Message with percent signs: 100%% complete", false, "Percent signs"},
+    {"Message with format chars: %s %d %f (but no args)", true, "Format chars with args"},
+};
 
-  cr_assert(true, "Special character logging should work");
+ParameterizedTestParameters(logging, log_special_characters) {
+  return cr_make_param_array(log_special_char_test_case_t, log_special_char_cases,
+                             sizeof(log_special_char_cases) / sizeof(log_special_char_cases[0]));
+}
+
+ParameterizedTest(log_special_char_test_case_t *tc, logging, log_special_characters) {
+  if (tc->use_format) {
+    log_debug(tc->message, "test", 42, 3.14);
+    log_info(tc->message, "test", 42, 3.14);
+    log_warn(tc->message, "test", 42, 3.14);
+    log_error(tc->message, "test", 42, 3.14);
+  } else {
+    log_debug("%s", tc->message);
+    log_info("%s", tc->message);
+    log_warn("%s", tc->message);
+    log_error("%s", tc->message);
+  }
+
+  cr_assert(true, "%s should work", tc->description);
 }
 
 Test(logging, log_null_safety) {
