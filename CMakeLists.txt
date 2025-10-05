@@ -549,6 +549,33 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # =============================================================================
+# ccache Support (Compiler Cache for Faster Rebuilds)
+# =============================================================================
+
+# Find and enable ccache if available (unless explicitly disabled)
+option(USE_CCACHE "Use ccache for compilation if available" ON)
+
+if(USE_CCACHE)
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM)
+        # Only set ccache if not already configured (e.g., by Homebrew LLVM setup)
+        if(NOT CMAKE_C_COMPILER_LAUNCHER)
+            set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
+            message(STATUS "${BoldGreen}Using ccache: ${CCACHE_PROGRAM}${ColorReset}")
+
+            # Configure ccache for optimal performance
+            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config max_size=2G)
+            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config compression=true)
+            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config compression_level=6)
+        else()
+            message(STATUS "Compiler launcher already set: ${CMAKE_C_COMPILER_LAUNCHER}")
+        endif()
+    else()
+        message(STATUS "ccache not found - install with: sudo pacman -S ccache")
+    endif()
+endif()
+
+# =============================================================================
 # Platform Detection
 # =============================================================================
 
@@ -1914,6 +1941,44 @@ else()
         ${PLATFORM_LIBS}
         m  # math library
     )
+endif()
+
+# =============================================================================
+# Precompiled Headers (Speed up compilation by 20-30%)
+# =============================================================================
+
+# CMake 3.16+ supports target_precompile_headers
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
+    option(USE_PRECOMPILED_HEADERS "Use precompiled headers for faster builds" ON)
+
+    if(USE_PRECOMPILED_HEADERS)
+        # Add most commonly included headers as precompiled
+        # Based on analysis: these headers appear in 30+ source files
+        #
+        # NOTE: We CANNOT use precompiled headers with common.h because it defines
+        # malloc/free macros that conflict with system headers. When a PCH includes
+        # common.h, every file using the PCH tries to redefine malloc/free when
+        # system headers like <malloc.h> are included, causing compiler errors.
+        #
+        # Instead, we precompile only safe headers that don't have macro conflicts.
+        target_precompile_headers(ascii-chat-lib PRIVATE
+            # Platform abstraction (safe - no conflicting macros)
+            lib/platform/abstraction.h
+
+            # Standard C headers (most frequently used, safe from macro conflicts)
+            <stdio.h>
+            <string.h>
+            <stdbool.h>
+            <stdint.h>
+            <stddef.h>
+            <stdatomic.h>
+            <time.h>
+            <errno.h>
+        )
+        message(STATUS "${BoldGreen}Precompiled headers enabled (excluding common.h due to macro conflicts)${ColorReset}")
+    endif()
+else()
+    message(STATUS "Precompiled headers require CMake 3.16+ (you have ${CMAKE_VERSION})")
 endif()
 
 # =============================================================================

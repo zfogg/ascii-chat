@@ -43,6 +43,9 @@ $RepoRoot = Split-Path -Parent $TestsDir
 $ImageName = "ascii-chat-tests"
 $ContainerName = "ascii-chat-test-runner"
 
+# ccache volume name for persistent caching
+$CcacheVolume = "ascii-chat-ccache"
+
 # Check if Docker is running
 Write-Host "Checking Docker..." -ForegroundColor Cyan
 try {
@@ -209,6 +212,8 @@ echo ""
         --rm `
         --name $ContainerName `
         -v "${RepoRoot}:/app" `
+        -v "${CcacheVolume}:/ccache" `
+        -e CCACHE_DIR=/ccache `
         -w /app `
         $ImageName `
         bash -c "/app/temp-clang-tidy.sh$ScriptArgs"
@@ -314,6 +319,8 @@ if ($Interactive) {
         --rm `
         --name $ContainerName `
         -v "${RepoRoot}:/app" `
+        -v "${CcacheVolume}:/ccache" `
+        -e CCACHE_DIR=/ccache `
         -w /app `
         $ImageName `
         /bin/bash
@@ -323,6 +330,8 @@ if ($Interactive) {
         --rm `
         --name $ContainerName `
         -v "${RepoRoot}:/app" `
+        -v "${CcacheVolume}:/ccache" `
+        -e CCACHE_DIR=/ccache `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"
@@ -336,6 +345,18 @@ if ($ExitCode -eq 0) {
     Write-Host "Tests completed successfully!" -ForegroundColor Green
 } else {
     Write-Host "Tests failed with exit code: $ExitCode" -ForegroundColor Red
+}
+
+# Show ccache statistics after test runs (for non-interactive mode)
+if (-not $Interactive) {
+    Write-Host ""
+    Write-Host "ccache Statistics:" -ForegroundColor Cyan
+    docker run `
+        --rm `
+        -v "${CcacheVolume}:/ccache" `
+        -e CCACHE_DIR=/ccache `
+        $ImageName `
+        ccache --show-stats | Select-Object -First 10
 }
 
 exit $ExitCode

@@ -9,7 +9,8 @@ extern atomic_bool g_should_exit;
 
 // Stream mixing and sending functions
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
-                                          bool wants_stretch, size_t *out_size, bool *out_grid_changed);
+                                          bool wants_stretch, size_t *out_size, bool *out_grid_changed,
+                                          int *out_sources_count);
 
 // Check if any clients are currently sending video
 bool any_clients_sending_video(void);

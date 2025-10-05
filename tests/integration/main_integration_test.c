@@ -123,17 +123,19 @@ static bool wait_for_process_exit(pid_t pid, int timeout_ms, int *exit_code) {
 }
 
 static void terminate_process(pid_t pid, const char *name) {
+  UNUSED(name);
   if (pid <= 0)
     return;
 
   // Try graceful termination first
   kill(pid, SIGTERM);
 
-  int exit_code;
+  int exit_code = -1;
   if (!wait_for_process_exit(pid, PROCESS_CLEANUP_TIMEOUT_MS, &exit_code)) {
     // Force kill if graceful shutdown failed
     kill(pid, SIGKILL);
     waitpid(pid, NULL, 0);
+    exit_code = -1; // Force killed
   }
 
   // Mark as not running

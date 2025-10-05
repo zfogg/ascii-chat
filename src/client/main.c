@@ -341,8 +341,6 @@ int main(int argc, char *argv[]) {
 
   int reconnect_attempt = 0;
   bool first_connection = true;
-  const int MAX_RECONNECT_ATTEMPTS = 10; // Give up after 10 failed attempts
-
   while (!should_exit()) {
     // Handle connection establishment or reconnection
     int connection_result = server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt,
@@ -366,21 +364,7 @@ int main(int argc, char *argv[]) {
         log_info("Connection attempt #%d...", reconnect_attempt);
       }
 
-      // Give up after maximum attempts
-      if (reconnect_attempt >= MAX_RECONNECT_ATTEMPTS) {
-        log_error("Failed to connect after %d attempts. Giving up.", MAX_RECONNECT_ATTEMPTS);
-        display_full_reset();
-        // Ensure terminal logging is ON when giving up on connection
-        log_set_terminal_output(true);
-        printf("\n=== ASCII-Chat Client ===\n");
-        printf("Connection failed after %d attempts.\n", MAX_RECONNECT_ATTEMPTS);
-        printf("Press Ctrl+C to exit.\n\n");
-        // Wait for user signal instead of infinite retry
-        while (!should_exit()) {
-          platform_sleep_usec(100000); // Sleep 100ms
-        }
-        break;
-      }
+      // Continue retrying forever until user cancels (Ctrl+C)
       continue;
     }
 

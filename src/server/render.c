@@ -497,14 +497,14 @@ void *client_video_render_thread(void *arg) {
       continue;
     }
 
-    bool grid_changed = false;
+    int sources_count = 0; // Track number of video sources in this frame
 
     // TIME THE ASCII GENERATION
     struct timespec gen_start, gen_end;
     clock_gettime(CLOCK_MONOTONIC, &gen_start);
 
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
-                                                            &frame_size, &grid_changed);
+                                                            &frame_size, NULL, &sources_count);
 
     clock_gettime(CLOCK_MONOTONIC, &gen_end);
     uint64_t gen_time_us = ((uint64_t)gen_end.tv_sec * 1000000 + (uint64_t)gen_end.tv_nsec / 1000) -
@@ -514,6 +514,10 @@ void *client_video_render_thread(void *arg) {
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
+      // GRID LAYOUT CHANGE DETECTION: Store source count with frame
+      // Send thread will compare this with last sent count to detect grid changes
+      atomic_store(&client->last_rendered_grid_sources, sources_count);
+
       // Write to outgoing video buffer - this is a double buffer that never drops frames
       // CRITICAL: Protect video buffer access with write lock to prevent use-after-free
       rwlock_wrlock(&client->video_buffer_rwlock);
@@ -583,13 +587,6 @@ void *client_video_render_thread(void *arg) {
       rwlock_wrunlock(&client->video_buffer_rwlock);
 
       clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
-
-      // GRID LAYOUT CHANGE: Broadcast CLEAR_CONSOLE AFTER frame is buffered
-      // This ensures the new frame is ready before clients clear their displays
-      if (grid_changed) {
-        broadcast_clear_console_to_all_clients();
-        log_info("Broadcasted CLEAR_CONSOLE after buffering new grid layout frame");
-      }
 
       free(ascii_frame);
 

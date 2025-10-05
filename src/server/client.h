@@ -68,8 +68,9 @@ typedef struct {
   asciithread_t send_thread;
   atomic_bool send_thread_running;
 
-  // Grid layout change flag - send CLEAR_CONSOLE before next video frame
-  atomic_bool needs_display_clear;
+  // Per-client grid tracking for CLEAR_CONSOLE logic
+  atomic_int last_rendered_grid_sources; // Render thread: source count in buffered frame
+  atomic_int last_sent_grid_sources;     // Send thread: source count in last sent frame
 
   // Pre-allocated buffers to avoid malloc/free in send thread (prevents deadlocks)
   void *send_buffer;

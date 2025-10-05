@@ -13,6 +13,16 @@ ENV CC=clang \
     LC_ALL=C.UTF-8 \
     TESTING=1
 
+# Configure ccache for Docker volume caching
+# CCACHE_DIR: Cache directory (will be mounted as volume)
+# CCACHE_UMASK: Ensure cache files are accessible
+# CCACHE_HARDLINK: Use hard links to save space
+# CCACHE_NLEVELS: Hash directory levels (default 2 is optimal)
+ENV CCACHE_DIR=/ccache \
+    CCACHE_UMASK=002 \
+    CCACHE_HARDLINK=true \
+    CCACHE_NLEVELS=2
+
 # Install build dependencies and test framework
 # Using packages from README.md Arch instructions
 # Note: Using -S (not -Syu) to avoid upgrading base system packages
@@ -21,6 +31,7 @@ RUN pacman -Sy --noconfirm \
     clang \
     cmake \
     ninja \
+    ccache \
     v4l-utils \
     zlib \
     portaudio \
