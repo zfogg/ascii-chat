@@ -211,6 +211,13 @@ int platform_backtrace(void **buffer, int size) {
     return 0;
   }
 
+  // Try the simpler CaptureStackBackTrace first (faster and more reliable)
+  USHORT captured = CaptureStackBackTrace(1, size, buffer, NULL);
+  if (captured > 0) {
+    return (int)captured;
+  }
+
+  // Fall back to the more complex StackWalk64 approach
   // Capture current context
   CONTEXT context;
   RtlCaptureContext(&context);
@@ -218,6 +225,8 @@ int platform_backtrace(void **buffer, int size) {
   // Initialize symbol handler for current process
   HANDLE process = GetCurrentProcess();
   if (!SymInitialize(process, NULL, TRUE)) {
+    DWORD error = GetLastError();
+    fprintf(stderr, "[ERROR] platform_backtrace: SymInitialize failed with error %lu\n", error);
     return 0;
   }
 
@@ -255,7 +264,15 @@ int platform_backtrace(void **buffer, int size) {
 #endif
         process, GetCurrentThread(), &frame, &context, NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL);
 
-    if (!result || frame.AddrPC.Offset == 0) {
+    if (!result) {
+      DWORD error = GetLastError();
+      if (count == 0) {
+        fprintf(stderr, "[ERROR] platform_backtrace: StackWalk64 failed with error %lu\n", error);
+      }
+      break;
+    }
+
+    if (frame.AddrPC.Offset == 0) {
       break;
     }
 
