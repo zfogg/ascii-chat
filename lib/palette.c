@@ -70,6 +70,11 @@ const palette_def_t *get_builtin_palette(palette_type_t type) {
 
 // Check if a palette string contains UTF-8 characters
 bool palette_requires_utf8_encoding(const char *chars, size_t len) {
+  // Handle NULL or empty string
+  if (!chars || len == 0) {
+    return false;
+  }
+
   for (size_t i = 0; i < len; i++) {
     // Any byte with high bit set indicates UTF-8
     if ((unsigned char)chars[i] >= 128) {
@@ -318,12 +323,16 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
   size_t len_to_use = 0;
 
   if (palette_type == PALETTE_CUSTOM) {
-    if (!custom_chars || strlen(custom_chars) == 0) {
-      log_error("Client requested custom palette but no characters provided");
+    if (!custom_chars) {
+      log_error("Client requested custom palette but custom_chars is NULL");
       return -1;
     }
 
     len_to_use = strlen(custom_chars);
+    if (len_to_use == 0) {
+      log_error("Client requested custom palette but custom_chars is empty");
+      return -1;
+    }
     if (len_to_use >= 256) {
       log_error("Client custom palette too long: %zu chars", len_to_use);
       return -1;
