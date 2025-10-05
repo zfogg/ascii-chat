@@ -61,7 +61,7 @@ tidy:
 		clang-tidy --config-file=.clang-tidy $(FILE) -- @.clang -I./lib -I./src; \
 	else \
 		echo "Running clang-tidy on all lib/ and src/ files with .clang-tidy..."; \
-		find src lib \( -name '*.c' -o -name '*.h' \) | xargs -n1 -P8 clang-tidy --config-file=.clang-tidy -- @.clang -I./lib -I./src; \
+		find src lib \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 -n1 -P8 sh -c 'clang-tidy --config-file=.clang-tidy "$$1" -- @.clang -I./lib -I./src' sh; \
 	fi
 
 scan-build:

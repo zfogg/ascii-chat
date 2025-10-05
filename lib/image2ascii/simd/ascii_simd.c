@@ -1041,12 +1041,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
 #ifdef SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time) {
+    best_time = result.avx2_time;
     result.best_method = "AVX2";
   }
 #endif
 
 #ifdef SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
+    best_time = result.neon_time;
     result.best_method = "NEON";
   }
 #endif

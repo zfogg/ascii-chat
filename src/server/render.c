@@ -453,7 +453,7 @@ void *client_video_render_thread(void *arg) {
     struct timespec profile_lock_start, profile_lock_end, profile_video_check_start, profile_video_check_end;
     struct timespec profile_write_start, profile_write_end;
 
-    clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
+    (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
 
     // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
     // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
@@ -469,7 +469,7 @@ void *client_video_render_thread(void *arg) {
     mutex_unlock(&client->client_state_mutex);
     rwlock_rdunlock(&g_client_manager_rwlock);
 
-    clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
+    (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
@@ -483,12 +483,12 @@ void *client_video_render_thread(void *arg) {
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
 
-    clock_gettime(CLOCK_MONOTONIC, &profile_video_check_start);
+    (void)clock_gettime(CLOCK_MONOTONIC, &profile_video_check_start);
 
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
 
-    clock_gettime(CLOCK_MONOTONIC, &profile_video_check_end);
+    (void)clock_gettime(CLOCK_MONOTONIC, &profile_video_check_end);
 
     if (!has_video_sources) {
       // No video sources - skip frame generation and continue loop
@@ -501,16 +501,16 @@ void *client_video_render_thread(void *arg) {
 
     // TIME THE ASCII GENERATION
     struct timespec gen_start, gen_end;
-    clock_gettime(CLOCK_MONOTONIC, &gen_start);
+    (void)clock_gettime(CLOCK_MONOTONIC, &gen_start);
 
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
 
-    clock_gettime(CLOCK_MONOTONIC, &gen_end);
+    (void)clock_gettime(CLOCK_MONOTONIC, &gen_end);
     uint64_t gen_time_us = ((uint64_t)gen_end.tv_sec * 1000000 + (uint64_t)gen_end.tv_nsec / 1000) -
                            ((uint64_t)gen_start.tv_sec * 1000000 + (uint64_t)gen_start.tv_nsec / 1000);
 
-    clock_gettime(CLOCK_MONOTONIC, &profile_write_start);
+    (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_start);
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
@@ -586,7 +586,7 @@ void *client_video_render_thread(void *arg) {
       }
       rwlock_wrunlock(&client->video_buffer_rwlock);
 
-      clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
+      (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
 
       free(ascii_frame);
 
