@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 
-# Get list of files that are staged for commit
-staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+# Get list of C/C++ files that are staged for commit
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp|m|mm)$' || true)
 
-# Run formatting
-cmake --build build --target format
+if [[ -z "$staged_files" ]]; then
+    exit 0
+fi
 
-# Check which of the staged files were modified by formatting
+# Format only the staged files
+for file in $staged_files; do
+    if [[ -f "$file" ]]; then
+        clang-format -i "$file"
+    fi
+done
+
+# Re-stage any files that were modified by formatting
 formatted_files=""
 for file in $staged_files; do
     if [[ -f "$file" ]] && git diff --name-only | grep -q "^$file$"; then
