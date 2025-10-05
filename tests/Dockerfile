@@ -1,53 +1,34 @@
 # Dockerfile for running ASCII-Chat tests on Windows via Docker
-# Uses Ubuntu as base to ensure full Criterion compatibility
+# Uses Arch Linux for a lightweight container with full Criterion compatibility
 
-FROM ubuntu:25.10
+FROM archlinux:latest
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Set CMAKE_PREFIX_PATH for package discovery
-ENV CMAKE_PREFIX_PATH=/usr
+# Initialize pacman keyring (required for package verification)
+RUN pacman-key --init && pacman-key --populate archlinux
 
 # Use Clang as the default compiler
-ENV CC=clang
-ENV CXX=clang++
-
-# Set UTF-8 locale for proper Unicode support
-ENV LANG=C.UTF-8
-ENV LC_ALL=C.UTF-8
+ENV CC=clang \
+    CXX=clang++ \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    TESTING=1
 
 # Install build dependencies and test framework
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    ninja-build \
-    clang \
-    clang-format \
-    clang-tidy \
-    clang-tools \
-    llvm \
-    libcriterion-dev \
-    locales \
-    libportaudio2 \
-    portaudio19-dev \
-    zlib1g-dev \
-    libsodium-dev \
-    libncurses-dev \
-    libncurses5-dev \
-    ncurses-dev \
-    libprotobuf-c-dev \
-    libnanomsg-dev \
-    libgit2-dev \
-    libssh2-1-dev \
-    libhttp-parser-dev \
-    libpcre2-dev \
+# Using packages from README.md Arch instructions
+# Note: Using -S (not -Syu) to avoid upgrading base system packages
+RUN pacman -Sy --noconfirm \
     pkg-config \
-    git \
+    clang \
+    cmake \
+    ninja \
+    v4l-utils \
+    zlib \
+    portaudio \
+    libsodium \
+    criterion \
     bc \
-    grc \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libcurses.so
+    && pacman -Scc --noconfirm \
+    && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 
 # Set working directory
 WORKDIR /app

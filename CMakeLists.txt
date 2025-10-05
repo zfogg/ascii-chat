@@ -1953,7 +1953,11 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         elseif(PROTOBUF_C_LIBRARIES)
             list(APPEND TEST_LDFLAGS ${PROTOBUF_C_LIBRARIES})
         else()
-            list(APPEND TEST_LDFLAGS protobuf-c)
+            # Protobuf-C is optional - only add if library exists
+            find_library(PROTOBUF_C_LIB protobuf-c)
+            if(PROTOBUF_C_LIB)
+                list(APPEND TEST_LDFLAGS protobuf-c)
+            endif()
         endif()
 
         if(NANOPB_FOUND)
