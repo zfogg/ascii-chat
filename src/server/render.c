@@ -163,6 +163,7 @@
 #include "render.h"
 #include "client.h"
 #include "stream.h"
+#include "protocol.h"
 #include "common.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
@@ -479,8 +480,9 @@ void *client_video_render_thread(void *arg) {
       continue;
     }
 
-    char *ascii_frame =
-        create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false, &frame_size);
+    bool grid_changed = false;
+    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
+                                                            &frame_size, &grid_changed);
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
@@ -514,6 +516,14 @@ void *client_video_render_thread(void *arg) {
         }
       }
       rwlock_wrunlock(&client->video_buffer_rwlock);
+
+      // GRID LAYOUT CHANGE: Broadcast CLEAR_CONSOLE AFTER frame is buffered
+      // This ensures the new frame is ready before clients clear their displays
+      if (grid_changed) {
+        broadcast_clear_console_to_all_clients();
+        log_info("Broadcasted CLEAR_CONSOLE after buffering new grid layout frame");
+      }
+
       free(ascii_frame);
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
