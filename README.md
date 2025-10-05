@@ -30,7 +30,7 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 ### Linux
 - **Ubuntu/Debian**: `apt-get install build-essential clang cmake ninja-build libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Arch**: `pacman -S clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
+- **Arch**: `pacman -S pkg-config clang cmake ninja v4l-utils zlib portaudio libsodium criterion`
 
 ### macOS
 - `brew install cmake ninja zlib portaudio libsodium criterion`
