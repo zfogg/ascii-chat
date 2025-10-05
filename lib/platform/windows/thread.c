@@ -184,7 +184,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
               if (strstr(fileName, "\\src\\") || strstr(fileName, "\\lib\\") || strstr(fileName, "ascii-chat")) {
                 isOurCode = TRUE;
               }
-            } else if (pSymbol->Name) {
+            } else if (pSymbol->Name[0] != '\0') {
               // Check symbol name for our functions
               if (!strstr(pSymbol->Name, "ntdll") && !strstr(pSymbol->Name, "kernel32") &&
                   !strstr(pSymbol->Name, "ucrtbase") && !strstr(pSymbol->Name, "msvcrt")) {
