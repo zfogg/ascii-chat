@@ -307,10 +307,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     *out_grid_changed = false;
   }
 
-  // DEBUG: Track frame generation attempts
-  static uint64_t frame_gen_count = 0;
-  frame_gen_count++;
-
   if (!out_size || width == 0 || height == 0) {
     log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
               height, out_size);
