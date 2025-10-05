@@ -22,7 +22,6 @@
 #ifdef _WIN32
 #include <io.h>
 #include <conio.h>
-#include "platform/windows_compat.h" // For ReleaseSRWLockShared
 #else
 #include <sys/select.h>
 #include <unistd.h>
@@ -34,68 +33,6 @@
 
 lock_debug_manager_t g_lock_debug_manager = {0};
 atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
-
-// ============================================================================
-// Lock Record Management
-// ============================================================================
-
-/**
- * @brief Create or update usage statistics for a code location
- * @param file_name Source file name
- * @param line_number Source line number
- * @param function_name Function name
- * @param lock_type Type of lock
- * @param hold_time_ns Time the lock was held in nanoseconds
- */
-static void update_usage_stats(const char *file_name, int line_number, const char *function_name, lock_type_t lock_type,
-                               uint64_t hold_time_ns) {
-  if (!g_lock_debug_manager.usage_stats) {
-    return;
-  }
-
-  uint32_t key = usage_stats_key(file_name, line_number, function_name, lock_type);
-
-  hashtable_write_lock(g_lock_debug_manager.usage_stats);
-
-  lock_usage_stats_t *stats = (lock_usage_stats_t *)hashtable_lookup(g_lock_debug_manager.usage_stats, key);
-
-  if (!stats) {
-    // Create new stats record
-    stats = calloc(1, sizeof(lock_usage_stats_t));
-    if (!stats) {
-      hashtable_write_unlock(g_lock_debug_manager.usage_stats);
-      return;
-    }
-
-    stats->file_name = file_name;
-    stats->line_number = line_number;
-    stats->function_name = function_name;
-    stats->lock_type = lock_type;
-    stats->total_acquisitions = 1;
-    stats->total_hold_time_ns = hold_time_ns;
-    stats->max_hold_time_ns = hold_time_ns;
-    stats->min_hold_time_ns = hold_time_ns;
-
-    if (clock_gettime(CLOCK_MONOTONIC, &stats->first_acquisition) == 0) {
-      stats->last_acquisition = stats->first_acquisition;
-    }
-
-    hashtable_insert(g_lock_debug_manager.usage_stats, key, stats);
-  } else {
-    // Update existing stats
-    stats->total_acquisitions++;
-    stats->total_hold_time_ns += hold_time_ns;
-    if (hold_time_ns > stats->max_hold_time_ns) {
-      stats->max_hold_time_ns = hold_time_ns;
-    }
-    if (hold_time_ns < stats->min_hold_time_ns) {
-      stats->min_hold_time_ns = hold_time_ns;
-    }
-    clock_gettime(CLOCK_MONOTONIC, &stats->last_acquisition);
-  }
-
-  hashtable_write_unlock(g_lock_debug_manager.usage_stats);
-}
 
 /**
  * @brief Create a new lock record with backtrace
@@ -136,6 +73,8 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
     if (!record->backtrace_symbols) {
       log_error("Failed to symbolize backtrace for lock record");
     }
+  } else {
+    log_error("Failed to capture backtrace for lock record");
   }
 
   return record;
@@ -318,10 +257,6 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
   uint32_t *count = (uint32_t *)user_data;
   (*count)++;
 
-  // Debug: Always log when callback is called (use printf during shutdown)
-  printf("[DEBUG] print_orphaned_release_callback called: count=%u, record=%p\n", *count, record);
-  fflush(stdout);
-
   // Print lock information
   const char *lock_type_str = "UNKNOWN";
   switch (record->lock_type) {
@@ -336,16 +271,15 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
     break;
   }
 
-  printf("Orphaned Release #%u: %s at %p\n", *count, lock_type_str, record->lock_address);
-  printf("  Thread ID: %llu\n", (unsigned long long)record->thread_id);
-  printf("  Released: %s:%d in %s()\n", record->file_name, record->line_number, record->function_name);
-  printf("  Released at: %lld.%09ld seconds (monotonic)\n", (long long)record->acquisition_time.tv_sec,
+  log_info("Orphaned Release #%u: %s at %p", *count, lock_type_str, record->lock_address);
+  log_info("  Thread ID: %llu", (unsigned long long)record->thread_id);
+  log_info("  Released: %s:%d in %s()", record->file_name, record->line_number, record->function_name);
+  log_info("  Released at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
          record->acquisition_time.tv_nsec);
-  fflush(stdout);
 
   // Print backtrace for the orphaned release
   if (record->backtrace_size > 0) {
-    printf("  Release call stack (%d frames):\n", record->backtrace_size);
+    log_info("  Release call stack (%d frames):", record->backtrace_size);
 
     // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
@@ -353,9 +287,9 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
     for (int j = 0; j < record->backtrace_size; j++) {
       // Build the full line for each stack frame
       if (symbols && symbols[j]) {
-        printf("    %2d: %p %s\n", j, record->backtrace_buffer[j], symbols[j]);
+        log_info("    %2d: %p %s", j, record->backtrace_buffer[j], symbols[j]);
       } else {
-        printf("    %2d: %p <unresolved>\n", j, record->backtrace_buffer[j]);
+        log_info("    %2d: %p <unresolved>", j, record->backtrace_buffer[j]);
       }
     }
 
@@ -364,9 +298,8 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
       platform_backtrace_symbols_free(symbols);
     }
   } else {
-    printf("  Release call stack: <capture failed>\n");
+    log_info("  Release call stack: <capture failed>");
   }
-  fflush(stdout);
 }
 
 // ============================================================================
@@ -796,6 +729,7 @@ void lock_debug_cleanup(void) {
 #ifdef DEBUG_LOCKS
     log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all orphaned releases...");
 #endif
+
     // Free all orphaned release records
     hashtable_foreach(g_lock_debug_manager.orphaned_releases, cleanup_lock_record_callback, NULL);
 
@@ -807,8 +741,10 @@ void lock_debug_cleanup(void) {
 #ifdef DEBUG_LOCKS
     log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying orphaned_releases hashtable...");
 #endif
+
     hashtable_destroy(g_lock_debug_manager.orphaned_releases);
     g_lock_debug_manager.orphaned_releases = NULL;
+
 #ifdef DEBUG_LOCKS
     log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases hashtable destroyed");
 #endif
@@ -962,27 +898,8 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
   UNUSED(function_name);
 #endif
 
-  lock_record_t *record = calloc(1, sizeof(lock_record_t));
+  lock_record_t *record = create_lock_record(lock_address, lock_type, file_name, line_number, function_name);
   if (record) {
-    record->lock_address = lock_address;
-    record->lock_type = lock_type;
-    record->thread_id = ascii_thread_current_id();
-    record->file_name = file_name;
-    record->line_number = line_number;
-    record->function_name = function_name;
-    clock_gettime(CLOCK_MONOTONIC, &record->acquisition_time);
-
-    // Capture backtrace using platform-specific functions
-#ifdef _WIN32
-    record->backtrace_size = CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, record->backtrace_buffer, NULL);
-#else
-    record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
-#endif
-
-    if (record->backtrace_size > 0) {
-      record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
-    }
-
     uint32_t key = lock_record_key(lock_address, lock_type);
     bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
 
@@ -1009,8 +926,8 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
   } else {
     // Record allocation failed - log an error
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] ERROR: Failed to allocate %s record for %p at %s:%d in %s()", lock_type_str, lock_address,
-              file_name, line_number, function_name);
+    log_debug("[LOCK_DEBUG] ERROR: Failed to create lock record for %p at %s:%d in %s()", lock_address, file_name,
+              line_number, function_name);
 #endif
   }
   return false;
