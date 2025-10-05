@@ -25,6 +25,8 @@
 #else
 #include <sys/select.h>
 #include <unistd.h>
+#include <termios.h>
+#include <fcntl.h>
 #endif
 
 // ============================================================================
@@ -33,6 +35,12 @@
 
 lock_debug_manager_t g_lock_debug_manager = {0};
 atomic_bool g_initializing = false; // Flag to prevent tracking during initialization
+
+#ifndef _WIN32
+// Terminal state for POSIX systems to enable raw mode input
+static struct termios g_original_termios;
+static bool g_termios_saved = false;
+#endif
 
 /**
  * @brief Create a new lock record with backtrace
@@ -437,6 +445,24 @@ void print_all_held_locks(void) {
 static void *debug_thread_func(void *arg) {
   UNUSED(arg);
 
+#ifndef _WIN32
+  // Set terminal to raw mode for immediate key detection
+  struct termios raw;
+  if (tcgetattr(STDIN_FILENO, &g_original_termios) == 0) {
+    g_termios_saved = true;
+    raw = g_original_termios;
+    raw.c_lflag &= ~((tcflag_t)(ICANON | ECHO)); // Disable canonical mode and echo
+    raw.c_cc[VMIN] = 0;                          // Non-blocking read
+    raw.c_cc[VTIME] = 0;                         // No timeout
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
+      log_warn("Failed to set terminal to raw mode for lock debug");
+      g_termios_saved = false;
+    }
+  } else {
+    log_warn("Failed to get terminal attributes for lock debug");
+  }
+#endif
+
   log_info("Lock debug thread started - press '?' to print held locks");
 
   while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
@@ -457,7 +483,7 @@ static void *debug_thread_func(void *arg) {
     // Small sleep to prevent CPU spinning
     platform_sleep_ms(10);
 #else
-    // POSIX: use select() for non-blocking input
+    // POSIX: use select() for non-blocking input (now in raw mode)
     fd_set readfds;
     struct timeval timeout;
 
@@ -479,6 +505,14 @@ static void *debug_thread_func(void *arg) {
 
     platform_sleep_ms(100);
   }
+
+#ifndef _WIN32
+  // Restore terminal to original mode
+  if (g_termios_saved) {
+    tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
+    g_termios_saved = false;
+  }
+#endif
 
   // Thread exiting
   return NULL;
@@ -812,6 +846,12 @@ void lock_debug_cleanup_thread(void) {
 #ifdef DEBUG_LOCKS
   log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
 #endif
+
+  // Restore terminal to original mode if it was changed
+  if (g_termios_saved) {
+    tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
+    g_termios_saved = false;
+  }
 #endif
 
 #ifdef DEBUG_LOCKS

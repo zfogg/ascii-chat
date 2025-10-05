@@ -399,7 +399,12 @@ void *client_video_render_thread(void *arg) {
   struct timespec last_render_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
-  // Track queue pressure for dynamic throttling
+  // FPS tracking for video render thread
+  uint64_t video_frame_count = 0;
+  struct timespec last_video_fps_report_time;
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_video_fps_report_time);
+  struct timespec last_video_frame_time = last_render_time;
+  int expected_video_fps = client_fps;
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
@@ -444,6 +449,12 @@ void *client_video_render_thread(void *arg) {
       continue;
     }
 
+    // PROFILING: Mark start of frame generation
+    struct timespec profile_lock_start, profile_lock_end, profile_video_check_start, profile_video_check_end;
+    struct timespec profile_write_start, profile_write_end;
+
+    clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
+
     // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
     // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
     rwlock_rdlock(&g_client_manager_rwlock);
@@ -458,6 +469,8 @@ void *client_video_render_thread(void *arg) {
     mutex_unlock(&client->client_state_mutex);
     rwlock_rdunlock(&g_client_manager_rwlock);
 
+    clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
+
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
       break;
@@ -470,8 +483,12 @@ void *client_video_render_thread(void *arg) {
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
 
+    clock_gettime(CLOCK_MONOTONIC, &profile_video_check_start);
+
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
+
+    clock_gettime(CLOCK_MONOTONIC, &profile_video_check_end);
 
     if (!has_video_sources) {
       // No video sources - skip frame generation and continue loop
@@ -481,8 +498,19 @@ void *client_video_render_thread(void *arg) {
     }
 
     bool grid_changed = false;
+
+    // TIME THE ASCII GENERATION
+    struct timespec gen_start, gen_end;
+    clock_gettime(CLOCK_MONOTONIC, &gen_start);
+
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, &grid_changed);
+
+    clock_gettime(CLOCK_MONOTONIC, &gen_end);
+    uint64_t gen_time_us = ((uint64_t)gen_end.tv_sec * 1000000 + (uint64_t)gen_end.tv_nsec / 1000) -
+                           ((uint64_t)gen_start.tv_sec * 1000000 + (uint64_t)gen_start.tv_nsec / 1000);
+
+    clock_gettime(CLOCK_MONOTONIC, &profile_write_start);
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
@@ -513,9 +541,48 @@ void *client_video_render_thread(void *arg) {
             log_warn("Frame too large for buffer: %zu > %zu", frame_size,
                      client->outgoing_video_buffer->allocated_buffer_size);
           }
+
+          // FPS tracking - frame successfully generated
+          video_frame_count++;
+
+          // Calculate time since last frame
+          uint64_t frame_interval_us =
+              ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+              ((uint64_t)last_video_frame_time.tv_sec * 1000000 + (uint64_t)last_video_frame_time.tv_nsec / 1000);
+          last_video_frame_time = current_time;
+
+          // Expected frame interval in microseconds
+          uint64_t expected_interval_us = 1000000 / expected_video_fps;
+          uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
+
+          // Log error if frame took too long to generate
+          if (video_frame_count > 1 && frame_interval_us > lag_threshold_us) {
+            log_error("SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
+                      "fps: %.1f)",
+                      thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
+                      (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
+                      1000000.0f / frame_interval_us);
+          }
+
+          // Report FPS every 5 seconds
+          uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+                                ((uint64_t)last_video_fps_report_time.tv_sec * 1000000 +
+                                 (uint64_t)last_video_fps_report_time.tv_nsec / 1000);
+
+          if (elapsed_us >= 5000000) { // 5 seconds
+            float actual_fps = (float)video_frame_count / ((float)elapsed_us / 1000000.0f);
+            log_info("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
+                     actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
+
+            // Reset counters for next interval
+            video_frame_count = 0;
+            last_video_fps_report_time = current_time;
+          }
         }
       }
       rwlock_wrunlock(&client->video_buffer_rwlock);
+
+      clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
 
       // GRID LAYOUT CHANGE: Broadcast CLEAR_CONSOLE AFTER frame is buffered
       // This ensures the new frame is ready before clients clear their displays
@@ -525,6 +592,25 @@ void *client_video_render_thread(void *arg) {
       }
 
       free(ascii_frame);
+
+      // PROFILING: Calculate and log timing breakdown every second
+      static uint64_t profile_count = 0;
+      profile_count++;
+      if (profile_count % 60 == 0) {
+        uint64_t lock_time_us =
+            ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
+            ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
+        uint64_t video_check_time_us =
+            ((uint64_t)profile_video_check_end.tv_sec * 1000000 + (uint64_t)profile_video_check_end.tv_nsec / 1000) -
+            ((uint64_t)profile_video_check_start.tv_sec * 1000000 + (uint64_t)profile_video_check_start.tv_nsec / 1000);
+        uint64_t write_time_us =
+            ((uint64_t)profile_write_end.tv_sec * 1000000 + (uint64_t)profile_write_end.tv_nsec / 1000) -
+            ((uint64_t)profile_write_start.tv_sec * 1000000 + (uint64_t)profile_write_start.tv_nsec / 1000);
+
+        log_info("FRAME TIMING BREAKDOWN: Lock=%.2fms, VideoCheck=%.2fms, ASCII=%.2fms, Write=%.2fms, TOTAL=%.2fms",
+                 lock_time_us / 1000.0, video_check_time_us / 1000.0, gen_time_us / 1000.0, write_time_us / 1000.0,
+                 (lock_time_us + video_check_time_us + gen_time_us + write_time_us) / 1000.0);
+      }
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
       LOG_DEBUG_EVERY(no_frame_count, 300, "Per-client render: No video sources available for client %u (%d attempts)",
@@ -672,6 +758,14 @@ void *client_audio_render_thread(void *arg) {
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
 
+  // FPS tracking for audio render thread
+  uint64_t audio_packet_count = 0;
+  struct timespec last_audio_fps_report_time;
+  struct timespec last_audio_packet_time;
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_fps_report_time);
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
+  int expected_audio_fps = 172; // 1000000us / 5800us ≈ 172 fps
+
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
     // Check for immediate shutdown
@@ -741,6 +835,46 @@ void *client_audio_render_thread(void *arg) {
         LOG_DEBUG_EVERY(queue_count, 100, "Audio render thread: Successfully queued %d audio samples for client %u",
                         samples_mixed, client_id_snapshot);
 #endif
+
+        // FPS tracking - audio packet successfully queued
+        audio_packet_count++;
+
+        struct timespec current_time;
+        (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+        // Calculate time since last packet
+        uint64_t packet_interval_us =
+            ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+            ((uint64_t)last_audio_packet_time.tv_sec * 1000000 + (uint64_t)last_audio_packet_time.tv_nsec / 1000);
+        last_audio_packet_time = current_time;
+
+        // Expected packet interval in microseconds (5800us for 172fps)
+        uint64_t expected_interval_us = 1000000 / expected_audio_fps;
+        uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
+
+        // Log error if packet took too long to process
+        if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
+          log_error("SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
+                    "fps: %.1f)",
+                    thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
+                    (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
+                    1000000.0f / packet_interval_us);
+        }
+
+        // Report FPS every 5 seconds
+        uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+                              ((uint64_t)last_audio_fps_report_time.tv_sec * 1000000 +
+                               (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
+
+        if (elapsed_us >= 5000000) { // 5 seconds
+          float actual_fps = (float)audio_packet_count / ((float)elapsed_us / 1000000.0f);
+          log_info("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id, actual_fps,
+                   audio_packet_count, (float)elapsed_us / 1000000.0f);
+
+          // Reset counters for next interval
+          audio_packet_count = 0;
+          last_audio_fps_report_time = current_time;
+        }
       }
     }
 
