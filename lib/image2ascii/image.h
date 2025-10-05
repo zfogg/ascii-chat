@@ -32,15 +32,15 @@ typedef struct image_t {
 #define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
 
 // Standard allocation (malloc/free)
-image_t *image_new(size_t, size_t);
-void image_destroy(image_t *);
+image_t *image_new(size_t width, size_t height);
+void image_destroy(image_t *p);
 
 // Buffer pool allocation (for video pipeline - consistent memory management)
 image_t *image_new_from_pool(size_t width, size_t height);
 void image_destroy_to_pool(image_t *image);
-void image_clear(image_t *);
-char *image_print(const image_t *, const char *palette);
-char *image_print_color(const image_t *, const char *palette);
+void image_clear(image_t *p);
+char *image_print(const image_t *p, const char *palette);
+char *image_print_color(const image_t *p, const char *palette);
 
 // Capability-aware image printing functions
 #include "../platform/terminal.h"
@@ -52,10 +52,10 @@ char *image_print_16color_dithered(const image_t *image, const char *palette);
 char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette);
 
 void quantize_color(int *r, int *g, int *b, int levels);
-void image_resize(const image_t *, image_t *);
+void image_resize(const image_t *source, image_t *dest);
 void image_resize_interpolation(const image_t *source, image_t *dest);
 
-void precalc_rgb_palettes(const float, const float, const float);
+void precalc_rgb_palettes(const float red, const float green, const float blue);
 
 // Color support functions
 char *rgb_to_ansi_fg(int r, int g, int b);

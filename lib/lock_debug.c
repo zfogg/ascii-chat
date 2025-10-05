@@ -1078,7 +1078,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     orphan_record->file_name = file_name;
     orphan_record->line_number = line_number;
     orphan_record->function_name = function_name;
-    clock_gettime(CLOCK_MONOTONIC, &orphan_record->acquisition_time); // Use release time
+    (void)clock_gettime(CLOCK_MONOTONIC, &orphan_record->acquisition_time); // Use release time
 
     // Capture backtrace for this orphaned release
 #ifdef _WIN32
