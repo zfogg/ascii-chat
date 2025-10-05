@@ -122,7 +122,7 @@ static void print_lock_record_callback(uint32_t key, void *value, void *user_dat
   (*count)++;
 
   // Print lock information
-  const char *lock_type_str = "UNKNOWN";
+  const char *lock_type_str;
   switch (record->lock_type) {
   case LOCK_TYPE_MUTEX:
     lock_type_str = "MUTEX";
@@ -132,6 +132,9 @@ static void print_lock_record_callback(uint32_t key, void *value, void *user_dat
     break;
   case LOCK_TYPE_RWLOCK_WRITE:
     lock_type_str = "RWLOCK_WRITE";
+    break;
+  default:
+    lock_type_str = "UNKNOWN";
     break;
   }
 
@@ -207,7 +210,7 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
   (*count)++;
 
   // Print lock type
-  const char *lock_type_str = "UNKNOWN";
+  const char *lock_type_str;
   switch (stats->lock_type) {
   case LOCK_TYPE_MUTEX:
     lock_type_str = "MUTEX";
@@ -217,6 +220,9 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
     break;
   case LOCK_TYPE_RWLOCK_WRITE:
     lock_type_str = "RWLOCK_WRITE";
+    break;
+  default:
+    lock_type_str = "UNKNOWN";
     break;
   }
 
@@ -266,7 +272,7 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
   (*count)++;
 
   // Print lock information
-  const char *lock_type_str = "UNKNOWN";
+  const char *lock_type_str;
   switch (record->lock_type) {
   case LOCK_TYPE_MUTEX:
     lock_type_str = "MUTEX";
@@ -276,6 +282,9 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
     break;
   case LOCK_TYPE_RWLOCK_WRITE:
     lock_type_str = "RWLOCK_WRITE";
+    break;
+  default:
+    lock_type_str = "UNKNOWN";
     break;
   }
 

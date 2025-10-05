@@ -301,12 +301,16 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
 // Compute hash of all active video sources for cache invalidation
 // Uses hardware-accelerated CRC32 for ultra-fast hashing
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
-                                          bool wants_stretch, size_t *out_size, bool *out_grid_changed) {
+                                          bool wants_stretch, size_t *out_size, bool *out_grid_changed,
+                                          int *out_sources_count) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
-  // Initialize output parameter
+  // Initialize output parameters
   if (out_grid_changed) {
     *out_grid_changed = false;
+  }
+  if (out_sources_count) {
+    *out_sources_count = 0;
   }
 
   if (!out_size || width == 0 || height == 0) {
@@ -495,6 +499,11 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     if (sources[i].has_video && sources[i].image) {
       sources_with_video++;
     }
+  }
+
+  // Return the source count for debugging/tracking
+  if (out_sources_count) {
+    *out_sources_count = sources_with_video;
   }
 
   // GRID LAYOUT CHANGE DETECTION:

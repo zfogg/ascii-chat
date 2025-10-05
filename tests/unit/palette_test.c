@@ -306,13 +306,13 @@ Test(palette, detect_client_utf8_support) {
   utf8_capabilities_t caps;
 
   // Test detection (results will vary by environment)
-  bool supports = detect_client_utf8_support(&caps);
+  (void)detect_client_utf8_support(&caps);
 
   // Verify structure is populated
   cr_assert(caps.terminal_type[0] != '\0' || caps.locale_encoding[0] != '\0', "Should populate at least one field");
 
   // NULL caps should return false
-  supports = detect_client_utf8_support(NULL);
+  bool supports = detect_client_utf8_support(NULL);
   cr_assert_eq(supports, false);
 }
 
@@ -366,15 +366,15 @@ ParameterizedTestParameters(palette_tests, luminance_palette_error_tests) {
 }
 
 ParameterizedTest(luminance_error_test_case_t *tc, palette_tests, luminance_palette_error_tests) {
-  char luminance_mapping[256];
+  char luminance_mapping[256] = {0};
   const char *palette_to_test = (tc->palette_chars[0] == '\0') ? NULL : tc->palette_chars;
   char *output_buffer = tc->pass_null_output ? NULL : luminance_mapping;
 
   int result = build_client_luminance_palette(palette_to_test, tc->palette_len, output_buffer);
   cr_assert_eq(result, tc->expected_result, "Result should match for %s", tc->description);
 
-  // For valid case, verify the mappings
-  if (tc->expected_result == 0) {
+  // For valid case, verify the mappings (only when output_buffer was non-NULL)
+  if (tc->expected_result == 0 && !tc->pass_null_output) {
     cr_assert_eq(luminance_mapping[0], ' ', "Darkest should map to first char for %s", tc->description);
     cr_assert_eq(luminance_mapping[255], '@', "Brightest should map to last char for %s", tc->description);
   }

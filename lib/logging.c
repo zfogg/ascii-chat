@@ -63,13 +63,17 @@ static log_level_t parse_log_level_from_env(void) {
   // Case-insensitive comparison
   if (strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "0") == 0) {
     return LOG_DEBUG;
-  } else if (strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
+  }
+  if (strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
     return LOG_INFO;
-  } else if (strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
+  }
+  if (strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
     return LOG_WARN;
-  } else if (strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
+  }
+  if (strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
     return LOG_ERROR;
-  } else if (strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
+  }
+  if (strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
     return LOG_FATAL;
   }
 

@@ -410,7 +410,7 @@ Test(hashtable, duplicate_key_insert) {
   cr_assert_eq(hashtable_size(ht), 1, "Size should be 1");
 
   // Insert with same key (should replace or fail depending on implementation)
-  result = hashtable_insert(ht, 123, data2);
+  (void)hashtable_insert(ht, 123, data2);
   // Behavior may vary - either replace (return true) or reject (return false)
 
   // Lookup should return one of them

@@ -298,7 +298,8 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->port = port;
   atomic_store(&client->active, true);
   atomic_store(&client->shutting_down, false);
-  atomic_store(&client->needs_display_clear, true); // New clients need display clear before first frame
+  atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
+  atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
   log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
            socket);
   client->connected_at = time(NULL);
@@ -808,29 +809,31 @@ void *client_send_thread_func(void *arg) {
     (void)clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t current_time = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
     if (current_time - last_video_send_time >= video_send_interval_us) {
-      // GRID LAYOUT CHANGE: Check if we need to send CLEAR_CONSOLE before next video frame
-      // This ensures the client clears its display before receiving frames with new grid layout
-      if (atomic_load(&client->needs_display_clear)) {
-        // Send CLEAR_CONSOLE packet directly (header only, no payload)
-        packet_header_t clear_header = {
-            .magic = htonl(PACKET_MAGIC),
-            .type = htons(PACKET_TYPE_CLEAR_CONSOLE),
-            .length = htonl(0),   // No payload
-            .crc32 = htonl(0),    // No payload to checksum
-            .client_id = htonl(0) // From server
-        };
+      // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
+      // If so, send CLEAR_CONSOLE before sending the new frame
+      int rendered_sources = atomic_load(&client->last_rendered_grid_sources);
+      int sent_sources = atomic_load(&client->last_sent_grid_sources);
+
+      if (rendered_sources != sent_sources && rendered_sources > 0) {
+        // Grid layout changed! Send CLEAR_CONSOLE before next frame
+        packet_header_t clear_header = {.magic = htonl(PACKET_MAGIC),
+                                        .type = htons(PACKET_TYPE_CLEAR_CONSOLE),
+                                        .length = htonl(0),
+                                        .crc32 = htonl(0),
+                                        .client_id = htonl(0)};
 
         ssize_t sent = send_with_timeout(client->socket, &clear_header, sizeof(clear_header), SEND_TIMEOUT);
         if (sent == sizeof(clear_header)) {
-          log_info("Sent CLEAR_CONSOLE to client %u before video frame (grid layout changed)", client->client_id);
-          atomic_store(&client->needs_display_clear, false); // Clear the flag
+          log_info("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
+                   rendered_sources);
+          atomic_store(&client->last_sent_grid_sources, rendered_sources);
           sent_something = true;
         } else {
           if (!atomic_load(&g_should_exit)) {
-            log_error("Failed to send CLEAR_CONSOLE to client %u: %zd/%zu bytes", client->client_id, sent,
+            log_error("Client %u: Failed to send CLEAR_CONSOLE: %zd/%zu bytes", client->client_id, sent,
                       sizeof(clear_header));
           }
-          break; // Socket error - exit thread
+          break; // Socket error
         }
       }
 

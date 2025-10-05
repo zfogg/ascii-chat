@@ -1095,23 +1095,10 @@ int send_server_state_to_client(client_info_t *client) {
  * @note This function iterates all clients but only flags active ones
  * @note Non-blocking - just sets atomic flags
  */
+// NOTE: This function is no longer used - CLEAR_CONSOLE is now sent directly
+// from each client's render thread when it detects a grid layout change.
+// Keeping this for reference but it should not be called.
 void broadcast_clear_console_to_all_clients(void) {
-  rwlock_rdlock(&g_client_manager_rwlock);
-
-  int flagged_count = 0;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    client_info_t *client = &g_client_manager.clients[i];
-
-    // Only flag active clients
-    if (atomic_load(&client->active)) {
-      atomic_store(&client->needs_display_clear, true);
-      flagged_count++;
-    }
-  }
-
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  if (flagged_count > 0) {
-    log_info("Flagged %d clients to clear display before next video frame (grid layout change)", flagged_count);
-  }
+  log_error("broadcast_clear_console_to_all_clients() called - this should not happen!");
+  log_error("CLEAR_CONSOLE is now sent from render threads, not broadcast");
 }
