@@ -299,8 +299,17 @@ static client_info_t *find_client_by_id_fast(uint32_t client_id) {
  * @see calculate_fit_dimensions_pixel() For aspect ratio calculations
  */
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,
-                                          bool wants_stretch, size_t *out_size) {
+                                          bool wants_stretch, size_t *out_size, bool *out_grid_changed) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
+
+  // Initialize output parameter
+  if (out_grid_changed) {
+    *out_grid_changed = false;
+  }
+
+  // DEBUG: Track frame generation attempts
+  static uint64_t frame_gen_count = 0;
+  frame_gen_count++;
 
   if (!out_size || width == 0 || height == 0) {
     log_error("Invalid parameters for create_mixed_ascii_frame_for_client: width=%u, height=%u, out_size=%p", width,
@@ -491,19 +500,20 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   // GRID LAYOUT CHANGE DETECTION:
-  // Check if the number of active video sources has changed - if so, broadcast
-  // CLEAR_CONSOLE to all clients to prevent visual artifacts from old content
-  // when the grid layout changes (1 client -> 2 clients -> 3 clients, etc.)
+  // Check if the number of active video sources has changed
+  // NOTE: We only UPDATE the count and SIGNAL the change via out parameter
+  // Broadcasting CLEAR_CONSOLE must happen AFTER the new frames are written to buffers
+  // to prevent race condition where CLEAR arrives before new frame is ready
   int previous_count = atomic_load(&g_previous_active_video_count);
   if (sources_with_video != previous_count) {
-    // Use compare-and-swap to ensure only ONE thread broadcasts per change
-    // This prevents multiple render threads from broadcasting simultaneously
+    // Use compare-and-swap to ensure only ONE thread detects the change
     if (atomic_compare_exchange_strong(&g_previous_active_video_count, &previous_count, sources_with_video)) {
-      // We successfully updated the count - we are responsible for broadcasting
-      log_info("Grid layout changing: %d -> %d active video sources - broadcasting CLEAR_CONSOLE", previous_count,
-               sources_with_video);
-      broadcast_clear_console_to_all_clients();
-      // The next frame generated will use the new grid layout on clean displays
+      log_info(
+          "Grid layout changing: %d -> %d active video sources - caller will broadcast clear AFTER buffering frame",
+          previous_count, sources_with_video);
+      if (out_grid_changed) {
+        *out_grid_changed = true; // Signal to caller
+      }
     }
   }
 
