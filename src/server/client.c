@@ -332,8 +332,10 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   SAFE_IGNORE_PRINTF_RESULT(
       safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id)));
 
+  log_info("DEBUG: About to create incoming video buffer for client %u", atomic_load(&client->client_id));
   // Create individual video buffer for this client using modern double-buffering
   client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
+  log_info("DEBUG: Created incoming video buffer for client %u", atomic_load(&client->client_id));
   if (!client->incoming_video_buffer) {
     log_error("Failed to create video buffer for client %u", atomic_load(&client->client_id));
     rwlock_wrunlock(&g_client_manager_rwlock);
