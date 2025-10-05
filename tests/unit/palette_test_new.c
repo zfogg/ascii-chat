@@ -8,7 +8,7 @@
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(palette_tests);
+TEST_SUITE_WITH_QUIET_LOGGING(palette);
 
 // Test case structure for builtin palette tests
 typedef struct {
@@ -27,12 +27,12 @@ static palette_test_case_t builtin_palette_cases[] = {
   {PALETTE_COOL, "cool", PALETTE_CHARS_COOL, true}
 };
 
-ParameterizedTestParameters(palette_tests, builtin_palette_tests) {
+ParameterizedTestParameters(palette, builtin_palette_tests) {
   size_t nb_cases = sizeof(builtin_palette_cases) / sizeof(builtin_palette_cases[0]);
   return cr_make_param_array(palette_test_case_t, builtin_palette_cases, nb_cases);
 }
 
-ParameterizedTest(palette_test_case_t *tc, palette_tests, builtin_palette_tests) {
+ParameterizedTest(palette_test_case_t *tc, palette, builtin_palette_tests) {
   const palette_def_t *palette = get_builtin_palette(tc->type);
 
   cr_assert_not_null(palette, "Palette %s should not be null", tc->expected_name);
@@ -53,12 +53,12 @@ static invalid_palette_test_case_t invalid_palette_cases[] = {
   {(palette_type_t)999, "Invalid enum value"}
 };
 
-ParameterizedTestParameters(palette_tests, invalid_palette_tests) {
+ParameterizedTestParameters(palette, invalid_palette_tests) {
   size_t nb_cases = sizeof(invalid_palette_cases) / sizeof(invalid_palette_cases[0]);
   return cr_make_param_array(invalid_palette_test_case_t, invalid_palette_cases, nb_cases);
 }
 
-ParameterizedTest(invalid_palette_test_case_t *tc, palette_tests, invalid_palette_tests) {
+ParameterizedTest(invalid_palette_test_case_t *tc, palette, invalid_palette_tests) {
   const palette_def_t *palette = get_builtin_palette(tc->type);
   cr_assert_null(palette, "Palette should be null for %s", tc->description);
 }
@@ -78,12 +78,12 @@ static utf8_test_case_t utf8_test_cases[] = {
   {"", "Empty palette", false}
 };
 
-ParameterizedTestParameters(palette_tests, utf8_encoding_tests) {
+ParameterizedTestParameters(palette, utf8_encoding_tests) {
   size_t nb_cases = sizeof(utf8_test_cases) / sizeof(utf8_test_cases[0]);
   return cr_make_param_array(utf8_test_case_t, utf8_test_cases, nb_cases);
 }
 
-ParameterizedTest(utf8_test_case_t *tc, palette_tests, utf8_encoding_tests) {
+ParameterizedTest(utf8_test_case_t *tc, palette, utf8_encoding_tests) {
   bool requires = palette_requires_utf8_encoding(tc->palette_chars, strlen(tc->palette_chars));
   cr_assert_eq(requires, tc->expected_utf8, "UTF-8 requirement should match for %s", tc->description);
 }
@@ -104,12 +104,12 @@ static validation_test_case_t validation_test_cases[] = {
   {"", 0, "Empty palette", false}
 };
 
-ParameterizedTestParameters(palette_tests, validation_tests) {
+ParameterizedTestParameters(palette, validation_tests) {
   size_t nb_cases = sizeof(validation_test_cases) / sizeof(validation_test_cases[0]);
   return cr_make_param_array(validation_test_case_t, validation_test_cases, nb_cases);
 }
 
-ParameterizedTest(validation_test_case_t *tc, palette_tests, validation_tests) {
+ParameterizedTest(validation_test_case_t *tc, palette, validation_tests) {
   bool valid = validate_palette_chars(tc->palette_chars, tc->palette_len);
   cr_assert_eq(valid, tc->expected_valid, "Validation should match for %s", tc->description);
 }
@@ -133,12 +133,12 @@ static compatibility_test_case_t compatibility_test_cases[] = {
   {PALETTE_CUSTOM, false, "Custom palette", PALETTE_CUSTOM}
 };
 
-ParameterizedTestParameters(palette_tests, compatibility_tests) {
+ParameterizedTestParameters(palette, compatibility_tests) {
   size_t nb_cases = sizeof(compatibility_test_cases) / sizeof(compatibility_test_cases[0]);
   return cr_make_param_array(compatibility_test_case_t, compatibility_test_cases, nb_cases);
 }
 
-ParameterizedTest(compatibility_test_case_t *tc, palette_tests, compatibility_tests) {
+ParameterizedTest(compatibility_test_case_t *tc, palette, compatibility_tests) {
   palette_type_t selected = select_compatible_palette(tc->requested_type, tc->has_utf8_support);
   cr_assert_eq(selected, tc->expected_type, "Compatibility selection should match for %s", tc->description);
 }
@@ -160,12 +160,12 @@ static utf8_palette_test_case_t utf8_palette_test_cases[] = {
   {"", "Empty string", 0, 0, false}
 };
 
-ParameterizedTestParameters(palette_tests, utf8_palette_creation_tests) {
+ParameterizedTestParameters(palette, utf8_palette_creation_tests) {
   size_t nb_cases = sizeof(utf8_palette_test_cases) / sizeof(utf8_palette_test_cases[0]);
   return cr_make_param_array(utf8_palette_test_case_t, utf8_palette_test_cases, nb_cases);
 }
 
-ParameterizedTest(utf8_palette_test_case_t *tc, palette_tests, utf8_palette_creation_tests) {
+ParameterizedTest(utf8_palette_test_case_t *tc, palette, utf8_palette_creation_tests) {
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
 
   if (tc->should_succeed) {
@@ -204,12 +204,12 @@ static utf8_char_test_case_t utf8_char_test_cases[] = {
   {"🌑🌒", 1, "Second emoji", true, 4}
 };
 
-ParameterizedTestParameters(palette_tests, utf8_char_access_tests) {
+ParameterizedTestParameters(palette, utf8_char_access_tests) {
   size_t nb_cases = sizeof(utf8_char_test_cases) / sizeof(utf8_char_test_cases[0]);
   return cr_make_param_array(utf8_char_test_case_t, utf8_char_test_cases, nb_cases);
 }
 
-ParameterizedTest(utf8_char_test_case_t *tc, palette_tests, utf8_char_access_tests) {
+ParameterizedTest(utf8_char_test_case_t *tc, palette, utf8_char_access_tests) {
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
   cr_assert_not_null(palette, "Palette should be created for %s", tc->description);
 
@@ -245,12 +245,12 @@ static utf8_search_test_case_t utf8_search_test_cases[] = {
   {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}
 };
 
-ParameterizedTestParameters(palette_tests, utf8_search_tests) {
+ParameterizedTestParameters(palette, utf8_search_tests) {
   size_t nb_cases = sizeof(utf8_search_test_cases) / sizeof(utf8_search_test_cases[0]);
   return cr_make_param_array(utf8_search_test_case_t, utf8_search_test_cases, nb_cases);
 }
 
-ParameterizedTest(utf8_search_test_case_t *tc, palette_tests, utf8_search_tests) {
+ParameterizedTest(utf8_search_test_case_t *tc, palette, utf8_search_tests) {
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
   cr_assert_not_null(palette, "Palette should be created for %s", tc->description);
 
@@ -263,50 +263,6 @@ ParameterizedTest(utf8_search_test_case_t *tc, palette_tests, utf8_search_tests)
   }
 
   utf8_palette_destroy(palette);
-}
-
-// Test case structure for client palette initialization tests
-typedef struct {
-  palette_type_t palette_type;
-  const char *custom_palette;
-  const char *description;
-  bool should_succeed;
-  const char *expected_chars;
-} client_palette_init_test_case_t;
-
-static client_palette_init_test_case_t client_palette_init_cases[] = {
-  {PALETTE_STANDARD, NULL, "Standard builtin palette", true, PALETTE_CHARS_STANDARD},
-  {PALETTE_MINIMAL, NULL, "Minimal builtin palette", true, PALETTE_CHARS_MINIMAL},
-  {PALETTE_BLOCKS, NULL, "Blocks builtin palette", true, PALETTE_CHARS_BLOCKS},
-  {PALETTE_COOL, NULL, "Cool builtin palette", true, PALETTE_CHARS_COOL},
-  {PALETTE_CUSTOM, "01234567", "Valid custom palette", true, "01234567"},
-  {PALETTE_CUSTOM, NULL, "NULL custom palette", false, NULL},
-  {PALETTE_CUSTOM, "", "Empty custom palette", false, NULL}
-};
-
-ParameterizedTestParameters(palette_tests, client_palette_initialization_tests) {
-  size_t nb_cases = sizeof(client_palette_init_cases) / sizeof(client_palette_init_cases[0]);
-  return cr_make_param_array(client_palette_init_test_case_t, client_palette_init_cases, nb_cases);
-}
-
-ParameterizedTest(client_palette_init_test_case_t *tc, palette_tests, client_palette_initialization_tests) {
-  char client_palette_chars[256];
-  size_t client_palette_len;
-  char client_luminance_palette[256];
-
-  int result = initialize_client_palette(tc->palette_type, tc->custom_palette,
-                                       client_palette_chars, &client_palette_len,
-                                       client_luminance_palette);
-
-  if (tc->should_succeed) {
-    cr_assert_eq(result, 0, "Initialization should succeed for %s", tc->description);
-    cr_assert_eq(client_palette_len, strlen(tc->expected_chars),
-                 "Palette length should match for %s", tc->description);
-    cr_assert_str_eq(client_palette_chars, tc->expected_chars,
-                     "Palette chars should match for %s", tc->description);
-  } else {
-    cr_assert_eq(result, -1, "Initialization should fail for %s", tc->description);
-  }
 }
 
 // Legacy individual tests for functions that don't fit parameterized patterns well

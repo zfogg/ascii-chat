@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 
 #include "common.h"
@@ -458,4 +459,163 @@ Test(crypto, nonce_counter_exhaustion) {
   result =
       crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
   cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption should fail after counter wraps to 0");
+}
+
+// =============================================================================
+// Parameterized Tests for Crypto Error Conditions
+// =============================================================================
+
+// Test case structure for crypto error conditions
+typedef struct {
+  const char *description;
+  crypto_result_t expected_result;
+  bool test_null_context;
+  bool test_null_plaintext;
+  bool test_zero_length;
+  bool test_null_ciphertext;
+  bool test_null_length_out;
+} crypto_error_test_case_t;
+
+static crypto_error_test_case_t crypto_error_cases[] = {
+  {"NULL context", CRYPTO_ERROR_INVALID_PARAMS, true, false, false, false, false},
+  {"NULL plaintext", CRYPTO_ERROR_INVALID_PARAMS, false, true, false, false, false},
+  {"Zero length", CRYPTO_ERROR_INVALID_PARAMS, false, false, true, false, false},
+  {"NULL ciphertext", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, true, false},
+  {"NULL length out", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, false, true}
+};
+
+ParameterizedTestParameters(crypto, error_conditions) {
+  size_t nb_cases = sizeof(crypto_error_cases) / sizeof(crypto_error_cases[0]);
+  return cr_make_param_array(crypto_error_test_case_t, crypto_error_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_error_test_case_t *tc, crypto, error_conditions) {
+  crypto_context_t ctx;
+  crypto_init_with_password(&ctx, "password");
+
+  const char *plaintext = "test";
+  uint8_t ciphertext[1024];
+  size_t ciphertext_len;
+
+  crypto_result_t result;
+
+  if (tc->test_null_context) {
+    result = crypto_encrypt(NULL, (const uint8_t *)plaintext, strlen(plaintext),
+                           ciphertext, sizeof(ciphertext), &ciphertext_len);
+  } else if (tc->test_null_plaintext) {
+    result = crypto_encrypt(&ctx, NULL, strlen(plaintext),
+                           ciphertext, sizeof(ciphertext), &ciphertext_len);
+  } else if (tc->test_zero_length) {
+    result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, 0,
+                           ciphertext, sizeof(ciphertext), &ciphertext_len);
+  } else if (tc->test_null_ciphertext) {
+    result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, strlen(plaintext),
+                           NULL, sizeof(ciphertext), &ciphertext_len);
+  } else {
+    result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, strlen(plaintext),
+                           ciphertext, sizeof(ciphertext), NULL);
+  }
+
+  cr_assert_eq(result, tc->expected_result, "Test case: %s", tc->description);
+
+  crypto_cleanup(&ctx);
+}
+
+// Test case structure for crypto initialization tests
+typedef struct {
+  const char *description;
+  const char *password;
+  bool should_succeed;
+  crypto_result_t expected_result;
+} crypto_init_test_case_t;
+
+static crypto_init_test_case_t crypto_init_cases[] = {
+  {"Valid password", "test-password-123", true, CRYPTO_OK},
+  {"Empty password", "", false, CRYPTO_ERROR_INVALID_PARAMS},
+  {"Long password", "very-long-password-that-is-still-valid", true, CRYPTO_OK},
+  {"Special chars password", "p@ssw0rd!@#$%", true, CRYPTO_OK}
+};
+
+ParameterizedTestParameters(crypto, init_conditions) {
+  size_t nb_cases = sizeof(crypto_init_cases) / sizeof(crypto_init_cases[0]);
+  return cr_make_param_array(crypto_init_test_case_t, crypto_init_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_init_test_case_t *tc, crypto, init_conditions) {
+  crypto_context_t ctx;
+  memset(&ctx, 0, sizeof(ctx));
+
+  crypto_result_t result = crypto_init_with_password(&ctx, tc->password);
+
+  cr_assert_eq(result, tc->expected_result, "Init result should match for %s", tc->description);
+
+  if (tc->should_succeed) {
+    cr_assert(ctx.initialized, "Context should be initialized for %s", tc->description);
+    cr_assert(ctx.has_password, "Context should have password for %s", tc->description);
+    cr_assert(crypto_is_ready(&ctx), "Context should be ready for %s", tc->description);
+  }
+
+  crypto_cleanup(&ctx);
+}
+
+// Test case structure for crypto password verification tests
+typedef struct {
+  const char *description;
+  const char *correct_password;
+  const char *test_password;
+  bool should_verify;
+} crypto_verify_test_case_t;
+
+static crypto_verify_test_case_t crypto_verify_cases[] = {
+  {"Correct password", "my-password", "my-password", true},
+  {"Wrong password", "my-password", "wrong-password", false},
+  {"Empty test password", "my-password", "", false},
+  {"Case sensitive", "MyPassword", "mypassword", false},
+  {"Extra spaces", "password", " password ", false}
+};
+
+ParameterizedTestParameters(crypto, password_verification_comprehensive) {
+  size_t nb_cases = sizeof(crypto_verify_cases) / sizeof(crypto_verify_cases[0]);
+  return cr_make_param_array(crypto_verify_test_case_t, crypto_verify_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_verify_test_case_t *tc, crypto, password_verification_comprehensive) {
+  crypto_context_t ctx;
+  memset(&ctx, 0, sizeof(ctx));
+
+  // Initialize with correct password
+  crypto_result_t init_result = crypto_init_with_password(&ctx, tc->correct_password);
+  cr_assert_eq(init_result, CRYPTO_OK, "Init should succeed for %s", tc->description);
+
+  // Test password verification
+  bool verified = crypto_verify_password(&ctx, tc->test_password);
+  cr_assert_eq(verified, tc->should_verify, "Password verification should match for %s", tc->description);
+
+  crypto_cleanup(&ctx);
+}
+
+// Test case structure for crypto result string tests
+typedef struct {
+  crypto_result_t result;
+  const char *expected_string;
+  const char *description;
+} crypto_result_string_test_case_t;
+
+static crypto_result_string_test_case_t crypto_result_string_cases[] = {
+  {CRYPTO_OK, "Success", "Success result"},
+  {CRYPTO_ERROR_INVALID_PARAMS, "Invalid parameters", "Invalid params result"},
+  {CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Key exchange incomplete", "Key exchange incomplete result"},
+  {CRYPTO_ERROR_BUFFER_TOO_SMALL, "Buffer too small", "Buffer too small result"},
+  {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce exhausted", "Nonce exhausted result"},
+  {(crypto_result_t)999, "Unknown error", "Unknown result"}
+};
+
+ParameterizedTestParameters(crypto, result_strings) {
+  size_t nb_cases = sizeof(crypto_result_string_cases) / sizeof(crypto_result_string_cases[0]);
+  return cr_make_param_array(crypto_result_string_test_case_t, crypto_result_string_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_result_string_test_case_t *tc, crypto, result_strings) {
+  const char *result_str = crypto_result_to_string(tc->result);
+  cr_assert_str_eq(result_str, tc->expected_string, "Result string should match for %s", tc->description);
 }
