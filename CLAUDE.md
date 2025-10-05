@@ -37,14 +37,14 @@ ASCII-Chat is a terminal-based video chat application that converts webcam video
 
 ```
 ascii-chat/
-├── bin/                        # Hard links to compiled binaries for convenience
-├── build/                      # CMake build directory (all platforms)
-├── notes/                      # Development notes and documentation
-├── todo/                       # Experimental code and future features
-├── tests/                      # Comprehensive test suite using Criterion
-│   ├── scripts/                # Test infrastructure scripts (NEW)
-│   │   └── run_tests.sh        # Unified test runner with parallel execution
-│   ├── unit/                   # Unit tests for individual components
+├── bin/                                            # Hard links to compiled binaries for convenience
+├── build/                                          # CMake build directory (all platforms)
+├── notes/                                          # Development notes and documentation
+├── todo/                                           # Experimental code and future features
+├── tests/                                          # Comprehensive test suite using Criterion
+│   ├── scripts/                                    # Test infrastructure scripts (NEW)
+│   │   └── run_tests.sh                            # Unified test runner with parallel execution
+│   ├── unit/                                       # Unit tests for individual components
 │   │   ├── audio_test.c                            # Audio system and ringbuffer tests
 │   │   ├── buffer_pool_test.c                      # Memory buffer pool tests
 │   │   ├── packet_queue_test.c                     # Packet queue and node pool tests
@@ -437,6 +437,7 @@ SAFE_STRNCPY(dest, src, sizeof(dest));
 - `$TTY` - TTY device path detection
 - `$USER` - User identification for logging
 - `$TESTING`, `$CRITERION_TEST` - Enable fast test mode
+- `$LOG_LEVEL` - Enable logging at a certain level (DEBUG/0, INFO/1, WARN/2, ERROR/3, FATAL/4)
 
 **IMPORTANT**: The project does NOT support `WEBCAM_DISABLED=1`. A webcam must be available.
 
