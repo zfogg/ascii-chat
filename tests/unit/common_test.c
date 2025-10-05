@@ -1,7 +1,9 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "common.h"
 #include "tests/logging.h"
@@ -93,14 +95,56 @@ Test(common, error_codes) {
 // Utility Macro Tests
 // =============================================================================
 
-Test(common, min_max_macros) {
-  cr_assert_eq(MIN(5, 10), 5, "MIN should return smaller value");
-  cr_assert_eq(MIN(10, 5), 5, "MIN should return smaller value");
-  cr_assert_eq(MIN(7, 7), 7, "MIN with equal values should return that value");
+// =============================================================================
+// MIN/MAX Macro Tests - Parameterized
+// =============================================================================
 
-  cr_assert_eq(MAX(5, 10), 10, "MAX should return larger value");
-  cr_assert_eq(MAX(10, 5), 10, "MAX should return larger value");
-  cr_assert_eq(MAX(7, 7), 7, "MAX with equal values should return that value");
+typedef struct {
+  int a;
+  int b;
+  int expected_min;
+  int expected_max;
+  char description[64];
+} min_max_test_case_t;
+
+static min_max_test_case_t min_max_cases[] = {
+    // Basic positive cases
+    {5, 10, 5, 10, "Basic positive values"},
+    {10, 5, 5, 10, "Reversed positive values"},
+    {7, 7, 7, 7, "Equal positive values"},
+    // Zero cases
+    {0, 0, 0, 0, "Both zero"},
+    {0, 5, 0, 5, "Zero and positive"},
+    {5, 0, 0, 5, "Positive and zero"},
+    // Negative cases
+    {-5, -10, -10, -5, "Both negative"},
+    {-10, -5, -10, -5, "Both negative reversed"},
+    {-7, -7, -7, -7, "Equal negative values"},
+    // Mixed sign cases
+    {-5, 5, -5, 5, "Negative and positive"},
+    {5, -5, -5, 5, "Positive and negative"},
+    {-100, 100, -100, 100, "Large negative and positive"},
+    // Edge cases
+    {INT_MIN, INT_MAX, INT_MIN, INT_MAX, "Min and max int values"},
+    {INT_MIN, 0, INT_MIN, 0, "Min int and zero"},
+    {0, INT_MAX, 0, INT_MAX, "Zero and max int"},
+    {INT_MIN, INT_MIN, INT_MIN, INT_MIN, "Both INT_MIN"},
+    {INT_MAX, INT_MAX, INT_MAX, INT_MAX, "Both INT_MAX"},
+};
+
+ParameterizedTestParameters(common, min_max_macros) {
+  size_t count = sizeof(min_max_cases) / sizeof(min_max_cases[0]);
+  return cr_make_param_array(min_max_test_case_t, min_max_cases, count);
+}
+
+ParameterizedTest(min_max_test_case_t *tc, common, min_max_macros) {
+  int min_result = MIN(tc->a, tc->b);
+  int max_result = MAX(tc->a, tc->b);
+
+  cr_assert_eq(min_result, tc->expected_min, "%s: MIN(%d, %d) should be %d", tc->description, tc->a, tc->b,
+               tc->expected_min);
+  cr_assert_eq(max_result, tc->expected_max, "%s: MAX(%d, %d) should be %d", tc->description, tc->a, tc->b,
+               tc->expected_max);
 }
 
 Test(common, array_size_macro) {

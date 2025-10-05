@@ -56,22 +56,31 @@ Test(ansi_fast, append_truecolor_fg_basic) {
   cr_assert_eq(result - buffer, 18, "Result pointer should be positioned correctly");
 }
 
-Test(ansi_fast, append_truecolor_fg_edge_cases) {
+// Test case structure for truecolor edge cases
+typedef struct {
+  uint8_t r, g, b;
+  char expected_output[32];
+  char description[64];
+} truecolor_fg_test_case_t;
+
+static truecolor_fg_test_case_t truecolor_fg_edge_cases[] = {{0, 0, 0, "\033[38;2;0;0;0m", "Black color"},
+                                                             {1, 1, 1, "\033[38;2;1;1;1m", "Minimal color"},
+                                                             {255, 255, 255, "\033[38;2;255;255;255m", "White color"},
+                                                             {255, 0, 0, "\033[38;2;255;0;0m", "Pure red"},
+                                                             {0, 255, 0, "\033[38;2;0;255;0m", "Pure green"},
+                                                             {0, 0, 255, "\033[38;2;0;0;255m", "Pure blue"},
+                                                             {128, 128, 128, "\033[38;2;128;128;128m", "Mid gray"}};
+
+ParameterizedTestParameters(ansi_fast, truecolor_fg_edge_cases_param) {
+  size_t nb_cases = sizeof(truecolor_fg_edge_cases) / sizeof(truecolor_fg_edge_cases[0]);
+  return cr_make_param_array(truecolor_fg_test_case_t, truecolor_fg_edge_cases, nb_cases);
+}
+
+ParameterizedTest(truecolor_fg_test_case_t *tc, ansi_fast, truecolor_fg_edge_cases_param) {
   char buffer[256];
-  char *result;
-
-  // Test edge cases: 0, 1, 255
-  result = append_truecolor_fg(buffer, 0, 0, 0);
+  char *result = append_truecolor_fg(buffer, tc->r, tc->g, tc->b);
   *result = '\0';
-  cr_assert_str_eq(buffer, "\033[38;2;0;0;0m", "Black color should be correct");
-
-  result = append_truecolor_fg(buffer, 1, 1, 1);
-  *result = '\0';
-  cr_assert_str_eq(buffer, "\033[38;2;1;1;1m", "Minimal color should be correct");
-
-  result = append_truecolor_fg(buffer, 255, 255, 255);
-  *result = '\0';
-  cr_assert_str_eq(buffer, "\033[38;2;255;255;255m", "White color should be correct");
+  cr_assert_str_eq(buffer, tc->expected_output, "%s should be correct", tc->description);
 }
 
 Test(ansi_fast, append_truecolor_bg_basic) {
@@ -88,18 +97,32 @@ Test(ansi_fast, append_truecolor_bg_basic) {
   cr_assert_eq(result - buffer, 18, "Result pointer should be positioned correctly");
 }
 
-Test(ansi_fast, append_truecolor_bg_edge_cases) {
+// Test case structure for truecolor background edge cases
+typedef struct {
+  uint8_t r, g, b;
+  char expected_output[32];
+  char description[64];
+} truecolor_bg_test_case_t;
+
+static truecolor_bg_test_case_t truecolor_bg_edge_cases[] = {
+    {0, 0, 0, "\033[48;2;0;0;0m", "Black background"},
+    {1, 1, 1, "\033[48;2;1;1;1m", "Minimal background"},
+    {255, 255, 255, "\033[48;2;255;255;255m", "White background"},
+    {255, 0, 0, "\033[48;2;255;0;0m", "Pure red background"},
+    {0, 255, 0, "\033[48;2;0;255;0m", "Pure green background"},
+    {0, 0, 255, "\033[48;2;0;0;255m", "Pure blue background"},
+    {128, 128, 128, "\033[48;2;128;128;128m", "Mid gray background"}};
+
+ParameterizedTestParameters(ansi_fast, truecolor_bg_edge_cases_param) {
+  size_t nb_cases = sizeof(truecolor_bg_edge_cases) / sizeof(truecolor_bg_edge_cases[0]);
+  return cr_make_param_array(truecolor_bg_test_case_t, truecolor_bg_edge_cases, nb_cases);
+}
+
+ParameterizedTest(truecolor_bg_test_case_t *tc, ansi_fast, truecolor_bg_edge_cases_param) {
   char buffer[256];
-  char *result;
-
-  // Test edge cases
-  result = append_truecolor_bg(buffer, 0, 0, 0);
+  char *result = append_truecolor_bg(buffer, tc->r, tc->g, tc->b);
   *result = '\0';
-  cr_assert_str_eq(buffer, "\033[48;2;0;0;0m", "Black background should be correct");
-
-  result = append_truecolor_bg(buffer, 255, 255, 255);
-  *result = '\0';
-  cr_assert_str_eq(buffer, "\033[48;2;255;255;255m", "White background should be correct");
+  cr_assert_str_eq(buffer, tc->expected_output, "%s should be correct", tc->description);
 }
 
 Test(ansi_fast, append_truecolor_fg_bg_combined) {
