@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include "common.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/image.h"
@@ -270,7 +271,28 @@ Test(simd_scalar_comparison, single_pixel_values) {
   }
 }
 
-Test(simd_scalar_comparison, different_palettes) {
+// Parameterized test for different palettes
+typedef struct {
+  char palette[32];
+  int width;
+  int height;
+  char description[64];
+} palette_comparison_test_case_t;
+
+static palette_comparison_test_case_t palette_comparison_cases[] = {
+    {" .", 8, 1, "Minimal 2-character palette"},
+    {" .o", 8, 1, "Small 3-character palette"},
+    {" .,':lxO", 8, 1, "Medium 8-character palette"},
+    {"   ...',;:clodxkO0KXNWM", 8, 1, "Standard palette"},
+    {" ._-=+*%#@", 8, 1, "Alternative 10-character palette"},
+};
+
+ParameterizedTestParameters(simd_scalar_comparison, different_palettes) {
+  return cr_make_param_array(palette_comparison_test_case_t, palette_comparison_cases,
+                             sizeof(palette_comparison_cases) / sizeof(palette_comparison_cases[0]));
+}
+
+ParameterizedTest(palette_comparison_test_case_t *tc, simd_scalar_comparison, different_palettes) {
 #ifndef SIMD_SUPPORT_NEON
   // Skip test: Only NEON monochrome SIMD is currently working correctly
   // Other SIMD implementations (AVX2, SSE2, SSSE3, SVE, NEON color) are broken
@@ -279,54 +301,48 @@ Test(simd_scalar_comparison, different_palettes) {
   cr_skip_test("SIMD implementations other than NEON monochrome are currently broken");
 #endif
 
-  const char *palettes[] = {" .", " .o", " .,':lxO", "   ...',;:clodxkO0KXNWM", " ._-=+*%#@"};
-  int num_palettes = sizeof(palettes) / sizeof(palettes[0]);
+  printf("\n=== TEST: %s ===\n", tc->description);
+  printf("Palette: \"%s\" (length: %zu)\n", tc->palette, strlen(tc->palette));
 
-  printf("\n=== TEST: Different Palettes ===\n");
+  // Create gradient test image
+  image_t *test_image = create_test_image_with_pattern(tc->width, tc->height);
 
-  const int width = 8, height = 1;
+  // Generate outputs
+  char *scalar_result = image_print(test_image, tc->palette);
+  char *simd_result = image_print_simd(test_image, tc->palette);
 
-  for (int p = 0; p < num_palettes; p++) {
-    const char *palette = palettes[p];
-    printf("\nTesting palette[%d]: \"%s\" (length: %zu)\n", p, palette, strlen(palette));
+  cr_assert_not_null(scalar_result, "%s: Scalar result should not be null", tc->description);
+  cr_assert_not_null(simd_result, "%s: SIMD result should not be null", tc->description);
 
-    // Create gradient test image
-    image_t *test_image = create_test_image_with_pattern(width, height);
+  // Extract and compare
+  char *scalar_ascii = extract_ascii_chars(scalar_result, tc->width * tc->height);
+  char *simd_ascii = extract_ascii_chars(simd_result, tc->width * tc->height);
 
-    // Generate outputs
-    char *scalar_result = image_print(test_image, palette);
-    char *simd_result = image_print_simd(test_image, palette);
+  printf("Scalar: \"%s\"\n", scalar_ascii);
+  printf("SIMD:   \"%s\"\n", simd_ascii);
 
-    cr_assert_not_null(scalar_result, "Scalar result should not be null");
-    cr_assert_not_null(simd_result, "SIMD result should not be null");
+  bool match = (strcmp(scalar_ascii, simd_ascii) == 0);
+  printf("Result: %s\n", match ? "✓ MATCH" : "❌ MISMATCH");
 
-    // Extract and compare
-    char *scalar_ascii = extract_ascii_chars(scalar_result, width * height);
-    char *simd_ascii = extract_ascii_chars(simd_result, width * height);
-
-    printf("  Scalar: \"%s\"\n", scalar_ascii);
-    printf("  SIMD:   \"%s\"\n", simd_ascii);
-
-    bool match = (strcmp(scalar_ascii, simd_ascii) == 0);
-    printf("  Result: %s\n", match ? "✓ MATCH" : "❌ MISMATCH");
-
-    if (!match) {
-      // Print detailed comparison
-      size_t min_len = strlen(scalar_ascii) < strlen(simd_ascii) ? strlen(scalar_ascii) : strlen(simd_ascii);
-      for (size_t i = 0; i < min_len; i++) {
-        if (scalar_ascii[i] != simd_ascii[i]) {
-          printf("    Diff at pos %zu: scalar='%c' vs simd='%c'\n", i, scalar_ascii[i], simd_ascii[i]);
-        }
+  if (!match) {
+    // Print detailed comparison
+    size_t min_len = strlen(scalar_ascii) < strlen(simd_ascii) ? strlen(scalar_ascii) : strlen(simd_ascii);
+    for (size_t i = 0; i < min_len; i++) {
+      if (scalar_ascii[i] != simd_ascii[i]) {
+        printf("  Diff at pos %zu: scalar='%c' vs simd='%c'\n", i, scalar_ascii[i], simd_ascii[i]);
       }
     }
-
-    // Cleanup
-    free(scalar_result);
-    free(simd_result);
-    free(scalar_ascii);
-    free(simd_ascii);
-    image_destroy(test_image);
   }
+
+  cr_assert_str_eq(scalar_ascii, simd_ascii, "%s: ASCII characters should match between scalar and SIMD",
+                   tc->description);
+
+  // Cleanup
+  free(scalar_result);
+  free(simd_result);
+  free(scalar_ascii);
+  free(simd_ascii);
+  image_destroy(test_image);
 }
 
 Test(simd_scalar_comparison, cache_validation) {
