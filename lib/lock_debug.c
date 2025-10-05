@@ -22,7 +22,6 @@
 #ifdef _WIN32
 #include <io.h>
 #include <conio.h>
-#include "platform/windows_compat.h" // For ReleaseSRWLockShared
 #else
 #include <sys/select.h>
 #include <unistd.h>
@@ -91,7 +90,7 @@ static void update_usage_stats(const char *file_name, int line_number, const cha
     if (hold_time_ns < stats->min_hold_time_ns) {
       stats->min_hold_time_ns = hold_time_ns;
     }
-    clock_gettime(CLOCK_MONOTONIC, &stats->last_acquisition);
+    (void)clock_gettime(CLOCK_MONOTONIC, &stats->last_acquisition);
   }
 
   hashtable_write_unlock(g_lock_debug_manager.usage_stats);
@@ -175,7 +174,7 @@ static void print_lock_record_callback(uint32_t key, void *value, void *user_dat
   (*count)++;
 
   // Print lock information
-  const char *lock_type_str = "UNKNOWN";
+  const char *lock_type_str;
   switch (record->lock_type) {
   case LOCK_TYPE_MUTEX:
     lock_type_str = "MUTEX";
@@ -260,7 +259,7 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
   (*count)++;
 
   // Print lock type
-  const char *lock_type_str = "UNKNOWN";
+  const char *lock_type_str;
   switch (stats->lock_type) {
   case LOCK_TYPE_MUTEX:
     lock_type_str = "MUTEX";
@@ -319,11 +318,10 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
   (*count)++;
 
   // Debug: Always log when callback is called (use printf during shutdown)
-  printf("[DEBUG] print_orphaned_release_callback called: count=%u, record=%p\n", *count, record);
-  fflush(stdout);
+  log_info("[DEBUG] print_orphaned_release_callback called: count=%u, record=%p", *count, record);
 
   // Print lock information
-  const char *lock_type_str = "UNKNOWN";
+  const char *lock_type_str;
   switch (record->lock_type) {
   case LOCK_TYPE_MUTEX:
     lock_type_str = "MUTEX";
@@ -336,16 +334,15 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
     break;
   }
 
-  printf("Orphaned Release #%u: %s at %p\n", *count, lock_type_str, record->lock_address);
-  printf("  Thread ID: %llu\n", (unsigned long long)record->thread_id);
-  printf("  Released: %s:%d in %s()\n", record->file_name, record->line_number, record->function_name);
-  printf("  Released at: %lld.%09ld seconds (monotonic)\n", (long long)record->acquisition_time.tv_sec,
+  log_info("Orphaned Release #%u: %s at %p", *count, lock_type_str, record->lock_address);
+  log_info("  Thread ID: %llu", (unsigned long long)record->thread_id);
+  log_info("  Released: %s:%d in %s()", record->file_name, record->line_number, record->function_name);
+  log_info("  Released at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
          record->acquisition_time.tv_nsec);
-  fflush(stdout);
 
   // Print backtrace for the orphaned release
   if (record->backtrace_size > 0) {
-    printf("  Release call stack (%d frames):\n", record->backtrace_size);
+    log_info("  Release call stack (%d frames):", record->backtrace_size);
 
     // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
@@ -353,9 +350,9 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
     for (int j = 0; j < record->backtrace_size; j++) {
       // Build the full line for each stack frame
       if (symbols && symbols[j]) {
-        printf("    %2d: %p %s\n", j, record->backtrace_buffer[j], symbols[j]);
+        log_info("    %2d: %p %s", j, record->backtrace_buffer[j], symbols[j]);
       } else {
-        printf("    %2d: %p <unresolved>\n", j, record->backtrace_buffer[j]);
+        log_info("    %2d: %p <unresolved>", j, record->backtrace_buffer[j]);
       }
     }
 
@@ -364,9 +361,8 @@ void print_orphaned_release_callback(uint32_t key, void *value, void *user_data)
       platform_backtrace_symbols_free(symbols);
     }
   } else {
-    printf("  Release call stack: <capture failed>\n");
+    log_info("  Release call stack: <capture failed>");
   }
-  fflush(stdout);
 }
 
 // ============================================================================
@@ -954,65 +950,43 @@ static uint32_t debug_decrement_lock_counter(void) {
 static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t lock_type, const char *lock_type_str,
                                                 const char *file_name, int line_number, const char *function_name) {
 #ifndef DEBUG_LOCKS
-  UNUSED(lock_address);
-  UNUSED(lock_type);
   UNUSED(lock_type_str);
-  UNUSED(file_name);
-  UNUSED(line_number);
-  UNUSED(function_name);
 #endif
 
-  lock_record_t *record = calloc(1, sizeof(lock_record_t));
-  if (record) {
-    record->lock_address = lock_address;
-    record->lock_type = lock_type;
-    record->thread_id = ascii_thread_current_id();
-    record->file_name = file_name;
-    record->line_number = line_number;
-    record->function_name = function_name;
-    clock_gettime(CLOCK_MONOTONIC, &record->acquisition_time);
-
-    // Capture backtrace using platform-specific functions
-#ifdef _WIN32
-    record->backtrace_size = CaptureStackBackTrace(1, MAX_BACKTRACE_FRAMES, record->backtrace_buffer, NULL);
-#else
-    record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
-#endif
-
-    if (record->backtrace_size > 0) {
-      record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
-    }
-
-    uint32_t key = lock_record_key(lock_address, lock_type);
-    bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
-
-    if (inserted) {
+  // Use the existing create_lock_record function
+  lock_record_t *record = create_lock_record(lock_address, lock_type, file_name, line_number, function_name);
+  if (!record) {
 #ifdef DEBUG_LOCKS
-      uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
-      uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
-#else
-      atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
-      atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
-#endif
-#ifdef DEBUG_LOCKS
-      log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
-                lock_address, key, file_name, line_number, function_name, (unsigned long long)acquired, held);
-#endif
-      return true;
-    }
-    // Hashtable insert failed - clean up the record and log an error
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()", lock_type_str,
-              log_address, key, file_name, line_number, function_name);
-#endif
-    free_lock_record(record);
-  } else {
-    // Record allocation failed - log an error
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] ERROR: Failed to allocate %s record for %p at %s:%d in %s()", lock_type_str, lock_address,
+    log_debug("[LOCK_DEBUG] ERROR: Failed to create %s record for %p at %s:%d in %s()", lock_type_str, lock_address,
               file_name, line_number, function_name);
 #endif
+    return false;
   }
+
+  uint32_t key = lock_record_key(lock_address, lock_type);
+  bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
+
+  if (inserted) {
+#ifdef DEBUG_LOCKS
+    uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
+    uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
+#else
+    atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
+    atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
+#endif
+#ifdef DEBUG_LOCKS
+    log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
+              lock_address, key, file_name, line_number, function_name, (unsigned long long)acquired, held);
+#endif
+    return true;
+  }
+
+  // Hashtable insert failed - clean up the record and log an error
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()", lock_type_str,
+            lock_address, key, file_name, line_number, function_name);
+#endif
+  free_lock_record(record);
   return false;
 }
 
@@ -1039,6 +1013,25 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   lock_record_t *record = (lock_record_t *)hashtable_lookup(g_lock_debug_manager.lock_records, key);
   if (record) {
     if (hashtable_remove(g_lock_debug_manager.lock_records, key)) {
+      // Calculate hold time and update usage statistics before freeing the record
+      struct timespec current_time;
+      if (clock_gettime(CLOCK_MONOTONIC, &current_time) == 0) {
+        // Calculate hold time in nanoseconds
+        long long hold_sec = current_time.tv_sec - record->acquisition_time.tv_sec;
+        long hold_nsec = current_time.tv_nsec - record->acquisition_time.tv_nsec;
+
+        // Handle nanosecond underflow
+        if (hold_nsec < 0) {
+          hold_sec--;
+          hold_nsec += 1000000000;
+        }
+
+        uint64_t hold_time_ns = (uint64_t)hold_sec * 1000000000ULL + (uint64_t)hold_nsec;
+
+        // Update usage statistics
+        update_usage_stats(record->file_name, record->line_number, record->function_name, record->lock_type, hold_time_ns);
+      }
+
       free_lock_record(record);
 #ifdef DEBUG_LOCKS
       uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
@@ -1074,26 +1067,28 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
   atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
 #endif
   uint32_t current_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+
 #ifdef DEBUG_LOCKS
   uint32_t held = 0;
 #endif
   if (current_held > 0) {
+
 #ifdef DEBUG_LOCKS
     held = debug_decrement_lock_counter();
 #else
     debug_decrement_lock_counter();
 #endif
+
   } else {
 #ifdef DEBUG_LOCKS
     log_error("[LOCK_DEBUG] *** ERROR: Attempting to release %s lock when no locks held! ***", lock_type_str);
 #endif
     log_error("%s:%d in %s()", file_name, line_number, function_name);
   }
+
 #ifdef DEBUG_LOCKS
   log_error("[LOCK_DEBUG] %s UNTRACKED RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
             lock_ptr, key, file_name, line_number, function_name, (unsigned long long)released, held);
-#endif
-#ifdef DEBUG_LOCKS
   log_error("[LOCK_DEBUG] *** WARNING: %s lock was acquired and tracked but record was lost! ***", lock_type_str);
 #endif
 
@@ -1112,7 +1107,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     orphan_record->file_name = file_name;
     orphan_record->line_number = line_number;
     orphan_record->function_name = function_name;
-    clock_gettime(CLOCK_MONOTONIC, &orphan_record->acquisition_time); // Use release time
+    (void)clock_gettime(CLOCK_MONOTONIC, &orphan_record->acquisition_time); // Use release time
 
     // Capture backtrace for this orphaned release
 #ifdef _WIN32
@@ -1258,9 +1253,6 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
   return rwlock_wrunlock_impl(rwlock);
 }
 
-// Removed debug_rwlock_unlock - generic unlock is ambiguous and problematic
-// Use debug_rwlock_rdunlock or debug_rwlock_wrunlock instead
-
 // ============================================================================
 // Statistics Functions
 // ============================================================================
@@ -1289,8 +1281,6 @@ void lock_debug_print_state(void) {
 #ifdef DEBUG_LOCKS
   log_debug("[LOCK_DEBUG] State: initialized=%d, initializing=%d, result=%d",
             atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing), lock_debug_is_initialized());
-#endif
-#ifdef DEBUG_LOCKS
   log_debug("[LOCK_DEBUG] Stats: acquired=%llu, released=%llu, held=%u",
             (unsigned long long)atomic_load(&g_lock_debug_manager.total_locks_acquired),
             (unsigned long long)atomic_load(&g_lock_debug_manager.total_locks_released),

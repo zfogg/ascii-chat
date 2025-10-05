@@ -285,16 +285,8 @@ static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_should_exit, true);
 
-  // Signal-safe logging - only use write() system call
-  const char msg[] = "SIGTERM received - shutting down server...\n";
-#ifdef _WIN32
-  HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-  DWORD written;
-  WriteFile(hStdout, msg, sizeof(msg) - 1, &written, NULL);
-#else
-  write(STDOUT_FILENO, msg, sizeof(msg) - 1);
-#endif
-
+  printf("SIGTERM received - shutting down server...\n");
+  (void)fflush(stdout);
   // Return immediately - signal handlers must be minimal
   // Main thread will detect g_should_exit and perform complete shutdown
 }

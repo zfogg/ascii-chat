@@ -77,7 +77,7 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
 // Cache eviction helper functions
 uint64_t get_current_time_ns(void) {
   struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
+  (void)clock_gettime(CLOCK_MONOTONIC, &now);
   return now.tv_sec * 1000000000ULL + now.tv_nsec;
 }
 
