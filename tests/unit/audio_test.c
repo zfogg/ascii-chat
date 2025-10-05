@@ -58,16 +58,14 @@ typedef struct {
   bool should_succeed;
 } ringbuffer_operation_test_case_t;
 
-static ringbuffer_operation_test_case_t ringbuffer_operation_cases[] = {
-  {100, 50, "Normal write/read", true},
-  {256, 256, "Equal write/read", true},
-  {50, 100, "Read more than written", false},
-  {0, 50, "Read from empty", false},
-  {1000, 500, "Large buffer operations", true},
-  {1, 1, "Single sample", true},
-  {512, 0, "Write only", true},
-  {0, 0, "Zero operations", true}
-};
+static ringbuffer_operation_test_case_t ringbuffer_operation_cases[] = {{100, 50, "Normal write/read", true},
+                                                                        {256, 256, "Equal write/read", true},
+                                                                        {50, 100, "Read more than written", false},
+                                                                        {0, 50, "Read from empty", false},
+                                                                        {1000, 500, "Large buffer operations", true},
+                                                                        {1, 1, "Single sample", true},
+                                                                        {512, 0, "Write only", true},
+                                                                        {0, 0, "Zero operations", true}};
 
 ParameterizedTestParameters(audio, ringbuffer_operations) {
   size_t nb_cases = sizeof(ringbuffer_operation_cases) / sizeof(ringbuffer_operation_cases[0]);
@@ -111,15 +109,16 @@ ParameterizedTest(ringbuffer_operation_test_case_t *tc, audio, ringbuffer_operat
     if (tc->should_succeed && read > 0) {
       // Verify data integrity for what was actually read
       for (int i = 0; i < read; i++) {
-        cr_assert_float_eq(read_data[i], write_data[i], 0.0001f,
-                          "Sample %d should match for %s", i, tc->description);
+        cr_assert_float_eq(read_data[i], write_data[i], 0.0001f, "Sample %d should match for %s", i, tc->description);
       }
     }
   }
 
   // Clean up
-  if (write_data) free(write_data);
-  if (read_data) free(read_data);
+  if (write_data)
+    free(write_data);
+  if (read_data)
+    free(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -131,14 +130,12 @@ typedef struct {
   const char *description;
 } ringbuffer_capacity_test_case_t;
 
-static ringbuffer_capacity_test_case_t ringbuffer_capacity_cases[] = {
-  {100, 1, 1, "Single write/read cycle"},
-  {100, 5, 3, "Multiple write cycles, fewer reads"},
-  {100, 3, 5, "Multiple read cycles, fewer writes"},
-  {100, 10, 10, "Equal write/read cycles"},
-  {256, 2, 2, "Larger buffer, two cycles"},
-  {50, 20, 20, "Small buffer, many cycles"}
-};
+static ringbuffer_capacity_test_case_t ringbuffer_capacity_cases[] = {{100, 1, 1, "Single write/read cycle"},
+                                                                      {100, 5, 3, "Multiple write cycles, fewer reads"},
+                                                                      {100, 3, 5, "Multiple read cycles, fewer writes"},
+                                                                      {100, 10, 10, "Equal write/read cycles"},
+                                                                      {256, 2, 2, "Larger buffer, two cycles"},
+                                                                      {50, 20, 20, "Small buffer, many cycles"}};
 
 ParameterizedTestParameters(audio, ringbuffer_capacity_scenarios) {
   size_t nb_cases = sizeof(ringbuffer_capacity_cases) / sizeof(ringbuffer_capacity_cases[0]);
@@ -623,11 +620,7 @@ typedef struct {
 } audio_buffer_test_case_t;
 
 static audio_buffer_test_case_t audio_buffer_cases[] = {
-  {64, "Small buffer"},
-  {256, "Medium buffer"},
-  {1024, "Large buffer"},
-  {4096, "Very large buffer"}
-};
+    {64, "Small buffer"}, {256, "Medium buffer"}, {1024, "Large buffer"}, {4096, "Very large buffer"}};
 
 ParameterizedTestParameters(audio, buffer_sizes) {
   size_t nb_cases = sizeof(audio_buffer_cases) / sizeof(audio_buffer_cases[0]);
@@ -657,8 +650,7 @@ ParameterizedTest(audio_buffer_test_case_t *tc, audio, buffer_sizes) {
 
     // Verify data integrity for what was actually written/read
     for (int i = 0; i < read; i++) {
-      cr_assert_float_eq(read_data[i], test_data[i], 0.0001f,
-                         "Sample %d should match for %s", i, tc->description);
+      cr_assert_float_eq(read_data[i], test_data[i], 0.0001f, "Sample %d should match for %s", i, tc->description);
     }
   }
 
@@ -673,14 +665,9 @@ typedef struct {
   const char *description;
 } audio_frequency_test_case_t;
 
-static audio_frequency_test_case_t audio_frequency_cases[] = {
-  {440.0f, "A4 note"},
-  {880.0f, "A5 note"},
-  {220.0f, "A3 note"},
-  {1000.0f, "1kHz tone"},
-  {100.0f, "Low frequency"},
-  {10000.0f, "High frequency"}
-};
+static audio_frequency_test_case_t audio_frequency_cases[] = {{440.0f, "A4 note"},       {880.0f, "A5 note"},
+                                                              {220.0f, "A3 note"},       {1000.0f, "1kHz tone"},
+                                                              {100.0f, "Low frequency"}, {10000.0f, "High frequency"}};
 
 ParameterizedTestParameters(audio, frequency_tests) {
   size_t nb_cases = sizeof(audio_frequency_cases) / sizeof(audio_frequency_cases[0]);
@@ -722,11 +709,7 @@ typedef struct {
 } audio_stress_test_case_t;
 
 static audio_stress_test_case_t audio_stress_cases[] = {
-  {10, "Light stress test"},
-  {50, "Medium stress test"},
-  {100, "Heavy stress test"},
-  {500, "Intensive stress test"}
-};
+    {10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
 ParameterizedTestParameters(audio, stress_tests) {
   size_t nb_cases = sizeof(audio_stress_cases) / sizeof(audio_stress_cases[0]);
@@ -772,13 +755,9 @@ typedef struct {
 } audio_edge_test_case_t;
 
 static audio_edge_test_case_t audio_edge_cases[] = {
-  {0, 0, "Zero size operations"},
-  {1, 1, "Single sample"},
-  {10, 5, "Write more than read"},
-  {5, 10, "Read more than available"},
-  {1000, 100, "Large write, small read"},
-  {100, 1000, "Small write, large read"}
-};
+    {0, 0, "Zero size operations"},         {1, 1, "Single sample"},
+    {10, 5, "Write more than read"},        {5, 10, "Read more than available"},
+    {1000, 100, "Large write, small read"}, {100, 1000, "Small write, large read"}};
 
 ParameterizedTestParameters(audio, edge_cases) {
   size_t nb_cases = sizeof(audio_edge_cases) / sizeof(audio_edge_cases[0]);

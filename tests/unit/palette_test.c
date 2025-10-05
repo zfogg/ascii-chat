@@ -19,13 +19,11 @@ typedef struct {
 } palette_test_case_t;
 
 // Test data for builtin palette validation
-static palette_test_case_t builtin_palette_cases[] = {
-  {PALETTE_STANDARD, "standard", PALETTE_CHARS_STANDARD, false},
-  {PALETTE_BLOCKS, "blocks", PALETTE_CHARS_BLOCKS, true},
-  {PALETTE_DIGITAL, "digital", PALETTE_CHARS_DIGITAL, true},
-  {PALETTE_MINIMAL, "minimal", PALETTE_CHARS_MINIMAL, false},
-  {PALETTE_COOL, "cool", PALETTE_CHARS_COOL, true}
-};
+static palette_test_case_t builtin_palette_cases[] = {{PALETTE_STANDARD, "standard", PALETTE_CHARS_STANDARD, false},
+                                                      {PALETTE_BLOCKS, "blocks", PALETTE_CHARS_BLOCKS, true},
+                                                      {PALETTE_DIGITAL, "digital", PALETTE_CHARS_DIGITAL, true},
+                                                      {PALETTE_MINIMAL, "minimal", PALETTE_CHARS_MINIMAL, false},
+                                                      {PALETTE_COOL, "cool", PALETTE_CHARS_COOL, true}};
 
 ParameterizedTestParameters(palette_tests, builtin_palette_tests) {
   size_t nb_cases = sizeof(builtin_palette_cases) / sizeof(builtin_palette_cases[0]);
@@ -48,10 +46,7 @@ typedef struct {
 } invalid_palette_test_case_t;
 
 static invalid_palette_test_case_t invalid_palette_cases[] = {
-  {PALETTE_CUSTOM, "Custom palette"},
-  {PALETTE_COUNT, "Count palette"},
-  {(palette_type_t)999, "Invalid enum value"}
-};
+    {PALETTE_CUSTOM, "Custom palette"}, {PALETTE_COUNT, "Count palette"}, {(palette_type_t)999, "Invalid enum value"}};
 
 ParameterizedTestParameters(palette_tests, invalid_palette_tests) {
   size_t nb_cases = sizeof(invalid_palette_cases) / sizeof(invalid_palette_cases[0]);
@@ -70,13 +65,11 @@ typedef struct {
   bool expected_utf8;
 } utf8_test_case_t;
 
-static utf8_test_case_t utf8_test_cases[] = {
-  {PALETTE_CHARS_STANDARD, "Standard ASCII palette", false},
-  {PALETTE_CHARS_MINIMAL, "Minimal ASCII palette", false},
-  {PALETTE_CHARS_BLOCKS, "Blocks UTF-8 palette", true},
-  {PALETTE_CHARS_COOL, "Cool UTF-8 palette", true},
-  {"", "Empty palette", false}
-};
+static utf8_test_case_t utf8_test_cases[] = {{PALETTE_CHARS_STANDARD, "Standard ASCII palette", false},
+                                             {PALETTE_CHARS_MINIMAL, "Minimal ASCII palette", false},
+                                             {PALETTE_CHARS_BLOCKS, "Blocks UTF-8 palette", true},
+                                             {PALETTE_CHARS_COOL, "Cool UTF-8 palette", true},
+                                             {"", "Empty palette", false}};
 
 ParameterizedTestParameters(palette_tests, utf8_encoding_tests) {
   size_t nb_cases = sizeof(utf8_test_cases) / sizeof(utf8_test_cases[0]);
@@ -97,12 +90,11 @@ typedef struct {
 } validation_test_case_t;
 
 static validation_test_case_t validation_test_cases[] = {
-  {PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD), "Valid standard palette", true},
-  {PALETTE_CHARS_BLOCKS, strlen(PALETTE_CHARS_BLOCKS), "Valid UTF-8 palette", true},
-  {"A", 1, "Single character", true},
-  {NULL, 10, "NULL palette", false},
-  {"", 0, "Empty palette", false}
-};
+    {PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD), "Valid standard palette", true},
+    {PALETTE_CHARS_BLOCKS, strlen(PALETTE_CHARS_BLOCKS), "Valid UTF-8 palette", true},
+    {"A", 1, "Single character", true},
+    {NULL, 10, "NULL palette", false},
+    {"", 0, "Empty palette", false}};
 
 ParameterizedTestParameters(palette_tests, validation_tests) {
   size_t nb_cases = sizeof(validation_test_cases) / sizeof(validation_test_cases[0]);
@@ -123,15 +115,14 @@ typedef struct {
 } compatibility_test_case_t;
 
 static compatibility_test_case_t compatibility_test_cases[] = {
-  {PALETTE_BLOCKS, true, "UTF-8 blocks with support", PALETTE_BLOCKS},
-  {PALETTE_COOL, true, "UTF-8 cool with support", PALETTE_COOL},
-  {PALETTE_BLOCKS, false, "UTF-8 blocks without support", PALETTE_STANDARD},
-  {PALETTE_DIGITAL, false, "UTF-8 digital without support", PALETTE_STANDARD},
-  {PALETTE_COOL, false, "UTF-8 cool without support", PALETTE_STANDARD},
-  {PALETTE_STANDARD, false, "ASCII standard without support", PALETTE_STANDARD},
-  {PALETTE_MINIMAL, false, "ASCII minimal without support", PALETTE_MINIMAL},
-  {PALETTE_CUSTOM, false, "Custom palette", PALETTE_CUSTOM}
-};
+    {PALETTE_BLOCKS, true, "UTF-8 blocks with support", PALETTE_BLOCKS},
+    {PALETTE_COOL, true, "UTF-8 cool with support", PALETTE_COOL},
+    {PALETTE_BLOCKS, false, "UTF-8 blocks without support", PALETTE_STANDARD},
+    {PALETTE_DIGITAL, false, "UTF-8 digital without support", PALETTE_STANDARD},
+    {PALETTE_COOL, false, "UTF-8 cool without support", PALETTE_STANDARD},
+    {PALETTE_STANDARD, false, "ASCII standard without support", PALETTE_STANDARD},
+    {PALETTE_MINIMAL, false, "ASCII minimal without support", PALETTE_MINIMAL},
+    {PALETTE_CUSTOM, false, "Custom palette", PALETTE_CUSTOM}};
 
 ParameterizedTestParameters(palette_tests, compatibility_tests) {
   size_t nb_cases = sizeof(compatibility_test_cases) / sizeof(compatibility_test_cases[0]);
@@ -153,12 +144,11 @@ typedef struct {
 } utf8_palette_test_case_t;
 
 static utf8_palette_test_case_t utf8_palette_test_cases[] = {
-  {" .:-=+*#%@", "ASCII palette", 10, 10, true},
-  {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
-  {"A→B", "Mixed ASCII/UTF-8", 3, 5, true}, // A(1) + →(3) + B(1)
-  {NULL, "NULL string", 0, 0, false},
-  {"", "Empty string", 0, 0, false}
-};
+    {" .:-=+*#%@", "ASCII palette", 10, 10, true},
+    {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
+    {"A→B", "Mixed ASCII/UTF-8", 3, 5, true},     // A(1) + →(3) + B(1)
+    {NULL, "NULL string", 0, 0, false},
+    {"", "Empty string", 0, 0, false}};
 
 ParameterizedTestParameters(palette_tests, utf8_palette_creation_tests) {
   size_t nb_cases = sizeof(utf8_palette_test_cases) / sizeof(utf8_palette_test_cases[0]);
@@ -170,13 +160,11 @@ ParameterizedTest(utf8_palette_test_case_t *tc, palette_tests, utf8_palette_crea
 
   if (tc->should_succeed) {
     cr_assert_not_null(palette, "Palette creation should succeed for %s", tc->description);
-    cr_assert_eq(utf8_palette_get_char_count(palette), tc->expected_char_count,
-                 "Char count should match for %s", tc->description);
-    cr_assert_eq(palette->total_bytes, tc->expected_total_bytes,
-                 "Total bytes should match for %s", tc->description);
+    cr_assert_eq(utf8_palette_get_char_count(palette), tc->expected_char_count, "Char count should match for %s",
+                 tc->description);
+    cr_assert_eq(palette->total_bytes, tc->expected_total_bytes, "Total bytes should match for %s", tc->description);
     if (tc->palette_string) {
-      cr_assert_str_eq(palette->raw_string, tc->palette_string,
-                       "Raw string should match for %s", tc->description);
+      cr_assert_str_eq(palette->raw_string, tc->palette_string, "Raw string should match for %s", tc->description);
     }
     utf8_palette_destroy(palette);
   } else {
@@ -194,15 +182,10 @@ typedef struct {
 } utf8_char_test_case_t;
 
 static utf8_char_test_case_t utf8_char_test_cases[] = {
-  {"ABC", 0, "First ASCII char", true, 1},
-  {"ABC", 2, "Last ASCII char", true, 1},
-  {"ABC", 3, "Out of bounds", false, 0},
-  {"A→B", 0, "First mixed char", true, 1},
-  {"A→B", 1, "UTF-8 char", true, 3},
-  {"A→B", 2, "Last mixed char", true, 1},
-  {"🌑🌒", 0, "First emoji", true, 4},
-  {"🌑🌒", 1, "Second emoji", true, 4}
-};
+    {"ABC", 0, "First ASCII char", true, 1}, {"ABC", 2, "Last ASCII char", true, 1},
+    {"ABC", 3, "Out of bounds", false, 0},   {"A→B", 0, "First mixed char", true, 1},
+    {"A→B", 1, "UTF-8 char", true, 3},       {"A→B", 2, "Last mixed char", true, 1},
+    {"🌑🌒", 0, "First emoji", true, 4},     {"🌑🌒", 1, "Second emoji", true, 4}};
 
 ParameterizedTestParameters(palette_tests, utf8_char_access_tests) {
   size_t nb_cases = sizeof(utf8_char_test_cases) / sizeof(utf8_char_test_cases[0]);
@@ -217,8 +200,7 @@ ParameterizedTest(utf8_char_test_case_t *tc, palette_tests, utf8_char_access_tes
 
   if (tc->should_succeed) {
     cr_assert_not_null(char_info, "Char info should exist for %s", tc->description);
-    cr_assert_eq(char_info->byte_len, tc->expected_byte_len,
-                 "Byte length should match for %s", tc->description);
+    cr_assert_eq(char_info->byte_len, tc->expected_byte_len, "Byte length should match for %s", tc->description);
   } else {
     cr_assert_null(char_info, "Char info should be null for %s", tc->description);
   }
@@ -237,13 +219,12 @@ typedef struct {
 } utf8_search_test_case_t;
 
 static utf8_search_test_case_t utf8_search_test_cases[] = {
-  {"ABC", "A", 1, "Find first ASCII", true, 0},
-  {"ABC", "B", 1, "Find middle ASCII", true, 1},
-  {"ABC", "Z", 1, "Find non-existent ASCII", false, (size_t)-1},
-  {"A→B", "→", 3, "Find UTF-8 char", true, 1},
-  {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},
-  {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}
-};
+    {"ABC", "A", 1, "Find first ASCII", true, 0},
+    {"ABC", "B", 1, "Find middle ASCII", true, 1},
+    {"ABC", "Z", 1, "Find non-existent ASCII", false, (size_t)-1},
+    {"A→B", "→", 3, "Find UTF-8 char", true, 1},
+    {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},
+    {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}};
 
 ParameterizedTestParameters(palette_tests, utf8_search_tests) {
   size_t nb_cases = sizeof(utf8_search_test_cases) / sizeof(utf8_search_test_cases[0]);
@@ -275,14 +256,13 @@ typedef struct {
 } client_palette_init_test_case_t;
 
 static client_palette_init_test_case_t client_palette_init_cases[] = {
-  {PALETTE_STANDARD, NULL, "Standard builtin palette", true, PALETTE_CHARS_STANDARD},
-  {PALETTE_MINIMAL, NULL, "Minimal builtin palette", true, PALETTE_CHARS_MINIMAL},
-  {PALETTE_BLOCKS, NULL, "Blocks builtin palette", true, PALETTE_CHARS_BLOCKS},
-  {PALETTE_COOL, NULL, "Cool builtin palette", true, PALETTE_CHARS_COOL},
-  {PALETTE_CUSTOM, "01234567", "Valid custom palette", true, "01234567"},
-  {PALETTE_CUSTOM, NULL, "NULL custom palette", false, NULL},
-  {PALETTE_CUSTOM, "", "Empty custom palette", false, NULL}
-};
+    {PALETTE_STANDARD, NULL, "Standard builtin palette", true, PALETTE_CHARS_STANDARD},
+    {PALETTE_MINIMAL, NULL, "Minimal builtin palette", true, PALETTE_CHARS_MINIMAL},
+    {PALETTE_BLOCKS, NULL, "Blocks builtin palette", true, PALETTE_CHARS_BLOCKS},
+    {PALETTE_COOL, NULL, "Cool builtin palette", true, PALETTE_CHARS_COOL},
+    {PALETTE_CUSTOM, "01234567", "Valid custom palette", true, "01234567"},
+    {PALETTE_CUSTOM, NULL, "NULL custom palette", false, NULL},
+    {PALETTE_CUSTOM, "", "Empty custom palette", false, NULL}};
 
 ParameterizedTestParameters(palette_tests, client_palette_initialization_tests) {
   size_t nb_cases = sizeof(client_palette_init_cases) / sizeof(client_palette_init_cases[0]);
@@ -294,16 +274,13 @@ ParameterizedTest(client_palette_init_test_case_t *tc, palette_tests, client_pal
   size_t client_palette_len;
   char client_luminance_palette[256];
 
-  int result = initialize_client_palette(tc->palette_type, tc->custom_palette,
-                                       client_palette_chars, &client_palette_len,
-                                       client_luminance_palette);
+  int result = initialize_client_palette(tc->palette_type, tc->custom_palette, client_palette_chars,
+                                         &client_palette_len, client_luminance_palette);
 
   if (tc->should_succeed) {
     cr_assert_eq(result, 0, "Initialization should succeed for %s", tc->description);
-    cr_assert_eq(client_palette_len, strlen(tc->expected_chars),
-                 "Palette length should match for %s", tc->description);
-    cr_assert_str_eq(client_palette_chars, tc->expected_chars,
-                     "Palette chars should match for %s", tc->description);
+    cr_assert_eq(client_palette_len, strlen(tc->expected_chars), "Palette length should match for %s", tc->description);
+    cr_assert_str_eq(client_palette_chars, tc->expected_chars, "Palette chars should match for %s", tc->description);
   } else {
     cr_assert_eq(result, -1, "Initialization should fail for %s", tc->description);
   }

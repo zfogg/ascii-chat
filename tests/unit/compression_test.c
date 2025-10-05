@@ -604,13 +604,12 @@ typedef struct {
 } compression_data_test_case_t;
 
 static compression_data_test_case_t compression_data_cases[] = {
-  {"Highly compressible data", 1000, 'A', true, "repeating"},
-  {"Moderately compressible", 1000, 'X', true, "repeating"},
-  {"Random-like data", 1000, '\0', false, "random"}, // Will be filled with random
-  {"Small data", 10, 'B', false, "small"},
-  {"Large compressible data", 10000, 'C', true, "large_repeating"},
-  {"Mixed pattern data", 500, 'D', true, "mixed"}
-};
+    {"Highly compressible data", 1000, 'A', true, "repeating"},
+    {"Moderately compressible", 1000, 'X', true, "repeating"},
+    {"Random-like data", 1000, '\0', false, "random"}, // Will be filled with random
+    {"Small data", 10, 'B', false, "small"},
+    {"Large compressible data", 10000, 'C', true, "large_repeating"},
+    {"Mixed pattern data", 500, 'D', true, "mixed"}};
 
 ParameterizedTestParameters(compression, data_patterns) {
   size_t nb_cases = sizeof(compression_data_cases) / sizeof(compression_data_cases[0]);
@@ -650,13 +649,8 @@ typedef struct {
 } compression_frame_test_case_t;
 
 static compression_frame_test_case_t compression_frame_cases[] = {
-  {1, 1, 1, "Tiny frame"},
-  {100, 10, 10, "Small frame"},
-  {1000, 32, 32, "Medium frame"},
-  {10000, 100, 100, "Large frame"},
-  {100000, 320, 240, "Very large frame"},
-  {1000000, 640, 480, "Huge frame"}
-};
+    {1, 1, 1, "Tiny frame"},          {100, 10, 10, "Small frame"},           {1000, 32, 32, "Medium frame"},
+    {10000, 100, 100, "Large frame"}, {100000, 320, 240, "Very large frame"}, {1000000, 640, 480, "Huge frame"}};
 
 ParameterizedTestParameters(compression, frame_sizes) {
   size_t nb_cases = sizeof(compression_frame_cases) / sizeof(compression_frame_cases[0]);
@@ -684,13 +678,8 @@ typedef struct {
 } compression_image_format_test_case_t;
 
 static compression_image_format_test_case_t compression_image_format_cases[] = {
-  {0x12345678, "Standard RGB format"},
-  {0x87654321, "Reversed format"},
-  {0x00000000, "Zero format"},
-  {0xFFFFFFFF, "Max format"},
-  {0xDEADBEEF, "Hex pattern format"},
-  {0xCAFEBABE, "Another hex pattern"}
-};
+    {0x12345678, "Standard RGB format"}, {0x87654321, "Reversed format"},    {0x00000000, "Zero format"},
+    {0xFFFFFFFF, "Max format"},          {0xDEADBEEF, "Hex pattern format"}, {0xCAFEBABE, "Another hex pattern"}};
 
 ParameterizedTestParameters(compression, image_formats) {
   size_t nb_cases = sizeof(compression_image_format_cases) / sizeof(compression_image_format_cases[0]);
@@ -720,12 +709,10 @@ typedef struct {
   bool test_negative_dimensions;
 } compression_error_test_case_t;
 
-static compression_error_test_case_t compression_error_cases[] = {
-  {"NULL frame data", true, false, false, false},
-  {"Zero frame size", false, true, false, false},
-  {"Invalid socket", false, false, true, false},
-  {"Negative dimensions", false, false, false, true}
-};
+static compression_error_test_case_t compression_error_cases[] = {{"NULL frame data", true, false, false, false},
+                                                                  {"Zero frame size", false, true, false, false},
+                                                                  {"Invalid socket", false, false, true, false},
+                                                                  {"Negative dimensions", false, false, false, true}};
 
 ParameterizedTestParameters(compression, error_conditions) {
   size_t nb_cases = sizeof(compression_error_cases) / sizeof(compression_error_cases[0]);
@@ -762,11 +749,7 @@ typedef struct {
 } compression_stress_test_case_t;
 
 static compression_stress_test_case_t compression_stress_cases[] = {
-  {5, "Light stress test"},
-  {20, "Medium stress test"},
-  {50, "Heavy stress test"},
-  {100, "Intensive stress test"}
-};
+    {5, "Light stress test"}, {20, "Medium stress test"}, {50, "Heavy stress test"}, {100, "Intensive stress test"}};
 
 ParameterizedTestParameters(compression, stress_tests) {
   size_t nb_cases = sizeof(compression_stress_cases) / sizeof(compression_stress_cases[0]);

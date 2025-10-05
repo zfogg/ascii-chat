@@ -713,14 +713,12 @@ typedef struct {
   bool should_succeed;
 } ascii_palette_test_case_t;
 
-static ascii_palette_test_case_t ascii_palette_cases[] = {
-  {"@#$%&*+=-:. ", "Standard palette", true},
-  {" .:-=+*#%@", "Reversed standard", true},
-  {"ABCDEFGHIJKLMNOP", "Custom palette", true},
-  {"0123456789", "Numeric palette", true},
-  {"", "Empty palette", false},
-  {NULL, "NULL palette", false}
-};
+static ascii_palette_test_case_t ascii_palette_cases[] = {{"@#$%&*+=-:. ", "Standard palette", true},
+                                                          {" .:-=+*#%@", "Reversed standard", true},
+                                                          {"ABCDEFGHIJKLMNOP", "Custom palette", true},
+                                                          {"0123456789", "Numeric palette", true},
+                                                          {"", "Empty palette", false},
+                                                          {NULL, "NULL palette", false}};
 
 ParameterizedTestParameters(ascii, palette_tests) {
   size_t nb_cases = sizeof(ascii_palette_cases) / sizeof(ascii_palette_cases[0]);
@@ -767,14 +765,8 @@ typedef struct {
 } ascii_size_test_case_t;
 
 static ascii_size_test_case_t ascii_size_cases[] = {
-  {1, 1, "1x1 image"},
-  {2, 2, "2x2 image"},
-  {4, 4, "4x4 image"},
-  {8, 8, "8x8 image"},
-  {16, 16, "16x16 image"},
-  {32, 32, "32x32 image"},
-  {64, 64, "64x64 image"}
-};
+    {1, 1, "1x1 image"},     {2, 2, "2x2 image"},     {4, 4, "4x4 image"},    {8, 8, "8x8 image"},
+    {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
 ParameterizedTestParameters(ascii, size_tests) {
   size_t nb_cases = sizeof(ascii_size_cases) / sizeof(ascii_size_cases[0]);
@@ -829,15 +821,10 @@ typedef struct {
 } ascii_option_test_case_t;
 
 static ascii_option_test_case_t ascii_option_cases[] = {
-  {false, false, false, "No options"},
-  {true, false, false, "Color only"},
-  {false, true, false, "Bold only"},
-  {false, false, true, "Italic only"},
-  {true, true, false, "Color and bold"},
-  {true, false, true, "Color and italic"},
-  {false, true, true, "Bold and italic"},
-  {true, true, true, "All options"}
-};
+    {false, false, false, "No options"},    {true, false, false, "Color only"},
+    {false, true, false, "Bold only"},      {false, false, true, "Italic only"},
+    {true, true, false, "Color and bold"},  {true, false, true, "Color and italic"},
+    {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
 
 ParameterizedTestParameters(ascii, option_tests) {
   size_t nb_cases = sizeof(ascii_option_cases) / sizeof(ascii_option_cases[0]);
@@ -875,11 +862,7 @@ typedef struct {
 } ascii_stress_test_case_t;
 
 static ascii_stress_test_case_t ascii_stress_cases[] = {
-  {10, "Light stress test"},
-  {50, "Medium stress test"},
-  {100, "Heavy stress test"},
-  {500, "Intensive stress test"}
-};
+    {10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
 ParameterizedTestParameters(ascii, stress_tests) {
   size_t nb_cases = sizeof(ascii_stress_cases) / sizeof(ascii_stress_cases[0]);
