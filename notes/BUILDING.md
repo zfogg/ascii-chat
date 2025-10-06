@@ -22,7 +22,7 @@ ASCII-Chat supports multiple build configurations via `CMAKE_BUILD_TYPE`:
 |------------|-------------|---------------|------------|----------|
 | **Debug** | `-O0` | Yes | ASan, UBSan | Finding bugs, memory issues |
 | **Dev** | `-O0` | Yes | No | Fast compilation, daily development |
-| **Release** | `-O2` | No | No | Production, performance testing |
+| **Release** | `-O3` | No | No | Production, performance testing |
 | **Coverage** | `-O0` | Yes | No | Code coverage analysis |
 
 ### Debug Build (Default - Recommended)
@@ -62,7 +62,7 @@ cmake --build build
 ```
 
 **Features:**
-- Full optimizations (`-O2`)
+- Full optimizations (`-O3`)
 - No debug symbols (smaller binaries)
 - No sanitizers (maximum performance)
 

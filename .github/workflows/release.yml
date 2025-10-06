@@ -2,153 +2,484 @@ name: Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master, main ]
     paths:
       - '**.c'
       - '**.h'
       - '**.m'
+      - 'CMakeLists.txt'
+      - 'Makefile'
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Release tag'
-        required: true
-        default: 'v1.0.0'
+      version:
+        description: 'Full version (e.g., v2.0.0) - overrides auto-bump'
+        required: false
+        type: string
+      major_bump:
+        description: 'Force major version bump (requires manual trigger)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     outputs:
+      version: ${{ steps.version.outputs.version }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for version calculation
 
-    - name: Generate release notes
-      id: release_notes
+    - name: Determine version
+      id: version
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          TAG="${{ github.event.inputs.tag }}"
+        # If manual version provided, use it
+        if [[ -n "${{ github.event.inputs.version }}" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+          echo "Using manual version: $VERSION"
         else
-          TAG="${{ github.ref_name }}"
+          # Get last tag
+          LAST_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo "v0.0.0")
+          echo "Last tag: $LAST_TAG"
+
+          # Parse version components
+          if [[ $LAST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+          else
+            MAJOR=0
+            MINOR=0
+            PATCH=0
+          fi
+
+          # Count commits by type since last tag
+          echo "Analyzing commits since $LAST_TAG..."
+
+          # Get all commits since last tag
+          COMMITS=$(git log --format=%s $LAST_TAG..HEAD)
+
+          # Count breaking changes
+          BREAKING_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature)\!|^breaking' || true)
+          BREAKING_BODY_COUNT=$(git log --format=%B $LAST_TAG..HEAD | grep -ic 'BREAKING CHANGE' || true)
+          TOTAL_BREAKING=$((BREAKING_COUNT + BREAKING_BODY_COUNT))
+
+          # Count features
+          FEAT_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature):' || true)
+
+          # Count fixes
+          FIX_COUNT=$(echo "$COMMITS" | grep -icE '^(fix|bugfix):' || true)
+
+          # Count other commits
+          TOTAL_COMMITS=$(echo "$COMMITS" | wc -l)
+          OTHER_COUNT=$((TOTAL_COMMITS - TOTAL_BREAKING - FEAT_COUNT - FIX_COUNT))
+
+          echo "Commit analysis:"
+          echo "  Breaking changes: $TOTAL_BREAKING"
+          echo "  Features: $FEAT_COUNT"
+          echo "  Fixes: $FIX_COUNT"
+          echo "  Other: $OTHER_COUNT"
+          echo "  Total: $TOTAL_COMMITS"
+
+          # Check for manual major bump override
+          if [[ "${{ github.event.inputs.major_bump }}" == "true" ]]; then
+            # Manual major bump requested (workflow_dispatch only)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            BUMP_TYPE="major (manual override)"
+          # Determine version bump based on ALL commits
+          # Note: Breaking change commits are IGNORED for auto-release
+          # Major bumps require manual workflow dispatch with major_bump=true
+          elif [[ $FEAT_COUNT -gt 0 ]]; then
+            # Minor bump - increment for each feature
+            MINOR=$((MINOR + FEAT_COUNT))
+            PATCH=0
+            BUMP_TYPE="minor (${FEAT_COUNT} features)"
+            if [[ $TOTAL_BREAKING -gt 0 ]]; then
+              echo "WARNING: ${TOTAL_BREAKING} breaking change commits detected but ignored."
+              echo "For major version bump, use workflow_dispatch with major_bump=true"
+            fi
+          elif [[ $FIX_COUNT -gt 0 || $OTHER_COUNT -gt 0 ]]; then
+            # Patch bump - increment for each fix/other commit
+            PATCH=$((PATCH + FIX_COUNT + OTHER_COUNT))
+            BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
+            if [[ $TOTAL_BREAKING -gt 0 ]]; then
+              echo "WARNING: ${TOTAL_BREAKING} breaking change commits detected but ignored."
+              echo "For major version bump, use workflow_dispatch with major_bump=true"
+            fi
+          else
+            # No commits? Default to patch
+            PATCH=$((PATCH + 1))
+            BUMP_TYPE="patch (default)"
+          fi
+
+          echo "Bump type: $BUMP_TYPE"
+
+          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $VERSION"
         fi
 
-        echo "TAG=$TAG" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-        # Generate changelog from commit messages since last tag
-        LAST_TAG=$(git tag --sort=-version:refname | head -n 2 | tail -n 1)
+    - name: Generate changelog
+      id: changelog
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        LAST_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo "")
+
         if [[ -n "$LAST_TAG" ]]; then
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
           echo "## Changes since $LAST_TAG" >> $GITHUB_OUTPUT
-          git log --pretty=format:"- %s (%an)" $LAST_TAG..HEAD >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+
+          # Group commits by type
+          echo "### Features" >> $GITHUB_OUTPUT
+          git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (feat|feature):' || echo "- None" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+
+          echo "### Bug Fixes" >> $GITHUB_OUTPUT
+          git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (fix|bugfix):' || echo "- None" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+
+          echo "### Other Changes" >> $GITHUB_OUTPUT
+          git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|feature|fix|bugfix):' | head -n 20 >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
         else
-          echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+          echo "CHANGELOG=Initial release of ASCII-Chat" >> $GITHUB_OUTPUT
         fi
+
+    - name: Create and push tag
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git tag -a "$VERSION" -m "Release $VERSION"
+        git push origin "$VERSION"
 
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ steps.release_notes.outputs.TAG }}
-        release_name: ASCII Chat ${{ steps.release_notes.outputs.TAG }}
+        tag_name: ${{ steps.version.outputs.version }}
+        name: ASCII-Chat ${{ steps.version.outputs.version }}
         body: |
-          # ASCII Chat Release ${{ steps.release_notes.outputs.TAG }}
+          # ASCII-Chat ${{ steps.version.outputs.version }}
 
-          ASCII video chat - probably the first command line video chat program!
+          Terminal-based video chat with ASCII art conversion. Supports multiple clients with real-time video mixing and audio streaming.
 
-          ## Installation
+          ## Download
 
-          **Prerequisites:**
-          - Linux: clang, libv4l-dev, zlib1g-dev, portaudio19-dev, libsodium-dev, pkg-config
-          - macOS: portaudio, libsodium (via Homebrew)
+          **Linux x86_64 (Recommended - Static musl build):**
+          - Fully static binary, no dependencies
+          - Portable across all Linux distributions
+          - Download: `ascii-chat-linux-x86_64.tar.gz`
 
-          **Quick Install:**
+          **Linux ARM64 (Static musl build):**
+          - For Raspberry Pi, ARM servers, etc.
+          - Download: `ascii-chat-linux-aarch64.tar.gz`
+
+          **Windows x86_64:**
+          - Native MSVC build with included DLLs
+          - Download: `ascii-chat-windows-x86_64.tar.gz`
+
+          **macOS Intel (x86_64):**
+          - Requires Homebrew dependencies
+          - Download: `ascii-chat-macos-x86_64.tar.gz`
+
+          **macOS Apple Silicon (ARM64):**
+          - Native ARM64 build
+          - Download: `ascii-chat-macos-arm64.tar.gz`
+
+          ## Quick Start
+
+          **Linux (no dependencies required):**
           ```bash
-          # Linux (Ubuntu/Debian)
-          sudo apt-get update && sudo apt-get install -y clang libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev pkg-config
+          tar xzf ascii-chat-linux-*.tar.gz
+          cd release-*
+          ./ascii-chat-server
+          ```
 
-          # macOS
+          **macOS (install dependencies first):**
+          ```bash
           brew install portaudio libsodium
+          tar xzf ascii-chat-macos-*.tar.gz
+          cd release-*
+          ./ascii-chat-server
           ```
 
-          **Download Release:**
-          ```bash
-          # Linux
-          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-Linux-release.tar.gz
-          tar -xzf ascii-chat-Linux-release.tar.gz
-
-          # macOS
-          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.release_notes.outputs.TAG }}/ascii-chat-macOS-release.tar.gz
-          tar -xzf ascii-chat-macOS-release.tar.gz
+          **Windows (DLLs included):**
+          ```
+          Extract ascii-chat-windows-x86_64.tar.gz
+          Run ascii-chat-server.exe
           ```
 
-          ## Usage
+          ## Features
+          - Real-time webcam to ASCII conversion
+          - Multi-client grid layout (up to 9 clients)
+          - Audio streaming with mixing
+          - Color support (24-bit + 256-color fallback)
+          - Half-block rendering for 2x vertical resolution
+          - SIMD optimizations (AVX2, SSSE3, SSE2, NEON)
+          - Compression support
+          - Static builds (Linux) - no dependencies!
 
-          Start the server:
-          ```bash
-          ./bin/ascii-chat-server -p 90001
-          ```
-
-          Connect with a client:
-          ```bash
-          ./bin/ascii-chat-client -p 90001 -a 127.0.0.1
-          ```
-
-          Enable color mode:
-          ```bash
-          ./bin/ascii-chat-server --color
-          ./bin/ascii-chat-client --color
-          ```
-
-          ${{ steps.release_notes.outputs.CHANGELOG }}
+          ${{ steps.changelog.outputs.CHANGELOG }}
         draft: false
         prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-  build-and-upload:
+  build-linux:
+    needs: create-release
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x86_64
+          - runner: ubuntu-latest-arm64
+            arch: aarch64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.create-release.outputs.version }}
+
+    - name: Install musl and dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools musl-dev clang cmake ninja-build
+
+    - name: Build musl static release
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        ./release.sh "$VERSION"
+
+    - name: Generate checksums
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        TARBALL="ascii-chat-linux-${{ matrix.arch }}.tar.gz"
+        PLATFORM="linux-${{ matrix.arch }}"
+
+        .github/scripts/generate-checksums.sh "$TARBALL" "$PLATFORM" "$VERSION"
+
+    - name: Upload Linux release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create-release.outputs.version }}
+        files: |
+          ascii-chat-linux-*.tar.gz*
+          checksums-*.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
     needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-13       # Intel
+            arch: x86_64
+          - os: macos-14       # Apple Silicon
+            arch: arm64
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
       with:
-        os: ${{ contains(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        ref: ${{ needs.create-release.outputs.version }}
+
+    - name: Install dependencies
+      run: |
+        brew install portaudio libsodium cmake ninja pkg-config
 
     - name: Build release
       run: |
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x'
+        VERSION="${{ needs.create-release.outputs.version }}"
+
+        # Build (without musl on macOS)
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MIMALLOC=ON -GNinja
         cmake --build build
 
-    - name: Create release package
-      run: |
-        mkdir -p release-package
-        cp build/bin/ascii-chat-server build/bin/ascii-chat-client release-package/
-        cp README.md release-package/
-        echo "ASCII Chat $(date)" > release-package/BUILD_INFO.txt
-        echo "OS: ${{ runner.os }}" >> release-package/BUILD_INFO.txt
-        echo "Commit: ${{ github.sha }}" >> release-package/BUILD_INFO.txt
-        tar -czf ascii-chat-${{ runner.os }}-release.tar.gz -C release-package .
+        # Package
+        RELEASE_DIR="release-${VERSION}-macos-${{ matrix.arch }}"
+        mkdir -p "$RELEASE_DIR"
+        cp build/bin/ascii-chat-server "$RELEASE_DIR/"
+        cp build/bin/ascii-chat-client "$RELEASE_DIR/"
+        cp README.md "$RELEASE_DIR/" 2>/dev/null || true
+        cp LICENSE "$RELEASE_DIR/" 2>/dev/null || true
 
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Create release notes
+        cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
+        # ASCII-Chat $VERSION
+
+        ## Build Information
+        - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        - Architecture: ${{ matrix.arch }}
+        - OS: macOS
+        - Compiler: clang $(clang --version | head -1)
+        - Optimization: Release (-O3 + LTO)
+        - Memory Allocator: mimalloc
+
+        ## Installation
+
+        Install dependencies via Homebrew:
+        \`\`\`bash
+        brew install portaudio libsodium
+        \`\`\`
+
+        Then run:
+        \`\`\`bash
+        ./ascii-chat-server
+        ./ascii-chat-client
+        \`\`\`
+        EOF
+
+        # Create tarball
+        tar czf "ascii-chat-macos-${{ matrix.arch }}.tar.gz" "$RELEASE_DIR"
+
+    - name: Generate checksums
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        TARBALL="ascii-chat-macos-${{ matrix.arch }}.tar.gz"
+        PLATFORM="macos-${{ matrix.arch }}"
+
+        .github/scripts/generate-checksums.sh "$TARBALL" "$PLATFORM" "$VERSION"
+
+    - name: Upload macOS release
+      uses: softprops/action-gh-release@v1
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./ascii-chat-${{ runner.os }}-release.tar.gz
-        asset_name: ascii-chat-${{ runner.os }}-release.tar.gz
-        asset_content_type: application/gzip
+        tag_name: ${{ needs.create-release.outputs.version }}
+        files: |
+          ascii-chat-macos-${{ matrix.arch }}.tar.gz*
+          checksums-*.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    needs: create-release
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.create-release.outputs.version }}
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
+
+    - name: Install dependencies via vcpkg
+      run: |
+        vcpkg install portaudio:x64-windows libsodium:x64-windows zlib:x64-windows
+
+    - name: Build Windows release
+      shell: pwsh
+      run: |
+        $VERSION = "${{ needs.create-release.outputs.version }}"
+        $ARCH = "x86_64"
+        $RELEASE_DIR = "release-$VERSION"
+        $RELEASE_NAME = "ascii-chat-windows-$ARCH"
+
+        # Build with MSVC using build.ps1
+        ./build.ps1 -Config Release
+
+        # Create release directory
+        New-Item -ItemType Directory -Force -Path $RELEASE_DIR
+
+        # Copy binaries
+        Copy-Item build/bin/ascii-chat-server.exe $RELEASE_DIR/
+        Copy-Item build/bin/ascii-chat-client.exe $RELEASE_DIR/
+
+        # Copy runtime DLLs from vcpkg
+        $vcpkgRoot = $env:VCPKG_ROOT
+        if ($vcpkgRoot) {
+            $dllPath = "$vcpkgRoot/installed/x64-windows/bin"
+            if (Test-Path $dllPath) {
+                Copy-Item "$dllPath/*.dll" $RELEASE_DIR/ -ErrorAction SilentlyContinue
+            }
+        }
+
+        # Copy documentation
+        Copy-Item README.md $RELEASE_DIR/ -ErrorAction SilentlyContinue
+        Copy-Item LICENSE $RELEASE_DIR/ -ErrorAction SilentlyContinue
+
+        # Create release notes
+        $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC")
+        @"
+# ASCII-Chat $VERSION
+
+## Build Information
+- Built: $timestamp
+- Architecture: $ARCH
+- OS: Windows
+- Compiler: MSVC (Visual Studio)
+- Optimization: Release (-O2)
+- Memory Allocator: mimalloc
+
+## Installation
+
+Extract the archive and run:
+``````
+ascii-chat-server.exe
+ascii-chat-client.exe
+``````
+
+All required DLLs are included.
+"@ | Out-File -FilePath "$RELEASE_DIR/RELEASE_NOTES.md" -Encoding utf8
+
+        # Create tarball (use tar.exe which is built into Windows 10+)
+        tar.exe -czf "$RELEASE_NAME.tar.gz" $RELEASE_DIR
+
+    - name: Generate checksums
+      shell: pwsh
+      run: |
+        $VERSION = "${{ needs.create-release.outputs.version }}"
+        $TARBALL = "ascii-chat-windows-x86_64.tar.gz"
+        $PLATFORM = "windows-x86_64"
+
+        # Generate SHA256
+        $hash256 = (Get-FileHash -Path $TARBALL -Algorithm SHA256).Hash.ToLower()
+        "$hash256  $TARBALL" | Out-File -FilePath "$TARBALL.sha256" -Encoding ascii
+
+        # Generate SHA512
+        $hash512 = (Get-FileHash -Path $TARBALL -Algorithm SHA512).Hash.ToLower()
+        "$hash512  $TARBALL" | Out-File -FilePath "$TARBALL.sha512" -Encoding ascii
+
+        # Generate MD5
+        $hash_md5 = (Get-FileHash -Path $TARBALL -Algorithm MD5).Hash.ToLower()
+        "$hash_md5  $TARBALL" | Out-File -FilePath "$TARBALL.md5" -Encoding ascii
+
+        # Create combined checksum file
+        @"
+# ASCII-Chat $VERSION - $PLATFORM build
+# Checksums generated on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC
+
+## SHA-256
+$hash256  $TARBALL
+
+## SHA-512
+$hash512  $TARBALL
+
+## MD5
+$hash_md5  $TARBALL
+"@ | Out-File -FilePath "checksums-$PLATFORM.txt" -Encoding utf8
+
+        Write-Host "Checksums:"
+        Get-Content "checksums-$PLATFORM.txt"
+
+    - name: Upload Windows release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create-release.outputs.version }}
+        files: |
+          ascii-chat-windows-*.tar.gz*
+          checksums-*.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
