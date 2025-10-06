@@ -137,7 +137,7 @@ static int base64_encode(const uint8_t *in, size_t inlen, char *out, size_t outc
     }
     out[j++] = b64tab[(val >> 18) & 0x3F];
     out[j++] = b64tab[(val >> 12) & 0x3F];
-    out[j++] = (i < inlen + 1) ? b64tab[(val >> 6) & 0x3F] : '=';
+    out[j++] = (i < inlen) ? b64tab[(val >> 6) & 0x3F] : '=';
     out[j++] = '=';
   }
   out[j] = '\0';
