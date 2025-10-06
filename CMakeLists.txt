@@ -2526,13 +2526,9 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
                 list(APPEND TEST_LDFLAGS ssl crypto)
             endif()
 
-            # Additional libgit2 dependencies
-            foreach(lib ssh2 http_parser)
-                find_library(${lib}_LIB ${lib})
-                if(${lib}_LIB)
-                    list(APPEND TEST_LDFLAGS ${lib})
-                endif()
-            endforeach()
+            # Additional libgit2 dependencies (required for static linking)
+            # These must be linked unconditionally when using static libgit2
+            list(APPEND TEST_LDFLAGS ssh2 http_parser pcre2-8)
         endif()
 
         # GSSAPI/Kerberos support
@@ -2546,8 +2542,8 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
 
         # Additional system libraries (matches Makefile)
         # Make these optional - only link if available
-        # Note: ssh2 and http_parser are already handled above with libgit2
-        foreach(lib pcre2-8 dl resolv)
+        # Note: ssh2, http_parser, and pcre2-8 are already handled above with libgit2
+        foreach(lib dl resolv)
             find_library(${lib}_LIB ${lib})
             if(${lib}_LIB)
                 list(APPEND TEST_LDFLAGS ${lib})
