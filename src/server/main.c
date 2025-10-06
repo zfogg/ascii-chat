@@ -255,7 +255,8 @@ static void sigint_handler(int sigint) {
   printf("DEBUG: Signal handler completed\n");
   (void)fflush(stdout);
 
-  log_destroy();
+  // NOTE: Do NOT call log_destroy() here - it's not async-signal-safe
+  // The main thread will handle cleanup when it detects g_should_exit
 }
 
 /**
