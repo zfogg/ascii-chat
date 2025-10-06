@@ -1542,6 +1542,7 @@ if(USE_MUSL)
         CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --static
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libz.a
     )
 
     # Build libsodium with musl
@@ -1553,6 +1554,7 @@ if(USE_MUSL)
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
         DEPENDS zlib-musl
+        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libsodium.a
     )
 
 
@@ -1561,10 +1563,11 @@ if(USE_MUSL)
         URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
         URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
         PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
+        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
         DEPENDS libsodium-musl
+        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libasound.a
     )
 
     # Build PortAudio with musl (depends on ALSA)
@@ -1575,6 +1578,7 @@ if(USE_MUSL)
         CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${MUSL_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libportaudio.a
         DEPENDS alsa-lib-musl
     )
 
@@ -1587,6 +1591,7 @@ if(USE_MUSL)
         BUILD_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR>
         INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
         BUILD_IN_SOURCE 1
+        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libexecinfo.a
     )
 
     # Note: JACK is complex and optional - we'll skip it for static musl builds
