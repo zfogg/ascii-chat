@@ -2450,8 +2450,15 @@ else()
     endif()
 
     # Add unwind library if using Homebrew LLVM (to avoid duplicate -lunwind flags)
+    # Only add if not already in LDFLAGS environment variable
     if(DEFINED HOMEBREW_LLVM_LIBS)
-        list(APPEND PLATFORM_LIBS ${HOMEBREW_LLVM_LIBS})
+        if(DEFINED ENV{LDFLAGS} AND "$ENV{LDFLAGS}" MATCHES "-lunwind")
+            message(STATUS "Skipping -lunwind (already in LDFLAGS environment variable)")
+        elseif(CMAKE_EXE_LINKER_FLAGS MATCHES "-lunwind")
+            message(STATUS "Skipping -lunwind (already in CMAKE_EXE_LINKER_FLAGS)")
+        else()
+            list(APPEND PLATFORM_LIBS ${HOMEBREW_LLVM_LIBS})
+        endif()
     endif()
 
     # When building with musl, don't add PortAudio to the library
