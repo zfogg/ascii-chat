@@ -186,16 +186,19 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t* ctx, socke
     }
 
     // Process auth challenge
-    crypto_result_t result = crypto_process_public_key_packet(&ctx->crypto_ctx, packet, received);
+    crypto_result_t result = crypto_process_auth_challenge(&ctx->crypto_ctx, packet, received);
     if (result != CRYPTO_OK) {
         log_error("Failed to process auth challenge: %s", crypto_result_to_string(result));
         return -1;
     }
 
-    // TODO: Compute HMAC response using shared secret
-    // For now, just send a dummy response
+    // Compute HMAC response using shared secret
     uint8_t auth_response[32];
-    crypto_random_bytes(auth_response, 32);
+    crypto_result_t hmac_result = crypto_compute_hmac(ctx->crypto_ctx.shared_key, ctx->crypto_ctx.auth_nonce, auth_response);
+    if (hmac_result != CRYPTO_OK) {
+        log_error("Failed to compute HMAC response: %s", crypto_result_to_string(hmac_result));
+        return -1;
+    }
 
     // Create auth response packet
     uint32_t packet_type = CRYPTO_PACKET_AUTH_RESPONSE;
