@@ -324,7 +324,6 @@ int crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t c
   buffer_pool_free(payload, payload_len);
 
   ctx->state = CRYPTO_HANDSHAKE_READY;
-  log_info("Crypto handshake completed successfully");
 
   return 0;
 }
@@ -378,7 +377,6 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
   buffer_pool_free(payload, payload_len);
 
   // Send HANDSHAKE_COMPLETE packet
-  log_debug("Sending HANDSHAKE_COMPLETE packet");
   result = send_packet(client_socket, PACKET_TYPE_HANDSHAKE_COMPLETE, NULL, 0);
   if (result != 0) {
     log_error("Failed to send HANDSHAKE_COMPLETE packet");
