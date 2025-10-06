@@ -245,12 +245,15 @@ tty_info_t get_current_tty(void) {
   // Method 1: Check $TTY environment variable first (most specific on macOS)
   const char *tty_env = getenv("TTY");
   if (tty_env && strlen(tty_env) > 0 && is_valid_tty_path(tty_env)) {
-    result.fd = platform_open(tty_env, PLATFORM_O_WRONLY);
-    if (result.fd >= 0) {
-      result.path = tty_env;
-      result.owns_fd = true;
-      log_debug("POSIX TTY from $TTY: %s (fd=%d)", tty_env, result.fd);
-      return result;
+    // Strict validation: path must start with "/dev/", and not contain ".." or extra slashes after "/dev/"
+    if (strncmp(tty_env, "/dev/", 5) == 0 && strstr(tty_env, "..") == NULL && strchr(tty_env + 5, '/') == NULL) {
+      result.fd = platform_open(tty_env, PLATFORM_O_WRONLY);
+      if (result.fd >= 0) {
+        result.path = tty_env;
+        result.owns_fd = true;
+        log_debug("POSIX TTY from $TTY: %s (fd=%d)", tty_env, result.fd);
+        return result;
+      }
     }
   }
 
