@@ -62,9 +62,28 @@ jobs:
           C_FLAGS=""
         fi
 
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
         echo "Building with CMake build type: ${BUILD_TYPE}"
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
           -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS="${C_FLAGS}" \
@@ -214,8 +233,27 @@ jobs:
         echo "Running integration tests with coverage build..."
         # Use CMake build system with coverage
         # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS='--coverage' -DBUILD_TESTS=ON
         cmake --build build
@@ -273,9 +311,28 @@ jobs:
       run: |
         # Build performance tests with Release mode + coverage for accurate performance
         # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
         echo "Building performance tests with Release optimization and coverage instrumentation..."
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS='-O3 --coverage' -DBUILD_TESTS=ON
         cmake --build build
@@ -394,8 +451,27 @@ jobs:
       run: |
         # Use CMake build system
         # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
           -DBUILD_TESTS=ON
         cmake --build build
