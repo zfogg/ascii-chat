@@ -453,8 +453,19 @@ if(APPLE)
                 COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
                 OUTPUT_VARIABLE CLANG_RESOURCE_DIR
                 OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
+                ERROR_VARIABLE CLANG_RESOURCE_DIR_ERROR
+                RESULT_VARIABLE CLANG_RESOURCE_DIR_RESULT
             )
+            message(STATUS "DEBUG: -print-resource-dir result code = ${CLANG_RESOURCE_DIR_RESULT}")
+            message(STATUS "DEBUG: CLANG_RESOURCE_DIR = '${CLANG_RESOURCE_DIR}'")
+            if(CLANG_RESOURCE_DIR_ERROR)
+                message(STATUS "DEBUG: -print-resource-dir error = ${CLANG_RESOURCE_DIR_ERROR}")
+            endif()
+            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+                message(STATUS "DEBUG: ${CLANG_RESOURCE_DIR}/include EXISTS")
+            else()
+                message(STATUS "DEBUG: ${CLANG_RESOURCE_DIR}/include DOES NOT EXIST")
+            endif()
 
             # Homebrew LLVM's Clang needs to know where the macOS SDK is for standard headers
             # Get the SDK path using xcrun (this is critical for finding system headers)
