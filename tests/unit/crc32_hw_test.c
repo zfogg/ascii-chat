@@ -2,9 +2,10 @@
 #include <criterion/new/assert.h>
 #include <string.h>
 #include "tests/common.h"
+#include "tests/logging.h"
 #include "crc32_hw.h"
 
-TestSuite(crc32_hw);
+TEST_SUITE_WITH_DEBUG_LOGGING(crc32_hw);
 
 /* ============================================================================
  * Basic CRC32 Computation Tests
@@ -33,12 +34,18 @@ Test(crc32_hw, simple_string) {
   uint32_t crc_hw = asciichat_crc32_hw(test_str, strlen(test_str));
   uint32_t crc_sw = asciichat_crc32_sw(test_str, strlen(test_str));
 
+  log_debug("CRC32 test for 'Hello, World!' (len=%zu):", strlen(test_str));
+  log_debug("  Hardware CRC: 0x%08x", crc_hw);
+  log_debug("  Software CRC: 0x%08x", crc_sw);
+  log_debug("  HW available: %s", crc32_hw_is_available() ? "YES" : "NO");
+
   cr_assert_eq(crc_hw, crc_sw, "Hardware and software CRC32 of 'Hello, World!' should match");
 
   // Known CRC32-C (Castagnoli) value for "Hello, World!"
   // Note: This uses the CRC32-C polynomial (0x1EDC6F41), not IEEE 802.3
   // This matches hardware implementations (__crc32* on ARM, _mm_crc32_* on x86)
   uint32_t expected = 0x4d551068;
+  log_debug("  Expected CRC: 0x%08x", expected);
   cr_assert_eq(crc_hw, expected, "CRC32-C of 'Hello, World!' should be 0x%08x", expected);
 }
 
@@ -100,6 +107,11 @@ Test(crc32_hw, size_8_bytes) {
   const char *data = "12345678";
   uint32_t crc_hw = asciichat_crc32_hw(data, 8);
   uint32_t crc_sw = asciichat_crc32_sw(data, 8);
+
+  log_debug("CRC32 test for 8-byte aligned data:");
+  log_debug("  Data: '%s'", data);
+  log_debug("  Hardware CRC: 0x%08x", crc_hw);
+  log_debug("  Software CRC: 0x%08x", crc_sw);
 
   cr_assert_eq(crc_hw, crc_sw, "Hardware and software CRC32 of 8 bytes should match");
 }
