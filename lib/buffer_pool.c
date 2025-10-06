@@ -1,6 +1,7 @@
 #include "buffer_pool.h"
 #include "common.h"
 #include "platform/abstraction.h"
+#include "platform/init.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -289,28 +290,22 @@ void data_buffer_pool_get_stats(data_buffer_pool_t *pool, uint64_t *hits, uint64
  */
 
 static data_buffer_pool_t *g_global_buffer_pool = NULL;
-static mutex_t g_global_pool_mutex = {0};
-static volatile bool g_global_pool_mutex_initialized = false;
+static static_mutex_t g_global_pool_mutex = STATIC_MUTEX_INIT;
 
 void data_buffer_pool_init_global(void) {
-  // Initialize mutex if not already done (thread-safe on Windows/POSIX)
-  if (!g_global_pool_mutex_initialized) {
-    mutex_init(&g_global_pool_mutex);
-    g_global_pool_mutex_initialized = true;
-  }
-
-  mutex_lock(&g_global_pool_mutex);
+  // Use static_mutex for thread-safe lazy initialization
+  static_mutex_lock(&g_global_pool_mutex);
   if (!g_global_buffer_pool) {
     g_global_buffer_pool = data_buffer_pool_create();
     if (g_global_buffer_pool) {
       log_info("Initialized global shared buffer pool");
     }
   }
-  mutex_unlock(&g_global_pool_mutex);
+  static_mutex_unlock(&g_global_pool_mutex);
 }
 
 void data_buffer_pool_cleanup_global(void) {
-  mutex_lock(&g_global_pool_mutex);
+  static_mutex_lock(&g_global_pool_mutex);
   if (g_global_buffer_pool) {
     // Log final statistics
     uint64_t hits, misses;
@@ -323,7 +318,7 @@ void data_buffer_pool_cleanup_global(void) {
     data_buffer_pool_destroy(g_global_buffer_pool);
     g_global_buffer_pool = NULL;
   }
-  mutex_unlock(&g_global_pool_mutex);
+  static_mutex_unlock(&g_global_pool_mutex);
 }
 
 data_buffer_pool_t *data_buffer_pool_get_global(void) {
