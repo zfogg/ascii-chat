@@ -63,6 +63,7 @@
 #include "crypto/handshake.h"
 #include "crypto/known_hosts.h"
 #include "crypto.h"
+#include "crypto/crypto.h"
 
 #include "platform/abstraction.h"
 #include "network.h"
@@ -587,7 +588,9 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
   mutex_lock(&g_send_mutex);
 
   // Check if crypto handshake is complete and encrypt the packet
-  if (crypto_client_is_ready()) {
+  if (crypto_handshake_is_ready(&g_crypto_ctx)) {
+    log_debug("Encrypting packet type=%d, len=%zu (crypto_ready=%d, handshake_complete=%d)",
+              type, len, crypto_handshake_is_ready(&g_crypto_ctx), g_crypto_ctx.crypto_ctx.handshake_complete);
     // Create the packet header
     packet_header_t header;
     header.magic = htonl(PACKET_MAGIC);
@@ -607,40 +610,37 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
     memcpy(plaintext, &header, sizeof(header));
     memcpy(plaintext + sizeof(header), data, len);
 
-    // Encrypt the packet
-    size_t ciphertext_len;
-    uint8_t* ciphertext = buffer_pool_alloc(plaintext_len + 32); // Extra space for encryption overhead
-    if (!ciphertext) {
-      buffer_pool_free(plaintext, plaintext_len);
-      mutex_unlock(&g_send_mutex);
-      return -1;
-    }
+        // Encrypt the packet data
+        size_t ciphertext_len;
+        size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+        uint8_t* ciphertext = buffer_pool_alloc(ciphertext_size);
+        if (!ciphertext) {
+          buffer_pool_free(plaintext, plaintext_len);
+          mutex_unlock(&g_send_mutex);
+          return -1;
+        }
 
-    int encrypt_result = crypto_client_encrypt_packet(plaintext, plaintext_len, ciphertext, plaintext_len + 32, &ciphertext_len);
-    if (encrypt_result != 0) {
-      log_error("Failed to encrypt packet");
-      buffer_pool_free(plaintext, plaintext_len);
-      buffer_pool_free(ciphertext, plaintext_len + 32);
-      mutex_unlock(&g_send_mutex);
-      return -1;
-    }
+        int encrypt_result = crypto_encrypt(&g_crypto_ctx.crypto_ctx, plaintext, plaintext_len,
+                                           ciphertext, ciphertext_size, &ciphertext_len);
+        if (encrypt_result != 0) {
+          log_error("Failed to encrypt packet (result=%d)", encrypt_result);
+          buffer_pool_free(plaintext, plaintext_len);
+          buffer_pool_free(ciphertext, ciphertext_size);
+          mutex_unlock(&g_send_mutex);
+          return -1;
+        }
 
-    // Send the encrypted packet
-    ssize_t sent = socket_send(sockfd, ciphertext, ciphertext_len, 0);
-    if (sent != (ssize_t)ciphertext_len) {
-      log_error("Failed to send encrypted packet");
-      buffer_pool_free(plaintext, plaintext_len);
-      buffer_pool_free(ciphertext, plaintext_len + 32);
-      mutex_unlock(&g_send_mutex);
-      return -1;
-    }
-
-    buffer_pool_free(plaintext, plaintext_len);
-    buffer_pool_free(ciphertext, plaintext_len + 32);
+        // Send as PACKET_TYPE_ENCRYPTED with the encrypted data
+        int result = send_packet(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
+        buffer_pool_free(plaintext, plaintext_len);
+        buffer_pool_free(ciphertext, ciphertext_size);
+        mutex_unlock(&g_send_mutex);
+        return result;
     mutex_unlock(&g_send_mutex);
     return 0;
   } else {
     // No encryption - send normal packet
+    log_debug("Sending unencrypted packet type=%d, len=%zu", type, len);
     int result = send_packet(sockfd, type, data, len);
     mutex_unlock(&g_send_mutex);
     return result;
