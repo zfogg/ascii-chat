@@ -611,7 +611,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'v': {
       const char *binary_name = is_client ? "ascii-chat-client" : "ascii-chat-server";
       printf("%s v%d.%d.%d-dev-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_COMMIT, ASCII_CHAT_BUILD_TYPE);
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
       exit(EXIT_SUCCESS);
       break;
     }

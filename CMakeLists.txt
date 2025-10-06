@@ -101,31 +101,32 @@ project(ascii-chat
 # Create a script that generates version.h on every build
 set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/generate_version.cmake")
 file(WRITE "${VERSION_SCRIPT}" "
-# Get git commit hash
+# Get git describe output (includes commits since last tag)
 execute_process(
-    COMMAND git rev-parse --short HEAD
+    COMMAND git describe --tags --long --dirty --always
     WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_VARIABLE GIT_DESCRIBE
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_QUIET
 )
 
-# Check if working directory is clean
-execute_process(
-    COMMAND git diff-index --quiet HEAD --
-    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-    RESULT_VARIABLE GIT_DIRTY
-    ERROR_QUIET
-)
-
-# If git not available or not in a repo, use 'unknown'
-if(NOT GIT_COMMIT_HASH)
-    set(GIT_COMMIT_HASH \"unknown\")
-endif()
-
-# Add '-dirty' suffix if working directory has uncommitted changes
-if(GIT_DIRTY)
-    set(GIT_COMMIT_HASH \"\${GIT_COMMIT_HASH}-dirty\")
+# Parse git describe output
+# Format: v0.1.0-42-gf811525-dirty
+# where 42 is commits since tag, g prefix indicates git hash
+if(GIT_DESCRIBE MATCHES \"^v?[0-9]+\\\\.[0-9]+\\\\.[0-9]+-([0-9]+)-g([0-9a-f]+)(-dirty)?\\\$\")
+    # Has a tag with commits since
+    set(GIT_COMMITS_SINCE_TAG \"\${CMAKE_MATCH_1}\")
+    set(GIT_COMMIT_HASH \"\${CMAKE_MATCH_2}\")
+    set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_3}\")
+    set(GIT_VERSION_STRING \"\${GIT_COMMITS_SINCE_TAG}+g\${GIT_COMMIT_HASH}\${GIT_DIRTY_SUFFIX}\")
+elseif(GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)?\\\$\")
+    # No tags, just commit hash
+    set(GIT_COMMIT_HASH \"\${CMAKE_MATCH_1}\")
+    set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_2}\")
+    set(GIT_VERSION_STRING \"g\${GIT_COMMIT_HASH}\${GIT_DIRTY_SUFFIX}\")
+else()
+    # Fallback
+    set(GIT_VERSION_STRING \"unknown\")
 endif()
 
 # Set build type
