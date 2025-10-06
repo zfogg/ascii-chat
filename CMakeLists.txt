@@ -1632,18 +1632,6 @@ if(USE_MIMALLOC)
 
     include(FetchContent)
 
-    # On Linux, ensure libgit2's dependencies are available for FetchContent
-    # The system's static libgit2 requires libssh2 and libpcre2 to be linked
-    if(PLATFORM_LINUX)
-        # Find and link libssh2 and libpcre2 for git operations
-        find_library(LIBSSH2 ssh2)
-        find_library(LIBPCRE2 pcre2-8)
-        if(LIBSSH2 AND LIBPCRE2)
-            link_libraries(${LIBSSH2} ${LIBPCRE2})
-            message(STATUS "Configured libgit2 dependencies for FetchContent: libssh2, libpcre2")
-        endif()
-    endif()
-
     FetchContent_Declare(
         mimalloc
         GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
@@ -2572,17 +2560,29 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
             # Additional libgit2 dependencies (required for static linking)
             # These must be linked unconditionally when using static libgit2
             # Check if each library exists before adding
-            find_library(SSH2_LIB ssh2)
-            find_library(HTTP_PARSER_LIB http_parser)
-            find_library(PCRE2_LIB pcre2-8)
 
-            if(SSH2_LIB)
+            # On Linux, provide search hints for standard locations
+            if(PLATFORM_LINUX)
+                find_library(SSH2_LIB ssh2 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
+                find_library(HTTP_PARSER_LIB http_parser HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
+                find_library(PCRE2_LIB pcre2-8 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
+            else()
+                find_library(SSH2_LIB ssh2)
+                find_library(HTTP_PARSER_LIB http_parser)
+                find_library(PCRE2_LIB pcre2-8)
+            endif()
+
+            # Always link these for static libgit2 on Linux (they're required)
+            if(PLATFORM_LINUX)
+                list(APPEND TEST_LDFLAGS ssh2 http_parser pcre2-8)
+                message(STATUS "Added libgit2 static dependencies for tests: ssh2, http_parser, pcre2-8")
+            elseif(SSH2_LIB)
                 list(APPEND TEST_LDFLAGS ssh2)
             endif()
-            if(HTTP_PARSER_LIB)
+            if(HTTP_PARSER_LIB AND NOT PLATFORM_LINUX)
                 list(APPEND TEST_LDFLAGS http_parser)
             endif()
-            if(PCRE2_LIB)
+            if(PCRE2_LIB AND NOT PLATFORM_LINUX)
                 list(APPEND TEST_LDFLAGS pcre2-8)
             endif()
         endif()
