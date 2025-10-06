@@ -426,7 +426,7 @@ if(APPLE)
 
         # Also check for ccache wrapper pointing to Homebrew LLVM
         set(IS_HOMEBREW_LLVM FALSE)
-        if(COMPILER_PREFIX MATCHES "/(usr/local|opt/homebrew)/opt/llvm")
+        if(COMPILER_PREFIX MATCHES "/opt/homebrew/opt/llvm" OR COMPILER_PREFIX MATCHES "/usr/local/opt/llvm")
             set(IS_HOMEBREW_LLVM TRUE)
         elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/usr/local/opt/llvm/bin/clang")
             # ccache wrapper detected, check if underlying compiler is Homebrew LLVM
@@ -1660,12 +1660,6 @@ if(USE_MIMALLOC)
     endif()
 
     FetchContent_MakeAvailable(mimalloc)
-
-    # For macOS with Homebrew LLVM, add resource-dir to mimalloc's compile options
-    if(APPLE AND DEFINED CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include" AND TARGET mimalloc-static)
-        target_compile_options(mimalloc-static PRIVATE "-resource-dir" "${CLANG_RESOURCE_DIR}")
-        message(STATUS "Configured mimalloc with Clang resource directory: ${CLANG_RESOURCE_DIR}")
-    endif()
 
     # For musl builds, set REALGCC environment for mimalloc build
     if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
