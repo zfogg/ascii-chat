@@ -41,6 +41,9 @@ RUN pacman -Sy --noconfirm \
     criterion \
     protobuf-c \
     bc \
+    git \
+    pcre2 \
+    libssh2 \
     && pacman -Scc --noconfirm \
     && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 

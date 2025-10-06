@@ -22,6 +22,7 @@
 #include <execinfo.h> // Provided by glibc or libexecinfo for musl
 #include <pthread.h>
 #include <stdatomic.h>
+#include <netdb.h>
 
 /**
  * @brief Get username from environment variables

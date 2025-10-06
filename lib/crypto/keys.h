@@ -82,4 +82,7 @@ int parse_authorized_keys(const char* path, public_key_t* keys, size_t* num_keys
 // Convert public key to display format (ssh-ed25519 or x25519 hex)
 void format_public_key(const public_key_t* key, char* output, size_t output_size);
 
+// Decode hex string to binary (utility function for testing)
+int hex_decode(const char* hex, uint8_t* output, size_t output_len);
+
 #endif

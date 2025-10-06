@@ -61,9 +61,10 @@ int crypto_handshake_server_start(crypto_handshake_context_t* ctx, socket_t clie
     }
 
     // Send public key to client
+    log_debug("Sending public key packet: %zu bytes", packet_len);
     ssize_t sent = socket_send(client_socket, packet, packet_len, 0);
     if (sent != (ssize_t)packet_len) {
-        log_error("Failed to send public key packet");
+        log_error("Failed to send public key packet: sent %zd bytes, expected %zu bytes", sent, packet_len);
         return -1;
     }
 
