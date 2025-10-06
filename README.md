@@ -70,9 +70,9 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 2. Install the dependencies for your OS (instructions listed above).
 3. Run `cmake --preset default && cmake --build --preset default`.
 4. Run `./build/bin/ascii-chat-server`.
-5. Open a second terminal window/tab/split/pane.
+5. Open a second terminal window, tab, split, or pane. Or go to another computer.
 6. Run `./build/bin/ascii-chat-client`.
-7. *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat-client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
+7. 👯 *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat-client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
 
 Check the `CMakeLists.txt` to see how it works.
 
@@ -146,17 +146,18 @@ CMake supports several configuration options:
 
 ## Testing
 
-The project uses a unified test runner script (`tests/scripts/run_tests.sh`) that consolidates all test execution logic.
+The project uses a unified test runner script at `tests/scripts/run_tests.sh` that consolidates all test execution logic. It accepts all sorts of arguments and auto-builds the test executables it's gonna run beforehand with ninja, which is convenient because it allows you to simply iterate on code and then run this script, going between those two things.
 
 ### Quick Start
-1. Have the dependencies installed.
-2. Build the project: `cmake --preset debug && cmake --build --preset debug`
-3. Run tests: `./tests/scripts/run_tests.sh`
+* Have the dependencies installed.
+* Choose:
+  1. Linux or macOS: run test runner script: `./tests/scripts/run_tests.sh`
+  2. Windows: use Docker: `./tests/scripts/run-docker-tests.ps1` (just calls `run_tests.sh` in a container)
 
 ### Test Types
 - **Unit Tests**: Test individual components in isolation
 - **Integration Tests**: Test component interactions and full workflows
-- **Performance Tests**: Benchmark SIMD vs scalar implementations
+- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
 
 ### Using the Test Script Directly
 ```bash
