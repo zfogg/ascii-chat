@@ -1555,16 +1555,6 @@ if(USE_MUSL)
         DEPENDS zlib-musl
     )
 
-    # Build ncurses with musl
-    ExternalProject_Add(ncurses-musl
-        URL https://ftp.gnu.org/gnu/ncurses/ncurses-6.4.tar.gz
-        URL_HASH SHA256=6931283d9ac87c5073f30b6290c4c75f21632bb4fc3603ac8100812bed248159
-        PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-normal --without-debug --enable-widec --without-cxx --without-cxx-binding
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
-        INSTALL_COMMAND make install
-        DEPENDS libsodium-musl
-    )
 
     # Build alsa-lib with musl
     ExternalProject_Add(alsa-lib-musl
@@ -1574,7 +1564,7 @@ if(USE_MUSL)
         CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
-        DEPENDS ncurses-musl
+        DEPENDS libsodium-musl
     )
 
     # Build PortAudio with musl (depends on ALSA)
@@ -2007,33 +1997,7 @@ else()
         find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
         find_library(COREMEDIA_FRAMEWORK CoreMedia REQUIRED)
         find_library(COREVIDEO_FRAMEWORK CoreVideo REQUIRED)
-        find_package(Curses REQUIRED)
     elseif(PLATFORM_LINUX)
-        # Linux ncurses/curses library detection - use pkg-config first
-        pkg_check_modules(NCURSES ncurses)
-        if(NOT NCURSES_FOUND)
-            # Fallback to manual search for Ubuntu systems
-            find_library(CURSES_LIBRARY
-                NAMES ncurses curses
-                PATHS /usr/lib/x86_64-linux-gnu /usr/lib /lib/x86_64-linux-gnu /lib
-            )
-            find_path(CURSES_INCLUDE_PATH
-                NAMES curses.h ncurses.h
-                PATHS /usr/include /usr/include/ncurses
-            )
-            if(CURSES_LIBRARY AND CURSES_INCLUDE_PATH)
-                set(CURSES_LIBRARIES ${CURSES_LIBRARY})
-                # Don't add system include paths when using musl - musl-gcc handles this
-                if(NOT USE_MUSL)
-                    set(CURSES_INCLUDE_DIRS ${CURSES_INCLUDE_PATH})
-                endif()
-            else()
-                message(FATAL_ERROR "Could not find ncurses/curses library")
-            endif()
-        else()
-            set(CURSES_LIBRARIES ${NCURSES_LIBRARIES})
-            set(CURSES_INCLUDE_DIRS ${NCURSES_INCLUDE_DIRS})
-        endif()
         find_package(Threads REQUIRED)
 
         # Linux library search paths (matches Makefile)
@@ -2298,11 +2262,9 @@ else()
             ${AVFOUNDATION_FRAMEWORK}
             ${COREMEDIA_FRAMEWORK}
             ${COREVIDEO_FRAMEWORK}
-            ${CURSES_LIBRARIES}
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_LIBS
-            ${CURSES_LIBRARIES}
             ${CMAKE_THREAD_LIBS_INIT}
         )
 
@@ -2333,7 +2295,6 @@ else()
 
         # Use musl-built static libraries (no audio libraries)
         target_link_libraries(ascii-chat-lib
-            ${MUSL_PREFIX}/lib/libncursesw.a
             ${MUSL_PREFIX}/lib/libsodium.a
             ${MUSL_PREFIX}/lib/libz.a
             ${MUSL_PREFIX}/lib/libexecinfo.a
@@ -2432,7 +2393,7 @@ if(USE_MUSL)
     # Add dependencies on musl libraries (they'll build automatically)
     # Note: LTO optimization requires PortAudio to be linked even though server doesn't call it
     # The linker's dead code elimination will remove the unused audio code
-    add_dependencies(ascii-chat-server ncurses-musl libsodium-musl zlib-musl libexecinfo-musl portaudio-musl alsa-lib-musl)
+    add_dependencies(ascii-chat-server libsodium-musl zlib-musl libexecinfo-musl portaudio-musl alsa-lib-musl)
 
     # Link against musl-built static libraries
     target_link_directories(ascii-chat-server PRIVATE ${MUSL_PREFIX}/lib)
@@ -2442,7 +2403,6 @@ if(USE_MUSL)
     target_link_libraries(ascii-chat-server
         ${MUSL_PREFIX}/lib/libportaudio.a
         ${MUSL_PREFIX}/lib/libasound.a
-        ${MUSL_PREFIX}/lib/libncursesw.a
         ${MUSL_PREFIX}/lib/libsodium.a
         ${MUSL_PREFIX}/lib/libz.a
         ${MUSL_PREFIX}/lib/libexecinfo.a
@@ -2465,7 +2425,7 @@ target_link_libraries(ascii-chat-client ascii-chat-lib)
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
-    add_dependencies(ascii-chat-client portaudio-musl alsa-lib-musl ncurses-musl libsodium-musl zlib-musl libexecinfo-musl)
+    add_dependencies(ascii-chat-client portaudio-musl alsa-lib-musl libsodium-musl zlib-musl libexecinfo-musl)
 
     # Link against musl-built static libraries
     target_link_directories(ascii-chat-client PRIVATE ${MUSL_PREFIX}/lib)
@@ -2475,7 +2435,6 @@ if(USE_MUSL)
     target_link_libraries(ascii-chat-client
         ${MUSL_PREFIX}/lib/libportaudio.a
         ${MUSL_PREFIX}/lib/libasound.a
-        ${MUSL_PREFIX}/lib/libncursesw.a
         ${MUSL_PREFIX}/lib/libsodium.a
         ${MUSL_PREFIX}/lib/libz.a
         ${MUSL_PREFIX}/lib/libexecinfo.a

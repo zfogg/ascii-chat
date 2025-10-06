@@ -23,13 +23,6 @@
 #include <limits.h>
 #include <locale.h>
 
-#ifdef __linux__
-#include <term.h>
-#include <curses.h>
-#elif __APPLE__
-#include <term.h>
-#endif
-
 #ifndef __APPLE__
 #include <langinfo.h>
 #endif
