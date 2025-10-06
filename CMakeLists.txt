@@ -331,6 +331,44 @@ if(APPLE)
             set(CMAKE_AR "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ar" CACHE FILEPATH "Archiver" FORCE)
             set(CMAKE_RANLIB "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ranlib" CACHE FILEPATH "Ranlib" FORCE)
 
+            # Configure resource directory BEFORE project() so flags are set early
+            # Get Clang version to construct resource directory path
+            execute_process(
+                COMMAND "${HOMEBREW_LLVM_PREFIX}/bin/clang" --version
+                OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
+            set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
+
+            # Construct resource directory (don't trust -print-resource-dir, it returns wrong path)
+            set(CLANG_RESOURCE_DIR "${HOMEBREW_LLVM_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
+
+            if(EXISTS "${CLANG_RESOURCE_DIR}/include")
+                message(STATUS "Found Clang resource directory: ${CLANG_RESOURCE_DIR}")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -resource-dir ${CLANG_RESOURCE_DIR}" CACHE STRING "C flags" FORCE)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -resource-dir ${CLANG_RESOURCE_DIR}" CACHE STRING "C++ flags" FORCE)
+            else()
+                message(WARNING "Could not find Clang resource directory at: ${CLANG_RESOURCE_DIR}")
+            endif()
+
+            # Get macOS SDK path for standard headers
+            execute_process(
+                COMMAND xcrun --show-sdk-path
+                OUTPUT_VARIABLE MACOS_SDK_PATH
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+
+            if(MACOS_SDK_PATH)
+                message(STATUS "Found macOS SDK at: ${MACOS_SDK_PATH}")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "C flags" FORCE)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "C++ flags" FORCE)
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Linker flags" FORCE)
+                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Shared linker flags" FORCE)
+            endif()
+
             message(STATUS "Configured Homebrew LLVM: ${CMAKE_C_COMPILER}")
         endif()
     else()
@@ -417,99 +455,27 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     endif()
 endif()
 
-# Configure Homebrew LLVM paths after project() if compiler was set
+# Configure Homebrew LLVM library paths after project()
+# NOTE: Compiler and SDK flags are configured BEFORE project() (see lines 334-370)
 if(APPLE)
     # Check if we're using Homebrew LLVM (either auto-detected or user-specified)
     if(CMAKE_C_COMPILER)
-        message(STATUS "DEBUG: CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
         get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
-        message(STATUS "DEBUG: COMPILER_DIR = ${COMPILER_DIR}")
         get_filename_component(COMPILER_PREFIX "${COMPILER_DIR}" DIRECTORY)
-        message(STATUS "DEBUG: COMPILER_PREFIX = ${COMPILER_PREFIX}")
 
         # Also check for ccache wrapper pointing to Homebrew LLVM
         set(IS_HOMEBREW_LLVM FALSE)
         if(COMPILER_PREFIX MATCHES "/opt/homebrew/opt/llvm" OR COMPILER_PREFIX MATCHES "/usr/local/opt/llvm")
-            message(STATUS "DEBUG: Detected Homebrew LLVM via prefix match")
             set(IS_HOMEBREW_LLVM TRUE)
         elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/usr/local/opt/llvm/bin/clang")
-            message(STATUS "DEBUG: Detected Homebrew LLVM via ccache wrapper (intel)")
-            # ccache wrapper detected, check if underlying compiler is Homebrew LLVM
             set(COMPILER_PREFIX "/usr/local/opt/llvm")
             set(IS_HOMEBREW_LLVM TRUE)
         elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/opt/homebrew/opt/llvm/bin/clang")
-            message(STATUS "DEBUG: Detected Homebrew LLVM via ccache wrapper (arm)")
             set(COMPILER_PREFIX "/opt/homebrew/opt/llvm")
             set(IS_HOMEBREW_LLVM TRUE)
-        else()
-            message(STATUS "DEBUG: Homebrew LLVM NOT detected - IS_HOMEBREW_LLVM = FALSE")
         endif()
 
         if(IS_HOMEBREW_LLVM)
-            message(STATUS "Configuring Homebrew LLVM paths at: ${COMPILER_PREFIX}")
-
-            # Get the compiler's resource directory for standard C headers like stdbool.h
-            # NOTE: -print-resource-dir can return incorrect paths on Homebrew LLVM
-            # (e.g., returns /usr/local/opt/llvm when installed at /opt/homebrew/opt/llvm)
-            # So we construct the path manually from COMPILER_PREFIX
-            execute_process(
-                COMMAND ${CMAKE_C_COMPILER} --version
-                OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-            # Extract version number (e.g., "21.1.2" -> "21")
-            string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
-            set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
-
-            # Construct resource directory path manually
-            set(CLANG_RESOURCE_DIR "${COMPILER_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
-
-            message(STATUS "DEBUG: Clang major version = ${CLANG_MAJOR_VERSION}")
-            message(STATUS "DEBUG: CLANG_RESOURCE_DIR = '${CLANG_RESOURCE_DIR}'")
-            if(EXISTS "${CLANG_RESOURCE_DIR}/include")
-                message(STATUS "DEBUG: ${CLANG_RESOURCE_DIR}/include EXISTS")
-            else()
-                message(STATUS "DEBUG: ${CLANG_RESOURCE_DIR}/include DOES NOT EXIST")
-            endif()
-
-            # Homebrew LLVM's Clang needs to know where the macOS SDK is for standard headers
-            # Get the SDK path using xcrun (this is critical for finding system headers)
-            execute_process(
-                COMMAND xcrun --show-sdk-path
-                OUTPUT_VARIABLE MACOS_SDK_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-
-            if(MACOS_SDK_PATH)
-                message(STATUS "Found macOS SDK at: ${MACOS_SDK_PATH}")
-                # Add SDK flags to compiler and linker
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "C flags" FORCE)
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "C++ flags" FORCE)
-                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Linker flags" FORCE)
-                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Shared linker flags" FORCE)
-            else()
-                message(WARNING "Could not find macOS SDK path - standard headers may not be found")
-            endif()
-
-            # Explicitly add the compiler's resource directory for standard C headers
-            # This is needed when using aggressive optimizations (-march=native, -flto, etc.)
-            # which can interfere with the compiler's default header search paths
-            # Use -resource-dir flag instead of include_directories to avoid affecting mimalloc
-            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
-                message(STATUS "Found Clang resource directory: ${CLANG_RESOURCE_DIR}")
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -resource-dir ${CLANG_RESOURCE_DIR}" CACHE STRING "C flags" FORCE)
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -resource-dir ${CLANG_RESOURCE_DIR}" CACHE STRING "C++ flags" FORCE)
-            else()
-                message(WARNING "Could not find Clang resource directory - standard C headers may not be found")
-            endif()
-
-            # Note: Do NOT add LLVM include paths globally - this breaks mimalloc and other
-            # dependencies by overriding standard system headers. The LLVM Clang compiler
-            # automatically knows where to find its own headers (intrinsics, etc.) through
-            # its resource directory. Only add LLVM includes to specific targets if needed.
-            # include_directories(SYSTEM "${COMPILER_PREFIX}/include")  # REMOVED - breaks builds
-
             # Add LLVM library paths and libraries (equivalent to LDFLAGS from brew info llvm)
             link_directories("${COMPILER_PREFIX}/lib")
 
