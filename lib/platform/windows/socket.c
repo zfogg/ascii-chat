@@ -250,11 +250,8 @@ int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interv
 
   if (enable) {
     // Windows Vista+ supports TCP keepalive parameters
-    struct tcp_keepalive {
-      ULONG onoff;
-      ULONG keepalivetime;
-      ULONG keepaliveinterval;
-    } keepalive_params;
+    // Use system-defined struct tcp_keepalive from mstcpip.h
+    struct tcp_keepalive keepalive_params;
 
     keepalive_params.onoff = 1;
     keepalive_params.keepalivetime = idle * 1000;         // Convert to milliseconds
