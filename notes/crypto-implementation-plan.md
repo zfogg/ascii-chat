@@ -27,11 +27,12 @@ Implement end-to-end encryption for ASCII-Chat using the existing lib/crypto.c c
    - For users who generate keys with libsodium directly
    - Same crypto as Ed25519 (Curve25519)
 
-3. **GPG Keys** (Ed25519 variant only)
+3. **GPG Keys** (Ed25519 variant only) - **OPTIONAL**
    - Fetch from github.com/username.gpg or gitlab.com/username.gpg
    - Shell out to `gpg` command for key export
    - Supports pinentry for passphrase prompts
    - GPG agent caching works
+   - **Graceful fallback**: If `gpg` not installed, other auth methods still work
 
 ### Deprecated: RSA Keys
 
@@ -110,7 +111,7 @@ echo "mypassword" > /tmp/keyfile
 ./ascii-chat-server --keyfile /tmp/keyfile
 ./ascii-chat-client --keyfile /tmp/keyfile
 
-# Or with GPG key (prompts for passphrase via pinentry)
+# Or with GPG key (OPTIONAL - requires gpg installed)
 ./ascii-chat-server --key gpg:0xABCD1234
 ./ascii-chat-client --key gpg:0xABCD1234
 
@@ -124,13 +125,20 @@ echo "mypassword" > /tmp/keyfile
 - DH key exchange + password verification
 - Server sends random challenge, client proves knowledge of password
 - Connection rejected if passwords don't match
+- **Works everywhere** - no external dependencies
 
-**With GPG key** (`--key gpg:...`):
-- Shell out to `gpg --export-secret-key` or `gpg --decrypt` to get key material
+**With GPG key** (`--key gpg:...`) - **OPTIONAL**:
+- Shell out to `gpg --export` to get key material
 - GPG prompts for passphrase via pinentry (native GPG UI)
 - Derive shared secret from GPG key material
 - Use same challenge/response as password mode
 - GPG agent can cache passphrase (like SSH agent)
+- **Graceful fallback**: If `gpg` not found, error with helpful message:
+  ```
+  ERROR: GPG key requested but 'gpg' command not found
+  Install GPG: apt-get install gnupg
+  Or use password auth: --key mypassword
+  ```
 
 **Security properties**:
 - ✅ Protects against passive eavesdropping
@@ -472,6 +480,56 @@ crypto_sign_ed25519_sk_to_curve25519()  // Convert SSH private key to DH private
 ```
 
 **Note**: libsodium already has cross-platform CSPRNG (`randombytes_buf()`), so we get secure random numbers on Linux/macOS/Windows for free.
+
+## GPG Optional Dependency Behavior
+
+**GPG is completely optional.** All core functionality works without it.
+
+### What Works WITHOUT GPG
+
+✅ **All of these work perfectly:**
+- Default encryption (ephemeral Ed25519 DH)
+- Password authentication (`--key mypassword`)
+- Keyfile authentication (`--keyfile /path/to/file`)
+- SSH Ed25519 keys (`--ssh-key ~/.ssh/id_ed25519`)
+- GitHub SSH keys (`--server-key github:username`)
+- GitLab SSH keys (`--server-key gitlab:username`)
+- Raw X25519 keys (hex format)
+- SSH authorized_keys whitelist (`--client-keys ~/.ssh/authorized_keys`)
+
+### What Requires GPG
+
+⭕ **These features need `gpg` installed:**
+- GPG key authentication (`--key gpg:0xKEYID`)
+- GitHub GPG keys (`--server-key github:username.gpg`)
+- GitLab GPG keys (`--server-key gitlab:username.gpg`)
+
+### Graceful Fallback Behavior
+
+If user requests GPG feature but `gpg` not found:
+```
+ERROR: GPG key requested but 'gpg' command not found
+Install GPG:
+  Ubuntu/Debian: apt-get install gnupg
+  macOS: brew install gnupg
+  Arch: pacman -S gnupg
+Or use password auth: --key mypassword
+Or use SSH keys: --server-key github:username
+```
+
+**Detection**: Before any GPG operation, run `is_gpg_available()`:
+```c
+static bool is_gpg_available(void) {
+    FILE* fp = popen("gpg --version 2>/dev/null", "r");
+    if (!fp) return false;
+    char buf[256];
+    bool found = (fgets(buf, sizeof(buf), fp) != NULL);
+    pclose(fp);
+    return found;
+}
+```
+
+This way, ascii-chat works on minimal systems without GPG installed.
 
 ## New Dependencies
 
@@ -983,9 +1041,34 @@ int fetch_github_gpg_keys(const char* username, char*** keys_out, size_t* num_ke
     return 0;
 }
 
+// Check if gpg command is available
+static bool is_gpg_available(void) {
+    // Try to run 'gpg --version'
+    FILE* fp = popen("gpg --version 2>/dev/null", "r");
+    if (!fp) return false;
+
+    char buf[256];
+    bool found = (fgets(buf, sizeof(buf), fp) != NULL);
+    pclose(fp);
+
+    return found;
+}
+
 // Get GPG key material by shelling out to gpg command
 // This allows GPG agent to handle passphrase prompts via pinentry
+// Returns: 0 on success, -1 on failure (gpg not found or key export failed)
 static int get_gpg_key_material(const char* key_id, uint8_t material[32]) {
+    // Check if gpg is installed
+    if (!is_gpg_available()) {
+        log_error("GPG key requested but 'gpg' command not found");
+        log_error("Install GPG:");
+        log_error("  Ubuntu/Debian: apt-get install gnupg");
+        log_error("  macOS: brew install gnupg");
+        log_error("  Arch: pacman -S gnupg");
+        log_error("Or use password auth: --key mypassword");
+        return -1;
+    }
+
     // Use gpg to export the key and derive material
     char cmd[512];
 
@@ -1011,6 +1094,8 @@ static int get_gpg_key_material(const char* key_id, uint8_t material[32]) {
     int status = pclose(fp);
     if (status != 0 || total == 0) {
         log_error("Failed to export GPG key: %s", key_id);
+        log_error("Make sure the key exists in your GPG keyring:");
+        log_error("  gpg --list-keys");
         return -1;
     }
 
@@ -1067,9 +1152,17 @@ int parse_public_key(const char* input, public_key_t* key_out) {
         // GitHub SSH keys
         const char* username = input + 7;
 
-        // Check if .gpg suffix (GPG key)
+        // Check if .gpg suffix (GPG key) - OPTIONAL feature
         const char* gpg_suffix = strstr(username, ".gpg");
         if (gpg_suffix && gpg_suffix[4] == '\0') {
+            // Check if gpg is available first
+            if (!is_gpg_available()) {
+                log_error("GPG key requested (github:%s) but 'gpg' command not found", username);
+                log_error("Install GPG or use SSH keys instead:");
+                log_error("  github:%s (without .gpg suffix)", username);
+                return -1;
+            }
+
             // Fetch GPG key from GitHub
             char username_copy[256];
             strncpy(username_copy, username, gpg_suffix - username);
@@ -1085,6 +1178,7 @@ int parse_public_key(const char* input, public_key_t* key_out) {
             // Parse GPG key (TODO: implement GPG key parsing)
             // For now, just store the raw GPG armor
             log_warn("GPG key parsing not yet implemented");
+            log_info("Fallback: Try 'github:%s' for SSH keys instead", username_copy);
             free(keys[0]);
             free(keys);
             return -1;
@@ -1155,10 +1249,13 @@ int parse_public_key(const char* input, public_key_t* key_out) {
 
     } else if (strncmp(input, "gpg:", 4) == 0) {
         // GPG key ID (use gpg command to get key material)
+        // OPTIONAL: Gracefully fails if gpg not installed
         const char* key_id = input + 4;
         uint8_t material[32];
 
         if (get_gpg_key_material(key_id, material) != 0) {
+            // gpg not found or key export failed
+            // Error already logged by get_gpg_key_material()
             return -1;
         }
 
@@ -1857,10 +1954,12 @@ typedef enum {
 - [ ] Parse SSH authorized_keys files (Ed25519 only)
 
 **Authentication**:
-- [ ] Password authentication with `--key password`
-- [ ] GPG key authentication with `--key gpg:0xABCD1234`
-- [ ] GPG prompts for passphrase via pinentry
-- [ ] Keyfile support with `--keyfile /path/to/file`
+- [ ] Password authentication with `--key password` (works everywhere)
+- [ ] Keyfile support with `--keyfile /path/to/file` (works everywhere)
+- [ ] GPG key authentication with `--key gpg:0xABCD1234` (OPTIONAL - graceful fallback)
+- [ ] GPG prompts for passphrase via pinentry (if gpg installed)
+- [ ] Detect gpg availability with `is_gpg_available()`
+- [ ] Helpful error messages when gpg not found
 
 **Known Hosts & Identity**:
 - [ ] Implement known_hosts behavior (save, verify, warn on change)
@@ -1903,14 +2002,20 @@ typedef enum {
 
 ## Dependencies Summary
 
-**What we're using:**
-1. **libsodium** (already have it) - Ed25519↔X25519, XSalsa20-Poly1305, Argon2id
-2. **BearSSL** (~200KB) - HTTPS for GitHub/GitLab key fetching
-3. **gpg command** (system binary) - GPG key export, pinentry
+**Required dependencies:**
+1. ✅ **libsodium** (already have it) - Ed25519↔X25519, XSalsa20-Poly1305, Argon2id
+2. ✅ **BearSSL** (~200KB) - HTTPS for GitHub/GitLab key fetching
+
+**Optional dependencies:**
+3. ⭕ **gpg command** (system binary) - GPG key export, pinentry
+   - Only needed if using `--key gpg:...` or `github:username.gpg`
+   - Gracefully skipped if not installed
+   - All other auth methods work without it
 
 **What we're NOT using:**
 - ❌ OpenSSL (~3MB, malloc-heavy, RSA bloat)
 - ❌ libcurl (~500KB, complex API)
 - ❌ Any RSA code whatsoever
 
-**Total new dependencies:** 1 (BearSSL)
+**Total required dependencies:** 1 (BearSSL)
+**Total optional dependencies:** 1 (gpg command)
