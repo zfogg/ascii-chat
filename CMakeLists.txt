@@ -1703,6 +1703,23 @@ if(WIN32 AND NOT USE_MINGW)
         set(LIBSODIUM_LIBRARIES "")
         set(LIBSODIUM_INCLUDE_DIRS "")
     endif()
+
+    # Find BearSSL for HTTPS requests to GitHub/GitLab
+    find_library(BEARSSL_LIBRARY NAMES bearssl
+                PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
+    find_path(BEARSSL_INCLUDE_DIR NAMES bearssl.h
+             PATHS "${VCPKG_ROOT}/installed/x64-windows/include")
+    if(BEARSSL_LIBRARY AND BEARSSL_INCLUDE_DIR)
+        set(BEARSSL_LIBRARIES ${BEARSSL_LIBRARY})
+        set(BEARSSL_INCLUDE_DIRS ${BEARSSL_INCLUDE_DIR})
+        set(BEARSSL_FOUND TRUE)
+        message(STATUS "Found BearSSL: ${BEARSSL_LIBRARY}")
+    else()
+        message(WARNING "Could not find BearSSL - GitHub/GitLab key fetching will be disabled")
+        set(BEARSSL_FOUND FALSE)
+        set(BEARSSL_LIBRARIES "")
+        set(BEARSSL_INCLUDE_DIRS "")
+    endif()
 elseif(WIN32 AND USE_MINGW)
     # MinGW on Windows - build with minimal dependencies for now
     message(STATUS "MinGW build - using minimal dependencies")
@@ -1742,6 +1759,18 @@ else()
     pkg_check_modules(ZLIB REQUIRED zlib)
     pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+
+    # BearSSL for HTTPS requests to GitHub/GitLab (optional)
+    pkg_check_modules(BEARSSL bearssl)
+    if(NOT BEARSSL_FOUND)
+        message(WARNING "BearSSL not found - GitHub/GitLab key fetching will be disabled")
+        set(BEARSSL_FOUND FALSE)
+        set(BEARSSL_LIBRARIES "")
+        set(BEARSSL_INCLUDE_DIRS "")
+    else()
+        set(BEARSSL_FOUND TRUE)
+        message(STATUS "Found BearSSL: ${BEARSSL_VERSION}")
+    endif()
 
     # Test dependencies (matching TEST_PKG_CONFIG_LIBS in Makefile)
     if(BUILD_TESTS)
@@ -2262,6 +2291,12 @@ if(WIN32)
         ${LIBSODIUM_LIBRARIES}
     )
 
+    # Add BearSSL if available
+    if(BEARSSL_FOUND)
+        target_link_libraries(ascii-chat-lib ${BEARSSL_LIBRARIES})
+        target_include_directories(ascii-chat-lib PRIVATE ${BEARSSL_INCLUDE_DIRS})
+    endif()
+
     # Link mimalloc for Windows
     if(USE_MIMALLOC)
         target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
@@ -2329,6 +2364,12 @@ else()
             ${PLATFORM_LIBS}
             m  # math library
         )
+
+        # Add BearSSL if available
+        if(BEARSSL_FOUND)
+            target_link_libraries(ascii-chat-lib ${BEARSSL_LIBRARIES})
+            target_include_directories(ascii-chat-lib PRIVATE ${BEARSSL_INCLUDE_DIRS})
+        endif()
 
         # Link mimalloc for Unix/macOS/Linux
         if(USE_MIMALLOC)
@@ -2985,6 +3026,11 @@ if(LIBSODIUM_FOUND)
     message(STATUS "  libsodium:         ${Green}Found${ColorReset}")
 else()
     message(STATUS "  libsodium:         ${Red}Not Found${ColorReset}")
+endif()
+if(BEARSSL_FOUND)
+    message(STATUS "  BearSSL:           ${Green}Found${ColorReset}")
+else()
+    message(STATUS "  BearSSL:           ${Red}Not Found${ColorReset}")
 endif()
 if(PORTAUDIO_FOUND)
     message(STATUS "  PortAudio:         ${Green}Found${ColorReset}")

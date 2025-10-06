@@ -82,6 +82,26 @@ static int ed25519_to_x25519_sk(const uint8_t ed25519_sk[64], uint8_t x25519_sk[
     return crypto_sign_ed25519_sk_to_curve25519(x25519_sk, ed25519_sk);
 }
 
+// Decode hex string to binary
+static int hex_decode(const char* hex, uint8_t* output, size_t output_len) {
+    size_t hex_len = strlen(hex);
+    if (hex_len != output_len * 2) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < output_len; i++) {
+        char hex_byte[3] = {hex[i*2], hex[i*2+1], '\0'};
+        char* endptr;
+        unsigned long val = strtoul(hex_byte, &endptr, 16);
+        if (*endptr != '\0' || val > 255) {
+            return -1;
+        }
+        output[i] = (uint8_t)val;
+    }
+
+    return 0;
+}
+
 // Parse public key from any format (SSH, GPG, X25519, GitHub, etc.)
 int parse_public_key(const char* input, public_key_t* key_out) {
     memset(key_out, 0, sizeof(public_key_t));
@@ -128,8 +148,10 @@ int parse_public_key(const char* input, public_key_t* key_out) {
 
     if (strlen(input) == 64) {
         // Raw hex (X25519 public key)
-        // TODO: Implement hex decoding
-        log_error("Hex key parsing not yet implemented");
+        if (hex_decode(input, key_out->key, 32) == 0) {
+            key_out->type = KEY_TYPE_X25519;
+            return 0;
+        }
         return -1;
     }
 
@@ -171,11 +193,50 @@ int public_key_to_x25519(const public_key_t* key, uint8_t x25519_pk[32]) {
 
 // Parse SSH private key from file
 int parse_private_key(const char* path, private_key_t* key_out) {
-    (void)path; // Suppress unused parameter warning
     memset(key_out, 0, sizeof(private_key_t));
 
-    // TODO: Implement SSH private key parsing
-    log_error("SSH private key parsing not yet implemented");
+    FILE* f = fopen(path, "r");
+    if (f == NULL) {
+        log_error("Failed to open private key file: %s", path);
+        return -1;
+    }
+
+    char line[2048];
+    bool in_private_key = false;
+    bool found_ed25519 = false;
+
+    while (fgets(line, sizeof(line), f)) {
+        // Remove newline
+        line[strcspn(line, "\r\n")] = '\0';
+
+        if (strstr(line, "BEGIN OPENSSH PRIVATE KEY") || strstr(line, "BEGIN PRIVATE KEY")) {
+            in_private_key = true;
+            continue;
+        }
+
+        if (strstr(line, "END OPENSSH PRIVATE KEY") || strstr(line, "END PRIVATE KEY")) {
+            break;
+        }
+
+        if (in_private_key && strstr(line, "ssh-ed25519")) {
+            found_ed25519 = true;
+            // For now, we'll just mark it as Ed25519 type
+            // TODO: Parse the actual key material from the OpenSSH format
+            key_out->type = KEY_TYPE_ED25519;
+            break;
+        }
+    }
+
+    fclose(f);
+
+    if (!found_ed25519) {
+        log_error("No Ed25519 private key found in file: %s", path);
+        return -1;
+    }
+
+    // TODO: Parse the actual key material from the OpenSSH format
+    // This is complex and requires proper OpenSSH private key parsing
+    log_error("OpenSSH private key parsing not yet fully implemented");
     return -1;
 }
 

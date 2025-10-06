@@ -166,6 +166,9 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
 // Create authentication challenge packet
 crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
 
+// Process authentication challenge packet
+crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len);
+
 // Process authentication response packet
 crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len);
 

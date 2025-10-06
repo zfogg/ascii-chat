@@ -602,6 +602,31 @@ crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_
   return CRYPTO_OK;
 }
 
+crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
+  if (!ctx || !ctx->initialized || !packet) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  size_t expected_size = sizeof(uint32_t) + 32; // type + nonce
+  if (packet_len != expected_size) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Unpack packet: [type:4][nonce:32]
+  uint32_t packet_type;
+  SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+
+  if (packet_type != CRYPTO_PACKET_AUTH_CHALLENGE) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Store the nonce for HMAC computation
+  SAFE_MEMCPY(ctx->auth_nonce, 32, packet + sizeof(packet_type), 32);
+
+  log_debug("Auth challenge received and processed");
+  return CRYPTO_OK;
+}
+
 crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
   if (!ctx || !ctx->initialized || !packet) {
     return CRYPTO_ERROR_INVALID_PARAMS;
