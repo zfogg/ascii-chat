@@ -136,20 +136,25 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
     return -1;
   }
 
-  // TODO: Verify server key against known_hosts if --server-key is specified
-  if (ctx->verify_server_key) {
-    // Check known_hosts for this server
-    int known_host_result = check_known_host(ctx->server_hostname, ctx->server_port, payload);
-    if (known_host_result == -1) {
-      // Key mismatch - potential MITM attack
-      display_mitm_warning(payload, payload);
+  // Verify server key against expected key if --server-key is specified
+  if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
+    // Parse the expected server key
+    public_key_t expected_key;
+    if (parse_public_key(ctx->expected_server_key, &expected_key) != 0) {
+      log_error("Failed to parse expected server key: %s", ctx->expected_server_key);
       buffer_pool_free(payload, payload_len);
       return -1;
-    } else if (known_host_result == 0) {
-      // First connection - add to known_hosts
-      add_known_host(ctx->server_hostname, ctx->server_port, payload);
-      log_info("Added server to known_hosts: %s:%d", ctx->server_hostname, ctx->server_port);
     }
+
+    // Compare server's public key with expected key
+    if (memcmp(payload, expected_key.key, CRYPTO_PUBLIC_KEY_SIZE) != 0) {
+      log_error("Server key mismatch - potential MITM attack!");
+      log_error("Expected key: %s", ctx->expected_server_key);
+      // TODO: Display server's actual key for debugging
+      buffer_pool_free(payload, payload_len);
+      return -1;
+    }
+    log_info("Server key verified successfully");
   }
 
   // Set peer's public key - this also derives the shared secret
@@ -204,18 +209,41 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     return -1;
   }
 
+  // Check client key against whitelist if specified
+  if (ctx->require_client_auth && ctx->client_whitelist && ctx->num_whitelisted_clients > 0) {
+    bool key_found = false;
+    for (size_t i = 0; i < ctx->num_whitelisted_clients; i++) {
+      // Convert whitelist Ed25519 key to X25519 for comparison
+      uint8_t whitelist_x25519[32];
+      if (public_key_to_x25519(&ctx->client_whitelist[i], whitelist_x25519) != 0) {
+        log_error("Failed to convert whitelist key %zu to X25519", i);
+        continue;
+      }
+
+      // Compare client's X25519 key with converted whitelist key
+      if (memcmp(payload, whitelist_x25519, CRYPTO_PUBLIC_KEY_SIZE) == 0) {
+        key_found = true;
+        log_info("Client key authorized (whitelist entry %zu)", i);
+        if (strlen(ctx->client_whitelist[i].comment) > 0) {
+          log_info("Client identity: %s", ctx->client_whitelist[i].comment);
+        }
+        break;
+      }
+    }
+
+    if (!key_found) {
+      log_error("Client key not in whitelist - rejecting connection");
+      buffer_pool_free(payload, payload_len);
+      return -1;
+    }
+  }
+
   // Set peer's public key - this also derives the shared secret
   crypto_result_t crypto_result = crypto_set_peer_public_key(&ctx->crypto_ctx, payload);
   buffer_pool_free(payload, payload_len);
   if (crypto_result != CRYPTO_OK) {
     log_error("Failed to set peer public key and derive shared secret: %s", crypto_result_to_string(crypto_result));
     return -1;
-  }
-
-  // TODO: Check client key against --client-keys whitelist if specified
-  if (ctx->require_client_auth) {
-    // TODO: Implement client key verification
-    log_debug("Client authentication required (not yet implemented)");
   }
 
   // Generate nonce and store it in the context

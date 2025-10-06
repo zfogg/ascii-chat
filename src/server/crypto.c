@@ -94,6 +94,16 @@ int server_crypto_handshake(socket_t client_socket) {
     log_debug("Set up server keys for client %u", atomic_load(&client->client_id));
   }
 
+  // Set up client whitelist if specified
+  extern public_key_t g_client_whitelist[];
+  extern size_t g_num_whitelisted_clients;
+  if (g_num_whitelisted_clients > 0) {
+    client->crypto_handshake_ctx.require_client_auth = true;
+    client->crypto_handshake_ctx.client_whitelist = g_client_whitelist;
+    client->crypto_handshake_ctx.num_whitelisted_clients = g_num_whitelisted_clients;
+    log_debug("Client whitelist enabled: %zu authorized keys", g_num_whitelisted_clients);
+  }
+
   log_info("Starting crypto handshake with client %u...", atomic_load(&client->client_id));
 
   // Step 1: Send our public key to client

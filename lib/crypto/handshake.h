@@ -40,6 +40,10 @@ typedef struct {
   bool require_client_auth;   // Server: require client authentication
   char client_keys_path[256]; // Server: client keys file path
 
+  // Client whitelist (server only)
+  public_key_t *client_whitelist; // Pointer to whitelist array
+  size_t num_whitelisted_clients; // Number of whitelisted clients
+
   // Password authentication
   bool has_password;  // Whether password authentication is enabled
   char password[256]; // Password for authentication (temporary storage)
