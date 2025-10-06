@@ -12,12 +12,41 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install and cache Homebrew packages (macOS)
+    - name: Set up Homebrew cache (macOS)
       if: inputs.os == 'macos'
-      uses: tecolicom/actions-use-homebrew-tools@v1
+      uses: actions/cache@v4
       with:
-        tools: pkg-config llvm cmake make ninja portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}
-        cache: yes
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar
+          /opt/homebrew/opt
+        key: ${{ runner.os }}-homebrew-v2-${{ inputs.extra-packages }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-v2-
+          ${{ runner.os }}-homebrew-
+
+    - name: Install Homebrew packages (macOS)
+      if: inputs.os == 'macos'
+      shell: bash
+      run: |
+        # Update Homebrew
+        brew update
+
+        # Install packages
+        PACKAGES="pkg-config llvm cmake make ninja portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}"
+
+        echo "Installing Homebrew packages: $PACKAGES"
+        for pkg in $PACKAGES; do
+          if brew list --formula | grep -q "^${pkg}\$"; then
+            echo "✓ $pkg already installed"
+          else
+            echo "Installing $pkg..."
+            brew install "$pkg"
+          fi
+        done
+
+        # Clean up to reduce cache size
+        brew cleanup
 
     - name: Install and cache APT packages (Ubuntu)
       if: inputs.os == 'ubuntu'

@@ -2,19 +2,21 @@
 
 **Date**: October 6, 2025
 **Status**: Ready to implement
-**Estimated Time**: 6-10 hours total
+**Estimated Time**: 8-12 hours total
 
-## Philosophy: Privacy by Default
+## Philosophy: Privacy by Default, Security When Needed
 
 > "Encrypted by default. You can't be sure who you're talking to without a shared secret, but at least your ISP can't see your video chat."
 
 ## Overview
 
-Implement end-to-end encryption for ASCII-Chat using the existing lib/crypto.c code (533 lines already written). **Encryption is enabled by default** using X25519 Diffie-Hellman key exchange, with optional password authentication for MITM protection.
+Implement end-to-end encryption for ASCII-Chat using the existing lib/crypto.c code (533 lines already written). **Encryption is enabled by default** using X25519 Diffie-Hellman key exchange, with optional password authentication and public key pinning for MITM protection.
 
-## Architecture: Three Modes
+## Architecture: Progressive Security Ladder
 
-### Mode 1: Default Encrypted (No Flags)
+Users can choose their security level based on threat model:
+
+### Level 1: Default Encrypted (Privacy)
 
 **The default mode** - requires no configuration:
 
@@ -29,7 +31,8 @@ Implement end-to-end encryption for ASCII-Chat using the existing lib/crypto.c c
 **What happens**:
 - Pure ephemeral DH key exchange (X25519)
 - Both sides generate random keypairs **in memory only**
-- Keys wiped on exit, never shown to user
+- Keys wiped on exit
+- Server displays its public key (user can ignore or share)
 - Each connection gets fresh keypairs (forward secrecy)
 
 **Security properties**:
@@ -40,9 +43,9 @@ Implement end-to-end encryption for ASCII-Chat using the existing lib/crypto.c c
 
 **Use case**: "I don't want my coffee shop WiFi admin watching my video chat"
 
-### Mode 2: Authenticated Encryption (`--key` or `--keyfile`)
+### Level 2: Password Authentication (Security)
 
-**Recommended for security-sensitive use**:
+**Recommended for most users**:
 
 ```bash
 # Server
@@ -72,9 +75,104 @@ echo "mypassword" > /tmp/keyfile
 
 **How to share the password**: Text it to your friend, Signal message, phone call, in person, etc. This is the same model as WiFi passwords or Signal safety numbers.
 
-### Mode 3: Unencrypted (`--no-encrypt`)
+### Level 3: Public Key Pinning (Strong Security)
 
-**Opt-out for testing/debugging**:
+**SSH-like security model**:
+
+```bash
+# Server displays on startup:
+# ╔════════════════════════════════════════════════════════════════╗
+# ║  SERVER PUBLIC KEY                                             ║
+# ║  3a7f2c1b9e4d8a6f5c3b7e9d2f8a4c6e1b5d9a3f7c2e8b4d6a1f5c3b7  ║
+# ║                                                                ║
+# ║  Share with clients for MITM protection:                       ║
+# ║    ascii-chat-client --server-key 3a7f2c1b...                  ║
+# ╚════════════════════════════════════════════════════════════════╝
+
+# Client verifies server key:
+./ascii-chat-client --server-key 3a7f2c1b9e4d8a6f5c3b7e9d2f8a4c6e1b5d9a3f7c2e8b4d6a1f5c3b7
+```
+
+**What happens**:
+- Client receives server's public key during handshake
+- Compares against expected key provided via `--server-key`
+- If mismatch: Displays scary warning and ABORTS connection
+- If match: Continues with encrypted session
+
+**Security properties**:
+- ✅ Protects against passive eavesdropping
+- ✅ Protects against active MITM attacks (cryptographically verified)
+- ✅ Forward secrecy
+- ✅ No shared password needed
+- ✅ Public keys can be shared openly (not secret like passwords)
+
+**Use case**: "Want SSH-like security, can share public keys via email/Slack"
+
+**How to share the key**: Copy server's public key from startup banner, paste into email/Slack/etc. Public keys are not secret!
+
+### Level 4: Server Whitelist (Restricted Access)
+
+**Server only accepts specific clients**:
+
+```bash
+# Option 1: Comma-separated list on command line
+./ascii-chat-server --client-keys "3a7f2c...,f9e2d4...,b8c1e9..."
+
+# Option 2: File with one key per line
+./ascii-chat-server --client-keys /path/to/allowed_keys.txt
+
+# allowed_keys.txt format:
+# Lines starting with # are comments
+# 3a7f2c1b9e4d8a6f5c3b7e9d2f8a4c6e1b5d9a3f7c2e8b4d6a1f5c3b7  # Alice
+# f9e2d4c6b8a175392e4d8f1c6a3b7e5d9c2f8a4e6b1d5c9a3f7e2b4d  # Bob
+# b8c1e9d2a6f4c7e3b5d9a1f8c4e6b2d7a9f3c5e1b8d4a6f2c9e5b3  # Carol
+```
+
+**What happens**:
+- Server loads whitelist of allowed client public keys
+- During handshake, server verifies client's public key is in whitelist
+- If not in whitelist: Reject connection
+- Server logs all connection attempts with client keys (for auditing)
+
+**Security properties**:
+- ✅ Protects against passive eavesdropping
+- ✅ Protects server from unauthorized clients
+- ✅ Audit trail of who connected
+- ✅ Can revoke access (remove key from whitelist)
+- ⚠️ Client still vulnerable to MITM (unless they use `--server-key`)
+
+**Use case**: "Private server, only my friends can connect"
+
+**Client workflow**:
+1. Client runs: `./ascii-chat-client` (displays their public key)
+2. Client sends key to server operator (via email/Signal/etc.)
+3. Server operator adds key to whitelist
+4. Client can now connect
+
+### Level 5: Defense in Depth (Maximum Security)
+
+**Combine all security features**:
+
+```bash
+# Server: Password + client whitelist
+./ascii-chat-server --key mypassword --client-keys allowed_keys.txt
+
+# Client: Password + server key verification
+./ascii-chat-client --key mypassword --server-key 3a7f2c1b9e4d8a6f...
+```
+
+**Security properties**:
+- ✅ Password authentication (both sides verify password)
+- ✅ Public key pinning (client verifies server identity)
+- ✅ Client whitelist (server only accepts known clients)
+- ✅ Forward secrecy
+- ✅ Defense in depth (multiple layers of security)
+
+**Use case**: "Paranoid security for sensitive communications"
+
+### Level 6: Opt-Out (Debugging Only)
+
+**Disable encryption for debugging**:
 
 ```bash
 # Server
@@ -84,11 +182,6 @@ echo "mypassword" > /tmp/keyfile
 ./ascii-chat-client --no-encrypt
 ```
 
-**What happens**:
-- No encryption, plain TCP
-- Backward compatible with old clients
-- Useful for debugging protocol issues
-
 **Security properties**:
 - ❌ No protection
 - ⚠️ Anyone on the network can see everything
@@ -97,37 +190,52 @@ echo "mypassword" > /tmp/keyfile
 
 ## CLI Flag Behavior
 
-```c
-// Default: Encrypted (DH only)
-./ascii-chat-server              // Encrypted
-./ascii-chat-client              // Encrypted
+```bash
+# Default: Encrypted (DH only)
+./ascii-chat-server              # Encrypted, displays public key
+./ascii-chat-client              # Encrypted, displays public key
 
-// Authenticated: Password required
-./ascii-chat-server --key pass   // Encrypted + password auth
-./ascii-chat-client --key pass   // Must match server password
+# Password authentication
+./ascii-chat-server --key pass   # Encrypted + password auth
+./ascii-chat-client --key pass   # Must match server password
 
-// Keyfile: Password from file
-./ascii-chat-server --keyfile /path/to/key
-./ascii-chat-client --keyfile /path/to/key
+# Keyfile: Password from file
+./ascii-chat-server --keyfile /path/to/keyfile
+./ascii-chat-client --keyfile /path/to/keyfile
 
-// Opt-out: Unencrypted
-./ascii-chat-server --no-encrypt  // Plain TCP
-./ascii-chat-client --no-encrypt  // Plain TCP
+# Public key pinning (client verifies server)
+./ascii-chat-client --server-key 3a7f2c1b9e4d8a6f...
+
+# Client whitelist (server restricts clients)
+./ascii-chat-server --client-keys /path/to/keys.txt
+./ascii-chat-server --client-keys "key1,key2,key3"
+
+# Combinations
+./ascii-chat-server --key pass --client-keys keys.txt
+./ascii-chat-client --key pass --server-key 3a7f...
+
+# Opt-out: Unencrypted
+./ascii-chat-server --no-encrypt  # Plain TCP
+./ascii-chat-client --no-encrypt  # Plain TCP
 ```
 
 **Flag implications**:
-- `--key PASSWORD` → Encryption enabled with auth
-- `--keyfile FILE` → Encryption enabled with auth (password from file)
+- `--key PASSWORD` → Encryption enabled with password auth
+- `--keyfile FILE` → Encryption enabled with password auth (password from file)
+- `--server-key HEXSTRING` → Client verifies server public key (MITM protection)
+- `--client-keys LIST_OR_FILE` → Server restricts to whitelisted clients
 - `--no-encrypt` → Encryption disabled
 - No flags → Encryption enabled (DH only)
 
 **Validation**:
 - `--key` and `--keyfile` are mutually exclusive
-- If server uses `--key`/`--keyfile`, client MUST provide matching password
+- If server uses `--key`/`--keyfile`, client MUST provide matching password (or connection rejected)
 - If client provides password but server doesn't → connection rejected
+- If client provides `--server-key` but keys don't match → connection aborted with MITM warning
+- If server has `--client-keys` and client key not in list → connection rejected
 - `--no-encrypt` on one side and encryption on other → connection rejected
 
-## The MITM Problem (And Why It's Okay)
+## The MITM Problem (And Why We Have Multiple Solutions)
 
 **The fundamental security tradeoff**:
 
@@ -139,27 +247,32 @@ There is **no way** to prevent MITM attacks without sharing a secret through a s
 4. **Question**: How do they establish a secure channel?
 
 **Answer**: They can't! Not without one of:
-- Pre-shared secret (password)
-- Trusted third party (certificate authority)
-- Out-of-band verification (QR code, safety numbers, etc.)
+- Pre-shared secret (password) → **`--key`**
+- Pre-shared public keys (SSH model) → **`--server-key` / `--client-keys`**
+- Trusted third party (certificate authority like HTTPS)
+- Out-of-band verification (QR codes, safety numbers)
 
-**What we chose**:
-- Default mode accepts this tradeoff (privacy, not security)
-- Users who need security use `--key` (just like WiFi passwords)
-- This is the same model as SSH first connection, Signal safety numbers, Bluetooth pairing
+**What we provide**:
+- **Default mode**: Accepts this tradeoff (privacy, not security)
+- **Password mode**: Use `--key` (like WiFi passwords)
+- **Key pinning mode**: Use `--server-key` (like SSH)
+- **Whitelist mode**: Use `--client-keys` (like SSH authorized_keys)
+- **Combined mode**: Use all of the above (defense in depth)
 
-**The vibe**: "Encryption by default protects against passive attacks. Add a password if you need protection against active attacks too."
+**The vibe**: "Encryption by default protects against passive attacks. Add passwords or key pinning if you need protection against active attacks too."
 
 ## Security Properties Summary
 
-| Property | Default | --key | --no-encrypt |
-|----------|---------|-------|--------------|
-| Passive eavesdrop protection | ✅ | ✅ | ❌ |
-| MITM protection | ❌ | ✅ | ❌ |
-| Forward secrecy | ✅ | ✅ | N/A |
-| Replay protection | ✅ | ✅ | ❌ |
-| Per-client isolation | ✅ | ✅ | N/A |
-| Full packet encryption | ✅ | ✅ | ❌ |
+| Mode | Passive Eavesdrop | MITM Protection | Server Whitelist | Forward Secrecy |
+|------|-------------------|-----------------|------------------|-----------------|
+| Default | ✅ | ❌ | ❌ | ✅ |
+| `--key` | ✅ | ✅ | ❌ | ✅ |
+| `--server-key` (client) | ✅ | ✅ (client protected) | ❌ | ✅ |
+| `--client-keys` (server) | ✅ | ✅ (server protected) | ✅ | ✅ |
+| `--key` + `--server-key` | ✅ | ✅✅ | ❌ | ✅ |
+| `--key` + `--client-keys` | ✅ | ✅✅ | ✅ | ✅ |
+| All combined | ✅ | ✅✅✅ | ✅ | ✅ |
+| `--no-encrypt` | ❌ | ❌ | ❌ | N/A |
 
 ## Existing Code (lib/crypto.c)
 
@@ -178,9 +291,9 @@ crypto_decrypt_packet()           // XSalsa20-Poly1305 decryption
 
 ## Implementation Phases
 
-### Phase 1: CLI Flags & In-Memory State (2 hours)
+### Phase 1: CLI Flags & In-Memory State (2.5 hours)
 
-**Goal**: Parse flags, store crypto config in memory, initialize libsodium
+**Goal**: Parse flags, store crypto config in memory, initialize libsodium, display keys
 
 #### 1.1 Update options.c/h
 
@@ -192,6 +305,8 @@ typedef struct {
     bool no_encrypt;        // Disable encryption (opt-out)
     char* key;              // Password for authentication
     char* keyfile;          // Path to file containing password
+    char* server_key;       // Expected server public key (hex string) - CLIENT ONLY
+    char* client_keys;      // Allowed client keys (comma-separated or filepath) - SERVER ONLY
 } options_t;
 ```
 
@@ -200,10 +315,12 @@ typedef struct {
 - If `--no-encrypt`: encryption disabled
 - If `--key` or `--keyfile`: encryption enabled with auth
 - Validate: `--key` and `--keyfile` are mutually exclusive
-- Validate: `--no-encrypt` cannot be used with `--key`/`--keyfile`
+- Validate: `--no-encrypt` cannot be used with `--key`/`--keyfile`/`--server-key`/`--client-keys`
 
-**Helper function**:
+**Helper functions**:
+
 ```c
+// Read password from file
 static char* read_keyfile(const char* path) {
     FILE* f = fopen(path, "r");
     if (!f) {
@@ -226,6 +343,107 @@ static char* read_keyfile(const char* path) {
 
     return password;
 }
+
+// Convert binary to hex string
+static void hex_encode(const uint8_t* data, size_t len, char* out) {
+    const char* hex_chars = "0123456789abcdef";
+    for (size_t i = 0; i < len; i++) {
+        out[i*2] = hex_chars[data[i] >> 4];
+        out[i*2 + 1] = hex_chars[data[i] & 0x0F];
+    }
+    out[len*2] = '\0';
+}
+
+// Convert hex string to binary
+static int hex_decode(const char* hex, uint8_t* out, size_t out_len) {
+    size_t hex_len = strlen(hex);
+    if (hex_len != out_len * 2) {
+        log_error("Invalid hex string length: expected %zu chars, got %zu", out_len * 2, hex_len);
+        return -1;
+    }
+
+    for (size_t i = 0; i < out_len; i++) {
+        char high = hex[i*2];
+        char low = hex[i*2 + 1];
+
+        uint8_t h = (high >= '0' && high <= '9') ? (high - '0') :
+                    (high >= 'a' && high <= 'f') ? (high - 'a' + 10) :
+                    (high >= 'A' && high <= 'F') ? (high - 'A' + 10) : 0;
+        uint8_t l = (low >= '0' && low <= '9') ? (low - '0') :
+                    (low >= 'a' && low <= 'f') ? (low - 'a' + 10) :
+                    (low >= 'A' && low <= 'F') ? (low - 'A' + 10) : 0;
+
+        out[i] = (h << 4) | l;
+    }
+
+    return 0;
+}
+
+// Parse --client-keys (filepath or comma-separated list)
+typedef struct {
+    uint8_t keys[MAX_CLIENTS][32];
+    size_t num_keys;
+} client_whitelist_t;
+
+static void parse_client_keys(const char* input, client_whitelist_t* whitelist) {
+    whitelist->num_keys = 0;
+
+    // Check if input is a filepath (file exists)
+    FILE* f = fopen(input, "r");
+    if (f != NULL) {
+        // Read keys from file (one per line)
+        char line[128];
+        while (fgets(line, sizeof(line), f) && whitelist->num_keys < MAX_CLIENTS) {
+            // Skip comments and empty lines
+            if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
+
+            // Trim whitespace
+            size_t len = strlen(line);
+            while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r' || line[len-1] == ' ')) {
+                line[--len] = '\0';
+            }
+
+            // Skip if line is now empty
+            if (len == 0) continue;
+
+            // Decode hex key
+            if (hex_decode(line, whitelist->keys[whitelist->num_keys], 32) == 0) {
+                whitelist->num_keys++;
+            } else {
+                log_warn("Invalid hex key in file (skipping): %s", line);
+            }
+        }
+        fclose(f);
+        log_info("Loaded %zu client keys from file: %s", whitelist->num_keys, input);
+    } else {
+        // Treat as comma-separated list
+        char* input_copy = strdup(input);
+        char* token = strtok(input_copy, ",");
+
+        while (token != NULL && whitelist->num_keys < MAX_CLIENTS) {
+            // Trim whitespace from token
+            while (*token == ' ') token++;
+            char* end = token + strlen(token) - 1;
+            while (end > token && *end == ' ') *end-- = '\0';
+
+            // Decode hex key
+            if (hex_decode(token, whitelist->keys[whitelist->num_keys], 32) == 0) {
+                whitelist->num_keys++;
+            } else {
+                log_warn("Invalid hex key in list (skipping): %s", token);
+            }
+
+            token = strtok(NULL, ",");
+        }
+        free(input_copy);
+        log_info("Loaded %zu client keys from command line", whitelist->num_keys);
+    }
+
+    if (whitelist->num_keys == 0) {
+        log_error("No valid client keys found in: %s", input);
+        exit(1);
+    }
+}
 ```
 
 #### 1.2 Add crypto state to server (src/server/main.c)
@@ -238,6 +456,9 @@ typedef struct {
     uint8_t password_key[32];        // Derived from password (if provided)
     bool require_auth;               // True if --key/--keyfile provided
 } server_crypto_state_t;
+
+// Client whitelist (global)
+client_whitelist_t g_client_whitelist = {0};
 
 // Global crypto state
 server_crypto_state_t g_crypto_state = {0};
@@ -256,13 +477,33 @@ if (encryption_enabled) {
     crypto_generate_keypair(g_crypto_state.server_public_key,
                            g_crypto_state.server_private_key);
 
+    // Display server public key prominently
+    char pubkey_hex[65];
+    hex_encode(g_crypto_state.server_public_key, 32, pubkey_hex);
+
+    printf("\n");
+    printf("╔════════════════════════════════════════════════════════════════╗\n");
+    printf("║  SERVER PUBLIC KEY                                             ║\n");
+    printf("║  %-62s║\n", pubkey_hex);
+    printf("║                                                                ║\n");
+    printf("║  Share with clients for MITM protection:                       ║\n");
+    printf("║    ascii-chat-client --server-key %-28s║\n", pubkey_hex);
+    printf("╔════════════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+
+    // Load client whitelist if provided
+    if (options.client_keys) {
+        parse_client_keys(options.client_keys, &g_client_whitelist);
+        log_info("Server will only accept %zu whitelisted clients", g_client_whitelist.num_keys);
+    }
+
+    // Password authentication
     if (options.key || options.keyfile) {
-        // Authenticated mode
         const char* password = options.key ? options.key : read_keyfile(options.keyfile);
         crypto_derive_key_from_password(password, g_crypto_state.password_key);
         g_crypto_state.require_auth = true;
 
-        log_info("Encryption: ENABLED (authenticated)");
+        log_info("Encryption: ENABLED (password authenticated)");
         log_info("Clients must connect with matching password");
 
         // Security: Zero password after hashing
@@ -273,7 +514,7 @@ if (encryption_enabled) {
     } else {
         // Default encrypted mode (DH only)
         log_info("Encryption: ENABLED (unauthenticated)");
-        log_warn("No password authentication - vulnerable to MITM attacks");
+        log_warn("No password - vulnerable to MITM attacks");
         log_info("Use --key PASSWORD for MITM protection");
     }
 } else {
@@ -294,6 +535,8 @@ typedef struct {
     uint64_t send_nonce;             // Nonce counter for sending
     uint64_t recv_nonce;             // Last received nonce (for replay protection)
     bool has_password;               // True if --key/--keyfile provided
+    uint8_t expected_server_key[32]; // Expected server public key (if --server-key provided)
+    bool verify_server_key;          // True if --server-key provided
 } client_crypto_state_t;
 
 client_crypto_state_t g_crypto_state = {0};
@@ -308,6 +551,27 @@ if (encryption_enabled) {
     crypto_init();
     g_crypto_state.encryption_enabled = true;
 
+    // Generate ephemeral client keypair
+    crypto_generate_keypair(g_crypto_state.client_public_key,
+                           g_crypto_state.client_private_key);
+
+    // Display client public key
+    char pubkey_hex[65];
+    hex_encode(g_crypto_state.client_public_key, 32, pubkey_hex);
+    log_info("Client public key: %s", pubkey_hex);
+    log_info("(share with server operator to be added to whitelist)");
+
+    // Load expected server key if provided
+    if (options.server_key) {
+        if (hex_decode(options.server_key, g_crypto_state.expected_server_key, 32) != 0) {
+            log_error("Invalid --server-key format (expected 64 hex chars)");
+            exit(1);
+        }
+        g_crypto_state.verify_server_key = true;
+        log_info("Will verify server key: %s", options.server_key);
+    }
+
+    // Password authentication
     if (options.key || options.keyfile) {
         const char* password = options.key ? options.key : read_keyfile(options.keyfile);
         crypto_derive_key_from_password(password, g_crypto_state.password_key);
@@ -321,18 +585,18 @@ if (encryption_enabled) {
             free((void*)password);
         }
     } else {
-        log_info("Encryption: ENABLED (no authentication)");
+        log_info("Encryption: ENABLED (no password authentication)");
     }
 
-    // Keypair generated AFTER connection (ephemeral)
+    // Note: Keypair already generated above (ephemeral)
 } else {
     log_info("Encryption: DISABLED");
 }
 ```
 
-### Phase 2: Key Exchange Protocol (3 hours)
+### Phase 2: Key Exchange Protocol (3.5 hours)
 
-**Goal**: Establish shared secret using Diffie-Hellman key exchange
+**Goal**: Establish shared secret using Diffie-Hellman key exchange, verify public keys
 
 #### 2.1 Add new packet types (lib/network.h)
 
@@ -347,12 +611,13 @@ typedef enum {
     PACKET_TYPE_AUTH_CHALLENGE = 16,         // Server -> Client: {nonce[32]}
     PACKET_TYPE_AUTH_RESPONSE = 17,          // Client -> Server: {HMAC[32]}
     PACKET_TYPE_HANDSHAKE_COMPLETE = 18,     // Server -> Client: "encryption ready"
+    PACKET_TYPE_AUTH_FAILED = 19,            // Server -> Client: "authentication failed"
 } packet_type_t;
 ```
 
 #### 2.2 Handshake Flow
 
-**Case 1: Both sides have encryption enabled (DH only, no password)**
+**Case 1: Both sides have encryption enabled (DH only, no password, no key pinning)**
 
 ```
 Client connects -> TCP established
@@ -360,20 +625,25 @@ Client connects -> TCP established
 1. Server -> Client: KEY_EXCHANGE_INIT
    Payload: {server_public_key[32]}
 
-2. Client receives, generates ephemeral keypair
-   crypto_generate_keypair(&client_public_key, &client_private_key)
+2. Client receives, verifies server key (if --server-key provided):
+   if (options.server_key && memcmp(received_key, expected_key, 32) != 0):
+       Display MITM warning and EXIT
 
-3. Client computes shared secret
+3. Client computes shared secret:
    crypto_compute_shared_secret(client_private_key, server_public_key, &shared_secret)
 
 4. Client -> Server: KEY_EXCHANGE_RESPONSE
    Payload: {client_public_key[32]}
 
-5. Server computes shared secret
+5. Server receives, verifies client key (if --client-keys provided):
+   if (client_whitelist enabled && key not in whitelist):
+       Log unauthorized attempt and DISCONNECT
+
+6. Server computes shared secret:
    crypto_compute_shared_secret(server_private_key, client_public_key, &shared_secret)
    Store in client_t->shared_secret[32]
 
-6. Server -> Client: HANDSHAKE_COMPLETE
+7. Server -> Client: HANDSHAKE_COMPLETE
 
 All future packets are now encrypted with shared_secret
 ```
@@ -381,57 +651,119 @@ All future packets are now encrypted with shared_secret
 **Case 2: Server has password, client has matching password**
 
 ```
-(Steps 1-5 same as above)
+(Steps 1-6 same as above)
 
-6. Server -> Client: AUTH_CHALLENGE
+7. Server -> Client: AUTH_CHALLENGE
    Payload: {random_nonce[32]}
 
-7. Client computes proof:
+8. Client computes proof:
    proof = HMAC-SHA256(password_key, nonce)
 
-8. Client -> Server: AUTH_RESPONSE
+9. Client -> Server: AUTH_RESPONSE
    Payload: {proof[32]}
 
-9. Server verifies:
+10. Server verifies:
    expected_proof = HMAC-SHA256(password_key, nonce)
    if (memcmp(proof, expected_proof, 32) == 0):
        Send HANDSHAKE_COMPLETE
    else:
-       log_error("Authentication failed")
+       log_error("Password authentication failed")
+       Send AUTH_FAILED
        Disconnect client
 
-10. Server -> Client: HANDSHAKE_COMPLETE
+11. Server -> Client: HANDSHAKE_COMPLETE
 
 All future packets are now encrypted with shared_secret
 ```
 
-**Case 3: Encryption mismatch**
+**Case 3: Client verifies server key (MITM protection)**
+
+```
+(During step 2)
+
+Client receives KEY_EXCHANGE_INIT with server_public_key[32]
+
+if (g_crypto_state.verify_server_key):
+    if (memcmp(server_public_key, g_crypto_state.expected_server_key, 32) != 0):
+        // MITM ATTACK DETECTED!
+
+        char expected_hex[65], received_hex[65];
+        hex_encode(g_crypto_state.expected_server_key, 32, expected_hex);
+        hex_encode(server_public_key, 32, received_hex);
+
+        fprintf(stderr, "\n");
+        fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+        fprintf(stderr, "@    WARNING: SERVER KEY MISMATCH - POSSIBLE MITM ATTACK! @\n");
+        fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Expected server key: %s\n", expected_hex);
+        fprintf(stderr, "Received server key: %s\n", received_hex);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Someone may be intercepting your connection!\n");
+        fprintf(stderr, "Connection ABORTED for security.\n");
+        fprintf(stderr, "\n");
+
+        exit(1);  // ABORT - do not continue
+
+    log_info("✓ Server key verified (MITM protection active)");
+```
+
+**Case 4: Server checks client whitelist**
+
+```
+(During step 5)
+
+Server receives KEY_EXCHANGE_RESPONSE with client_public_key[32]
+
+if (g_client_whitelist.num_keys > 0):
+    bool authorized = false;
+
+    for (size_t i = 0; i < g_client_whitelist.num_keys; i++):
+        if (memcmp(client_public_key, g_client_whitelist.keys[i], 32) == 0):
+            authorized = true;
+            break;
+
+    if (!authorized):
+        char client_key_hex[65];
+        hex_encode(client_public_key, 32, client_key_hex);
+        log_warn("Unauthorized client key: %s", client_key_hex);
+        log_warn("Client not in whitelist - disconnecting");
+
+        // Send AUTH_FAILED and disconnect
+        send_packet(sockfd, PACKET_TYPE_AUTH_FAILED, 0, NULL, 0);
+        return -1;  // Disconnect
+
+    log_info("✓ Client key authorized (whitelist verified)");
+```
+
+**Case 5: Encryption mismatch**
 
 ```
 Server encrypted, client --no-encrypt:
 - Client sends unencrypted packet
-- Server expects KEY_EXCHANGE_INIT response
+- Server expects KEY_EXCHANGE_RESPONSE after sending KEY_EXCHANGE_INIT
 - Server disconnects after timeout (10 seconds)
 
 Server --no-encrypt, client encrypted:
-- Server sends unencrypted PACKET_TYPE_CLIENT_JOIN or similar
+- Server sends unencrypted application packet (e.g., CLIENT_JOIN)
 - Client expects KEY_EXCHANGE_INIT
 - Client disconnects with error: "Server does not support encryption"
 ```
 
-**Case 4: Password mismatch**
+**Case 6: Password mismatch**
 
 ```
 Server --key foo, client --key bar:
-- Steps 1-8 complete
-- Step 9: Server verifies HMAC, fails
-- Server sends error (TODO: which packet type?) and disconnects
-- Client logs: "Authentication rejected by server"
+- Steps 1-9 complete
+- Step 10: Server verifies HMAC, fails
+- Server sends AUTH_FAILED and disconnects
+- Client logs: "Password authentication rejected by server"
 
 Server no password, client --key foo:
-- Server completes handshake at step 6 (no AUTH_CHALLENGE)
+- Server completes handshake at step 7 (no AUTH_CHALLENGE)
 - Client expects AUTH_CHALLENGE, doesn't get it
-- Client disconnects: "Server does not require password"
+- Client receives HANDSHAKE_COMPLETE
+- Client disconnects: "Server does not require password (expected authentication)"
 ```
 
 #### 2.3 Per-Client Encryption State (server)
@@ -443,9 +775,10 @@ typedef struct client_t {
 
     // Crypto state (one shared_secret per client)
     uint8_t shared_secret[32];
-    uint64_t send_nonce;          // Increment per packet sent
-    uint64_t recv_nonce;          // Last received nonce (replay protection)
-    bool encryption_ready;        // True after handshake complete
+    uint8_t client_public_key[32];  // For logging/auditing
+    uint64_t send_nonce;            // Increment per packet sent
+    uint64_t recv_nonce;            // Last received nonce (replay protection)
+    bool encryption_ready;          // True after handshake complete
 } client_t;
 ```
 
@@ -613,7 +946,7 @@ int receive_encrypted_packet(
 
 **Client** (src/client/main.c):
 - After TCP connect, wait for KEY_EXCHANGE_INIT
-- Perform handshake
+- Perform handshake with key verification
 - After HANDSHAKE_COMPLETE, use encrypted send/receive
 - Create wrapper: `send_packet_auto()` that checks `g_crypto_state.encryption_enabled`
 
@@ -635,7 +968,7 @@ ssize_t send_packet_auto(socket_t sockfd, packet_type_t type, uint32_t client_id
 
 #### 4.1 Test Cases
 
-1. **Both default (encrypted, no password)**
+1. **Both default (encrypted, no password, no keys)**
    - ✅ Should connect and communicate encrypted
    - ⚠️ Log warning about MITM vulnerability
 
@@ -652,19 +985,40 @@ ssize_t send_packet_auto(socket_t sockfd, packet_type_t type, uint32_t client_id
 5. **Server no password, client --key**
    - ✅ Should reject (client expects auth, server doesn't provide)
 
-6. **Both with --no-encrypt**
+6. **Client with --server-key (matching)**
+   - ✅ Should connect successfully
+   - ✅ Log "Server key verified"
+
+7. **Client with --server-key (mismatched)**
+   - ✅ Should abort with MITM warning
+   - ✅ Display expected vs received keys
+
+8. **Server with --client-keys (authorized client)**
+   - ✅ Should connect successfully
+   - ✅ Log "Client key authorized"
+
+9. **Server with --client-keys (unauthorized client)**
+   - ✅ Should reject connection
+   - ✅ Log unauthorized client key
+
+10. **Both with --no-encrypt**
    - ✅ Should connect unencrypted
    - ⚠️ Log warning about plaintext
 
-7. **Server encrypted, client --no-encrypt**
+11. **Server encrypted, client --no-encrypt**
    - ✅ Should fail to connect (encryption mismatch)
 
-8. **Multi-client with encryption**
+12. **Multi-client with encryption**
    - ✅ Each client has unique shared_secret
    - ✅ Clients cannot decrypt each other's packets
 
-9. **Replay attack test**
+13. **Replay attack test**
    - ✅ Resending old packet should fail
+
+14. **Defense in depth (all features combined)**
+   - ✅ Server: --key + --client-keys
+   - ✅ Client: --key + --server-key
+   - ✅ Should work with all protections active
 
 #### 4.2 Debug Helpers
 
@@ -680,6 +1034,8 @@ ssize_t send_packet_auto(socket_t sockfd, packet_type_t type, uint32_t client_id
 log_crypto("Handshake complete, shared secret established");
 log_crypto("Encrypted packet sent: type=%d, len=%u, nonce=%llu", type, len, nonce);
 log_crypto("Decrypted packet: type=%d, len=%u, nonce=%llu", type, len, nonce);
+log_crypto("Server key verified: %s", hex);
+log_crypto("Client key authorized: %s", hex);
 ```
 
 #### 4.3 Test Script
@@ -690,7 +1046,7 @@ log_crypto("Decrypted packet: type=%d, len=%u, nonce=%llu", type, len, nonce);
 
 set -e
 
-echo "=== Test 1: Default encrypted (no password) ==="
+echo "=== Test 1: Default encrypted (no password, no keys) ==="
 ./build/bin/ascii-chat-server --log-file /tmp/server1.log &
 SERVER_PID=$!
 sleep 1
@@ -716,13 +1072,45 @@ timeout 5 ./build/bin/ascii-chat-client --key wrongpass --snapshot --log-file /t
 kill $SERVER_PID 2>/dev/null || true
 
 echo ""
-echo "=== Test 4: Unencrypted mode ==="
-./build/bin/ascii-chat-server --no-encrypt --log-file /tmp/server4.log &
+echo "=== Test 4: Server key verification (matching) ==="
+./build/bin/ascii-chat-server --log-file /tmp/server4.log &
 SERVER_PID=$!
 sleep 1
-timeout 5 ./build/bin/ascii-chat-client --no-encrypt --snapshot --log-file /tmp/client4.log || true
+# Extract server key from log
+SERVER_KEY=$(grep -oP 'SERVER PUBLIC KEY.*\K[0-9a-f]{64}' /tmp/server4.log | head -1)
+timeout 5 ./build/bin/ascii-chat-client --server-key "$SERVER_KEY" --snapshot --log-file /tmp/client4.log || true
 kill $SERVER_PID 2>/dev/null || true
-grep -q "DISABLED" /tmp/server4.log && echo "✅ Test 4 passed"
+grep -q "Server key verified" /tmp/client4.log && echo "✅ Test 4 passed"
+
+echo ""
+echo "=== Test 5: Server key verification (mismatched) ==="
+./build/bin/ascii-chat-server --log-file /tmp/server5.log &
+SERVER_PID=$!
+sleep 1
+FAKE_KEY="0000000000000000000000000000000000000000000000000000000000000000"
+timeout 5 ./build/bin/ascii-chat-client --server-key "$FAKE_KEY" --snapshot --log-file /tmp/client5.log 2>&1 | grep -q "MITM" && echo "✅ Test 5 passed" || echo "❌ Test 5 failed"
+kill $SERVER_PID 2>/dev/null || true
+
+echo ""
+echo "=== Test 6: Client whitelist (authorized) ==="
+# Generate client key first
+./build/bin/ascii-chat-client --help > /dev/null 2>&1  # Just to generate key
+CLIENT_KEY=$(./build/bin/ascii-chat-client 2>&1 | grep -oP 'Client public key: \K[0-9a-f]{64}' | head -1)
+./build/bin/ascii-chat-server --client-keys "$CLIENT_KEY" --log-file /tmp/server6.log &
+SERVER_PID=$!
+sleep 1
+timeout 5 ./build/bin/ascii-chat-client --snapshot --log-file /tmp/client6.log || true
+kill $SERVER_PID 2>/dev/null || true
+grep -q "Client key authorized" /tmp/server6.log && echo "✅ Test 6 passed"
+
+echo ""
+echo "=== Test 7: Unencrypted mode ==="
+./build/bin/ascii-chat-server --no-encrypt --log-file /tmp/server7.log &
+SERVER_PID=$!
+sleep 1
+timeout 5 ./build/bin/ascii-chat-client --no-encrypt --snapshot --log-file /tmp/client7.log || true
+kill $SERVER_PID 2>/dev/null || true
+grep -q "DISABLED" /tmp/server7.log && echo "✅ Test 7 passed"
 
 echo ""
 echo "All tests complete!"
@@ -744,7 +1132,9 @@ Replace Cryptography section:
 - **Password Hashing**: Argon2id (memory-hard KDF)
 - **Replay Protection**: Nonce counters prevent packet replay
 
-### Default: Encrypted (No Configuration)
+### Security Levels (Choose What You Need)
+
+#### Level 1: Default Encrypted (Privacy)
 
 ```bash
 # Server
@@ -754,9 +1144,11 @@ Replace Cryptography section:
 ./bin/ascii-chat-client
 ```
 
-**Privacy from passive eavesdropping**: Your ISP, coffee shop WiFi, or network admin cannot see your video chat. However, without a password, an active attacker with network access could perform a man-in-the-middle attack.
+**Privacy from passive eavesdropping**: Your ISP, coffee shop WiFi, or network admin cannot see your video chat. However, without a password or key pinning, an active attacker with network access could perform a man-in-the-middle attack.
 
-### Recommended: Password Authentication
+**Server displays public key on startup** - you can share this with clients for MITM protection (see Level 3).
+
+#### Level 2: Password Authentication (Security)
 
 ```bash
 # Server
@@ -775,6 +1167,50 @@ echo "mypassword" > /tmp/keyfile
 ./bin/ascii-chat-client --keyfile /tmp/keyfile
 ```
 
+#### Level 3: Public Key Pinning (Strong Security)
+
+```bash
+# Server displays on startup:
+# ╔════════════════════════════════════════════════════════════════╗
+# ║  SERVER PUBLIC KEY                                             ║
+# ║  3a7f2c1b9e4d8a6f5c3b7e9d2f8a4c6e1b5d9a3f7c2e8b4d6a1f5c3b7  ║
+# ╚════════════════════════════════════════════════════════════════╝
+
+# Client verifies server key (SSH-like security):
+./bin/ascii-chat-client --server-key 3a7f2c1b9e4d8a6f5c3b7e9d2f8a4c6e1b5d9a3f7c2e8b4d6a1f5c3b7
+```
+
+**Cryptographic MITM protection**: Client verifies server's public key. If keys don't match, connection is aborted with a warning. Share the server's public key via email, Slack, or any channel (public keys are not secret!).
+
+#### Level 4: Server Whitelist (Restricted Access)
+
+```bash
+# Client displays their public key on startup - send to server operator
+# Client public key: f9e2d4c6b8a175392e4d8f1c6a3b7e5d9c2f8a4e6b1d5c9a3f7e2b4d
+
+# Server accepts only whitelisted clients:
+./bin/ascii-chat-server --client-keys /path/to/allowed_keys.txt
+
+# allowed_keys.txt format:
+# 3a7f2c1b9e4d8a6f5c3b7e9d2f8a4c6e1b5d9a3f7c2e8b4d6a1f5c3b7  # Alice
+# f9e2d4c6b8a175392e4d8f1c6a3b7e5d9c2f8a4e6b1d5c9a3f7e2b4d  # Bob
+
+# Or comma-separated list:
+./bin/ascii-chat-server --client-keys "3a7f2c...,f9e2d4...,b8c1e9..."
+```
+
+**Private server**: Only clients with whitelisted public keys can connect. Server logs all connection attempts for auditing.
+
+#### Level 5: Defense in Depth (Maximum Security)
+
+```bash
+# Combine password + key pinning + whitelist:
+./bin/ascii-chat-server --key mypass --client-keys allowed_keys.txt
+./bin/ascii-chat-client --key mypass --server-key 3a7f2c1b...
+```
+
+**Layered security**: Password authentication + public key verification + client whitelist. For paranoid security requirements.
+
 ### Opt-Out: Unencrypted (Testing Only)
 
 ```bash
@@ -788,22 +1224,25 @@ echo "mypassword" > /tmp/keyfile
 
 - **Default encryption**: Protects against passive attacks (ISP snooping, WiFi eavesdropping)
 - **Password authentication**: Protects against active attacks (MITM)
+- **Public key pinning**: Cryptographic MITM protection (like SSH)
+- **Client whitelist**: Server access control
 - **Forward secrecy**: Each connection uses fresh keys (compromising one session doesn't affect others)
 - **Per-client isolation**: Each client has a unique shared secret
 - **Full packet encryption**: Headers and payloads encrypted (only 4-byte magic number visible)
 - **Replay protection**: Nonce counters prevent attackers from resending old packets
 
-### Why Can't We Prevent MITM Without a Password?
+### Why Can't We Prevent MITM Without Shared Secrets?
 
 This isn't a flaw in ASCII-Chat - it's a fundamental limitation of cryptography. If two parties have never met before and communicate over an untrusted channel, there's no way to authenticate the connection without:
 
-1. A pre-shared secret (password)
-2. A trusted third party (certificate authority like HTTPS uses)
-3. Out-of-band verification (QR codes, safety numbers, etc.)
+1. A pre-shared secret (password) → **`--key`**
+2. Pre-shared public keys (SSH model) → **`--server-key` / `--client-keys`**
+3. A trusted third party (certificate authority like HTTPS uses)
+4. Out-of-band verification (QR codes, safety numbers, etc.)
 
-ASCII-Chat uses approach #1 (passwords) because it's simple and users already understand the model from WiFi passwords, Signal safety numbers, and Bluetooth pairing codes.
+ASCII-Chat provides options #1 and #2 because they're simple and users already understand the model from WiFi passwords, SSH, Signal safety numbers, and Bluetooth pairing codes.
 
-**The bottom line**: Default encryption protects your privacy. Add a password if you need security.
+**The bottom line**: Default encryption protects your privacy. Add passwords or key pinning if you need security.
 ```
 
 #### 5.2 Update Command Line Flags Section
@@ -819,6 +1258,7 @@ Update both server and client options:
 - `-L --log-file FILE`: Redirect logs to file
 - `--key PASSWORD`: Enable encryption with password authentication
 - `--keyfile FILE`: Read password from file (enables encryption)
+- `--client-keys LIST_OR_FILE`: Whitelist of allowed client public keys (comma-separated or filepath)
 - `--no-encrypt`: Disable encryption (plaintext mode)
 - `-h --help`: Show help message
 
@@ -829,6 +1269,7 @@ Update both server and client options:
 - [... other options ...]
 - `--key PASSWORD`: Connect with password authentication
 - `--keyfile FILE`: Read password from file
+- `--server-key HEXSTRING`: Expected server public key (64 hex chars, enables MITM protection)
 - `--no-encrypt`: Disable encryption (must match server)
 - `-h --help`: Show help message
 ```
@@ -840,7 +1281,10 @@ Add to "Recent Updates" section:
 ```markdown
 ### Cryptography Implementation (October 2025)
 - **Encrypted by default**: All connections use X25519 + XSalsa20-Poly1305
-- **Optional password authentication**: `--key` flag prevents MITM attacks
+- **Progressive security ladder**: 5 levels from basic privacy to maximum security
+- **Password authentication**: `--key` flag prevents MITM attacks
+- **Public key pinning**: `--server-key` for SSH-like client verification
+- **Server whitelist**: `--client-keys` for access control
 - **Full packet encryption**: Headers and payloads encrypted (minimal metadata leakage)
 - **Forward secrecy**: Ephemeral keypairs for each connection
 - **Per-client isolation**: Each client has unique shared secret
@@ -850,31 +1294,46 @@ Add to "Recent Updates" section:
 ## Implementation Checklist
 
 ### Phase 1: Foundation
-- [ ] Add `no_encrypt`, `key`, `keyfile` fields to options_t
+- [ ] Add `no_encrypt`, `key`, `keyfile`, `server_key`, `client_keys` fields to options_t
 - [ ] Parse `--no-encrypt`, `--key PASSWORD`, `--keyfile FILE` in options.c
+- [ ] Parse `--server-key HEXSTRING` (client only) in options.c
+- [ ] Parse `--client-keys LIST_OR_FILE` (server only) in options.c
 - [ ] Implement `read_keyfile()` helper function
+- [ ] Implement `hex_encode()` helper function
+- [ ] Implement `hex_decode()` helper function
+- [ ] Implement `parse_client_keys()` helper function (file or comma-separated)
 - [ ] Validate: `--key` and `--keyfile` mutually exclusive
-- [ ] Validate: `--no-encrypt` incompatible with `--key`/`--keyfile`
+- [ ] Validate: `--no-encrypt` incompatible with other crypto flags
 - [ ] Add `server_crypto_state_t` to server
+- [ ] Add `client_whitelist_t` to server (global)
 - [ ] Add `client_crypto_state_t` to client
 - [ ] Initialize libsodium with `crypto_init()`
 - [ ] Generate ephemeral keypairs on startup (if encryption enabled)
+- [ ] Display server public key prominently on startup
+- [ ] Display client public key on startup
+- [ ] Load client whitelist if `--client-keys` provided
+- [ ] Load expected server key if `--server-key` provided
 - [ ] Derive password key with Argon2id (if password provided)
 
 ### Phase 2: Handshake
-- [ ] Add 5 new packet types to network.h (KEY_EXCHANGE_*, AUTH_*, HANDSHAKE_COMPLETE)
+- [ ] Add 6 new packet types to network.h (KEY_EXCHANGE_*, AUTH_*, HANDSHAKE_COMPLETE, AUTH_FAILED)
 - [ ] Implement server: send KEY_EXCHANGE_INIT on client connect
 - [ ] Implement client: handle KEY_EXCHANGE_INIT, generate keypair
+- [ ] Implement client: verify server key if `--server-key` provided (MITM detection)
 - [ ] Implement client: compute shared_secret, send KEY_EXCHANGE_RESPONSE
-- [ ] Implement server: handle KEY_EXCHANGE_RESPONSE, compute shared_secret
+- [ ] Implement server: handle KEY_EXCHANGE_RESPONSE
+- [ ] Implement server: verify client key against whitelist if `--client-keys` provided
+- [ ] Implement server: compute shared_secret
 - [ ] Implement server: send AUTH_CHALLENGE (if password mode)
 - [ ] Implement client: handle AUTH_CHALLENGE, compute HMAC proof
 - [ ] Implement client: send AUTH_RESPONSE
 - [ ] Implement server: verify AUTH_RESPONSE, disconnect if wrong
-- [ ] Implement server: send HANDSHAKE_COMPLETE
+- [ ] Implement server: send HANDSHAKE_COMPLETE or AUTH_FAILED
 - [ ] Implement client: handle HANDSHAKE_COMPLETE
-- [ ] Add `shared_secret[32]` to `client_t` struct
+- [ ] Implement client: handle AUTH_FAILED
+- [ ] Add `shared_secret[32]` and `client_public_key[32]` to `client_t` struct
 - [ ] Add `encryption_ready` flag to track handshake completion
+- [ ] Log all key verifications (success and failure)
 
 ### Phase 3: Encryption
 - [ ] Implement `send_encrypted_packet()` in network.c
@@ -895,10 +1354,15 @@ Add to "Recent Updates" section:
 - [ ] Test: Both --key mismatched (should reject)
 - [ ] Test: Server --key, client no password (should reject)
 - [ ] Test: Server no password, client --key (should reject)
+- [ ] Test: Client --server-key matching (should work, log verified)
+- [ ] Test: Client --server-key mismatched (should abort with MITM warning)
+- [ ] Test: Server --client-keys authorized (should work, log authorized)
+- [ ] Test: Server --client-keys unauthorized (should reject)
 - [ ] Test: Both --no-encrypt (should work, log plaintext warning)
 - [ ] Test: Server encrypted, client --no-encrypt (should fail)
 - [ ] Test: Multi-client encrypted session
 - [ ] Test: Replay attack protection
+- [ ] Test: Defense in depth (all flags combined)
 - [ ] Add DEBUG_CRYPTO logging
 - [ ] Create tests/crypto_test.sh script
 
@@ -908,33 +1372,40 @@ Add to "Recent Updates" section:
 - [ ] Update CLAUDE.md with crypto implementation notes
 - [ ] Remove old "NOT YET IMPLEMENTED" warnings from code
 - [ ] Add comments explaining handshake flow
+- [ ] Document `--client-keys` parsing (file vs comma-separated)
 
 ## Timeline Estimate
 
 | Phase | Time | Cumulative |
 |-------|------|------------|
-| Phase 1: Foundation | 2 hours | 2 hours |
-| Phase 2: Handshake | 3 hours | 5 hours |
-| Phase 3: Encryption | 3 hours | 8 hours |
-| Phase 4: Testing | 1 hour | 9 hours |
-| Phase 5: Documentation | 1 hour | 10 hours |
+| Phase 1: Foundation + Key Display | 2.5 hours | 2.5 hours |
+| Phase 2: Handshake + Key Verification | 3.5 hours | 6 hours |
+| Phase 3: Encryption | 3 hours | 9 hours |
+| Phase 4: Testing (expanded) | 2 hours | 11 hours |
+| Phase 5: Documentation | 1 hour | 12 hours |
 
-**Total**: 10 hours for complete implementation and testing
+**Total**: 12 hours for complete implementation and testing (including public key pinning features)
 
 ## Success Criteria
 
 - [ ] Default mode: Server and client connect with DH encryption (no password)
+- [ ] Server displays public key prominently on startup
+- [ ] Client displays public key on startup
 - [ ] Password mode: Server and client can establish encrypted connection with password
 - [ ] Authentication: Server rejects clients with wrong password
+- [ ] Key pinning: Client verifies server key and aborts on mismatch (MITM protection)
+- [ ] Whitelist: Server restricts to whitelisted client keys
+- [ ] `--client-keys` parses both filepaths and comma-separated lists
 - [ ] Isolation: Multi-client sessions work, each client has unique shared_secret
 - [ ] Security: Replay attacks are detected and blocked
+- [ ] Defense in depth: All security features work together
 - [ ] Opt-out: --no-encrypt mode works for debugging
 - [ ] Quality: No memory leaks (AddressSanitizer clean)
-- [ ] Docs: README updated to reflect "encrypted by default"
+- [ ] Docs: README updated to reflect "encrypted by default" with security levels
 - [ ] Compatibility: All existing tests still pass
 
 ---
 
 **Ready to implement! Start with Phase 1. 🔐**
 
-**The vibe**: "Privacy by default, security if you need it"
+**The vibe**: "Privacy by default, security when needed, paranoia when required"
