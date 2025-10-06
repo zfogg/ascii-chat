@@ -2113,8 +2113,11 @@ set(LIB_COMMON_SRCS
     lib/ringbuffer.c
     lib/video_frame.c
     lib/compression.c
-    lib/crypto.c
-    lib/crc32_hw.c
+    lib/crc32.c
+    lib/crypto/crypto.c
+    lib/crypto/keys.c
+    lib/crypto/known_hosts.c
+    lib/crypto/handshake.c
     lib/mixer.c
     lib/audio.c
     lib/image2ascii/image.c
@@ -2381,6 +2384,7 @@ add_executable(ascii-chat-server
     src/server/main.c
     src/server/client.c
     src/server/protocol.c
+    src/server/crypto.c
     src/server/stream.c
     src/server/render.c
     src/server/stats.c
@@ -2437,6 +2441,7 @@ add_executable(ascii-chat-client
     src/client/main.c
     src/client/server.c
     src/client/protocol.c
+    src/client/crypto.c
     src/client/display.c
     src/client/capture.c
     src/client/audio.c

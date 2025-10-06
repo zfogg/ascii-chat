@@ -164,3 +164,16 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
  * @return 0 on success, non-zero on error
  */
 int platform_strcpy(char *dest, size_t dest_size, const char *src);
+
+/**
+ * Resolve hostname to IPv4 address
+ *
+ * Performs DNS resolution to convert a hostname to an IPv4 address string.
+ * Handles platform-specific networking initialization and cleanup.
+ *
+ * @param hostname Hostname to resolve (e.g., "example.com")
+ * @param ipv4_out Buffer to store the resolved IPv4 address (e.g., "192.168.1.1")
+ * @param ipv4_out_size Size of the output buffer
+ * @return 0 on success, -1 on failure
+ */
+int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size);

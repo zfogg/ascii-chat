@@ -91,6 +91,7 @@
 #include "buffer_pool.h"
 #include "common.h"
 #include "options.h"
+#include "crc32.h"
 
 #include <stdatomic.h>
 #include <string.h>
