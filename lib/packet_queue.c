@@ -3,7 +3,9 @@
 #include "common.h"
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 /* ============================================================================
  * Memory Pool Implementation
@@ -31,7 +33,7 @@ node_pool_t *node_pool_create(size_t pool_size) {
   pool->pool_size = pool_size;
   pool->used_count = 0;
 
-  pthread_mutex_init(&pool->pool_mutex, NULL);
+  mutex_init(&pool->pool_mutex);
 
   return pool;
 }
@@ -41,7 +43,7 @@ void node_pool_destroy(node_pool_t *pool) {
     return;
   }
 
-  pthread_mutex_destroy(&pool->pool_mutex);
+  mutex_destroy(&pool->pool_mutex);
   free(pool->nodes);
   free(pool);
 }
@@ -54,7 +56,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
     return node;
   }
 
-  pthread_mutex_lock(&pool->pool_mutex);
+  mutex_lock(&pool->pool_mutex);
 
   packet_node_t *node = pool->free_list;
   if (node) {
@@ -63,7 +65,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
     node->next = NULL; // Clear next pointer
   }
 
-  pthread_mutex_unlock(&pool->pool_mutex);
+  mutex_unlock(&pool->pool_mutex);
 
   if (!node) {
     // Pool exhausted, fallback to malloc
@@ -89,14 +91,14 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
   bool is_pool_node = (node >= pool->nodes && node < pool->nodes + pool->pool_size);
 
   if (is_pool_node) {
-    pthread_mutex_lock(&pool->pool_mutex);
+    mutex_lock(&pool->pool_mutex);
 
     // Return to free list
     node->next = pool->free_list;
     pool->free_list = node;
     pool->used_count--;
 
-    pthread_mutex_unlock(&pool->pool_mutex);
+    mutex_unlock(&pool->pool_mutex);
   } else {
     // This was malloc'd, so free it
     free(node);
@@ -130,9 +132,9 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   queue->node_pool = node_pool_size > 0 ? node_pool_create(node_pool_size) : NULL;
   queue->buffer_pool = use_buffer_pool ? data_buffer_pool_create() : NULL;
 
-  pthread_mutex_init(&queue->mutex, NULL);
-  pthread_cond_init(&queue->not_empty, NULL);
-  pthread_cond_init(&queue->not_full, NULL);
+  mutex_init(&queue->mutex);
+  cond_init(&queue->not_empty);
+  cond_init(&queue->not_full);
 
   queue->packets_enqueued = 0;
   queue->packets_dequeued = 0;
@@ -170,9 +172,9 @@ void packet_queue_destroy(packet_queue_t *queue) {
     data_buffer_pool_destroy(queue->buffer_pool);
   }
 
-  pthread_mutex_destroy(&queue->mutex);
-  pthread_cond_destroy(&queue->not_empty);
-  pthread_cond_destroy(&queue->not_full);
+  mutex_destroy(&queue->mutex);
+  cond_destroy(&queue->not_empty);
+  cond_destroy(&queue->not_full);
 
   free(queue);
 }
@@ -182,11 +184,11 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   if (!queue)
     return -1;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
 
   // Check if shutdown
   if (queue->shutdown) {
-    pthread_mutex_unlock(&queue->mutex);
+    mutex_unlock(&queue->mutex);
     return -1;
   }
 
@@ -240,7 +242,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
         node->packet.data = buffer_pool_alloc(data_len);
         node->packet.buffer_pool = data_buffer_pool_get_global();
       }
-      memcpy(node->packet.data, data, data_len);
+      SAFE_MEMCPY(node->packet.data, data_len, data, data_len);
       node->packet.owns_data = true;
     } else {
       // Use the data pointer directly (caller must ensure it stays valid)
@@ -270,9 +272,9 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   queue->packets_enqueued++;
 
   // Signal that queue is not empty
-  pthread_cond_signal(&queue->not_empty);
+  cond_signal(&queue->not_empty);
 
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 
   return 0;
 }
@@ -287,11 +289,11 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     return -1;
   }
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
 
   // Check if shutdown
   if (queue->shutdown) {
-    pthread_mutex_unlock(&queue->mutex);
+    mutex_unlock(&queue->mutex);
     return -1;
   }
 
@@ -319,7 +321,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   packet_node_t *node = node_pool_get(queue->node_pool);
 
   // Copy the packet header
-  memcpy(&node->packet, packet, sizeof(queued_packet_t));
+  SAFE_MEMCPY(&node->packet, sizeof(queued_packet_t), packet, sizeof(queued_packet_t));
 
   // Deep copy the data if needed
   if (packet->data && packet->data_len > 0 && packet->owns_data) {
@@ -334,7 +336,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
       data_copy = buffer_pool_alloc(packet->data_len);
       node->packet.buffer_pool = data_buffer_pool_get_global();
     }
-    memcpy(data_copy, packet->data, packet->data_len);
+    SAFE_MEMCPY(data_copy, packet->data_len, packet->data, packet->data_len);
     node->packet.data = data_copy;
     node->packet.owns_data = true;
   } else {
@@ -359,9 +361,9 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   queue->packets_enqueued++;
 
   // Signal that queue is not empty
-  pthread_cond_signal(&queue->not_empty);
+  cond_signal(&queue->not_empty);
 
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 
   return 0;
 }
@@ -370,16 +372,16 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
   if (!queue)
     return NULL;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
 
   // Wait while queue is empty and not shutdown
   while (queue->count == 0 && !queue->shutdown) {
-    pthread_cond_wait(&queue->not_empty, &queue->mutex);
+    cond_wait(&queue->not_empty, &queue->mutex);
   }
 
   // Check if shutdown with empty queue
   if (queue->count == 0 && queue->shutdown) {
-    pthread_mutex_unlock(&queue->mutex);
+    mutex_unlock(&queue->mutex);
     return NULL;
   }
 
@@ -396,10 +398,10 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
     queue->packets_dequeued++;
 
     // Signal that queue is not full
-    pthread_cond_signal(&queue->not_full);
+    cond_signal(&queue->not_full);
   }
 
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 
   if (node) {
     // Verify packet magic number for corruption detection
@@ -440,7 +442,7 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
     // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
-    memcpy(packet, &node->packet, sizeof(queued_packet_t));
+    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
     node_pool_put(queue->node_pool, node);
     return packet;
   }
@@ -452,10 +454,10 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
   if (!queue)
     return NULL;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
 
   if (queue->count == 0) {
-    pthread_mutex_unlock(&queue->mutex);
+    mutex_unlock(&queue->mutex);
     return NULL;
   }
 
@@ -472,10 +474,10 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     queue->packets_dequeued++;
 
     // Signal that queue is not full
-    pthread_cond_signal(&queue->not_full);
+    cond_signal(&queue->not_full);
   }
 
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 
   if (node) {
     // Verify packet magic number for corruption detection
@@ -516,7 +518,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     // Extract packet and return node to pool
     queued_packet_t *packet;
     SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
-    memcpy(packet, &node->packet, sizeof(queued_packet_t));
+    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
     node_pool_put(queue->node_pool, node);
     return packet;
   }
@@ -553,9 +555,9 @@ size_t packet_queue_size(packet_queue_t *queue) {
   if (!queue)
     return 0;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
   size_t size = queue->count;
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 
   return size;
 }
@@ -568,9 +570,9 @@ bool packet_queue_is_full(packet_queue_t *queue) {
   if (!queue || queue->max_size == 0)
     return false;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
   bool full = (queue->count >= queue->max_size);
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 
   return full;
 }
@@ -579,18 +581,18 @@ void packet_queue_shutdown(packet_queue_t *queue) {
   if (!queue)
     return;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
   queue->shutdown = true;
-  pthread_cond_broadcast(&queue->not_empty); // Wake all waiting threads
-  pthread_cond_broadcast(&queue->not_full);
-  pthread_mutex_unlock(&queue->mutex);
+  cond_broadcast(&queue->not_empty); // Wake all waiting threads
+  cond_broadcast(&queue->not_full);
+  mutex_unlock(&queue->mutex);
 }
 
 void packet_queue_clear(packet_queue_t *queue) {
   if (!queue)
     return;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
 
   while (queue->head) {
     packet_node_t *node = queue->head;
@@ -613,21 +615,21 @@ void packet_queue_clear(packet_queue_t *queue) {
   queue->count = 0;
   queue->bytes_queued = 0;
 
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 }
 
 void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t *dequeued, uint64_t *dropped) {
   if (!queue)
     return;
 
-  pthread_mutex_lock(&queue->mutex);
+  mutex_lock(&queue->mutex);
   if (enqueued)
     *enqueued = queue->packets_enqueued;
   if (dequeued)
     *dequeued = queue->packets_dequeued;
   if (dropped)
     *dropped = queue->packets_dropped;
-  pthread_mutex_unlock(&queue->mutex);
+  mutex_unlock(&queue->mutex);
 }
 
 bool packet_queue_validate_packet(const queued_packet_t *packet) {

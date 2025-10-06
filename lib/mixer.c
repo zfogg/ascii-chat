@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 #endif
 
@@ -49,7 +49,13 @@ float linear_to_db(float linear) {
 }
 
 float clamp_float(float value, float min, float max) {
-  return value < min ? min : (value > max ? max : value);
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
 }
 
 // Compressor implementation
@@ -89,11 +95,11 @@ static float compressor_gain_reduction_db(const compressor_t *comp, float level_
       return (1.0f / comp->ratio - 1.0f) * over;
     float x = over + knee * 0.5f;
     return (1.0f / comp->ratio - 1.0f) * (x * x) / (2.0f * knee);
-  } else {
-    if (over <= 0.0f)
-      return 0.0f;
-    return (1.0f / comp->ratio - 1.0f) * over;
   }
+  if (over <= 0.0f) {
+    return 0.0f;
+  }
+  return (1.0f / comp->ratio - 1.0f) * over;
 }
 
 float compressor_process_sample(compressor_t *comp, float sidechain) {
@@ -139,7 +145,7 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   SAFE_MALLOC(duck->gain, num_sources * sizeof(float), float *);
 
   // Initialize
-  memset(duck->envelope, 0, num_sources * sizeof(float));
+  SAFE_MEMSET(duck->envelope, num_sources * sizeof(float), 0, num_sources * sizeof(float));
   for (int i = 0; i < num_sources; i++) {
     duck->gain[i] = 1.0f;
   }
@@ -181,7 +187,12 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
     bool is_speaking = env_dB[i] > duck->threshold_dB;
     bool is_leader = is_speaking && (env_dB[i] >= max_dB - duck->leader_margin_dB);
 
-    float target = is_leader ? 1.0f : (is_speaking ? leader_cut : 1.0f);
+    float target;
+    if (is_speaking && !is_leader) {
+      target = leader_cut;
+    } else {
+      target = 1.0f;
+    }
 
     // Smooth gain transitions
     if (target < gains[i])
@@ -223,32 +234,37 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   SAFE_MALLOC(mixer->source_ids, max_sources * sizeof(uint32_t), uint32_t *);
   if (!mixer->source_ids) {
-    SAFE_FREE(mixer->source_buffers);
+    free((void *)mixer->source_buffers);
+    mixer->source_buffers = NULL;
     SAFE_FREE(mixer);
     return NULL;
   }
 
   SAFE_MALLOC(mixer->source_active, max_sources * sizeof(bool), bool *);
   if (!mixer->source_active) {
-    SAFE_FREE(mixer->source_buffers);
+    free((void *)mixer->source_buffers);
+    mixer->source_buffers = NULL;
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer);
     return NULL;
   }
 
   // Initialize arrays
-  memset(mixer->source_buffers, 0, max_sources * sizeof(audio_ring_buffer_t *));
-  memset(mixer->source_ids, 0, max_sources * sizeof(uint32_t));
-  memset(mixer->source_active, 0, max_sources * sizeof(bool));
+  SAFE_MEMSET((void *)mixer->source_buffers, max_sources * sizeof(audio_ring_buffer_t *), 0,
+              max_sources * sizeof(audio_ring_buffer_t *));
+  SAFE_MEMSET(mixer->source_ids, max_sources * sizeof(uint32_t), 0, max_sources * sizeof(uint32_t));
+  SAFE_MEMSET(mixer->source_active, max_sources * sizeof(bool), 0, max_sources * sizeof(bool));
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
-  mixer->active_sources_mask = 0ULL;                                          // No sources active initially
-  memset(mixer->source_id_to_index, 0xFF, sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
+  mixer->active_sources_mask = 0ULL; // No sources active initially
+  SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
+              sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
 
   // OPTIMIZATION 2: Initialize reader-writer lock
-  if (pthread_rwlock_init(&mixer->source_lock, NULL) != 0) {
+  if (rwlock_init(&mixer->source_lock) != 0) {
     log_error("Failed to initialize mixer source lock");
-    SAFE_FREE(mixer->source_buffers);
+    free((void *)mixer->source_buffers);
+    mixer->source_buffers = NULL;
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
     SAFE_FREE(mixer->mix_buffer);
@@ -277,11 +293,12 @@ void mixer_destroy(mixer_t *mixer) {
     return;
 
   // OPTIMIZATION 2: Destroy reader-writer lock
-  pthread_rwlock_destroy(&mixer->source_lock);
+  rwlock_destroy(&mixer->source_lock);
 
   ducking_free(&mixer->ducking);
 
-  SAFE_FREE(mixer->source_buffers);
+  free((void *)mixer->source_buffers);
+  mixer->source_buffers = NULL;
   SAFE_FREE(mixer->source_ids);
   SAFE_FREE(mixer->source_active);
   SAFE_FREE(mixer->mix_buffer);
@@ -294,7 +311,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
     return -1;
 
   // OPTIMIZATION 2: Acquire write lock for source modification
-  pthread_rwlock_wrlock(&mixer->source_lock);
+  rwlock_wrlock(&mixer->source_lock);
 
   // Find an empty slot
   int slot = -1;
@@ -306,7 +323,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   }
 
   if (slot == -1) {
-    pthread_rwlock_unlock(&mixer->source_lock);
+    rwlock_wrunlock(&mixer->source_lock);
     log_warn("Mixer: No available slots for client %u", client_id);
     return -1;
   }
@@ -320,7 +337,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
   mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
 
-  pthread_rwlock_unlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 
   log_info("Mixer: Added source for client %u at slot %d", client_id, slot);
   return slot;
@@ -331,7 +348,7 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
     return;
 
   // OPTIMIZATION 2: Acquire write lock for source modification
-  pthread_rwlock_wrlock(&mixer->source_lock);
+  rwlock_wrlock(&mixer->source_lock);
 
   for (int i = 0; i < mixer->max_sources; i++) {
     if (mixer->source_ids[i] == client_id) {
@@ -348,14 +365,14 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->ducking.envelope[i] = 0.0f;
       mixer->ducking.gain[i] = 1.0f;
 
-      pthread_rwlock_unlock(&mixer->source_lock);
+      rwlock_wrunlock(&mixer->source_lock);
 
       log_info("Mixer: Removed source for client %u from slot %d", client_id, i);
       return;
     }
   }
 
-  pthread_rwlock_unlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 }
 
 void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
@@ -363,7 +380,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
     return;
 
   // OPTIMIZATION 2: Acquire write lock for source modification
-  pthread_rwlock_wrlock(&mixer->source_lock);
+  rwlock_wrlock(&mixer->source_lock);
 
   for (int i = 0; i < mixer->max_sources; i++) {
     if (mixer->source_ids[i] == client_id) {
@@ -376,13 +393,13 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active) {
         mixer->active_sources_mask &= ~(1ULL << i); // Clear bit
       }
 
-      pthread_rwlock_unlock(&mixer->source_lock);
+      rwlock_wrunlock(&mixer->source_lock);
       log_debug("Mixer: Set source %u active=%d", client_id, active);
       return;
     }
   }
 
-  pthread_rwlock_unlock(&mixer->source_lock);
+  rwlock_wrunlock(&mixer->source_lock);
 }
 
 int mixer_process(mixer_t *mixer, float *output, int num_samples) {
@@ -393,7 +410,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   // Only source add/remove operations use write locks
 
   // Clear output buffer
-  memset(output, 0, num_samples * sizeof(float));
+  SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // Count active sources
   int active_count = 0;
@@ -413,7 +430,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
 
     // Clear mix buffer
-    memset(mixer->mix_buffer, 0, frame_size * sizeof(float));
+    SAFE_MEMSET(mixer->mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
 
     // Temporary buffers for source audio
     float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
@@ -428,7 +445,8 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
         // If we didn't get enough samples, pad with silence
         if (samples_read < frame_size) {
-          memset(&source_samples[source_count][samples_read], 0, (frame_size - samples_read) * sizeof(float));
+          SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
+                      (frame_size - samples_read) * sizeof(float));
         }
 
         source_map[source_count] = i;
@@ -499,14 +517,14 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // Only source add/remove operations use write locks
 
   // Clear output buffer
-  memset(output, 0, num_samples * sizeof(float));
+  SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
   uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Clear bit for excluded source (O(1) vs O(n) scan)
-  if (exclude_index != 0xFF && exclude_index < 64) {
+  if (exclude_index < 64) {
     active_mask &= ~(1ULL << exclude_index);
   }
 
@@ -520,7 +538,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
 
     // Clear mix buffer
-    memset(mixer->mix_buffer, 0, frame_size * sizeof(float));
+    SAFE_MEMSET(mixer->mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
 
     // Temporary buffers for source audio
     float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
@@ -540,7 +558,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
         // If we didn't get enough samples, pad with silence
         if (samples_read < frame_size) {
-          memset(&source_samples[source_count][samples_read], 0, (frame_size - samples_read) * sizeof(float));
+          SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
+                      (frame_size - samples_read) * sizeof(float));
         }
 
         source_map[source_count] = i;
@@ -739,7 +758,8 @@ float soft_clip(float sample, float threshold) {
   if (sample > threshold) {
     // Soft clip positive values
     return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 10.0f);
-  } else if (sample < -threshold) {
+  }
+  if (sample < -threshold) {
     // Soft clip negative values
     return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 10.0f);
   }

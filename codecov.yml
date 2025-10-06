@@ -555,7 +555,7 @@ profiling:
   # Enable YAML report customization
   critical_files_paths:
     - "src/server.c"
-    - "src/client.c" 
+    - "src/client.c"
     - "lib/ascii*.c"
     - "lib/network.c"
     - "lib/crypto.c"

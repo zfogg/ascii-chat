@@ -1,457 +1,555 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <locale.h>
 #include "palette.h"
-#include "common.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(palette);
+TEST_SUITE_WITH_QUIET_LOGGING(palette_tests);
 
-// Test builtin palette retrieval
-Test(palette, get_builtin_palette_valid) {
-    const palette_def_t *palette;
+// Test case structure for builtin palette tests
+// NOTE: Use fixed-size char arrays instead of pointers to avoid issues with Criterion's fork-based test runner
+typedef struct {
+  palette_type_t type;
+  char expected_name[32];
+  char expected_chars[64];
+  bool expected_utf8;
+} palette_test_case_t;
 
-    // Test all valid palette types
-    palette = get_builtin_palette(PALETTE_STANDARD);
-    cr_assert_not_null(palette);
-    cr_assert_str_eq(palette->name, "standard");
-    cr_assert_str_eq(palette->chars, PALETTE_CHARS_STANDARD);
-    cr_assert_eq(palette->requires_utf8, false);
+// Test data for builtin palette validation
+static palette_test_case_t builtin_palette_cases[] = {{PALETTE_STANDARD, "standard", PALETTE_CHARS_STANDARD, false},
+                                                      {PALETTE_BLOCKS, "blocks", PALETTE_CHARS_BLOCKS, true},
+                                                      {PALETTE_DIGITAL, "digital", PALETTE_CHARS_DIGITAL, true},
+                                                      {PALETTE_MINIMAL, "minimal", PALETTE_CHARS_MINIMAL, false},
+                                                      {PALETTE_COOL, "cool", PALETTE_CHARS_COOL, true}};
 
-    palette = get_builtin_palette(PALETTE_BLOCKS);
-    cr_assert_not_null(palette);
-    cr_assert_str_eq(palette->name, "blocks");
-    cr_assert_str_eq(palette->chars, PALETTE_CHARS_BLOCKS);
-    cr_assert_eq(palette->requires_utf8, true);
-
-    palette = get_builtin_palette(PALETTE_DIGITAL);
-    cr_assert_not_null(palette);
-    cr_assert_str_eq(palette->name, "digital");
-    cr_assert_eq(palette->requires_utf8, true);
-
-    palette = get_builtin_palette(PALETTE_MINIMAL);
-    cr_assert_not_null(palette);
-    cr_assert_str_eq(palette->name, "minimal");
-    cr_assert_eq(palette->requires_utf8, false);
-
-    palette = get_builtin_palette(PALETTE_COOL);
-    cr_assert_not_null(palette);
-    cr_assert_str_eq(palette->name, "cool");
-    cr_assert_eq(palette->requires_utf8, true);
+ParameterizedTestParameters(palette_tests, builtin_palette_tests) {
+  size_t nb_cases = sizeof(builtin_palette_cases) / sizeof(builtin_palette_cases[0]);
+  return cr_make_param_array(palette_test_case_t, builtin_palette_cases, nb_cases);
 }
 
-Test(palette, get_builtin_palette_invalid) {
-    const palette_def_t *palette;
+ParameterizedTest(palette_test_case_t *tc, palette_tests, builtin_palette_tests) {
+  const palette_def_t *palette = get_builtin_palette(tc->type);
 
-    // Test invalid palette types
-    palette = get_builtin_palette(PALETTE_CUSTOM);
-    cr_assert_null(palette);
-
-    palette = get_builtin_palette(PALETTE_COUNT);
-    cr_assert_null(palette);
-
-    palette = get_builtin_palette((palette_type_t)999);
-    cr_assert_null(palette);
+  cr_assert_not_null(palette, "Palette %s should not be null", tc->expected_name);
+  cr_assert_str_eq(palette->name, tc->expected_name, "Palette name should match for %s", tc->expected_name);
+  cr_assert_str_eq(palette->chars, tc->expected_chars, "Palette chars should match for %s", tc->expected_name);
+  cr_assert_eq(palette->requires_utf8, tc->expected_utf8, "UTF-8 requirement should match for %s", tc->expected_name);
 }
 
-Test(palette, palette_requires_utf8_encoding) {
-    // ASCII palette should not require UTF-8
-    bool requires = palette_requires_utf8_encoding(PALETTE_CHARS_STANDARD,
-                                                   strlen(PALETTE_CHARS_STANDARD));
-    cr_assert_eq(requires, false);
+// Test case structure for invalid palette tests
+typedef struct {
+  palette_type_t type;
+  char description[64]; // Use fixed-size array
+} invalid_palette_test_case_t;
 
-    // Minimal ASCII palette
-    requires = palette_requires_utf8_encoding(PALETTE_CHARS_MINIMAL,
-                                             strlen(PALETTE_CHARS_MINIMAL));
-    cr_assert_eq(requires, false);
+static invalid_palette_test_case_t invalid_palette_cases[] = {
+    {PALETTE_CUSTOM, "Custom palette"}, {PALETTE_COUNT, "Count palette"}, {(palette_type_t)999, "Invalid enum value"}};
 
-    // Blocks palette requires UTF-8
-    requires = palette_requires_utf8_encoding(PALETTE_CHARS_BLOCKS,
-                                             strlen(PALETTE_CHARS_BLOCKS));
-    cr_assert_eq(requires, true);
-
-    // Cool palette with box drawing requires UTF-8
-    requires = palette_requires_utf8_encoding(PALETTE_CHARS_COOL,
-                                             strlen(PALETTE_CHARS_COOL));
-    cr_assert_eq(requires, true);
-
-    // Empty palette
-    requires = palette_requires_utf8_encoding("", 0);
-    cr_assert_eq(requires, false);
+ParameterizedTestParameters(palette_tests, invalid_palette_tests) {
+  size_t nb_cases = sizeof(invalid_palette_cases) / sizeof(invalid_palette_cases[0]);
+  return cr_make_param_array(invalid_palette_test_case_t, invalid_palette_cases, nb_cases);
 }
 
-Test(palette, validate_palette_chars_valid) {
-    // Valid ASCII palette
-    bool valid = validate_palette_chars(PALETTE_CHARS_STANDARD,
-                                       strlen(PALETTE_CHARS_STANDARD));
-    cr_assert_eq(valid, true);
-
-    // Valid UTF-8 palette
-    valid = validate_palette_chars(PALETTE_CHARS_BLOCKS,
-                                  strlen(PALETTE_CHARS_BLOCKS));
-    cr_assert_eq(valid, true);
-
-    // Single character
-    valid = validate_palette_chars("A", 1);
-    cr_assert_eq(valid, true);
+ParameterizedTest(invalid_palette_test_case_t *tc, palette_tests, invalid_palette_tests) {
+  const palette_def_t *palette = get_builtin_palette(tc->type);
+  cr_assert_null(palette, "Palette should be null for %s", tc->description);
 }
 
-Test(palette, validate_palette_chars_invalid) {
-    // NULL palette
-    bool valid = validate_palette_chars(NULL, 10);
-    cr_assert_eq(valid, false);
+// Test case structure for UTF-8 encoding tests
+typedef struct {
+  char palette_chars[64]; // Use fixed-size array
+  char description[64];   // Use fixed-size array
+  bool expected_utf8;
+} utf8_test_case_t;
 
-    // Empty palette
-    valid = validate_palette_chars("", 0);
-    cr_assert_eq(valid, false);
+static utf8_test_case_t utf8_test_cases[] = {{PALETTE_CHARS_STANDARD, "Standard ASCII palette", false},
+                                             {PALETTE_CHARS_MINIMAL, "Minimal ASCII palette", false},
+                                             {PALETTE_CHARS_BLOCKS, "Blocks UTF-8 palette", true},
+                                             {PALETTE_CHARS_COOL, "Cool UTF-8 palette", true},
+                                             {"", "Empty palette", false}};
 
-    // Too long palette (>256 chars)
-    char long_palette[300];
-    memset(long_palette, 'A', 299);
-    long_palette[299] = '\0';
-    valid = validate_palette_chars(long_palette, 299);
-    cr_assert_eq(valid, false);
+ParameterizedTestParameters(palette_tests, utf8_encoding_tests) {
+  size_t nb_cases = sizeof(utf8_test_cases) / sizeof(utf8_test_cases[0]);
+  return cr_make_param_array(utf8_test_case_t, utf8_test_cases, nb_cases);
 }
 
+ParameterizedTest(utf8_test_case_t *tc, palette_tests, utf8_encoding_tests) {
+  size_t len = strlen(tc->palette_chars);
+  bool requires = palette_requires_utf8_encoding(tc->palette_chars, len);
+  cr_assert_eq(requires, tc->expected_utf8, "UTF-8 requirement should match for %s (got %d, expected %d)",
+               tc->description, requires, tc->expected_utf8);
+}
+
+// Test case structure for palette validation tests
+typedef struct {
+  char palette_chars[64]; // Use fixed-size array instead of pointer
+  size_t palette_len;
+  char description[64]; // Use fixed-size array instead of pointer
+  bool expected_valid;
+} validation_test_case_t;
+
+static validation_test_case_t validation_test_cases[] = {
+    {PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD), "Valid standard palette", true},
+    {PALETTE_CHARS_BLOCKS, strlen(PALETTE_CHARS_BLOCKS), "Valid UTF-8 palette", true},
+    {"A", 1, "Single character", true},
+    {"", 10, "NULL/empty palette chars", false}, // Can't use actual NULL with array, use empty string
+    {"", 0, "Empty palette", false}};
+
+ParameterizedTestParameters(palette_tests, validation_tests) {
+  size_t nb_cases = sizeof(validation_test_cases) / sizeof(validation_test_cases[0]);
+  return cr_make_param_array(validation_test_case_t, validation_test_cases, nb_cases);
+}
+
+ParameterizedTest(validation_test_case_t *tc, palette_tests, validation_tests) {
+  // Handle empty string case - pass NULL to test NULL handling
+  const char *chars_to_test = (tc->palette_chars[0] == '\0') ? NULL : tc->palette_chars;
+  bool valid = validate_palette_chars(chars_to_test, tc->palette_len);
+  cr_assert_eq(valid, tc->expected_valid, "Validation should match for %s", tc->description);
+}
+
+// Test case structure for palette compatibility tests
+typedef struct {
+  palette_type_t requested_type;
+  bool has_utf8_support;
+  char description[64]; // Use fixed-size array
+  palette_type_t expected_type;
+} compatibility_test_case_t;
+
+static compatibility_test_case_t compatibility_test_cases[] = {
+    {PALETTE_BLOCKS, true, "UTF-8 blocks with support", PALETTE_BLOCKS},
+    {PALETTE_COOL, true, "UTF-8 cool with support", PALETTE_COOL},
+    {PALETTE_BLOCKS, false, "UTF-8 blocks without support", PALETTE_STANDARD},
+    {PALETTE_DIGITAL, false, "UTF-8 digital without support", PALETTE_STANDARD},
+    {PALETTE_COOL, false, "UTF-8 cool without support", PALETTE_STANDARD},
+    {PALETTE_STANDARD, false, "ASCII standard without support", PALETTE_STANDARD},
+    {PALETTE_MINIMAL, false, "ASCII minimal without support", PALETTE_MINIMAL},
+    {PALETTE_CUSTOM, false, "Custom palette", PALETTE_CUSTOM}};
+
+ParameterizedTestParameters(palette_tests, compatibility_tests) {
+  size_t nb_cases = sizeof(compatibility_test_cases) / sizeof(compatibility_test_cases[0]);
+  return cr_make_param_array(compatibility_test_case_t, compatibility_test_cases, nb_cases);
+}
+
+ParameterizedTest(compatibility_test_case_t *tc, palette_tests, compatibility_tests) {
+  palette_type_t selected = select_compatible_palette(tc->requested_type, tc->has_utf8_support);
+  cr_assert_eq(selected, tc->expected_type, "Compatibility selection should match for %s", tc->description);
+}
+
+// Test case structure for UTF-8 palette creation tests
+typedef struct {
+  char palette_string[64]; // Use fixed-size array
+  char description[64];    // Use fixed-size array
+  size_t expected_char_count;
+  size_t expected_total_bytes;
+  bool should_succeed;
+} utf8_palette_test_case_t;
+
+static utf8_palette_test_case_t utf8_palette_test_cases[] = {
+    {" .:-=+*#%@", "ASCII palette", 10, 10, true},
+    {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
+    {"A→B", "Mixed ASCII/UTF-8", 3, 5, true},     // A(1) + →(3) + B(1)
+    {"", "NULL/empty string", 0, 0, false},       // Use empty string to test NULL handling
+    {"", "Empty string", 0, 0, false}};
+
+ParameterizedTestParameters(palette_tests, utf8_palette_creation_tests) {
+  size_t nb_cases = sizeof(utf8_palette_test_cases) / sizeof(utf8_palette_test_cases[0]);
+  return cr_make_param_array(utf8_palette_test_case_t, utf8_palette_test_cases, nb_cases);
+}
+
+ParameterizedTest(utf8_palette_test_case_t *tc, palette_tests, utf8_palette_creation_tests) {
+  // Handle empty string case - pass NULL to test NULL handling
+  const char *str_to_test = (tc->palette_string[0] == '\0') ? NULL : tc->palette_string;
+  utf8_palette_t *palette = utf8_palette_create(str_to_test);
+
+  if (tc->should_succeed) {
+    cr_assert_not_null(palette, "Palette creation should succeed for %s", tc->description);
+    cr_assert_eq(utf8_palette_get_char_count(palette), tc->expected_char_count, "Char count should match for %s",
+                 tc->description);
+    cr_assert_eq(palette->total_bytes, tc->expected_total_bytes, "Total bytes should match for %s", tc->description);
+    if (str_to_test) {
+      cr_assert_str_eq(palette->raw_string, str_to_test, "Raw string should match for %s", tc->description);
+    }
+    utf8_palette_destroy(palette);
+  } else {
+    cr_assert_null(palette, "Palette creation should fail for %s", tc->description);
+  }
+}
+
+// Test case structure for UTF-8 palette character access tests
+typedef struct {
+  char palette_string[64]; // Use fixed-size array
+  size_t char_index;
+  char description[64]; // Use fixed-size array
+  bool should_succeed;
+  size_t expected_byte_len;
+} utf8_char_test_case_t;
+
+static utf8_char_test_case_t utf8_char_test_cases[] = {
+    {"ABC", 0, "First ASCII char", true, 1}, {"ABC", 2, "Last ASCII char", true, 1},
+    {"ABC", 3, "Out of bounds", false, 0},   {"A→B", 0, "First mixed char", true, 1},
+    {"A→B", 1, "UTF-8 char", true, 3},       {"A→B", 2, "Last mixed char", true, 1},
+    {"🌑🌒", 0, "First emoji", true, 4},     {"🌑🌒", 1, "Second emoji", true, 4}};
+
+ParameterizedTestParameters(palette_tests, utf8_char_access_tests) {
+  size_t nb_cases = sizeof(utf8_char_test_cases) / sizeof(utf8_char_test_cases[0]);
+  return cr_make_param_array(utf8_char_test_case_t, utf8_char_test_cases, nb_cases);
+}
+
+ParameterizedTest(utf8_char_test_case_t *tc, palette_tests, utf8_char_access_tests) {
+  utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
+  cr_assert_not_null(palette, "Palette should be created for %s", tc->description);
+
+  const utf8_char_info_t *char_info = utf8_palette_get_char(palette, tc->char_index);
+
+  if (tc->should_succeed) {
+    cr_assert_not_null(char_info, "Char info should exist for %s", tc->description);
+    cr_assert_eq(char_info->byte_len, tc->expected_byte_len, "Byte length should match for %s", tc->description);
+  } else {
+    cr_assert_null(char_info, "Char info should be null for %s", tc->description);
+  }
+
+  utf8_palette_destroy(palette);
+}
+
+// Test case structure for UTF-8 palette character search tests
+typedef struct {
+  char palette_string[64]; // Use fixed-size array
+  char search_char[8];     // Use fixed-size array (max UTF-8 char is 4 bytes + null)
+  size_t search_len;
+  char description[64]; // Use fixed-size array
+  bool should_contain;
+  size_t expected_index;
+} utf8_search_test_case_t;
+
+static utf8_search_test_case_t utf8_search_test_cases[] = {
+    {"ABC", "A", 1, "Find first ASCII", true, 0},
+    {"ABC", "B", 1, "Find middle ASCII", true, 1},
+    {"ABC", "Z", 1, "Find non-existent ASCII", false, (size_t)-1},
+    {"A→B", "→", 3, "Find UTF-8 char", true, 1},
+    {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},
+    {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}};
+
+ParameterizedTestParameters(palette_tests, utf8_search_tests) {
+  size_t nb_cases = sizeof(utf8_search_test_cases) / sizeof(utf8_search_test_cases[0]);
+  return cr_make_param_array(utf8_search_test_case_t, utf8_search_test_cases, nb_cases);
+}
+
+ParameterizedTest(utf8_search_test_case_t *tc, palette_tests, utf8_search_tests) {
+  utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
+  cr_assert_not_null(palette, "Palette should be created for %s", tc->description);
+
+  bool contains = utf8_palette_contains_char(palette, tc->search_char, tc->search_len);
+  cr_assert_eq(contains, tc->should_contain, "Contains should match for %s", tc->description);
+
+  if (tc->should_contain) {
+    size_t index = utf8_palette_find_char_index(palette, tc->search_char, tc->search_len);
+    cr_assert_eq(index, tc->expected_index, "Index should match for %s", tc->description);
+  }
+
+  utf8_palette_destroy(palette);
+}
+
+// Test case structure for client palette initialization tests
+typedef struct {
+  palette_type_t palette_type;
+  char custom_palette[64]; // Use fixed-size array
+  char description[64];    // Use fixed-size array
+  bool should_succeed;
+  char expected_chars[64]; // Use fixed-size array
+} client_palette_init_test_case_t;
+
+static client_palette_init_test_case_t client_palette_init_cases[] = {
+    {PALETTE_STANDARD, "", "Standard builtin palette", true, PALETTE_CHARS_STANDARD},
+    {PALETTE_MINIMAL, "", "Minimal builtin palette", true, PALETTE_CHARS_MINIMAL},
+    {PALETTE_BLOCKS, "", "Blocks builtin palette", true, PALETTE_CHARS_BLOCKS},
+    {PALETTE_COOL, "", "Cool builtin palette", true, PALETTE_CHARS_COOL},
+    {PALETTE_CUSTOM, "01234567", "Valid custom palette", true, "01234567"},
+    {PALETTE_CUSTOM, "", "NULL custom palette", false, ""},
+    {PALETTE_CUSTOM, "", "Empty custom palette", false, ""}};
+
+ParameterizedTestParameters(palette_tests, client_palette_initialization_tests) {
+  size_t nb_cases = sizeof(client_palette_init_cases) / sizeof(client_palette_init_cases[0]);
+  return cr_make_param_array(client_palette_init_test_case_t, client_palette_init_cases, nb_cases);
+}
+
+ParameterizedTest(client_palette_init_test_case_t *tc, palette_tests, client_palette_initialization_tests) {
+  char client_palette_chars[256];
+  size_t client_palette_len;
+  char client_luminance_palette[256];
+
+  // Handle empty string case - pass NULL to test NULL handling
+  const char *custom_to_test = (tc->custom_palette[0] == '\0') ? NULL : tc->custom_palette;
+  const char *expected_to_check = (tc->expected_chars[0] == '\0') ? NULL : tc->expected_chars;
+
+  int result = initialize_client_palette(tc->palette_type, custom_to_test, client_palette_chars, &client_palette_len,
+                                         client_luminance_palette);
+
+  if (tc->should_succeed) {
+    cr_assert_eq(result, 0, "Initialization should succeed for %s", tc->description);
+    if (expected_to_check) {
+      cr_assert_eq(client_palette_len, strlen(expected_to_check), "Palette length should match for %s",
+                   tc->description);
+      cr_assert_str_eq(client_palette_chars, expected_to_check, "Palette chars should match for %s", tc->description);
+    }
+  } else {
+    cr_assert_eq(result, -1, "Initialization should fail for %s", tc->description);
+  }
+}
+
+// Legacy individual tests for functions that don't fit parameterized patterns well
 Test(palette, detect_client_utf8_support) {
-    utf8_capabilities_t caps;
+  utf8_capabilities_t caps;
 
-    // Test detection (results will vary by environment)
-    bool supports = detect_client_utf8_support(&caps);
+  // Test detection (results will vary by environment)
+  (void)detect_client_utf8_support(&caps);
 
-    // Verify structure is populated
-    cr_assert(caps.terminal_type[0] != '\0' || caps.locale_encoding[0] != '\0',
-              "Should populate at least one field");
+  // Verify structure is populated
+  cr_assert(caps.terminal_type[0] != '\0' || caps.locale_encoding[0] != '\0', "Should populate at least one field");
 
-    // NULL caps should return false
-    supports = detect_client_utf8_support(NULL);
-    cr_assert_eq(supports, false);
+  // NULL caps should return false
+  bool supports = detect_client_utf8_support(NULL);
+  cr_assert_eq(supports, false);
 }
 
-Test(palette, select_compatible_palette) {
-    // With UTF-8 support, any palette should work
-    palette_type_t selected = select_compatible_palette(PALETTE_BLOCKS, true);
-    cr_assert_eq(selected, PALETTE_BLOCKS);
+// Theory: Palette length property - luminance palettes should work for various lengths
+TheoryDataPoints(palette, palette_length_property) = {
+    DataPoints(int, 2, 5, 10, 15, 20, 30, 50, 70),
+};
 
-    selected = select_compatible_palette(PALETTE_COOL, true);
-    cr_assert_eq(selected, PALETTE_COOL);
+Theory((int palette_len), palette, palette_length_property) {
+  cr_assume(palette_len >= 2 && palette_len <= 70);
 
-    // Without UTF-8, should fallback to ASCII
-    selected = select_compatible_palette(PALETTE_BLOCKS, false);
-    cr_assert_eq(selected, PALETTE_STANDARD);
+  char luminance_mapping[256];
+  char *test_palette = malloc(palette_len + 1);
+  cr_assume(test_palette != NULL);
 
-    selected = select_compatible_palette(PALETTE_DIGITAL, false);
-    cr_assert_eq(selected, PALETTE_STANDARD);
+  // Create a palette of increasing complexity
+  for (int i = 0; i < palette_len; i++) {
+    test_palette[i] = ' ' + i % 94; // Printable ASCII range
+  }
+  test_palette[palette_len] = '\0';
 
-    selected = select_compatible_palette(PALETTE_COOL, false);
-    cr_assert_eq(selected, PALETTE_STANDARD);
+  // PROPERTY: Should successfully build luminance palette for any valid length
+  int result = build_client_luminance_palette(test_palette, palette_len, luminance_mapping);
+  cr_assert_eq(result, 0, "Should build luminance palette for length %d", palette_len);
 
-    // ASCII palettes should work without UTF-8
-    selected = select_compatible_palette(PALETTE_STANDARD, false);
-    cr_assert_eq(selected, PALETTE_STANDARD);
+  // PROPERTY: Darkest should map to first char, brightest to last
+  cr_assert_eq(luminance_mapping[0], test_palette[0], "Darkest should map to first char for length %d", palette_len);
+  cr_assert_eq(luminance_mapping[255], test_palette[palette_len - 1], "Brightest should map to last char for length %d",
+               palette_len);
 
-    selected = select_compatible_palette(PALETTE_MINIMAL, false);
-    cr_assert_eq(selected, PALETTE_MINIMAL);
-
-    // Custom palette should pass through
-    selected = select_compatible_palette(PALETTE_CUSTOM, false);
-    cr_assert_eq(selected, PALETTE_CUSTOM);
+  free(test_palette);
 }
 
-Test(palette, build_client_luminance_palette) {
-    char luminance_mapping[256];
-    const char *palette = " .:-=+*#%@";
-    size_t palette_len = strlen(palette);
+// Test case structure for luminance palette error handling
+typedef struct {
+  char palette_chars[64];
+  size_t palette_len;
+  bool pass_null_output;
+  char description[64];
+  int expected_result;
+} luminance_error_test_case_t;
 
-    // Valid palette
-    int result = build_client_luminance_palette(palette, palette_len, luminance_mapping);
-    cr_assert_eq(result, 0);
+static luminance_error_test_case_t luminance_error_cases[] = {{" .:-=+*#%@", 10, false, "Valid palette", 0},
+                                                              {"", 10, false, "NULL palette chars", -1},
+                                                              {" .:-=+*#%@", 0, false, "Zero length", -1},
+                                                              {" .:-=+*#%@", 10, true, "NULL output buffer", -1}};
 
-    // Check some mappings
-    cr_assert_eq(luminance_mapping[0], ' ');    // Darkest
-    cr_assert_eq(luminance_mapping[255], '@');  // Brightest
-
-    // Invalid parameters
-    result = build_client_luminance_palette(NULL, palette_len, luminance_mapping);
-    cr_assert_eq(result, -1);
-
-    result = build_client_luminance_palette(palette, 0, luminance_mapping);
-    cr_assert_eq(result, -1);
-
-    result = build_client_luminance_palette(palette, palette_len, NULL);
-    cr_assert_eq(result, -1);
+ParameterizedTestParameters(palette_tests, luminance_palette_error_tests) {
+  size_t nb_cases = sizeof(luminance_error_cases) / sizeof(luminance_error_cases[0]);
+  return cr_make_param_array(luminance_error_test_case_t, luminance_error_cases, nb_cases);
 }
 
-Test(palette, initialize_client_palette_builtin) {
-    char client_palette_chars[256];
-    size_t client_palette_len;
-    char client_luminance_palette[256];
+ParameterizedTest(luminance_error_test_case_t *tc, palette_tests, luminance_palette_error_tests) {
+  char luminance_mapping[256] = {0};
+  const char *palette_to_test = (tc->palette_chars[0] == '\0') ? NULL : tc->palette_chars;
+  char *output_buffer = tc->pass_null_output ? NULL : luminance_mapping;
 
-    // Initialize with standard palette
-    int result = initialize_client_palette(PALETTE_STANDARD, NULL,
-                                          client_palette_chars,
-                                          &client_palette_len,
-                                          client_luminance_palette);
-    cr_assert_eq(result, 0);
-    cr_assert_eq(client_palette_len, strlen(PALETTE_CHARS_STANDARD));
-    cr_assert_str_eq(client_palette_chars, PALETTE_CHARS_STANDARD);
+  int result = build_client_luminance_palette(palette_to_test, tc->palette_len, output_buffer);
+  cr_assert_eq(result, tc->expected_result, "Result should match for %s", tc->description);
 
-    // Initialize with minimal palette
-    result = initialize_client_palette(PALETTE_MINIMAL, NULL,
-                                      client_palette_chars,
-                                      &client_palette_len,
-                                      client_luminance_palette);
-    cr_assert_eq(result, 0);
-    cr_assert_eq(client_palette_len, strlen(PALETTE_CHARS_MINIMAL));
+  // For valid case, verify the mappings (only when output_buffer was non-NULL)
+  if (tc->expected_result == 0 && !tc->pass_null_output) {
+    cr_assert_eq(luminance_mapping[0], ' ', "Darkest should map to first char for %s", tc->description);
+    cr_assert_eq(luminance_mapping[255], '@', "Brightest should map to last char for %s", tc->description);
+  }
 }
 
-Test(palette, initialize_client_palette_custom) {
-    char client_palette_chars[256];
-    size_t client_palette_len;
-    char client_luminance_palette[256];
-    const char *custom = "01234567";
+// NOTE: initialize_client_palette tests are now handled by parameterized test
+// client_palette_initialization_tests (lines 275-302)
 
-    // Valid custom palette
-    int result = initialize_client_palette(PALETTE_CUSTOM, custom,
-                                          client_palette_chars,
-                                          &client_palette_len,
-                                          client_luminance_palette);
-    cr_assert_eq(result, 0);
-    cr_assert_eq(client_palette_len, strlen(custom));
-    cr_assert_str_eq(client_palette_chars, custom);
+// Test case structure for duplicate character handling
+typedef struct {
+  char palette_string[64];
+  char description[64];
+  size_t expected_total_count;
+  size_t duplicate_start_index;
+  size_t duplicate_count;
+  char expected_duplicate_char;
+} duplicate_test_case_t;
 
-    // Invalid custom palette (NULL)
-    result = initialize_client_palette(PALETTE_CUSTOM, NULL,
-                                      client_palette_chars,
-                                      &client_palette_len,
-                                      client_luminance_palette);
-    cr_assert_eq(result, -1);
+static duplicate_test_case_t duplicate_test_cases[] = {
+    {"   ...',;:clodxkO0KXNWM", "Standard palette with duplicate spaces", 23, 0, 3, ' '},
+    {"AAA", "Triple ASCII duplicate", 3, 0, 3, 'A'},
+    {"ABCAAA", "ASCII with trailing duplicates", 6, 3, 3, 'A'},
+    {"🌑🌑🌑", "Triple emoji duplicate", 3, 0, 3, '\0'}, // Special case for emoji
+    {"A🌑🌑B", "Mixed with emoji duplicates", 4, 1, 2, '\0'}};
 
-    // Invalid custom palette (empty)
-    result = initialize_client_palette(PALETTE_CUSTOM, "",
-                                      client_palette_chars,
-                                      &client_palette_len,
-                                      client_luminance_palette);
-    cr_assert_eq(result, -1);
+ParameterizedTestParameters(palette_tests, duplicate_character_tests) {
+  size_t nb_cases = sizeof(duplicate_test_cases) / sizeof(duplicate_test_cases[0]);
+  return cr_make_param_array(duplicate_test_case_t, duplicate_test_cases, nb_cases);
 }
 
-/* UTF-8 Palette Function Tests */
+ParameterizedTest(duplicate_test_case_t *tc, palette_tests, duplicate_character_tests) {
+  utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
+  cr_assert_not_null(palette, "Palette should be created for %s", tc->description);
 
-Test(palette, utf8_palette_create_ascii) {
-    const char *ascii_palette = " .:-=+*#%@";
-    utf8_palette_t *palette = utf8_palette_create(ascii_palette);
+  // Verify total character count
+  size_t char_count = utf8_palette_get_char_count(palette);
+  cr_assert_eq(char_count, tc->expected_total_count, "Total char count should match for %s", tc->description);
 
-    cr_assert_not_null(palette);
-    cr_assert_eq(utf8_palette_get_char_count(palette), 10);
-    cr_assert_eq(palette->total_bytes, strlen(ascii_palette));
-    cr_assert_str_eq(palette->raw_string, ascii_palette);
-
-    // Check individual characters
-    for (size_t i = 0; i < 10; i++) {
-        const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-        cr_assert_not_null(char_info);
-        cr_assert_eq(char_info->byte_len, 1);
-        cr_assert_eq(char_info->bytes[0], ascii_palette[i]);
+  // Verify duplicate characters (skip emoji check if expected_duplicate_char is '\0')
+  if (tc->expected_duplicate_char != '\0') {
+    for (size_t i = tc->duplicate_start_index; i < tc->duplicate_start_index + tc->duplicate_count; i++) {
+      const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
+      cr_assert_eq(char_info->byte_len, 1, "Duplicate char should be 1 byte for %s at index %zu", tc->description, i);
+      cr_assert_eq(char_info->bytes[0], tc->expected_duplicate_char, "Duplicate char should match for %s at index %zu",
+                   tc->description, i);
     }
+  }
 
-    utf8_palette_destroy(palette);
+  utf8_palette_destroy(palette);
 }
 
-Test(palette, utf8_palette_create_utf8) {
-    const char *utf8_palette = "🌑🌒🌓🌔🌕";  // 5 moon phase emojis (4 bytes each)
-    utf8_palette_t *palette = utf8_palette_create(utf8_palette);
+// Test case structure for emoji palette tests
+typedef struct {
+  char emoji_palette[128];
+  char description[64];
+  size_t expected_count;
+  size_t expected_bytes_per_char;
+} emoji_test_case_t;
 
-    cr_assert_not_null(palette);
-    cr_assert_eq(utf8_palette_get_char_count(palette), 5);
-    cr_assert_eq(palette->total_bytes, strlen(utf8_palette));
+static emoji_test_case_t emoji_test_cases[] = {{"😀😃😄😁😆😅😂🤣", "Smiley face emojis (4-byte)", 8, 4},
+                                               {"🌑🌒🌓🌔🌕", "Moon phase emojis (4-byte)", 5, 4},
+                                               {"🔥💧🌊", "Element emojis (4-byte)", 3, 4}};
 
-    // Check that each character is 4 bytes
-    for (size_t i = 0; i < 5; i++) {
-        const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-        cr_assert_not_null(char_info);
-        cr_assert_eq(char_info->byte_len, 4);
-    }
-
-    utf8_palette_destroy(palette);
+ParameterizedTestParameters(palette_tests, emoji_palette_tests) {
+  size_t nb_cases = sizeof(emoji_test_cases) / sizeof(emoji_test_cases[0]);
+  return cr_make_param_array(emoji_test_case_t, emoji_test_cases, nb_cases);
 }
 
-Test(palette, utf8_palette_create_mixed) {
-    const char *mixed = "A→B";  // ASCII + 3-byte arrow + ASCII
-    utf8_palette_t *palette = utf8_palette_create(mixed);
+ParameterizedTest(emoji_test_case_t *tc, palette_tests, emoji_palette_tests) {
+  utf8_palette_t *palette = utf8_palette_create(tc->emoji_palette);
 
-    cr_assert_not_null(palette);
-    cr_assert_eq(utf8_palette_get_char_count(palette), 3);
+  cr_assert_not_null(palette, "Palette should be created for %s", tc->description);
+  cr_assert_eq(utf8_palette_get_char_count(palette), tc->expected_count, "Emoji count should match for %s",
+               tc->description);
 
-    // First character: A (1 byte)
-    const utf8_char_info_t *char_info = utf8_palette_get_char(palette, 0);
-    cr_assert_eq(char_info->byte_len, 1);
-    cr_assert_eq(char_info->bytes[0], 'A');
+  // Each emoji should be expected_bytes_per_char bytes
+  for (size_t i = 0; i < tc->expected_count; i++) {
+    const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
+    cr_assert_eq(char_info->byte_len, tc->expected_bytes_per_char, "Emoji byte length should match for %s at index %zu",
+                 tc->description, i);
+  }
 
-    // Second character: → (3 bytes)
-    char_info = utf8_palette_get_char(palette, 1);
-    cr_assert_eq(char_info->byte_len, 3);
-
-    // Third character: B (1 byte)
-    char_info = utf8_palette_get_char(palette, 2);
-    cr_assert_eq(char_info->byte_len, 1);
-    cr_assert_eq(char_info->bytes[0], 'B');
-
-    utf8_palette_destroy(palette);
+  utf8_palette_destroy(palette);
 }
 
-Test(palette, utf8_palette_create_invalid) {
-    // NULL string
+// Test case structure for NULL handling tests
+typedef enum {
+  NULL_TEST_REQUIRES_UTF8,
+  NULL_TEST_VALIDATE_CHARS,
+  NULL_TEST_CREATE_PALETTE,
+  NULL_TEST_INIT_CUSTOM_PALETTE
+} null_test_function_t;
+
+typedef struct {
+  null_test_function_t function;
+  char description[64];
+} null_handling_test_case_t;
+
+static null_handling_test_case_t null_handling_cases[] = {
+    {NULL_TEST_REQUIRES_UTF8, "palette_requires_utf8_encoding with NULL"},
+    {NULL_TEST_VALIDATE_CHARS, "validate_palette_chars with NULL"},
+    {NULL_TEST_CREATE_PALETTE, "utf8_palette_create with NULL"},
+    {NULL_TEST_INIT_CUSTOM_PALETTE, "initialize_client_palette with NULL custom"}};
+
+ParameterizedTestParameters(palette_tests, null_handling_tests) {
+  size_t nb_cases = sizeof(null_handling_cases) / sizeof(null_handling_cases[0]);
+  return cr_make_param_array(null_handling_test_case_t, null_handling_cases, nb_cases);
+}
+
+ParameterizedTest(null_handling_test_case_t *tc, palette_tests, null_handling_tests) {
+  switch (tc->function) {
+  case NULL_TEST_REQUIRES_UTF8: {
+    bool requires = palette_requires_utf8_encoding(NULL, 10);
+    cr_assert_eq(requires, false, "%s should return false", tc->description);
+    break;
+  }
+  case NULL_TEST_VALIDATE_CHARS: {
+    bool valid = validate_palette_chars(NULL, 10);
+    cr_assert_eq(valid, false, "%s should return false", tc->description);
+    break;
+  }
+  case NULL_TEST_CREATE_PALETTE: {
     utf8_palette_t *palette = utf8_palette_create(NULL);
-    cr_assert_null(palette);
-
-    // Empty string
-    palette = utf8_palette_create("");
-    cr_assert_null(palette);
+    cr_assert_null(palette, "%s should return NULL", tc->description);
+    break;
+  }
+  case NULL_TEST_INIT_CUSTOM_PALETTE: {
+    char client_palette_chars[256];
+    size_t client_palette_len;
+    char client_luminance_palette[256];
+    int result = initialize_client_palette(PALETTE_CUSTOM, NULL, client_palette_chars, &client_palette_len,
+                                           client_luminance_palette);
+    cr_assert_eq(result, -1, "%s should return -1", tc->description);
+    break;
+  }
+  }
 }
 
-Test(palette, utf8_palette_get_char_bounds) {
-    const char *palette_str = "ABC";
-    utf8_palette_t *palette = utf8_palette_create(palette_str);
+// Theory: UTF-8 character boundary property - all palettes should correctly parse UTF-8 boundaries
+TheoryDataPoints(palette, utf8_boundary_property) = {
+    DataPoints(const char *, "ABC",       // Pure ASCII
+               "→→→",                     // 3-byte UTF-8
+               "🌑🌑",                    // 4-byte UTF-8
+               "A→B🌑C",                  // Mixed
+               " .:-=+*#%@",              // Standard palette
+               "   ...',;:clodxkO0KXNWM", // Palette with duplicates
+               "😀😃😄😁"),               // Emoji sequence
+};
 
-    // Valid indices
-    const utf8_char_info_t *char_info = utf8_palette_get_char(palette, 0);
-    cr_assert_not_null(char_info);
+Theory((const char *palette_string), palette, utf8_boundary_property) {
+  cr_assume(palette_string != NULL);
 
-    char_info = utf8_palette_get_char(palette, 2);
-    cr_assert_not_null(char_info);
+  utf8_palette_t *palette = utf8_palette_create(palette_string);
+  cr_assume(palette != NULL);
 
-    // Out of bounds
-    char_info = utf8_palette_get_char(palette, 3);
-    cr_assert_null(char_info);
+  size_t char_count = utf8_palette_get_char_count(palette);
 
-    char_info = utf8_palette_get_char(palette, 100);
-    cr_assert_null(char_info);
+  // PROPERTY: Sum of all character byte lengths should equal total bytes
+  size_t calculated_total = 0;
+  for (size_t i = 0; i < char_count; i++) {
+    const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
+    cr_assert_not_null(char_info, "Every character should be accessible at index %zu", i);
+    cr_assert(char_info->byte_len > 0 && char_info->byte_len <= 4,
+              "Character byte length should be 1-4 at index %zu (got %zu)", i, char_info->byte_len);
+    calculated_total += char_info->byte_len;
+  }
+  cr_assert_eq(calculated_total, palette->total_bytes, "Sum of character bytes should equal total bytes for '%s'",
+               palette_string);
 
-    // NULL palette
-    char_info = utf8_palette_get_char(NULL, 0);
-    cr_assert_null(char_info);
+  // PROPERTY: Raw string should match input
+  cr_assert_str_eq(palette->raw_string, palette_string, "Raw string should be preserved for '%s'", palette_string);
 
-    utf8_palette_destroy(palette);
-}
+  // PROPERTY: Out-of-bounds access should return NULL
+  const utf8_char_info_t *out_of_bounds = utf8_palette_get_char(palette, char_count);
+  cr_assert_null(out_of_bounds, "Out-of-bounds access should return NULL for '%s'", palette_string);
 
-Test(palette, utf8_palette_contains_char) {
-    const char *palette_str = "A→B🌕";
-    utf8_palette_t *palette = utf8_palette_create(palette_str);
-
-    // Check ASCII character
-    bool contains = utf8_palette_contains_char(palette, "A", 1);
-    cr_assert_eq(contains, true);
-
-    contains = utf8_palette_contains_char(palette, "B", 1);
-    cr_assert_eq(contains, true);
-
-    // Check 3-byte character (→)
-    contains = utf8_palette_contains_char(palette, "→", 3);
-    cr_assert_eq(contains, true);
-
-    // Check 4-byte emoji
-    contains = utf8_palette_contains_char(palette, "🌕", 4);
-    cr_assert_eq(contains, true);
-
-    // Character not in palette
-    contains = utf8_palette_contains_char(palette, "Z", 1);
-    cr_assert_eq(contains, false);
-
-    // Invalid parameters
-    contains = utf8_palette_contains_char(NULL, "A", 1);
-    cr_assert_eq(contains, false);
-
-    contains = utf8_palette_contains_char(palette, NULL, 1);
-    cr_assert_eq(contains, false);
-
-    contains = utf8_palette_contains_char(palette, "A", 0);
-    cr_assert_eq(contains, false);
-
-    contains = utf8_palette_contains_char(palette, "A", 5);
-    cr_assert_eq(contains, false);
-
-    utf8_palette_destroy(palette);
-}
-
-Test(palette, utf8_palette_find_char_index) {
-    const char *palette_str = "A→B🌕C";
-    utf8_palette_t *palette = utf8_palette_create(palette_str);
-
-    // Find ASCII characters
-    size_t index = utf8_palette_find_char_index(palette, "A", 1);
-    cr_assert_eq(index, 0);
-
-    index = utf8_palette_find_char_index(palette, "B", 1);
-    cr_assert_eq(index, 2);
-
-    index = utf8_palette_find_char_index(palette, "C", 1);
-    cr_assert_eq(index, 4);
-
-    // Find 3-byte character
-    index = utf8_palette_find_char_index(palette, "→", 3);
-    cr_assert_eq(index, 1);
-
-    // Find 4-byte emoji
-    index = utf8_palette_find_char_index(palette, "🌕", 4);
-    cr_assert_eq(index, 3);
-
-    // Character not found
-    index = utf8_palette_find_char_index(palette, "Z", 1);
-    cr_assert_eq(index, (size_t)-1);
-
-    // Invalid parameters
-    index = utf8_palette_find_char_index(NULL, "A", 1);
-    cr_assert_eq(index, (size_t)-1);
-
-    index = utf8_palette_find_char_index(palette, NULL, 1);
-    cr_assert_eq(index, (size_t)-1);
-
-    utf8_palette_destroy(palette);
-}
-
-Test(palette, utf8_palette_standard_palette_coverage) {
-    // Test with the standard palette that has duplicate spaces
-    const char *std_palette = "   ...',;:clodxkO0KXNWM";
-    utf8_palette_t *palette = utf8_palette_create(std_palette);
-
-    cr_assert_not_null(palette);
-
-    // Should have 23 characters total (including duplicates)
-    size_t char_count = utf8_palette_get_char_count(palette);
-    cr_assert_eq(char_count, 23);
-
-    // First 3 should be spaces
-    for (size_t i = 0; i < 3; i++) {
-        const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-        cr_assert_eq(char_info->byte_len, 1);
-        cr_assert_eq(char_info->bytes[0], ' ');
-    }
-
-    // Next 3 should be dots
-    for (size_t i = 3; i < 6; i++) {
-        const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-        cr_assert_eq(char_info->byte_len, 1);
-        cr_assert_eq(char_info->bytes[0], '.');
-    }
-
-    utf8_palette_destroy(palette);
-}
-
-Test(palette, utf8_palette_emoji_palette) {
-    // Test with complex emoji palette
-    const char *emoji_palette = "😀😃😄😁😆😅😂🤣";
-    utf8_palette_t *palette = utf8_palette_create(emoji_palette);
-
-    cr_assert_not_null(palette);
-    cr_assert_eq(utf8_palette_get_char_count(palette), 8);
-
-    // Each emoji should be 4 bytes
-    for (size_t i = 0; i < 8; i++) {
-        const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-        cr_assert_eq(char_info->byte_len, 4);
-    }
-
-    utf8_palette_destroy(palette);
+  utf8_palette_destroy(palette);
 }

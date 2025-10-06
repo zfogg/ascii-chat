@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pthread.h>
+#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -37,11 +37,11 @@ struct packet_node {
 
 // Memory pool for packet nodes to reduce malloc/free overhead
 typedef struct node_pool {
-  packet_node_t *free_list;   // Stack of free nodes
-  packet_node_t *nodes;       // Pre-allocated array of nodes
-  size_t pool_size;           // Total number of nodes in pool
-  size_t used_count;          // Number of nodes currently in use
-  pthread_mutex_t pool_mutex; // Protect free list access
+  packet_node_t *free_list; // Stack of free nodes
+  packet_node_t *nodes;     // Pre-allocated array of nodes
+  size_t pool_size;         // Total number of nodes in pool
+  size_t used_count;        // Number of nodes currently in use
+  mutex_t pool_mutex;       // Protect free list access
 } node_pool_t;
 
 // Thread-safe packet queue
@@ -57,9 +57,9 @@ typedef struct {
   data_buffer_pool_t *buffer_pool; // Optional memory pool for data buffers (NULL = use malloc/free)
 
   // Thread synchronization
-  pthread_mutex_t mutex;
-  pthread_cond_t not_empty; // Signaled when queue becomes non-empty
-  pthread_cond_t not_full;  // Signaled when queue becomes not full
+  mutex_t mutex;
+  cond_t not_empty; // Signaled when queue becomes non-empty
+  cond_t not_full;  // Signaled when queue becomes not full
 
   // Statistics
   uint64_t packets_enqueued;

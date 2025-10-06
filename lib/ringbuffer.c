@@ -91,7 +91,7 @@ bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
   size_t next_head = (head + 1) & rb->capacity_mask;
 
   /* Copy data */
-  memcpy(rb->buffer + (head * rb->element_size), data, rb->element_size);
+  SAFE_MEMCPY(rb->buffer + (head * rb->element_size), rb->element_size, data, rb->element_size);
 
   /* Update head and size atomically */
   atomic_store(&rb->head, next_head);
@@ -113,7 +113,7 @@ bool ringbuffer_read(ringbuffer_t *rb, void *data) {
   size_t next_tail = (tail + 1) & rb->capacity_mask;
 
   /* Copy data */
-  memcpy(data, rb->buffer + (tail * rb->element_size), rb->element_size);
+  SAFE_MEMCPY(data, rb->element_size, rb->buffer + (tail * rb->element_size), rb->element_size);
 
   /* Update tail and size atomically */
   atomic_store(&rb->tail, next_tail);
@@ -134,7 +134,7 @@ bool ringbuffer_peek(ringbuffer_t *rb, void *data) {
   size_t tail = atomic_load(&rb->tail);
 
   /* Copy data without updating tail */
-  memcpy(data, rb->buffer + (tail * rb->element_size), rb->element_size);
+  SAFE_MEMCPY(data, rb->element_size, rb->buffer + (tail * rb->element_size), rb->element_size);
 
   return true;
 }
@@ -179,7 +179,7 @@ framebuffer_t *framebuffer_create(size_t capacity) {
   }
 
   // Initialize mutex for thread-safe access
-  if (pthread_mutex_init(&fb->mutex, NULL) != 0) {
+  if (mutex_init(&fb->mutex) != 0) {
     log_error("Failed to initialize framebuffer mutex");
     SAFE_FREE(fb);
     return NULL;
@@ -189,7 +189,7 @@ framebuffer_t *framebuffer_create(size_t capacity) {
   fb->rb = ringbuffer_create(sizeof(frame_t), capacity);
 
   if (!fb->rb) {
-    pthread_mutex_destroy(&fb->mutex);
+    mutex_destroy(&fb->mutex);
     SAFE_FREE(fb);
     return NULL;
   }
@@ -211,7 +211,7 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
   }
 
   // Initialize mutex for thread-safe access
-  if (pthread_mutex_init(&fb->mutex, NULL) != 0) {
+  if (mutex_init(&fb->mutex) != 0) {
     log_error("Failed to initialize framebuffer mutex");
     SAFE_FREE(fb);
     return NULL;
@@ -221,7 +221,7 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
   fb->rb = ringbuffer_create(sizeof(multi_source_frame_t), capacity);
 
   if (!fb->rb) {
-    pthread_mutex_destroy(&fb->mutex);
+    mutex_destroy(&fb->mutex);
     SAFE_FREE(fb);
     return NULL;
   }
@@ -247,7 +247,7 @@ void framebuffer_destroy(framebuffer_t *fb) {
   ringbuffer_destroy(fb->rb);
 
   // Destroy the mutex
-  pthread_mutex_destroy(&fb->mutex);
+  mutex_destroy(&fb->mutex);
 
   // Mark as destroyed before freeing
   fb->rb = (ringbuffer_t *)0xDEADBEEF;
@@ -285,7 +285,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     return false;
   }
 
-  memcpy(frame_copy, frame_data, frame_size);
+  SAFE_MEMCPY(frame_copy, frame_size, frame_data, frame_size);
   frame_copy[frame_size] = '\0'; // Ensure null termination
 
   // Create a frame_t struct with the copy (store allocated size for proper cleanup)
@@ -387,7 +387,7 @@ void framebuffer_clear(framebuffer_t *fb) {
 
   // Zero out the entire buffer to prevent any dangling pointers
   if (fb->rb->buffer) {
-    memset(fb->rb->buffer, 0, fb->rb->capacity * fb->rb->element_size);
+    SAFE_MEMSET(fb->rb->buffer, fb->rb->capacity * fb->rb->element_size, 0, fb->rb->capacity * fb->rb->element_size);
   }
 }
 
@@ -407,7 +407,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   }
 
   // Copy frame data
-  memcpy(data_copy, frame_data, frame_size);
+  SAFE_MEMCPY(data_copy, frame_size, frame_data, frame_size);
 
   // Create multi-source frame
   multi_source_frame_t multi_frame = {.magic = FRAME_MAGIC,
@@ -418,7 +418,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
                                       .data = data_copy};
 
   // Thread-safe access to framebuffer
-  pthread_mutex_lock(&fb->mutex);
+  mutex_lock(&fb->mutex);
 
   // Try to write to ring buffer
   bool success = ringbuffer_write(fb->rb, &multi_frame);
@@ -428,7 +428,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
     log_debug("Frame buffer full, dropping multi-source frame from client %u", source_client_id);
   }
 
-  pthread_mutex_unlock(&fb->mutex);
+  mutex_unlock(&fb->mutex);
   return success;
 }
 
@@ -438,7 +438,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
   }
 
   // Thread-safe access to framebuffer
-  pthread_mutex_lock(&fb->mutex);
+  mutex_lock(&fb->mutex);
 
   bool result = ringbuffer_read(fb->rb, frame);
 
@@ -449,19 +449,19 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
       frame->data = NULL;
       frame->size = 0;
       frame->source_client_id = 0;
-      pthread_mutex_unlock(&fb->mutex);
+      mutex_unlock(&fb->mutex);
       return false;
     }
 
     // Additional validation
     if (frame->size == 0 || !frame->data) {
       log_error("CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)", frame->size, frame->data);
-      pthread_mutex_unlock(&fb->mutex);
+      mutex_unlock(&fb->mutex);
       return false;
     }
   }
 
-  pthread_mutex_unlock(&fb->mutex);
+  mutex_unlock(&fb->mutex);
   return result;
 }
 
@@ -471,7 +471,7 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
   }
 
   // Thread-safe access to framebuffer
-  pthread_mutex_lock(&fb->mutex);
+  mutex_lock(&fb->mutex);
 
   // Use ringbuffer_peek to get the frame without consuming it
   bool result = ringbuffer_peek(fb->rb, frame);
@@ -483,14 +483,14 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
       frame->data = NULL;
       frame->size = 0;
       frame->source_client_id = 0;
-      pthread_mutex_unlock(&fb->mutex);
+      mutex_unlock(&fb->mutex);
       return false;
     }
 
     // Additional validation
     if (frame->size == 0 || !frame->data) {
       log_error("CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek", frame->size, frame->data);
-      pthread_mutex_unlock(&fb->mutex);
+      mutex_unlock(&fb->mutex);
       return false;
     }
 
@@ -501,13 +501,13 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
     SAFE_MALLOC(data_copy, frame->size, char *);
     if (!data_copy) {
       log_error("Failed to allocate memory for frame data copy in peek");
-      pthread_mutex_unlock(&fb->mutex);
+      mutex_unlock(&fb->mutex);
       return false;
     }
-    memcpy(data_copy, frame->data, frame->size);
+    SAFE_MEMCPY(data_copy, frame->size, frame->data, frame->size);
     frame->data = data_copy;
   }
 
-  pthread_mutex_unlock(&fb->mutex);
+  mutex_unlock(&fb->mutex);
   return result;
 }

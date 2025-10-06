@@ -1,8 +1,16 @@
+#include <stdint.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include "logging.h"
+
+#ifndef _WIN32
+// POSIX-only test utilities for redirecting stdout/stderr
+
+#include "platform/file.h"
+#include "platform/internal.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
 
 // Global variables to store original file descriptors for restoration
 static int original_stdout_fd = -1;
@@ -17,7 +25,7 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   }
 
   // Open /dev/null for writing
-  dev_null_fd = open("/dev/null", O_WRONLY);
+  dev_null_fd = platform_open("/dev/null", PLATFORM_O_WRONLY);
   if (dev_null_fd == -1) {
     return -1;
   }
@@ -32,9 +40,9 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
     }
     dup2(dev_null_fd, STDOUT_FILENO);
     // Reopen stdout to use the redirected file descriptor
-    freopen("/dev/null", "w", stdout);
+    (void)freopen("/dev/null", "w", stdout);
     // Make stdout unbuffered to ensure immediate redirection
-    setvbuf(stdout, NULL, _IONBF, 0);
+    (void)setvbuf(stdout, NULL, _IONBF, 0);
   }
 
   if (disable_stderr) {
@@ -52,9 +60,9 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
     }
     dup2(dev_null_fd, STDERR_FILENO);
     // Reopen stderr to use the redirected file descriptor
-    freopen("/dev/null", "w", stderr);
+    (void)freopen("/dev/null", "w", stderr);
     // Make stderr unbuffered to ensure immediate redirection
-    setvbuf(stderr, NULL, _IONBF, 0);
+    (void)setvbuf(stderr, NULL, _IONBF, 0);
   }
 
   logging_disabled = true;
@@ -71,9 +79,9 @@ int test_logging_restore(void) {
   if (original_stdout_fd != -1) {
     dup2(original_stdout_fd, STDOUT_FILENO);
     // Reopen stdout to use the restored file descriptor
-    freopen("/dev/stdout", "w", stdout);
+    (void)freopen("/dev/stdout", "w", stdout);
     // Restore line buffering for stdout
-    setvbuf(stdout, NULL, _IOLBF, 0);
+    (void)setvbuf(stdout, NULL, _IOLBF, 0);
     close(original_stdout_fd);
     original_stdout_fd = -1;
   }
@@ -82,9 +90,9 @@ int test_logging_restore(void) {
   if (original_stderr_fd != -1) {
     dup2(original_stderr_fd, STDERR_FILENO);
     // Reopen stderr to use the restored file descriptor
-    freopen("/dev/stderr", "w", stderr);
+    (void)freopen("/dev/stderr", "w", stderr);
     // Restore unbuffered mode for stderr
-    setvbuf(stderr, NULL, _IONBF, 0);
+    (void)setvbuf(stderr, NULL, _IONBF, 0);
     close(original_stderr_fd);
     original_stderr_fd = -1;
   }
@@ -102,3 +110,20 @@ int test_logging_restore(void) {
 bool test_logging_is_disabled(void) {
   return logging_disabled;
 }
+
+#else
+// Windows stub implementations
+int test_logging_disable(bool disable_stdout, bool disable_stderr) {
+  (void)disable_stdout;
+  (void)disable_stderr;
+  return 0; // Not implemented on Windows
+}
+
+int test_logging_restore(void) {
+  return 0; // Not implemented on Windows
+}
+
+bool test_logging_is_disabled(void) {
+  return false;
+}
+#endif // !_WIN32

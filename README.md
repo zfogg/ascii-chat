@@ -15,91 +15,149 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 🆕 Audio streaming is now supported via PortAudio, with a custom mixer with features like compression, ducking, crowd scaling, noise gating, hi/lo-pass filtering, and soft clipping.
 
-![Animated demonstration: monochrome](http://i.imgur.com/E4OuqvX.gif)
+![Animated demonstration: monochrome](https://i.imgur.com/E4OuqvX.gif)
 
 ![Animated demonstration: color](https://github.com/user-attachments/assets/3bbaaad0-2e62-46e8-9653-bd5201c4b7df)
 
 
 
 ## Dependencies
-- Most people: `apt-get install build-essential clang pkg-config libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev
-libcriterion-dev`
-- ArchLinux masterrace: `pacman -S clang pkg-config v4l-utils zlib portaudio libsodium libcriterion`
-- macOS: `brew install pkg-config zlib portaudio libsodium criterion`
 
-**Note:** OpenCV is no longer required! The project now uses native platform APIs:
+**Update**: OpenCV is no longer required! The project now uses ✨ native platform APIs 🪄:
 - **Linux**: V4L2 (Video4Linux2)
 - **macOS**: AVFoundation
+- **Windows**: Media Foundation
+
+### Linux
+- **Ubuntu/Debian**: `apt-get install build-essential clang cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **Arch**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zlib portaudio libsodium criterion`
+
+### macOS
+- `brew install cmake ninja zlib portaudio libsodium criterion`
+
+### Windows
+1. **Install Scoop** (if not already installed):
+   ```powershell
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+   irm get.scoop.sh | iex
+   ```
+
+2. **Install build tools via Scoop**:
+   ```powershell
+   scoop install cmake ninja llvm
+   ```
+
+3. **Install Windows SDK**:
+   - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+   - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
+
+4. **Install dependencies via vcpkg**:
+   ```powershell
+   # Install vcpkg (if not already installed)
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   .\bootstrap-vcpkg.bat
+
+   # Install required packages
+   .\vcpkg install zlib:x64-windows portaudio:x64-windows libsodium:x64-windows
+   ```
+
+‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
 
 
 ## Build and run
-- Clone this repo onto a computer with a webcam.
-- Install the dependencies.
-- Run `make`.
-- Run `./bin/server -p 9001` in one terminal, and then
-- Run `./bin/client -p 9001` in another.
+1. Clone this repo onto a computer with a webcam and `cd` to its directory.
+2. Install the dependencies for your OS (instructions listed above).
+3. Run `cmake --preset default && cmake --build --preset default`.
+4. Run `./build/bin/ascii-chat-server`.
+5. Open a second terminal window, tab, split, or pane. Or go to another computer.
+6. Run `./build/bin/ascii-chat-client`.
+7. 👯 *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat-client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
 
-Use `make -j debug` as you edit and test code (sometimes `make clean` too 😏).
+Check the `CMakeLists.txt` to see how it works.
 
-Check the `Makefile` to see how it works.
+## Available CMake Presets
 
-## Available Make Targets
+### Development Builds
+- **`default`** / **`debug`** - Debug build with AddressSanitizer (slowest, catches most bugs)
+- **`dev`** - Debug symbols without sanitizers (faster iteration)
+- **`coverage`** - Build with coverage instrumentation
 
-### Build Targets
-- `make` or `make all` - Build all targets with default flags
-- `make debug` - Build with debug symbols and no optimization
-- `make debug-coverage` - Build with debug symbols and coverage
-- `make release` - Build with optimizations enabled
-- `make release-coverage` - Build with optimizations and coverage
-- `make sanitize` - Build with address sanitizer for debugging
-- `make clean` - Remove build artifacts
+### Production Builds
+- **`release`** - Optimized static release build with musl + mimalloc (Linux deployment)
+  - Produces stripped static binaries (~700KB) using musl libc
+  - Best for Linux production deployment - single binary, no dependencies
+  - Uses mimalloc for optimal memory performance
 
-### Test Building Targets
-- `make tests-debug` - Build test executables with debug flags
-- `make tests-release` - Build test executables with release flags
-- `make tests-debug-coverage` - Build test executables with debug + coverage
-- `make tests-release-coverage` - Build test executables with release + coverage
+- **`release-clang`** - Optimized dynamic release build with clang + mimalloc (Windows/macOS)
+  - Produces stripped dynamic binaries (~200KB) using system libc
+  - Best for Windows/macOS where musl isn't available
+  - Uses mimalloc for optimal memory performance
 
-### Test Running Targets
-- `make test` - Run all tests in debug mode
-- `make test-release` - Run all tests in release mode
+- **`release-musl`** - Alias for `release` (static musl build)
+
+### Profiling/Production Debugging
+- **`relwithdebinfo`** - Optimized build with debug symbols (for profiling and debugging production issues)
+  - Optimized with `-O2` but keeps debug symbols (not stripped, ~1.3MB)
+  - Use with `gdb`, `lldb`, `perf`, `valgrind` for profiling
+  - Uses clang + glibc for best debugging experience
+  - Includes mimalloc for realistic performance profiling
+
+### Building
+```bash
+# Development (default)
+cmake --preset default && cmake --build build
+
+# Production release (Linux static binary)
+cmake --preset release && cmake --build build
+
+# Production release (Windows/macOS dynamic binary)
+cmake --preset release-clang && cmake --build build
+
+# Profiling/debugging production issues
+cmake --preset relwithdebinfo && cmake --build build
+
+# Clean rebuild
+rm -rf build
+cmake --preset release && cmake --build build
+```
+
+### What is musl and mimalloc?
+
+**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. The `release` preset uses musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
+
+**mimalloc**: Microsoft's high-performance memory allocator. All release and profiling builds use mimalloc instead of the system allocator for better performance. It provides:
+- Up to 2x faster allocation/deallocation
+- Better memory locality and cache performance
+- Lower memory fragmentation
+- Optimized for multi-threaded workloads
 
 ### Development Tools
-- `make format` - Format source code using clang-format
-- `make format-check` - Check code formatting without modifying files
-- `make clang-tidy` - Run clang-tidy on sources
-- `make analyze` - Run static analysis (clang --analyze, cppcheck)
-- `make scan-build` - Run scan-build static analyzer
-- `make cloc` - Count lines of code
-- `make compile_commands.json` - Generate compile_commands.json for IDE support
+- `cmake --build --preset debug --target format` - Format source code using clang-format
+- `cmake --build --preset debug --target format-check` - Check code formatting
+- `cmake --build --preset debug --target clang-tidy` - Run clang-tidy on sources
 
-## Utility Targets
-- `make help` - Show all available targets and configuration
-- `make install-hooks` - Install git hooks from git-hooks/ directory
-- `make uninstall-hooks` - Remove installed git hooks
-- `make todo` - Build the ./todo subproject
-- `make todo-clean` - Clean the ./todo subproject
-
-### Configuration
-The Makefile supports several configuration options:
-- `CC=clang` - Set compiler (default: clang)
-- `CSTD=c23` - Set C standard (default: c23)
-- `SIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
-- `CRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
-- `MAKEFLAGS=-j$(nproc)` - Parallel build jobs (Linux) or `-j$(sysctl -n hw.logicalcpu)` (macOS)
+### Configuration Options
+CMake supports several configuration options:
+- `-DCMAKE_C_COMPILER=clang` - Set compiler (default: auto-detected)
+- `-DSIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
+- `-DCRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
+- Ninja automatically uses all available CPU cores for parallel builds
 
 ## Testing
 
-The project uses a unified test runner script (`tests/scripts/run_tests.sh`) that consolidates all test execution logic.
+The project uses a unified test runner script at `tests/scripts/run_tests.sh` that consolidates all test execution logic. It accepts all sorts of arguments and auto-builds the test executables it's gonna run beforehand with ninja, which is convenient because it allows you to simply iterate on code and then run this script, going between those two things.
 
 ### Quick Start
-1. Have the dependencies installed.
-2. Run `make test` (debug mode) or `make test-release` (release mode).
+* Have the dependencies installed.
+* Choose:
+  1. Linux or macOS: run test runner script: `./tests/scripts/run_tests.sh`
+  2. Windows: use Docker: `./tests/scripts/run-docker-tests.ps1` (just calls `run_tests.sh` in a container)
 
 ### Test Types
 - **Unit Tests**: Test individual components in isolation
 - **Integration Tests**: Test component interactions and full workflows
-- **Performance Tests**: Benchmark SIMD vs scalar implementations
+- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
 
 ### Using the Test Script Directly
 ```bash
@@ -116,7 +174,6 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 ./tests/scripts/run_tests.sh -b release
 ./tests/scripts/run_tests.sh -b debug-coverage
 ./tests/scripts/run_tests.sh -b release-coverage
-./tests/scripts/run_tests.sh -b sanitize
 
 # Generate JUnit XML for CI
 ./tests/scripts/run_tests.sh -J
@@ -128,22 +185,58 @@ The project uses a unified test runner script (`tests/scripts/run_tests.sh`) tha
 ./tests/scripts/run_tests.sh -v
 ```
 
+### Windows Docker Testing
+On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
+
+```powershell
+# Run all tests
+./tests/scripts/run-docker-tests.ps1
+
+# Run specific test types
+./tests/scripts/run-docker-tests.ps1 unit
+./tests/scripts/run-docker-tests.ps1 integration
+./tests/scripts/run-docker-tests.ps1 performance
+
+# Run specific tests
+./tests/scripts/run-docker-tests.ps1 unit options
+./tests/scripts/run-docker-tests.ps1 unit buffer_pool packet_queue
+
+# Run with verbose output
+./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+
+# Run with different build types
+./tests/scripts/run-docker-tests.ps1 unit -BuildType release
+
+# Run clang-tidy static analysis
+./tests/scripts/run-docker-tests.ps1 clang-tidy
+./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+
+# Interactive shell for debugging
+./tests/scripts/run-docker-tests.ps1 -Interactive
+```
+
+The Docker script automatically:
+- Builds the test container if needed
+- Mounts your source code for live testing
+- Handles incremental builds
+- Provides the same test interface as the native script
+
 ### Manual Test Execution
 You can also run individual test executables directly:
 ```bash
-# Build test executables first
-make tests-debug
+# Build the project first
+cmake --preset debug && cmake --build --preset debug
 
 # Run individual tests
-bin/test_mixer --verbose
-bin/test_ascii_simd_performance --filter "monochrome"
+build/bin/test_unit_mixer --verbose
+build/bin/test_performance_ascii_simd --filter "*monochrome*"
 ```
 
 ### Testing Framework
 - **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
 - **Coverage**: Code coverage reports generated in CI
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
-- **Memory Checking**: AddressSanitizer support via `-b sanitize` for detecting memory issues
+- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
 
 ## Cryptography
@@ -158,7 +251,7 @@ Good news though: we have **libsodium** installed and some code written for it.
 
 ### Client Options
 
-Run `./bin/client -h` to see all client options:
+Run `./bin/ascii-chat-client -h` to see all client options:
 
 - `-a --address ADDRESS`: IPv4 address to connect to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port (default: 27224)
@@ -183,7 +276,7 @@ Run `./bin/client -h` to see all client options:
 
 ### Server Options
 
-Run `./bin/server -h` to see all server options:
+Run `./bin/ascii-chat-server -h` to see all server options:
 
 - `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port to listen on (default: 27224)
@@ -199,12 +292,12 @@ Run `./bin/server -h` to see all server options:
 
 Start the server and wait for client connections:
 ```bash
-./bin/server [options]
+./bin/ascii-chat-server [options]
 ```
 
 Start the client and connect to a running server:
 ```bash
-./bin/client [options]
+./bin/ascii-chat-client [options]
 ```
 
 ## TODO

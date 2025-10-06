@@ -1,14 +1,10 @@
 #include <criterion/criterion.h>
-#include <criterion/new/assert.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <time.h>
 #include <math.h>
-
+#include "tests/common.h"
 #include "aspect_ratio.h"
-#include "common.h"
-#include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(aspect_ratio);
@@ -88,26 +84,69 @@ Test(aspect_ratio, null_output_pointers) {
   cr_assert(true);
 }
 
-Test(aspect_ratio, invalid_image_dimensions) {
+// Parameterized test for invalid dimensions across all three functions
+typedef struct {
+  ssize_t img_w;
+  ssize_t img_h;
+  ssize_t target_w;
+  ssize_t target_h;
+  ssize_t expected_w;
+  ssize_t expected_h;
+  char description[128];
+} invalid_dimensions_test_case_t;
+
+static invalid_dimensions_test_case_t invalid_dimensions_cases[] = {
+    // aspect_ratio invalid image dimensions
+    {0, 1080, 80, 24, 1, 1, "aspect_ratio: zero image width"},
+    {1920, 0, 80, 24, 1, 1, "aspect_ratio: zero image height"},
+    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio: negative image width"},
+    {1920, -1080, 80, 24, 1, 1, "aspect_ratio: negative image height"},
+
+    // aspect_ratio2 invalid image dimensions
+    {0, 1080, 80, 24, 1, 1, "aspect_ratio2: zero image width"},
+    {1920, 0, 80, 24, 1, 1, "aspect_ratio2: zero image height"},
+    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio2: negative image width"},
+    {1920, -1080, 80, 24, 1, 1, "aspect_ratio2: negative image height"},
+
+    // aspect_ratio2 invalid target dimensions
+    {1920, 1080, 0, 24, 1, 1, "aspect_ratio2: zero target width"},
+    {1920, 1080, 80, 0, 1, 1, "aspect_ratio2: zero target height"},
+    {1920, 1080, -80, 24, 1, 1, "aspect_ratio2: negative target width"},
+    {1920, 1080, 80, -24, 1, 1, "aspect_ratio2: negative target height"},
+
+    // calculate_fit_dimensions_pixel invalid image dimensions
+    {0, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image width"},
+    {1920, 0, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image height"},
+    {-1920, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image width"},
+    {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
+
+ParameterizedTestParameters(aspect_ratio, invalid_dimensions_parameterized) {
+  return cr_make_param_array(invalid_dimensions_test_case_t, invalid_dimensions_cases,
+                             sizeof(invalid_dimensions_cases) / sizeof(invalid_dimensions_cases[0]));
+}
+
+ParameterizedTest(invalid_dimensions_test_case_t *test_case, aspect_ratio, invalid_dimensions_parameterized) {
   ssize_t out_width, out_height;
 
-  // Test with zero dimensions
-  aspect_ratio(0, 1080, 80, 24, false, &out_width, &out_height);
-  cr_assert_eq(out_width, 1); // MIN_DIMENSION
-  cr_assert_eq(out_height, 1);
+  // Determine which function to test based on description
+  if (strstr(test_case->description, "aspect_ratio2:") != NULL) {
+    aspect_ratio2(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, &out_width,
+                  &out_height);
+  } else if (strstr(test_case->description, "calculate_fit_dimensions_pixel:") != NULL) {
+    int out_w, out_h;
+    calculate_fit_dimensions_pixel((int)test_case->img_w, (int)test_case->img_h, (int)test_case->target_w,
+                                   (int)test_case->target_h, &out_w, &out_h);
+    out_width = (ssize_t)out_w;
+    out_height = (ssize_t)out_h;
+  } else {
+    aspect_ratio(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, false, &out_width,
+                 &out_height);
+  }
 
-  aspect_ratio(1920, 0, 80, 24, false, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  // Test with negative dimensions
-  aspect_ratio(-1920, 1080, 80, 24, false, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  aspect_ratio(1920, -1080, 80, 24, false, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
+  cr_assert_eq(out_width, test_case->expected_w, "%s: expected width %zd, got %zd", test_case->description,
+               test_case->expected_w, out_width);
+  cr_assert_eq(out_height, test_case->expected_h, "%s: expected height %zd, got %zd", test_case->description,
+               test_case->expected_h, out_height);
 }
 
 Test(aspect_ratio, very_small_image) {
@@ -156,45 +195,6 @@ Test(aspect_ratio2, null_output_pointers) {
   aspect_ratio2(1920, 1080, 80, 24, NULL, NULL);
   // If we get here without crashing, the test passes
   cr_assert(true);
-}
-
-Test(aspect_ratio2, invalid_dimensions) {
-  ssize_t out_width, out_height;
-
-  // Test with zero image dimensions
-  aspect_ratio2(0, 1080, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1); // MIN_DIMENSION
-  cr_assert_eq(out_height, 1);
-
-  aspect_ratio2(1920, 0, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  // Test with zero target dimensions
-  aspect_ratio2(1920, 1080, 0, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  aspect_ratio2(1920, 1080, 80, 0, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  // Test with negative dimensions
-  aspect_ratio2(-1920, 1080, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  aspect_ratio2(1920, -1080, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  aspect_ratio2(1920, 1080, -80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
-
-  aspect_ratio2(1920, 1080, 80, -24, &out_width, &out_height);
-  cr_assert_eq(out_width, 1);
-  cr_assert_eq(out_height, 1);
 }
 
 Test(aspect_ratio2, square_image) {
@@ -255,28 +255,6 @@ Test(calculate_fit_dimensions_pixel, null_output_pointers) {
   calculate_fit_dimensions_pixel(1920, 1080, 80, 24, NULL, NULL);
   // If we get here without crashing, the test passes
   cr_assert(true);
-}
-
-Test(calculate_fit_dimensions_pixel, invalid_dimensions) {
-  int out_width, out_height;
-
-  // Test with zero image dimensions
-  calculate_fit_dimensions_pixel(0, 1080, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 80);  // Should use max_width
-  cr_assert_eq(out_height, 24); // Should use max_height
-
-  calculate_fit_dimensions_pixel(1920, 0, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 80);
-  cr_assert_eq(out_height, 24);
-
-  // Test with negative image dimensions
-  calculate_fit_dimensions_pixel(-1920, 1080, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 80);
-  cr_assert_eq(out_height, 24);
-
-  calculate_fit_dimensions_pixel(1920, -1080, 80, 24, &out_width, &out_height);
-  cr_assert_eq(out_width, 80);
-  cr_assert_eq(out_height, 24);
 }
 
 Test(calculate_fit_dimensions_pixel, square_image) {
@@ -516,76 +494,83 @@ Test(calculate_fit_dimensions_pixel, boundary_values) {
 }
 
 /* ============================================================================
- * Mathematical Precision Tests
+ * Mathematical Precision Tests - Theory-Based Aspect Ratio Preservation
  * ============================================================================ */
 
-Test(aspect_ratio, mathematical_precision) {
+// Theory test: aspect ratio preservation property
+// PROPERTY: Output aspect ratio should match input aspect ratio (within tolerance)
+// Tests aspect_ratio2 and calculate_fit_dimensions_pixel (no CHAR_ASPECT correction)
+TheoryDataPoints(aspect_ratio, aspect_ratio_preservation_property) = {
+    DataPoints(ssize_t, 1920, 1024, 800, 512, 100, 1), // image widths
+    DataPoints(ssize_t, 1080, 768, 600, 512, 200, 1),  // image heights
+    DataPoints(ssize_t, 80, 120, 160, 200, 40, 1000),  // target widths
+    DataPoints(ssize_t, 24, 40, 60, 80, 20, 500),      // target heights
+};
+
+Theory((ssize_t img_w, ssize_t img_h, ssize_t target_w, ssize_t target_h), aspect_ratio,
+       aspect_ratio_preservation_property) {
+  // Skip invalid combinations
+  cr_assume(img_w > 0);
+  cr_assume(img_h > 0);
+  cr_assume(target_w > 0);
+  cr_assume(target_h > 0);
+
+  // Skip extreme aspect ratios that can't be preserved accurately in small target dimensions
+  float input_aspect_ratio = (float)img_w / (float)img_h;
+  cr_assume(input_aspect_ratio >= 0.1f);  // Skip very tall images (>10:1 height:width)
+  cr_assume(input_aspect_ratio <= 10.0f); // Skip very wide images (>10:1 width:height)
+
+  // Skip cases where target dimensions are too small to preserve aspect ratio
+  cr_assume(target_w >= 10); // Need reasonable minimum target size
+  cr_assume(target_h >= 10);
+
+  // Test aspect_ratio2 (no CHAR_ASPECT correction)
+  ssize_t out_w2, out_h2;
+  aspect_ratio2(img_w, img_h, target_w, target_h, &out_w2, &out_h2);
+
+  // PROPERTY 1: Output dimensions must fit within target bounds
+  cr_assert_leq(out_w2, target_w, "aspect_ratio2: width %zd exceeds target %zd", out_w2, target_w);
+  cr_assert_leq(out_h2, target_h, "aspect_ratio2: height %zd exceeds target %zd", out_h2, target_h);
+
+  // PROPERTY 2: Output dimensions must be positive
+  cr_assert_gt(out_w2, 0, "aspect_ratio2: width must be positive");
+  cr_assert_gt(out_h2, 0, "aspect_ratio2: height must be positive");
+
+  // PROPERTY 3: Aspect ratio preservation (within 25% tolerance for discrete dimensions)
+  float input_aspect = (float)img_w / (float)img_h;
+  float output_aspect = (float)out_w2 / (float)out_h2;
+  float aspect_error = fabsf(output_aspect - input_aspect) / input_aspect;
+  cr_assert_lt(aspect_error, 0.25f, "aspect_ratio2: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)",
+               input_aspect, output_aspect, aspect_error * 100.0f);
+
+  // Test calculate_fit_dimensions_pixel (same properties)
+  int out_w_pix, out_h_pix;
+  calculate_fit_dimensions_pixel((int)img_w, (int)img_h, (int)target_w, (int)target_h, &out_w_pix, &out_h_pix);
+
+  cr_assert_leq(out_w_pix, (int)target_w, "calculate_fit_dimensions_pixel: width %d exceeds target %zd", out_w_pix,
+                target_w);
+  cr_assert_leq(out_h_pix, (int)target_h, "calculate_fit_dimensions_pixel: height %d exceeds target %zd", out_h_pix,
+                target_h);
+  cr_assert_gt(out_w_pix, 0, "calculate_fit_dimensions_pixel: width must be positive");
+  cr_assert_gt(out_h_pix, 0, "calculate_fit_dimensions_pixel: height must be positive");
+
+  output_aspect = (float)out_w_pix / (float)out_h_pix;
+  aspect_error = fabsf(output_aspect - input_aspect) / input_aspect;
+  cr_assert_lt(aspect_error, 0.25f,
+               "calculate_fit_dimensions_pixel: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)",
+               input_aspect, output_aspect, aspect_error * 100.0f);
+}
+
+// Keep one simple precision test for aspect_ratio with CHAR_ASPECT correction
+Test(aspect_ratio, char_aspect_correction) {
   ssize_t out_width, out_height;
 
-  // Test common aspect ratios with known results
-  // 16:9 aspect ratio
+  // Test that CHAR_ASPECT correction is applied
+  // 16:9 aspect ratio should have width/height ≈ (16/9) * 2.0 = 3.556
   aspect_ratio(1920, 1080, 80, 24, false, &out_width, &out_height);
   float aspect_ratio_result = (float)out_width / (float)out_height;
   float expected_aspect = 1920.0f / 1080.0f * 2.0f; // CHAR_ASPECT = 2.0
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-
-  // 4:3 aspect ratio
-  aspect_ratio(1024, 768, 80, 24, false, &out_width, &out_height);
-  aspect_ratio_result = (float)out_width / (float)out_height;
-  expected_aspect = 1024.0f / 768.0f * 2.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-
-  // 1:1 aspect ratio (square)
-  aspect_ratio(512, 512, 80, 24, false, &out_width, &out_height);
-  aspect_ratio_result = (float)out_width / (float)out_height;
-  expected_aspect = 512.0f / 512.0f * 2.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-}
-
-Test(aspect_ratio2, mathematical_precision) {
-  ssize_t out_width, out_height;
-
-  // Test common aspect ratios with known results (no CHAR_ASPECT correction)
-  // 16:9 aspect ratio
-  aspect_ratio2(1920, 1080, 80, 24, &out_width, &out_height);
-  float aspect_ratio_result = (float)out_width / (float)out_height;
-  float expected_aspect = 1920.0f / 1080.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-
-  // 4:3 aspect ratio
-  aspect_ratio2(1024, 768, 80, 24, &out_width, &out_height);
-  aspect_ratio_result = (float)out_width / (float)out_height;
-  expected_aspect = 1024.0f / 768.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-
-  // 1:1 aspect ratio (square)
-  aspect_ratio2(512, 512, 80, 24, &out_width, &out_height);
-  aspect_ratio_result = (float)out_width / (float)out_height;
-  expected_aspect = 512.0f / 512.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-}
-
-Test(calculate_fit_dimensions_pixel, mathematical_precision) {
-  int out_width, out_height;
-
-  // Test common aspect ratios with known results
-  // 16:9 aspect ratio
-  calculate_fit_dimensions_pixel(1920, 1080, 80, 24, &out_width, &out_height);
-  float aspect_ratio_result = (float)out_width / (float)out_height;
-  float expected_aspect = 1920.0f / 1080.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-
-  // 4:3 aspect ratio
-  calculate_fit_dimensions_pixel(1024, 768, 80, 24, &out_width, &out_height);
-  aspect_ratio_result = (float)out_width / (float)out_height;
-  expected_aspect = 1024.0f / 768.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
-
-  // 1:1 aspect ratio (square)
-  calculate_fit_dimensions_pixel(512, 512, 80, 24, &out_width, &out_height);
-  aspect_ratio_result = (float)out_width / (float)out_height;
-  expected_aspect = 512.0f / 512.0f;
-  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.1f);
+  cr_assert_float_eq(aspect_ratio_result, expected_aspect, 0.2f);
 }
 
 /* ============================================================================

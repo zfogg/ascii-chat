@@ -2,7 +2,11 @@
 #include "round.h"
 
 #define CHAR_ASPECT 2.0f // terminal cell height ÷ width
-#define MIN_DIMENSION 1  // minimum width/height to prevent zero dimensions
+
+// Constants for aspect ratio calculations
+enum {
+  MIN_DIMENSION = 1 // minimum width/height to prevent zero dimensions
+};
 
 // Helper functions for aspect ratio calculations
 static inline ssize_t calc_width_from_height(ssize_t height, ssize_t img_w, ssize_t img_h) {
@@ -33,8 +37,8 @@ static void calculate_fit_dimensions(ssize_t img_w, ssize_t img_h, ssize_t max_w
   }
 
   // Calculate both possible dimensions
-  int width_from_height = calc_width_from_height(max_h, img_w, img_h);
-  int height_from_width = calc_height_from_width(max_w, img_w, img_h);
+  ssize_t width_from_height = calc_width_from_height(max_h, img_w, img_h);
+  ssize_t height_from_width = calc_height_from_width(max_w, img_w, img_h);
 
   // Choose the option that fits within both constraints
   if (width_from_height <= max_w) {
@@ -147,10 +151,10 @@ void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width
 
   // Try filling width
   int width_if_fill_w = max_width;
-  int height_if_fill_w = (int)((float)max_width / src_aspect + 0.5f);
+  int height_if_fill_w = (int)(((float)max_width / src_aspect) + 0.5f);
 
   // Try filling height
-  int width_if_fill_h = (int)((float)max_height * src_aspect + 0.5f);
+  int width_if_fill_h = (int)(((float)max_height * src_aspect) + 0.5f);
   int height_if_fill_h = max_height;
 
   // log_debug("calculate_fit_dimensions: img %dx%d (aspect %.3f), max %dx%d", img_width, img_height, src_aspect,

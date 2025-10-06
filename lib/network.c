@@ -2,86 +2,51 @@
 #include "common.h"
 #include "buffer_pool.h"
 #include "crc32_hw.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include <stdint.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <netinet/tcp.h>
-#include <pthread.h>
+#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
-#include <unistd.h>
+#include <stdatomic.h>
 #include "options.h"
 
+// Debug flags
+#define DEBUG_NETWORK 1
+#define DEBUG_THREADS 1
+#define DEBUG_MEMORY 1
 // Check if we're in a test environment
 static int is_test_environment(void) {
-  return getenv("CRITERION_TEST") != NULL || getenv("TESTING") != NULL;
+  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
 }
 
-int set_socket_timeout(int sockfd, int timeout_seconds) {
+int set_socket_timeout(socket_t sockfd, int timeout_seconds) {
   struct timeval timeout;
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
     return -1;
   }
 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
     return -1;
   }
 
   return 0;
 }
 
-int set_socket_keepalive(int sockfd) {
-  int keepalive = 1;
-  if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive)) < 0) {
-    return -1;
-  }
-
-#ifdef __APPLE__
-  /* macOS: TCP_KEEPALIVE sets the idle time (in seconds) before sending probes */
-  {
-    int keepalive_idle = KEEPALIVE_IDLE;
-    (void)setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPALIVE, &keepalive_idle, sizeof(keepalive_idle));
-    /* Interval/count tuning is not available via setsockopt on macOS; client/server PINGs handle liveness. */
-  }
-#endif
-
-#ifdef TCP_KEEPIDLE
-  int keepidle = KEEPALIVE_IDLE;
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(keepidle));
-  // Not critical, continue if fail.
-#endif
-
-#ifdef TCP_KEEPINTVL
-  int keepintvl = KEEPALIVE_INTERVAL;
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(keepintvl));
-  // Not critical, continue if fail.
-#endif
-
-#ifdef TCP_KEEPCNT
-  int keepcnt = KEEPALIVE_COUNT;
-  setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt));
-  // Not critical, continue if fail.
-#endif
-
-  return 0;
+int set_socket_keepalive(socket_t sockfd) {
+  return socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
 }
 
-int set_socket_nonblocking(int sockfd) {
-  int flags = fcntl(sockfd, F_GETFL, 0);
-  if (flags == -1) {
-    return -1;
-  }
-  return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+int set_socket_nonblocking(socket_t sockfd) {
+  return socket_set_nonblocking(sockfd, true);
 }
 
-bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen,
+bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_t addrlen,
                           int timeout_seconds) { // NOLINT(bugprone-easily-swappable-parameters)
   // Set socket to non-blocking mode
   if (set_socket_nonblocking(sockfd) < 0) {
@@ -95,7 +60,9 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
     return true;
   }
 
-  if (errno != EINPROGRESS) {
+  // Check if socket operation would block (non-blocking connect in progress)
+  int last_error = socket_get_last_error();
+  if (last_error != SOCKET_ERROR_INPROGRESS && last_error != SOCKET_ERROR_WOULDBLOCK) {
     return false;
   }
 
@@ -103,76 +70,162 @@ bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t add
   fd_set write_fds;
   struct timeval timeout;
 
-  FD_ZERO(&write_fds);
-  FD_SET(sockfd, &write_fds);
+  socket_fd_zero(&write_fds);
+  socket_fd_set(sockfd, &write_fds);
 
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
+  // socket_select expects max_fd as the highest fd value (sockfd in this case)
+  // On Windows it's ignored, but on POSIX it's crucial
+  result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
   if (result <= 0) {
+    if (result == 0) {
+      // Timeout occurred
+      errno = ETIMEDOUT;
+      return false;
+    }
     if (errno == EINTR) {
       return false; // Interrupted by signal
     }
-    return false; // Timeout or error
+    // Some other error occurred
+    return false;
   }
 
   // Check if connection was successful
   int error = 0;
   socklen_t len = sizeof(error);
-  if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+  if (socket_getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
     return false;
   }
 
-  return (error == 0);
+  if (error != 0) {
+    // Set errno to the actual socket error so caller gets correct error message
+    errno = error;
+    return false;
+  }
+
+  // Connection successful - set socket back to blocking mode
+  if (socket_set_nonblocking(sockfd, false) < 0) {
+    log_warn("Failed to set socket back to blocking mode after connect");
+    // Continue anyway, as the connection succeeded
+  }
+
+  return true;
 }
 
-ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_seconds) {
+ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int timeout_seconds) {
+
   fd_set write_fds;
   struct timeval timeout;
   ssize_t total_sent = 0;
   const char *data = (const char *)buf;
+  time_t start_time = time(NULL);
+
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
 
   while (total_sent < (ssize_t)len) {
-    // Set up select for write timeout
-    FD_ZERO(&write_fds);
-    FD_SET(sockfd, &write_fds);
+    // Calculate remaining timeout time
+    time_t current_time = time(NULL);
+    int elapsed_seconds = (int)(current_time - start_time);
+    int remaining_timeout = timeout_seconds - elapsed_seconds;
 
-    timeout.tv_sec = timeout_seconds;
+    if (remaining_timeout <= 0) {
+      errno = ETIMEDOUT;
+      log_error("send_with_timeout: total timeout exceeded (%d seconds) - elapsed=%d, remaining=%d", timeout_seconds,
+                elapsed_seconds, remaining_timeout);
+      return -1;
+    }
+
+    // Set up select for write timeout
+    socket_fd_zero(&write_fds);
+    socket_fd_set(sockfd, &write_fds);
+
+    timeout.tv_sec = remaining_timeout;
     timeout.tv_usec = 0;
 
-    // The first argument to select() should be set to the highest-numbered file descriptor in any of the fd_sets,
-    // plus 1. This is because select() internally checks all file descriptors from 0 up to (but not including) this
-    // value to see if they are ready. An fd_set is a data structure used by select() to represent a set of file
-    // descriptors (such as sockets or files) to be monitored for readiness (read, write, or error). In this case,
-    // sockfd is the only file descriptor in the write_fds set, so we pass sockfd + 1.
-    int result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
+    // Use platform-abstracted select wrapper that handles Windows/POSIX differences
+    int result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
     if (result <= 0) {
       // Timeout or error
       if (result == 0) {
         errno = ETIMEDOUT;
-      } else if (errno == EINTR) {
-        // Interrupted by signal
-        return -1;
+        log_error("send_with_timeout: select timeout - socket not writable after %d seconds (sent %zd/%zu bytes)",
+                  remaining_timeout, total_sent, len);
+      } else {
+#ifdef _WIN32
+        int error = WSAGetLastError();
+        if (error == WSAEINTR) {
+          // Interrupted by signal
+          log_debug("send_with_timeout: select interrupted");
+          return -1;
+        } else {
+          log_error("send_with_timeout: select failed with WSAError=%d", error);
+          errno = error;
+        }
+#else
+        if (errno == EINTR) {
+          // Interrupted by signal
+          log_debug("send_with_timeout: select interrupted");
+          return -1;
+        }
+        log_error("send_with_timeout: select failed with errno=%d", errno);
+#endif
       }
       return -1;
     }
 
-    // Try to send data
-#ifdef MSG_NOSIGNAL
-    ssize_t sent = send(sockfd, data + total_sent, len - total_sent, MSG_NOSIGNAL);
+    // Try to send data with reasonable chunking
+    // Limit chunk size to 64KB to avoid TCP issues and ensure data actually gets sent
+    size_t bytes_to_send = len - total_sent;
+    const size_t MAX_CHUNK_SIZE = 65536; // 64KB chunks for reliable TCP transmission
+    if (bytes_to_send > MAX_CHUNK_SIZE) {
+      bytes_to_send = MAX_CHUNK_SIZE;
+    }
+
+#ifdef _WIN32
+    // Windows send() expects int for length and const char* for buffer
+    if (bytes_to_send > INT_MAX) {
+      bytes_to_send = INT_MAX;
+    }
+    int raw_sent = send(sockfd, (const char *)(data + total_sent), (int)bytes_to_send, 0);
+    // CRITICAL FIX: Check for SOCKET_ERROR before casting to avoid corruption
+    ssize_t sent;
+    if (raw_sent == SOCKET_ERROR) {
+      sent = -1;
+      // On Windows, use WSAGetLastError() instead of errno
+      errno = WSAGetLastError();
+      log_debug("Windows send() failed: WSAGetLastError=%d, sockfd=%llu, bytes_to_send=%zu", errno,
+                (unsigned long long)sockfd, bytes_to_send);
+    } else {
+      sent = (ssize_t)raw_sent;
+      // CORRUPTION DETECTION: Check Windows send() return value
+      if (raw_sent > (int)bytes_to_send) {
+        log_error("CRITICAL: Windows send() returned more than requested: raw_sent=%d > bytes_to_send=%zu", raw_sent,
+                  bytes_to_send);
+      }
+    }
+
+#elif defined(MSG_NOSIGNAL)
+    ssize_t sent = send(sockfd, data + total_sent, bytes_to_send, MSG_NOSIGNAL);
 #else
     // macOS doesn't have MSG_NOSIGNAL, but we ignore SIGPIPE signal instead
-    ssize_t sent = send(sockfd, data + total_sent, len - total_sent, 0);
+    ssize_t sent = send(sockfd, data + total_sent, bytes_to_send, 0);
 #endif
     if (sent < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      int error = errno;
+      if (error == EAGAIN || error == EWOULDBLOCK) {
+        log_debug("send_with_timeout: would block, continuing");
         continue; // Try again
       }
-      if (errno == EPIPE) {
+      if (error == EPIPE) {
         // Connection closed by peer
         log_debug("Connection closed by peer (EPIPE)");
       }
+      log_error("send_with_timeout: send failed with errno=%d (%s)", error, SAFE_STRERROR(error));
       return -1; // Real error
     }
 
@@ -182,7 +235,11 @@ ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_s
   return total_sent;
 }
 
-ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds) {
+ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
   fd_set read_fds;
   struct timeval timeout;
   ssize_t total_received = 0;
@@ -190,20 +247,31 @@ ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds
 
   while (total_received < (ssize_t)len) {
     // Set up select for read timeout
-    FD_ZERO(&read_fds);
-    FD_SET(sockfd, &read_fds);
+    socket_fd_zero(&read_fds);
+    socket_fd_set(sockfd, &read_fds);
 
     timeout.tv_sec = timeout_seconds;
     timeout.tv_usec = 0;
 
-    int result = select(sockfd + 1, &read_fds, NULL, NULL, &timeout);
+    int result = socket_select(sockfd, &read_fds, NULL, NULL, &timeout);
     if (result <= 0) {
       // Timeout or error
       if (result == 0) {
         errno = ETIMEDOUT;
-      } else if (errno == EINTR) {
-        // Interrupted by signal
-        return -1;
+      } else {
+#ifdef _WIN32
+        int error = WSAGetLastError();
+        if (error == WSAEINTR) {
+          // Interrupted by signal
+          return -1;
+        }
+        errno = error;
+#else
+        if (errno == EINTR) {
+          // Interrupted by signal
+          return -1;
+        }
+#endif
       }
       return -1;
     }
@@ -211,11 +279,20 @@ ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds
     // Try to receive data
     ssize_t received = recv(sockfd, data + total_received, len - total_received, 0);
     if (received < 0) {
+#ifdef _WIN32
+      int error = WSAGetLastError();
+      if (error == WSAEWOULDBLOCK) {
+        continue; // Try again
+      }
+      errno = error; // Set errno for caller
+#else
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         continue; // Try again
       }
+#endif
       return -1; // Real error
-    } else if (received == 0) {
+    }
+    if (received == 0) {
       // Connection closed
       return total_received;
     }
@@ -226,17 +303,18 @@ ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds
   return total_received;
 }
 
-int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
+int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds) {
   fd_set read_fds;
   struct timeval timeout;
 
-  FD_ZERO(&read_fds);
-  FD_SET(listenfd, &read_fds);
+  socket_fd_zero(&read_fds);
+  socket_fd_set(listenfd, &read_fds);
 
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
-  int result = select(listenfd + 1, &read_fds, NULL, NULL, &timeout);
+  int result = socket_select(listenfd, &read_fds, NULL, NULL, &timeout);
+
   if (result <= 0) {
     // Timeout or error
     if (result == 0) {
@@ -244,11 +322,26 @@ int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen,
     } else if (errno == EINTR) {
       // Interrupted by signal - this is expected during shutdown
       return -1;
+    } else {
+#ifdef _WIN32
+      int wsa_error = WSAGetLastError();
+      log_info("DEBUG: socket_select error - result=%d, WSAError=%d", result, wsa_error);
+#else
+      log_info("DEBUG: socket_select error - result=%d, errno=%d", result, errno);
+#endif
     }
     return -1;
   }
 
-  return accept(listenfd, addr, addrlen);
+  socket_t accept_result = accept(listenfd, addr, addrlen);
+
+  // Properly handle INVALID_SOCKET on Windows
+  if (accept_result == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  // Explicit cast is safe after checking for INVALID_SOCKET
+  return (int)accept_result;
 }
 
 const char *network_error_string(int error_code) {
@@ -271,7 +364,7 @@ const char *network_error_string(int error_code) {
   case ECONNRESET:
     return "Connection reset by peer";
   default:
-    return strerror(error_code);
+    return SAFE_STRERROR(error_code);
   }
 }
 
@@ -280,9 +373,9 @@ const char *network_error_string(int error_code) {
  * ============================================================================
  */
 
-int send_size_message(int sockfd, unsigned short width, unsigned short height) {
+int send_size_message(socket_t sockfd, unsigned short width, unsigned short height) {
   char message[SIZE_MESSAGE_MAX_LEN];
-  int len = snprintf(message, sizeof(message), SIZE_MESSAGE_FORMAT, width, height);
+  int len = SAFE_SNPRINTF(message, sizeof(message), SIZE_MESSAGE_FORMAT, width, height);
 
   if (len >= (int)sizeof(message)) {
     return -1; // Message too long
@@ -306,10 +399,10 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
     return -1;
   }
 
-  // Parse the width,height values
-  int w, h;
-  int parsed = sscanf(message, SIZE_MESSAGE_FORMAT, &w, &h);
-  if (parsed != 2 || w <= 0 || h <= 0 || w > 65535 || h > 65535) {
+  // Parse the width,height values using safe parsing
+  unsigned int w;
+  unsigned int h;
+  if (safe_parse_size_message(message, &w, &h) != 0) {
     return -1;
   }
 
@@ -318,13 +411,13 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
   return 0;
 }
 
-int send_audio_data(int sockfd, const float *samples, int num_samples) {
+int send_audio_data(socket_t sockfd, const float *samples, int num_samples) {
   if (!samples || num_samples <= 0 || num_samples > AUDIO_SAMPLES_PER_PACKET) {
     return -1;
   }
 
   char header[AUDIO_MESSAGE_MAX_LEN];
-  int header_len = snprintf(header, sizeof(header), AUDIO_MESSAGE_FORMAT, num_samples);
+  int header_len = SAFE_SNPRINTF(header, sizeof(header), AUDIO_MESSAGE_FORMAT, num_samples);
 
   if (header_len >= (int)sizeof(header)) {
     return -1;
@@ -344,7 +437,7 @@ int send_audio_data(int sockfd, const float *samples, int num_samples) {
   return 0;
 }
 
-int receive_audio_data(int sockfd, float *samples, int max_samples) {
+int receive_audio_data(socket_t sockfd, float *samples, int max_samples) {
   if (!samples || max_samples <= 0) {
     return -1;
   }
@@ -361,9 +454,9 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
     return -1;
   }
 
-  int num_samples;
-  int parsed = sscanf(header, AUDIO_MESSAGE_FORMAT, &num_samples);
-  if (parsed != 1 || num_samples <= 0 || num_samples > max_samples || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+  unsigned int num_samples;
+  if (safe_parse_audio_message(header, &num_samples) != 0 || num_samples > (unsigned int)max_samples ||
+      num_samples > AUDIO_SAMPLES_PER_PACKET) {
     return -1;
   }
 
@@ -373,7 +466,7 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
     return -1;
   }
 
-  return num_samples;
+  return (int)num_samples;
 }
 
 /* ============================================================================
@@ -383,7 +476,34 @@ int receive_audio_data(int sockfd, float *samples, int max_samples) {
 
 // CRC32 implementation moved to crc32_hw.c for hardware acceleration
 
-int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
+/**
+ * Calculate timeout based on packet size
+ * Large packets need more time to transmit reliably
+ */
+static int calculate_packet_timeout(size_t packet_size) {
+  int base_timeout = is_test_environment() ? 1 : SEND_TIMEOUT;
+
+  // For large packets, increase timeout proportionally
+  if (packet_size > 100000) { // 100KB threshold
+    // Add 0.8 seconds per 1MB above the threshold
+    int extra_timeout = (int)((packet_size - 100000) / 1000000.0 * 0.8) + 1;
+    int total_timeout = base_timeout + extra_timeout;
+
+    // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
+    // Add 10 seconds buffer to account for server processing delays
+    int min_timeout = 40; // 30s server timeout + 10s buffer
+    if (total_timeout < min_timeout) {
+      total_timeout = min_timeout;
+    }
+
+    // Cap at 60 seconds maximum
+    return (total_timeout > 60) ? 60 : total_timeout;
+  }
+
+  return base_timeout;
+}
+
+int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len) {
   if (len > MAX_PACKET_SIZE) {
     log_error("Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
     return -1;
@@ -395,17 +515,35 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
                             .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0),
                             .client_id = htonl(0)}; // Always initialize client_id to 0 in network byte order
 
+  // Calculate timeout based on packet size
+  int timeout = calculate_packet_timeout(len);
+  if (len > 100000) { // Only log for large packets
+    log_info("DEBUG_TIMEOUT: Packet size=%zu, calculated timeout=%d seconds", len, timeout);
+  }
+
   // Send header first
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
-  if (sent != sizeof(header)) {
-    log_error("Failed to send packet header: %zd/%zu bytes", sent, sizeof(header));
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
+  // Check for error first to avoid signed/unsigned comparison issues
+  if (sent < 0) {
+    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
+              SAFE_STRERROR(errno));
+    return -1;
+  }
+  if ((size_t)sent != sizeof(header)) {
+    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
+              SAFE_STRERROR(errno));
     return -1;
   }
 
   // Send payload if present
   if (len > 0 && data) {
-    sent = send_with_timeout(sockfd, data, len, is_test_environment() ? 1 : SEND_TIMEOUT);
-    if (sent != (ssize_t)len) {
+    sent = send_with_timeout(sockfd, data, len, timeout);
+    // Check for error first to avoid signed/unsigned comparison issues
+    if (sent < 0) {
+      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      return -1;
+    }
+    if ((size_t)sent != len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
     }
@@ -417,7 +555,7 @@ int send_packet(int sockfd, packet_type_t type, const void *data, size_t len) {
   return 0;
 }
 
-int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
+int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *len) {
   if (!type || !data || !len) {
     return -1;
   }
@@ -426,10 +564,15 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
 
   // Read header
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
-  if (received != sizeof(header)) {
+  // Check for error first to avoid signed/unsigned comparison issues
+  if (received < 0) {
+    // recv_with_timeout returned an error
+    return -1;
+  }
+  if ((size_t)received != sizeof(header)) {
     if (received == 0) {
       log_info("Connection closed while reading packet header");
-    } else if (received > 0) {
+    } else {
       log_error("Partial packet header received: %zd/%zu bytes", received, sizeof(header));
     }
     return received == 0 ? 0 : -1;
@@ -487,13 +630,6 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
     // Batch must have at least header + some samples
     if (pkt_len < sizeof(audio_batch_packet_t) + sizeof(float)) {
       log_error("Invalid audio batch packet size: %u", pkt_len);
-      return -1;
-    }
-    break;
-  case PACKET_TYPE_PALETTE_CONFIG:
-    // Palette config must be exactly the struct size
-    if (pkt_len != sizeof(palette_config_packet_t)) {
-      log_error("Invalid palette config packet size: %u (expected %zu)", pkt_len, sizeof(palette_config_packet_t));
       return -1;
     }
     break;
@@ -622,7 +758,7 @@ int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len) {
   return 1;
 }
 
-int send_audio_packet(int sockfd, const float *samples, int num_samples) {
+int send_audio_packet(socket_t sockfd, const float *samples, int num_samples) {
   if (!samples || num_samples <= 0 || num_samples > AUDIO_SAMPLES_PER_PACKET) {
     log_error("Invalid audio packet: samples=%p, num_samples=%d", samples, num_samples);
     return -1;
@@ -639,7 +775,7 @@ int send_audio_packet(int sockfd, const float *samples, int num_samples) {
   return send_packet(sockfd, PACKET_TYPE_AUDIO, samples, data_size);
 }
 
-int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count) {
+int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count) {
   if (!samples || num_samples <= 0 || batch_count <= 0) {
     log_error("Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples, num_samples, batch_count);
     return -1;
@@ -662,8 +798,8 @@ int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, i
   SAFE_MALLOC(buffer, total_size, uint8_t *);
 
   // Copy header and samples to buffer
-  memcpy(buffer, &header, header_size);
-  memcpy(buffer + header_size, samples, samples_size);
+  SAFE_MEMCPY(buffer, total_size, &header, header_size);
+  SAFE_MEMCPY(buffer + header_size, samples_size, samples, samples_size);
 
 #ifdef DEBUG_AUDIO
   log_debug("Sending audio batch: %d chunks, %d total samples, %zu bytes", batch_count, num_samples, total_size);
@@ -676,33 +812,33 @@ int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, i
 
 // Multi-user protocol functions implementation
 
-int send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities) {
+int send_client_join_packet(socket_t sockfd, const char *display_name, uint32_t capabilities) {
   client_info_packet_t join_packet;
-  memset(&join_packet, 0, sizeof(join_packet));
+  SAFE_MEMSET(&join_packet, sizeof(join_packet), 0, sizeof(join_packet));
 
   join_packet.client_id = 0; // Will be assigned by server
-  snprintf(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
+  SAFE_SNPRINTF(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
   join_packet.capabilities = capabilities;
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
 }
 
-int send_client_leave_packet(int sockfd, uint32_t client_id) {
+int send_client_leave_packet(socket_t sockfd, uint32_t client_id) {
   uint32_t id_data = htonl(client_id);
   return send_packet(sockfd, PACKET_TYPE_CLIENT_LEAVE, &id_data, sizeof(id_data));
 }
 
-int send_stream_start_packet(int sockfd, uint32_t stream_type) {
+int send_stream_start_packet(socket_t sockfd, uint32_t stream_type) {
   uint32_t type_data = htonl(stream_type);
   return send_packet(sockfd, PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
 }
 
-int send_stream_stop_packet(int sockfd, uint32_t stream_type) {
+int send_stream_stop_packet(socket_t sockfd, uint32_t stream_type) {
   uint32_t type_data = htonl(stream_type);
   return send_packet(sockfd, PACKET_TYPE_STREAM_STOP, &type_data, sizeof(type_data));
 }
 
-int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len) {
+int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len) {
   // Enhanced version of send_packet that includes client_id
   packet_header_t header;
 
@@ -719,17 +855,39 @@ int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, 
   }
   header.crc32 = htonl(crc);
 
+  // Calculate timeout based on packet size
+  int timeout = calculate_packet_timeout(len);
+  if (len > 100000) { // Only log for large packets
+    log_info("DEBUG_TIMEOUT: Packet size=%zu, calculated timeout=%d seconds", len, timeout);
+  }
+
   // Send header
-  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : SEND_TIMEOUT);
+  ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
   if (sent != sizeof(header)) {
     log_error("Failed to send packet header with client ID: %zd/%zu bytes", sent, sizeof(header));
+
+    // MEMORY CORRUPTION DETECTION: Print stack trace if sent value is suspiciously large
+    if (sent > 1000000) { // 1MB+ is definitely corruption
+      log_error("CRITICAL: CLIENT detected memory corruption in send_with_timeout (with client ID)!");
+      log_error("Expected sizeof(header)=%zu, got sent=%zd", sizeof(header), sent);
+      log_error("Header details: magic=0x%x, type=%u, length=%u, crc32=0x%x, client_id=%u", ntohl(header.magic),
+                ntohs(header.type), ntohl(header.length), ntohl(header.crc32), ntohl(header.client_id));
+      log_error("Stack trace follows:");
+      platform_print_backtrace();
+    }
+
     return -1;
   }
 
   // Send payload if present
   if (len > 0 && data) {
-    sent = send_with_timeout(sockfd, data, len, is_test_environment() ? 1 : SEND_TIMEOUT);
-    if (sent != (ssize_t)len) {
+    sent = send_with_timeout(sockfd, data, len, timeout);
+    // Check for error first to avoid signed/unsigned comparison issues
+    if (sent < 0) {
+      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      return -1;
+    }
+    if ((size_t)sent != len) {
       log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
       return -1;
     }
@@ -738,19 +896,29 @@ int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, 
   return 0;
 }
 
-int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len) {
+int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len) {
   if (!type || !client_id || !data || !len) {
     return -1;
   }
 
+  // Check if socket is invalid (e.g., closed by signal handler)
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
   packet_header_t header;
 
   // Read header
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
-  if (received != sizeof(header)) {
+  // Check for error first to avoid signed/unsigned comparison issues
+  if (received < 0) {
+    // recv_with_timeout returned an error
+    return -1;
+  }
+  if ((size_t)received != sizeof(header)) {
     if (received == 0) {
       log_info("Connection closed while reading packet header");
-    } else if (received > 0) {
+    } else {
       log_error("Partial packet header received: %zd/%zu bytes", received, sizeof(header));
     }
     return received == 0 ? 0 : -1;
@@ -793,9 +961,12 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
       return -1;
     }
 
-    received = recv_with_timeout(sockfd, *data, pkt_len, is_test_environment() ? 1 : RECV_TIMEOUT);
+    // Use adaptive timeout for large packets
+    int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    received = recv_with_timeout(sockfd, *data, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
-      log_error("Failed to receive packet payload: %zd/%u bytes", received, pkt_len);
+      log_error("Failed to receive packet payload: %zd/%u bytes, errno=%d (%s)", received, pkt_len, errno,
+                SAFE_STRERROR(errno));
       buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
@@ -819,19 +990,19 @@ int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client
   return 1;
 }
 
-int send_ping_packet(int sockfd) {
+int send_ping_packet(socket_t sockfd) {
   return send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
 }
 
-int send_pong_packet(int sockfd) {
+int send_pong_packet(socket_t sockfd) {
   return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
 }
 
-int send_clear_console_packet(int sockfd) {
+int send_clear_console_packet(socket_t sockfd) {
   return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
 }
 
-int send_server_state_packet(int sockfd, const server_state_packet_t *state) {
+int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state) {
   if (!state) {
     return -1;
   }
@@ -840,12 +1011,12 @@ int send_server_state_packet(int sockfd, const server_state_packet_t *state) {
   server_state_packet_t net_state;
   net_state.connected_client_count = htonl(state->connected_client_count);
   net_state.active_client_count = htonl(state->active_client_count);
-  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+  SAFE_MEMSET(net_state.reserved, sizeof(net_state.reserved), 0, sizeof(net_state.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state));
 }
 
-int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_packet_t *caps) {
+int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabilities_packet_t *caps) {
   if (!caps) {
     return -1;
   }
@@ -860,42 +1031,44 @@ int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_pa
   net_caps.height = htons(caps->height);
 
   // Copy strings directly (no byte order conversion needed)
-  memcpy(net_caps.term_type, caps->term_type, sizeof(net_caps.term_type));
-  memcpy(net_caps.colorterm, caps->colorterm, sizeof(net_caps.colorterm));
+  SAFE_MEMCPY(net_caps.term_type, sizeof(net_caps.term_type), caps->term_type, sizeof(net_caps.term_type));
+  SAFE_MEMCPY(net_caps.colorterm, sizeof(net_caps.colorterm), caps->colorterm, sizeof(net_caps.colorterm));
 
   net_caps.detection_reliable = caps->detection_reliable;
 
   // NEW: Include palette information
   net_caps.palette_type = htonl(caps->palette_type);
   net_caps.utf8_support = htonl(caps->utf8_support);
-  memcpy(net_caps.palette_custom, caps->palette_custom, sizeof(net_caps.palette_custom));
+  SAFE_MEMCPY(net_caps.palette_custom, sizeof(net_caps.palette_custom), caps->palette_custom,
+              sizeof(net_caps.palette_custom));
 
-  memset(net_caps.reserved, 0, sizeof(net_caps.reserved));
+  // Add the desired FPS field
+  net_caps.desired_fps = caps->desired_fps;
+  SAFE_MEMSET(net_caps.reserved, sizeof(net_caps.reserved), 0, sizeof(net_caps.reserved));
 
   return send_packet(sockfd, PACKET_TYPE_CLIENT_CAPABILITIES, &net_caps, sizeof(net_caps));
 }
 
 // Convenience function that sends terminal capabilities with auto-detection
 // This provides a drop-in replacement for send_size_packet
-int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsigned short height) {
+int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, unsigned short height) {
   // Detect terminal capabilities automatically
   terminal_capabilities_t caps = detect_terminal_capabilities();
-
-  printf("DEBUG: Client detected render_mode=%d, sending to server\n", caps.render_mode);
 
   // Apply user's color mode override
   caps = apply_color_mode_override(caps);
 
-  // Check if detection was reliable, use fallback if not
-  if (!caps.detection_reliable) {
+  // Check if detection was reliable, use fallback only for auto-detection
+  // Don't override user's explicit color mode choices
+  if (!caps.detection_reliable && opt_color_mode == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");
     // Use minimal fallback capabilities
-    memset(&caps, 0, sizeof(caps));
+    SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
     caps.color_level = TERM_COLOR_NONE;
     caps.color_count = 2;
     caps.capabilities = 0; // No special capabilities
-    strncpy(caps.term_type, "unknown", sizeof(caps.term_type) - 1);
-    strncpy(caps.colorterm, "", sizeof(caps.colorterm) - 1);
+    SAFE_STRNCPY(caps.term_type, "unknown", sizeof(caps.term_type));
+    SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
     caps.detection_reliable = 0; // Not reliable
   }
 
@@ -912,18 +1085,31 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.palette_type = opt_palette_type;
   net_packet.utf8_support = caps.utf8_support ? 1 : 0;
   if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
-    strncpy(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom) - 1);
+    SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
-    memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
+  }
+
+  // Set desired FPS from global variable or use the detected/default value
+  if (g_max_fps > 0) {
+    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  } else {
+    net_packet.desired_fps = caps.desired_fps;
+  }
+
+  // Fallback: ensure FPS is never 0
+  if (net_packet.desired_fps == 0) {
+    net_packet.desired_fps = DEFAULT_MAX_FPS;
+    log_warn("desired_fps was 0, using fallback DEFAULT_MAX_FPS=%d", DEFAULT_MAX_FPS);
   }
 
   // log_debug("NETWORK DEBUG: About to send capabilities packet with width=%u, height=%u", width, height);
 
-  strncpy(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type) - 1);
+  SAFE_STRNCPY(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type));
   net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
 
-  strncpy(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm) - 1);
+  SAFE_STRNCPY(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm));
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
@@ -932,13 +1118,194 @@ int send_terminal_size_with_auto_detect(int sockfd, unsigned short width, unsign
   net_packet.palette_type = opt_palette_type;
   net_packet.utf8_support = opt_force_utf8 ? 1 : 0; // Use forced UTF-8 or detect
   if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
-    strncpy(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom) - 1);
+    SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
-    memset(net_packet.palette_custom, 0, sizeof(net_packet.palette_custom));
+    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
   }
 
-  memset(net_packet.reserved, 0, sizeof(net_packet.reserved));
+  SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 
   return send_terminal_capabilities_packet(sockfd, &net_packet);
+}
+
+// ============================================================================
+// Frame Sending Functions (moved from compression.c)
+// ============================================================================
+
+#include <time.h>
+#include <zlib.h>
+#include "compression.h"
+
+// Rate-limit compression debug logs to once every 5 seconds
+static time_t g_last_compression_log_time = 0;
+
+// Send ASCII frame using the new unified packet structure
+int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size, int width, int height) {
+  // Validate frame size
+  if (frame_size == 0 || !frame_data) {
+    log_error("Invalid frame data: frame_data=%p, frame_size=%zu", frame_data, frame_size);
+    return -1;
+  }
+
+  // Check for suspicious frame size
+  if (frame_size > (size_t)10 * 1024 * 1024) { // 10MB seems unreasonable for ASCII art
+    log_error("Suspicious frame_size=%zu, might be corrupted", frame_size);
+    return -1;
+  }
+
+  // Calculate maximum compressed size
+  uLongf compressed_size = compressBound(frame_size);
+  char *compressed_data;
+  SAFE_MALLOC(compressed_data, compressed_size, char *);
+
+  if (!compressed_data) {
+    return -1;
+  }
+
+  // Try compression using deflate
+  z_stream strm;
+  SAFE_MEMSET(&strm, sizeof(strm), 0, sizeof(strm));
+
+  int ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  if (ret != Z_OK) {
+    log_error("deflateInit failed: %d", ret);
+    free(compressed_data);
+    return -1;
+  }
+
+  strm.avail_in = frame_size;
+  strm.next_in = (Bytef *)frame_data;
+  strm.avail_out = compressed_size;
+  strm.next_out = (Bytef *)compressed_data;
+
+  ret = deflate(&strm, Z_FINISH);
+
+  if (ret != Z_STREAM_END) {
+    log_error("deflate failed: %d", ret);
+    deflateEnd(&strm);
+    free(compressed_data);
+    return -1;
+  }
+
+  compressed_size = strm.total_out;
+  deflateEnd(&strm);
+
+  // Check if compression is worthwhile
+  float compression_ratio = (float)compressed_size / (float)frame_size;
+  bool use_compression = compression_ratio < COMPRESSION_RATIO_THRESHOLD;
+
+  // Build the ASCII frame packet header
+  ascii_frame_packet_t frame_header;
+  frame_header.width = htonl(width);
+  frame_header.height = htonl(height);
+  frame_header.original_size = htonl((uint32_t)frame_size);
+  frame_header.checksum = htonl(asciichat_crc32(frame_data, frame_size));
+  frame_header.flags = 0;
+
+  // Prepare packet data
+  void *packet_data;
+  size_t packet_size;
+
+  if (use_compression) {
+    frame_header.compressed_size = htonl((uint32_t)compressed_size);
+    frame_header.flags |= htonl(FRAME_FLAG_IS_COMPRESSED);
+
+    // Allocate buffer for header + compressed data
+    packet_size = sizeof(ascii_frame_packet_t) + compressed_size;
+    SAFE_MALLOC(packet_data, packet_size, void *);
+    if (!packet_data) {
+      free(compressed_data);
+      return -1;
+    }
+
+    // Copy header and compressed data
+    SAFE_MEMCPY(packet_data, packet_size, &frame_header, sizeof(ascii_frame_packet_t));
+    SAFE_MEMCPY((char *)packet_data + sizeof(ascii_frame_packet_t), compressed_size, compressed_data, compressed_size);
+
+    time_t now = time(NULL);
+    if (now - g_last_compression_log_time >= 5) {
+      log_debug("Sending compressed ASCII frame: %zu -> %lu bytes (%.1f%%)", frame_size, compressed_size,
+                compression_ratio * 100);
+      g_last_compression_log_time = now;
+    }
+  } else {
+    frame_header.compressed_size = htonl(0);
+
+    // Allocate buffer for header + uncompressed data
+    packet_size = sizeof(ascii_frame_packet_t) + frame_size;
+    SAFE_MALLOC(packet_data, packet_size, void *);
+    if (!packet_data) {
+      free(compressed_data);
+      return -1;
+    }
+
+    // Copy header and uncompressed data
+    SAFE_MEMCPY(packet_data, packet_size, &frame_header, sizeof(ascii_frame_packet_t));
+    SAFE_MEMCPY((char *)packet_data + sizeof(ascii_frame_packet_t), frame_size, frame_data, frame_size);
+
+    time_t now = time(NULL);
+    if (now - g_last_compression_log_time >= 5) {
+      log_debug("Sending uncompressed ASCII frame: %zu bytes", frame_size);
+      g_last_compression_log_time = now;
+    }
+  }
+
+  // Send as a single unified packet
+  int result = send_packet(sockfd, PACKET_TYPE_ASCII_FRAME, packet_data, packet_size);
+
+  free(packet_data);
+  free(compressed_data);
+
+  if (result < 0) {
+    return -1;
+  }
+
+  if (use_compression) {
+    return (int)compressed_size;
+  }
+  return (int)frame_size;
+}
+
+// Send image frame using the new unified packet structure
+int send_image_frame_packet(socket_t sockfd, const void *pixel_data, size_t pixel_size, int width, int height,
+                            uint32_t pixel_format) {
+  // Validate input
+  if (!pixel_data || pixel_size == 0) {
+    log_error("Invalid pixel data");
+    return -1;
+  }
+
+  // Build the image frame packet header
+  image_frame_packet_t frame_header;
+  frame_header.width = htonl(width);
+  frame_header.height = htonl(height);
+  frame_header.pixel_format = htonl(pixel_format);
+  frame_header.compressed_size = htonl(0); // No compression for now
+  frame_header.checksum = htonl(asciichat_crc32(pixel_data, pixel_size));
+  frame_header.timestamp = htonl((uint32_t)time(NULL));
+
+  // Allocate buffer for header + pixel data
+  size_t packet_size = sizeof(image_frame_packet_t) + pixel_size;
+  void *packet_data;
+  SAFE_MALLOC(packet_data, packet_size, void *);
+  if (!packet_data) {
+    return -1;
+  }
+
+  // Copy header and pixel data
+  SAFE_MEMCPY(packet_data, packet_size, &frame_header, sizeof(image_frame_packet_t));
+  SAFE_MEMCPY((char *)packet_data + sizeof(image_frame_packet_t), pixel_size, pixel_data, pixel_size);
+
+  // Send as a single unified packet
+  int result = send_packet(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
+
+  free(packet_data);
+  return result;
+}
+
+// Legacy function - now uses the new unified packet system
+int send_compressed_frame(socket_t sockfd, const char *frame_data, size_t frame_size) {
+  // Use the new unified packet function with global width/height
+  return send_ascii_frame_packet(sockfd, frame_data, frame_size, opt_width, opt_height);
 }

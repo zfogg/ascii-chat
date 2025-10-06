@@ -8,7 +8,7 @@ on:
       - '**.h'
       - '**.m'
       - 'tests/**'
-      - 'Makefile'
+      - 'CMakeLists.txt'
   pull_request:
     branches: [ '*' ]
     paths:
@@ -16,7 +16,7 @@ on:
       - '**.h'
       - '**.m'
       - 'tests/**'
-      - 'Makefile'
+      - 'CMakeLists.txt'
 
 permissions:
   contents: read
@@ -51,18 +51,52 @@ jobs:
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
-        # Use coverage for debug builds to enable coverage
-        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'coverage' || matrix.build_type }}
-        echo "Building with target: ${BUILD_TARGET}"
-        make -j CSTD=c2x ${BUILD_TARGET}
-        make -j CSTD=c2x tests-${BUILD_TARGET}
+        # Use CMake build system
+        BUILD_TYPE=${{ matrix.build_type == 'debug' && 'Debug' || 'Release' }}
+
+        # Set C flags based on build type
+        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        if [ "${{ matrix.build_type }}" = "debug" ]; then
+          C_FLAGS="--coverage"
+        else
+          C_FLAGS=""
+        fi
+
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
+        echo "Building with CMake build type: ${BUILD_TYPE}"
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+          -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS="${C_FLAGS}" \
+          -DBUILD_TESTS=ON
+        cmake --build build
+
         echo "Test executables built:"
-        ls -la bin/test_* 2>/dev/null || echo "No test executables found in bin/"
-        echo "All files in bin:"
-        ls -la bin/ 2>/dev/null || echo "bin/ directory not found"
+        ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
+        echo "All files in build/bin:"
+        ls -la build/bin/ 2>/dev/null || echo "build/bin/ directory not found"
 
         # Debug: Check if coverage build actually created .gcno files
-        if [ "${BUILD_TARGET}" = "coverage" ]; then
+        if [ "${{ matrix.build_type }}" = "debug" ]; then
           echo "DEBUG: Coverage build - checking for .gcno files..."
           echo "DEBUG: Count of .gcno files after build: $(find . -name "*.gcno" -type f | wc -l)"
           echo "DEBUG: Sample .gcno files:"
@@ -71,14 +105,12 @@ jobs:
 
     - name: Run unit tests with JUnit XML generation
       run: |
-        # Use coverage for debug builds
-        BUILD_TARGET=${{ matrix.build_type == 'debug' && 'coverage' || matrix.build_type }}
-        echo "Running tests with build type: ${BUILD_TARGET}"
+        echo "Running tests with build type: ${{ matrix.build_type }}"
         echo "Looking for test executables:"
         find . -name "test_unit_*" -type f 2>/dev/null | head -10
         # Save logs with descriptive filename
         LOG_FILE="unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log"
-        ./tests/scripts/run_tests.sh -t unit -b ${BUILD_TARGET} -J --log-file="${LOG_FILE}"
+        ./tests/scripts/run_tests.sh -t unit -b ${{ matrix.build_type }} -J --log-file="${LOG_FILE}"
         echo "Unit tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
 
@@ -116,14 +148,16 @@ jobs:
             fi
           done
 
+          # Generate coverage using reusable action would go here, but we need inline for conditional
           echo "DEBUG: Running coverage tool on .gcda files..."
           # Use gcov on macOS, llvm-cov on Ubuntu
+          # Use -p to preserve path components and avoid overwriting files with same basename
           if [ "${{ matrix.os-name }}" = "macos" ]; then
             echo "DEBUG: Using gcov (macOS)"
-            find . -name "*.gcda" -exec gcov {} \;
+            find . -name "*.gcda" -exec gcov -p {} \;
           else
             echo "DEBUG: Using llvm-cov (Ubuntu)"
-            find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+            find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
           fi
           echo "DEBUG: Coverage command completed"
 
@@ -197,8 +231,32 @@ jobs:
     - name: Build and run integration tests with coverage
       run: |
         echo "Running integration tests with coverage build..."
-        make -j CSTD=c2x coverage
-        make -j CSTD=c2x tests-coverage
+        # Use CMake build system with coverage
+        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ matrix.os-name }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='--coverage' -DBUILD_TESTS=ON
+        cmake --build build
         LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
         ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
         echo "Integration tests completed successfully"
@@ -206,34 +264,9 @@ jobs:
 
     - name: Generate coverage report
       if: always()
-      run: |
-        # Generate coverage files for codecov
-        echo "DEBUG: Running coverage tool on .gcda files..."
-        # Use gcov on macOS, llvm-cov on Ubuntu
-        if [ "${{ matrix.os-name }}" = "macos" ]; then
-          echo "DEBUG: Using gcov (macOS)"
-          find . -name "*.gcda" -exec gcov {} \;
-        else
-          echo "DEBUG: Using llvm-cov (Ubuntu)"
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
-        fi
-        echo "DEBUG: Coverage command completed"
-
-        # Debug: Check where .gcov files were created
-        echo "DEBUG: Looking for .gcov files after coverage execution..."
-        echo "DEBUG: All .gcov files found:"
-        find . -name "*.gcov" -type f -exec ls -la {} \;
-        echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
-
-        # Move all .gcov files to repo root for consistent behavior across platforms
-        echo "Moving .gcov files to repo root..."
-        echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-        find . -name "*.gcov" -type f -exec mv {} . \;
-        echo "DEBUG: Move command completed"
-
-        echo "Generated coverage files:"
-        echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-        find . -name "*.gcov" -type f | head -20
+      uses: ./.github/actions/generate-coverage
+      with:
+        os-type: ${{ matrix.os-name }}
 
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
@@ -274,24 +307,63 @@ jobs:
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
-    - name: Build and run performance tests
+    - name: Build performance tests with coverage
       run: |
-        # Build and run performance tests with release mode for accurate performance
-        make -j CSTD=c2x release
-        make -j CSTD=c2x tests-release
+        # Build performance tests with Release mode + coverage for accurate performance
+        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
+        echo "Building performance tests with Release optimization and coverage instrumentation..."
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-O3 --coverage' -DBUILD_TESTS=ON
+        cmake --build build
+        echo "Performance test executables built:"
+        ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
+
+    - name: Run performance tests
+      run: |
+        # Run performance tests
+        echo "Running performance tests..."
         LOG_FILE="performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log"
         ./tests/scripts/run_tests.sh -t performance -b release -J --log-file="${LOG_FILE}"
         echo "Performance tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
 
-    - name: Publish Test Results
+    - name: Generate coverage report for performance tests
+      if: always()
+      uses: ./.github/actions/generate-coverage
+      with:
+        os-type: ${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}
+
+    - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
       if: always()
       with:
         test-type: performance
         os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
         junit-file: junit.xml
-        upload-coverage: 'false'
+        coverage-files: './*.gcov'
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+        upload-coverage: 'true'
 
     - name: Upload performance test artifacts
       if: always()
@@ -319,14 +391,19 @@ jobs:
 
     - name: Build with AddressSanitizer
       run: |
-        make -j CSTD=c2x sanitize
-        make -j CSTD=c2x tests-sanitize
+        # Use CMake build system with AddressSanitizer
+        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-fsanitize=address' -DBUILD_TESTS=ON
+        cmake --build build
 
     - name: Run tests with AddressSanitizer
       run: |
-        # Run tests with AddressSanitizer to detect memory issues
+        # Run tests with AddressSanitizer and other sanitizers to detect memory issues
         LOG_FILE="sanitizer-tests.log"
-        ./tests/scripts/run_tests.sh -b sanitize --log-file="${LOG_FILE}"
+        ./tests/scripts/run_tests.sh -b debug --log-file="${LOG_FILE}"
         echo "AddressSanitizer tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
 
@@ -336,9 +413,9 @@ jobs:
         echo "Running memory leak detection..."
 
         # Test basic binary functionality for leaks
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/server || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./build/bin/ascii-chat-server || true
         [ $? -eq 124 ] && echo "Server timed out" || false
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./bin/client || true
+        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./build/bin/ascii-chat-client || true
         [ $? -eq 124 ] && echo "Client timed out" || false
 
         echo "Memory leak detection completed"
@@ -372,7 +449,32 @@ jobs:
 
     - name: Build project
       run: |
-        make -j CSTD=c2x debug
+        # Use CMake build system
+        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        # Use Homebrew LLVM on macOS for better standards support
+        # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
+        if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
+          if [ -d "/opt/homebrew/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/opt/homebrew"
+          elif [ -d "/usr/local/opt/llvm" ]; then
+            HOMEBREW_PREFIX="/usr/local"
+          else
+            echo "Error: Homebrew LLVM not found at /opt/homebrew or /usr/local"
+            exit 1
+          fi
+          CLANG_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang"
+          CLANGXX_BIN="${HOMEBREW_PREFIX}/opt/llvm/bin/clang++"
+          echo "Using Homebrew LLVM from: ${HOMEBREW_PREFIX}/opt/llvm"
+        else
+          CLANG_BIN="clang"
+          CLANGXX_BIN="clang++"
+        fi
+
+        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DBUILD_TESTS=ON
+        cmake --build build
 
     - name: Test server startup and shutdown
       env:
@@ -380,9 +482,9 @@ jobs:
       run: |
         # Set TERM for terminal detection in CI environment
         # Test server help (doesn't require terminal setup)
-        ./bin/server --help
+        ./build/bin/ascii-chat-server --help
         # Test basic server startup (short timeout)
-        timeout 2s ./bin/server --log-file /tmp/server_test.log || true
+        timeout 2s ./build/bin/ascii-chat-server --log-file /tmp/server_test.log || true
         echo "Server startup test passed"
 
     - name: Test client functionality
@@ -390,6 +492,6 @@ jobs:
         TERM: xterm-256color
       run: |
         # Test client help (doesn't require webcam)
-        timeout 3 ./bin/server || true
+        timeout 3 ./build/bin/ascii-chat-server || true
         # Test client capabilities detection
-        ./bin/client --show-capabilities
+        ./build/bin/ascii-chat-client --show-capabilities

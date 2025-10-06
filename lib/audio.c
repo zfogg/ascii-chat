@@ -35,10 +35,12 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     if (ctx->playback_buffer != NULL) {
       int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
-        memset(output + samples_read, 0, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
+        SAFE_MEMSET(output + samples_read, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float), 0,
+                    (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
       }
     } else {
-      memset(output, 0, framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
+      SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
+                  framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
     }
   }
 
@@ -54,11 +56,11 @@ audio_ring_buffer_t *audio_ring_buffer_create(void) {
     return NULL;
   }
 
-  memset(rb->data, 0, sizeof(rb->data));
+  SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
   rb->write_index = 0;
   rb->read_index = 0;
 
-  if (pthread_mutex_init(&rb->mutex, NULL) != 0) {
+  if (mutex_init(&rb->mutex) != 0) {
     log_error("Failed to initialize audio ring buffer mutex");
     buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
     return NULL;
@@ -71,7 +73,7 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   if (!rb)
     return;
 
-  pthread_mutex_destroy(&rb->mutex);
+  mutex_destroy(&rb->mutex);
   buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
 }
 
@@ -85,7 +87,7 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
     return 0;
   }
 
-  pthread_mutex_lock(&rb->mutex);
+  mutex_lock(&rb->mutex);
 
   int available = audio_ring_buffer_available_write(rb);
 
@@ -102,16 +104,17 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
 
   if (samples <= remaining) {
     // Can copy in one chunk
-    memcpy(&rb->data[write_idx], data, samples * sizeof(float));
+    SAFE_MEMCPY(&rb->data[write_idx], samples * sizeof(float), data, samples * sizeof(float));
   } else {
     // Need to wrap around - copy in two chunks
-    memcpy(&rb->data[write_idx], data, remaining * sizeof(float));
-    memcpy(&rb->data[0], &data[remaining], (samples - remaining) * sizeof(float));
+    SAFE_MEMCPY(&rb->data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
+    SAFE_MEMCPY(&rb->data[0], (samples - remaining) * sizeof(float), &data[remaining],
+                (samples - remaining) * sizeof(float));
   }
 
   rb->write_index = (write_idx + samples) % AUDIO_RING_BUFFER_SIZE;
 
-  pthread_mutex_unlock(&rb->mutex);
+  mutex_unlock(&rb->mutex);
   return samples; // Always return that we wrote all samples
 }
 
@@ -119,7 +122,7 @@ int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
   if (!rb || !data || samples <= 0)
     return 0;
 
-  pthread_mutex_lock(&rb->mutex);
+  mutex_lock(&rb->mutex);
 
   int available = audio_ring_buffer_available_read(rb);
   int to_read = (samples > available) ? available : samples;
@@ -130,16 +133,17 @@ int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
 
   if (to_read <= remaining) {
     // Can copy in one chunk
-    memcpy(data, &rb->data[read_idx], to_read * sizeof(float));
+    SAFE_MEMCPY(data, to_read * sizeof(float), &rb->data[read_idx], to_read * sizeof(float));
   } else {
     // Need to wrap around - copy in two chunks
-    memcpy(data, &rb->data[read_idx], remaining * sizeof(float));
-    memcpy(&data[remaining], &rb->data[0], (to_read - remaining) * sizeof(float));
+    SAFE_MEMCPY(data, remaining * sizeof(float), &rb->data[read_idx], remaining * sizeof(float));
+    SAFE_MEMCPY(&data[remaining], (to_read - remaining) * sizeof(float), &rb->data[0],
+                (to_read - remaining) * sizeof(float));
   }
 
   rb->read_index = (read_idx + to_read) % AUDIO_RING_BUFFER_SIZE;
 
-  pthread_mutex_unlock(&rb->mutex);
+  mutex_unlock(&rb->mutex);
   return to_read;
 }
 
@@ -153,9 +157,8 @@ int audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
 
   if (write_idx >= read_idx) {
     return write_idx - read_idx;
-  } else {
-    return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
   }
+  return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
 }
 
 int audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
@@ -171,9 +174,9 @@ int audio_init(audio_context_t *ctx) {
     return -1;
   }
 
-  memset(ctx, 0, sizeof(audio_context_t));
+  SAFE_MEMSET(ctx, sizeof(audio_context_t), 0, sizeof(audio_context_t));
 
-  if (pthread_mutex_init(&ctx->state_mutex, NULL) != 0) {
+  if (mutex_init(&ctx->state_mutex) != 0) {
     log_error("Failed to initialize audio context mutex");
     return -1;
   }
@@ -181,7 +184,7 @@ int audio_init(audio_context_t *ctx) {
   PaError err = Pa_Initialize();
   if (err != paNoError) {
     log_error("Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
-    pthread_mutex_destroy(&ctx->state_mutex);
+    mutex_destroy(&ctx->state_mutex);
     return -1;
   }
 
@@ -189,7 +192,7 @@ int audio_init(audio_context_t *ctx) {
   if (!ctx->capture_buffer) {
     log_error("Failed to create capture buffer");
     Pa_Terminate();
-    pthread_mutex_destroy(&ctx->state_mutex);
+    mutex_destroy(&ctx->state_mutex);
     return -1;
   }
 
@@ -198,7 +201,7 @@ int audio_init(audio_context_t *ctx) {
     log_error("Failed to create playback buffer");
     audio_ring_buffer_destroy(ctx->capture_buffer);
     Pa_Terminate();
-    pthread_mutex_destroy(&ctx->state_mutex);
+    mutex_destroy(&ctx->state_mutex);
     return -1;
   }
 
@@ -208,10 +211,15 @@ int audio_init(audio_context_t *ctx) {
 }
 
 void audio_destroy(audio_context_t *ctx) {
-  if (!ctx || !ctx->initialized)
+  if (!ctx || !ctx->initialized) {
+    log_info("DEBUG: audio_destroy early return - ctx=%p, initialized=%s", ctx,
+             ctx ? (ctx->initialized ? "true" : "false") : "NULL");
     return;
+  }
 
-  pthread_mutex_lock(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy starting - about to lock mutex");
+  mutex_lock(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy acquired mutex lock");
 
   if (ctx->recording) {
     audio_stop_capture(ctx);
@@ -224,11 +232,16 @@ void audio_destroy(audio_context_t *ctx) {
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
 
+  log_info("DEBUG: audio_destroy about to call Pa_Terminate()");
   Pa_Terminate();
+  log_info("DEBUG: audio_destroy Pa_Terminate() completed");
   ctx->initialized = false;
 
-  pthread_mutex_unlock(&ctx->state_mutex);
-  pthread_mutex_destroy(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy about to unlock mutex");
+  mutex_unlock(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy unlocked mutex, about to destroy");
+  mutex_destroy(&ctx->state_mutex);
+  log_info("DEBUG: audio_destroy mutex destroyed");
 
   log_info("Audio system destroyed");
 }
@@ -239,10 +252,10 @@ int audio_start_capture(audio_context_t *ctx) {
     return -1;
   }
 
-  pthread_mutex_lock(&ctx->state_mutex);
+  mutex_lock(&ctx->state_mutex);
 
   if (ctx->recording) {
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return 0;
   }
 
@@ -250,7 +263,7 @@ int audio_start_capture(audio_context_t *ctx) {
   inputParameters.device = Pa_GetDefaultInputDevice();
   if (inputParameters.device == paNoDevice) {
     log_error("No default input device available");
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
@@ -264,7 +277,7 @@ int audio_start_capture(audio_context_t *ctx) {
 
   if (err != paNoError) {
     log_error("Failed to open input stream: %s", Pa_GetErrorText(err));
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
@@ -273,7 +286,7 @@ int audio_start_capture(audio_context_t *ctx) {
     log_error("Failed to start input stream: %s", Pa_GetErrorText(err));
     Pa_CloseStream(ctx->input_stream);
     ctx->input_stream = NULL;
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
@@ -281,7 +294,7 @@ int audio_start_capture(audio_context_t *ctx) {
   audio_set_realtime_priority();
 
   ctx->recording = true;
-  pthread_mutex_unlock(&ctx->state_mutex);
+  mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio capture started");
   return 0;
@@ -292,7 +305,7 @@ int audio_stop_capture(audio_context_t *ctx) {
     return 0;
   }
 
-  pthread_mutex_lock(&ctx->state_mutex);
+  mutex_lock(&ctx->state_mutex);
 
   if (ctx->input_stream) {
     Pa_StopStream(ctx->input_stream);
@@ -301,7 +314,7 @@ int audio_stop_capture(audio_context_t *ctx) {
   }
 
   ctx->recording = false;
-  pthread_mutex_unlock(&ctx->state_mutex);
+  mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio capture stopped");
   return 0;
@@ -313,10 +326,10 @@ int audio_start_playback(audio_context_t *ctx) {
     return -1;
   }
 
-  pthread_mutex_lock(&ctx->state_mutex);
+  mutex_lock(&ctx->state_mutex);
 
   if (ctx->playing) {
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return 0;
   }
 
@@ -324,7 +337,7 @@ int audio_start_playback(audio_context_t *ctx) {
   outputParameters.device = Pa_GetDefaultOutputDevice();
   if (outputParameters.device == paNoDevice) {
     log_error("No default output device available");
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
@@ -338,7 +351,7 @@ int audio_start_playback(audio_context_t *ctx) {
 
   if (err != paNoError) {
     log_error("Failed to open output stream: %s", Pa_GetErrorText(err));
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
@@ -347,7 +360,7 @@ int audio_start_playback(audio_context_t *ctx) {
     log_error("Failed to start output stream: %s", Pa_GetErrorText(err));
     Pa_CloseStream(ctx->output_stream);
     ctx->output_stream = NULL;
-    pthread_mutex_unlock(&ctx->state_mutex);
+    mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
@@ -355,7 +368,7 @@ int audio_start_playback(audio_context_t *ctx) {
   audio_set_realtime_priority();
 
   ctx->playing = true;
-  pthread_mutex_unlock(&ctx->state_mutex);
+  mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio playback started");
   return 0;
@@ -366,7 +379,7 @@ int audio_stop_playback(audio_context_t *ctx) {
     return 0;
   }
 
-  pthread_mutex_lock(&ctx->state_mutex);
+  mutex_lock(&ctx->state_mutex);
 
   if (ctx->output_stream) {
     Pa_StopStream(ctx->output_stream);
@@ -375,7 +388,7 @@ int audio_stop_playback(audio_context_t *ctx) {
   }
 
   ctx->playing = false;
-  pthread_mutex_unlock(&ctx->state_mutex);
+  mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio playback stopped");
   return 0;
@@ -406,11 +419,18 @@ int audio_set_realtime_priority(void) {
   param.sched_priority = 80; // High priority (1-99 range)
 
   // Try to set real-time scheduling for current thread
-  if (pthread_setschedparam(pthread_self(), policy, &param) != 0) {
+#ifndef _WIN32
+  if (pthread_setschedparam(ascii_thread_self(), policy, &param) != 0) {
     log_error(
         "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
     return -1;
   }
+#else
+  // Windows thread priority setting is handled differently
+  // TODO: Implement Windows-specific thread priority setting
+  (void)policy;
+  (void)param;
+#endif
 
   log_info("✓ Audio thread real-time priority set to %d with SCHED_FIFO", param.sched_priority);
   return 0;

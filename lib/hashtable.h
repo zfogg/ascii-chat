@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <pthread.h>
+#include "platform/rwlock.h"
 
 /*
  * Simple Hash Table Implementation
@@ -15,8 +15,8 @@
  */
 
 // Hash table configuration
-#define HASHTABLE_BUCKET_COUNT 16 // Must be power of 2, > MAX_CLIENTS (10)
-#define HASHTABLE_MAX_ENTRIES 32  // Pool size for pre-allocated entries
+#define HASHTABLE_BUCKET_COUNT 1024 // Must be power of 2, increased to reduce collisions
+#define HASHTABLE_MAX_ENTRIES 32    // Pool size for pre-allocated entries
 
 // Hash table entry (for collision chaining)
 typedef struct hashtable_entry {
@@ -27,13 +27,13 @@ typedef struct hashtable_entry {
 } hashtable_entry_t;
 
 // Hash table structure
-typedef struct {
+typedef struct hashtable {
   hashtable_entry_t *buckets[HASHTABLE_BUCKET_COUNT]; // Array of bucket heads
   hashtable_entry_t *entry_pool;                      // Pre-allocated entry pool
   hashtable_entry_t *free_list;                       // Stack of free entries
   size_t entry_count;                                 // Number of active entries
   size_t pool_size;                                   // Size of entry pool
-  pthread_rwlock_t rwlock;                            // Reader-writer lock for concurrency
+  rwlock_t rwlock;                                    // Reader-writer lock for concurrency
 
   // Statistics
   uint64_t lookups;    // Total lookup operations

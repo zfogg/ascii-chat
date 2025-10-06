@@ -7,180 +7,148 @@
 #include "../lib/webcam.h"
 
 static bool has_visible_chars(const char *buf, size_t n) {
-    if (!buf || n == 0) return false;
-    for (size_t i = 0; i < n; ++i) {
-        unsigned char c = (unsigned char)buf[i];
-        // Basic heuristic: any printable ASCII (space..~) counts as visible
-        // (SGR/CSI sequences start with ESC (0x1B), which is < 0x20)
-        if (c >= 0x20 && c <= 0x7E) return true;
-        // Or UTF-8 upper-half block character "▀" (E2 96 80)
-        if (i + 2 < n && (unsigned char)buf[i] == 0xE2 && (unsigned char)buf[i+1] == 0x96 && (unsigned char)buf[i+2] == 0x80)
-            return true;
-    }
+  if (!buf || n == 0)
     return false;
+  for (size_t i = 0; i < n; ++i) {
+    unsigned char c = (unsigned char)buf[i];
+    // Basic heuristic: any printable ASCII (space..~) counts as visible
+    // (SGR/CSI sequences start with ESC (0x1B), which is < 0x20)
+    if (c >= 0x20 && c <= 0x7E)
+      return true;
+    // Or UTF-8 upper-half block character "▀" (E2 96 80)
+    if (i + 2 < n && (unsigned char)buf[i] == 0xE2 && (unsigned char)buf[i + 1] == 0x96 &&
+        (unsigned char)buf[i + 2] == 0x80)
+      return true;
+  }
+  return false;
 }
 
 // Run color correctness test with provided pixel data
-void run_color_test(const rgb_pixel_t *test_pixels, int width, int height,
-                   char *scalar_output, char *simd_output, size_t buffer_size) {
-    int pixel_count = width * height;
+void run_color_test(const rgb_pixel_t *test_pixels, int width, int height, char *scalar_output, char *simd_output,
+                    size_t buffer_size) {
+  int pixel_count = width * height;
 
-    // Test both modes
-    bool modes[] = {false, true}; // foreground, background
-    const char *mode_names[] = {"FOREGROUND", "BACKGROUND"};
+  // Test both modes
+  bool modes[] = {false, true}; // foreground, background
+  const char *mode_names[] = {"FOREGROUND", "BACKGROUND"};
 
-    for (int mode_idx = 0; mode_idx < 2; mode_idx++) {
-        bool background_mode = modes[mode_idx];
-        printf("=== %s MODE ===\n", mode_names[mode_idx]);
+  for (int mode_idx = 0; mode_idx < 2; mode_idx++) {
+    bool background_mode = modes[mode_idx];
+    printf("=== %s MODE ===\n", mode_names[mode_idx]);
 
-        // Clear output buffers
-        memset(scalar_output, 0, buffer_size);
-        memset(simd_output, 0, buffer_size);
+    // Clear output buffers
+    memset(scalar_output, 0, buffer_size);
+    memset(simd_output, 0, buffer_size);
 
-        // Create proper 2D test image (not row-wise!)
-        const int img_width = 40, img_height = 12; // Small test image
-        image_t *test_image = image_new(img_width, img_height);
+    // Create proper 2D test image (not row-wise!)
+    const int img_width = 40, img_height = 12; // Small test image
+    image_t *test_image = image_new(img_width, img_height);
 
-        // Fill with test pattern
-        for (int y = 0; y < img_height; y++) {
-            for (int x = 0; x < img_width; x++) {
-                int idx = y * img_width + x;
-                test_image->pixels[idx].r = (x * 255) / img_width;
-                test_image->pixels[idx].g = (y * 255) / img_height;
-                test_image->pixels[idx].b = ((x + y) * 127) / (img_width + img_height);
-            }
-        }
-
-        // Generate scalar output using full image function
-        char *scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE);
-        size_t scalar_len = scalar_result ? strlen(scalar_result) : 0;
-
-        // Generate SIMD output using optimized unified function
-        char *simd_result = image_print_color_simd(test_image, background_mode, false, DEFAULT_ASCII_PALETTE);
-        size_t simd_len = simd_result ? strlen(simd_result) : 0;
-
-        printf("Scalar output length: %zu bytes\n", scalar_len);
-        printf("SIMD output length:   %zu bytes\n", simd_len);
-
-        // NOTE: Lengths may differ due to run-length encoding optimizations
-        // This is expected and not a bug - focus on content correctness
-        if (scalar_len != simd_len) {
-            printf("ℹ️  Length difference: Scalar=%zu, SIMD=%zu (expected due to run-length encoding)\n", scalar_len, simd_len);
-        } else {
-            printf("✅ Lengths match\n");
-        }
-
-        // NOTE: We don't compare byte-by-byte since implementations may use different
-        // optimizations (run-length encoding, different ANSI sequence formats, etc.)
-        // Instead, we verify that both implementations produce valid colored ASCII output
-
-        printf("✅ Scalar implementation: %zu bytes of colored ASCII output\n", scalar_len);
-        printf("✅ SIMD implementation: %zu bytes of colored ASCII output\n", simd_len);
-
-        // Basic sanity checks
-        bool scalar_has_content = scalar_result && has_visible_chars(scalar_result, scalar_len);
-        bool simd_has_content = simd_result && has_visible_chars(simd_result, simd_len);
-        bool scalar_has_colors = scalar_result && strstr(scalar_result, "\033[") != NULL;
-        bool simd_has_colors = simd_result && strstr(simd_result, "\033[") != NULL;
-
-        if (scalar_has_content && simd_has_content && scalar_has_colors && simd_has_colors) {
-            printf("✅ Both implementations produce valid colored ASCII output\n");
-            printf("✅ Color correctness test PASSED\n");
-        } else {
-            printf("❌ Output validation failed:\n");
-            printf("   Scalar: content=%s, colors=%s\n",
-                   scalar_has_content ? "✅" : "❌", scalar_has_colors ? "✅" : "❌");
-            printf("   SIMD:   content=%s, colors=%s\n",
-                   simd_has_content ? "✅" : "❌", simd_has_colors ? "✅" : "❌");
-        }
-
-        // Cleanup
-        if (scalar_result) free(scalar_result);
-        if (simd_result) free(simd_result);
-        image_destroy(test_image);
-        printf("\n");
+    // Fill with test pattern
+    for (int y = 0; y < img_height; y++) {
+      for (int x = 0; x < img_width; x++) {
+        int idx = y * img_width + x;
+        test_image->pixels[idx].r = (x * 255) / img_width;
+        test_image->pixels[idx].g = (y * 255) / img_height;
+        test_image->pixels[idx].b = ((x + y) * 127) / (img_width + img_height);
+      }
     }
+
+    // Generate scalar output using full image function
+    char *scalar_result = image_print_color(test_image, DEFAULT_ASCII_PALETTE);
+    size_t scalar_len = scalar_result ? strlen(scalar_result) : 0;
+
+    // Generate SIMD output using optimized unified function
+    char *simd_result = image_print_color_simd(test_image, background_mode, false, DEFAULT_ASCII_PALETTE);
+    size_t simd_len = simd_result ? strlen(simd_result) : 0;
+
+    printf("Scalar output length: %zu bytes\n", scalar_len);
+    printf("SIMD output length:   %zu bytes\n", simd_len);
+
+    // NOTE: Lengths may differ due to run-length encoding optimizations
+    // This is expected and not a bug - focus on content correctness
+    if (scalar_len != simd_len) {
+      printf("ℹ️  Length difference: Scalar=%zu, SIMD=%zu (expected due to run-length encoding)\n", scalar_len,
+             simd_len);
+    } else {
+      printf("✅ Lengths match\n");
+    }
+
+    // NOTE: We don't compare byte-by-byte since implementations may use different
+    // optimizations (run-length encoding, different ANSI sequence formats, etc.)
+    // Instead, we verify that both implementations produce valid colored ASCII output
+
+    printf("✅ Scalar implementation: %zu bytes of colored ASCII output\n", scalar_len);
+    printf("✅ SIMD implementation: %zu bytes of colored ASCII output\n", simd_len);
+
+    // Basic sanity checks
+    bool scalar_has_content = scalar_result && has_visible_chars(scalar_result, scalar_len);
+    bool simd_has_content = simd_result && has_visible_chars(simd_result, simd_len);
+    bool scalar_has_colors = scalar_result && strstr(scalar_result, "\033[") != NULL;
+    bool simd_has_colors = simd_result && strstr(simd_result, "\033[") != NULL;
+
+    if (scalar_has_content && simd_has_content && scalar_has_colors && simd_has_colors) {
+      printf("✅ Both implementations produce valid colored ASCII output\n");
+      printf("✅ Color correctness test PASSED\n");
+    } else {
+      printf("❌ Output validation failed:\n");
+      printf("   Scalar: content=%s, colors=%s\n", scalar_has_content ? "✅" : "❌", scalar_has_colors ? "✅" : "❌");
+      printf("   SIMD:   content=%s, colors=%s\n", simd_has_content ? "✅" : "❌", simd_has_colors ? "✅" : "❌");
+    }
+
+    // Cleanup
+    if (scalar_result)
+      free(scalar_result);
+    if (simd_result)
+      free(simd_result);
+    image_destroy(test_image);
+    printf("\n");
+  }
 }
 
 // Test colored ASCII correctness by comparing scalar vs SIMD implementations
 int main() {
-    log_init(NULL, LOG_ERROR);
+  log_init(NULL, LOG_ERROR);
 
-    printf("=== Color ASCII Correctness Test ===\n\n");
+  printf("=== Color ASCII Correctness Test ===\n\n");
 
-    // Initialize webcam
-    printf("Initializing webcam for real test data...\n");
-    // webcam_init(0); // DISABLED for run-length testing
+  // Initialize webcam
+  printf("Initializing webcam for real test data...\n");
+  // webcam_init(0); // DISABLED for run-length testing
 
-    // Force synthetic data for run-length testing
-    image_t *webcam_image = NULL; // webcam_read();
-    if (!webcam_image) {
-        printf("❌ Failed to capture webcam, falling back to synthetic test data\n");
+  // Force synthetic data for run-length testing
+  image_t *webcam_image = NULL; // webcam_read();
+  if (!webcam_image) {
+    printf("❌ Failed to capture webcam, falling back to synthetic test data\n");
 
-        // Fallback: synthetic test data optimized for run-length encoding
-        int test_width = 40;
-        int test_height = 20;
-        int pixel_count = test_width * test_height;
+    // Fallback: synthetic test data optimized for run-length encoding
+    int test_width = 40;
+    int test_height = 20;
+    int pixel_count = test_width * test_height;
 
-        rgb_pixel_t *test_pixels;
-        SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
-
-        printf("Generating synthetic run-length test pattern with %d pixels...\n", pixel_count);
-
-        // Create pattern with obvious runs to test run-length encoding
-        for (int i = 0; i < pixel_count; i++) {
-            if (i < pixel_count / 4) {
-                // First quarter: solid red
-                test_pixels[i] = (rgb_pixel_t){255, 0, 0};
-            } else if (i < pixel_count / 2) {
-                // Second quarter: solid blue
-                test_pixels[i] = (rgb_pixel_t){0, 0, 255};
-            } else if (i < 3 * pixel_count / 4) {
-                // Third quarter: solid green
-                test_pixels[i] = (rgb_pixel_t){0, 255, 0};
-            } else {
-                // Fourth quarter: solid white
-                test_pixels[i] = (rgb_pixel_t){255, 255, 255};
-            }
-        }
-
-        printf("Testing with synthetic %dx%d pattern...\n\n", test_width, test_height);
-
-        // Buffer size for colored ASCII output (generous allocation)
-        size_t buffer_size = pixel_count * 50; // ~50 bytes per pixel for ANSI codes
-
-        char *scalar_output;
-        char *simd_output;
-        SAFE_MALLOC(scalar_output, buffer_size, char *);
-        SAFE_MALLOC(simd_output, buffer_size, char *);
-
-        // Run test with synthetic data
-        run_color_test(test_pixels, test_width, test_height, scalar_output, simd_output, buffer_size);
-
-        free(test_pixels);
-        free(scalar_output);
-        free(simd_output);
-        webcam_cleanup();
-        log_destroy();
-        return 0;
-    }
-
-    // Real webcam data
-    printf("✅ Captured real webcam image: %dx%d (%d pixels)\n",
-           webcam_image->w, webcam_image->h, webcam_image->w * webcam_image->h);
-
-    // Convert to rgb_pixel_t format for test functions
-    int pixel_count = webcam_image->w * webcam_image->h;
     rgb_pixel_t *test_pixels;
     SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
+    printf("Generating synthetic run-length test pattern with %d pixels...\n", pixel_count);
+
+    // Create pattern with obvious runs to test run-length encoding
     for (int i = 0; i < pixel_count; i++) {
-        test_pixels[i].r = webcam_image->pixels[i].r;
-        test_pixels[i].g = webcam_image->pixels[i].g;
-        test_pixels[i].b = webcam_image->pixels[i].b;
+      if (i < pixel_count / 4) {
+        // First quarter: solid red
+        test_pixels[i] = (rgb_pixel_t){255, 0, 0};
+      } else if (i < pixel_count / 2) {
+        // Second quarter: solid blue
+        test_pixels[i] = (rgb_pixel_t){0, 0, 255};
+      } else if (i < 3 * pixel_count / 4) {
+        // Third quarter: solid green
+        test_pixels[i] = (rgb_pixel_t){0, 255, 0};
+      } else {
+        // Fourth quarter: solid white
+        test_pixels[i] = (rgb_pixel_t){255, 255, 255};
+      }
     }
 
-    printf("Testing with real webcam data (%dx%d)...\n\n", webcam_image->w, webcam_image->h);
+    printf("Testing with synthetic %dx%d pattern...\n\n", test_width, test_height);
 
     // Buffer size for colored ASCII output (generous allocation)
     size_t buffer_size = pixel_count * 50; // ~50 bytes per pixel for ANSI codes
@@ -190,16 +158,52 @@ int main() {
     SAFE_MALLOC(scalar_output, buffer_size, char *);
     SAFE_MALLOC(simd_output, buffer_size, char *);
 
-    // Run test with real webcam data
-    run_color_test(test_pixels, webcam_image->w, webcam_image->h, scalar_output, simd_output, buffer_size);
+    // Run test with synthetic data
+    run_color_test(test_pixels, test_width, test_height, scalar_output, simd_output, buffer_size);
 
-    // Cleanup
     free(test_pixels);
     free(scalar_output);
     free(simd_output);
-    image_destroy(webcam_image);
     webcam_cleanup();
     log_destroy();
-
     return 0;
+  }
+
+  // Real webcam data
+  printf("✅ Captured real webcam image: %dx%d (%d pixels)\n", webcam_image->w, webcam_image->h,
+         webcam_image->w * webcam_image->h);
+
+  // Convert to rgb_pixel_t format for test functions
+  int pixel_count = webcam_image->w * webcam_image->h;
+  rgb_pixel_t *test_pixels;
+  SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
+
+  for (int i = 0; i < pixel_count; i++) {
+    test_pixels[i].r = webcam_image->pixels[i].r;
+    test_pixels[i].g = webcam_image->pixels[i].g;
+    test_pixels[i].b = webcam_image->pixels[i].b;
+  }
+
+  printf("Testing with real webcam data (%dx%d)...\n\n", webcam_image->w, webcam_image->h);
+
+  // Buffer size for colored ASCII output (generous allocation)
+  size_t buffer_size = pixel_count * 50; // ~50 bytes per pixel for ANSI codes
+
+  char *scalar_output;
+  char *simd_output;
+  SAFE_MALLOC(scalar_output, buffer_size, char *);
+  SAFE_MALLOC(simd_output, buffer_size, char *);
+
+  // Run test with real webcam data
+  run_color_test(test_pixels, webcam_image->w, webcam_image->h, scalar_output, simd_output, buffer_size);
+
+  // Cleanup
+  free(test_pixels);
+  free(scalar_output);
+  free(simd_output);
+  image_destroy(webcam_image);
+  webcam_cleanup();
+  log_destroy();
+
+  return 0;
 }

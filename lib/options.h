@@ -2,12 +2,12 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "palette.h"
 
 #define OPTIONS_BUFF_SIZE 256
 
-// Default terminal dimensions
+// Default "terminal dimensions"
 #define OPT_WIDTH_DEFAULT 110
 #define OPT_HEIGHT_DEFAULT 70
 
@@ -15,13 +15,16 @@
 // Returns the integer value, or INT_MIN on error
 int strtoint_safe(const char *str);
 
-extern unsigned short int opt_width, opt_height, auto_width, auto_height;
+extern unsigned short int opt_width, opt_height;
+extern bool auto_width, auto_height;
 
 extern char opt_address[], opt_port[];
 
 extern unsigned short int opt_webcam_index;
 
 extern bool opt_webcam_flip;
+
+extern bool opt_test_pattern; // Use test pattern instead of real webcam
 
 // Terminal color mode override (client only)
 typedef enum {
@@ -32,7 +35,7 @@ typedef enum {
   COLOR_MODE_TRUECOLOR = 4  // Force 24-bit truecolor
 } terminal_color_mode_t;
 
-// Render mode is now defined in terminal_detect.h
+// Render mode is now defined in platform/terminal.h
 
 extern terminal_color_mode_t opt_color_mode;     // Color mode override
 extern render_mode_t opt_render_mode;            // Render mode override
@@ -74,10 +77,10 @@ extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
 void options_init(int argc, char **argv, bool is_client);
 
-void usage(FILE *out_stream, bool is_client);
-void usage_client(FILE *out_stream);
-void usage_server(FILE *out_stream);
+void usage(FILE *desc, bool is_client);
+void usage_client(FILE *desc);
+void usage_server(FILE *desc);
 
-// Terminal size detection functions (get_terminal_size moved to terminal_detect.h)
+// Terminal size detection functions (get_terminal_size moved to platform/terminal.h)
 void update_dimensions_for_full_height(void);
 void update_dimensions_to_terminal_size(void);
