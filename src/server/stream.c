@@ -140,6 +140,7 @@
 #include <time.h>
 #include <errno.h>
 #include <math.h>
+#include <float.h>
 
 #include "stream.h"
 #include "client.h"
