@@ -1632,6 +1632,18 @@ if(USE_MIMALLOC)
 
     include(FetchContent)
 
+    # On Linux, ensure libgit2's dependencies are available for FetchContent
+    # The system's static libgit2 requires libssh2 and libpcre2 to be linked
+    if(PLATFORM_LINUX)
+        # Find and link libssh2 and libpcre2 for git operations
+        find_library(LIBSSH2 ssh2)
+        find_library(LIBPCRE2 pcre2-8)
+        if(LIBSSH2 AND LIBPCRE2)
+            link_libraries(${LIBSSH2} ${LIBPCRE2})
+            message(STATUS "Configured libgit2 dependencies for FetchContent: libssh2, libpcre2")
+        endif()
+    endif()
+
     FetchContent_Declare(
         mimalloc
         GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
