@@ -32,7 +32,6 @@ static struct {
   bool env_checked;             /* Track if we've checked environment */
 } g_log = {.file = 0,
            .level = LOG_INFO,
-           .mutex = {0},
            .initialized = false,
            .filename = {0},
            .current_size = 0,
