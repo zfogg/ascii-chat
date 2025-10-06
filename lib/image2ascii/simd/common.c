@@ -533,9 +533,7 @@ void simd_caches_destroy_all(void) {
   }
   // Clean up heap arrays
   if (g_utf8_heap) {
-    void *temp_heap = (void *)g_utf8_heap;
-    SAFE_FREE(temp_heap);
-    g_utf8_heap = NULL;
+    SAFE_FREE(g_utf8_heap);
     g_utf8_heap_size = 0;
   }
   rwlock_wrunlock(&g_utf8_cache_rwlock);

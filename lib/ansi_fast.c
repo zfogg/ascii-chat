@@ -59,42 +59,42 @@ char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 // Combined foreground + background: \033[38;2;R;G;B;48;2;r;g;bm
+// Maximum output: 38 bytes (\033[38;2;255;255;255;48;2;255;255;255m)
 char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g,
                              uint8_t bg_b) {
-  SAFE_MEMCPY(dst, 7, "\033[38;2;", 7);
+  SAFE_MEMCPY(dst, 38, "\033[38;2;", 7);
   dst += 7;
 
-  // Foreground RGB
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[fg_r].len, g_dec3_cache.dec3_table[fg_r].s,
-              g_dec3_cache.dec3_table[fg_r].len);
+  // Foreground RGB (remaining: 31 bytes max)
+  SAFE_MEMCPY(dst, 31, g_dec3_cache.dec3_table[fg_r].s, g_dec3_cache.dec3_table[fg_r].len);
   dst += g_dec3_cache.dec3_table[fg_r].len;
   *dst++ = ';';
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[fg_g].len, g_dec3_cache.dec3_table[fg_g].s,
-              g_dec3_cache.dec3_table[fg_g].len);
+  // Remaining: 27 bytes max
+  SAFE_MEMCPY(dst, 27, g_dec3_cache.dec3_table[fg_g].s, g_dec3_cache.dec3_table[fg_g].len);
   dst += g_dec3_cache.dec3_table[fg_g].len;
   *dst++ = ';';
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[fg_b].len, g_dec3_cache.dec3_table[fg_b].s,
-              g_dec3_cache.dec3_table[fg_b].len);
+  // Remaining: 23 bytes max
+  SAFE_MEMCPY(dst, 23, g_dec3_cache.dec3_table[fg_b].s, g_dec3_cache.dec3_table[fg_b].len);
   dst += g_dec3_cache.dec3_table[fg_b].len;
 
-  // Background RGB
-  SAFE_MEMCPY(dst, 6, ";48;2;", 6);
+  // Background RGB (remaining: 20 bytes max)
+  SAFE_MEMCPY(dst, 20, ";48;2;", 6);
   dst += 6;
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[bg_r].len, g_dec3_cache.dec3_table[bg_r].s,
-              g_dec3_cache.dec3_table[bg_r].len);
+  // Remaining: 14 bytes max
+  SAFE_MEMCPY(dst, 14, g_dec3_cache.dec3_table[bg_r].s, g_dec3_cache.dec3_table[bg_r].len);
   dst += g_dec3_cache.dec3_table[bg_r].len;
   *dst++ = ';';
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[bg_g].len, g_dec3_cache.dec3_table[bg_g].s,
-              g_dec3_cache.dec3_table[bg_g].len);
+  // Remaining: 10 bytes max
+  SAFE_MEMCPY(dst, 10, g_dec3_cache.dec3_table[bg_g].s, g_dec3_cache.dec3_table[bg_g].len);
   dst += g_dec3_cache.dec3_table[bg_g].len;
   *dst++ = ';';
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[bg_b].len, g_dec3_cache.dec3_table[bg_b].s,
-              g_dec3_cache.dec3_table[bg_b].len);
+  // Remaining: 6 bytes max
+  SAFE_MEMCPY(dst, 6, g_dec3_cache.dec3_table[bg_b].s, g_dec3_cache.dec3_table[bg_b].len);
   dst += g_dec3_cache.dec3_table[bg_b].len;
   *dst++ = 'm';
 
