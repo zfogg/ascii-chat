@@ -185,8 +185,8 @@ static void convert_yuy2_to_rgb_sse2(const uint8_t *yuy2, rgb_t *rgb, int width,
 
   // Handle remaining pixels with scalar code
   if (out_idx < pixel_count) {
-    convert_yuy2_to_rgb_scalar(&yuy2[simd_pixels * 2], &rgb[simd_pixels], width - (simd_pixels % width),
-                               1 + (pixel_count - simd_pixels - 1) / width);
+    int remaining_pixels = pixel_count - simd_pixels;
+    convert_yuy2_to_rgb_scalar(&yuy2[simd_pixels * 2], &rgb[simd_pixels], remaining_pixels, 1);
   }
 }
 #endif // SIMD_SUPPORT_SSE2
@@ -253,8 +253,8 @@ static void convert_yuy2_to_rgb_ssse3(const uint8_t *yuy2, rgb_t *rgb, int width
 
   // Handle remaining pixels
   if (out_idx < pixel_count) {
-    convert_yuy2_to_rgb_scalar(&yuy2[simd_pixels * 2], &rgb[simd_pixels], width - (simd_pixels % width),
-                               1 + (pixel_count - simd_pixels - 1) / width);
+    int remaining_pixels = pixel_count - simd_pixels;
+    convert_yuy2_to_rgb_scalar(&yuy2[simd_pixels * 2], &rgb[simd_pixels], remaining_pixels, 1);
   }
 }
 #endif // SIMD_SUPPORT_SSSE3
@@ -306,8 +306,8 @@ static void convert_yuy2_to_rgb_avx2(const uint8_t *yuy2, rgb_t *rgb, int width,
 
   // Handle remainder
   if (out_idx < pixel_count) {
-    convert_yuy2_to_rgb_scalar(&yuy2[simd_pixels * 2], &rgb[simd_pixels], width - (simd_pixels % width),
-                               1 + (pixel_count - simd_pixels - 1) / width);
+    int remaining_pixels = pixel_count - simd_pixels;
+    convert_yuy2_to_rgb_scalar(&yuy2[simd_pixels * 2], &rgb[simd_pixels], remaining_pixels, 1);
   }
 }
 #endif // SIMD_SUPPORT_AVX2
