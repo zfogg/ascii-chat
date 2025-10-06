@@ -128,6 +128,7 @@ jobs:
             fi
           done
 
+          # Generate coverage using reusable action would go here, but we need inline for conditional
           echo "DEBUG: Running coverage tool on .gcda files..."
           # Use gcov on macOS, llvm-cov on Ubuntu
           # Use -p to preserve path components and avoid overwriting files with same basename
@@ -223,35 +224,9 @@ jobs:
 
     - name: Generate coverage report
       if: always()
-      run: |
-        # Generate coverage files for codecov
-        echo "DEBUG: Running coverage tool on .gcda files..."
-        # Use gcov on macOS, llvm-cov on Ubuntu
-        # Use -p to preserve path components and avoid overwriting files with same basename
-        if [ "${{ matrix.os-name }}" = "macos" ]; then
-          echo "DEBUG: Using gcov (macOS)"
-          find . -name "*.gcda" -exec gcov -p {} \;
-        else
-          echo "DEBUG: Using llvm-cov (Ubuntu)"
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
-        fi
-        echo "DEBUG: Coverage command completed"
-
-        # Debug: Check where .gcov files were created
-        echo "DEBUG: Looking for .gcov files after coverage execution..."
-        echo "DEBUG: All .gcov files found:"
-        find . -name "*.gcov" -type f -exec ls -la {} \;
-        echo "DEBUG: Count of .gcov files: $(find . -name "*.gcov" -type f | wc -l)"
-
-        # Move all .gcov files to repo root for consistent behavior across platforms
-        echo "Moving .gcov files to repo root..."
-        echo "DEBUG: Before move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-        find . -name "*.gcov" -type f -exec mv {} . \;
-        echo "DEBUG: Move command completed"
-
-        echo "Generated coverage files:"
-        echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-        find . -name "*.gcov" -type f | head -20
+      uses: ./.github/actions/generate-coverage
+      with:
+        os-type: ${{ matrix.os-name }}
 
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
@@ -315,25 +290,9 @@ jobs:
 
     - name: Generate coverage report for performance tests
       if: always()
-      run: |
-        # Generate coverage files for codecov
-        echo "DEBUG: Running coverage tool on .gcda files..."
-        # Use gcov on macOS, llvm-cov on Ubuntu
-        # Use -p to preserve path components and avoid overwriting files with same basename
-        if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
-          echo "DEBUG: Using gcov (macOS)"
-          find . -name "*.gcda" -exec gcov -p {} \;
-        else
-          echo "DEBUG: Using llvm-cov (Ubuntu)"
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
-        fi
-        echo "DEBUG: Coverage command completed"
-
-        # Move all .gcov files to repo root for consistent behavior across platforms
-        echo "Moving .gcov files to repo root..."
-        find . -name "*.gcov" -type f -exec mv {} . \;
-        echo "Generated coverage files:"
-        find . -name "*.gcov" -type f | head -20
+      uses: ./.github/actions/generate-coverage
+      with:
+        os-type: ${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}
 
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
