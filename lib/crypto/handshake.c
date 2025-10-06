@@ -310,7 +310,7 @@ int crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t c
   if (packet_type == PACKET_TYPE_AUTH_FAILED) {
     log_error("Server rejected authentication");
     buffer_pool_free(payload, payload_len);
-    return -1;
+    return -2; // Special code for auth failure - do not retry
   }
 
   if (packet_type != PACKET_TYPE_HANDSHAKE_COMPLETE) {

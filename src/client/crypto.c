@@ -131,7 +131,7 @@ int client_crypto_handshake(socket_t socket) {
   if (result != 0) {
     log_error("Crypto handshake completion failed");
     log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completion failed with result=%d", result);
-    return -1;
+    return result; // Propagate error code (-2 for auth failure, -1 for other errors)
   }
 
   log_info("Crypto handshake completed successfully");
