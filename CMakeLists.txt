@@ -2393,6 +2393,17 @@ endif()
 
 target_link_libraries(ascii-chat-server ascii-chat-lib)
 
+# Strip symbols in Release builds
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    find_program(STRIP_EXECUTABLE strip)
+    if(STRIP_EXECUTABLE)
+        add_custom_command(TARGET ascii-chat-server POST_BUILD
+            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat-server>
+            COMMENT "Stripping symbols from ascii-chat-server"
+        )
+    endif()
+endif()
+
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on musl libraries (they'll build automatically)
@@ -2426,6 +2437,16 @@ add_executable(ascii-chat-client
     src/client/keepalive.c
 )
 target_link_libraries(ascii-chat-client ascii-chat-lib)
+
+# Strip symbols in Release builds
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(STRIP_EXECUTABLE)
+        add_custom_command(TARGET ascii-chat-client POST_BUILD
+            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat-client>
+            COMMENT "Stripping symbols from ascii-chat-client"
+        )
+    endif()
+endif()
 
 # Add musl dependency if building with musl
 if(USE_MUSL)
