@@ -735,9 +735,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         add_definitions(-DDEBUG_MEMORY)
     elseif(USE_MIMALLOC)
         message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
-        # Enable mimalloc debugging features
+        # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
         add_definitions(-DUSE_MIMALLOC_DEBUG)
-        add_definitions(-DMI_DEBUG=2)  # MI_DEBUG level 2: basic checks + internal assertions
+        set(MIMALLOC_DEBUG_LEVEL 2)  # MI_DEBUG level 2: basic checks + internal assertions
     elseif(USE_MUSL)
         message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
     endif()
@@ -879,9 +879,9 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
         add_definitions(-DDEBUG_MEMORY)
     elseif(USE_MIMALLOC)
         message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
-        # Enable mimalloc debugging features
+        # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
         add_definitions(-DUSE_MIMALLOC_DEBUG)
-        add_definitions(-DMI_DEBUG=2)  # MI_DEBUG level 2: basic checks + internal assertions
+        set(MIMALLOC_DEBUG_LEVEL 2)  # MI_DEBUG level 2: basic checks + internal assertions
     elseif(USE_MUSL)
         message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
     endif()
@@ -2196,6 +2196,11 @@ add_library(ascii-chat-lib STATIC ${LIB_SRCS})
 
 # Define the project source root for logging (so relative paths work regardless of repo name)
 target_compile_definitions(ascii-chat-lib PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
+
+# Define MI_DEBUG for our targets only (not mimalloc's build) to avoid macro redefinition warnings
+if(DEFINED MIMALLOC_DEBUG_LEVEL)
+    target_compile_definitions(ascii-chat-lib PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
+endif()
 
 # Define USE_MUSL flag for conditional compilation when using musl libc
 if(USE_MUSL)
