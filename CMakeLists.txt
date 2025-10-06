@@ -2556,7 +2556,20 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
 
             # Additional libgit2 dependencies (required for static linking)
             # These must be linked unconditionally when using static libgit2
-            list(APPEND TEST_LDFLAGS ssh2 http_parser pcre2-8)
+            # Check if each library exists before adding
+            find_library(SSH2_LIB ssh2)
+            find_library(HTTP_PARSER_LIB http_parser)
+            find_library(PCRE2_LIB pcre2-8)
+
+            if(SSH2_LIB)
+                list(APPEND TEST_LDFLAGS ssh2)
+            endif()
+            if(HTTP_PARSER_LIB)
+                list(APPEND TEST_LDFLAGS http_parser)
+            endif()
+            if(PCRE2_LIB)
+                list(APPEND TEST_LDFLAGS pcre2-8)
+            endif()
         endif()
 
         # GSSAPI/Kerberos support
