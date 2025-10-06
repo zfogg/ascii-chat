@@ -518,13 +518,15 @@ static int decrypt_key_with_external_tool(const char *key_path, const char *pass
 
 // Parse SSH private key from file
 int parse_private_key(const char *path, private_key_t *key_out) {
+  fprintf(stderr, "parse_private_key: Opening %s\n", path);
   memset(key_out, 0, sizeof(private_key_t));
 
   FILE *f = fopen(path, "r");
   if (f == NULL) {
-    log_error("Failed to open private key file: %s", path);
+    fprintf(stderr, "parse_private_key: Failed to open file: %s\n", path);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: File opened successfully\n");
 
   char line[2048];
   bool in_private_key = false;
@@ -557,36 +559,47 @@ int parse_private_key(const char *path, private_key_t *key_out) {
   fclose(f);
 
   if (base64_len == 0) {
+    fprintf(stderr, "parse_private_key: No base64 data found\n");
     log_error("No private key data found in file: %s", path);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Read %zu bytes of base64 data\n", base64_len);
 
   // Decode base64 data
   uint8_t *blob = NULL;
   size_t blob_len = 0;
+  fprintf(stderr, "parse_private_key: Decoding base64...\n");
   if (base64_decode_ssh_key(base64_data, base64_len, &blob, &blob_len) != 0) {
+    fprintf(stderr, "parse_private_key: Base64 decode failed\n");
     log_error("Failed to decode base64 private key data");
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Decoded to %zu bytes\n", blob_len);
 
   // Parse OpenSSH private key format
   // Format: [4 bytes: magic] [4 bytes: ciphername] [4 bytes: kdfname] [4 bytes: kdfoptions] [4 bytes: nkeys] [4 bytes:
   // pubkey] [4 bytes: privkey] [data...]
   if (blob_len < 32) {
+    fprintf(stderr, "parse_private_key: Blob too short (%zu bytes)\n", blob_len);
     log_error("Private key data too short");
     free(blob);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Blob length OK (%zu bytes)\n", blob_len);
 
   // Check magic number (OpenSSH private key format)
+  fprintf(stderr, "parse_private_key: Checking magic number...\n");
   if (memcmp(blob, "openssh-key-v1\0", 15) != 0) {
+    fprintf(stderr, "parse_private_key: Magic number mismatch (not OpenSSH format)\n");
     log_error("Not an OpenSSH private key format");
     free(blob);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Magic number OK (OpenSSH format)\n");
 
   size_t offset = 15; // Skip magic
   if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Not enough data for ciphername length\n");
     log_error("Invalid private key format");
     free(blob);
     return -1;
@@ -596,7 +609,11 @@ int parse_private_key(const char *path, private_key_t *key_out) {
   uint32_t ciphername_len =
       (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
   offset += 4;
+  fprintf(stderr, "parse_private_key: Ciphername length: %u\n", ciphername_len);
+
   if (offset + ciphername_len > blob_len) {
+    fprintf(stderr, "parse_private_key: Not enough data for ciphername (need %u, have %zu)\n", ciphername_len,
+            blob_len - offset);
     log_error("Invalid private key format");
     free(blob);
     return -1;
@@ -607,6 +624,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     // Key is encrypted - we need to decrypt it
     char ciphername[256];
     if (ciphername_len >= sizeof(ciphername)) {
+      fprintf(stderr, "parse_private_key: Ciphername too long (%u bytes)\n", ciphername_len);
       log_error("Cipher name too long");
       free(blob);
       return -1;
@@ -614,21 +632,15 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     memcpy(ciphername, blob + offset, ciphername_len);
     ciphername[ciphername_len] = '\0';
 
+    fprintf(stderr, "parse_private_key: Encrypted key detected (cipher: %s)\n", ciphername);
     log_info("Encrypted private key detected (cipher: %s)", ciphername);
 
-    // Prompt for passphrase
-    char passphrase[256];
-    if (prompt_ssh_passphrase(passphrase, sizeof(passphrase)) != 0) {
-      log_error("Failed to get passphrase");
-      free(blob);
-      return -1;
-    }
-
-    // Try SSH agent first
+    // Try SSH agent FIRST (before prompting for passphrase)
+    fprintf(stderr, "parse_private_key: Trying SSH agent for key...\n");
     char ssh_agent_public_key[1024];
     if (get_ssh_agent_ed25519_key(ssh_agent_public_key, sizeof(ssh_agent_public_key)) == 0) {
-      log_info("Using SSH agent for encrypted key operations");
-      log_info("SSH agent public key: %.50s...", ssh_agent_public_key);
+      fprintf(stderr, "parse_private_key: Using SSH agent for encrypted key operations\n");
+      fprintf(stderr, "parse_private_key: SSH agent public key: %.50s...\n", ssh_agent_public_key);
 
       // Mark as using SSH agent - we don't need the actual private key
       key_out->type = KEY_TYPE_ED25519;
@@ -636,10 +648,22 @@ int parse_private_key(const char *path, private_key_t *key_out) {
       // We can't get the private key from agent, but we can use it for authentication
       memset(key_out->key.ed25519, 0, 32); // Placeholder - agent handles the real key
 
-      sodium_memzero(passphrase, sizeof(passphrase));
       free(blob);
+      fprintf(stderr, "parse_private_key: Successfully loaded key from SSH agent\n");
       return 0;
     }
+    fprintf(stderr, "parse_private_key: SSH agent not available or no Ed25519 keys found\n");
+
+    // SSH agent failed - now prompt for passphrase
+    fprintf(stderr, "parse_private_key: Prompting for passphrase...\n");
+    char passphrase[256];
+    if (prompt_ssh_passphrase(passphrase, sizeof(passphrase)) != 0) {
+      fprintf(stderr, "parse_private_key: Failed to get passphrase\n");
+      log_error("Failed to get passphrase");
+      free(blob);
+      return -1;
+    }
+    fprintf(stderr, "parse_private_key: Got passphrase, attempting to decrypt with external tools...\n");
 
     // SSH agent failed, try to decrypt the key using external tools
     log_info("SSH agent not available, attempting to decrypt key with external tools...");
