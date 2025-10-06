@@ -130,12 +130,13 @@ jobs:
 
           echo "DEBUG: Running coverage tool on .gcda files..."
           # Use gcov on macOS, llvm-cov on Ubuntu
+          # Use -p to preserve path components and avoid overwriting files with same basename
           if [ "${{ matrix.os-name }}" = "macos" ]; then
             echo "DEBUG: Using gcov (macOS)"
-            find . -name "*.gcda" -exec gcov {} \;
+            find . -name "*.gcda" -exec gcov -p {} \;
           else
             echo "DEBUG: Using llvm-cov (Ubuntu)"
-            find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+            find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
           fi
           echo "DEBUG: Coverage command completed"
 
@@ -226,12 +227,13 @@ jobs:
         # Generate coverage files for codecov
         echo "DEBUG: Running coverage tool on .gcda files..."
         # Use gcov on macOS, llvm-cov on Ubuntu
+        # Use -p to preserve path components and avoid overwriting files with same basename
         if [ "${{ matrix.os-name }}" = "macos" ]; then
           echo "DEBUG: Using gcov (macOS)"
-          find . -name "*.gcda" -exec gcov {} \;
+          find . -name "*.gcda" -exec gcov -p {} \;
         else
           echo "DEBUG: Using llvm-cov (Ubuntu)"
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
         fi
         echo "DEBUG: Coverage command completed"
 
@@ -317,12 +319,13 @@ jobs:
         # Generate coverage files for codecov
         echo "DEBUG: Running coverage tool on .gcda files..."
         # Use gcov on macOS, llvm-cov on Ubuntu
+        # Use -p to preserve path components and avoid overwriting files with same basename
         if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
           echo "DEBUG: Using gcov (macOS)"
-          find . -name "*.gcda" -exec gcov {} \;
+          find . -name "*.gcda" -exec gcov -p {} \;
         else
           echo "DEBUG: Using llvm-cov (Ubuntu)"
-          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov "$1"' _ {} \;
+          find . -name "*.gcda" -exec sh -c 'llvm-cov gcov -p "$1"' _ {} \;
         fi
         echo "DEBUG: Coverage command completed"
 
