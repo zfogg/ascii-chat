@@ -503,12 +503,12 @@ void *client_video_render_thread(void *arg) {
     struct timespec gen_start, gen_end;
     (void)clock_gettime(CLOCK_MONOTONIC, &gen_start);
 
-    log_debug("Video render thread: Generating ASCII frame for client %u (%dx%d)",
-              client_id_snapshot, width_snapshot, height_snapshot);
+    log_debug("Video render thread: Generating ASCII frame for client %u (%dx%d)", client_id_snapshot, width_snapshot,
+              height_snapshot);
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
-    log_debug("Video render thread: Generated ASCII frame for client %u, size=%zu, sources=%d",
-              client_id_snapshot, frame_size, sources_count);
+    log_debug("Video render thread: Generated ASCII frame for client %u, size=%zu, sources=%d", client_id_snapshot,
+              frame_size, sources_count);
 
     (void)clock_gettime(CLOCK_MONOTONIC, &gen_end);
     uint64_t gen_time_us = ((uint64_t)gen_end.tv_sec * 1000000 + (uint64_t)gen_end.tv_nsec / 1000) -

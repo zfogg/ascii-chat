@@ -199,7 +199,7 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
 
   // Use deterministic salt for consistent key derivation across client/server
   // This ensures the same password produces the same key on both sides
-  const char* deterministic_salt = "ascii-chat-password-salt-v1";
+  const char *deterministic_salt = "ascii-chat-password-salt-v1";
   memcpy(ctx->password_salt, deterministic_salt, CRYPTO_SALT_SIZE);
 
   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
@@ -223,7 +223,7 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
   uint8_t test_key[CRYPTO_ENCRYPTION_KEY_SIZE];
 
   // Use the same deterministic salt for verification
-  const char* deterministic_salt = "ascii-chat-password-salt-v1";
+  const char *deterministic_salt = "ascii-chat-password-salt-v1";
   uint8_t salt[CRYPTO_SALT_SIZE];
   memcpy(salt, deterministic_salt, CRYPTO_SALT_SIZE);
 
@@ -243,7 +243,8 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
 }
 
 // Derive a deterministic encryption key from password for handshake
-crypto_result_t crypto_derive_password_encryption_key(const char *password, uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]) {
+crypto_result_t crypto_derive_password_encryption_key(const char *password,
+                                                      uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]) {
   if (!password || !encryption_key) {
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
@@ -254,7 +255,7 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password, uint
   }
 
   // Use deterministic salt for consistent key derivation across client/server
-  const char* deterministic_salt = "ascii-chat-password-salt-v1";
+  const char *deterministic_salt = "ascii-chat-password-salt-v1";
   uint8_t salt[CRYPTO_SALT_SIZE];
   memcpy(salt, deterministic_salt, CRYPTO_SALT_SIZE);
 
@@ -613,7 +614,8 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
 }
 
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
+crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
+                                             size_t *packet_len_out) {
   if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
@@ -624,7 +626,7 @@ crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_
   }
 
   // Generate random nonce
-  crypto_result_t result = crypto_generate_nonce((uint8_t*)ctx->auth_nonce);
+  crypto_result_t result = crypto_generate_nonce((uint8_t *)ctx->auth_nonce);
   if (result != CRYPTO_OK) {
     return result;
   }
@@ -665,15 +667,14 @@ crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8
 
 crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
   if (!ctx || !ctx->initialized || !packet) {
-    log_error("crypto_process_auth_response: Invalid context or packet (ctx=%p, initialized=%d, packet=%p)",
-              ctx, ctx ? ctx->initialized : 0, packet);
+    log_error("crypto_process_auth_response: Invalid context or packet (ctx=%p, initialized=%d, packet=%p)", ctx,
+              ctx ? ctx->initialized : 0, packet);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
   size_t expected_size = sizeof(uint32_t) + 32; // type + hmac
   if (packet_len != expected_size) {
-    log_error("crypto_process_auth_response: Invalid packet size (expected=%zu, got=%zu)",
-              expected_size, packet_len);
+    log_error("crypto_process_auth_response: Invalid packet size (expected=%zu, got=%zu)", expected_size, packet_len);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 

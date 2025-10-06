@@ -688,6 +688,31 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
       return -1;
     }
     break;
+  // Crypto handshake packet types
+  case PACKET_TYPE_KEY_EXCHANGE_INIT:
+  case PACKET_TYPE_KEY_EXCHANGE_RESPONSE:
+    // Public key size (32 bytes for X25519)
+    if (pkt_len != 32) {
+      log_error("Invalid key exchange packet size: %u, expected 32", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_AUTH_CHALLENGE:
+  case PACKET_TYPE_AUTH_RESPONSE:
+    // Nonce (24 bytes) or HMAC (32 bytes)
+    if (pkt_len != 24 && pkt_len != 32) {
+      log_error("Invalid auth packet size: %u, expected 24 or 32", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_HANDSHAKE_COMPLETE:
+  case PACKET_TYPE_AUTH_FAILED:
+    // Status messages can be empty or contain text
+    if (pkt_len > 256) {
+      log_error("Invalid handshake status packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
   default:
     log_error("Unknown packet type: %u", pkt_type);
     return -1;
@@ -1010,7 +1035,8 @@ int send_pong_packet(socket_t sockfd) {
 }
 
 // Receive encrypted packet from client (after crypto handshake)
-int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len) {
+int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data,
+                                         size_t *len) {
   if (!type || !client_id || !data || !len) {
     return -1;
   }
@@ -1026,7 +1052,8 @@ int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, u
   // We need to read enough data to determine the packet size
   // For now, read a reasonable amount and let the crypto layer handle it
   uint8_t encrypted_buffer[4096]; // Max encrypted packet size
-  ssize_t received = recv_with_timeout(sockfd, encrypted_buffer, sizeof(encrypted_buffer), is_test_environment() ? 1 : RECV_TIMEOUT);
+  ssize_t received =
+      recv_with_timeout(sockfd, encrypted_buffer, sizeof(encrypted_buffer), is_test_environment() ? 1 : RECV_TIMEOUT);
 
   if (received < 0) {
     return -1;
@@ -1049,7 +1076,7 @@ int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, u
   // For encrypted packets, we can't determine type/client_id until decryption
   // These will be set by the decryption process
   *type = PACKET_TYPE_ENCRYPTED; // Special type for encrypted packets
-  *client_id = 0; // Will be set after decryption
+  *client_id = 0;                // Will be set after decryption
 
   return 1;
 }

@@ -74,9 +74,10 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
     return NULL;
   }
 
-  // Capture backtrace - Skip for musl builds as it crashes
-  // TODO: Fix libexecinfo integration for musl
-#ifndef USE_MUSL
+  // Capture backtrace - Skip for musl builds and mimalloc override as it crashes
+  // NOTE: backtrace_symbols() uses system malloc(), but mimalloc intercepts free()
+  // causing crashes when we try to free the backtrace memory
+#if !defined(USE_MUSL) && !defined(USE_MIMALLOC_DEBUG)
   record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
   if (record->backtrace_size > 0) {
     record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
@@ -97,13 +98,17 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
     }
   }
 #else
-  // Skip backtrace for musl builds - libexecinfo causes crashes
+  // Skip backtrace for musl builds or mimalloc override - causes crashes with free()
   record->backtrace_size = 0;
   record->backtrace_symbols = NULL;
-  static bool musl_warning_logged = false;
-  if (!musl_warning_logged) {
+  static bool warning_logged = false;
+  if (!warning_logged) {
+#ifdef USE_MIMALLOC_DEBUG
+    log_debug("Backtrace disabled with mimalloc malloc override (lock debugging will work without backtraces)");
+#else
     log_debug("Backtrace disabled for musl build (lock debugging will work without backtraces)");
-    musl_warning_logged = true;
+#endif
+    warning_logged = true;
   }
 #endif
 

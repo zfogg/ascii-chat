@@ -196,91 +196,6 @@ int server_connection_init() {
 }
 
 /**
- * Initialize crypto for client connection
- * @return 0 on success, -1 on error
- */
-static int init_client_crypto(void) {
-    // Check if encryption is disabled
-    if (opt_no_encrypt) {
-        log_info("Encryption: DISABLED (--no-encrypt)");
-        g_encryption_enabled = false;
-        return 0;
-    }
-
-    // Initialize crypto handshake
-    if (crypto_handshake_init(&g_crypto_ctx, false) != 0) {
-        log_error("Failed to initialize crypto handshake");
-        return -1;
-    }
-
-    // Set expected server key if provided
-    if (strlen(opt_server_key) > 0) {
-        public_key_t expected_key;
-        if (parse_public_key(opt_server_key, &expected_key) != 0) {
-            log_error("Invalid --server-key format: %s", opt_server_key);
-            return -1;
-        }
-        // Store the key string for later verification
-        strncpy(g_crypto_ctx.expected_server_key, opt_server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
-        g_crypto_ctx.expected_server_key[sizeof(g_crypto_ctx.expected_server_key) - 1] = '\0';
-        g_crypto_ctx.verify_server_key = true;
-        log_info("Will verify server key against: %s", opt_server_key);
-    }
-
-    g_encryption_enabled = true;
-    log_info("Encryption: ENABLED");
-    return 0;
-}
-
-/**
- * Perform crypto handshake with server
- * @return 0 on success, -1 on error
- */
-static int perform_crypto_handshake(void) {
-    if (!g_encryption_enabled) return 0;
-
-    log_info("Starting crypto handshake...");
-
-    // Client: Process server's public key and send our public key
-    if (crypto_handshake_client_key_exchange(&g_crypto_ctx, g_sockfd) != 0) {
-        log_error("Crypto handshake failed during key exchange");
-        return -1;
-    }
-
-    // Client: Process auth challenge and send response
-    if (crypto_handshake_client_auth_response(&g_crypto_ctx, g_sockfd) != 0) {
-        log_error("Crypto handshake failed during authentication");
-        return -1;
-    }
-
-    // Wait for handshake complete message from server
-    uint32_t packet_type;
-    ssize_t received = socket_recv(g_sockfd, &packet_type, sizeof(packet_type), 0);
-    if (received != sizeof(packet_type)) {
-        log_error("Failed to receive handshake complete message");
-        return -1;
-    }
-
-    if (packet_type != CRYPTO_PACKET_HANDSHAKE_COMPLETE) {
-        log_error("Invalid handshake complete message: 0x%x", packet_type);
-        return -1;
-    }
-
-    // Mark handshake as complete
-    g_crypto_ctx.state = CRYPTO_HANDSHAKE_READY;
-    g_crypto_ctx.crypto_ctx.handshake_complete = true;
-
-    // Check if handshake is complete
-    if (!crypto_handshake_is_ready(&g_crypto_ctx)) {
-        log_error("Crypto handshake did not complete successfully");
-        return -1;
-    }
-
-    log_info("✓ Crypto handshake completed - encryption ready");
-    return 0;
-}
-
-/**
  * Establish connection to ASCII-Chat server
  *
  * Attempts to connect to the specified server with full capability negotiation.
@@ -416,7 +331,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   if (socket_setsockopt(g_sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
     log_warn("Failed to set TCP_NODELAY: %s", network_error_string(errno));
   }
-
 
   // Send initial terminal capabilities to server (this may generate debug logs)
   int result = threaded_send_terminal_size_with_auto_detect(opt_width, opt_height);
@@ -595,8 +509,8 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
 
   // Check if crypto handshake is complete and encrypt the packet
   if (crypto_handshake_is_ready(&g_crypto_ctx)) {
-    log_debug("Encrypting packet type=%d, len=%zu (crypto_ready=%d, handshake_complete=%d)",
-              type, len, crypto_handshake_is_ready(&g_crypto_ctx), g_crypto_ctx.crypto_ctx.handshake_complete);
+    log_debug("Encrypting packet type=%d, len=%zu (crypto_ready=%d, handshake_complete=%d)", type, len,
+              crypto_handshake_is_ready(&g_crypto_ctx), g_crypto_ctx.crypto_ctx.handshake_complete);
     // Create the packet header
     packet_header_t header;
     header.magic = htonl(PACKET_MAGIC);
@@ -607,7 +521,7 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
 
     // Combine header and data
     size_t plaintext_len = sizeof(header) + len;
-    uint8_t* plaintext = buffer_pool_alloc(plaintext_len);
+    uint8_t *plaintext = buffer_pool_alloc(plaintext_len);
     if (!plaintext) {
       mutex_unlock(&g_send_mutex);
       return -1;
@@ -616,32 +530,32 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
     memcpy(plaintext, &header, sizeof(header));
     memcpy(plaintext + sizeof(header), data, len);
 
-        // Encrypt the packet data
-        size_t ciphertext_len;
-        size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-        uint8_t* ciphertext = buffer_pool_alloc(ciphertext_size);
-        if (!ciphertext) {
-          buffer_pool_free(plaintext, plaintext_len);
-          mutex_unlock(&g_send_mutex);
-          return -1;
-        }
+    // Encrypt the packet data
+    size_t ciphertext_len;
+    size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+    uint8_t *ciphertext = buffer_pool_alloc(ciphertext_size);
+    if (!ciphertext) {
+      buffer_pool_free(plaintext, plaintext_len);
+      mutex_unlock(&g_send_mutex);
+      return -1;
+    }
 
-        int encrypt_result = crypto_handshake_encrypt_packet(&g_crypto_ctx, plaintext, plaintext_len,
-                                           ciphertext, ciphertext_size, &ciphertext_len);
-        if (encrypt_result != 0) {
-          log_error("Failed to encrypt packet (result=%d)", encrypt_result);
-          buffer_pool_free(plaintext, plaintext_len);
-          buffer_pool_free(ciphertext, ciphertext_size);
-          mutex_unlock(&g_send_mutex);
-          return -1;
-        }
+    int encrypt_result = crypto_handshake_encrypt_packet(&g_crypto_ctx, plaintext, plaintext_len, ciphertext,
+                                                         ciphertext_size, &ciphertext_len);
+    if (encrypt_result != 0) {
+      log_error("Failed to encrypt packet (result=%d)", encrypt_result);
+      buffer_pool_free(plaintext, plaintext_len);
+      buffer_pool_free(ciphertext, ciphertext_size);
+      mutex_unlock(&g_send_mutex);
+      return -1;
+    }
 
-        // Send as PACKET_TYPE_ENCRYPTED with the encrypted data
-        int result = send_packet(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
-        buffer_pool_free(plaintext, plaintext_len);
-        buffer_pool_free(ciphertext, ciphertext_size);
-        mutex_unlock(&g_send_mutex);
-        return result;
+    // Send as PACKET_TYPE_ENCRYPTED with the encrypted data
+    int result = send_packet(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
+    buffer_pool_free(plaintext, plaintext_len);
+    buffer_pool_free(ciphertext, ciphertext_size);
+    mutex_unlock(&g_send_mutex);
+    return result;
     mutex_unlock(&g_send_mutex);
     return 0;
   } else {

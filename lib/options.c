@@ -128,9 +128,9 @@ char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
 char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
 
 // New crypto options (Phase 2)
-unsigned short int opt_no_encrypt = 0;            // Disable encryption (opt-out)
-char opt_server_key[OPTIONS_BUFF_SIZE] = "";     // Expected server public key (client only)
-char opt_client_keys[OPTIONS_BUFF_SIZE] = "";     // Allowed client keys (server only)
+unsigned short int opt_no_encrypt = 0;        // Disable encryption (opt-out)
+char opt_server_key[OPTIONS_BUFF_SIZE] = "";  // Expected server public key (client only)
+char opt_client_keys[OPTIONS_BUFF_SIZE] = ""; // Allowed client keys (server only)
 
 // Palette options
 palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
@@ -194,15 +194,20 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {0, 0, 0, 0}};
 
 // Server-only options
-static struct option server_options[] = {
-    {"address", required_argument, NULL, 'a'}, {"port", required_argument, NULL, 'p'},
-    {"palette", required_argument, NULL, 'P'}, {"palette-chars", required_argument, NULL, 'C'},
-    {"audio", no_argument, NULL, 'A'},         {"log-file", required_argument, NULL, 'L'},
-    {"encrypt", no_argument, NULL, 'E'},       {"key", required_argument, NULL, 'K'},
-    {"keyfile", required_argument, NULL, 'F'}, {"no-encrypt", no_argument, NULL, 1005},
-    {"client-keys", required_argument, NULL, 1008},
-    {"version", no_argument, NULL, 'v'},       {"help", optional_argument, NULL, 'h'},
-    {0, 0, 0, 0}};
+static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"port", required_argument, NULL, 'p'},
+                                         {"palette", required_argument, NULL, 'P'},
+                                         {"palette-chars", required_argument, NULL, 'C'},
+                                         {"audio", no_argument, NULL, 'A'},
+                                         {"log-file", required_argument, NULL, 'L'},
+                                         {"encrypt", no_argument, NULL, 'E'},
+                                         {"key", required_argument, NULL, 'K'},
+                                         {"keyfile", required_argument, NULL, 'F'},
+                                         {"no-encrypt", no_argument, NULL, 1005},
+                                         {"client-keys", required_argument, NULL, 1008},
+                                         {"version", no_argument, NULL, 'v'},
+                                         {"help", optional_argument, NULL, 'h'},
+                                         {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 
@@ -671,7 +676,6 @@ void options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
-
     case 1008: { // --client-keys (server only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
       SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -803,12 +807,15 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
                                    "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key KEY                  " USAGE_INDENT
-                                   "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT
+                "-K --key KEY                  " USAGE_INDENT
+                "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
                                    "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --server-key KEY           " USAGE_INDENT "expected server public key for verification (default: [unset])\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --server-key KEY           " USAGE_INDENT
+                                   "expected server public key for verification (default: [unset])\n");
 }
 
 void usage_server(FILE *desc /* stdout|stderr*/) {
@@ -827,12 +834,14 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key KEY         " USAGE_INDENT
-                                   "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT
+                "-K --key KEY         " USAGE_INDENT
+                "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --no-encrypt       " USAGE_INDENT "disable encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE  " USAGE_INDENT "allowed client keys file for authentication (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE  " USAGE_INDENT
+                                   "allowed client keys file for authentication (default: [unset])\n");
 }
 
 void usage(FILE *desc /* stdout|stderr*/, bool is_client) {
