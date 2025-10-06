@@ -1,8 +1,12 @@
 #include "aspect_ratio.h"
 #ifdef _WIN32
 #include "platform/windows/getopt.h"
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #include <getopt.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #endif
 #include <limits.h>
 #include <stdio.h>
@@ -118,6 +122,7 @@ unsigned short int RED[ASCII_LUMINANCE_LEVELS], GREEN[ASCII_LUMINANCE_LEVELS], B
 
 // Client-only options
 static struct option client_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"host", required_argument, NULL, 'H'},
                                          {"port", required_argument, NULL, 'p'},
                                          {"width", required_argument, NULL, 'x'},
                                          {"height", required_argument, NULL, 'y'},
@@ -291,6 +296,60 @@ static int is_valid_ipv4(const char *ip) {
   return (count == 4 && token == NULL);
 }
 
+// Helper function to resolve hostname to IPv4 address
+static int resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
+  if (!hostname || !ipv4_out || ipv4_out_size == 0)
+    return -1;
+
+#ifdef _WIN32
+  // Initialize Winsock on Windows (required for getaddrinfo)
+  WSADATA wsaData;
+  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    return -1;
+  }
+#endif
+
+  struct addrinfo hints, *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;       // IPv4 only
+  hints.ai_socktype = SOCK_STREAM; // TCP
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
+
+  int ret = getaddrinfo(hostname, NULL, &hints, &result);
+  if (ret != 0) {
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return -1;
+  }
+
+  if (!result) {
+    freeaddrinfo(result);
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return -1;
+  }
+
+  // Extract IPv4 address from first result
+  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
+  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
+    freeaddrinfo(result);
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return -1;
+  }
+
+  freeaddrinfo(result);
+#ifdef _WIN32
+  WSACleanup();
+#endif
+
+  return 0;
+}
+
 void options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
 
@@ -308,7 +367,7 @@ void options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = ":a:p:x:y:c:fM:P:C:AsqSD:L:EK:F:hv"; // Leading ':' for error reporting
+    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:hv"; // Leading ':' for error reporting
     options = client_options;
   } else {
     optstring = ":a:p:P:C:AL:EK:F:hv"; // Leading ':' for error reporting
@@ -335,6 +394,22 @@ void options_init(int argc, char **argv, bool is_client) {
         _exit(EXIT_FAILURE);
       }
       SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+      break;
+    }
+
+    case 'H': { // --host (DNS lookup)
+      if (!is_client) {
+        (void)fprintf(stderr, "Error: --host is a client-only option.\n");
+        _exit(EXIT_FAILURE);
+      }
+      char *hostname = get_required_argument(optarg, argbuf, sizeof(argbuf), "host", is_client);
+      char resolved_ip[OPTIONS_BUFF_SIZE];
+      if (resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
+        (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", hostname);
+        (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
+        _exit(EXIT_FAILURE);
+      }
+      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
       break;
     }
 
@@ -634,6 +709,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
   (void)fprintf(desc, USAGE_INDENT "-v --version                 " USAGE_INDENT "show version information\n");
   (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
+  (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
+                                   "hostname for DNS lookup (alternative to --address)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
   (void)fprintf(desc,
