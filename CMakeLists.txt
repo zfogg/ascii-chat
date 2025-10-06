@@ -440,6 +440,26 @@ if(APPLE)
         if(IS_HOMEBREW_LLVM)
             message(STATUS "Configuring Homebrew LLVM paths at: ${COMPILER_PREFIX}")
 
+            # Homebrew LLVM's Clang needs to know where the macOS SDK is for standard headers
+            # Get the SDK path using xcrun (this is critical for finding stdbool.h, etc.)
+            execute_process(
+                COMMAND xcrun --show-sdk-path
+                OUTPUT_VARIABLE MACOS_SDK_PATH
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+
+            if(MACOS_SDK_PATH)
+                message(STATUS "Found macOS SDK at: ${MACOS_SDK_PATH}")
+                # Add SDK flags to compiler and linker
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "C flags" FORCE)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "C++ flags" FORCE)
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Linker flags" FORCE)
+                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Shared linker flags" FORCE)
+            else()
+                message(WARNING "Could not find macOS SDK path - standard headers may not be found")
+            endif()
+
             # Note: Do NOT add LLVM include paths globally - this breaks mimalloc and other
             # dependencies by overriding standard system headers. The LLVM Clang compiler
             # automatically knows where to find its own headers (intrinsics, etc.) through
