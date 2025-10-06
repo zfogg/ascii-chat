@@ -440,8 +440,11 @@ if(APPLE)
         if(IS_HOMEBREW_LLVM)
             message(STATUS "Configuring Homebrew LLVM paths at: ${COMPILER_PREFIX}")
 
-            # Add LLVM include paths (equivalent to CPPFLAGS="-I/usr/local/opt/llvm/include")
-            include_directories(SYSTEM "${COMPILER_PREFIX}/include")
+            # Note: Do NOT add LLVM include paths globally - this breaks mimalloc and other
+            # dependencies by overriding standard system headers. The LLVM Clang compiler
+            # automatically knows where to find its own headers (intrinsics, etc.) through
+            # its resource directory. Only add LLVM includes to specific targets if needed.
+            # include_directories(SYSTEM "${COMPILER_PREFIX}/include")  # REMOVED - breaks builds
 
             # Add LLVM library paths and libraries (equivalent to LDFLAGS from brew info llvm)
             link_directories("${COMPILER_PREFIX}/lib")
@@ -470,7 +473,7 @@ if(APPLE)
             set(HOMEBREW_LLVM_LIB_DIR "${COMPILER_PREFIX}/lib")
 
             message(STATUS "Applied Homebrew LLVM toolchain flags:")
-            message(STATUS "  Include: -I${COMPILER_PREFIX}/include")
+            message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
             if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
                 message(STATUS "  Link: ${HOMEBREW_LLVM_LINK_DIRS}")
             else()
