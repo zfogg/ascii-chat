@@ -450,7 +450,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
-    (void)remove_client(client->client_id);
+    (void)remove_client(atomic_load(&client->client_id));
     return -1;
   }
 
