@@ -36,5 +36,10 @@ runs:
         echo "DEBUG: Move command completed"
 
         echo "Generated coverage files:"
-        echo "DEBUG: After move - .gcov files in root: $(ls -la *.gcov 2>/dev/null | wc -l || echo 0)"
-        ls -la *.gcov 2>/dev/null | head -20 || echo "No .gcov files in root directory"
+        gcov_count=$(ls -1 *.gcov 2>/dev/null | wc -l || echo 0)
+        echo "DEBUG: After move - .gcov files in root: $gcov_count"
+        if [ "$gcov_count" -gt 0 ]; then
+          ls -1 *.gcov 2>/dev/null | head -20 || true
+        else
+          echo "No .gcov files in root directory"
+        fi
