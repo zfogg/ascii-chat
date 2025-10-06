@@ -292,12 +292,13 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   // Perform crypto handshake if encryption is enabled
   log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
-  if (client_crypto_handshake(g_sockfd) != 0) {
+  int handshake_result = client_crypto_handshake(g_sockfd);
+  if (handshake_result != 0) {
     log_error("Crypto handshake failed");
-    log_debug("CLIENT_CONNECT: client_crypto_handshake() failed");
+    log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
+    return handshake_result; // Propagate error code (-2 for auth failure, -1 for other errors)
   }
   log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 

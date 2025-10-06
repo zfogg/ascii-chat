@@ -361,6 +361,13 @@ int main(int argc, char *argv[]) {
                                                         first_connection, has_ever_connected);
 
     if (connection_result != 0) {
+      // Check for authentication failure (code -2) - exit immediately without retry
+      if (connection_result == -2) {
+        log_error("Authentication failed - incorrect password or authentication rejected by server");
+        log_error("Please check your password and try again");
+        return 1;
+      }
+
       // Connection failed - increment attempt counter and retry
       reconnect_attempt++;
 
