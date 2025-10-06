@@ -266,10 +266,10 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
     return -1;
   }
 
-  // Compute HMAC response using shared secret and nonce
-  // Note: shared secret was already derived when we called crypto_set_peer_public_key during key exchange
+  // Compute HMAC response using password key (if set) or shared secret
   uint8_t auth_response[32];
-  crypto_result_t crypto_result = crypto_compute_hmac(ctx->crypto_ctx.shared_key, payload, auth_response);
+  const uint8_t *auth_key = ctx->crypto_ctx.has_password ? ctx->crypto_ctx.password_key : ctx->crypto_ctx.shared_key;
+  crypto_result_t crypto_result = crypto_compute_hmac(auth_key, payload, auth_response);
   if (crypto_result != CRYPTO_OK) {
     log_error("Failed to compute HMAC response: %s", crypto_result_to_string(crypto_result));
     buffer_pool_free(payload, payload_len);
@@ -356,10 +356,10 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
     return -1;
   }
 
-  // Verify HMAC matches expected value
+  // Verify HMAC matches expected value using password key (if set) or shared secret
   uint8_t expected_hmac[32];
-  crypto_result_t crypto_result =
-      crypto_compute_hmac(ctx->crypto_ctx.shared_key, ctx->crypto_ctx.auth_nonce, expected_hmac);
+  const uint8_t *auth_key = ctx->crypto_ctx.has_password ? ctx->crypto_ctx.password_key : ctx->crypto_ctx.shared_key;
+  crypto_result_t crypto_result = crypto_compute_hmac(auth_key, ctx->crypto_ctx.auth_nonce, expected_hmac);
   if (crypto_result != CRYPTO_OK) {
     log_error("Failed to compute expected HMAC: %s", crypto_result_to_string(crypto_result));
     buffer_pool_free(payload, payload_len);
