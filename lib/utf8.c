@@ -9,7 +9,8 @@ int utf8_decode(const uint8_t *s, uint32_t *codepoint) {
   if (s[0] < 0x80) {
     *codepoint = s[0];
     return 1;
-  } else if ((s[0] & 0xE0) == 0xC0) {
+  }
+  if ((s[0] & 0xE0) == 0xC0) {
     // Validate continuation byte
     if ((s[1] & 0xC0) != 0x80)
       return -1;

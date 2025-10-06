@@ -496,7 +496,7 @@ void platform_backtrace_symbols_free(char **strings) {
   free((void *)strings);
 #define free(ptr) debug_free(ptr, __FILE__, __LINE__)
 #else
-  free(strings);
+  free((void *)strings);
 #endif
 }
 
