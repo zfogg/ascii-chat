@@ -78,28 +78,59 @@ Check the `CMakeLists.txt` to see how it works.
 
 ## Available CMake Presets
 
-### Build Presets
-- `cmake --preset default` - Default configuration (Debug build with AddressSanitizer)
-- `cmake --preset debug` - Debug build with AddressSanitizer
-- `cmake --preset release` - Optimized release build
-- `cmake --preset dev` - Debug symbols without sanitizers (faster iteration)
-- `cmake --preset coverage` - Build with coverage instrumentation
+### Development Builds
+- **`default`** / **`debug`** - Debug build with AddressSanitizer (slowest, catches most bugs)
+- **`dev`** - Debug symbols without sanitizers (faster iteration)
+- **`coverage`** - Build with coverage instrumentation
+
+### Production Builds
+- **`release`** - Optimized static release build with musl + mimalloc (Linux deployment)
+  - Produces stripped static binaries (~700KB) using musl libc
+  - Best for Linux production deployment - single binary, no dependencies
+  - Uses mimalloc for optimal memory performance
+
+- **`release-clang`** - Optimized dynamic release build with clang + mimalloc (Windows/macOS)
+  - Produces stripped dynamic binaries (~200KB) using system libc
+  - Best for Windows/macOS where musl isn't available
+  - Uses mimalloc for optimal memory performance
+
+- **`release-musl`** - Alias for `release` (static musl build)
+
+### Profiling/Production Debugging
+- **`relwithdebinfo`** - Optimized build with debug symbols (for profiling and debugging production issues)
+  - Optimized with `-O2` but keeps debug symbols (not stripped, ~1.3MB)
+  - Use with `gdb`, `lldb`, `perf`, `valgrind` for profiling
+  - Uses clang + glibc for best debugging experience
+  - Includes mimalloc for realistic performance profiling
 
 ### Building
 ```bash
-# Configure and build using presets
-cmake --preset debug
-cmake --build --preset debug
+# Development (default)
+cmake --preset default && cmake --build build
 
-# Or use the default preset
-cmake --preset default
-cmake --build --preset default
+# Production release (Linux static binary)
+cmake --preset release && cmake --build build
+
+# Production release (Windows/macOS dynamic binary)
+cmake --preset release-clang && cmake --build build
+
+# Profiling/debugging production issues
+cmake --preset relwithdebinfo && cmake --build build
 
 # Clean rebuild
 rm -rf build
-cmake --preset debug
-cmake --build --preset debug
+cmake --preset release && cmake --build build
 ```
+
+### What is musl and mimalloc?
+
+**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. The `release` preset uses musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
+
+**mimalloc**: Microsoft's high-performance memory allocator. All release and profiling builds use mimalloc instead of the system allocator for better performance. It provides:
+- Up to 2x faster allocation/deallocation
+- Better memory locality and cache performance
+- Lower memory fragmentation
+- Optimized for multi-threaded workloads
 
 ### Development Tools
 - `cmake --build --preset debug --target format` - Format source code using clang-format

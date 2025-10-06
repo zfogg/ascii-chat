@@ -33,9 +33,9 @@
             }
         },
         {
-            "name": "release",
-            "displayName": "Release",
-            "description": "Optimized release build with musl and mimalloc",
+            "name": "release-musl",
+            "displayName": "Release (musl)",
+            "description": "Optimized static release build with musl and mimalloc",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
@@ -43,6 +43,32 @@
                 "USE_MUSL": "ON",
                 "USE_MIMALLOC": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "release-clang",
+            "displayName": "Release (clang)",
+            "description": "Optimized dynamic release build with clang and mimalloc",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "USE_MIMALLOC": "ON"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release (default: musl)",
+            "description": "Alias for release-musl",
+            "inherits": "release-musl"
+        },
+        {
+            "name": "relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "description": "Optimized build with debug symbols (for profiling/debugging production issues)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "USE_MIMALLOC": "ON"
             }
         },
         {
@@ -74,8 +100,20 @@
             "configurePreset": "debug"
         },
         {
+            "name": "release-musl",
+            "configurePreset": "release-musl"
+        },
+        {
+            "name": "release-clang",
+            "configurePreset": "release-clang"
+        },
+        {
             "name": "release",
             "configurePreset": "release"
+        },
+        {
+            "name": "relwithdebinfo",
+            "configurePreset": "relwithdebinfo"
         },
         {
             "name": "dev",
