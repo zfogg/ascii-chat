@@ -9,9 +9,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-#include <curses.h>
 #include <sys/ioctl.h>
-#include <termcap.h>
 
 #include "options.h"
 #include "tests/common.h"
