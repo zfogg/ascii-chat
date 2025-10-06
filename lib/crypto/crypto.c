@@ -326,7 +326,6 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   *ciphertext_len_out = required_size;
   ctx->bytes_encrypted += plaintext_len;
 
-  log_debug("Encrypted %zu bytes (using %s key)", plaintext_len, ctx->key_exchange_complete ? "shared" : "password");
   return CRYPTO_OK;
 }
 
@@ -374,7 +373,6 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   *plaintext_len_out = plaintext_len;
   ctx->bytes_decrypted += plaintext_len;
 
-  log_debug("Decrypted %zu bytes (using %s key)", plaintext_len, ctx->key_exchange_complete ? "shared" : "password");
   return CRYPTO_OK;
 }
 
