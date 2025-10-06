@@ -4,7 +4,7 @@
 #include <string.h>
 #include <arpa/inet.h> // For htonl/ntohl
 
-#include "common.h"
+#include "tests/common.h"
 #include "packet_queue.h"
 #include "network.h"
 #include "crc32_hw.h" // For CRC calculation

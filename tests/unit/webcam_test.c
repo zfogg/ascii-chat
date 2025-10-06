@@ -1,13 +1,11 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
-#include <string.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <unistd.h>
 
 #include "os/webcam.h"
-#include "common.h"
+#include "tests/common.h"
 #include "options.h"
 #include "image2ascii/image.h"
 #include "tests/logging.h"

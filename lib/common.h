@@ -306,3 +306,15 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 #define calloc(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 #endif /* DEBUG_MEMORY */
+
+/* Path utilities (shared between logging, backtraces, etc.) */
+/**
+ * Extract relative path from an absolute path.
+ * Searches for PROJECT_SOURCE_ROOT and returns the path relative to it.
+ * Handles both Unix (/) and Windows (\) path separators.
+ * Falls back to just the filename if source root not found.
+ *
+ * @param file Absolute file path (typically from __FILE__)
+ * @return Relative path from project root, or filename if not found
+ */
+const char *extract_project_relative_path(const char *file);

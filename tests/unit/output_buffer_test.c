@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #include "image2ascii/output_buffer.h"
-#include "common.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with default log levels

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
 #include "image2ascii/image.h"

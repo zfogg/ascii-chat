@@ -2,13 +2,11 @@
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
 #include <criterion/theories.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #include "platform/terminal.h"
-#include "common.h"
-#include "options.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro with stdout/stderr enabled for debugging

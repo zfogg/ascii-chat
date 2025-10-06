@@ -6,7 +6,7 @@
 #include <math.h>
 #include <time.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "audio.h"
 #include "tests/logging.h"
 

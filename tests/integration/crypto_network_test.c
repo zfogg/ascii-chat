@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "crypto.h"
-#include "common.h"
+#include "tests/common.h"
 
 void setup_crypto_network_quiet_logging(void);
 void restore_crypto_network_logging(void);

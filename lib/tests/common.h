@@ -16,8 +16,8 @@
 #include <criterion/criterion.h>
 
 // Project headers - use relative paths from tests directory
-#include "../lib/common.h"
-#include "../lib/tests/logging.h"
+#include "../common.h"
+#include "logging.h"
 
 // =============================================================================
 // Test Environment Detection
@@ -55,3 +55,4 @@ static inline bool test_is_in_headless_environment(void) {
 
   return false;
 }
+

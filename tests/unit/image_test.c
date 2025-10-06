@@ -9,8 +9,7 @@
 
 #include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
-#include "common.h"
-#include "options.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with custom log levels

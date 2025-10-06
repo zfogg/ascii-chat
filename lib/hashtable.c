@@ -66,9 +66,7 @@ hashtable_t *hashtable_create(void) {
   ht->entry_count = 0;
 
   // Initialize reader-writer lock
-  // CRITICAL: Use _impl version to avoid lock debug tracking during initialization
-  // This prevents circular dependency deadlocks when lock_debug_init creates hashtables
-  if (rwlock_init_impl(&ht->rwlock) != 0) {
+  if (rwlock_init(&ht->rwlock) != 0) {
     log_error("Failed to initialize hashtable rwlock");
     free(ht->entry_pool);
     free(ht);
@@ -92,8 +90,7 @@ void hashtable_destroy(hashtable_t *ht) {
   // Print final statistics
   hashtable_print_stats(ht, "Final");
 
-  // CRITICAL: Use _impl version to avoid lock debug tracking during cleanup
-  rwlock_destroy_impl(&ht->rwlock);
+  rwlock_destroy(&ht->rwlock);
   free(ht->entry_pool);
   free(ht);
 }
@@ -128,7 +125,7 @@ bool hashtable_insert(hashtable_t *ht, uint32_t key, void *value) {
   }
 
   uint32_t bucket_idx = hash_uint32(key);
-  rwlock_wrlock_impl(&ht->rwlock);
+  rwlock_wrlock(&ht->rwlock);
 
   // Check if key already exists
   hashtable_entry_t *existing = ht->buckets[bucket_idx];
@@ -136,7 +133,7 @@ bool hashtable_insert(hashtable_t *ht, uint32_t key, void *value) {
     if (existing->key == key) {
       // Update existing value
       existing->value = value;
-      rwlock_wrunlock_impl(&ht->rwlock);
+      rwlock_wrunlock(&ht->rwlock);
       return true;
     }
     existing = existing->next;
@@ -146,7 +143,7 @@ bool hashtable_insert(hashtable_t *ht, uint32_t key, void *value) {
   hashtable_entry_t *entry = get_free_entry(ht);
   if (!entry) {
     log_error("Hashtable entry pool exhausted");
-    rwlock_wrunlock_impl(&ht->rwlock);
+    rwlock_wrunlock(&ht->rwlock);
     return false;
   }
 
@@ -164,7 +161,7 @@ bool hashtable_insert(hashtable_t *ht, uint32_t key, void *value) {
   ht->entry_count++;
   ht->insertions++;
 
-  rwlock_wrunlock_impl(&ht->rwlock);
+  rwlock_wrunlock(&ht->rwlock);
 
   return true;
 }
@@ -176,7 +173,7 @@ void *hashtable_lookup(hashtable_t *ht, uint32_t key) {
 
   uint32_t bucket_idx = hash_uint32(key);
 
-  rwlock_rdlock_impl(&ht->rwlock);
+  rwlock_rdlock(&ht->rwlock);
 
   ht->lookups++;
 
@@ -185,13 +182,13 @@ void *hashtable_lookup(hashtable_t *ht, uint32_t key) {
     if (entry->key == key) {
       void *value = entry->value;
       ht->hits++;
-      rwlock_rdunlock_impl(&ht->rwlock);
+      rwlock_rdunlock(&ht->rwlock);
       return value;
     }
     entry = entry->next;
   }
 
-  rwlock_rdunlock_impl(&ht->rwlock);
+  rwlock_rdunlock(&ht->rwlock);
   return NULL; // Not found
 }
 
@@ -202,7 +199,7 @@ bool hashtable_remove(hashtable_t *ht, uint32_t key) {
 
   uint32_t bucket_idx = hash_uint32(key);
 
-  rwlock_wrlock_impl(&ht->rwlock);
+  rwlock_wrlock(&ht->rwlock);
 
   hashtable_entry_t *entry = ht->buckets[bucket_idx];
   hashtable_entry_t *prev = NULL;
@@ -222,7 +219,7 @@ bool hashtable_remove(hashtable_t *ht, uint32_t key) {
       ht->entry_count--;
       ht->deletions++;
 
-      rwlock_wrunlock_impl(&ht->rwlock);
+      rwlock_wrunlock(&ht->rwlock);
 
       return true;
     }
@@ -231,7 +228,7 @@ bool hashtable_remove(hashtable_t *ht, uint32_t key) {
     entry = entry->next;
   }
 
-  rwlock_wrunlock_impl(&ht->rwlock);
+  rwlock_wrunlock(&ht->rwlock);
   return false; // Not found
 }
 
@@ -261,9 +258,9 @@ size_t hashtable_size(hashtable_t *ht) {
   if (!ht)
     return 0;
 
-  rwlock_rdlock_impl(&ht->rwlock);
+  rwlock_rdlock(&ht->rwlock);
   size_t size = ht->entry_count;
-  rwlock_rdunlock_impl(&ht->rwlock);
+  rwlock_rdunlock(&ht->rwlock);
 
   return size;
 }
@@ -283,7 +280,7 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
     return;
   }
 
-  rwlock_rdlock_impl(&ht->rwlock);
+  rwlock_rdlock(&ht->rwlock);
 
   double hit_rate = (ht->lookups > 0) ? ((double)ht->hits * 100.0 / (double)ht->lookups) : 0.0;
   double load_factor = (double)ht->entry_count / (double)HASHTABLE_BUCKET_COUNT;
@@ -297,26 +294,26 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
            (unsigned long long)ht->deletions);
   log_info("Collisions: %llu", (unsigned long long)ht->collisions);
 
-  rwlock_rdunlock_impl(&ht->rwlock);
+  rwlock_rdunlock(&ht->rwlock);
 }
 
 // Locking functions for external coordination
 void hashtable_read_lock(hashtable_t *ht) {
   if (ht)
-    rwlock_rdlock_impl(&ht->rwlock);
+    rwlock_rdlock(&ht->rwlock);
 }
 
 void hashtable_read_unlock(hashtable_t *ht) {
   if (ht)
-    rwlock_rdunlock_impl(&ht->rwlock);
+    rwlock_rdunlock(&ht->rwlock);
 }
 
 void hashtable_write_lock(hashtable_t *ht) {
   if (ht)
-    rwlock_wrlock_impl(&ht->rwlock);
+    rwlock_wrlock(&ht->rwlock);
 }
 
 void hashtable_write_unlock(hashtable_t *ht) {
   if (ht)
-    rwlock_wrunlock_impl(&ht->rwlock);
+    rwlock_wrunlock(&ht->rwlock);
 }

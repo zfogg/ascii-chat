@@ -266,31 +266,26 @@ if ($Interactive) {
         $TestCommand += " " + ($TestTargets -join " ")
     }
 
-    # Build command that checks if build_docker exists and does incremental build
-    # Only do full rebuild if build_docker doesn't exist or -Clean is specified
+    # Configure CMake if build_docker doesn't exist or -Clean is specified
+    # Let run_tests.sh handle building only the specific test executables needed
     if ($Clean) {
         Write-Host "Clean rebuild requested - removing build_docker directory" -ForegroundColor Yellow
         $BuildCommand = @"
 echo 'Clean rebuild - removing build_docker directory...'
 rm -rf build_docker
+echo 'Configuring CMake...'
 CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
-cmake --build build_docker
-# Build server and client binaries for integration tests
-echo 'Building server and client binaries for integration tests...'
-cmake --build build_docker --target ascii-chat-server ascii-chat-client
+echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 "@
     } else {
         $BuildCommand = @"
 if [ ! -d build_docker ]; then
-    echo 'First time build - configuring CMake...'
+    echo 'First time setup - configuring CMake...'
     CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+    echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 else
-    echo 'Using existing build_docker directory for incremental build'
+    echo 'Using existing build_docker directory (run_tests.sh will build only the test executables needed)'
 fi
-cmake --build build_docker
-# Build server and client binaries for integration tests
-echo 'Building server and client binaries for integration tests...'
-cmake --build build_docker --target ascii-chat-server ascii-chat-client
 "@
     }
 

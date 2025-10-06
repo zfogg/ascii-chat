@@ -7,12 +7,11 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "network.h"
 #include "image2ascii/simd/common.h"
 

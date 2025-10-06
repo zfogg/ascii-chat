@@ -553,7 +553,12 @@ static void crash_handler(int sig, siginfo_t *info, void *context) {
     (void)fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n", info->si_code, info->si_addr);
   }
 
+#ifndef NDEBUG
+  // Only capture backtraces in Debug builds
   platform_print_backtrace();
+#else
+  (void)fprintf(stderr, "Backtrace disabled in Release builds\n");
+#endif
 
   // Restore default handler and re-raise signal
   struct sigaction sa;
@@ -580,8 +585,6 @@ void platform_install_crash_handler(void) {
   sigaction(SIGILL, &sa, NULL);  // Illegal instruction
   sigaction(SIGBUS, &sa, NULL);  // Bus error
 }
-
-#endif // !_WIN32
 
 // ============================================================================
 // Safe String Functions
@@ -702,3 +705,5 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src) {
   dest[dest_size - 1] = '\0'; // Ensure null termination
   return 0;                   // Success
 }
+
+#endif // !_WIN32

@@ -259,7 +259,7 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   }
 
   // Check for nonce counter exhaustion (extremely unlikely)
-  if (ctx->nonce_counter == 0) {
+  if (ctx->nonce_counter == 0 || ctx->nonce_counter == UINT64_MAX) {
     log_error("Nonce counter exhausted - key rotation required");
     return CRYPTO_ERROR_NONCE_EXHAUSTED;
   }

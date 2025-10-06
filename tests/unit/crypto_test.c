@@ -4,7 +4,7 @@
 #include <criterion/theories.h>
 #include <string.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "crypto.h"
 
 // Test fixture setup and teardown
@@ -492,17 +492,17 @@ Test(crypto, nonce_counter_exhaustion) {
                "Subsequent encryptions should continue to fail with exhausted counter");
   cr_assert_eq(ctx1.nonce_counter, 0, "Counter should remain at 0 (exhausted state)");
 
-  // Test 4: Verify edge case - UINT64_MAX counter should work once, then fail
+  // Test 4: Verify edge case - UINT64_MAX counter should fail (prevent overflow)
   ctx1.nonce_counter = UINT64_MAX;
   result =
       crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  cr_assert_eq(result, CRYPTO_OK, "Encryption at UINT64_MAX should succeed");
-  cr_assert_eq(ctx1.nonce_counter, 0, "Counter should wrap from UINT64_MAX to 0");
+  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption at UINT64_MAX should fail to prevent overflow");
+  cr_assert_eq(ctx1.nonce_counter, UINT64_MAX, "Counter should remain at UINT64_MAX (exhausted state)");
 
-  // Now it should fail because counter wrapped to 0
+  // Verify that counter stays at UINT64_MAX and continues to fail
   result =
       crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption should fail after counter wraps to 0");
+  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Subsequent encryptions should continue to fail at UINT64_MAX");
 }
 
 // =============================================================================

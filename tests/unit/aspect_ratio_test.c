@@ -1,8 +1,8 @@
-#include "../common.h"
-#include <time.h>
-#include <math.h>
 #include <criterion/parameterized.h>
 #include <criterion/theories.h>
+#include <time.h>
+#include <math.h>
+#include "tests/common.h"
 #include "aspect_ratio.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging

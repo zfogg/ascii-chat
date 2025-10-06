@@ -14,7 +14,7 @@
 #include <termcap.h>
 
 #include "options.h"
-#include "common.h"
+#include "tests/common.h"
 #include "platform/terminal.h"
 #include "tests/logging.h"
 

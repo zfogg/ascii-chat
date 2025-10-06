@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <string.h>
-#include "../common.h"
+#include "tests/common.h"
 #include "crc32_hw.h"
 
 TestSuite(crc32_hw);

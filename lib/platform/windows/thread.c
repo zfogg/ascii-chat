@@ -8,9 +8,7 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
 #include "../../common.h"
-#include "../windows_compat.h"
 #include <process.h>
 #include <stdint.h>
 #include <dbghelp.h>
@@ -35,8 +33,7 @@ static void initialize_symbol_handler(void) {
     SymCleanup(hProcess); // Clean any previous session
     if (SymInitialize(hProcess, NULL, TRUE)) {
       g_symbols_initialized = TRUE;
-      printf("[DEBUG] Symbol handler initialized at startup\n");
-      fflush(stdout);
+      log_debug("Symbol handler initialized at startup");
     }
   }
 }
@@ -55,34 +52,25 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
   thread_wrapper_t *wrapper = (thread_wrapper_t *)param;
 
   if (!wrapper) {
-    printf("[THREAD_WRAPPER] ERROR: NULL wrapper\n");
-    fflush(stdout);
+    log_error("THREAD_WRAPPER: NULL wrapper");
     return 1;
   }
-
-  printf("[THREAD_WRAPPER] wrapper=%p, func=%p, arg=%p, thread_id=%lu\n", wrapper, wrapper->posix_func, wrapper->arg,
-         GetCurrentThreadId());
-  fflush(stdout);
 
   // Check if function pointer is valid
   if (!wrapper->posix_func) {
-    printf("[THREAD_WRAPPER] ERROR: NULL function pointer!\n");
-    fflush(stdout);
+    log_error("THREAD_WRAPPER: NULL function pointer!");
     free(wrapper);
     return 1;
   }
-
-  printf("[THREAD_WRAPPER] About to call POSIX function...\n");
-  fflush(stdout);
 
   void *result = NULL;
   __try {
     result = wrapper->posix_func(wrapper->arg);
   } __except (exception_filter(GetExceptionInformation())) {
     DWORD exceptionCode = GetExceptionCode();
-    printf("\n[THREAD_WRAPPER] ====== EXCEPTION CAUGHT! ======\n");
-    printf("[THREAD_WRAPPER] Exception Code: 0x%lX\n", (unsigned long)exceptionCode);
-    printf("[THREAD_WRAPPER] Thread ID: %lu\n", GetCurrentThreadId());
+    log_error("====== EXCEPTION CAUGHT! ======");
+    log_error("Exception Code: 0x%lX", (unsigned long)exceptionCode);
+    log_error("Thread ID: %lu", GetCurrentThreadId());
 
     // Decode common exception codes
     const char *exceptionName = "UNKNOWN";
@@ -103,19 +91,19 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
       exceptionName = "ARRAY_BOUNDS_EXCEEDED";
       break;
     }
-    printf("[THREAD_WRAPPER] Exception Type: %s\n", exceptionName);
+    log_error("Exception Type: %s", exceptionName);
 
-    // Try to get a simple backtrace
-    printf("[THREAD_WRAPPER] Attempting to get stack trace...\n");
-    fflush(stdout);
+#ifndef NDEBUG
+    // Try to get a simple backtrace (Debug builds only)
+    log_info("Attempting to get stack trace...");
 
     // Use the captured exception info from the filter
     if (g_exception_pointers && g_exception_pointers->ContextRecord) {
       PCONTEXT pContext = g_exception_pointers->ContextRecord;
 
-      printf("[THREAD_WRAPPER] Exception occurred at:\n");
 #ifdef _M_X64
-      printf("  RIP: 0x%016llX\n", pContext->Rip);
+      log_error("Exception occurred at:");
+      log_error("  RIP: 0x%016llX", pContext->Rip);
 
       // Try to resolve the symbol at the crash address
       HANDLE hProcess = GetCurrentProcess();
@@ -132,7 +120,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
       }
 
       if (g_symbols_initialized && SymFromAddr(hProcess, pContext->Rip, &dwDisplacement, pSymbol)) {
-        printf("  Function: %s + 0x%llX\n", pSymbol->Name, dwDisplacement);
+        log_error("  Function: %s + 0x%llX", pSymbol->Name, dwDisplacement);
       } else {
         // Try to at least get the module name
         HMODULE hModule;
@@ -142,14 +130,14 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
           if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
             char *lastSlash = strrchr(moduleName, '\\');
             char *fileName = lastSlash ? lastSlash + 1 : moduleName;
-            printf("  Module: %s + 0x%llX\n", fileName, pContext->Rip - (DWORD64)hModule);
+            log_error("  Module: %s + 0x%llX", fileName, pContext->Rip - (DWORD64)hModule);
           }
         }
       }
 
       // Now walk the stack from the exception context
       // Also try manual stack walk from raw addresses in case StackWalk64 fails
-      printf("\n[MANUAL STACK TRACE - Walking from RSP]\n");
+      log_info("MANUAL STACK TRACE - Walking from RSP");
       DWORD64 *stackPtr = (DWORD64 *)pContext->Rsp;
       for (int i = 0; i < 100; i++) { // Increased to walk further up the stack
         DWORD64 addr = 0;
@@ -178,10 +166,12 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 
             // Check if this is OUR code (not system libraries)
             BOOL isOurCode = FALSE;
+            const char *relPath = NULL;
             if (hasLineInfo && line.FileName) {
-              const char *fileName = line.FileName;
-              // Check if path contains our source directories
-              if (strstr(fileName, "\\src\\") || strstr(fileName, "\\lib\\") || strstr(fileName, "ascii-chat")) {
+              // Use shared path extraction - if it returns a relative path, it's our code
+              relPath = extract_project_relative_path(line.FileName);
+              // If the relative path is different from the full path, we found our project root
+              if (relPath != line.FileName && relPath && *relPath != '\0') {
                 isOurCode = TRUE;
               }
             } else if (pSymbol->Name[0] != '\0') {
@@ -193,20 +183,21 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
             }
 
             if (hasLineInfo) {
-              const char *shortName = strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName;
+              // Use the relative path we already extracted if available, else just get the filename
+              const char *shortName = relPath ? relPath : (strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName);
               if (isOurCode) {
                 // Highlight our code with >>> prefix
-                printf(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]\n", i * 8, addr, pSymbol->Name, displacement,
-                       shortName, line.LineNumber);
+                log_info(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]", i * 8, addr, pSymbol->Name, displacement,
+                         shortName, line.LineNumber);
               } else {
-                printf("  RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]\n", i * 8, addr, pSymbol->Name, displacement,
-                       shortName, line.LineNumber);
+                log_info("  RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]", i * 8, addr, pSymbol->Name, displacement,
+                         shortName, line.LineNumber);
               }
             } else {
               if (isOurCode) {
-                printf(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX\n", i * 8, addr, pSymbol->Name, displacement);
+                log_info(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX", i * 8, addr, pSymbol->Name, displacement);
               } else {
-                printf("  RSP+0x%03X: 0x%016llX %s + 0x%llX\n", i * 8, addr, pSymbol->Name, displacement);
+                log_info("  RSP+0x%03X: 0x%016llX %s + 0x%llX", i * 8, addr, pSymbol->Name, displacement);
               }
             }
           } else {
@@ -218,14 +209,14 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
               if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
                 char *lastSlash = strrchr(moduleName, '\\');
                 char *fileName = lastSlash ? lastSlash + 1 : moduleName;
-                printf("  RSP+0x%03X: 0x%016llX %s + 0x%llX\n", i * 8, addr, fileName, addr - (DWORD64)hModule);
+                log_info("  RSP+0x%03X: 0x%016llX %s + 0x%llX", i * 8, addr, fileName, addr - (DWORD64)hModule);
               }
             }
           }
         }
       }
 
-      printf("\n[STACK TRACE]\n");
+      log_info("STACK TRACE");
       STACKFRAME64 stackFrame = {0};
       stackFrame.AddrPC.Offset = pContext->Rip;
       stackFrame.AddrPC.Mode = AddrModeFlat;
@@ -241,7 +232,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
       for (int frameNum = 0; frameNum < 50; frameNum++) {
         // Validate stack frame before walking to prevent crashes on corrupted stack
         if (stackFrame.AddrStack.Offset == 0 || stackFrame.AddrStack.Offset > 0x7FFFFFFFFFFF) {
-          printf("  #%02d [Stack corrupted or end reached]\n", frameNum);
+          log_error("  #%02d [Stack corrupted or end reached]", frameNum);
           break;
         }
 
@@ -250,7 +241,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
                          SymFunctionTableAccess64, SymGetModuleBase64, NULL)) {
           DWORD error = GetLastError();
           if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
-            printf("  #%02d [StackWalk64 failed: %lu]\n", frameNum, error);
+            log_error("  #%02d [StackWalk64 failed: %lu]", frameNum, error);
           }
           break;
         }
@@ -258,8 +249,6 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
         if (stackFrame.AddrPC.Offset == 0) {
           break;
         }
-
-        printf("  #%02d 0x%016llX ", frameNum, stackFrame.AddrPC.Offset);
 
         // Try to get symbol name
         DWORD64 symDisplacement = 0;
@@ -269,14 +258,15 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
         pSym->MaxNameLen = MAX_SYM_NAME;
 
         if (g_symbols_initialized && SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &symDisplacement, pSym)) {
-          printf("%s + 0x%llX", pSym->Name, symDisplacement);
-
           // Try to get source file and line info
           IMAGEHLP_LINE64 line = {0};
           line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
           DWORD lineDisplacement = 0;
           if (SymGetLineFromAddr64(hProcess, stackFrame.AddrPC.Offset, &lineDisplacement, &line)) {
-            printf(" [%s:%lu]", line.FileName ? strrchr(line.FileName, '\\') + 1 : "??", line.LineNumber);
+            const char *relPath = line.FileName ? extract_project_relative_path(line.FileName) : "⁉️🤔";
+            log_info("  #%02d 0x%016llX %s + 0x%llX [%s:%lu]", frameNum, stackFrame.AddrPC.Offset, pSym->Name, symDisplacement, relPath, line.LineNumber);
+          } else {
+            log_info("  #%02d 0x%016llX %s + 0x%llX", frameNum, stackFrame.AddrPC.Offset, pSym->Name, symDisplacement);
           }
         } else {
           // Try to get module name at least
@@ -287,26 +277,27 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
             if (GetModuleFileNameA(hMod, modName, sizeof(modName))) {
               char *slash = strrchr(modName, '\\');
               char *name = slash ? slash + 1 : modName;
-              printf("%s!0x%llX", name, stackFrame.AddrPC.Offset - (DWORD64)hMod);
+              log_info("  #%02d 0x%016llX %s!0x%llX", frameNum, stackFrame.AddrPC.Offset, name, stackFrame.AddrPC.Offset - (DWORD64)hMod);
             } else {
-              printf("???");
+              log_info("  #%02d 0x%016llX ???", frameNum, stackFrame.AddrPC.Offset);
             }
           } else {
-            printf("???");
+            log_info("  #%02d 0x%016llX ???", frameNum, stackFrame.AddrPC.Offset);
           }
         }
-        printf("\n");
       }
-      printf("\n");
-#endif
+#else
+      log_error("Exception stack trace not available on non-x64 platforms");
+#endif // !!_M_X64
     } else {
-      printf("[THREAD_WRAPPER] Could not get exception context\n");
+      log_error("Could not get exception context");
     }
+#endif // !NDEBUG
 
-    printf("[THREAD_WRAPPER] ================================\n");
-    fflush(stdout);
+    log_error("================================");
 
-    // Use raw free to match raw malloc used in allocation
+    // Use raw free to match raw malloc used in allocation (see allocation comment above for rationale)
+    // Safe to use in exception handler - doesn't touch g_mem.mutex
 #ifdef DEBUG_MEMORY
 #undef free
     free(wrapper);
@@ -317,10 +308,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     return 1;
   }
 
-  printf("[THREAD_WRAPPER] Function returned: %p\n", result);
-  fflush(stdout);
-
-  // Use raw free to match raw malloc used in allocation
+  // Use raw free to match raw malloc used in allocation (see allocation comment for rationale)
 #ifdef DEBUG_MEMORY
 #undef free
   free(wrapper);
@@ -330,6 +318,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #endif
   return (DWORD)(uintptr_t)result;
 }
+
+
 /**
  * @brief Create a new thread
  * @param thread Pointer to thread structure to initialize
@@ -341,17 +331,20 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
   // Initialize symbol handler on first thread creation
   initialize_symbol_handler();
 
-  printf("ENTER ascii_thread_create: thread=%p, func=%p, arg=%p\n", thread, func, arg);
-  fflush(stdout);
-
 #ifdef DEBUG_THREADS
-  OutputDebugStringA("DEBUG: ascii_thread_create() called\n");
+  log_debug("ENTER ascii_thread_create: thread=%p, func=%p, arg=%p", thread, func, arg);
+  log_debug("About to malloc wrapper (size=%zu)", sizeof(thread_wrapper_t));
 #endif
 
-  printf("DEBUG: About to malloc wrapper (size=%zu)\n", sizeof(thread_wrapper_t));
-  fflush(stdout);
-
-  // CRITICAL: Use real malloc, not debug_malloc to avoid deadlock during thread creation
+  // CRITICAL: Use raw malloc for the thread wrapper, not debug_malloc
+  //
+  // WHY: The wrapper must be freed in exception handlers (see __except blocks below).
+  // If the thread crashes while holding g_mem.mutex (during any debug_malloc/debug_free),
+  // the exception handler cannot safely call debug_free() as it would deadlock trying
+  // to acquire the same mutex. Raw malloc/free bypass the debug tracking and are safe
+  // to use in exception contexts.
+  //
+  // This is the ONLY allocation in the codebase that needs this special handling.
 #ifdef DEBUG_MEMORY
 #undef malloc
   thread_wrapper_t *wrapper = (thread_wrapper_t *)malloc(sizeof(thread_wrapper_t));
@@ -361,12 +354,12 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
   SAFE_MALLOC(wrapper, sizeof(thread_wrapper_t), thread_wrapper_t *);
 #endif
 
-  printf("DEBUG: malloc returned wrapper=%p\n", wrapper);
-  fflush(stdout);
-  if (!wrapper) {
 #ifdef DEBUG_THREADS
-    OutputDebugStringA("DEBUG: malloc failed for thread wrapper\n");
+  log_debug("malloc returned wrapper=%p", wrapper);
 #endif
+
+  if (!wrapper) {
+    log_error("DEBUG: malloc failed for thread wrapper");
     return -1;
   }
 
@@ -374,47 +367,37 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
   wrapper->arg = arg;
 
 #ifdef DEBUG_THREADS
-  OutputDebugStringA("DEBUG: About to call CreateThread\n");
+  log_info("DEBUG: About to call CreateThread");
 #endif
 
   DWORD thread_id;
 
-  printf("[CREATE_THREAD] Before CreateThread: wrapper=%p, func=%p, arg=%p\n", wrapper, wrapper->posix_func,
-         wrapper->arg);
-  fflush(stdout);
-
+#ifdef DEBUG_THREADS
+  log_debug("CREATE_THREAD: Before CreateThread: wrapper=%p, func=%p, arg=%p", wrapper, wrapper->posix_func,
+            wrapper->arg);
+#endif
   (*thread) = CreateThread(NULL, 0, windows_thread_wrapper, wrapper, 0, &thread_id);
-
-  printf("[CREATE_THREAD] After CreateThread: handle=%p, thread_id=%lu\n", *thread, thread_id);
-  fflush(stdout);
+#ifdef DEBUG_THREADS
+  log_debug("CREATE_THREAD: After CreateThread: handle=%p, thread_id=%lu", *thread, thread_id);
+#endif
 
   if (*thread == NULL) {
     DWORD error = GetLastError();
-    printf("[CREATE_THREAD] FAILED, error=%lu\n", error);
-    fflush(stdout);
-#ifdef DEBUG_THREADS
-    char debug_msg[256];
-    SAFE_SNPRINTF(debug_msg, 256, "DEBUG: CreateThread failed, error=%lu\n", error);
-    OutputDebugStringA(debug_msg);
-#endif
+    log_error("CREATE_THREAD: FAILED, error=%lu", error);
+    // Use raw free - matches raw malloc (see allocation comment for rationale)
+#ifdef DEBUG_MEMORY
+#undef free
     free(wrapper);
+#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#else
+    free(wrapper);
+#endif
     return -1;
   }
 
-  printf("[CREATE_THREAD] SUCCESS: handle=%p, thread_id=%lu\n", *thread, thread_id);
-  fflush(stdout);
-
 #ifdef DEBUG_THREADS
-  char debug_msg[256];
-  SAFE_SNPRINTF(debug_msg, 256, "DEBUG: CreateThread succeeded, handle=%p, thread_id=%lu\n", *thread, thread_id);
-  OutputDebugStringA(debug_msg);
+  log_debug("DEBUG: CreateThread succeeded, handle=%p, thread_id=%lu", *thread, thread_id);
 #endif
-
-  printf("DEBUG: ascii_thread_create about to return 0\n");
-  fflush(stdout);
-
-  printf("DEBUG: Actually returning from ascii_thread_create now\n");
-  fflush(stdout);
 
   // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
   MemoryBarrier();
@@ -466,9 +449,12 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
     }
     CloseHandle((*thread));
     return 0;
-  } else if (result == WAIT_TIMEOUT) {
+  }
+
+  if (result == WAIT_TIMEOUT) {
     return -2; // Special return code for timeout
   }
+
   return -1;
 }
 

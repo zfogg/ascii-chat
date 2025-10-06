@@ -5,14 +5,11 @@
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <ctype.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "image2ascii/simd/ascii_simd.h"
-#include "image2ascii/simd/common.h"
 #include "image2ascii/image.h"
 #include "palette.h"
 #include "hashtable.h"
