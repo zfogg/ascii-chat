@@ -19,6 +19,7 @@
 #include "common.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
+#include "version.h"
 
 // Safely parse string to integer with validation
 int strtoint_safe(const char *str) {
@@ -139,21 +140,18 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"keyfile", required_argument, NULL, 'F'},
+                                         {"version", no_argument, NULL, 'v'},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
 // Server-only options
-static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
-                                         {"port", required_argument, NULL, 'p'},
-                                         {"palette", required_argument, NULL, 'P'},
-                                         {"palette-chars", required_argument, NULL, 'C'},
-                                         {"audio", no_argument, NULL, 'A'},
-                                         {"log-file", required_argument, NULL, 'L'},
-                                         {"encrypt", no_argument, NULL, 'E'},
-                                         {"key", required_argument, NULL, 'K'},
-                                         {"keyfile", required_argument, NULL, 'F'},
-                                         {"help", optional_argument, NULL, 'h'},
-                                         {0, 0, 0, 0}};
+static struct option server_options[] = {
+    {"address", required_argument, NULL, 'a'}, {"port", required_argument, NULL, 'p'},
+    {"palette", required_argument, NULL, 'P'}, {"palette-chars", required_argument, NULL, 'C'},
+    {"audio", no_argument, NULL, 'A'},         {"log-file", required_argument, NULL, 'L'},
+    {"encrypt", no_argument, NULL, 'E'},       {"key", required_argument, NULL, 'K'},
+    {"keyfile", required_argument, NULL, 'F'}, {"version", no_argument, NULL, 'v'},
+    {"help", optional_argument, NULL, 'h'},    {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 
@@ -310,10 +308,10 @@ void options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = ":a:p:x:y:c:fM:P:C:AsqSD:L:EK:F:h"; // Leading ':' for error reporting
+    optstring = ":a:p:x:y:c:fM:P:C:AsqSD:L:EK:F:hv"; // Leading ':' for error reporting
     options = client_options;
   } else {
-    optstring = ":a:p:P:C:AL:EK:F:h"; // Leading ':' for error reporting
+    optstring = ":a:p:P:C:AL:EK:F:hv"; // Leading ':' for error reporting
     options = server_options;
   }
 
@@ -610,6 +608,14 @@ void options_init(int argc, char **argv, bool is_client) {
       exit(EXIT_SUCCESS);
       break;
 
+    case 'v': {
+      const char *binary_name = is_client ? "ascii-chat-client" : "ascii-chat-server";
+      printf("%s v%d.%d.%d-dev-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_COMMIT, ASCII_CHAT_BUILD_TYPE);
+      exit(EXIT_SUCCESS);
+      break;
+    }
+
     default:
       abort();
     }
@@ -626,6 +632,7 @@ void options_init(int argc, char **argv, bool is_client) {
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
+  (void)fprintf(desc, USAGE_INDENT "-v --version                 " USAGE_INDENT "show version information\n");
   (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
@@ -680,6 +687,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
 void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
+  (void)fprintf(desc, USAGE_INDENT "-v --version         " USAGE_INDENT "show version information\n");
   (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
