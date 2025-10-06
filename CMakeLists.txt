@@ -440,8 +440,16 @@ if(APPLE)
         if(IS_HOMEBREW_LLVM)
             message(STATUS "Configuring Homebrew LLVM paths at: ${COMPILER_PREFIX}")
 
+            # Get the compiler's resource directory for standard C headers like stdbool.h
+            execute_process(
+                COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
+                OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+
             # Homebrew LLVM's Clang needs to know where the macOS SDK is for standard headers
-            # Get the SDK path using xcrun (this is critical for finding stdbool.h, etc.)
+            # Get the SDK path using xcrun (this is critical for finding system headers)
             execute_process(
                 COMMAND xcrun --show-sdk-path
                 OUTPUT_VARIABLE MACOS_SDK_PATH
@@ -458,6 +466,16 @@ if(APPLE)
                 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -isysroot ${MACOS_SDK_PATH}" CACHE STRING "Shared linker flags" FORCE)
             else()
                 message(WARNING "Could not find macOS SDK path - standard headers may not be found")
+            endif()
+
+            # Explicitly add the compiler's resource directory for standard C headers
+            # This is needed when using aggressive optimizations (-march=native, -flto, etc.)
+            # which can interfere with the compiler's default header search paths
+            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+                message(STATUS "Found Clang resource directory: ${CLANG_RESOURCE_DIR}")
+                include_directories(SYSTEM "${CLANG_RESOURCE_DIR}/include")
+            else()
+                message(WARNING "Could not find Clang resource directory - standard C headers may not be found")
             endif()
 
             # Note: Do NOT add LLVM include paths globally - this breaks mimalloc and other
