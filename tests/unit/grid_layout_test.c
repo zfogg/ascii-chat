@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
+#include <float.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>

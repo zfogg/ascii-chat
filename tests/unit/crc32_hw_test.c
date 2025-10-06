@@ -3,7 +3,7 @@
 #include <string.h>
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "crc32_hw.h"
+#include "crc32.h"
 
 TEST_SUITE_WITH_DEBUG_LOGGING(crc32_hw);
 
