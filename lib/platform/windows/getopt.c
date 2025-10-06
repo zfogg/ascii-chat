@@ -88,6 +88,7 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
   optarg = NULL;
 
   if (optind >= argc) {
+    sp = 1; // Reset sp when we're done
     return -1;
   }
 
@@ -95,12 +96,14 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
 
   // Check for end of options
   if (current_arg[0] != '-' || current_arg[1] == '\0') {
+    sp = 1; // Reset sp when we're done
     return -1;
   }
 
   // Handle "--" (end of options)
   if (strcmp(current_arg, "--") == 0) {
     optind++;
+    sp = 1; // Reset sp
     return -1;
   }
 
@@ -189,47 +192,64 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
     return '?';
   }
 
-  if (*(++oli) != ':') {
-    // No argument
+  // Check what comes after this option in the optstring
+  char next_char = *(oli + 1);
+
+  if (next_char == '\0' || next_char != ':') {
+    // No argument - next char is either null terminator or not a colon
     optarg = NULL;
     if (current_arg[++sp] == '\0') {
       sp = 1;
       optind++;
     }
-  } else {
-    // Has argument
-    if (*(oli + 1) == ':') {
-      // Optional argument
+    return optopt;
+  } else if (next_char == ':') {
+    // Check if it's optional (::) or required (:)
+    char after_colon = *(oli + 2);
+
+    if (after_colon == ':') {
+      // Optional argument (::)
       if (current_arg[sp + 1] != '\0') {
         optarg = &current_arg[sp + 1];
+        sp = 1;
         optind++;
       } else {
         optarg = NULL;
+        sp = 1;
         optind++;
       }
+      return optopt;
     } else {
-      // Required argument
+      // Required argument (:)
       if (current_arg[sp + 1] != '\0') {
+        // Argument attached to option (-vARG)
         optarg = &current_arg[sp + 1];
+        sp = 1;
         optind++;
-      } else if (++optind >= argc) {
+        return optopt;
+      } else if (optind + 1 >= argc) {
+        // No next argument available
+        sp = 1;
         if (*optstring == ':') {
-          sp = 1;
           return ':';
         }
         if (opterr) {
           fprintf(stderr, "%s: option requires an argument -- '%c'\n", argv[0], optopt);
         }
-        sp = 1;
+        optind++;
         return '?';
       } else {
+        // Get argument from next argv element
+        sp = 1;
+        optind++;
         optarg = argv[optind++];
+        return optopt;
       }
     }
-    sp = 1;
   }
 
-  return optopt;
+  // Should not reach here
+  return '?';
 }
 
 #endif // _WIN32
