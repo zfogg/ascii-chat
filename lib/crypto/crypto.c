@@ -629,11 +629,15 @@ crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8
 
 crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
   if (!ctx || !ctx->initialized || !packet) {
+    log_error("crypto_process_auth_response: Invalid context or packet (ctx=%p, initialized=%d, packet=%p)",
+              ctx, ctx ? ctx->initialized : 0, packet);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
   size_t expected_size = sizeof(uint32_t) + 32; // type + hmac
   if (packet_len != expected_size) {
+    log_error("crypto_process_auth_response: Invalid packet size (expected=%zu, got=%zu)",
+              expected_size, packet_len);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
@@ -642,6 +646,8 @@ crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_
   SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
 
   if (packet_type != CRYPTO_PACKET_AUTH_RESPONSE) {
+    log_error("crypto_process_auth_response: Invalid packet type (expected=0x%x, got=0x%x)",
+              CRYPTO_PACKET_AUTH_RESPONSE, packet_type);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 

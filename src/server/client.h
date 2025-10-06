@@ -93,7 +93,7 @@ typedef struct {
   rwlock_t video_buffer_rwlock;
 
   // Per-client crypto context for secure communication
-  crypto_handshake_context_t crypto_ctx;
+  crypto_handshake_context_t crypto_handshake_ctx;
   bool crypto_initialized;
 } client_info_t;
 
@@ -124,6 +124,10 @@ void cleanup_client_packet_queues(client_info_t *client);
 // Client thread functions
 void *client_receive_thread(void *arg);
 void stop_client_threads(client_info_t *client);
+
+// Packet processing functions
+int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **data, size_t *len, uint32_t *sender_id);
+void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len);
 
 // Client initialization
 void initialize_client_info(client_info_t *client);

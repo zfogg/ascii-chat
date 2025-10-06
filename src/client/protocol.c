@@ -92,6 +92,13 @@
 #include "common.h"
 #include "options.h"
 #include "crc32.h"
+#include "crypto/handshake.h"
+#include "crypto/crypto.h"
+
+// Forward declaration for client crypto functions
+bool crypto_client_is_ready(void);
+const crypto_context_t* crypto_client_get_context(void);
+int crypto_client_decrypt_packet(const uint8_t* ciphertext, size_t ciphertext_len, uint8_t* plaintext, size_t plaintext_size, size_t* plaintext_len);
 
 #include <stdatomic.h>
 #include <string.h>
@@ -532,6 +539,68 @@ static void *data_reception_thread_func(void *arg) {
     log_debug("CLIENT_RECV: Received packet type=%d, len=%zu", type, len);
 
     switch (type) {
+    case PACKET_TYPE_ENCRYPTED:
+      // Decrypt the encrypted packet from server
+      if (crypto_client_is_ready()) {
+        log_debug("CLIENT_RECV: Processing encrypted packet from server, len=%zu", len);
+
+        // Allocate buffer for decrypted data
+        void* decrypted_data = buffer_pool_alloc(len);
+        if (!decrypted_data) {
+          log_error("Failed to allocate buffer for decrypted packet from server");
+          break;
+        }
+
+        size_t decrypted_len;
+        int decrypt_result = crypto_client_decrypt_packet((const uint8_t*)data, len,
+                                                         (uint8_t*)decrypted_data, len, &decrypted_len);
+
+        if (decrypt_result != 0) {
+          log_error("Failed to decrypt packet from server (result=%d)", decrypt_result);
+          buffer_pool_free(decrypted_data, len);
+          break;
+        }
+
+        // Parse the decrypted packet header to determine the actual packet type
+        if (decrypted_len >= sizeof(packet_header_t)) {
+          packet_header_t* decrypted_header = (packet_header_t*)decrypted_data;
+          packet_type_t decrypted_type = (packet_type_t)ntohs(decrypted_header->type);
+
+          // Extract the actual payload (skip the header)
+          void* payload = (uint8_t*)decrypted_data + sizeof(packet_header_t);
+          size_t payload_len = decrypted_len - sizeof(packet_header_t);
+
+          log_debug("CLIENT_RECV: Decrypted packet type=%d, payload_len=%zu", decrypted_type, payload_len);
+
+          // Process the decrypted packet based on its type
+          switch (decrypted_type) {
+          case PACKET_TYPE_ASCII_FRAME:
+            handle_ascii_frame_packet(payload, payload_len);
+            break;
+          case PACKET_TYPE_AUDIO:
+            handle_audio_packet(payload, payload_len);
+            break;
+          case PACKET_TYPE_CLEAR_CONSOLE:
+            display_full_reset();
+            log_info("Console cleared by server");
+            break;
+          case PACKET_TYPE_SERVER_STATE:
+            handle_server_state_packet(payload, payload_len);
+            break;
+          default:
+            log_warn("Unknown decrypted packet type: %d", decrypted_type);
+            break;
+          }
+        } else {
+          log_error("Decrypted packet too small for header from server");
+        }
+
+        buffer_pool_free(decrypted_data, len);
+      } else {
+        log_error("Received encrypted packet but crypto not ready");
+      }
+      break;
+
     case PACKET_TYPE_ASCII_FRAME:
       log_debug("CLIENT_RECV: Processing ASCII_FRAME packet, len=%zu", len);
       handle_ascii_frame_packet(data, len);

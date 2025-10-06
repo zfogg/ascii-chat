@@ -15,6 +15,11 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sodium.h>
+
+// External references to global server crypto state
+extern bool g_server_encryption_enabled;
+extern private_key_t g_server_private_key;
 
 // Per-client crypto contexts are now stored in client_info_t structure
 // No global crypto context needed
@@ -55,31 +60,44 @@ int server_crypto_handshake(socket_t client_socket) {
     }
 
     // Initialize crypto context for this specific client
-    int init_result = crypto_handshake_init(&client->crypto_ctx, true); // true = server
+    int init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
     if (init_result != 0) {
         log_error("Failed to initialize crypto handshake for client %u", atomic_load(&client->client_id));
         return -1;
     }
     client->crypto_initialized = true;
 
+    // Set up server keys in the handshake context
+    if (g_server_encryption_enabled) {
+        // Copy server private key to handshake context
+        memcpy(&client->crypto_handshake_ctx.server_private_key, &g_server_private_key, sizeof(private_key_t));
+
+        // Set up the core crypto context with server's private key
+        memcpy(client->crypto_handshake_ctx.crypto_ctx.private_key, g_server_private_key.key.x25519, 32);
+        // Generate corresponding public key
+        crypto_scalarmult_base(client->crypto_handshake_ctx.crypto_ctx.public_key, client->crypto_handshake_ctx.crypto_ctx.private_key);
+
+        log_debug("Set up server keys for client %u", atomic_load(&client->client_id));
+    }
+
     log_info("Starting crypto handshake with client %u...", atomic_load(&client->client_id));
 
     // Step 1: Send our public key to client
-    int result = crypto_handshake_server_start(&client->crypto_ctx, client_socket);
+    int result = crypto_handshake_server_start(&client->crypto_handshake_ctx, client_socket);
     if (result != 0) {
         log_error("Failed to send server public key to client %u", atomic_load(&client->client_id));
         return -1;
     }
 
     // Step 2: Receive client's public key and send auth challenge
-    result = crypto_handshake_server_auth_challenge(&client->crypto_ctx, client_socket);
+    result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, client_socket);
     if (result != 0) {
         log_error("Crypto authentication challenge failed for client %u", atomic_load(&client->client_id));
         return -1;
     }
 
     // Step 3: Receive auth response and complete handshake
-    result = crypto_handshake_server_complete(&client->crypto_ctx, client_socket);
+    result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, client_socket);
     if (result != 0) {
         log_error("Crypto authentication response failed for client %u", atomic_load(&client->client_id));
         return -1;
@@ -97,15 +115,25 @@ int server_crypto_handshake(socket_t client_socket) {
  */
 bool crypto_server_is_ready(uint32_t client_id) {
     if (opt_no_encrypt) {
+        log_debug("Crypto disabled by --no-encrypt flag");
         return false;
     }
 
     client_info_t *client = find_client_by_id(client_id);
-    if (!client || !client->crypto_initialized) {
+    if (!client) {
+        log_debug("Client %u not found for crypto check", client_id);
         return false;
     }
 
-    return crypto_handshake_is_ready(&client->crypto_ctx);
+    if (!client->crypto_initialized) {
+        log_debug("Crypto not initialized for client %u", client_id);
+        return false;
+    }
+
+    bool ready = crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+    log_debug("Crypto ready check for client %u: initialized=%d, ready=%d",
+              client_id, client->crypto_initialized, ready);
+    return ready;
 }
 
 /**
@@ -124,7 +152,7 @@ const crypto_context_t* crypto_server_get_context(uint32_t client_id) {
         return NULL;
     }
 
-    return crypto_handshake_get_context(&client->crypto_ctx);
+    return crypto_handshake_get_context(&client->crypto_handshake_ctx);
 }
 
 /**
@@ -156,7 +184,7 @@ int crypto_server_encrypt_packet(uint32_t client_id, const uint8_t* plaintext, s
         return -1;
     }
 
-    return crypto_handshake_encrypt_packet(&client->crypto_ctx, plaintext, plaintext_len,
+    return crypto_handshake_encrypt_packet(&client->crypto_handshake_ctx, plaintext, plaintext_len,
                                          ciphertext, ciphertext_size, ciphertext_len);
 }
 
@@ -189,7 +217,7 @@ int crypto_server_decrypt_packet(uint32_t client_id, const uint8_t* ciphertext, 
         return -1;
     }
 
-    return crypto_handshake_decrypt_packet(&client->crypto_ctx, ciphertext, ciphertext_len,
+    return crypto_handshake_decrypt_packet(&client->crypto_handshake_ctx, ciphertext, ciphertext_len,
                                          plaintext, plaintext_size, plaintext_len);
 }
 
@@ -205,7 +233,7 @@ void crypto_server_cleanup_client(uint32_t client_id) {
     }
 
     if (client->crypto_initialized) {
-        crypto_handshake_cleanup(&client->crypto_ctx);
+        crypto_handshake_cleanup(&client->crypto_handshake_ctx);
         client->crypto_initialized = false;
         log_debug("Crypto handshake cleaned up for client %u", client_id);
     }

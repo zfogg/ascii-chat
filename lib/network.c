@@ -681,6 +681,13 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
       return -1;
     }
     break;
+  case PACKET_TYPE_ENCRYPTED:
+    // Encrypted packet can contain any amount of data (within reasonable limits)
+    if (pkt_len == 0 || pkt_len > MAX_PACKET_SIZE) {
+      log_error("Invalid encrypted packet size: %u", pkt_len);
+      return -1;
+    }
+    break;
   default:
     log_error("Unknown packet type: %u", pkt_type);
     return -1;

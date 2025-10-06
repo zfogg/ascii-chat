@@ -19,7 +19,8 @@
 #include <stdio.h>
 
 // Global crypto handshake context for this client connection
-static crypto_handshake_context_t g_crypto_ctx = {0};
+// NOTE: We use the crypto context from server.c to match the handshake
+extern crypto_handshake_context_t g_crypto_ctx;
 static bool g_crypto_initialized = false;
 
 /**
@@ -28,22 +29,29 @@ static bool g_crypto_initialized = false;
  * @return 0 on success, -1 on failure
  */
 int client_crypto_init(void) {
+    log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
     if (g_crypto_initialized) {
-        return 0; // Already initialized
+        log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
+        crypto_handshake_cleanup(&g_crypto_ctx);
+        g_crypto_initialized = false;
     }
 
     // Check if encryption is disabled
     if (opt_no_encrypt) {
         log_info("Encryption disabled via --no-encrypt");
+        log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
         return 0;
     }
 
+    log_debug("CLIENT_CRYPTO_INIT: Initializing crypto handshake context");
     // Initialize crypto handshake context
     int result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
     if (result != 0) {
         log_error("Failed to initialize crypto handshake");
+        log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init failed with result=%d", result);
         return -1;
     }
+    log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded");
 
     // Set up server connection info for known_hosts
     SAFE_STRNCPY(g_crypto_ctx.server_hostname, opt_address, sizeof(g_crypto_ctx.server_hostname) - 1);
@@ -58,6 +66,7 @@ int client_crypto_init(void) {
 
     g_crypto_initialized = true;
     log_info("Client crypto handshake initialized");
+    log_debug("CLIENT_CRYPTO_INIT: Initialization complete, g_crypto_initialized=true");
     return 0;
 }
 
@@ -68,41 +77,60 @@ int client_crypto_init(void) {
  * @return 0 on success, -1 on failure
  */
 int client_crypto_handshake(socket_t socket) {
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting crypto handshake");
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: g_crypto_initialized=%d, opt_no_encrypt=%d", g_crypto_initialized, opt_no_encrypt);
+
     if (!g_crypto_initialized || opt_no_encrypt) {
         log_debug("Crypto handshake skipped (disabled or not initialized)");
+        log_debug("CLIENT_CRYPTO_HANDSHAKE: Skipping handshake, returning 0");
         return 0;
     }
 
     log_info("Starting crypto handshake with server...");
+    log_debug("CLIENT_CRYPTO: Starting crypto handshake with server...");
 
     // Step 1: Receive server's public key and send our public key
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
     int result = crypto_handshake_client_key_exchange(&g_crypto_ctx, socket);
     if (result != 0) {
         log_error("Crypto key exchange failed");
+        log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange failed with result=%d", result);
         return -1;
     }
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully");
 
     // Step 2: Receive auth challenge and send response
+    log_debug("CLIENT_CRYPTO: Sending auth response to server...");
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting auth response");
     result = crypto_handshake_client_auth_response(&g_crypto_ctx, socket);
     if (result != 0) {
         log_error("Crypto authentication failed");
+        log_debug("CLIENT_CRYPTO_HANDSHAKE: Auth response failed with result=%d", result);
         return -1;
     }
+    log_debug("CLIENT_CRYPTO: Auth response sent successfully");
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Auth response completed successfully");
 
     // Step 3: Receive handshake complete message
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Waiting for handshake complete message");
     uint32_t packet_type;
     ssize_t received = socket_recv(socket, &packet_type, sizeof(packet_type), 0);
     if (received != sizeof(packet_type)) {
         log_error("Failed to receive handshake complete message");
+        log_debug("CLIENT_CRYPTO_HANDSHAKE: Failed to receive handshake complete, received=%zd, expected=%zu", received, sizeof(packet_type));
         return -1;
     }
 
     if (packet_type != CRYPTO_PACKET_HANDSHAKE_COMPLETE) {
         log_error("Invalid handshake complete message");
+        log_debug("CLIENT_CRYPTO_HANDSHAKE: Invalid handshake complete message, got=0x%x, expected=0x%x", packet_type, CRYPTO_PACKET_HANDSHAKE_COMPLETE);
         return -1;
     }
 
+    // Set handshake state to ready
+    g_crypto_ctx.state = CRYPTO_HANDSHAKE_READY;
     log_info("Crypto handshake completed successfully");
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state set to READY");
     return 0;
 }
 
@@ -113,10 +141,13 @@ int client_crypto_handshake(socket_t socket) {
  */
 bool crypto_client_is_ready(void) {
     if (!g_crypto_initialized || opt_no_encrypt) {
+        log_debug("CLIENT_CRYPTO_READY: Not ready - initialized=%d, no_encrypt=%d", g_crypto_initialized, opt_no_encrypt);
         return false;
     }
 
-    return crypto_handshake_is_ready(&g_crypto_ctx);
+    bool ready = crypto_handshake_is_ready(&g_crypto_ctx);
+    log_debug("CLIENT_CRYPTO_READY: handshake_ready=%d, state=%d", ready, g_crypto_ctx.state);
+    return ready;
 }
 
 /**
