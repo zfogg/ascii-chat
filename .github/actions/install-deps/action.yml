@@ -16,14 +16,14 @@ runs:
       if: inputs.os == 'macos'
       uses: tecolicom/actions-use-homebrew-tools@v1
       with:
-        tools: portaudio libsodium criterion coreutils make ${{ inputs.extra-packages }}
+        tools: pkg-config llvm cmake make ninja portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}
         cache: yes
 
     - name: Install and cache APT packages (Ubuntu)
       if: inputs.os == 'ubuntu'
       uses: tecolicom/actions-use-apt-tools@v1
       with:
-        tools: clang libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libboxfort-dev libsodium-dev libcriterion-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libssl-dev libssh2-1-dev libhttp-parser-dev libpcre2-dev libpcre2-8-0 libkrb5-dev krb5-multidev libgssapi-krb5-2 libkrb5-3 libk5crypto3 libcom-err2 libnanopb-dev pkg-config libxml2-utils python3-pip llvm ${{ inputs.extra-packages }}
+        tools: clang cmake ninja-build libv4l-dev zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libboxfort-dev libsodium-dev libcriterion-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libssl-dev libssh2-1-dev libhttp-parser-dev libpcre2-dev libpcre2-8-0 libkrb5-dev krb5-multidev libgssapi-krb5-2 libkrb5-3 libk5crypto3 libcom-err2 libnanopb-dev pkg-config libxml2-utils python3-pip llvm ${{ inputs.extra-packages }}
         cache: yes
 
     - name: Set CSDT env var
@@ -44,6 +44,7 @@ runs:
         export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
         export CPPFLAGS=-I/opt/homebrew/include
         export LDFLAGS=-L/opt/homebrew/lib
+        export LDFLAGS="$LDFLAGS -L/opt/homebrew/opt/llvm/lib/unwind -lunwind"
 
         export PKG_CONFIG_LIBS=portaudio-2.0 criterion zlib
 
