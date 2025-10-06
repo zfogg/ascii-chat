@@ -408,14 +408,15 @@ static int init_server_crypto(void) {
     // Check if it's an SSH key file path
     if (strstr(opt_encrypt_key, "/.ssh/") != NULL || strstr(opt_encrypt_key, "/ssh/") != NULL ||
         strstr(opt_encrypt_key, "_ed25519") != NULL || strstr(opt_encrypt_key, "id_ed25519") != NULL) {
+      fprintf(stderr, "Parsing SSH key: %s\n", opt_encrypt_key);
       if (parse_private_key(opt_encrypt_key, &g_server_private_key) != 0) {
-        log_error("Failed to load server SSH key: %s", opt_encrypt_key);
+        fprintf(stderr, "ERROR: Failed to load server SSH key: %s\n", opt_encrypt_key);
         return -1;
       }
-      log_info("Using SSH key: %s", opt_encrypt_key);
+      fprintf(stderr, "Successfully loaded SSH key: %s\n", opt_encrypt_key);
     } else {
       // It's a password - will be handled by crypto handshake
-      log_info("Using password authentication");
+      fprintf(stderr, "Using password authentication\n");
     }
   } else {
     // Generate ephemeral keypair using crypto context
@@ -468,13 +469,16 @@ int main(int argc, char *argv[]) {
 
   // Initialize crypto BEFORE starting server
   if (init_server_crypto() != 0) {
-    log_error("Failed to initialize crypto");
+    fprintf(stderr, "ERROR: Failed to initialize crypto\n");
     exit(1);
   }
+  fprintf(stderr, "Crypto initialized successfully\n");
 
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
+  fprintf(stderr, "Initializing logging to: %s\n", log_filename);
   log_init(log_filename, LOG_DEBUG);
+  fprintf(stderr, "Logging initialized\n");
 
   // Initialize lock debugging system after logging is fully set up
   log_info("SERVER: Initializing lock debug system...");

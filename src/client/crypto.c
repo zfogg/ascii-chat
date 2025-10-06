@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sodium.h>
 
 // Global crypto handshake context for this client connection
 // NOTE: We use the crypto context from server.c to match the handshake
@@ -45,25 +46,69 @@ int client_crypto_init(void) {
 
   log_debug("CLIENT_CRYPTO_INIT: Initializing crypto handshake context");
 
-  // Check if we have a password for authentication
+  // Check if we have an SSH key, password, or neither
   int result;
-  if (strlen(opt_encrypt_key) > 0 && strstr(opt_encrypt_key, "/.ssh/") == NULL &&
-      strstr(opt_encrypt_key, "/ssh/") == NULL && strstr(opt_encrypt_key, "_ed25519") == NULL &&
-      strstr(opt_encrypt_key, "id_ed25519") == NULL && strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
+  bool is_ssh_key = (strlen(opt_encrypt_key) > 0 &&
+                     (strstr(opt_encrypt_key, "/.ssh/") != NULL || strstr(opt_encrypt_key, "/ssh/") != NULL ||
+                      strstr(opt_encrypt_key, "_ed25519") != NULL || strstr(opt_encrypt_key, "id_ed25519") != NULL));
+
+  if (is_ssh_key) {
+    // Parse SSH private key and use it for authentication
+    log_debug("CLIENT_CRYPTO_INIT: Detected SSH key path: %s", opt_encrypt_key);
+
+    private_key_t private_key;
+    if (parse_private_key(opt_encrypt_key, &private_key) != 0) {
+      log_error("Failed to parse SSH private key: %s", opt_encrypt_key);
+      return -1;
+    }
+    log_info("Successfully parsed SSH private key");
+
+    // Initialize crypto context (without generating random keys yet)
+    result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
+    if (result != 0) {
+      log_error("Failed to initialize crypto handshake");
+      return -1;
+    }
+
+    // Convert Ed25519 private key to X25519 for DH
+    uint8_t x25519_sk[32];
+    if (private_key_to_x25519(&private_key, x25519_sk) != 0) {
+      log_error("Failed to convert Ed25519 key to X25519");
+      return -1;
+    }
+
+    // Override the generated keys with our SSH key
+    memcpy(g_crypto_ctx.crypto_ctx.private_key, x25519_sk, 32);
+
+    // Derive public key from private key
+    crypto_scalarmult_base(g_crypto_ctx.crypto_ctx.public_key, x25519_sk);
+
+    // Clear sensitive data
+    sodium_memzero(x25519_sk, sizeof(x25519_sk));
+    sodium_memzero(&private_key, sizeof(private_key));
+
+    log_info("Using SSH key for authentication");
+
+  } else if (strlen(opt_encrypt_key) > 0 && strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
     // It's a password - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
     result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opt_encrypt_key); // false = client
+    if (result != 0) {
+      log_error("Failed to initialize crypto handshake with password");
+      log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init_with_password failed with result=%d", result);
+      return -1;
+    }
   } else {
-    // No password or SSH/GPG key - use standard initialization
+    // No password or SSH key - use standard initialization with random keys
     log_debug("CLIENT_CRYPTO_INIT: Using standard initialization");
     result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
+    if (result != 0) {
+      log_error("Failed to initialize crypto handshake");
+      log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init failed with result=%d", result);
+      return -1;
+    }
   }
 
-  if (result != 0) {
-    log_error("Failed to initialize crypto handshake");
-    log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init failed with result=%d", result);
-    return -1;
-  }
   log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded");
 
   // Set up server connection info for known_hosts
