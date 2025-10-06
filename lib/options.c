@@ -573,7 +573,7 @@ void options_init(int argc, char **argv, bool is_client) {
               static char safe_buf[256];
               size_t len = eq - opt_name;
               if (len > 0 && len < sizeof(safe_buf) - 1) {
-                SAFE_STRNCPY(safe_buf, opt_name, len + 1);
+                SAFE_STRNCPY(safe_buf, opt_name, sizeof(safe_buf));
                 safe_buf[len] = '\0';
                 opt_name = safe_buf;
               }
