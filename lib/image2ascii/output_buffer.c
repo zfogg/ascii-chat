@@ -42,7 +42,7 @@ void ob_write(outbuf_t *ob, const char *s, size_t n) {
   if (!ob)
     return;
   ob_reserve(ob, n);
-  SAFE_MEMCPY(ob->buf + ob->len, n, s, n);
+  SAFE_MEMCPY(ob->buf + ob->len, ob->cap - ob->len, s, n);
   ob->len += n;
 }
 
