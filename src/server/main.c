@@ -420,11 +420,11 @@ static int init_server_crypto(void) {
   } else {
     // Generate ephemeral keypair using crypto context
     crypto_context_t temp_ctx;
-    if (crypto_init(&temp_ctx) != 0) {
+    if (crypto_init(&temp_ctx) != CRYPTO_OK) {
       log_error("Failed to initialize crypto context for key generation");
       return -1;
     }
-    if (crypto_generate_keypair(&temp_ctx) != 0) {
+    if (crypto_generate_keypair(&temp_ctx) != CRYPTO_OK) {
       log_error("Failed to generate ephemeral keypair");
       crypto_cleanup(&temp_ctx);
       return -1;

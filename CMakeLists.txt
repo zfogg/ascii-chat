@@ -95,6 +95,13 @@ project(ascii-chat
 )
 
 # =============================================================================
+# Include modular CMake helpers
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/Sanitizers.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/WindowsWorkarounds.cmake)
+
+# =============================================================================
 # Generate version information with git commit hash (regenerated on every build)
 # =============================================================================
 
@@ -157,72 +164,8 @@ add_custom_target(generate_version
 # =============================================================================
 # Windows-Specific Linking Fixes (must come after project())
 # =============================================================================
-
-# Fix Windows-Clang platform issues with -nostartfiles and -nostdlib
-if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    # CMake's Windows-Clang platform files incorrectly add -nostartfiles -nostdlib
-    # These flags are inappropriate for normal userspace applications like ASCII-Chat
-    # and prevent AddressSanitizer from finding required runtime libraries
-
-    # Remove the problematic flags if they exist in CMAKE_C_STANDARD_LIBRARIES
-    string(REPLACE "-nostdlib" "" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
-    string(REPLACE "-nostartfiles" "" CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES}")
-
-    # Remove from linker flags too
-    string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    string(REPLACE "-nostdlib" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
-    string(REPLACE "-nostartfiles" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
-
-    # For Debug and Dev builds, ensure standard runtime libraries are available
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-        # Standard runtime libraries are required for Windows builds
-        # Try to find MSVC installation in common locations and editions
-        set(MSVC_LIB_PATH "")
-
-        # Try different Visual Studio editions and years
-        set(VS_EDITIONS "Community" "Professional" "Enterprise" "BuildTools" "Insiders")
-        set(VS_YEARS "18" "2026" "2022" "2019" "2017")
-
-        foreach(VS_YEAR ${VS_YEARS})
-            foreach(VS_EDITION ${VS_EDITIONS})
-                set(VS_PATH "C:/Program Files/Microsoft Visual Studio/${VS_YEAR}/${VS_EDITION}/VC/Tools/MSVC")
-                if(EXISTS "${VS_PATH}")
-                    file(GLOB MSVC_VERSIONS "${VS_PATH}/*")
-                    if(MSVC_VERSIONS)
-                        list(GET MSVC_VERSIONS -1 MSVC_VERSION_DIR)  # Get the latest version
-                        set(MSVC_LIB_CANDIDATE "${MSVC_VERSION_DIR}/lib/x64")
-                        if(EXISTS "${MSVC_LIB_CANDIDATE}")
-                            set(MSVC_LIB_PATH "${MSVC_LIB_CANDIDATE}")
-                            message(STATUS "Found MSVC libraries at: ${MSVC_LIB_PATH}")
-                            break()
-                        endif()
-                    endif()
-                endif()
-            endforeach()
-            if(MSVC_LIB_PATH)
-                break()
-            endif()
-        endforeach()
-
-        if(MSVC_LIB_PATH)
-            link_directories("${MSVC_LIB_PATH}")
-            message(STATUS "Added MSVC library path: ${MSVC_LIB_PATH}")
-        else()
-            message(FATAL_ERROR "Visual Studio MSVC libraries not found! Windows builds require Visual Studio runtime libraries.\n"
-                              "Please install Visual Studio 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, Build Tools, or Insiders).\n"
-                              "Alternatively, try building with MinGW: ./build.ps1 -MinGW")
-        endif()
-
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            message(STATUS "Debug build: Preserving standard libraries for AddressSanitizer")
-        else()
-            message(STATUS "Dev build: Using standard libraries without sanitizers")
-        endif()
-    endif()
-
-    message(STATUS "Applied Windows-Clang linking fixes for normal userspace application")
-endif()
+fix_windows_clang_linking()
+find_msvc_libraries()
 
 # =============================================================================
 # Compiler detection: Respect environment variables first, then auto-detect
@@ -813,340 +756,64 @@ include_directories(
 )
 
 
-# CRITICAL: mimalloc's MI_MALLOC_OVERRIDE is incompatible with AddressSanitizer and LeakSanitizer
-# Both try to intercept malloc/free, causing initialization order crashes during __asan_init
-# We'll disable these specific sanitizers when mimalloc is enabled, but keep other sanitizers
-# Build type specific flags (matching Makefile logic)
+
+# =============================================================================
+# Build Type Configuration (using modular helper functions)
+# =============================================================================
+# Build type specific flags and sanitizer configuration
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # Debug mode WITH sanitizers (default, safe)
-    # Don't add DEBUG_MEMORY if mimalloc is enabled - mimalloc provides its own memory tracking
-    # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
-    if(NOT USE_MIMALLOC AND NOT USE_MUSL)
-        add_definitions(-DDEBUG_MEMORY)
-    elseif(USE_MIMALLOC)
-        message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
-        # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
-        add_definitions(-DUSE_MIMALLOC_DEBUG)
-        set(MIMALLOC_DEBUG_LEVEL 2)  # MI_DEBUG level 2: basic checks + internal assertions
-    elseif(USE_MUSL)
-        message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
-    endif()
-    if(WIN32 AND USE_MINGW)
-        # MinGW mode already has flags set - skip to avoid conflicts
-        message(STATUS "Skipping debug flag setup for MinGW (already configured)")
+    # Debug mode WITH sanitizers (default)
+    if(DEFINED USE_MINGW)
+        set(_use_mingw_flag ${USE_MINGW})
     else()
-        add_compile_options(-g -O0 -DDEBUG)
-
-        # Always use sanitizers in Debug mode
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            if(WIN32)
-                # Windows with Clang - use sanitizers that work on Windows
-                # Skip all sanitizers if mimalloc is enabled on Windows (malloc override conflict + Windows UBSan linking issues)
-                if(USE_MIMALLOC)
-                    add_compile_options(
-                        -fno-omit-frame-pointer
-                        -fno-optimize-sibling-calls
-                    )
-                    message(STATUS "Debug build: Disabled all sanitizers due to mimalloc + Windows UBSan linking issues")
-                else()
-                    add_compile_options(
-                        -fsanitize=address
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                        -fsanitize-address-use-after-scope
-                        -fno-omit-frame-pointer
-                        -fno-optimize-sibling-calls
-                    )
-                    add_link_options(
-                        -fsanitize=address
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                    )
-                    message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
-                endif()
-            elseif(APPLE)
-                # macOS - sanitizers except thread and leak (not supported on ARM64)
-                # Skip AddressSanitizer if mimalloc is enabled (malloc override conflict)
-                if(USE_MIMALLOC)
-                    add_compile_options(
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                        -fno-omit-frame-pointer
-                        -fno-optimize-sibling-calls
-                    )
-                    add_link_options(
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                    )
-                    message(STATUS "Debug build: Enabled UBSan + Integer + Nullability + ImplicitConversion sanitizers (skipped ASan due to mimalloc)")
-                else()
-                    add_compile_options(
-                        -fsanitize=address
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                        -fsanitize-address-use-after-scope
-                        -fno-omit-frame-pointer
-                        -fno-optimize-sibling-calls
-                    )
-                    add_link_options(
-                        -fsanitize=address
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                    )
-                    message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
-                endif()
-            else()
-                # Linux - sanitizers except thread (conflicts with address)
-                # Skip AddressSanitizer and LeakSanitizer if mimalloc is enabled (malloc override conflict)
-                if(USE_MIMALLOC)
-                    add_compile_options(
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                        -fno-omit-frame-pointer
-                        -fno-optimize-sibling-calls
-                    )
-                    add_link_options(
-                        -fsanitize=undefined
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                    )
-                    message(STATUS "Debug build: Enabled UBSan + Integer + Nullability + ImplicitConversion sanitizers (skipped ASan + LeakSan due to mimalloc)")
-                else()
-                    add_compile_options(
-                        -fsanitize=address
-                        -fsanitize=undefined
-                        -fsanitize=leak
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                        -fsanitize-address-use-after-scope
-                        -fno-omit-frame-pointer
-                        -fno-optimize-sibling-calls
-                    )
-                    add_link_options(
-                        -fsanitize=address
-                        -fsanitize=undefined
-                        -fsanitize=leak
-                        -fsanitize=integer
-                        -fsanitize=nullability
-                        -fsanitize=implicit-conversion
-                        -fsanitize=float-divide-by-zero
-                    )
-                    message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
-                endif()
-            endif()
-        elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
-            # GCC on Unix - use available sanitizers
-            # Skip AddressSanitizer and LeakSanitizer if mimalloc is enabled (malloc override conflict)
-            if(USE_MIMALLOC)
-                add_compile_options(
-                    -fsanitize=undefined
-                    -fno-omit-frame-pointer
-                    -fno-optimize-sibling-calls
-                )
-                add_link_options(
-                    -fsanitize=undefined
-                )
-                message(STATUS "Debug build: Enabled UBSan (GCC) (skipped ASan + LeakSan due to mimalloc)")
-            else()
-                add_compile_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=leak
-                    -fsanitize-address-use-after-scope
-                    -fno-omit-frame-pointer
-                    -fno-optimize-sibling-calls
-                )
-                add_link_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=leak
-                )
-                message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan (GCC)")
-            endif()
-        endif()
-
-        # macOS: Fix ASan runtime linking for Homebrew LLVM
-        if(APPLE AND DEFINED HOMEBREW_LLVM_LIB_DIR)
-            # Find the clang version directory dynamically
-            file(GLOB CLANG_VERSION_DIRS "${HOMEBREW_LLVM_LIB_DIR}/clang/*")
-            if(CLANG_VERSION_DIRS)
-                list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
-                get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
-                # Explicitly link against the correct ASan runtime from Homebrew LLVM
-                add_link_options(-L${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
-                # Force rpath for ASan runtime
-                add_link_options(-rpath ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
-                message(STATUS "Using ASan runtime from: ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin")
-            endif()
-        endif()
-
-        # On Windows with Clang, copy ASAN runtime DLL to output directory
-        if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-            # Find the ASAN DLL in the Clang installation
-            get_filename_component(CLANG_DIR ${CMAKE_C_COMPILER} DIRECTORY)
-            get_filename_component(CLANG_ROOT ${CLANG_DIR} DIRECTORY)
-            file(GLOB_RECURSE ASAN_DLL "${CLANG_ROOT}/lib/clang/*/lib/windows/clang_rt.asan_dynamic-x86_64.dll")
-            if(ASAN_DLL)
-                # Copy ASAN DLL to build output directory
-                list(GET ASAN_DLL 0 ASAN_DLL_PATH)
-                file(COPY ${ASAN_DLL_PATH} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-                message(STATUS "Copied ASAN runtime for Debug build: ${ASAN_DLL_PATH}")
-            endif()
-        endif()
-
-        if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
-            # CodeView debug format is only supported by Clang on Windows (native mode)
-            add_compile_options(-gcodeview)
-        endif()
+        set(_use_mingw_flag OFF)
     endif()
+    configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL})
+    configure_debug_build_flags("Debug" ${_use_mingw_flag})
+
+    # Configure sanitizers (automatically handles mimalloc conflicts)
+    configure_sanitizers(${USE_MIMALLOC} "Debug")
+
+    # Platform-specific sanitizer runtime fixes
+    fix_macos_asan_runtime()
+    copy_asan_runtime_dll()
+
 elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     # Dev mode - debug WITHOUT sanitizers (faster iteration)
-    # Don't add DEBUG_MEMORY if mimalloc is enabled - mimalloc provides its own memory tracking
-    # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
-    if(NOT USE_MIMALLOC AND NOT USE_MUSL)
-        add_definitions(-DDEBUG_MEMORY)
-    elseif(USE_MIMALLOC)
-        message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
-        # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
-        add_definitions(-DUSE_MIMALLOC_DEBUG)
-        set(MIMALLOC_DEBUG_LEVEL 2)  # MI_DEBUG level 2: basic checks + internal assertions
-    elseif(USE_MUSL)
-        message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
-    endif()
-    if(WIN32 AND USE_MINGW)
-        # MinGW mode already has flags set - skip to avoid conflicts
-        message(STATUS "Skipping dev flag setup for MinGW (already configured)")
+    if(DEFINED USE_MINGW)
+        set(_use_mingw_flag ${USE_MINGW})
     else()
-        add_compile_options(-g -O0 -DDEBUG)
-        # No sanitizers in Dev mode for faster compilation/runtime
-
-        if(WIN32)
-            if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
-                # CodeView debug format is only supported by Clang on Windows (native mode)
-                # Use -g2 for full debug info and ensure PDB generation
-                add_compile_options(-g2 -gcodeview)
-                # Ensure PDB files are generated - linker will create them by default with /DEBUG
-                add_link_options(-Wl,/DEBUG:FULL)
-                message(STATUS "Dev build: Enabled PDB generation with full debug info")
-            elseif(MSVC)
-                # For MSVC, explicitly enable PDB generation
-                add_compile_options(/Zi)
-                add_link_options(/DEBUG:FULL)
-                message(STATUS "Dev build: Enabled MSVC PDB generation")
-            endif()
-        endif()
+        set(_use_mingw_flag OFF)
     endif()
+    configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL})
+    configure_debug_build_flags("Dev" ${_use_mingw_flag})
+    # No sanitizers in Dev mode
+
 elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
-    add_definitions(-DDEBUG_MEMORY -DCOVERAGE_BUILD)
-    add_compile_options(-g -O0 --coverage -fprofile-arcs -ftest-coverage)
-    add_link_options(--coverage)
+    # Coverage build with instrumentation
+    configure_coverage_flags()
+
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_definitions(-DNDEBUG)
-    # CPU-aware optimization flags (matches Makefile)
-    add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
-    if(PLATFORM_DARWIN)
-        if(IS_ROSETTA EQUAL 1)
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-        elseif(IS_APPLE_SILICON EQUAL 1)
-            # Apple Silicon: add +crc if CRC32 hardware is enabled
-            if(ENABLE_CRC32_HW)
-                add_compile_options(-march=armv8-a+crc -mcpu=native -ffast-math -ffp-contract=fast)
-            else()
-                add_compile_options(-march=native -mcpu=native -ffast-math -ffp-contract=fast)
-            endif()
-        else()
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-        endif()
-    elseif(PLATFORM_LINUX)
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-            add_compile_options(-mcpu=native -ffp-contract=fast -ffinite-math-only)
-        else()
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-        endif()
-    else()
-        add_compile_options(-ffp-contract=fast)
-    endif()
+    # Optimized release build
+    configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ENABLE_CRC32_HW})
 
-    if(NOT WIN32)
-        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fno-plt -fno-semantic-interposition -fmerge-all-constants)
-        add_link_options(-flto -fno-plt)
-    endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
+    # Sanitize mode - focus on AddressSanitizer
+    if(DEFINED USE_MINGW)
+        set(_use_mingw_flag ${USE_MINGW})
+    else()
+        set(_use_mingw_flag OFF)
+    endif()
     add_definitions(-DDEBUG_MEMORY)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR (CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32))
-        add_compile_options(-g -O0 -fsanitize=address -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address)
+    configure_debug_build_flags("Debug" ${_use_mingw_flag})
+    configure_sanitizers(${USE_MIMALLOC} "Sanitize")
+    copy_asan_runtime_dll()
 
-        # On Windows with Clang, copy ASAN runtime DLL to output directory
-        if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-            # Find the ASAN DLL in the Clang installation
-            get_filename_component(CLANG_DIR ${CMAKE_C_COMPILER} DIRECTORY)
-            get_filename_component(CLANG_ROOT ${CLANG_DIR} DIRECTORY)
-            file(GLOB_RECURSE ASAN_DLL "${CLANG_ROOT}/lib/clang/*/lib/windows/clang_rt.asan_dynamic-x86_64.dll")
-            if(ASAN_DLL)
-                # Copy ASAN DLL to build output directory
-                list(GET ASAN_DLL 0 ASAN_DLL_PATH)
-                file(COPY ${ASAN_DLL_PATH} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-                message(STATUS "Copied ASAN runtime: ${ASAN_DLL_PATH}")
-            else()
-                message(WARNING "Could not find ASAN runtime DLL in Clang installation")
-            endif()
-        endif()
-    else()
-        # Fallback for compilers without sanitizer support
-        add_compile_options(-g -O0)
-        message(WARNING "AddressSanitizer not available for this compiler/platform combination")
-    endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "TSan")
-    # Thread Sanitizer for race condition detection
+    # Thread Sanitizer mode
     add_definitions(-DDEBUG_MEMORY -DDEBUG_THREADS)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        if(WIN32)
-            # ThreadSanitizer has limited support on Windows with Clang
-            # It may not work fully, but we can try
-            add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer)
-            add_link_options(-fsanitize=thread)
-            message(WARNING "ThreadSanitizer has limited support on Windows. Consider using Linux/macOS for full TSan support.")
-        else()
-            # Full TSan support on Unix-like systems
-            add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
-            add_link_options(-fsanitize=thread -pie)
-        endif()
-    elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
-        # GCC TSan support (Unix only)
-        add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
-        add_link_options(-fsanitize=thread -pie)
-    else()
-        # Fallback for compilers without TSan support
-        add_compile_options(-g -O1)
-        message(WARNING "ThreadSanitizer not available for this compiler/platform combination")
-        message(STATUS "Consider using Clang or GCC on Linux/macOS for ThreadSanitizer support")
-    endif()
+    configure_sanitizers(${USE_MIMALLOC} "TSan")
 endif()
 
 # Hardware Acceleration Detection (cross-platform including Windows ARM)
