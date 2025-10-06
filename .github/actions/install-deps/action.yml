@@ -40,11 +40,13 @@ runs:
       run: |
         # NOTE: `brew info make` says "make" is installed as "gmake", but they give us gnubin
         export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
+        export PATH="/usr/local/opt/llvm/bin:$PATH"
 
         export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
         export CPPFLAGS=-I/opt/homebrew/include
         export LDFLAGS=-L/opt/homebrew/lib
         export LDFLAGS="$LDFLAGS -L/opt/homebrew/opt/llvm/lib/unwind -lunwind"
+        export LDFLAGS="$LDFLAGS -L/opt/homebrew/opt/llvm/lib/c++"
 
         export PKG_CONFIG_LIBS=portaudio-2.0 criterion zlib
 
