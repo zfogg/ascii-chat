@@ -20,6 +20,69 @@ production:
 	@echo ""
 	@ls -lh build-production/bin/ascii-chat-{server,client}
 
+# Profile-Guided Optimization: 3-stage build for maximum performance
+# Note: PGO requires glibc, not musl (musl lacks __*_chk fortified functions needed by libgcov)
+# This is NOT used for official releases - use 'make production' for musl static builds
+pgo:
+	@echo "========================================="
+	@echo "Building ASCII-Chat - PGO (3 stages)"
+	@echo "  WARNING: PGO uses glibc (dynamic)"
+	@echo "  For official releases, use 'make production'"
+	@echo "========================================="
+	@echo "  Stage 1: Instrumented build"
+	@echo "  Stage 2: Profile collection"
+	@echo "  Stage 3: Optimized build"
+	@echo "========================================="
+	@echo ""
+	@echo "Stage 1/3: Building instrumented binaries (glibc + dynamic)..."
+	@rm -rf build-pgo-profile build-pgo
+	cmake -B build-pgo-profile -DCMAKE_BUILD_TYPE=Release \
+		-DUSE_MUSL=OFF -DUSE_MIMALLOC=ON \
+		-DCMAKE_C_FLAGS="-fprofile-generate=/root/src/github.com/zfogg/ascii-chat/pgo-data" \
+		-DCMAKE_EXE_LINKER_FLAGS="-fprofile-generate=/root/src/github.com/zfogg/ascii-chat/pgo-data"
+	cmake --build build-pgo-profile -j$(NPROC)
+	@echo ""
+	@echo "Stage 2/3: Collecting profile data..."
+	@echo "  Running server with 4-client workload (1 webcam + 3 test patterns)..."
+	@echo "  (Will run for 35 seconds to collect comprehensive profiles)"
+	@mkdir -p pgo-data
+	@rm -f pgo-data/*.gcda 2>/dev/null || true
+	@(build-pgo-profile/bin/ascii-chat-server --port 27777 > /dev/null 2>&1 &); \
+	SERVER_PID=$$!; \
+	sleep 2; \
+	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	CLIENT1_PID=$$!; \
+	sleep 1; \
+	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	CLIENT2_PID=$$!; \
+	sleep 1; \
+	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	CLIENT3_PID=$$!; \
+	sleep 1; \
+	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	CLIENT4_PID=$$!; \
+	wait $$CLIENT1_PID $$CLIENT2_PID $$CLIENT3_PID $$CLIENT4_PID 2>/dev/null || true; \
+	sleep 1; \
+	kill $$SERVER_PID 2>/dev/null || true; \
+	wait $$SERVER_PID 2>/dev/null || true
+	@echo "  Profile data collected: $$(ls pgo-data/*.gcda 2>/dev/null | wc -l) files"
+	@echo ""
+	@echo "Stage 3/3: Building optimized binaries with profile data (glibc + dynamic)..."
+	cmake -B build-pgo -DCMAKE_BUILD_TYPE=Release \
+		-DUSE_MUSL=OFF -DUSE_MIMALLOC=ON \
+		-DCMAKE_C_FLAGS="-fprofile-use=/root/src/github.com/zfogg/ascii-chat/pgo-data -fprofile-correction" \
+		-DCMAKE_EXE_LINKER_FLAGS="-fprofile-use=/root/src/github.com/zfogg/ascii-chat/pgo-data"
+	cmake --build build-pgo -j$(NPROC)
+	@echo ""
+	@echo "========================================="
+	@echo "PGO Build Complete (glibc + dynamic)!"
+	@echo "========================================="
+	@echo "PGO-optimized build (glibc, NOT for release):"
+	@ls -lh build-pgo/bin/ascii-chat-{server,client}
+	@echo ""
+	@echo "NOTE: For official releases, use 'make production' (musl + static)"
+	@echo "Profile data: pgo-data/ ($$(du -sh pgo-data 2>/dev/null | cut -f1))"
+
 # Development: glibc + clang + DEBUG_MEMORY + sanitizers (for debugging)
 development:
 	@echo "========================================="

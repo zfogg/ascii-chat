@@ -15,6 +15,7 @@ junit.xml
 *.gcno
 coverage.info
 coverage_html/
+/pgo-data/
 
 /build/
 /build_*/

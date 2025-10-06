@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Set policy for ExternalProject timestamp handling (CMP0135)
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 # Set up vcpkg toolchain if available (must be before project())
 # Skip vcpkg for MinGW builds as we use system package manager for MinGW
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND NOT USE_MINGW)
@@ -935,8 +940,8 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     endif()
 
     if(NOT WIN32)
-        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32)
-        add_link_options(-flto)
+        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fno-plt -fno-semantic-interposition -fmerge-all-constants)
+        add_link_options(-flto -fno-plt)
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
     add_definitions(-DDEBUG_MEMORY)
@@ -1526,85 +1531,49 @@ endif()
 if(USE_MIMALLOC)
     message(STATUS "Configuring mimalloc memory allocator...")
 
-    # Try multiple methods to find mimalloc, in order of preference:
-    # 1. vcpkg (Windows preferred method)
-    # 2. System package manager (Linux/macOS)
-    # 3. Download from GitHub (fallback)
+    # Always download and build mimalloc from GitHub
+    message(STATUS "Downloading mimalloc from GitHub...")
 
-    set(MIMALLOC_FOUND FALSE)
+    include(FetchContent)
 
-    # First, try to find mimalloc via vcpkg or system package manager
-    find_package(mimalloc 2.0 CONFIG QUIET)
+    FetchContent_Declare(
+        mimalloc
+        GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
+        GIT_TAG v2.1.7  # Latest stable v2.x release
+        GIT_SHALLOW TRUE
+    )
 
-    if(mimalloc_FOUND)
-        if(DEFINED ENV{VCPKG_ROOT})
-            message(STATUS "Found mimalloc via vcpkg: ${mimalloc_VERSION}")
-        else()
-            message(STATUS "Found system mimalloc: ${mimalloc_VERSION}")
-        endif()
-        set(MIMALLOC_FOUND TRUE)
-        set(MIMALLOC_LIBRARIES mimalloc-static)
-    else()
-        # Try pkg-config on Unix systems
-        if(UNIX AND NOT APPLE)
-            find_package(PkgConfig QUIET)
-            if(PkgConfig_FOUND)
-                pkg_check_modules(MIMALLOC_PC QUIET mimalloc)
-                if(MIMALLOC_PC_FOUND)
-                    message(STATUS "Found mimalloc via pkg-config: ${MIMALLOC_PC_VERSION}")
-                    set(MIMALLOC_FOUND TRUE)
-                    set(MIMALLOC_LIBRARIES ${MIMALLOC_PC_LIBRARIES})
-                endif()
-            endif()
-        endif()
+    # Configure mimalloc build options
+    set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library")
+    set(MI_BUILD_STATIC ON CACHE BOOL "Build static library")
+    set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library")
+    set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables")
+    set(MI_OVERRIDE ON CACHE BOOL "Override malloc/free globally")
+    set(MI_INSTALL_TOPLEVEL OFF CACHE BOOL "Install in top-level")
 
-        # If still not found, download and build from GitHub
-        if(NOT MIMALLOC_FOUND)
-            message(STATUS "mimalloc not found via vcpkg or system packages")
-            message(STATUS "Downloading mimalloc from GitHub as fallback...")
-
-            include(FetchContent)
-
-            FetchContent_Declare(
-                mimalloc
-                GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
-                GIT_TAG v2.1.7  # Latest stable v2.x release
-                GIT_SHALLOW TRUE
-            )
-
-            # Configure mimalloc build options
-            set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-            set(MI_BUILD_STATIC ON CACHE BOOL "Build static library")
-            set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library")
-            set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables")
-            set(MI_OVERRIDE ON CACHE BOOL "Override malloc/free globally")
-            set(MI_INSTALL_TOPLEVEL OFF CACHE BOOL "Install in top-level")
-
-            # Set debug level for mimalloc based on build type
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-                set(MI_DEBUG_FULL ON CACHE BOOL "Full debug mode for mimalloc")
-            endif()
-
-            # Platform-specific mimalloc options
-            if(WIN32)
-                set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
-            endif()
-
-            FetchContent_MakeAvailable(mimalloc)
-
-            # For musl builds, set REALGCC environment for mimalloc build
-            if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
-                set_target_properties(mimalloc-static PROPERTIES
-                    COMPILE_OPTIONS ""
-                    RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
-                )
-                message(STATUS "Configured mimalloc build environment with REALGCC=${REAL_GCC}")
-            endif()
-
-            message(STATUS "Built mimalloc from source (v2.1.7)")
-            set(MIMALLOC_LIBRARIES mimalloc-static)
-        endif()
+    # Set debug level for mimalloc based on build type
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+        set(MI_DEBUG_FULL ON CACHE BOOL "Full debug mode for mimalloc")
     endif()
+
+    # Platform-specific mimalloc options
+    if(WIN32)
+        set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
+    endif()
+
+    FetchContent_MakeAvailable(mimalloc)
+
+    # For musl builds, set REALGCC environment for mimalloc build
+    if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
+        set_target_properties(mimalloc-static PROPERTIES
+            COMPILE_OPTIONS ""
+            RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
+        )
+        message(STATUS "Configured mimalloc build environment with REALGCC=${REAL_GCC}")
+    endif()
+
+    message(STATUS "Built mimalloc from source (v2.1.7)")
+    set(MIMALLOC_LIBRARIES mimalloc-static)
 
     message(STATUS "mimalloc will override malloc/free globally")
     message(STATUS "Your existing SAFE_MALLOC macros will automatically use mimalloc")
