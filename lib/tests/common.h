@@ -46,11 +46,11 @@ static inline bool test_is_in_headless_environment(void) {
     char version_buf[256];
     if (fgets(version_buf, sizeof(version_buf), version_file)) {
       if (strstr(version_buf, "microsoft") || strstr(version_buf, "Microsoft") || strstr(version_buf, "WSL")) {
-        fclose(version_file);
+        (void)fclose(version_file);
         return true;
       }
     }
-    fclose(version_file);
+    (void)fclose(version_file);
   }
 
   return false;
