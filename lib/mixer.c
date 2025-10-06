@@ -242,8 +242,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   SAFE_MALLOC(mixer->source_active, max_sources * sizeof(bool), bool *);
   if (!mixer->source_active) {
-    void *temp_source_buffers = (void *)mixer->source_buffers;
-    SAFE_FREE(temp_source_buffers);
+    SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer);
     return NULL;
@@ -263,8 +262,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
     log_error("Failed to initialize mixer source lock");
-    void *temp_source_buffers = (void *)mixer->source_buffers;
-    SAFE_FREE(temp_source_buffers);
+    SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
     SAFE_FREE(mixer->mix_buffer);
@@ -297,8 +295,7 @@ void mixer_destroy(mixer_t *mixer) {
 
   ducking_free(&mixer->ducking);
 
-  void *temp_source_buffers_final = (void *)mixer->source_buffers;
-  SAFE_FREE(temp_source_buffers_final);
+  SAFE_FREE(mixer->source_buffers);
   SAFE_FREE(mixer->source_ids);
   SAFE_FREE(mixer->source_active);
   SAFE_FREE(mixer->mix_buffer);

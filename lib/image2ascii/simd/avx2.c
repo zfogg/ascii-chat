@@ -145,6 +145,32 @@ static inline char *emit_set_truecolor_bg_simple(char *pos, uint8_t r, uint8_t g
   return pos;
 }
 
+// Helper function to emit RLE repeat count (handles any count up to 9999)
+static inline char *emit_rle_count(char *pos, uint32_t rep_count) {
+  *pos++ = '\x1b';
+  *pos++ = '[';
+
+  // Handle up to 4 digits (max 9999)
+  if (rep_count >= 1000) {
+    *pos++ = '0' + (rep_count / 1000);
+    *pos++ = '0' + ((rep_count / 100) % 10);
+    *pos++ = '0' + ((rep_count / 10) % 10);
+    *pos++ = '0' + (rep_count % 10);
+  } else if (rep_count >= 100) {
+    *pos++ = '0' + (rep_count / 100);
+    *pos++ = '0' + ((rep_count / 10) % 10);
+    *pos++ = '0' + (rep_count % 10);
+  } else if (rep_count >= 10) {
+    *pos++ = '0' + (rep_count / 10);
+    *pos++ = '0' + (rep_count % 10);
+  } else {
+    *pos++ = '0' + rep_count;
+  }
+  *pos++ = 'b';
+
+  return pos;
+}
+
 // Thread-local storage for AVX2 working buffers
 // These stay in L1 cache and are reused across function calls
 static THREAD_LOCAL ALIGNED_32 uint8_t avx2_r_buffer[32];
@@ -229,9 +255,9 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
 
   // Use malloc for output buffer (will be freed by caller)
-  // Each pixel can produce: 4 bytes UTF-8 + 6 bytes RLE escape (\x1b[999b) = 10 bytes max
+  // Each pixel can produce: 4 bytes UTF-8 + 8 bytes RLE escape (\x1b[9999b) = 12 bytes max
   // Plus 1 newline per row
-  size_t output_size = (size_t)h * ((size_t)w * 10 + 1);
+  size_t output_size = (size_t)h * ((size_t)w * 12 + 1);
 
   char *output = (char *)malloc(output_size);
   if (!output) {
@@ -273,21 +299,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
         pos += char_info->byte_len;
 
         if (rep_is_profitable(run)) {
-          *pos++ = '\x1b';
-          *pos++ = '[';
-          // Emit run count (run - 1 for REP command)
-          uint32_t rep_count = run - 1;
-          if (rep_count >= 100) {
-            *pos++ = '0' + (rep_count / 100);
-            *pos++ = '0' + ((rep_count / 10) % 10);
-            *pos++ = '0' + (rep_count % 10);
-          } else if (rep_count >= 10) {
-            *pos++ = '0' + (rep_count / 10);
-            *pos++ = '0' + (rep_count % 10);
-          } else {
-            *pos++ = '0' + rep_count;
-          }
-          *pos++ = 'b';
+          pos = emit_rle_count(pos, run - 1);
         } else {
           // Emit remaining characters
           for (int k = 1; k < run; k++) {
@@ -324,21 +336,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       pos += char_info->byte_len;
 
       if (rep_is_profitable(run)) {
-        *pos++ = '\x1b';
-        *pos++ = '[';
-        // Emit run count (run - 1 for REP command)
-        uint32_t rep_count = run - 1;
-        if (rep_count >= 100) {
-          *pos++ = '0' + (rep_count / 100);
-          *pos++ = '0' + ((rep_count / 10) % 10);
-          *pos++ = '0' + (rep_count % 10);
-        } else if (rep_count >= 10) {
-          *pos++ = '0' + (rep_count / 10);
-          *pos++ = '0' + (rep_count % 10);
-        } else {
-          *pos++ = '0' + rep_count;
-        }
-        *pos++ = 'b';
+        pos = emit_rle_count(pos, run - 1);
       } else {
         for (int k = 1; k < run; k++) {
           memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
@@ -458,21 +456,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           pos += char_info->byte_len;
 
           if (rep_is_profitable(run)) {
-            *pos++ = '\x1b';
-            *pos++ = '[';
-            // Emit run count (run - 1 for REP command)
-            uint32_t rep_count = run - 1;
-            if (rep_count >= 100) {
-              *pos++ = '0' + (rep_count / 100);
-              *pos++ = '0' + ((rep_count / 10) % 10);
-              *pos++ = '0' + (rep_count % 10);
-            } else if (rep_count >= 10) {
-              *pos++ = '0' + (rep_count / 10);
-              *pos++ = '0' + (rep_count % 10);
-            } else {
-              *pos++ = '0' + rep_count;
-            }
-            *pos++ = 'b';
+            pos = emit_rle_count(pos, run - 1);
           } else {
             for (int k = 1; k < run; k++) {
               memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
@@ -514,21 +498,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           pos += char_info->byte_len;
 
           if (rep_is_profitable(run)) {
-            *pos++ = '\x1b';
-            *pos++ = '[';
-            // Emit run count (run - 1 for REP command)
-            uint32_t rep_count = run - 1;
-            if (rep_count >= 100) {
-              *pos++ = '0' + (rep_count / 100);
-              *pos++ = '0' + ((rep_count / 10) % 10);
-              *pos++ = '0' + (rep_count % 10);
-            } else if (rep_count >= 10) {
-              *pos++ = '0' + (rep_count / 10);
-              *pos++ = '0' + (rep_count % 10);
-            } else {
-              *pos++ = '0' + rep_count;
-            }
-            *pos++ = 'b';
+            pos = emit_rle_count(pos, run - 1);
           } else {
             for (int k = 1; k < run; k++) {
               memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
@@ -582,21 +552,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         pos += char_info->byte_len;
 
         if (rep_is_profitable(run)) {
-          *pos++ = '\x1b';
-          *pos++ = '[';
-          // Emit run count (run - 1 for REP command)
-          uint32_t rep_count = run - 1;
-          if (rep_count >= 100) {
-            *pos++ = '0' + (rep_count / 100);
-            *pos++ = '0' + ((rep_count / 10) % 10);
-            *pos++ = '0' + (rep_count % 10);
-          } else if (rep_count >= 10) {
-            *pos++ = '0' + (rep_count / 10);
-            *pos++ = '0' + (rep_count % 10);
-          } else {
-            *pos++ = '0' + rep_count;
-          }
-          *pos++ = 'b';
+          pos = emit_rle_count(pos, run - 1);
         } else {
           for (int k = 1; k < run; k++) {
             memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
@@ -637,21 +593,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         pos += char_info->byte_len;
 
         if (rep_is_profitable(run)) {
-          *pos++ = '\x1b';
-          *pos++ = '[';
-          // Emit run count (run - 1 for REP command)
-          uint32_t rep_count = run - 1;
-          if (rep_count >= 100) {
-            *pos++ = '0' + (rep_count / 100);
-            *pos++ = '0' + ((rep_count / 10) % 10);
-            *pos++ = '0' + (rep_count % 10);
-          } else if (rep_count >= 10) {
-            *pos++ = '0' + (rep_count / 10);
-            *pos++ = '0' + (rep_count % 10);
-          } else {
-            *pos++ = '0' + rep_count;
-          }
-          *pos++ = 'b';
+          pos = emit_rle_count(pos, run - 1);
         } else {
           for (int k = 1; k < run; k++) {
             memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
