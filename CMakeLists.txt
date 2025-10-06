@@ -471,9 +471,11 @@ if(APPLE)
             # Explicitly add the compiler's resource directory for standard C headers
             # This is needed when using aggressive optimizations (-march=native, -flto, etc.)
             # which can interfere with the compiler's default header search paths
+            # Use -resource-dir flag instead of include_directories to avoid affecting mimalloc
             if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
                 message(STATUS "Found Clang resource directory: ${CLANG_RESOURCE_DIR}")
-                include_directories(SYSTEM "${CLANG_RESOURCE_DIR}/include")
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -resource-dir ${CLANG_RESOURCE_DIR}" CACHE STRING "C flags" FORCE)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -resource-dir ${CLANG_RESOURCE_DIR}" CACHE STRING "C++ flags" FORCE)
             else()
                 message(WARNING "Could not find Clang resource directory - standard C headers may not be found")
             endif()
