@@ -12,6 +12,7 @@
 #include "tests/common.h"
 #include "hashtable.h"
 #include "image2ascii/simd/common.h"
+#include "image2ascii/simd/ascii_simd.h"
 #include "tests/logging.h"
 
 #ifdef SIMD_SUPPORT_NEON
