@@ -923,6 +923,11 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
     return received == 0 ? 0 : -1;
   }
 
+  // Check if this client has completed crypto handshake and needs decryption
+  // TODO: This needs to be implemented - for now, assume no encryption
+  // We need to find the client by socket and check if crypto is ready
+  // For now, proceed with normal packet processing
+
   // First validate packet length BEFORE converting from network byte order
   // This prevents potential integer overflow issues
   uint32_t pkt_len_network = header.length;
@@ -995,6 +1000,51 @@ int send_ping_packet(socket_t sockfd) {
 
 int send_pong_packet(socket_t sockfd) {
   return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
+}
+
+// Receive encrypted packet from client (after crypto handshake)
+int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len) {
+  if (!type || !client_id || !data || !len) {
+    return -1;
+  }
+
+  // Check if socket is invalid (e.g., closed by signal handler)
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
+
+  // For encrypted packets, we need to read the raw data first
+  // The encrypted packet structure is: [encrypted_data:var]
+  // We need to read enough data to determine the packet size
+  // For now, read a reasonable amount and let the crypto layer handle it
+  uint8_t encrypted_buffer[4096]; // Max encrypted packet size
+  ssize_t received = recv_with_timeout(sockfd, encrypted_buffer, sizeof(encrypted_buffer), is_test_environment() ? 1 : RECV_TIMEOUT);
+
+  if (received < 0) {
+    return -1;
+  }
+  if (received == 0) {
+    log_info("Connection closed while reading encrypted packet");
+    return 0;
+  }
+
+  // Allocate buffer for the encrypted data
+  *data = buffer_pool_alloc(received);
+  if (!*data) {
+    log_error("Failed to allocate %zd bytes for encrypted packet", received);
+    return -1;
+  }
+
+  memcpy(*data, encrypted_buffer, received);
+  *len = received;
+
+  // For encrypted packets, we can't determine type/client_id until decryption
+  // These will be set by the decryption process
+  *type = PACKET_TYPE_ENCRYPTED; // Special type for encrypted packets
+  *client_id = 0; // Will be set after decryption
+
+  return 1;
 }
 
 int send_clear_console_packet(socket_t sockfd) {

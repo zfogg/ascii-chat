@@ -813,13 +813,9 @@ include_directories(
 )
 
 
-# CRITICAL: mimalloc's MI_MALLOC_OVERRIDE is incompatible with AddressSanitizer
+# CRITICAL: mimalloc's MI_MALLOC_OVERRIDE is incompatible with AddressSanitizer and LeakSanitizer
 # Both try to intercept malloc/free, causing initialization order crashes during __asan_init
-# Force Dev build type (debug without sanitizers) when USE_MIMALLOC is ON
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND USE_MIMALLOC)
-    message(WARNING "Switching from Debug to Dev build - AddressSanitizer conflicts with mimalloc malloc override")
-    set(CMAKE_BUILD_TYPE "Dev" CACHE STRING "Build type" FORCE)
-endif()
+# We'll disable these specific sanitizers when mimalloc is enabled, but keep other sanitizers
 # Build type specific flags (matching Makefile logic)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug mode WITH sanitizers (default, safe)
@@ -844,91 +840,154 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         # Always use sanitizers in Debug mode
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             if(WIN32)
-                # Windows with Clang - use all sanitizers that work on Windows
-                # AddressSanitizer + comprehensive UndefinedBehaviorSanitizer checks
-                add_compile_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=integer
-                    -fsanitize=nullability
-                    -fsanitize=implicit-conversion
-                    -fsanitize=float-divide-by-zero
-                    -fsanitize-address-use-after-scope
-                    -fno-omit-frame-pointer
-                    -fno-optimize-sibling-calls
-                )
-                add_link_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=integer
-                    -fsanitize=nullability
-                    -fsanitize=implicit-conversion
-                    -fsanitize=float-divide-by-zero
-                )
-                message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                # Windows with Clang - use sanitizers that work on Windows
+                # Skip all sanitizers if mimalloc is enabled on Windows (malloc override conflict + Windows UBSan linking issues)
+                if(USE_MIMALLOC)
+                    add_compile_options(
+                        -fno-omit-frame-pointer
+                        -fno-optimize-sibling-calls
+                    )
+                    message(STATUS "Debug build: Disabled all sanitizers due to mimalloc + Windows UBSan linking issues")
+                else()
+                    add_compile_options(
+                        -fsanitize=address
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                        -fsanitize-address-use-after-scope
+                        -fno-omit-frame-pointer
+                        -fno-optimize-sibling-calls
+                    )
+                    add_link_options(
+                        -fsanitize=address
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                    )
+                    message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                endif()
             elseif(APPLE)
-                # macOS - all sanitizers except thread and leak (not supported on ARM64)
-                add_compile_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=integer
-                    -fsanitize=nullability
-                    -fsanitize=implicit-conversion
-                    -fsanitize=float-divide-by-zero
-                    -fsanitize-address-use-after-scope
-                    -fno-omit-frame-pointer
-                    -fno-optimize-sibling-calls
-                )
-                add_link_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=integer
-                    -fsanitize=nullability
-                    -fsanitize=implicit-conversion
-                    -fsanitize=float-divide-by-zero
-                )
-                message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                # macOS - sanitizers except thread and leak (not supported on ARM64)
+                # Skip AddressSanitizer if mimalloc is enabled (malloc override conflict)
+                if(USE_MIMALLOC)
+                    add_compile_options(
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                        -fno-omit-frame-pointer
+                        -fno-optimize-sibling-calls
+                    )
+                    add_link_options(
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                    )
+                    message(STATUS "Debug build: Enabled UBSan + Integer + Nullability + ImplicitConversion sanitizers (skipped ASan due to mimalloc)")
+                else()
+                    add_compile_options(
+                        -fsanitize=address
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                        -fsanitize-address-use-after-scope
+                        -fno-omit-frame-pointer
+                        -fno-optimize-sibling-calls
+                    )
+                    add_link_options(
+                        -fsanitize=address
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                    )
+                    message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                endif()
             else()
-                # Linux - all sanitizers except thread (conflicts with address)
-                add_compile_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=leak
-                    -fsanitize=integer
-                    -fsanitize=nullability
-                    -fsanitize=implicit-conversion
-                    -fsanitize=float-divide-by-zero
-                    -fsanitize-address-use-after-scope
-                    -fno-omit-frame-pointer
-                    -fno-optimize-sibling-calls
-                )
-                add_link_options(
-                    -fsanitize=address
-                    -fsanitize=undefined
-                    -fsanitize=leak
-                    -fsanitize=integer
-                    -fsanitize=nullability
-                    -fsanitize=implicit-conversion
-                    -fsanitize=float-divide-by-zero
-                )
-                message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                # Linux - sanitizers except thread (conflicts with address)
+                # Skip AddressSanitizer and LeakSanitizer if mimalloc is enabled (malloc override conflict)
+                if(USE_MIMALLOC)
+                    add_compile_options(
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                        -fno-omit-frame-pointer
+                        -fno-optimize-sibling-calls
+                    )
+                    add_link_options(
+                        -fsanitize=undefined
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                    )
+                    message(STATUS "Debug build: Enabled UBSan + Integer + Nullability + ImplicitConversion sanitizers (skipped ASan + LeakSan due to mimalloc)")
+                else()
+                    add_compile_options(
+                        -fsanitize=address
+                        -fsanitize=undefined
+                        -fsanitize=leak
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                        -fsanitize-address-use-after-scope
+                        -fno-omit-frame-pointer
+                        -fno-optimize-sibling-calls
+                    )
+                    add_link_options(
+                        -fsanitize=address
+                        -fsanitize=undefined
+                        -fsanitize=leak
+                        -fsanitize=integer
+                        -fsanitize=nullability
+                        -fsanitize=implicit-conversion
+                        -fsanitize=float-divide-by-zero
+                    )
+                    message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+                endif()
             endif()
         elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
             # GCC on Unix - use available sanitizers
-            add_compile_options(
-                -fsanitize=address
-                -fsanitize=undefined
-                -fsanitize=leak
-                -fsanitize-address-use-after-scope
-                -fno-omit-frame-pointer
-                -fno-optimize-sibling-calls
-            )
-            add_link_options(
-                -fsanitize=address
-                -fsanitize=undefined
-                -fsanitize=leak
-            )
-            message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan (GCC)")
+            # Skip AddressSanitizer and LeakSanitizer if mimalloc is enabled (malloc override conflict)
+            if(USE_MIMALLOC)
+                add_compile_options(
+                    -fsanitize=undefined
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                add_link_options(
+                    -fsanitize=undefined
+                )
+                message(STATUS "Debug build: Enabled UBSan (GCC) (skipped ASan + LeakSan due to mimalloc)")
+            else()
+                add_compile_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize-address-use-after-scope
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                add_link_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                )
+                message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan (GCC)")
+            endif()
         endif()
 
         # macOS: Fix ASan runtime linking for Homebrew LLVM

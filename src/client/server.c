@@ -60,12 +60,15 @@
  */
 
 #include "server.h"
+#include "crypto/handshake.h"
+#include "crypto/known_hosts.h"
 #include "crypto.h"
 
 #include "platform/abstraction.h"
 #include "network.h"
 #include "common.h"
 #include "options.h"
+#include "buffer_pool.h"
 
 #include <errno.h>
 #include <string.h>
@@ -102,6 +105,16 @@ static uint32_t g_my_client_id = 0;
 
 /** Mutex to protect socket sends (prevent interleaved packets) */
 static mutex_t g_send_mutex = {0};
+
+/* ============================================================================
+ * Crypto State
+ * ============================================================================ */
+
+/** Global crypto handshake context */
+static crypto_handshake_context_t g_crypto_ctx = {0};
+
+/** Whether encryption is enabled for this connection */
+static bool g_encryption_enabled = false;
 
 /* ============================================================================
  * Reconnection Logic
@@ -179,6 +192,91 @@ int server_connection_init() {
   g_my_client_id = 0;
 
   return 0;
+}
+
+/**
+ * Initialize crypto for client connection
+ * @return 0 on success, -1 on error
+ */
+static int init_client_crypto(void) {
+    // Check if encryption is disabled
+    if (opt_no_encrypt) {
+        log_info("Encryption: DISABLED (--no-encrypt)");
+        g_encryption_enabled = false;
+        return 0;
+    }
+
+    // Initialize crypto handshake
+    if (crypto_handshake_init(&g_crypto_ctx, false) != 0) {
+        log_error("Failed to initialize crypto handshake");
+        return -1;
+    }
+
+    // Set expected server key if provided
+    if (strlen(opt_server_key) > 0) {
+        public_key_t expected_key;
+        if (parse_public_key(opt_server_key, &expected_key) != 0) {
+            log_error("Invalid --server-key format: %s", opt_server_key);
+            return -1;
+        }
+        // Store the key string for later verification
+        strncpy(g_crypto_ctx.expected_server_key, opt_server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
+        g_crypto_ctx.expected_server_key[sizeof(g_crypto_ctx.expected_server_key) - 1] = '\0';
+        g_crypto_ctx.verify_server_key = true;
+        log_info("Will verify server key against: %s", opt_server_key);
+    }
+
+    g_encryption_enabled = true;
+    log_info("Encryption: ENABLED");
+    return 0;
+}
+
+/**
+ * Perform crypto handshake with server
+ * @return 0 on success, -1 on error
+ */
+static int perform_crypto_handshake(void) {
+    if (!g_encryption_enabled) return 0;
+
+    log_info("Starting crypto handshake...");
+
+    // Client: Process server's public key and send our public key
+    if (crypto_handshake_client_key_exchange(&g_crypto_ctx, g_sockfd) != 0) {
+        log_error("Crypto handshake failed during key exchange");
+        return -1;
+    }
+
+    // Client: Process auth challenge and send response
+    if (crypto_handshake_client_auth_response(&g_crypto_ctx, g_sockfd) != 0) {
+        log_error("Crypto handshake failed during authentication");
+        return -1;
+    }
+
+    // Wait for handshake complete message from server
+    uint32_t packet_type;
+    ssize_t received = socket_recv(g_sockfd, &packet_type, sizeof(packet_type), 0);
+    if (received != sizeof(packet_type)) {
+        log_error("Failed to receive handshake complete message");
+        return -1;
+    }
+
+    if (packet_type != CRYPTO_PACKET_HANDSHAKE_COMPLETE) {
+        log_error("Invalid handshake complete message: 0x%x", packet_type);
+        return -1;
+    }
+
+    // Mark handshake as complete
+    g_crypto_ctx.state = CRYPTO_HANDSHAKE_READY;
+    g_crypto_ctx.crypto_ctx.handshake_complete = true;
+
+    // Check if handshake is complete
+    if (!crypto_handshake_is_ready(&g_crypto_ctx)) {
+        log_error("Crypto handshake did not complete successfully");
+        return -1;
+    }
+
+    log_info("✓ Crypto handshake completed - encryption ready");
+    return 0;
 }
 
 /**
@@ -265,6 +363,22 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   atomic_store(&g_connection_lost, false);
   atomic_store(&g_should_reconnect, false);
 
+  // Initialize crypto BEFORE starting protocol handshake
+  if (init_client_crypto() != 0) {
+    log_error("Failed to initialize crypto");
+    close_socket(g_sockfd);
+    g_sockfd = INVALID_SOCKET_VALUE;
+    return -1;
+  }
+
+  // Perform crypto handshake if encryption is enabled
+  if (perform_crypto_handshake() != 0) {
+    log_error("Crypto handshake failed");
+    close_socket(g_sockfd);
+    g_sockfd = INVALID_SOCKET_VALUE;
+    return -1;
+  }
+
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message
   if (!opt_snapshot_mode) {
@@ -296,16 +410,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_warn("Failed to set TCP_NODELAY: %s", network_error_string(errno));
   }
 
-  // Perform crypto handshake if encryption is enabled
-  if (client_crypto_init() == 0) {
-    int crypto_result = client_crypto_handshake(g_sockfd);
-    if (crypto_result != 0) {
-      log_error("Crypto handshake failed: %s", network_error_string(errno));
-      close_socket(g_sockfd);
-      g_sockfd = INVALID_SOCKET_VALUE;
-      return -1;
-    }
-  }
 
   // Send initial terminal capabilities to server (this may generate debug logs)
   int result = threaded_send_terminal_size_with_auto_detect(opt_width, opt_height);
@@ -396,6 +500,12 @@ void server_connection_close() {
 
   g_my_client_id = 0;
 
+  // Cleanup crypto context if encryption was enabled
+  if (g_encryption_enabled) {
+    crypto_handshake_cleanup(&g_crypto_ctx);
+    g_encryption_enabled = false;
+  }
+
   // Turn ON terminal logging when connection is closed
   printf("\n");
   log_set_terminal_output(true);
@@ -475,9 +585,66 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
   }
 
   mutex_lock(&g_send_mutex);
-  int result = send_packet(sockfd, type, data, len);
-  mutex_unlock(&g_send_mutex);
-  return result;
+
+  // Check if crypto handshake is complete and encrypt the packet
+  if (crypto_client_is_ready()) {
+    // Create the packet header
+    packet_header_t header;
+    header.magic = htonl(PACKET_MAGIC);
+    header.type = htons(type);
+    header.length = htonl(len);
+    header.crc32 = htonl(asciichat_crc32(data, len));
+    header.client_id = htonl(g_my_client_id);
+
+    // Combine header and data
+    size_t plaintext_len = sizeof(header) + len;
+    uint8_t* plaintext = buffer_pool_alloc(plaintext_len);
+    if (!plaintext) {
+      mutex_unlock(&g_send_mutex);
+      return -1;
+    }
+
+    memcpy(plaintext, &header, sizeof(header));
+    memcpy(plaintext + sizeof(header), data, len);
+
+    // Encrypt the packet
+    size_t ciphertext_len;
+    uint8_t* ciphertext = buffer_pool_alloc(plaintext_len + 32); // Extra space for encryption overhead
+    if (!ciphertext) {
+      buffer_pool_free(plaintext, plaintext_len);
+      mutex_unlock(&g_send_mutex);
+      return -1;
+    }
+
+    int encrypt_result = crypto_client_encrypt_packet(plaintext, plaintext_len, ciphertext, plaintext_len + 32, &ciphertext_len);
+    if (encrypt_result != 0) {
+      log_error("Failed to encrypt packet");
+      buffer_pool_free(plaintext, plaintext_len);
+      buffer_pool_free(ciphertext, plaintext_len + 32);
+      mutex_unlock(&g_send_mutex);
+      return -1;
+    }
+
+    // Send the encrypted packet
+    ssize_t sent = socket_send(sockfd, ciphertext, ciphertext_len, 0);
+    if (sent != (ssize_t)ciphertext_len) {
+      log_error("Failed to send encrypted packet");
+      buffer_pool_free(plaintext, plaintext_len);
+      buffer_pool_free(ciphertext, plaintext_len + 32);
+      mutex_unlock(&g_send_mutex);
+      return -1;
+    }
+
+    buffer_pool_free(plaintext, plaintext_len);
+    buffer_pool_free(ciphertext, plaintext_len + 32);
+    mutex_unlock(&g_send_mutex);
+    return 0;
+  } else {
+    // No encryption - send normal packet
+    int result = send_packet(sockfd, type, data, len);
+    mutex_unlock(&g_send_mutex);
+    return result;
+  }
 }
 
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {

@@ -96,6 +96,9 @@
 #include "stream.h"
 #include "stats.h"
 #include "platform/string.h"
+#include "crypto/handshake.h"
+#include "crypto/keys.h"
+#include "crypto.h"
 
 /* ============================================================================
  * Global State
@@ -175,6 +178,17 @@ static asciithread_t g_stats_logger_thread;
  * started due to initialization failures.
  */
 static bool g_stats_logger_thread_created = false;
+
+/* ============================================================================
+ * Server Crypto State
+ * ============================================================================
+ */
+
+/** Global server crypto state */
+static bool g_server_encryption_enabled = false;
+static private_key_t g_server_private_key = {0};
+static public_key_t g_client_whitelist[MAX_CLIENTS] = {0};
+static size_t g_num_whitelisted_clients = 0;
 
 /* ============================================================================
  * Signal Handlers
@@ -377,6 +391,59 @@ static void print_mimalloc_stats(void) {
 }
 #endif
 
+/**
+ * Initialize crypto for server
+ * @return 0 on success, -1 on error
+ */
+static int init_server_crypto(void) {
+    // Check if encryption is disabled
+    if (opt_no_encrypt) {
+        log_info("Encryption: DISABLED (--no-encrypt)");
+        g_server_encryption_enabled = false;
+        return 0;
+    }
+
+    // Load server private key if provided
+    if (strlen(opt_ssh_key) > 0) {
+        if (parse_private_key(opt_ssh_key, &g_server_private_key) != 0) {
+            log_error("Failed to load server SSH key: %s", opt_ssh_key);
+            return -1;
+        }
+        log_info("Using SSH key: %s", opt_ssh_key);
+    } else {
+        // Generate ephemeral keypair using crypto context
+        crypto_context_t temp_ctx;
+        if (crypto_init(&temp_ctx) != 0) {
+            log_error("Failed to initialize crypto context for key generation");
+            return -1;
+        }
+        if (crypto_generate_keypair(&temp_ctx) != 0) {
+            log_error("Failed to generate ephemeral keypair");
+            crypto_cleanup(&temp_ctx);
+            return -1;
+        }
+        // Copy the generated keys to our private key structure
+        memcpy(g_server_private_key.key.x25519, temp_ctx.private_key, 32);
+        g_server_private_key.type = KEY_TYPE_X25519;
+        crypto_cleanup(&temp_ctx);
+        log_info("Generated ephemeral server keypair");
+    }
+
+    // Load client whitelist if provided
+    if (strlen(opt_client_keys) > 0) {
+        if (parse_authorized_keys(opt_client_keys, g_client_whitelist,
+                                 &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+            log_error("Failed to load client keys: %s", opt_client_keys);
+            return -1;
+        }
+        log_info("Server will only accept %zu whitelisted clients", g_num_whitelisted_clients);
+    }
+
+    g_server_encryption_enabled = true;
+    log_info("Encryption: ENABLED");
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
 
   // Initialize platform-specific functionality (Winsock, etc)
@@ -392,6 +459,12 @@ int main(int argc, char *argv[]) {
 #endif
 
   options_init(argc, argv, false);
+
+  // Initialize crypto BEFORE starting server
+  if (init_server_crypto() != 0) {
+    log_error("Failed to initialize crypto");
+    exit(1);
+  }
 
   // Initialize logging - use specified log file or default
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";

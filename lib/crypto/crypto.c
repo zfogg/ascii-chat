@@ -574,7 +574,7 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
     return false;
   }
 
-  return crypto_verify_32(computed_hmac, expected_hmac) == 0;
+  return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
 }
 
 crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {

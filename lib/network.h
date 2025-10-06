@@ -89,7 +89,8 @@ typedef enum {
   PACKET_TYPE_AUTH_CHALLENGE = 16,         // Server -> Client: {nonce[32]}
   PACKET_TYPE_AUTH_RESPONSE = 17,          // Client -> Server: {HMAC[32]}
   PACKET_TYPE_HANDSHAKE_COMPLETE = 18,     // Server -> Client: "encryption ready"
-  PACKET_TYPE_AUTH_FAILED = 19             // Server -> Client: "authentication failed"
+  PACKET_TYPE_AUTH_FAILED = 19,            // Server -> Client: "authentication failed"
+  PACKET_TYPE_ENCRYPTED = 20               // Encrypted packet (after handshake)
 } packet_type_t;
 
 typedef struct {
@@ -232,6 +233,9 @@ int send_stream_stop_packet(socket_t sockfd, uint32_t stream_type);
 // Packet sending with client ID
 int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);
 int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
+
+// Receive encrypted packet from client (after crypto handshake)
+int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
 
 // Heartbeat/ping functions
 int send_ping_packet(socket_t sockfd);
