@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include "common.h"
 
 void setup_neon_quiet_logging(void);
 void restore_neon_logging(void);

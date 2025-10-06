@@ -2358,7 +2358,11 @@ add_executable(ascii-chat-server
 # This works with both GCC (musl) and Clang
 target_compile_options(ascii-chat-server PRIVATE -ffunction-sections -fdata-sections)
 if(NOT WIN32)
-    target_link_options(ascii-chat-server PRIVATE -Wl,--gc-sections)
+    if(APPLE)
+        target_link_options(ascii-chat-server PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(ascii-chat-server PRIVATE -Wl,--gc-sections)
+    endif()
 endif()
 
 target_link_libraries(ascii-chat-server ascii-chat-lib)
@@ -2535,6 +2539,9 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
         add_executable(${test_exe_name} ${test_src} lib/tests/globals.c lib/tests/logging.c)
+
+        # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
+        set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
