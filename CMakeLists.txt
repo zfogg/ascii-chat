@@ -1661,6 +1661,12 @@ if(USE_MIMALLOC)
 
     FetchContent_MakeAvailable(mimalloc)
 
+    # For macOS with Homebrew LLVM, add resource-dir to mimalloc's compile options
+    if(APPLE AND DEFINED CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include" AND TARGET mimalloc-static)
+        target_compile_options(mimalloc-static PRIVATE "-resource-dir" "${CLANG_RESOURCE_DIR}")
+        message(STATUS "Configured mimalloc with Clang resource directory: ${CLANG_RESOURCE_DIR}")
+    endif()
+
     # For musl builds, set REALGCC environment for mimalloc build
     if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
         set_target_properties(mimalloc-static PROPERTIES
