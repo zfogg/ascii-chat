@@ -83,7 +83,11 @@ static int ed25519_to_x25519_sk(const uint8_t ed25519_sk[64], uint8_t x25519_sk[
 }
 
 // Decode hex string to binary
-static int hex_decode(const char* hex, uint8_t* output, size_t output_len) {
+int hex_decode(const char* hex, uint8_t* output, size_t output_len) {
+    if (!hex || !output) {
+        return -1;
+    }
+
     size_t hex_len = strlen(hex);
     if (hex_len != output_len * 2) {
         return -1;

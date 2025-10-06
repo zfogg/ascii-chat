@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "tests/common.h"
-#include "crypto.h"
+#include "crypto/crypto.h"
 
 // Test fixture setup and teardown
 static crypto_context_t ctx1, ctx2;

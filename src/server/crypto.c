@@ -69,6 +69,15 @@ int server_crypto_handshake(socket_t client_socket) {
         return 0;
     }
 
+    // Reset crypto context for each new client connection
+    // TODO: In a proper implementation, each client should have its own context
+    crypto_handshake_cleanup(&g_crypto_ctx);
+    int init_result = crypto_handshake_init(&g_crypto_ctx, true); // true = server
+    if (init_result != 0) {
+        log_error("Failed to reinitialize crypto handshake");
+        return -1;
+    }
+
     log_info("Starting crypto handshake with client...");
 
     // Step 1: Send our public key to client
