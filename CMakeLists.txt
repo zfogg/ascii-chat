@@ -449,19 +449,24 @@ if(APPLE)
             message(STATUS "Configuring Homebrew LLVM paths at: ${COMPILER_PREFIX}")
 
             # Get the compiler's resource directory for standard C headers like stdbool.h
+            # NOTE: -print-resource-dir can return incorrect paths on Homebrew LLVM
+            # (e.g., returns /usr/local/opt/llvm when installed at /opt/homebrew/opt/llvm)
+            # So we construct the path manually from COMPILER_PREFIX
             execute_process(
-                COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
-                OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+                COMMAND ${CMAKE_C_COMPILER} --version
+                OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
                 OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_VARIABLE CLANG_RESOURCE_DIR_ERROR
-                RESULT_VARIABLE CLANG_RESOURCE_DIR_RESULT
             )
-            message(STATUS "DEBUG: -print-resource-dir result code = ${CLANG_RESOURCE_DIR_RESULT}")
+            # Extract version number (e.g., "21.1.2" -> "21")
+            string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
+            set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
+
+            # Construct resource directory path manually
+            set(CLANG_RESOURCE_DIR "${COMPILER_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
+
+            message(STATUS "DEBUG: Clang major version = ${CLANG_MAJOR_VERSION}")
             message(STATUS "DEBUG: CLANG_RESOURCE_DIR = '${CLANG_RESOURCE_DIR}'")
-            if(CLANG_RESOURCE_DIR_ERROR)
-                message(STATUS "DEBUG: -print-resource-dir error = ${CLANG_RESOURCE_DIR_ERROR}")
-            endif()
-            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+            if(EXISTS "${CLANG_RESOURCE_DIR}/include")
                 message(STATUS "DEBUG: ${CLANG_RESOURCE_DIR}/include EXISTS")
             else()
                 message(STATUS "DEBUG: ${CLANG_RESOURCE_DIR}/include DOES NOT EXIST")
