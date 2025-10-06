@@ -410,6 +410,7 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
  * @see create_mixed_ascii_frame_for_client() For frame consumption
  */
 void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
+  log_debug("handle_image_frame_packet: Processing IMAGE_FRAME from client %u, len=%zu", client->client_id, len);
   // Handle incoming image data from client
   // New format: [width:4][height:4][compressed_flag:4][data_size:4][rgb_data:data_size]
   // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
@@ -527,11 +528,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
           // Commit the frame (atomic swap)
           video_frame_commit(client->incoming_video_buffer);
-
-#ifdef DEBUG_THREADS
-          log_debug("Stored image from client %u (size=%zu, seq=%llu)", atomic_load(&client->client_id),
-                    old_packet_size, client->frames_received);
-#endif
+          log_debug("Stored video frame from client %u (size=%zu, seq=%llu) - render threads should process this",
+                    atomic_load(&client->client_id), old_packet_size, client->frames_received);
         } else {
           log_warn("Frame from client %u too large (%zu bytes)", atomic_load(&client->client_id), old_packet_size);
         }

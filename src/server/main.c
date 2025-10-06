@@ -185,8 +185,8 @@ static bool g_stats_logger_thread_created = false;
  */
 
 /** Global server crypto state */
-static bool g_server_encryption_enabled = false;
-static private_key_t g_server_private_key = {0};
+bool g_server_encryption_enabled = false;
+private_key_t g_server_private_key = {0};
 static public_key_t g_client_whitelist[MAX_CLIENTS] = {0};
 static size_t g_num_whitelisted_clients = 0;
 

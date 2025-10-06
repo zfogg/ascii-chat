@@ -209,11 +209,16 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t* ctx, socke
     size_t packet_len = sizeof(packet_type) + 32;
 
     // Send auth response to server
+    log_debug("Client sending auth response: %zu bytes (type=%u, hmac=32 bytes)", packet_len, packet_type);
+    log_debug("CLIENT_AUTH_RESPONSE: packet_type=0x%x, packet_len=%zu", packet_type, packet_len);
+    log_debug("CLIENT_AUTH_RESPONSE: first 8 bytes = %02x %02x %02x %02x %02x %02x %02x %02x",
+              packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
     ssize_t sent = socket_send(client_socket, packet, packet_len, 0);
     if (sent != (ssize_t)packet_len) {
-        log_error("Failed to send auth response");
+        log_error("Failed to send auth response: sent %zd/%zu bytes", sent, packet_len);
         return -1;
     }
+    log_debug("Client successfully sent auth response: %zd bytes", sent);
 
     ctx->state = CRYPTO_HANDSHAKE_AUTHENTICATING;
     log_debug("Client sent auth response to server");
@@ -227,10 +232,25 @@ int crypto_handshake_server_complete(crypto_handshake_context_t* ctx, socket_t c
 
     // Receive auth response
     uint8_t packet[1024];
+    log_debug("Server waiting for auth response from client");
     ssize_t received = socket_recv(client_socket, packet, sizeof(packet), 0);
     if (received < 0) {
         log_error("Failed to receive auth response");
         return -1;
+    }
+    log_debug("Server received auth response: %zd bytes", received);
+
+    // Debug: Log the first few bytes of the packet to understand what we're receiving
+    if (received > 0) {
+        log_debug("Server received packet data: first 8 bytes = %02x %02x %02x %02x %02x %02x %02x %02x",
+                  packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
+
+        // Check if this might be a different packet type
+        if (received >= 4) {
+            uint32_t packet_type = *(uint32_t*)packet;
+            log_debug("Server received packet type: 0x%x (expected AUTH_RESPONSE=0x%x)",
+                      packet_type, CRYPTO_PACKET_AUTH_RESPONSE);
+        }
     }
 
     // Process auth response

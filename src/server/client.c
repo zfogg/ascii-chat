@@ -308,7 +308,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->connected_at = time(NULL);
 
   // Initialize crypto context for this client
-  memset(&client->crypto_ctx, 0, sizeof(client->crypto_ctx));
+  memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
   client->crypto_initialized = false;
 
   // Configure socket options for optimal performance
@@ -482,11 +482,13 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 #endif
 
   // NEW: Create per-client rendering threads
+  log_debug("Creating render threads for client %u", client->client_id);
   if (create_client_render_threads(client) != 0) {
     log_error("Failed to create render threads for client %u", client->client_id);
     (void)remove_client(client->client_id);
     return -1;
   }
+  log_debug("Successfully created render threads for client %u", client->client_id);
 
   // Perform crypto handshake if encryption is enabled (after client is in hashtable)
   if (server_crypto_init() == 0) {
@@ -609,7 +611,7 @@ int remove_client(uint32_t client_id) {
 
   // Cleanup crypto context for this client
   if (target_client->crypto_initialized) {
-    crypto_handshake_cleanup(&target_client->crypto_ctx);
+    crypto_handshake_cleanup(&target_client->crypto_handshake_ctx);
     target_client->crypto_initialized = false;
     log_debug("Crypto context cleaned up for client %u", client_id);
   }
@@ -701,95 +703,25 @@ void *client_receive_thread(void *arg) {
 
     // Handle different packet types from client
     switch (type) {
-        case PACKET_TYPE_ENCRYPTED:
-          // Process the encrypted packet
-          log_debug("Received encrypted packet from client %u: %zu bytes", client->client_id, len);
-          if (crypto_server_is_ready(client->client_id)) {
-            // Allocate buffer for decrypted data
-            void* decrypted_data = buffer_pool_alloc(len);
-            if (!decrypted_data) {
-              log_error("Failed to allocate buffer for decrypted packet from client %u", client->client_id);
-              buffer_pool_free(data, len);
-              data = NULL;
-              continue;
-            }
-
-            size_t decrypted_len;
-            int decrypt_result = crypto_decrypt(&client->crypto_ctx.crypto_ctx, (const uint8_t*)data, len,
-                                               (uint8_t*)decrypted_data, len, &decrypted_len);
-
-            if (decrypt_result != 0) {
-              log_error("Failed to process encrypted packet from client %u (result=%d)", client->client_id, decrypt_result);
-              buffer_pool_free(data, len);
-              buffer_pool_free(decrypted_data, len);
-              data = NULL;
-              continue;
-            }
-
-            // Replace encrypted data with decrypted data
-            buffer_pool_free(data, len);
-            data = decrypted_data;
-            len = decrypted_len;
-
-            log_debug("Processed encrypted packet from client %u: %zu bytes", client->client_id, len);
-
-            // Now process the decrypted packet by parsing its header
-            if (len >= sizeof(packet_header_t)) {
-              packet_header_t* header = (packet_header_t*)data;
-              type = (packet_type_t)ntohs(header->type);
-              sender_id = ntohl(header->client_id);
-
-              // Adjust data pointer to skip header
-              data = (uint8_t*)data + sizeof(packet_header_t);
-              len -= sizeof(packet_header_t);
-            } else {
-              log_error("Decrypted packet too small for header from client %u", client->client_id);
-              buffer_pool_free(data, len);
-              data = NULL;
-              continue;
-            }
-          } else {
-            log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
-            buffer_pool_free(data, len);
-            data = NULL;
-            continue;
-          }
-          // Fall through to process the decrypted packet
+    case PACKET_TYPE_ENCRYPTED:
+      if (process_encrypted_packet(client, &type, &data, &len, &sender_id) != 0) {
+        log_error("Failed to process encrypted packet from client %u", client->client_id);
+        continue;
+      }
+      // Process the decrypted packet
+      process_decrypted_packet(client, type, data, len);
+      break;
     case PACKET_TYPE_CLIENT_JOIN:
-      handle_client_join_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_STREAM_START:
-      handle_stream_start_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_STREAM_STOP:
-      handle_stream_stop_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_IMAGE_FRAME:
-      handle_image_frame_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_AUDIO:
-      handle_audio_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_AUDIO_BATCH:
-      handle_audio_batch_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_CLIENT_CAPABILITIES:
-      handle_client_capabilities_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_PING:
-      handle_ping_packet(client);
-      break;
-
     case PACKET_TYPE_PONG:
-      // Handle pong from client - just log it
-      log_debug("Received PONG from client %u", client->client_id);
+      // Process all packet types using the unified function
+      process_decrypted_packet(client, type, data, len);
       break;
 
     default:
@@ -947,28 +879,104 @@ void *client_send_thread_func(void *arg) {
             memcpy(payload + sizeof(ascii_frame_packet_t), frame->data, frame->size);
             header.crc32 = htonl(asciichat_crc32(payload, payload_size));
 
-            // Send packet header
-            ssize_t sent = send_with_timeout(client->socket, &header, sizeof(header), SEND_TIMEOUT);
-            if (sent == sizeof(header)) {
-              // Send payload
-              sent = send_with_timeout(client->socket, payload, payload_size, SEND_TIMEOUT);
-              if (sent != (ssize_t)payload_size) {
+            // Check if crypto is ready and encrypt the packet
+            if (crypto_server_is_ready(client->client_id)) {
+              log_debug("Encrypting ASCII frame packet to client %u", client->client_id);
+              // Combine header and payload for encryption
+              size_t plaintext_len = sizeof(header) + payload_size;
+              uint8_t* plaintext = buffer_pool_alloc(plaintext_len);
+              if (!plaintext) {
+                log_error("Failed to allocate buffer for encrypted packet to client %u", client->client_id);
+                rwlock_rdunlock(&client->video_buffer_rwlock);
+                break;
+              }
+
+              memcpy(plaintext, &header, sizeof(header));
+              memcpy(plaintext + sizeof(header), payload, payload_size);
+
+              // Encrypt the packet
+              size_t ciphertext_len;
+              size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+              uint8_t* ciphertext = buffer_pool_alloc(ciphertext_size);
+              if (!ciphertext) {
+                log_error("Failed to allocate buffer for ciphertext to client %u", client->client_id);
+                buffer_pool_free(plaintext, plaintext_len);
+                rwlock_rdunlock(&client->video_buffer_rwlock);
+                break;
+              }
+
+              int encrypt_result = crypto_server_encrypt_packet(client->client_id, plaintext, plaintext_len,
+                                                               ciphertext, ciphertext_size, &ciphertext_len);
+              if (encrypt_result != 0) {
+                log_error("Failed to encrypt packet to client %u (result=%d)", client->client_id, encrypt_result);
+                buffer_pool_free(plaintext, plaintext_len);
+                buffer_pool_free(ciphertext, ciphertext_size);
+                rwlock_rdunlock(&client->video_buffer_rwlock);
+                break;
+              }
+
+              // Send as PACKET_TYPE_ENCRYPTED
+              packet_header_t encrypted_header = {
+                .magic = htonl(PACKET_MAGIC),
+                .type = htons(PACKET_TYPE_ENCRYPTED),
+                .length = htonl((uint32_t)ciphertext_len),
+                .crc32 = htonl(asciichat_crc32(ciphertext, ciphertext_len)),
+                .client_id = htonl(0) // Server sends as client_id 0
+              };
+
+              ssize_t sent = send_with_timeout(client->socket, &encrypted_header, sizeof(encrypted_header), SEND_TIMEOUT);
+              if (sent == sizeof(encrypted_header)) {
+                sent = send_with_timeout(client->socket, ciphertext, ciphertext_len, SEND_TIMEOUT);
+                if (sent == (ssize_t)ciphertext_len) {
+                  sent_something = true;
+                  last_video_send_time = current_time;
+                  log_debug("Sent encrypted packet to client %u: %zu bytes", client->client_id, ciphertext_len);
+                } else {
+                  if (!atomic_load(&g_should_exit)) {
+                    log_error("Failed to send encrypted packet payload to client %u: %zd/%zu bytes", client->client_id, sent, ciphertext_len);
+                  }
+                  buffer_pool_free(plaintext, plaintext_len);
+                  buffer_pool_free(ciphertext, ciphertext_size);
+                  rwlock_rdunlock(&client->video_buffer_rwlock);
+                  break;
+                }
+              } else {
                 if (!atomic_load(&g_should_exit)) {
-                  log_error("Failed to send video frame payload to client %u: %zd/%zu bytes", client->client_id, sent,
-                            payload_size);
+                  log_error("Failed to send encrypted packet header to client %u: %zd/%zu bytes", client->client_id, sent, sizeof(encrypted_header));
+                }
+                buffer_pool_free(plaintext, plaintext_len);
+                buffer_pool_free(ciphertext, ciphertext_size);
+                rwlock_rdunlock(&client->video_buffer_rwlock);
+                break;
+              }
+
+              buffer_pool_free(plaintext, plaintext_len);
+              buffer_pool_free(ciphertext, ciphertext_size);
+            } else {
+              // No encryption - send normal packet
+              log_debug("Sending unencrypted ASCII frame packet to client %u", client->client_id);
+              ssize_t sent = send_with_timeout(client->socket, &header, sizeof(header), SEND_TIMEOUT);
+              if (sent == sizeof(header)) {
+                // Send payload
+                sent = send_with_timeout(client->socket, payload, payload_size, SEND_TIMEOUT);
+                if (sent != (ssize_t)payload_size) {
+                  if (!atomic_load(&g_should_exit)) {
+                    log_error("Failed to send video frame payload to client %u: %zd/%zu bytes", client->client_id, sent,
+                              payload_size);
+                  }
+                  rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
+                  break;                                         // Socket error
+                }
+                sent_something = true;
+                last_video_send_time = current_time;
+              } else {
+                if (!atomic_load(&g_should_exit)) {
+                  log_error("Failed to send video frame header to client %u: %zd/%zu bytes", client->client_id, sent,
+                            sizeof(header));
                 }
                 rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
                 break;                                         // Socket error
               }
-              sent_something = true;
-              last_video_send_time = current_time;
-            } else {
-              if (!atomic_load(&g_should_exit)) {
-                log_error("Failed to send video frame header to client %u: %zd/%zu bytes", client->client_id, sent,
-                          sizeof(header));
-              }
-              rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
-              break;                                         // Socket error
             }
           } else {
             log_warn("Video frame too large for send buffer: %zu > %zu", payload_size, client->send_buffer_size);
@@ -1101,4 +1109,129 @@ void cleanup_client_packet_queues(client_info_t *client) {
   }
 
   // Video now uses double buffer, cleaned up in cleanup_client_media_buffers
+}
+
+/**
+ * Process an encrypted packet from a client
+ *
+ * @param client Client info structure
+ * @param type Pointer to packet type (will be updated with decrypted type)
+ * @param data Pointer to packet data (will be updated with decrypted data)
+ * @param len Pointer to packet length (will be updated with decrypted length)
+ * @param sender_id Pointer to sender ID (will be updated with decrypted sender ID)
+ * @return 0 on success, -1 on error
+ */
+int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **data, size_t *len, uint32_t *sender_id) {
+  // Process the encrypted packet
+  log_debug("Received encrypted packet from client %u: %zu bytes", client->client_id, *len);
+  if (crypto_server_is_ready(client->client_id)) {
+    // Allocate buffer for decrypted data
+    void* decrypted_data = buffer_pool_alloc(*len);
+    if (!decrypted_data) {
+      log_error("Failed to allocate buffer for decrypted packet from client %u", client->client_id);
+      buffer_pool_free(*data, *len);
+      *data = NULL;
+      return -1;
+    }
+
+    size_t decrypted_len;
+    int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t*)*data, *len,
+                                                    (uint8_t*)decrypted_data, *len, &decrypted_len);
+
+    if (decrypt_result != 0) {
+      log_error("Failed to process encrypted packet from client %u (result=%d)", client->client_id, decrypt_result);
+      buffer_pool_free(*data, *len);
+      buffer_pool_free(decrypted_data, *len);
+      *data = NULL;
+      return -1;
+    }
+
+    // Replace encrypted data with decrypted data
+    buffer_pool_free(*data, *len);
+    *data = decrypted_data;
+    *len = decrypted_len;
+
+    log_debug("Processed encrypted packet from client %u: %zu bytes", client->client_id, *len);
+
+    // Now process the decrypted packet by parsing its header
+    if (*len >= sizeof(packet_header_t)) {
+      packet_header_t* header = (packet_header_t*)*data;
+      *type = (packet_type_t)ntohs(header->type);
+      *sender_id = ntohl(header->client_id);
+
+      log_debug("Decrypted packet from client %u: type=%d, len=%zu", client->client_id, *type, *len);
+
+      // Adjust data pointer to skip header
+      *data = (uint8_t*)*data + sizeof(packet_header_t);
+      *len -= sizeof(packet_header_t);
+    } else {
+      log_error("Decrypted packet too small for header from client %u", client->client_id);
+      buffer_pool_free(*data, *len);
+      *data = NULL;
+      return -1;
+    }
+  } else {
+    log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
+    buffer_pool_free(*data, *len);
+    *data = NULL;
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * Process a decrypted packet from a client
+ *
+ * @param client Client info structure
+ * @param type Packet type
+ * @param data Packet data
+ * @param len Packet length
+ */
+void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
+  switch (type) {
+    case PACKET_TYPE_IMAGE_FRAME:
+      log_debug("Processing decrypted IMAGE_FRAME packet from client %u: %zu bytes", client->client_id, len);
+      handle_image_frame_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_AUDIO:
+      handle_audio_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_AUDIO_BATCH:
+      handle_audio_batch_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_CLIENT_JOIN:
+      handle_client_join_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_STREAM_START:
+      handle_stream_start_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_STREAM_STOP:
+      handle_stream_stop_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_CLIENT_CAPABILITIES:
+      handle_client_capabilities_packet(client, data, len);
+      break;
+
+    case PACKET_TYPE_PING:
+      // Respond with PONG
+      if (send_pong_packet(client->socket) < 0) {
+        log_error("Failed to send PONG response to client %u", client->client_id);
+      }
+      break;
+
+    case PACKET_TYPE_PONG:
+      // Client acknowledged our PING - no action needed
+      break;
+
+    default:
+      log_warn("Unknown decrypted packet type: %d from client %u", type, client->client_id);
+      break;
+  }
 }

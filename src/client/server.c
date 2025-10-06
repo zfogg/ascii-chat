@@ -111,8 +111,8 @@ static mutex_t g_send_mutex = {0};
  * Crypto State
  * ============================================================================ */
 
-/** Global crypto handshake context */
-static crypto_handshake_context_t g_crypto_ctx = {0};
+/** Per-connection crypto handshake context */
+crypto_handshake_context_t g_crypto_ctx = {0};
 
 /** Whether encryption is enabled for this connection */
 static bool g_encryption_enabled = false;
@@ -365,20 +365,26 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   atomic_store(&g_should_reconnect, false);
 
   // Initialize crypto BEFORE starting protocol handshake
-  if (init_client_crypto() != 0) {
+  log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
+  if (client_crypto_init() != 0) {
     log_error("Failed to initialize crypto");
+    log_debug("CLIENT_CONNECT: client_crypto_init() failed");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
   }
+  log_debug("CLIENT_CONNECT: client_crypto_init() succeeded");
 
   // Perform crypto handshake if encryption is enabled
-  if (perform_crypto_handshake() != 0) {
+  log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
+  if (client_crypto_handshake(g_sockfd) != 0) {
     log_error("Crypto handshake failed");
+    log_debug("CLIENT_CONNECT: client_crypto_handshake() failed");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
   }
+  log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message
@@ -620,7 +626,7 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
           return -1;
         }
 
-        int encrypt_result = crypto_encrypt(&g_crypto_ctx.crypto_ctx, plaintext, plaintext_len,
+        int encrypt_result = crypto_handshake_encrypt_packet(&g_crypto_ctx, plaintext, plaintext_len,
                                            ciphertext, ciphertext_size, &ciphertext_len);
         if (encrypt_result != 0) {
           log_error("Failed to encrypt packet (result=%d)", encrypt_result);

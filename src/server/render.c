@@ -503,8 +503,12 @@ void *client_video_render_thread(void *arg) {
     struct timespec gen_start, gen_end;
     (void)clock_gettime(CLOCK_MONOTONIC, &gen_start);
 
+    log_debug("Video render thread: Generating ASCII frame for client %u (%dx%d)",
+              client_id_snapshot, width_snapshot, height_snapshot);
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
+    log_debug("Video render thread: Generated ASCII frame for client %u, size=%zu, sources=%d",
+              client_id_snapshot, frame_size, sources_count);
 
     (void)clock_gettime(CLOCK_MONOTONIC, &gen_end);
     uint64_t gen_time_us = ((uint64_t)gen_end.tv_sec * 1000000 + (uint64_t)gen_end.tv_nsec / 1000) -
@@ -1000,6 +1004,7 @@ int create_client_render_threads(client_info_t *client) {
   atomic_store(&client->audio_render_thread_running, true);
 
   // Create video rendering thread
+  log_debug("Creating video render thread for client %u", client->client_id);
   if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
     // Reset flag since thread creation failed
@@ -1007,7 +1012,7 @@ int create_client_render_threads(client_info_t *client) {
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
-  log_info("Created video render thread for client %u", client->client_id);
+  log_debug("Successfully created video render thread for client %u", client->client_id);
 
   // Create audio rendering thread
   if (ascii_thread_create(&client->audio_render_thread, client_audio_render_thread, client) != 0) {
