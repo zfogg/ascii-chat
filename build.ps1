@@ -8,6 +8,7 @@
 #   .\build.ps1 -Clean             # Clean and reconfigure from scratch
 #   .\build.ps1 -MinGW             # Use custom config with GCC/Clang in MinGW mode
 #   .\build.ps1 -VSWithClang       # Use custom config with Visual Studio + ClangCL
+#   .\build.ps1 -NoMimalloc        # Disable mimalloc allocator (use system malloc)
 #   .\build.ps1 -BuildDir mybuild  # Use custom build directory (disables presets)
 #   .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"  # Add compiler flags (disables presets)
 #
@@ -21,6 +22,7 @@ param(
   [switch]$MinGW,
   [switch]$Verbose,
   [switch]$VSWithClang,
+  [switch]$NoMimalloc,
   [string[]]$CFlags = @()
 )
 
@@ -70,7 +72,7 @@ if ($needsConfigure) {
   $presetName = $Config.ToLower()
     
   # Check if using special modes that require custom configuration
-  $useCustomConfig = $MinGW -or $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build")
+  $useCustomConfig = $MinGW -or $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
     
   if ($useCustomConfig) {
     Write-Host "Using custom configuration (preset not applicable with current flags)" -ForegroundColor Yellow
@@ -137,6 +139,12 @@ if ($needsConfigure) {
       $flagString = $CFlags -join " "
       $cmakeArgs += "-DCMAKE_C_FLAGS=$flagString"
       Write-Host "Using C flags: $flagString" -ForegroundColor Yellow
+    }
+
+    # Disable mimalloc if requested
+    if ($NoMimalloc) {
+      $cmakeArgs += "-DUSE_MIMALLOC=OFF"
+      Write-Host "Disabling mimalloc allocator (using system malloc)" -ForegroundColor Yellow
     }
 
     if ($Verbose) {

@@ -11,6 +11,7 @@
 #include "platform/terminal.h"
 #include "palette.h"
 #include "hashtable.h"
+#include "crypto/handshake.h"
 
 // Use definitions from network.h (MAX_CLIENTS, MAX_DISPLAY_NAME_LEN)
 
@@ -90,6 +91,10 @@ typedef struct {
   mutex_t client_state_mutex;
   // THREAD-SAFE FRAMEBUFFER: Per-client video buffer rwlock for concurrent reads
   rwlock_t video_buffer_rwlock;
+
+  // Per-client crypto context for secure communication
+  crypto_handshake_context_t crypto_ctx;
+  bool crypto_initialized;
 } client_info_t;
 
 /* ============================================================================

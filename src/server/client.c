@@ -120,6 +120,7 @@
 #include "render.h"
 #include "stream.h"
 #include "crypto.h"
+#include "crypto/handshake.h"
 #include "common.h"
 #include "buffer_pool.h"
 #include "network.h"
@@ -305,6 +306,10 @@ int add_client(socket_t socket, const char *client_ip, int port) {
            socket);
   client->connected_at = time(NULL);
 
+  // Initialize crypto context for this client
+  memset(&client->crypto_ctx, 0, sizeof(client->crypto_ctx));
+  client->crypto_initialized = false;
+
   // Configure socket options for optimal performance
   if (set_socket_keepalive(socket) < 0) {
     log_warn("Failed to set socket keepalive for client %u: %s", atomic_load(&client->client_id),
@@ -330,17 +335,6 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
     log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id),
              network_error_string(errno));
-  }
-
-  // Perform crypto handshake if encryption is enabled
-  if (server_crypto_init() == 0) {
-    int crypto_result = server_crypto_handshake(socket);
-    if (crypto_result != 0) {
-      log_error("Crypto handshake failed for client %u: %s", atomic_load(&client->client_id),
-                network_error_string(errno));
-      rwlock_wrunlock(&g_client_manager_rwlock);
-      return -1;
-    }
   }
 
   SAFE_IGNORE_PRINTF_RESULT(
@@ -493,6 +487,17 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     return -1;
   }
 
+  // Perform crypto handshake if encryption is enabled (after client is in hashtable)
+  if (server_crypto_init() == 0) {
+    int crypto_result = server_crypto_handshake(socket);
+    if (crypto_result != 0) {
+      log_error("Crypto handshake failed for client %u: %s", atomic_load(&client->client_id),
+                network_error_string(errno));
+      (void)remove_client(atomic_load(&client->client_id));
+      return -1;
+    }
+  }
+
   // Broadcast server state to ALL clients AFTER the new client is fully set up
   // This notifies all clients (including the new one) about the updated grid
   broadcast_server_state_to_all_clients();
@@ -601,6 +606,13 @@ int remove_client(uint32_t client_id) {
     log_warn("Failed to remove client %u from hash table", client_id);
   }
 
+  // Cleanup crypto context for this client
+  if (target_client->crypto_initialized) {
+    crypto_handshake_cleanup(&target_client->crypto_ctx);
+    target_client->crypto_initialized = false;
+    log_debug("Crypto context cleaned up for client %u", client_id);
+  }
+
   // Destroy mutexes and rwlocks
   // IMPORTANT: Always destroy these even if threads didn't join properly
   // to prevent issues when the slot is reused
@@ -656,8 +668,15 @@ void *client_receive_thread(void *arg) {
   size_t len;
 
   while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
-    // Receive packet from this client
-    int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+    // Check if crypto handshake is complete and use encrypted packet reception
+    int result;
+    if (crypto_server_is_ready(client->client_id)) {
+      // Use encrypted packet reception
+      result = receive_encrypted_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+    } else {
+      // Use normal packet reception (for handshake packets)
+      result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+    }
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_should_exit)) {
@@ -688,6 +707,59 @@ void *client_receive_thread(void *arg) {
 
     // Handle different packet types from client
     switch (type) {
+    case PACKET_TYPE_ENCRYPTED:
+      // Decrypt the encrypted packet
+      if (crypto_server_is_ready(client->client_id)) {
+        // Allocate buffer for decrypted data
+        void* decrypted_data = buffer_pool_alloc(len);
+        if (!decrypted_data) {
+          log_error("Failed to allocate buffer for decrypted packet from client %u", client->client_id);
+          buffer_pool_free(data, len);
+          data = NULL;
+          continue;
+        }
+
+        size_t decrypted_len;
+        int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t*)data, len,
+                                                        (uint8_t*)decrypted_data, len, &decrypted_len);
+
+        if (decrypt_result != 0) {
+          log_error("Failed to decrypt packet from client %u", client->client_id);
+          buffer_pool_free(data, len);
+          buffer_pool_free(decrypted_data, len);
+          data = NULL;
+          continue;
+        }
+
+        // Replace encrypted data with decrypted data
+        buffer_pool_free(data, len);
+        data = decrypted_data;
+        len = decrypted_len;
+
+        log_debug("Decrypted packet from client %u: %zu bytes", client->client_id, len);
+
+        // Now process the decrypted packet by parsing its header
+        if (len >= sizeof(packet_header_t)) {
+          packet_header_t* header = (packet_header_t*)data;
+          type = (packet_type_t)ntohs(header->type);
+          sender_id = ntohl(header->client_id);
+
+          // Adjust data pointer to skip header
+          data = (uint8_t*)data + sizeof(packet_header_t);
+          len -= sizeof(packet_header_t);
+        } else {
+          log_error("Decrypted packet too small for header from client %u", client->client_id);
+          buffer_pool_free(data, len);
+          data = NULL;
+          continue;
+        }
+      } else {
+        log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
+        buffer_pool_free(data, len);
+        data = NULL;
+        continue;
+      }
+      // Fall through to process the decrypted packet
     case PACKET_TYPE_CLIENT_JOIN:
       handle_client_join_packet(client, data, len);
       break;

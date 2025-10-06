@@ -1918,7 +1918,1475 @@ typedef enum {
 } packet_type_t;
 ```
 
-(Rest of Phase 4, 5, and 6 remain similar to previous plan, but using SSH key infrastructure)
+### Phase 5: Encryption Integration (2 hours)
+
+**Goal**: Integrate crypto handshake into client/server main loops, add encryption/decryption to packet processing, update client/server to use new crypto options
+
+#### 5.1 Update Client Main Loop (src/client/main.c)
+
+**Add crypto state to client**:
+
+```c
+// Add to top of main.c
+#include "crypto/handshake.h"
+#include "crypto/known_hosts.h"
+
+// Global crypto state
+static crypto_handshake_context_t g_crypto_ctx = {0};
+static bool g_encryption_enabled = false;
+
+// Initialize crypto for client
+static int init_client_crypto(void) {
+    // Check if encryption is disabled
+    if (opt_no_encrypt) {
+        log_info("Encryption: DISABLED (--no-encrypt)");
+        return 0;
+    }
+
+    // Initialize crypto handshake
+    if (crypto_handshake_init(&g_crypto_ctx, false) != 0) {
+        log_error("Failed to initialize crypto handshake");
+        return -1;
+    }
+
+    // Set expected server key if provided
+    if (strlen(opt_server_key) > 0) {
+        if (parse_public_key(opt_server_key, &g_crypto_ctx.expected_server_key) != 0) {
+            log_error("Invalid --server-key format: %s", opt_server_key);
+            return -1;
+        }
+        g_crypto_ctx.verify_server_key = true;
+        log_info("Will verify server key against: %s", opt_server_key);
+    }
+
+    g_encryption_enabled = true;
+    log_info("Encryption: ENABLED");
+    return 0;
+}
+
+// Perform crypto handshake with server
+static int perform_crypto_handshake(socket_t server_socket) {
+    if (!g_encryption_enabled) return 0;
+
+    log_info("Starting crypto handshake...");
+
+    // Client: Process server's public key and send our public key
+    if (crypto_handshake_client_key_exchange(&g_crypto_ctx, server_socket) != 0) {
+        log_error("Crypto handshake failed during key exchange");
+        return -1;
+    }
+
+    // Client: Process auth challenge and send response
+    if (crypto_handshake_client_auth_response(&g_crypto_ctx, server_socket) != 0) {
+        log_error("Crypto handshake failed during authentication");
+        return -1;
+    }
+
+    // Check if handshake is complete
+    if (!crypto_handshake_is_ready(&g_crypto_ctx)) {
+        log_error("Crypto handshake did not complete successfully");
+        return -1;
+    }
+
+    log_info("✓ Crypto handshake completed - encryption ready");
+    return 0;
+}
+
+// Encrypt packet before sending
+static int send_encrypted_packet(socket_t socket, const uint8_t* data, size_t len) {
+    if (!g_encryption_enabled) {
+        // Send unencrypted
+        return socket_send(socket, data, len, 0);
+    }
+
+    // Encrypt packet
+    uint8_t encrypted[PACKET_MAX_SIZE];
+    size_t encrypted_len;
+
+    if (crypto_handshake_encrypt_packet(&g_crypto_ctx, data, len,
+                                       encrypted, sizeof(encrypted), &encrypted_len) != 0) {
+        log_error("Failed to encrypt packet");
+        return -1;
+    }
+
+    return socket_send(socket, encrypted, encrypted_len, 0);
+}
+
+// Decrypt packet after receiving
+static int recv_encrypted_packet(socket_t socket, uint8_t* data, size_t max_len, size_t* actual_len) {
+    uint8_t encrypted[PACKET_MAX_SIZE];
+    ssize_t received = socket_recv(socket, encrypted, sizeof(encrypted), 0);
+    if (received <= 0) {
+        *actual_len = 0;
+        return (int)received;
+    }
+
+    if (!g_encryption_enabled) {
+        // Receive unencrypted
+        memcpy(data, encrypted, received);
+        *actual_len = received;
+        return 0;
+    }
+
+    // Decrypt packet
+    if (crypto_handshake_decrypt_packet(&g_crypto_ctx, encrypted, received,
+                                       data, max_len, actual_len) != 0) {
+        log_error("Failed to decrypt packet");
+        return -1;
+    }
+
+    return 0;
+}
+```
+
+**Update main() function**:
+
+```c
+int main(int argc, char **argv) {
+    // ... existing argument parsing ...
+
+    // Initialize crypto BEFORE connecting to server
+    if (init_client_crypto() != 0) {
+        log_error("Failed to initialize crypto");
+        exit(1);
+    }
+
+    // ... existing connection code ...
+
+    // Perform crypto handshake AFTER connecting but BEFORE starting video/audio
+    if (perform_crypto_handshake(server_socket) != 0) {
+        log_error("Crypto handshake failed");
+        socket_close(server_socket);
+        exit(1);
+    }
+
+    // ... existing video/audio setup ...
+
+    // Main loop - replace all socket_send/socket_recv with encrypted versions
+    while (running) {
+        // Send video frame (encrypted)
+        if (send_encrypted_packet(server_socket, video_data, video_len) < 0) {
+            log_error("Failed to send encrypted video packet");
+            break;
+        }
+
+        // Receive audio data (decrypted)
+        uint8_t audio_data[PACKET_MAX_SIZE];
+        size_t audio_len;
+        if (recv_encrypted_packet(server_socket, audio_data, sizeof(audio_data), &audio_len) < 0) {
+            log_error("Failed to receive encrypted audio packet");
+            break;
+        }
+        // ... process audio_data ...
+    }
+
+    // Cleanup
+    if (g_encryption_enabled) {
+        crypto_handshake_cleanup(&g_crypto_ctx);
+    }
+
+    // ... existing cleanup ...
+}
+```
+
+#### 5.2 Update Server Main Loop (src/server/main.c)
+
+**Add crypto state to server**:
+
+```c
+// Add to top of main.c
+#include "crypto/handshake.h"
+#include "crypto/keys.h"
+
+// Per-client crypto state
+typedef struct {
+    socket_t client_socket;
+    crypto_handshake_context_t crypto_ctx;
+    bool encryption_enabled;
+    bool handshake_complete;
+} client_crypto_state_t;
+
+// Global server crypto state
+static bool g_server_encryption_enabled = false;
+static private_key_t g_server_private_key = {0};
+static public_key_t g_client_whitelist[MAX_CLIENTS] = {0};
+static size_t g_num_whitelisted_clients = 0;
+
+// Initialize crypto for server
+static int init_server_crypto(void) {
+    // Check if encryption is disabled
+    if (opt_no_encrypt) {
+        log_info("Encryption: DISABLED (--no-encrypt)");
+        return 0;
+    }
+
+    // Load server private key if provided
+    if (strlen(opt_ssh_key) > 0) {
+        if (parse_private_key(opt_ssh_key, &g_server_private_key) != 0) {
+            log_error("Failed to load server SSH key: %s", opt_ssh_key);
+            return -1;
+        }
+        log_info("Using SSH key: %s", opt_ssh_key);
+    } else {
+        // Generate ephemeral keypair
+        crypto_generate_keypair(g_server_private_key.key.x25519,
+                               g_server_private_key.key.x25519);
+        g_server_private_key.type = KEY_TYPE_X25519;
+        log_info("Generated ephemeral server keypair");
+    }
+
+    // Load client whitelist if provided
+    if (strlen(opt_client_keys) > 0) {
+        if (parse_authorized_keys(opt_client_keys, g_client_whitelist,
+                                 &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+            log_error("Failed to load client keys: %s", opt_client_keys);
+            return -1;
+        }
+        log_info("Server will only accept %zu whitelisted clients", g_num_whitelisted_clients);
+    }
+
+    g_server_encryption_enabled = true;
+    log_info("Encryption: ENABLED");
+    return 0;
+}
+
+// Handle crypto handshake for a new client
+static int handle_client_crypto_handshake(client_crypto_state_t* client_state) {
+    if (!g_server_encryption_enabled) return 0;
+
+    // Initialize crypto handshake for this client
+    if (crypto_handshake_init(&client_state->crypto_ctx, true) != 0) {
+        log_error("Failed to initialize crypto handshake for client");
+        return -1;
+    }
+
+    // Set server keys
+    memcpy(&client_state->crypto_ctx.server_private_key, &g_server_private_key, sizeof(private_key_t));
+
+    // Set client whitelist if configured
+    if (g_num_whitelisted_clients > 0) {
+        client_state->crypto_ctx.require_client_auth = true;
+        // TODO: Set client keys in context
+    }
+
+    // Server: Start crypto handshake by sending public key
+    if (crypto_handshake_server_start(&client_state->crypto_ctx, client_state->client_socket) != 0) {
+        log_error("Failed to start crypto handshake");
+        return -1;
+    }
+
+    // Server: Process client's public key and send auth challenge
+    if (crypto_handshake_server_auth_challenge(&client_state->crypto_ctx, client_state->client_socket) != 0) {
+        log_error("Failed to process client key exchange");
+        return -1;
+    }
+
+    // Server: Process auth response and complete handshake
+    if (crypto_handshake_server_complete(&client_state->crypto_ctx, client_state->client_socket) != 0) {
+        log_error("Failed to complete crypto handshake");
+        return -1;
+    }
+
+    if (!crypto_handshake_is_ready(&client_state->crypto_ctx)) {
+        log_error("Crypto handshake did not complete successfully");
+        return -1;
+    }
+
+    client_state->encryption_enabled = true;
+    client_state->handshake_complete = true;
+    log_info("✓ Crypto handshake completed with client - encryption ready");
+    return 0;
+}
+
+// Encrypt packet before sending to client
+static int send_encrypted_packet_to_client(client_crypto_state_t* client_state,
+                                          const uint8_t* data, size_t len) {
+    if (!client_state->encryption_enabled) {
+        // Send unencrypted
+        return socket_send(client_state->client_socket, data, len, 0);
+    }
+
+    // Encrypt packet
+    uint8_t encrypted[PACKET_MAX_SIZE];
+    size_t encrypted_len;
+
+    if (crypto_handshake_encrypt_packet(&client_state->crypto_ctx, data, len,
+                                       encrypted, sizeof(encrypted), &encrypted_len) != 0) {
+        log_error("Failed to encrypt packet to client");
+        return -1;
+    }
+
+    return socket_send(client_state->client_socket, encrypted, encrypted_len, 0);
+}
+
+// Decrypt packet received from client
+static int recv_encrypted_packet_from_client(client_crypto_state_t* client_state,
+                                            uint8_t* data, size_t max_len, size_t* actual_len) {
+    uint8_t encrypted[PACKET_MAX_SIZE];
+    ssize_t received = socket_recv(client_state->client_socket, encrypted, sizeof(encrypted), 0);
+    if (received <= 0) {
+        *actual_len = 0;
+        return (int)received;
+    }
+
+    if (!client_state->encryption_enabled) {
+        // Receive unencrypted
+        memcpy(data, encrypted, received);
+        *actual_len = received;
+        return 0;
+    }
+
+    // Decrypt packet
+    if (crypto_handshake_decrypt_packet(&client_state->crypto_ctx, encrypted, received,
+                                       data, max_len, actual_len) != 0) {
+        log_error("Failed to decrypt packet from client");
+        return -1;
+    }
+
+    return 0;
+}
+```
+
+**Update server main loop**:
+
+```c
+int main(int argc, char **argv) {
+    // ... existing argument parsing ...
+
+    // Initialize crypto BEFORE starting server
+    if (init_server_crypto() != 0) {
+        log_error("Failed to initialize crypto");
+        exit(1);
+    }
+
+    // ... existing server setup ...
+
+    // Per-client state array
+    client_crypto_state_t client_states[MAX_CLIENTS] = {0};
+    size_t num_clients = 0;
+
+    // Main server loop
+    while (running) {
+        // Accept new client
+        socket_t client_socket = socket_accept(server_socket);
+        if (client_socket != INVALID_SOCKET_VALUE && num_clients < MAX_CLIENTS) {
+            client_states[num_clients].client_socket = client_socket;
+            client_states[num_clients].encryption_enabled = false;
+            client_states[num_clients].handshake_complete = false;
+            num_clients++;
+
+            log_info("New client connected (total: %zu)", num_clients);
+        }
+
+        // Handle each client
+        for (size_t i = 0; i < num_clients; i++) {
+            client_crypto_state_t* client = &client_states[i];
+
+            // Perform crypto handshake if not done yet
+            if (!client->handshake_complete) {
+                if (handle_client_crypto_handshake(client) != 0) {
+                    log_error("Crypto handshake failed for client %zu", i);
+                    socket_close(client->client_socket);
+                    // Remove client from array
+                    memmove(&client_states[i], &client_states[i+1],
+                           (num_clients - i - 1) * sizeof(client_crypto_state_t));
+                    num_clients--;
+                    i--;
+                    continue;
+                }
+            }
+
+            // Handle video/audio data (encrypted)
+            uint8_t video_data[PACKET_MAX_SIZE];
+            size_t video_len;
+            if (recv_encrypted_packet_from_client(client, video_data, sizeof(video_data), &video_len) > 0) {
+                // Process video data...
+
+                // Send audio data back (encrypted)
+                uint8_t audio_data[PACKET_MAX_SIZE];
+                size_t audio_len = generate_audio_data(audio_data, sizeof(audio_data));
+                send_encrypted_packet_to_client(client, audio_data, audio_len);
+            }
+        }
+    }
+
+    // Cleanup
+    for (size_t i = 0; i < num_clients; i++) {
+        if (client_states[i].encryption_enabled) {
+            crypto_handshake_cleanup(&client_states[i].crypto_ctx);
+        }
+        socket_close(client_states[i].client_socket);
+    }
+
+    // ... existing cleanup ...
+}
+```
+
+#### 5.3 Update Network Packet Processing
+
+**Add crypto packet types** (lib/network.h):
+
+```c
+typedef enum {
+    // Existing packet types...
+    PACKET_TYPE_AUDIO_BATCH = 13,
+
+    // Crypto handshake packets (ALWAYS SENT UNENCRYPTED)
+    PACKET_TYPE_KEY_EXCHANGE_INIT = 14,      // Server -> Client: {server_pubkey[32]}
+    PACKET_TYPE_KEY_EXCHANGE_RESPONSE = 15,  // Client -> Server: {client_pubkey[32]}
+    PACKET_TYPE_AUTH_CHALLENGE = 16,         // Server -> Client: {nonce[32]}
+    PACKET_TYPE_AUTH_RESPONSE = 17,          // Client -> Server: {HMAC[32]}
+    PACKET_TYPE_HANDSHAKE_COMPLETE = 18,     // Server -> Client: "encryption ready"
+    PACKET_TYPE_AUTH_FAILED = 19,            // Server -> Client: "authentication failed"
+} packet_type_t;
+```
+
+**Update packet creation** (lib/network.c):
+
+```c
+// Create crypto handshake packet
+int create_crypto_packet(packet_type_t type, const uint8_t* data, size_t data_len,
+                        uint8_t* packet, size_t packet_size, size_t* packet_len) {
+    if (packet_size < sizeof(packet_header_t) + data_len) {
+        return -1;
+    }
+
+    packet_header_t* header = (packet_header_t*)packet;
+    header->type = type;
+    header->length = sizeof(packet_header_t) + data_len;
+    header->sequence = 0; // Handshake packets don't use sequence numbers
+    header->timestamp = get_timestamp();
+
+    if (data && data_len > 0) {
+        memcpy(packet + sizeof(packet_header_t), data, data_len);
+    }
+
+    *packet_len = header->length;
+    return 0;
+}
+
+// Parse crypto handshake packet
+int parse_crypto_packet(const uint8_t* packet, size_t packet_len,
+                        packet_type_t* type, uint8_t* data, size_t data_size, size_t* data_len) {
+    if (packet_len < sizeof(packet_header_t)) {
+        return -1;
+    }
+
+    const packet_header_t* header = (const packet_header_t*)packet;
+    *type = header->type;
+
+    size_t payload_len = header->length - sizeof(packet_header_t);
+    if (payload_len > data_size) {
+        return -1;
+    }
+
+    if (data && payload_len > 0) {
+        memcpy(data, packet + sizeof(packet_header_t), payload_len);
+    }
+    *data_len = payload_len;
+
+    return 0;
+}
+```
+
+#### 5.4 Display Server Public Key
+
+**Add to server startup** (src/server/main.c):
+
+```c
+static void display_server_public_key(void) {
+    if (!g_server_encryption_enabled) return;
+
+    // Convert server public key to display format
+    uint8_t server_pubkey[32];
+    if (public_key_to_x25519(&g_server_private_key, server_pubkey) != 0) {
+        log_error("Failed to get server public key");
+        return;
+    }
+
+    // Display in SSH format
+    char hex[65];
+    for (int i = 0; i < 32; i++) {
+        snprintf(hex + i*2, 3, "%02x", server_pubkey[i]);
+    }
+
+    printf("\n");
+    printf("╔════════════════════════════════════════════════════════════════╗\n");
+    printf("║  SERVER PUBLIC KEY                                             ║\n");
+    printf("║  x25519 %-56s║\n", hex);
+    printf("║                                                                ║\n");
+    printf("║  Verify with:                                                  ║\n");
+    printf("║    ascii-chat-client --server-key <paste-above>                ║\n");
+    printf("║  Or save to known_hosts:                                       ║\n");
+    printf("║    echo \"hostname x25519 %s\" >> ~/.ascii-chat/known_hosts║\n", hex);
+    printf("╚════════════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+}
+```
+
+**Call in main()**:
+
+```c
+int main(int argc, char **argv) {
+    // ... existing code ...
+
+    // Initialize crypto
+    if (init_server_crypto() != 0) {
+        log_error("Failed to initialize crypto");
+        exit(1);
+    }
+
+    // Display server public key
+    display_server_public_key();
+
+    // ... rest of server code ...
+}
+```
+
+#### 5.5 Testing Integration
+
+**Create test script** (tests/scripts/test_crypto_integration.sh):
+
+```bash
+#!/bin/bash
+# Test crypto integration end-to-end
+
+echo "Testing crypto integration..."
+
+# Test 1: Default encryption (ephemeral DH)
+echo "Test 1: Default encryption"
+./ascii-chat-server --port 8080 &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8080 --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Default encryption test completed"
+
+# Test 2: Password authentication
+echo "Test 2: Password authentication"
+./ascii-chat-server --port 8081 --key testpassword &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8081 --key testpassword --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Password authentication test completed"
+
+# Test 3: SSH key pinning
+echo "Test 3: SSH key pinning"
+./ascii-chat-server --port 8082 --ssh-key ~/.ssh/id_ed25519 &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8082 --server-key ~/.ssh/id_ed25519.pub --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ SSH key pinning test completed"
+
+echo "All crypto integration tests completed!"
+```
+
+### Phase 6: Testing & Validation (2 hours)
+
+**Goal**: Comprehensive testing of all crypto modes, performance validation, cross-platform testing
+
+#### 6.1 Unit Test Coverage
+
+**Test all key parsing functions**:
+
+```c
+// tests/unit/crypto_keys_comprehensive_test.c
+#include <criterion/criterion.h>
+#include "crypto/keys.h"
+
+Test(crypto_keys, parse_ssh_ed25519_keys) {
+    public_key_t key;
+
+    // Test valid SSH Ed25519 key
+    const char* ssh_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFoo... alice@laptop";
+    cr_assert_eq(parse_public_key(ssh_key, &key), 0);
+    cr_assert_eq(key.type, KEY_TYPE_ED25519);
+    cr_assert_str_eq(key.comment, "alice@laptop");
+
+    // Test invalid key
+    const char* invalid_key = "ssh-rsa AAAAB3NzaC1yc2E... bob@desktop";
+    cr_assert_eq(parse_public_key(invalid_key, &key), -1);
+}
+
+Test(crypto_keys, parse_github_keys) {
+    public_key_t key;
+
+    // Test GitHub key fetching (with mock)
+    const char* github_key = "github:zfogg";
+    cr_assert_eq(parse_public_key(github_key, &key), 0);
+    cr_assert_eq(key.type, KEY_TYPE_ED25519);
+}
+
+Test(crypto_keys, parse_gpg_keys) {
+    public_key_t key;
+
+    // Test GPG key parsing (with mock gpg command)
+    const char* gpg_key = "gpg:0xABCD1234";
+    cr_assert_eq(parse_public_key(gpg_key, &key), 0);
+    cr_assert_eq(key.type, KEY_TYPE_GPG);
+    cr_assert_str_eq(key.comment, "gpg:0xABCD1234");
+}
+```
+
+**Test known_hosts behavior**:
+
+```c
+// tests/unit/crypto_known_hosts_comprehensive_test.c
+#include <criterion/criterion.h>
+#include "crypto/known_hosts.h"
+
+Test(crypto_known_hosts, save_and_verify) {
+    const char* hostname = "test.example.com";
+    uint16_t port = 8080;
+    uint8_t server_key[32] = {0x42}; // Test key
+
+    // First connection - should return 0 (not in known_hosts)
+    cr_assert_eq(check_known_host(hostname, port, server_key), 0);
+
+    // Add to known_hosts
+    cr_assert_eq(add_known_host(hostname, port, server_key), 0);
+
+    // Second connection - should return 1 (match)
+    cr_assert_eq(check_known_host(hostname, port, server_key), 1);
+}
+
+Test(crypto_known_hosts, mitm_detection) {
+    const char* hostname = "test.example.com";
+    uint16_t port = 8080;
+    uint8_t original_key[32] = {0x42};
+    uint8_t different_key[32] = {0x99}; // Different key
+
+    // Add original key
+    add_known_host(hostname, port, original_key);
+
+    // Try with different key - should return -1 (MITM warning)
+    cr_assert_eq(check_known_host(hostname, port, different_key), -1);
+}
+```
+
+**Test handshake state machine**:
+
+```c
+// tests/unit/crypto_handshake_state_test.c
+#include <criterion/criterion.h>
+#include "crypto/handshake.h"
+
+Test(crypto_handshake, state_transitions) {
+    crypto_handshake_context_t ctx;
+
+    // Initialize
+    cr_assert_eq(crypto_handshake_init(&ctx, true), 0);
+    cr_assert_eq(ctx.state, CRYPTO_HANDSHAKE_INIT);
+
+    // Test state progression
+    ctx.state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
+    cr_assert_eq(crypto_handshake_is_ready(&ctx), false);
+
+    ctx.state = CRYPTO_HANDSHAKE_READY;
+    cr_assert_eq(crypto_handshake_is_ready(&ctx), true);
+
+    crypto_handshake_cleanup(&ctx);
+}
+```
+
+#### 6.2 Integration Testing
+
+**Test all security levels**:
+
+```bash
+#!/bin/bash
+# tests/scripts/test_all_security_levels.sh
+
+echo "Testing all crypto security levels..."
+
+# Level 1: Default encrypted (ephemeral DH)
+echo "Level 1: Default encrypted"
+./ascii-chat-server --port 8080 &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8080 --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Level 1 completed"
+
+# Level 2: Password authentication
+echo "Level 2: Password authentication"
+./ascii-chat-server --port 8081 --key testpassword &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8081 --key testpassword --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Level 2 completed"
+
+# Level 3: SSH key pinning
+echo "Level 3: SSH key pinning"
+./ascii-chat-server --port 8082 --ssh-key ~/.ssh/id_ed25519 &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8082 --server-key ~/.ssh/id_ed25519.pub --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Level 3 completed"
+
+# Level 4: Server whitelist
+echo "Level 4: Server whitelist"
+./ascii-chat-server --port 8083 --client-keys ~/.ssh/authorized_keys &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8083 --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Level 4 completed"
+
+# Level 5: Defense in depth
+echo "Level 5: Defense in depth"
+./ascii-chat-server --port 8084 --ssh-key ~/.ssh/id_ed25519 --key testpassword --client-keys ~/.ssh/authorized_keys &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8084 --key testpassword --server-key ~/.ssh/id_ed25519.pub --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Level 5 completed"
+
+# Level 6: Opt-out (no encryption)
+echo "Level 6: Opt-out"
+./ascii-chat-server --port 8085 --no-encrypt &
+SERVER_PID=$!
+sleep 2
+./ascii-chat-client --port 8085 --no-encrypt --test-pattern &
+CLIENT_PID=$!
+sleep 5
+kill $CLIENT_PID $SERVER_PID
+echo "✓ Level 6 completed"
+
+echo "All security levels tested successfully!"
+```
+
+**Test GitHub/GitLab integration**:
+
+```c
+// tests/integration/crypto_github_integration_test.c
+#include <criterion/criterion.h>
+#include "crypto/keys.h"
+
+Test(crypto_github, fetch_user_keys) {
+    char** keys;
+    size_t num_keys;
+
+    // Test GitHub key fetching
+    cr_assert_eq(fetch_github_keys("zfogg", &keys, &num_keys), 0);
+    cr_assert_gt(num_keys, 0);
+
+    // Verify first key is Ed25519
+    cr_assert_not_null(strstr(keys[0], "ssh-ed25519"));
+
+    // Cleanup
+    for (size_t i = 0; i < num_keys; i++) {
+        free(keys[i]);
+    }
+    free(keys);
+}
+
+Test(crypto_gitlab, fetch_user_keys) {
+    char** keys;
+    size_t num_keys;
+
+    // Test GitLab key fetching
+    cr_assert_eq(fetch_gitlab_keys("zfogg", &keys, &num_keys), 0);
+    cr_assert_gt(num_keys, 0);
+
+    // Cleanup
+    for (size_t i = 0; i < num_keys; i++) {
+        free(keys[i]);
+    }
+    free(keys);
+}
+```
+
+#### 6.3 Performance Testing
+
+**Create performance test suite**:
+
+```c
+// tests/performance/crypto_performance_test.c
+#include <criterion/criterion.h>
+#include <time.h>
+#include "crypto/handshake.h"
+
+Test(crypto_performance, encryption_overhead) {
+    crypto_handshake_context_t ctx;
+    crypto_handshake_init(&ctx, true);
+
+    // Test with various packet sizes
+    size_t test_sizes[] = {1024, 4096, 16384, 65536}; // 1KB, 4KB, 16KB, 64KB
+    size_t num_sizes = sizeof(test_sizes) / sizeof(test_sizes[0]);
+
+    for (size_t i = 0; i < num_sizes; i++) {
+        size_t packet_size = test_sizes[i];
+        uint8_t* plaintext = malloc(packet_size);
+        uint8_t* ciphertext = malloc(packet_size + 32); // Extra space for encryption
+        size_t ciphertext_len;
+
+        // Fill with random data
+        for (size_t j = 0; j < packet_size; j++) {
+            plaintext[j] = rand() % 256;
+        }
+
+        // Measure encryption time
+        clock_t start = clock();
+        int result = crypto_handshake_encrypt_packet(&ctx, plaintext, packet_size,
+                                                   ciphertext, packet_size + 32, &ciphertext_len);
+        clock_t end = clock();
+
+        cr_assert_eq(result, 0);
+
+        double time_ms = ((double)(end - start)) / CLOCKS_PER_SEC * 1000;
+        double throughput_mbps = (packet_size / (1024.0 * 1024.0)) / (time_ms / 1000.0);
+
+        printf("Packet size: %zu bytes, Time: %.2f ms, Throughput: %.2f MB/s\n",
+               packet_size, time_ms, throughput_mbps);
+
+        // Encryption overhead should be < 5% for video
+        cr_assert_lt(time_ms, packet_size / 1000.0 * 0.05); // 5% overhead max
+
+        free(plaintext);
+        free(ciphertext);
+    }
+
+    crypto_handshake_cleanup(&ctx);
+}
+
+Test(crypto_performance, memory_usage) {
+    // Test for memory leaks using AddressSanitizer
+    crypto_handshake_context_t ctx;
+
+    for (int i = 0; i < 1000; i++) {
+        crypto_handshake_init(&ctx, true);
+        crypto_handshake_cleanup(&ctx);
+    }
+
+    // If we get here without crashing, no major memory leaks
+    cr_assert(true);
+}
+```
+
+**Create benchmark script**:
+
+```bash
+#!/bin/bash
+# tests/scripts/benchmark_crypto.sh
+
+echo "Running crypto performance benchmarks..."
+
+# Test encryption overhead
+echo "Testing encryption overhead..."
+./tests/unit/crypto_performance_test
+
+# Test with high frame rates
+echo "Testing high frame rate performance..."
+./ascii-chat-server --port 8080 &
+SERVER_PID=$!
+sleep 2
+
+# Run client with high FPS
+./ascii-chat-client --port 8080 --fps 60 --test-pattern &
+CLIENT_PID=$!
+sleep 10
+kill $CLIENT_PID $SERVER_PID
+
+echo "Performance benchmarks completed!"
+```
+
+#### 6.4 Cross-Platform Testing
+
+**Create cross-platform test matrix**:
+
+```yaml
+# .github/workflows/crypto-test-matrix.yml
+name: Crypto Cross-Platform Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-2019, windows-2022]
+        compiler: [gcc, clang, msvc]
+        crypto: [default, bearssl, libsodium]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+          sudo apt-get update
+          sudo apt-get install -y libsodium-dev libbearssl-dev
+        elif [ "${{ matrix.os }}" = "macos-11" ]; then
+          brew install libsodium bearssl
+        fi
+
+    - name: Configure build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCRYPTO_BACKEND=${{ matrix.crypto }}
+
+    - name: Build
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Test
+      run: |
+        cd build
+        ./tests/scripts/test_all_security_levels.sh
+```
+
+### Phase 7: Documentation & Polish (1 hour)
+
+**Goal**: Update documentation, add examples, create migration guide
+
+#### 7.1 Update README
+
+**Add comprehensive crypto section**:
+
+```markdown
+# ASCII-Chat with End-to-End Encryption
+
+ASCII-Chat now includes **end-to-end encryption by default** using modern cryptography (Ed25519/X25519). No configuration required - just run and chat securely!
+
+## Quick Start
+
+```bash
+# Server (encrypted by default)
+./ascii-chat-server
+
+# Client (connects with encryption)
+./ascii-chat-client
+```
+
+## Security Levels
+
+### Level 1: Default Encrypted (Privacy)
+```bash
+# Server
+./ascii-chat-server
+
+# Client
+./ascii-chat-client
+```
+✅ **Protects against**: Passive eavesdropping (ISP, WiFi snooping)
+⚠️ **Vulnerable to**: Active MITM attacks
+
+### Level 2: Password Authentication (Security)
+```bash
+# Server with password
+./ascii-chat-server --key mypassword
+
+# Client with matching password
+./ascii-chat-client --key mypassword
+```
+✅ **Protects against**: Passive eavesdropping + Active MITM attacks
+🔐 **Use case**: "I need actual security, not just privacy"
+
+### Level 3: SSH Key Pinning (Strong Security)
+```bash
+# Server uses existing SSH key
+./ascii-chat-server --ssh-key ~/.ssh/id_ed25519
+
+# Client verifies server key
+./ascii-chat-client --server-key github:zfogg
+```
+✅ **Protects against**: All attacks + Cryptographically verified identity
+🔑 **Use case**: "Want SSH-like security, already have SSH keys"
+
+### Level 4: Server Whitelist (Restricted Access)
+```bash
+# Server only accepts specific clients
+./ascii-chat-server --client-keys github:alice,github:bob
+
+# Client displays their key for server operator
+./ascii-chat-client
+```
+✅ **Protects server from**: Unauthorized clients
+📋 **Use case**: "Private server, only my friends can connect"
+
+### Level 5: Defense in Depth (Maximum Security)
+```bash
+# Server: Password + SSH key + client whitelist
+./ascii-chat-server --ssh-key ~/.ssh/id_ed25519 --key mypassword --client-keys ~/.ssh/authorized_keys
+
+# Client: Password + server key verification
+./ascii-chat-client --key mypassword --server-key github:zfogg
+```
+✅ **Maximum security**: Multiple layers of protection
+🛡️ **Use case**: "Paranoid security for sensitive communications"
+
+### Level 6: Opt-Out (Debugging Only)
+```bash
+# Disable encryption for debugging
+./ascii-chat-server --no-encrypt
+./ascii-chat-client --no-encrypt
+```
+⚠️ **No protection** - All traffic sent in plaintext
+🔧 **Use case**: "I'm debugging and need to see raw packets"
+
+## CLI Options
+
+### Server Options
+- `--ssh-key FILE` - Use existing SSH Ed25519 key (recommended)
+- `--key PASSWORD` - Require password authentication
+- `--keyfile FILE` - Password from file
+- `--client-keys FORMAT` - Whitelist allowed clients
+- `--no-encrypt` - Disable encryption (debugging only)
+
+### Client Options
+- `--server-key FORMAT` - Verify server identity
+- `--key PASSWORD` - Provide password for authentication
+- `--keyfile FILE` - Password from file
+- `--no-encrypt` - Disable encryption (debugging only)
+
+### Server Key Formats
+- `github:username` - Fetch from GitHub
+- `gitlab:username` - Fetch from GitLab
+- `ssh-ed25519 AAAAC3...` - Direct SSH key
+- `~/.ssh/id_ed25519.pub` - SSH public key file
+- `64-char-hex-string` - Raw X25519 key
+
+### Client Key Formats
+- `github:user1,github:user2` - GitHub usernames
+- `~/.ssh/authorized_keys` - SSH authorized_keys file
+- `ssh-ed25519 AAAA...,ssh-ed25519 BBBB...` - Direct SSH keys
+
+## Examples
+
+### Basic Encrypted Chat
+```bash
+# Terminal 1: Start server
+./ascii-chat-server
+
+# Terminal 2: Connect client
+./ascii-chat-client
+```
+
+### Secure Chat with Password
+```bash
+# Terminal 1: Server with password
+./ascii-chat-server --key mysecretpassword
+
+# Terminal 2: Client with same password
+./ascii-chat-client --key mysecretpassword
+```
+
+### SSH Key Setup
+```bash
+# Generate SSH key (if you don't have one)
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Terminal 1: Server using SSH key
+./ascii-chat-server --ssh-key ~/.ssh/id_ed25519
+
+# Terminal 2: Client verifying server key
+./ascii-chat-client --server-key ~/.ssh/id_ed25519.pub
+```
+
+### GitHub Key Verification
+```bash
+# Terminal 1: Server using SSH key
+./ascii-chat-server --ssh-key ~/.ssh/id_ed25519
+
+# Terminal 2: Client verifying via GitHub
+./ascii-chat-client --server-key github:zfogg
+```
+
+### Server Whitelist
+```bash
+# Terminal 1: Server with client whitelist
+./ascii-chat-server --client-keys github:alice,github:bob
+
+# Terminal 2: Client (displays their key for server operator)
+./ascii-chat-client
+# Copy the displayed key to server operator
+
+# Terminal 1: Server operator adds key to authorized_keys
+echo "ssh-ed25519 AAAAC3... alice@laptop" >> ~/.ssh/authorized_keys
+```
+
+## Security Recommendations
+
+### For Maximum Security
+1. **Use SSH keys**: `--ssh-key ~/.ssh/id_ed25519`
+2. **Verify server identity**: `--server-key github:username`
+3. **Use client whitelist**: `--client-keys ~/.ssh/authorized_keys`
+4. **Combine with password**: `--key mypassword`
+
+### For Easy Setup
+1. **Just use passwords**: `--key mypassword` (both sides)
+2. **Save server keys**: Use known_hosts integration
+3. **Share passwords securely**: Signal, phone call, in person
+
+### Key Management
+- **Generate Ed25519 keys**: `ssh-keygen -t ed25519`
+- **Add to GitHub**: Upload your public key to GitHub
+- **Use SSH agent**: `ssh-add ~/.ssh/id_ed25519`
+- **Backup keys**: Store private keys securely
+
+## Troubleshooting
+
+### "GPG command not found"
+```bash
+# Install GPG
+sudo apt-get install gnupg        # Ubuntu/Debian
+brew install gnupg               # macOS
+pacman -S gnupg                   # Arch Linux
+```
+
+### "Failed to verify server key"
+- Check server is using the expected key
+- Verify the key format is correct
+- Try `--server-key github:username` instead of file path
+
+### "Client not in whitelist"
+- Server operator needs to add your public key
+- Run client to see your public key
+- Send key to server operator via secure channel
+
+### "Connection failed during handshake"
+- Check both sides have compatible crypto options
+- Ensure no `--no-encrypt` on one side and encryption on the other
+- Check network connectivity
+
+## Migration Guide
+
+### Upgrading from Unencrypted
+1. **No changes needed** - encryption is enabled by default
+2. **Add password for security**: `--key mypassword` (both sides)
+3. **Use SSH keys for strong security**: `--ssh-key` and `--server-key`
+
+### SSH Key Setup
+```bash
+# Generate new Ed25519 key
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Add to SSH agent
+ssh-add ~/.ssh/id_ed25519
+
+# Add to GitHub (optional)
+# Upload ~/.ssh/id_ed25519.pub to GitHub Settings > SSH Keys
+```
+
+### GPG Setup (Optional)
+```bash
+# Generate GPG key
+gpg --full-generate-key
+
+# List keys
+gpg --list-keys
+
+# Use with ASCII-Chat
+./ascii-chat-server --key gpg:0xYOUR_KEY_ID
+```
+
+## Technical Details
+
+- **Encryption**: XSalsa20-Poly1305 (authenticated encryption)
+- **Key Exchange**: X25519 Diffie-Hellman
+- **Key Types**: Ed25519 (converted to X25519), X25519, GPG-derived
+- **Password Hashing**: Argon2id
+- **Forward Secrecy**: ✅ (ephemeral keys)
+- **MITM Protection**: ✅ (SSH key pinning)
+- **Performance**: <5% overhead for video
+
+## Dependencies
+
+- **Required**: libsodium (Ed25519/X25519 crypto)
+- **Optional**: BearSSL (HTTPS for GitHub/GitLab), GPG (GPG key support)
+- **Not used**: OpenSSL, RSA keys (modern crypto only)
+```
+
+#### 7.2 Create Examples
+
+**Basic encrypted chat example**:
+
+```bash
+#!/bin/bash
+# examples/basic_encrypted_chat.sh
+
+echo "Starting basic encrypted chat example..."
+
+# Terminal 1: Start server
+echo "Server starting on port 8080..."
+./ascii-chat-server --port 8080 &
+SERVER_PID=$!
+
+# Wait for server to start
+sleep 2
+
+# Terminal 2: Connect client
+echo "Client connecting..."
+./ascii-chat-client --port 8080 --test-pattern &
+CLIENT_PID=$!
+
+# Let them run for 10 seconds
+sleep 10
+
+# Cleanup
+echo "Stopping chat..."
+kill $CLIENT_PID $SERVER_PID
+echo "Basic encrypted chat example completed!"
+```
+
+**SSH key setup example**:
+
+```bash
+#!/bin/bash
+# examples/ssh_key_setup.sh
+
+echo "SSH key setup example..."
+
+# Generate SSH key if it doesn't exist
+if [ ! -f ~/.ssh/id_ed25519 ]; then
+    echo "Generating SSH Ed25519 key..."
+    ssh-keygen -t ed25519 -C "ascii-chat@example.com" -f ~/.ssh/id_ed25519 -N ""
+fi
+
+# Start server with SSH key
+echo "Server starting with SSH key..."
+./ascii-chat-server --port 8080 --ssh-key ~/.ssh/id_ed25519 &
+SERVER_PID=$!
+
+sleep 2
+
+# Connect client with server key verification
+echo "Client connecting with server key verification..."
+./ascii-chat-client --port 8080 --server-key ~/.ssh/id_ed25519.pub --test-pattern &
+CLIENT_PID=$!
+
+sleep 10
+
+# Cleanup
+kill $CLIENT_PID $SERVER_PID
+echo "SSH key setup example completed!"
+```
+
+#### 7.3 Migration Guide
+
+**Create migration documentation**:
+
+```markdown
+# Migration Guide: Adding Encryption to ASCII-Chat
+
+## Overview
+
+ASCII-Chat now includes **end-to-end encryption by default**. This guide helps you upgrade from unencrypted to encrypted chat.
+
+## Automatic Migration
+
+**Good news**: No changes required! Encryption is enabled by default.
+
+```bash
+# This now includes encryption automatically
+./ascii-chat-server
+./ascii-chat-client
+```
+
+## Security Upgrade Path
+
+### Step 1: Basic Encryption (Default)
+```bash
+# Server
+./ascii-chat-server
+
+# Client
+./ascii-chat-client
+```
+✅ **Protection**: Passive eavesdropping
+⚠️ **Limitation**: Vulnerable to MITM attacks
+
+### Step 2: Add Password Authentication
+```bash
+# Server
+./ascii-chat-server --key mypassword
+
+# Client
+./ascii-chat-client --key mypassword
+```
+✅ **Protection**: Passive + Active attacks
+🔐 **Security**: Password-based authentication
+
+### Step 3: Use SSH Keys (Recommended)
+```bash
+# Generate SSH key (if needed)
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Server
+./ascii-chat-server --ssh-key ~/.ssh/id_ed25519
+
+# Client
+./ascii-chat-client --server-key ~/.ssh/id_ed25519.pub
+```
+✅ **Protection**: Maximum security
+🔑 **Security**: Cryptographically verified identity
+
+## SSH Key Setup
+
+### Generate New SSH Key
+```bash
+# Generate Ed25519 key (recommended)
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Add to SSH agent
+ssh-add ~/.ssh/id_ed25519
+
+# Test SSH key
+ssh -T git@github.com
+```
+
+### Add to GitHub (Optional)
+1. Copy your public key: `cat ~/.ssh/id_ed25519.pub`
+2. Go to GitHub Settings > SSH Keys
+3. Click "New SSH key"
+4. Paste your public key
+5. Use with ASCII-Chat: `--server-key github:username`
+
+## GPG Setup (Advanced)
+
+### Install GPG
+```bash
+# Ubuntu/Debian
+sudo apt-get install gnupg
+
+# macOS
+brew install gnupg
+
+# Arch Linux
+pacman -S gnupg
+```
+
+### Generate GPG Key
+```bash
+# Generate GPG key
+gpg --full-generate-key
+
+# List keys
+gpg --list-keys
+
+# Use with ASCII-Chat
+./ascii-chat-server --key gpg:0xYOUR_KEY_ID
+```
+
+## Server Configuration
+
+### Basic Server
+```bash
+# Default encrypted server
+./ascii-chat-server --port 8080
+```
+
+### Secure Server
+```bash
+# Server with SSH key and client whitelist
+./ascii-chat-server --port 8080 --ssh-key ~/.ssh/id_ed25519 --client-keys ~/.ssh/authorized_keys
+```
+
+### Password-Protected Server
+```bash
+# Server with password authentication
+./ascii-chat-server --port 8080 --key mypassword
+```
+
+## Client Configuration
+
+### Basic Client
+```bash
+# Default encrypted client
+./ascii-chat-client --port 8080
+```
+
+### Secure Client
+```bash
+# Client with server key verification
+./ascii-chat-client --port 8080 --server-key github:zfogg
+```
+
+### Password Client
+```bash
+# Client with password authentication
+./ascii-chat-client --port 8080 --key mypassword
+```
+
+## Troubleshooting
+
+### "Encryption failed"
+- Check both sides have compatible options
+- Ensure no `--no-encrypt` on one side and encryption on the other
+- Verify network connectivity
+
+### "Server key verification failed"
+- Check server is using the expected key
+- Verify key format is correct
+- Try `--server-key github:username` instead of file path
+
+### "Client not authorized"
+- Server operator needs to add your public key to whitelist
+- Run client to see your public key
+- Send key to server operator via secure channel
+
+### "GPG command not found"
+- Install GPG: `sudo apt-get install gnupg`
+- Or use SSH keys instead: `--ssh-key ~/.ssh/id_ed25519`
+
+## Performance Considerations
+
+- **Encryption overhead**: <5% for video
+- **Memory usage**: Minimal increase
+- **CPU usage**: Negligible for modern hardware
+- **Network**: Slight increase due to encryption
+
+## Security Best Practices
+
+1. **Use SSH keys**: More secure than passwords
+2. **Verify server identity**: Always use `--server-key`
+3. **Use client whitelist**: Restrict server access
+4. **Share keys securely**: Signal, phone call, in person
+5. **Keep keys updated**: Regenerate if compromised
+6. **Use strong passwords**: If using password auth
+7. **Backup keys**: Store private keys securely
+
+## Rollback Plan
+
+If you need to disable encryption temporarily:
+
+```bash
+# Server
+./ascii-chat-server --no-encrypt
+
+# Client
+./ascii-chat-client --no-encrypt
+```
+
+⚠️ **Warning**: This disables all security - use only for debugging!
+```
+
+## Timeline Estimate
 
 ## Timeline Estimate
 
