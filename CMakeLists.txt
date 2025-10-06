@@ -88,10 +88,69 @@ else()
 endif()
 
 project(ascii-chat
-    VERSION 2.0.0
+    VERSION 0.1.0
     DESCRIPTION "Real-time terminal-based video chat with ASCII art conversion"
     HOMEPAGE_URL "https://github.com/zfogg/ascii-chat"
     LANGUAGES ${PROJECT_LANGUAGES}
+)
+
+# =============================================================================
+# Generate version information with git commit hash (regenerated on every build)
+# =============================================================================
+
+# Create a script that generates version.h on every build
+set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/generate_version.cmake")
+file(WRITE "${VERSION_SCRIPT}" "
+# Get git commit hash
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# Check if working directory is clean
+execute_process(
+    COMMAND git diff-index --quiet HEAD --
+    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+    RESULT_VARIABLE GIT_DIRTY
+    ERROR_QUIET
+)
+
+# If git not available or not in a repo, use 'unknown'
+if(NOT GIT_COMMIT_HASH)
+    set(GIT_COMMIT_HASH \"unknown\")
+endif()
+
+# Add '-dirty' suffix if working directory has uncommitted changes
+if(GIT_DIRTY)
+    set(GIT_COMMIT_HASH \"\${GIT_COMMIT_HASH}-dirty\")
+endif()
+
+# Set build type
+set(VERSION_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\")
+
+# Set version components
+set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(PROJECT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(PROJECT_VERSION \"${PROJECT_VERSION}\")
+
+# Generate version header
+configure_file(
+    \"${CMAKE_SOURCE_DIR}/lib/version.h.in\"
+    \"${CMAKE_BINARY_DIR}/generated/version.h\"
+    @ONLY
+)
+")
+
+# Add custom target that runs the version script on every build
+add_custom_target(generate_version
+    COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT}"
+    BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/version.h"
+    COMMENT "Generating version header with current git state..."
+    VERBATIM
 )
 
 # =============================================================================
@@ -2162,6 +2221,12 @@ set(LIB_SRCS
 # =============================================================================
 
 add_library(ascii-chat-lib STATIC ${LIB_SRCS})
+
+# Regenerate version header before building library
+add_dependencies(ascii-chat-lib generate_version)
+
+# Include generated version header
+target_include_directories(ascii-chat-lib PUBLIC ${CMAKE_BINARY_DIR}/generated)
 
 # Define the project source root for logging (so relative paths work regardless of repo name)
 target_compile_definitions(ascii-chat-lib PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
