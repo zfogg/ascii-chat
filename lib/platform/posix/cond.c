@@ -51,7 +51,10 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
   struct timespec ts;
-  (void)clock_gettime(CLOCK_REALTIME, &ts);
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+    // If clock_gettime fails, return error immediately
+    return -1;
+  }
   ts.tv_sec += timeout_ms / 1000;
   ts.tv_nsec += (timeout_ms % 1000) * 1000000;
   if (ts.tv_nsec >= 1000000000) {
