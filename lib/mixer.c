@@ -234,8 +234,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   SAFE_MALLOC(mixer->source_ids, max_sources * sizeof(uint32_t), uint32_t *);
   if (!mixer->source_ids) {
-    void *temp_source_buffers = (void *)mixer->source_buffers;
-    SAFE_FREE(temp_source_buffers);
+    SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer);
     return NULL;
   }
