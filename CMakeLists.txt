@@ -285,37 +285,29 @@ if(APPLE)
     if(HOMEBREW_LLVM_PREFIX)
         message(STATUS "Found Homebrew LLVM at: ${HOMEBREW_LLVM_PREFIX}")
 
-        # Check if we should use Homebrew LLVM
+        # Always configure Homebrew LLVM if it's installed
+        # (Even if user specified it via CC environment variable)
         set(USE_HOMEBREW_LLVM TRUE)
 
-        # Only skip if user explicitly set CMAKE_C_COMPILER to a non-system compiler
-        if(DEFINED CMAKE_C_COMPILER)
-            # Check if it's a ccache wrapper or system compiler
-            if(NOT CMAKE_C_COMPILER MATCHES "ccache" AND
-               NOT CMAKE_C_COMPILER MATCHES "^/usr/bin" AND
-               NOT CMAKE_C_COMPILER MATCHES "Xcode" AND
-               NOT CMAKE_C_COMPILER STREQUAL "CMAKE_C_COMPILER-NOTFOUND" AND
-               CMAKE_C_COMPILER MATCHES "llvm")
-                # User explicitly set LLVM compiler, respect it
-                set(USE_HOMEBREW_LLVM FALSE)
-                message(STATUS "Using user-specified LLVM compiler: ${CMAKE_C_COMPILER}")
-            endif()
-        endif()
-
         if(USE_HOMEBREW_LLVM)
-            message(STATUS "Configuring to use Homebrew LLVM")
-
-            # Check for ccache and use it if available
-            find_program(CCACHE_PROGRAM ccache)
-            if(CCACHE_PROGRAM)
-                message(STATUS "Found ccache: ${CCACHE_PROGRAM}")
-                set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
-                # Set the actual compilers (ccache will wrap them via the launcher)
-                set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
-                message(STATUS "Using ccache with Homebrew LLVM")
+            # Check if compiler is already set to Homebrew LLVM
+            if(CMAKE_C_COMPILER MATCHES "${HOMEBREW_LLVM_PREFIX}")
+                message(STATUS "Using user-specified Homebrew LLVM compiler: ${CMAKE_C_COMPILER}")
             else()
-                # No ccache, use LLVM directly
-                set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
+                message(STATUS "Configuring to use Homebrew LLVM")
+
+                # Check for ccache and use it if available
+                find_program(CCACHE_PROGRAM ccache)
+                if(CCACHE_PROGRAM)
+                    message(STATUS "Found ccache: ${CCACHE_PROGRAM}")
+                    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
+                    # Set the actual compilers (ccache will wrap them via the launcher)
+                    set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
+                    message(STATUS "Using ccache with Homebrew LLVM")
+                else()
+                    # No ccache, use LLVM directly
+                    set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
+                endif()
             endif()
 
             # Add LLVM bin directory to PATH for tools like llvm-ar, llvm-ranlib, etc.
