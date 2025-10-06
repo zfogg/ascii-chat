@@ -35,6 +35,41 @@ int crypto_handshake_init(crypto_handshake_context_t* ctx, bool is_server) {
     return 0;
 }
 
+// Initialize crypto handshake context with password authentication
+int crypto_handshake_init_with_password(crypto_handshake_context_t* ctx, bool is_server, const char* password) {
+    if (!ctx || !password) return -1;
+
+    // Zero out the context
+    memset(ctx, 0, sizeof(crypto_handshake_context_t));
+
+    // Initialize core crypto context with password
+    crypto_result_t result = crypto_init_with_password(&ctx->crypto_ctx, password);
+    if (result != CRYPTO_OK) {
+        log_error("Failed to initialize crypto context with password: %s", crypto_result_to_string(result));
+        return -1;
+    }
+
+    ctx->state = CRYPTO_HANDSHAKE_INIT;
+    ctx->verify_server_key = false;
+    ctx->require_client_auth = false;
+    ctx->has_password = true;
+
+    // Store password temporarily (will be cleared after key derivation)
+    SAFE_STRNCPY(ctx->password, password, sizeof(ctx->password) - 1);
+
+    // Load server keys if this is a server
+    if (is_server) {
+        // TODO: Load server private key from --ssh-key option
+        // For now, generate ephemeral keys
+        log_info("Server crypto handshake initialized with password authentication (ephemeral keys)");
+    } else {
+        // TODO: Load expected server key from --server-key option
+        log_info("Client crypto handshake initialized with password authentication");
+    }
+
+    return 0;
+}
+
 // Cleanup crypto handshake context
 void crypto_handshake_cleanup(crypto_handshake_context_t* ctx) {
     if (!ctx) return;

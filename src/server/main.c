@@ -404,12 +404,19 @@ static int init_server_crypto(void) {
     }
 
     // Load server private key if provided
-    if (strlen(opt_ssh_key) > 0) {
-        if (parse_private_key(opt_ssh_key, &g_server_private_key) != 0) {
-            log_error("Failed to load server SSH key: %s", opt_ssh_key);
-            return -1;
+    if (strlen(opt_encrypt_key) > 0) {
+        // Check if it's an SSH key file path
+        if (strstr(opt_encrypt_key, "/.ssh/") != NULL || strstr(opt_encrypt_key, "/ssh/") != NULL ||
+            strstr(opt_encrypt_key, "_ed25519") != NULL || strstr(opt_encrypt_key, "id_ed25519") != NULL) {
+            if (parse_private_key(opt_encrypt_key, &g_server_private_key) != 0) {
+                log_error("Failed to load server SSH key: %s", opt_encrypt_key);
+                return -1;
+            }
+            log_info("Using SSH key: %s", opt_encrypt_key);
+        } else {
+            // It's a password - will be handled by crypto handshake
+            log_info("Using password authentication");
         }
-        log_info("Using SSH key: %s", opt_ssh_key);
     } else {
         // Generate ephemeral keypair using crypto context
         crypto_context_t temp_ctx;

@@ -60,7 +60,20 @@ int server_crypto_handshake(socket_t client_socket) {
     }
 
     // Initialize crypto context for this specific client
-    int init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
+    int init_result;
+    if (strlen(opt_encrypt_key) > 0 &&
+        strstr(opt_encrypt_key, "/.ssh/") == NULL && strstr(opt_encrypt_key, "/ssh/") == NULL &&
+        strstr(opt_encrypt_key, "_ed25519") == NULL && strstr(opt_encrypt_key, "id_ed25519") == NULL &&
+        strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
+        // It's a password - use password-based initialization
+        log_debug("SERVER_CRYPTO_HANDSHAKE: Using password authentication");
+        init_result = crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, opt_encrypt_key); // true = server
+    } else {
+        // No password or SSH/GPG key - use standard initialization
+        log_debug("SERVER_CRYPTO_HANDSHAKE: Using standard initialization");
+        init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
+    }
+
     if (init_result != 0) {
         log_error("Failed to initialize crypto handshake for client %u", atomic_load(&client->client_id));
         return -1;

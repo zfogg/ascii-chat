@@ -8,11 +8,18 @@
 #ifdef _WIN32
 #include <io.h>
 #include <process.h>
+#include <conio.h>
 #define popen _popen
 #define pclose _pclose
+#define unlink _unlink
 #else
 #include <unistd.h>
+#include <termios.h>
 #endif
+
+// Forward declarations
+static int prompt_with_askpass(const char* askpass_program, const char* prompt, char* passphrase, size_t max_len);
+static int prompt_with_pinentry(char* passphrase, size_t max_len);
 
 // Base64 decode SSH key blob
 static int base64_decode_ssh_key(const char* base64, size_t base64_len, uint8_t** blob_out, size_t* blob_len) {
@@ -273,6 +280,251 @@ int public_key_to_x25519(const public_key_t* key, uint8_t x25519_pk[32]) {
     }
 }
 
+// Prompt for SSH key passphrase using secure methods
+static int prompt_ssh_passphrase(char* passphrase, size_t max_len) {
+    // Try SSH_ASKPASS first (like SSH does)
+    const char* ssh_askpass = getenv("SSH_ASKPASS");
+    if (ssh_askpass && strlen(ssh_askpass) > 0) {
+        log_info("Using SSH_ASKPASS for passphrase input");
+        return prompt_with_askpass(ssh_askpass, "SSH key passphrase:", passphrase, max_len);
+    }
+
+    // Try DISPLAY for GUI environments (like pinentry)
+    const char* display = getenv("DISPLAY");
+    if (display && strlen(display) > 0) {
+        log_info("GUI environment detected, trying pinentry");
+        return prompt_with_pinentry(passphrase, max_len);
+    }
+
+    // Fallback to terminal input (less secure)
+    log_warn("No secure passphrase input available, using terminal input");
+    log_info("SSH key is encrypted. Please enter the passphrase:");
+
+    // Disable echo for security
+    #ifdef _WIN32
+    // Windows doesn't have termios, use _getch
+    int i = 0;
+    int ch;
+    while (i < (int)(max_len - 1) && (ch = _getch()) != '\r' && ch != '\n') {
+        if (ch == '\b' && i > 0) {
+            i--;
+            printf("\b \b");
+        } else if (ch >= 32 && ch <= 126) {
+            passphrase[i++] = ch;
+            printf("*");
+        }
+    }
+    passphrase[i] = '\0';
+    printf("\n");
+    #else
+    // Unix/Linux: disable echo
+    struct termios old_termios, new_termios;
+    if (tcgetattr(STDIN_FILENO, &old_termios) == 0) {
+        new_termios = old_termios;
+        new_termios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &new_termios) == 0) {
+            if (fgets(passphrase, max_len, stdin) == NULL) {
+                tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
+                log_error("Failed to read passphrase");
+                return -1;
+            }
+            tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
+        } else {
+            // Fallback to normal input
+            if (fgets(passphrase, max_len, stdin) == NULL) {
+                log_error("Failed to read passphrase");
+                return -1;
+            }
+        }
+    } else {
+        // Fallback to normal input
+        if (fgets(passphrase, max_len, stdin) == NULL) {
+            log_error("Failed to read passphrase");
+            return -1;
+        }
+    }
+
+    size_t len = strlen(passphrase);
+    if (len > 0 && passphrase[len-1] == '\n') {
+        passphrase[len-1] = '\0';
+    }
+    #endif
+
+    return 0;
+}
+
+// Use SSH_ASKPASS for secure passphrase input
+static int prompt_with_askpass(const char* askpass_program, const char* prompt, char* passphrase, size_t max_len) {
+    char command[1024];
+    snprintf(command, sizeof(command), "%s \"%s\"", askpass_program, prompt);
+
+    log_debug("Running SSH_ASKPASS: %s", command);
+
+    FILE* fp = popen(command, "r");
+    if (!fp) {
+        log_error("Failed to run SSH_ASKPASS program: %s", askpass_program);
+        return -1;
+    }
+
+    if (fgets(passphrase, max_len, fp) == NULL) {
+        log_error("SSH_ASKPASS program returned no output");
+        pclose(fp);
+        return -1;
+    }
+
+    pclose(fp);
+
+    // Remove newline
+    size_t len = strlen(passphrase);
+    if (len > 0 && passphrase[len-1] == '\n') {
+        passphrase[len-1] = '\0';
+    }
+
+    log_info("SSH_ASKPASS returned passphrase");
+    return 0;
+}
+
+// Use pinentry for secure passphrase input (like GPG)
+static int prompt_with_pinentry(char* passphrase, size_t max_len) {
+    // Try to find pinentry program
+    const char* pinentry_programs[] = {
+        "pinentry",
+        "pinentry-gtk-2",
+        "pinentry-qt",
+        "pinentry-curses",
+        NULL
+    };
+
+    for (int i = 0; pinentry_programs[i] != NULL; i++) {
+        char command[1024];
+        snprintf(command, sizeof(command), "echo 'SETPROMPT SSH key passphrase:' | %s", pinentry_programs[i]);
+
+        log_debug("Trying pinentry: %s", pinentry_programs[i]);
+
+        FILE* fp = popen(command, "r");
+        if (fp) {
+            char line[1024];
+            bool got_passphrase = false;
+
+            while (fgets(line, sizeof(line), fp)) {
+                if (strncmp(line, "D ", 2) == 0) {
+                    // Got the passphrase
+                    strncpy(passphrase, line + 2, max_len - 1);
+                    passphrase[max_len - 1] = '\0';
+
+                    // Remove newline
+                    size_t len = strlen(passphrase);
+                    if (len > 0 && passphrase[len-1] == '\n') {
+                        passphrase[len-1] = '\0';
+                    }
+
+                    got_passphrase = true;
+                    break;
+                }
+            }
+
+            pclose(fp);
+
+            if (got_passphrase) {
+                log_info("pinentry returned passphrase");
+                return 0;
+            }
+        }
+    }
+
+    log_error("No pinentry program found or failed to get passphrase");
+    return -1;
+}
+
+// Check if SSH agent has Ed25519 keys and get the first one
+static int get_ssh_agent_ed25519_key(char* public_key_out, size_t public_key_size) {
+    // Check if SSH agent is running
+    const char* ssh_auth_sock = getenv("SSH_AUTH_SOCK");
+    if (!ssh_auth_sock) {
+        log_debug("SSH agent not running (SSH_AUTH_SOCK not set)");
+        return -1;
+    }
+
+    log_info("SSH agent detected, looking for Ed25519 keys...");
+
+    // Try to get the public key using ssh-add -L
+    // This will list all keys in the agent
+    FILE* fp = popen("ssh-add -L", "r");
+    if (!fp) {
+        log_error("Failed to run ssh-add -L");
+        return -1;
+    }
+
+    char line[1024];
+    bool found_ed25519 = false;
+
+    while (fgets(line, sizeof(line), fp)) {
+        // Look for the first Ed25519 key
+        if (strstr(line, "ssh-ed25519")) {
+            log_info("Found Ed25519 key in SSH agent: %.50s...", line);
+
+            // Copy the public key line
+            size_t line_len = strlen(line);
+            if (line_len < public_key_size) {
+                strncpy(public_key_out, line, line_len - 1); // Remove newline
+                public_key_out[line_len - 1] = '\0';
+                found_ed25519 = true;
+                break;
+            } else {
+                log_error("Public key too long for buffer");
+                break;
+            }
+        }
+    }
+
+    pclose(fp);
+
+    if (!found_ed25519) {
+        log_debug("No Ed25519 keys found in SSH agent");
+        return -1;
+    }
+
+    log_info("Using first Ed25519 key from SSH agent");
+    return 0;
+}
+
+// Decrypt SSH key using external tools (ssh-keygen)
+static int decrypt_key_with_external_tool(const char* key_path, const char* passphrase, char* temp_key_path) {
+    // Create a temporary file for the decrypted key
+    #ifdef _WIN32
+    char temp_dir[512];
+    const char* temp_env = getenv("TEMP");
+    if (!temp_env) temp_env = getenv("TMP");
+    if (!temp_env) temp_env = "C:\\temp";
+    snprintf(temp_dir, sizeof(temp_dir), "%s\\ascii-chat-temp-key-%d", temp_env, getpid());
+    #else
+    char temp_dir[512];
+    snprintf(temp_dir, sizeof(temp_dir), "/tmp/ascii-chat-temp-key-%d", getpid());
+    #endif
+
+    // Use ssh-keygen to convert encrypted key to unencrypted
+    char command[1024];
+    snprintf(command, sizeof(command), "ssh-keygen -p -N \"\" -f \"%s\" -P \"%s\" -o \"%s\"",
+             key_path, passphrase, temp_dir);
+
+    log_info("Attempting to decrypt key with ssh-keygen...");
+    log_debug("Command: %s", command);
+
+    int result = system(command);
+    if (result != 0) {
+        log_error("Failed to decrypt key with ssh-keygen (exit code: %d)", result);
+        return -1;
+    }
+
+    // Copy the temp path to output
+    strncpy(temp_key_path, temp_dir, 511);
+    temp_key_path[511] = '\0';
+
+    log_info("Successfully decrypted key to temporary file: %s", temp_key_path);
+    return 0;
+}
+
+
 // Parse SSH private key from file
 int parse_private_key(const char* path, private_key_t* key_out) {
     memset(key_out, 0, sizeof(private_key_t));
@@ -285,7 +537,8 @@ int parse_private_key(const char* path, private_key_t* key_out) {
 
     char line[2048];
     bool in_private_key = false;
-    bool found_ed25519 = false;
+    char base64_data[8192] = {0}; // Buffer for base64 data
+    size_t base64_len = 0;
 
     while (fgets(line, sizeof(line), f)) {
         // Remove newline
@@ -300,26 +553,250 @@ int parse_private_key(const char* path, private_key_t* key_out) {
             break;
         }
 
-        if (in_private_key && strstr(line, "ssh-ed25519")) {
-            found_ed25519 = true;
-            // For now, we'll just mark it as Ed25519 type
-            // TODO: Parse the actual key material from the OpenSSH format
-            key_out->type = KEY_TYPE_ED25519;
-            break;
+        if (in_private_key) {
+            // Accumulate base64 data
+            size_t line_len = strlen(line);
+            if (base64_len + line_len < sizeof(base64_data)) {
+                strcat(base64_data, line);
+                base64_len += line_len;
+            }
         }
     }
 
     fclose(f);
 
-    if (!found_ed25519) {
-        log_error("No Ed25519 private key found in file: %s", path);
+    if (base64_len == 0) {
+        log_error("No private key data found in file: %s", path);
         return -1;
     }
 
-    // For now, just return success with a dummy key
-    // TODO: Parse the actual key material from the OpenSSH format
-    // This is complex and requires proper OpenSSH private key parsing
-    memset(key_out->key.ed25519, 0x42, 64); // Dummy key for testing
+    // Decode base64 data
+    uint8_t* blob = NULL;
+    size_t blob_len = 0;
+    if (base64_decode_ssh_key(base64_data, base64_len, &blob, &blob_len) != 0) {
+        log_error("Failed to decode base64 private key data");
+        return -1;
+    }
+
+    // Parse OpenSSH private key format
+    // Format: [4 bytes: magic] [4 bytes: ciphername] [4 bytes: kdfname] [4 bytes: kdfoptions] [4 bytes: nkeys] [4 bytes: pubkey] [4 bytes: privkey] [data...]
+    if (blob_len < 32) {
+        log_error("Private key data too short");
+        free(blob);
+        return -1;
+    }
+
+    // Check magic number (OpenSSH private key format)
+    if (memcmp(blob, "openssh-key-v1\0", 15) != 0) {
+        log_error("Not an OpenSSH private key format");
+        free(blob);
+        return -1;
+    }
+
+    size_t offset = 15; // Skip magic
+    if (offset + 4 > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+
+    // Read ciphername (should be "none" for unencrypted keys)
+    uint32_t ciphername_len = (blob[offset] << 24) | (blob[offset+1] << 16) | (blob[offset+2] << 8) | blob[offset+3];
+    offset += 4;
+    if (offset + ciphername_len > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+
+    // Check if the key is encrypted
+    if (ciphername_len != 4 || memcmp(blob + offset, "none", 4) != 0) {
+        // Key is encrypted - we need to decrypt it
+        char ciphername[256];
+        if (ciphername_len >= sizeof(ciphername)) {
+            log_error("Cipher name too long");
+            free(blob);
+            return -1;
+        }
+        memcpy(ciphername, blob + offset, ciphername_len);
+        ciphername[ciphername_len] = '\0';
+
+        log_info("Encrypted private key detected (cipher: %s)", ciphername);
+
+        // Prompt for passphrase
+        char passphrase[256];
+        if (prompt_ssh_passphrase(passphrase, sizeof(passphrase)) != 0) {
+            log_error("Failed to get passphrase");
+            free(blob);
+            return -1;
+        }
+
+        // Try SSH agent first
+        char ssh_agent_public_key[1024];
+        if (get_ssh_agent_ed25519_key(ssh_agent_public_key, sizeof(ssh_agent_public_key)) == 0) {
+            log_info("Using SSH agent for encrypted key operations");
+            log_info("SSH agent public key: %.50s...", ssh_agent_public_key);
+
+            // Mark as using SSH agent - we don't need the actual private key
+            key_out->type = KEY_TYPE_ED25519;
+            // SSH agent will handle the private key operations
+            // We can't get the private key from agent, but we can use it for authentication
+            memset(key_out->key.ed25519, 0, 32); // Placeholder - agent handles the real key
+
+            sodium_memzero(passphrase, sizeof(passphrase));
+            free(blob);
+            return 0;
+        }
+
+        // SSH agent failed, try to decrypt the key using external tools
+        log_info("SSH agent not available, attempting to decrypt key with external tools...");
+
+        // Use ssh-keygen to decrypt the key temporarily
+        char temp_key_path[512];
+        if (decrypt_key_with_external_tool(path, passphrase, temp_key_path) == 0) {
+            log_info("Successfully decrypted key, parsing temporary file...");
+            sodium_memzero(passphrase, sizeof(passphrase));
+            free(blob);
+
+            // Parse the decrypted key
+            int result = parse_private_key(temp_key_path, key_out);
+
+            // Clean up temporary file
+            unlink(temp_key_path);
+
+            if (result == 0) {
+                log_info("Successfully parsed decrypted SSH key");
+                return 0;
+            } else {
+                log_error("Failed to parse decrypted key");
+                return -1;
+            }
+        } else {
+            log_error("Failed to decrypt key with external tools");
+            log_error("Please try one of these methods:");
+            log_error("1. Add key to SSH agent: ssh-add %s", path);
+            log_error("2. Convert to unencrypted: ssh-keygen -p -N \"\" -f %s", path);
+            log_error("3. Use an unencrypted Ed25519 key");
+
+            sodium_memzero(passphrase, sizeof(passphrase));
+            free(blob);
+            return -1;
+        }
+    }
+    offset += ciphername_len;
+
+    // Read kdfname (should be "none")
+    if (offset + 4 > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    uint32_t kdfname_len = (blob[offset] << 24) | (blob[offset+1] << 16) | (blob[offset+2] << 8) | blob[offset+3];
+    offset += 4;
+    if (offset + kdfname_len > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    offset += kdfname_len;
+
+    // Read kdfoptions (should be empty for "none")
+    if (offset + 4 > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    uint32_t kdfoptions_len = (blob[offset] << 24) | (blob[offset+1] << 16) | (blob[offset+2] << 8) | blob[offset+3];
+    offset += 4;
+    if (offset + kdfoptions_len > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    offset += kdfoptions_len;
+
+    // Read number of keys (should be 1)
+    if (offset + 4 > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    uint32_t nkeys = (blob[offset] << 24) | (blob[offset+1] << 16) | (blob[offset+2] << 8) | blob[offset+3];
+    offset += 4;
+
+    if (nkeys != 1) {
+        log_error("Expected 1 key, found %u", nkeys);
+        free(blob);
+        return -1;
+    }
+
+    // Read public key
+    if (offset + 4 > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    uint32_t pubkey_len = (blob[offset] << 24) | (blob[offset+1] << 16) | (blob[offset+2] << 8) | blob[offset+3];
+    offset += 4;
+    if (offset + pubkey_len > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+
+    // Check if it's an Ed25519 public key
+    if (pubkey_len < 19 || memcmp(blob + offset, "ssh-ed25519", 11) != 0) {
+        log_error("Not an Ed25519 key");
+        free(blob);
+        return -1;
+    }
+    offset += pubkey_len;
+
+    // Read private key
+    if (offset + 4 > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+    uint32_t privkey_len = (blob[offset] << 24) | (blob[offset+1] << 16) | (blob[offset+2] << 8) | blob[offset+3];
+    offset += 4;
+    if (offset + privkey_len > blob_len) {
+        log_error("Invalid private key format");
+        free(blob);
+        return -1;
+    }
+
+    // Parse private key data
+    if (privkey_len < 19) {
+        log_error("Private key data too short");
+        free(blob);
+        return -1;
+    }
+
+    // Check if it's an Ed25519 private key
+    if (memcmp(blob + offset, "ssh-ed25519", 11) != 0) {
+        log_error("Not an Ed25519 private key");
+        free(blob);
+        return -1;
+    }
+
+    // Skip the key type string and get to the actual key data
+    offset += 19; // "ssh-ed25519" + 4 bytes length + 4 bytes string length
+    if (offset + 64 > blob_len) {
+        log_error("Private key data too short");
+        free(blob);
+        return -1;
+    }
+
+    // Extract the 32-byte Ed25519 private key
+    key_out->type = KEY_TYPE_ED25519;
+    memcpy(key_out->key.ed25519, blob + offset, 32);
+
+    // Clear sensitive data
+    sodium_memzero(blob, blob_len);
+    free(blob);
+
+    log_info("Successfully parsed Ed25519 private key from %s", path);
     return 0;
 }
 

@@ -38,10 +38,17 @@ typedef struct {
     bool require_client_auth;         // Server: require client authentication
     char client_keys_path[256];       // Server: client keys file path
 
+    // Password authentication
+    bool has_password;                // Whether password authentication is enabled
+    char password[256];               // Password for authentication (temporary storage)
+
 } crypto_handshake_context_t;
 
 // Initialize crypto handshake context
 int crypto_handshake_init(crypto_handshake_context_t* ctx, bool is_server);
+
+// Initialize crypto handshake context with password authentication
+int crypto_handshake_init_with_password(crypto_handshake_context_t* ctx, bool is_server, const char* password);
 
 // Cleanup crypto handshake context
 void crypto_handshake_cleanup(crypto_handshake_context_t* ctx);
