@@ -65,10 +65,10 @@ extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // Encryption key from --key
 extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE]; // Key file path from --keyfile
 
 // New crypto options (Phase 2)
-extern unsigned short int opt_no_encrypt;           // Disable encryption (opt-out)
-extern char opt_ssh_key[OPTIONS_BUFF_SIZE];        // SSH private key file (server only)
-extern char opt_server_key[OPTIONS_BUFF_SIZE];     // Expected server public key (client only)
-extern char opt_client_keys[OPTIONS_BUFF_SIZE];     // Allowed client keys (server only)
+extern unsigned short int opt_no_encrypt;       // Disable encryption (opt-out)
+extern char opt_ssh_key[OPTIONS_BUFF_SIZE];     // SSH private key file (server only)
+extern char opt_server_key[OPTIONS_BUFF_SIZE];  // Expected server public key (client only)
+extern char opt_client_keys[OPTIONS_BUFF_SIZE]; // Allowed client keys (server only)
 
 // Palette options
 extern palette_type_t opt_palette_type; // Selected palette type

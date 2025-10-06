@@ -67,6 +67,9 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
 // Client: Process auth challenge and send response
 int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket);
 
+// Client: Wait for handshake complete confirmation
+int crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t client_socket);
+
 // Server: Process auth response and complete handshake
 int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t client_socket);
 

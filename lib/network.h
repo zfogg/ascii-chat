@@ -84,13 +84,13 @@ typedef enum {
   PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
 
   // Crypto handshake packets (ALWAYS SENT UNENCRYPTED)
-  PACKET_TYPE_KEY_EXCHANGE_INIT = 14,      // Server -> Client: {server_pubkey[32]}
-  PACKET_TYPE_KEY_EXCHANGE_RESPONSE = 15,  // Client -> Server: {client_pubkey[32]}
-  PACKET_TYPE_AUTH_CHALLENGE = 16,         // Server -> Client: {nonce[32]}
-  PACKET_TYPE_AUTH_RESPONSE = 17,          // Client -> Server: {HMAC[32]}
-  PACKET_TYPE_HANDSHAKE_COMPLETE = 18,     // Server -> Client: "encryption ready"
-  PACKET_TYPE_AUTH_FAILED = 19,            // Server -> Client: "authentication failed"
-  PACKET_TYPE_ENCRYPTED = 20               // Encrypted packet (after handshake)
+  PACKET_TYPE_KEY_EXCHANGE_INIT = 14,     // Server -> Client: {server_pubkey[32]}
+  PACKET_TYPE_KEY_EXCHANGE_RESPONSE = 15, // Client -> Server: {client_pubkey[32]}
+  PACKET_TYPE_AUTH_CHALLENGE = 16,        // Server -> Client: {nonce[32]}
+  PACKET_TYPE_AUTH_RESPONSE = 17,         // Client -> Server: {HMAC[32]}
+  PACKET_TYPE_HANDSHAKE_COMPLETE = 18,    // Server -> Client: "encryption ready"
+  PACKET_TYPE_AUTH_FAILED = 19,           // Server -> Client: "authentication failed"
+  PACKET_TYPE_ENCRYPTED = 20              // Encrypted packet (after handshake)
 } packet_type_t;
 
 typedef struct {
@@ -235,7 +235,8 @@ int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client
 int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
 
 // Receive encrypted packet from client (after crypto handshake)
-int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
+int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data,
+                                         size_t *len);
 
 // Heartbeat/ping functions
 int send_ping_packet(socket_t sockfd);

@@ -97,8 +97,9 @@
 
 // Forward declaration for client crypto functions
 bool crypto_client_is_ready(void);
-const crypto_context_t* crypto_client_get_context(void);
-int crypto_client_decrypt_packet(const uint8_t* ciphertext, size_t ciphertext_len, uint8_t* plaintext, size_t plaintext_size, size_t* plaintext_len);
+const crypto_context_t *crypto_client_get_context(void);
+int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
+                                 size_t plaintext_size, size_t *plaintext_len);
 
 #include <stdatomic.h>
 #include <string.h>
@@ -545,15 +546,15 @@ static void *data_reception_thread_func(void *arg) {
         log_debug("CLIENT_RECV: Processing encrypted packet from server, len=%zu", len);
 
         // Allocate buffer for decrypted data
-        void* decrypted_data = buffer_pool_alloc(len);
+        void *decrypted_data = buffer_pool_alloc(len);
         if (!decrypted_data) {
           log_error("Failed to allocate buffer for decrypted packet from server");
           break;
         }
 
         size_t decrypted_len;
-        int decrypt_result = crypto_client_decrypt_packet((const uint8_t*)data, len,
-                                                         (uint8_t*)decrypted_data, len, &decrypted_len);
+        int decrypt_result =
+            crypto_client_decrypt_packet((const uint8_t *)data, len, (uint8_t *)decrypted_data, len, &decrypted_len);
 
         if (decrypt_result != 0) {
           log_error("Failed to decrypt packet from server (result=%d)", decrypt_result);
@@ -563,11 +564,11 @@ static void *data_reception_thread_func(void *arg) {
 
         // Parse the decrypted packet header to determine the actual packet type
         if (decrypted_len >= sizeof(packet_header_t)) {
-          packet_header_t* decrypted_header = (packet_header_t*)decrypted_data;
+          packet_header_t *decrypted_header = (packet_header_t *)decrypted_data;
           packet_type_t decrypted_type = (packet_type_t)ntohs(decrypted_header->type);
 
           // Extract the actual payload (skip the header)
-          void* payload = (uint8_t*)decrypted_data + sizeof(packet_header_t);
+          void *payload = (uint8_t *)decrypted_data + sizeof(packet_header_t);
           size_t payload_len = decrypted_len - sizeof(packet_header_t);
 
           log_debug("CLIENT_RECV: Decrypted packet type=%d, payload_len=%zu", decrypted_type, payload_len);

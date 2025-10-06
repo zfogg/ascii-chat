@@ -24,15 +24,15 @@
 
 // Key exchange packet types (for network protocol integration)
 typedef enum {
-  CRYPTO_PACKET_PUBLIC_KEY = 100,    // Send public key during handshake
-  CRYPTO_PACKET_KEY_EXCHANGE = 101,  // Complete key exchange
+  CRYPTO_PACKET_PUBLIC_KEY = 100,     // Send public key during handshake
+  CRYPTO_PACKET_KEY_EXCHANGE = 101,   // Complete key exchange
   CRYPTO_PACKET_ENCRYPTED_DATA = 102, // Encrypted application data
 
   // New crypto handshake packets
-  CRYPTO_PACKET_AUTH_CHALLENGE = 103, // Server -> Client: {nonce[32]}
-  CRYPTO_PACKET_AUTH_RESPONSE = 104,  // Client -> Server: {HMAC[32]}
+  CRYPTO_PACKET_AUTH_CHALLENGE = 103,     // Server -> Client: {nonce[32]}
+  CRYPTO_PACKET_AUTH_RESPONSE = 104,      // Client -> Server: {HMAC[32]}
   CRYPTO_PACKET_HANDSHAKE_COMPLETE = 105, // Server -> Client: "encryption ready"
-  CRYPTO_PACKET_AUTH_FAILED = 106     // Server -> Client: "authentication failed"
+  CRYPTO_PACKET_AUTH_FAILED = 106         // Server -> Client: "authentication failed"
 } crypto_packet_type_t;
 
 // Crypto context for managing keys and state
@@ -55,8 +55,8 @@ typedef struct {
   bool handshake_complete;
 
   // Authentication
-  uint8_t auth_nonce[32];            // Server-generated nonce
-  uint8_t auth_hmac[32];             // Client's HMAC response
+  uint8_t auth_nonce[32]; // Server-generated nonce
+  uint8_t auth_hmac[32];  // Client's HMAC response
 
   // Security parameters
   uint64_t nonce_counter; // Prevent nonce reuse
@@ -123,7 +123,8 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
 bool crypto_verify_password(const crypto_context_t *ctx, const char *password);
 
 // Derive a deterministic encryption key from password for handshake
-crypto_result_t crypto_derive_password_encryption_key(const char *password, uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]);
+crypto_result_t crypto_derive_password_encryption_key(const char *password,
+                                                      uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]);
 
 // =============================================================================
 // Encryption/Decryption operations
@@ -167,7 +168,8 @@ crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32
 bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]);
 
 // Create authentication challenge packet
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
+crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
+                                             size_t *packet_len_out);
 
 // Process authentication challenge packet
 crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len);
