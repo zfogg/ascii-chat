@@ -155,21 +155,13 @@ ParameterizedTest(hashtable_collision_test_case_t *tc, hashtable, collision_scen
 
     cr_assert_eq(hashtable_size(ht), unique_keys, "Size should match unique keys for %s", tc->description);
 
-    // Clean up - only free the items that are still in the hashtable (last insert for each key)
-    // For {1, 1, 2, 2}: items[1] and items[3] are in hashtable, items[0] and items[2] are orphaned
-    // We need to free the orphaned ones manually
+    // Clean up ALL items - both orphaned and those in hashtable
+    // hashtable_destroy doesn't free data values, so we must free all items manually
+    // For {1, 1, 2, 2}: items[0] and items[2] were replaced (orphaned)
+    //                   items[1] and items[3] remain in hashtable
+    // We need to free ALL four items
     for (int i = 0; i < 4; i++) {
-      bool is_last_occurrence = true;
-      for (int j = i + 1; j < 4; j++) {
-        if (tc->keys[i] == tc->keys[j]) {
-          is_last_occurrence = false;
-          break;
-        }
-      }
-      if (!is_last_occurrence) {
-        // This item was replaced, free it manually
-        free(items[i]);
-      }
+      free(items[i]);
     }
   }
 
