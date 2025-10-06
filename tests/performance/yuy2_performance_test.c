@@ -3,7 +3,7 @@
 
 #include <criterion/criterion.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 void yuy2_suite_setup(void) {

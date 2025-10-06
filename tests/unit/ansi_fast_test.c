@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 #include "ansi_fast.h"
-#include "common.h"
+#include "tests/common.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "tests/logging.h"
 

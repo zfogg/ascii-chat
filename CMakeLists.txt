@@ -1882,6 +1882,9 @@ set(LIB_SRCS
 
 add_library(ascii-chat-lib STATIC ${LIB_SRCS})
 
+# Define the project source root for logging (so relative paths work regardless of repo name)
+target_compile_definitions(ascii-chat-lib PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
+
 # Link library dependencies (matching Makefile linking order)
 if(WIN32)
     target_link_libraries(ascii-chat-lib
@@ -2120,9 +2123,10 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         string(REPLACE "_test" "" test_base ${test_name})
         set(test_exe_name "test_${test_subdir}_${test_base}")
 
-        # Add test executable with test logging helper
-        # All tests use the same setup now (no more special webcam mock handling)
-        add_executable(${test_exe_name} ${test_src} lib/tests/logging.c)
+        # Add test executable with test utilities
+        # - globals.c: Provides global symbols (g_should_exit) needed by lib code
+        # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
+        add_executable(${test_exe_name} ${test_src} lib/tests/globals.c lib/tests/logging.c)
 
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
@@ -2133,7 +2137,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             ${TEST_LDFLAGS}
         )
 
-        # Use release objects for performance tests (matches Makefile)
+        # Use release objects for performance tests
         if(test_subdir STREQUAL "performance")
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()

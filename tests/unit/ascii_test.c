@@ -1,10 +1,10 @@
-#include "../common.h"
+#include <criterion/parameterized.h>
+#include <criterion/theories.h>
+#include "tests/common.h"
 #include "image2ascii/ascii.h"
 #include "image2ascii/image.h"
 #include "platform/terminal.h"
 #include "options.h"
-#include <criterion/parameterized.h>
-#include <criterion/theories.h>
 
 // Custom test suite setup function to initialize globals
 void ascii_custom_init(void) {

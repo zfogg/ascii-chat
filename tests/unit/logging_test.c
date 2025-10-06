@@ -3,7 +3,7 @@
 #include <criterion/parameterized.h>
 #include <string.h>
 #include <stdbool.h>
-#include "../common.h"
+#include "tests/common.h"
 
 // Global setup to reduce verbose output during tests
 void setup_quiet_logging(void);

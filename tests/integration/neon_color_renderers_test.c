@@ -1,13 +1,5 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include <string.h>
-#include <stdio.h>
-
-#include "common.h"
-#include "image2ascii/image.h"
-#include "image2ascii/simd/ascii_simd.h"
-#include "image2ascii/simd/common.h"
-#include "image2ascii/simd/neon.h"
 
 void setup_neon_quiet_logging(void);
 void restore_neon_logging(void);
@@ -23,6 +15,14 @@ void restore_neon_logging(void) {
 }
 
 #ifdef SIMD_SUPPORT_NEON
+#include <string.h>
+#include <stdio.h>
+
+#include "tests/common.h"
+#include "image2ascii/image.h"
+#include "image2ascii/simd/ascii_simd.h"
+#include "image2ascii/simd/common.h"
+#include "image2ascii/simd/neon.h"
 
 // Test helper: create a simple test image
 static image_t *create_test_image(int width, int height, uint8_t r, uint8_t g, uint8_t b) {

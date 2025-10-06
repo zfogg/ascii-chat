@@ -10,7 +10,7 @@
 #include <unistd.h>
 #endif
 
-#include "common.h"
+#include "tests/common.h"
 #include "os/webcam.h"
 #include "options.h"
 #include "image2ascii/image.h"

@@ -1,6 +1,5 @@
 #include "common.h"
 #include "platform/abstraction.h"
-#include "platform/file.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,41 +85,14 @@ static log_level_t parse_log_level_from_env(void) {
   return LOG_INFO;
 }
 
-/* Helper function to extract relative path from absolute path */
+/* Helper function to extract relative path from absolute path
+ * NOTE: Uses shared implementation from common.c which handles:
+ * - Dynamic PROJECT_SOURCE_ROOT (works with any repo name)
+ * - Slash-agnostic path matching (handles Windows/Unix separators)
+ * - Fallback to filename extraction
+ */
 static const char *extract_relative_path(const char *file) {
-  if (!file)
-    return "unknown";
-
-  /* Look for ascii-chat repository root directory */
-  const char *repo_name = "ascii-chat";
-  const char *repo_pos = strstr(file, repo_name);
-
-  if (repo_pos) {
-    /* Move past the repo name and directory separator */
-    const char *after_repo = repo_pos + strlen(repo_name);
-
-    /* Skip the path separator if present */
-    if (*after_repo == '/' || *after_repo == '\\') {
-      after_repo++;
-    }
-
-    /* Return the path relative to repo root */
-    if (*after_repo != '\0') {
-      return after_repo;
-    }
-  }
-
-  /* Fallback: try to find just the filename */
-  const char *last_slash = strrchr(file, '/');
-  const char *last_backslash = strrchr(file, '\\');
-  const char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
-
-  if (last_sep) {
-    return last_sep + 1;
-  }
-
-  /* If no separators found, return the original string */
-  return file;
+  return extract_project_relative_path(file);
 }
 
 /* Log rotation function - keeps the tail (recent entries) */

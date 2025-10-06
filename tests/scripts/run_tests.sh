@@ -1247,28 +1247,28 @@ function main() {
   local overall_start_time=$(date +%s.%N)
 
   if [[ -n "$SINGLE_TEST" ]]; then
-    # Single test mode - find the test executable
+    # Single test mode - determine which bin directory to use
     local bin_dirs=(
       "$PROJECT_ROOT/build_docker/bin"
       "$PROJECT_ROOT/build_clang/bin"
       "$PROJECT_ROOT/build/bin"
       "$PROJECT_ROOT/bin"
     )
-    local found_test=""
-    for bin_dir in "${bin_dirs[@]}"; do
-      if [[ -f "$bin_dir/$SINGLE_TEST" ]]; then
-        found_test="$bin_dir/$SINGLE_TEST"
+    local bin_dir=""
+    for dir in "${bin_dirs[@]}"; do
+      if [[ -d "$dir" ]]; then
+        bin_dir="$dir"
         break
       fi
     done
-    if [[ -n "$found_test" ]]; then
-      all_tests_to_run=("$found_test")
-    else
-      log_error "Test not found: $SINGLE_TEST"
+    if [[ -z "$bin_dir" ]]; then
+      log_error "No bin directory found (build_docker, build_clang, build, or bin)"
       exit 1
     fi
+    # Queue test to be built - don't check if it exists yet
+    all_tests_to_run=("$bin_dir/$SINGLE_TEST")
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
-    # Multiple specific tests mode - find test executables
+    # Multiple specific tests mode - determine which bin directory to use
     local bin_dirs=(
       "$PROJECT_ROOT/build_docker/bin"
       "$PROJECT_ROOT/build_clang/bin"
@@ -1286,13 +1286,9 @@ function main() {
       log_error "No bin directory found for tests"
       exit 1
     fi
+    # Queue tests to be built - don't check if they exist yet
     for test in "${MULTIPLE_TESTS[@]}"; do
-      if [[ -f "$bin_dir/$test" ]]; then
-        all_tests_to_run+=("$bin_dir/$test")
-      else
-        log_error "Test not found: $test"
-        exit 1
-      fi
+      all_tests_to_run+=("$bin_dir/$test")
     done
   else
     # Category mode - determine all categories to run
@@ -1354,9 +1350,36 @@ function main() {
     log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
     # Build all test targets in one command - ninja will parallelize and handle dependencies
     local build_output
+    local build_exit_code
     build_output=$(cmake --build "$cmake_build_dir" --target "${test_targets[@]}" 2>&1)
+    build_exit_code=$?
     if [[ "$build_output" != *"ninja: no work to do"* ]] || [[ -n "$VERBOSE" ]]; then
       echo "$build_output"
+    fi
+
+    # Check if build failed
+    if [[ $build_exit_code -ne 0 ]]; then
+      log_error "Failed to build test executables"
+      exit 1
+    fi
+
+    # Verify that all requested tests were actually built
+    local missing_tests=()
+    for test_path in "${all_tests_to_run[@]}"; do
+      if [[ ! -f "$test_path" ]]; then
+        missing_tests+=("$(basename "$test_path")")
+      fi
+    done
+
+    if [[ ${#missing_tests[@]} -gt 0 ]]; then
+      log_error "The following test(s) failed to build or do not exist:"
+      for missing_test in "${missing_tests[@]}"; do
+        log_error "  • $missing_test"
+      done
+      log_error ""
+      log_error "Available tests in $cmake_build_dir/bin/:"
+      ls -1 "$cmake_build_dir/bin/" | grep "^test_" || echo "  (none found)"
+      exit 1
     fi
   fi
 

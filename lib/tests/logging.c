@@ -2,13 +2,15 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include "logging.h"
+
+#ifndef _WIN32
+// POSIX-only test utilities for redirecting stdout/stderr
+
+#include "platform/file.h"
+#include "platform/internal.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
-
-// Define g_should_exit for test builds to satisfy linker
-atomic_bool g_should_exit = false;
 
 // Global variables to store original file descriptors for restoration
 static int original_stdout_fd = -1;
@@ -23,7 +25,7 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   }
 
   // Open /dev/null for writing
-  dev_null_fd = open("/dev/null", O_WRONLY);
+  dev_null_fd = platform_open("/dev/null", PLATFORM_O_WRONLY);
   if (dev_null_fd == -1) {
     return -1;
   }
@@ -108,3 +110,20 @@ int test_logging_restore(void) {
 bool test_logging_is_disabled(void) {
   return logging_disabled;
 }
+
+#else
+// Windows stub implementations
+int test_logging_disable(bool disable_stdout, bool disable_stderr) {
+  (void)disable_stdout;
+  (void)disable_stderr;
+  return 0; // Not implemented on Windows
+}
+
+int test_logging_restore(void) {
+  return 0; // Not implemented on Windows
+}
+
+bool test_logging_is_disabled(void) {
+  return false;
+}
+#endif // !_WIN32

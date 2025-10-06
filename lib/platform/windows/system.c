@@ -526,7 +526,12 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
     break;
   }
 
+#ifndef NDEBUG
+  // Only capture backtraces in Debug builds
   platform_print_backtrace();
+#else
+  fprintf(stderr, "Backtrace disabled in Release builds\n");
+#endif
 
   // Return EXCEPTION_EXECUTE_HANDLER to terminate the program
   return EXCEPTION_EXECUTE_HANDLER;
@@ -551,7 +556,14 @@ static void windows_signal_handler(int sig) {
     fprintf(stderr, "Signal: %d (Unknown)\n", sig);
     break;
   }
+
+#ifndef NDEBUG
+  // Only capture backtraces in Debug builds
   platform_print_backtrace();
+#else
+  fprintf(stderr, "Backtrace disabled in Release builds\n");
+#endif
+
   exit(1);
 }
 
@@ -1021,4 +1033,4 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src) {
 #endif
 }
 
-#endif // _WIN32
+#endif // !!_WIN32

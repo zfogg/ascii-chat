@@ -5,7 +5,7 @@
 #include <string.h>
 #include <locale.h>
 #include "palette.h"
-#include "common.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging

@@ -3,7 +3,7 @@
 #include <criterion/parameterized.h>
 #include <string.h>
 
-#include "common.h"
+#include "tests/common.h"
 #include "hashtable.h"
 #include "tests/logging.h"
 

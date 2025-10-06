@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 
 #include "network.h"
-#include "common.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled

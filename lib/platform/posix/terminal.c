@@ -9,6 +9,8 @@
 #ifndef _WIN32
 
 #include "../terminal.h"
+#include "../file.h"
+#include "../internal.h"
 #include "../../options.h"
 #include "../../common.h"
 #include <unistd.h>
@@ -243,7 +245,7 @@ tty_info_t get_current_tty(void) {
   // Method 1: Check $TTY environment variable first (most specific on macOS)
   const char *tty_env = getenv("TTY");
   if (tty_env && strlen(tty_env) > 0 && is_valid_tty_path(tty_env)) {
-    result.fd = open(tty_env, O_WRONLY);
+    result.fd = platform_open(tty_env, PLATFORM_O_WRONLY);
     if (result.fd >= 0) {
       result.path = tty_env;
       result.owns_fd = true;
@@ -276,7 +278,7 @@ tty_info_t get_current_tty(void) {
   }
 
   // Method 3: Try controlling terminal device
-  result.fd = open("/dev/tty", O_WRONLY);
+  result.fd = platform_open("/dev/tty", PLATFORM_O_WRONLY);
   if (result.fd >= 0) {
     result.path = "/dev/tty";
     result.owns_fd = true;
@@ -302,7 +304,7 @@ bool is_valid_tty_path(const char *path) {
     return false;
   }
 
-  int fd = open(path, O_WRONLY | O_NOCTTY);
+  int fd = platform_open(path, PLATFORM_O_WRONLY | O_NOCTTY);
   if (fd < 0) {
     return false;
   }

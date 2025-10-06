@@ -12,6 +12,8 @@
 
 #include "os/webcam.h"
 #include "common.h"
+#include "platform/file.h"
+#include "platform/internal.h"
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8
@@ -153,7 +155,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   char device_path[32];
   SAFE_SNPRINTF(device_path, sizeof(device_path), "/dev/video%d", device_index);
 
-  context->fd = open(device_path, O_RDWR | O_NONBLOCK);
+  context->fd = platform_open(device_path, PLATFORM_O_RDWR | O_NONBLOCK);
   if (context->fd == -1) {
     log_error("Failed to open V4L2 device %s: %s", device_path, strerror(errno));
     free(context);
