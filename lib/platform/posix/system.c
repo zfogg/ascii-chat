@@ -706,4 +706,48 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src) {
   return 0;                   // Success
 }
 
+/**
+ * Resolve hostname to IPv4 address (POSIX implementation)
+ *
+ * Performs DNS resolution to convert a hostname to an IPv4 address string.
+ * Uses standard POSIX getaddrinfo() function.
+ *
+ * @param hostname Hostname to resolve (e.g., "example.com")
+ * @param ipv4_out Buffer to store the resolved IPv4 address (e.g., "192.168.1.1")
+ * @param ipv4_out_size Size of the output buffer
+ * @return 0 on success, -1 on failure
+ */
+int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
+  if (!hostname || !ipv4_out || ipv4_out_size == 0) {
+    return -1;
+  }
+
+  struct addrinfo hints, *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;       // IPv4 only
+  hints.ai_socktype = SOCK_STREAM; // TCP
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
+
+  int ret = getaddrinfo(hostname, NULL, &hints, &result);
+  if (ret != 0) {
+    return -1;
+  }
+
+  if (!result) {
+    freeaddrinfo(result);
+    return -1;
+  }
+
+  // Extract IPv4 address from first result
+  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
+  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
+    freeaddrinfo(result);
+    return -1;
+  }
+
+  freeaddrinfo(result);
+  return 0;
+}
+
 #endif // !_WIN32

@@ -60,7 +60,7 @@
  */
 
 #include "server.h"
-#include "main.h"
+#include "crypto.h"
 
 #include "platform/abstraction.h"
 #include "network.h"
@@ -294,6 +294,17 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   int nodelay = 1;
   if (socket_setsockopt(g_sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
     log_warn("Failed to set TCP_NODELAY: %s", network_error_string(errno));
+  }
+
+  // Perform crypto handshake if encryption is enabled
+  if (client_crypto_init() == 0) {
+    int crypto_result = client_crypto_handshake(g_sockfd);
+    if (crypto_result != 0) {
+      log_error("Crypto handshake failed: %s", network_error_string(errno));
+      close_socket(g_sockfd);
+      g_sockfd = INVALID_SOCKET_VALUE;
+      return -1;
+    }
   }
 
   // Send initial terminal capabilities to server (this may generate debug logs)

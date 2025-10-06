@@ -140,6 +140,7 @@
 #include <time.h>
 #include <errno.h>
 #include <math.h>
+#include <float.h>
 
 #include "stream.h"
 #include "client.h"
@@ -153,7 +154,7 @@
 #include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
 #include "aspect_ratio.h"
-#include "crc32_hw.h"
+#include "crc32.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()
 extern rwlock_t g_client_manager_rwlock;

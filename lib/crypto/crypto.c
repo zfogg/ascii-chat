@@ -70,6 +70,7 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   ctx->has_password = false;
   ctx->key_exchange_complete = false;
   ctx->peer_key_received = false;
+  ctx->handshake_complete = false;
   ctx->nonce_counter = 1; // Start from 1 (0 reserved for testing)
   ctx->bytes_encrypted = 0;
   ctx->bytes_decrypted = 0;
@@ -529,4 +530,104 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
 
   const uint8_t *encrypted_data = packet + sizeof(uint32_t) + sizeof(uint32_t);
   return crypto_decrypt(ctx, encrypted_data, data_length, data_out, data_size, data_len_out);
+}
+
+// =============================================================================
+// Authentication and handshake functions
+// =============================================================================
+
+crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
+  if (!nonce) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  crypto_result_t result = init_libsodium();
+  if (result != CRYPTO_OK) {
+    return result;
+  }
+
+  randombytes_buf(nonce, 32);
+  return CRYPTO_OK;
+}
+
+crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32], uint8_t hmac[32]) {
+  if (!key || !data || !hmac) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  crypto_result_t result = init_libsodium();
+  if (result != CRYPTO_OK) {
+    return result;
+  }
+
+  crypto_auth_hmacsha256(hmac, data, 32, key);
+  return CRYPTO_OK;
+}
+
+bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]) {
+  if (!key || !data || !expected_hmac) {
+    return false;
+  }
+
+  uint8_t computed_hmac[32];
+  if (crypto_auth_hmacsha256(computed_hmac, data, 32, key) != 0) {
+    return false;
+  }
+
+  return crypto_verify_32(computed_hmac, expected_hmac) == 0;
+}
+
+crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
+  if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  size_t required_size = sizeof(uint32_t) + 32; // type + nonce
+  if (packet_size < required_size) {
+    return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+  }
+
+  // Generate random nonce
+  crypto_result_t result = crypto_generate_nonce((uint8_t*)ctx->auth_nonce);
+  if (result != CRYPTO_OK) {
+    return result;
+  }
+
+  // Pack packet: [type:4][nonce:32]
+  uint32_t packet_type = CRYPTO_PACKET_AUTH_CHALLENGE;
+  SAFE_MEMCPY(packet_out, sizeof(packet_type), &packet_type, sizeof(packet_type));
+  SAFE_MEMCPY(packet_out + sizeof(packet_type), 32, ctx->auth_nonce, 32);
+
+  *packet_len_out = required_size;
+  return CRYPTO_OK;
+}
+
+crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len) {
+  if (!ctx || !ctx->initialized || !packet) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  size_t expected_size = sizeof(uint32_t) + 32; // type + hmac
+  if (packet_len != expected_size) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Unpack packet: [type:4][hmac:32]
+  uint32_t packet_type;
+  SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+
+  if (packet_type != CRYPTO_PACKET_AUTH_RESPONSE) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  const uint8_t *received_hmac = packet + sizeof(packet_type);
+
+  // Verify HMAC using shared secret
+  if (!crypto_verify_hmac(ctx->shared_key, ctx->auth_nonce, received_hmac)) {
+    return CRYPTO_ERROR_INVALID_MAC;
+  }
+
+  ctx->handshake_complete = true;
+  log_debug("Authentication successful - handshake complete");
+  return CRYPTO_OK;
 }

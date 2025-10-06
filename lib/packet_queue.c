@@ -1,6 +1,7 @@
 #include "packet_queue.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "crc32.h"
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32

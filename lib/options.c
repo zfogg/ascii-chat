@@ -1,4 +1,5 @@
 #include "aspect_ratio.h"
+#include "platform/system.h"
 #ifdef _WIN32
 #include "platform/windows/getopt.h"
 #include <winsock2.h>
@@ -90,6 +91,12 @@ unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via -
 char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
 char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
 
+// New crypto options (Phase 2)
+unsigned short int opt_no_encrypt = 0;            // Disable encryption (opt-out)
+char opt_ssh_key[OPTIONS_BUFF_SIZE] = "";        // SSH private key file (server only)
+char opt_server_key[OPTIONS_BUFF_SIZE] = "";     // Expected server public key (client only)
+char opt_client_keys[OPTIONS_BUFF_SIZE] = "";     // Allowed client keys (server only)
+
 // Palette options
 palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
 char opt_palette_custom[256] = "";                  // Custom palette characters
@@ -145,6 +152,8 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"keyfile", required_argument, NULL, 'F'},
+                                         {"no-encrypt", no_argument, NULL, 1005},
+                                         {"server-key", required_argument, NULL, 1006},
                                          {"version", no_argument, NULL, 'v'},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
@@ -155,8 +164,10 @@ static struct option server_options[] = {
     {"palette", required_argument, NULL, 'P'}, {"palette-chars", required_argument, NULL, 'C'},
     {"audio", no_argument, NULL, 'A'},         {"log-file", required_argument, NULL, 'L'},
     {"encrypt", no_argument, NULL, 'E'},       {"key", required_argument, NULL, 'K'},
-    {"keyfile", required_argument, NULL, 'F'}, {"version", no_argument, NULL, 'v'},
-    {"help", optional_argument, NULL, 'h'},    {0, 0, 0, 0}};
+    {"keyfile", required_argument, NULL, 'F'}, {"no-encrypt", no_argument, NULL, 1005},
+    {"ssh-key", required_argument, NULL, 1007}, {"client-keys", required_argument, NULL, 1008},
+    {"version", no_argument, NULL, 'v'},       {"help", optional_argument, NULL, 'h'},
+    {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 
@@ -296,60 +307,6 @@ static int is_valid_ipv4(const char *ip) {
   return (count == 4 && token == NULL);
 }
 
-// Helper function to resolve hostname to IPv4 address
-static int resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
-  if (!hostname || !ipv4_out || ipv4_out_size == 0)
-    return -1;
-
-#ifdef _WIN32
-  // Initialize Winsock on Windows (required for getaddrinfo)
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    return -1;
-  }
-#endif
-
-  struct addrinfo hints, *result = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;       // IPv4 only
-  hints.ai_socktype = SOCK_STREAM; // TCP
-  hints.ai_flags = 0;
-  hints.ai_protocol = 0;
-
-  int ret = getaddrinfo(hostname, NULL, &hints, &result);
-  if (ret != 0) {
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return -1;
-  }
-
-  if (!result) {
-    freeaddrinfo(result);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return -1;
-  }
-
-  // Extract IPv4 address from first result
-  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
-  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
-    freeaddrinfo(result);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return -1;
-  }
-
-  freeaddrinfo(result);
-#ifdef _WIN32
-  WSACleanup();
-#endif
-
-  return 0;
-}
-
 void options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
 
@@ -389,22 +346,24 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'a': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
       if (!is_valid_ipv4(value_str)) {
-        (void)fprintf(stderr, "Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.\n",
-                      value_str);
-        _exit(EXIT_FAILURE);
+        // Try to resolve hostname to IPv4
+        char resolved_ip[OPTIONS_BUFF_SIZE];
+        if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) != 0) {
+          (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", value_str);
+          (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
+          _exit(EXIT_FAILURE);
+        }
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
+      } else {
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       }
-      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
     case 'H': { // --host (DNS lookup)
-      if (!is_client) {
-        (void)fprintf(stderr, "Error: --host is a client-only option.\n");
-        _exit(EXIT_FAILURE);
-      }
       char *hostname = get_required_argument(optarg, argbuf, sizeof(argbuf), "host", is_client);
       char resolved_ip[OPTIONS_BUFF_SIZE];
-      if (resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
+      if (platform_resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
         (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", hostname);
         (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
         _exit(EXIT_FAILURE);
@@ -631,6 +590,34 @@ void options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
+    case 1005: { // --no-encrypt (disable encryption)
+      opt_no_encrypt = 1;
+      opt_encrypt_enabled = 0; // Disable encryption
+      log_info("Encryption disabled via --no-encrypt");
+      break;
+    }
+
+    case 1006: { // --server-key (client only)
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", is_client);
+      SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      log_info("Server key verification enabled: %s", value_str);
+      break;
+    }
+
+    case 1007: { // --ssh-key (server only)
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "ssh-key", is_client);
+      SAFE_SNPRINTF(opt_ssh_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      log_info("Using SSH key: %s", value_str);
+      break;
+    }
+
+    case 1008: { // --client-keys (server only)
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
+      SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
+      log_info("Client whitelist enabled: %s", value_str);
+      break;
+    }
+
     case ':':
       // Missing argument for option
       if (optopt == 0 || optopt > 127) {
@@ -759,6 +746,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "encryption passphrase (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
                                    "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --server-key KEY           " USAGE_INDENT "expected server public key for verification (default: [unset])\n");
 }
 
 void usage_server(FILE *desc /* stdout|stderr*/) {
@@ -781,6 +770,9 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
                                    "encryption passphrase (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt       " USAGE_INDENT "disable encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --ssh-key FILE     " USAGE_INDENT "SSH private key file for server identity (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE  " USAGE_INDENT "allowed client keys file for authentication (default: [unset])\n");
 }
 
 void usage(FILE *desc /* stdout|stderr*/, bool is_client) {

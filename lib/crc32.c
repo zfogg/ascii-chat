@@ -1,4 +1,4 @@
-#include "crc32_hw.h"
+#include "crc32.h"
 #include "common.h"
 #include <string.h>
 

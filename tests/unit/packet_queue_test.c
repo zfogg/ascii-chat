@@ -7,7 +7,7 @@
 #include "tests/common.h"
 #include "packet_queue.h"
 #include "network.h"
-#include "crc32_hw.h" // For CRC calculation
+#include "crc32.h" // For CRC calculation
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging

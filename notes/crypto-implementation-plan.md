@@ -630,10 +630,10 @@ Use variant: `sodium_base64_VARIANT_ORIGINAL`
 
 **Goal**: Parse SSH/GPG keys (Ed25519, X25519 only), convert to X25519, support GitHub/GitLab fetching with BearSSL
 
-#### 1.1 Create lib/ssh_keys.c/h (NEW FILE)
+#### 1.1 Create lib/keys.c/h (NEW FILE)
 
 ```c
-// lib/ssh_keys.h
+// lib/keys.h
 #ifndef SSH_KEYS_H
 #define SSH_KEYS_H
 
@@ -724,8 +724,8 @@ void format_public_key(const public_key_t* key, char* output, size_t output_size
 **Implementation**:
 
 ```c
-// lib/ssh_keys.c
-#include "ssh_keys.h"
+// lib/keys.c
+#include "keys.h"
 #include "common.h"
 #include "logging.h"
 #include <sodium.h>
@@ -1401,11 +1401,11 @@ target_include_directories(asciichat_lib PRIVATE
 )
 ```
 
-Add ssh_keys.c to library:
+Add keys.c to library:
 ```cmake
 set(LIB_SOURCES
     # ... existing sources ...
-    lib/ssh_keys.c
+    lib/keys.c
 )
 ```
 

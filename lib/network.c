@@ -1,11 +1,10 @@
 #include "network.h"
 #include "common.h"
 #include "buffer_pool.h"
-#include "crc32_hw.h"
+#include "crc32.h"
 #include "platform/terminal.h"
 #include <stdint.h>
 #include <errno.h>
-#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

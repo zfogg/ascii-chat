@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include "platform/terminal.h"
-#include "crc32_hw.h"
+#include "crc32.h"
 
 // Pack network protocol structures tightly for wire format
 #ifdef _WIN32
@@ -81,7 +81,15 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
-  PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
+  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
+
+  // Crypto handshake packets (ALWAYS SENT UNENCRYPTED)
+  PACKET_TYPE_KEY_EXCHANGE_INIT = 14,      // Server -> Client: {server_pubkey[32]}
+  PACKET_TYPE_KEY_EXCHANGE_RESPONSE = 15,  // Client -> Server: {client_pubkey[32]}
+  PACKET_TYPE_AUTH_CHALLENGE = 16,         // Server -> Client: {nonce[32]}
+  PACKET_TYPE_AUTH_RESPONSE = 17,          // Client -> Server: {HMAC[32]}
+  PACKET_TYPE_HANDSHAKE_COMPLETE = 18,     // Server -> Client: "encryption ready"
+  PACKET_TYPE_AUTH_FAILED = 19             // Server -> Client: "authentication failed"
 } packet_type_t;
 
 typedef struct {

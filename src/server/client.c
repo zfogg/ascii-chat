@@ -119,6 +119,7 @@
 #include "protocol.h"
 #include "render.h"
 #include "stream.h"
+#include "crypto.h"
 #include "common.h"
 #include "buffer_pool.h"
 #include "network.h"
@@ -130,7 +131,7 @@
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
-#include "crc32_hw.h"
+#include "crc32.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -330,6 +331,18 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id),
              network_error_string(errno));
   }
+
+  // Perform crypto handshake if encryption is enabled
+  if (server_crypto_init() == 0) {
+    int crypto_result = server_crypto_handshake(socket);
+    if (crypto_result != 0) {
+      log_error("Crypto handshake failed for client %u: %s", atomic_load(&client->client_id),
+                network_error_string(errno));
+      rwlock_wrunlock(&g_client_manager_rwlock);
+      return -1;
+    }
+  }
+
   SAFE_IGNORE_PRINTF_RESULT(
       safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id)));
 
