@@ -174,10 +174,7 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
   }
 
   // Handle short options
-  if (sp == 1) {
-    sp++; // Skip the '-'
-  }
-
+  // sp == 1 means we're already positioned at the first option character after '-'
   optopt = current_arg[sp];
   const char *oli = strchr(optstring, optopt);
 
