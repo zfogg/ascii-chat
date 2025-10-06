@@ -1,3 +1,4 @@
+#include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 #include <criterion/theories.h>
 #include <time.h>
