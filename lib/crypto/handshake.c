@@ -21,6 +21,7 @@ int crypto_handshake_init(crypto_handshake_context_t *ctx, bool is_server) {
   }
 
   ctx->state = CRYPTO_HANDSHAKE_INIT;
+  ctx->is_server = is_server;
   ctx->verify_server_key = false;
   ctx->require_client_auth = false;
 
@@ -53,6 +54,7 @@ int crypto_handshake_init_with_password(crypto_handshake_context_t *ctx, bool is
   }
 
   ctx->state = CRYPTO_HANDSHAKE_INIT;
+  ctx->is_server = is_server;
   ctx->verify_server_key = false;
   ctx->require_client_auth = false;
   ctx->has_password = true;
