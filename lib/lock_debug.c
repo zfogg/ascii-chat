@@ -193,7 +193,7 @@ static void print_lock_record_callback(uint32_t key, void *value, void *user_dat
     if (symbols && symbols[0]) {
       // Check if symbol contains more than just the address
       char addr_str[32];
-      snprintf(addr_str, sizeof(addr_str), "%p", record->backtrace_buffer[0]);
+      (void)snprintf(addr_str, sizeof(addr_str), "%p", record->backtrace_buffer[0]);
       has_symbols = (strstr(symbols[0], "(") != NULL) || (strstr(symbols[0], "+") != NULL);
     }
 

@@ -179,6 +179,7 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(ascii_chars);
   if (!utf8_cache) {
     log_error("Failed to get UTF-8 palette cache for SSE2 color");
+    free(ob.buf);
     return NULL;
   }
 

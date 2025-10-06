@@ -485,7 +485,19 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           }
           current_frame.data = NULL; // Prevent double-free
         }
-      } // End of if (client->is_sending_video)
+      } else {
+        // Clean up current_frame.data if we allocated it but frame_to_use check failed
+        // This handles cases where: frame too small, no data, etc.
+        if (got_new_frame && current_frame.data) {
+          data_buffer_pool_t *pool = data_buffer_pool_get_global();
+          if (pool) {
+            data_buffer_pool_free(pool, current_frame.data, current_frame.size);
+          } else {
+            free(current_frame.data);
+          }
+          current_frame.data = NULL;
+        }
+      } // End of if (frame_to_use && ...)
 
       // Increment source count for this active client (with or without video)
       source_count++;
@@ -863,13 +875,19 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
           target_width_px = width_constrained_w;
           target_height_px = width_constrained_h;
         } else if (height_constrained_w <= actual_cell_width_px) {
-          // Height-constrained scaling fits
+          // Height-constrained scaling fits (and has better area since we didn't take first branch)
           target_width_px = height_constrained_w;
           target_height_px = height_constrained_h;
         } else {
-          // Fallback to width-constrained if height-constrained doesn't fit
-          target_width_px = width_constrained_w;
-          target_height_px = width_constrained_h;
+          // Neither fits perfectly - use whichever gives the larger area
+          // This handles edge cases where both exceed bounds
+          if (width_area >= height_area) {
+            target_width_px = width_constrained_w;
+            target_height_px = width_constrained_h;
+          } else {
+            target_width_px = height_constrained_w;
+            target_height_px = height_constrained_h;
+          }
         }
       } else if (sources_with_video == 2 && grid_cols == 2 && grid_rows == 1) {
         // 2x1 horizontal layout: fit to height while respecting aspect ratio
