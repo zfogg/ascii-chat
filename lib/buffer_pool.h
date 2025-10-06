@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pthread.h>
+#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -18,13 +18,13 @@
 #define BUFFER_POOL_SMALL_SIZE 1024     // Audio packets (1KB)
 #define BUFFER_POOL_MEDIUM_SIZE 65536   // Small video frames (64KB)
 #define BUFFER_POOL_LARGE_SIZE 262144   // Large video frames (256KB)
-#define BUFFER_POOL_XLARGE_SIZE 1310720 // Extra large frames (1.25MB)
+#define BUFFER_POOL_XLARGE_SIZE 2097152 // Extra large frames (2MB for HD video)
 
 // Number of buffers to pre-allocate per size class
-#define BUFFER_POOL_SMALL_COUNT 128  // 128KB total for audio
-#define BUFFER_POOL_MEDIUM_COUNT 128 // 8MB total for small frames
-#define BUFFER_POOL_LARGE_COUNT 16   // 4MB total for large frames
-#define BUFFER_POOL_XLARGE_COUNT 128 // Pre-allocate 128 × 1.25MB = 160MB for large frames
+#define BUFFER_POOL_SMALL_COUNT 256  // 256KB total for audio
+#define BUFFER_POOL_MEDIUM_COUNT 256 // 16MB total for small frames
+#define BUFFER_POOL_LARGE_COUNT 256  // 64MB total for large frames
+#define BUFFER_POOL_XLARGE_COUNT 256 // 512MB for extra large frames
 
 // Single buffer in the pool
 typedef struct buffer_node {
@@ -56,7 +56,7 @@ typedef struct data_buffer_pool {
   buffer_pool_t *medium_pool; // Pool for medium buffers (small frames)
   buffer_pool_t *large_pool;  // Pool for large buffers (large frames)
   buffer_pool_t *xlarge_pool; // Pool for extra large buffers (1MB+ frames)
-  pthread_mutex_t pool_mutex; // Protect all pools
+  mutex_t pool_mutex;         // Protect all pools
   // Global statistics
   uint64_t total_allocs;     // Total allocation requests
   uint64_t pool_hits;        // Allocations satisfied from pools

@@ -1,0 +1,49 @@
+services:
+  ascii-chat-tests:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+
+    # Mount source code and ccache volume
+    volumes:
+      # Source code (read/write for build artifacts)
+      - ..:/app:rw
+
+      # ccache volume for persistent compilation cache
+      # This persists between container runs for faster rebuilds
+      - ccache-data:/ccache:rw
+
+    # Run tests by default
+    # Use build_docker directory (build is for native OS)
+    command: >
+      sh -c "cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON &&
+             cmake --build build_docker &&
+             ./tests/scripts/run_tests.sh"
+
+    # Optional: Override command for interactive shell
+    # docker-compose run ascii-chat-tests /bin/bash
+
+    # Environment variables (can be overridden)
+    environment:
+      # ccache configuration (from Dockerfile)
+      - CCACHE_DIR=/ccache
+      - CCACHE_UMASK=002
+      - CCACHE_HARDLINK=true
+      - CCACHE_NLEVELS=2
+
+      # Build configuration
+      - CMAKE_BUILD_TYPE=Debug
+
+      # Test configuration
+      - TESTING=1
+      - CRITERION_TEST=1
+
+# Named volume for ccache persistence
+volumes:
+  ccache-data:
+    driver: local
+    # Optional: specify host path for easier access
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/.docker-ccache
+    #   o: bind

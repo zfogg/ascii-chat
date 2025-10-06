@@ -1,21 +1,22 @@
+#include <stdint.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
-#include <unistd.h>
-#include <termios.h>
 
-#include "curses.h"
+#include "platform/abstraction.h"
+#include "platform/terminal.h"
 
 #include "ascii.h"
-#include "simd/ascii_simd.h"
 #include "common.h"
 #include "image.h"
 #include "aspect_ratio.h"
-#include "webcam.h"
+#include "os/webcam.h"
 #include "options.h"
+#include "simd/ascii_simd.h"
 
 /* ============================================================================
  * ASCII Art Video Processing
@@ -36,25 +37,19 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && reset_terminal && getenv("TESTING") == NULL) {
+  if (!opt_snapshot_mode && reset_terminal && SAFE_GETENV("TESTING") == NULL) {
     console_clear(fd);
     cursor_reset(fd);
 
-    struct termios termios;
-    if (tcgetattr(fd, &termios) != 0) {
-      log_error("Failed to get terminal attributes for fd %d", fd);
+    // Disable echo using platform abstraction
+    if (terminal_set_echo(false) != 0) {
+      log_error("Failed to disable echo for fd %d", fd);
       return ASCIICHAT_ERR_TERMINAL;
     }
-    termios.c_lflag &= ~ECHO;
-    tcsetattr(fd, TCSANOW, &termios);
-    // Disable blink for the terminal cursor
-    if (curs_set(0) == ERR) {
-      log_warn("Failed to DISable cursor blink with curs_set(0)");
+    // Hide cursor using platform abstraction
+    if (terminal_hide_cursor(fd, true) != 0) {
+      log_warn("Failed to hide cursor");
     }
-
-    // FIXME: make cursor_hide() work
-    // cursor_hide(fd); // this doesn't work
-    printf("\e[?25l"); // this works
   }
   log_debug("ASCII writer initialized");
   return ASCIICHAT_OK;
@@ -65,6 +60,12 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
                     const char luminance_palette[256]) {
   if (original == NULL || !palette_chars || !luminance_palette) {
     log_error("ascii_convert: invalid parameters");
+    return NULL;
+  }
+
+  // Check for empty strings
+  if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
+    log_error("ascii_convert: empty palette strings");
     return NULL;
   }
 
@@ -257,7 +258,7 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && getenv("TESTING") == NULL) {
+  if (!opt_snapshot_mode && SAFE_GETENV("TESTING") == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -272,21 +273,21 @@ asciichat_error_t ascii_write(const char *frame) {
 }
 
 void ascii_write_destroy(int fd, bool reset_terminal) {
+#if PLATFORM_WINDOWS
+  (void)fd; // Unused on Windows - terminal operations use stdout directly
+#endif
   // console_clear(fd);
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
   if (!opt_snapshot_mode && reset_terminal) {
-    // FIXME: make cursor_show() work
-    // cursor_show(fd); // this doesn't work
-    printf("\033[?25h"); // this works
+    // Show cursor using platform abstraction
+    if (terminal_hide_cursor(fd, false) != 0) {
+      log_warn("Failed to show cursor");
+    }
 
-    struct termios termios;
-    tcgetattr(fd, &termios);
-    termios.c_lflag |= ECHO;
-    tcsetattr(fd, TCSANOW, &termios);
-    // Enable blink for the terminal cursor
-    if (curs_set(1) == ERR) {
-      log_warn("Failed to ENable cursor blink with curs_set(1)");
+    // Re-enable echo using platform abstraction
+    if (terminal_set_echo(true) != 0) {
+      log_warn("Failed to re-enable echo");
     }
   }
   log_debug("ASCII writer destroyed");
@@ -323,7 +324,7 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
     size_t orig_len = strlen(frame);
     char *copy;
     SAFE_MALLOC(copy, orig_len + 1, char *);
-    memcpy(copy, frame, orig_len + 1);
+    SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
     return copy;
   }
 
@@ -354,7 +355,8 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   while (*src) {
     if (at_line_start) {
       // Insert the requested amount of spaces in front of every visual row.
-      memset(position, ' ', pad_left);
+      size_t remaining = (buffer + total_len + 1) - position;
+      SAFE_MEMSET(position, remaining, ' ', pad_left);
       position += pad_left;
       at_line_start = false;
     }
@@ -393,13 +395,13 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
 
   // If no sources, return empty frame
 
-  // If only one source, ensure it fills the target dimensions
+  // If only one source, center it properly to maintain aspect ratio and look good
   if (source_count == 1) {
     // Create a frame of the target size filled with spaces
     size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
     char *result;
     SAFE_MALLOC(result, target_size, char *);
-    memset(result, ' ', target_size - 1);
+    SAFE_MEMSET(result, target_size, ' ', target_size - 1);
     result[target_size - 1] = '\0';
 
     // Add newlines at the end of each row
@@ -452,7 +454,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
 
       if (copy_len > 0 && dst_pos + copy_len < (int)target_size) {
-        memcpy(&result[dst_pos], &src_data[line_start], copy_len);
+        SAFE_MEMCPY(&result[dst_pos], target_size - dst_pos, &src_data[line_start], copy_len);
       }
 
       // Skip newline in source
@@ -468,9 +470,69 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // Multiple sources: create grid layout
-  // Calculate grid dimensions (try to make it roughly square)
-  int grid_cols = (int)ceil(sqrt(source_count));
-  int grid_rows = (int)ceil((double)source_count / grid_cols);
+  // Calculate grid dimensions that maximize the use of terminal space
+  // Character aspect ratio: terminal chars are typically ~2x taller than wide
+  float char_aspect = 2.0f;
+
+  int grid_cols, grid_rows;
+  float best_score = -1.0f;
+  int best_cols = 1;
+  int best_rows = source_count;
+
+  // Try all possible grid configurations
+  for (int test_cols = 1; test_cols <= source_count; test_cols++) {
+    int test_rows = (int)ceil((double)source_count / test_cols);
+
+    // Skip configurations with too many empty cells
+    int empty_cells = (test_cols * test_rows) - source_count;
+    if (empty_cells > source_count / 2)
+      continue; // Don't waste more than 50% space
+
+    // Calculate the size each cell would have
+    int cell_width = (width - (test_cols - 1)) / test_cols;   // -1 per separator
+    int cell_height = (height - (test_rows - 1)) / test_rows; // -1 per separator
+
+    // Skip if cells would be too small
+    if (cell_width < 10 || cell_height < 3)
+      continue;
+
+    // Calculate the aspect ratio of each cell (accounting for char aspect)
+    float cell_aspect = ((float)cell_width / (float)cell_height) / char_aspect;
+
+    // Score based on how close to square (1:1) each video cell would be
+    // This naturally adapts to any terminal size
+    float aspect_score = 1.0f - fabsf(logf(cell_aspect)); // log makes it symmetric around 1
+    if (aspect_score < 0)
+      aspect_score = 0;
+
+    // Bonus for better space utilization
+    float utilization = (float)source_count / (float)(test_cols * test_rows);
+
+    // For 2 clients specifically, heavily weight the aspect score
+    // This makes 2 clients naturally go horizontal on wide terminals and vertical on tall ones
+    float total_score;
+    if (source_count == 2) {
+      // For 2 clients, we want the layout that gives the most square-ish cells
+      total_score = aspect_score * 0.9f + utilization * 0.1f;
+    } else {
+      // For 3+ clients, balance aspect ratio with space utilization
+      total_score = aspect_score * 0.7f + utilization * 0.3f;
+    }
+
+    // Small bonus for simpler grids (prefer 2x2 over 3x1, etc.)
+    if (test_cols == test_rows) {
+      total_score += 0.05f; // Slight preference for square grids
+    }
+
+    if (total_score > best_score) {
+      best_score = total_score;
+      best_cols = test_cols;
+      best_rows = test_rows;
+    }
+  }
+
+  grid_cols = best_cols;
+  grid_rows = best_rows;
 
   // Calculate dimensions for each cell (leave 1 char for separators)
   int cell_width = (width - (grid_cols - 1)) / grid_cols;
@@ -481,7 +543,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     char *result;
     SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
     if (sources[0].frame_data && sources[0].frame_size > 0) {
-      memcpy(result, sources[0].frame_data, sources[0].frame_size);
+      SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
       result[sources[0].frame_size] = '\0';
       *out_size = sources[0].frame_size;
     } else {
@@ -498,7 +560,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   SAFE_MALLOC(mixed_frame, mixed_size, char *);
 
   // Initialize mixed frame with spaces
-  memset(mixed_frame, ' ', mixed_size - 1);
+  SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
   mixed_frame[mixed_size - 1] = '\0';
 
   // Add newlines at the end of each row
@@ -532,7 +594,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int copy_len = (line_len < cell_width) ? line_len : cell_width;
       if (copy_len > 0 && start_col + copy_len <= width) {
         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
-        memcpy(mixed_frame + mixed_pos, src_data + line_start, copy_len);
+        SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - mixed_pos, src_data + line_start, copy_len);
       }
 
       // Move to next line
@@ -587,7 +649,7 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
     size_t orig_len = strlen(frame);
     char *copy;
     SAFE_MALLOC(copy, orig_len + 1, char *);
-    memcpy(copy, frame, orig_len + 1);
+    SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
     return copy;
   }
 
@@ -607,7 +669,8 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   }
 
   // Copy the original frame
-  memcpy(position, frame, frame_len);
+  size_t remaining = total_len + 1 - pad_top;
+  SAFE_MEMCPY(position, remaining, frame, frame_len);
   position += frame_len;
   *position = '\0';
 

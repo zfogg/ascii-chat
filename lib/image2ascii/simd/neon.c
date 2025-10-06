@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
-#include <pthread.h>
+#include "platform/abstraction.h"
 #include <stdatomic.h>
 #include <math.h>
 
@@ -15,6 +15,7 @@
 #include "../image.h"
 // hashtable.h and crc32_hw.h no longer needed - NEON table cache removed
 #include "image2ascii/simd/common.h"
+#include "image2ascii/output_buffer.h"
 
 #ifdef SIMD_SUPPORT_NEON // main block of code ifdef
 #include <arm_neon.h>

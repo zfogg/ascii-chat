@@ -1,0 +1,8 @@
+# Use libc++ instead of libstdc++
+-stdlib=libc++
+
+# Use LLVM's runtime libraries
+-rtlib=compiler-rt
+
+# Optional: Enable modern C++ by default
+-std=c23

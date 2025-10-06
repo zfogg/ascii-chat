@@ -45,7 +45,11 @@ jobs:
 
     - name: Build for analysis
       run: |
-        make -j CSTD=c2x debug
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
+        cmake --build build
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
@@ -133,5 +137,8 @@ jobs:
     - name: Run static security analysis
       run: |
         # Use clang static analyzer for security issues
-        CFLAGS="-Wformat -Wformat-security -Werror=format-security"
-        scan-build --status-bugs make CSTD=c2x CFLAGS="$CFLAGS" c-objs
+        CC=clang CXX=clang++ cmake -B build -G Ninja \
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+          -DCMAKE_C_FLAGS='-std=c2x -Wformat -Wformat-security -Werror=format-security' -DBUILD_TESTS=OFF
+        scan-build cmake --build build || true

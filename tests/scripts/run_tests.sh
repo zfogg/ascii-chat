@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # =============================================================================
 # ASCII-Chat Test Runner Script
@@ -9,12 +9,31 @@
 set -uo pipefail # Remove 'e' flag so we can handle errors ourselves
 set -m           # Enable job control for better signal handling
 
+# Make sure terminal interrupt character is set properly
+stty intr '^C' 2>/dev/null || true
+# Make sure we're in the foreground process group
+if [[ -t 0 ]]; then
+  # We have a TTY, ensure we can receive signals
+  stty isig 2>/dev/null || true
+fi
+
 # =============================================================================
 # Signal Handling
 # =============================================================================
 
 # Track if we've been interrupted
 INTERRUPTED=0
+
+# Global test result variables (no subshells needed!)
+TESTS_PASSED=0
+TESTS_FAILED=0
+TESTS_TIMEDOUT=0
+TESTS_STARTED=0
+FAILED_TEST_NAMES=()  # Array to track failed test names
+TIMEDOUT_TEST_NAMES=()  # Array to track timed-out test names
+
+# Test timeout in seconds
+TEST_TIMEOUT=25
 
 # Check if wait -n is supported (bash 4.3+)
 WAIT_N_SUPPORTED=0
@@ -33,11 +52,11 @@ function print_cancellation_message() {
 
 # Cleanup function for Ctrl-C
 function handle_interrupt() {
-  # Set interrupted flag
+  # Set interrupted flag immediately
   INTERRUPTED=1
 
   # Disable the trap immediately to prevent re-entry
-  trap - INT TERM HUP
+  trap - INT TERM HUP QUIT
 
   # Print cancellation message to the terminal directly (before redirecting output)
   {
@@ -46,28 +65,37 @@ function handle_interrupt() {
     echo "=========================================="
     echo "❌ TESTS CANCELLED BY USER (Ctrl-C)"
     echo "=========================================="
-  } >/dev/tty
+  } >/dev/tty 2>&1 || echo "TESTS CANCELLED BY USER (Ctrl-C)"
 
-  # Redirect all further output to /dev/null to stop printing
-  exec 1>/dev/null 2>&1
+  # Kill only our specific test PIDs (from both global arrays and job control)
+  # Kill any PIDs tracked in the global running_pids array (for parallel tests)
+  if [[ -n "${running_pids:-}" ]]; then
+    for pid in "${running_pids[@]:-}"; do
+      kill -9 "$pid" >/dev/null 2>&1 || true
+      kill -9 -"$pid" >/dev/null 2>&1 || true  # Kill process group too
+    done
+  fi
 
-  # Kill all child processes immediately without waiting
-  # Use process group kill for instant termination
-  kill -KILL -- -$$ 2>/dev/null || true
+  # Kill only our direct child processes (jobs started by this script instance)
+  jobs -p | xargs -r kill -9 >/dev/null 2>&1 || true
 
-  # Also kill direct children and background jobs
-  pkill -KILL -P $$ 2>/dev/null || true
-  jobs -p | xargs -r kill -KILL 2>/dev/null || true
+  # Clean up temp files silently
+  rm -f /tmp/worker_*_$$.* /tmp/test_*_$$.* /tmp/queue_*_$$.* /tmp/junit_*_$$.* /tmp/failed_tests_$$.txt >/dev/null 2>&1 || true
 
-  # Exit immediately
-  exit 130
+  # Force immediate termination - no questions asked
+  kill -9 $$ 2>/dev/null || exit 130
 }
 
 # Set up signal handlers - use INT instead of SIGINT for better compatibility
-trap handle_interrupt INT TERM HUP
+trap handle_interrupt INT TERM HUP QUIT
 
 # Enable job control for better process management
 set -m
+
+# Make sure signals are not ignored
+trap - TSTP
+trap - TTIN
+trap - TTOU
 
 # =============================================================================
 # Configuration
@@ -133,8 +161,8 @@ Usage: $0 [OPTIONS] [TEST_NAME]
 
 OPTIONS:
     -t, --type TYPE         Test type: all, unit, integration, performance (default: all)
-    -b, --build TYPE        Build type: debug, release, coverage, sanitize (default: debug)
-    -j, --jobs N            Number of parallel test executables to run (default: auto-detect CPU cores)
+    -b, --build TYPE        Build type: debug, dev, release, coverage, tsan (default: debug)
+    -j, --jobs N            Number of parallel test executables to run and jobs per test (default: auto-detect CPU cores and auto-detected jobs)
     -J, --junit             Generate JUnit XML output
     -l, --log-file PATH     Save test output to specified log file (default: tests.log in current dir)
     -v, --verbose           Verbose output
@@ -158,7 +186,8 @@ EXAMPLES:
     $0 -t performance -J                  # Run performance tests with JUnit output
     $0 -c -t integration                  # Run integration tests with coverage
     $0 -b coverage -J                     # Run all tests with coverage+JUnit
-    $0 -b sanitize                        # Run with AddressSanitizer for memory checking
+    $0 -b debug                          # Run with AddressSanitizer for memory checking
+    $0 -b tsan                           # Run with ThreadSanitizer for race detection
     $0 --log-file=/tmp/my_test.log unit  # Run unit tests with custom log file
     $0 test_unit_ascii                    # Run single test binary by name
     $0 unit_ascii                         # Run single test binary without test_ prefix
@@ -171,10 +200,11 @@ EXAMPLES:
     $0 -J -l /tmp/custom.log              # Generate JUnit XML and save logs to custom file
 
 BUILD TYPES:
-    debug                 - Debug build with symbols, no optimization
+    debug                 - Debug build with AddressSanitizer (default, safe)
+    dev                   - Debug build without sanitizers (faster iteration)
     release               - Release build with optimizations and LTO
     coverage              - Debug build with coverage instrumentation
-    sanitize              - Debug build with AddressSanitizer for memory checking
+    tsan                  - Debug build with ThreadSanitizer for race detection
 
 TEST TYPES:
     all                   - Run all test categories
@@ -189,12 +219,19 @@ EOF
 # System and Build Utilities
 # =============================================================================
 
-# Wrapper for make command with optional grc colorization
-function colored_make() {
+# Note: colored_make function removed - now using CMake exclusively
+# CMake handles both initial builds and incremental updates efficiently
+
+# Run cmake --build with optional grc colorization
+function cmake_build() {
+  local build_dir="$1"
+  shift  # Remove first argument, pass the rest to cmake
+
+  # Use grc for colored output if available (works with Ninja)
   if command -v grc >/dev/null 2>&1; then
-    grc --colour=on make "$@"
+    grc --colour=auto cmake --build "$build_dir" "$@"
   else
-    make "$@"
+    cmake --build "$build_dir" "$@"
   fi
 }
 
@@ -226,11 +263,26 @@ function detect_cpu_cores() {
 function get_test_executables() {
   local category="$1"
   local build_type="${2:-debug}" # Optional build type parameter
-  local bin_dir="$PROJECT_ROOT/bin"
 
-  # Check if bin directory exists
-  if [[ ! -d "$bin_dir" ]]; then
-    log_verbose "bin directory not found at: $bin_dir"
+  # Try different bin directories in order of preference
+  local bin_dirs=(
+    "$PROJECT_ROOT/build_docker/bin"    # Docker CMake build
+    "$PROJECT_ROOT/build_clang/bin"     # Windows CMake build
+    "$PROJECT_ROOT/build/bin"           # Standard CMake build
+    "$PROJECT_ROOT/bin"                 # Make build (legacy)
+  )
+
+  local bin_dir=""
+  for dir in "${bin_dirs[@]}"; do
+    if [[ -d "$dir" ]]; then
+      bin_dir="$dir"
+      log_verbose "Using test executables from: $bin_dir"
+      break
+    fi
+  done
+
+  if [[ -z "$bin_dir" ]]; then
+    log_verbose "No bin directory found. Tried: ${bin_dirs[*]}"
     return
   fi
 
@@ -242,7 +294,7 @@ function get_test_executables() {
       for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
         if [[ -f "$test_file" ]]; then
           test_name=$(basename "$test_file" _test.c)
-          executable_name="test_unit_${test_name}_coverage"
+          executable_name="test_unit_${test_name}"
           echo "$bin_dir/$executable_name"
         fi
       done | sort
@@ -252,7 +304,7 @@ function get_test_executables() {
       for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
         if [[ -f "$test_file" ]]; then
           test_name=$(basename "$test_file" _test.c)
-          executable_name="test_integration_${test_name}_coverage"
+          executable_name="test_integration_${test_name}"
           echo "$bin_dir/$executable_name"
         fi
       done | sort
@@ -262,14 +314,14 @@ function get_test_executables() {
       for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
         if [[ -f "$test_file" ]]; then
           test_name=$(basename "$test_file" _test.c)
-          executable_name="test_performance_${test_name}_coverage"
+          executable_name="test_performance_${test_name}"
           echo "$bin_dir/$executable_name"
         fi
       done | sort
       ;;
     all)
       # All coverage tests
-      for f in "$bin_dir"/test_*_coverage; do
+      for f in "$bin_dir"/test_*; do
         [[ -f "$f" ]] && echo "$f"
       done | sort
       ;;
@@ -322,25 +374,81 @@ function ensure_tests_built() {
 
   cd "$PROJECT_ROOT"
 
-  case "$build_type" in
-  debug)
-    colored_make tests-debug
-    ;;
-  release)
-    colored_make tests-release
-    ;;
-  coverage)
-    colored_make tests-coverage
-    ;;
-  sanitize)
-    colored_make sanitize
-    colored_make tests
-    ;;
-  *)
-    log_error "Unknown build type: $build_type"
-    return 1
-    ;;
-  esac
+  # Determine build directory based on environment
+  local cmake_build_dir="build"
+  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
+    cmake_build_dir="build_docker"
+  elif [[ -d "build_clang" ]]; then
+    cmake_build_dir="build_clang"
+  fi
+
+  # Check if we have a build directory with CMake cache
+  if [[ -d "$cmake_build_dir" ]] && [[ -f "$cmake_build_dir/CMakeCache.txt" ]]; then
+    # Build directory exists, use CMake for incremental builds
+    log_info "Using CMake for incremental build (build directory exists: $cmake_build_dir)"
+    log_verbose "CMake build directory found, doing incremental build"
+
+    # No need to build anything here - we'll build specific test targets later
+    # The static library will be built automatically as a dependency
+  else
+    # No build directory or CMake cache, use CMake for full build
+    log_info "Using CMake build system (no build directory found)"
+
+    if [[ ! -f "CMakeLists.txt" ]]; then
+      log_error "No CMakeLists.txt found and no build directory exists!"
+      return 1
+    fi
+
+    if ! command -v cmake >/dev/null 2>&1; then
+      log_error "CMake not found but required for initial build!"
+      return 1
+    fi
+
+    # Configure CMake with appropriate flags based on build type
+    local cmake_build_type
+    local cmake_flags="-DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON"
+
+    case "$build_type" in
+    debug)
+      cmake_build_type="Debug"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x -fsanitize=address'"
+      ;;
+    dev)
+      cmake_build_type="Debug"
+      # No sanitizers for dev builds
+      ;;
+    release)
+      cmake_build_type="Release"
+      ;;
+    coverage)
+      cmake_build_type="Debug"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x --coverage'"
+      ;;
+    tsan)
+      cmake_build_type="Debug"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x -fsanitize=thread'"
+      ;;
+    *)
+      log_error "Unknown build type: $build_type"
+      return 1
+      ;;
+    esac
+
+    log_info "Configuring CMake build in $cmake_build_dir (build type: $cmake_build_type)..."
+    CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
+      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+      -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags
+
+    # Build with CMake
+    log_info "Building tests with CMake..."
+    cmake_build "$cmake_build_dir"
+
+    # For integration tests, also build server and client binaries
+    if [[ "$test_type" == "integration" ]] || [[ "$test_type" == "all" ]]; then
+      log_info "🔨 Building server and client binaries for integration tests..."
+      cmake_build "$cmake_build_dir" --target ascii-chat-server ascii-chat-client
+    fi
+  fi
 }
 
 # =============================================================================
@@ -351,126 +459,7 @@ function clean_verbose_test_output() {
   tail -n+2 | grep --color=always -v -E '\[.*SKIP.*\]' | grep --color=always -v -E '\[.*RUN.*\]'
 }
 
-function exec_test_executable() {
-  local test_executable=""
-  local jobs=""
-  local generate_junit=""
-  local log_file=""
-  local junit_file=""
-  local filter=""
-  local xml_file=""
-  local background_mode=""
-
-  # Parse flags
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-      --executable)
-        test_executable="$2"
-        shift 2
-        ;;
-      --jobs)
-        jobs="$2"
-        shift 2
-        ;;
-      --generate-junit)
-        generate_junit="$2"
-        shift 2
-        ;;
-      --log-file)
-        log_file="$2"
-        shift 2
-        ;;
-      --junit-file)
-        junit_file="$2"
-        shift 2
-        ;;
-      --xml)
-        xml_file="$2"
-        shift 2
-        ;;
-      --filter)
-        filter="$2"
-        shift 2
-        ;;
-      --background)
-        background_mode="1"
-        shift
-        ;;
-      *)
-        echo "Unknown option: $1" >&2
-        return 1
-        ;;
-    esac
-  done
-
-  # Build command line arguments
-  local jobs_flag=""
-  if [[ -n "$jobs" && "$jobs" != "1" ]]; then
-    jobs_flag="--jobs=$jobs"
-  fi
-
-  local xml_flag=""
-  if [[ -n "$xml_file" ]]; then
-    xml_flag="--xml=$xml_file"
-  fi
-
-  local verbose_flag=""
-  if [[ -n "$VERBOSE" ]]; then
-    verbose_flag="--verbose"
-  fi
-
-  local color_flag="--color=always"
-
-  # Add filter flag if specified (for Criterion tests)
-  local filter_flag=""
-  if [[ -n "$filter" ]]; then
-    filter_flag="--filter=$filter"
-  fi
-
-  # Check for interrupt before starting
-  if [[ $INTERRUPTED -eq 1 ]]; then
-    return 130
-  fi
-
-  if [[ -n "$background_mode" ]]; then
-    # Background mode: run the test and return immediately
-    # The calling function will handle PID tracking and result collection
-    if [[ -n "$log_file" ]]; then
-      # Run test and append to log file without tee to avoid pipe issues
-      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag >>"$log_file" 2>&1 &
-    else
-      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag 2>&1 &
-    fi
-    # Return the PID of the background process
-    echo $!
-    return 0
-  else
-    # Synchronous mode: run the test and wait for completion
-    local test_exit_code
-
-    if [[ -n "$log_file" ]]; then
-      # Run test and append to log file without tee to avoid pipe issues
-      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag >>"$log_file" 2>&1
-      test_exit_code=$?
-    else
-      "$test_executable" $jobs_flag $xml_flag $verbose_flag $color_flag $filter_flag 2>&1
-      test_exit_code=$?
-    fi
-
-    # If test was killed by signal, return immediately
-    if [[ $test_exit_code -eq 130 ]] || [[ $test_exit_code -gt 128 ]]; then
-      INTERRUPTED=1
-      return $test_exit_code
-    fi
-
-    # Check if we were interrupted
-    if [[ $INTERRUPTED -eq 1 ]]; then
-      return 130
-    fi
-
-    return $test_exit_code
-  fi
-}
+# Old exec_test_executable function removed - replaced with simplified architecture
 
 # =============================================================================
 # JUnit XML Generation Functions
@@ -557,7 +546,7 @@ function generate_junit_xml() {
 
       if [[ $test_exit_code -eq 124 ]]; then
         failure_type="Timeout"
-        failure_msg="Test timed out after 300 seconds"
+        failure_msg="Test timed out after ${TEST_TIMEOUT} seconds"
       elif [[ $test_exit_code -gt 128 ]]; then
         # Exit code > 128 usually means killed by signal
         local signal=$((test_exit_code - 128))
@@ -661,7 +650,7 @@ function determine_test_failure() {
       echo "$emoji [TEST] CANCELLED: $test_name"
     elif [[ $test_exit_code -eq 124 ]]; then
       failure_type="Timeout"
-      failure_msg="Test timed out after 300 seconds"
+      failure_msg="Test timed out after ${TEST_TIMEOUT} seconds"
       emoji="⏱️"
       echo "$emoji [TEST] FAILED: $test_name (${duration}s, exit code: $test_exit_code)"
     elif [[ $test_exit_code -gt 128 ]]; then
@@ -679,347 +668,284 @@ function determine_test_failure() {
 }
 
 # =============================================================================
-# Process Control and Execution Functions
+# SIMPLIFIED TEST EXECUTION - SHARED SPAWNING + TWO EXECUTION MODES
 # =============================================================================
 
-# Function to start a test in background
-function start_test_in_background() {
-  local test_executable=$1
-  local actual_jobs=$2
-  local generate_junit=$3
-  local test_log=$4
-  local test_junit=$5
+# Shared function to spawn a single test (sync or async)
+function spawn_test() {
+  local test_executable="$1"
+  local background="$2"  # "sync" or "async"
 
-  # Build command line arguments for the test executable
-  local jobs_flag=""
-  if [[ -n "$actual_jobs" && "$actual_jobs" != "1" ]]; then
-    jobs_flag="--jobs=$actual_jobs"
+  local test_name=$(basename "$test_executable")
+
+  # Use JOBS if specified, otherwise use 0 for auto-detection
+  local jobs_arg="0"
+  if [[ -n "$JOBS" ]] && [[ "$JOBS" -gt 0 ]]; then
+    jobs_arg="$JOBS"
   fi
 
-  local verbose_flag=""
+  local test_args=("--jobs" "$jobs_arg" "--timeout" "$TEST_TIMEOUT" "--color=always" "--short-filename")
   if [[ -n "$VERBOSE" ]]; then
-    verbose_flag="--verbose"
+    test_args+=(--verbose)
+    log_verbose "Adding --verbose flag to $test_name (VERBOSE=$VERBOSE)"
   fi
 
-  local color_flag="--color=always"
+  if [[ "$background" == "async" ]]; then
+    # Background execution - return PID
+    log_verbose "EXECUTING ASYNC: $test_executable ${test_args[*]}"
 
-  # Build the command arguments array
-  local cmd_args=()
-  [[ -n "$jobs_flag" ]] && cmd_args+=("$jobs_flag")
-  [[ -n "$verbose_flag" ]] && cmd_args+=("$verbose_flag")
-  [[ -n "$color_flag" ]] && cmd_args+=("$color_flag")
-
-  # Set test environment variables for fast test mode
-  export TESTING=1
-  export CRITERION_TEST=1
-
-  # Run the test executable directly in background to maintain proper parent-child relationship
-  if [[ -n "$test_log" ]]; then
-    # Run test and append to log file
-    "$test_executable" "${cmd_args[@]}" >>"$test_log" 2>&1 &
+    if [[ -n "$VERBOSE" ]]; then
+      # In verbose mode, show output in real-time
+      {
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
+      } 2>&1 &
+    else
+      # In non-verbose mode, capture output to file
+      {
+        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
+      } > /tmp/test_${test_name}_$$.log 2>&1 &
+    fi
+    local pid=$!
+    # Write PID to file to avoid mixing with test output
+    echo "$pid" > /tmp/test_${test_name}_$$.pid
   else
-    "$test_executable" "${cmd_args[@]}" 2>&1 &
+    # Synchronous execution - return exit code
+    # Always show output in real-time
+    log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
+    # Redirect test output to stderr so it's visible but not captured in the return value
+    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
+    local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
+    echo $exit_code  # Return only the exit code to stdout
   fi
-
-  local pid=$!
-  echo $pid # Return the PID of the background process
 }
 
-# Function to run tests in parallel with proper queue management
-function run_tests_in_parallel() {
-  local build_type=""
-  local jobs=""
-  local generate_junit=""
-  local log_file=""
-  local junit_file=""
-  local max_parallel_tests=""
-  local jobs_per_test=""
-  local test_executables=()
+# Function 1: Run tests sequentially (no parallelism)
+function run_tests_sequential() {
+  local test_list=("$@")
+  local passed=0
+  local failed=0
+  local timedout=0
+  local started=0
+  local failed_tests=()  # Array to track failed test names
+  local timedout_tests=()  # Array to track timed-out test names
 
-  # Parse named arguments
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-      --build-type)
-        build_type="$2"
-        shift 2
-        ;;
-      --jobs)
-        jobs="$2"
-        shift 2
-        ;;
-      --generate-junit)
-        generate_junit="$2"
-        shift 2
-        ;;
-      --log-file)
-        log_file="$2"
-        shift 2
-        ;;
-      --junit-file)
-        junit_file="$2"
-        shift 2
-        ;;
-      --max-parallel-tests)
-        max_parallel_tests="$2"
-        shift 2
-        ;;
-      --jobs-per-test)
-        jobs_per_test="$2"
-        shift 2
-        ;;
-      --test-executables)
-        shift
-        # Collect all remaining arguments as test executables
-        while [[ $# -gt 0 ]]; do
-          test_executables+=("$1")
-          shift
-        done
-        ;;
-      *)
-        # If it doesn't start with --, treat as test executable
-        test_executables+=("$1")
-        shift
-        ;;
-    esac
+  log_info "🔄 Running ${#test_list[@]} tests sequentially"
+
+  for test_executable in "${test_list[@]}"; do
+    # Check for interrupt before each test
+    if [[ $INTERRUPTED -eq 1 ]]; then
+      log_info "❌ Tests interrupted by user"
+      break
+    fi
+
+    local test_name=$(basename "$test_executable")
+    echo "🚀 [TEST] Starting: $test_name"
+    ((started++))
+
+    # Run test synchronously using shared spawning function
+    local start_time=$(date +%s.%N)
+    # Use the shared spawn_test function for consistency - it handles verbose flag properly
+    local exit_code=$(spawn_test "$test_executable" "sync")
+    local end_time=$(date +%s.%N)
+    local duration
+    if command -v bc >/dev/null 2>&1; then
+      duration=$(echo "$end_time - $start_time" | bc -l)
+    else
+      # Fallback: use awk for basic arithmetic if bc is not available
+      duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
+    fi
+
+    # Report result
+    if [[ $exit_code -eq 0 ]]; then
+      echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
+      ((passed++))
+    elif [[ $exit_code -eq 124 ]]; then
+      echo -e "⏱️ [TEST] \033[33mTIMEOUT\033[0m: $test_name (exceeded ${TEST_TIMEOUT}s)"
+      ((timedout++))
+      timedout_tests+=("$test_name")  # Track timed-out test name
+    else
+      echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
+      ((failed++))
+      failed_tests+=("$test_name")  # Track failed test name
+    fi
   done
 
-  local total_tests=${#test_executables[@]}
-  local passed_tests=0
-  local failed_tests=0
-  local tests_that_started=0
-  local tests_completed=0
-  local failed_test_details=()
-  local failed_test_details_file="/tmp/failed_tests_$$.txt"
-  >"$failed_test_details_file"  # Initialize empty file
+  # Return results via global variables (no subshell needed)
+  TESTS_PASSED=$passed
+  TESTS_FAILED=$failed
+  TESTS_TIMEDOUT=$timedout
+  TESTS_STARTED=$started
+  if [ ${#failed_tests[@]} -gt 0 ]; then
+    FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  else
+    FAILED_TEST_NAMES=()  # Initialize as empty array if no failed tests
+  fi
+  if [ ${#timedout_tests[@]} -gt 0 ]; then
+    TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
+  else
+    TIMEDOUT_TEST_NAMES=()  # Initialize as empty array if no timed-out tests
+  fi
+}
 
-  # No arrays needed for worker pool approach
+# Function 2: Run tests in parallel (up to max_parallel at once)
+function run_tests_parallel() {
+  local max_parallel=$1
+  shift
+  local test_list=("$@")
+  local passed=0
+  local failed=0
+  local timedout=0
+  local started=0
+  local failed_tests=()  # Array to track failed test names
+  local timedout_tests=()  # Array to track timed-out test names
 
-  # Queue of tests waiting to run
-  local test_queue=("${test_executables[@]}")
-  local queue_index=0
+  log_info "🚀 Running ${#test_list[@]} tests in parallel (up to $max_parallel concurrent)"
 
+  local running_pids=()
+  local running_names=()
+  local running_start_times=()
+  local test_index=0
 
-  log_info "🚀 Running $total_tests tests in parallel (up to $max_parallel_tests concurrent tests, $jobs_per_test jobs each)"
-
-  # Worker function that runs tests sequentially until queue is empty
-  worker_function() {
-    local worker_id=$1
-    local worker_log="/tmp/worker_${worker_id}_$$.log"
-    local worker_passed=0
-    local worker_failed=0
-    local worker_started=0
-
-    while true; do
-      # Atomically get next test from queue using proper file locking
-      local test_executable=""
-      local test_index=-1
-
-      # Use file locking to safely get next test
-      local queue_file="/tmp/queue_index_$$.txt"
-      local lock_file="/tmp/queue_lock_$$.txt"
-
-      # Use simple file locking with retry logic for non-blocking parallel execution
-      local retry_count=0
-      local max_retries=10
-
-      while [[ $retry_count -lt $max_retries ]]; do
-        # Use mkdir for atomic locking (works on most filesystems)
-        if mkdir "$lock_file" 2>/dev/null; then
-          # We have the lock, now safely read and update queue index
-          local current_index=0
-          if [[ -f "$queue_file" ]]; then
-            current_index=$(cat "$queue_file" 2>/dev/null || echo "0")
-          fi
-
-          # Check if we have more tests
-          if [[ $current_index -lt ${#test_queue[@]} ]]; then
-            test_executable="${test_queue[$current_index]}"
-            test_index=$current_index
-            echo $((current_index + 1)) >"$queue_file"
-          fi
-
-          # Release the lock
-          rmdir "$lock_file" 2>/dev/null
-          break
-        else
-          # Lock is held by another worker, wait briefly and retry
-          sleep 0.001
-          ((retry_count++))
-        fi
+  # Main execution loop - NO SUBSHELLS
+  while [[ $test_index -lt ${#test_list[@]} ]] || [[ ${#running_pids[@]} -gt 0 ]]; do
+    # Check for interrupt - this will work since we're in main process
+    if [[ $INTERRUPTED -eq 1 ]]; then
+      log_info "❌ Tests interrupted by user - killing running tests"
+      for pid in "${running_pids[@]}"; do
+        # Kill the entire process group to make sure we get all child processes
+        kill -9 -"$pid" 2>/dev/null || true
+        kill -9 "$pid" 2>/dev/null || true
       done
+      break
+    fi
 
-      # If no more tests, exit worker
-      if [[ -z "$test_executable" ]]; then
-        break
-      fi
-
-      local test_name="$(basename "$test_executable")"
-      local test_log="/tmp/test_${test_name}_worker${worker_id}_$$.log"
-      local test_junit=""
-      local start_time=$(date +%s.%N)
-
-
-      # Create separate JUnit file for this test if needed
-      if [[ -n "$generate_junit" ]]; then
-        test_junit="/tmp/junit_${test_name}_worker${worker_id}_$$.xml"
-      fi
-
-      # Print starting message to stderr
-      echo "🚀 [TEST] Starting: $test_name" >&2
-      log_verbose "Worker $worker_id starting test $((test_index + 1)) of $total_tests: $test_name"
-
-      # Run test synchronously (not in background)
-      local exit_code=0
-      if [[ -n "$generate_junit" ]]; then
-        # Run test with XML output and capture both XML and test output
-        # Criterion sends XML to stdout when using --xml, so we need to capture it
-        TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" --xml >"$test_junit" 2>"$test_log"
-        exit_code=$?
+    # Clean up finished tests - use numeric iteration to avoid sparse array issues
+    local new_pids=()
+    local new_names=()
+    local new_start_times=()
+    # Iterate over actual indices that exist in the arrays
+    for i in "${!running_pids[@]}"; do
+      # Check if process is still running
+      if kill -0 "${running_pids[i]}" 2>/dev/null; then
+        # Still running
+        new_pids+=("${running_pids[i]}")
+        new_names+=("${running_names[i]:-unknown}")
+        new_start_times+=("${running_start_times[i]:-$(date +%s.%N)}")
       else
-        TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" >"$test_log" 2>&1
-        exit_code=$?
-      fi
+        # Finished - get results
+        local test_name="${running_names[i]:-unknown}"
+        wait "${running_pids[i]}" 2>/dev/null
 
-      local end_time=$(date +%s.%N)
-      local duration=$(echo "$end_time - $start_time" | bc -l)
-      local formatted_time=$(format_duration "$duration")
+        # Get the actual exit code from the file
+        local exit_code=1  # Default to failure
+        if [[ -f "/tmp/test_${test_name}_$$.exitcode" ]]; then
+          local exit_line=$(cat "/tmp/test_${test_name}_$$.exitcode" 2>/dev/null)
+          if [[ "$exit_line" =~ EXIT_CODE:([0-9]+) ]]; then
+            exit_code="${BASH_REMATCH[1]}"
+          fi
+          rm -f "/tmp/test_${test_name}_$$.exitcode"
+        fi
 
-      # Process result
-      if [[ $exit_code -eq 0 ]]; then
-        ((worker_passed++))
-        # Show passing tests
-        echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($formatted_time)" >&2
-      elif [[ $exit_code -eq 130 ]] || [[ $exit_code -gt 128 ]]; then
-        ((worker_failed++))
-        echo -e "🛑 [TEST] \033[31mCANCELLED\033[0m: $test_name" >&2
-      else
-        ((worker_failed++))
-        echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit code: $exit_code, $formatted_time)" >&2
-
-        # Show failure details for failed tests
-        if [[ -n "$generate_junit" ]]; then
-          # In JUnit mode, immediately re-run the test to show failure details
-          echo "--- Failure details for $test_name ---" >&2
-          # Re-run the test without JUnit mode to get the actual failure output
-          TESTING=1 CRITERION_TEST=1 "$test_executable" --jobs "$jobs_per_test" >&2 || true  # Ignore exit code
-          echo "--- End failure details ---" >&2
+        local end_time=$(date +%s.%N)
+        local start_time="${running_start_times[i]:-$end_time}"
+        local duration
+        if command -v bc >/dev/null 2>&1; then
+          duration=$(echo "$end_time - $start_time" | bc -l)
         else
-          # In non-JUnit mode, show the test log
-          if [[ -f "$test_log" ]]; then
-            echo "--- Failure details for $test_name ---" >&2
-            # Show the complete test log to see all assertion errors
-            cat "$test_log" >&2
-            echo "--- End failure details ---" >&2
-          else
-            echo "--- No test log found for $test_name ---" >&2
-            echo "Test log path: $test_log" >&2
-          fi
-        fi
-      fi
-
-      ((worker_started++))
-
-      # Append test log to worker log
-      if [[ -f "$test_log" ]]; then
-        echo "=== Test: $test_name ===" >>"$worker_log"
-        cat "$test_log" >>"$worker_log"
-        rm -f "$test_log"
-      fi
-
-      # Append JUnit XML to worker log if needed
-      if [[ -n "$generate_junit" ]] && [[ -f "$test_junit" ]]; then
-        echo "=== JUnit XML for: $test_name ===" >>"$worker_log"
-        cat "$test_junit" >>"$worker_log"
-
-        # Also append to main JUnit file with file locking to prevent race conditions
-        if [[ -f "$junit_file" ]]; then
-          # Use file locking to prevent race conditions when multiple workers write simultaneously
-          local junit_lock="/tmp/junit_lock_$$.txt"
-          local retry_count=0
-          local max_retries=10
-
-          while [[ $retry_count -lt $max_retries ]]; do
-            if mkdir "$junit_lock" 2>/dev/null; then
-              # We have the lock, safely append to JUnit file
-              awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$test_junit" >>"$junit_file"
-              rmdir "$junit_lock"
-              break
-            else
-              # Lock is held by another process, wait and retry
-              sleep 0.001
-              ((retry_count++))
-            fi
-          done
-
-          # If we couldn't get the lock after max retries, append without locking (fallback)
-          if [[ $retry_count -eq $max_retries ]]; then
-            echo "Warning: Could not acquire JUnit file lock after $max_retries retries, appending without lock" >&2
-            awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$test_junit" >>"$junit_file"
-          fi
+          # Fallback: use awk for basic arithmetic if bc is not available
+          duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
         fi
 
-        rm -f "$test_junit"
+        # Show test output when it completes (only in non-verbose mode since verbose shows real-time)
+        if [[ -f "/tmp/test_${test_name}_$$.log" ]]; then
+          # Only show summary in non-verbose mode (verbose already showed everything)
+          tail -5 "/tmp/test_${test_name}_$$.log" | grep -E "Synthesis:|PASSED|FAILED|Error" || tail -5 "/tmp/test_${test_name}_$$.log"
+          rm -f "/tmp/test_${test_name}_$$.log"
+        fi
+
+        if [[ $exit_code -eq 0 ]]; then
+          echo -e "✅ [TEST] \033[32mPASSED\033[0m: $test_name ($(printf "%.2f" $duration)s)"
+          ((passed++))
+        elif [[ $exit_code -eq 124 ]]; then
+          echo -e "⏱️ [TEST] \033[33mTIMEOUT\033[0m: $test_name (exceeded ${TEST_TIMEOUT}s)"
+          ((timedout++))
+          timedout_tests+=("$test_name")  # Track timed-out test name
+        else
+          echo -e "❌ [TEST] \033[31mFAILED\033[0m: $test_name (exit: $exit_code, $(printf "%.2f" $duration)s)"
+          ((failed++))
+          failed_tests+=("$test_name")  # Track failed test name
+        fi
       fi
     done
 
-    # Write worker results to a results file
-    echo "$worker_passed $worker_failed $worker_started" >"/tmp/worker_${worker_id}_results_$$.txt"
-
-    # Append worker log to main log file
-    if [[ -f "$worker_log" ]]; then
-      cat "$worker_log" >>"$log_file"
-      rm -f "$worker_log"
-    fi
-  }
-
-  # Function to format duration nicely
-  format_duration() {
-    local duration=$1
-    # Convert to milliseconds
-    local ms=$(echo "$duration * 1000" | bc -l | cut -d. -f1)
-
-    if [[ $ms -lt 1000 ]]; then
-      echo "${ms}ms"
-    elif [[ $ms -lt 60000 ]]; then
-      # Show in seconds with 2 decimal places
-      printf "%.2fs" $(echo "scale=2; $duration" | bc -l)
+    if [[ ${#new_pids[@]} -gt 0 ]]; then
+      running_pids=("${new_pids[@]}")
+      running_names=("${new_names[@]}")
+      running_start_times=("${new_start_times[@]}")
     else
-      # Show in minutes and seconds
-      local mins=$((ms / 60000))
-      local secs=$(echo "scale=2; ($ms % 60000) / 1000" | bc -l)
-      printf "%dm%.2fs" $mins $secs
+      running_pids=()
+      running_names=()
+      running_start_times=()
     fi
-  }
 
-  # Launch worker processes
-  local worker_pids=()
-  for ((i = 1; i <= max_parallel_tests; i++)); do
-    worker_function $i &
-    worker_pids+=($!)
-  done
-
-  # Wait for all workers to complete
-  for worker_pid in "${worker_pids[@]}"; do
-    wait "$worker_pid"
-  done
-
-  # Collect results from all workers
-  for ((i = 1; i <= max_parallel_tests; i++)); do
-    local results_file="/tmp/worker_${i}_results_$$.txt"
-    if [[ -f "$results_file" ]]; then
-      local worker_results=($(cat "$results_file"))
-      passed_tests=$((passed_tests + worker_results[0]))
-      failed_tests=$((failed_tests + worker_results[1]))
-      tests_that_started=$((tests_that_started + worker_results[2]))
-      rm -f "$results_file"
+    # Check for interrupt again before launching new tests
+    if [[ $INTERRUPTED -eq 1 ]]; then
+      log_info "❌ Tests interrupted by user - stopping new test launches"
+      break
     fi
+
+    # Launch new tests if we have room
+    while [[ ${#running_pids[@]} -lt $max_parallel ]] && [[ $test_index -lt ${#test_list[@]} ]] && [[ $INTERRUPTED -eq 0 ]]; do
+      local test_executable="${test_list[$test_index]}"
+      local test_name=$(basename "$test_executable")
+
+      echo "🚀 [TEST] Starting: $test_name"
+      ((started++))
+
+      # Run test asynchronously using shared spawning function
+      local start_time=$(date +%s.%N)
+      spawn_test "$test_executable" "async"
+
+      # Read PID from file
+      local test_pid=""
+      if [[ -f "/tmp/test_${test_name}_$$.pid" ]]; then
+        test_pid=$(cat "/tmp/test_${test_name}_$$.pid")
+        rm -f "/tmp/test_${test_name}_$$.pid"
+      fi
+
+      # Only add to arrays if we got a valid PID
+      if [[ -n "$test_pid" ]] && [[ "$test_pid" =~ ^[0-9]+$ ]]; then
+        running_pids+=($test_pid)
+        running_names+=($test_name)
+        running_start_times+=($start_time)
+      else
+        echo "❌ [TEST] Failed to spawn: $test_name"
+        ((failed++))
+      fi
+      ((test_index++))
+    done
+
+    # Very short sleep to be EXTREMELY responsive to Ctrl-C
+    sleep 0.01
   done
 
-  # Clean up queue and lock files
-  rm -f "/tmp/queue_index_$$.txt" "/tmp/queue_lock_$$.txt" "/tmp/junit_lock_$$.txt" "$failed_test_details_file"
-
-  # Return results to stdout (this is what gets captured)
-  echo "$passed_tests $failed_tests $tests_that_started"
+  # Return results via global variables (no subshell needed)
+  TESTS_PASSED=$passed
+  TESTS_FAILED=$failed
+  TESTS_TIMEDOUT=$timedout
+  TESTS_STARTED=$started
+  if [ ${#failed_tests[@]} -gt 0 ]; then
+    FAILED_TEST_NAMES=("${failed_tests[@]}")  # Copy failed test names to global array
+  else
+    FAILED_TEST_NAMES=()  # Initialize as empty array if no failed tests
+  fi
+  if [ ${#timedout_tests[@]} -gt 0 ]; then
+    TIMEDOUT_TEST_NAMES=("${timedout_tests[@]}")  # Copy timed-out test names to global array
+  else
+    TIMEDOUT_TEST_NAMES=()  # Initialize as empty array if no timed-out tests
+  fi
 }
 
 # =============================================================================
@@ -1033,28 +959,22 @@ function calculate_resource_allocation() {
   local jobs=$3 # Optional: explicitly specified jobs
 
   local max_parallel_tests
-  local jobs_per_test
 
   # If jobs explicitly specified, use that for parallel tests
   if [[ -n "$jobs" ]] && [[ "$jobs" -gt 0 ]]; then
     max_parallel_tests=$jobs
-    jobs_per_test=1 # Default to 1 if manually specified
   else
-    # Always use CORES/2 parallel executables with CORES jobs each for maximum CPU utilization
+    # Always use CORES/2 parallel executables for maximum CPU utilization
     max_parallel_tests=$((total_cores / 2))
-    jobs_per_test=$total_cores
 
-    # Ensure at least 1 parallel test and 1 job per test
+    # Ensure at least 1 parallel test
     if [[ $max_parallel_tests -lt 1 ]]; then
       max_parallel_tests=1
     fi
-    if [[ $jobs_per_test -lt 1 ]]; then
-      jobs_per_test=1
-    fi
   fi
 
-  # Return values as a space-separated string
-  echo "$max_parallel_tests $jobs_per_test"
+  # Return the max parallel tests value
+  echo "$max_parallel_tests"
 }
 
 # =============================================================================
@@ -1062,138 +982,7 @@ function calculate_resource_allocation() {
 # =============================================================================
 
 # Run a single test with proper error handling
-function run_single_test() {
-  local test_executable=""
-  local jobs=""
-  local generate_junit=""
-  local log_file=""
-  local junit_file=""
-  local filter=""
-
-  # Parse flags
-  while [[ $# -gt 0 ]]; do
-    case $1 in
-      --executable)
-        test_executable="$2"
-        shift 2
-        ;;
-      --jobs)
-        jobs="$2"
-        shift 2
-        ;;
-      --generate-junit)
-        generate_junit="$2"
-        shift 2
-        ;;
-      --log-file)
-        log_file="$2"
-        shift 2
-        ;;
-      --junit-file)
-        junit_file="$2"
-        shift 2
-        ;;
-      --filter)
-        filter="$2"
-        shift 2
-        ;;
-      *)
-        echo "Unknown option: $1" >&2
-        return 1
-        ;;
-    esac
-  done
-
-  # Ensure we have the full path
-  if [[ ! "$test_executable" = /* ]]; then
-    test_executable="$PROJECT_ROOT/bin/$test_executable"
-  fi
-  local test_name="$(basename "$test_executable")"
-
-  # Enable colored output for Criterion tests
-  export TERM=${TERM:-xterm-256color}
-  export CLICOLOR=1
-  export CLICOLOR_FORCE=1
-  export CRITERION_USE_COLORS=always
-  export TESTING=1        # Enable fast test mode for network/compression tests
-  export CRITERION_TEST=1 # Ensure tests know they're running in test environment
-
-  # Check if already interrupted before starting
-        if [[ $INTERRUPTED -eq 1 ]]; then
-    return 130
-  fi
-
-  echo "🚀 [TEST] Starting: $test_name"
-  local test_start_time=$(date +%s.%N)
-
-  if [[ -n "$generate_junit" ]]; then
-    # Generate JUnit XML for this test
-    local xml_file="/tmp/${test_name}_$(date +%s%N).xml"
-    local test_class="$(echo "$test_name" | sed 's/^test_//; s/_/./g')"
-    local output_file="/tmp/${test_name}_output_$(date +%s%N).txt"
-
-    # Run test with timeout and capture output
-    local test_exit_code=0
-    # Run test with optional timeout
-    # Use gtimeout on macOS (GNU coreutils), timeout on Linux
-    local timeout_cmd=""
-    if command -v gtimeout >/dev/null 2>&1; then
-      # macOS with GNU coreutils installed
-      timeout_cmd="gtimeout --preserve-status 300"
-    elif command -v timeout >/dev/null 2>&1; then
-      # Check if it's GNU timeout with --preserve-status support
-      if timeout --version 2>/dev/null | grep -q "GNU\|coreutils"; then
-        timeout_cmd="timeout --preserve-status 300"
-      else
-        # BSD timeout
-        timeout_cmd="timeout 300"
-      fi
-    fi
-
-    if [[ -n "$timeout_cmd" ]]; then
-      # Export function so timeout can use it via bash -c
-      export -f exec_test_executable
-      export VERBOSE
-      export TESTING
-      export INTERRUPTED
-      $timeout_cmd bash -c "exec_test_executable --executable '$test_executable' --xml '$xml_file' --filter '$filter' --log-file '$log_file'" | tee "$output_file"
-    else
-      # No timeout available, run directly
-      exec_test_executable --executable "$test_executable" --xml "$xml_file" --filter "$filter" --log-file "$log_file" | tee "$output_file"
-    fi
-    test_exit_code=$?
-
-    # Output to log file
-    cat "$output_file" >>"$log_file"
-  else
-    # Not generating JUnit, but still log output
-    exec_test_executable --executable "$test_executable" --filter "$filter" --log-file "$log_file"
-    test_exit_code=$?
-  fi
-
-  # Check if we were interrupted during test execution
-  if [[ $INTERRUPTED -eq 1 ]]; then
-    return 130
-  fi
-
-  local test_end_time=$(date +%s.%N)
-      local duration=$(echo "$test_end_time - $test_start_time" | bc -l)
-
-  if [[ -n "$generate_junit" ]]; then
-    # Append Criterion's XML to the main JUnit file (extract only testsuite elements)
-    if [[ -f "$xml_file" ]] && [[ -f "$junit_file" ]]; then
-      awk '/<testsuite name=/ {in_testsuite=1} in_testsuite {print} /<\/testsuite>/ {if(in_testsuite) in_testsuite=0}' "$xml_file" >>"$junit_file"
-    fi
-
-    # Clean up temporary files
-    rm -f "$xml_file" "$output_file"
-  fi
-
-  # Determine and report test result
-  determine_test_failure --exit-code "$test_exit_code" --test-name "$test_name" --duration "$duration"
-
-  return $test_exit_code
-}
+# Old run_single_test function removed - replaced with simplified architecture
 
 
 # =============================================================================
@@ -1204,21 +993,44 @@ function build_test_executable() {
   local test_name="$1"
   local build_type="$2"
 
-  # Always build the test executable (make will handle if it's up-to-date)
-  local make_target="bin/$test_name"
-  log_info "🔨 Building test: $make_target in $build_type mode"
+  log_info "🔨 Building test: $test_name in $build_type mode"
 
-  # Build the specific test executable (filter out "up to date" messages)
-  # Use PIPESTATUS to get make's exit code after piping through grep
-  colored_make -C "$PROJECT_ROOT" BUILD_TYPE="$build_type" "$make_target" 2>&1 | grep -v "is up to date" | grep -v "Nothing to be done" || true
-  local make_exit_code=${PIPESTATUS[0]}
+  # Determine build directory based on environment
+  local cmake_build_dir="build"
+  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "$PROJECT_ROOT/build_docker" ]]; then
+    cmake_build_dir="build_docker"
+  elif [[ -d "$PROJECT_ROOT/build_clang" ]]; then
+    cmake_build_dir="build_clang"
+  fi
 
-  if [[ $make_exit_code -eq 0 ]]; then
-    log_success "Successfully built $make_target"
-    return 0
+  # Check if we have a build directory with CMake cache
+  if [[ -d "$PROJECT_ROOT/$cmake_build_dir" ]] && [[ -f "$PROJECT_ROOT/$cmake_build_dir/CMakeCache.txt" ]]; then
+    # Build directory exists, use CMake for incremental builds
+    log_info "Using CMake for incremental build of $test_name"
+    cd "$PROJECT_ROOT"
+    cmake_build "$cmake_build_dir" --target "$test_name"
+    local cmake_exit_code=$?
+
+    if [[ $cmake_exit_code -eq 0 ]]; then
+      log_success "Successfully built $test_name with CMake"
+      return 0
+    else
+      log_error "Failed to build test with CMake: $test_name"
+      return 1
+    fi
   else
-    log_error "Failed to build test: $make_target"
-    return 1
+    # No build directory, use ensure_tests_built to set everything up
+    log_info "No build directory found, using ensure_tests_built to configure CMake"
+    ensure_tests_built "$build_type" "all"
+    local ensure_exit_code=$?
+
+    if [[ $ensure_exit_code -eq 0 ]]; then
+      log_success "Successfully built $test_name with CMake via ensure_tests_built"
+      return 0
+    else
+      log_error "Failed to build test with CMake: $test_name"
+      return 1
+    fi
   fi
 }
 
@@ -1226,61 +1038,7 @@ function build_test_executable() {
 # Single Test Binary Execution
 # =============================================================================
 
-function run_single_test_binary() {
-  local test_name="$1"
-  local build_type="$2"
-  local jobs="$3"
-  local generate_junit="$4"
-  local log_file="$5"
-  local junit_file="$6"
-  local filter="$7"
-
-  log_info "🎯 Running single test binary: $test_name"
-
-  # Determine the test executable path
-  local test_executable
-  if [[ "$test_name" == /* ]]; then
-    # Absolute path
-    test_executable="$test_name"
-  elif [[ "$test_name" == bin/* ]]; then
-    # Relative path starting with bin/
-    test_executable="$PROJECT_ROOT/$test_name"
-  else
-    # Just the test name - handle various formats
-    # If it doesn't start with test_, add it
-    if [[ "$test_name" != test_* ]]; then
-      test_name="test_$test_name"
-    fi
-    # Test executables always have the same name
-    test_executable="$PROJECT_ROOT/bin/$test_name"
-  fi
-
-  # Build the test executable
-  local test_binary_name="$(basename "$test_executable")"
-  if ! build_test_executable "$test_binary_name" "$build_type"; then
-    return 1
-  fi
-
-  # Check if it exists after build
-  if [[ ! -f "$test_executable" ]]; then
-    log_error "Test executable not found after build: $test_executable"
-    return 1
-  fi
-
-  # Run the single test
-  if run_single_test --executable "$test_executable" --jobs "$jobs" --generate-junit "$generate_junit" --log-file "$log_file" --junit-file "$junit_file" --filter "$filter"; then
-    log_success "Test completed successfully!"
-    return 0
-  else
-    local exit_code=$?
-    # Check if interrupted by signal (130 = SIGINT)
-    if [[ $exit_code -eq 130 ]] || [[ $INTERRUPTED -eq 1 ]]; then
-      return 130
-    fi
-    log_error "Test failed with exit code $exit_code"
-    return $exit_code
-  fi
-}
+# Old run_single_test_binary function removed - replaced with simplified architecture
 
 # =============================================================================
 # Main Entry Point
@@ -1374,37 +1132,42 @@ function main() {
       # Single argument - it's a test name
       SINGLE_TEST="$arg"
     fi
-  elif [[ ${#positional_args[@]} -eq 2 ]]; then
-    # Two arguments - first is test type, second is test name
-    local type_arg="${positional_args[0]}"
-    local name_arg="${positional_args[1]}"
+  elif [[ ${#positional_args[@]} -ge 2 ]]; then
+    # Two or more arguments - check if first is a test type or a test binary name
+    local first_arg="${positional_args[0]}"
 
-    # Check if first argument is a valid test type
-    if [[ "$type_arg" =~ ^(unit|integration|performance)$ ]]; then
-      # Construct the full test name for single test
-      SINGLE_TEST="test_${type_arg}_${name_arg}"
-    else
-      log_error "Invalid test type: $type_arg (must be unit, integration, or performance)"
-      exit 1
-    fi
-  elif [[ ${#positional_args[@]} -gt 2 ]]; then
-    # Three or more arguments - first is test type, rest are test names
-    local type_arg="${positional_args[0]}"
-
-    # Check if first argument is a valid test type
-    if [[ "$type_arg" =~ ^(unit|integration|performance)$ ]]; then
-      # Multiple tests to run - store them in an array
+    # Check if first argument looks like a test binary name (starts with test_ or contains test)
+    if [[ "$first_arg" =~ ^test_ ]] || [[ "$first_arg" =~ test ]]; then
+      # All arguments are test binary names - run them all
       MULTIPLE_TESTS=()
-      for ((i = 1; i < ${#positional_args[@]}; i++)); do
-        local test_name="${positional_args[i]}"
-        # Construct the full test name
-        MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+      for arg in "${positional_args[@]}"; do
+        MULTIPLE_TESTS+=("$arg")
       done
-      # Set a flag to indicate we're running multiple specific tests
       MULTIPLE_TEST_MODE=1
+    elif [[ "$first_arg" =~ ^(unit|integration|performance)$ ]]; then
+      # First arg is a test type, rest are test names within that type
+      local type_arg="$first_arg"
+      if [[ ${#positional_args[@]} -eq 2 ]]; then
+        # Two arguments: type and single test name
+        local name_arg="${positional_args[1]}"
+        SINGLE_TEST="test_${type_arg}_${name_arg}"
+      else
+        # Three or more: type and multiple test names
+        MULTIPLE_TESTS=()
+        for ((i = 1; i < ${#positional_args[@]}; i++)); do
+          local test_name="${positional_args[i]}"
+          # Construct the full test name
+          MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+        done
+        MULTIPLE_TEST_MODE=1
+      fi
     else
-      log_error "Invalid test type: $type_arg (must be unit, integration, or performance)"
-      exit 1
+      # Not a test type and doesn't look like a test binary - assume all are test names
+      MULTIPLE_TESTS=()
+      for arg in "${positional_args[@]}"; do
+        MULTIPLE_TESTS+=("$arg")
+      done
+      MULTIPLE_TEST_MODE=1
     fi
   fi
 
@@ -1414,7 +1177,7 @@ function main() {
     exit 1
   fi
 
-  if [[ ! "$BUILD_TYPE" =~ ^(debug|release|coverage|sanitize)$ ]]; then
+  if [[ ! "$BUILD_TYPE" =~ ^(debug|dev|release|coverage|tsan)$ ]]; then
     log_error "Invalid build type: $BUILD_TYPE"
     exit 1
   fi
@@ -1484,12 +1247,48 @@ function main() {
   local overall_start_time=$(date +%s.%N)
 
   if [[ -n "$SINGLE_TEST" ]]; then
-    # Single test mode - construct full path
-    all_tests_to_run=("$PROJECT_ROOT/bin/$SINGLE_TEST")
+    # Single test mode - determine which bin directory to use
+    local bin_dirs=(
+      "$PROJECT_ROOT/build_docker/bin"
+      "$PROJECT_ROOT/build_clang/bin"
+      "$PROJECT_ROOT/build/bin"
+      "$PROJECT_ROOT/bin"
+    )
+    local bin_dir=""
+    for dir in "${bin_dirs[@]}"; do
+      if [[ -d "$dir" ]]; then
+        bin_dir="$dir"
+        break
+      fi
+    done
+    if [[ -z "$bin_dir" ]]; then
+      log_error "No bin directory found (build_docker, build_clang, build, or bin)"
+      exit 1
+    fi
+    # Queue test to be built - don't check if it exists yet
+    all_tests_to_run=("$bin_dir/$SINGLE_TEST")
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
-    # Multiple specific tests mode - construct full paths
+    # Multiple specific tests mode - determine which bin directory to use
+    local bin_dirs=(
+      "$PROJECT_ROOT/build_docker/bin"
+      "$PROJECT_ROOT/build_clang/bin"
+      "$PROJECT_ROOT/build/bin"
+      "$PROJECT_ROOT/bin"
+    )
+    local bin_dir=""
+    for dir in "${bin_dirs[@]}"; do
+      if [[ -d "$dir" ]]; then
+        bin_dir="$dir"
+        break
+      fi
+    done
+    if [[ -z "$bin_dir" ]]; then
+      log_error "No bin directory found for tests"
+      exit 1
+    fi
+    # Queue tests to be built - don't check if they exist yet
     for test in "${MULTIPLE_TESTS[@]}"; do
-      all_tests_to_run+=("$PROJECT_ROOT/bin/$test")
+      all_tests_to_run+=("$bin_dir/$test")
     done
   else
     # Category mode - determine all categories to run
@@ -1528,44 +1327,80 @@ function main() {
     echo "<testsuites name=\"ASCII-Chat Tests\">" >>"$junit_file"
     fi
 
-  # Build all test executables
-    local test_targets=()
-  for test_executable in "${all_tests_to_run[@]}"; do
-    local test_name=$(basename "$test_executable")
-      test_targets+=("bin/$test_name")
-    done
+  # Ensure build directory is configured
+  ensure_tests_built "$BUILD_TYPE" "$TEST_TYPE"
 
-  log_info "🔨 Building ${#test_targets[@]} test executables..."
-    local make_cmd="make -C $PROJECT_ROOT CSTD=c2x"
-    if [[ "$BUILD_TYPE" != "default" ]]; then
-      make_cmd="$make_cmd BUILD_TYPE=$BUILD_TYPE"
+  # Build all test executables in one parallel ninja command
+  # Extract just the test target names from full paths
+  local test_targets=()
+  for test_path in "${all_tests_to_run[@]}"; do
+    local test_name=$(basename "$test_path")
+    test_targets+=("$test_name")
+  done
+
+  # Determine build directory
+  local cmake_build_dir="build"
+  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
+    cmake_build_dir="build_docker"
+  elif [[ -d "build_clang" ]]; then
+    cmake_build_dir="build_clang"
+  fi
+
+  if [[ ${#test_targets[@]} -gt 0 ]]; then
+    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
+    # Build all test targets in one command - ninja will parallelize and handle dependencies
+    local build_output
+    local build_exit_code
+    build_output=$(cmake --build "$cmake_build_dir" --target "${test_targets[@]}" 2>&1)
+    build_exit_code=$?
+    if [[ "$build_output" != *"ninja: no work to do"* ]] || [[ -n "$VERBOSE" ]]; then
+      echo "$build_output"
     fi
-    make_cmd="$make_cmd ${test_targets[*]}"
 
-  # Run make and capture output
-    local make_output
-    make_output=$(eval "$make_cmd" 2>&1)
-    local make_exit_code=$?
-
-    # Show non-"up to date" output
-    echo "$make_output" | grep -v "is up to date" || true
-
-    if [[ $make_exit_code -ne 0 ]]; then
-      log_error "Make command failed with exit code $make_exit_code"
+    # Check if build failed
+    if [[ $build_exit_code -ne 0 ]]; then
+      log_error "Failed to build test executables"
       exit 1
     fi
 
-  # Run all tests using the existing parallel execution function
-    local total_cores=$(detect_cpu_cores)
-  local num_tests=${#all_tests_to_run[@]}
-  local allocation=($(calculate_resource_allocation $num_tests $total_cores "$jobs"))
-  local max_parallel_tests=${allocation[0]}
-  local jobs_per_test=${allocation[1]}
+    # Verify that all requested tests were actually built
+    local missing_tests=()
+    for test_path in "${all_tests_to_run[@]}"; do
+      if [[ ! -f "$test_path" ]]; then
+        missing_tests+=("$(basename "$test_path")")
+      fi
+    done
 
-  local results=$(run_tests_in_parallel --build-type "$BUILD_TYPE" --jobs "$jobs" --generate-junit "$GENERATE_JUNIT" --log-file "$log_file" --junit-file "$junit_file" --max-parallel-tests "$max_parallel_tests" --jobs-per-test "$jobs_per_test" --test-executables "${all_tests_to_run[@]}")
-  local passed_tests=$(echo "$results" | cut -d' ' -f1)
-  local failed_tests=$(echo "$results" | cut -d' ' -f2)
-  local tests_that_started=$(echo "$results" | cut -d' ' -f3)
+    if [[ ${#missing_tests[@]} -gt 0 ]]; then
+      log_error "The following test(s) failed to build or do not exist:"
+      for missing_test in "${missing_tests[@]}"; do
+        log_error "  • $missing_test"
+      done
+      log_error ""
+      log_error "Available tests in $cmake_build_dir/bin/:"
+      ls -1 "$cmake_build_dir/bin/" | grep "^test_" || echo "  (none found)"
+      exit 1
+    fi
+  fi
+
+  # SINGLE DECISION POINT - Choose execution mode
+  local total_cores=$(detect_cpu_cores)
+  local num_tests=${#all_tests_to_run[@]}
+  local max_parallel_tests=$(calculate_resource_allocation $num_tests $total_cores "$jobs")
+
+  if [[ "$NO_PARALLEL" == "1" ]] || [[ ${#all_tests_to_run[@]} -eq 1 ]]; then
+    # Run sequentially
+    run_tests_sequential "${all_tests_to_run[@]}"
+  else
+    # Run in parallel
+    run_tests_parallel "$max_parallel_tests" "${all_tests_to_run[@]}"
+  fi
+
+  # Results are now in global variables (no subshell issues!)
+  local passed_tests=$TESTS_PASSED
+  local failed_tests=$TESTS_FAILED
+  local timedout_tests=$TESTS_TIMEDOUT
+  local tests_that_started=$TESTS_STARTED
 
   # Close JUnit XML
         if [[ -n "$GENERATE_JUNIT" ]]; then
@@ -1590,18 +1425,24 @@ function main() {
   # Report results
         echo ""
         echo "=========================================="
-  if [[ $failed_tests -eq 0 ]]; then
-    echo "✅ Tests completed: $passed_tests passed, $failed_tests failed"
+  if [[ $failed_tests -eq 0 && $timedout_tests -eq 0 ]]; then
+    echo "✅ Tests completed: $passed_tests passed, $failed_tests failed, $timedout_tests timed out"
       overall_failed=0
     else
-    echo "❌ Tests completed: $passed_tests passed, $failed_tests failed"
+    echo "❌ Tests completed: $passed_tests passed, $failed_tests failed, $timedout_tests timed out"
       overall_failed=1
     fi
   echo "=========================================="
 
   # Final exit logic
   local overall_end_time=$(date +%s.%N)
-  local total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
+  local total_duration
+  if command -v bc >/dev/null 2>&1; then
+    total_duration=$(echo "$overall_end_time - $overall_start_time" | bc -l)
+  else
+    # Fallback: use awk for basic arithmetic if bc is not available
+    total_duration=$(awk "BEGIN {printf \"%.3f\", $overall_end_time - $overall_start_time}")
+  fi
 
   echo ""
   echo "=========================================="
@@ -1613,6 +1454,21 @@ function main() {
     log_info "📋 View test logs: cat $log_file"
   else
     log_error "Some tests failed!"
+    if [[ ${#FAILED_TEST_NAMES[@]} -gt 0 ]]; then
+      echo ""
+      echo "❌ FAILED TESTS:"
+      for failed_test in "${FAILED_TEST_NAMES[@]}"; do
+        echo -e "   • \033[31m$failed_test\033[0m"
+      done
+    fi
+    if [[ ${#TIMEDOUT_TEST_NAMES[@]} -gt 0 ]]; then
+      echo ""
+      echo "⏱️ TIMED OUT TESTS:"
+      for timedout_test in "${TIMEDOUT_TEST_NAMES[@]}"; do
+        echo -e "   • \033[33m$timedout_test\033[0m"
+      done
+    fi
+    echo ""
     log_info "View test logs: cat $log_file 📋"
     exit 1
   fi

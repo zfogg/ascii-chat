@@ -1,5 +1,6 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -7,7 +8,7 @@
 
 #include "ringbuffer.h"
 #include "audio.h"
-#include "common.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels
@@ -224,15 +225,16 @@ Test(ringbuffer, power_of_two_capacity) {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 5);
   cr_assert_not_null(rb);
   cr_assert_eq(rb->capacity, 8); // Should be rounded up to 8
+  ringbuffer_destroy(rb);
 
   rb = ringbuffer_create(sizeof(int), 3);
   cr_assert_not_null(rb);
   cr_assert_eq(rb->capacity, 4); // Should be rounded up to 4
+  ringbuffer_destroy(rb);
 
   rb = ringbuffer_create(sizeof(int), 1);
   cr_assert_not_null(rb);
   cr_assert_eq(rb->capacity, 1); // 1 is already a power of 2
-
   ringbuffer_destroy(rb);
 }
 
@@ -819,5 +821,60 @@ Test(ringbuffer, thread_safety) {
   pthread_cond_destroy(&not_full);
   pthread_cond_destroy(&not_empty);
 
+  ringbuffer_destroy(rb);
+}
+
+/* ============================================================================
+ * Theory-Based Tests
+ * ============================================================================ */
+
+// Theory: FIFO ordering property - data written in order X should be read in order X
+// This property should hold for any sequence of integers
+TheoryDataPoints(ringbuffer, fifo_ordering_property) = {
+    DataPoints(size_t, 2, 4, 8, 16, 32),  // Buffer capacities
+    DataPoints(size_t, 3, 5, 10, 20, 50), // Number of operations
+};
+
+Theory((size_t capacity, size_t num_ops), ringbuffer, fifo_ordering_property) {
+  // Skip combinations where num_ops > capacity (would require wraparound logic)
+  cr_assume(capacity >= 2);
+  cr_assume(num_ops >= 1);
+  cr_assume(num_ops <= capacity); // Only fill buffer, not overflow
+
+  ringbuffer_t *rb = ringbuffer_create(sizeof(int), capacity);
+  cr_assume(rb != NULL);
+
+  // PROPERTY: Write sequence of integers
+  int *written_values;
+  SAFE_MALLOC(written_values, num_ops * sizeof(int), int *);
+  cr_assume(written_values != NULL);
+
+  for (size_t i = 0; i < num_ops; i++) {
+    written_values[i] = (int)i;
+    bool result = ringbuffer_write(rb, &written_values[i]);
+    cr_assert(result, "Write should succeed at index %zu for capacity %zu", i, capacity);
+  }
+
+  // PROPERTY: Size should equal number of writes
+  cr_assert_eq(ringbuffer_size(rb), num_ops, "Size should equal number of writes for capacity %zu, num_ops %zu",
+               capacity, num_ops);
+
+  // PROPERTY: Read back in same order (FIFO property)
+  for (size_t i = 0; i < num_ops; i++) {
+    int read_value;
+    bool result = ringbuffer_read(rb, &read_value);
+    cr_assert(result, "Read should succeed at index %zu for capacity %zu", i, capacity);
+    cr_assert_eq(read_value, written_values[i],
+                 "FIFO ordering violated: expected %d at position %zu, got %d (capacity=%zu, num_ops=%zu)",
+                 written_values[i], i, read_value, capacity, num_ops);
+  }
+
+  // PROPERTY: Buffer should be empty after reading all values
+  cr_assert(ringbuffer_is_empty(rb), "Buffer should be empty after reading all values (capacity=%zu, num_ops=%zu)",
+            capacity, num_ops);
+  cr_assert_eq(ringbuffer_size(rb), 0, "Size should be 0 after reading all values (capacity=%zu, num_ops=%zu)",
+               capacity, num_ops);
+
+  SAFE_FREE(written_values);
   ringbuffer_destroy(rb);
 }

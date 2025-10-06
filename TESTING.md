@@ -125,11 +125,11 @@ Test interactions between multiple components:
 
 #### Memory Errors
 ```bash
-# Build with AddressSanitizer
-CFLAGS="-g -O0 -fsanitize=address" LDFLAGS="-fsanitize=address" make test
+# Build with comprehensive sanitizers
+make clean && make debug && make test
 
-# Or use the shortcut
-make clean && make sanitize && make test
+# Or build without sanitizers for faster iteration
+make clean && make dev && make test
 ```
 
 #### Assertion Failures

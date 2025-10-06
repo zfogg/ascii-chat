@@ -1,5 +1,7 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -7,76 +9,50 @@
 
 #include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
-#include "common.h"
-#include "options.h"
+#include "tests/common.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with custom log levels
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(image, LOG_FATAL, LOG_DEBUG, true, true);
 
 /* ============================================================================
- * Image Creation and Destruction Tests
+ * Image Creation and Destruction Tests - Parameterized
  * ============================================================================ */
 
-Test(image, image_new_basic) {
-  image_t *img = image_new(10, 10);
-  cr_assert_not_null(img);
-  cr_assert_eq(img->w, 10);
-  cr_assert_eq(img->h, 10);
-  cr_assert_not_null(img->pixels);
+// Parameterized test for image_new with various dimension combinations
+typedef struct {
+  size_t width;
+  size_t height;
+  bool should_succeed;
+  char description[64];
+} image_new_test_case_t;
 
-  // Check that pixels are allocated correctly
-  cr_assert_eq(img->w * img->h * sizeof(rgb_t), 10 * 10 * 3);
+static image_new_test_case_t image_new_cases[] = {
+    {10, 10, true, "Basic 10x10 image"},
+    {0, 0, true, "Zero dimensions (valid)"},
+    {1, 1, true, "Single pixel"},
+    {1920, 1080, true, "Large dimensions (1920x1080)"},
+    {SIZE_MAX, SIZE_MAX, false, "Overflow protection (SIZE_MAX)"},
+    {IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT, true, "Maximum allowed dimensions"},
+};
 
-  image_destroy(img);
+ParameterizedTestParameters(image, image_new_dimensions) {
+  return cr_make_param_array(image_new_test_case_t, image_new_cases,
+                             sizeof(image_new_cases) / sizeof(image_new_cases[0]));
 }
 
-Test(image, image_new_zero_dimensions) {
-  image_t *img = image_new(0, 0);
-  cr_assert_not_null(img);
-  cr_assert_eq(img->w, 0);
-  cr_assert_eq(img->h, 0);
-  cr_assert_not_null(img->pixels);
+ParameterizedTest(image_new_test_case_t *tc, image, image_new_dimensions) {
+  image_t *img = image_new(tc->width, tc->height);
 
-  image_destroy(img);
-}
-
-Test(image, image_new_single_pixel) {
-  image_t *img = image_new(1, 1);
-  cr_assert_not_null(img);
-  cr_assert_eq(img->w, 1);
-  cr_assert_eq(img->h, 1);
-  cr_assert_not_null(img->pixels);
-
-  image_destroy(img);
-}
-
-Test(image, image_new_large_dimensions) {
-  // Test with reasonably large dimensions
-  image_t *img = image_new(1920, 1080);
-  cr_assert_not_null(img);
-  cr_assert_eq(img->w, 1920);
-  cr_assert_eq(img->h, 1080);
-  cr_assert_not_null(img->pixels);
-
-  image_destroy(img);
-}
-
-Test(image, image_new_overflow_protection) {
-  // Test overflow protection with very large dimensions
-  image_t *img = image_new(SIZE_MAX, SIZE_MAX);
-  cr_assert_null(img);
-}
-
-Test(image, image_new_maximum_size) {
-  // Test with maximum allowed dimensions
-  image_t *img = image_new(IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
-  cr_assert_not_null(img);
-  cr_assert_eq(img->w, IMAGE_MAX_WIDTH);
-  cr_assert_eq(img->h, IMAGE_MAX_HEIGHT);
-  cr_assert_not_null(img->pixels);
-
-  image_destroy(img);
+  if (tc->should_succeed) {
+    cr_assert_not_null(img, "%s: image should be created", tc->description);
+    cr_assert_eq((size_t)img->w, tc->width, "%s: width should match", tc->description);
+    cr_assert_eq((size_t)img->h, tc->height, "%s: height should match", tc->description);
+    cr_assert_not_null(img->pixels, "%s: pixels should be allocated", tc->description);
+    image_destroy(img);
+  } else {
+    cr_assert_null(img, "%s: image should be NULL", tc->description);
+  }
 }
 
 Test(image, image_destroy_null) {
@@ -165,9 +141,9 @@ Test(image, image_print_basic) {
   cr_assert_not_null(img);
 
   // Set up a simple 2x2 image with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};    // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};    // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};    // Blue
+  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
   img->pixels[3] = (rgb_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
@@ -185,9 +161,9 @@ Test(image, image_print_color_basic) {
   cr_assert_not_null(img);
 
   // Set up a simple 2x2 image with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};    // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};    // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};    // Blue
+  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
   img->pixels[3] = (rgb_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
@@ -397,53 +373,59 @@ Test(image, quantize_color_256_levels) {
 }
 
 /* ============================================================================
- * RGB to ANSI Color Tests
+ * RGB to ANSI Color Tests - Parameterized
  * ============================================================================ */
 
-Test(image, rgb_to_ansi_fg_basic) {
-  char *result = rgb_to_ansi_fg(255, 0, 0);
-  cr_assert_not_null(result);
-  cr_assert_gt(strlen(result), 0);
+typedef struct {
+  int r;
+  int g;
+  int b;
+  char description[64];
+} rgb_color_test_case_t;
+
+static rgb_color_test_case_t rgb_color_cases[] = {
+    {255, 0, 0, "Red (255, 0, 0)"},           {0, 255, 0, "Green (0, 255, 0)"},
+    {0, 0, 255, "Blue (0, 0, 255)"},          {0, 0, 0, "Black (0, 0, 0)"},
+    {255, 255, 255, "White (255, 255, 255)"}, {255, 128, 64, "Mid-range orange (255, 128, 64)"},
+};
+
+ParameterizedTestParameters(image, rgb_to_ansi_fg_variations) {
+  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases,
+                             sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
+}
+
+ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_fg_variations) {
+  char *result = rgb_to_ansi_fg(tc->r, tc->g, tc->b);
+  cr_assert_not_null(result, "%s: FG result should not be NULL", tc->description);
+  cr_assert_gt(strlen(result), 0, "%s: FG result should not be empty", tc->description);
   // Note: result points to static buffer, no need to free
 }
 
-Test(image, rgb_to_ansi_fg_boundary_values) {
-  // Test boundary values
-  char *result1 = rgb_to_ansi_fg(0, 0, 0);
-  cr_assert_not_null(result1);
-  // Note: result1 points to static buffer, no need to free
-
-  char *result2 = rgb_to_ansi_fg(255, 255, 255);
-  cr_assert_not_null(result2);
-  // Note: result2 points to static buffer, no need to free
+ParameterizedTestParameters(image, rgb_to_ansi_bg_variations) {
+  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases,
+                             sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
 }
 
-Test(image, rgb_to_ansi_bg_basic) {
-  char *result = rgb_to_ansi_bg(0, 255, 0);
-  cr_assert_not_null(result);
-  cr_assert_gt(strlen(result), 0);
+ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_bg_variations) {
+  char *result = rgb_to_ansi_bg(tc->r, tc->g, tc->b);
+  cr_assert_not_null(result, "%s: BG result should not be NULL", tc->description);
+  cr_assert_gt(strlen(result), 0, "%s: BG result should not be empty", tc->description);
   // Note: result points to static buffer, no need to free
 }
 
-Test(image, rgb_to_ansi_bg_boundary_values) {
-  // Test boundary values
-  char *result1 = rgb_to_ansi_bg(0, 0, 0);
-  cr_assert_not_null(result1);
-  // Note: result1 points to static buffer, no need to free
-
-  char *result2 = rgb_to_ansi_bg(255, 255, 255);
-  cr_assert_not_null(result2);
-  // Note: result2 points to static buffer, no need to free
+ParameterizedTestParameters(image, rgb_to_ansi_8bit_variations) {
+  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases,
+                             sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
 }
 
-Test(image, rgb_to_ansi_8bit_basic) {
+ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_8bit_variations) {
   int fg_code, bg_code;
-  rgb_to_ansi_8bit(255, 128, 64, &fg_code, &bg_code);
+  rgb_to_ansi_8bit(tc->r, tc->g, tc->b, &fg_code, &bg_code);
 
-  cr_assert(fg_code >= 0);
-  cr_assert(fg_code <= 255);
-  cr_assert(bg_code >= 0);
-  cr_assert(bg_code <= 255);
+  cr_assert(fg_code >= 0, "%s: FG code should be >= 0", tc->description);
+  cr_assert(fg_code <= 255, "%s: FG code should be <= 255", tc->description);
+  cr_assert(bg_code >= 0, "%s: BG code should be >= 0", tc->description);
+  cr_assert(bg_code <= 255, "%s: BG code should be <= 255", tc->description);
 }
 
 Test(image, rgb_to_ansi_8bit_null_pointers) {
@@ -451,41 +433,33 @@ Test(image, rgb_to_ansi_8bit_null_pointers) {
   // to avoid crashes. The function should be fixed to handle NULL gracefully.
 }
 
-Test(image, rgb_to_ansi_8bit_boundary_values) {
-  int fg_code, bg_code;
-
-  // Test boundary values
-  rgb_to_ansi_8bit(0, 0, 0, &fg_code, &bg_code);
-  cr_assert(fg_code >= 0);
-  cr_assert(fg_code <= 255);
-
-  rgb_to_ansi_8bit(255, 255, 255, &fg_code, &bg_code);
-  cr_assert(fg_code >= 0);
-  cr_assert(fg_code <= 255);
-}
-
 /* ============================================================================
- * Palette Precalculation Tests
+ * Palette Precalculation Tests - Parameterized
  * ============================================================================ */
 
-Test(image, precalc_rgb_palettes_basic) {
-  // Should not crash
-  precalc_rgb_palettes(1.0f, 1.0f, 1.0f);
+typedef struct {
+  float r_factor;
+  float g_factor;
+  float b_factor;
+  char description[64];
+} precalc_palette_test_case_t;
+
+static precalc_palette_test_case_t precalc_palette_cases[] = {
+    {1.0f, 1.0f, 1.0f, "Basic values (1.0, 1.0, 1.0)"},
+    {0.0f, 0.0f, 0.0f, "Zero values"},
+    {-1.0f, -1.0f, -1.0f, "Negative values"},
+    {10.0f, 10.0f, 10.0f, "Large values (10.0)"},
+};
+
+ParameterizedTestParameters(image, precalc_rgb_palettes_variations) {
+  return cr_make_param_array(precalc_palette_test_case_t, precalc_palette_cases,
+                             sizeof(precalc_palette_cases) / sizeof(precalc_palette_cases[0]));
 }
 
-Test(image, precalc_rgb_palettes_zero_values) {
-  // Should handle zero values
-  precalc_rgb_palettes(0.0f, 0.0f, 0.0f);
-}
-
-Test(image, precalc_rgb_palettes_negative_values) {
-  // Should handle negative values
-  precalc_rgb_palettes(-1.0f, -1.0f, -1.0f);
-}
-
-Test(image, precalc_rgb_palettes_large_values) {
-  // Should handle large values
-  precalc_rgb_palettes(10.0f, 10.0f, 10.0f);
+ParameterizedTest(precalc_palette_test_case_t *tc, image, precalc_rgb_palettes_variations) {
+  // Should not crash with any values
+  precalc_rgb_palettes(tc->r_factor, tc->g_factor, tc->b_factor);
+  cr_assert(true, "%s should not crash", tc->description);
 }
 
 /* ============================================================================

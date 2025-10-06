@@ -1,14 +1,17 @@
 #include "common.h"
-#include <pthread.h>
+#include "platform/abstraction.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/stat.h>
+
+/* Windows compatibility for strcasecmp */
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
 
 /* ============================================================================
  * Logging Implementation
@@ -20,20 +23,21 @@
 static struct {
   int file;
   log_level_t level;
-  pthread_mutex_t mutex;
+  mutex_t mutex;
   bool initialized;
   char filename[256];           /* Store filename for rotation */
   size_t current_size;          /* Track current file size */
   bool terminal_output_enabled; /* Control stderr output to terminal */
   bool level_manually_set;      /* Track if level was set manually */
+  bool env_checked;             /* Track if we've checked environment */
 } g_log = {.file = 0,
            .level = LOG_INFO,
-           .mutex = PTHREAD_MUTEX_INITIALIZER,
            .initialized = false,
            .filename = {0},
            .current_size = 0,
            .terminal_output_enabled = true,
-           .level_manually_set = false};
+           .level_manually_set = false,
+           .env_checked = false};
 
 static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
@@ -45,6 +49,51 @@ static const char *level_colors[] = {
     "\x1b[35m"  /* FATAL: Magenta */
 };
 
+/* Parse LOG_LEVEL environment variable */
+static log_level_t parse_log_level_from_env(void) {
+  const char *env_level = SAFE_GETENV("LOG_LEVEL");
+  if (!env_level) {
+    return LOG_INFO; // Default level
+  }
+
+  // Protect against maliciously large environment variables (DoS prevention)
+  // Max reasonable length for log level is "DEBUG" (5 chars) or numeric (1 char)
+  size_t len = strnlen(env_level, 64);
+  if (len >= 64) {
+    return LOG_INFO; // Invalid - too long, use default
+  }
+
+  // Case-insensitive comparison
+  if (strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "0") == 0) {
+    return LOG_DEBUG;
+  }
+  if (strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
+    return LOG_INFO;
+  }
+  if (strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
+    return LOG_WARN;
+  }
+  if (strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
+    return LOG_ERROR;
+  }
+  if (strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
+    return LOG_FATAL;
+  }
+
+  // Invalid value - return default
+  return LOG_INFO;
+}
+
+/* Helper function to extract relative path from absolute path
+ * NOTE: Uses shared implementation from common.c which handles:
+ * - Dynamic PROJECT_SOURCE_ROOT (works with any repo name)
+ * - Slash-agnostic path matching (handles Windows/Unix separators)
+ * - Fallback to filename extraction
+ */
+static const char *extract_relative_path(const char *file) {
+  return extract_project_relative_path(file);
+}
+
 /* Log rotation function - keeps the tail (recent entries) */
 static void rotate_log_if_needed(void) {
   if (!g_log.file || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
@@ -52,14 +101,14 @@ static void rotate_log_if_needed(void) {
   }
 
   if (g_log.current_size >= MAX_LOG_SIZE) {
-    close(g_log.file);
+    platform_close(g_log.file);
 
     /* Open file for reading to get the tail */
-    int read_file = open(g_log.filename, O_RDONLY);
+    int read_file = SAFE_OPEN(g_log.filename, O_RDONLY, 0);
     if (read_file < 0) {
-      fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
+      (void)fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -68,9 +117,9 @@ static void rotate_log_if_needed(void) {
     /* Seek to position where we want to start keeping data (keep last 2MB) */
     size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
     if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
-      close(read_file);
+      platform_close(read_file);
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -78,18 +127,18 @@ static void rotate_log_if_needed(void) {
 
     /* Skip to next line boundary to avoid partial lines */
     char c;
-    while (read(read_file, &c, 1) > 0 && c != '\n') {
+    while (platform_read(read_file, &c, 1) > 0 && c != '\n') {
       /* Skip characters until newline */
     }
 
     /* Read the tail into a temporary file */
     char temp_filename[512];
-    snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
-    int temp_file = open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    SAFE_SNPRINTF(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
+    int temp_file = SAFE_OPEN(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (temp_file < 0) {
-      close(read_file);
+      platform_close(read_file);
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -99,14 +148,14 @@ static void rotate_log_if_needed(void) {
     char buffer[8192];
     ssize_t bytes_read;
     size_t new_size = 0;
-    while ((bytes_read = read(read_file, buffer, sizeof(buffer))) > 0) {
-      ssize_t written = write(temp_file, buffer, bytes_read);
+    while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
+      ssize_t written = platform_write(temp_file, buffer, bytes_read);
       if (written != bytes_read) {
-        close(read_file);
-        close(temp_file);
+        platform_close(read_file);
+        platform_close(temp_file);
         unlink(temp_filename);
         /* Fall back to truncation */
-        int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+        int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
         g_log.file = fd;
         g_log.current_size = 0;
         return;
@@ -114,23 +163,23 @@ static void rotate_log_if_needed(void) {
       new_size += (size_t)bytes_read;
     }
 
-    close(read_file);
-    close(temp_file);
+    platform_close(read_file);
+    platform_close(temp_file);
 
     /* Replace original with temp file */
     if (rename(temp_filename, g_log.filename) != 0) {
       unlink(temp_filename); /* Clean up temp file */
       /* Fall back to truncation */
-      int fd = open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+      int fd = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
 
     /* Reopen for appending */
-    g_log.file = open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+    g_log.file = SAFE_OPEN(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     if (g_log.file < 0) {
-      fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
+      (void)fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
       g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0';
     } else {
@@ -138,10 +187,10 @@ static void rotate_log_if_needed(void) {
       /* Log the rotation event */
       {
         char log_msg[256];
-        int log_msg_len = snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
-                                   "00:00:00.000000", new_size);
+        int log_msg_len = SAFE_SNPRINTF(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
+                                        "00:00:00.000000", new_size);
         if (log_msg_len > 0) {
-          ssize_t written = write(g_log.file, log_msg, (size_t)log_msg_len);
+          ssize_t written = platform_write(g_log.file, log_msg, (size_t)log_msg_len);
           (void)written; // suppress unused warning
         }
       }
@@ -150,37 +199,67 @@ static void rotate_log_if_needed(void) {
 }
 
 void log_init(const char *filename, log_level_t level) {
-  pthread_mutex_lock(&g_log.mutex);
+  // Initialize mutex if this is the first time
+  static bool mutex_initialized = false;
+  if (!mutex_initialized) {
+    mutex_init(&g_log.mutex);
+    mutex_initialized = true;
+  }
+
+  mutex_lock(&g_log.mutex);
 
   // Preserve the terminal output setting
   bool preserve_terminal_output = g_log.terminal_output_enabled;
 
   if (g_log.initialized) {
     if (g_log.file && g_log.file != STDERR_FILENO) {
-      close(g_log.file);
+      platform_close(g_log.file);
     }
   }
 
-  g_log.level = level;
+  // Check LOG_LEVEL environment variable on first initialization
+  // log_init() is an explicit call, so it overrides manual level setting
+  if (!g_log.env_checked) {
+    const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+    if (env_level_str) {
+      // Environment variable is set - use it
+      log_level_t env_level = parse_log_level_from_env();
+      g_log.level = env_level;
+    } else {
+      // Environment variable not set - use the provided level parameter
+      g_log.level = level;
+    }
+    g_log.env_checked = true;
+  } else {
+    // On subsequent calls to log_init, check if env var is set
+    const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+    if (env_level_str) {
+      // Environment variable takes precedence
+      log_level_t env_level = parse_log_level_from_env();
+      g_log.level = env_level;
+    } else {
+      // No env var - use the provided level parameter
+      g_log.level = level;
+    }
+  }
+  // Reset the manual flag since log_init() is an explicit call
+  g_log.level_manually_set = false;
   g_log.current_size = 0;
 
   if (filename) {
     /* Store filename for rotation */
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
-    int fd = open(filename, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+    int fd = SAFE_OPEN(filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
     g_log.file = fd;
     if (!g_log.file) {
       if (preserve_terminal_output) {
-        fprintf(stderr, "Failed to open log file: %s\n", filename);
+        (void)fprintf(stderr, "Failed to open log file: %s\n", filename);
       }
       g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0'; /* Clear filename on failure */
     } else {
-      /* Get current file size */
-      struct stat st;
-      if (fstat(g_log.file, &st) == 0) {
-        g_log.current_size = (size_t)st.st_size;
-      }
+      /* File was truncated, so size starts at 0 */
+      g_log.current_size = 0;
     }
   } else {
     g_log.file = STDERR_FILENO;
@@ -192,51 +271,51 @@ void log_init(const char *filename, log_level_t level) {
   // Restore the terminal output setting
   g_log.terminal_output_enabled = preserve_terminal_output;
 
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_destroy(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
 
   if (g_log.file && g_log.file != STDERR_FILENO) {
-    close(g_log.file);
+    platform_close(g_log.file);
   }
 
   g_log.file = 0;
   g_log.initialized = false;
 
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_set_level(log_level_t level) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   g_log.level = level;
   g_log.level_manually_set = true;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 log_level_t log_get_level(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   log_level_t level = g_log.level;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
   return level;
 }
 
 void log_set_terminal_output(bool enabled) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   g_log.terminal_output_enabled = enabled;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
 bool log_get_terminal_output(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
   bool enabled = g_log.terminal_output_enabled;
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
   return enabled;
 }
 
 void log_truncate_if_large(void) {
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
 
   if (g_log.file && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     /* Check if current log is too large */
@@ -250,35 +329,55 @@ void log_truncate_if_large(void) {
     }
   }
 
-  pthread_mutex_unlock(&g_log.mutex);
+  mutex_unlock(&g_log.mutex);
 }
 
+extern atomic_bool g_should_exit;
+
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
+  // Simple approach: just check if initialized
+  // If not initialized, just don't log (main() should have initialized it)
   if (!g_log.initialized) {
-    // Preserve the current terminal output setting before auto-initialization
-    bool preserve_terminal_output = g_log.terminal_output_enabled;
-    // Use manually set level if available, otherwise default to LOG_INFO
-    log_level_t init_level = g_log.level_manually_set ? g_log.level : LOG_INFO;
-    log_init(NULL, init_level);
-    // Restore the terminal output setting after initialization
-    g_log.terminal_output_enabled = preserve_terminal_output;
+    return; // Don't log if not initialized - this prevents the deadlock
+  }
+
+  // Skip logging entirely if we're shutting down to avoid mutex issues
+  if (atomic_load(&g_should_exit)) {
+    return; // Don't try to log during shutdown - avoids deadlocks
+  }
+
+  // Check environment variable on first log call if not already checked
+  // This handles the case where log_msg is called before log_init
+  if (!g_log.env_checked && !g_log.level_manually_set) {
+    mutex_lock(&g_log.mutex);
+    if (!g_log.env_checked && !g_log.level_manually_set) {
+      const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+      if (env_level_str) {
+        // Environment variable is set - use it
+        log_level_t env_level = parse_log_level_from_env();
+        g_log.level = env_level;
+      }
+      // Otherwise keep the default LOG_INFO from static initialization
+      g_log.env_checked = true;
+    }
+    mutex_unlock(&g_log.mutex);
   }
 
   if (level < g_log.level) {
     return;
   }
 
-  pthread_mutex_lock(&g_log.mutex);
+  mutex_lock(&g_log.mutex);
 
-  /* Get current time using clock_gettime (avoids localtime) */
+  /* Get current time in local timezone */
   struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  (void)clock_gettime(CLOCK_REALTIME, &ts);
 
   struct tm tm_info;
-  gmtime_r(&ts.tv_sec, &tm_info); /* UTC time; gmtime_r is thread-safe */
+  platform_localtime(&ts.tv_sec, &tm_info);
 
   char time_buf[32];
-  strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_info);
+  (void)strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_info);
 
   char time_buf_ms[64]; // Increased size to prevent truncation
   long microseconds = ts.tv_nsec / 1000;
@@ -287,7 +386,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     microseconds = 0;
   if (microseconds > 999999)
     microseconds = 999999;
-  snprintf(time_buf_ms, sizeof(time_buf_ms), "%s.%06ld", time_buf, microseconds);
+  SAFE_SNPRINTF(time_buf_ms, sizeof(time_buf_ms), "%s.%06ld", time_buf, microseconds);
 
   /* Check if log rotation is needed */
   rotate_log_if_needed();
@@ -303,8 +402,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     int offset = 0;
 
     // Add timestamp, level, location
-    offset = snprintf(log_buffer, sizeof(log_buffer), "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level],
-                      file, line, func);
+    const char *rel_file = extract_relative_path(file);
+    offset = SAFE_SNPRINTF(log_buffer, sizeof(log_buffer), "[%s] [%s] %s:%d in %s(): ", time_buf_ms,
+                           level_strings[level], rel_file, line, func);
 
     // Add the actual message
     va_list args;
@@ -318,39 +418,58 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
 
     // Write to file descriptor directly
-    ssize_t written = write(g_log.file, log_buffer, offset);
+    ssize_t written = platform_write(g_log.file, log_buffer, offset);
     if (written > 0) {
       g_log.current_size += (size_t)written;
     }
 
-    // No need to flush with direct write() - it bypasses stdio buffering
+    // NOTE: No need to flush with direct platform_write() - it bypasses stdio buffering
   }
+
+  // Create va_list once and reuse it
+  va_list args;
+  va_start(args, fmt);
 
   // Handle stderr output separately - only if terminal output is enabled
   if (log_file != NULL && log_file == stderr && g_log.terminal_output_enabled) {
-    fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], file, line, func);
+    const char *rel_file = extract_relative_path(file);
+    (void)fprintf(log_file, "[%s] [%s] %s:%d in %s(): ", time_buf_ms, level_strings[level], rel_file, line, func);
 
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(log_file, fmt, args);
-    va_end(args);
+    // Create a copy of va_list for this use
+    va_list args_copy;
+    va_copy(args_copy, args);
+    (void)vfprintf(log_file, fmt, args_copy);
+    va_end(args_copy);
 
-    fprintf(log_file, "\n");
-    fflush(log_file);
+    (void)fprintf(log_file, "\n");
+    (void)fflush(log_file);
   }
 
-  /* Also print to stderr with colors if it's a terminal and terminal output is enabled */
-  if (g_log.terminal_output_enabled && isatty(STDERR_FILENO)) {
-    fprintf(stderr, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms, level_strings[level], file,
-            line, func);
+  /* Print to stdout (INFO/DEBUG) or stderr (ERROR/WARN) with colors if terminal output is enabled */
+  if (g_log.terminal_output_enabled) {
+    /* Choose output stream based on log level */
+    FILE *output_stream = (level == LOG_ERROR || level == LOG_WARN) ? stderr : stdout;
+    int fd = (level == LOG_ERROR || level == LOG_WARN) ? STDERR_FILENO : STDOUT_FILENO;
 
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
+    if (isatty(fd)) {
+      const char *rel_file = extract_relative_path(file);
+      (void)fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], time_buf_ms,
+                    level_strings[level], rel_file, line, func);
 
-    fprintf(stderr, "\n");
+      // Create a copy of va_list for this use
+      va_list args_copy2;
+      va_copy(args_copy2, args);
+      (void)vfprintf(output_stream, fmt, args_copy2);
+      va_end(args_copy2);
+
+      (void)fprintf(output_stream, "\n");
+      (void)fflush(output_stream);
+    }
   }
 
-  pthread_mutex_unlock(&g_log.mutex);
+  // Clean up the original va_list
+  va_end(args);
+
+  // Always unlock the mutex after ALL output is complete
+  mutex_unlock(&g_log.mutex);
 }

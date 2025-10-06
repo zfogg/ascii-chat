@@ -77,23 +77,27 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
 // Cache eviction helper functions
 uint64_t get_current_time_ns(void) {
   struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
+  (void)clock_gettime(CLOCK_MONOTONIC, &now);
   return now.tv_sec * 1000000000ULL + now.tv_nsec;
 }
 
 double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
                                       uint64_t current_time) {
-  uint64_t age_seconds = (current_time - last_access_time) / 1000000000ULL;
-  uint64_t total_age_seconds = (current_time - creation_time) / 1000000000ULL;
+  // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
+  uint64_t age_ns = (current_time >= last_access_time) ? (current_time - last_access_time) : 0;
+  uint64_t total_age_ns = (current_time >= creation_time) ? (current_time - creation_time) : 0;
+
+  uint64_t age_seconds = age_ns / 1000000000ULL;
+  uint64_t total_age_seconds = total_age_ns / 1000000000ULL;
 
   // Frequency factor: high-use palettes get protection (logarithmic scaling)
   double frequency_factor = 1.0 + log10(1.0 + access_count);
 
   // Aging factor: frequency bonus decays over time (5-minute half-life)
-  double aging_factor = exp(-age_seconds / CACHE_FREQUENCY_DECAY_TIME);
+  double aging_factor = exp(-(double)age_seconds / CACHE_FREQUENCY_DECAY_TIME);
 
   // Recent access bonus: strong protection for recently used (1-minute protection)
-  double recency_bonus = exp(-age_seconds / CACHE_RECENCY_SCALE);
+  double recency_bonus = exp(-(double)age_seconds / CACHE_RECENCY_SCALE);
 
   // Cache lifetime penalty: prevent immortal caches (1-hour max lifetime)
   double lifetime_penalty = total_age_seconds > CACHE_MAX_LIFETIME ? 0.5 : 1.0;
@@ -107,7 +111,13 @@ static inline uint32_t hash_palette_string(const char *palette) {
   uint32_t hash = 5381; // djb2 hash algorithm
   const char *p = palette;
   while (*p) {
-    hash = ((hash << 5) + hash) + *p++; // hash * 33 + c
+    // Use explicit unsigned arithmetic to avoid UB warnings
+    // The wrapping behavior is intentional for hash functions
+    uint32_t c = (unsigned char)*p++;
+    // Use 64-bit arithmetic to avoid overflow, then truncate
+    // This silences UBSan while maintaining the same behavior
+    uint64_t temp = ((uint64_t)hash * 33ULL) + c;
+    hash = (uint32_t)(temp & 0xFFFFFFFFULL); // Explicit truncation
   }
   return hash;
 }
@@ -117,7 +127,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
 
 // UTF-8 palette cache system with min-heap eviction
 static hashtable_t *g_utf8_cache_table = NULL;
-static pthread_rwlock_t g_utf8_cache_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static rwlock_t g_utf8_cache_rwlock = {0};
 
 // Min-heap for O(log n) intelligent eviction
 static utf8_palette_cache_t **g_utf8_heap = NULL;                 // Min-heap array
@@ -128,6 +138,13 @@ static const size_t g_utf8_heap_capacity = HASHTABLE_MAX_ENTRIES; // Max heap si
 
 // Initialize UTF-8 cache system with min-heap
 static void init_utf8_cache_system(void) {
+  static bool initialized = false;
+  if (!initialized) {
+    // Initialize the rwlock first
+    rwlock_init(&g_utf8_cache_rwlock);
+    initialized = true;
+  }
+
   if (!g_utf8_cache_table) {
     g_utf8_cache_table = hashtable_create();
 
@@ -283,10 +300,9 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
     double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
     utf8_heap_insert(new_cache, initial_score);
     return true;
-  } else {
-    log_error("UTF8_CACHE_CRITICAL: Failed to insert after eviction");
-    return false;
   }
+  log_error("UTF8_CACHE_CRITICAL: Failed to insert after eviction");
+  return false;
 }
 
 // char_ramp_cache functions removed - data already available in utf8_palette_cache_t
@@ -303,8 +319,15 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   // Create hash of palette for cache key
   uint32_t palette_hash = hash_palette_string(ascii_chars);
 
+  // Ensure the cache system is initialized (including the rwlock)
+  static _Atomic(bool) ensure_init = false;
+  if (!atomic_load(&ensure_init)) {
+    init_utf8_cache_system();
+    atomic_store(&ensure_init, true);
+  }
+
   // Fast path: Try read-only lookup first (most common case)
-  pthread_rwlock_rdlock(&g_utf8_cache_rwlock);
+  rwlock_rdlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
     utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
     if (cache) {
@@ -316,8 +339,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       // Every 10th access: Update heap position (amortized O(log n))
       if (new_access_count % 10 == 0) {
         // Need to upgrade to write lock for heap updates
-        pthread_rwlock_unlock(&g_utf8_cache_rwlock);
-        pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
+        rwlock_rdunlock(&g_utf8_cache_rwlock);
+        rwlock_wrlock(&g_utf8_cache_rwlock);
 
         // Recalculate score and update heap position
         uint64_t last_access = atomic_load(&cache->last_access_time);
@@ -326,18 +349,18 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
             calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
         utf8_heap_update_score(cache, new_score);
 
-        pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+        rwlock_wrunlock(&g_utf8_cache_rwlock);
         return cache;
       }
 
-      pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+      rwlock_rdunlock(&g_utf8_cache_rwlock);
       return cache;
     }
   }
-  pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_rdunlock(&g_utf8_cache_rwlock);
 
   // Slow path: Need to create cache entry, acquire write lock
-  pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
+  rwlock_wrlock(&g_utf8_cache_rwlock);
 
   init_utf8_cache_system();
 
@@ -353,8 +376,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     build_utf8_ramp64_cache(ascii_chars, cache->cache64, cache->char_index_ramp);
 
     // Store palette hash for validation
-    strncpy(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash) - 1);
-    cache->palette_hash[sizeof(cache->palette_hash) - 1] = '\0';
+    SAFE_STRNCPY(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash));
     cache->is_valid = true;
 
     // Initialize eviction tracking
@@ -367,14 +389,14 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     if (!try_insert_with_eviction_utf8(palette_hash, cache)) {
       log_error("UTF8_CACHE_CRITICAL: Failed to insert cache even after eviction - system overloaded");
       SAFE_FREE(cache);
-      pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+      rwlock_wrunlock(&g_utf8_cache_rwlock);
       return NULL;
     }
 
     log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
   }
 
-  pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_wrunlock(&g_utf8_cache_rwlock);
   return cache;
 }
 
@@ -396,10 +418,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
   while (*p && char_count < 255) {
     char_infos[char_count].start = p;
 
-    if ((*p & 0x80) == 0) {
-      char_infos[char_count].byte_len = 1;
-      p++;
-    } else if ((*p & 0xE0) == 0xC0) {
+    if ((*p & 0xE0) == 0xC0) {
       char_infos[char_count].byte_len = 2;
       p += 2;
     } else if ((*p & 0xF0) == 0xE0) {
@@ -409,6 +428,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
       char_infos[char_count].byte_len = 4;
       p += 4;
     } else {
+      // ASCII characters (0x00-0x7F) and invalid sequences: treat as single byte
       char_infos[char_count].byte_len = 1;
       p++;
     }
@@ -450,10 +470,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
   while (*p && char_count < 255) {
     char_infos[char_count].start = p;
 
-    if ((*p & 0x80) == 0) {
-      char_infos[char_count].byte_len = 1;
-      p++;
-    } else if ((*p & 0xE0) == 0xC0) {
+    if ((*p & 0xE0) == 0xC0) {
       char_infos[char_count].byte_len = 2;
       p += 2;
     } else if ((*p & 0xF0) == 0xE0) {
@@ -463,6 +480,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
       char_infos[char_count].byte_len = 4;
       p += 4;
     } else {
+      // ASCII characters (0x00-0x7F) and invalid sequences: treat as single byte
       char_infos[char_count].byte_len = 1;
       p++;
     }
@@ -505,7 +523,7 @@ void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
   // Destroy shared UTF-8 palette cache
-  pthread_rwlock_wrlock(&g_utf8_cache_rwlock);
+  rwlock_wrlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
     // Free all UTF-8 cache entries before destroying hashtable
     hashtable_foreach(g_utf8_cache_table, free_utf8_cache_entry, NULL);
@@ -515,10 +533,11 @@ void simd_caches_destroy_all(void) {
   }
   // Clean up heap arrays
   if (g_utf8_heap) {
-    SAFE_FREE(g_utf8_heap);
+    free((void *)g_utf8_heap);
+    g_utf8_heap = NULL;
     g_utf8_heap_size = 0;
   }
-  pthread_rwlock_unlock(&g_utf8_cache_rwlock);
+  rwlock_wrunlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
 #ifdef SIMD_SUPPORT_NEON

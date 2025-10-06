@@ -2,13 +2,15 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include "../image.h"
 #include "common.h"
-#include "../image.h"
-
-// Use the project's existing rgb_t for consistency
-#include "../image.h"
 
 // Check for SIMD support and include architecture-specific headers
+// Disable SIMD on Windows with Clang due to intrinsics compatibility issues
+#if defined(_WIN32) && defined(__clang__) && __clang_major__ >= 20
+// Windows with Clang 20+ has issues with MMX intrinsics
+// Keep SIMD disabled until fixed
+#else
 #ifdef __ARM_FEATURE_SVE
 #define SIMD_SUPPORT_SVE 1
 #endif
@@ -27,6 +29,7 @@
 
 #ifdef __ARM_NEON
 #define SIMD_SUPPORT_NEON 1
+#endif
 #endif
 
 // Luminance calculation constants (shared across all files)
@@ -119,14 +122,14 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
 // Enhanced benchmark functions with image source support
 simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
-                                                       const image_t *source_image, bool use_fast_path);
+                                                       const image_t *source_image, bool use_256color);
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
-                                                             bool use_fast_path);
+                                                             bool use_256color);
 void print_simd_capabilities(void);
 
 char *image_print_simd(image_t *image, const char *ascii_chars);
-char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars);
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars);
 
 // Quality vs speed control for 256-color mode (optimization #4)
 void set_color_quality_mode(bool high_quality); // true = 24-bit truecolor, false = 256-color

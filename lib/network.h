@@ -1,17 +1,21 @@
 #pragma once
 
-#include <netinet/in.h>
+#include "platform/abstraction.h"
 #include <stdbool.h>
-#include <sys/socket.h>
 #include "common.h"
-#include "terminal_detect.h"
+#include "platform/terminal.h"
 #include "crc32_hw.h"
 
-// Timeout constants (in seconds)
-#define CONNECT_TIMEOUT 10
-#define SEND_TIMEOUT 10
-#define RECV_TIMEOUT 30
-#define ACCEPT_TIMEOUT 10
+// Pack network protocol structures tightly for wire format
+#ifdef _WIN32
+#pragma pack(push, 1)
+#endif
+
+// Timeout constants (in seconds) - tuned for real-time video streaming
+#define CONNECT_TIMEOUT 3 // Reduced for faster connection attempts
+#define SEND_TIMEOUT 5    // Video frames need timely delivery
+#define RECV_TIMEOUT 15   // If no data in 15 sec, connection is likely dead
+#define ACCEPT_TIMEOUT 3  // Balance between responsiveness and CPU usage
 
 // Keep-alive settings
 #define KEEPALIVE_IDLE 60
@@ -19,19 +23,19 @@
 #define KEEPALIVE_COUNT 8
 
 // Network utility functions
-int set_socket_timeout(int sockfd, int timeout_seconds);
-int set_socket_nonblocking(int sockfd);
-int set_socket_keepalive(int sockfd);
-bool connect_with_timeout(int sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds);
-ssize_t send_with_timeout(int sockfd, const void *buf, size_t len, int timeout_seconds);
-ssize_t recv_with_timeout(int sockfd, void *buf, size_t len, int timeout_seconds);
-int accept_with_timeout(int listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds);
+int set_socket_timeout(socket_t sockfd, int timeout_seconds);
+int set_socket_nonblocking(socket_t sockfd);
+int set_socket_keepalive(socket_t sockfd);
+bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds);
+ssize_t send_with_timeout(socket_t sockfd, const void *buf, size_t len, int timeout_seconds);
+ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds);
+int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds);
 
 // Error handling
 const char *network_error_string(int error_code);
 
 // Size communication protocol
-int send_size_message(int sockfd, unsigned short width, unsigned short height);
+int send_size_message(socket_t sockfd, unsigned short width, unsigned short height);
 int parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 
 /* ============================================================================
@@ -57,7 +61,7 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 
 /* Packet-based communication protocol */
 #define PACKET_MAGIC 0xDEADBEEF
-#define MAX_PACKET_SIZE (5 * 1024 * 1024) // 5MB max packet size
+#define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024) // 5MB max packet size
 
 typedef enum {
   // Unified frame packets (header + data in single packet)
@@ -77,8 +81,7 @@ typedef enum {
   PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
   PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
   PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
-  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
-  PACKET_TYPE_PALETTE_CONFIG = 14 // Server broadcasts palette configuration to clients
+  PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets for efficiency
 } packet_type_t;
 
 typedef struct {
@@ -87,37 +90,38 @@ typedef struct {
   uint32_t length;    // payload length
   uint32_t crc32;     // payload checksum
   uint32_t client_id; // which client this packet is from (0 = server)
-} __attribute__((packed)) packet_header_t;
-
+} PACKED_ATTR packet_header_t;
 // Multi-user protocol structures
 #define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
 #define MAX_DISPLAY_NAME_LEN 32
 #define MAX_CLIENTS 10
 
+// Size packet for terminal size updates
+typedef struct {
+  uint32_t width;
+  uint32_t height;
+} size_packet_t;
+
 typedef struct {
   uint32_t client_id;                      // Unique client identifier
   char display_name[MAX_DISPLAY_NAME_LEN]; // User display name
   uint32_t capabilities;                   // Bitmask: VIDEO_CAPABLE | AUDIO_CAPABLE
-} __attribute__((packed)) client_info_packet_t;
-
+} PACKED_ATTR client_info_packet_t;
 typedef struct {
   uint32_t client_id;   // Which client this stream is from
   uint32_t stream_type; // VIDEO_STREAM | AUDIO_STREAM
   uint32_t timestamp;   // When frame was captured
-} __attribute__((packed)) stream_header_t;
-
+} PACKED_ATTR stream_header_t;
 typedef struct {
   uint32_t client_count;                     // Number of clients in list
   client_info_packet_t clients[MAX_CLIENTS]; // Client info array
-} __attribute__((packed)) client_list_packet_t;
-
+} PACKED_ATTR client_list_packet_t;
 // Server state packet - sent to clients when state changes
 typedef struct {
   uint32_t connected_client_count; // Number of currently connected clients
   uint32_t active_client_count;    // Number of clients actively sending video
   uint32_t reserved[6];            // Reserved for future use
-} __attribute__((packed)) server_state_packet_t;
-
+} PACKED_ATTR server_state_packet_t;
 // Terminal capabilities packet - sent by client to inform server of capabilities
 typedef struct {
   uint32_t capabilities;      // Bitmask of TERM_CAP_* flags
@@ -131,9 +135,9 @@ typedef struct {
   uint32_t utf8_support;      // 0=no UTF-8, 1=UTF-8 supported
   uint32_t palette_type;      // palette_type_t enum value
   char palette_custom[64];    // Custom palette chars (if palette_type == PALETTE_CUSTOM)
-  uint8_t reserved[3];        // Padding for alignment (reduced from reserved[3])
-} __attribute__((packed)) terminal_capabilities_packet_t;
-
+  uint8_t desired_fps;        // Client's desired frame rate (1-144 FPS)
+  uint8_t reserved[2];        // Padding for alignment
+} PACKED_ATTR terminal_capabilities_packet_t;
 // ============================================================================
 // Unified Frame Packet Structures
 // ============================================================================
@@ -152,8 +156,7 @@ typedef struct {
   // The actual ASCII frame data follows this header in the packet payload
   // If compressed_size > 0, data is zlib compressed
   // Format: char data[original_size] or compressed_data[compressed_size]
-} __attribute__((packed)) ascii_frame_packet_t;
-
+} PACKED_ATTR ascii_frame_packet_t;
 // Image frame packet - contains raw RGB image with dimensions
 // Used when client sends camera frames to server
 typedef struct {
@@ -166,8 +169,7 @@ typedef struct {
 
   // The actual pixel data follows this header in the packet payload
   // Format: rgb_t pixels[width * height] or compressed data
-} __attribute__((packed)) image_frame_packet_t;
-
+} PACKED_ATTR image_frame_packet_t;
 // Frame flags for ascii_frame_packet_t
 #define FRAME_FLAG_HAS_COLOR 0x01      // Frame includes ANSI color codes
 #define FRAME_FLAG_IS_COMPRESSED 0x02  // Frame data is zlib compressed
@@ -187,16 +189,7 @@ typedef struct {
   uint32_t sample_rate;   // Sample rate (e.g., 44100)
   uint32_t channels;      // Number of channels (1=mono, 2=stereo)
   // The actual audio data follows: float samples[total_samples]
-} __attribute__((packed)) audio_batch_packet_t;
-
-// Palette configuration packet - sent by server to synchronize palette across clients
-typedef struct {
-  uint32_t palette_type;   // palette_type_t enum value
-  uint32_t palette_length; // Number of characters in palette
-  uint32_t requires_utf8;  // 0=ASCII only, 1=needs UTF-8 support
-  char palette_chars[256]; // The actual palette characters (UTF-8)
-} __attribute__((packed)) palette_config_packet_t;
-
+} PACKED_ATTR audio_batch_packet_t;
 // Capability flags
 #define CLIENT_CAP_VIDEO 0x01
 #define CLIENT_CAP_AUDIO 0x02
@@ -213,33 +206,42 @@ typedef struct {
  */
 
 /* Protocol functions */
-int send_audio_data(int sockfd, const float *samples, int num_samples);
-int receive_audio_data(int sockfd, float *samples, int max_samples);
+int send_audio_data(socket_t sockfd, const float *samples, int num_samples);
+int receive_audio_data(socket_t sockfd, float *samples, int max_samples);
 
-int send_packet(int sockfd, packet_type_t type, const void *data, size_t len);
-int receive_packet(int sockfd, packet_type_t *type, void **data, size_t *len);
+int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len);
+int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *len);
 
-int send_audio_packet(int sockfd, const float *samples, int num_samples);
-int send_audio_batch_packet(int sockfd, const float *samples, int num_samples, int batch_count);
+int send_audio_packet(socket_t sockfd, const float *samples, int num_samples);
+int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count);
 
 // Multi-user protocol functions
-int send_client_join_packet(int sockfd, const char *display_name, uint32_t capabilities);
-int send_client_leave_packet(int sockfd, uint32_t client_id);
-int send_client_list_packet(int sockfd, const client_list_packet_t *client_list);
-int send_stream_start_packet(int sockfd, uint32_t stream_type);
-int send_stream_stop_packet(int sockfd, uint32_t stream_type);
+int send_client_join_packet(socket_t sockfd, const char *display_name, uint32_t capabilities);
+int send_client_leave_packet(socket_t sockfd, uint32_t client_id);
+int send_stream_start_packet(socket_t sockfd, uint32_t stream_type);
+int send_stream_stop_packet(socket_t sockfd, uint32_t stream_type);
 
 // Packet sending with client ID
-int send_packet_from_client(int sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);
-int receive_packet_with_client(int sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
+int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client_id, const void *data, size_t len);
+int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data, size_t *len);
 
 // Heartbeat/ping functions
-int send_ping_packet(int sockfd);
-int send_pong_packet(int sockfd);
+int send_ping_packet(socket_t sockfd);
+int send_pong_packet(socket_t sockfd);
 
 // Console control functions
-int send_clear_console_packet(int sockfd);
-int send_server_state_packet(int sockfd, const server_state_packet_t *state);
-int send_terminal_capabilities_packet(int sockfd, const terminal_capabilities_packet_t *caps);
-int send_terminal_size_with_auto_detect(int sockfd, unsigned short width,
+int send_clear_console_packet(socket_t sockfd);
+int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state);
+int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabilities_packet_t *caps);
+int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width,
                                         unsigned short height); // Convenience function with auto-detection
+
+// Frame sending functions
+int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size, int width, int height);
+int send_image_frame_packet(socket_t sockfd, const void *pixel_data, size_t pixel_size, int width, int height,
+                            uint32_t pixel_format);
+int send_compressed_frame(socket_t sockfd, const char *frame_data, size_t frame_size);
+
+#ifdef _WIN32
+#pragma pack(pop)
+#endif

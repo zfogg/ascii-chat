@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include <pthread.h>
+#include "platform/abstraction.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "ascii_simd.h"
@@ -426,41 +426,23 @@ static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g,
  * ============================================================================
  */
 
-char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_fast_path, const char *ascii_chars) {
+char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
+  (void)use_256color; // Suppress unused parameter warning when SIMD not available
 #ifdef SIMD_SUPPORT_AVX2
-  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSSE3)
-  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+  return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSE2)
-  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+  return render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_NEON)
-  return render_ascii_neon_unified_optimized(image, use_background_mode, use_fast_path, ascii_chars);
+  return render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #else
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds
   const int h = image->h;
   const int w = image->w;
 
-  // Exact per-pixel maximums (with run-length encoding this will be much smaller in practice)
-  const size_t per_px = use_background_mode ? 39 : 20; // Worst case per pixel
-  const size_t reset_len = 4;                          // \033[0m
-
-  const size_t h_sz = (size_t)h;
-  const size_t w_sz = (size_t)w;
-  const size_t total_resets = h_sz * reset_len;
-  const size_t total_newlines = (h_sz > 0) ? (h_sz - 1) : 0;
-  const size_t lines_size = (size_t)w_sz * (size_t)h_sz * (size_t)per_px + total_resets + total_newlines + 1;
-
-  // Single allocation - no buffer pool overhead, no copying!
-  char *ascii;
-  SAFE_MALLOC(ascii, lines_size, char *);
-  if (!ascii) {
-    log_error("Memory allocation failed: %zu bytes", lines_size);
-    return NULL;
-  }
-
-  // Use scalar image function instead of row-based processing
-  free(ascii); // Free the allocated buffer since we're using image function's output
-  return image_print_color(image);
+  // Use scalar image function for fallback path - no SIMD allocation needed
+  return image_print_color(image, ascii_chars);
 #endif
 }

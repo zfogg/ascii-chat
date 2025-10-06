@@ -1,15 +1,9 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
 #include <string.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <stdint.h>
-
-#include "common.h"
-#include "tests/logging.h"
+#include <stdbool.h>
+#include "tests/common.h"
 
 // Global setup to reduce verbose output during tests
 void setup_quiet_logging(void);
@@ -39,79 +33,100 @@ void restore_logging(void) {
 }
 
 // =============================================================================
-// Basic Logging Tests
+// Basic Logging Tests - Parameterized
 // =============================================================================
 
-Test(logging, log_levels) {
-  // Test that we can call logging functions without crashing
-  log_debug("Debug message test");
-  log_info("Info message test");
-  log_warn("Warning message test");
-  log_error("Error message test");
+// Test case structure for message content variations
+typedef struct {
+  char message[1100]; // Large enough for long messages + format
+  bool use_format;    // Whether to use formatted logging
+  char description[64];
+} log_message_test_case_t;
 
-  // If we reach here, basic logging works
-  cr_assert(true, "Basic logging functions should not crash");
+static log_message_test_case_t log_message_cases[] = {
+    {"Simple message test", false, "Simple message"},
+    {"Debug with string: %s, number: %d", true, "Formatted message"},
+    {"", false, "Empty message"},
+    {".", false, "Single character"},
+};
+
+// Special case for long message (build at runtime)
+static void init_long_message_case(log_message_test_case_t *tc) {
+  memset(tc->message, 'A', 1023);
+  tc->message[1023] = '\0';
+  tc->use_format = false;
+  SAFE_STRNCPY(tc->description, "Long message", sizeof(tc->description));
 }
 
-Test(logging, log_with_format) {
-  const char *test_string = "test";
-  int test_number = 42;
+ParameterizedTestParameters(logging, log_message_variations) {
+  static log_message_test_case_t all_cases[5];
 
-  // Test formatted logging
-  log_debug("Debug with string: %s, number: %d", test_string, test_number);
-  log_info("Info with string: %s, number: %d", test_string, test_number);
-  log_warn("Warning with string: %s, number: %d", test_string, test_number);
-  log_error("Error with string: %s, number: %d", test_string, test_number);
+  // Copy standard cases
+  for (int i = 0; i < 4; i++) {
+    all_cases[i] = log_message_cases[i];
+  }
 
-  // Test passes if no crash occurs
-  cr_assert(true, "Formatted logging should work");
+  // Add long message case
+  init_long_message_case(&all_cases[4]);
+
+  return cr_make_param_array(log_message_test_case_t, all_cases, 5);
 }
 
-Test(logging, log_empty_messages) {
-  // Test logging empty or minimal messages
-  log_debug("");
-  log_info("");
-  log_warn("");
-  log_error("");
+ParameterizedTest(log_message_test_case_t *tc, logging, log_message_variations) {
+  // Test all log levels with this message
+  if (tc->use_format) {
+    log_debug(tc->message, "test", 42);
+    log_info(tc->message, "test", 42);
+    log_warn(tc->message, "test", 42);
+    log_error(tc->message, "test", 42);
+  } else {
+    log_debug("%s", tc->message);
+    log_info("%s", tc->message);
+    log_warn("%s", tc->message);
+    log_error("%s", tc->message);
+  }
 
-  log_debug(".");
-  log_info(".");
-  log_warn(".");
-  log_error(".");
-
-  cr_assert(true, "Empty message logging should not crash");
-}
-
-Test(logging, log_long_messages) {
-  // Test with reasonably long message
-  char long_message[1024];
-  memset(long_message, 'A', sizeof(long_message) - 1);
-  long_message[sizeof(long_message) - 1] = '\0';
-
-  log_debug("Long debug message: %s", long_message);
-  log_info("Long info message: %s", long_message);
-  log_warn("Long warning message: %s", long_message);
-  log_error("Long error message: %s", long_message);
-
-  cr_assert(true, "Long message logging should not crash");
+  cr_assert(true, "%s should not crash", tc->description);
 }
 
 // =============================================================================
-// Special Characters and Edge Cases
+// Special Characters and Edge Cases - Parameterized
 // =============================================================================
 
-Test(logging, log_special_characters) {
-  // Test with special characters that might cause issues
-  log_debug("Message with newlines\n\n");
-  log_info("Message with tabs\t\t");
-  log_warn("Message with quotes: \"test\" and 'test'");
-  log_error("Message with unicode: café naïve résumé");
+typedef struct {
+  char message[128];
+  bool use_format;
+  char description[64];
+} log_special_char_test_case_t;
 
-  // Test with format specifiers in the message (should be handled safely)
-  log_debug("Message with percent signs: 100%% complete");
-  log_info("Message with format chars: %s %d %f (but no args)", "test", 42, 3.14);
+static log_special_char_test_case_t log_special_char_cases[] = {
+    {"Message with newlines\n\n", false, "Newlines"},
+    {"Message with tabs\t\t", false, "Tabs"},
+    {"Message with quotes: \"test\" and 'test'", false, "Quotes"},
+    {"Message with unicode: café naïve résumé", false, "Unicode"},
+    {"Message with percent signs: 100%% complete", false, "Percent signs"},
+    {"Message with format chars: %s %d %f (but no args)", true, "Format chars with args"},
+};
 
-  cr_assert(true, "Special character logging should work");
+ParameterizedTestParameters(logging, log_special_characters) {
+  return cr_make_param_array(log_special_char_test_case_t, log_special_char_cases,
+                             sizeof(log_special_char_cases) / sizeof(log_special_char_cases[0]));
+}
+
+ParameterizedTest(log_special_char_test_case_t *tc, logging, log_special_characters) {
+  if (tc->use_format) {
+    log_debug(tc->message, "test", 42, 3.14);
+    log_info(tc->message, "test", 42, 3.14);
+    log_warn(tc->message, "test", 42, 3.14);
+    log_error(tc->message, "test", 42, 3.14);
+  } else {
+    log_debug("%s", tc->message);
+    log_info("%s", tc->message);
+    log_warn("%s", tc->message);
+    log_error("%s", tc->message);
+  }
+
+  cr_assert(true, "%s should work", tc->description);
 }
 
 Test(logging, log_null_safety) {
@@ -638,34 +653,49 @@ Test(logging, log_rotation_simulation) {
 }
 
 /* ============================================================================
- * Log Initialization Edge Cases
+ * Log Initialization Edge Cases - Parameterized
  * ============================================================================ */
 
-Test(logging, log_initialization_edge_cases) {
-  // Test various initialization scenarios
+typedef struct {
+  log_level_t level;
+  char level_name[16];
+  char description[64];
+} log_init_test_case_t;
 
-  // Test initialization with different levels
-  log_init(NULL, LOG_DEBUG);
-  log_debug("Debug message after init");
+static log_init_test_case_t log_init_cases[] = {
+    {LOG_DEBUG, "DEBUG", "Initialization with DEBUG level"}, {LOG_INFO, "INFO", "Initialization with INFO level"},
+    {LOG_WARN, "WARN", "Initialization with WARN level"},    {LOG_ERROR, "ERROR", "Initialization with ERROR level"},
+    {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
+};
+
+ParameterizedTestParameters(logging, log_initialization_variations) {
+  return cr_make_param_array(log_init_test_case_t, log_init_cases, sizeof(log_init_cases) / sizeof(log_init_cases[0]));
+}
+
+ParameterizedTest(log_init_test_case_t *tc, logging, log_initialization_variations) {
+  log_init(NULL, tc->level);
+
+  // Log message appropriate to the level
+  switch (tc->level) {
+  case LOG_DEBUG:
+    log_debug("%s message after init", tc->level_name);
+    break;
+  case LOG_INFO:
+    log_info("%s message after init", tc->level_name);
+    break;
+  case LOG_WARN:
+    log_warn("%s message after init", tc->level_name);
+    break;
+  case LOG_ERROR:
+    log_error("%s message after init", tc->level_name);
+    break;
+  case LOG_FATAL:
+    log_fatal("%s message after init", tc->level_name);
+    break;
+  }
+
   log_destroy();
-
-  log_init(NULL, LOG_INFO);
-  log_info("Info message after init");
-  log_destroy();
-
-  log_init(NULL, LOG_WARN);
-  log_warn("Warning message after init");
-  log_destroy();
-
-  log_init(NULL, LOG_ERROR);
-  log_error("Error message after init");
-  log_destroy();
-
-  log_init(NULL, LOG_FATAL);
-  log_fatal("Fatal message after init");
-  log_destroy();
-
-  cr_assert(true, "Log initialization edge cases should work");
+  cr_assert(true, "%s should work", tc->description);
 }
 
 Test(logging, log_destroy_without_init) {
@@ -707,4 +737,435 @@ Test(logging, log_message_format_specifiers) {
   log_info("Pointer: %p, size_t: %zu", (void *)0x12345678, (size_t)1000);
 
   cr_assert(true, "Log message format specifiers should work");
+}
+
+/* ============================================================================
+ * LOG_LEVEL Environment Variable Tests
+ * ============================================================================ */
+
+// Helper to safely set/unset environment variables
+static void safe_setenv(const char *name, const char *value) {
+  if (value) {
+#ifdef _WIN32
+    _putenv_s(name, value);
+#else
+    setenv(name, value, 1);
+#endif
+  } else {
+#ifdef _WIN32
+    _putenv_s(name, "");
+#else
+    unsetenv(name);
+#endif
+  }
+}
+
+Test(logging, log_level_env_string_values) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_strings_%d.log", getpid());
+
+  // Test DEBUG
+  safe_setenv("LOG_LEVEL", "DEBUG");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL); // Should be overridden by env var
+  log_set_terminal_output(false);
+  log_debug("Debug message");
+  log_destroy();
+
+  // Check that debug message was logged
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug message")) {
+      found_debug = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_debug, "DEBUG level from LOG_LEVEL should log debug messages");
+
+  // Test INFO
+  safe_setenv("LOG_LEVEL", "INFO");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_info("Info message");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_info = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info message")) {
+      found_info = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_info, "INFO level from LOG_LEVEL should log info messages");
+
+  // Test WARN
+  safe_setenv("LOG_LEVEL", "WARN");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_warn("Warn message");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_warn = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Warn message")) {
+      found_warn = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_warn, "WARN level from LOG_LEVEL should log warn messages");
+
+  // Test ERROR
+  safe_setenv("LOG_LEVEL", "ERROR");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_error("Error message");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_error = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Error message")) {
+      found_error = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_error, "ERROR level from LOG_LEVEL should log error messages");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_case_insensitive) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_case_%d.log", getpid());
+
+  // Test lowercase "debug"
+  safe_setenv("LOG_LEVEL", "debug");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_debug("Debug lowercase");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug lowercase")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "Lowercase 'debug' should work");
+
+  // Test mixed case "DeBuG"
+  safe_setenv("LOG_LEVEL", "DeBuG");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_debug("Debug mixed case");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug mixed case")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "Mixed case 'DeBuG' should work");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_numeric_values) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_numeric_%d.log", getpid());
+
+  // Test "0" (DEBUG)
+  safe_setenv("LOG_LEVEL", "0");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_debug("Debug numeric 0");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug numeric 0")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "Numeric '0' should set DEBUG level");
+
+  // Test "2" (WARN)
+  safe_setenv("LOG_LEVEL", "2");
+  log_destroy();
+  log_init(test_log_file, LOG_FATAL);
+  log_set_terminal_output(false);
+  log_warn("Warn numeric 2");
+  log_debug("Debug should not appear");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  bool found_warn = false;
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Warn numeric 2")) {
+      found_warn = true;
+    }
+    if (strstr(buf, "Debug should not appear")) {
+      found_debug = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found_warn, "Numeric '2' should log WARN messages");
+  cr_assert_not(found_debug, "Numeric '2' should not log DEBUG messages");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_unset_uses_default) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_unset_%d.log", getpid());
+
+  // Ensure LOG_LEVEL is not set
+  safe_setenv("LOG_LEVEL", NULL);
+  log_destroy();
+  log_init(test_log_file, LOG_WARN); // Should use this level
+  log_set_terminal_output(false);
+
+  log_warn("Warn should appear");
+  log_info("Info should not appear");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_warn = false;
+  bool found_info = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Warn should appear")) {
+      found_warn = true;
+    }
+    if (strstr(buf, "Info should not appear")) {
+      found_info = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_warn, "Without LOG_LEVEL, should use log_init parameter (WARN)");
+  cr_assert_not(found_info, "Without LOG_LEVEL, should respect log_init parameter");
+}
+
+Test(logging, log_level_env_invalid_uses_default) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_invalid_%d.log", getpid());
+
+  // Set invalid LOG_LEVEL values
+  safe_setenv("LOG_LEVEL", "INVALID_VALUE");
+  log_destroy();
+  log_init(test_log_file, LOG_INFO); // Should use default (INFO) when env is invalid
+  log_set_terminal_output(false);
+
+  log_info("Info should appear");
+  log_debug("Debug should not appear");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_info = false;
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info should appear")) {
+      found_info = true;
+    }
+    if (strstr(buf, "Debug should not appear")) {
+      found_debug = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_info, "Invalid LOG_LEVEL should use default INFO level");
+  cr_assert_not(found_debug, "Invalid LOG_LEVEL should not log DEBUG");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_dos_protection) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_dos_%d.log", getpid());
+
+  // Create a very large string (1000 characters)
+  char large_value[1001];
+  memset(large_value, 'A', 1000);
+  large_value[1000] = '\0';
+
+  safe_setenv("LOG_LEVEL", large_value);
+  log_destroy();
+
+  // Should not hang or crash, should use default (INFO)
+  log_init(test_log_file, LOG_INFO);
+  log_set_terminal_output(false);
+  log_info("Info after large LOG_LEVEL");
+  log_debug("Debug should not appear");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_info = false;
+  bool found_debug = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info after large LOG_LEVEL")) {
+      found_info = true;
+    }
+    if (strstr(buf, "Debug should not appear")) {
+      found_debug = true;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO");
+  cr_assert_not(found_debug, "Large LOG_LEVEL should not change default behavior");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_boundary_64_chars) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_boundary_%d.log", getpid());
+
+  // Test exactly 64 characters (should trigger protection)
+  char exactly_64[65];
+  memset(exactly_64, 'X', 64);
+  exactly_64[64] = '\0';
+
+  safe_setenv("LOG_LEVEL", exactly_64);
+  log_destroy();
+  log_init(test_log_file, LOG_INFO);
+  log_set_terminal_output(false);
+  log_info("Info with 64 char env");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info with 64 char env")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "64 character LOG_LEVEL should use default INFO");
+
+  // Test 63 characters (should still be invalid but processed)
+  char exactly_63[64];
+  memset(exactly_63, 'Y', 63);
+  exactly_63[63] = '\0';
+
+  safe_setenv("LOG_LEVEL", exactly_63);
+  log_destroy();
+  log_init(test_log_file, LOG_INFO);
+  log_set_terminal_output(false);
+  log_info("Info with 63 char env");
+  log_destroy();
+
+  f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  found = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Info with 63 char env")) {
+      found = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+  cr_assert(found, "63 character LOG_LEVEL (invalid value) should use default INFO");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
+}
+
+Test(logging, log_level_env_before_init) {
+  char test_log_file[256];
+  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_before_init_%d.log", getpid());
+
+  // Set LOG_LEVEL before any log_init call
+  safe_setenv("LOG_LEVEL", "DEBUG");
+  log_destroy();
+
+  // Call log_msg before log_init
+  // This should check environment variable
+  log_set_terminal_output(false);
+  log_debug("Debug before init");
+
+  // Now properly init
+  log_init(test_log_file, LOG_FATAL); // Should still respect LOG_LEVEL=DEBUG
+  log_debug("Debug after init");
+  log_destroy();
+
+  FILE *f = fopen(test_log_file, "r");
+  cr_assert_not_null(f, "Log file should exist");
+  char buf[512];
+  bool found_after = false;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strstr(buf, "Debug after init")) {
+      found_after = true;
+      break;
+    }
+  }
+  fclose(f);
+  unlink(test_log_file);
+
+  cr_assert(found_after, "LOG_LEVEL should be respected even when log_msg called before init");
+
+  // Cleanup
+  safe_setenv("LOG_LEVEL", NULL);
 }
