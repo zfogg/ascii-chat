@@ -121,6 +121,7 @@
 #include "stream.h"
 #include "crypto.h"
 #include "crypto/handshake.h"
+#include "crypto/crypto.h"
 #include "common.h"
 #include "buffer_pool.h"
 #include "network.h"
@@ -668,15 +669,8 @@ void *client_receive_thread(void *arg) {
   size_t len;
 
   while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
-    // Check if crypto handshake is complete and use encrypted packet reception
-    int result;
-    if (crypto_server_is_ready(client->client_id)) {
-      // Use encrypted packet reception
-      result = receive_encrypted_packet_with_client(client->socket, &type, &sender_id, &data, &len);
-    } else {
-      // Use normal packet reception (for handshake packets)
-      result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
-    }
+        // Always use normal packet reception - encrypted packets are handled in the switch statement
+        int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_should_exit)) {
@@ -707,59 +701,60 @@ void *client_receive_thread(void *arg) {
 
     // Handle different packet types from client
     switch (type) {
-    case PACKET_TYPE_ENCRYPTED:
-      // Decrypt the encrypted packet
-      if (crypto_server_is_ready(client->client_id)) {
-        // Allocate buffer for decrypted data
-        void* decrypted_data = buffer_pool_alloc(len);
-        if (!decrypted_data) {
-          log_error("Failed to allocate buffer for decrypted packet from client %u", client->client_id);
-          buffer_pool_free(data, len);
-          data = NULL;
-          continue;
-        }
+        case PACKET_TYPE_ENCRYPTED:
+          // Process the encrypted packet
+          log_debug("Received encrypted packet from client %u: %zu bytes", client->client_id, len);
+          if (crypto_server_is_ready(client->client_id)) {
+            // Allocate buffer for decrypted data
+            void* decrypted_data = buffer_pool_alloc(len);
+            if (!decrypted_data) {
+              log_error("Failed to allocate buffer for decrypted packet from client %u", client->client_id);
+              buffer_pool_free(data, len);
+              data = NULL;
+              continue;
+            }
 
-        size_t decrypted_len;
-        int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t*)data, len,
-                                                        (uint8_t*)decrypted_data, len, &decrypted_len);
+            size_t decrypted_len;
+            int decrypt_result = crypto_decrypt(&client->crypto_ctx.crypto_ctx, (const uint8_t*)data, len,
+                                               (uint8_t*)decrypted_data, len, &decrypted_len);
 
-        if (decrypt_result != 0) {
-          log_error("Failed to decrypt packet from client %u", client->client_id);
-          buffer_pool_free(data, len);
-          buffer_pool_free(decrypted_data, len);
-          data = NULL;
-          continue;
-        }
+            if (decrypt_result != 0) {
+              log_error("Failed to process encrypted packet from client %u (result=%d)", client->client_id, decrypt_result);
+              buffer_pool_free(data, len);
+              buffer_pool_free(decrypted_data, len);
+              data = NULL;
+              continue;
+            }
 
-        // Replace encrypted data with decrypted data
-        buffer_pool_free(data, len);
-        data = decrypted_data;
-        len = decrypted_len;
+            // Replace encrypted data with decrypted data
+            buffer_pool_free(data, len);
+            data = decrypted_data;
+            len = decrypted_len;
 
-        log_debug("Decrypted packet from client %u: %zu bytes", client->client_id, len);
+            log_debug("Processed encrypted packet from client %u: %zu bytes", client->client_id, len);
 
-        // Now process the decrypted packet by parsing its header
-        if (len >= sizeof(packet_header_t)) {
-          packet_header_t* header = (packet_header_t*)data;
-          type = (packet_type_t)ntohs(header->type);
-          sender_id = ntohl(header->client_id);
+            // Now process the decrypted packet by parsing its header
+            if (len >= sizeof(packet_header_t)) {
+              packet_header_t* header = (packet_header_t*)data;
+              type = (packet_type_t)ntohs(header->type);
+              sender_id = ntohl(header->client_id);
 
-          // Adjust data pointer to skip header
-          data = (uint8_t*)data + sizeof(packet_header_t);
-          len -= sizeof(packet_header_t);
-        } else {
-          log_error("Decrypted packet too small for header from client %u", client->client_id);
-          buffer_pool_free(data, len);
-          data = NULL;
-          continue;
-        }
-      } else {
-        log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
-        buffer_pool_free(data, len);
-        data = NULL;
-        continue;
-      }
-      // Fall through to process the decrypted packet
+              // Adjust data pointer to skip header
+              data = (uint8_t*)data + sizeof(packet_header_t);
+              len -= sizeof(packet_header_t);
+            } else {
+              log_error("Decrypted packet too small for header from client %u", client->client_id);
+              buffer_pool_free(data, len);
+              data = NULL;
+              continue;
+            }
+          } else {
+            log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
+            buffer_pool_free(data, len);
+            data = NULL;
+            continue;
+          }
+          // Fall through to process the decrypted packet
     case PACKET_TYPE_CLIENT_JOIN:
       handle_client_join_packet(client, data, len);
       break;
