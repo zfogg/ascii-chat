@@ -55,4 +55,3 @@ static inline bool test_is_in_headless_environment(void) {
 
   return false;
 }
-

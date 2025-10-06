@@ -21,6 +21,17 @@ typedef SRWLOCK rwlock_t;
 typedef pthread_rwlock_t rwlock_t;
 #endif
 
+// Forward declarations for lock debugging
+// Note: Full lock_debug.h cannot be included here due to circular dependencies
+// Files that use both rwlock and lock_debug must include lock_debug.h separately
+#ifndef NDEBUG
+bool lock_debug_is_initialized(void);
+int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+#endif
+
 // ============================================================================
 // Read-Write Lock Functions
 // ============================================================================

@@ -278,6 +278,15 @@ static int initialize_client_systems() {
   return 0;
 }
 
+#ifdef USE_MIMALLOC_DEBUG
+// Wrapper function for mi_stats_print to use with atexit()
+// mi_stats_print takes a parameter, but atexit requires void(void)
+extern void mi_stats_print(void *out);
+static void print_mimalloc_stats(void) {
+  mi_stats_print(NULL); // NULL = print to stderr
+}
+#endif
+
 /**
  * Main application entry point
  *
@@ -315,6 +324,11 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
+
+#ifdef USE_MIMALLOC_DEBUG
+  // Register mimalloc stats printer at exit
+  (void)atexit(print_mimalloc_stats);
+#endif
 
   // Install signal handlers for graceful shutdown and terminal resize
   platform_signal(SIGINT, sigint_handler);

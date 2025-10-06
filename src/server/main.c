@@ -366,6 +366,16 @@ static void sigusr1_handler(int sigusr1) {
  * @param argv Command line argument vector
  * @return Exit code: 0 for success, non-zero for failure
  */
+
+#ifdef USE_MIMALLOC_DEBUG
+// Wrapper function for mi_stats_print to use with atexit()
+// mi_stats_print takes a parameter, but atexit requires void(void)
+extern void mi_stats_print(void *out);
+static void print_mimalloc_stats(void) {
+  mi_stats_print(NULL); // NULL = print to stderr
+}
+#endif
+
 int main(int argc, char *argv[]) {
 
   // Initialize platform-specific functionality (Winsock, etc)
@@ -374,6 +384,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   (void)atexit(platform_cleanup);
+
+#ifdef USE_MIMALLOC_DEBUG
+  // Register mimalloc stats printer at exit
+  (void)atexit(print_mimalloc_stats);
+#endif
 
   options_init(argc, argv, false);
 

@@ -841,6 +841,7 @@ void *client_send_thread_func(void *arg) {
       rwlock_rdlock(&client->video_buffer_rwlock);
       if (client->outgoing_video_buffer) {
         const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
+
         if (frame && frame->data && frame->size > 0) {
           // Build ASCII frame packet
           ascii_frame_packet_t frame_header = {
@@ -899,11 +900,12 @@ void *client_send_thread_func(void *arg) {
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
-      // DEBUG: Track when no frames are available to send
-      static uint64_t no_frame_count = 0;
-      no_frame_count++;
-      if (no_frame_count % 300 == 0) { // Log every 300 occurrences (10 seconds at 30fps)
-        log_info("DEBUG_NO_FRAME: [%llu] No frame available to send for client %u", no_frame_count, client->client_id);
+      // DEBUG: Track when we're waiting between frame send intervals (FPS limiting)
+      static uint64_t idle_count = 0;
+      idle_count++;
+      if (idle_count % 3000 == 0) { // Log every 3000 occurrences (rare - only for debugging)
+        log_debug("DEBUG_SEND_IDLE: [%llu] Waiting for next frame interval for client %u (FPS limiting)", idle_count,
+                  client->client_id);
       }
       platform_sleep_usec(1000); // 1ms sleep
     }

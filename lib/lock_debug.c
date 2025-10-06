@@ -74,16 +74,38 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
     return NULL;
   }
 
-  // Capture backtrace
+  // Capture backtrace - Skip for musl builds as it crashes
+  // TODO: Fix libexecinfo integration for musl
+#ifndef USE_MUSL
   record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
   if (record->backtrace_size > 0) {
     record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
     if (!record->backtrace_symbols) {
-      log_error("Failed to symbolize backtrace for lock record");
+      static bool symbolize_error_logged = false;
+      if (!symbolize_error_logged) {
+        log_warn("Failed to symbolize backtrace for lock record (backtrace support may be unavailable)");
+        symbolize_error_logged = true;
+      }
     }
   } else {
-    log_error("Failed to capture backtrace for lock record");
+    // Backtrace unavailable (e.g., musl libc doesn't provide backtrace())
+    // Only log this once to avoid spam
+    static bool backtrace_error_logged = false;
+    if (!backtrace_error_logged) {
+      log_debug("Backtrace not available for lock debugging (musl or static build)");
+      backtrace_error_logged = true;
+    }
   }
+#else
+  // Skip backtrace for musl builds - libexecinfo causes crashes
+  record->backtrace_size = 0;
+  record->backtrace_symbols = NULL;
+  static bool musl_warning_logged = false;
+  if (!musl_warning_logged) {
+    log_debug("Backtrace disabled for musl build (lock debugging will work without backtraces)");
+    musl_warning_logged = true;
+  }
+#endif
 
   return record;
 }
@@ -166,13 +188,27 @@ static void print_lock_record_callback(uint32_t key, void *value, void *user_dat
     // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
 
+    // Check if we got useful symbols (not just addresses)
+    bool has_symbols = false;
+    if (symbols && symbols[0]) {
+      // Check if symbol contains more than just the address
+      char addr_str[32];
+      snprintf(addr_str, sizeof(addr_str), "%p", record->backtrace_buffer[0]);
+      has_symbols = (strstr(symbols[0], "(") != NULL) || (strstr(symbols[0], "+") != NULL);
+    }
+
     for (int j = 0; j < record->backtrace_size; j++) {
       // Build the full line for each stack frame
-      if (symbols && symbols[j]) {
-        log_info("    %2d: %p %s", j, record->backtrace_buffer[j], symbols[j]);
+      if (symbols && symbols[j] && has_symbols) {
+        log_info("    %2d: %s", j, symbols[j]);
       } else {
-        log_info("    %2d: %p <unresolved>", j, record->backtrace_buffer[j]);
+        log_info("    %2d: %p", j, record->backtrace_buffer[j]);
       }
+    }
+
+    // For static binaries, provide helpful message
+    if (!has_symbols) {
+      log_info("  Resolve symbols with: addr2line -e <binary> -f -C <addresses>");
     }
 
     // Clean up symbols
@@ -912,18 +948,18 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
  * @return The new held count after decrement
  */
 static uint32_t debug_decrement_lock_counter(void) {
-  // Use the actual atomic type to avoid size mismatch
-  _Atomic(uint_fast32_t) *counter = &g_lock_debug_manager.current_locks_held;
-  uint_fast32_t current = atomic_load(counter);
-  uint_fast32_t held = 0;
+  // Decrement using atomic fetch_sub which avoids type size issues
+  uint_fast32_t current = atomic_load(&g_lock_debug_manager.current_locks_held);
   if (current > 0) {
-    uint_fast32_t expected = current;
-    while (expected > 0 && !atomic_compare_exchange_weak(counter, &expected, expected - 1)) {
-      // CAS failed, reload current value and retry
+    uint_fast32_t prev = atomic_fetch_sub(&g_lock_debug_manager.current_locks_held, 1);
+    // If prev was already 0, we underflowed - add it back
+    if (prev == 0) {
+      atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
+      return 0;
     }
-    held = expected > 0 ? expected - 1 : 0;
+    return (uint32_t)(prev - 1);
   }
-  return (uint32_t)held;
+  return 0;
 }
 
 /**

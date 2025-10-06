@@ -17,4 +17,3 @@
  * For tests, we stub it out as false (tests don't perform shutdown).
  */
 atomic_bool g_should_exit = false;
-

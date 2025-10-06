@@ -184,7 +184,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 
             if (hasLineInfo) {
               // Use the relative path we already extracted if available, else just get the filename
-              const char *shortName = relPath ? relPath : (strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName);
+              const char *shortName =
+                  relPath ? relPath : (strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName);
               if (isOurCode) {
                 // Highlight our code with >>> prefix
                 log_info(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]", i * 8, addr, pSymbol->Name, displacement,
@@ -264,7 +265,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
           DWORD lineDisplacement = 0;
           if (SymGetLineFromAddr64(hProcess, stackFrame.AddrPC.Offset, &lineDisplacement, &line)) {
             const char *relPath = line.FileName ? extract_project_relative_path(line.FileName) : "⁉️🤔";
-            log_info("  #%02d 0x%016llX %s + 0x%llX [%s:%lu]", frameNum, stackFrame.AddrPC.Offset, pSym->Name, symDisplacement, relPath, line.LineNumber);
+            log_info("  #%02d 0x%016llX %s + 0x%llX [%s:%lu]", frameNum, stackFrame.AddrPC.Offset, pSym->Name,
+                     symDisplacement, relPath, line.LineNumber);
           } else {
             log_info("  #%02d 0x%016llX %s + 0x%llX", frameNum, stackFrame.AddrPC.Offset, pSym->Name, symDisplacement);
           }
@@ -277,7 +279,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
             if (GetModuleFileNameA(hMod, modName, sizeof(modName))) {
               char *slash = strrchr(modName, '\\');
               char *name = slash ? slash + 1 : modName;
-              log_info("  #%02d 0x%016llX %s!0x%llX", frameNum, stackFrame.AddrPC.Offset, name, stackFrame.AddrPC.Offset - (DWORD64)hMod);
+              log_info("  #%02d 0x%016llX %s!0x%llX", frameNum, stackFrame.AddrPC.Offset, name,
+                       stackFrame.AddrPC.Offset - (DWORD64)hMod);
             } else {
               log_info("  #%02d 0x%016llX ???", frameNum, stackFrame.AddrPC.Offset);
             }
@@ -318,7 +321,6 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #endif
   return (DWORD)(uintptr_t)result;
 }
-
 
 /**
  * @brief Create a new thread
