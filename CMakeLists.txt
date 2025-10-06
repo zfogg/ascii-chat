@@ -2476,6 +2476,9 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS ${CRITERION_LIBRARIES})
 
+    # Criterion requires libffi for theories support
+    list(APPEND TEST_LDFLAGS ffi)
+
     if(PLATFORM_LINUX)
         # Add Linux-specific test dependencies (matching Makefile order)
         if(PROTOBUF_C_FOUND)
