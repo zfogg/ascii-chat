@@ -71,7 +71,8 @@ static void calculate_optimal_grid(int terminal_width, int terminal_height, int 
   // Try to maintain reasonable aspect ratios for each cell
   int best_cols = 1;
   int best_rows = num_clients;
-  float best_aspect_diff = INFINITY;
+  // Use FLT_MAX instead of INFINITY for -ffast-math compatibility
+  float best_aspect_diff = FLT_MAX;
   float target_aspect = 2.0f; // Target aspect ratio for ASCII display
 
   // Try different grid configurations

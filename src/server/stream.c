@@ -703,7 +703,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
       // Try to maintain reasonable aspect ratios for each cell
       int best_cols = 1;
       int best_rows = sources_with_video;
-      float best_aspect_diff = INFINITY;
+      // Use FLT_MAX instead of INFINITY for -ffast-math compatibility
+      float best_aspect_diff = FLT_MAX;
       float target_aspect = 2.0f; // Target aspect ratio for ASCII display
 
       // Try different grid configurations
