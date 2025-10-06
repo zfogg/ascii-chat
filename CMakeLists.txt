@@ -2517,7 +2517,7 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
         if(LIBGIT2_FOUND)
             list(APPEND TEST_LDFLAGS ${LIBGIT2_LIBRARIES})
 
-            # libgit2 requires OpenSSL when statically linked
+            # libgit2 requires OpenSSL, libssh2, and http_parser when statically linked
             find_package(OpenSSL)
             if(OpenSSL_FOUND)
                 list(APPEND TEST_LDFLAGS OpenSSL::SSL OpenSSL::Crypto)
@@ -2525,6 +2525,14 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
                 # Fallback to direct library names
                 list(APPEND TEST_LDFLAGS ssl crypto)
             endif()
+
+            # Additional libgit2 dependencies
+            foreach(lib ssh2 http_parser)
+                find_library(${lib}_LIB ${lib})
+                if(${lib}_LIB)
+                    list(APPEND TEST_LDFLAGS ${lib})
+                endif()
+            endforeach()
         endif()
 
         # GSSAPI/Kerberos support
@@ -2538,7 +2546,8 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
 
         # Additional system libraries (matches Makefile)
         # Make these optional - only link if available
-        foreach(lib ssh2 http_parser pcre2-8 dl resolv)
+        # Note: ssh2 and http_parser are already handled above with libgit2
+        foreach(lib pcre2-8 dl resolv)
             find_library(${lib}_LIB ${lib})
             if(${lib}_LIB)
                 list(APPEND TEST_LDFLAGS ${lib})
