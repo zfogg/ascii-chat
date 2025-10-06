@@ -33,9 +33,16 @@ image_t *image_new(size_t width, size_t height) {
   const unsigned long w_ul = (unsigned long)width;
   const unsigned long h_ul = (unsigned long)height;
 
+  // Validate dimensions are non-zero
+  if (w_ul == 0 || h_ul == 0) {
+    log_error("Image dimensions must be non-zero: %zu x %zu", width, height);
+    free(p);
+    return NULL;
+  }
+
   // Check if multiplication would overflow
-  if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {
-    log_error("Image dimensions too large (would overflow): %d x %d", width, height);
+  if (h_ul > ULONG_MAX / w_ul) {
+    log_error("Image dimensions too large (would overflow): %zu x %zu", width, height);
     free(p);
     return NULL;
   }
