@@ -35,10 +35,14 @@
         {
             "name": "release",
             "displayName": "Release",
-            "description": "Optimized release build",
-            "inherits": "base",
+            "description": "Optimized release build with musl and mimalloc",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "USE_MUSL": "ON",
+                "USE_MIMALLOC": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         },
         {
