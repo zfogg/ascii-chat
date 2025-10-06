@@ -331,22 +331,22 @@ void *stats_logger_thread(void *arg) {
     // Log lock debug statistics directly
     if (lock_debug_is_initialized()) {
       // Print lock debug information directly instead of using trigger
-      printf("=== LOCK DEBUG: Lock Status Report ===\n");
+      log_info("=== LOCK DEBUG: Lock Status Report ===");
 
       uint64_t total_acquired = 0, total_released = 0;
       uint32_t currently_held = 0;
       lock_debug_get_stats(&total_acquired, &total_released, &currently_held);
 
-      printf("Historical Statistics:\n");
-      printf("  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
-      printf("  Total locks released: %llu\n", (unsigned long long)total_released);
-      printf("  Currently held: %u\n", currently_held);
-      printf("  Net locks (acquired - released): %lld\n", (long long)total_acquired - (long long)total_released);
-      printf("=== End Lock Debug ===\n");
+      log_info("Historical Statistics:");
+      log_info("  Total locks acquired: %llu", (unsigned long long)total_acquired);
+      log_info("  Total locks released: %llu", (unsigned long long)total_released);
+      log_info("  Currently held: %u", currently_held);
+      log_info("  Net locks (acquired - released): %lld", (long long)total_acquired - (long long)total_released);
+      log_info("=== End Lock Debug ===");
     }
 
     // Log global buffer pool stats
-    printf("=== Buffer Pool Global Stats ===\n");
+    log_info("=== Buffer Pool Global Stats ===");
     buffer_pool_log_global_stats();
 
     // Log client statistics
