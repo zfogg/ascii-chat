@@ -13,23 +13,24 @@ static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;
 static bool color256_initialized = false;
 
 // Fast foreground color: \033[38;2;R;G;Bm
+// Maximum output: 19 bytes (\033[38;2;255;255;255m)
 char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
   // Static prefix - 7 bytes
-  SAFE_MEMCPY(dst, 7, "\033[38;2;", 7);
+  SAFE_MEMCPY(dst, 19, "\033[38;2;", 7);
   dst += 7;
 
   // Red component + semicolon
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[r].len, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+  SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
   dst += g_dec3_cache.dec3_table[r].len;
   *dst++ = ';';
 
   // Green component + semicolon
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[g].len, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+  SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
   dst += g_dec3_cache.dec3_table[g].len;
   *dst++ = ';';
 
   // Blue component + suffix
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[b].len, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+  SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
   dst += g_dec3_cache.dec3_table[b].len;
   *dst++ = 'm';
 
@@ -37,19 +38,20 @@ char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 // Fast background color: \033[48;2;R;G;Bm
+// Maximum output: 19 bytes (\033[48;2;255;255;255m)
 char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b) {
-  SAFE_MEMCPY(dst, 7, "\033[48;2;", 7);
+  SAFE_MEMCPY(dst, 19, "\033[48;2;", 7);
   dst += 7;
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[r].len, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
+  SAFE_MEMCPY(dst, 12, g_dec3_cache.dec3_table[r].s, g_dec3_cache.dec3_table[r].len);
   dst += g_dec3_cache.dec3_table[r].len;
   *dst++ = ';';
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[g].len, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
+  SAFE_MEMCPY(dst, 8, g_dec3_cache.dec3_table[g].s, g_dec3_cache.dec3_table[g].len);
   dst += g_dec3_cache.dec3_table[g].len;
   *dst++ = ';';
 
-  SAFE_MEMCPY(dst, g_dec3_cache.dec3_table[b].len, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
+  SAFE_MEMCPY(dst, 4, g_dec3_cache.dec3_table[b].s, g_dec3_cache.dec3_table[b].len);
   dst += g_dec3_cache.dec3_table[b].len;
   *dst++ = 'm';
 

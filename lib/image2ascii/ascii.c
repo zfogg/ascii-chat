@@ -355,7 +355,8 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   while (*src) {
     if (at_line_start) {
       // Insert the requested amount of spaces in front of every visual row.
-      SAFE_MEMSET(position, pad_left, ' ', pad_left);
+      size_t remaining = (buffer + total_len + 1) - position;
+      SAFE_MEMSET(position, remaining, ' ', pad_left);
       position += pad_left;
       at_line_start = false;
     }
@@ -400,7 +401,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
     char *result;
     SAFE_MALLOC(result, target_size, char *);
-    SAFE_MEMSET(result, target_size - 1, ' ', target_size - 1);
+    SAFE_MEMSET(result, target_size, ' ', target_size - 1);
     result[target_size - 1] = '\0';
 
     // Add newlines at the end of each row
@@ -453,7 +454,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
 
       if (copy_len > 0 && dst_pos + copy_len < (int)target_size) {
-        SAFE_MEMCPY(&result[dst_pos], copy_len, &src_data[line_start], copy_len);
+        SAFE_MEMCPY(&result[dst_pos], target_size - dst_pos, &src_data[line_start], copy_len);
       }
 
       // Skip newline in source
@@ -542,7 +543,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     char *result;
     SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
     if (sources[0].frame_data && sources[0].frame_size > 0) {
-      SAFE_MEMCPY(result, sources[0].frame_size, sources[0].frame_data, sources[0].frame_size);
+      SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
       result[sources[0].frame_size] = '\0';
       *out_size = sources[0].frame_size;
     } else {
@@ -559,7 +560,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   SAFE_MALLOC(mixed_frame, mixed_size, char *);
 
   // Initialize mixed frame with spaces
-  SAFE_MEMSET(mixed_frame, mixed_size - 1, ' ', mixed_size - 1);
+  SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
   mixed_frame[mixed_size - 1] = '\0';
 
   // Add newlines at the end of each row
@@ -593,7 +594,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int copy_len = (line_len < cell_width) ? line_len : cell_width;
       if (copy_len > 0 && start_col + copy_len <= width) {
         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
-        SAFE_MEMCPY(mixed_frame + mixed_pos, copy_len, src_data + line_start, copy_len);
+        SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - mixed_pos, src_data + line_start, copy_len);
       }
 
       // Move to next line
@@ -668,7 +669,8 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   }
 
   // Copy the original frame
-  SAFE_MEMCPY(position, frame_len, frame, frame_len);
+  size_t remaining = total_len + 1 - pad_top;
+  SAFE_MEMCPY(position, remaining, frame, frame_len);
   position += frame_len;
   *position = '\0';
 
