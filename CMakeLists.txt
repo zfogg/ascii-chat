@@ -1763,18 +1763,43 @@ if(WIN32 AND NOT USE_MINGW)
         set(LIBSODIUM_INCLUDE_DIRS "")
     endif()
 
-    # Find BearSSL for HTTPS requests to GitHub/GitLab
-    find_library(BEARSSL_LIBRARY NAMES bearssl
-                PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
-    find_path(BEARSSL_INCLUDE_DIR NAMES bearssl.h
-             PATHS "${VCPKG_ROOT}/installed/x64-windows/include")
-    if(BEARSSL_LIBRARY AND BEARSSL_INCLUDE_DIR)
-        set(BEARSSL_LIBRARIES ${BEARSSL_LIBRARY})
-        set(BEARSSL_INCLUDE_DIRS ${BEARSSL_INCLUDE_DIR})
+    # Build BearSSL from submodule for HTTPS requests to GitHub/GitLab
+    if(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
+        # Build BearSSL static library from submodule
+        set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+        set(BEARSSL_BUILD_DIR "${CMAKE_BINARY_DIR}/bearssl-build")
+
+        # Create BearSSL static library target
+        file(GLOB BEARSSL_SOURCES
+            "${BEARSSL_SOURCE_DIR}/src/*.c"
+            "${BEARSSL_SOURCE_DIR}/src/*/*.c"
+        )
+        # Remove problematic files that conflict with Clang on Windows
+        list(REMOVE_ITEM BEARSSL_SOURCES
+            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pclmul.c"
+            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pwr8.c"
+            "${BEARSSL_SOURCE_DIR}/src/rand/sysrng.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcdec.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcenc.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctr.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctrcbc.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/chacha20_sse2.c"
+        )
+
+        add_library(bearssl_static STATIC ${BEARSSL_SOURCES})
+        target_include_directories(bearssl_static PUBLIC
+            "${BEARSSL_SOURCE_DIR}/inc"
+            "${BEARSSL_SOURCE_DIR}/src"
+        )
+        target_compile_definitions(bearssl_static PRIVATE BR_LE_UNALIGNED=1)
+
+        set(BEARSSL_LIBRARIES bearssl_static)
+        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "Found BearSSL: ${BEARSSL_LIBRARY}")
+        message(STATUS "Building BearSSL from submodule: ${BEARSSL_SOURCE_DIR}")
     else()
-        message(WARNING "Could not find BearSSL - GitHub/GitLab key fetching will be disabled")
+        message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
         set(BEARSSL_LIBRARIES "")
         set(BEARSSL_INCLUDE_DIRS "")
@@ -1819,16 +1844,45 @@ else()
     pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 
-    # BearSSL for HTTPS requests to GitHub/GitLab (optional)
-    pkg_check_modules(BEARSSL bearssl)
-    if(NOT BEARSSL_FOUND)
-        message(WARNING "BearSSL not found - GitHub/GitLab key fetching will be disabled")
+    # Build BearSSL from submodule for HTTPS requests to GitHub/GitLab
+    if(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
+        # Build BearSSL static library from submodule
+        set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+
+        # Create BearSSL static library target
+        file(GLOB BEARSSL_SOURCES
+            "${BEARSSL_SOURCE_DIR}/src/*.c"
+            "${BEARSSL_SOURCE_DIR}/src/*/*.c"
+        )
+        # Remove problematic files that conflict with Clang on Windows
+        list(REMOVE_ITEM BEARSSL_SOURCES
+            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pclmul.c"
+            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pwr8.c"
+            "${BEARSSL_SOURCE_DIR}/src/rand/sysrng.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcdec.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcenc.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctr.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctrcbc.c"
+            "${BEARSSL_SOURCE_DIR}/src/symcipher/chacha20_sse2.c"
+        )
+
+        add_library(bearssl_static STATIC ${BEARSSL_SOURCES})
+        target_include_directories(bearssl_static PUBLIC
+            "${BEARSSL_SOURCE_DIR}/inc"
+            "${BEARSSL_SOURCE_DIR}/src"
+        )
+        target_compile_definitions(bearssl_static PRIVATE BR_LE_UNALIGNED=1)
+
+        set(BEARSSL_LIBRARIES bearssl_static)
+        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
+        set(BEARSSL_FOUND TRUE)
+        message(STATUS "Building BearSSL from submodule: ${BEARSSL_SOURCE_DIR}")
+    else()
+        message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
         set(BEARSSL_LIBRARIES "")
         set(BEARSSL_INCLUDE_DIRS "")
-    else()
-        set(BEARSSL_FOUND TRUE)
-        message(STATUS "Found BearSSL: ${BEARSSL_VERSION}")
     endif()
 
     # Test dependencies (matching TEST_PKG_CONFIG_LIBS in Makefile)

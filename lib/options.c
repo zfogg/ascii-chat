@@ -18,6 +18,11 @@
 #include <termios.h>
 #include <unistd.h>
 #endif
+#include <sys/stat.h>
+#ifdef _WIN32
+#include <io.h>
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
 
 #include "image2ascii/ascii.h"
 #include "options.h"
@@ -44,6 +49,37 @@ int strtoint_safe(const char *str) {
   }
 
   return (int)result;
+}
+
+// Detect default SSH key path for the current user
+static int detect_default_ssh_key(char *key_path, size_t path_size) {
+  const char *home_dir = platform_getenv("HOME");
+  if (!home_dir) {
+    // Fallback for Windows
+    home_dir = platform_getenv("USERPROFILE");
+  }
+
+  if (!home_dir) {
+    (void)fprintf(stderr, "Could not determine user home directory\n");
+    return -1;
+  }
+
+  // Only support Ed25519 keys (modern, secure, fast)
+  char full_path[1024];
+  SAFE_SNPRINTF(full_path, sizeof(full_path), "%s/.ssh/id_ed25519", home_dir);
+
+  // Check if the Ed25519 private key file exists
+  struct stat st;
+  if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode)) {
+    SAFE_SNPRINTF(key_path, path_size, "%s", full_path);
+    log_debug("Found default SSH key: %s", full_path);
+    return 0;
+  }
+
+  (void)fprintf(stderr, "No Ed25519 SSH key found at %s\n", full_path);
+  (void)fprintf(stderr, "Only Ed25519 keys are supported (modern, secure, fast)\n");
+  (void)fprintf(stderr, "Generate a new key with: ssh-keygen -t ed25519\n");
+  return -1;
 }
 
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
@@ -93,7 +129,6 @@ char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfil
 
 // New crypto options (Phase 2)
 unsigned short int opt_no_encrypt = 0;            // Disable encryption (opt-out)
-char opt_ssh_key[OPTIONS_BUFF_SIZE] = "";        // SSH private key file (server only)
 char opt_server_key[OPTIONS_BUFF_SIZE] = "";     // Expected server public key (client only)
 char opt_client_keys[OPTIONS_BUFF_SIZE] = "";     // Allowed client keys (server only)
 
@@ -165,7 +200,7 @@ static struct option server_options[] = {
     {"audio", no_argument, NULL, 'A'},         {"log-file", required_argument, NULL, 'L'},
     {"encrypt", no_argument, NULL, 'E'},       {"key", required_argument, NULL, 'K'},
     {"keyfile", required_argument, NULL, 'F'}, {"no-encrypt", no_argument, NULL, 1005},
-    {"ssh-key", required_argument, NULL, 1007}, {"client-keys", required_argument, NULL, 1008},
+    {"client-keys", required_argument, NULL, 1008},
     {"version", no_argument, NULL, 'v'},       {"help", optional_argument, NULL, 'h'},
     {0, 0, 0, 0}};
 
@@ -578,8 +613,40 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'K': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
-      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-      opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+
+      // Check if it's a GPG key (gpg:keyid format)
+      if (strncmp(value_str, "gpg:", 4) == 0) {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+        log_info("GPG encryption key set: %s", value_str);
+      }
+      // Check if it's an SSH key file path (starts with ~/.ssh/ or contains /ssh/ or ends with _ed25519)
+      else if (strstr(value_str, "/.ssh/") != NULL || strstr(value_str, "/ssh/") != NULL ||
+               strstr(value_str, "_ed25519") != NULL || strstr(value_str, "id_ed25519") != NULL) {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+        log_info("SSH key file set: %s", value_str);
+      }
+      // Check if it's "ssh" or "ssh:" to auto-detect SSH key
+      else if (strcmp(value_str, "ssh") == 0 || strcmp(value_str, "ssh:") == 0) {
+        char default_key[OPTIONS_BUFF_SIZE];
+        if (detect_default_ssh_key(default_key, sizeof(default_key)) == 0) {
+          SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", default_key);
+          opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+          log_info("Auto-detected SSH key: %s", default_key);
+        } else {
+          (void)fprintf(stderr, "No Ed25519 SSH key found for auto-detection\n");
+          (void)fprintf(stderr, "Please specify a key with --key /path/to/key\n");
+          (void)fprintf(stderr, "Or generate a new key with: ssh-keygen -t ed25519\n");
+          _exit(EXIT_FAILURE);
+        }
+      }
+      // Default: treat as password
+      else {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+        log_info("Encryption key set from --key option");
+      }
       break;
     }
 
@@ -604,12 +671,6 @@ void options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
-    case 1007: { // --ssh-key (server only)
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "ssh-key", is_client);
-      SAFE_SNPRINTF(opt_ssh_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-      log_info("Using SSH key: %s", value_str);
-      break;
-    }
 
     case 1008: { // --client-keys (server only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
@@ -742,8 +803,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
                                    "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key PASSWORD            " USAGE_INDENT
-                                   "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-K --key KEY                  " USAGE_INDENT
+                                   "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n");
@@ -766,12 +827,11 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key PASSWORD    " USAGE_INDENT
-                                   "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-K --key KEY         " USAGE_INDENT
+                                   "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --no-encrypt       " USAGE_INDENT "disable encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --ssh-key FILE     " USAGE_INDENT "SSH private key file for server identity (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE  " USAGE_INDENT "allowed client keys file for authentication (default: [unset])\n");
 }
 

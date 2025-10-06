@@ -44,8 +44,22 @@ int client_crypto_init(void) {
     }
 
     log_debug("CLIENT_CRYPTO_INIT: Initializing crypto handshake context");
-    // Initialize crypto handshake context
-    int result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
+
+    // Check if we have a password for authentication
+    int result;
+    if (strlen(opt_encrypt_key) > 0 &&
+        strstr(opt_encrypt_key, "/.ssh/") == NULL && strstr(opt_encrypt_key, "/ssh/") == NULL &&
+        strstr(opt_encrypt_key, "_ed25519") == NULL && strstr(opt_encrypt_key, "id_ed25519") == NULL &&
+        strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
+        // It's a password - use password-based initialization
+        log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
+        result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opt_encrypt_key); // false = client
+    } else {
+        // No password or SSH/GPG key - use standard initialization
+        log_debug("CLIENT_CRYPTO_INIT: Using standard initialization");
+        result = crypto_handshake_init(&g_crypto_ctx, false); // false = client
+    }
+
     if (result != 0) {
         log_error("Failed to initialize crypto handshake");
         log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init failed with result=%d", result);

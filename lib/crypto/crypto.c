@@ -197,8 +197,10 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  // Generate random salt for key derivation
-  randombytes_buf(ctx->password_salt, CRYPTO_SALT_SIZE);
+  // Use deterministic salt for consistent key derivation across client/server
+  // This ensures the same password produces the same key on both sides
+  const char* deterministic_salt = "ascii-chat-password-salt-v1";
+  memcpy(ctx->password_salt, deterministic_salt, CRYPTO_SALT_SIZE);
 
   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
   if (crypto_pwhash(ctx->password_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), ctx->password_salt,
@@ -209,7 +211,7 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
     return CRYPTO_ERROR_PASSWORD_DERIVATION;
   }
 
-  log_debug("Password key derived successfully using Argon2id");
+  log_debug("Password key derived successfully using Argon2id with deterministic salt");
   return CRYPTO_OK;
 }
 
@@ -220,8 +222,13 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
 
   uint8_t test_key[CRYPTO_ENCRYPTION_KEY_SIZE];
 
+  // Use the same deterministic salt for verification
+  const char* deterministic_salt = "ascii-chat-password-salt-v1";
+  uint8_t salt[CRYPTO_SALT_SIZE];
+  memcpy(salt, deterministic_salt, CRYPTO_SALT_SIZE);
+
   // Derive key with same salt
-  if (crypto_pwhash(test_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), ctx->password_salt,
+  if (crypto_pwhash(test_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), salt,
                     crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
                     crypto_pwhash_ALG_DEFAULT) != 0) {
     secure_memzero(test_key, sizeof(test_key));
@@ -233,6 +240,35 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
 
   secure_memzero(test_key, sizeof(test_key));
   return match;
+}
+
+// Derive a deterministic encryption key from password for handshake
+crypto_result_t crypto_derive_password_encryption_key(const char *password, uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]) {
+  if (!password || !encryption_key) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  if (strlen(password) == 0) {
+    log_error("Empty password provided");
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Use deterministic salt for consistent key derivation across client/server
+  const char* deterministic_salt = "ascii-chat-password-salt-v1";
+  uint8_t salt[CRYPTO_SALT_SIZE];
+  memcpy(salt, deterministic_salt, CRYPTO_SALT_SIZE);
+
+  // Derive key using Argon2id (memory-hard, secure against GPU attacks)
+  if (crypto_pwhash(encryption_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), salt,
+                    crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
+                    crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
+                    crypto_pwhash_ALG_DEFAULT) != 0) {
+    log_error("Password encryption key derivation failed - possibly out of memory");
+    return CRYPTO_ERROR_PASSWORD_DERIVATION;
+  }
+
+  log_debug("Password encryption key derived successfully using Argon2id");
+  return CRYPTO_OK;
 }
 
 // =============================================================================

@@ -122,6 +122,9 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
 // Verify password matches stored salt/key
 bool crypto_verify_password(const crypto_context_t *ctx, const char *password);
 
+// Derive a deterministic encryption key from password for handshake
+crypto_result_t crypto_derive_password_encryption_key(const char *password, uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]);
+
 // =============================================================================
 // Encryption/Decryption operations
 // =============================================================================
