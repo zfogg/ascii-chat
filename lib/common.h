@@ -292,8 +292,8 @@ int safe_parse_audio_message(const char *message, unsigned int *num_samples);
 
 /* New functions for coverage testing */
 
-/* Memory debugging (only in debug builds) */
-#ifdef DEBUG_MEMORY
+/* Memory debugging (only in debug builds, disabled when mimalloc override is active) */
+#if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
 void *debug_malloc(size_t size, const char *file, int line);
 void debug_free(void *ptr, const char *file, int line);
 void debug_memory_report(void);
@@ -305,7 +305,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 #define free(ptr) debug_free(ptr, __FILE__, __LINE__)
 #define calloc(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
-#endif /* DEBUG_MEMORY */
+#endif /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
 
 /* Path utilities (shared between logging, backtraces, etc.) */
 /**

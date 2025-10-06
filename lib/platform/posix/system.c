@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
-#include <execinfo.h>
+#include <execinfo.h> // Provided by glibc or libexecinfo for musl
 #include <pthread.h>
 #include <stdatomic.h>
 
@@ -372,13 +372,13 @@ static __thread char error_buffer[256];
  */
 const char *platform_strerror(int errnum) {
   // Use strerror_r for thread safety
-#ifdef __APPLE__
-  // macOS uses XSI-compliant strerror_r
+#if defined(__APPLE__) || !defined(__GLIBC__)
+  // macOS and non-glibc (including musl) use XSI-compliant strerror_r (returns int)
   if (strerror_r(errnum, error_buffer, sizeof(error_buffer)) != 0) {
     snprintf(error_buffer, sizeof(error_buffer), "Unknown error %d", errnum);
   }
 #else
-  // Linux uses GNU strerror_r which returns a char*
+  // glibc uses GNU strerror_r which returns a char*
   char *result = strerror_r(errnum, error_buffer, sizeof(error_buffer));
   if (result != error_buffer) {
     // GNU strerror_r may return a static string

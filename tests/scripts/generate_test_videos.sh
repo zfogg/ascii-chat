@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Generate test videos for ASCII-Chat testing
 # Creates a simulated webcam video of a person at their computer
 

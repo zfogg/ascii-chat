@@ -34,6 +34,43 @@ endif()
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 # =============================================================================
+# musl libc Early Setup (MUST come before project() to configure compiler)
+# =============================================================================
+
+# Option to use musl libc (Linux only - musl is not compatible with macOS or Windows)
+option(USE_MUSL "Use musl libc instead of glibc (Linux only)" OFF)
+
+if(USE_MUSL)
+    if(NOT UNIX OR APPLE OR WIN32)
+        message(FATAL_ERROR "musl libc is only supported on Linux. macOS and Windows use their own C libraries.")
+    endif()
+
+    # Find musl-gcc compiler
+    find_program(MUSL_GCC musl-gcc)
+    if(NOT MUSL_GCC)
+        message(FATAL_ERROR "musl-gcc not found. Install musl-tools:\n"
+                            "  Arch Linux: sudo pacman -S musl\n"
+                            "  Ubuntu/Debian: sudo apt install musl-tools musl-dev")
+    endif()
+
+    # Find the real GCC (not ccache wrapper) for musl-gcc to use
+    find_program(REAL_GCC NAMES gcc PATHS /usr/bin /usr/local/bin NO_DEFAULT_PATH)
+    if(REAL_GCC)
+        # Set environment variable for musl-gcc wrapper script
+        # This must be done before project() so CMake's compiler tests work
+        set(ENV{REALGCC} "${REAL_GCC}")
+        message(STATUS "Set REALGCC environment variable: ${REAL_GCC}")
+
+        # Also set compiler launcher for build phase (after project() succeeds)
+        set(CMAKE_C_COMPILER_LAUNCHER "env" "REALGCC=${REAL_GCC}" CACHE STRING "Compiler launcher" FORCE)
+        set(CMAKE_CXX_COMPILER_LAUNCHER "env" "REALGCC=${REAL_GCC}" CACHE STRING "Compiler launcher" FORCE)
+    endif()
+
+    # Set compiler to musl-gcc BEFORE project()
+    set(CMAKE_C_COMPILER "${MUSL_GCC}" CACHE FILEPATH "C compiler" FORCE)
+endif()
+
+# =============================================================================
 # Project Declaration
 # =============================================================================
 
@@ -549,6 +586,28 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # =============================================================================
+# Early Options (must come before ccache and build type configuration)
+# =============================================================================
+
+# Note: USE_MUSL option is declared before project() (line ~41)
+# so compiler can be configured before CMake tests it
+
+# Option to use mimalloc (must be defined early so build type flags can check it)
+option(USE_MIMALLOC "Use mimalloc high-performance allocator" ON)
+
+# If using musl, disable ccache and sanitizers since musl-gcc wraps GCC
+# GCC doesn't support the same sanitizer flags as Clang
+if(USE_MUSL)
+    set(USE_CCACHE OFF CACHE BOOL "Disable ccache when using musl" FORCE)
+
+    # Force Dev build type (debug symbols without sanitizers) if Debug was requested
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message(WARNING "Changing build type from Debug to Dev - GCC (via musl-gcc) doesn't support all Clang sanitizers")
+        set(CMAKE_BUILD_TYPE "Dev" CACHE STRING "Build type" FORCE)
+    endif()
+endif()
+
+# =============================================================================
 # ccache Support (Compiler Cache for Faster Rebuilds)
 # =============================================================================
 
@@ -659,10 +718,29 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src
 )
 
+
+# CRITICAL: mimalloc's MI_MALLOC_OVERRIDE is incompatible with AddressSanitizer
+# Both try to intercept malloc/free, causing initialization order crashes during __asan_init
+# Force Dev build type (debug without sanitizers) when USE_MIMALLOC is ON
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND USE_MIMALLOC)
+    message(WARNING "Switching from Debug to Dev build - AddressSanitizer conflicts with mimalloc malloc override")
+    set(CMAKE_BUILD_TYPE "Dev" CACHE STRING "Build type" FORCE)
+endif()
 # Build type specific flags (matching Makefile logic)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug mode WITH sanitizers (default, safe)
-    add_definitions(-DDEBUG_MEMORY)
+    # Don't add DEBUG_MEMORY if mimalloc is enabled - mimalloc provides its own memory tracking
+    # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
+    if(NOT USE_MIMALLOC AND NOT USE_MUSL)
+        add_definitions(-DDEBUG_MEMORY)
+    elseif(USE_MIMALLOC)
+        message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
+        # Enable mimalloc debugging features
+        add_definitions(-DUSE_MIMALLOC_DEBUG)
+        add_definitions(-DMI_DEBUG=2)  # MI_DEBUG level 2: basic checks + internal assertions
+    elseif(USE_MUSL)
+        message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
+    endif()
     if(WIN32 AND USE_MINGW)
         # MinGW mode already has flags set - skip to avoid conflicts
         message(STATUS "Skipping debug flag setup for MinGW (already configured)")
@@ -795,7 +873,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     # Dev mode - debug WITHOUT sanitizers (faster iteration)
-    add_definitions(-DDEBUG_MEMORY)
+    # Don't add DEBUG_MEMORY if mimalloc is enabled - mimalloc provides its own memory tracking
+    # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
+    if(NOT USE_MIMALLOC AND NOT USE_MUSL)
+        add_definitions(-DDEBUG_MEMORY)
+    elseif(USE_MIMALLOC)
+        message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
+        # Enable mimalloc debugging features
+        add_definitions(-DUSE_MIMALLOC_DEBUG)
+        add_definitions(-DMI_DEBUG=2)  # MI_DEBUG level 2: basic checks + internal assertions
+    elseif(USE_MUSL)
+        message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
+    endif()
     if(WIN32 AND USE_MINGW)
         # MinGW mode already has flags set - skip to avoid conflicts
         message(STATUS "Skipping dev flag setup for MinGW (already configured)")
@@ -1306,6 +1395,222 @@ if(ENABLE_CRC32_HW)
 endif()
 
 # =============================================================================
+# musl libc Additional Configuration
+# =============================================================================
+# Note: Compiler setup is done before project() (line ~37)
+# This section handles linker flags and other post-project() configuration
+
+if(USE_MUSL)
+    # Use -static flag to build fully static binaries with musl
+    # This requires static versions of all dependencies
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+
+    # Disable precompiled headers - musl-gcc uses GCC which has different PCH syntax than Clang
+    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl-gcc" FORCE)
+
+    message(STATUS "musl C library enabled (static linking mode)")
+    message(STATUS "Precompiled headers disabled for musl-gcc compatibility")
+    message(STATUS "")
+    message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
+
+    # Set up paths for musl-built static libraries
+    set(MUSL_PREFIX "${CMAKE_BINARY_DIR}/musl-deps")
+    set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
+
+    # Add musl-deps include directory for libexecinfo headers
+    include_directories(${MUSL_PREFIX}/include)
+
+    # Set linker flags for static musl linking
+    # -rdynamic exports symbols for backtrace_symbols() to resolve function names
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -rdynamic")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static -rdynamic")
+
+    # Set REALGCC environment variable for musl-gcc wrapper
+    # This is needed because musl-gcc is a shell script that wraps gcc
+    set(ENV{REALGCC} "/usr/bin/gcc")
+
+    # Wrap musl-gcc with env for linking (CMAKE_C_COMPILER_LAUNCHER only affects compilation)
+    # We need to ensure REALGCC is set during linking too
+    set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_COMMAND> -E env REALGCC=/usr/bin/gcc <CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+    set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_COMMAND> -E env REALGCC=/usr/bin/gcc <CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+
+    # Include ExternalProject module for building dependencies
+    include(ExternalProject)
+
+    # Extract real compiler path (skip ccache if present)
+    if(CMAKE_C_COMPILER MATCHES "ccache")
+        # CMAKE_C_COMPILER is "/usr/bin/ccache /usr/bin/musl-gcc" - extract the real compiler
+        string(REGEX REPLACE ".* " "" MUSL_CC "${CMAKE_C_COMPILER}")
+    else()
+        set(MUSL_CC "${CMAKE_C_COMPILER}")
+    endif()
+    message(STATUS "Using compiler for musl dependencies: ${MUSL_CC}")
+
+    # Build zlib with musl
+    ExternalProject_Add(zlib-musl
+        URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+        URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
+        PREFIX ${MUSL_PREFIX}
+        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --static
+        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        INSTALL_COMMAND make install
+    )
+
+    # Build libsodium with musl
+    ExternalProject_Add(libsodium-musl
+        URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+        URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
+        PREFIX ${MUSL_PREFIX}
+        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
+        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        INSTALL_COMMAND make install
+        DEPENDS zlib-musl
+    )
+
+    # Build ncurses with musl
+    ExternalProject_Add(ncurses-musl
+        URL https://ftp.gnu.org/gnu/ncurses/ncurses-6.4.tar.gz
+        URL_HASH SHA256=6931283d9ac87c5073f30b6290c4c75f21632bb4fc3603ac8100812bed248159
+        PREFIX ${MUSL_PREFIX}
+        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-normal --without-debug --enable-widec --without-cxx --without-cxx-binding
+        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        INSTALL_COMMAND make install
+        DEPENDS libsodium-musl
+    )
+
+    # Build alsa-lib with musl
+    ExternalProject_Add(alsa-lib-musl
+        URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
+        URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
+        PREFIX ${MUSL_PREFIX}
+        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
+        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        INSTALL_COMMAND make install
+        DEPENDS ncurses-musl
+    )
+
+    # Build PortAudio with musl (depends on ALSA)
+    ExternalProject_Add(portaudio-musl
+        URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
+        URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
+        PREFIX ${MUSL_PREFIX}
+        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${MUSL_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
+        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        INSTALL_COMMAND make install
+        DEPENDS alsa-lib-musl
+    )
+
+    # Build libexecinfo for backtrace support with musl
+    ExternalProject_Add(libexecinfo-musl
+        GIT_REPOSITORY https://github.com/mikroskeem/libexecinfo.git
+        GIT_TAG master
+        PREFIX ${MUSL_PREFIX}
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR>
+        INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
+        BUILD_IN_SOURCE 1
+    )
+
+    # Note: JACK is complex and optional - we'll skip it for static musl builds
+
+    message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
+endif()
+
+# =============================================================================
+# mimalloc Memory Allocator (All Platforms)
+# =============================================================================
+
+# Note: USE_MIMALLOC option is defined early in the file (line ~559)
+# so build type configuration can check it before adding DEBUG_MEMORY
+
+if(USE_MIMALLOC)
+    message(STATUS "Configuring mimalloc memory allocator...")
+
+    # Try multiple methods to find mimalloc, in order of preference:
+    # 1. vcpkg (Windows preferred method)
+    # 2. System package manager (Linux/macOS)
+    # 3. Download from GitHub (fallback)
+
+    set(MIMALLOC_FOUND FALSE)
+
+    # First, try to find mimalloc via vcpkg or system package manager
+    find_package(mimalloc 2.0 CONFIG QUIET)
+
+    if(mimalloc_FOUND)
+        if(DEFINED ENV{VCPKG_ROOT})
+            message(STATUS "Found mimalloc via vcpkg: ${mimalloc_VERSION}")
+        else()
+            message(STATUS "Found system mimalloc: ${mimalloc_VERSION}")
+        endif()
+        set(MIMALLOC_FOUND TRUE)
+        set(MIMALLOC_LIBRARIES mimalloc-static)
+    else()
+        # Try pkg-config on Unix systems
+        if(UNIX AND NOT APPLE)
+            find_package(PkgConfig QUIET)
+            if(PkgConfig_FOUND)
+                pkg_check_modules(MIMALLOC_PC QUIET mimalloc)
+                if(MIMALLOC_PC_FOUND)
+                    message(STATUS "Found mimalloc via pkg-config: ${MIMALLOC_PC_VERSION}")
+                    set(MIMALLOC_FOUND TRUE)
+                    set(MIMALLOC_LIBRARIES ${MIMALLOC_PC_LIBRARIES})
+                endif()
+            endif()
+        endif()
+
+        # If still not found, download and build from GitHub
+        if(NOT MIMALLOC_FOUND)
+            message(STATUS "mimalloc not found via vcpkg or system packages")
+            message(STATUS "Downloading mimalloc from GitHub as fallback...")
+
+            include(FetchContent)
+
+            FetchContent_Declare(
+                mimalloc
+                GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
+                GIT_TAG v2.1.7  # Latest stable v2.x release
+                GIT_SHALLOW TRUE
+            )
+
+            # Configure mimalloc build options
+            set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library")
+            set(MI_BUILD_STATIC ON CACHE BOOL "Build static library")
+            set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library")
+            set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables")
+            set(MI_OVERRIDE ON CACHE BOOL "Override malloc/free globally")
+            set(MI_INSTALL_TOPLEVEL OFF CACHE BOOL "Install in top-level")
+
+            # Set debug level for mimalloc based on build type
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+                set(MI_DEBUG_FULL ON CACHE BOOL "Full debug mode for mimalloc")
+            endif()
+
+            # Platform-specific mimalloc options
+            if(WIN32)
+                set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
+            endif()
+
+            FetchContent_MakeAvailable(mimalloc)
+
+            # For musl builds, set REALGCC environment for mimalloc build
+            if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
+                set_target_properties(mimalloc-static PROPERTIES
+                    COMPILE_OPTIONS ""
+                    RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
+                )
+                message(STATUS "Configured mimalloc build environment with REALGCC=${REAL_GCC}")
+            endif()
+
+            message(STATUS "Built mimalloc from source (v2.1.7)")
+            set(MIMALLOC_LIBRARIES mimalloc-static)
+        endif()
+    endif()
+
+    message(STATUS "mimalloc will override malloc/free globally")
+    message(STATUS "Your existing SAFE_MALLOC macros will automatically use mimalloc")
+endif()
+
+# =============================================================================
 # Find Dependencies (matching Makefile pkg-config approach)
 # =============================================================================
 
@@ -1664,7 +1969,10 @@ else()
             )
             if(CURSES_LIBRARY AND CURSES_INCLUDE_PATH)
                 set(CURSES_LIBRARIES ${CURSES_LIBRARY})
-                set(CURSES_INCLUDE_DIRS ${CURSES_INCLUDE_PATH})
+                # Don't add system include paths when using musl - musl-gcc handles this
+                if(NOT USE_MUSL)
+                    set(CURSES_INCLUDE_DIRS ${CURSES_INCLUDE_PATH})
+                endif()
             else()
                 message(FATAL_ERROR "Could not find ncurses/curses library")
             endif()
@@ -1750,11 +2058,14 @@ else()
         add_compile_options(${PORTAUDIO_CFLAGS_OTHER})
     endif()
 
-    include_directories(
-        ${ZLIB_INCLUDE_DIRS}
-        ${LIBSODIUM_INCLUDE_DIRS}
-        ${PORTAUDIO_INCLUDE_DIRS}
-    )
+    # Don't add system include paths when using musl - musl-gcc handles this via -specs
+    if(NOT USE_MUSL)
+        include_directories(
+            ${ZLIB_INCLUDE_DIRS}
+            ${LIBSODIUM_INCLUDE_DIRS}
+            ${PORTAUDIO_INCLUDE_DIRS}
+        )
+    endif()
 endif()
 
 # =============================================================================
@@ -1785,6 +2096,7 @@ set(LIB_COMMON_SRCS
     lib/lock_debug.c
     lib/os/webcam.c
     lib/palette.c
+    lib/utf8.c
 )
 
 # Platform-specific sources (matching Makefile platform detection)
@@ -1885,6 +2197,11 @@ add_library(ascii-chat-lib STATIC ${LIB_SRCS})
 # Define the project source root for logging (so relative paths work regardless of repo name)
 target_compile_definitions(ascii-chat-lib PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
 
+# Define USE_MUSL flag for conditional compilation when using musl libc
+if(USE_MUSL)
+    target_compile_definitions(ascii-chat-lib PRIVATE USE_MUSL=1)
+endif()
+
 # Link library dependencies (matching Makefile linking order)
 if(WIN32)
     target_link_libraries(ascii-chat-lib
@@ -1901,6 +2218,11 @@ if(WIN32)
         ${ZLIB_LIBRARIES}
         ${LIBSODIUM_LIBRARIES}
     )
+
+    # Link mimalloc for Windows
+    if(USE_MIMALLOC)
+        target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
+    endif()
 else()
     # Build LDFLAGS systematically (matches Makefile logic)
     set(PLATFORM_LIBS)
@@ -1920,7 +2242,8 @@ else()
         )
 
         # Add JACK if available (matching Makefile)
-        if(JACK_FOUND)
+        # Skip JACK for musl static builds - it's complex and optional
+        if(JACK_FOUND AND NOT USE_MUSL)
             list(APPEND PLATFORM_LIBS ${JACK_LIBRARIES})
         endif()
     endif()
@@ -1937,13 +2260,41 @@ else()
         list(APPEND PLATFORM_LIBS ${HOMEBREW_LLVM_LIBS})
     endif()
 
-    target_link_libraries(ascii-chat-lib
-        ${ZLIB_LIBRARIES}
-        ${LIBSODIUM_LIBRARIES}
-        ${PORTAUDIO_LIBRARIES}
-        ${PLATFORM_LIBS}
-        m  # math library
-    )
+    # When building with musl, don't add PortAudio to the library
+    # It will be linked only to the client
+    if(USE_MUSL)
+        # Enable function/data sections for dead code elimination
+        target_compile_options(ascii-chat-lib PRIVATE -ffunction-sections -fdata-sections)
+
+        # Use musl-built static libraries (no audio libraries)
+        target_link_libraries(ascii-chat-lib
+            ${MUSL_PREFIX}/lib/libncursesw.a
+            ${MUSL_PREFIX}/lib/libsodium.a
+            ${MUSL_PREFIX}/lib/libz.a
+            ${MUSL_PREFIX}/lib/libexecinfo.a
+            m
+            ${CMAKE_THREAD_LIBS_INIT}
+        )
+        if(USE_MIMALLOC)
+            target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
+        endif()
+        # Add dependency on libexecinfo
+        add_dependencies(ascii-chat-lib libexecinfo-musl)
+    else()
+        # Standard glibc build includes all libraries
+        target_link_libraries(ascii-chat-lib
+            ${ZLIB_LIBRARIES}
+            ${LIBSODIUM_LIBRARIES}
+            ${PORTAUDIO_LIBRARIES}
+            ${PLATFORM_LIBS}
+            m  # math library
+        )
+
+        # Link mimalloc for Unix/macOS/Linux
+        if(USE_MIMALLOC)
+            target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
+        endif()
+    endif()
 endif()
 
 # =============================================================================
@@ -1997,7 +2348,38 @@ add_executable(ascii-chat-server
     src/server/render.c
     src/server/stats.c
 )
+
+# Server doesn't use audio drivers - enable dead code elimination
+# This works with both GCC (musl) and Clang
+target_compile_options(ascii-chat-server PRIVATE -ffunction-sections -fdata-sections)
+if(NOT WIN32)
+    target_link_options(ascii-chat-server PRIVATE -Wl,--gc-sections)
+endif()
+
 target_link_libraries(ascii-chat-server ascii-chat-lib)
+
+# Add musl dependency if building with musl
+if(USE_MUSL)
+    # Add dependencies on musl libraries (they'll build automatically)
+    # Note: LTO optimization requires PortAudio to be linked even though server doesn't call it
+    # The linker's dead code elimination will remove the unused audio code
+    add_dependencies(ascii-chat-server ncurses-musl libsodium-musl zlib-musl libexecinfo-musl portaudio-musl alsa-lib-musl)
+
+    # Link against musl-built static libraries
+    target_link_directories(ascii-chat-server PRIVATE ${MUSL_PREFIX}/lib)
+    target_link_options(ascii-chat-server PRIVATE -static)
+
+    # Link all libraries (LTO requires this, dead code elimination removes unused code)
+    target_link_libraries(ascii-chat-server
+        ${MUSL_PREFIX}/lib/libportaudio.a
+        ${MUSL_PREFIX}/lib/libasound.a
+        ${MUSL_PREFIX}/lib/libncursesw.a
+        ${MUSL_PREFIX}/lib/libsodium.a
+        ${MUSL_PREFIX}/lib/libz.a
+        ${MUSL_PREFIX}/lib/libexecinfo.a
+        -lm -lpthread
+    )
+endif()
 
 # Client executable
 add_executable(ascii-chat-client
@@ -2011,6 +2393,27 @@ add_executable(ascii-chat-client
 )
 target_link_libraries(ascii-chat-client ascii-chat-lib)
 
+# Add musl dependency if building with musl
+if(USE_MUSL)
+    # Add dependencies on all musl libraries (they'll build automatically)
+    add_dependencies(ascii-chat-client portaudio-musl alsa-lib-musl ncurses-musl libsodium-musl zlib-musl libexecinfo-musl)
+
+    # Link against musl-built static libraries
+    target_link_directories(ascii-chat-client PRIVATE ${MUSL_PREFIX}/lib)
+    target_link_options(ascii-chat-client PRIVATE -static)
+
+    # Override system libraries with musl-built versions
+    target_link_libraries(ascii-chat-client
+        ${MUSL_PREFIX}/lib/libportaudio.a
+        ${MUSL_PREFIX}/lib/libasound.a
+        ${MUSL_PREFIX}/lib/libncursesw.a
+        ${MUSL_PREFIX}/lib/libsodium.a
+        ${MUSL_PREFIX}/lib/libz.a
+        ${MUSL_PREFIX}/lib/libexecinfo.a
+        -lm -lpthread
+    )
+endif()
+
 # macOS Info.plist embedding (matches Makefile)
 if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
     set_target_properties(ascii-chat-client PROPERTIES
@@ -2023,7 +2426,7 @@ endif()
 # =============================================================================
 
 # Test framework setup
-if(BUILD_TESTS AND CRITERION_FOUND)
+if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
     enable_testing()
 
     # Build test LDFLAGS systematically (matches Makefile complex setup)

@@ -18,6 +18,12 @@ coverage_html/
 
 /build/
 /build_*/
+/build-production/
+/build-dev/
+/build-fast/
+/release-*/
+*.tar.gz
+/build-*
 
 /tests/fixtures/*
 

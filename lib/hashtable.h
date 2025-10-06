@@ -27,7 +27,7 @@ typedef struct hashtable_entry {
 } hashtable_entry_t;
 
 // Hash table structure
-typedef struct {
+typedef struct hashtable {
   hashtable_entry_t *buckets[HASHTABLE_BUCKET_COUNT]; // Array of bucket heads
   hashtable_entry_t *entry_pool;                      // Pre-allocated entry pool
   hashtable_entry_t *free_list;                       // Stack of free entries

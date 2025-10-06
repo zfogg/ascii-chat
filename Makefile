@@ -1,7 +1,53 @@
-.DEFAULT_GOAL := all
+.DEFAULT_GOAL := dev
 
-BUILD_TYPE ?= Debug
+BUILD_TYPE ?= Dev
+NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
+# =============================================================================
+# Build Mode Targets
+# =============================================================================
+
+# Production: musl + mimalloc + static (for releases)
+production:
+	@echo "========================================="
+	@echo "Building ASCII-Chat - PRODUCTION"
+	@echo "  - musl libc (static)"
+	@echo "  - mimalloc allocator"
+	@echo "  - Release optimization"
+	@echo "========================================="
+	cmake -B build-production -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON -DUSE_MIMALLOC=ON
+	cmake --build build-production -j$(NPROC)
+	@echo ""
+	@ls -lh build-production/bin/ascii-chat-{server,client}
+
+# Development: glibc + clang + DEBUG_MEMORY + sanitizers (for debugging)
+development:
+	@echo "========================================="
+	@echo "Building ASCII-Chat - DEVELOPMENT"
+	@echo "  - glibc (dynamic)"
+	@echo "  - clang + sanitizers"
+	@echo "  - DEBUG_MEMORY enabled"
+	@echo "========================================="
+	CC=clang CXX=clang++ cmake -B build-dev -DCMAKE_BUILD_TYPE=Debug -DUSE_MUSL=OFF -DUSE_MIMALLOC=OFF
+	cmake --build build-dev -j$(NPROC)
+	@echo ""
+	@ls -lh build-dev/bin/ascii-chat-{server,client}
+
+# Fast iteration: glibc + clang, no sanitizers (default)
+dev: fast
+fast:
+	@echo "========================================="
+	@echo "Building ASCII-Chat - FAST ITERATION"
+	@echo "  - glibc (dynamic)"
+	@echo "  - clang compiler"
+	@echo "  - Debug symbols, no sanitizers"
+	@echo "========================================="
+	CC=clang CXX=clang++ cmake -B build-fast -DCMAKE_BUILD_TYPE=Dev -DUSE_MUSL=OFF -DUSE_MIMALLOC=OFF
+	cmake --build build-fast -j$(NPROC)
+	@echo ""
+	@ls -lh build-fast/bin/ascii-chat-{server,client}
+
+# Legacy targets (backwards compatibility)
 ./build:
 	cmake -B build -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
@@ -17,11 +63,28 @@ server: ./build/bin/ascii-chat-server
 
 client: ./build/bin/ascii-chat-client
 
+# =============================================================================
+# Release Target
+# =============================================================================
+
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION not specified. Usage: make release VERSION=v1.0.0"; \
+		exit 1; \
+	fi
+	@./release.sh $(VERSION)
+
+# =============================================================================
+# Utility Targets
+# =============================================================================
+
 clean:
-	rm -rf build/ build_*/
+	rm -rf build/ build_*/ build-*/
 	rm -f bin/*
 	rm -f *.log
 	rm -f compile_commands.json
+	rm -rf release-*/
+	rm -f *.tar.gz
 
 cloc:
 	@echo "LOC for ./src:"
@@ -74,4 +137,4 @@ scan-build:
 	@echo "Building with scan-build..."
 	scan-build --use-cc=/usr/bin/clang-20 --use-c++=/usr/bin/clang++ --status-bugs --exclude /usr --exclude /Applications/Xcode.app --exclude /Library/Developer cmake --build build --clean-first
 
-.PHONY: clean cloc format format-check tidy scan-build
+.PHONY: production development dev fast release clean cloc format format-check tidy scan-build all server client

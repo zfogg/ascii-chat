@@ -40,7 +40,9 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
-#include "hashtable.h"
+
+// Forward declaration to avoid circular dependency with hashtable.h
+typedef struct hashtable hashtable_t;
 
 // ============================================================================
 // Constants and Limits
