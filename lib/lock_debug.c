@@ -1005,7 +1005,7 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
     // Hashtable insert failed - clean up the record and log an error
 #ifdef DEBUG_LOCKS
     log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()", lock_type_str,
-              log_address, key, file_name, line_number, function_name);
+              lock_address, key, file_name, line_number, function_name);
 #endif
     free_lock_record(record);
   } else {

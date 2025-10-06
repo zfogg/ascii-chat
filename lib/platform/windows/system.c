@@ -383,8 +383,9 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     size_t required = symbol_len + 32; // extra space for "+0x%llx"
 
     if (required > buffer_size) {
-      size_t max_symbol_len = buffer_size - 32;
-      if (max_symbol_len > 0) {
+      // Check for buffer_size >= 35 to safely subtract 32 and then 3 more
+      if (buffer_size >= 35) {
+        size_t max_symbol_len = buffer_size - 32;
         // Check for underflow before subtraction
         if (address >= symbol_info->Address) {
           snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
