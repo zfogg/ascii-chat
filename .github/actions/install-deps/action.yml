@@ -73,3 +73,32 @@ runs:
             exit 1
           )
         done
+
+        # Configure clang to work without Command Line Tools
+        # This allows Homebrew LLVM to find the macOS SDK
+        mkdir -p ~/.config/clang
+
+        # Get Darwin version for config filename
+        DARWIN_VERSION=$(uname -r | cut -d. -f1)
+        SDK_PATH=$(xcrun --show-sdk-path 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+
+        # Create x86_64 config
+        cat > ~/.config/clang/x86_64-apple-darwin${DARWIN_VERSION}.cfg << EOF
+        # Clang configuration for x86_64 macOS
+        -isysroot ${SDK_PATH}
+        -isystem ${SDK_PATH}/usr/include
+        -stdlib=libc++
+        -resource-dir /usr/local/opt/llvm/lib/clang/21
+        EOF
+
+        # Create ARM64 config
+        cat > ~/.config/clang/arm64-apple-darwin${DARWIN_VERSION}.cfg << EOF
+        # Clang configuration for ARM64 macOS
+        -isysroot ${SDK_PATH}
+        -isystem ${SDK_PATH}/usr/include
+        -stdlib=libc++
+        -resource-dir /usr/local/opt/llvm/lib/clang/21
+        EOF
+
+        echo "Created clang config files for darwin${DARWIN_VERSION}"
+        ls -la ~/.config/clang/
