@@ -116,9 +116,12 @@ int client_crypto_init(void) {
     } else {
       log_error("Failed to parse SSH key file: %s", opt_encrypt_key);
       log_error("This may be due to:");
-      log_error("  - Wrong password");
-      log_error("  - Unsupported key type (only Ed25519 supported)");
+      log_error("  - Wrong password for encrypted key");
+      log_error("  - Unsupported key type (only Ed25519 is currently supported)");
       log_error("  - Corrupted key file");
+      log_error("");
+      log_error("Note: RSA and ECDSA keys are not yet supported");
+      log_error("To generate an Ed25519 key: ssh-keygen -t ed25519");
       return -1;
     }
   }
@@ -172,10 +175,10 @@ int client_crypto_init(void) {
     // Clear the temporary private_key variable (we've already copied it to g_crypto_ctx)
     sodium_memzero(&private_key, sizeof(private_key));
 
-  } else if (strlen(opt_encrypt_key) > 0 && strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
-    // It's a password - use password-based initialization
+  } else if (strlen(opt_password) > 0) {
+    // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
-    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opt_encrypt_key); // false = client
+    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opt_password); // false = client
     if (result != 0) {
       log_error("Failed to initialize crypto handshake with password");
       log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init_with_password failed with result=%d", result);

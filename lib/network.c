@@ -705,9 +705,9 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     }
     break;
   case PACKET_TYPE_AUTH_CHALLENGE:
-    // Challenge nonce (32 bytes)
-    if (pkt_len != 32) {
-      log_error("Invalid auth challenge packet size: %u, expected 32", pkt_len);
+    // Challenge packet: 1 byte flags + 32 byte nonce (33 bytes total)
+    if (pkt_len != 33) {
+      log_error("Invalid auth challenge packet size: %u, expected 33", pkt_len);
       return -1;
     }
     break;

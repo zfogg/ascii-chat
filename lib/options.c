@@ -697,7 +697,40 @@ void options_init(int argc, char **argv, bool is_client) {
     case ':':
       // Missing argument for option
       if (optopt == 0 || optopt > 127) {
-        // Long option - safely extract the option name
+        // Long option - check if it was abbreviated first
+        if (optind > 0 && optind <= argc && argv && argv[optind - 1]) {
+          const char *user_input = argv[optind - 1];
+          if (user_input && strlen(user_input) > 2 && strncmp(user_input, "--", 2) == 0) {
+            // Extract the option name from user input (skip "--")
+            const char *user_opt = user_input + 2;
+            // Handle --option=value format
+            const char *eq_pos = strchr(user_opt, '=');
+            size_t user_opt_len = eq_pos ? (size_t)(eq_pos - user_opt) : strlen(user_opt);
+
+            // Find which option was matched by searching for a prefix match
+            const char *matched_option = NULL;
+            for (int i = 0; options[i].name != NULL; i++) {
+              const char *opt_name = options[i].name;
+              size_t opt_len = strlen(opt_name);
+              // Check if user's input is a prefix of this option name
+              if (opt_len > user_opt_len && strncmp(user_opt, opt_name, user_opt_len) == 0) {
+                matched_option = opt_name;
+                break;
+              }
+            }
+
+            // If we found a match and it's not exact, treat as unknown option
+            if (matched_option && strlen(matched_option) != user_opt_len) {
+              char abbreviated_opt[256];
+              snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
+              fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
+              usage(stderr, is_client);
+              _exit(EXIT_FAILURE);
+            }
+          }
+        }
+
+        // If we get here, it's a valid option name but missing argument
         const char *opt_name = "unknown";
         if (optind > 0 && optind <= argc && argv && argv[optind - 1]) {
           const char *arg = argv[optind - 1];

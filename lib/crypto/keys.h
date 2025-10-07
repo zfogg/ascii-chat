@@ -5,7 +5,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-// Key type enumeration (Ed25519 and X25519 only - no RSA!)
+// Key type enumeration (Ed25519 and X25519 only - no RSA/ECDSA!)
+//
+// NOTE: RSA and ECDSA are NOT supported because:
+//   - libsodium (our crypto library) only supports Ed25519/X25519
+//   - RSA/ECDSA require variable-length keys and signatures
+//   - Protocol assumes fixed 128-byte authenticated handshake (ephemeral:32 + identity:32 + sig:64)
+//   - Adding RSA/ECDSA support would require OpenSSL and protocol changes
+//
 typedef enum {
   KEY_TYPE_UNKNOWN = 0,
   KEY_TYPE_ED25519, // ssh-ed25519 (converts to X25519)
