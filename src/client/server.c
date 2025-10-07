@@ -282,11 +282,12 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   // Initialize crypto BEFORE starting protocol handshake
   log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
   if (client_crypto_init() != 0) {
-    log_error("Failed to initialize crypto");
+    log_error("Failed to initialize crypto (password required or incorrect)");
     log_debug("CLIENT_CONNECT: client_crypto_init() failed");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
+    // Return -2 to signal authentication failure (no retry) - SSH key password was wrong
+    return -2;
   }
   log_debug("CLIENT_CONNECT: client_crypto_init() succeeded");
 

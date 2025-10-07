@@ -2,6 +2,7 @@
 #include "common.h"
 #include "network.h"
 #include "buffer_pool.h"
+#include "platform/password.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -320,14 +321,6 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
   const uint8_t *client_x25519 = client_ephemeral_key;
   const uint8_t *client_ed25519 = client_sent_identity ? client_identity_key : NULL;
 
-  // If whitelist is required but client didn't provide identity key, reject
-  if (ctx->require_client_auth && ctx->client_whitelist && ctx->num_whitelisted_clients > 0 && !client_sent_identity) {
-    log_error("Server requires client authentication but client did not provide identity key");
-    buffer_pool_free(payload, payload_len);
-    send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
-    return -1;
-  }
-
   // Check client Ed25519 key against whitelist if client provided one and whitelist is enabled
   if (client_sent_identity && ctx->require_client_auth && ctx->client_whitelist && ctx->num_whitelisted_clients > 0) {
     bool key_found = false;
@@ -391,8 +384,8 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     log_debug("Client key processed: X25519 for encryption only (no identity authentication)");
   }
 
-  // Only do authentication challenge if client provided an identity key
-  if (client_sent_identity) {
+  // Do authentication challenge if client provided identity key OR server requires password
+  if (client_sent_identity || ctx->crypto_ctx.has_password || ctx->require_client_auth) {
     // Generate nonce and store it in the context
     crypto_result = crypto_generate_nonce(ctx->crypto_ctx.auth_nonce);
     if (crypto_result != CRYPTO_OK) {
@@ -400,19 +393,36 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
       return -1;
     }
 
-    // Send AUTH_CHALLENGE with nonce
-    log_debug("Sending AUTH_CHALLENGE packet with nonce (32 bytes)");
-    result = send_packet(client_socket, PACKET_TYPE_AUTH_CHALLENGE, ctx->crypto_ctx.auth_nonce, 32);
+    // Prepare AUTH_CHALLENGE packet: 1 byte flags + 32 byte nonce
+    uint8_t challenge_packet[33];
+    uint8_t auth_flags = 0;
+
+    // Set flags based on server requirements
+    if (ctx->crypto_ctx.has_password) {
+      auth_flags |= AUTH_REQUIRE_PASSWORD;
+    }
+    if (ctx->require_client_auth) {
+      auth_flags |= AUTH_REQUIRE_CLIENT_KEY;
+    }
+
+    challenge_packet[0] = auth_flags;
+    memcpy(challenge_packet + 1, ctx->crypto_ctx.auth_nonce, 32);
+
+    // Send AUTH_CHALLENGE with flags + nonce (33 bytes)
+    log_debug("Sending AUTH_CHALLENGE packet with flags=0x%02x and nonce (33 bytes)", auth_flags);
+    result = send_packet(client_socket, PACKET_TYPE_AUTH_CHALLENGE, challenge_packet, 33);
     if (result != 0) {
       log_error("Failed to send AUTH_CHALLENGE packet");
       return -1;
     }
 
     ctx->state = CRYPTO_HANDSHAKE_AUTHENTICATING;
-    log_debug("Server sent auth challenge to client");
+    log_debug("Server sent auth challenge to client (password: %s, whitelist: %s)",
+              (auth_flags & AUTH_REQUIRE_PASSWORD) ? "required" : "no",
+              (auth_flags & AUTH_REQUIRE_CLIENT_KEY) ? "required" : "no");
   } else {
     // No authentication needed - skip to completion
-    log_debug("Skipping authentication (client has no identity key)");
+    log_debug("Skipping authentication (no password and client has no identity key)");
 
     // Send HANDSHAKE_COMPLETE immediately
     result = send_packet(client_socket, PACKET_TYPE_HANDSHAKE_COMPLETE, NULL, 0);
@@ -465,18 +475,73 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
     return -1;
   }
 
-  // Verify nonce size
-  if (payload_len != 32) {
-    log_error("Invalid nonce size: %zu bytes (expected 32)", payload_len);
+  // Verify challenge packet size (1 byte flags + 32 byte nonce)
+  if (payload_len != 33) {
+    log_error("Invalid AUTH_CHALLENGE size: %zu bytes (expected 33)", payload_len);
     buffer_pool_free(payload, payload_len);
     return -1;
+  }
+
+  // Parse auth requirement flags
+  uint8_t auth_flags = payload[0];
+  const uint8_t *nonce = payload + 1;
+
+  log_debug("Server auth requirements: password=%s, client_key=%s",
+            (auth_flags & AUTH_REQUIRE_PASSWORD) ? "required" : "no",
+            (auth_flags & AUTH_REQUIRE_CLIENT_KEY) ? "required" : "no");
+
+  // Check if we can satisfy the server's authentication requirements
+  bool has_password = ctx->crypto_ctx.has_password;
+  bool has_client_key = (ctx->client_private_key.type == KEY_TYPE_ED25519);
+  bool password_required = (auth_flags & AUTH_REQUIRE_PASSWORD);
+  bool client_key_required = (auth_flags & AUTH_REQUIRE_CLIENT_KEY);
+
+  // Provide specific error messages based on what's missing
+  if (password_required && !has_password) {
+    if (client_key_required && !has_client_key) {
+      log_error("Server requires both password and client key authentication");
+      log_error("Please provide --password and --key to authenticate");
+      buffer_pool_free(payload, payload_len);
+      return -2; // Authentication failure
+    } else {
+      // Prompt for password interactively
+      char prompted_password[256];
+      if (platform_prompt_password("Server password required - please enter password:", prompted_password,
+                                   sizeof(prompted_password)) != 0) {
+        log_error("Failed to read password");
+        buffer_pool_free(payload, payload_len);
+        return -2; // Authentication failure
+      }
+
+      // Derive password key from prompted password
+      log_debug("Deriving key from prompted password");
+      crypto_result_t crypto_result = crypto_derive_password_key(&ctx->crypto_ctx, prompted_password);
+      sodium_memzero(prompted_password, sizeof(prompted_password));
+
+      if (crypto_result != CRYPTO_OK) {
+        log_error("Failed to derive password key: %s", crypto_result_to_string(crypto_result));
+        buffer_pool_free(payload, payload_len);
+        return -2; // Authentication failure
+      }
+
+      // Mark that password auth is now available
+      ctx->crypto_ctx.has_password = true;
+      has_password = true; // Update flag for logic below
+    }
+  }
+
+  if (client_key_required && !has_client_key) {
+    log_error("Server requires client key authentication (whitelist)");
+    log_error("Please provide --key with your authorized Ed25519 key");
+    buffer_pool_free(payload, payload_len);
+    return -2; // Authentication failure
   }
 
   // If password-based auth, use HMAC response
   if (ctx->crypto_ctx.has_password) {
     uint8_t hmac_response[32];
     const uint8_t *auth_key = ctx->crypto_ctx.password_key;
-    crypto_result_t crypto_result = crypto_compute_hmac(auth_key, payload, hmac_response);
+    crypto_result_t crypto_result = crypto_compute_hmac(auth_key, nonce, hmac_response);
     if (crypto_result != CRYPTO_OK) {
       log_error("Failed to compute HMAC response: %s", crypto_result_to_string(crypto_result));
       buffer_pool_free(payload, payload_len);
@@ -494,7 +559,7 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
   } else {
     // Public key auth: Sign challenge with Ed25519 private key
     uint8_t signature[64];
-    int sign_result = ed25519_sign_message(&ctx->client_private_key, payload, payload_len, signature);
+    int sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, 32, signature);
     buffer_pool_free(payload, payload_len);
 
     if (sign_result != 0) {

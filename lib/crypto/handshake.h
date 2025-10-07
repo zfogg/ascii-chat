@@ -7,6 +7,10 @@
 #include "keys.h"
 #include "known_hosts.h"
 
+// Authentication requirement flags (sent in AUTH_CHALLENGE)
+#define AUTH_REQUIRE_PASSWORD 0x01   // Server requires password authentication
+#define AUTH_REQUIRE_CLIENT_KEY 0x02 // Server requires client key (whitelist)
+
 // Crypto handshake state
 typedef enum {
   CRYPTO_HANDSHAKE_DISABLED = 0,   // No encryption

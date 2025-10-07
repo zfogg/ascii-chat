@@ -565,6 +565,18 @@ static int decrypt_key_with_external_tool(const char *key_path, const char *pass
 }
 
 // Parse SSH private key from file
+//
+// CURRENT SUPPORT: Ed25519 only
+// FUTURE: RSA and ECDSA support would require:
+//   1. Update private_key_t to store variable-length public keys (malloc'd buffer)
+//   2. Store key type string (ssh-rsa, ecdsa-sha2-nistp256, etc.)
+//   3. Update ed25519_sign_message() to build correct ssh-agent request per key type
+//   4. Update signature parsing to handle variable-length signatures
+//   5. Add signature verification for RSA/ECDSA (requires OpenSSL or ssh-keygen -Y verify)
+//   6. Update protocol to support variable-length authenticated handshake packets
+//
+// See: https://datatracker.ietf.org/doc/html/rfc4253#section-6.6 for SSH key formats
+//
 int parse_private_key(const char *path, private_key_t *key_out) {
   fprintf(stderr, "parse_private_key: Opening %s\n", path);
   memset(key_out, 0, sizeof(private_key_t));
@@ -761,8 +773,27 @@ int parse_private_key(const char *path, private_key_t *key_out) {
 
   uint32_t key_type_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
   if (key_type_len != 11 || memcmp(blob + offset + 4, "ssh-ed25519", 11) != 0) {
-    fprintf(stderr, "parse_private_key: Not an Ed25519 key\n");
-    log_error("Not an Ed25519 key");
+    // Extract key type for better error message
+    char key_type[256] = {0};
+    if (key_type_len < sizeof(key_type) && offset + 4 + key_type_len <= blob_len) {
+      memcpy(key_type, blob + offset + 4, key_type_len);
+      key_type[key_type_len] = '\0';
+      fprintf(stderr, "parse_private_key: Unsupported key type: %s\n", key_type);
+      log_error("Unsupported key type '%s' - only Ed25519 is currently supported", key_type);
+      log_error("SSH key type detected: %s", key_type);
+      log_error("RSA and ECDSA keys are not yet supported for the following reasons:");
+      log_error("  1. Variable-length public keys (RSA: 256+ bytes vs Ed25519: 32 bytes)");
+      log_error("  2. Variable-length signatures (RSA: 256 bytes vs Ed25519: 64 bytes)");
+      log_error("  3. Signature verification requires OpenSSL (currently using libsodium)");
+      log_error("  4. Protocol format assumes 128-byte authenticated handshake (32+32+64)");
+      log_error("");
+      log_error("To use this key, either:");
+      log_error("  1. Generate an Ed25519 key: ssh-keygen -t ed25519");
+      log_error("  2. Contribute RSA/ECDSA support (see lib/crypto/keys.c)");
+    } else {
+      fprintf(stderr, "parse_private_key: Not an Ed25519 key\n");
+      log_error("Unsupported key type - only Ed25519 is currently supported");
+    }
     free(blob);
     return -1;
   }
@@ -844,6 +875,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
       }
     } else {
       fprintf(stderr, "[Decrypt] ERROR: Failed to decrypt key with external tools\n");
+      fprintf(stderr, "[Decrypt] ERROR: Incorrect password or corrupted key file\n");
       fprintf(stderr, "\n");
       fprintf(stderr, "Please try one of these methods:\n");
       fprintf(stderr, "  1. Add key to SSH agent: ssh-add %s\n", path);

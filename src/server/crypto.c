@@ -61,18 +61,18 @@ int server_crypto_handshake(socket_t client_socket) {
 
   // Initialize crypto context for this specific client
   int init_result;
-  if (g_server_encryption_enabled) {
-    // Server has SSH key - use standard initialization
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Using SSH key authentication");
-    init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
-  } else if (strlen(opt_encrypt_key) > 0 && strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
-    // It's a password - use password-based initialization
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Using password authentication");
+  if (strlen(opt_password) > 0) {
+    // Password provided - use password-based encryption (even if SSH key is also provided)
+    log_debug("SERVER_CRYPTO_HANDSHAKE: Using password-based encryption");
     init_result =
-        crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, opt_encrypt_key); // true = server
+        crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, opt_password); // true = server
+  } else if (g_server_encryption_enabled) {
+    // Server has SSH key - use standard initialization
+    log_debug("SERVER_CRYPTO_HANDSHAKE: Using SSH key for both authentication and encryption");
+    init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
   } else {
     // No password or SSH key - use standard initialization with random keys
-    log_debug("SERVER_CRYPTO_HANDSHAKE: Using standard initialization");
+    log_debug("SERVER_CRYPTO_HANDSHAKE: Using ephemeral keys");
     init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
   }
 
