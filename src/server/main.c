@@ -405,18 +405,40 @@ static int init_server_crypto(void) {
 
   // Load server private key if provided
   if (strlen(opt_encrypt_key) > 0) {
-    // Check if it's an SSH key file path
-    if (strstr(opt_encrypt_key, "/.ssh/") != NULL || strstr(opt_encrypt_key, "/ssh/") != NULL ||
-        strstr(opt_encrypt_key, "_ed25519") != NULL || strstr(opt_encrypt_key, "id_ed25519") != NULL) {
-      fprintf(stderr, "Parsing SSH key: %s\n", opt_encrypt_key);
-      if (parse_private_key(opt_encrypt_key, &g_server_private_key) != 0) {
-        fprintf(stderr, "ERROR: Failed to load server SSH key: %s\n", opt_encrypt_key);
-        return -1;
+    // First check if it's a readable file
+    FILE *test_file = fopen(opt_encrypt_key, "r");
+    if (test_file != NULL) {
+      fclose(test_file);
+
+      // Try to parse as Ed25519 SSH key
+      fprintf(stderr, "Attempting to parse as SSH key: %s\n", opt_encrypt_key);
+      if (parse_private_key(opt_encrypt_key, &g_server_private_key) == 0) {
+        fprintf(stderr, "Successfully loaded SSH key: %s\n", opt_encrypt_key);
+      } else {
+        // File exists but isn't a valid SSH key - treat as password file
+        fprintf(stderr, "Not a valid SSH key, treating as password file: %s\n", opt_encrypt_key);
+        FILE *pw_file = fopen(opt_encrypt_key, "r");
+        if (pw_file) {
+          char password[256];
+          if (fgets(password, sizeof(password), pw_file)) {
+            // Remove trailing newline if present
+            size_t len = strlen(password);
+            if (len > 0 && password[len - 1] == '\n') {
+              password[len - 1] = '\0';
+            }
+            // Copy password to opt_encrypt_key for crypto handshake
+            SAFE_STRNCPY(opt_encrypt_key, password, sizeof(opt_encrypt_key) - 1);
+            fprintf(stderr, "Using password from file\n");
+          }
+          fclose(pw_file);
+        } else {
+          fprintf(stderr, "ERROR: Failed to read password file: %s\n", opt_encrypt_key);
+          return -1;
+        }
       }
-      fprintf(stderr, "Successfully loaded SSH key: %s\n", opt_encrypt_key);
     } else {
-      // It's a password - will be handled by crypto handshake
-      fprintf(stderr, "Using password authentication\n");
+      // Not a file - treat the string itself as a password
+      fprintf(stderr, "Using password authentication (string)\n");
     }
   } else {
     // Generate ephemeral keypair using crypto context
@@ -438,11 +460,14 @@ static int init_server_crypto(void) {
   }
 
   // Load client whitelist if provided
+  fprintf(stderr, "DEBUG: opt_client_keys='%s', strlen=%zu\n", opt_client_keys, strlen(opt_client_keys));
   if (strlen(opt_client_keys) > 0) {
+    fprintf(stderr, "DEBUG: Loading whitelist from: %s\n", opt_client_keys);
     if (parse_authorized_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
       log_error("Failed to load client keys: %s", opt_client_keys);
       return -1;
     }
+    fprintf(stderr, "DEBUG: Loaded %zu whitelisted clients\n", g_num_whitelisted_clients);
     log_info("Server will only accept %zu whitelisted clients", g_num_whitelisted_clients);
   }
 
@@ -467,18 +492,18 @@ int main(int argc, char *argv[]) {
 
   options_init(argc, argv, false);
 
-  // Initialize crypto BEFORE starting server
-  if (init_server_crypto() != 0) {
-    fprintf(stderr, "ERROR: Failed to initialize crypto\n");
-    exit(1);
-  }
-  fprintf(stderr, "Crypto initialized successfully\n");
-
-  // Initialize logging - use specified log file or default
+  // Initialize logging EARLY so crypto init messages are logged
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   fprintf(stderr, "Initializing logging to: %s\n", log_filename);
   log_init(log_filename, LOG_DEBUG);
   fprintf(stderr, "Logging initialized\n");
+
+  // Initialize crypto AFTER logging is ready
+  if (init_server_crypto() != 0) {
+    log_fatal("Failed to initialize crypto");
+    exit(1);
+  }
+  log_info("Crypto initialized successfully");
 
   // Initialize lock debugging system after logging is fully set up
   log_info("SERVER: Initializing lock debug system...");

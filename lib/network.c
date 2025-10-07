@@ -690,18 +690,30 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     break;
   // Crypto handshake packet types
   case PACKET_TYPE_KEY_EXCHANGE_INIT:
-  case PACKET_TYPE_KEY_EXCHANGE_RESPONSE:
-    // Public key size (32 bytes for X25519)
+    // Server's public key (32 bytes for X25519)
     if (pkt_len != 32) {
-      log_error("Invalid key exchange packet size: %u, expected 32", pkt_len);
+      log_error("Invalid key exchange init packet size: %u, expected 32", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_KEY_EXCHANGE_RESPONSE:
+    // Client's public key: 32 bytes for X25519 only, or 64 bytes for X25519 + Ed25519 with SSH keys
+    if (pkt_len != 32 && pkt_len != 64) {
+      log_error("Invalid key exchange response packet size: %u, expected 32 or 64", pkt_len);
       return -1;
     }
     break;
   case PACKET_TYPE_AUTH_CHALLENGE:
+    // Challenge nonce (32 bytes)
+    if (pkt_len != 32) {
+      log_error("Invalid auth challenge packet size: %u, expected 32", pkt_len);
+      return -1;
+    }
+    break;
   case PACKET_TYPE_AUTH_RESPONSE:
-    // Nonce (24 bytes) or HMAC (32 bytes)
-    if (pkt_len != 24 && pkt_len != 32) {
-      log_error("Invalid auth packet size: %u, expected 24 or 32", pkt_len);
+    // HMAC (32 bytes) for password auth, or Ed25519 signature (64 bytes) for SSH key auth
+    if (pkt_len != 32 && pkt_len != 64) {
+      log_error("Invalid auth response packet size: %u, expected 32 or 64", pkt_len);
       return -1;
     }
     break;

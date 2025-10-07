@@ -27,6 +27,9 @@ typedef struct {
     uint8_t ed25519[64]; // Ed25519 seed (32) + public key (32) = 64 bytes
     uint8_t x25519[32];  // X25519 private key (32 bytes)
   } key;
+  bool use_ssh_agent;     // If true, use SSH agent for signing
+  uint8_t public_key[32]; // Ed25519 public key (for agent mode or verification)
+  char key_comment[256];  // SSH key comment (for agent identification)
 } private_key_t;
 
 // Parse SSH/GPG public key from any format
@@ -57,6 +60,16 @@ int public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]);
 // Convert private key to X25519 for DH
 // Returns: 0 on success, -1 on failure
 int private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]);
+
+// Sign a message with Ed25519 (uses SSH agent if available, otherwise in-memory key)
+// This is the main signing function that abstracts SSH agent vs in-memory signing
+// Returns: 0 on success, -1 on failure
+int ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len, uint8_t signature[64]);
+
+// Verify an Ed25519 signature
+// Returns: 0 on success (valid signature), -1 on failure
+int ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
+                             const uint8_t signature[64]);
 
 // Fetch SSH keys from GitHub using BearSSL
 // GET https://github.com/username.keys

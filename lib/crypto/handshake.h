@@ -28,8 +28,9 @@ typedef struct {
   private_key_t server_private_key; // Server's long-term private key
 
   // Client identity (client only)
-  public_key_t client_public_key; // Client's public key
-  char expected_server_key[256];  // Expected server key (client only)
+  public_key_t client_public_key;   // Client's Ed25519 public key (for authentication)
+  private_key_t client_private_key; // Client's Ed25519 private key (for signing challenges)
+  char expected_server_key[256];    // Expected server key (client only)
 
   // Connection info for known_hosts
   char server_hostname[256]; // Server hostname
@@ -41,8 +42,10 @@ typedef struct {
   char client_keys_path[256]; // Server: client keys file path
 
   // Client whitelist (server only)
-  public_key_t *client_whitelist; // Pointer to whitelist array
-  size_t num_whitelisted_clients; // Number of whitelisted clients
+  public_key_t *client_whitelist;   // Pointer to whitelist array
+  size_t num_whitelisted_clients;   // Number of whitelisted clients
+  public_key_t client_ed25519_key;  // Client's Ed25519 key (received during handshake)
+  bool client_ed25519_key_verified; // Whether client's Ed25519 key was verified against whitelist
 
   // Password authentication
   bool has_password;  // Whether password authentication is enabled
