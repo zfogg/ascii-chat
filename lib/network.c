@@ -690,9 +690,10 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     break;
   // Crypto handshake packet types
   case PACKET_TYPE_KEY_EXCHANGE_INIT:
-    // Server's public key (32 bytes for X25519)
-    if (pkt_len != 32) {
-      log_error("Invalid key exchange init packet size: %u, expected 32", pkt_len);
+    // Server's public key: 32 bytes for X25519 only, or 128 bytes for authenticated (X25519 + Ed25519 identity +
+    // signature)
+    if (pkt_len != 32 && pkt_len != 128) {
+      log_error("Invalid key exchange init packet size: %u, expected 32 or 128", pkt_len);
       return -1;
     }
     break;

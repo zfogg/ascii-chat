@@ -1025,8 +1025,14 @@ Test(logging, log_level_env_invalid_uses_default) {
   fclose(f);
   unlink(test_log_file);
 
-  cr_assert(found_info, "Invalid LOG_LEVEL should use default INFO level");
-  cr_assert_not(found_debug, "Invalid LOG_LEVEL should not log DEBUG");
+  // In debug builds, default is DEBUG. In release builds, default is INFO.
+#ifdef NDEBUG
+  cr_assert(found_info, "Invalid LOG_LEVEL should use default INFO level (release build)");
+  cr_assert_not(found_debug, "Invalid LOG_LEVEL should not log DEBUG (release build)");
+#else
+  cr_assert(found_info, "Invalid LOG_LEVEL should use default DEBUG level (debug build)");
+  cr_assert(found_debug, "Invalid LOG_LEVEL should log DEBUG (debug build)");
+#endif
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -1067,8 +1073,14 @@ Test(logging, log_level_env_dos_protection) {
   fclose(f);
   unlink(test_log_file);
 
-  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO");
-  cr_assert_not(found_debug, "Large LOG_LEVEL should not change default behavior");
+  // In debug builds, default is DEBUG. In release builds, default is INFO.
+#ifdef NDEBUG
+  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO (release build)");
+  cr_assert_not(found_debug, "Large LOG_LEVEL should use default INFO (release build)");
+#else
+  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default DEBUG (debug build)");
+  cr_assert(found_debug, "Large LOG_LEVEL should use default DEBUG (debug build)");
+#endif
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);

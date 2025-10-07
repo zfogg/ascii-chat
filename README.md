@@ -240,11 +240,52 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 
 
 ## Cryptography
-🔴⚠️ NOT YET IMPLEMENTED 🔴⚠️
 
-Good news though: we have **libsodium** installed and some code written for it.
+ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
 
-🔜 TODO: Implement crypto.
+### Authentication Options
+
+**SSH Key Authentication** (`--key`):
+- Use your existing SSH Ed25519 keys for authentication
+- Supports encrypted keys (prompts for passphrase or uses ssh-agent)
+- Supports auto-detection with `--key ssh` or `--key ssh:`
+- Future support planned for: `gpg:keyid`, `github:username`, `gitlab:username`
+
+**Password-Based Encryption** (`--password`):
+- Simple password string for encrypting connections
+- Can be combined with `--key` for dual authentication + encryption
+
+**Ephemeral Keys** (default):
+- When no authentication is provided, generates temporary keypair for the session
+
+### Usage Examples
+
+```bash
+# SSH key authentication (prompts for passphrase if encrypted)
+./bin/ascii-chat-server --key ~/.ssh/id_ed25519
+./bin/ascii-chat-client --key ~/.ssh/id_ed25519
+
+# Password-based encryption
+./bin/ascii-chat-server --password "my_secure_password"
+./bin/ascii-chat-client --password "my_secure_password"
+
+# Both SSH key + password (maximum security)
+./bin/ascii-chat-server --key ~/.ssh/id_ed25519 --password "extra_encryption"
+./bin/ascii-chat-client --key ~/.ssh/id_ed25519 --password "extra_encryption"
+
+# Auto-detect SSH key from ~/.ssh/
+./bin/ascii-chat-server --key ssh
+
+# Disable encryption (for local testing)
+./bin/ascii-chat-server --no-encrypt
+./bin/ascii-chat-client --no-encrypt
+
+# Client key whitelisting (server only accepts specific clients)
+./bin/ascii-chat-server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
+
+# Server key verification (client verifies server identity)
+./bin/ascii-chat-client --key ~/.ssh/id_ed25519 --server-key <server_public_key>
+```
 
 
 ## Command line flags
@@ -253,38 +294,69 @@ Good news though: we have **libsodium** installed and some code written for it.
 
 Run `./bin/ascii-chat-client -h` to see all client options:
 
-- `-a --address ADDRESS`: IPv4 address to connect to (default: 0.0.0.0)
+**Connection:**
+- `-a --address ADDRESS`: IPv4 address to connect to (default: 127.0.0.1)
+- `-H --host HOSTNAME`: Hostname for DNS lookup (alternative to --address)
 - `-p --port PORT`: TCP port (default: 27224)
+
+**Video:**
 - `-x --width WIDTH`: Render width (auto-detected by default)
 - `-y --height HEIGHT`: Render height (auto-detected by default)
 - `-c --webcam-index INDEX`: Webcam device index (default: 0)
 - `-f --webcam-flip`: Horizontally flip webcam (default: enabled)
+- `--test-pattern`: Use test pattern instead of webcam (for debugging)
+- `-s --stretch`: Stretch video to fit without preserving aspect ratio
+
+**Display:**
 - `--color-mode MODE`: Color modes: auto, mono, 16, 256, truecolor (default: auto)
+- `--render-mode MODE`: Render modes: foreground, background, half-block (default: foreground)
+- `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
+- `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
 - `--show-capabilities`: Display terminal color capabilities and exit
 - `--utf8`: Force enable UTF-8/Unicode support
-- `-M --background-mode MODE`: Render colors for glyphs or cells: foreground, background (default: foreground)
+- `--fps FPS`: Desired frame rate 1-144 (default: 60)
+
+**Audio:**
 - `-A --audio`: Enable audio capture and playback
-- `-s --stretch`: Stretch video to fit without preserving aspect ratio
+
+**Cryptography:**
+- `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' for auto-detect
+- `--password PASS`: Password for connection encryption
+- `--no-encrypt`: Disable encryption (for local testing)
+- `--server-key KEY`: Expected server public key for verification
+
+**Misc:**
 - `-q --quiet`: Disable console logging (logs only to file)
 - `-S --snapshot`: Capture one frame and exit (useful for testing)
 - `-D --snapshot-delay SECONDS`: Delay before snapshot in seconds (default: 3.0/5.0)
 - `-L --log-file FILE`: Redirect logs to file
-- `-E --encrypt`: Enable AES encryption
-- `-K --key PASSWORD`: Encryption password
-- `-F --keyfile FILE`: Read encryption key from file
+- `-v --version`: Display version information
 - `-h --help`: Show help message
 
 ### Server Options
 
 Run `./bin/ascii-chat-server -h` to see all server options:
 
+**Connection:**
 - `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
 - `-p --port PORT`: TCP port to listen on (default: 27224)
+
+**Display:**
+- `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
+- `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
+
+**Audio:**
 - `-A --audio`: Enable audio mixing and streaming
+
+**Cryptography:**
+- `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' for auto-detect
+- `--password PASS`: Password for connection encryption
+- `--no-encrypt`: Disable encryption (for local testing)
+- `--client-keys FILE`: Allowed client keys file for authentication (whitelist)
+
+**Misc:**
 - `-L --log-file FILE`: Redirect logs to file
-- `-E --encrypt`: Enable AES encryption
-- `-K --key PASSWORD`: Encryption password
-- `-F --keyfile FILE`: Read encryption key from file
+- `-v --version`: Display version information
 - `-h --help`: Show help message
 
 

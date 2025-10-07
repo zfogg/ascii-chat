@@ -61,7 +61,8 @@ extern char opt_log_file[OPTIONS_BUFF_SIZE];
 
 // Encryption options
 extern unsigned short int opt_encrypt_enabled;      // Enable AES encryption
-extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // Encryption key from --key
+extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // SSH/GPG key file from --key (file-based only)
+extern char opt_password[OPTIONS_BUFF_SIZE];        // Password string from --password
 extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE]; // Key file path from --keyfile
 
 // New crypto options (Phase 2)

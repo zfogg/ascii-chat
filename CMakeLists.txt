@@ -2467,6 +2467,7 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
     endforeach()
 
     # Create test executables (matches Makefile naming convention)
+    set(ALL_TEST_TARGETS)
     foreach(test_src ${TEST_SRCS})
         # Transform test file paths to executable names with flattened structure
         # tests/unit/common_test.c -> test_unit_common
@@ -2477,11 +2478,12 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
 
         string(REPLACE "_test" "" test_base ${test_name})
         set(test_exe_name "test_${test_subdir}_${test_base}")
+        list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
-        # Add test executable with test utilities
+        # Add test executable with test utilities (EXCLUDE_FROM_ALL = not built by default)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} EXCLUDE_FROM_ALL ${test_src} lib/tests/globals.c lib/tests/logging.c)
 
         # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
@@ -2504,19 +2506,28 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
         add_test(NAME ${test_exe_name} COMMAND ${test_exe_name})
     endforeach()
 
+    # Target to build all tests without running them (excluded from default build)
+    add_custom_target(tests
+        DEPENDS ${ALL_TEST_TARGETS}
+        COMMENT "Building all test executables"
+    )
+
     # Custom targets for different test modes (matches Makefile)
     add_custom_target(test_debug
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         COMMENT "Running tests in debug mode"
     )
 
     add_custom_target(test_release
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release
         COMMENT "Running tests in release mode"
     )
 
     # Overall test target
     add_custom_target(test_all
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         COMMENT "Running all tests"
     )

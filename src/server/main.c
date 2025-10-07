@@ -78,6 +78,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <stdatomic.h>
 
@@ -403,44 +404,75 @@ static int init_server_crypto(void) {
     return 0;
   }
 
-  // Load server private key if provided
+  // Load server private key if provided via --key
   if (strlen(opt_encrypt_key) > 0) {
-    // First check if it's a readable file
-    FILE *test_file = fopen(opt_encrypt_key, "r");
-    if (test_file != NULL) {
-      fclose(test_file);
+    // --key is for file-based authentication (SSH keys, GPG keys, GitHub/GitLab)
 
-      // Try to parse as Ed25519 SSH key
-      fprintf(stderr, "Attempting to parse as SSH key: %s\n", opt_encrypt_key);
-      if (parse_private_key(opt_encrypt_key, &g_server_private_key) == 0) {
-        fprintf(stderr, "Successfully loaded SSH key: %s\n", opt_encrypt_key);
-      } else {
-        // File exists but isn't a valid SSH key - treat as password file
-        fprintf(stderr, "Not a valid SSH key, treating as password file: %s\n", opt_encrypt_key);
-        FILE *pw_file = fopen(opt_encrypt_key, "r");
-        if (pw_file) {
-          char password[256];
-          if (fgets(password, sizeof(password), pw_file)) {
-            // Remove trailing newline if present
-            size_t len = strlen(password);
-            if (len > 0 && password[len - 1] == '\n') {
-              password[len - 1] = '\0';
-            }
-            // Copy password to opt_encrypt_key for crypto handshake
-            SAFE_STRNCPY(opt_encrypt_key, password, sizeof(opt_encrypt_key) - 1);
-            fprintf(stderr, "Using password from file\n");
-          }
-          fclose(pw_file);
-        } else {
-          fprintf(stderr, "ERROR: Failed to read password file: %s\n", opt_encrypt_key);
-          return -1;
-        }
-      }
-    } else {
-      // Not a file - treat the string itself as a password
-      fprintf(stderr, "Using password authentication (string)\n");
+    // Check for special formats (gpg:, github:, gitlab:)
+    if (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
+        strncmp(opt_encrypt_key, "gitlab:", 7) == 0) {
+      // TODO: Implement GPG/GitHub/GitLab key fetching
+      log_error("GPG/GitHub/GitLab keys not yet implemented: %s", opt_encrypt_key);
+      log_error("Please use a local SSH key file with --key /path/to/key");
+      return -1;
     }
-  } else {
+
+    // Treat as file path - verify it exists and is accessible
+    struct stat st;
+    if (stat(opt_encrypt_key, &st) != 0) {
+      // File doesn't exist
+      log_error("Key file not found: %s", opt_encrypt_key);
+      log_error("Please check the file path or use --password for password-based encryption");
+      return -1;
+    }
+
+    // File exists - check if it's readable
+    FILE *test_file = fopen(opt_encrypt_key, "r");
+    if (test_file == NULL) {
+      // File exists but can't be read (permission denied)
+      log_error("Cannot read key file: %s", opt_encrypt_key);
+      log_error("Please check file permissions (should be 600 or 400)");
+      return -1;
+    }
+
+    // Check if this is an SSH key file by looking for the header
+    char header[256];
+    bool is_ssh_key_file = false;
+    if (fgets(header, sizeof(header), test_file) != NULL) {
+      if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
+          strstr(header, "BEGIN EC PRIVATE KEY") != NULL) {
+        is_ssh_key_file = true;
+      }
+    }
+    fclose(test_file);
+
+    if (!is_ssh_key_file) {
+      log_error("File is not a valid SSH key: %s", opt_encrypt_key);
+      log_error("Expected SSH private key format (BEGIN OPENSSH PRIVATE KEY)");
+      log_error("Use --password for password-based encryption instead");
+      return -1;
+    }
+
+    // Check permissions for SSH key files (should be 600 or 400)
+    if ((st.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
+      log_warn("SSH key file %s has overly permissive permissions: %o", opt_encrypt_key, st.st_mode & 0777);
+      log_warn("Recommended: chmod 600 %s", opt_encrypt_key);
+      log_warn("Continuing anyway, but this is a security risk");
+    }
+
+    // Parse SSH key file
+    log_info("Loading SSH key for authentication: %s", opt_encrypt_key);
+    if (parse_private_key(opt_encrypt_key, &g_server_private_key) == 0) {
+      log_info("Successfully loaded SSH key: %s", opt_encrypt_key);
+    } else {
+      log_error("Failed to parse SSH key file: %s", opt_encrypt_key);
+      log_error("This may be due to:");
+      log_error("  - Wrong password");
+      log_error("  - Unsupported key type (only Ed25519 supported)");
+      log_error("  - Corrupted key file");
+      return -1;
+    }
+  } else if (strlen(opt_password) == 0) {
     // Generate ephemeral keypair using crypto context
     crypto_context_t temp_ctx;
     if (crypto_init(&temp_ctx) != CRYPTO_OK) {
@@ -460,14 +492,14 @@ static int init_server_crypto(void) {
   }
 
   // Load client whitelist if provided
-  fprintf(stderr, "DEBUG: opt_client_keys='%s', strlen=%zu\n", opt_client_keys, strlen(opt_client_keys));
+  log_debug("opt_client_keys='%s', strlen=%zu", opt_client_keys, strlen(opt_client_keys));
   if (strlen(opt_client_keys) > 0) {
-    fprintf(stderr, "DEBUG: Loading whitelist from: %s\n", opt_client_keys);
+    log_debug("Loading whitelist from: %s", opt_client_keys);
     if (parse_client_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
       log_error("Failed to load client keys: %s", opt_client_keys);
       return -1;
     }
-    fprintf(stderr, "DEBUG: Loaded %zu whitelisted clients\n", g_num_whitelisted_clients);
+    log_debug("Loaded %zu whitelisted clients", g_num_whitelisted_clients);
     log_info("Server will only accept %zu whitelisted clients", g_num_whitelisted_clients);
   }
 
@@ -492,13 +524,14 @@ int main(int argc, char *argv[]) {
 
   options_init(argc, argv, false);
 
-  // Initialize logging EARLY so crypto init messages are logged
+  // Initialize logging first so errors are properly logged
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   fprintf(stderr, "Initializing logging to: %s\n", log_filename);
   log_init(log_filename, LOG_DEBUG);
-  fprintf(stderr, "Logging initialized\n");
+  log_info("Logging initialized");
 
-  // Initialize crypto AFTER logging is ready
+  // Initialize crypto after logging is ready
+  log_info("Initializing crypto...");
   if (init_server_crypto() != 0) {
     log_fatal("Failed to initialize crypto");
     exit(1);
