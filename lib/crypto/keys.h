@@ -88,9 +88,13 @@ int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
 // GET https://gitlab.com/username.gpg
 int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys);
 
-// Parse SSH authorized_keys file
+// Parse SSH keys from file (supports authorized_keys and known_hosts formats)
 // Returns array of public keys (Ed25519 or X25519 only)
-int parse_authorized_keys(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys);
+int parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys);
+
+// Parse client keys from file, comma-separated list, or single key
+// Supports multiple formats: authorized_keys, known_hosts, bare base64
+int parse_client_keys(const char *input, public_key_t *keys, size_t *num_keys, size_t max_keys);
 
 // Convert public key to display format (ssh-ed25519 or x25519 hex)
 void format_public_key(const public_key_t *key, char *output, size_t output_size);

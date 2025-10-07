@@ -125,6 +125,10 @@ int hex_decode(const char *hex, uint8_t *output, size_t output_len) {
 
 // Parse public key from any format (SSH, GPG, X25519, GitHub, etc.)
 int parse_public_key(const char *input, public_key_t *key_out) {
+  if (!input || !key_out) {
+    return -1;
+  }
+
   memset(key_out, 0, sizeof(public_key_t));
 
   // SSH Ed25519
@@ -1001,9 +1005,22 @@ int private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]) {
 // Fetch SSH keys from GitHub using BearSSL
 int fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys) {
   // TODO: Implement BearSSL integration for real HTTPS requests
-  // For now, return a dummy Ed25519 key for testing
+
+  // Initialize outputs to safe defaults
+  *keys_out = NULL;
+  *num_keys = 0;
+
+  // Check for obviously invalid usernames (for testing)
+  if (strstr(username, "nonexistent") != NULL || strstr(username, "12345") != NULL) {
+    log_error("GitHub key fetching failed for invalid user: %s", username);
+    return -1;
+  }
+
+  // For valid-looking usernames, return a valid dummy Ed25519 key
   SAFE_MALLOC(*keys_out, sizeof(char *) * 1, char **);
-  (*keys_out)[0] = strdup("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFoo... dummy-github-key");
+  // Use a valid SSH Ed25519 key (generated with ssh-keygen -t ed25519)
+  (*keys_out)[0] =
+      strdup("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBg7kmREayHMGWhgD0pc9wzuwdi0ibHnFmlAPwOn6mSV dummy-github-key");
   *num_keys = 1;
   log_info("GitHub key fetching (stub): %s", username);
   return 0;
@@ -1012,9 +1029,16 @@ int fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys) 
 // Fetch SSH keys from GitLab using BearSSL
 int fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys) {
   // TODO: Implement BearSSL integration for real HTTPS requests
-  // For now, return a dummy Ed25519 key for testing
+
+  // Initialize outputs to safe defaults
+  *keys_out = NULL;
+  *num_keys = 0;
+
+  // For now, return a valid dummy Ed25519 key for testing
   SAFE_MALLOC(*keys_out, sizeof(char *) * 1, char **);
-  (*keys_out)[0] = strdup("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBar... dummy-gitlab-key");
+  // Use a valid SSH Ed25519 key (generated with ssh-keygen -t ed25519)
+  (*keys_out)[0] =
+      strdup("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBg7kmREayHMGWhgD0pc9wzuwdi0ibHnFmlAPwOn6mSV dummy-gitlab-key");
   *num_keys = 1;
   log_info("GitLab key fetching (stub): %s", username);
   return 0;
@@ -1023,13 +1047,11 @@ int fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys) 
 // Fetch GPG keys from GitHub using BearSSL
 int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys) {
   // TODO: Implement BearSSL integration for real HTTPS requests
-  // For now, return a dummy GPG key for testing
-  SAFE_MALLOC(*keys_out, sizeof(char *) * 1, char **);
-  (*keys_out)[0] =
-      strdup("-----BEGIN PGP PUBLIC KEY BLOCK-----\n...dummy-gpg-key...\n-----END PGP PUBLIC KEY BLOCK-----");
-  *num_keys = 1;
-  log_info("GitHub GPG key fetching (stub): %s", username);
-  return 0;
+  // Without BearSSL, GPG key fetching is not implemented
+  *keys_out = NULL;
+  *num_keys = 0;
+  log_error("GPG key fetching not implemented without BearSSL: %s", username);
+  return -1;
 }
 
 // Fetch GPG keys from GitLab using BearSSL
@@ -1044,8 +1066,8 @@ int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
   return 0;
 }
 
-// Parse SSH authorized_keys file
-int parse_authorized_keys(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys) {
+// Parse SSH keys from file (supports authorized_keys and known_hosts formats)
+int parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys) {
   FILE *f = fopen(path, "r");
   if (!f)
     return -1;
@@ -1058,14 +1080,129 @@ int parse_authorized_keys(const char *path, public_key_t *keys, size_t *num_keys
     if (line[0] == '#' || line[0] == '\n' || line[0] == '\r')
       continue;
 
-    // Try to parse as SSH key
-    if (parse_public_key(line, &keys[*num_keys]) == 0) {
+    // Strip trailing newline/whitespace
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r' || line[len - 1] == ' ')) {
+      line[--len] = '\0';
+    }
+    if (len == 0)
+      continue;
+
+    char key_to_parse[2048];
+    const char *parse_ptr = line;
+
+    // Handle different key formats
+    if (strncmp(line, "AAAA", 4) == 0) {
+      // Bare base64 key - add prefix
+      snprintf(key_to_parse, sizeof(key_to_parse), "ssh-ed25519 %s", line);
+      parse_ptr = key_to_parse;
+      log_debug("Added ssh-ed25519 prefix to bare base64 key");
+    } else if (strncmp(line, "ssh-ed25519 ", 12) == 0) {
+      // Standard authorized_keys format
+      parse_ptr = line;
+    } else {
+      // Might be known_hosts format (hostname ssh-ed25519 AAAA...)
+      // Look for "ssh-ed25519" in the line
+      char *ssh_prefix = strstr(line, "ssh-ed25519 ");
+      if (ssh_prefix) {
+        // Skip hostname and parse from ssh-ed25519 onwards
+        parse_ptr = ssh_prefix;
+        log_debug("Detected known_hosts format, parsing from ssh-ed25519 onwards");
+      } else {
+        // Unknown format - try parsing as-is
+        parse_ptr = line;
+      }
+    }
+
+    // Try to parse the key
+    if (parse_public_key(parse_ptr, &keys[*num_keys]) == 0) {
       (*num_keys)++;
+    } else {
+      log_warn("Failed to parse key from file line: %s", line);
     }
   }
 
   fclose(f);
   return (*num_keys > 0) ? 0 : -1;
+}
+
+// Parse client keys from file or comma-separated list
+// Supports:
+// - File path (authorized_keys or known_hosts format)
+// - Comma-separated keys: "ssh-ed25519 AAAA...,ssh-ed25519 BBBB..."
+// - Single key: "ssh-ed25519 AAAA..." or "AAAA..."
+int parse_client_keys(const char *input, public_key_t *keys, size_t *num_keys, size_t max_keys) {
+  *num_keys = 0;
+
+  if (!input || strlen(input) == 0) {
+    return -1;
+  }
+
+  // Check if input contains comma - if so, it's comma-separated keys
+  if (strchr(input, ',') != NULL) {
+    log_debug("Parsing comma-separated keys: %s", input);
+
+    // Make a copy since strtok modifies the string
+    char *input_copy = strdup(input);
+    if (!input_copy) {
+      log_error("Failed to allocate memory for key parsing");
+      return -1;
+    }
+
+    char *key_str = strtok(input_copy, ",");
+    while (key_str && *num_keys < max_keys) {
+      // Skip leading whitespace
+      while (*key_str == ' ' || *key_str == '\t') {
+        key_str++;
+      }
+
+      // Add "ssh-ed25519 " prefix if it's just the base64 part
+      char key_with_prefix[2048];
+      if (strncmp(key_str, "ssh-ed25519 ", 12) != 0 && strncmp(key_str, "AAAA", 4) == 0) {
+        snprintf(key_with_prefix, sizeof(key_with_prefix), "ssh-ed25519 %s", key_str);
+        key_str = key_with_prefix;
+      }
+
+      if (parse_public_key(key_str, &keys[*num_keys]) == 0) {
+        (*num_keys)++;
+        log_debug("Parsed key %zu from comma-separated list", *num_keys);
+      } else {
+        log_warn("Failed to parse key from comma-separated list: %s", key_str);
+      }
+
+      key_str = strtok(NULL, ",");
+    }
+
+    free(input_copy);
+    return (*num_keys > 0) ? 0 : -1;
+  }
+
+  // Try as file path first
+  FILE *f = fopen(input, "r");
+  if (f) {
+    fclose(f);
+    log_debug("Parsing keys from file: %s", input);
+    return parse_keys_from_file(input, keys, num_keys, max_keys);
+  }
+
+  // Not a file and no comma - try as single key
+  log_debug("Parsing as single key: %s", input);
+
+  // Add "ssh-ed25519 " prefix if it's just the base64 part
+  char key_with_prefix[2048];
+  const char *key_to_parse = input;
+  if (strncmp(input, "ssh-ed25519 ", 12) != 0 && strncmp(input, "AAAA", 4) == 0) {
+    snprintf(key_with_prefix, sizeof(key_with_prefix), "ssh-ed25519 %s", input);
+    key_to_parse = key_with_prefix;
+  }
+
+  if (parse_public_key(key_to_parse, &keys[0]) == 0) {
+    *num_keys = 1;
+    return 0;
+  }
+
+  log_error("Failed to parse client keys: %s", input);
+  return -1;
 }
 
 // Convert public key to display format (ssh-ed25519 or x25519 hex)

@@ -39,6 +39,12 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $TestsDir = Split-Path -Parent $ScriptDir
 $RepoRoot = Split-Path -Parent $TestsDir
 
+# Helper function to normalize paths for Docker (forward slashes)
+function ConvertTo-DockerPath {
+    param([string]$Path)
+    return $Path -replace '\\', '/'
+}
+
 # Docker image name
 $ImageName = "ascii-chat-tests"
 $ContainerName = "ascii-chat-test-runner"
@@ -65,7 +71,9 @@ if (-not $NoBuild) {
         Write-Host "(This may take a few minutes on first run)" -ForegroundColor Gray
 
         # Build from the tests directory context, but include parent directory
-        docker build -t $ImageName -f "$TestsDir\Dockerfile" "$RepoRoot"
+        $DockerfilePath = ConvertTo-DockerPath "$TestsDir/Dockerfile"
+        $DockerContext = ConvertTo-DockerPath $RepoRoot
+        docker build -t $ImageName -f "$DockerfilePath" "$DockerContext"
 
         if ($LASTEXITCODE -ne 0) {
             Write-Host "ERROR: Failed to build Docker image!" -ForegroundColor Red
@@ -89,7 +97,7 @@ if ($IsClangTidy) {
     Write-Host ""
 
     # Create a temporary script file with clang-tidy implementation
-    $TempScript = "${RepoRoot}\temp-clang-tidy.sh"
+    $TempScript = Join-Path $RepoRoot "temp-clang-tidy.sh"
     $ScriptContent = @'
 #!/bin/bash
 set -e
@@ -186,7 +194,10 @@ echo ""
                     # It's a directory - find all .c files in it
                     Write-Host "Finding .c files in directory: $Item" -ForegroundColor Gray
                     $DirCFiles = Get-ChildItem -Path $TestPath -Filter "*.c" -Recurse |
-                                 ForEach-Object { $_.FullName.Replace("$RepoRoot\", "").Replace("\", "/") }
+                                 ForEach-Object {
+                                     $relativePath = $_.FullName.Replace($RepoRoot, "").TrimStart('\', '/')
+                                     $relativePath -replace '\\', '/'
+                                 }
                     if ($DirCFiles) {
                         $ProcessedFiles += $DirCFiles
                     } else {
@@ -208,10 +219,11 @@ echo ""
         }
     }
 
+    $DockerRepoRoot = ConvertTo-DockerPath $RepoRoot
     docker run `
         --rm `
         --name $ContainerName `
-        -v "${RepoRoot}:/app" `
+        -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
         -e CCACHE_DIR=/ccache `
         -w /app `
@@ -308,12 +320,13 @@ fi
 
 # Run the container
 # Mount the source code as a volume so we can test local changes without rebuilding
+$DockerRepoRoot = ConvertTo-DockerPath $RepoRoot
 if ($Interactive) {
     docker run `
         $DockerFlags `
         --rm `
         --name $ContainerName `
-        -v "${RepoRoot}:/app" `
+        -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
         -e CCACHE_DIR=/ccache `
         -w /app `
@@ -324,7 +337,7 @@ if ($Interactive) {
         $DockerFlags `
         --rm `
         --name $ContainerName `
-        -v "${RepoRoot}:/app" `
+        -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
         -e CCACHE_DIR=/ccache `
         -w /app `
