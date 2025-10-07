@@ -175,6 +175,18 @@ int client_crypto_init(void) {
     // Clear the temporary private_key variable (we've already copied it to g_crypto_ctx)
     sodium_memzero(&private_key, sizeof(private_key));
 
+    // If password is also provided, derive password key for dual authentication
+    if (strlen(opt_password) > 0) {
+      log_debug("CLIENT_CRYPTO_INIT: Password also provided, deriving password key");
+      crypto_result_t crypto_result = crypto_derive_password_key(&g_crypto_ctx.crypto_ctx, opt_password);
+      if (crypto_result != CRYPTO_OK) {
+        log_error("Failed to derive password key: %s", crypto_result_to_string(crypto_result));
+        return -1;
+      }
+      g_crypto_ctx.crypto_ctx.has_password = true;
+      log_info("Password authentication enabled alongside SSH key");
+    }
+
   } else if (strlen(opt_password) > 0) {
     // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");

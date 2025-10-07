@@ -519,22 +519,33 @@ static void *data_reception_thread_func(void *arg) {
       continue;
     }
 
-    packet_type_t type;
-    void *data;
-    size_t len;
+    // Use unified secure packet reception
+    packet_envelope_t envelope;
+    packet_recv_result_t result = receive_packet_secure(sockfd, NULL, !opt_no_encrypt, &envelope);
 
-    int result = receive_packet(sockfd, &type, &data, &len);
-
-    if (result < 0) {
-      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
-      server_connection_lost();
-      break;
-    }
-    if (result == 0) {
+    // Handle different result codes
+    if (result == PACKET_RECV_CLOSED) {
       log_info("CLIENT: Server closed connection");
       server_connection_lost();
       break;
     }
+
+    if (result == PACKET_RECV_ERROR) {
+      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
+      server_connection_lost();
+      break;
+    }
+
+    if (result == PACKET_RECV_SECURITY_VIOLATION) {
+      log_error("SECURITY: Server violated encryption policy");
+      log_error("SECURITY: This is a critical security violation - exiting immediately");
+      exit(1); // Exit immediately on security violation
+    }
+
+    // Extract packet details from envelope
+    packet_type_t type = envelope.type;
+    void *data = envelope.data;
+    size_t len = envelope.len;
 
     // DEBUG: Log all packet types received
     log_debug("CLIENT_RECV: Received packet type=%d, len=%zu", type, len);

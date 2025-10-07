@@ -238,6 +238,54 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
 int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *client_id, void **data,
                                          size_t *len);
 
+// ============================================================================
+// Unified Secure Packet Reception
+// ============================================================================
+
+/**
+ * Packet envelope - contains all packet information after reception
+ */
+typedef struct {
+  packet_type_t type;
+  uint32_t client_id; // For server use (0 for client)
+  void *data;
+  size_t len;
+  bool was_encrypted;
+} packet_envelope_t;
+
+/**
+ * Packet reception result codes
+ */
+typedef enum {
+  PACKET_RECV_OK = 0,                 // Packet received successfully
+  PACKET_RECV_CLOSED = -1,            // Connection closed
+  PACKET_RECV_ERROR = -2,             // Network error
+  PACKET_RECV_SECURITY_VIOLATION = -3 // Encryption policy violated
+} packet_recv_result_t;
+
+/**
+ * Check if a packet type is a crypto handshake packet (always unencrypted)
+ */
+bool is_crypto_handshake_packet(packet_type_t type);
+
+/**
+ * Unified packet reception with encryption enforcement
+ *
+ * Handles:
+ * - Raw packet reception
+ * - Encryption requirement validation
+ * - Decryption (if packet is encrypted)
+ * - Security policy enforcement
+ *
+ * @param sockfd Socket to receive from
+ * @param crypto_ctx Crypto context for decryption (NULL if not ready/available)
+ * @param enforce_encryption True if unencrypted non-handshake packets should be rejected
+ * @param out_envelope Output envelope with packet details
+ * @return packet_recv_result_t
+ */
+packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
+                                           packet_envelope_t *out_envelope);
+
 // Heartbeat/ping functions
 int send_ping_packet(socket_t sockfd);
 int send_pong_packet(socket_t sockfd);

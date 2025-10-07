@@ -347,11 +347,16 @@ extern atomic_bool g_should_exit;
 static int format_log_entry(char *buffer, size_t buffer_size, const char *timestamp, log_level_t level,
                             const char *file, int line, const char *func, const char *fmt, va_list args) {
   int offset = 0;
-  const char *rel_file = extract_relative_path(file);
 
-  // Add timestamp, level, location
+#ifdef NDEBUG
+  // Release mode: simplified format (timestamp, level, message only)
+  offset = SAFE_SNPRINTF(buffer, buffer_size, "[%s] [%s] ", timestamp, level_strings[level]);
+#else
+  // Debug mode: full format with file location and function
+  const char *rel_file = extract_relative_path(file);
   offset = SAFE_SNPRINTF(buffer, buffer_size, "[%s] [%s] %s:%d in %s(): ", timestamp, level_strings[level], rel_file,
                          line, func);
+#endif
 
   // Add the actual message
   if (offset > 0 && offset < (int)buffer_size) {
@@ -404,9 +409,29 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
 
   // Only write colors if connected to a TTY
   if (isatty(fd)) {
+#ifdef NDEBUG
+    // Release mode: simplified format (timestamp, level, message only) WITH COLORS
+    (void)fprintf(output_stream, "%s[%s] [%s]\x1b[0m ", level_colors[level], timestamp, level_strings[level]);
+#else
+    // Debug mode: full format with file location and function WITH COLORS
     const char *rel_file = extract_relative_path(file);
     (void)fprintf(output_stream, "%s[%s] [%s]\x1b[0m %s:%d in %s(): ", level_colors[level], timestamp,
                   level_strings[level], rel_file, line, func);
+#endif
+
+    (void)vfprintf(output_stream, fmt, args);
+    (void)fprintf(output_stream, "\n");
+    (void)fflush(output_stream);
+  } else {
+    // Not a TTY (piped/redirected) - output without colors
+#ifdef NDEBUG
+    // Release mode: simplified format (timestamp, level, message only) WITHOUT COLORS
+    (void)fprintf(output_stream, "[%s] [%s] ", timestamp, level_strings[level]);
+#else
+    // Debug mode: full format with file location and function WITHOUT COLORS
+    const char *rel_file = extract_relative_path(file);
+    (void)fprintf(output_stream, "[%s] [%s] %s:%d in %s(): ", timestamp, level_strings[level], rel_file, line, func);
+#endif
 
     (void)vfprintf(output_stream, fmt, args);
     (void)fprintf(output_stream, "\n");
