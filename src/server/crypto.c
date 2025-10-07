@@ -61,15 +61,17 @@ int server_crypto_handshake(socket_t client_socket) {
 
   // Initialize crypto context for this specific client
   int init_result;
-  if (strlen(opt_encrypt_key) > 0 && strstr(opt_encrypt_key, "/.ssh/") == NULL &&
-      strstr(opt_encrypt_key, "/ssh/") == NULL && strstr(opt_encrypt_key, "_ed25519") == NULL &&
-      strstr(opt_encrypt_key, "id_ed25519") == NULL && strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
+  if (g_server_encryption_enabled) {
+    // Server has SSH key - use standard initialization
+    log_debug("SERVER_CRYPTO_HANDSHAKE: Using SSH key authentication");
+    init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
+  } else if (strlen(opt_encrypt_key) > 0 && strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
     // It's a password - use password-based initialization
     log_debug("SERVER_CRYPTO_HANDSHAKE: Using password authentication");
     init_result =
         crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, opt_encrypt_key); // true = server
   } else {
-    // No password or SSH/GPG key - use standard initialization
+    // No password or SSH key - use standard initialization with random keys
     log_debug("SERVER_CRYPTO_HANDSHAKE: Using standard initialization");
     init_result = crypto_handshake_init(&client->crypto_handshake_ctx, true); // true = server
   }
@@ -118,6 +120,13 @@ int server_crypto_handshake(socket_t client_socket) {
   if (result != 0) {
     log_error("Crypto authentication challenge failed for client %u", atomic_load(&client->client_id));
     return -1;
+  }
+
+  // Check if handshake completed during auth challenge (no authentication needed)
+  if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
+    log_info("Crypto handshake completed successfully for client %u (no authentication)",
+             atomic_load(&client->client_id));
+    return 0;
   }
 
   // Step 3: Receive auth response and complete handshake

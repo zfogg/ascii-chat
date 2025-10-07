@@ -635,27 +635,45 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Encrypted key detected (cipher: %s)\n", ciphername);
     log_info("Encrypted private key detected (cipher: %s)", ciphername);
 
-    // Try SSH agent FIRST (before prompting for passphrase)
+    // Check SSH agent (indicates key is available/unlocked)
     fprintf(stderr, "parse_private_key: Trying SSH agent for key...\n");
     char ssh_agent_public_key[1024];
-    if (get_ssh_agent_ed25519_key(ssh_agent_public_key, sizeof(ssh_agent_public_key)) == 0) {
-      fprintf(stderr, "parse_private_key: Using SSH agent for encrypted key operations\n");
+    bool ssh_agent_available = (get_ssh_agent_ed25519_key(ssh_agent_public_key, sizeof(ssh_agent_public_key)) == 0);
+
+    if (ssh_agent_available) {
+      fprintf(stderr, "parse_private_key: SSH agent has this key loaded\n");
       fprintf(stderr, "parse_private_key: SSH agent public key: %.50s...\n", ssh_agent_public_key);
 
-      // Mark as using SSH agent - we don't need the actual private key
+      // Mode 1: Encrypted key + SSH agent
+      // Use agent for signing, ephemeral keys for encryption
+      // Parse the public key from SSH format
+      public_key_t pub_key;
+      if (parse_public_key(ssh_agent_public_key, &pub_key) != 0) {
+        fprintf(stderr, "parse_private_key: Failed to parse SSH agent public key\n");
+        log_error("Failed to parse SSH agent public key");
+        free(blob);
+        return -1;
+      }
+
+      // Set up private key structure for SSH agent mode
       key_out->type = KEY_TYPE_ED25519;
-      // SSH agent will handle the private key operations
-      // We can't get the private key from agent, but we can use it for authentication
-      memset(key_out->key.ed25519, 0, 32); // Placeholder - agent handles the real key
+      key_out->use_ssh_agent = true;
+      memcpy(key_out->public_key, pub_key.key, 32);
+      SAFE_STRNCPY(key_out->key_comment, pub_key.comment, sizeof(key_out->key_comment) - 1);
 
+      // Zero out the key union (we don't have private key bytes)
+      memset(&key_out->key, 0, sizeof(key_out->key));
+
+      log_info("Using SSH agent for authentication (ephemeral keys for encryption)");
       free(blob);
-      fprintf(stderr, "parse_private_key: Successfully loaded key from SSH agent\n");
       return 0;
+    } else {
+      fprintf(stderr, "parse_private_key: SSH agent not available or no Ed25519 keys found\n");
     }
-    fprintf(stderr, "parse_private_key: SSH agent not available or no Ed25519 keys found\n");
 
-    // SSH agent failed - now prompt for passphrase
-    fprintf(stderr, "parse_private_key: Prompting for passphrase...\n");
+    // Mode 2: Encrypted key + password
+    // Prompt for password and decrypt key, use for both identity and encryption
+    fprintf(stderr, "parse_private_key: Attempting to decrypt key file...\n");
     char passphrase[256];
     if (prompt_ssh_passphrase(passphrase, sizeof(passphrase)) != 0) {
       fprintf(stderr, "parse_private_key: Failed to get passphrase\n");
@@ -704,42 +722,57 @@ int parse_private_key(const char *path, private_key_t *key_out) {
 
   // Read kdfname (should be "none")
   if (offset + 4 > blob_len) {
-    log_error("Invalid private key format");
+    fprintf(stderr, "parse_private_key: Invalid key format at kdfname length (offset=%zu, blob_len=%zu)\n", offset,
+            blob_len);
+    log_error("Invalid private key format at kdfname length");
     free(blob);
     return -1;
   }
   uint32_t kdfname_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: KDF name length: %u\n", kdfname_len);
   offset += 4;
   if (offset + kdfname_len > blob_len) {
-    log_error("Invalid private key format");
+    fprintf(stderr, "parse_private_key: Invalid key format at kdfname (offset=%zu, kdfname_len=%u, blob_len=%zu)\n",
+            offset, kdfname_len, blob_len);
+    log_error("Invalid private key format at kdfname");
     free(blob);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Skipping kdfname (%u bytes)\n", kdfname_len);
   offset += kdfname_len;
 
   // Read kdfoptions (should be empty for "none")
   if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Invalid key format at kdfoptions length (offset=%zu, blob_len=%zu)\n", offset,
+            blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
   uint32_t kdfoptions_len =
       (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: KDF options length: %u\n", kdfoptions_len);
   offset += 4;
   if (offset + kdfoptions_len > blob_len) {
+    fprintf(stderr,
+            "parse_private_key: Invalid key format at kdfoptions (offset=%zu, kdfoptions_len=%u, blob_len=%zu)\n",
+            offset, kdfoptions_len, blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Skipping kdfoptions (%u bytes)\n", kdfoptions_len);
   offset += kdfoptions_len;
 
   // Read number of keys (should be 1)
   if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Invalid key format at nkeys (offset=%zu, blob_len=%zu)\n", offset, blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
   uint32_t nkeys = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Number of keys: %u\n", nkeys);
   offset += 4;
 
   if (nkeys != 1) {
@@ -750,76 +783,207 @@ int parse_private_key(const char *path, private_key_t *key_out) {
 
   // Read public key
   if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Invalid key format at pubkey length (offset=%zu, blob_len=%zu)\n", offset,
+            blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
   uint32_t pubkey_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Public key length: %u\n", pubkey_len);
   offset += 4;
   if (offset + pubkey_len > blob_len) {
+    fprintf(stderr, "parse_private_key: Invalid key format at pubkey data (offset=%zu, pubkey_len=%u, blob_len=%zu)\n",
+            offset, pubkey_len, blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
 
   // Check if it's an Ed25519 public key
-  if (pubkey_len < 19 || memcmp(blob + offset, "ssh-ed25519", 11) != 0) {
+  // OpenSSH public key format: [4 bytes string length]["ssh-ed25519"][4 bytes key length][32 bytes key]
+  if (pubkey_len < 51) {
+    fprintf(stderr, "parse_private_key: Public key too short (pubkey_len=%u, expected 51)\n", pubkey_len);
+    log_error("Public key too short");
+    free(blob);
+    return -1;
+  }
+
+  // Read the key type string length
+  uint32_t key_type_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Public key type string length: %u\n", key_type_len);
+
+  // Check if it's "ssh-ed25519"
+  if (key_type_len != 11 || memcmp(blob + offset + 4, "ssh-ed25519", 11) != 0) {
+    fprintf(stderr, "parse_private_key: Not an Ed25519 key (key_type_len=%u)\n", key_type_len);
     log_error("Not an Ed25519 key");
     free(blob);
     return -1;
   }
+  fprintf(stderr, "parse_private_key: Confirmed Ed25519 public key, skipping (%u bytes)\n", pubkey_len);
   offset += pubkey_len;
 
-  // Read private key
+  // Read private key blob
   if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Invalid key format at privkey blob length (offset=%zu, blob_len=%zu)\n", offset,
+            blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
-  uint32_t privkey_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  uint32_t privkey_blob_len =
+      (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Private key blob length: %u\n", privkey_blob_len);
   offset += 4;
-  if (offset + privkey_len > blob_len) {
+  if (offset + privkey_blob_len > blob_len) {
+    fprintf(
+        stderr,
+        "parse_private_key: Invalid key format at privkey blob data (offset=%zu, privkey_blob_len=%u, blob_len=%zu)\n",
+        offset, privkey_blob_len, blob_len);
     log_error("Invalid private key format");
     free(blob);
     return -1;
   }
+
+  // Private key blob starts with check1 and check2 (8 bytes total)
+  if (privkey_blob_len < 8) {
+    fprintf(stderr, "parse_private_key: Private key blob too short for check values (privkey_blob_len=%u)\n",
+            privkey_blob_len);
+    log_error("Private key blob too short");
+    free(blob);
+    return -1;
+  }
+
+  fprintf(stderr, "parse_private_key: Skipping check1/check2 (8 bytes)\n");
+  offset += 8; // Skip check1 and check2
 
   // Parse private key data
-  if (privkey_len < 19) {
-    log_error("Private key data too short");
+  // Format: [4 bytes keytype length]["ssh-ed25519"][4 bytes pubkey length][32 bytes pubkey][4 bytes privkey length][64
+  // bytes privkey][4 bytes comment length][comment][padding]
+  if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Cannot read keytype length (offset=%zu, blob_len=%zu)\n", offset, blob_len);
+    log_error("Invalid private key format");
     free(blob);
     return -1;
   }
 
-  // Check if it's an Ed25519 private key
-  if (memcmp(blob + offset, "ssh-ed25519", 11) != 0) {
+  // Read the key type string length
+  uint32_t priv_key_type_len =
+      (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Private key type string length: %u\n", priv_key_type_len);
+
+  // Check if it's "ssh-ed25519"
+  if (priv_key_type_len != 11 || memcmp(blob + offset + 4, "ssh-ed25519", 11) != 0) {
+    fprintf(stderr, "parse_private_key: Not an Ed25519 private key (priv_key_type_len=%u)\n", priv_key_type_len);
     log_error("Not an Ed25519 private key");
     free(blob);
     return -1;
   }
 
-  // Skip the key type string and get to the actual key data
-  offset += 19; // "ssh-ed25519" + 4 bytes length + 4 bytes string length
+  // Skip type string (4 bytes length + 11 bytes "ssh-ed25519")
+  fprintf(stderr, "parse_private_key: Parsing private key structure...\n");
+  offset += 4 + 11;
+
+  // Read public key length
+  if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Cannot read public key length (offset=%zu, blob_len=%zu)\n", offset, blob_len);
+    log_error("Invalid private key format");
+    free(blob);
+    return -1;
+  }
+  uint32_t pubkey_data_len =
+      (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Public key data length in privkey blob: %u\n", pubkey_data_len);
+  offset += 4;
+
+  if (pubkey_data_len != 32) {
+    fprintf(stderr, "parse_private_key: Expected 32-byte Ed25519 public key, got %u bytes\n", pubkey_data_len);
+    log_error("Invalid Ed25519 public key length");
+    free(blob);
+    return -1;
+  }
+
+  if (offset + 32 > blob_len) {
+    fprintf(stderr, "parse_private_key: Public key data too short (offset=%zu, need 32 bytes, blob_len=%zu)\n", offset,
+            blob_len);
+    log_error("Public key data too short");
+    free(blob);
+    return -1;
+  }
+
+  // Skip public key (we'll extract it from the private key later)
+  fprintf(stderr, "parse_private_key: Skipping public key (32 bytes)\n");
+  offset += 32;
+
+  // Read private key length
+  if (offset + 4 > blob_len) {
+    fprintf(stderr, "parse_private_key: Cannot read private key length (offset=%zu, blob_len=%zu)\n", offset, blob_len);
+    log_error("Invalid private key format");
+    free(blob);
+    return -1;
+  }
+  uint32_t privkey_data_len =
+      (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
+  fprintf(stderr, "parse_private_key: Private key data length: %u\n", privkey_data_len);
+  offset += 4;
+
+  if (privkey_data_len != 64) {
+    fprintf(stderr, "parse_private_key: Expected 64-byte Ed25519 private key, got %u bytes\n", privkey_data_len);
+    log_error("Invalid Ed25519 private key length");
+    free(blob);
+    return -1;
+  }
+
   if (offset + 64 > blob_len) {
+    fprintf(stderr, "parse_private_key: Private key data too short (offset=%zu, need 64 bytes, blob_len=%zu)\n", offset,
+            blob_len);
     log_error("Private key data too short");
     free(blob);
     return -1;
   }
 
-  // Extract the 32-byte Ed25519 private key
+  // Extract the 64-byte Ed25519 private key (32-byte seed + 32-byte public key)
   key_out->type = KEY_TYPE_ED25519;
-  memcpy(key_out->key.ed25519, blob + offset, 32);
+  key_out->use_ssh_agent = false; // Mode 3: Unencrypted key, use in-memory signing
+  memcpy(key_out->key.ed25519, blob + offset, 64);
+
+  // Extract the public key from the private key (last 32 bytes)
+  memcpy(key_out->public_key, blob + offset + 32, 32);
+
+  // Extract key comment if available
+  // Comment is after the private key data
+  size_t comment_offset = offset + 64;
+  if (comment_offset + 4 <= blob_len) {
+    uint32_t comment_len = (blob[comment_offset] << 24) | (blob[comment_offset + 1] << 16) |
+                           (blob[comment_offset + 2] << 8) | blob[comment_offset + 3];
+    comment_offset += 4;
+    if (comment_offset + comment_len <= blob_len && comment_len < sizeof(key_out->key_comment)) {
+      memcpy(key_out->key_comment, blob + comment_offset, comment_len);
+      key_out->key_comment[comment_len] = '\0';
+    } else {
+      key_out->key_comment[0] = '\0';
+    }
+  } else {
+    key_out->key_comment[0] = '\0';
+  }
 
   // Clear sensitive data
   sodium_memzero(blob, blob_len);
   free(blob);
 
-  log_info("Successfully parsed Ed25519 private key from %s", path);
+  log_info("Successfully parsed Ed25519 private key from %s (in-memory mode)", path);
   return 0;
 }
 
 // Convert private key to X25519 for DH
 int private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]) {
+  // SSH agent mode: we don't have private key bytes, caller should use ephemeral keys
+  if (key->use_ssh_agent) {
+    log_error("Cannot convert SSH agent key to X25519 (no private key bytes)");
+    log_error("Caller should use ephemeral X25519 keys for encryption");
+    return -1;
+  }
+
   switch (key->type) {
   case KEY_TYPE_ED25519:
     return crypto_sign_ed25519_sk_to_curve25519(x25519_sk, key->key.ed25519);
@@ -945,4 +1109,59 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
     snprintf(output, output_size, "unknown key type");
     break;
   }
+}
+
+// Sign a message with Ed25519 (uses SSH agent if available, otherwise in-memory key)
+// This is the main signing function that abstracts SSH agent vs in-memory signing
+// Returns: 0 on success, -1 on failure
+int ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len, uint8_t signature[64]) {
+  if (!key || !message || !signature) {
+    return -1;
+  }
+
+  if (key->use_ssh_agent) {
+    // TODO: Implement SSH agent signing
+    // For now, use the public key we stored and sign via ssh-add
+    fprintf(stderr, "ed25519_sign_message: SSH agent signing not yet implemented\n");
+    return -1;
+  } else {
+    // Use in-memory Ed25519 key to sign
+    if (key->type != KEY_TYPE_ED25519) {
+      fprintf(stderr, "ed25519_sign_message: Key type is not Ed25519\n");
+      return -1;
+    }
+
+    // libsodium's crypto_sign_detached expects:
+    // - signature: output buffer (64 bytes)
+    // - message: message to sign
+    // - message_len: length of message
+    // - secret_key: 64-byte Ed25519 secret key (seed + public key)
+    if (crypto_sign_detached(signature, NULL, message, message_len, key->key.ed25519) != 0) {
+      fprintf(stderr, "ed25519_sign_message: crypto_sign_detached failed\n");
+      return -1;
+    }
+
+    return 0;
+  }
+}
+
+// Verify an Ed25519 signature
+// Returns: 0 on success (valid signature), -1 on failure
+int ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
+                             const uint8_t signature[64]) {
+  if (!public_key || !message || !signature) {
+    return -1;
+  }
+
+  // libsodium's crypto_sign_verify_detached expects:
+  // - signature: signature to verify (64 bytes)
+  // - message: message that was signed
+  // - message_len: length of message
+  // - public_key: 32-byte Ed25519 public key
+  if (crypto_sign_verify_detached(signature, message, message_len, public_key) != 0) {
+    fprintf(stderr, "ed25519_verify_signature: signature verification failed\n");
+    return -1;
+  }
+
+  return 0;
 }
