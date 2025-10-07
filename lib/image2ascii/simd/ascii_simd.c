@@ -83,17 +83,13 @@ void ascii_simd_init(void) {
   ascii_ctor();
 }
 
-// Allocate a new image (RGB8), abort on OOM
+// Allocate a new image (RGB8), use SAFE_MALLOC for consistent error handling
 ImageRGB alloc_image(int w, int h) {
   ImageRGB out;
   out.w = w;
   out.h = h;
   size_t n = (size_t)w * (size_t)h * 3u;
-  out.pixels = (uint8_t *)malloc(n);
-  if (!out.pixels) {
-    log_error("OOM");
-    exit(1);
-  }
+  SAFE_MALLOC(out.pixels, n, uint8_t *);
   return out;
 }
 
@@ -116,12 +112,7 @@ void str_reserve(Str *s, size_t need) {
   size_t ncap = s->cap ? s->cap : 4096;
   while (ncap < need)
     ncap = (ncap * 3) / 2 + 64;
-  char *nd = (char *)realloc(s->data, ncap);
-  if (!nd) {
-    log_error("OOM");
-    exit(1);
-  }
-  s->data = nd;
+  SAFE_REALLOC(s->data, ncap, char *);
   s->cap = ncap;
 }
 
@@ -148,11 +139,8 @@ void str_printf(Str *s, const char *fmt, ...) {
     str_append_bytes(s, stackbuf, (size_t)n);
     return;
   }
-  char *heap = (char *)malloc((size_t)n + 1);
-  if (!heap) {
-    log_error("OOM");
-    exit(1);
-  }
+  char *heap;
+  SAFE_MALLOC(heap, (size_t)n + 1, char *);
   va_start(ap, fmt);
   (void)vsnprintf(heap, (size_t)n + 1, fmt, ap);
   va_end(ap);

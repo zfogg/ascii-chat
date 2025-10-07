@@ -698,9 +698,10 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     }
     break;
   case PACKET_TYPE_KEY_EXCHANGE_RESPONSE:
-    // Client's public key: 32 bytes for X25519 only, or 64 bytes for X25519 + Ed25519 with SSH keys
-    if (pkt_len != 32 && pkt_len != 64) {
-      log_error("Invalid key exchange response packet size: %u, expected 32 or 64", pkt_len);
+    // Client's public key: 32 bytes (X25519 only), 64 bytes (X25519 + Ed25519), or 128 bytes (X25519 + Ed25519 +
+    // signature)
+    if (pkt_len != 32 && pkt_len != 64 && pkt_len != 128) {
+      log_error("Invalid key exchange response packet size: %u, expected 32, 64, or 128", pkt_len);
       return -1;
     }
     break;
@@ -1404,4 +1405,70 @@ int send_image_frame_packet(socket_t sockfd, const void *pixel_data, size_t pixe
 int send_compressed_frame(socket_t sockfd, const char *frame_data, size_t frame_size) {
   // Use the new unified packet function with global width/height
   return send_ascii_frame_packet(sockfd, frame_data, frame_size, opt_width, opt_height);
+}
+
+// ============================================================================
+// Unified Secure Packet Reception
+// ============================================================================
+
+/**
+ * Check if a packet type is a crypto handshake packet (always unencrypted)
+ */
+bool is_crypto_handshake_packet(packet_type_t type) {
+  return (type == PACKET_TYPE_KEY_EXCHANGE_INIT || type == PACKET_TYPE_KEY_EXCHANGE_RESPONSE ||
+          type == PACKET_TYPE_AUTH_CHALLENGE || type == PACKET_TYPE_AUTH_RESPONSE ||
+          type == PACKET_TYPE_HANDSHAKE_COMPLETE || type == PACKET_TYPE_AUTH_FAILED);
+}
+
+/**
+ * Unified packet reception with encryption enforcement
+ *
+ * This function provides a single, consistent interface for both client and server
+ * to receive packets with proper encryption enforcement. It eliminates code duplication
+ * and ensures identical security behavior on both sides.
+ *
+ * @param sockfd Socket to receive from
+ * @param crypto_ctx Crypto context for decryption (currently unused, for future use)
+ * @param enforce_encryption True if unencrypted non-handshake packets should be rejected
+ * @param out_envelope Output envelope with packet details
+ * @return packet_recv_result_t indicating success or failure reason
+ */
+packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
+                                           packet_envelope_t *out_envelope) {
+  (void)crypto_ctx; // Reserved for future use
+
+  // Initialize output
+  SAFE_MEMSET(out_envelope, sizeof(*out_envelope), 0, sizeof(*out_envelope));
+
+  // Receive raw packet
+  packet_type_t type;
+  uint32_t client_id;
+  void *data = NULL;
+  size_t len;
+
+  int result = receive_packet_with_client(sockfd, &type, &client_id, &data, &len);
+
+  if (result <= 0) {
+    return result == 0 ? PACKET_RECV_CLOSED : PACKET_RECV_ERROR;
+  }
+
+  // Check encryption policy
+  if (enforce_encryption && type != PACKET_TYPE_ENCRYPTED && !is_crypto_handshake_packet(type)) {
+    log_error("SECURITY: Received unencrypted packet (type=%d) when encryption required. "
+              "Use --no-encrypt to disable encryption enforcement.",
+              type);
+    if (data) {
+      buffer_pool_free(data, len);
+    }
+    return PACKET_RECV_SECURITY_VIOLATION;
+  }
+
+  // Fill output envelope
+  out_envelope->type = type;
+  out_envelope->client_id = client_id;
+  out_envelope->data = data;
+  out_envelope->len = len;
+  out_envelope->was_encrypted = (type == PACKET_TYPE_ENCRYPTED);
+
+  return PACKET_RECV_OK;
 }

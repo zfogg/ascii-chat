@@ -66,10 +66,12 @@
 #include "crypto/crypto.h"
 
 #include "platform/abstraction.h"
+#include "platform/terminal.h"
 #include "network.h"
 #include "common.h"
 #include "options.h"
 #include "buffer_pool.h"
+#include "palette.h"
 
 #include <errno.h>
 #include <string.h>
@@ -611,10 +613,11 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
     return -1;
   }
 
-  mutex_lock(&g_send_mutex);
-  int result = send_stream_start_packet(sockfd, stream_type);
-  mutex_unlock(&g_send_mutex);
-  return result;
+  // Build STREAM_START packet locally
+  uint32_t type_data = htonl(stream_type);
+
+  // Use threaded_send_packet() which handles encryption
+  return threaded_send_packet(PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
 }
 
 int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
@@ -623,10 +626,67 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
     return -1;
   }
 
-  mutex_lock(&g_send_mutex);
-  int result = send_terminal_size_with_auto_detect(sockfd, width, height);
-  mutex_unlock(&g_send_mutex);
-  return result;
+  // Build terminal capabilities packet locally
+  // Detect terminal capabilities automatically
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+
+  // Apply user's color mode override
+  caps = apply_color_mode_override(caps);
+
+  // Check if detection was reliable, use fallback only for auto-detection
+  if (!caps.detection_reliable && opt_color_mode == COLOR_MODE_AUTO) {
+    log_warn("Terminal capability detection not reliable, using fallback");
+    SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
+    caps.color_level = TERM_COLOR_NONE;
+    caps.color_count = 2;
+    caps.capabilities = 0;
+    SAFE_STRNCPY(caps.term_type, "unknown", sizeof(caps.term_type));
+    SAFE_STRNCPY(caps.colorterm, "", sizeof(caps.colorterm));
+    caps.detection_reliable = 0;
+  }
+
+  // Convert to network packet format with proper byte order
+  terminal_capabilities_packet_t net_packet;
+  net_packet.capabilities = htonl(caps.capabilities);
+  net_packet.color_level = htonl(caps.color_level);
+  net_packet.color_count = htonl(caps.color_count);
+  net_packet.render_mode = htonl(caps.render_mode);
+  net_packet.width = htons(width);
+  net_packet.height = htons(height);
+  net_packet.palette_type = htonl(opt_palette_type);
+  net_packet.utf8_support = htonl(caps.utf8_support ? 1 : 0);
+
+  if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
+    SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
+    net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
+  } else {
+    SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
+  }
+
+  // Set desired FPS
+  if (g_max_fps > 0) {
+    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  } else {
+    net_packet.desired_fps = caps.desired_fps;
+  }
+
+  if (net_packet.desired_fps == 0) {
+    net_packet.desired_fps = DEFAULT_MAX_FPS;
+  }
+
+  SAFE_STRNCPY(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type));
+  net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
+
+  SAFE_STRNCPY(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm));
+  net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
+
+  net_packet.detection_reliable = caps.detection_reliable;
+  net_packet.utf8_support = opt_force_utf8 ? 1 : 0;
+
+  SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
+
+  // Use threaded_send_packet() which handles encryption
+  return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
 }
 
 int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
@@ -635,8 +695,13 @@ int threaded_send_client_join_packet(const char *display_name, uint32_t capabili
     return -1;
   }
 
-  mutex_lock(&g_send_mutex);
-  int result = send_client_join_packet(sockfd, display_name, capabilities);
-  mutex_unlock(&g_send_mutex);
-  return result;
+  // Build CLIENT_JOIN packet locally
+  client_info_packet_t join_packet;
+  SAFE_MEMSET(&join_packet, sizeof(join_packet), 0, sizeof(join_packet));
+  join_packet.client_id = 0; // Will be assigned by server
+  SAFE_SNPRINTF(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
+  join_packet.capabilities = capabilities;
+
+  // Use threaded_send_packet() which handles encryption
+  return threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
 }

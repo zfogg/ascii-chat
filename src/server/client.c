@@ -123,6 +123,7 @@
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"
 #include "common.h"
+#include "options.h"
 #include "buffer_pool.h"
 #include "network.h"
 #include "packet_queue.h"
@@ -667,41 +668,43 @@ void *client_receive_thread(void *arg) {
 
   log_info("Started receive thread for client %u (%s)", client->client_id, client->display_name);
 
-  packet_type_t type;
-  uint32_t sender_id;
-  void *data = NULL; // Initialize to prevent static analyzer warning about uninitialized use
-  size_t len;
-
   while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
-    // Always use normal packet reception - encrypted packets are handled in the switch statement
-    int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+    // Use unified secure packet reception
+    packet_envelope_t envelope;
+    packet_recv_result_t result = receive_packet_secure(client->socket, NULL, !opt_no_encrypt, &envelope);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_should_exit)) {
       // Free any data that might have been allocated
-      if (data) {
-        buffer_pool_free(data, len);
-        data = NULL;
+      if (envelope.data) {
+        buffer_pool_free(envelope.data, envelope.len);
       }
       break;
     }
 
-    if (result <= 0) {
-      if (result == 0) {
-        log_info("DISCONNECT: Client %u disconnected (clean close, result=0)", client->client_id);
-      } else {
-        log_error("DISCONNECT: Error receiving from client %u (result=%d): %s", client->client_id, result,
-                  SAFE_STRERROR(errno));
-      }
-      // Free any data that might have been allocated before the error
-      if (data) {
-        buffer_pool_free(data, len);
-        data = NULL;
-      }
-      // Don't just mark inactive - properly remove the client
-      // This will be done after the loop exits
+    // Handle different result codes
+    if (result == PACKET_RECV_CLOSED) {
+      log_info("DISCONNECT: Client %u disconnected (clean close)", client->client_id);
       break;
     }
+
+    if (result == PACKET_RECV_ERROR) {
+      log_error("DISCONNECT: Error receiving from client %u: %s", client->client_id, SAFE_STRERROR(errno));
+      break;
+    }
+
+    if (result == PACKET_RECV_SECURITY_VIOLATION) {
+      log_error("SECURITY: Client %u violated encryption policy - terminating server", client->client_id);
+      // Exit the server as a security measure
+      atomic_store(&g_should_exit, true);
+      break;
+    }
+
+    // Extract packet details from envelope
+    packet_type_t type = envelope.type;
+    void *data = envelope.data;
+    size_t len = envelope.len;
+    uint32_t sender_id = envelope.client_id;
 
     // Handle different packet types from client
     switch (type) {
@@ -735,12 +738,6 @@ void *client_receive_thread(void *arg) {
       buffer_pool_free(data, len);
       data = NULL;
     }
-  }
-
-  // CRITICAL: Cleanup any remaining allocated packet data if thread exited loop early during shutdown
-  if (data) {
-    buffer_pool_free(data, len);
-    data = NULL;
   }
 
   // Mark client as inactive and stop all threads
@@ -835,16 +832,60 @@ void *client_send_thread_func(void *arg) {
                                         .crc32 = htonl(0),
                                         .client_id = htonl(0)};
 
-        ssize_t sent = send_with_timeout(client->socket, &clear_header, sizeof(clear_header), SEND_TIMEOUT);
-        if (sent == sizeof(clear_header)) {
-          log_info("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
-                   rendered_sources);
-          atomic_store(&client->last_sent_grid_sources, rendered_sources);
-          sent_something = true;
+        ssize_t sent = 0;
+        // Check if crypto is enabled and encrypt if needed
+        if (crypto_server_is_ready(client->client_id)) {
+          // Encrypt the CLEAR_CONSOLE packet
+          size_t plaintext_len = sizeof(clear_header);
+          size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+          uint8_t *ciphertext = buffer_pool_alloc(ciphertext_size);
+          if (!ciphertext) {
+            log_error("Failed to allocate buffer for encrypted CLEAR_CONSOLE to client %u", client->client_id);
+            break;
+          }
+
+          size_t ciphertext_len;
+          int encrypt_result = crypto_server_encrypt_packet(client->client_id, (uint8_t *)&clear_header, plaintext_len,
+                                                            ciphertext, ciphertext_size, &ciphertext_len);
+          if (encrypt_result != 0) {
+            log_error("Failed to encrypt CLEAR_CONSOLE for client %u (result=%d)", client->client_id, encrypt_result);
+            buffer_pool_free(ciphertext, ciphertext_size);
+            break;
+          }
+
+          // Build encrypted packet wrapper
+          packet_header_t encrypted_header = {.magic = htonl(PACKET_MAGIC),
+                                              .type = htons(PACKET_TYPE_ENCRYPTED),
+                                              .length = htonl((uint32_t)ciphertext_len),
+                                              .crc32 = htonl(asciichat_crc32(ciphertext, ciphertext_len)),
+                                              .client_id = htonl(0)};
+
+          // Send encrypted packet (header + ciphertext)
+          sent = send_with_timeout(client->socket, &encrypted_header, sizeof(encrypted_header), SEND_TIMEOUT);
+          if (sent == sizeof(encrypted_header)) {
+            sent = send_with_timeout(client->socket, ciphertext, ciphertext_len, SEND_TIMEOUT);
+            if (sent == (ssize_t)ciphertext_len) {
+              log_info("Client %u: Sent encrypted CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id,
+                       sent_sources, rendered_sources);
+              atomic_store(&client->last_sent_grid_sources, rendered_sources);
+              sent_something = true;
+            }
+          }
+          buffer_pool_free(ciphertext, ciphertext_size);
         } else {
+          // No encryption - send packet directly
+          sent = send_with_timeout(client->socket, &clear_header, sizeof(clear_header), SEND_TIMEOUT);
+          if (sent == sizeof(clear_header)) {
+            log_info("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
+                     rendered_sources);
+            atomic_store(&client->last_sent_grid_sources, rendered_sources);
+            sent_something = true;
+          }
+        }
+
+        if (sent <= 0) {
           if (!atomic_load(&g_should_exit)) {
-            log_error("Client %u: Failed to send CLEAR_CONSOLE: %zd/%zu bytes", client->client_id, sent,
-                      sizeof(clear_header));
+            log_error("Client %u: Failed to send CLEAR_CONSOLE", client->client_id);
           }
           break; // Socket error
         }

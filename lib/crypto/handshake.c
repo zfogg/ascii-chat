@@ -530,15 +530,50 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
     }
   }
 
-  if (client_key_required && !has_client_key) {
-    log_error("Server requires client key authentication (whitelist)");
-    log_error("Please provide --key with your authorized Ed25519 key");
-    buffer_pool_free(payload, payload_len);
-    return -2; // Authentication failure
-  }
+  // Authentication response priority (identity is optional, password is optional):
+  // 1. If server requires identity (whitelist) → MUST send Ed25519 signature, error if no key
+  // 2. Else if server requires password → MUST send HMAC, error if no password
+  // 3. Else if client has SSH key → send Ed25519 signature (optional identity proof)
+  // 4. Else if client has password → send HMAC (optional password auth)
+  // 5. Else → no authentication available
 
-  // If password-based auth, use HMAC response
-  if (ctx->crypto_ctx.has_password) {
+  if (client_key_required) {
+    // Server requires client key (whitelist) - HIGHEST PRIORITY
+    if (!has_client_key) {
+      log_error("Server requires client key authentication (whitelist)");
+      log_error("Please provide --key with your authorized Ed25519 key");
+      buffer_pool_free(payload, payload_len);
+      return -2; // Authentication failure - exit
+    }
+
+    // Send Ed25519 signature
+    uint8_t signature[64];
+    int sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, 32, signature);
+    buffer_pool_free(payload, payload_len);
+
+    if (sign_result != 0) {
+      log_error("Failed to sign challenge with Ed25519 key");
+      return -1;
+    }
+
+    log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature (64 bytes) for whitelist verification");
+    result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, signature, sizeof(signature));
+    if (result != 0) {
+      log_error("Failed to send AUTH_RESPONSE packet");
+      return -1;
+    }
+
+    sodium_memzero(signature, sizeof(signature));
+  } else if (password_required) {
+    // Server requires password - SECOND PRIORITY
+    if (!has_password) {
+      log_error("Server requires password authentication");
+      log_error("Please provide --password for this server");
+      buffer_pool_free(payload, payload_len);
+      return -2; // Authentication failure - exit
+    }
+
+    // Send HMAC
     uint8_t hmac_response[32];
     const uint8_t *auth_key = ctx->crypto_ctx.password_key;
     crypto_result_t crypto_result = crypto_compute_hmac(auth_key, nonce, hmac_response);
@@ -549,15 +584,14 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
     }
     buffer_pool_free(payload, payload_len);
 
-    // Send AUTH_RESPONSE with HMAC (32 bytes for password-based auth)
-    log_debug("Sending AUTH_RESPONSE packet with HMAC (32 bytes)");
+    log_debug("Sending AUTH_RESPONSE packet with HMAC (32 bytes) for password verification");
     result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, hmac_response, sizeof(hmac_response));
     if (result != 0) {
       log_error("Failed to send AUTH_RESPONSE packet");
       return -1;
     }
-  } else {
-    // Public key auth: Sign challenge with Ed25519 private key
+  } else if (has_client_key) {
+    // No server requirements, but client has SSH key → send Ed25519 signature (optional)
     uint8_t signature[64];
     int sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, 32, signature);
     buffer_pool_free(payload, payload_len);
@@ -567,16 +601,37 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
       return -1;
     }
 
-    // Send AUTH_RESPONSE with Ed25519 signature (64 bytes for public key auth)
-    log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature (64 bytes)");
+    log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature (64 bytes) - optional identity");
     result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, signature, sizeof(signature));
     if (result != 0) {
       log_error("Failed to send AUTH_RESPONSE packet");
       return -1;
     }
 
-    // Zero out sensitive data
     sodium_memzero(signature, sizeof(signature));
+  } else if (has_password) {
+    // No server requirements, but client has password → send HMAC (optional)
+    uint8_t hmac_response[32];
+    const uint8_t *auth_key = ctx->crypto_ctx.password_key;
+    crypto_result_t crypto_result = crypto_compute_hmac(auth_key, nonce, hmac_response);
+    if (crypto_result != CRYPTO_OK) {
+      log_error("Failed to compute HMAC response: %s", crypto_result_to_string(crypto_result));
+      buffer_pool_free(payload, payload_len);
+      return -1;
+    }
+    buffer_pool_free(payload, payload_len);
+
+    log_debug("Sending AUTH_RESPONSE packet with HMAC (32 bytes) - optional password");
+    result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, hmac_response, sizeof(hmac_response));
+    if (result != 0) {
+      log_error("Failed to send AUTH_RESPONSE packet");
+      return -1;
+    }
+  } else {
+    // No authentication method available
+    buffer_pool_free(payload, payload_len);
+    // Continue without authentication (server will decide if this is acceptable)
+    log_debug("No authentication credentials provided - continuing without authentication");
   }
 
   ctx->state = CRYPTO_HANDSHAKE_AUTHENTICATING;
