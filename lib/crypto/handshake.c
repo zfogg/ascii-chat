@@ -92,10 +92,35 @@ int crypto_handshake_server_start(crypto_handshake_context_t *ctx, socket_t clie
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT)
     return -1;
 
-  // Send public key using proper packet protocol
-  log_debug("Sending KEY_EXCHANGE_INIT packet with public key (%d bytes)", CRYPTO_PUBLIC_KEY_SIZE);
-  int result =
-      send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  int result;
+
+  // Check if we have an identity key to send authenticated packet
+  if (ctx->server_private_key.type == KEY_TYPE_ED25519) {
+    // Extended packet format: [ephemeral_key:32][identity_key:32][signature:64]
+    uint8_t extended_packet[128];
+
+    // Copy ephemeral X25519 public key
+    memcpy(extended_packet, ctx->crypto_ctx.public_key, 32);
+
+    // Copy Ed25519 identity public key
+    memcpy(extended_packet + 32, ctx->server_private_key.public_key, 32);
+
+    // Sign the ephemeral key with our identity key
+    log_debug("Signing ephemeral key with server identity key");
+    if (ed25519_sign_message(&ctx->server_private_key, ctx->crypto_ctx.public_key, 32, extended_packet + 64) != 0) {
+      log_error("Failed to sign ephemeral key with identity key");
+      return -1;
+    }
+
+    log_info("Sending authenticated KEY_EXCHANGE_INIT (128 bytes: ephemeral + identity + signature)");
+    result = send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_INIT, extended_packet, 128);
+  } else {
+    // Legacy format: just ephemeral key (backward compatible)
+    log_debug("Sending KEY_EXCHANGE_INIT packet with public key only (%d bytes)", CRYPTO_PUBLIC_KEY_SIZE);
+    result =
+        send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  }
+
   if (result != 0) {
     log_error("Failed to send KEY_EXCHANGE_INIT packet");
     return -1;
@@ -129,36 +154,58 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
     return -1;
   }
 
-  // Verify payload size
-  if (payload_len != CRYPTO_PUBLIC_KEY_SIZE) {
-    log_error("Invalid public key size: %zu bytes (expected %d)", payload_len, CRYPTO_PUBLIC_KEY_SIZE);
+  // Check payload size - support both legacy (32 bytes) and authenticated (128 bytes) formats
+  uint8_t server_ephemeral_key[32];
+  uint8_t server_identity_key[32];
+  uint8_t server_signature[64];
+
+  if (payload_len == 32) {
+    // Legacy format: just ephemeral key
+    log_debug("Received legacy KEY_EXCHANGE_INIT (32 bytes, no authentication)");
+    memcpy(server_ephemeral_key, payload, 32);
+  } else if (payload_len == 128) {
+    // Authenticated format: [ephemeral:32][identity:32][signature:64]
+    log_info("Received authenticated KEY_EXCHANGE_INIT (128 bytes)");
+    memcpy(server_ephemeral_key, payload, 32);
+    memcpy(server_identity_key, payload + 32, 32);
+    memcpy(server_signature, payload + 64, 64);
+
+    // Verify signature: server identity signed the ephemeral key
+    log_debug("Verifying server's signature over ephemeral key");
+    if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, 32, server_signature) != 0) {
+      log_error("Server signature verification FAILED - rejecting connection");
+      buffer_pool_free(payload, payload_len);
+      return -1;
+    }
+    log_info("Server signature verified successfully");
+
+    // Verify server identity against expected key if --server-key is specified
+    if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
+      // Parse the expected server key
+      public_key_t expected_key;
+      if (parse_public_key(ctx->expected_server_key, &expected_key) != 0) {
+        log_error("Failed to parse expected server key: %s", ctx->expected_server_key);
+        buffer_pool_free(payload, payload_len);
+        return -1;
+      }
+
+      // Compare server's IDENTITY key with expected key
+      if (memcmp(server_identity_key, expected_key.key, 32) != 0) {
+        log_error("Server identity key mismatch - potential MITM attack!");
+        log_error("Expected key: %s", ctx->expected_server_key);
+        buffer_pool_free(payload, payload_len);
+        return -1;
+      }
+      log_info("Server identity key verified against --server-key");
+    }
+  } else {
+    log_error("Invalid KEY_EXCHANGE_INIT size: %zu bytes (expected 32 or 128)", payload_len);
     buffer_pool_free(payload, payload_len);
     return -1;
   }
 
-  // Verify server key against expected key if --server-key is specified
-  if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
-    // Parse the expected server key
-    public_key_t expected_key;
-    if (parse_public_key(ctx->expected_server_key, &expected_key) != 0) {
-      log_error("Failed to parse expected server key: %s", ctx->expected_server_key);
-      buffer_pool_free(payload, payload_len);
-      return -1;
-    }
-
-    // Compare server's public key with expected key
-    if (memcmp(payload, expected_key.key, CRYPTO_PUBLIC_KEY_SIZE) != 0) {
-      log_error("Server key mismatch - potential MITM attack!");
-      log_error("Expected key: %s", ctx->expected_server_key);
-      // TODO: Display server's actual key for debugging
-      buffer_pool_free(payload, payload_len);
-      return -1;
-    }
-    log_info("Server key verified successfully");
-  }
-
-  // Set peer's public key - this also derives the shared secret
-  crypto_result_t crypto_result = crypto_set_peer_public_key(&ctx->crypto_ctx, payload);
+  // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret
+  crypto_result_t crypto_result = crypto_set_peer_public_key(&ctx->crypto_ctx, server_ephemeral_key);
   buffer_pool_free(payload, payload_len);
   if (crypto_result != CRYPTO_OK) {
     log_error("Failed to set peer public key and derive shared secret: %s", crypto_result_to_string(crypto_result));
@@ -166,16 +213,22 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
   }
 
   // Determine if client has an identity key
-  bool client_has_identity_key = (ctx->client_public_key.type == KEY_TYPE_ED25519);
+  bool client_has_identity_key = (ctx->client_private_key.type == KEY_TYPE_ED25519);
 
   if (client_has_identity_key) {
-    // Send X25519 encryption key + Ed25519 identity key to server
-    // Format: [X25519 pubkey (32)] [Ed25519 pubkey (32)] = 64 bytes total
-    uint8_t key_response[64];
-    memcpy(key_response, ctx->crypto_ctx.public_key, 32);      // X25519 for encryption
-    memcpy(key_response + 32, ctx->client_public_key.key, 32); // Ed25519 for identity
+    // Send authenticated packet: [ephemeral:32][identity:32][signature:64] = 128 bytes
+    uint8_t key_response[128];
+    memcpy(key_response, ctx->crypto_ctx.public_key, 32);              // X25519 ephemeral for encryption
+    memcpy(key_response + 32, ctx->client_private_key.public_key, 32); // Ed25519 identity
 
-    log_debug("Sending KEY_EXCHANGE_RESPONSE packet with X25519 + Ed25519 keys (64 bytes)");
+    // Sign ephemeral key with client identity key
+    log_debug("Signing client ephemeral key with identity key");
+    if (ed25519_sign_message(&ctx->client_private_key, ctx->crypto_ctx.public_key, 32, key_response + 64) != 0) {
+      log_error("Failed to sign client ephemeral key");
+      return -1;
+    }
+
+    log_info("Sending authenticated KEY_EXCHANGE_RESPONSE (128 bytes: ephemeral + identity + signature)");
     result = send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_RESPONSE, key_response, sizeof(key_response));
     if (result != 0) {
       log_error("Failed to send KEY_EXCHANGE_RESPONSE packet");
@@ -184,10 +237,10 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
 
     // Zero out the buffer
     sodium_memzero(key_response, sizeof(key_response));
-    log_debug("Client sent X25519 encryption key + Ed25519 identity key to server");
+    log_debug("Client sent authenticated response to server");
   } else {
     // Send X25519 encryption key only to server (no identity key)
-    // Format: [X25519 pubkey (32)] = 32 bytes total
+    // Format: [X25519 pubkey (32)] = 32 bytes total (backward compatible)
     log_debug("Sending KEY_EXCHANGE_RESPONSE packet with X25519 key only (32 bytes)");
     result = send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_RESPONSE, ctx->crypto_ctx.public_key, 32);
     if (result != 0) {
@@ -226,27 +279,49 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
 
   // Verify payload size - can be:
   // - 32 bytes: X25519 only (client without key, no authentication)
-  // - 64 bytes: X25519 + Ed25519 (client with key, can authenticate)
-  bool client_has_identity_key = false;
+  // - 128 bytes: X25519 + Ed25519 + signature (client with authenticated key)
+  bool client_sent_identity = false;
+  uint8_t client_ephemeral_key[32];
+  uint8_t client_identity_key[32];
+  uint8_t client_signature[64];
+
   if (payload_len == 32) {
     log_debug("Client sent X25519 key only (32 bytes) - no identity authentication");
-    client_has_identity_key = false;
-  } else if (payload_len == 64) {
-    log_debug("Client sent X25519 + Ed25519 keys (64 bytes) - identity authentication possible");
-    client_has_identity_key = true;
+    memcpy(client_ephemeral_key, payload, 32);
+    client_sent_identity = false;
+  } else if (payload_len == 128) {
+    // Authenticated format: [ephemeral:32][identity:32][signature:64]
+    log_info("Client sent authenticated response (128 bytes)");
+    memcpy(client_ephemeral_key, payload, 32);
+    memcpy(client_identity_key, payload + 32, 32);
+    memcpy(client_signature, payload + 64, 64);
+    client_sent_identity = true;
+
+    // Verify signature: client identity signed the ephemeral key
+    log_debug("Verifying client's signature over ephemeral key");
+    if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, 32, client_signature) != 0) {
+      log_error("Client signature verification FAILED - rejecting connection");
+      buffer_pool_free(payload, payload_len);
+      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
+      return -1;
+    }
+    log_info("Client signature verified successfully");
+
+    // Store the verified client identity for whitelist checking
+    ctx->client_ed25519_key.type = KEY_TYPE_ED25519;
+    memcpy(ctx->client_ed25519_key.key, client_identity_key, 32);
   } else {
-    log_error("Invalid client key response size: %zu bytes (expected 32 or 64)", payload_len);
+    log_error("Invalid client key response size: %zu bytes (expected 32 or 128)", payload_len);
     buffer_pool_free(payload, payload_len);
     return -1;
   }
 
-  // Extract X25519 encryption key (always present)
-  const uint8_t *client_x25519 = payload;
-  const uint8_t *client_ed25519 = client_has_identity_key ? (payload + 32) : NULL;
+  // Extract pointers for compatibility with existing code
+  const uint8_t *client_x25519 = client_ephemeral_key;
+  const uint8_t *client_ed25519 = client_sent_identity ? client_identity_key : NULL;
 
   // If whitelist is required but client didn't provide identity key, reject
-  if (ctx->require_client_auth && ctx->client_whitelist && ctx->num_whitelisted_clients > 0 &&
-      !client_has_identity_key) {
+  if (ctx->require_client_auth && ctx->client_whitelist && ctx->num_whitelisted_clients > 0 && !client_sent_identity) {
     log_error("Server requires client authentication but client did not provide identity key");
     buffer_pool_free(payload, payload_len);
     send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
@@ -254,8 +329,7 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
   }
 
   // Check client Ed25519 key against whitelist if client provided one and whitelist is enabled
-  if (client_has_identity_key && ctx->require_client_auth && ctx->client_whitelist &&
-      ctx->num_whitelisted_clients > 0) {
+  if (client_sent_identity && ctx->require_client_auth && ctx->client_whitelist && ctx->num_whitelisted_clients > 0) {
     bool key_found = false;
 
     // Debug: print client's Ed25519 identity key
@@ -297,10 +371,9 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
       send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
       return -1;
     }
-  } else if (client_has_identity_key) {
+  } else if (client_sent_identity) {
     // No whitelist checking - just store the client's Ed25519 key for later
-    memcpy(ctx->client_ed25519_key.key, client_ed25519, 32);
-    ctx->client_ed25519_key.type = KEY_TYPE_ED25519;
+    // (Already stored at line 313-314, but keep this for clarity)
     ctx->client_ed25519_key_verified = false;
   }
 
@@ -312,14 +385,14 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     return -1;
   }
 
-  if (client_has_identity_key) {
+  if (client_sent_identity) {
     log_debug("Client keys processed: X25519 for encryption, Ed25519 for identity");
   } else {
     log_debug("Client key processed: X25519 for encryption only (no identity authentication)");
   }
 
   // Only do authentication challenge if client provided an identity key
-  if (client_has_identity_key) {
+  if (client_sent_identity) {
     // Generate nonce and store it in the context
     crypto_result = crypto_generate_nonce(ctx->crypto_ctx.auth_nonce);
     if (crypto_result != CRYPTO_OK) {

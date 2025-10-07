@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <sodium.h>
 
 // Global crypto handshake context for this client connection
@@ -51,22 +52,74 @@ int client_crypto_init(void) {
   bool is_ssh_key = false;
   private_key_t private_key;
 
-  // Try to detect SSH key by attempting to parse as SSH key first
+  // Load client private key if provided via --key
   if (strlen(opt_encrypt_key) > 0) {
-    // First check if it's a readable file
-    FILE *test_file = fopen(opt_encrypt_key, "r");
-    if (test_file != NULL) {
-      fclose(test_file);
+    // --key is for file-based authentication (SSH keys, GPG keys, GitHub/GitLab)
 
-      // Try to parse as Ed25519 SSH key
-      log_debug("CLIENT_CRYPTO_INIT: Attempting to parse as SSH key: %s", opt_encrypt_key);
-      if (parse_private_key(opt_encrypt_key, &private_key) == 0) {
-        log_info("Successfully parsed SSH private key");
-        is_ssh_key = true;
-      } else {
-        // File exists but isn't a valid SSH key - will fall through to password handling
-        log_debug("CLIENT_CRYPTO_INIT: Not a valid SSH key, will treat as password file");
+    // Check for special formats (gpg:, github:, gitlab:)
+    if (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
+        strncmp(opt_encrypt_key, "gitlab:", 7) == 0) {
+      // TODO: Implement GPG/GitHub/GitLab key fetching
+      log_error("GPG/GitHub/GitLab keys not yet implemented: %s", opt_encrypt_key);
+      log_error("Please use a local SSH key file with --key /path/to/key");
+      return -1;
+    }
+
+    // Treat as file path - verify it exists and is accessible
+    struct stat st;
+    if (stat(opt_encrypt_key, &st) != 0) {
+      // File doesn't exist
+      log_error("Key file not found: %s", opt_encrypt_key);
+      log_error("Please check the file path or use --password for password-based encryption");
+      return -1;
+    }
+
+    // File exists - check if it's readable
+    FILE *test_file = fopen(opt_encrypt_key, "r");
+    if (test_file == NULL) {
+      // File exists but can't be read (permission denied)
+      log_error("Cannot read key file: %s", opt_encrypt_key);
+      log_error("Please check file permissions (should be 600 or 400)");
+      return -1;
+    }
+
+    // Check if this is an SSH key file by looking for the header
+    char header[256];
+    bool is_ssh_key_file = false;
+    if (fgets(header, sizeof(header), test_file) != NULL) {
+      if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
+          strstr(header, "BEGIN EC PRIVATE KEY") != NULL) {
+        is_ssh_key_file = true;
       }
+    }
+    fclose(test_file);
+
+    if (!is_ssh_key_file) {
+      log_error("File is not a valid SSH key: %s", opt_encrypt_key);
+      log_error("Expected SSH private key format (BEGIN OPENSSH PRIVATE KEY)");
+      log_error("Use --password for password-based encryption instead");
+      return -1;
+    }
+
+    // Check permissions for SSH key files (should be 600 or 400)
+    if ((st.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
+      log_warn("SSH key file %s has overly permissive permissions: %o", opt_encrypt_key, st.st_mode & 0777);
+      log_warn("Recommended: chmod 600 %s", opt_encrypt_key);
+      log_warn("Continuing anyway, but this is a security risk");
+    }
+
+    // Parse SSH key file
+    log_debug("CLIENT_CRYPTO_INIT: Loading SSH key for authentication: %s", opt_encrypt_key);
+    if (parse_private_key(opt_encrypt_key, &private_key) == 0) {
+      log_info("Successfully parsed SSH private key");
+      is_ssh_key = true;
+    } else {
+      log_error("Failed to parse SSH key file: %s", opt_encrypt_key);
+      log_error("This may be due to:");
+      log_error("  - Wrong password");
+      log_error("  - Unsupported key type (only Ed25519 supported)");
+      log_error("  - Corrupted key file");
+      return -1;
     }
   }
 

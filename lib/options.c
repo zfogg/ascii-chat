@@ -124,7 +124,8 @@ char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
 // Encryption options
 unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
-char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
+char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // SSH/GPG key file from --key (file-based only)
+char opt_password[OPTIONS_BUFF_SIZE] = "";        // Password string from --password
 char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
 
 // New crypto options (Phase 2)
@@ -186,6 +187,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
+                                         {"password", required_argument, NULL, 1009},
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"server-key", required_argument, NULL, 1006},
@@ -202,6 +204,7 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
+                                         {"password", required_argument, NULL, 1009},
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"client-keys", required_argument, NULL, 1008},
@@ -619,26 +622,30 @@ void options_init(int argc, char **argv, bool is_client) {
     case 'K': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
 
+      // --key is for file-based authentication only (SSH keys, GPG keys, GitHub/GitLab)
+      // For password-based encryption, use --password instead
+
       // Check if it's a GPG key (gpg:keyid format)
       if (strncmp(value_str, "gpg:", 4) == 0) {
         SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-        opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
-        log_info("GPG encryption key set: %s", value_str);
+        opt_encrypt_enabled = 1;
       }
-      // Check if it's an SSH key file path (starts with ~/.ssh/ or contains /ssh/ or ends with _ed25519)
-      else if (strstr(value_str, "/.ssh/") != NULL || strstr(value_str, "/ssh/") != NULL ||
-               strstr(value_str, "_ed25519") != NULL || strstr(value_str, "id_ed25519") != NULL) {
+      // Check if it's a GitHub key (github:username format)
+      else if (strncmp(value_str, "github:", 7) == 0) {
         SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-        opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
-        log_info("SSH key file set: %s", value_str);
+        opt_encrypt_enabled = 1;
+      }
+      // Check if it's a GitLab key (gitlab:username format)
+      else if (strncmp(value_str, "gitlab:", 7) == 0) {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1;
       }
       // Check if it's "ssh" or "ssh:" to auto-detect SSH key
       else if (strcmp(value_str, "ssh") == 0 || strcmp(value_str, "ssh:") == 0) {
         char default_key[OPTIONS_BUFF_SIZE];
         if (detect_default_ssh_key(default_key, sizeof(default_key)) == 0) {
           SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", default_key);
-          opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
-          log_info("Auto-detected SSH key: %s", default_key);
+          opt_encrypt_enabled = 1;
         } else {
           (void)fprintf(stderr, "No Ed25519 SSH key found for auto-detection\n");
           (void)fprintf(stderr, "Please specify a key with --key /path/to/key\n");
@@ -646,11 +653,11 @@ void options_init(int argc, char **argv, bool is_client) {
           _exit(EXIT_FAILURE);
         }
       }
-      // Default: treat as password
+      // Otherwise, treat as a file path - will be validated later for existence/permissions
       else {
+        // Treat as SSH key file path - will be validated later for existence/permissions
         SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-        opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
-        log_info("Encryption key set from --key option");
+        opt_encrypt_enabled = 1;
       }
       break;
     }
@@ -665,21 +672,25 @@ void options_init(int argc, char **argv, bool is_client) {
     case 1005: { // --no-encrypt (disable encryption)
       opt_no_encrypt = 1;
       opt_encrypt_enabled = 0; // Disable encryption
-      log_info("Encryption disabled via --no-encrypt");
       break;
     }
 
     case 1006: { // --server-key (client only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", is_client);
       SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-      log_info("Server key verification enabled: %s", value_str);
       break;
     }
 
     case 1008: { // --client-keys (server only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
       SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
-      log_info("Client whitelist enabled: %s", value_str);
+      break;
+    }
+
+    case 1009: { // --password (password-based encryption)
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "password", is_client);
+      SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", value_str);
+      opt_encrypt_enabled = 1; // Auto-enable encryption when password provided
       break;
     }
 
@@ -807,9 +818,12 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
                                    "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT
-                "-K --key KEY                  " USAGE_INDENT
-                "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-K --key KEY                  " USAGE_INDENT
+                                   "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, "
+                                   "gitlab:user, or 'ssh' for auto-detect "
+                                   "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --password PASS            " USAGE_INDENT
+                                   "password for connection encryption (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc,
@@ -836,7 +850,10 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT
                 "-K --key KEY         " USAGE_INDENT
-                "encryption key: password, SSH key file, or gpg:keyid (implies --encrypt) (default: [unset])\n");
+                "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' "
+                "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --password PASS   " USAGE_INDENT
+                                   "password for connection encryption (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --no-encrypt       " USAGE_INDENT "disable encryption (default: [unset])\n");

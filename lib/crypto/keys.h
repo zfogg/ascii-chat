@@ -49,6 +49,7 @@ int parse_public_key(const char *input, public_key_t *key_out);
 // Supports:
 //   - ~/.ssh/id_ed25519 (OpenSSH Ed25519 format)
 //   - Raw hex file (64 chars for X25519)
+// If the key is encrypted, prompts for password and decrypts it.
 // Returns: 0 on success, -1 on failure
 int parse_private_key(const char *path, private_key_t *key_out);
 
