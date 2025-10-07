@@ -15,28 +15,46 @@
 #include "crypto/keys.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(crypto_keys);
+// Use the enhanced macro to create complete test suite with debug logging
+TEST_SUITE_WITH_DEBUG_LOGGING(crypto_keys);
 
 // =============================================================================
 // Hex Decode Tests (Parameterized)
 // =============================================================================
 
 typedef struct {
-  const char *hex;
+  char hex[128];
   size_t expected_len;
   int expected_result;
-  const char *description;
+  char description[64];
 } hex_decode_test_case_t;
 
 static hex_decode_test_case_t hex_decode_cases[] = {
-    {"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", 32, 0, "valid 64-char hex string"},
-    {"0123456789abcdef", 32, -1, "invalid length (16 chars, need 32)"},
-    {"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg", 32, -1, "invalid characters (contains 'g')"},
-    {"", 32, -1, "empty string"},
-    {"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0", 32, -1, "too long (65 chars)"},
-    {"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde", 32, -1, "too short (63 chars)"},
-    {"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", 16, -1, "wrong expected length"}};
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+     .expected_len = 32,
+     .expected_result = 0,
+     .description = "valid 64-char hex string"},
+    {.hex = "0123456789abcdef",
+     .expected_len = 32,
+     .expected_result = -1,
+     .description = "invalid length (16 chars, need 32)"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg",
+     .expected_len = 32,
+     .expected_result = -1,
+     .description = "invalid characters (contains 'g')"},
+    {.hex = "", .expected_len = 32, .expected_result = -1, .description = "empty string"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+     .expected_len = 32,
+     .expected_result = -1,
+     .description = "too long (65 chars)"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde",
+     .expected_len = 32,
+     .expected_result = -1,
+     .description = "too short (63 chars)"},
+    {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+     .expected_len = 16,
+     .expected_result = -1,
+     .description = "wrong expected length"}};
 
 ParameterizedTestParameters(crypto_keys, hex_decode_tests) {
   size_t nb_cases = sizeof(hex_decode_cases) / sizeof(hex_decode_cases[0]);
@@ -44,9 +62,13 @@ ParameterizedTestParameters(crypto_keys, hex_decode_tests) {
 }
 
 ParameterizedTest(hex_decode_test_case_t *tc, crypto_keys, hex_decode_tests) {
+  log_debug("Test start: tc=%p", (void *)tc);
+  log_debug("Test hex=%s, expected_len=%zu", tc->hex, tc->expected_len);
+
   uint8_t output[32];
   int result = hex_decode(tc->hex, output, tc->expected_len);
 
+  log_debug("hex_decode returned %d", result);
   cr_assert_eq(result, tc->expected_result, "Failed for case: %s", tc->description);
 
   if (tc->expected_result == 0) {
@@ -67,22 +89,54 @@ ParameterizedTest(hex_decode_test_case_t *tc, crypto_keys, hex_decode_tests) {
 // =============================================================================
 
 typedef struct {
-  const char *input;
+  char input[256];
   key_type_t expected_type;
   int expected_result;
-  const char *description;
+  char description[64];
+  bool input_is_null;
 } parse_public_key_test_case_t;
 
 static parse_public_key_test_case_t parse_public_key_cases[] = {
-    {"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGplY2VrZXJzIGVkMjU1MTkga2V5", KEY_TYPE_ED25519, 0, "valid SSH Ed25519 key"},
-    {"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", KEY_TYPE_X25519, 0, "valid X25519 hex key"},
-    {"github:testuser", KEY_TYPE_ED25519, 0, "GitHub username (should fetch first Ed25519 key)"},
-    {"gitlab:testuser", KEY_TYPE_ED25519, 0, "GitLab username (should fetch first Ed25519 key)"},
-    {"gpg:0x1234567890ABCDEF", KEY_TYPE_GPG, 0, "GPG key ID"},
-    {"invalid-key-format", KEY_TYPE_UNKNOWN, -1, "invalid key format"},
-    {"", KEY_TYPE_UNKNOWN, -1, "empty input"},
-    {NULL, KEY_TYPE_UNKNOWN, -1, "NULL input"}};
-
+    {.input = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBg7kmREayHMGWhgD0pc9wzuwdi0ibHnFmlAPwOn6mSV test-key",
+     .expected_type = KEY_TYPE_ED25519,
+     .expected_result = 0,
+     .description = "valid SSH Ed25519 key",
+     .input_is_null = false},
+    {.input = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+     .expected_type = KEY_TYPE_X25519,
+     .expected_result = 0,
+     .description = "valid X25519 hex key",
+     .input_is_null = false},
+    {.input = "github:testuser",
+     .expected_type = KEY_TYPE_ED25519,
+     .expected_result = 0,
+     .description = "GitHub username (should fetch first Ed25519 key)",
+     .input_is_null = false},
+    {.input = "gitlab:testuser",
+     .expected_type = KEY_TYPE_ED25519,
+     .expected_result = 0,
+     .description = "GitLab username (should fetch first Ed25519 key)",
+     .input_is_null = false},
+    {.input = "gpg:0x1234567890ABCDEF",
+     .expected_type = KEY_TYPE_GPG,
+     .expected_result = 0,
+     .description = "GPG key ID",
+     .input_is_null = false},
+    {.input = "invalid-key-format",
+     .expected_type = KEY_TYPE_UNKNOWN,
+     .expected_result = -1,
+     .description = "invalid key format",
+     .input_is_null = false},
+    {.input = "",
+     .expected_type = KEY_TYPE_UNKNOWN,
+     .expected_result = -1,
+     .description = "empty input",
+     .input_is_null = false},
+    {.input = "",
+     .expected_type = KEY_TYPE_UNKNOWN,
+     .expected_result = -1,
+     .description = "NULL input",
+     .input_is_null = true}};
 ParameterizedTestParameters(crypto_keys, parse_public_key_tests) {
   size_t nb_cases = sizeof(parse_public_key_cases) / sizeof(parse_public_key_cases[0]);
   return cr_make_param_array(parse_public_key_test_case_t, parse_public_key_cases, nb_cases);
@@ -90,7 +144,14 @@ ParameterizedTestParameters(crypto_keys, parse_public_key_tests) {
 
 ParameterizedTest(parse_public_key_test_case_t *tc, crypto_keys, parse_public_key_tests) {
   public_key_t key;
-  int result = parse_public_key(tc->input, &key);
+  const char *input_ptr = tc->input_is_null ? NULL : tc->input;
+
+  log_debug("Testing case: %s", tc->description);
+  log_debug("Input: %s", input_ptr ? input_ptr : "(null)");
+
+  int result = parse_public_key(input_ptr, &key);
+
+  log_debug("Result: %d, Expected: %d", result, tc->expected_result);
 
   cr_assert_eq(result, tc->expected_result, "Failed for case: %s", tc->description);
 
@@ -137,8 +198,15 @@ Test(crypto_keys, parse_private_key_null_path) {
 
 Test(crypto_keys, public_key_to_x25519_ed25519) {
   public_key_t key;
+  memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
-  memset(key.key, 0x42, 32);
+
+  // Use a valid Ed25519 public key (generated from a known seed)
+  // This is the public key from libsodium's test vectors
+  const uint8_t valid_ed25519_pk[32] = {0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a, 0x92, 0xb7, 0x0a,
+                                        0xa7, 0x4d, 0x1b, 0x7e, 0xbc, 0x9c, 0x98, 0x2c, 0xcf, 0x2e, 0xc4,
+                                        0x96, 0x8c, 0xc0, 0xcd, 0x55, 0xf1, 0x2a, 0xf4, 0x66, 0x0c};
+  memcpy(key.key, valid_ed25519_pk, 32);
 
   uint8_t x25519_key[32];
   int result = public_key_to_x25519(&key, x25519_key);
@@ -158,6 +226,7 @@ Test(crypto_keys, public_key_to_x25519_ed25519) {
 
 Test(crypto_keys, public_key_to_x25519_x25519_passthrough) {
   public_key_t key;
+  memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_X25519;
   memset(key.key, 0x42, 32);
 
@@ -170,6 +239,7 @@ Test(crypto_keys, public_key_to_x25519_x25519_passthrough) {
 
 Test(crypto_keys, public_key_to_x25519_gpg) {
   public_key_t key;
+  memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_GPG;
   memset(key.key, 0x42, 32);
 
@@ -181,6 +251,7 @@ Test(crypto_keys, public_key_to_x25519_gpg) {
 
 Test(crypto_keys, public_key_to_x25519_unknown_type) {
   public_key_t key;
+  memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_UNKNOWN;
 
   uint8_t x25519_key[32];
@@ -191,8 +262,19 @@ Test(crypto_keys, public_key_to_x25519_unknown_type) {
 
 Test(crypto_keys, private_key_to_x25519_ed25519) {
   private_key_t key;
+  memset(&key, 0, sizeof(key)); // Initialize entire struct including use_ssh_agent=false
   key.type = KEY_TYPE_ED25519;
-  memset(key.key.ed25519, 0x42, 64);
+
+  // Use a valid Ed25519 private key (seed + public key)
+  // This is from libsodium's test vectors
+  const uint8_t valid_ed25519_sk[64] = {
+      // 32-byte seed
+      0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5,
+      0x69, 0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+      // 32-byte public key
+      0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72,
+      0xf3, 0xda, 0xa6, 0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a};
+  memcpy(key.key.ed25519, valid_ed25519_sk, 64);
 
   uint8_t x25519_key[32];
   int result = private_key_to_x25519(&key, x25519_key);
@@ -202,6 +284,7 @@ Test(crypto_keys, private_key_to_x25519_ed25519) {
 
 Test(crypto_keys, private_key_to_x25519_x25519_passthrough) {
   private_key_t key;
+  memset(&key, 0, sizeof(key)); // Initialize entire struct including use_ssh_agent=false
   key.type = KEY_TYPE_X25519;
   memset(key.key.x25519, 0x42, 32);
 
@@ -289,21 +372,21 @@ Test(crypto_keys, fetch_github_gpg_keys) {
 // Authorized Keys Parsing Tests
 // =============================================================================
 
-Test(crypto_keys, parse_authorized_keys_nonexistent) {
+Test(crypto_keys, parse_keys_from_file_nonexistent) {
   public_key_t keys[10];
   size_t num_keys = 0;
 
-  int result = parse_authorized_keys("/nonexistent/authorized_keys", keys, &num_keys, 10);
+  int result = parse_keys_from_file("/nonexistent/authorized_keys", keys, &num_keys, 10);
 
-  cr_assert_eq(result, -1, "Parsing nonexistent authorized_keys should fail");
+  cr_assert_eq(result, -1, "Parsing nonexistent file should fail");
   cr_assert_eq(num_keys, 0, "Number of keys should be 0 on failure");
 }
 
-Test(crypto_keys, parse_authorized_keys_null_path) {
+Test(crypto_keys, parse_keys_from_file_null_path) {
   public_key_t keys[10];
   size_t num_keys = 0;
 
-  int result = parse_authorized_keys(NULL, keys, &num_keys, 10);
+  int result = parse_keys_from_file(NULL, keys, &num_keys, 10);
 
   cr_assert_eq(result, -1, "Parsing NULL path should fail");
 }
@@ -363,7 +446,20 @@ Theory((key_type_t key_type), crypto_keys, key_type_validation) {
   cr_assume(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG);
 
   public_key_t key;
+  memset(&key, 0, sizeof(key));
   key.type = key_type;
+
+  // Initialize with valid data based on key type
+  if (key_type == KEY_TYPE_ED25519) {
+    // Use valid Ed25519 public key from libsodium test vectors
+    const uint8_t valid_ed25519_pk[32] = {0x3d, 0x40, 0x17, 0xc3, 0xe8, 0x43, 0x89, 0x5a, 0x92, 0xb7, 0x0a,
+                                          0xa7, 0x4d, 0x1b, 0x7e, 0xbc, 0x9c, 0x98, 0x2c, 0xcf, 0x2e, 0xc4,
+                                          0x96, 0x8c, 0xc0, 0xcd, 0x55, 0xf1, 0x2a, 0xf4, 0x66, 0x0c};
+    memcpy(key.key, valid_ed25519_pk, 32);
+  } else if (key_type != KEY_TYPE_UNKNOWN) {
+    // For X25519 and GPG, any data works
+    memset(key.key, 0x42, 32);
+  }
 
   // Test that the key type is preserved
   cr_assert_eq(key.type, key_type, "Key type should be preserved");

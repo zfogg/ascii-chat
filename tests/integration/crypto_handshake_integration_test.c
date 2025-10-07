@@ -282,7 +282,7 @@ Theory((const char *auth_method, bool known_hosts_verification, bool client_whit
     memset(client_key.key, 0x42, 32);
     strcpy(client_key.comment, "test-client");
 
-    // This would normally be done through parse_authorized_keys
+    // This would normally be done through parse_keys_from_file
     // For testing, we'll simulate the check
   }
 

@@ -463,7 +463,7 @@ static int init_server_crypto(void) {
   fprintf(stderr, "DEBUG: opt_client_keys='%s', strlen=%zu\n", opt_client_keys, strlen(opt_client_keys));
   if (strlen(opt_client_keys) > 0) {
     fprintf(stderr, "DEBUG: Loading whitelist from: %s\n", opt_client_keys);
-    if (parse_authorized_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+    if (parse_client_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
       log_error("Failed to load client keys: %s", opt_client_keys);
       return -1;
     }
