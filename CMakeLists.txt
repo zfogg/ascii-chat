@@ -5,9 +5,32 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+# =============================================================================
+# Dependency Cache Configuration (persistent across build/ deletions)
+# =============================================================================
+# Cache FetchContent dependencies outside build/ directory to avoid recompiling
+# them every time build/ is deleted. Dependencies are compiled once and reused.
+#
+# Separate cache directories for different build configurations:
+# - .deps-cache/<BuildType>/      : Normal glibc/system libc builds (per build type)
+# - .deps-cache-musl/<BuildType>/ : musl libc builds (different ABI, per build type)
+#
+# Build types need separate caches because dependencies like mimalloc have different
+# configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)
+#
+# To force rebuild dependencies: rm -rf .deps-cache*
+
+# Determine cache directory based on build configuration and build type
+if(USE_MUSL)
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache for musl builds")
+    message(STATUS "Using musl dependency cache: ${FETCHCONTENT_BASE_DIR}")
+else()
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache for standard builds")
+    message(STATUS "Using standard dependency cache: ${FETCHCONTENT_BASE_DIR}")
+endif()
+
 # Set up vcpkg toolchain if available (must be before project())
-# Skip vcpkg for MinGW builds as we use system package manager for MinGW
-if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND NOT USE_MINGW)
+if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})
         set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
         message(STATUS "Using vcpkg toolchain from environment: $ENV{VCPKG_ROOT}")
@@ -76,9 +99,14 @@ if(USE_MUSL)
 endif()
 
 # =============================================================================
+# Homebrew LLVM Configuration (must come before project())
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/HomebrewLLVM.cmake)
+configure_homebrew_llvm_pre_project()
+
+# =============================================================================
 # Project Declaration
 # =============================================================================
-
 
 # Set languages based on platform
 if(APPLE)
@@ -100,71 +128,17 @@ project(ascii-chat
 include(${CMAKE_SOURCE_DIR}/cmake/Sanitizers.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/WindowsWorkarounds.cmake)
-
-# =============================================================================
-# Generate version information with git commit hash (regenerated on every build)
-# =============================================================================
-
-# Create a script that generates version.h on every build
-set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/generate_version.cmake")
-file(WRITE "${VERSION_SCRIPT}" "
-# Get git describe output (includes commits since last tag)
-execute_process(
-    COMMAND git describe --tags --long --dirty --always
-    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-    OUTPUT_VARIABLE GIT_DESCRIBE
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
-
-# Parse git describe output
-# Format: v0.1.0-42-gf811525-dirty
-# where 42 is commits since tag, g prefix indicates git hash
-if(GIT_DESCRIBE MATCHES \"^v?[0-9]+\\\\.[0-9]+\\\\.[0-9]+-([0-9]+)-g([0-9a-f]+)(-dirty)?\\\$\")
-    # Has a tag with commits since
-    set(GIT_COMMITS_SINCE_TAG \"\${CMAKE_MATCH_1}\")
-    set(GIT_COMMIT_HASH \"\${CMAKE_MATCH_2}\")
-    set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_3}\")
-    set(GIT_VERSION_STRING \"\${GIT_COMMITS_SINCE_TAG}+g\${GIT_COMMIT_HASH}\${GIT_DIRTY_SUFFIX}\")
-elseif(GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)?\\\$\")
-    # No tags, just commit hash
-    set(GIT_COMMIT_HASH \"\${CMAKE_MATCH_1}\")
-    set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_2}\")
-    set(GIT_VERSION_STRING \"g\${GIT_COMMIT_HASH}\${GIT_DIRTY_SUFFIX}\")
-else()
-    # Fallback
-    set(GIT_VERSION_STRING \"unknown\")
-endif()
-
-# Set build type
-set(VERSION_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\")
-
-# Set version components
-set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set(PROJECT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
-set(PROJECT_VERSION \"${PROJECT_VERSION}\")
-
-# Generate version header
-configure_file(
-    \"${CMAKE_SOURCE_DIR}/lib/version.h.in\"
-    \"${CMAKE_BINARY_DIR}/generated/version.h\"
-    @ONLY
-)
-")
-
-# Add custom target that runs the version script on every build
-add_custom_target(generate_version
-    COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT}"
-    BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/version.h"
-    COMMENT "Generating version header with current git state..."
-    VERBATIM
-)
+include(${CMAKE_SOURCE_DIR}/cmake/Version.cmake)
 
 # =============================================================================
 # Windows-Specific Linking Fixes (must come after project())
 # =============================================================================
 fix_windows_clang_linking()
+
+# =============================================================================
+# Homebrew LLVM Configuration (post-project library paths)
+# =============================================================================
+configure_homebrew_llvm_post_project()
 find_msvc_libraries()
 
 # =============================================================================
@@ -211,108 +185,6 @@ endif()
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build" FORCE)
     message(STATUS "Set default build type to Debug")
-endif()
-
-# 5. macOS: Auto-detect and prefer Homebrew LLVM over system compiler
-if(APPLE)
-    # Check if Homebrew LLVM is installed
-    set(HOMEBREW_LLVM_PREFIX "")
-
-    # Check common Homebrew installation paths
-    if(EXISTS "/usr/local/opt/llvm/bin/clang")
-        set(HOMEBREW_LLVM_PREFIX "/usr/local/opt/llvm")
-    elseif(EXISTS "/opt/homebrew/opt/llvm/bin/clang")
-        set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
-    endif()
-
-    if(HOMEBREW_LLVM_PREFIX)
-        message(STATUS "Found Homebrew LLVM at: ${HOMEBREW_LLVM_PREFIX}")
-
-        # Always configure Homebrew LLVM if it's installed
-        # (Even if user specified it via CC environment variable)
-        set(USE_HOMEBREW_LLVM TRUE)
-
-        if(USE_HOMEBREW_LLVM)
-            # Check if compiler is already set to Homebrew LLVM
-            if(CMAKE_C_COMPILER MATCHES "${HOMEBREW_LLVM_PREFIX}")
-                message(STATUS "Using user-specified Homebrew LLVM compiler: ${CMAKE_C_COMPILER}")
-            else()
-                message(STATUS "Configuring to use Homebrew LLVM")
-
-                # Check for ccache and use it if available
-                find_program(CCACHE_PROGRAM ccache)
-                if(CCACHE_PROGRAM)
-                    message(STATUS "Found ccache: ${CCACHE_PROGRAM}")
-                    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
-                    # Set the actual compilers (ccache will wrap them via the launcher)
-                    set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
-                    message(STATUS "Using ccache with Homebrew LLVM")
-                else()
-                    # No ccache, use LLVM directly
-                    set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
-                endif()
-            endif()
-
-            # Add LLVM bin directory to PATH for tools like llvm-ar, llvm-ranlib, etc.
-            set(CMAKE_PREFIX_PATH "${HOMEBREW_LLVM_PREFIX}" ${CMAKE_PREFIX_PATH})
-
-            # Add LLVM CMake modules to module path for advanced features
-            if(EXISTS "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
-                list(APPEND CMAKE_MODULE_PATH "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
-                message(STATUS "Added LLVM CMake modules: ${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
-            endif()
-
-            # Set LLVM tool paths
-            set(CMAKE_AR "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ar" CACHE FILEPATH "Archiver" FORCE)
-            set(CMAKE_RANLIB "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ranlib" CACHE FILEPATH "Ranlib" FORCE)
-
-            # Configure resource directory BEFORE project() so flags are set early
-            # Get Clang version to construct resource directory path
-            execute_process(
-                COMMAND "${HOMEBREW_LLVM_PREFIX}/bin/clang" --version
-                OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
-            set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
-
-            # Construct resource directory (don't trust -print-resource-dir, it returns wrong path)
-            set(CLANG_RESOURCE_DIR "${HOMEBREW_LLVM_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
-
-            if(EXISTS "${CLANG_RESOURCE_DIR}/include")
-                message(STATUS "Found Clang resource directory: ${CLANG_RESOURCE_DIR}")
-                # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
-                string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-                string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-                string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-            else()
-                message(WARNING "Could not find Clang resource directory at: ${CLANG_RESOURCE_DIR}")
-            endif()
-
-            # Get macOS SDK path for standard headers
-            execute_process(
-                COMMAND xcrun --show-sdk-path
-                OUTPUT_VARIABLE MACOS_SDK_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-
-            if(MACOS_SDK_PATH)
-                message(STATUS "Found macOS SDK at: ${MACOS_SDK_PATH}")
-                # Append SDK flags to CMAKE_*_FLAGS before project()
-                string(APPEND CMAKE_C_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_CXX_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_OBJC_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_EXE_LINKER_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_SHARED_LINKER_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-            endif()
-
-            message(STATUS "Configured Homebrew LLVM: ${CMAKE_C_COMPILER}")
-        endif()
-    else()
-        message(STATUS "Homebrew LLVM not found, using system compiler")
-    endif()
 endif()
 
 # 4. Handle ccache wrapper if present
@@ -394,110 +266,8 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     endif()
 endif()
 
-# Configure Homebrew LLVM library paths after project()
-# NOTE: Compiler and SDK flags are configured BEFORE project() (see lines 334-370)
-if(APPLE)
-    # Check if we're using Homebrew LLVM (either auto-detected or user-specified)
-    if(CMAKE_C_COMPILER)
-        get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
-        get_filename_component(COMPILER_PREFIX "${COMPILER_DIR}" DIRECTORY)
-
-        # Also check for ccache wrapper pointing to Homebrew LLVM
-        set(IS_HOMEBREW_LLVM FALSE)
-        if(COMPILER_PREFIX MATCHES "/opt/homebrew/opt/llvm" OR COMPILER_PREFIX MATCHES "/usr/local/opt/llvm")
-            set(IS_HOMEBREW_LLVM TRUE)
-        elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/usr/local/opt/llvm/bin/clang")
-            set(COMPILER_PREFIX "/usr/local/opt/llvm")
-            set(IS_HOMEBREW_LLVM TRUE)
-        elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/opt/homebrew/opt/llvm/bin/clang")
-            set(COMPILER_PREFIX "/opt/homebrew/opt/llvm")
-            set(IS_HOMEBREW_LLVM TRUE)
-        endif()
-
-        if(IS_HOMEBREW_LLVM)
-            # Add LLVM library paths and libraries (equivalent to LDFLAGS from brew info llvm)
-            link_directories("${COMPILER_PREFIX}/lib")
-
-            # Add the full LDFLAGS as recommended by brew info llvm
-            # This includes libc++, libunwind which are needed for full LLVM toolchain
-            # Store the flags but don't add -lunwind globally to avoid duplication
-            set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind")
-            set(HOMEBREW_LLVM_LIBS "unwind")
-
-            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
-                # Add only the library search paths globally (not the actual libraries)
-                # Check if paths are already present to avoid duplication
-                if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib/unwind")
-                    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_DIRS}" CACHE STRING "Linker flags" FORCE)
-                    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_DIRS}" CACHE STRING "Shared linker flags" FORCE)
-                    message(STATUS "Added Homebrew LLVM library paths (not in environment)")
-                else()
-                    message(STATUS "Homebrew LLVM library paths already present in linker flags")
-                endif()
-            else()
-                message(STATUS "Skipping Homebrew LLVM library paths (already in LDFLAGS environment variable)")
-            endif()
-
-            # Store for later sanitizer configuration
-            set(HOMEBREW_LLVM_LIB_DIR "${COMPILER_PREFIX}/lib")
-
-            message(STATUS "Applied Homebrew LLVM toolchain flags:")
-            message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
-            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
-                message(STATUS "  Link: ${HOMEBREW_LLVM_LINK_DIRS}")
-            else()
-                message(STATUS "  Link: (using LDFLAGS environment variable)")
-            endif()
-        endif()
-    endif()
-endif()
-
-# Configure MinGW mode for any compiler
-if(WIN32 AND USE_MINGW)
-    message(STATUS "Configuring ${CMAKE_C_COMPILER_ID} for MinGW mode")
-
-    # Set MinGW target and system paths for Clang (GCC doesn't need this)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        set(CMAKE_C_COMPILER_TARGET x86_64-w64-mingw32)
-
-        # Find MinGW system headers - check common installation paths
-        set(MINGW_INCLUDE_PATHS
-            "$ENV{USERPROFILE}/scoop/apps/gcc/current/include"  # Scoop GCC (current user)
-            "$ENV{USERPROFILE}/scoop/apps/gcc/current/x86_64-w64-mingw32/include"  # Scoop GCC target-specific
-            "$ENV{SCOOP}/apps/gcc/current/include"  # Scoop global install
-            "$ENV{SCOOP}/apps/gcc/current/x86_64-w64-mingw32/include"  # Scoop global target-specific
-            "C:/mingw64/include"  # MSYS2 MinGW64
-            "C:/msys64/mingw64/include"  # MSYS2 full install
-            "/mingw64/include"  # Unix-style path
-            "${CMAKE_C_COMPILER}/../include"  # Relative to compiler
-            "${CMAKE_C_COMPILER}/../../x86_64-w64-mingw32/include"  # GCC target include
-        )
-
-        foreach(INCLUDE_PATH IN LISTS MINGW_INCLUDE_PATHS)
-            if(EXISTS "${INCLUDE_PATH}/stdio.h")
-                include_directories(SYSTEM "${INCLUDE_PATH}")
-                message(STATUS "Found MinGW system headers at: ${INCLUDE_PATH}")
-                break()
-            endif()
-        endforeach()
-    endif()
-
-    # Use MinGW linker for all compilers
-    set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_COMPILER} <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-
-    # Override CMake's Windows-specific compile flags that are set by the platform module
-    # These get added by CMake's Windows-Clang.cmake platform file
-
-    # Override all the flag variables that CMake sets for Windows
-    set(CMAKE_C_FLAGS "" CACHE STRING "C flags" FORCE)
-    set(CMAKE_C_FLAGS_DEBUG "-O0 -g -Wall -Wextra -DDEBUG" CACHE STRING "C Debug flags" FORCE)
-    set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "C Release flags" FORCE)
-
-    message(STATUS "MinGW build using clean compiler flags")
-endif()
-
 # Clear Windows-specific CMake flags for native Clang builds
-if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
+if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
     # CMake automatically adds MSVC runtime flags even for Clang, clear them
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreaded "")
     set(CMAKE_C_COMPILE_OPTIONS_MSVC_RUNTIME_LIBRARY_MultiThreadedDLL "")
@@ -647,33 +417,17 @@ endif()
 # =============================================================================
 # ccache Support (Compiler Cache for Faster Rebuilds)
 # =============================================================================
-
-# Find and enable ccache if available (unless explicitly disabled)
-option(USE_CCACHE "Use ccache for compilation if available" ON)
-
-if(USE_CCACHE)
-    find_program(CCACHE_PROGRAM ccache)
-    if(CCACHE_PROGRAM)
-        # Only set ccache if not already configured (e.g., by Homebrew LLVM setup)
-        if(NOT CMAKE_C_COMPILER_LAUNCHER)
-            set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
-            message(STATUS "${BoldGreen}Using ccache: ${CCACHE_PROGRAM}${ColorReset}")
-
-            # Configure ccache for optimal performance
-            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config max_size=2G)
-            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config compression=true)
-            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config compression_level=6)
-        else()
-            message(STATUS "Compiler launcher already set: ${CMAKE_C_COMPILER_LAUNCHER}")
-        endif()
-    else()
-        message(STATUS "ccache not found - install with: sudo pacman -S ccache")
-    endif()
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/CCache.cmake)
 
 # =============================================================================
 # Platform Detection
 # =============================================================================
+
+# Initialize all platform variables to FALSE
+set(PLATFORM_DARWIN FALSE)
+set(PLATFORM_LINUX FALSE)
+set(PLATFORM_WINDOWS FALSE)
+set(PLATFORM_POSIX FALSE)
 
 # Detect platform specifics like the Makefile
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -756,6 +510,10 @@ include_directories(
 )
 
 
+# =============================================================================
+# Hardware Acceleration Detection
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
 
 # =============================================================================
 # Build Type Configuration (using modular helper functions)
@@ -764,13 +522,8 @@ include_directories(
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug mode WITH sanitizers (default)
-    if(DEFINED USE_MINGW)
-        set(_use_mingw_flag ${USE_MINGW})
-    else()
-        set(_use_mingw_flag OFF)
-    endif()
     configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL})
-    configure_debug_build_flags("Debug" ${_use_mingw_flag})
+    configure_debug_build_flags("Debug")
 
     # Configure sanitizers (automatically handles mimalloc conflicts)
     configure_sanitizers(${USE_MIMALLOC} "Debug")
@@ -781,13 +534,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     # Dev mode - debug WITHOUT sanitizers (faster iteration)
-    if(DEFINED USE_MINGW)
-        set(_use_mingw_flag ${USE_MINGW})
-    else()
-        set(_use_mingw_flag OFF)
-    endif()
     configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL})
-    configure_debug_build_flags("Dev" ${_use_mingw_flag})
+    configure_debug_build_flags("Dev")
     # No sanitizers in Dev mode
 
 elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
@@ -800,13 +548,8 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 
 elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
     # Sanitize mode - focus on AddressSanitizer
-    if(DEFINED USE_MINGW)
-        set(_use_mingw_flag ${USE_MINGW})
-    else()
-        set(_use_mingw_flag OFF)
-    endif()
     add_definitions(-DDEBUG_MEMORY)
-    configure_debug_build_flags("Debug" ${_use_mingw_flag})
+    configure_debug_build_flags("Debug")
     configure_sanitizers(${USE_MIMALLOC} "Sanitize")
     copy_asan_runtime_dll()
 
@@ -816,410 +559,8 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "TSan")
     configure_sanitizers(${USE_MIMALLOC} "TSan")
 endif()
 
-# Hardware Acceleration Detection (cross-platform including Windows ARM)
-# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/SIMD.cmake)
 
-include(CheckCSourceCompiles)
-include(CheckCSourceRuns)
-
-# User override controls
-set(SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, neon, sve")
-set_property(CACHE SIMD_MODE PROPERTY STRINGS "auto" "sse2" "ssse3" "avx2" "neon" "sve")
-
-# Initialize SIMD flags
-set(ENABLE_SIMD_SSE2 FALSE)
-set(ENABLE_SIMD_SSSE3 FALSE)
-set(ENABLE_SIMD_AVX2 FALSE)
-set(ENABLE_SIMD_NEON FALSE)
-set(ENABLE_SIMD_SVE FALSE)
-
-# Check for user-specified SIMD mode
-if(NOT SIMD_MODE STREQUAL "auto")
-    # Manual mode - only enable the specific architecture requested
-    if(SIMD_MODE STREQUAL "sse2")
-        set(ENABLE_SIMD_SSE2 TRUE)
-    elseif(SIMD_MODE STREQUAL "ssse3")
-        set(ENABLE_SIMD_SSSE3 TRUE)
-    elseif(SIMD_MODE STREQUAL "avx2")
-        set(ENABLE_SIMD_AVX2 TRUE)
-    elseif(SIMD_MODE STREQUAL "neon")
-        set(ENABLE_SIMD_NEON TRUE)
-    elseif(SIMD_MODE STREQUAL "sve")
-        set(ENABLE_SIMD_SVE TRUE)
-    endif()
-else()
-    # Auto-detect SIMD capabilities (cross-platform)
-
-    # Windows-specific detection
-    if(WIN32)
-        # Check processor architecture on Windows
-        # CMAKE_SYSTEM_PROCESSOR on Windows: AMD64, x86, ARM64, ARM
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
-            # Windows on ARM64 - ARMv8 always has NEON
-            set(ENABLE_SIMD_NEON TRUE)
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM")
-            # Windows on ARM32 - NEON is optional in ARMv7
-            # Try compile test to check for NEON
-            check_c_source_compiles("
-                #include <arm_neon.h>
-                int main() {
-                    uint8x16_t a = vdupq_n_u8(0);
-                    return 0;
-                }
-            " CAN_COMPILE_NEON)
-            if(CAN_COMPILE_NEON)
-                set(ENABLE_SIMD_NEON TRUE)
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
-            # Windows x86_64 - try compile tests for SIMD features
-            # Try to compile and run CPUID check for x86
-            # Note: Clang on Windows may have issues with check_c_source_runs, so we use compile checks instead
-            if(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
-                # Check from highest to lowest, stop when we find support
-                # Higher instruction sets imply lower ones
-
-                # Check for AVX2
-                check_c_source_runs("
-                    #include <intrin.h>
-                    int main() {
-                        int info[4];
-                        __cpuidex(info, 7, 0);
-                        if (info[1] & (1 << 5)) // AVX2
-                            return 0;
-                        return 1;
-                    }
-                " HAS_AVX2_RUNTIME)
-
-                if(HAS_AVX2_RUNTIME)
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                else()
-                    # Check for SSSE3
-                    check_c_source_runs("
-                        #include <intrin.h>
-                        int main() {
-                            int info[4];
-                            __cpuid(info, 1);
-                            if (info[2] & (1 << 9)) // SSSE3
-                                return 0;
-                            return 1;
-                        }
-                    " HAS_SSSE3_RUNTIME)
-
-                    if(HAS_SSSE3_RUNTIME)
-                        set(ENABLE_SIMD_SSSE3 TRUE)
-                        set(ENABLE_SIMD_SSE2 TRUE)
-                    else()
-                        # Check for SSE2 (baseline for x86_64)
-                        check_c_source_runs("
-                            #include <intrin.h>
-                            int main() {
-                                int info[4];
-                                __cpuid(info, 1);
-                                if (info[3] & (1 << 26)) // SSE2
-                                    return 0;
-                                return 1;
-                            }
-                        " HAS_SSE2_RUNTIME)
-
-                        if(HAS_SSE2_RUNTIME)
-                            set(ENABLE_SIMD_SSE2 TRUE)
-                        endif()
-                    endif()
-                endif()
-            else()
-                # Cross-compiling or Clang on Windows, use compile-time checks with appropriate flags
-                # Save current flags
-                set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
-
-                # Test AVX2 with required flags
-                set(CMAKE_REQUIRED_FLAGS "-mavx2")
-                check_c_source_compiles("
-                    #include <immintrin.h>
-                    int main() { __m256i a = _mm256_setzero_si256(); return 0; }
-                " CAN_COMPILE_AVX2)
-
-                # Test SSSE3 with required flags
-                set(CMAKE_REQUIRED_FLAGS "-mssse3")
-                check_c_source_compiles("
-                    #include <tmmintrin.h>
-                    int main() { __m128i a = _mm_setzero_si128(); a = _mm_abs_epi8(a); return 0; }
-                " CAN_COMPILE_SSSE3)
-
-                # Test SSE2 with required flags
-                set(CMAKE_REQUIRED_FLAGS "-msse2")
-                check_c_source_compiles("
-                    #include <emmintrin.h>
-                    int main() { __m128i a = _mm_setzero_si128(); return 0; }
-                " CAN_COMPILE_SSE2)
-
-                # Restore flags
-                set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-
-                # Enable all instruction sets that can be compiled
-                # Note: Higher SIMD levels include lower ones
-                if(CAN_COMPILE_AVX2)
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)  # AVX2 includes SSSE3
-                    set(ENABLE_SIMD_SSE2 TRUE)   # AVX2 includes SSE2
-                elseif(CAN_COMPILE_SSSE3)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)   # SSSE3 includes SSE2
-                elseif(CAN_COMPILE_SSE2)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                endif()
-            endif()
-        endif()
-
-    elseif(PLATFORM_DARWIN)
-        # macOS detection (native)
-        if(IS_APPLE_SILICON EQUAL 1)
-            set(ENABLE_SIMD_NEON TRUE)
-        elseif(IS_ROSETTA EQUAL 1)
-            set(ENABLE_SIMD_SSSE3 TRUE)
-            set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
-        else()
-            # Intel Mac - check for AVX2 support
-            execute_process(
-                COMMAND sysctl -n hw.optional.avx2_0
-                OUTPUT_VARIABLE HAS_AVX2_MAC
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(HAS_AVX2_MAC EQUAL 1)
-                set(ENABLE_SIMD_AVX2 TRUE)
-                set(ENABLE_SIMD_SSSE3 TRUE)  # AVX2 includes SSSE3
-                set(ENABLE_SIMD_SSE2 TRUE)   # AVX2 includes SSE2
-            else()
-                set(ENABLE_SIMD_SSSE3 TRUE)
-                set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
-            endif()
-        endif()
-
-    elseif(PLATFORM_LINUX)
-        # Linux detection
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-            # Linux ARM64 - ARMv8 always has NEON
-            set(ENABLE_SIMD_NEON TRUE)
-            # Check for SVE (optional extension)
-            if(EXISTS "/proc/cpuinfo")
-                file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                if(CPUINFO_CONTENT MATCHES "sve")
-                    # SVE is available in addition to NEON
-                    set(ENABLE_SIMD_SVE TRUE)
-                endif()
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-            # Linux ARM32 - NEON is optional
-            if(EXISTS "/proc/cpuinfo")
-                file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                if(CPUINFO_CONTENT MATCHES "neon")
-                    set(ENABLE_SIMD_NEON TRUE)
-                endif()
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-            # Linux x86_64 - use /proc/cpuinfo
-            if(EXISTS "/proc/cpuinfo")
-                file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                # Check from highest to lowest, set all implied instruction sets
-                if(CPUINFO_CONTENT MATCHES "avx2")
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                elseif(CPUINFO_CONTENT MATCHES "ssse3")
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                elseif(CPUINFO_CONTENT MATCHES "sse2")
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                endif()
-            endif()
-        endif()
-    endif()
-endif()
-
-# Apply SIMD compile definitions and flags
-if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2 OR ENABLE_SIMD_NEON OR ENABLE_SIMD_SVE)
-    add_definitions(-DSIMD_SUPPORT)
-
-    # Prefer wider vector widths for SIMD-heavy workloads
-    if(ENABLE_SIMD_AVX2)
-        add_compile_options(-mprefer-vector-width=256)
-    endif()
-endif()
-
-# Apply specific SIMD flags
-if(ENABLE_SIMD_SSE2)
-    add_definitions(-DSIMD_SUPPORT_SSE2)
-    if(WIN32)
-        add_compile_options(-msse2 -mno-mmx)  # Disable MMX on Windows
-    else()
-        add_compile_options(-msse2)
-    endif()
-endif()
-
-if(ENABLE_SIMD_SSSE3)
-    add_definitions(-DSIMD_SUPPORT_SSSE3)
-    if(WIN32)
-        add_compile_options(-mssse3 -mno-mmx)  # Disable MMX on Windows
-    else()
-        add_compile_options(-mssse3)
-    endif()
-endif()
-
-if(ENABLE_SIMD_AVX2)
-    add_definitions(-DSIMD_SUPPORT_AVX2)
-    if(WIN32)
-        add_compile_options(-mavx2 -mno-mmx)  # Disable MMX on Windows
-    else()
-        add_compile_options(-mavx2)
-    endif()
-endif()
-
-if(ENABLE_SIMD_NEON)
-    add_definitions(-DSIMD_SUPPORT_NEON)
-    # Windows ARM64 with Clang needs proper arch flags
-    if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64")
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            # Clang on Windows ARM might need explicit flags
-            add_compile_options(-march=armv8-a+simd)
-        endif()
-    endif()
-endif()
-
-if(ENABLE_SIMD_SVE)
-    add_definitions(-DSIMD_SUPPORT_SVE)
-    add_compile_options(-march=armv8-a+sve)
-endif()
-
-# CRC32 Hardware Acceleration
-set(CRC32_HW "auto" CACHE STRING "CRC32 hardware acceleration: auto, on, off")
-set(ENABLE_CRC32_HW FALSE)
-
-if(CRC32_HW STREQUAL "on")
-    set(ENABLE_CRC32_HW TRUE)
-elseif(CRC32_HW STREQUAL "auto")
-    if(WIN32)
-        # Windows CRC32 detection
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64")
-            # Try to detect CRC32 support on ARM
-            # ARMv8-A includes optional CRC32, but not all implementations have it
-            if(NOT CMAKE_CROSSCOMPILING)
-                # Try runtime detection for ARM CRC32
-                check_c_source_runs("
-                    #include <arm_acle.h>
-                    #include <stdint.h>
-                    int main() {
-                        uint32_t crc = 0;
-                        uint8_t data = 0x42;
-                        crc = __crc32b(crc, data);
-                        return 0;
-                    }
-                " HAS_ARM_CRC32_RUNTIME)
-                if(HAS_ARM_CRC32_RUNTIME)
-                    set(ENABLE_CRC32_HW TRUE)
-                endif()
-            else()
-                # Cross-compiling - try compile test
-                check_c_source_compiles("
-                    #include <arm_acle.h>
-                    #include <stdint.h>
-                    int main() {
-                        uint32_t crc = 0;
-                        uint8_t data = 0x42;
-                        crc = __crc32b(crc, data);
-                        return 0;
-                    }
-                " CAN_COMPILE_ARM_CRC32)
-                if(CAN_COMPILE_ARM_CRC32)
-                    set(ENABLE_CRC32_HW TRUE)
-                endif()
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
-            # Check for SSE4.2 support on x86_64
-            # Note: Clang on Windows has issues with check_c_source_runs, so check SIMD flags first
-            if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
-                # Assume SSE4.2 if we have SSSE3 or better
-                set(ENABLE_CRC32_HW TRUE)
-            elseif(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
-                check_c_source_runs("
-                    #include <intrin.h>
-                    int main() {
-                        int info[4];
-                        __cpuid(info, 1);
-                        if (info[2] & (1 << 20)) // SSE4.2
-                            return 0;
-                        return 1;
-                    }
-                " HAS_SSE42_RUNTIME)
-                if(HAS_SSE42_RUNTIME)
-                    set(ENABLE_CRC32_HW TRUE)
-                endif()
-            endif()
-        endif()
-    elseif(PLATFORM_DARWIN)
-        # macOS detection
-        if(IS_APPLE_SILICON EQUAL 1)
-            # Apple Silicon M1/M2/M3 all have CRC32
-            set(ENABLE_CRC32_HW TRUE)
-        else()
-            # Intel Mac - check for SSE4.2
-            execute_process(
-                COMMAND sysctl -n hw.optional.sse4_2
-                OUTPUT_VARIABLE HAS_SSE42_MAC
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(HAS_SSE42_MAC EQUAL 1)
-                set(ENABLE_CRC32_HW TRUE)
-            endif()
-        endif()
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM|ARM64")
-        # Linux/Generic ARM - try to detect CRC32 support
-        if(PLATFORM_LINUX AND EXISTS "/proc/cpuinfo")
-            file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-            if(CPUINFO_CONTENT MATCHES "crc32")
-                set(ENABLE_CRC32_HW TRUE)
-            endif()
-        else()
-            # Try compile test as fallback
-            check_c_source_compiles("
-                #include <arm_acle.h>
-                #include <stdint.h>
-                int main() {
-                    uint32_t crc = 0;
-                    uint8_t data = 0x42;
-                    crc = __crc32b(crc, data);
-                    return 0;
-                }
-            " CAN_COMPILE_ARM_CRC32)
-            if(CAN_COMPILE_ARM_CRC32)
-                set(ENABLE_CRC32_HW TRUE)
-            endif()
-        endif()
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-        # Linux x86_64 - assume SSE4.2 if we have SSSE3
-        if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
-            set(ENABLE_CRC32_HW TRUE)
-        endif()
-    endif()
-endif()
-
-if(ENABLE_CRC32_HW)
-    add_definitions(-DHAVE_CRC32_HW)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-        add_compile_options(-msse4.2)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64|aarch64")
-        # ARM CRC32 requires specific compiler flags
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            add_compile_options(-march=armv8-a+crc)
-        elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-            add_compile_options(-march=armv8-a+crc)
-        endif()
-    endif()
-endif()
-
-# =============================================================================
 # musl libc Additional Configuration
 # =============================================================================
 # Note: Compiler setup is done before project() (line ~37)
@@ -1346,7 +687,7 @@ endif()
 if(USE_MIMALLOC)
     message(STATUS "Configuring mimalloc memory allocator...")
 
-    # Always download and build mimalloc from GitHub
+    # Download and build mimalloc from GitHub (or use cached version)
     message(STATUS "Downloading mimalloc from GitHub...")
 
     include(FetchContent)
@@ -1356,6 +697,9 @@ if(USE_MIMALLOC)
         GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
         GIT_TAG v2.1.7  # Latest stable v2.x release
         GIT_SHALLOW TRUE
+        # Use persistent cache directories (survives build/ deletion)
+        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src"
+        BINARY_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-build"
     )
 
     # Configure mimalloc build options
@@ -1376,7 +720,20 @@ if(USE_MIMALLOC)
         set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
     endif()
 
+    # Save current output directory settings
+    set(_SAVED_ARCHIVE_OUTPUT_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+    set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
+    # Set output directories to persistent cache (so library survives build/ deletion)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
+
+    # Populate and build mimalloc
     FetchContent_MakeAvailable(mimalloc)
+
+    # Restore original output directory settings
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${_SAVED_LIBRARY_OUTPUT_DIR})
 
     # For musl builds, set REALGCC environment for mimalloc build
     if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
@@ -1395,11 +752,17 @@ if(USE_MIMALLOC)
 endif()
 
 # =============================================================================
+# musl Dependencies (build all from source for musl libc)
+# =============================================================================
+# When USE_MUSL=ON, build all dependencies from source and cache them
+include(${CMAKE_SOURCE_DIR}/cmake/MuslDependencies.cmake)
+
+# =============================================================================
 # Find Dependencies (matching Makefile pkg-config approach)
 # =============================================================================
 
 # Platform-specific package management and library linking
-if(WIN32 AND NOT USE_MINGW)
+if(WIN32)
     # Native Windows with Clang - use vcpkg
     # Setup vcpkg paths if available
     if(DEFINED ENV{VCPKG_ROOT})
@@ -1437,64 +800,43 @@ if(WIN32 AND NOT USE_MINGW)
 
     # Build BearSSL from submodule for HTTPS requests to GitHub/GitLab
     if(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
-        # Build BearSSL static library from submodule
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
-        set(BEARSSL_BUILD_DIR "${CMAKE_BINARY_DIR}/bearssl-build")
+        set(BEARSSL_LIB "${BEARSSL_SOURCE_DIR}/build/libbearssl.a")
 
-        # Create BearSSL static library target
-        file(GLOB BEARSSL_SOURCES
-            "${BEARSSL_SOURCE_DIR}/src/*.c"
-            "${BEARSSL_SOURCE_DIR}/src/*/*.c"
-        )
-        # Remove problematic files that conflict with Clang on Windows
-        list(REMOVE_ITEM BEARSSL_SOURCES
-            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pclmul.c"
-            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pwr8.c"
-            "${BEARSSL_SOURCE_DIR}/src/rand/sysrng.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcdec.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcenc.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctr.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctrcbc.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/chacha20_sse2.c"
-        )
+        # Check if bearssl library exists, if not build it once using bearssl's Makefile
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            message(STATUS "Building BearSSL library (one-time setup)...")
+            execute_process(
+                COMMAND make
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                RESULT_VARIABLE BEARSSL_BUILD_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to build BearSSL library")
+            endif()
+            message(STATUS "BearSSL library built successfully")
+        endif()
 
-        add_library(bearssl_static STATIC ${BEARSSL_SOURCES})
-        target_include_directories(bearssl_static PUBLIC
+        # Use bearssl library as imported target (persists across clean builds)
+        add_library(bearssl_static STATIC IMPORTED)
+        set_target_properties(bearssl_static PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_LIB}"
+        )
+        target_include_directories(bearssl_static INTERFACE
             "${BEARSSL_SOURCE_DIR}/inc"
-            "${BEARSSL_SOURCE_DIR}/src"
         )
-        target_compile_definitions(bearssl_static PRIVATE BR_LE_UNALIGNED=1)
-
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "Building BearSSL from submodule: ${BEARSSL_SOURCE_DIR}")
+        message(STATUS "Using BearSSL library: ${BEARSSL_LIB}")
     else()
         message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
         set(BEARSSL_LIBRARIES "")
         set(BEARSSL_INCLUDE_DIRS "")
     endif()
-elseif(WIN32 AND USE_MINGW)
-    # MinGW on Windows - build with minimal dependencies for now
-    message(STATUS "MinGW build - using minimal dependencies")
-
-    # For MinGW, we'll build without external dependencies to keep it simple
-    # This allows testing the core functionality without library complexity
-    set(ZLIB_FOUND FALSE)
-    set(ZLIB_LIBRARIES "")
-    set(ZLIB_INCLUDE_DIRS "")
-
-    set(LIBSODIUM_FOUND FALSE)
-    set(LIBSODIUM_LIBRARIES "")
-    set(LIBSODIUM_INCLUDE_DIRS "")
-
-    set(PORTAUDIO_FOUND FALSE)
-    set(PORTAUDIO_LIBRARIES "")
-    set(PORTAUDIO_INCLUDE_DIRS "")
-
-    message(STATUS "MinGW build configured without external dependencies")
 else()
     # Unix/Linux/macOS use pkg-config (matches Makefile)
     find_package(PkgConfig REQUIRED)
@@ -1518,38 +860,37 @@ else()
 
     # Build BearSSL from submodule for HTTPS requests to GitHub/GitLab
     if(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
-        # Build BearSSL static library from submodule
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+        set(BEARSSL_LIB "${BEARSSL_SOURCE_DIR}/build/libbearssl.a")
 
-        # Create BearSSL static library target
-        file(GLOB BEARSSL_SOURCES
-            "${BEARSSL_SOURCE_DIR}/src/*.c"
-            "${BEARSSL_SOURCE_DIR}/src/*/*.c"
-        )
-        # Remove problematic files that conflict with Clang on Windows
-        list(REMOVE_ITEM BEARSSL_SOURCES
-            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pclmul.c"
-            "${BEARSSL_SOURCE_DIR}/src/hash/ghash_pwr8.c"
-            "${BEARSSL_SOURCE_DIR}/src/rand/sysrng.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcdec.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_cbcenc.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctr.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/aes_x86ni_ctrcbc.c"
-            "${BEARSSL_SOURCE_DIR}/src/symcipher/chacha20_sse2.c"
-        )
+        # Check if bearssl library exists, if not build it once using bearssl's Makefile
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            message(STATUS "Building BearSSL library (one-time setup)...")
+            execute_process(
+                COMMAND make
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                RESULT_VARIABLE BEARSSL_BUILD_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to build BearSSL library")
+            endif()
+            message(STATUS "BearSSL library built successfully")
+        endif()
 
-        add_library(bearssl_static STATIC ${BEARSSL_SOURCES})
-        target_include_directories(bearssl_static PUBLIC
+        # Use bearssl library as imported target (persists across clean builds)
+        add_library(bearssl_static STATIC IMPORTED)
+        set_target_properties(bearssl_static PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_LIB}"
+        )
+        target_include_directories(bearssl_static INTERFACE
             "${BEARSSL_SOURCE_DIR}/inc"
-            "${BEARSSL_SOURCE_DIR}/src"
         )
-        target_compile_definitions(bearssl_static PRIVATE BR_LE_UNALIGNED=1)
-
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "Building BearSSL from submodule: ${BEARSSL_SOURCE_DIR}")
+        message(STATUS "Using BearSSL library: ${BEARSSL_LIB}")
     else()
         message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
@@ -1564,7 +905,7 @@ else()
 endif()
 
 # Windows SDK detection for native Clang builds
-if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
+if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
     message(STATUS "Setting up native Windows build with Clang")
 
     # Find Windows SDK - check Visual Studio preferences first, then standard locations
@@ -1787,8 +1128,8 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW)
     endif()
 
 endif()
-# Find Windows-specific libraries (native mode only)
-if(WIN32 AND NOT USE_MINGW)
+# Find Windows-specific libraries
+if(WIN32)
     # Standard Windows system libraries for native builds
     set(WS2_32_LIB ws2_32)
     set(USER32_LIB user32)
@@ -1804,17 +1145,6 @@ if(WIN32 AND NOT USE_MINGW)
     find_package(portaudio CONFIG REQUIRED)
     set(PORTAUDIO_LIBRARIES portaudio)
     set(PORTAUDIO_FOUND TRUE)
-elseif(WIN32 AND USE_MINGW)
-    # MinGW uses different library names/linking
-    set(WS2_32_LIB ws2_32)
-    set(USER32_LIB user32)
-    set(ADVAPI32_LIB advapi32)
-    set(DBGHELP_LIB dbghelp)
-    set(MF_LIB "")  # Media Foundation not used in MinGW
-    set(MFPLAT_LIB "")
-    set(MFREADWRITE_LIB "")
-    set(MFUUID_LIB "")
-    set(OLE32_LIB ole32)
 else()
     # Platform-specific libraries (matching Makefile logic)
     if(PLATFORM_DARWIN)

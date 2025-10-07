@@ -25,19 +25,12 @@ endfunction()
 # Configure debug build flags (Debug or Dev mode)
 # Args:
 #   BUILD_TYPE - "Debug" or "Dev"
-#   USE_MINGW_ARG - Whether MinGW is being used
-function(configure_debug_build_flags BUILD_TYPE USE_MINGW_ARG)
-    if(WIN32 AND USE_MINGW_ARG)
-        # MinGW mode already has flags set - skip to avoid conflicts
-        message(STATUS "Skipping ${BUILD_TYPE} flag setup for MinGW (already configured)")
-        return()
-    endif()
-
+function(configure_debug_build_flags BUILD_TYPE)
     add_compile_options(-g -O0 -DDEBUG)
 
     # Windows-specific debug info formats
     if(WIN32)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT USE_MINGW_ARG)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
             if(BUILD_TYPE STREQUAL "Debug")
                 # CodeView debug format for Debug mode
                 add_compile_options(-gcodeview)
