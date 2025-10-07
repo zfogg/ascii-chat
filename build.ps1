@@ -1,12 +1,11 @@
 #!/usr/bin/env pwsh
 # PowerShell build script for ASCII-Chat on Windows
-# Usage: 
+# Usage:
 #   .\build.ps1                    # Build using default/debug preset
 #   .\build.ps1 -Config Release    # Build using release preset
 #   .\build.ps1 -Config Dev        # Build using dev preset (debug without sanitizers)
 #   .\build.ps1 -Config Coverage   # Build using coverage preset
 #   .\build.ps1 -Clean             # Clean and reconfigure from scratch
-#   .\build.ps1 -MinGW             # Use custom config with GCC/Clang in MinGW mode
 #   .\build.ps1 -VSWithClang       # Use custom config with Visual Studio + ClangCL
 #   .\build.ps1 -NoMimalloc        # Disable mimalloc allocator (use system malloc)
 #   .\build.ps1 -BuildDir mybuild  # Use custom build directory (disables presets)
@@ -19,7 +18,6 @@ param(
   [switch]$Clean,
   [string]$Config = "Debug",
   [string]$BuildDir = "build",
-  [switch]$MinGW,
   [switch]$Verbose,
   [switch]$VSWithClang,
   [switch]$NoMimalloc,
@@ -72,7 +70,7 @@ if ($needsConfigure) {
   $presetName = $Config.ToLower()
     
   # Check if using special modes that require custom configuration
-  $useCustomConfig = $MinGW -or $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
+  $useCustomConfig = $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
     
   if ($useCustomConfig) {
     Write-Host "Using custom configuration (preset not applicable with current flags)" -ForegroundColor Yellow

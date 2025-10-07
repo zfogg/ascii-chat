@@ -26,6 +26,10 @@ coverage_html/
 *.tar.gz
 /build-*
 
+# Dependency cache directories (persist across build/ deletions)
+/.deps-cache/
+/.deps-cache-musl/
+
 /tests/fixtures/*
 
 /nul

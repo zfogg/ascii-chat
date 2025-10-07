@@ -73,7 +73,6 @@ function(find_msvc_libraries)
         message(STATUS "Added MSVC library path: ${MSVC_LIB_PATH}")
     else()
         message(FATAL_ERROR "Visual Studio MSVC libraries not found! Windows builds require Visual Studio runtime libraries.\n"
-                          "Please install Visual Studio 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, Build Tools, or Insiders).\n"
-                          "Alternatively, try building with MinGW: ./build.ps1 -MinGW")
+                          "Please install Visual Studio 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, Build Tools, or Insiders).")
     endif()
 endfunction()
