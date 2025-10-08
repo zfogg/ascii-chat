@@ -803,6 +803,26 @@ if(WIN32)
         set(LIBSODIUM_INCLUDE_DIRS "")
     endif()
 
+    # Find libgcrypt - try finding it directly to avoid import issues
+    # Note: libgcrypt is not available on Windows via vcpkg (requires MinGW which we don't support)
+    # GPG key support will be unavailable on Windows
+    find_library(LIBGCRYPT_LIBRARY NAMES libgcrypt gcrypt
+                PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
+    find_path(LIBGCRYPT_INCLUDE_DIR NAMES gcrypt.h
+             PATHS "${VCPKG_ROOT}/installed/x64-windows/include")
+    if(LIBGCRYPT_LIBRARY AND LIBGCRYPT_INCLUDE_DIR)
+        set(LIBGCRYPT_LIBRARIES ${LIBGCRYPT_LIBRARY})
+        set(LIBGCRYPT_INCLUDE_DIRS ${LIBGCRYPT_INCLUDE_DIR})
+        set(LIBGCRYPT_FOUND TRUE)
+        message(STATUS "Found libgcrypt: ${LIBGCRYPT_LIBRARY}")
+    else()
+        message(WARNING "Could not find libgcrypt - GPG Ed25519 signature verification will be disabled")
+        message(WARNING "  libgcrypt is not available on Windows (requires MinGW). GPG keys will not work on Windows.")
+        set(LIBGCRYPT_FOUND FALSE)
+        set(LIBGCRYPT_LIBRARIES "")
+        set(LIBGCRYPT_INCLUDE_DIRS "")
+    endif()
+
     # Try to find BearSSL (system install from Docker or pkg-config)
     # First check for system-installed version (e.g., from Docker image)
     find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl
@@ -887,6 +907,11 @@ else()
     pkg_check_modules(ZLIB REQUIRED zlib)
     pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+    # libgcrypt is optional - GPG Ed25519 signature verification
+    pkg_check_modules(LIBGCRYPT libgcrypt)
+    if(NOT LIBGCRYPT_FOUND)
+        message(WARNING "libgcrypt not found - GPG Ed25519 signature verification will be disabled")
+    endif()
 
     # Try to find BearSSL (system install from Docker or pkg-config)
     # First check for system-installed version (e.g., from Docker image)
@@ -1340,7 +1365,7 @@ set(CRYPTO_SRCS
     lib/crypto/handshake.c
     lib/crypto/http_client.c
     lib/crypto/pem_utils.c
-    lib/crypto/gpg_agent.c
+    lib/crypto/gpg.c
     lib/crypto/ssh_agent.c
 )
 
@@ -1553,6 +1578,13 @@ target_link_libraries(ascii-chat-crypto
     ${LIBSODIUM_LIBRARIES}
 )
 
+# Add libgcrypt if available
+if(LIBGCRYPT_FOUND)
+    target_link_libraries(ascii-chat-crypto ${LIBGCRYPT_LIBRARIES})
+    target_include_directories(ascii-chat-crypto PRIVATE ${LIBGCRYPT_INCLUDE_DIRS})
+    target_compile_definitions(ascii-chat-crypto PRIVATE HAVE_LIBGCRYPT)
+endif()
+
 # Add BearSSL if available
 if(BEARSSL_FOUND)
     target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
@@ -1670,6 +1702,9 @@ if(WIN32)
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
+    if(LIBGCRYPT_FOUND)
+        target_link_libraries(ascii-chat-shared PRIVATE ${LIBGCRYPT_LIBRARIES})
+    endif()
     if(USE_MIMALLOC)
         target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
     endif()
@@ -1679,6 +1714,9 @@ else()
     )
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    endif()
+    if(LIBGCRYPT_FOUND)
+        target_link_libraries(ascii-chat-shared PRIVATE ${LIBGCRYPT_LIBRARIES})
     endif()
     if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-shared PRIVATE

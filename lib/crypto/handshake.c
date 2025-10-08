@@ -110,6 +110,14 @@ int crypto_handshake_server_start(crypto_handshake_context_t *ctx, socket_t clie
     // Copy Ed25519 identity public key
     memcpy(extended_packet + 32, ctx->server_private_key.public_key, 32);
 
+    // DEBUG: Print identity key being sent
+    char hex[65];
+    for (int i = 0; i < 32; i++) {
+      snprintf(hex + i * 2, 3, "%02x", ctx->server_private_key.public_key[i]);
+    }
+    hex[64] = '\0';
+    log_info("SERVER: Sending identity key: %s", hex);
+
     // Sign the ephemeral key with our identity key
     log_debug("Signing ephemeral key with server identity key");
     if (ed25519_sign_message(&ctx->server_private_key, ctx->crypto_ctx.public_key, 32, extended_packet + 64) != 0) {
@@ -181,6 +189,29 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
 
     // Server is using client authentication
     ctx->server_uses_client_auth = true;
+
+    // DEBUG: Print identity key received
+    char hex_id[65];
+    for (int i = 0; i < 32; i++) {
+      snprintf(hex_id + i * 2, 3, "%02x", server_identity_key[i]);
+    }
+    hex_id[64] = '\0';
+    log_info("CLIENT: Received identity key: %s", hex_id);
+
+    // DEBUG: Print ephemeral key and signature
+    char hex_eph[65];
+    for (int i = 0; i < 32; i++) {
+      snprintf(hex_eph + i * 2, 3, "%02x", server_ephemeral_key[i]);
+    }
+    hex_eph[64] = '\0';
+    log_info("CLIENT: Received ephemeral key: %s", hex_eph);
+
+    char hex_sig[129];
+    for (int i = 0; i < 64; i++) {
+      snprintf(hex_sig + i * 2, 3, "%02x", server_signature[i]);
+    }
+    hex_sig[128] = '\0';
+    log_info("CLIENT: Received signature: %s", hex_sig);
 
     // Verify signature: server identity signed the ephemeral key
     log_debug("Verifying server's signature over ephemeral key");

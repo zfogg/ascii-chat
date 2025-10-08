@@ -1,5 +1,4 @@
-#ifndef GPG_AGENT_H
-#define GPG_AGENT_H
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -50,4 +49,13 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
  */
 bool gpg_agent_is_available(void);
 
-#endif // GPG_AGENT_H
+/**
+ * Verify a GPG Ed25519 signature using libgcrypt
+ * @param public_key 32-byte Ed25519 public key
+ * @param message Message that was signed
+ * @param message_len Message length
+ * @param signature 64-byte Ed25519 signature (R || S)
+ * @return 0 on success (signature valid), -1 on error or invalid signature
+ */
+int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len,
+                         const uint8_t *signature);
