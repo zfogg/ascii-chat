@@ -129,6 +129,7 @@
 #include "palette.h"
 #include "image2ascii/image.h"
 #include "compression.h"
+#include "util/format.h"
 
 /**
  * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown

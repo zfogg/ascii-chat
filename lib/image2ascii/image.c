@@ -17,7 +17,7 @@
 #include "image2ascii/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
-#include "round.h"
+#include "util/math.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
 #include "palette.h"
 

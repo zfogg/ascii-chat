@@ -251,15 +251,6 @@ void platform_print_backtrace(void);
   } while (0)
 #endif
 
-// RGB value clamping utility function
-static inline uint8_t clamp_rgb(int value) {
-  if (value < 0)
-    return 0;
-  if (value > 255)
-    return 255;
-  return (uint8_t)value;
-}
-
 // Frame rate configuration - Windows terminals struggle with high FPS
 #ifdef _WIN32
 #define DEFAULT_MAX_FPS 30 // Windows terminals can't handle more than this
@@ -277,6 +268,29 @@ extern int g_max_fps;
 
 /* Logging levels */
 typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;
+
+/* ============================================================================
+ * Shutdown Check System
+ * ============================================================================
+ * Provides clean separation between library and application for shutdown
+ * detection. Library code should never directly access application state.
+ *
+ * Usage:
+ *   Application (server.c/client.c):
+ *     shutdown_register_callback(my_shutdown_check_fn);
+ *
+ *   Library code (logging.c, lock_debug.c, etc.):
+ *     if (shutdown_is_requested()) { return; }
+ */
+
+/* Shutdown check callback type */
+typedef bool (*shutdown_check_fn)(void);
+
+/* Register application's shutdown check function (call from main()) */
+void shutdown_register_callback(shutdown_check_fn callback);
+
+/* Check if shutdown has been requested (call from library code) */
+bool shutdown_is_requested(void);
 
 /* ============================================================================
  * Utility Macros
@@ -444,37 +458,20 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 #define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
-void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
-
-/* Safe parsing functions using strtoul instead of sscanf */
-int safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height);
-int safe_parse_audio_message(const char *message, unsigned int *num_samples);
-
 /* New functions for coverage testing */
 
 /* Memory debugging (only in debug builds, disabled when mimalloc override is active) */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
 void *debug_malloc(size_t size, const char *file, int line);
 void debug_free(void *ptr, const char *file, int line);
-void debug_memory_report(void);
-void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
 void *debug_calloc(size_t count, size_t size, const char *file, int line);
 void *debug_realloc(void *ptr, size_t size, const char *file, int line);
+
+void debug_memory_report(void);
+void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
 
 #define malloc(size) debug_malloc(size, __FILE__, __LINE__)
 #define free(ptr) debug_free(ptr, __FILE__, __LINE__)
 #define calloc(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 #endif /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
-
-/* Path utilities (shared between logging, backtraces, etc.) */
-/**
- * Extract relative path from an absolute path.
- * Searches for PROJECT_SOURCE_ROOT and returns the path relative to it.
- * Handles both Unix (/) and Windows (\) path separators.
- * Falls back to just the filename if source root not found.
- *
- * @param file Absolute file path (typically from __FILE__)
- * @return Relative path from project root, or filename if not found
- */
-const char *extract_project_relative_path(const char *file);

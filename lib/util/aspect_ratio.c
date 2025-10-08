@@ -1,5 +1,5 @@
 #include "common.h"
-#include "round.h"
+#include "util/math.h"
 
 #define CHAR_ASPECT 2.0f // terminal cell height ÷ width
 

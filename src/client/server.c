@@ -80,6 +80,10 @@
 #include <stdatomic.h>
 #ifndef _WIN32
 #include <netinet/tcp.h>
+#include <netdb.h>     // For getaddrinfo(), gai_strerror()
+#include <arpa/inet.h> // For inet_ntop()
+#else
+#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
 #endif
 
 // Debug flags
@@ -105,6 +109,9 @@ static atomic_bool g_should_reconnect = false;
 
 /** Client ID assigned by server (derived from local port) */
 static uint32_t g_my_client_id = 0;
+
+/** Resolved server IP address (for known_hosts) */
+static char g_server_ip[256] = {0};
 
 /** Mutex to protect socket sends (prevent interleaved packets) */
 static mutex_t g_send_mutex = {0};
@@ -234,37 +241,74 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     // Initial connection logged only to file
   }
 
-  // Create socket
-  g_sockfd = socket_create(AF_INET, SOCK_STREAM, 0);
+  // Resolve server address using getaddrinfo() for IPv4/IPv6 support
+  struct addrinfo hints, *res = NULL, *addr_iter;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM;
+
+  char port_str[16];
+  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
+
+  log_debug("Resolving server address '%s' port %s...", address, port_str);
+  int getaddr_result = getaddrinfo(address, port_str, &hints, &res);
+  if (getaddr_result != 0) {
+    log_error("Failed to resolve server address '%s': %s", address, gai_strerror(getaddr_result));
+    return -1;
+  }
+
+  // Try each address returned by getaddrinfo() until one succeeds
+  for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter->ai_next) {
+    // Create socket with appropriate address family
+    g_sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
+    if (g_sockfd == INVALID_SOCKET_VALUE) {
+      log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string(errno));
+      continue; // Try next address
+    }
+
+    // Log which address family we're trying
+    if (addr_iter->ai_family == AF_INET) {
+      log_debug("Trying IPv4 connection...");
+    } else if (addr_iter->ai_family == AF_INET6) {
+      log_debug("Trying IPv6 connection...");
+    }
+
+    // Attempt connection with timeout
+    if (connect_with_timeout(g_sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
+      // Connection successful!
+      log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
+                                                  : addr_iter->ai_family == AF_INET6 ? "IPv6"
+                                                                                     : "unknown protocol");
+
+      // Extract server IP address for known_hosts
+      if (addr_iter->ai_family == AF_INET) {
+        struct sockaddr_in *addr_in = (struct sockaddr_in *)addr_iter->ai_addr;
+        inet_ntop(AF_INET, &addr_in->sin_addr, g_server_ip, sizeof(g_server_ip));
+      } else if (addr_iter->ai_family == AF_INET6) {
+        struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)addr_iter->ai_addr;
+        inet_ntop(AF_INET6, &addr_in6->sin6_addr, g_server_ip, sizeof(g_server_ip));
+      }
+      log_debug("Resolved server IP: %s", g_server_ip);
+
+      break; // Success - exit loop
+    }
+
+    // Connection failed - close socket and try next address
+    log_debug("Connection failed: %s", network_error_string(errno));
+    close_socket(g_sockfd);
+    g_sockfd = INVALID_SOCKET_VALUE;
+  }
+
+  freeaddrinfo(res);
+
+  // If we exhausted all addresses without success, fail
   if (g_sockfd == INVALID_SOCKET_VALUE) {
-    log_error("Could not create socket: %s", network_error_string(errno));
-    return -1;
-  }
-
-  // Set up server address structure
-  struct sockaddr_in serv_addr;
-  memset(&serv_addr, 0, sizeof(serv_addr));
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(port);
-
-  // Convert address string to binary form
-  if (inet_pton(AF_INET, address, &serv_addr.sin_addr) <= 0) {
-    log_error("Invalid server address: %s", address);
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    return -1;
-  }
-
-  // Attempt connection with timeout
-  if (!connect_with_timeout(g_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr), CONNECT_TIMEOUT)) {
-    log_warn("Connection failed: %s", network_error_string(errno));
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
+    log_warn("Could not connect to server %s:%d (tried all addresses)", address, port);
     return -1;
   }
 
   // Connection successful - extract local port for client ID
-  struct sockaddr_in local_addr = {0};
+  struct sockaddr_storage local_addr = {0};
   socklen_t addr_len = sizeof(local_addr);
   if (getsockname(g_sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
     log_error("Failed to get local socket address: %s", network_error_string(errno));
@@ -273,7 +317,13 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     return -1;
   }
 
-  int local_port = ntohs(local_addr.sin_port);
+  // Extract port from either IPv4 or IPv6 address
+  int local_port = 0;
+  if (((struct sockaddr *)&local_addr)->sa_family == AF_INET) {
+    local_port = ntohs(((struct sockaddr_in *)&local_addr)->sin_port);
+  } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
+    local_port = ntohs(((struct sockaddr_in6 *)&local_addr)->sin6_port);
+  }
   g_my_client_id = (uint32_t)local_port;
 
   // Mark connection as active immediately after successful socket connection
@@ -288,8 +338,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_debug("CLIENT_CONNECT: client_crypto_init() failed");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    // Return -2 to signal authentication failure (no retry) - SSH key password was wrong
-    return -2;
+    return CONNECTION_ERROR_AUTH_FAILED; // SSH key password was wrong - no retry
   }
   log_debug("CLIENT_CONNECT: client_crypto_init() succeeded");
 
@@ -301,7 +350,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    return handshake_result; // Propagate error code (-2 for auth failure, -1 for other errors)
+    return handshake_result; // Propagate error code from crypto_handshake
   }
   log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 
@@ -407,6 +456,10 @@ socket_t server_connection_get_socket() {
  */
 uint32_t server_connection_get_client_id() {
   return g_my_client_id;
+}
+
+const char *server_connection_get_ip() {
+  return g_server_ip;
 }
 
 /**

@@ -1,4 +1,4 @@
-#include "aspect_ratio.h"
+#include "util/aspect_ratio.h"
 #include "platform/system.h"
 #ifdef _WIN32
 #include "platform/windows/getopt.h"
@@ -27,6 +27,7 @@
 #include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
+#include "ip.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "version.h"
@@ -299,64 +300,17 @@ error:
   return NULL; // Signal error to caller
 }
 
-// Helper function to validate IPv4 address format
-static int is_valid_ipv4(const char *ip) {
-  if (!ip)
-    return 0;
-
-  // Check for leading or trailing dots
-  if (ip[0] == '.' || ip[strlen(ip) - 1] == '.')
-    return 0;
-
-  // Check for consecutive dots
-  for (size_t i = 0; i < strlen(ip) - 1; i++) {
-    if (ip[i] == '.' && ip[i + 1] == '.')
-      return 0;
-  }
-
-  // int octets[4];
-  int count = 0;
-  char temp[15 + 1]; // Maximum IPv4 length is 15 characters + null terminator
-
-  // Copy to temp buffer to avoid modifying original
-  if (strlen(ip) >= sizeof(temp))
-    return 0;
-  SAFE_STRNCPY(temp, ip, sizeof(temp));
-  temp[sizeof(temp) - 1] = '\0';
-
-  char *saveptr;
-  char *token = platform_strtok_r(temp, ".", &saveptr);
-  while (token != NULL && count < 4) {
-    char *endptr;
-    long octet = strtol(token, &endptr, 10);
-
-    // Check if conversion was successful and entire token was consumed
-    if (*endptr != '\0' || token == endptr)
-      return 0;
-
-    // Check octet range (0-255)
-    if (octet < 0 || octet > 255)
-      return 0;
-
-    // octets[count] = (int)octet;
-    token = platform_strtok_r(NULL, ".", &saveptr);
-    count++; // Increment count for each valid octet
-  }
-
-  // Must have exactly 4 octets and no remaining tokens
-  return (count == 4 && token == NULL);
-}
-
 int options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
 
   // Set different default addresses for client vs server
   if (is_client) {
-    // Client connects to localhost by default
+    // Client connects to localhost by default (IPv4)
     SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
   } else {
-    // Server binds to all interfaces by default
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+    // Server binds to all interfaces by default (dual-stack IPv6 with IPv4-mapped support)
+    // "::" binds to all IPv6 addresses and IPv4-mapped addresses (::ffff:x.x.x.x)
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "::");
   }
 
   // Use different option sets for client vs server
@@ -387,17 +341,36 @@ int options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
       if (!value_str)
         return ASCIICHAT_ERROR_USAGE;
-      if (!is_valid_ipv4(value_str)) {
-        // Try to resolve hostname to IPv4
+
+      // Parse IPv6 address (remove brackets if present)
+      char parsed_addr[OPTIONS_BUFF_SIZE];
+      if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
+        value_str = parsed_addr;
+      }
+
+      // Check if it's a valid IPv4 address
+      if (is_valid_ipv4(value_str)) {
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+      }
+      // Check if it's a valid IPv6 address
+      else if (is_valid_ipv6(value_str)) {
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+      }
+      // Otherwise, try to resolve as hostname
+      else {
+        // Try to resolve hostname to IPv4 first (for backward compatibility)
         char resolved_ip[OPTIONS_BUFF_SIZE];
-        if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) != 0) {
-          (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", value_str);
+        if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
+          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
+        } else {
+          (void)fprintf(stderr, "Failed to resolve hostname '%s' to IP address.\n", value_str);
           (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
+          (void)fprintf(stderr, "Supported formats:\n");
+          (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
+          (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
+          (void)fprintf(stderr, "  Hostname: example.com\n");
           return ASCIICHAT_ERROR_USAGE;
         }
-        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
-      } else {
-        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       }
       break;
     }

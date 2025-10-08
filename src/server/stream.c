@@ -153,7 +153,7 @@
 #include "video_frame.h"
 #include "image2ascii/image.h"
 #include "image2ascii/ascii.h"
-#include "aspect_ratio.h"
+#include "util/aspect_ratio.h"
 #include "crc32.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()

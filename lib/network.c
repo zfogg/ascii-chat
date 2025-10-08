@@ -1,5 +1,6 @@
 #include "network.h"
 #include "common.h"
+#include "util/util.h"
 #include "buffer_pool.h"
 #include "crc32.h"
 #include "platform/terminal.h"

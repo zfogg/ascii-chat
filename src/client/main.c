@@ -94,6 +94,9 @@ atomic_bool g_should_exit = false;
 /**
  * Check if shutdown has been requested
  *
+ * This function is also registered as the shutdown check callback for
+ * library code via shutdown_register_callback().
+ *
  * @return true if shutdown requested, false otherwise
  */
 bool should_exit() {
@@ -239,6 +242,9 @@ static int initialize_client_systems() {
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
   log_init(log_filename, LOG_DEBUG);
 
+  // Register shutdown check callback for library code
+  shutdown_register_callback(should_exit);
+
   // Start with terminal output disabled for clean ASCII display
   // It will be enabled only for initial connection attempts and errors
   log_set_terminal_output(true);
@@ -377,10 +383,14 @@ int main(int argc, char *argv[]) {
                                                         first_connection, has_ever_connected);
 
     if (connection_result != 0) {
-      // Check for authentication failure (code -2) - exit immediately without retry
-      if (connection_result == -2) {
+      // Check for authentication failure or host key verification failure - exit immediately without retry
+      if (connection_result == CONNECTION_ERROR_AUTH_FAILED) {
         // Detailed error message already printed by crypto handshake code
-        return 1;
+        return ASCIICHAT_ERROR_CRYPTO_AUTH;
+      }
+      if (connection_result == CONNECTION_ERROR_HOST_KEY_FAILED) {
+        // Host key verification failed or user declined - MITM warning already shown
+        return ASCIICHAT_ERROR_CRYPTO_VERIFICATION;
       }
 
       // Connection failed - increment attempt counter and retry

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "platform/abstraction.h"
+#include "util/path.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -339,8 +340,6 @@ void log_truncate_if_large(void) {
   mutex_unlock(&g_log.mutex);
 }
 
-extern atomic_bool g_should_exit;
-
 /* Helper: Format a complete log entry into a buffer
  * Returns: number of bytes written (excluding null terminator)
  */
@@ -447,7 +446,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   // Skip logging entirely if we're shutting down to avoid mutex issues
-  if (atomic_load(&g_should_exit)) {
+  if (shutdown_is_requested()) {
     return; // Don't try to log during shutdown - avoids deadlocks
   }
 

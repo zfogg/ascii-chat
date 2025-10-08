@@ -926,10 +926,9 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
   }
 
   // Skip tracking if system is not fully initialized or during initialization/shutdown
-  extern atomic_bool g_should_exit;
   bool initialized = atomic_load(&g_lock_debug_manager.initialized);
   bool initializing = atomic_load(&g_initializing);
-  bool should_exit = atomic_load(&g_should_exit);
+  bool should_exit = shutdown_is_requested();
 
   if (!initialized || initializing || should_exit) {
     return true;
