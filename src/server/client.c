@@ -1011,7 +1011,6 @@ void *client_send_thread_func(void *arg) {
               buffer_pool_free(ciphertext, ciphertext_size);
             } else {
               // No encryption - send normal packet
-              log_debug("Sending unencrypted ASCII frame packet to client %u", client->client_id);
               ssize_t sent = send_with_timeout(client->socket, &header, sizeof(header), SEND_TIMEOUT);
               if (sent == sizeof(header)) {
                 // Send payload
@@ -1181,7 +1180,6 @@ void cleanup_client_packet_queues(client_info_t *client) {
 int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **data, size_t *len,
                              uint32_t *sender_id) {
   // Process the encrypted packet
-  log_debug("Received encrypted packet from client %u: %zu bytes", client->client_id, *len);
   if (crypto_server_is_ready(client->client_id)) {
     // Allocate buffer for decrypted data
     void *decrypted_data = buffer_pool_alloc(*len);
@@ -1209,15 +1207,11 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
     *data = decrypted_data;
     *len = decrypted_len;
 
-    log_debug("Processed encrypted packet from client %u: %zu bytes", client->client_id, *len);
-
     // Now process the decrypted packet by parsing its header
     if (*len >= sizeof(packet_header_t)) {
       packet_header_t *header = (packet_header_t *)*data;
       *type = (packet_type_t)ntohs(header->type);
       *sender_id = ntohl(header->client_id);
-
-      log_debug("Decrypted packet from client %u: type=%d, len=%zu", client->client_id, *type, *len);
 
       // Adjust data pointer to skip header
       *data = (uint8_t *)*data + sizeof(packet_header_t);

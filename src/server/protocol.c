@@ -689,10 +689,6 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
       int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
       // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
       (void)written;
-#ifdef DEBUG_AUDIO
-      log_debug("Stored audio batch from client %u: %u chunks, %u samples @ %uHz", atomic_load(&client->client_id),
-                batch_count, total_samples, sample_rate);
-#endif
     }
   }
 }
@@ -937,9 +933,6 @@ void handle_ping_packet(client_info_t *client) {
   // PONG responses should be handled directly via socket in send thread
   // For now, just log the ping
   (void)client;
-#ifdef DEBUG_NETWORK
-  log_debug("Received PING from client %u", atomic_load(&client->client_id));
-#endif
 }
 
 /**
