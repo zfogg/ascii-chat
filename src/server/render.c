@@ -477,10 +477,6 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-#ifdef DEBUG_THREADS
-    LOG_DEBUG_EVERY(video_render_thread, 100, "Video render thread: %s", client->display_name);
-#endif
-
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
 
@@ -810,21 +806,9 @@ void *client_audio_render_thread(void *arg) {
       break;
     }
 
-#ifdef DEBUG_THREADS
-    LOG_DEBUG_EVERY(mixer_process_excluding_source_calling, 100,
-                    "Audio render thread: Mixer process excluding source being called %d times",
-                    mixer_process_excluding_source_calling_counter);
-#endif
-
     // Create mix excluding THIS client's audio using snapshot data
     int samples_mixed =
         mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
-
-#if defined(DEBUG_AUDIO) || defined(DEBUG_THREADS)
-    LOG_DEBUG_EVERY(mixer_process_excluding_source_called, 100,
-                    "Audio render thread: Mixer process excluding source called %d times",
-                    mixer_process_excluding_source_called_counter);
-#endif
 
     // Queue audio directly for this specific client using snapshot data
     if (samples_mixed > 0) {
@@ -833,11 +817,6 @@ void *client_audio_render_thread(void *arg) {
       if (result < 0) {
         log_debug("Failed to queue audio for client %u", client_id_snapshot);
       } else {
-#ifdef DEBUG_AUDIO
-        LOG_DEBUG_EVERY(queue_count, 100, "Audio render thread: Successfully queued %d audio samples for client %u",
-                        samples_mixed, client_id_snapshot);
-#endif
-
         // FPS tracking - audio packet successfully queued
         audio_packet_count++;
 

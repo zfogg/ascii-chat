@@ -152,18 +152,15 @@ int server_crypto_handshake(socket_t client_socket) {
  */
 bool crypto_server_is_ready(uint32_t client_id) {
   if (opt_no_encrypt) {
-    log_debug("Crypto disabled by --no-encrypt flag");
     return false;
   }
 
   client_info_t *client = find_client_by_id(client_id);
   if (!client) {
-    log_debug("Client %u not found for crypto check", client_id);
     return false;
   }
 
   if (!client->crypto_initialized) {
-    log_debug("Crypto not initialized for client %u", client_id);
     return false;
   }
 
