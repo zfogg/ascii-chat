@@ -25,117 +25,113 @@ include(FetchContent)
 set(_SAVED_ARCHIVE_OUTPUT_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
+# Use cache directory for musl deps - both PREFIX and install dir
+set(MUSL_PREFIX "${FETCHCONTENT_BASE_DIR}/musl-deps")
+message(STATUS "MuslDependencies.cmake: FETCHCONTENT_BASE_DIR=${FETCHCONTENT_BASE_DIR}")
+message(STATUS "MuslDependencies.cmake: MUSL_PREFIX=${MUSL_PREFIX}")
+
 # =============================================================================
 # zlib - Compression library
 # =============================================================================
 message(STATUS "Configuring zlib from source...")
 
-FetchContent_Declare(
-    zlib_musl
-    GIT_REPOSITORY https://github.com/madler/zlib.git
-    GIT_TAG v1.3.1
-    GIT_SHALLOW TRUE
-    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/zlib-src"
-    BINARY_DIR "${FETCHCONTENT_BASE_DIR}/zlib-build"
+ExternalProject_Add(zlib-musl
+    URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+    URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
+    PREFIX ${FETCHCONTENT_BASE_DIR}/zlib-musl
+    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --static
+    BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+    INSTALL_COMMAND make install
+    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libz.a
 )
 
-# Configure zlib options
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/zlib-build/lib")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/zlib-build/lib")
-
-FetchContent_MakeAvailable(zlib_musl)
-
 set(ZLIB_FOUND TRUE)
-set(ZLIB_LIBRARIES zlibstatic)
-set(ZLIB_INCLUDE_DIRS "${FETCHCONTENT_BASE_DIR}/zlib-src;${FETCHCONTENT_BASE_DIR}/zlib-build")
+set(ZLIB_LIBRARIES "${MUSL_PREFIX}/lib/libz.a")
+set(ZLIB_INCLUDE_DIRS "${MUSL_PREFIX}/include")
 
 # =============================================================================
 # libsodium - Cryptography library
 # =============================================================================
 message(STATUS "Configuring libsodium from source...")
 
-FetchContent_Declare(
-    libsodium_musl
-    GIT_REPOSITORY https://github.com/jedisct1/libsodium.git
-    GIT_TAG 1.0.20-RELEASE
-    GIT_SHALLOW TRUE
-    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-src"
-    BINARY_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-build"
+ExternalProject_Add(libsodium-musl
+    URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+    URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
+    PREFIX ${FETCHCONTENT_BASE_DIR}/libsodium-musl
+    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
+    BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+    INSTALL_COMMAND make install
+    DEPENDS zlib-musl
+    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libsodium.a
 )
 
-# libsodium uses autotools, so we need to build it manually
-FetchContent_GetProperties(libsodium_musl)
-if(NOT libsodium_musl_POPULATED)
-    FetchContent_Populate(libsodium_musl)
-
-    # Build libsodium using its configure script
-    set(LIBSODIUM_INSTALL_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-install")
-
-    if(NOT EXISTS "${LIBSODIUM_INSTALL_DIR}/lib/libsodium.a")
-        message(STATUS "Building libsodium...")
-        execute_process(
-            COMMAND ./autogen.sh
-            WORKING_DIRECTORY "${libsodium_musl_SOURCE_DIR}"
-            RESULT_VARIABLE LIBSODIUM_AUTOGEN_RESULT
-        )
-
-        if(LIBSODIUM_AUTOGEN_RESULT EQUAL 0)
-            execute_process(
-                COMMAND ./configure --prefix=${LIBSODIUM_INSTALL_DIR} --enable-static --disable-shared
-                WORKING_DIRECTORY "${libsodium_musl_SOURCE_DIR}"
-                RESULT_VARIABLE LIBSODIUM_CONFIGURE_RESULT
-            )
-
-            if(LIBSODIUM_CONFIGURE_RESULT EQUAL 0)
-                execute_process(
-                    COMMAND make -j${CMAKE_BUILD_PARALLEL_LEVEL}
-                    WORKING_DIRECTORY "${libsodium_musl_SOURCE_DIR}"
-                    RESULT_VARIABLE LIBSODIUM_MAKE_RESULT
-                )
-
-                if(LIBSODIUM_MAKE_RESULT EQUAL 0)
-                    execute_process(
-                        COMMAND make install
-                        WORKING_DIRECTORY "${libsodium_musl_SOURCE_DIR}"
-                    )
-                endif()
-            endif()
-        endif()
-    else()
-        message(STATUS "Using cached libsodium build")
-    endif()
-endif()
-
 set(LIBSODIUM_FOUND TRUE)
-set(LIBSODIUM_LIBRARIES "${LIBSODIUM_INSTALL_DIR}/lib/libsodium.a")
-set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_INSTALL_DIR}/include")
+set(LIBSODIUM_LIBRARIES "${MUSL_PREFIX}/lib/libsodium.a")
+set(LIBSODIUM_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+
+# =============================================================================
+# ALSA - Advanced Linux Sound Architecture
+# =============================================================================
+message(STATUS "Configuring ALSA from source...")
+
+include(ExternalProject)
+
+ExternalProject_Add(alsa-lib-musl
+    URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
+    URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
+    PREFIX ${FETCHCONTENT_BASE_DIR}/alsa-lib-musl
+    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
+    BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+    INSTALL_COMMAND make install
+    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libasound.a
+)
+
+# Set ALSA variables for PortAudio to find
+set(ALSA_FOUND TRUE)
+set(ALSA_LIBRARIES "${MUSL_PREFIX}/lib/libasound.a")
+set(ALSA_INCLUDE_DIRS "${MUSL_PREFIX}/include")
 
 # =============================================================================
 # PortAudio - Audio I/O library
 # =============================================================================
 message(STATUS "Configuring PortAudio from source...")
 
-FetchContent_Declare(
-    portaudio_musl
-    GIT_REPOSITORY https://github.com/PortAudio/portaudio.git
-    GIT_TAG v19.7.0
-    GIT_SHALLOW TRUE
-    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/portaudio-src"
-    BINARY_DIR "${FETCHCONTENT_BASE_DIR}/portaudio-build"
+ExternalProject_Add(portaudio-musl
+    URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
+    URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
+    PREFIX ${FETCHCONTENT_BASE_DIR}/portaudio-musl
+    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${MUSL_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
+    BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+    INSTALL_COMMAND make install
+    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libportaudio.a
+    DEPENDS alsa-lib-musl
 )
 
-# PortAudio CMake options
-set(PA_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-set(PA_BUILD_STATIC ON CACHE BOOL "Build static library")
-
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/portaudio-build/lib")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/portaudio-build/lib")
-
-FetchContent_MakeAvailable(portaudio_musl)
-
 set(PORTAUDIO_FOUND TRUE)
-set(PORTAUDIO_LIBRARIES portaudio_static)
-set(PORTAUDIO_INCLUDE_DIRS "${FETCHCONTENT_BASE_DIR}/portaudio-src/include")
+set(PORTAUDIO_LIBRARIES "${MUSL_PREFIX}/lib/libportaudio.a")
+set(PORTAUDIO_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+
+# =============================================================================
+# libexecinfo - Backtrace support for musl
+# =============================================================================
+message(STATUS "Configuring libexecinfo from source...")
+
+ExternalProject_Add(libexecinfo-musl
+    GIT_REPOSITORY https://github.com/mikroskeem/libexecinfo.git
+    GIT_TAG master
+    PREFIX ${FETCHCONTENT_BASE_DIR}/libexecinfo-musl
+    UPDATE_DISCONNECTED 1
+    BUILD_ALWAYS 0
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR>
+    INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
+    BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libexecinfo.a
+)
+
+set(LIBEXECINFO_FOUND TRUE)
+set(LIBEXECINFO_LIBRARIES "${MUSL_PREFIX}/lib/libexecinfo.a")
+set(LIBEXECINFO_INCLUDE_DIRS "${MUSL_PREFIX}/include")
 
 # =============================================================================
 # BearSSL - TLS library for SSH key fetching

@@ -118,8 +118,8 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
 int hex_decode(const char *hex, uint8_t *output, size_t output_len);
 
 // Forward declaration (full definition in handshake.h)
-// Note: This causes a harmless pointer type warning but avoids circular includes
-struct crypto_handshake_context_t;
+// Note: This avoids circular includes (handshake.h includes keys.h)
+typedef struct crypto_handshake_context_t crypto_handshake_context_t;
 
 /**
  * Configure SSH key for handshake context (shared between client and server)
@@ -132,7 +132,7 @@ struct crypto_handshake_context_t;
  * @param private_key SSH private key to use
  * @return 0 on success, -1 on failure
  */
-int crypto_setup_ssh_key_for_handshake(struct crypto_handshake_context_t *ctx, const private_key_t *private_key);
+int crypto_setup_ssh_key_for_handshake(crypto_handshake_context_t *ctx, const private_key_t *private_key);
 
 /**
  * Validate SSH key file before parsing

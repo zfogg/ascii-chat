@@ -209,13 +209,6 @@ static bool is_ok_response(const char *line) {
   return strncmp(line, "OK", 2) == 0;
 }
 
-/**
- * Check if response is an error
- */
-static bool is_err_response(const char *line) {
-  return strncmp(line, "ERR", 3) == 0;
-}
-
 #ifdef _WIN32
 // On Windows, we return HANDLE cast to int (handle values are always even on Windows)
 int gpg_agent_connect(void) {

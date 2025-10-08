@@ -22,7 +22,7 @@ typedef enum {
 } crypto_handshake_state_t;
 
 // Crypto handshake context for a connection
-typedef struct {
+typedef struct crypto_handshake_context_t {
   crypto_context_t crypto_ctx;    // Core crypto context
   crypto_handshake_state_t state; // Current handshake state
   bool is_server;                 // True if this is the server side
