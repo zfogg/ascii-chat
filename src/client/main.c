@@ -69,6 +69,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
+#include "os/webcam.h"
 
 #include "platform/abstraction.h"
 #include "platform/init.h"
@@ -231,7 +232,7 @@ static int initialize_client_systems() {
   // Initialize display subsystem
   if (display_init() != 0) {
     log_fatal("Failed to initialize display subsystem");
-    return ASCIICHAT_ERR_DISPLAY;
+    return ASCIICHAT_ERROR_DISPLAY;
   }
 
   // Initialize logging with appropriate settings
@@ -258,20 +259,21 @@ static int initialize_client_systems() {
   // Initialize server connection management
   if (server_connection_init() != 0) {
     log_fatal("Failed to initialize server connection");
-    return ASCIICHAT_ERR_NETWORK;
+    return ASCIICHAT_ERROR_NETWORK;
   }
 
   // Initialize capture subsystems
-  if (capture_init() != 0) {
+  int capture_result = capture_init();
+  if (capture_result != 0) {
     log_fatal("Failed to initialize capture subsystem");
-    return ASCIICHAT_ERR_WEBCAM;
+    return capture_result;
   }
 
   // Initialize audio if enabled
   if (opt_audio_enabled) {
     if (audio_client_init() != 0) {
       log_fatal("Failed to initialize audio system");
-      return ASCIICHAT_ERR_AUDIO;
+      return ASCIICHAT_ERROR_AUDIO;
     }
   }
 
@@ -307,7 +309,13 @@ static void print_mimalloc_stats(void) {
  */
 int main(int argc, char *argv[]) {
   // Parse command line options first
-  options_init(argc, argv, true);
+  // Note: --help and --version will exit(0) directly within options_init
+  int options_result = options_init(argc, argv, true);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ASCIICHAT_ERROR_USAGE for invalid options (after printing error)
+    // Just exit with the returned error code
+    return options_result;
+  }
 
   // Handle --show-capabilities flag (exit after showing capabilities)
   if (opt_show_capabilities) {
@@ -318,8 +326,16 @@ int main(int argc, char *argv[]) {
   }
 
   // Initialize all client subsystems
-  if (initialize_client_systems() != 0) {
-    return 1;
+  int init_result = initialize_client_systems();
+  if (init_result != 0) {
+    // Check if this is a webcam-related error and print help
+    if (init_result == ASCIICHAT_ERROR_WEBCAM || init_result == ASCIICHAT_ERROR_WEBCAM_IN_USE ||
+        init_result == ASCIICHAT_ERROR_WEBCAM_PERMISSION) {
+      webcam_print_init_error_help(init_result);
+      FATAL_ERROR(init_result);
+    }
+    // For other errors, just exit with the error code
+    return init_result;
   }
 
   // Register cleanup function for graceful shutdown
@@ -363,8 +379,7 @@ int main(int argc, char *argv[]) {
     if (connection_result != 0) {
       // Check for authentication failure (code -2) - exit immediately without retry
       if (connection_result == -2) {
-        log_error("Authentication failed - incorrect password or authentication rejected by server");
-        log_error("Please check your password and try again");
+        // Detailed error message already printed by crypto handshake code
         return 1;
       }
 

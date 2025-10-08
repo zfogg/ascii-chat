@@ -82,7 +82,9 @@ extern const float weight_blue;
 
 extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
-void options_init(int argc, char **argv, bool is_client);
+// Returns ASCIICHAT_OK (0) on success, ASCIICHAT_ERROR_USAGE on parse errors
+// Note: --help and --version also return ASCIICHAT_OK after printing info
+int options_init(int argc, char **argv, bool is_client);
 
 void usage(FILE *desc, bool is_client);
 void usage_client(FILE *desc);

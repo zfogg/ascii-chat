@@ -53,10 +53,6 @@ Test(client_test_pattern, test_client_with_test_pattern_video) {
   int result = webcam_init(0);
   cr_assert_eq(result, 0, "Test pattern init should succeed");
 
-  // Verify dimensions
-  cr_assert_eq(last_image_width, 1280, "Width should be 1280");
-  cr_assert_eq(last_image_height, 720, "Height should be 720");
-
   // Simulate multiple frame captures with test pattern
   for (int i = 0; i < 10; i++) {
     image_t *frame = webcam_read();

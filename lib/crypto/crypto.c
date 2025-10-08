@@ -28,13 +28,18 @@ static crypto_result_t init_libsodium(void) {
   return CRYPTO_OK;
 }
 
-// Generate secure nonce with counter to prevent reuse
+// Generate secure nonce with session ID and counter to prevent reuse
 static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
-  // Use counter in first 8 bytes, random in remaining 16 bytes
-  // This prevents nonce reuse while maintaining security
+  // Nonce format (24 bytes total):
+  // - Bytes 0-15: Session ID (constant per connection, random across connections)
+  // - Bytes 16-23: Counter (increments per packet, prevents reuse within session)
+  //
+  // This prevents replay attacks both within and across sessions:
+  // - Different session_id prevents cross-session replay
+  // - Counter prevents within-session replay
+  SAFE_MEMCPY(nonce_out, 16, ctx->session_id, 16);
   uint64_t counter = ctx->nonce_counter++;
-  SAFE_MEMCPY(nonce_out, 8, &counter, 8);
-  randombytes_buf(nonce_out + 8, CRYPTO_NONCE_SIZE - 8);
+  SAFE_MEMCPY(nonce_out + 16, 8, &counter, 8);
 }
 
 // Securely clear memory
@@ -74,6 +79,9 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   ctx->nonce_counter = 1; // Start from 1 (0 reserved for testing)
   ctx->bytes_encrypted = 0;
   ctx->bytes_decrypted = 0;
+
+  // Generate unique session ID to prevent replay attacks across connections
+  randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
 
   log_info("Crypto context initialized with X25519 key exchange");
   return CRYPTO_OK;
@@ -599,6 +607,20 @@ crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32
   return CRYPTO_OK;
 }
 
+crypto_result_t crypto_compute_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len, uint8_t hmac[32]) {
+  if (!key || !data || !hmac || data_len == 0) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  crypto_result_t result = init_libsodium();
+  if (result != CRYPTO_OK) {
+    return result;
+  }
+
+  crypto_auth_hmacsha256(hmac, data, data_len, key);
+  return CRYPTO_OK;
+}
+
 bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]) {
   if (!key || !data || !expected_hmac) {
     return false;
@@ -610,6 +632,60 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
   }
 
   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
+}
+
+bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len,
+                           const uint8_t expected_hmac[32]) {
+  if (!key || !data || !expected_hmac || data_len == 0) {
+    return false;
+  }
+
+  uint8_t computed_hmac[32];
+  if (crypto_auth_hmacsha256(computed_hmac, data, data_len, key) != 0) {
+    return false;
+  }
+
+  return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
+}
+
+// =============================================================================
+// High-level authentication helpers (shared between client and server)
+// =============================================================================
+
+crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
+                                             uint8_t hmac_out[32]) {
+  if (!ctx || !nonce || !hmac_out) {
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Bind password HMAC to DH shared_secret to prevent MITM
+  // Combined data: nonce || shared_secret
+  uint8_t combined_data[64];
+  memcpy(combined_data, nonce, 32);
+  memcpy(combined_data + 32, ctx->shared_key, 32);
+
+  // Use password_key if available, otherwise use shared_key
+  const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
+
+  return crypto_compute_hmac_ex(auth_key, combined_data, 64, hmac_out);
+}
+
+bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
+                                 const uint8_t expected_hmac[32]) {
+  if (!ctx || !nonce || !expected_hmac) {
+    return false;
+  }
+
+  // Bind password HMAC to DH shared_secret to prevent MITM
+  // Combined data: nonce || shared_secret
+  uint8_t combined_data[64];
+  memcpy(combined_data, nonce, 32);
+  memcpy(combined_data + 32, ctx->shared_key, 32);
+
+  // Use password_key if available, otherwise use shared_key
+  const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
+
+  return crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
 }
 
 crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,

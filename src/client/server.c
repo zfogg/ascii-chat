@@ -511,64 +511,12 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
 
   mutex_lock(&g_send_mutex);
 
-  // Check if crypto handshake is complete and encrypt the packet
-  if (crypto_handshake_is_ready(&g_crypto_ctx)) {
-    log_debug("Encrypting packet type=%d, len=%zu (crypto_ready=%d, handshake_complete=%d)", type, len,
-              crypto_handshake_is_ready(&g_crypto_ctx), g_crypto_ctx.crypto_ctx.handshake_complete);
-    // Create the packet header
-    packet_header_t header;
-    header.magic = htonl(PACKET_MAGIC);
-    header.type = htons(type);
-    header.length = htonl(len);
-    header.crc32 = htonl(asciichat_crc32(data, len));
-    header.client_id = htonl(g_my_client_id);
+  // Use send_packet_auto() which handles encryption automatically based on packet type and crypto state
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+  int result = send_packet_auto(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
 
-    // Combine header and data
-    size_t plaintext_len = sizeof(header) + len;
-    uint8_t *plaintext = buffer_pool_alloc(plaintext_len);
-    if (!plaintext) {
-      mutex_unlock(&g_send_mutex);
-      return -1;
-    }
-
-    memcpy(plaintext, &header, sizeof(header));
-    memcpy(plaintext + sizeof(header), data, len);
-
-    // Encrypt the packet data
-    size_t ciphertext_len;
-    size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-    uint8_t *ciphertext = buffer_pool_alloc(ciphertext_size);
-    if (!ciphertext) {
-      buffer_pool_free(plaintext, plaintext_len);
-      mutex_unlock(&g_send_mutex);
-      return -1;
-    }
-
-    int encrypt_result = crypto_handshake_encrypt_packet(&g_crypto_ctx, plaintext, plaintext_len, ciphertext,
-                                                         ciphertext_size, &ciphertext_len);
-    if (encrypt_result != 0) {
-      log_error("Failed to encrypt packet (result=%d)", encrypt_result);
-      buffer_pool_free(plaintext, plaintext_len);
-      buffer_pool_free(ciphertext, ciphertext_size);
-      mutex_unlock(&g_send_mutex);
-      return -1;
-    }
-
-    // Send as PACKET_TYPE_ENCRYPTED with the encrypted data
-    int result = send_packet(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
-    buffer_pool_free(plaintext, plaintext_len);
-    buffer_pool_free(ciphertext, ciphertext_size);
-    mutex_unlock(&g_send_mutex);
-    return result;
-    mutex_unlock(&g_send_mutex);
-    return 0;
-  } else {
-    // No encryption - send normal packet
-    log_debug("Sending unencrypted packet type=%d, len=%zu", type, len);
-    int result = send_packet(sockfd, type, data, len);
-    mutex_unlock(&g_send_mutex);
-    return result;
-  }
+  mutex_unlock(&g_send_mutex);
+  return result;
 }
 
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {

@@ -22,261 +22,153 @@ typedef unsigned long long uint64_t;
  */
 
 /* ============================================================================
- * Exit Codes - Process Exit Status Values (0-255)
+ * Error and Exit Codes - Unified Status Values (0-255)
  * ============================================================================
- * These codes are returned to the shell when the program exits.
- * Following Unix conventions where 0 = success, 1 = general error, 2 = usage error.
+ * Single enum for both function return values and process exit codes.
+ * Following Unix conventions: 0 = success, 1 = general error, 2 = usage error.
  *
- * Usage: Use these with exit() in src/ code only.
- * Library code should return asciichat_error_t values instead.
+ * Usage:
+ *   - Library functions return these codes
+ *   - Application code passes these to exit()
+ *   - Use FATAL macros in src/ code for automatic error reporting
  */
 typedef enum {
-  /* Standard exit codes (0-2) - Unix conventions */
-  EXIT_OK = 0,            /* Success */
-  EXIT_GENERAL_ERROR = 1, /* Unspecified error */
-  EXIT_USAGE_ERROR = 2,   /* Invalid command line arguments or options */
+  /* Standard codes (0-2) - Unix conventions */
+  ASCIICHAT_OK = 0,            /* Success */
+  ASCIICHAT_ERROR_GENERAL = 1, /* Unspecified error */
+  ASCIICHAT_ERROR_USAGE = 2,   /* Invalid command line arguments or options */
 
-  /* Application-specific exit codes (3-127) */
   /* Initialization failures (3-19) */
-  EXIT_MEMORY_ERROR = 3,        /* Memory allocation failed (OOM) */
-  EXIT_CONFIG_ERROR = 4,        /* Configuration file or settings error */
-  EXIT_CRYPTO_INIT_ERROR = 5,   /* Cryptographic initialization failed */
-  EXIT_LOGGING_INIT_ERROR = 6,  /* Logging system initialization failed */
-  EXIT_PLATFORM_INIT_ERROR = 7, /* Platform-specific initialization failed */
+  ASCIICHAT_ERROR_MEMORY = 3,        /* Memory allocation failed (OOM) */
+  ASCIICHAT_ERROR_CONFIG = 4,        /* Configuration file or settings error */
+  ASCIICHAT_ERROR_CRYPTO_INIT = 5,   /* Cryptographic initialization failed */
+  ASCIICHAT_ERROR_LOGGING_INIT = 6,  /* Logging system initialization failed */
+  ASCIICHAT_ERROR_PLATFORM_INIT = 7, /* Platform-specific initialization failed */
 
   /* Hardware/Device errors (20-39) */
-  EXIT_WEBCAM_ERROR = 20,      /* Webcam initialization or capture failed */
-  EXIT_WEBCAM_IN_USE = 21,     /* Webcam is in use by another application */
-  EXIT_WEBCAM_PERMISSION = 22, /* Webcam permission denied */
-  EXIT_AUDIO_ERROR = 23,       /* Audio device initialization or I/O failed */
-  EXIT_AUDIO_IN_USE = 24,      /* Audio device is in use */
-  EXIT_TERMINAL_ERROR = 25,    /* Terminal initialization or capability detection failed */
+  ASCIICHAT_ERROR_WEBCAM = 20,            /* Webcam initialization or capture failed */
+  ASCIICHAT_ERROR_WEBCAM_IN_USE = 21,     /* Webcam is in use by another application */
+  ASCIICHAT_ERROR_WEBCAM_PERMISSION = 22, /* Webcam permission denied */
+  ASCIICHAT_ERROR_AUDIO = 23,             /* Audio device initialization or I/O failed */
+  ASCIICHAT_ERROR_AUDIO_IN_USE = 24,      /* Audio device is in use */
+  ASCIICHAT_ERROR_TERMINAL = 25,          /* Terminal initialization or capability detection failed */
 
   /* Network errors (40-59) */
-  EXIT_NETWORK_ERROR = 40,          /* General network error */
-  EXIT_NETWORK_BIND_ERROR = 41,     /* Cannot bind to port (server) */
-  EXIT_NETWORK_CONNECT_ERROR = 42,  /* Cannot connect to server (client) */
-  EXIT_NETWORK_TIMEOUT = 43,        /* Network operation timed out */
-  EXIT_NETWORK_PROTOCOL_ERROR = 44, /* Protocol violation or incompatible version */
+  ASCIICHAT_ERROR_NETWORK = 40,          /* General network error */
+  ASCIICHAT_ERROR_NETWORK_BIND = 41,     /* Cannot bind to port (server) */
+  ASCIICHAT_ERROR_NETWORK_CONNECT = 42,  /* Cannot connect to server (client) */
+  ASCIICHAT_ERROR_NETWORK_TIMEOUT = 43,  /* Network operation timed out */
+  ASCIICHAT_ERROR_NETWORK_PROTOCOL = 44, /* Protocol violation or incompatible version */
+  ASCIICHAT_ERROR_NETWORK_SIZE = 45,     /* Network packet size error */
 
   /* Security/Crypto errors (60-79) */
-  EXIT_CRYPTO_ERROR = 60,               /* Cryptographic operation failed */
-  EXIT_CRYPTO_KEY_ERROR = 61,           /* Key loading, parsing, or generation failed */
-  EXIT_CRYPTO_AUTH_FAILED = 62,         /* Authentication failed */
-  EXIT_CRYPTO_HANDSHAKE_FAILED = 63,    /* Cryptographic handshake failed */
-  EXIT_CRYPTO_VERIFICATION_FAILED = 64, /* Signature or key verification failed */
+  ASCIICHAT_ERROR_CRYPTO = 60,              /* Cryptographic operation failed */
+  ASCIICHAT_ERROR_CRYPTO_KEY = 61,          /* Key loading, parsing, or generation failed */
+  ASCIICHAT_ERROR_CRYPTO_AUTH = 62,         /* Authentication failed */
+  ASCIICHAT_ERROR_CRYPTO_HANDSHAKE = 63,    /* Cryptographic handshake failed */
+  ASCIICHAT_ERROR_CRYPTO_VERIFICATION = 64, /* Signature or key verification failed */
 
   /* Runtime errors (80-99) */
-  EXIT_THREAD_ERROR = 80,       /* Thread creation or management failed */
-  EXIT_BUFFER_ERROR = 81,       /* Buffer allocation or overflow */
-  EXIT_DISPLAY_ERROR = 82,      /* Display rendering or output error */
-  EXIT_INVALID_STATE = 83,      /* Invalid program state */
-  EXIT_RESOURCE_EXHAUSTED = 84, /* System resources exhausted */
+  ASCIICHAT_ERROR_THREAD = 80,             /* Thread creation or management failed */
+  ASCIICHAT_ERROR_BUFFER = 81,             /* Buffer allocation or overflow */
+  ASCIICHAT_ERROR_BUFFER_FULL = 82,        /* Buffer full */
+  ASCIICHAT_ERROR_BUFFER_OVERFLOW = 83,    /* Buffer overflow */
+  ASCIICHAT_ERROR_DISPLAY = 84,            /* Display rendering or output error */
+  ASCIICHAT_ERROR_INVALID_STATE = 85,      /* Invalid program state */
+  ASCIICHAT_ERROR_INVALID_PARAM = 86,      /* Invalid parameter */
+  ASCIICHAT_ERROR_INVALID_FRAME = 87,      /* Invalid frame data */
+  ASCIICHAT_ERROR_RESOURCE_EXHAUSTED = 88, /* System resources exhausted */
 
   /* Signal/Crash handlers (100-127) */
-  EXIT_SIGNAL_INTERRUPT = 100, /* Interrupted by signal (SIGINT, SIGTERM) */
-  EXIT_SIGNAL_CRASH = 101,     /* Fatal signal (SIGSEGV, SIGABRT, etc.) */
-  EXIT_ASSERTION_FAILED = 102, /* Assertion or invariant violation */
+  ASCIICHAT_ERROR_SIGNAL_INTERRUPT = 100, /* Interrupted by signal (SIGINT, SIGTERM) */
+  ASCIICHAT_ERROR_SIGNAL_CRASH = 101,     /* Fatal signal (SIGSEGV, SIGABRT, etc.) */
+  ASCIICHAT_ERROR_ASSERTION_FAILED = 102, /* Assertion or invariant violation */
 
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
-} asciichat_exit_code_t;
-
-/* ============================================================================
- * Internal Error Codes - Function Return Values (negative)
- * ============================================================================
- * These codes are used internally for function return values.
- * They are negative to distinguish from positive success values and zero.
- *
- * Usage: Return these from lib/ functions. Convert to exit codes using
- * asciichat_error_to_exit() before calling exit() in src/ code.
- */
-typedef enum {
-  ASCIICHAT_OK = 0,
-  ASCIICHAT_ERR_GENERAL = -1,
-  ASCIICHAT_ERR_MALLOC = -2,
-  ASCIICHAT_ERR_NETWORK = -3,
-  ASCIICHAT_ERR_NETWORK_SIZE = -4,
-  ASCIICHAT_ERR_WEBCAM = -5,
-  ASCIICHAT_ERR_WEBCAM_IN_USE = -6,
-  ASCIICHAT_ERR_INVALID_PARAM = -7,
-  ASCIICHAT_ERR_TIMEOUT = -8,
-  ASCIICHAT_ERR_BUFFER_FULL = -9,
-  ASCIICHAT_ERR_BUFFER_ACCESS = -10,
-  ASCIICHAT_ERR_BUFFER_OVERFLOW = -11,
-  ASCIICHAT_ERR_JPEG = -12,
-  ASCIICHAT_ERR_TERMINAL = -13,
-  ASCIICHAT_ERR_THREAD = -14,
-  ASCIICHAT_ERR_AUDIO = -15,
-  ASCIICHAT_ERR_DISPLAY = -16,
-  ASCIICHAT_ERR_INVALID_FRAME = -17,
-  ASCIICHAT_ERR_CRYPTO = -18,
-  ASCIICHAT_ERR_CRYPTO_KEY = -19,
-  ASCIICHAT_ERR_CRYPTO_AUTH = -20,
 } asciichat_error_t;
 
 /* ============================================================================
- * Error Code Conversion and String Utilities
+ * Error String Utilities
  * ============================================================================
  */
 
-/* Convert internal error code to exit code */
-static inline asciichat_exit_code_t asciichat_error_to_exit(asciichat_error_t error) {
-  switch (error) {
-  case ASCIICHAT_OK:
-    return EXIT_OK;
-  case ASCIICHAT_ERR_MALLOC:
-    return EXIT_MEMORY_ERROR;
-  case ASCIICHAT_ERR_NETWORK:
-  case ASCIICHAT_ERR_NETWORK_SIZE:
-    return EXIT_NETWORK_ERROR;
-  case ASCIICHAT_ERR_WEBCAM:
-    return EXIT_WEBCAM_ERROR;
-  case ASCIICHAT_ERR_WEBCAM_IN_USE:
-    return EXIT_WEBCAM_IN_USE;
-  case ASCIICHAT_ERR_INVALID_PARAM:
-    return EXIT_USAGE_ERROR;
-  case ASCIICHAT_ERR_TIMEOUT:
-    return EXIT_NETWORK_TIMEOUT;
-  case ASCIICHAT_ERR_BUFFER_FULL:
-  case ASCIICHAT_ERR_BUFFER_ACCESS:
-  case ASCIICHAT_ERR_BUFFER_OVERFLOW:
-    return EXIT_BUFFER_ERROR;
-  case ASCIICHAT_ERR_TERMINAL:
-    return EXIT_TERMINAL_ERROR;
-  case ASCIICHAT_ERR_THREAD:
-    return EXIT_THREAD_ERROR;
-  case ASCIICHAT_ERR_AUDIO:
-    return EXIT_AUDIO_ERROR;
-  case ASCIICHAT_ERR_DISPLAY:
-    return EXIT_DISPLAY_ERROR;
-  case ASCIICHAT_ERR_CRYPTO:
-    return EXIT_CRYPTO_ERROR;
-  case ASCIICHAT_ERR_CRYPTO_KEY:
-    return EXIT_CRYPTO_KEY_ERROR;
-  case ASCIICHAT_ERR_CRYPTO_AUTH:
-    return EXIT_CRYPTO_AUTH_FAILED;
-  default:
-    return EXIT_GENERAL_ERROR;
-  }
-}
-
-/* Get human-readable error string for internal error code */
-static inline const char *asciichat_error_string(asciichat_error_t error) {
-  switch (error) {
-  case ASCIICHAT_OK:
-    return "Success";
-  case ASCIICHAT_ERR_GENERAL:
-    return "General error";
-  case ASCIICHAT_ERR_MALLOC:
-    return "Memory allocation failed";
-  case ASCIICHAT_ERR_NETWORK:
-    return "Network error";
-  case ASCIICHAT_ERR_NETWORK_SIZE:
-    return "Network packet size error";
-  case ASCIICHAT_ERR_WEBCAM:
-    return "Webcam error";
-  case ASCIICHAT_ERR_WEBCAM_IN_USE:
-    return "Webcam already in use by another application";
-  case ASCIICHAT_ERR_INVALID_PARAM:
-    return "Invalid parameter";
-  case ASCIICHAT_ERR_TIMEOUT:
-    return "Operation timed out";
-  case ASCIICHAT_ERR_BUFFER_FULL:
-    return "Buffer full";
-  case ASCIICHAT_ERR_BUFFER_ACCESS:
-    return "Buffer access error";
-  case ASCIICHAT_ERR_BUFFER_OVERFLOW:
-    return "Buffer overflow";
-  case ASCIICHAT_ERR_JPEG:
-    return "JPEG processing error";
-  case ASCIICHAT_ERR_TERMINAL:
-    return "Terminal error";
-  case ASCIICHAT_ERR_THREAD:
-    return "Thread error";
-  case ASCIICHAT_ERR_AUDIO:
-    return "Audio error";
-  case ASCIICHAT_ERR_DISPLAY:
-    return "Display error";
-  case ASCIICHAT_ERR_INVALID_FRAME:
-    return "Invalid frame data";
-  case ASCIICHAT_ERR_CRYPTO:
-    return "Cryptographic error";
-  case ASCIICHAT_ERR_CRYPTO_KEY:
-    return "Cryptographic key error";
-  case ASCIICHAT_ERR_CRYPTO_AUTH:
-    return "Authentication failed";
-  default:
-    return "Unknown error";
-  }
-}
-
-/* Get human-readable string for exit code */
-static inline const char *asciichat_exit_code_string(asciichat_exit_code_t code) {
+/* Get human-readable string for error/exit code */
+static inline const char *asciichat_error_string(asciichat_error_t code) {
   switch (code) {
-  case EXIT_OK:
+  case ASCIICHAT_OK:
     return "Success";
-  case EXIT_GENERAL_ERROR:
+  case ASCIICHAT_ERROR_GENERAL:
     return "General error";
-  case EXIT_USAGE_ERROR:
+  case ASCIICHAT_ERROR_USAGE:
     return "Invalid command line usage";
-  case EXIT_MEMORY_ERROR:
+  case ASCIICHAT_ERROR_MEMORY:
     return "Memory allocation failed";
-  case EXIT_CONFIG_ERROR:
+  case ASCIICHAT_ERROR_CONFIG:
     return "Configuration error";
-  case EXIT_CRYPTO_INIT_ERROR:
+  case ASCIICHAT_ERROR_CRYPTO_INIT:
     return "Cryptographic initialization failed";
-  case EXIT_LOGGING_INIT_ERROR:
+  case ASCIICHAT_ERROR_LOGGING_INIT:
     return "Logging initialization failed";
-  case EXIT_PLATFORM_INIT_ERROR:
+  case ASCIICHAT_ERROR_PLATFORM_INIT:
     return "Platform initialization failed";
-  case EXIT_WEBCAM_ERROR:
+  case ASCIICHAT_ERROR_WEBCAM:
     return "Webcam error";
-  case EXIT_WEBCAM_IN_USE:
+  case ASCIICHAT_ERROR_WEBCAM_IN_USE:
     return "Webcam in use by another application";
-  case EXIT_WEBCAM_PERMISSION:
+  case ASCIICHAT_ERROR_WEBCAM_PERMISSION:
     return "Webcam permission denied";
-  case EXIT_AUDIO_ERROR:
+  case ASCIICHAT_ERROR_AUDIO:
     return "Audio device error";
-  case EXIT_AUDIO_IN_USE:
+  case ASCIICHAT_ERROR_AUDIO_IN_USE:
     return "Audio device in use";
-  case EXIT_TERMINAL_ERROR:
+  case ASCIICHAT_ERROR_TERMINAL:
     return "Terminal error";
-  case EXIT_NETWORK_ERROR:
+  case ASCIICHAT_ERROR_NETWORK:
     return "Network error";
-  case EXIT_NETWORK_BIND_ERROR:
+  case ASCIICHAT_ERROR_NETWORK_BIND:
     return "Cannot bind to network port";
-  case EXIT_NETWORK_CONNECT_ERROR:
+  case ASCIICHAT_ERROR_NETWORK_CONNECT:
     return "Cannot connect to server";
-  case EXIT_NETWORK_TIMEOUT:
+  case ASCIICHAT_ERROR_NETWORK_TIMEOUT:
     return "Network timeout";
-  case EXIT_NETWORK_PROTOCOL_ERROR:
+  case ASCIICHAT_ERROR_NETWORK_PROTOCOL:
     return "Network protocol error";
-  case EXIT_CRYPTO_ERROR:
+  case ASCIICHAT_ERROR_NETWORK_SIZE:
+    return "Network packet size error";
+  case ASCIICHAT_ERROR_CRYPTO:
     return "Cryptographic error";
-  case EXIT_CRYPTO_KEY_ERROR:
+  case ASCIICHAT_ERROR_CRYPTO_KEY:
     return "Cryptographic key error";
-  case EXIT_CRYPTO_AUTH_FAILED:
+  case ASCIICHAT_ERROR_CRYPTO_AUTH:
     return "Authentication failed";
-  case EXIT_CRYPTO_HANDSHAKE_FAILED:
+  case ASCIICHAT_ERROR_CRYPTO_HANDSHAKE:
     return "Cryptographic handshake failed";
-  case EXIT_CRYPTO_VERIFICATION_FAILED:
+  case ASCIICHAT_ERROR_CRYPTO_VERIFICATION:
     return "Signature verification failed";
-  case EXIT_THREAD_ERROR:
+  case ASCIICHAT_ERROR_THREAD:
     return "Thread error";
-  case EXIT_BUFFER_ERROR:
+  case ASCIICHAT_ERROR_BUFFER:
     return "Buffer error";
-  case EXIT_DISPLAY_ERROR:
+  case ASCIICHAT_ERROR_BUFFER_FULL:
+    return "Buffer full";
+  case ASCIICHAT_ERROR_BUFFER_OVERFLOW:
+    return "Buffer overflow";
+  case ASCIICHAT_ERROR_DISPLAY:
     return "Display error";
-  case EXIT_INVALID_STATE:
+  case ASCIICHAT_ERROR_INVALID_STATE:
     return "Invalid program state";
-  case EXIT_RESOURCE_EXHAUSTED:
+  case ASCIICHAT_ERROR_INVALID_PARAM:
+    return "Invalid parameter";
+  case ASCIICHAT_ERROR_INVALID_FRAME:
+    return "Invalid frame data";
+  case ASCIICHAT_ERROR_RESOURCE_EXHAUSTED:
     return "System resources exhausted";
-  case EXIT_SIGNAL_INTERRUPT:
+  case ASCIICHAT_ERROR_SIGNAL_INTERRUPT:
     return "Interrupted by signal";
-  case EXIT_SIGNAL_CRASH:
+  case ASCIICHAT_ERROR_SIGNAL_CRASH:
     return "Terminated by fatal signal";
-  case EXIT_ASSERTION_FAILED:
+  case ASCIICHAT_ERROR_ASSERTION_FAILED:
     return "Assertion failed";
   default:
     return "Unknown error";
@@ -290,17 +182,16 @@ static inline const char *asciichat_exit_code_string(asciichat_exit_code_t code)
  * error message. In debug builds, they also print a stack trace.
  *
  * Usage in src/ code:
- *   FATAL_ERROR(ASCIICHAT_ERR_WEBCAM);         // Takes internal error code
- *   FATAL_EXIT(EXIT_WEBCAM_ERROR);             // Takes exit code directly
- *   FATAL(EXIT_WEBCAM_ERROR, "Custom msg");    // Exit code + custom message
+ *   FATAL_ERROR(ASCIICHAT_ERROR_WEBCAM);                    // Error code only
+ *   FATAL(ASCIICHAT_ERROR_WEBCAM, "Custom msg: %d", val);   // Error code + custom message
  */
 
 /* Forward declare platform_print_backtrace for stack trace support */
 void platform_print_backtrace(void);
 
 /**
- * @brief Exit with error code converted from internal error, with message and stack trace
- * @param error Internal error code (asciichat_error_t)
+ * @brief Exit with error code and standard message, with stack trace in debug builds
+ * @param code Error code (asciichat_error_t)
  *
  * Usage:
  *   asciichat_error_t err = webcam_init(...);
@@ -308,30 +199,10 @@ void platform_print_backtrace(void);
  *       FATAL_ERROR(err);  // Prints "Webcam error" + stack trace + exits with 20
  *   }
  */
-#define FATAL_ERROR(error)                                                                                             \
-  do {                                                                                                                 \
-    asciichat_exit_code_t exit_code = asciichat_error_to_exit(error);                                                  \
-    (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fprintf(stderr, "FATAL ERROR: %s\n", asciichat_error_string(error));                                         \
-    (void)fprintf(stderr, "Exit code: %d (%s)\n", exit_code, asciichat_exit_code_string(exit_code));                   \
-    (void)fprintf(stderr, "Location: %s:%d in %s()\n", __FILE__, __LINE__, __func__);                                  \
-    (void)fflush(stderr);                                                                                              \
-    /* Print stack trace in debug builds only */                                                                       \
-    NDEBUG_STACK_TRACE();                                                                                              \
-    exit(exit_code);                                                                                                   \
-  } while (0)
-
-/**
- * @brief Exit with explicit exit code, with message and stack trace
- * @param code Exit code (asciichat_exit_code_t)
- *
- * Usage:
- *   FATAL_EXIT(EXIT_NETWORK_BIND_ERROR);  // Exits with code 41
- */
-#define FATAL_EXIT(code)                                                                                               \
+#define FATAL_ERROR(code)                                                                                              \
   do {                                                                                                                 \
     (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fprintf(stderr, "FATAL ERROR: %s\n", asciichat_exit_code_string(code));                                      \
+    (void)fprintf(stderr, "FATAL ERROR: %s\n", asciichat_error_string(code));                                          \
     (void)fprintf(stderr, "Exit code: %d\n", (int)(code));                                                             \
     (void)fprintf(stderr, "Location: %s:%d in %s()\n", __FILE__, __LINE__, __func__);                                  \
     (void)fflush(stderr);                                                                                              \
@@ -340,12 +211,12 @@ void platform_print_backtrace(void);
   } while (0)
 
 /**
- * @brief Exit with explicit exit code and custom message, with stack trace
- * @param code Exit code (asciichat_exit_code_t)
+ * @brief Exit with error code and custom message, with stack trace in debug builds
+ * @param code Error code (asciichat_error_t)
  * @param ... Custom message format string and arguments (printf-style)
  *
  * Usage:
- *   FATAL(EXIT_NETWORK_BIND_ERROR, "Cannot bind to port %d", port_number);
+ *   FATAL(ASCIICHAT_ERROR_NETWORK_BIND, "Cannot bind to port %d", port_number);
  */
 #define FATAL(code, ...)                                                                                               \
   do {                                                                                                                 \
@@ -353,7 +224,7 @@ void platform_print_backtrace(void);
     (void)fprintf(stderr, "FATAL ERROR: ");                                                                            \
     (void)fprintf(stderr, __VA_ARGS__);                                                                                \
     (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fprintf(stderr, "Exit code: %d (%s)\n", (int)(code), asciichat_exit_code_string(code));                      \
+    (void)fprintf(stderr, "Exit code: %d (%s)\n", (int)(code), asciichat_error_string(code));                          \
     (void)fprintf(stderr, "Location: %s:%d in %s()\n", __FILE__, __LINE__, __func__);                                  \
     (void)fflush(stderr);                                                                                              \
     NDEBUG_STACK_TRACE();                                                                                              \
@@ -389,8 +260,6 @@ static inline uint8_t clamp_rgb(int value) {
   return (uint8_t)value;
 }
 
-#define ASCIICHAT_WEBCAM_ERROR_STRING "Webcam capture failed"
-
 // Frame rate configuration - Windows terminals struggle with high FPS
 #ifdef _WIN32
 #define DEFAULT_MAX_FPS 30 // Windows terminals can't handle more than this
@@ -405,10 +274,6 @@ extern int g_max_fps;
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
 
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
-
-// Global variables to store last known image dimensions for aspect ratio
-// recalculation
-extern unsigned short int last_image_width, last_image_height;
 
 /* Logging levels */
 typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;
@@ -436,9 +301,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   do {                                                                                                                 \
     (ptr) = (cast)malloc(size);                                                                                        \
     if (!(ptr)) {                                                                                                      \
-      log_error("Memory allocation failed: %zu bytes", (size_t)(size));                                                \
-      /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                            \
     }                                                                                                                  \
   } while (0)
 
@@ -447,9 +310,8 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   do {                                                                                                                 \
     (ptr) = (cast)calloc((count), (size));                                                                             \
     if (!(ptr)) {                                                                                                      \
-      log_error("Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));                \
-      /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count),             \
+            (size_t)(size));                                                                                           \
     }                                                                                                                  \
   } while (0)
 
@@ -458,9 +320,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   do {                                                                                                                 \
     void *tmp_ptr = realloc((ptr), (size));                                                                            \
     if (!(tmp_ptr)) {                                                                                                  \
-      log_error("Memory reallocation failed: %zu bytes", (size_t)(size));                                              \
-      /*return ASCIICHAT_ERR_MALLOC;*/                                                                                 \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                          \
     }                                                                                                                  \
     (ptr) = (cast)(tmp_ptr);                                                                                           \
   } while (0)
@@ -472,8 +332,8 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   do {                                                                                                                 \
     int result = posix_memalign((void **)&(ptr), (alignment), (size));                                                 \
     if (result != 0 || !(ptr)) {                                                                                       \
-      log_error("Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size), (size_t)(alignment));    \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),      \
+            (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
     (ptr) = (cast)(ptr);                                                                                               \
   } while (0)
@@ -484,8 +344,8 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
     size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
     (ptr) = (cast)aligned_alloc((alignment), aligned_size);                                                            \
     if (!(ptr)) {                                                                                                      \
-      log_error("Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size, (size_t)(alignment));      \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,        \
+            (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
   } while (0)
 #endif
@@ -520,8 +380,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   do {                                                                                                                 \
     (dst) = _strdup(src);                                                                                              \
     if (!(dst)) {                                                                                                      \
-      log_error("String duplication failed for: %s", (src) ? (src) : "(null)");                                        \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                    \
     }                                                                                                                  \
   } while (0)
 #else
@@ -529,8 +388,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_lev
   do {                                                                                                                 \
     (dst) = strdup(src);                                                                                               \
     if (!(dst)) {                                                                                                      \
-      log_error("String duplication failed for: %s", (src) ? (src) : "(null)");                                        \
-      exit(ASCIICHAT_ERR_MALLOC);                                                                                      \
+      FATAL(ASCIICHAT_ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                    \
     }                                                                                                                  \
   } while (0)
 #endif

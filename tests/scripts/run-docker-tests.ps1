@@ -49,8 +49,9 @@ function ConvertTo-DockerPath {
 $ImageName = "ascii-chat-tests"
 $ContainerName = "ascii-chat-test-runner"
 
-# ccache volume name for persistent caching
+# Volume names for persistent caching
 $CcacheVolume = "ascii-chat-ccache"
+$DepsCacheVolume = "ascii-chat-deps-cache"
 
 # Check if Docker is running
 Write-Host "Checking Docker..." -ForegroundColor Cyan
@@ -225,7 +226,9 @@ echo ""
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
+        -v "${DepsCacheVolume}:/deps-cache" `
         -e CCACHE_DIR=/ccache `
+        -e DEPS_CACHE_BASE=/deps-cache `
         -w /app `
         $ImageName `
         bash -c "/app/temp-clang-tidy.sh$ScriptArgs"
@@ -285,15 +288,15 @@ if ($Interactive) {
         $BuildCommand = @"
 echo 'Clean rebuild - removing build_docker directory...'
 rm -rf build_docker
-echo 'Configuring CMake...'
-CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+echo 'Configuring CMake with Docker-specific deps cache...'
+CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
 echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 "@
     } else {
         $BuildCommand = @"
 if [ ! -d build_docker ]; then
-    echo 'First time setup - configuring CMake...'
-    CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+    echo 'First time setup - configuring CMake with Docker-specific deps cache...'
+    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
     echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 else
     echo 'Using existing build_docker directory (run_tests.sh will build only the test executables needed)'
@@ -328,7 +331,9 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
+        -v "${DepsCacheVolume}:/deps-cache" `
         -e CCACHE_DIR=/ccache `
+        -e DEPS_CACHE_BASE=/deps-cache `
         -w /app `
         $ImageName `
         /bin/bash
@@ -339,7 +344,9 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
+        -v "${DepsCacheVolume}:/deps-cache" `
         -e CCACHE_DIR=/ccache `
+        -e DEPS_CACHE_BASE=/deps-cache `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"

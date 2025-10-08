@@ -32,18 +32,18 @@ TestSuite(webcam, .init = webcam_suite_setup, .fini = webcam_suite_teardown);
  * ============================================================================ */
 
 Test(webcam, init_success) {
-  // Initialize global variables
-  last_image_width = 0;
-  last_image_height = 0;
-
   // Test pattern mode is enabled in suite setup
   int result = webcam_init(0);
-
   cr_assert_eq(result, 0, "webcam_init should succeed with test pattern");
-  cr_assert_eq(last_image_width, 1280, "Test pattern should set width to 1280");
-  cr_assert_eq(last_image_height, 720, "Test pattern should set height to 720");
+
+  // Verify we can read a frame with correct dimensions
+  image_t *frame = webcam_read();
+  cr_assert_not_null(frame, "Should read a frame");
+  cr_assert_eq(frame->w, 1280, "Test pattern should have width 1280");
+  cr_assert_eq(frame->h, 720, "Test pattern should have height 720");
 
   // Clean up
+  image_destroy(frame);
   webcam_cleanup();
 }
 
@@ -69,8 +69,13 @@ ParameterizedTestParameters(webcam, init_different_indices) {
 ParameterizedTest(webcam_index_test_case_t *tc, webcam, init_different_indices) {
   int result = webcam_init(tc->webcam_index);
   cr_assert_eq(result, 0, "%s: Init should succeed", tc->description);
-  cr_assert_eq(last_image_width, tc->expected_width, "%s: Width should be %d", tc->description, tc->expected_width);
-  cr_assert_eq(last_image_height, tc->expected_height, "%s: Height should be %d", tc->description, tc->expected_height);
+
+  image_t *frame = webcam_read();
+  cr_assert_not_null(frame, "%s: Should read a frame", tc->description);
+  cr_assert_eq(frame->w, tc->expected_width, "%s: Width should be %d", tc->description, tc->expected_width);
+  cr_assert_eq(frame->h, tc->expected_height, "%s: Height should be %d", tc->description, tc->expected_height);
+
+  image_destroy(frame);
   webcam_cleanup();
 }
 
@@ -184,8 +189,6 @@ Test(webcam, read_multiple_calls) {
     cr_assert_not_null(result, "Frame %d should be read successfully", i);
     cr_assert_eq(result->w, 1280, "Frame %d width should be 1280", i);
     cr_assert_eq(result->h, 720, "Frame %d height should be 720", i);
-    cr_assert_eq(last_image_width, 1280, "last_image_width should be updated");
-    cr_assert_eq(last_image_height, 720, "last_image_height should be updated");
 
     image_destroy(result);
   }

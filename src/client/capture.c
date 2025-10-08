@@ -499,9 +499,11 @@ static void *webcam_capture_thread_func(void *arg) {
 int capture_init() {
   // Initialize webcam capture
   int webcam_index = opt_webcam_index;
-  if (webcam_init(webcam_index) != 0) {
-    log_error("Failed to initialize webcam");
-    return ASCIICHAT_ERR_WEBCAM;
+  int result = webcam_init(webcam_index);
+  if (result != 0) {
+    log_error("Failed to initialize webcam (error code: %d)", result);
+    // Preserve specific error code (e.g., WEBCAM vs WEBCAM_IN_USE)
+    return result;
   }
   return 0;
 }

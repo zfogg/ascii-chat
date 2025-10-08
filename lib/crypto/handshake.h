@@ -55,6 +55,9 @@ typedef struct {
   bool has_password;  // Whether password authentication is enabled
   char password[256]; // Password for authentication (temporary storage)
 
+  // Mutual authentication (client challenges server)
+  uint8_t client_challenge_nonce[32]; // Client-generated nonce for server to prove knowledge of shared secret
+
 } crypto_handshake_context_t;
 
 // Initialize crypto handshake context
@@ -99,3 +102,13 @@ int crypto_handshake_encrypt_packet(const crypto_handshake_context_t *ctx, const
 int crypto_handshake_decrypt_packet(const crypto_handshake_context_t *ctx, const uint8_t *ciphertext,
                                     size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                                     size_t *plaintext_len);
+
+// Helper: Encrypt with automatic passthrough if crypto not ready
+int crypto_encrypt_packet_or_passthrough(const crypto_handshake_context_t *ctx, bool crypto_ready,
+                                         const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext,
+                                         size_t ciphertext_size, size_t *ciphertext_len);
+
+// Helper: Decrypt with automatic passthrough if crypto not ready
+int crypto_decrypt_packet_or_passthrough(const crypto_handshake_context_t *ctx, bool crypto_ready,
+                                         const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
+                                         size_t plaintext_size, size_t *plaintext_len);

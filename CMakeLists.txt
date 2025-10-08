@@ -21,13 +21,18 @@ endif()
 # To force rebuild dependencies: rm -rf .deps-cache*
 
 # Determine cache directory based on build configuration and build type
-if(USE_MUSL)
-    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache for musl builds")
-    message(STATUS "Using musl dependency cache: ${FETCHCONTENT_BASE_DIR}")
+# Allow override via DEPS_CACHE_BASE environment variable (useful for Docker)
+if(DEFINED ENV{DEPS_CACHE_BASE})
+    set(DEPS_CACHE_BASE_DIR "$ENV{DEPS_CACHE_BASE}")
+    message(STATUS "Using custom dependency cache base from environment: ${DEPS_CACHE_BASE_DIR}")
+elseif(USE_MUSL)
+    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl")
 else()
-    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache for standard builds")
-    message(STATUS "Using standard dependency cache: ${FETCHCONTENT_BASE_DIR}")
+    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache")
 endif()
+
+set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
+message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
 
 # Set up vcpkg toolchain if available (must be before project())
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -798,14 +803,37 @@ if(WIN32)
         set(LIBSODIUM_INCLUDE_DIRS "")
     endif()
 
-    # Build BearSSL from submodule for HTTPS requests to GitHub/GitLab
-    if(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
+    # Try to find BearSSL (system install from Docker or pkg-config)
+    # First check for system-installed version (e.g., from Docker image)
+    find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl
+                 PATHS /usr/local/lib /usr/lib
+                 NO_DEFAULT_PATH)
+    find_path(BEARSSL_SYSTEM_INC NAMES bearssl.h
+              PATHS /usr/local/include /usr/include
+              NO_DEFAULT_PATH)
+
+    if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
+        # Use system-installed BearSSL (from Docker)
+        add_library(bearssl_static STATIC IMPORTED)
+        set_target_properties(bearssl_static PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_SYSTEM_LIB}"
+        )
+        target_include_directories(bearssl_static INTERFACE "${BEARSSL_SYSTEM_INC}")
+        set(BEARSSL_LIBRARIES bearssl_static)
+        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SYSTEM_INC}")
+        set(BEARSSL_FOUND TRUE)
+        message(STATUS "Using system BearSSL library: ${BEARSSL_SYSTEM_LIB}")
+    # Fall back to building from submodule
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
-        set(BEARSSL_LIB "${BEARSSL_SOURCE_DIR}/build/libbearssl.a")
+        # Build to cache directory to keep platform-specific builds separate
+        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build")
+        set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
         # Check if bearssl library exists, if not build it once using bearssl's Makefile
         if(NOT EXISTS "${BEARSSL_LIB}")
-            message(STATUS "Building BearSSL library (one-time setup)...")
+            message(STATUS "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}")
+            file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
             execute_process(
                 COMMAND make
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
@@ -816,7 +844,9 @@ if(WIN32)
             if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to build BearSSL library")
             endif()
-            message(STATUS "BearSSL library built successfully")
+            # Copy built library to cache directory
+            file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" DESTINATION "${BEARSSL_BUILD_DIR}")
+            message(STATUS "BearSSL library built successfully and cached")
         endif()
 
         # Use bearssl library as imported target (persists across clean builds)
@@ -858,14 +888,37 @@ else()
     pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
     pkg_check_modules(LIBSODIUM REQUIRED libsodium)
 
-    # Build BearSSL from submodule for HTTPS requests to GitHub/GitLab
-    if(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
+    # Try to find BearSSL (system install from Docker or pkg-config)
+    # First check for system-installed version (e.g., from Docker image)
+    find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl
+                 PATHS /usr/local/lib /usr/lib
+                 NO_DEFAULT_PATH)
+    find_path(BEARSSL_SYSTEM_INC NAMES bearssl.h
+              PATHS /usr/local/include /usr/include
+              NO_DEFAULT_PATH)
+
+    if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
+        # Use system-installed BearSSL (from Docker)
+        add_library(bearssl_static STATIC IMPORTED)
+        set_target_properties(bearssl_static PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_SYSTEM_LIB}"
+        )
+        target_include_directories(bearssl_static INTERFACE "${BEARSSL_SYSTEM_INC}")
+        set(BEARSSL_LIBRARIES bearssl_static)
+        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SYSTEM_INC}")
+        set(BEARSSL_FOUND TRUE)
+        message(STATUS "Using system BearSSL library: ${BEARSSL_SYSTEM_LIB}")
+    # Fall back to building from submodule
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
-        set(BEARSSL_LIB "${BEARSSL_SOURCE_DIR}/build/libbearssl.a")
+        # Build to cache directory to keep platform-specific builds separate
+        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build")
+        set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
         # Check if bearssl library exists, if not build it once using bearssl's Makefile
         if(NOT EXISTS "${BEARSSL_LIB}")
-            message(STATUS "Building BearSSL library (one-time setup)...")
+            message(STATUS "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}")
+            file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
             execute_process(
                 COMMAND make
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
@@ -876,7 +929,9 @@ else()
             if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to build BearSSL library")
             endif()
-            message(STATUS "BearSSL library built successfully")
+            # Copy built library to cache directory
+            file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" DESTINATION "${BEARSSL_BUILD_DIR}")
+            message(STATUS "BearSSL library built successfully and cached")
         endif()
 
         # Use bearssl library as imported target (persists across clean builds)
