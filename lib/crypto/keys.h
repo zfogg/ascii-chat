@@ -35,8 +35,10 @@ typedef struct {
     uint8_t x25519[32];  // X25519 private key (32 bytes)
   } key;
   bool use_ssh_agent;     // If true, use SSH agent for signing
+  bool use_gpg_agent;     // If true, use GPG agent for signing
   uint8_t public_key[32]; // Ed25519 public key (for agent mode or verification)
   char key_comment[256];  // SSH key comment (for agent identification)
+  char gpg_keygrip[64];   // GPG keygrip (40 hex chars) for gpg-agent signing
 } private_key_t;
 
 // Parse SSH/GPG public key from any format
@@ -79,14 +81,14 @@ int ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_
 int ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
                              const uint8_t signature[64]);
 
-// Fetch SSH keys from GitHub using BearSSL
-// GET https://github.com/username.keys
-// Returns array of SSH public key strings (caller must free)
-int fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys);
+// Fetch SSH/GPG keys from GitHub using BearSSL
+// GET https://github.com/username.keys (SSH) or https://github.com/username.gpg (GPG)
+// Returns array of key strings (caller must free)
+int fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys, bool use_gpg);
 
-// Fetch SSH keys from GitLab using BearSSL
-// GET https://gitlab.com/username.keys
-int fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys);
+// Fetch SSH/GPG keys from GitLab using BearSSL
+// GET https://gitlab.com/username.keys (SSH) or https://gitlab.com/username.gpg (GPG)
+int fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys, bool use_gpg);
 
 // Fetch GPG keys from GitHub using BearSSL
 // GET https://github.com/username.gpg
@@ -95,6 +97,10 @@ int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
 // Fetch GPG keys from GitLab using BearSSL
 // GET https://gitlab.com/username.gpg
 int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys);
+
+// Parse Ed25519 public key from PGP armored format
+// Extracts Ed25519 public key from PGP packet structure
+int parse_gpg_key(const char *gpg_key_text, public_key_t *key_out);
 
 // Parse SSH keys from file (supports authorized_keys and known_hosts formats)
 // Returns array of public keys (Ed25519 or X25519 only)

@@ -29,6 +29,7 @@ ASCII-Chat implements **end-to-end encryption by default** using modern cryptogr
 - **Encrypted by default** - No configuration required
 - **Modern crypto** - X25519, XSalsa20-Poly1305, Argon2id
 - **SSH key integration** - Use existing Ed25519 keys
+- **SSH agent support** - Auto-adds keys, eliminates password prompts
 - **GitHub/GitLab integration** - Fetch public keys automatically
 - **Password protection** - Optional shared password authentication
 - **Client whitelisting** - Server-side access control
@@ -703,6 +704,167 @@ static bool ssh_agent_has_specific_key(const uint8_t ed25519_public_key[32]) {
 
 **Security guarantee:**
 Both SSH agent mode and in-memory mode provide **identical forward secrecy** - ephemeral X25519 keys are used for encryption in all cases. The only difference is where signatures come from (agent vs in-memory).
+
+### Automatic SSH Agent Key Addition (New in 2025)
+
+**Problem:** Users with encrypted SSH keys had to manually add keys to ssh-agent, or enter their password repeatedly.
+
+**Solution:** ASCII-Chat now **automatically adds decrypted keys to ssh-agent** after successful password entry, eliminating future password prompts.
+
+**How it works:**
+
+```bash
+# First run with encrypted key (password required)
+ascii-chat-server --key ~/.ssh/id_ed25519
+Encrypted private key detected (cipher: aes256-ctr)
+Key not in SSH agent, will prompt for password
+Enter passphrase for /Users/you/.ssh/id_ed25519: [enter password]
+Successfully decrypted key, parsing...
+[SSH Agent] Adding key to ssh-agent to avoid future password prompts...
+[SSH Agent] ✓ Key successfully added to ssh-agent
+INFO: Key added to ssh-agent - password won't be required again this session
+
+# Second run (NO password prompt!)
+ascii-chat-server --key ~/.ssh/id_ed25519
+INFO: Using SSH agent for this key (agent signing + ephemeral encryption)
+# Server starts immediately - no password needed!
+```
+
+**What happens automatically:**
+
+1. **User enters password** - Decrypts SSH key successfully
+2. **Key parsed** - Validates Ed25519 format
+3. **Check ssh-agent** - Verifies `$SSH_AUTH_SOCK` is set
+4. **Auto-add to agent** - Shells out to `ssh-add` with password via `SSH_ASKPASS`
+5. **Future runs** - No password prompt (uses agent)
+
+**Implementation details:**
+
+The auto-add feature uses a temporary `SSH_ASKPASS` script to provide the password non-interactively:
+
+```c
+// lib/crypto/keys.c:1047-1090
+if (ssh_agent_is_available()) {
+  // 1. Create temporary askpass script with user's password
+  char askpass_script[512];
+  snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
+
+  FILE *askpass_fp = fopen(askpass_script, "w");
+  fprintf(askpass_fp, "#!/bin/sh\necho '%s'\n", passphrase);
+  fclose(askpass_fp);
+  chmod(askpass_script, 0700);
+
+  // 2. Shell out to ssh-add with SSH_ASKPASS
+  snprintf(ssh_add_cmd, sizeof(ssh_add_cmd),
+           "SSH_ASKPASS='%s' SSH_ASKPASS_REQUIRE=force ssh-add '%s' 2>&1",
+           askpass_script, path);
+
+  FILE *ssh_add_fp = popen(ssh_add_cmd, "r");
+  // ... check for "Identity added" message ...
+
+  // 3. Securely delete temporary script
+  unlink(askpass_script);
+}
+```
+
+**Security considerations:**
+
+- ✅ **Temporary script deleted immediately** - Passphrase file removed after use
+- ✅ **Restrictive permissions** - Script created with `chmod 0700` (owner-only)
+- ✅ **Process-scoped** - Uses PID in filename to avoid conflicts
+- ✅ **Memory zeroed** - Password cleared with `sodium_memzero()` after use
+- ✅ **Agent session-scoped** - Key removed from agent on logout/reboot
+
+**Dependencies:**
+
+This feature requires **external commands** that must be in your `$PATH`:
+
+| Command | Purpose | Usually found in |
+|---------|---------|------------------|
+| `ssh-add` | Add keys to agent | OpenSSH client package |
+| `ssh-agent` | Key management daemon | OpenSSH client package (usually auto-started) |
+
+**Platform support:**
+
+| Platform | Supported | Notes |
+|----------|-----------|-------|
+| **Linux** | ✅ YES | Requires OpenSSH client (`openssh-client`, `openssh`) |
+| **macOS** | ✅ YES | Built-in with macOS (ssh-agent auto-starts) |
+| **Windows** | ❌ NO | SSH agent uses Unix domain sockets (incompatible with Windows) |
+
+**Windows users:**
+
+On Windows, you'll need to enter your password each time:
+
+```powershell
+# Windows behavior (no ssh-agent support)
+./ascii-chat-server.exe --key $env:USERPROFILE\.ssh\id_ed25519
+Encrypted private key detected (cipher: aes256-ctr)
+Key not in SSH agent, will prompt for password
+Enter passphrase for C:\Users\you\.ssh\id_ed25519: [password required every time]
+```
+
+**Workaround for Windows users:**
+
+1. **Use unencrypted keys** (not recommended for security):
+   ```powershell
+   ssh-keygen -p -f $env:USERPROFILE\.ssh\id_ed25519 -N ""
+   ```
+
+2. **Use password authentication** instead of SSH keys:
+   ```powershell
+   ./ascii-chat-server.exe --password "your-shared-password"
+   ```
+
+3. **Wait for Windows SSH agent support** (future enhancement - see issue #TBD)
+
+**Troubleshooting:**
+
+**Problem:** Auto-add fails with "ssh-add: command not found"
+
+```bash
+# Check if ssh-add is installed
+which ssh-add
+# If not found:
+# Ubuntu/Debian: sudo apt-get install openssh-client
+# Fedora/RHEL: sudo dnf install openssh-clients
+# Arch: sudo pacman -S openssh
+# macOS: Built-in (shouldn't fail)
+```
+
+**Problem:** Auto-add fails with "Could not add key to ssh-agent"
+
+```bash
+# Check if ssh-agent is running
+echo $SSH_AUTH_SOCK
+# If empty, start agent:
+eval "$(ssh-agent -s)"
+```
+
+**Problem:** Password still required after auto-add
+
+```bash
+# Check if key was actually added
+ssh-add -l
+# Should show: "256 SHA256:... /path/to/id_ed25519 (ED25519)"
+
+# If not listed, check permissions
+ls -la ~/.ssh/id_ed25519
+# Should be: -rw------- (600)
+```
+
+**Future enhancements:**
+
+- Windows SSH agent support via Named Pipes (tracked in issue #TBD)
+- Integration with Windows OpenSSH service (`ssh-agent.exe`)
+- Cross-platform passphrase caching (memory-only, no disk storage)
+
+**Code locations:**
+
+- `lib/crypto/keys.c:1047-1090` - Auto-add implementation after successful decryption
+- `lib/crypto/ssh_agent.h` - `ssh_agent_is_available()` declaration
+- `lib/crypto/ssh_agent.c` - SSH agent detection and communication
+- `CMakeLists.txt:1344` - `ssh_agent.c` added to build
 
 ### GitHub/GitLab Key Fetching
 
@@ -2074,11 +2236,13 @@ crypto_secretbox_easy(ciphertext, plaintext, nonce, encryption_key);
 - [Argon2: Password Hashing Competition Winner](https://github.com/P-H-C/phc-winner-argon2)
 - [NaCl: Networking and Cryptography library](https://nacl.cr.yp.to/)
 - [Signal Protocol](https://signal.org/docs/)
+- [OpenSSH SSH Agent Protocol](https://tools.ietf.org/id/draft-miller-ssh-agent-04.html)
+- [SSH_ASKPASS Environment Variable](https://man.openbsd.org/ssh-add.1#ENVIRONMENT)
 
 ---
 
-**Document Version:** 2.0
-**Last Updated:** October 2025
+**Document Version:** 2.1
+**Last Updated:** October 2025 (SSH agent auto-add feature)
 **Maintainer:** ASCII-Chat Development Team
 **License:** Same as ASCII-Chat project (see LICENSE)
 

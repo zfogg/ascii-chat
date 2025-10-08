@@ -1338,6 +1338,10 @@ set(CRYPTO_SRCS
     lib/crypto/keys.c
     lib/crypto/known_hosts.c
     lib/crypto/handshake.c
+    lib/crypto/http_client.c
+    lib/crypto/pem_utils.c
+    lib/crypto/gpg_agent.c
+    lib/crypto/ssh_agent.c
 )
 
 # =============================================================================

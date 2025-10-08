@@ -56,24 +56,17 @@ int client_crypto_init(void) {
 
   // Load client private key if provided via --key
   if (strlen(opt_encrypt_key) > 0) {
-    // --key is for file-based authentication (SSH keys, GPG keys, GitHub/GitLab)
+    // --key supports file-based authentication (SSH keys, GPG keys via gpg:keyid)
 
-    // Check for special formats (gpg:, github:, gitlab:)
-    if (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
-        strncmp(opt_encrypt_key, "gitlab:", 7) == 0) {
-      // TODO: Implement GPG/GitHub/GitLab key fetching
-      log_error("GPG/GitHub/GitLab keys not yet implemented: %s", opt_encrypt_key);
-      log_error("Please use a local SSH key file with --key /path/to/key");
-      return -1;
+    // For SSH key files (not gpg:keyid format), validate the file exists
+    if (strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
+      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
+        return -1;
+      }
     }
 
-    // Validate SSH key file (shared validation logic)
-    if (validate_ssh_key_file(opt_encrypt_key) != 0) {
-      return -1;
-    }
-
-    // Parse SSH key file
-    log_debug("CLIENT_CRYPTO_INIT: Loading SSH key for authentication: %s", opt_encrypt_key);
+    // Parse key (handles SSH files and gpg:keyid format)
+    log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", opt_encrypt_key);
     if (parse_private_key(opt_encrypt_key, &private_key) == 0) {
       log_info("Successfully parsed SSH private key");
       is_ssh_key = true;
@@ -206,6 +199,28 @@ int client_crypto_handshake(socket_t socket) {
     return result; // Propagate error code (-3 for host key failure, -2 for auth failure, -1 for other errors)
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully");
+
+  // Check if server is using client authentication
+  if (!g_crypto_ctx.server_uses_client_auth) {
+    log_warn("Server is not using client verification keys");
+
+    // Display warning to user
+    fprintf(stderr, "\n");
+    fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+    fprintf(stderr, "@  WARNING: SERVER NOT USING CLIENT AUTHENTICATION                              @\n");
+    fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "The server is not configured to verify client keys.\n");
+    fprintf(stderr, "Your connection is encrypted, but the server cannot verify your identity.\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "This may indicate:\n");
+    fprintf(stderr, "  - Server is running without --client-keys\n");
+    fprintf(stderr, "  - Server is accepting all clients without authentication\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "If you trust this server, you can continue. Otherwise, disconnect now.\n");
+    fprintf(stderr, "\n");
+    fflush(stderr);
+  }
 
   // Step 2: Receive auth challenge and send response
   log_debug("CLIENT_CRYPTO: Sending auth response to server...");

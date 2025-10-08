@@ -712,4 +712,78 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   return 0;
 }
 
+/**
+ * Load system CA certificates for TLS/HTTPS (POSIX implementation)
+ *
+ * Tries common system paths for CA certificate bundles on Linux and macOS.
+ * Reads the first available bundle into memory as PEM data.
+ *
+ * @param pem_data_out Pointer to receive allocated PEM data (caller must free)
+ * @param pem_size_out Pointer to receive size of PEM data
+ * @return 0 on success, -1 on failure
+ */
+int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
+  if (!pem_data_out || !pem_size_out) {
+    return -1;
+  }
+
+  // Common CA certificate bundle paths (ordered by likelihood)
+  static const char *ca_paths[] = {"/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo/Arch
+                                   "/etc/pki/tls/certs/ca-bundle.crt",                  // RHEL/CentOS/Fedora
+                                   "/etc/ssl/cert.pem",                                 // OpenBSD/macOS/Alpine
+                                   "/usr/local/etc/openssl/cert.pem",                   // Homebrew OpenSSL on macOS
+                                   "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
+                                   "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7+
+                                   "/usr/share/ssl/certs/ca-bundle.crt",                // Old Red Hat
+                                   "/usr/local/share/certs/ca-root-nss.crt",            // FreeBSD
+                                   "/etc/openssl/certs/ca-certificates.crt",            // OpenWall (musl)
+                                   NULL};
+
+  // Try each path until we find one that exists and is readable
+  for (int i = 0; ca_paths[i] != NULL; i++) {
+    FILE *f = fopen(ca_paths[i], "rb");
+    if (!f) {
+      continue; // Try next path
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size <= 0 || file_size > 10 * 1024 * 1024) {
+      // Empty file or suspiciously large (>10MB)
+      fclose(f);
+      continue;
+    }
+
+    // Allocate buffer for PEM data
+    char *pem_data = (char *)malloc((size_t)file_size + 1);
+    if (!pem_data) {
+      fclose(f);
+      return -1;
+    }
+
+    // Read entire file
+    size_t bytes_read = fread(pem_data, 1, (size_t)file_size, f);
+    fclose(f);
+
+    if (bytes_read != (size_t)file_size) {
+      free(pem_data);
+      return -1;
+    }
+
+    // Null-terminate (PEM is text format)
+    pem_data[bytes_read] = '\0';
+
+    // Success!
+    *pem_data_out = pem_data;
+    *pem_size_out = bytes_read;
+    return 0;
+  }
+
+  // No CA bundle found
+  return -1;
+}
+
 #endif // !_WIN32

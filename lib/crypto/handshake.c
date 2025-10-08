@@ -27,6 +27,7 @@ int crypto_handshake_init(crypto_handshake_context_t *ctx, bool is_server) {
   ctx->is_server = is_server;
   ctx->verify_server_key = false;
   ctx->require_client_auth = false;
+  ctx->server_uses_client_auth = false; // Set to true only if authenticated packet received
 
   // Load server keys if this is a server
   if (is_server) {
@@ -60,6 +61,7 @@ int crypto_handshake_init_with_password(crypto_handshake_context_t *ctx, bool is
   ctx->is_server = is_server;
   ctx->verify_server_key = false;
   ctx->require_client_auth = false;
+  ctx->server_uses_client_auth = false; // Set to true only if authenticated packet received
   ctx->has_password = true;
 
   // Store password temporarily (will be cleared after key derivation)
@@ -163,15 +165,22 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
   uint8_t server_signature[64];
 
   if (payload_len == 32) {
-    // Legacy format: just ephemeral key
+    // Legacy format: just ephemeral key (no client authentication)
     log_debug("Received legacy KEY_EXCHANGE_INIT (32 bytes, no authentication)");
+    log_warn("Server is not using client verification keys - connection is encrypted but server does not verify client "
+             "identity");
+
     memcpy(server_ephemeral_key, payload, 32);
+    // ctx->server_uses_client_auth remains false (default)
   } else if (payload_len == 128) {
     // Authenticated format: [ephemeral:32][identity:32][signature:64]
     log_info("Received authenticated KEY_EXCHANGE_INIT (128 bytes)");
     memcpy(server_ephemeral_key, payload, 32);
     memcpy(server_identity_key, payload + 32, 32);
     memcpy(server_signature, payload + 64, 64);
+
+    // Server is using client authentication
+    ctx->server_uses_client_auth = true;
 
     // Verify signature: server identity signed the ephemeral key
     log_debug("Verifying server's signature over ephemeral key");

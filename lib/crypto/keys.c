@@ -1,5 +1,8 @@
 #include "keys.h"
 #include "handshake.h"
+#include "http_client.h"
+#include "gpg_agent.h"
+#include "ssh_agent.h"
 #include "common.h"
 #include <sodium.h>
 #include <string.h>
@@ -151,16 +154,82 @@ int parse_public_key(const char *input, public_key_t *key_out) {
 
   if (strncmp(input, "github:", 7) == 0) {
     const char *username = input + 7;
-    char **keys;
-    size_t num_keys;
+    char **keys = NULL;
+    size_t num_keys = 0;
+    bool explicit_ssh = false;
+    bool explicit_gpg = false;
+    // Check for explicit .ssh or .gpg suffix
+    const char *dot = strrchr(username, '.');
+    char username_buf[256];
+    if (dot) {
+      if (strcmp(dot, ".ssh") == 0) {
+        explicit_ssh = true;
+        size_t len = dot - username;
+        if (len >= sizeof(username_buf))
+          len = sizeof(username_buf) - 1;
+        strncpy(username_buf, username, len);
+        username_buf[len] = '\0';
+        username = username_buf;
+      } else if (strcmp(dot, ".gpg") == 0) {
+        explicit_gpg = true;
+        size_t len = dot - username;
+        if (len >= sizeof(username_buf))
+          len = sizeof(username_buf) - 1;
+        strncpy(username_buf, username, len);
+        username_buf[len] = '\0';
+        username = username_buf;
+      }
+    }
 
-    if (fetch_github_keys(username, &keys, &num_keys) != 0) {
-      log_error("Failed to fetch GitHub keys for: %s", username);
-      return -1;
+    int fetch_result;
+    bool using_gpg = false;
+
+    if (explicit_gpg) {
+      // Explicit GPG mode
+      fetch_result = fetch_github_keys(username, &keys, &num_keys, true);
+      using_gpg = true;
+      if (fetch_result != 0 || num_keys == 0) {
+        log_error("No GPG keys found for GitHub user: %s", username);
+        return -1;
+      }
+    } else if (explicit_ssh) {
+      // Explicit SSH mode
+      fetch_result = fetch_github_keys(username, &keys, &num_keys, false);
+      using_gpg = false;
+      if (fetch_result != 0 || num_keys == 0) {
+        log_error("No SSH keys found for GitHub user: %s", username);
+        return -1;
+      }
+    } else {
+      // Auto mode: try SSH first
+      log_info("Fetching SSH keys for GitHub user: %s", username);
+      fetch_result = fetch_github_keys(username, &keys, &num_keys, false);
+
+      if (fetch_result == 0 && num_keys > 0) {
+        // SSH keys found
+        using_gpg = false;
+        log_info("Found %zu SSH key(s) for GitHub user: %s", num_keys, username);
+      } else {
+        // SSH failed or returned 0 keys, try GPG
+        log_info("No SSH keys found, trying GPG keys for GitHub user: %s", username);
+        fetch_result = fetch_github_keys(username, &keys, &num_keys, true);
+        using_gpg = true;
+
+        if (fetch_result != 0 || num_keys == 0) {
+          log_error("No SSH or GPG keys found for GitHub user: %s", username);
+          return -1;
+        }
+        log_info("Found %zu GPG key(s) for GitHub user: %s", num_keys, username);
+      }
     }
 
     // Use first key
-    int result = parse_public_key(keys[0], key_out);
+    int result;
+    if (using_gpg) {
+      result = parse_gpg_key(keys[0], key_out);
+    } else {
+      result = parse_public_key(keys[0], key_out);
+    }
 
     // Free the keys
     for (size_t i = 0; i < num_keys; i++) {
@@ -173,16 +242,82 @@ int parse_public_key(const char *input, public_key_t *key_out) {
 
   if (strncmp(input, "gitlab:", 7) == 0) {
     const char *username = input + 7;
-    char **keys;
-    size_t num_keys;
+    char **keys = NULL;
+    size_t num_keys = 0;
+    bool explicit_ssh = false;
+    bool explicit_gpg = false;
+    // Check for explicit .ssh or .gpg suffix
+    const char *dot = strrchr(username, '.');
+    char username_buf[256];
+    if (dot) {
+      if (strcmp(dot, ".ssh") == 0) {
+        explicit_ssh = true;
+        size_t len = dot - username;
+        if (len >= sizeof(username_buf))
+          len = sizeof(username_buf) - 1;
+        strncpy(username_buf, username, len);
+        username_buf[len] = '\0';
+        username = username_buf;
+      } else if (strcmp(dot, ".gpg") == 0) {
+        explicit_gpg = true;
+        size_t len = dot - username;
+        if (len >= sizeof(username_buf))
+          len = sizeof(username_buf) - 1;
+        strncpy(username_buf, username, len);
+        username_buf[len] = '\0';
+        username = username_buf;
+      }
+    }
 
-    if (fetch_gitlab_keys(username, &keys, &num_keys) != 0) {
-      log_error("Failed to fetch GitLab keys for: %s", username);
-      return -1;
+    int fetch_result;
+    bool using_gpg = false;
+
+    if (explicit_gpg) {
+      // Explicit GPG mode
+      fetch_result = fetch_gitlab_keys(username, &keys, &num_keys, true);
+      using_gpg = true;
+      if (fetch_result != 0 || num_keys == 0) {
+        log_error("No GPG keys found for GitLab user: %s", username);
+        return -1;
+      }
+    } else if (explicit_ssh) {
+      // Explicit SSH mode
+      fetch_result = fetch_gitlab_keys(username, &keys, &num_keys, false);
+      using_gpg = false;
+      if (fetch_result != 0 || num_keys == 0) {
+        log_error("No SSH keys found for GitLab user: %s", username);
+        return -1;
+      }
+    } else {
+      // Auto mode: try SSH first
+      log_info("Fetching SSH keys for GitLab user: %s", username);
+      fetch_result = fetch_gitlab_keys(username, &keys, &num_keys, false);
+
+      if (fetch_result == 0 && num_keys > 0) {
+        // SSH keys found
+        using_gpg = false;
+        log_info("Found %zu SSH key(s) for GitLab user: %s", num_keys, username);
+      } else {
+        // SSH failed or returned 0 keys, try GPG
+        log_info("No SSH keys found, trying GPG keys for GitLab user: %s", username);
+        fetch_result = fetch_gitlab_keys(username, &keys, &num_keys, true);
+        using_gpg = true;
+
+        if (fetch_result != 0 || num_keys == 0) {
+          log_error("No SSH or GPG keys found for GitLab user: %s", username);
+          return -1;
+        }
+        log_info("Found %zu GPG key(s) for GitLab user: %s", num_keys, username);
+      }
     }
 
     // Use first key
-    int result = parse_public_key(keys[0], key_out);
+    int result;
+    if (using_gpg) {
+      result = parse_gpg_key(keys[0], key_out);
+    } else {
+      result = parse_public_key(keys[0], key_out);
+    }
 
     // Free the keys
     for (size_t i = 0; i < num_keys; i++) {
@@ -584,6 +719,44 @@ int parse_private_key(const char *path, private_key_t *key_out) {
   fprintf(stderr, "parse_private_key: Opening %s\n", path);
   memset(key_out, 0, sizeof(private_key_t));
 
+  // Check for gpg:keyid format
+  if (strncmp(path, "gpg:", 4) == 0) {
+    const char *key_id = path + 4;
+    fprintf(stderr, "parse_private_key: Detected GPG key ID: %s\n", key_id);
+
+    // Check if gpg-agent is available
+    if (!gpg_agent_is_available()) {
+      log_error("GPG agent is not available. Please ensure gpg-agent is running.");
+      log_error("You can start it with: gpgconf --launch gpg-agent");
+      return -1;
+    }
+
+    // Extract public key and keygrip from GPG keyring
+    uint8_t public_key[32];
+    char keygrip[64];
+    if (gpg_get_public_key(key_id, public_key, keygrip) != 0) {
+      log_error("Failed to get public key for GPG key ID: %s", key_id);
+      return -1;
+    }
+
+    fprintf(stderr, "parse_private_key: Got GPG public key and keygrip: %s\n", keygrip);
+    log_info("Using GPG key %s via gpg-agent (keygrip: %s)", key_id, keygrip);
+
+    // Set up the private_key_t structure for GPG agent mode
+    key_out->type = KEY_TYPE_ED25519;
+    key_out->use_ssh_agent = false;
+    key_out->use_gpg_agent = true;
+    memcpy(key_out->public_key, public_key, 32);
+    SAFE_STRNCPY(key_out->gpg_keygrip, keygrip, sizeof(key_out->gpg_keygrip) - 1);
+    SAFE_STRNCPY(key_out->key_comment, key_id, sizeof(key_out->key_comment) - 1);
+
+    // Zero out the key union (we don't have private key bytes in agent mode)
+    memset(&key_out->key, 0, sizeof(key_out->key));
+
+    log_info("GPG agent mode: Will use gpg-agent for signing");
+    return 0;
+  }
+
   FILE *f = fopen(path, "r");
   if (f == NULL) {
     fprintf(stderr, "parse_private_key: Failed to open file: %s\n", path);
@@ -860,7 +1033,6 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     char temp_key_path[512];
     if (decrypt_key_with_external_tool(path, passphrase, temp_key_path) == 0) {
       fprintf(stderr, "[Decrypt] Successfully decrypted key, parsing...\n");
-      sodium_memzero(passphrase, sizeof(passphrase));
       free(blob);
 
       // Parse the decrypted key (it's now unencrypted so SSH agent check won't trigger)
@@ -870,10 +1042,60 @@ int parse_private_key(const char *path, private_key_t *key_out) {
       unlink(temp_key_path);
 
       if (result == 0) {
-        fprintf(stderr, "[Decrypt] Successfully parsed decrypted SSH key\n\n");
+        fprintf(stderr, "[Decrypt] Successfully parsed decrypted SSH key\n");
+
+        // Try to add key to ssh-agent so user doesn't have to enter password again
+        if (ssh_agent_is_available()) {
+          fprintf(stderr, "[SSH Agent] Adding key to ssh-agent to avoid future password prompts...\n");
+
+          // Shell out to ssh-add with the original key path
+          // Use expect/SSH_ASKPASS to provide password non-interactively
+          char ssh_add_cmd[1024];
+
+          // Create a temporary script to provide the password
+          char askpass_script[512];
+          snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
+
+          FILE *askpass_fp = fopen(askpass_script, "w");
+          if (askpass_fp) {
+            fprintf(askpass_fp, "#!/bin/sh\necho '%s'\n", passphrase);
+            fclose(askpass_fp);
+            chmod(askpass_script, 0700);
+
+            // Use SSH_ASKPASS environment variable
+            snprintf(ssh_add_cmd, sizeof(ssh_add_cmd), "SSH_ASKPASS='%s' SSH_ASKPASS_REQUIRE=force ssh-add '%s' 2>&1",
+                     askpass_script, path);
+
+            FILE *ssh_add_fp = popen(ssh_add_cmd, "r");
+            if (ssh_add_fp) {
+              char output[256];
+              bool added = false;
+              while (fgets(output, sizeof(output), ssh_add_fp)) {
+                if (strstr(output, "Identity added")) {
+                  added = true;
+                  fprintf(stderr, "[SSH Agent] ✓ Key successfully added to ssh-agent\n");
+                  log_info("Key added to ssh-agent - password won't be required again this session");
+                }
+              }
+              pclose(ssh_add_fp);
+
+              if (!added) {
+                fprintf(stderr, "[SSH Agent] Warning: Could not add key to ssh-agent\n");
+              }
+            }
+
+            // Clean up askpass script
+            unlink(askpass_script);
+          }
+        }
+
+        // Zero out passphrase after using it
+        sodium_memzero(passphrase, sizeof(passphrase));
+        fprintf(stderr, "\n");
         return 0;
       } else {
         fprintf(stderr, "[Decrypt] ERROR: Failed to parse decrypted key\n");
+        sodium_memzero(passphrase, sizeof(passphrase));
         return -1;
       }
     } else {
@@ -1069,80 +1291,354 @@ int private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]) {
   }
 }
 
-// Fetch SSH keys from GitHub using BearSSL
-int fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys) {
-  // TODO: Implement BearSSL integration for real HTTPS requests
-
-  // Initialize outputs to safe defaults
-  *keys_out = NULL;
-  *num_keys = 0;
-
-  // Check for obviously invalid usernames (for testing)
-  if (strstr(username, "nonexistent") != NULL || strstr(username, "12345") != NULL) {
-    log_error("GitHub key fetching failed for invalid user: %s", username);
+/**
+ * Parse Ed25519 public key from PGP armored format
+ * @param gpg_key_text PGP armored public key block
+ * @param key_out Output buffer for parsed key
+ * @return 0 on success, -1 on error
+ */
+int parse_gpg_key(const char *gpg_key_text, public_key_t *key_out) {
+  if (!gpg_key_text || !key_out) {
+    log_error("Invalid arguments to parse_gpg_key");
     return -1;
   }
 
-  // For valid-looking usernames, return a valid dummy Ed25519 key
-  SAFE_MALLOC(*keys_out, sizeof(char *) * 1, char **);
-  // Use a valid SSH Ed25519 key (generated with ssh-keygen -t ed25519)
-  (*keys_out)[0] =
-      strdup("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBg7kmREayHMGWhgD0pc9wzuwdi0ibHnFmlAPwOn6mSV dummy-github-key");
-  *num_keys = 1;
-  log_info("GitHub key fetching (stub): %s", username);
+  // Find the armored block
+  const char *begin = strstr(gpg_key_text, "-----BEGIN PGP PUBLIC KEY BLOCK-----");
+  if (!begin) {
+    log_error("No PGP BEGIN marker found");
+    return -1;
+  }
+
+  const char *end_marker = strstr(begin, "-----END PGP PUBLIC KEY BLOCK-----");
+  if (!end_marker) {
+    log_error("No PGP END marker found");
+    return -1;
+  }
+
+  // Extract base64 content (skip BEGIN line and empty line)
+  const char *b64_start = begin + strlen("-----BEGIN PGP PUBLIC KEY BLOCK-----");
+  while (*b64_start && (*b64_start == '\n' || *b64_start == '\r' || *b64_start == ' ')) {
+    b64_start++;
+  }
+
+  // Find actual base64 content (skip empty lines and version headers)
+  while (*b64_start && strncmp(b64_start, "Version:", 8) == 0) {
+    // Skip version line
+    while (*b64_start && *b64_start != '\n') {
+      b64_start++;
+    }
+    if (*b64_start == '\n') {
+      b64_start++;
+    }
+    // Skip empty line after version
+    while (*b64_start && (*b64_start == '\n' || *b64_start == '\r' || *b64_start == ' ')) {
+      b64_start++;
+    }
+  }
+
+  // Calculate base64 length (up to checksum line)
+  // Checksum line starts with '=' at beginning of line (e.g., "=EjXs")
+  // But base64 padding '==' is at end of last base64 line
+  const char *b64_end = b64_start;
+  const char *line_start = b64_start;
+
+  while (b64_end < end_marker) {
+    if (*b64_end == '\n' || *b64_end == '\r') {
+      // Move to start of next line
+      b64_end++;
+      while (b64_end < end_marker && (*b64_end == '\n' || *b64_end == '\r')) {
+        b64_end++;
+      }
+      line_start = b64_end;
+    } else if (*b64_end == '=' && b64_end == line_start) {
+      // '=' at start of line = checksum line, stop here
+      break;
+    } else if (*b64_end == '-') {
+      // Reached END marker
+      break;
+    } else {
+      b64_end++;
+    }
+  }
+
+  // Copy base64 data without newlines
+  size_t max_b64_len = b64_end - b64_start;
+  char *b64_clean = malloc(max_b64_len + 1);
+  if (!b64_clean) {
+    log_error("Failed to allocate memory for base64 data");
+    return -1;
+  }
+
+  size_t clean_len = 0;
+  for (const char *p = b64_start; p < b64_end; p++) {
+    if (*p != '\n' && *p != '\r' && *p != ' ') {
+      b64_clean[clean_len++] = *p;
+    }
+  }
+  b64_clean[clean_len] = '\0';
+
+  // Decode base64
+  unsigned char decoded[8192];
+  size_t decoded_len;
+  const char *b64_parse_end;
+  if (sodium_base642bin(decoded, sizeof(decoded), b64_clean, clean_len, NULL, &decoded_len, &b64_parse_end,
+                        sodium_base64_VARIANT_ORIGINAL) != 0) {
+    log_error("Failed to decode PGP base64 data");
+    free(b64_clean);
+    return -1;
+  }
+  free(b64_clean);
+
+  log_debug("Decoded %zu bytes of PGP data", decoded_len);
+
+  // Parse PGP packets to find Ed25519 public key
+  size_t offset = 0;
+  bool found_ed25519 = false;
+
+  while (offset < decoded_len && !found_ed25519) {
+    // Parse packet header
+    if (offset >= decoded_len) {
+      break;
+    }
+
+    uint8_t tag_byte = decoded[offset++];
+    uint8_t tag;
+    size_t packet_len;
+
+    // RFC 4880: bit 6 = 0 means old format, bit 6 = 1 means new format
+    if ((tag_byte & 0x40) == 0) {
+      // Old format packet
+      tag = (tag_byte >> 2) & 0x0F;
+      uint8_t len_type = tag_byte & 0x03;
+
+      if (len_type == 0) {
+        if (offset >= decoded_len)
+          break;
+        packet_len = decoded[offset++];
+      } else if (len_type == 1) {
+        if (offset + 1 >= decoded_len)
+          break;
+        packet_len = (decoded[offset] << 8) | decoded[offset + 1];
+        offset += 2;
+      } else if (len_type == 2) {
+        if (offset + 3 >= decoded_len)
+          break;
+        packet_len =
+            (decoded[offset] << 24) | (decoded[offset + 1] << 16) | (decoded[offset + 2] << 8) | decoded[offset + 3];
+        offset += 4;
+      } else {
+        // Indeterminate length
+        log_debug("Skipping packet with indeterminate length");
+        break;
+      }
+    } else {
+      // New format packet
+      tag = tag_byte & 0x3F;
+
+      // Parse length
+      if (offset >= decoded_len) {
+        break;
+      }
+      uint8_t len_byte = decoded[offset++];
+      if (len_byte < 192) {
+        packet_len = len_byte;
+      } else if (len_byte < 224) {
+        if (offset >= decoded_len) {
+          break;
+        }
+        packet_len = ((len_byte - 192) << 8) + decoded[offset++] + 192;
+      } else {
+        // Partial body length or other format - skip
+        log_debug("Skipping packet with complex length encoding");
+        break;
+      }
+    }
+
+    log_debug("PGP packet: tag=%u, len=%zu", tag, packet_len);
+
+    // Check if this is a public key packet (tag 6) or public subkey packet (tag 14)
+    if ((tag == 6 || tag == 14) && offset + packet_len <= decoded_len) {
+      // Parse public key packet
+      size_t pkt_offset = offset;
+
+      // Version (1 byte)
+      if (pkt_offset >= offset + packet_len)
+        goto next_packet;
+      uint8_t version = decoded[pkt_offset++];
+
+      // Creation time (4 bytes)
+      if (pkt_offset + 4 > offset + packet_len)
+        goto next_packet;
+      pkt_offset += 4;
+
+      // Algorithm (1 byte)
+      if (pkt_offset >= offset + packet_len)
+        goto next_packet;
+      uint8_t algorithm = decoded[pkt_offset++];
+
+      log_debug("Public key packet: version=%u, algorithm=%u", version, algorithm);
+
+      // Check if Ed25519 (algorithm 22)
+      if (algorithm == 22) {
+        // Ed25519 keys in OpenPGP v4 include an OID (Object Identifier) field
+        // Format: OID length (1 byte) + OID data (variable length) + MPI
+        // The OID for Ed25519 is: 1.3.6.1.4.1.11591.15.1
+        // Encoded as: 09 2b 06 01 04 01 da 47 0f 01 (length + data)
+
+        if (pkt_offset >= offset + packet_len)
+          goto next_packet;
+
+        // Read OID length
+        uint8_t oid_len = decoded[pkt_offset++];
+        log_debug("Ed25519 OID length: %u", oid_len);
+
+        // Skip OID data
+        if (pkt_offset + oid_len > offset + packet_len) {
+          log_error("OID extends beyond packet");
+          goto next_packet;
+        }
+        pkt_offset += oid_len;
+
+        // Now read the MPI
+        if (pkt_offset + 2 > offset + packet_len)
+          goto next_packet;
+
+        // Read MPI bit count (2 bytes, big endian)
+        uint16_t bit_count = (decoded[pkt_offset] << 8) | decoded[pkt_offset + 1];
+        pkt_offset += 2;
+
+        log_debug("Ed25519 MPI bit count: %u", bit_count);
+
+        // Ed25519 uses 263 bits (0x40 prefix byte + 32 bytes = 33 bytes = 264 bits)
+        // Some implementations use 256 bits (just the 32 bytes)
+        size_t mpi_bytes = (bit_count + 7) / 8;
+
+        if (pkt_offset + mpi_bytes > offset + packet_len) {
+          log_error("Ed25519 MPI extends beyond packet");
+          goto next_packet;
+        }
+
+        // Check if it has the 0x40 prefix (standard format)
+        if (mpi_bytes == 33 && decoded[pkt_offset] == 0x40) {
+          // Skip 0x40 prefix and copy 32 bytes
+          memcpy(key_out->key, decoded + pkt_offset + 1, 32);
+          key_out->type = KEY_TYPE_ED25519;
+          found_ed25519 = true;
+          log_info("Successfully extracted Ed25519 public key from PGP packet");
+        } else if (mpi_bytes == 32) {
+          // No prefix, just 32 bytes
+          memcpy(key_out->key, decoded + pkt_offset, 32);
+          key_out->type = KEY_TYPE_ED25519;
+          found_ed25519 = true;
+          log_info("Successfully extracted Ed25519 public key from PGP packet (no prefix)");
+        } else {
+          log_error("Unexpected Ed25519 MPI size: %zu bytes", mpi_bytes);
+        }
+      }
+    }
+
+  next_packet:
+    offset += packet_len;
+  }
+
+  if (!found_ed25519) {
+    log_error("No Ed25519 public key found in PGP data");
+    return -1;
+  }
+
   return 0;
+}
+
+// Fetch SSH keys from GitHub using BearSSL
+int fetch_github_keys(const char *username, char ***keys_out, size_t *num_keys, bool use_gpg) {
+  if (use_gpg) {
+    return fetch_github_gpg_keys(username, keys_out, num_keys);
+  } else {
+    return fetch_github_ssh_keys(username, keys_out, num_keys);
+  }
 }
 
 // Fetch SSH keys from GitLab using BearSSL
-int fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys) {
-  // TODO: Implement BearSSL integration for real HTTPS requests
-
-  // Initialize outputs to safe defaults
-  *keys_out = NULL;
-  *num_keys = 0;
-
-  // For now, return a valid dummy Ed25519 key for testing
-  SAFE_MALLOC(*keys_out, sizeof(char *) * 1, char **);
-  // Use a valid SSH Ed25519 key (generated with ssh-keygen -t ed25519)
-  (*keys_out)[0] =
-      strdup("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBg7kmREayHMGWhgD0pc9wzuwdi0ibHnFmlAPwOn6mSV dummy-gitlab-key");
-  *num_keys = 1;
-  log_info("GitLab key fetching (stub): %s", username);
-  return 0;
+int fetch_gitlab_keys(const char *username, char ***keys_out, size_t *num_keys, bool use_gpg) {
+  if (use_gpg) {
+    return fetch_gitlab_gpg_keys(username, keys_out, num_keys);
+  } else {
+    return fetch_gitlab_ssh_keys(username, keys_out, num_keys);
+  }
 }
 
-// Fetch GPG keys from GitHub using BearSSL
-int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys) {
-  // TODO: Implement BearSSL integration for real HTTPS requests
-  // Without BearSSL, GPG key fetching is not implemented
-  *keys_out = NULL;
-  *num_keys = 0;
-  log_error("GPG key fetching not implemented without BearSSL: %s", username);
-  return -1;
-}
-
-// Fetch GPG keys from GitLab using BearSSL
-int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys) {
-  // TODO: Implement BearSSL integration for real HTTPS requests
-  // For now, return a dummy GPG key for testing
-  SAFE_MALLOC(*keys_out, sizeof(char *) * 1, char **);
-  (*keys_out)[0] =
-      strdup("-----BEGIN PGP PUBLIC KEY BLOCK-----\n...dummy-gitlab-gpg-key...\n-----END PGP PUBLIC KEY BLOCK-----");
-  *num_keys = 1;
-  log_info("GitLab GPG key fetching (stub): %s", username);
-  return 0;
-}
-
-// Parse SSH keys from file (supports authorized_keys and known_hosts formats)
+// Parse SSH/GPG keys from file (supports authorized_keys, known_hosts, and PGP armored formats)
 int parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys) {
   FILE *f = fopen(path, "r");
   if (!f)
     return -1;
 
-  *num_keys = 0;
+  // Don't reset num_keys - append to existing keys
   char line[2048];
+  char *pgp_block = NULL;
+  size_t pgp_block_size = 0;
+  size_t pgp_block_capacity = 0;
+  bool in_pgp_block = false;
 
   while (fgets(line, sizeof(line), f) && *num_keys < max_keys) {
+    // Check for PGP block start
+    if (strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----")) {
+      in_pgp_block = true;
+      pgp_block_size = 0;
+      if (!pgp_block) {
+        pgp_block_capacity = 8192;
+        SAFE_MALLOC(pgp_block, pgp_block_capacity, char *);
+      }
+      // Add BEGIN line to block
+      size_t line_len = strlen(line);
+      if (pgp_block_size + line_len >= pgp_block_capacity) {
+        pgp_block_capacity *= 2;
+        SAFE_REALLOC(pgp_block, pgp_block_capacity, char *);
+      }
+      memcpy(pgp_block + pgp_block_size, line, line_len);
+      pgp_block_size += line_len;
+      continue;
+    }
+
+    // Check for PGP block end
+    if (in_pgp_block && strstr(line, "-----END PGP PUBLIC KEY BLOCK-----")) {
+      // Add END line to block
+      size_t line_len = strlen(line);
+      if (pgp_block_size + line_len >= pgp_block_capacity) {
+        pgp_block_capacity *= 2;
+        SAFE_REALLOC(pgp_block, pgp_block_capacity, char *);
+      }
+      memcpy(pgp_block + pgp_block_size, line, line_len);
+      pgp_block_size += line_len;
+      pgp_block[pgp_block_size] = '\0';
+
+      // Parse the complete PGP block
+      if (parse_gpg_key(pgp_block, &keys[*num_keys]) == 0) {
+        (*num_keys)++;
+        log_info("Parsed GPG key from file");
+      } else {
+        log_warn("Failed to parse GPG key block from file");
+      }
+
+      in_pgp_block = false;
+      pgp_block_size = 0;
+      continue;
+    }
+
+    // If we're in a PGP block, accumulate lines
+    if (in_pgp_block) {
+      size_t line_len = strlen(line);
+      if (pgp_block_size + line_len >= pgp_block_capacity) {
+        pgp_block_capacity *= 2;
+        SAFE_REALLOC(pgp_block, pgp_block_capacity, char *);
+      }
+      memcpy(pgp_block + pgp_block_size, line, line_len);
+      pgp_block_size += line_len;
+      continue;
+    }
+
+    // Not in PGP block - parse as SSH key
     // Skip comments and empty lines
     if (line[0] == '#' || line[0] == '\n' || line[0] == '\r')
       continue;
@@ -1189,6 +1685,10 @@ int parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys,
     }
   }
 
+  if (pgp_block) {
+    free(pgp_block);
+  }
+
   fclose(f);
   return (*num_keys > 0) ? 0 : -1;
 }
@@ -1223,18 +1723,98 @@ int parse_client_keys(const char *input, public_key_t *keys, size_t *num_keys, s
         key_str++;
       }
 
-      // Add "ssh-ed25519 " prefix if it's just the base64 part
-      char key_with_prefix[2048];
-      if (strncmp(key_str, "ssh-ed25519 ", 12) != 0 && strncmp(key_str, "AAAA", 4) == 0) {
-        snprintf(key_with_prefix, sizeof(key_with_prefix), "ssh-ed25519 %s", key_str);
-        key_str = key_with_prefix;
-      }
+      // Check if this is a github:/gitlab: reference that might have multiple keys
+      if (strncmp(key_str, "github:", 7) == 0 || strncmp(key_str, "gitlab:", 7) == 0) {
+        // This might return multiple keys - parse it and add all
+        public_key_t temp_key;
+        char **fetched_keys = NULL;
+        size_t num_fetched = 0;
 
-      if (parse_public_key(key_str, &keys[*num_keys]) == 0) {
-        (*num_keys)++;
-        log_debug("Parsed key %zu from comma-separated list", *num_keys);
+        // Parse to get all keys from this source
+        if (parse_public_key(key_str, &temp_key) == 0) {
+          // Successfully parsed - but this only gives us the first key
+          // We need to re-fetch to get ALL keys
+          bool is_github = (strncmp(key_str, "github:", 7) == 0);
+          bool is_gpg = (strstr(key_str, ".gpg") != NULL);
+          const char *username = key_str + 7;
+
+          // Extract username (remove .ssh or .gpg suffix if present)
+          char username_buf[256];
+          const char *dot = strrchr(username, '.');
+          if (dot && (strcmp(dot, ".ssh") == 0 || strcmp(dot, ".gpg") == 0)) {
+            size_t len = dot - username;
+            if (len < sizeof(username_buf)) {
+              strncpy(username_buf, username, len);
+              username_buf[len] = '\0';
+              username = username_buf;
+            }
+          }
+
+          // Fetch all keys
+          if (is_github) {
+            if (is_gpg) {
+              fetch_github_gpg_keys(username, &fetched_keys, &num_fetched);
+            } else {
+              fetch_github_ssh_keys(username, &fetched_keys, &num_fetched);
+            }
+          } else {
+            if (is_gpg) {
+              fetch_gitlab_gpg_keys(username, &fetched_keys, &num_fetched);
+            } else {
+              fetch_gitlab_ssh_keys(username, &fetched_keys, &num_fetched);
+            }
+          }
+
+          // Parse each fetched key
+          if (fetched_keys && num_fetched > 0) {
+            for (size_t i = 0; i < num_fetched && *num_keys < max_keys; i++) {
+              if (is_gpg) {
+                if (parse_gpg_key(fetched_keys[i], &keys[*num_keys]) == 0) {
+                  (*num_keys)++;
+                  log_info("Added GPG key %zu from %s", i + 1, key_str);
+                }
+              } else {
+                if (parse_public_key(fetched_keys[i], &keys[*num_keys]) == 0) {
+                  (*num_keys)++;
+                  log_info("Added SSH key %zu from %s", i + 1, key_str);
+                }
+              }
+              free(fetched_keys[i]);
+            }
+            free(fetched_keys);
+          }
+        } else {
+          log_warn("Failed to parse key source: %s", key_str);
+        }
       } else {
-        log_warn("Failed to parse key from comma-separated list: %s", key_str);
+        // Check if this is a file path
+        FILE *test_file = fopen(key_str, "r");
+        if (test_file) {
+          fclose(test_file);
+          // It's a file - load keys from it
+          size_t keys_before = *num_keys;
+          if (parse_keys_from_file(key_str, keys, num_keys, max_keys) == 0) {
+            size_t keys_added = *num_keys - keys_before;
+            log_info("Loaded %zu key(s) from file: %s", keys_added, key_str);
+          } else {
+            log_warn("Failed to load keys from file: %s", key_str);
+          }
+        } else {
+          // Not a file - try parsing as a raw key
+          // Add "ssh-ed25519 " prefix if it's just the base64 part
+          char key_with_prefix[2048];
+          if (strncmp(key_str, "ssh-ed25519 ", 12) != 0 && strncmp(key_str, "AAAA", 4) == 0) {
+            snprintf(key_with_prefix, sizeof(key_with_prefix), "ssh-ed25519 %s", key_str);
+            key_str = key_with_prefix;
+          }
+
+          if (parse_public_key(key_str, &keys[*num_keys]) == 0) {
+            (*num_keys)++;
+            log_debug("Parsed key %zu from comma-separated list", *num_keys);
+          } else {
+            log_warn("Failed to parse key from comma-separated list: %s", key_str);
+          }
+        }
       }
 
       key_str = strtok(NULL, ",");
@@ -1252,9 +1832,82 @@ int parse_client_keys(const char *input, public_key_t *keys, size_t *num_keys, s
     return parse_keys_from_file(input, keys, num_keys, max_keys);
   }
 
-  // Not a file and no comma - try as single key
-  log_debug("Parsing as single key: %s", input);
+  // Not a file and no comma - try as single key or github:/gitlab: reference
+  log_debug("Parsing as single key or remote reference: %s", input);
 
+  // Check if this is a github:/gitlab: reference that might have multiple keys
+  if (strncmp(input, "github:", 7) == 0 || strncmp(input, "gitlab:", 7) == 0) {
+    bool is_github = (strncmp(input, "github:", 7) == 0);
+    bool is_gpg = (strstr(input, ".gpg") != NULL);
+    const char *username = input + 7;
+
+    // Extract username (remove .ssh or .gpg suffix if present)
+    char username_buf[256];
+    const char *dot = strrchr(username, '.');
+    if (dot && (strcmp(dot, ".ssh") == 0 || strcmp(dot, ".gpg") == 0)) {
+      size_t len = dot - username;
+      if (len < sizeof(username_buf)) {
+        strncpy(username_buf, username, len);
+        username_buf[len] = '\0';
+        username = username_buf;
+      }
+    }
+
+    // Fetch all keys
+    char **fetched_keys = NULL;
+    size_t num_fetched = 0;
+
+    if (is_github) {
+      if (is_gpg) {
+        if (fetch_github_gpg_keys(username, &fetched_keys, &num_fetched) != 0) {
+          log_error("Failed to fetch GPG keys for GitHub user: %s", username);
+          return -1;
+        }
+      } else {
+        if (fetch_github_ssh_keys(username, &fetched_keys, &num_fetched) != 0) {
+          log_error("Failed to fetch SSH keys for GitHub user: %s", username);
+          return -1;
+        }
+      }
+    } else {
+      if (is_gpg) {
+        if (fetch_gitlab_gpg_keys(username, &fetched_keys, &num_fetched) != 0) {
+          log_error("Failed to fetch GPG keys for GitLab user: %s", username);
+          return -1;
+        }
+      } else {
+        if (fetch_gitlab_ssh_keys(username, &fetched_keys, &num_fetched) != 0) {
+          log_error("Failed to fetch SSH keys for GitLab user: %s", username);
+          return -1;
+        }
+      }
+    }
+
+    // Parse each fetched key
+    if (fetched_keys && num_fetched > 0) {
+      for (size_t i = 0; i < num_fetched && *num_keys < max_keys; i++) {
+        if (is_gpg) {
+          if (parse_gpg_key(fetched_keys[i], &keys[*num_keys]) == 0) {
+            (*num_keys)++;
+            log_info("Added GPG key %zu from %s", i + 1, input);
+          }
+        } else {
+          if (parse_public_key(fetched_keys[i], &keys[*num_keys]) == 0) {
+            (*num_keys)++;
+            log_info("Added SSH key %zu from %s", i + 1, input);
+          }
+        }
+        free(fetched_keys[i]);
+      }
+      free(fetched_keys);
+      return (*num_keys > 0) ? 0 : -1;
+    }
+
+    log_error("No keys found for: %s", input);
+    return -1;
+  }
+
+  // Regular single key - not a github:/gitlab: reference
   // Add "ssh-ed25519 " prefix if it's just the base64 part
   char key_with_prefix[2048];
   const char *key_to_parse = input;
@@ -1321,6 +1974,30 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
 int ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len, uint8_t signature[64]) {
   if (!key || !message || !signature) {
     return -1;
+  }
+
+  if (key->use_gpg_agent) {
+    // Sign via GPG agent protocol
+    fprintf(stderr, "ed25519_sign_message: Using GPG agent to sign message (%zu bytes)\n", message_len);
+
+    int agent_fd = gpg_agent_connect();
+    if (agent_fd < 0) {
+      fprintf(stderr, "ed25519_sign_message: Failed to connect to GPG agent\n");
+      return -1;
+    }
+
+    size_t sig_len = 0;
+    int result = gpg_agent_sign(agent_fd, key->gpg_keygrip, message, message_len, signature, &sig_len);
+
+    gpg_agent_disconnect(agent_fd);
+
+    if (result != 0 || sig_len != 64) {
+      fprintf(stderr, "ed25519_sign_message: GPG agent signing failed\n");
+      return -1;
+    }
+
+    fprintf(stderr, "ed25519_sign_message: Successfully signed with GPG agent\n");
+    return 0;
   }
 
   if (key->use_ssh_agent) {
@@ -1549,7 +2226,7 @@ int crypto_setup_ssh_key_for_handshake(struct crypto_handshake_context_t *ctx_pa
   }
 
   // Cast to typedef for member access (keys.h only has forward declaration)
-  crypto_handshake_context_t *ctx = (crypto_handshake_context_t *)ctx_param;
+  (void)ctx_param; // Unused - handshake context uses ephemeral keys regardless of SSH mode
 
   // SECURITY ARCHITECTURE:
   // We ALWAYS use ephemeral X25519 keys for encryption (forward secrecy).
