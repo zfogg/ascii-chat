@@ -209,7 +209,6 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 char *image_print(const image_t *p, const char *palette) {
   if (!p || !p->pixels || !palette) {
     log_error("image_print: p or p->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -352,13 +351,12 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  * @note The function performs overflow checks to prevent integer overflow when
  *       calculating buffer sizes for very large images.
  * @note Uses global opt_background_color to determine color mode.
- * @note Exits with ASCIICHAT_ERR_BUFFER_ACCESS if buffer overflow is detected
+ * @note Exits with ASCIICHAT_ERROR_BUFFER if buffer overflow is detected
  *       during string construction (should never happen with correct calculation).
  */
 char *image_print_color(const image_t *p, const char *palette) {
   if (!p || !p->pixels || !palette) {
     log_error("p or p->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -502,7 +500,6 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
                                     const char luminance_palette[256] __attribute__((unused))) {
   if (!image || !image->pixels || !caps || !palette) {
     log_error("Invalid parameters for image_print_with_capabilities");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -567,7 +564,6 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 char *image_print_256color(const image_t *image, const char *palette) {
   if (!image || !image->pixels || !palette) {
     log_error("image_print_256color: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -585,7 +581,6 @@ char *image_print_256color(const image_t *image, const char *palette) {
 char *image_print_16color(const image_t *image, const char *palette) {
   if (!image || !image->pixels || !palette) {
     log_error("image_print_16color: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -668,7 +663,6 @@ char *image_print_16color(const image_t *image, const char *palette) {
 char *image_print_16color_dithered(const image_t *image, const char *palette) {
   if (!image || !image->pixels || !palette) {
     log_error("image_print_16color_dithered: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 
@@ -762,7 +756,6 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
 char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette) {
   if (!image || !image->pixels || !palette) {
     log_error("image_print_16color_dithered_with_background: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
     return NULL;
   }
 

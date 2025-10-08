@@ -417,47 +417,9 @@ static int init_server_crypto(void) {
       return -1;
     }
 
-    // Treat as file path - verify it exists and is accessible
-    struct stat st;
-    if (stat(opt_encrypt_key, &st) != 0) {
-      // File doesn't exist
-      log_error("Key file not found: %s", opt_encrypt_key);
-      log_error("Please check the file path or use --password for password-based encryption");
+    // Validate SSH key file (shared validation logic)
+    if (validate_ssh_key_file(opt_encrypt_key) != 0) {
       return -1;
-    }
-
-    // File exists - check if it's readable
-    FILE *test_file = fopen(opt_encrypt_key, "r");
-    if (test_file == NULL) {
-      // File exists but can't be read (permission denied)
-      log_error("Cannot read key file: %s", opt_encrypt_key);
-      log_error("Please check file permissions (should be 600 or 400)");
-      return -1;
-    }
-
-    // Check if this is an SSH key file by looking for the header
-    char header[256];
-    bool is_ssh_key_file = false;
-    if (fgets(header, sizeof(header), test_file) != NULL) {
-      if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
-          strstr(header, "BEGIN EC PRIVATE KEY") != NULL) {
-        is_ssh_key_file = true;
-      }
-    }
-    fclose(test_file);
-
-    if (!is_ssh_key_file) {
-      log_error("File is not a valid SSH key: %s", opt_encrypt_key);
-      log_error("Expected SSH private key format (BEGIN OPENSSH PRIVATE KEY)");
-      log_error("Use --password for password-based encryption instead");
-      return -1;
-    }
-
-    // Check permissions for SSH key files (should be 600 or 400)
-    if ((st.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
-      log_warn("SSH key file %s has overly permissive permissions: %o", opt_encrypt_key, st.st_mode & 0777);
-      log_warn("Recommended: chmod 600 %s", opt_encrypt_key);
-      log_warn("Continuing anyway, but this is a security risk");
     }
 
     // Parse SSH key file
@@ -525,7 +487,13 @@ int main(int argc, char *argv[]) {
   (void)atexit(print_mimalloc_stats);
 #endif
 
-  options_init(argc, argv, false);
+  // Note: --help and --version will exit(0) directly within options_init
+  int options_result = options_init(argc, argv, false);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ASCIICHAT_ERROR_USAGE for invalid options (after printing error)
+    // Just exit with the returned error code
+    return options_result;
+  }
 
   // Initialize logging first so errors are properly logged
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
@@ -646,7 +614,7 @@ int main(int argc, char *argv[]) {
   int yes = 1;
   if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
     log_fatal("setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
-    exit(ASCIICHAT_ERR_NETWORK);
+    exit(ASCIICHAT_ERROR_NETWORK);
   }
 
   // If we Set keep-alive on the listener before accept(), connfd will inherit it.

@@ -448,6 +448,15 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   // CRITICAL: Perform crypto handshake BEFORE starting threads
   // This ensures the handshake uses the socket directly without interference from receive thread
   if (server_crypto_init() == 0) {
+    // Set timeout for crypto handshake to prevent indefinite blocking
+    // This prevents clients from connecting but never completing the handshake
+    const int HANDSHAKE_TIMEOUT_SECONDS = 30;
+    if (set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS) < 0) {
+      log_warn("Failed to set handshake timeout for client %u: %s", atomic_load(&client->client_id),
+               network_error_string(errno));
+      // Continue anyway - timeout is a safety feature, not critical
+    }
+
     int crypto_result = server_crypto_handshake(socket);
     if (crypto_result != 0) {
       log_error("Crypto handshake failed for client %u: %s", atomic_load(&client->client_id),
@@ -455,6 +464,15 @@ int add_client(socket_t socket, const char *client_ip, int port) {
       (void)remove_client(atomic_load(&client->client_id));
       return -1;
     }
+
+    // Clear socket timeout after handshake completes successfully
+    // This allows normal operation without timeouts on data transfer
+    if (set_socket_timeout(socket, 0) < 0) {
+      log_warn("Failed to clear handshake timeout for client %u: %s", atomic_load(&client->client_id),
+               network_error_string(errno));
+      // Continue anyway - we can still communicate even with timeout set
+    }
+
     log_info("Crypto handshake completed successfully for client %u", atomic_load(&client->client_id));
   }
 
@@ -669,9 +687,11 @@ void *client_receive_thread(void *arg) {
   log_info("Started receive thread for client %u (%s)", client->client_id, client->display_name);
 
   while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
-    // Use unified secure packet reception
+    // Use unified secure packet reception with auto-decryption
+    const crypto_context_t *crypto_ctx =
+        crypto_server_is_ready(client->client_id) ? crypto_server_get_context(client->client_id) : NULL;
     packet_envelope_t envelope;
-    packet_recv_result_t result = receive_packet_secure(client->socket, NULL, !opt_no_encrypt, &envelope);
+    packet_recv_result_t result = receive_packet_secure(client->socket, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_should_exit)) {
@@ -704,18 +724,11 @@ void *client_receive_thread(void *arg) {
     packet_type_t type = envelope.type;
     void *data = envelope.data;
     size_t len = envelope.len;
-    uint32_t sender_id = envelope.client_id;
+    // Note: sender_id removed - client_id already validated by crypto handshake
 
     // Handle different packet types from client
+    // NOTE: PACKET_TYPE_ENCRYPTED is now handled automatically by receive_packet_secure()
     switch (type) {
-    case PACKET_TYPE_ENCRYPTED:
-      if (process_encrypted_packet(client, &type, &data, &len, &sender_id) != 0) {
-        log_error("Failed to process encrypted packet from client %u", client->client_id);
-        continue;
-      }
-      // Process the decrypted packet
-      process_decrypted_packet(client, type, data, len);
-      break;
     case PACKET_TYPE_CLIENT_JOIN:
     case PACKET_TYPE_STREAM_START:
     case PACKET_TYPE_STREAM_STOP:

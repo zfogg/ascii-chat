@@ -110,4 +110,34 @@ void format_public_key(const public_key_t *key, char *output, size_t output_size
 // Decode hex string to binary (utility function for testing)
 int hex_decode(const char *hex, uint8_t *output, size_t output_len);
 
+// Forward declaration (full definition in handshake.h)
+// Note: This causes a harmless pointer type warning but avoids circular includes
+struct crypto_handshake_context_t;
+
+/**
+ * Configure SSH key for handshake context (shared between client and server)
+ *
+ * Handles both SSH agent mode and in-memory mode:
+ * - SSH agent mode: Uses ephemeral X25519 keys for encryption, Ed25519 for identity
+ * - In-memory mode: Converts Ed25519 to X25519 for both encryption and identity
+ *
+ * @param ctx Crypto handshake context to configure
+ * @param private_key SSH private key to use
+ * @return 0 on success, -1 on failure
+ */
+int crypto_setup_ssh_key_for_handshake(struct crypto_handshake_context_t *ctx, const private_key_t *private_key);
+
+/**
+ * Validate SSH key file before parsing
+ *
+ * Checks:
+ * - File exists and is readable
+ * - File has valid SSH private key header
+ * - File permissions are appropriate (warns if overly permissive)
+ *
+ * @param key_path Path to SSH key file
+ * @return 0 if valid, -1 if invalid (logs specific errors)
+ */
+int validate_ssh_key_file(const char *key_path);
+
 #endif

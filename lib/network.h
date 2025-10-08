@@ -5,6 +5,7 @@
 #include "common.h"
 #include "platform/terminal.h"
 #include "crc32.h"
+#include "crypto/crypto.h"
 
 // Pack network protocol structures tightly for wire format
 #ifdef _WIN32
@@ -90,8 +91,21 @@ typedef enum {
   PACKET_TYPE_AUTH_RESPONSE = 17,         // Client -> Server: {HMAC[32]}
   PACKET_TYPE_HANDSHAKE_COMPLETE = 18,    // Server -> Client: "encryption ready"
   PACKET_TYPE_AUTH_FAILED = 19,           // Server -> Client: "authentication failed"
-  PACKET_TYPE_ENCRYPTED = 20              // Encrypted packet (after handshake)
+  PACKET_TYPE_ENCRYPTED = 20,             // Encrypted packet (after handshake)
+  PACKET_TYPE_NO_ENCRYPTION = 21,         // Client -> Server: "I want to proceed without encryption"
+  PACKET_TYPE_SERVER_AUTH_RESPONSE = 22   // Server -> Client: {HMAC[32]} server proves knowledge of shared secret
 } packet_type_t;
+
+/**
+ * Determines if a packet type is a handshake packet that should NEVER be encrypted.
+ * Handshake packets (types 14-22) are always sent in plaintext.
+ *
+ * @param type The packet type to check
+ * @return true if this is a handshake packet, false otherwise
+ */
+static inline bool packet_is_handshake_type(packet_type_t type) {
+  return (type >= PACKET_TYPE_KEY_EXCHANGE_INIT && type <= PACKET_TYPE_SERVER_AUTH_RESPONSE);
+}
 
 typedef struct {
   uint32_t magic;     // PACKET_MAGIC for packet validation
@@ -131,6 +145,21 @@ typedef struct {
   uint32_t active_client_count;    // Number of clients actively sending video
   uint32_t reserved[6];            // Reserved for future use
 } PACKED_ATTR server_state_packet_t;
+// Authentication failure reasons
+typedef enum {
+  AUTH_FAIL_PASSWORD_REQUIRED = 0x01,   // Server requires password but client didn't provide one
+  AUTH_FAIL_PASSWORD_INCORRECT = 0x02,  // Password verification failed
+  AUTH_FAIL_CLIENT_KEY_REQUIRED = 0x04, // Server requires client key but client didn't provide one
+  AUTH_FAIL_CLIENT_KEY_REJECTED = 0x08, // Client key not in whitelist
+  AUTH_FAIL_SIGNATURE_INVALID = 0x10    // Client signature verification failed
+} auth_failure_reason_t;
+
+// Authentication failure packet - sent by server to explain why auth failed
+typedef struct {
+  uint8_t reason_flags; // Bitmask of auth_failure_reason_t values
+  uint8_t reserved[7];  // Reserved for future use
+} PACKED_ATTR auth_failure_packet_t;
+
 // Terminal capabilities packet - sent by client to inform server of capabilities
 typedef struct {
   uint32_t capabilities;      // Bitmask of TERM_CAP_* flags
@@ -221,6 +250,34 @@ int receive_audio_data(socket_t sockfd, float *samples, int max_samples);
 int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len);
 int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *len);
 
+/**
+ * Smart send: Automatically encrypts non-handshake packets if crypto is ready.
+ * Handshake packets (14-19) are ALWAYS sent unencrypted.
+ * All other packets are encrypted if crypto_ctx is provided and ready.
+ *
+ * @param sockfd Socket to send on
+ * @param type Packet type
+ * @param data Packet payload
+ * @param len Payload length
+ * @param crypto_ctx Crypto context (NULL = no encryption)
+ * @return 0 on success, -1 on error
+ */
+int send_packet_auto(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx);
+
+/**
+ * Smart receive: Automatically decrypts PACKET_TYPE_ENCRYPTED packets.
+ * Handshake packets (14-19) are received as-is.
+ * PACKET_TYPE_ENCRYPTED is automatically decrypted if crypto_ctx is provided.
+ *
+ * @param sockfd Socket to receive from
+ * @param type Output: actual packet type (after decryption if encrypted)
+ * @param data Output: packet payload (caller must free with buffer_pool_free)
+ * @param len Output: payload length
+ * @param crypto_ctx Crypto context (NULL = no decryption)
+ * @return 0 on success, -1 on error
+ */
+int receive_packet_auto(socket_t sockfd, packet_type_t *type, void **data, size_t *len, crypto_context_t *crypto_ctx);
+
 int send_audio_packet(socket_t sockfd, const float *samples, int num_samples);
 int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count);
 
@@ -262,11 +319,6 @@ typedef enum {
   PACKET_RECV_ERROR = -2,             // Network error
   PACKET_RECV_SECURITY_VIOLATION = -3 // Encryption policy violated
 } packet_recv_result_t;
-
-/**
- * Check if a packet type is a crypto handshake packet (always unencrypted)
- */
-bool is_crypto_handshake_packet(packet_type_t type);
 
 /**
  * Unified packet reception with encryption enforcement

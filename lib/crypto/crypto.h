@@ -59,7 +59,8 @@ typedef struct {
   uint8_t auth_hmac[32];  // Client's HMAC response
 
   // Security parameters
-  uint64_t nonce_counter; // Prevent nonce reuse
+  uint64_t nonce_counter; // Prevent nonce reuse within session
+  uint8_t session_id[16]; // Unique session ID to prevent cross-session replay attacks
 
   // Performance tracking
   uint64_t bytes_encrypted;
@@ -161,11 +162,50 @@ crypto_result_t crypto_random_bytes(uint8_t *buffer, size_t len);
 // Generate random nonce for authentication
 crypto_result_t crypto_generate_nonce(uint8_t nonce[32]);
 
-// Compute HMAC for authentication
+// Compute HMAC for authentication (fixed 32-byte data)
 crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32], uint8_t hmac[32]);
 
-// Verify HMAC
+// Compute HMAC for variable-length data (for binding multiple values)
+crypto_result_t crypto_compute_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len, uint8_t hmac[32]);
+
+// Verify HMAC (fixed 32-byte data)
 bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]);
+
+// Verify HMAC for variable-length data
+bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len,
+                           const uint8_t expected_hmac[32]);
+
+// =============================================================================
+// High-level authentication helpers (shared between client and server)
+// =============================================================================
+
+/**
+ * Compute authentication response HMAC bound to DH shared_secret.
+ * Uses password_key if available, otherwise uses shared_key.
+ *
+ * Computes: HMAC(auth_key, nonce || shared_secret)
+ * This binds the password/key authentication to the DH exchange, preventing MITM.
+ *
+ * @param ctx Crypto context with keys
+ * @param nonce Challenge nonce (32 bytes)
+ * @param hmac_out Output HMAC (32 bytes)
+ * @return CRYPTO_OK on success
+ */
+crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
+                                             uint8_t hmac_out[32]);
+
+/**
+ * Verify authentication response HMAC bound to DH shared_secret.
+ * Uses password_key if available, otherwise uses shared_key.
+ *
+ * Verifies: HMAC(auth_key, nonce || shared_secret)
+ *
+ * @param ctx Crypto context with keys
+ * @param nonce Challenge nonce (32 bytes)
+ * @param expected_hmac Expected HMAC to verify (32 bytes)
+ * @return true if HMAC is valid
+ */
+bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32], const uint8_t expected_hmac[32]);
 
 // Create authentication challenge packet
 crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,

@@ -31,6 +31,7 @@ RUN pacman -Sy --noconfirm \
     clang \
     cmake \
     ninja \
+    make \
     ccache \
     musl \
     mimalloc \
@@ -50,9 +51,18 @@ RUN pacman -Sy --noconfirm \
 # Set working directory
 WORKDIR /app
 
-# Don't copy or build in the image - we'll mount as volume
-# This makes the image smaller and faster to build
-# The build will be handled by run_tests.sh with proper incremental support
+# Pre-build dependencies during image creation
+# This avoids rebuilding them every time we run tests
+
+# Copy and build BearSSL from submodule
+COPY deps/bearssl /tmp/bearssl
+RUN cd /tmp/bearssl && \
+    make && \
+    mkdir -p /usr/local/lib /usr/local/include && \
+    cp build/libbearssl.a /usr/local/lib/ && \
+    cp -r inc/* /usr/local/include/ && \
+    cd / && \
+    rm -rf /tmp/bearssl
 
 # Default command runs the test script directly
 CMD ["./tests/scripts/run_tests.sh"]

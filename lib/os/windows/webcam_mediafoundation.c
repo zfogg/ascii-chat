@@ -170,7 +170,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     log_error("  0x80070005 = E_ACCESSDENIED (device in use)");
     log_error("  0xc00d3704 = Device already in use");
     log_error("  0xc00d3e85 = MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED");
-    result = ASCIICHAT_ERR_WEBCAM_IN_USE;
+    result = ASCIICHAT_ERROR_WEBCAM_IN_USE;
     goto error;
   }
 
@@ -180,7 +180,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
-    result = ASCIICHAT_ERR_WEBCAM_IN_USE;
+    result = ASCIICHAT_ERROR_WEBCAM_IN_USE;
     goto error;
   }
 
@@ -291,7 +291,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read test frame during initialization: 0x%08x", hr);
-    result = ASCIICHAT_ERR_WEBCAM_IN_USE;
+    result = ASCIICHAT_ERROR_WEBCAM_IN_USE;
     goto error;
   }
 
@@ -414,8 +414,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     log_error("  0xc00d36b2 = MF_E_INVALIDREQUEST");
     log_error("  0xc00d36c4 = MF_E_HW_MFT_FAILED_START_STREAMING");
 
-    // Exit immediately on FIRST error - device is likely in use
-    exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+    // Return NULL - device is likely in use
+    return NULL;
   }
 
   if (!sample) {
@@ -428,7 +428,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
     } else if (null_count > 50) {
       // Too many consecutive NULL samples - likely exclusive access issue
-      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
+      log_error("Too many consecutive NULL samples (%d) - device likely in use", null_count);
     }
     return NULL;
   }
@@ -443,8 +443,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     if (buffer_fail_count > 20) {
       log_error("CRITICAL: Failed to get media buffer %d times - webcam likely in use", buffer_fail_count);
-      log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
-      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
     }
 
     IMFSample_Release(sample);
@@ -462,8 +460,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     if (lock_fail_count > 20) {
       log_error("CRITICAL: Failed to lock media buffer %d times - webcam likely in use", lock_fail_count);
-      log_error("EXITING WITH ERROR CODE: %d", ASCIICHAT_ERR_WEBCAM_IN_USE);
-      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
     }
 
     IMFMediaBuffer_Release(buffer);

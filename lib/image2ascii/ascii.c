@@ -33,7 +33,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   // Validate file descriptor
   if (fd < 0) {
     log_error("Invalid file descriptor %d", fd);
-    return ASCIICHAT_ERR_INVALID_PARAM;
+    return ASCIICHAT_ERROR_INVALID_PARAM;
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
@@ -44,7 +44,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     // Disable echo using platform abstraction
     if (terminal_set_echo(false) != 0) {
       log_error("Failed to disable echo for fd %d", fd);
-      return ASCIICHAT_ERR_TERMINAL;
+      return ASCIICHAT_ERROR_TERMINAL;
     }
     // Hide cursor using platform abstraction
     if (terminal_hide_cursor(fd, true) != 0) {
@@ -254,7 +254,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 asciichat_error_t ascii_write(const char *frame) {
   if (frame == NULL) {
     log_warn("Attempted to write NULL frame");
-    return ASCIICHAT_ERR_INVALID_PARAM;
+    return ASCIICHAT_ERROR_INVALID_PARAM;
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
@@ -266,7 +266,7 @@ asciichat_error_t ascii_write(const char *frame) {
   size_t written = fwrite(frame, 1, frame_len, stdout);
   if (written != frame_len) {
     log_error("Failed to write ASCII frame");
-    return ASCIICHAT_ERR_TERMINAL;
+    return ASCIICHAT_ERROR_TERMINAL;
   }
 
   return ASCIICHAT_OK;

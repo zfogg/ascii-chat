@@ -190,8 +190,8 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
         return -1;
       }
 
-      // Compare server's IDENTITY key with expected key
-      if (memcmp(server_identity_key, expected_key.key, 32) != 0) {
+      // Compare server's IDENTITY key with expected key (constant-time to prevent timing attacks)
+      if (sodium_memcmp(server_identity_key, expected_key.key, 32) != 0) {
         log_error("Server identity key mismatch - potential MITM attack!");
         log_error("Expected key: %s", ctx->expected_server_key);
         buffer_pool_free(payload, payload_len);
@@ -271,6 +271,20 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     return -1;
   }
 
+  // Check if client sent NO_ENCRYPTION response
+  if (packet_type == PACKET_TYPE_NO_ENCRYPTION) {
+    log_error("SECURITY: Client sent NO_ENCRYPTION response - encryption mode mismatch");
+    log_error("Server requires encryption, but client has --no-encrypt");
+    log_error("Use matching encryption settings on both client and server");
+    buffer_pool_free(payload, payload_len);
+
+    // Send AUTH_FAILED to inform client (though they already know)
+    auth_failure_packet_t failure = {0};
+    failure.reason_flags = 0; // No specific auth failure, just encryption mismatch
+    send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
+    return -1;
+  }
+
   // Verify packet type
   if (packet_type != PACKET_TYPE_KEY_EXCHANGE_RESPONSE) {
     log_error("Expected KEY_EXCHANGE_RESPONSE, got packet type %d", packet_type);
@@ -303,7 +317,11 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, 32, client_signature) != 0) {
       log_error("Client signature verification FAILED - rejecting connection");
       buffer_pool_free(payload, payload_len);
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
+
+      // Send AUTH_FAILED with specific reason
+      auth_failure_packet_t failure = {0};
+      failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
+      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
       return -1;
     }
     log_info("Client signature verified successfully");
@@ -341,8 +359,8 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
       }
       log_debug("Whitelist[%zu] Ed25519 key: %s", i, whitelist_ed25519_hex);
 
-      // Direct comparison of Ed25519 keys
-      if (memcmp(client_ed25519, ctx->client_whitelist[i].key, 32) == 0) {
+      // Direct comparison of Ed25519 keys (constant-time to prevent timing attacks)
+      if (sodium_memcmp(client_ed25519, ctx->client_whitelist[i].key, 32) == 0) {
         key_found = true;
         ctx->client_ed25519_key_verified = true;
 
@@ -433,6 +451,74 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
 
     ctx->state = CRYPTO_HANDSHAKE_READY;
     log_info("Crypto handshake completed successfully (no authentication)");
+  }
+
+  return 0;
+}
+
+// Helper: Send password-based authentication response with mutual auth
+static int send_password_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket, const uint8_t nonce[32],
+                                       const char *auth_context) {
+  // Compute HMAC bound to shared_secret (MITM protection)
+  uint8_t hmac_response[32];
+  crypto_result_t crypto_result = crypto_compute_auth_response(&ctx->crypto_ctx, nonce, hmac_response);
+  if (crypto_result != CRYPTO_OK) {
+    log_error("Failed to compute HMAC response: %s", crypto_result_to_string(crypto_result));
+    return -1;
+  }
+
+  // Generate client challenge nonce for mutual authentication
+  crypto_result = crypto_generate_nonce(ctx->client_challenge_nonce);
+  if (crypto_result != CRYPTO_OK) {
+    log_error("Failed to generate client challenge nonce: %s", crypto_result_to_string(crypto_result));
+    return -1;
+  }
+
+  // Combine HMAC + client nonce (32 + 32 = 64 bytes)
+  uint8_t auth_packet[64];
+  memcpy(auth_packet, hmac_response, 32);
+  memcpy(auth_packet + 32, ctx->client_challenge_nonce, 32);
+
+  log_debug("Sending AUTH_RESPONSE packet with HMAC + client nonce (64 bytes) - %s", auth_context);
+  int result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, auth_packet, sizeof(auth_packet));
+  if (result != 0) {
+    log_error("Failed to send AUTH_RESPONSE packet");
+    return -1;
+  }
+
+  return 0;
+}
+
+// Helper: Send Ed25519 signature-based authentication response with mutual auth
+static int send_key_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket, const uint8_t nonce[32],
+                                  const char *auth_context) {
+  // Sign the challenge with our Ed25519 private key
+  uint8_t signature[64];
+  int sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, 32, signature);
+  if (sign_result != 0) {
+    log_error("Failed to sign challenge with Ed25519 key");
+    return -1;
+  }
+
+  // Generate client challenge nonce for mutual authentication
+  crypto_result_t crypto_result = crypto_generate_nonce(ctx->client_challenge_nonce);
+  if (crypto_result != CRYPTO_OK) {
+    log_error("Failed to generate client challenge nonce: %s", crypto_result_to_string(crypto_result));
+    sodium_memzero(signature, sizeof(signature));
+    return -1;
+  }
+
+  // Combine signature + client nonce (64 + 32 = 96 bytes)
+  uint8_t auth_packet[96];
+  memcpy(auth_packet, signature, 64);
+  memcpy(auth_packet + 64, ctx->client_challenge_nonce, 32);
+  sodium_memzero(signature, sizeof(signature));
+
+  log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature + client nonce (96 bytes) - %s", auth_context);
+  int result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, auth_packet, sizeof(auth_packet));
+  if (result != 0) {
+    log_error("Failed to send AUTH_RESPONSE packet");
+    return -1;
   }
 
   return 0;
@@ -530,106 +616,56 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
     }
   }
 
-  // Authentication response priority (identity is optional, password is optional):
-  // 1. If server requires identity (whitelist) → MUST send Ed25519 signature, error if no key
-  // 2. Else if server requires password → MUST send HMAC, error if no password
-  // 3. Else if client has SSH key → send Ed25519 signature (optional identity proof)
-  // 4. Else if client has password → send HMAC (optional password auth)
+  // Authentication response priority:
+  // NOTE: Identity verification happens during KEY_EXCHANGE phase, not AUTH_RESPONSE!
+  // 1. If server requires password → MUST send HMAC (32 bytes), error if no password
+  // 2. Else if server requires identity (whitelist) → MUST send Ed25519 signature (64 bytes), error if no key
+  // 3. Else if client has password → send HMAC (optional password auth)
+  // 4. Else if client has SSH key → send Ed25519 signature (optional identity proof)
   // 5. Else → no authentication available
 
-  if (client_key_required) {
-    // Server requires client key (whitelist) - HIGHEST PRIORITY
-    if (!has_client_key) {
-      log_error("Server requires client key authentication (whitelist)");
-      log_error("Please provide --key with your authorized Ed25519 key");
-      buffer_pool_free(payload, payload_len);
-      return -2; // Authentication failure - exit
-    }
+  // Clean up payload before any early returns
+  buffer_pool_free(payload, payload_len);
 
-    // Send Ed25519 signature
-    uint8_t signature[64];
-    int sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, 32, signature);
-    buffer_pool_free(payload, payload_len);
-
-    if (sign_result != 0) {
-      log_error("Failed to sign challenge with Ed25519 key");
-      return -1;
-    }
-
-    log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature (64 bytes) for whitelist verification");
-    result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, signature, sizeof(signature));
-    if (result != 0) {
-      log_error("Failed to send AUTH_RESPONSE packet");
-      return -1;
-    }
-
-    sodium_memzero(signature, sizeof(signature));
-  } else if (password_required) {
-    // Server requires password - SECOND PRIORITY
+  if (password_required) {
+    // Server requires password - HIGHEST PRIORITY
+    // (Identity was already verified in KEY_EXCHANGE phase if whitelist is enabled)
     if (!has_password) {
       log_error("Server requires password authentication");
       log_error("Please provide --password for this server");
-      buffer_pool_free(payload, payload_len);
       return -2; // Authentication failure - exit
     }
 
-    // Send HMAC
-    uint8_t hmac_response[32];
-    const uint8_t *auth_key = ctx->crypto_ctx.password_key;
-    crypto_result_t crypto_result = crypto_compute_hmac(auth_key, nonce, hmac_response);
-    if (crypto_result != CRYPTO_OK) {
-      log_error("Failed to compute HMAC response: %s", crypto_result_to_string(crypto_result));
-      buffer_pool_free(payload, payload_len);
-      return -1;
-    }
-    buffer_pool_free(payload, payload_len);
-
-    log_debug("Sending AUTH_RESPONSE packet with HMAC (32 bytes) for password verification");
-    result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, hmac_response, sizeof(hmac_response));
+    result = send_password_auth_response(ctx, client_socket, nonce, "required password");
     if (result != 0) {
-      log_error("Failed to send AUTH_RESPONSE packet");
-      return -1;
+      return result;
+    }
+  } else if (client_key_required) {
+    // Server requires client key (whitelist) - SECOND PRIORITY
+    if (!has_client_key) {
+      log_error("Server requires client key authentication (whitelist)");
+      log_error("Please provide --key with your authorized Ed25519 key");
+      return -2; // Authentication failure - exit
+    }
+
+    result = send_key_auth_response(ctx, client_socket, nonce, "required client key");
+    if (result != 0) {
+      return result;
+    }
+  } else if (has_password) {
+    // No server requirements, but client has password → send HMAC + client nonce (optional)
+    result = send_password_auth_response(ctx, client_socket, nonce, "optional password");
+    if (result != 0) {
+      return result;
     }
   } else if (has_client_key) {
-    // No server requirements, but client has SSH key → send Ed25519 signature (optional)
-    uint8_t signature[64];
-    int sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, 32, signature);
-    buffer_pool_free(payload, payload_len);
-
-    if (sign_result != 0) {
-      log_error("Failed to sign challenge with Ed25519 key");
-      return -1;
-    }
-
-    log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature (64 bytes) - optional identity");
-    result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, signature, sizeof(signature));
+    // No server requirements, but client has SSH key → send Ed25519 signature + client nonce (optional)
+    result = send_key_auth_response(ctx, client_socket, nonce, "optional identity");
     if (result != 0) {
-      log_error("Failed to send AUTH_RESPONSE packet");
-      return -1;
-    }
-
-    sodium_memzero(signature, sizeof(signature));
-  } else if (has_password) {
-    // No server requirements, but client has password → send HMAC (optional)
-    uint8_t hmac_response[32];
-    const uint8_t *auth_key = ctx->crypto_ctx.password_key;
-    crypto_result_t crypto_result = crypto_compute_hmac(auth_key, nonce, hmac_response);
-    if (crypto_result != CRYPTO_OK) {
-      log_error("Failed to compute HMAC response: %s", crypto_result_to_string(crypto_result));
-      buffer_pool_free(payload, payload_len);
-      return -1;
-    }
-    buffer_pool_free(payload, payload_len);
-
-    log_debug("Sending AUTH_RESPONSE packet with HMAC (32 bytes) - optional password");
-    result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, hmac_response, sizeof(hmac_response));
-    if (result != 0) {
-      log_error("Failed to send AUTH_RESPONSE packet");
-      return -1;
+      return result;
     }
   } else {
     // No authentication method available
-    buffer_pool_free(payload, payload_len);
     // Continue without authentication (server will decide if this is acceptable)
     log_debug("No authentication credentials provided - continuing without authentication");
   }
@@ -657,20 +693,70 @@ int crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t c
 
   // Check packet type
   if (packet_type == PACKET_TYPE_AUTH_FAILED) {
-    log_error("Server rejected authentication");
+    // Parse the auth failure packet to get specific reasons
+    if (payload_len >= sizeof(auth_failure_packet_t)) {
+      auth_failure_packet_t *failure = (auth_failure_packet_t *)payload;
+      log_error("Server rejected authentication:");
+
+      if (failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT) {
+        log_error("  - Incorrect password");
+      }
+      if (failure->reason_flags & AUTH_FAIL_PASSWORD_REQUIRED) {
+        log_error("  - Server requires a password (use --password)");
+      }
+      if (failure->reason_flags & AUTH_FAIL_CLIENT_KEY_REQUIRED) {
+        log_error("  - Server requires a whitelisted client key (use --key with your SSH key)");
+      }
+      if (failure->reason_flags & AUTH_FAIL_CLIENT_KEY_REJECTED) {
+        log_error("  - Your client key is not in the server's whitelist");
+      }
+      if (failure->reason_flags & AUTH_FAIL_SIGNATURE_INVALID) {
+        log_error("  - Client signature verification failed");
+      }
+
+      // Provide helpful guidance
+      if (failure->reason_flags & (AUTH_FAIL_PASSWORD_INCORRECT | AUTH_FAIL_CLIENT_KEY_REQUIRED)) {
+        if ((failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT) &&
+            (failure->reason_flags & AUTH_FAIL_CLIENT_KEY_REQUIRED)) {
+          log_error("Hint: Server requires BOTH correct password AND whitelisted key");
+        } else if (failure->reason_flags & AUTH_FAIL_PASSWORD_INCORRECT) {
+          log_error("Hint: Check your password and try again");
+        } else if (failure->reason_flags & AUTH_FAIL_CLIENT_KEY_REQUIRED) {
+          log_error("Hint: Provide your SSH key with --key ~/.ssh/id_ed25519");
+        }
+      }
+    } else {
+      log_error("Server rejected authentication (no details provided)");
+    }
     buffer_pool_free(payload, payload_len);
     return -2; // Special code for auth failure - do not retry
   }
 
-  if (packet_type != PACKET_TYPE_HANDSHAKE_COMPLETE) {
-    log_error("Expected HANDSHAKE_COMPLETE or AUTH_FAILED, got packet type %d", packet_type);
+  if (packet_type != PACKET_TYPE_SERVER_AUTH_RESPONSE) {
+    log_error("Expected SERVER_AUTH_RESPONSE or AUTH_FAILED, got packet type %d", packet_type);
     buffer_pool_free(payload, payload_len);
     return -1;
+  }
+
+  // Verify server's HMAC for mutual authentication
+  if (payload_len != 32) {
+    log_error("Invalid SERVER_AUTH_RESPONSE size: %zu bytes (expected 32)", payload_len);
+    buffer_pool_free(payload, payload_len);
+    return -1;
+  }
+
+  // Verify server's HMAC (binds to DH shared_secret to prevent MITM)
+  if (!crypto_verify_auth_response(&ctx->crypto_ctx, ctx->client_challenge_nonce, payload)) {
+    log_error("SECURITY: Server authentication failed - incorrect HMAC");
+    log_error("This may indicate a man-in-the-middle attack!");
+    buffer_pool_free(payload, payload_len);
+    return -2; // Authentication failure - do not retry
   }
 
   buffer_pool_free(payload, payload_len);
 
   ctx->state = CRYPTO_HANDSHAKE_READY;
+  log_info("Server authentication successful - mutual authentication complete");
 
   return 0;
 }
@@ -697,66 +783,93 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
     return -1;
   }
 
-  // Check if password-based auth (HMAC 32 bytes) or public key auth (signature 64 bytes)
+  // Verify password if required
   if (ctx->crypto_ctx.has_password) {
-    // Password-based auth: Verify HMAC
-    if (payload_len != 32) {
-      log_error("Invalid HMAC size: %zu bytes (expected 32)", payload_len);
+    // Password-based auth: Verify HMAC (payload is now HMAC(32) + client_nonce(32) = 64 bytes)
+    if (payload_len != 64) {
+      log_error("Invalid AUTH_RESPONSE size: %zu bytes (expected 64: HMAC + client nonce)", payload_len);
       buffer_pool_free(payload, payload_len);
       return -1;
     }
 
-    uint8_t expected_hmac[32];
-    const uint8_t *auth_key = ctx->crypto_ctx.password_key;
-    crypto_result_t crypto_result = crypto_compute_hmac(auth_key, ctx->crypto_ctx.auth_nonce, expected_hmac);
-    if (crypto_result != CRYPTO_OK) {
-      log_error("Failed to compute expected HMAC: %s", crypto_result_to_string(crypto_result));
+    // Verify password HMAC (binds to DH shared_secret to prevent MITM)
+    if (!crypto_verify_auth_response(&ctx->crypto_ctx, ctx->crypto_ctx.auth_nonce, payload)) {
+      log_error("Password authentication failed - incorrect password");
       buffer_pool_free(payload, payload_len);
+
+      // Send AUTH_FAILED with specific reason
+      auth_failure_packet_t failure = {0};
+      failure.reason_flags = AUTH_FAIL_PASSWORD_INCORRECT;
+      if (ctx->require_client_auth) {
+        failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
+      }
+      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
       return -1;
     }
 
-    if (memcmp(payload, expected_hmac, 32) != 0) {
-      log_error("HMAC verification failed - authentication rejected");
-      buffer_pool_free(payload, payload_len);
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
-      return -1;
-    }
-    buffer_pool_free(payload, payload_len);
+    // Extract client challenge nonce for mutual authentication
+    memcpy(ctx->client_challenge_nonce, payload + 32, 32);
     log_info("Password authentication successful");
   } else {
-    // Public key auth: Verify Ed25519 signature
-    if (payload_len != 64) {
-      log_error("Invalid Ed25519 signature size: %zu bytes (expected 64)", payload_len);
+    // Ed25519 signature auth (payload is signature(64) + client_nonce(32) = 96 bytes)
+    // Note: Ed25519 verification happens during key exchange, not here
+    // Just extract the client nonce from the payload
+    if (payload_len == 96) {
+      // Signature + client nonce
+      memcpy(ctx->client_challenge_nonce, payload + 64, 32);
+    } else if (payload_len == 64) {
+      // Just client nonce (legacy or password-only mode without password enabled)
+      memcpy(ctx->client_challenge_nonce, payload + 32, 32);
+    } else {
+      log_error("Invalid AUTH_RESPONSE size: %zu bytes (expected 64 or 96)", payload_len);
       buffer_pool_free(payload, payload_len);
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
       return -1;
     }
+  }
 
-    // Verify signature using the client's Ed25519 public key
-    int verify_result = ed25519_verify_signature(ctx->client_ed25519_key.key, ctx->crypto_ctx.auth_nonce, 32, payload);
-    buffer_pool_free(payload, payload_len);
+  // Verify client key if required (whitelist)
+  if (ctx->require_client_auth) {
+    if (!ctx->client_ed25519_key_verified) {
+      log_error("Client key authentication failed - client did not provide a whitelisted key");
+      buffer_pool_free(payload, payload_len);
 
-    if (verify_result != 0) {
-      log_error("Ed25519 signature verification failed - authentication rejected");
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
+      // Send AUTH_FAILED with specific reason
+      auth_failure_packet_t failure = {0};
+      failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REQUIRED;
+      if (ctx->crypto_ctx.has_password) {
+        // Password was verified, but key was not
+        log_error("Note: Password was correct, but client key is required");
+      }
+      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
       return -1;
     }
-
-    log_info("Public key authentication successful");
-    if (ctx->client_ed25519_key_verified && strlen(ctx->client_ed25519_key.comment) > 0) {
+    log_info("Client key authentication successful (whitelist verified)");
+    if (strlen(ctx->client_ed25519_key.comment) > 0) {
       log_info("Authenticated client: %s", ctx->client_ed25519_key.comment);
     }
   }
 
-  // Send HANDSHAKE_COMPLETE packet
-  result = send_packet(client_socket, PACKET_TYPE_HANDSHAKE_COMPLETE, NULL, 0);
+  buffer_pool_free(payload, payload_len);
+
+  // Send SERVER_AUTH_RESPONSE with server's HMAC for mutual authentication
+  // Bind to DH shared_secret to prevent MITM (even if attacker knows password)
+  uint8_t server_hmac[32];
+  crypto_result_t crypto_result =
+      crypto_compute_auth_response(&ctx->crypto_ctx, ctx->client_challenge_nonce, server_hmac);
+  if (crypto_result != CRYPTO_OK) {
+    log_error("Failed to compute server HMAC for mutual authentication: %s", crypto_result_to_string(crypto_result));
+    return -1;
+  }
+
+  log_debug("Sending SERVER_AUTH_RESPONSE packet with server HMAC (32 bytes) for mutual authentication");
+  result = send_packet(client_socket, PACKET_TYPE_SERVER_AUTH_RESPONSE, server_hmac, sizeof(server_hmac));
   if (result != 0) {
-    log_error("Failed to send HANDSHAKE_COMPLETE packet");
+    log_error("Failed to send SERVER_AUTH_RESPONSE packet");
     return -1;
   }
 
   ctx->state = CRYPTO_HANDSHAKE_READY;
-  log_info("Crypto handshake completed successfully");
+  log_info("Crypto handshake completed successfully (mutual authentication)");
 
   return 0;
 }
@@ -807,4 +920,38 @@ int crypto_handshake_decrypt_packet(const crypto_handshake_context_t *ctx, const
   }
 
   return 0;
+}
+
+// Helper: Encrypt with automatic passthrough if crypto not ready
+int crypto_encrypt_packet_or_passthrough(const crypto_handshake_context_t *ctx, bool crypto_ready,
+                                         const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext,
+                                         size_t ciphertext_size, size_t *ciphertext_len) {
+  if (!crypto_ready) {
+    // No encryption - just copy data
+    if (plaintext_len > ciphertext_size) {
+      return -1;
+    }
+    memcpy(ciphertext, plaintext, plaintext_len);
+    *ciphertext_len = plaintext_len;
+    return 0;
+  }
+
+  return crypto_handshake_encrypt_packet(ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, ciphertext_len);
+}
+
+// Helper: Decrypt with automatic passthrough if crypto not ready
+int crypto_decrypt_packet_or_passthrough(const crypto_handshake_context_t *ctx, bool crypto_ready,
+                                         const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
+                                         size_t plaintext_size, size_t *plaintext_len) {
+  if (!crypto_ready) {
+    // No encryption - just copy data
+    if (ciphertext_len > plaintext_size) {
+      return -1;
+    }
+    memcpy(plaintext, ciphertext, ciphertext_len);
+    *plaintext_len = ciphertext_len;
+    return 0;
+  }
+
+  return crypto_handshake_decrypt_packet(ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, plaintext_len);
 }

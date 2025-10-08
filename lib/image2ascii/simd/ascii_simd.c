@@ -922,10 +922,9 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
     if (test_image == NULL) {
-      (void)fprintf(stderr, "Failed to allocate test_image in benchmark. Aborting loop.\n");
       free(test_pixels);
       free(output_buffer);
-      exit(1);
+      FATAL(ASCIICHAT_ERROR_MEMORY, "Failed to allocate test_image in benchmark iteration %d", i);
     }
     memcpy(test_image->pixels, test_pixels, pixel_count * sizeof(rgb_pixel_t));
     char *result_ascii = ascii_convert(test_image, width, height, false, false, false, DEFAULT_ASCII_PALETTE,

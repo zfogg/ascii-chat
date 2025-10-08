@@ -713,14 +713,22 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     }
     break;
   case PACKET_TYPE_AUTH_RESPONSE:
-    // HMAC (32 bytes) for password auth, or Ed25519 signature (64 bytes) for SSH key auth
-    if (pkt_len != 32 && pkt_len != 64) {
-      log_error("Invalid auth response packet size: %u, expected 32 or 64", pkt_len);
+    // HMAC + client nonce (64 bytes) for password auth, or Ed25519 signature + client nonce (96 bytes) for SSH key auth
+    if (pkt_len != 64 && pkt_len != 96) {
+      log_error("Invalid auth response packet size: %u, expected 64 or 96", pkt_len);
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_SERVER_AUTH_RESPONSE:
+    // Server's HMAC of client's challenge nonce (32 bytes) - proves server has shared secret
+    if (pkt_len != 32) {
+      log_error("Invalid server auth response packet size: %u, expected 32", pkt_len);
       return -1;
     }
     break;
   case PACKET_TYPE_HANDSHAKE_COMPLETE:
   case PACKET_TYPE_AUTH_FAILED:
+  case PACKET_TYPE_NO_ENCRYPTION:
     // Status messages can be empty or contain text
     if (pkt_len > 256) {
       log_error("Invalid handshake status packet size: %u", pkt_len);
@@ -938,6 +946,156 @@ int send_packet_from_client(socket_t sockfd, packet_type_t type, uint32_t client
     }
   }
 
+  return 0;
+}
+
+int send_packet_auto(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx) {
+  // Handshake packets are ALWAYS sent unencrypted
+  if (packet_is_handshake_type(type)) {
+    return send_packet(sockfd, type, data, len);
+  }
+
+  // If no crypto context or crypto not ready, send unencrypted
+  bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
+  if (!crypto_ctx || !ready) {
+    return send_packet(sockfd, type, data, len);
+  }
+
+  // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
+  packet_header_t header = {.magic = htonl(PACKET_MAGIC),
+                            .type = htons((uint16_t)type),
+                            .length = htonl((uint32_t)len),
+                            .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0),
+                            .client_id = htonl(0)};
+
+  // Combine header + payload for encryption
+  size_t plaintext_len = sizeof(header) + len;
+  uint8_t *plaintext = buffer_pool_alloc(plaintext_len);
+  if (!plaintext) {
+    log_error("Failed to allocate buffer for plaintext packet");
+    return -1;
+  }
+
+  memcpy(plaintext, &header, sizeof(header));
+  if (len > 0 && data) {
+    memcpy(plaintext + sizeof(header), data, len);
+  }
+
+  // Encrypt
+  size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  uint8_t *ciphertext = buffer_pool_alloc(ciphertext_size);
+  if (!ciphertext) {
+    log_error("Failed to allocate buffer for ciphertext");
+    buffer_pool_free(plaintext, plaintext_len);
+    return -1;
+  }
+
+  size_t ciphertext_len;
+  crypto_result_t result =
+      crypto_encrypt(crypto_ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, &ciphertext_len);
+  buffer_pool_free(plaintext, plaintext_len);
+
+  if (result != CRYPTO_OK) {
+    log_error("Failed to encrypt packet: %s", crypto_result_to_string(result));
+    buffer_pool_free(ciphertext, ciphertext_size);
+    return -1;
+  }
+
+  // Send as PACKET_TYPE_ENCRYPTED
+  int send_result = send_packet(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
+  buffer_pool_free(ciphertext, ciphertext_size);
+
+  return send_result;
+}
+
+int receive_packet_auto(socket_t sockfd, packet_type_t *type, void **data, size_t *len, crypto_context_t *crypto_ctx) {
+  if (!type || !data || !len) {
+    return -1;
+  }
+
+  // Receive the packet
+  int result = receive_packet(sockfd, type, data, len);
+  if (result != 0) {
+    return result;
+  }
+
+  // If it's not encrypted, return as-is
+  if (*type != PACKET_TYPE_ENCRYPTED) {
+    return 0;
+  }
+
+  // It's encrypted - decrypt it
+  if (!crypto_ctx || !crypto_ctx->handshake_complete) {
+    log_error("Received encrypted packet but crypto not ready");
+    buffer_pool_free(*data, *len);
+    *data = NULL;
+    *len = 0;
+    return -1;
+  }
+
+  // Decrypt
+  size_t decrypted_size = *len;
+  uint8_t *decrypted = buffer_pool_alloc(decrypted_size);
+  if (!decrypted) {
+    log_error("Failed to allocate buffer for decrypted packet");
+    buffer_pool_free(*data, *len);
+    *data = NULL;
+    *len = 0;
+    return -1;
+  }
+
+  size_t decrypted_len;
+  crypto_result_t crypto_result =
+      crypto_decrypt(crypto_ctx, (uint8_t *)*data, *len, decrypted, decrypted_size, &decrypted_len);
+  buffer_pool_free(*data, *len);
+
+  if (crypto_result != CRYPTO_OK) {
+    log_error("Failed to decrypt packet: %s", crypto_result_to_string(crypto_result));
+    buffer_pool_free(decrypted, decrypted_size);
+    *data = NULL;
+    *len = 0;
+    return -1;
+  }
+
+  // Extract header from decrypted data
+  if (decrypted_len < sizeof(packet_header_t)) {
+    log_error("Decrypted packet too small: %zu < %zu", decrypted_len, sizeof(packet_header_t));
+    buffer_pool_free(decrypted, decrypted_size);
+    *data = NULL;
+    *len = 0;
+    return -1;
+  }
+
+  packet_header_t *header = (packet_header_t *)decrypted;
+  *type = (packet_type_t)ntohs(header->type);
+  uint32_t payload_len = ntohl(header->length);
+
+  // Extract payload
+  if (payload_len > 0) {
+    if (decrypted_size < sizeof(packet_header_t) + payload_len) {
+      log_error("Decrypted packet size mismatch: %zu < %zu", decrypted_size, sizeof(packet_header_t) + payload_len);
+      buffer_pool_free(decrypted, decrypted_size);
+      *data = NULL;
+      *len = 0;
+      return -1;
+    }
+
+    *data = buffer_pool_alloc(payload_len);
+    if (!*data) {
+      log_error("Failed to allocate buffer for decrypted payload");
+      buffer_pool_free(decrypted, decrypted_size);
+      *len = 0;
+      return -1;
+    }
+
+    memcpy(*data, decrypted + sizeof(packet_header_t), payload_len);
+    *len = payload_len;
+  } else {
+    *data = NULL;
+    *len = 0;
+  }
+
+  buffer_pool_free(decrypted, decrypted_size);
   return 0;
 }
 
@@ -1412,15 +1570,6 @@ int send_compressed_frame(socket_t sockfd, const char *frame_data, size_t frame_
 // ============================================================================
 
 /**
- * Check if a packet type is a crypto handshake packet (always unencrypted)
- */
-bool is_crypto_handshake_packet(packet_type_t type) {
-  return (type == PACKET_TYPE_KEY_EXCHANGE_INIT || type == PACKET_TYPE_KEY_EXCHANGE_RESPONSE ||
-          type == PACKET_TYPE_AUTH_CHALLENGE || type == PACKET_TYPE_AUTH_RESPONSE ||
-          type == PACKET_TYPE_HANDSHAKE_COMPLETE || type == PACKET_TYPE_AUTH_FAILED);
-}
-
-/**
  * Unified packet reception with encryption enforcement
  *
  * This function provides a single, consistent interface for both client and server
@@ -1435,8 +1584,6 @@ bool is_crypto_handshake_packet(packet_type_t type) {
  */
 packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
                                            packet_envelope_t *out_envelope) {
-  (void)crypto_ctx; // Reserved for future use
-
   // Initialize output
   SAFE_MEMSET(out_envelope, sizeof(*out_envelope), 0, sizeof(*out_envelope));
 
@@ -1452,8 +1599,74 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     return result == 0 ? PACKET_RECV_CLOSED : PACKET_RECV_ERROR;
   }
 
-  // Check encryption policy
-  if (enforce_encryption && type != PACKET_TYPE_ENCRYPTED && !is_crypto_handshake_packet(type)) {
+  // Store whether this packet was received encrypted (before auto-decryption)
+  bool was_encrypted = (type == PACKET_TYPE_ENCRYPTED);
+
+  // Auto-decrypt if packet is encrypted and crypto is ready
+  if (type == PACKET_TYPE_ENCRYPTED && crypto_ctx) {
+    // Decrypt using receive_packet_auto logic
+    crypto_context_t *ctx = (crypto_context_t *)crypto_ctx;
+    if (!crypto_is_ready(ctx)) {
+      log_error("Received encrypted packet but crypto not ready");
+      buffer_pool_free(data, len);
+      return PACKET_RECV_ERROR;
+    }
+
+    // Decrypt the payload
+    size_t decrypted_size = len;
+    uint8_t *decrypted = buffer_pool_alloc(decrypted_size);
+    if (!decrypted) {
+      log_error("Failed to allocate buffer for decrypted packet");
+      buffer_pool_free(data, len);
+      return PACKET_RECV_ERROR;
+    }
+
+    size_t decrypted_len;
+    crypto_result_t crypto_result =
+        crypto_decrypt(ctx, (uint8_t *)data, len, decrypted, decrypted_size, &decrypted_len);
+    if (crypto_result != CRYPTO_OK) {
+      log_error("Failed to decrypt packet: %s", crypto_result_to_string(crypto_result));
+      buffer_pool_free(decrypted, decrypted_size);
+      buffer_pool_free(data, len);
+      return PACKET_RECV_ERROR;
+    }
+
+    // Free the encrypted data
+    buffer_pool_free(data, len);
+
+    // Extract header and payload from decrypted data
+    if (decrypted_len < sizeof(packet_header_t)) {
+      log_error("Decrypted data too small for header");
+      buffer_pool_free(decrypted, decrypted_size);
+      return PACKET_RECV_ERROR;
+    }
+
+    packet_header_t *header = (packet_header_t *)decrypted;
+    type = (packet_type_t)ntohs(header->type);
+    uint32_t payload_len = ntohl(header->length);
+    client_id = ntohl(header->client_id);
+
+    // Extract just the payload
+    if (payload_len > 0) {
+      void *payload = buffer_pool_alloc(payload_len);
+      if (!payload) {
+        log_error("Failed to allocate payload buffer");
+        buffer_pool_free(decrypted, decrypted_size);
+        return PACKET_RECV_ERROR;
+      }
+      memcpy(payload, decrypted + sizeof(packet_header_t), payload_len);
+      buffer_pool_free(decrypted, decrypted_size);
+      data = payload;
+      len = payload_len;
+    } else {
+      buffer_pool_free(decrypted, decrypted_size);
+      data = NULL;
+      len = 0;
+    }
+  }
+
+  // Check encryption policy (after potential auto-decryption)
+  if (enforce_encryption && !was_encrypted && !packet_is_handshake_type(type)) {
     log_error("SECURITY: Received unencrypted packet (type=%d) when encryption required. "
               "Use --no-encrypt to disable encryption enforcement.",
               type);
@@ -1468,7 +1681,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
   out_envelope->client_id = client_id;
   out_envelope->data = data;
   out_envelope->len = len;
-  out_envelope->was_encrypted = (type == PACKET_TYPE_ENCRYPTED);
+  out_envelope->was_encrypted = was_encrypted;
 
   return PACKET_RECV_OK;
 }

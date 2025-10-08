@@ -138,10 +138,6 @@ palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palet
 char opt_palette_custom[256] = "";                  // Custom palette characters
 bool opt_palette_custom_set = false;                // True if custom palette was set
 
-// Global variables to store last known image dimensions for aspect ratio
-// recalculation
-unsigned short int last_image_width = 0, last_image_height = 0;
-
 // Default weights; must add up to 1.0
 const float weight_red = 0.2989f;
 const float weight_green = 0.5866f;
@@ -275,6 +271,7 @@ static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer
 }
 
 // Helper function to handle required arguments with consistent error messages
+// Returns NULL on error (caller should check and return error code)
 static char *get_required_argument(const char *optarg, char *buffer, size_t buffer_size, const char *option_name,
                                    bool is_client) {
   // Check if optarg is NULL or empty
@@ -299,7 +296,7 @@ static char *get_required_argument(const char *optarg, char *buffer, size_t buff
 error:
   (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", option_name);
   (void)fflush(stderr);
-  _exit(EXIT_FAILURE);
+  return NULL; // Signal error to caller
 }
 
 // Helper function to validate IPv4 address format
@@ -350,7 +347,7 @@ static int is_valid_ipv4(const char *ip) {
   return (count == 4 && token == NULL);
 }
 
-void options_init(int argc, char **argv, bool is_client) {
+int options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
 
   // Set different default addresses for client vs server
@@ -388,13 +385,15 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'a': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       if (!is_valid_ipv4(value_str)) {
         // Try to resolve hostname to IPv4
         char resolved_ip[OPTIONS_BUFF_SIZE];
         if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) != 0) {
           (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", value_str);
           (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
-          _exit(EXIT_FAILURE);
+          return ASCIICHAT_ERROR_USAGE;
         }
         SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
       } else {
@@ -405,11 +404,13 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'H': { // --host (DNS lookup)
       char *hostname = get_required_argument(optarg, argbuf, sizeof(argbuf), "host", is_client);
+      if (!hostname)
+        return ASCIICHAT_ERROR_USAGE;
       char resolved_ip[OPTIONS_BUFF_SIZE];
       if (platform_resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
         (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", hostname);
         (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
       break;
@@ -417,12 +418,14 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'p': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "port", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       // Validate port is a number between 1 and 65535
       char *endptr;
       long port_num = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
         (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
@@ -430,10 +433,12 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'x': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "width", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       int width_val = strtoint_safe(value_str);
       if (width_val == INT_MIN || width_val <= 0) {
         (void)fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       opt_width = (unsigned short int)width_val;
       auto_width = false; // Mark as manually set
@@ -442,10 +447,12 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'y': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "height", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       int height_val = strtoint_safe(value_str);
       if (height_val == INT_MIN || height_val <= 0) {
         (void)fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       opt_height = (unsigned short int)height_val;
       auto_height = false; // Mark as manually set
@@ -454,11 +461,13 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'c': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       int parsed_index = strtoint_safe(value_str);
       if (parsed_index == INT_MIN || parsed_index < 0) {
         (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       opt_webcam_index = (unsigned short int)parsed_index;
       break;
@@ -472,6 +481,8 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 1000: { // --color-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       if (strcmp(value_str, "auto") == 0) {
         opt_color_mode = COLOR_MODE_AUTO;
       } else if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
@@ -485,7 +496,7 @@ void options_init(int argc, char **argv, bool is_client) {
       } else {
         (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       break;
     }
@@ -500,14 +511,16 @@ void options_init(int argc, char **argv, bool is_client) {
     case 1003: { // --fps (client only - sets client's desired frame rate)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --fps is a client-only option.\n");
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       extern int g_max_fps; // From common.c
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "fps", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       int fps_val = strtoint_safe(value_str);
       if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
         (void)fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       g_max_fps = fps_val;
       break;
@@ -516,7 +529,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 1004: { // --test-pattern (client only - use test pattern instead of webcam)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       opt_test_pattern = true;
       log_info("Using test pattern mode - webcam will not be opened");
@@ -525,6 +538,8 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'M': { // --render-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
         opt_render_mode = RENDER_MODE_FOREGROUND;
       } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
@@ -534,13 +549,15 @@ void options_init(int argc, char **argv, bool is_client) {
       } else {
         (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       break;
     }
 
     case 'P': { // --palette
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       if (strcmp(value_str, "standard") == 0) {
         opt_palette_type = PALETTE_STANDARD;
       } else if (strcmp(value_str, "blocks") == 0) {
@@ -557,17 +574,19 @@ void options_init(int argc, char **argv, bool is_client) {
         (void)fprintf(stderr,
                       "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       break;
     }
 
     case 'C': { // --palette-chars
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
         (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
                       sizeof(opt_palette_custom) - 1);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
       opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
@@ -594,23 +613,27 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'D': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       char *endptr;
       opt_snapshot_delay = strtof(value_str, &endptr);
       if (*endptr != '\0' || value_str == endptr) {
         (void)fprintf(stderr, "Invalid snapshot delay value '%s'. Snapshot delay must be a number.\n", value_str);
         (void)fflush(stderr);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       if (opt_snapshot_delay < 0.0f) {
         (void)fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
         (void)fflush(stderr);
-        _exit(EXIT_FAILURE);
+        return ASCIICHAT_ERROR_USAGE;
       }
       break;
     }
 
     case 'L': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
@@ -621,6 +644,8 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'K': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
 
       // --key is for file-based authentication only (SSH keys, GPG keys, GitHub/GitLab)
       // For password-based encryption, use --password instead
@@ -650,7 +675,7 @@ void options_init(int argc, char **argv, bool is_client) {
           (void)fprintf(stderr, "No Ed25519 SSH key found for auto-detection\n");
           (void)fprintf(stderr, "Please specify a key with --key /path/to/key\n");
           (void)fprintf(stderr, "Or generate a new key with: ssh-keygen -t ed25519\n");
-          _exit(EXIT_FAILURE);
+          return ASCIICHAT_ERROR_USAGE;
         }
       }
       // Otherwise, treat as a file path - will be validated later for existence/permissions
@@ -664,6 +689,8 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'F': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
       break;
@@ -677,18 +704,24 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 1006: { // --server-key (client only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
     case 1008: { // --client-keys (server only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
     case 1009: { // --password (password-based encryption)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "password", is_client);
+      if (!value_str)
+        return ASCIICHAT_ERROR_USAGE;
       SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when password provided
       break;
@@ -725,7 +758,7 @@ void options_init(int argc, char **argv, bool is_client) {
               snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
               fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
               usage(stderr, is_client);
-              _exit(EXIT_FAILURE);
+              return ASCIICHAT_ERROR_USAGE;
             }
           }
         }
@@ -767,24 +800,22 @@ void options_init(int argc, char **argv, bool is_client) {
           (void)fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
         }
       }
-      _exit(EXIT_FAILURE);
+      return ASCIICHAT_ERROR_USAGE;
 
     case '?':
       (void)fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr, is_client);
-      _exit(EXIT_FAILURE);
+      return ASCIICHAT_ERROR_USAGE;
 
     case 'h':
       usage(stdout, is_client);
-      exit(EXIT_SUCCESS);
-      break;
+      exit(0);
 
     case 'v': {
       const char *binary_name = is_client ? "ascii-chat-client" : "ascii-chat-server";
       printf("%s v%d.%d.%d-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
              ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
-      exit(EXIT_SUCCESS);
-      break;
+      exit(0);
     }
 
     default:
@@ -796,6 +827,8 @@ void options_init(int argc, char **argv, bool is_client) {
   // First set any auto dimensions to terminal size, then apply full height logic
   update_dimensions_to_terminal_size();
   update_dimensions_for_full_height();
+
+  return ASCIICHAT_OK;
 }
 
 #define USAGE_INDENT "    "

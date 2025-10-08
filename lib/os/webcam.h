@@ -12,6 +12,9 @@ int webcam_init(unsigned short int webcam_index);
 image_t *webcam_read(void);
 void webcam_cleanup(void);
 
+// Error handling helpers
+void webcam_print_init_error_help(int error_code);
+
 int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index);
 void webcam_cleanup_context(webcam_context_t *ctx);
 image_t *webcam_read_context(webcam_context_t *ctx);

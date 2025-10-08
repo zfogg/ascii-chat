@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sodium.h>
 #ifdef _WIN32
 #include <direct.h>
 #define mkdir(path, mode) _mkdir(path)
@@ -64,8 +65,8 @@ int check_known_host(const char *hostname, uint16_t port, const uint8_t server_k
         return -1; // Parse error = treat as mismatch
       }
 
-      // Compare keys
-      if (memcmp(server_key, stored_key.key, 32) == 0) {
+      // Compare keys (constant-time to prevent timing attacks)
+      if (sodium_memcmp(server_key, stored_key.key, 32) == 0) {
         return 1; // Match!
       } else {
         return -1; // Mismatch - MITM warning!

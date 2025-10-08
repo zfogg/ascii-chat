@@ -12,10 +12,7 @@ int webcam_init(unsigned short int webcam_index) {
   // Check if test pattern mode is enabled
   if (opt_test_pattern) {
     log_info("Test pattern mode enabled - not opening real webcam");
-    // Set standard webcam dimensions for test pattern
-    last_image_width = 1280;
-    last_image_height = 720;
-    log_info("Test pattern resolution: %dx%d", last_image_width, last_image_height);
+    log_info("Test pattern resolution: 1280x720");
     return 0;
   }
 
@@ -35,65 +32,14 @@ int webcam_init(unsigned short int webcam_index) {
 
   int result = webcam_init_context(&global_webcam_ctx, webcam_index);
   if (result != 0) {
-    log_error("Failed to connect to webcam");
-
-    // Platform-specific error messages
-#ifdef __linux__
-    (void)fprintf(stderr, "\n");
-    (void)fprintf(stderr, "On Linux, make sure:\n");
-    (void)fprintf(stderr, "* Your user is in the 'video' group: sudo usermod -a -G video $USER\n");
-    (void)fprintf(stderr, "* The camera device exists: ls /dev/video*\n");
-    (void)fprintf(stderr, "* No other application is using the camera\n");
-    (void)fflush(stderr);
-    exit(ASCIICHAT_ERR_WEBCAM);
-#elif defined(__APPLE__)
-    (void)fprintf(stderr, "\n");
-    fprintf(stderr, "On macOS, you may need to grant camera permissions:\n");
-    fprintf(stderr,
-            "* Say \"yes\" to the popup about system camera access that you see when running this program for the "
-            "first time.\n");
-    fprintf(stderr,
-            "* If you said \"no\" to the popup, go to System Preferences > Security & Privacy > Privacy > Camera.\n");
-    fprintf(stderr,
-            "   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
-            "access your camera.\n");
-    fprintf(stderr, "   Then just run this program again.\n");
-    (void)fflush(stderr);
-    exit(ASCIICHAT_ERR_WEBCAM);
-#elif defined(_WIN32)
-    if (result == ASCIICHAT_ERR_WEBCAM_IN_USE) {
-      // Device is in use by another application - this is a fatal error on Windows
-      (void)fprintf(stderr, "\n");
-      fprintf(stderr, "Webcam is already in use by another application.\n");
-      fprintf(stderr, "Windows allows only one application to access the webcam at a time.\n");
-      (void)fprintf(stderr, "\n");
-      fprintf(stderr, "To use ASCII-Chat with multiple clients, try these alternatives:\n");
-      fprintf(stderr, "  --test-pattern    Generate a colorful test pattern instead of using webcam\n");
-      fprintf(stderr, "  --file VIDEO.mp4  Use a video file as input (to be implemented)\n");
-      (void)fprintf(stderr, "\n");
-      fprintf(stderr, "Example: ascii-chat-client --test-pattern\n");
-      (void)fflush(stderr);
-      exit(ASCIICHAT_ERR_WEBCAM_IN_USE);
-    } else {
-      // Other webcam errors - general failure
-      (void)fprintf(stderr, "\n");
-      fprintf(stderr, "On Windows, this might be because:\n");
-      fprintf(stderr, "* Camera permissions are not granted\n");
-      fprintf(stderr, "* Camera driver issues\n");
-      fprintf(stderr, "* No webcam device found\n");
-      (void)fflush(stderr);
-      exit(ASCIICHAT_ERR_WEBCAM);
-    }
-#endif
-
-    exit(ASCIICHAT_ERR_WEBCAM);
+    log_error("Failed to connect to webcam (error code: %d)", result);
+    // Return the specific error code from platform-specific initialization
+    return result;
   }
 
-  // Get and store image dimensions for aspect ratio calculations
+  // Get image dimensions
   int width, height;
   if (webcam_get_dimensions(global_webcam_ctx, &width, &height) == 0) {
-    last_image_width = (unsigned short int)width;
-    last_image_height = (unsigned short int)height;
     log_info("Webcam opened successfully! Resolution: %dx%d", width, height);
   } else {
     log_error("Webcam opened but failed to get dimensions");
@@ -214,10 +160,6 @@ image_t *webcam_read(void) {
       }
     }
 
-    // Update dimensions for aspect ratio calculations
-    last_image_width = (unsigned short int)test_frame->w;
-    last_image_height = (unsigned short int)test_frame->h;
-
     return test_frame;
   }
 
@@ -250,10 +192,6 @@ image_t *webcam_read(void) {
     }
   }
 
-  // Update dimensions for aspect ratio calculations
-  last_image_width = (unsigned short int)frame->w;
-  last_image_height = (unsigned short int)frame->h;
-
   return frame;
 }
 
@@ -272,26 +210,77 @@ void webcam_cleanup(void) {
   }
 }
 
+void webcam_print_init_error_help(int error_code) {
+  // Platform-specific error messages and troubleshooting help
+#ifdef __linux__
+  (void)error_code;
+  (void)fprintf(stderr, "\n");
+  (void)fprintf(stderr, "On Linux, make sure:\n");
+  (void)fprintf(stderr, "* Your user is in the 'video' group: sudo usermod -a -G video $USER\n");
+  (void)fprintf(stderr, "* The camera device exists: ls /dev/video*\n");
+  (void)fprintf(stderr, "* No other application is using the camera\n");
+  (void)fflush(stderr);
+#elif defined(__APPLE__)
+  (void)error_code;
+  (void)fprintf(stderr, "\n");
+  (void)fprintf(stderr, "On macOS, you may need to grant camera permissions:\n");
+  (void)fprintf(stderr,
+                "* Say \"yes\" to the popup about system camera access that you see when running this program for the "
+                "first time.\n");
+  (void)fprintf(
+      stderr, "* If you said \"no\" to the popup, go to System Preferences > Security & Privacy > Privacy > Camera.\n");
+  (void)fprintf(stderr,
+                "   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
+                "access your camera.\n");
+  (void)fprintf(stderr, "   Then just run this program again.\n");
+  (void)fflush(stderr);
+#elif defined(_WIN32)
+  if (error_code == ASCIICHAT_ERROR_WEBCAM_IN_USE) {
+    // Device is in use by another application - this is a fatal error on Windows
+    (void)fprintf(stderr, "\n");
+    (void)fprintf(stderr, "Webcam is already in use by another application.\n");
+    (void)fprintf(stderr, "Windows allows only one application to access the webcam at a time.\n");
+    (void)fprintf(stderr, "\n");
+    (void)fprintf(stderr, "To use ASCII-Chat with multiple clients, try these alternatives:\n");
+    (void)fprintf(stderr, "  --test-pattern    Generate a colorful test pattern instead of using webcam\n");
+    (void)fprintf(stderr, "  --file VIDEO.mp4  Use a video file as input (to be implemented)\n");
+    (void)fprintf(stderr, "\n");
+    (void)fprintf(stderr, "Example: ascii-chat-client --test-pattern\n");
+    (void)fflush(stderr);
+  } else {
+    // Other webcam errors - general failure
+    (void)fprintf(stderr, "\n");
+    (void)fprintf(stderr, "On Windows, this might be because:\n");
+    (void)fprintf(stderr, "* Camera permissions are not granted\n");
+    (void)fprintf(stderr, "* Camera driver issues\n");
+    (void)fprintf(stderr, "* No webcam device found\n");
+    (void)fflush(stderr);
+  }
+#else
+  // Unknown platform
+  (void)error_code;
+  (void)fprintf(stderr, "\nWebcam initialization failed on unsupported platform.\n");
+  (void)fflush(stderr);
+#endif
+}
+
 // Fallback implementations for unsupported platforms
 #if !defined(__linux__) && !defined(__APPLE__) && !defined(_WIN32)
 int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   (void)ctx;
   (void)device_index;
   log_error("Webcam platform not supported on this system");
-  exit(ASCIICHAT_ERR_WEBCAM);
-  return -1;
+  return ASCIICHAT_ERROR_WEBCAM;
 }
 
 void webcam_cleanup_context(webcam_context_t *ctx) {
   (void)ctx;
-  exit(ASCIICHAT_ERR_WEBCAM);
   log_warn("Webcam cleanup called on unsupported platform");
 }
 
 image_t *webcam_read_context(webcam_context_t *ctx) {
   (void)ctx;
   log_error("Webcam read not supported on this platform");
-  exit(ASCIICHAT_ERR_WEBCAM);
   return NULL;
 }
 
@@ -300,7 +289,6 @@ int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   (void)width;
   (void)height;
   log_error("Webcam get dimensions not supported on this platform");
-  exit(ASCIICHAT_ERR_WEBCAM);
   return -1;
 }
 #endif
