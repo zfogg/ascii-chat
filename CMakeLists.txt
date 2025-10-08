@@ -468,6 +468,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(PLATFORM_LINUX TRUE)
     set(PLATFORM_POSIX TRUE)
+    set(IS_APPLE_SILICON 0)
+    set(IS_ROSETTA 0)
 
 elseif(WIN32)
     add_definitions(-D_WIN32 -DWIN32_LEAN_AND_MEAN)
@@ -516,11 +518,6 @@ include_directories(
 
 
 # =============================================================================
-# Hardware Acceleration Detection
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
-
-# =============================================================================
 # Build Type Configuration (using modular helper functions)
 # =============================================================================
 # Build type specific flags and sanitizer configuration
@@ -566,6 +563,11 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/SIMD.cmake)
 
+# =============================================================================
+# Hardware Acceleration Detection (must be after SIMD detection)
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
+
 # musl libc Additional Configuration
 # =============================================================================
 # Note: Compiler setup is done before project() (line ~37)
@@ -584,12 +586,7 @@ if(USE_MUSL)
     message(STATUS "")
     message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
 
-    # Set up paths for musl-built static libraries
-    set(MUSL_PREFIX "${CMAKE_BINARY_DIR}/musl-deps")
-    set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
-
-    # Add musl-deps include directory for libexecinfo headers
-    include_directories(${MUSL_PREFIX}/include)
+    # Note: MUSL_PREFIX will be set by MuslDependencies.cmake to use cache directory
 
     # Set linker flags for static musl linking
     # -rdynamic exports symbols for backtrace_symbols() to resolve function names
@@ -617,69 +614,9 @@ if(USE_MUSL)
     endif()
     message(STATUS "Using compiler for musl dependencies: ${MUSL_CC}")
 
-    # Build zlib with musl
-    ExternalProject_Add(zlib-musl
-        URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
-        URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
-        PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --static
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
-        INSTALL_COMMAND make install
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libz.a
-    )
-
-    # Build libsodium with musl
-    ExternalProject_Add(libsodium-musl
-        URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
-        URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
-        PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
-        INSTALL_COMMAND make install
-        DEPENDS zlib-musl
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libsodium.a
-    )
-
-
-    # Build alsa-lib with musl
-    ExternalProject_Add(alsa-lib-musl
-        URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
-        URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
-        PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
-        INSTALL_COMMAND make install
-        DEPENDS libsodium-musl
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libasound.a
-    )
-
-    # Build PortAudio with musl (depends on ALSA)
-    ExternalProject_Add(portaudio-musl
-        URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
-        URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
-        PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${MUSL_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
-        INSTALL_COMMAND make install
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libportaudio.a
-        DEPENDS alsa-lib-musl
-    )
-
-    # Build libexecinfo for backtrace support with musl
-    ExternalProject_Add(libexecinfo-musl
-        GIT_REPOSITORY https://github.com/mikroskeem/libexecinfo.git
-        GIT_TAG master
-        PREFIX ${MUSL_PREFIX}
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND env CC=${MUSL_CC} REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR>
-        INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
-        BUILD_IN_SOURCE 1
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libexecinfo.a
-    )
+    # Note: zlib-musl, libsodium-musl, alsa-lib-musl, portaudio-musl, and libexecinfo-musl are now built in MuslDependencies.cmake
 
     # Note: JACK is complex and optional - we'll skip it for static musl builds
-
-    message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
 endif()
 
 # =============================================================================
@@ -761,6 +698,11 @@ endif()
 # =============================================================================
 # When USE_MUSL=ON, build all dependencies from source and cache them
 include(${CMAKE_SOURCE_DIR}/cmake/MuslDependencies.cmake)
+
+if(USE_MUSL)
+    message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
+    set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
+endif()
 
 # =============================================================================
 # Find Dependencies (matching Makefile pkg-config approach)
@@ -904,13 +846,16 @@ else()
         endif()
     endif()
 
-    pkg_check_modules(ZLIB REQUIRED zlib)
-    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
-    pkg_check_modules(LIBSODIUM REQUIRED libsodium)
-    # libgcrypt is optional - GPG Ed25519 signature verification
-    pkg_check_modules(LIBGCRYPT libgcrypt)
-    if(NOT LIBGCRYPT_FOUND)
-        message(WARNING "libgcrypt not found - GPG Ed25519 signature verification will be disabled")
+    # Skip pkg-config when using musl - dependencies are built from source
+    if(NOT USE_MUSL)
+        pkg_check_modules(ZLIB REQUIRED zlib)
+        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+        pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+        # libgcrypt is optional - GPG Ed25519 signature verification
+        pkg_check_modules(LIBGCRYPT libgcrypt)
+        if(NOT LIBGCRYPT_FOUND)
+            message(WARNING "libgcrypt not found - GPG Ed25519 signature verification will be disabled")
+        endif()
     endif()
 
     # Try to find BearSSL (system install from Docker or pkg-config)
@@ -1293,11 +1238,12 @@ if(WIN32)
         include_directories($ENV{VCPKG_ROOT}/installed/x64-windows/include)
     endif()
     # Add additional Windows include paths if found
+    # Use SYSTEM for musl to avoid glibc header conflicts (-isystem vs -I)
     if(ZLIB_INCLUDE_DIRS)
-        include_directories(${ZLIB_INCLUDE_DIRS})
+        include_directories(SYSTEM ${ZLIB_INCLUDE_DIRS})
     endif()
     if(LIBSODIUM_INCLUDE_DIRS)
-        include_directories(${LIBSODIUM_INCLUDE_DIRS})
+        include_directories(SYSTEM ${LIBSODIUM_INCLUDE_DIRS})
     endif()
 else()
     # Use pkg-config flags (matches Makefile CFLAGS approach)
@@ -1318,6 +1264,12 @@ else()
             ${LIBSODIUM_INCLUDE_DIRS}
             ${PORTAUDIO_INCLUDE_DIRS}
         )
+    else()
+        # When using musl, strip /usr/include from all include paths
+        list(REMOVE_ITEM ZLIB_INCLUDE_DIRS "/usr/include")
+        list(REMOVE_ITEM LIBSODIUM_INCLUDE_DIRS "/usr/include")
+        list(REMOVE_ITEM PORTAUDIO_INCLUDE_DIRS "/usr/include")
+        list(REMOVE_ITEM BEARSSL_INCLUDE_DIRS "/usr/include")
     endif()
 endif()
 

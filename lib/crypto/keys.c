@@ -2306,7 +2306,7 @@ int ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *messag
  * @param private_key SSH private key to use
  * @return 0 on success, -1 on failure
  */
-int crypto_setup_ssh_key_for_handshake(struct crypto_handshake_context_t *ctx_param, const private_key_t *private_key) {
+int crypto_setup_ssh_key_for_handshake(crypto_handshake_context_t *ctx_param, const private_key_t *private_key) {
   if (!ctx_param || !private_key) {
     return -1;
   }
