@@ -386,11 +386,11 @@ int main(int argc, char *argv[]) {
       // Check for authentication failure or host key verification failure - exit immediately without retry
       if (connection_result == CONNECTION_ERROR_AUTH_FAILED) {
         // Detailed error message already printed by crypto handshake code
-        return ASCIICHAT_ERROR_CRYPTO_AUTH;
+        FATAL_ERROR(ASCIICHAT_ERROR_CRYPTO_AUTH);
       }
       if (connection_result == CONNECTION_ERROR_HOST_KEY_FAILED) {
         // Host key verification failed or user declined - MITM warning already shown
-        return ASCIICHAT_ERROR_CRYPTO_VERIFICATION;
+        FATAL_ERROR(ASCIICHAT_ERROR_CRYPTO_VERIFICATION);
       }
 
       // Connection failed - increment attempt counter and retry

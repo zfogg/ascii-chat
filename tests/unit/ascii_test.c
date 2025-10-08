@@ -657,20 +657,20 @@ Test(ascii, ascii_create_grid_null_frame_data) {
 
 Test(ascii, ascii_write_basic) {
   const char *data = "Hello World\n";
-  asciichat_error_t result = ascii_write(data);
+  asciichat_error_status_t result = ascii_write(data);
 
   // Should succeed or fail gracefully
   cr_assert(result == ASCIICHAT_OK || result < 0);
 }
 
 Test(ascii, ascii_write_null_data) {
-  asciichat_error_t result = ascii_write(NULL);
+  asciichat_error_status_t result = ascii_write(NULL);
   cr_assert_lt(result, 0);
 }
 
 Test(ascii, ascii_write_empty_data) {
   const char *data = "";
-  asciichat_error_t result = ascii_write(data);
+  asciichat_error_status_t result = ascii_write(data);
 
   // Should succeed or fail gracefully
   cr_assert(result == ASCIICHAT_OK || result < 0);
@@ -689,7 +689,7 @@ Test(ascii, ascii_read_init_basic) {
     opt_test_pattern = true;
   }
 
-  asciichat_error_t result = ascii_read_init(0);
+  asciichat_error_status_t result = ascii_read_init(0);
 
   // Should succeed with test pattern or real webcam
   cr_assert_eq(result, ASCIICHAT_OK, "ascii_read_init should succeed with test pattern or webcam");
@@ -705,7 +705,7 @@ Test(ascii, ascii_read_init_basic) {
 Test(ascii, ascii_write_init_basic) {
   // Test with stdout
   bool reset_terminal = getenv("CI") != NULL;
-  asciichat_error_t result = ascii_write_init(STDOUT_FILENO, reset_terminal);
+  asciichat_error_status_t result = ascii_write_init(STDOUT_FILENO, reset_terminal);
 
   // Should succeed or fail gracefully
   cr_assert(result == ASCIICHAT_OK || result < 0);
@@ -715,7 +715,7 @@ Test(ascii, ascii_write_init_basic) {
 
 Test(ascii, ascii_write_init_invalid_fd) {
   bool reset_terminal = getenv("CI") != NULL;
-  asciichat_error_t result = ascii_write_init(-1, reset_terminal);
+  asciichat_error_status_t result = ascii_write_init(-1, reset_terminal);
 
   // Should fail with invalid file descriptor
   cr_assert_lt(result, 0);

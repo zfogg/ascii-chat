@@ -67,7 +67,7 @@ int client_crypto_init(void) {
 
     // Parse key (handles SSH files and gpg:keyid format)
     log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", opt_encrypt_key);
-    if (parse_private_key(opt_encrypt_key, &private_key) == 0) {
+    if (parse_private_key(opt_encrypt_key, &private_key) == ASCIICHAT_OK) {
       log_info("Successfully parsed SSH private key");
       is_ssh_key = true;
     } else {
@@ -184,7 +184,9 @@ int client_crypto_handshake(socket_t socket) {
   // If we reach here, crypto must be initialized for encryption
   if (!g_crypto_initialized) {
     log_error("Crypto not initialized but server requires encryption");
-    return -1;
+    log_error("Server requires encrypted connection but client has no encryption configured");
+    log_error("Use --key to specify a client key or --password for password authentication");
+    return CONNECTION_ERROR_AUTH_FAILED; // No retry - configuration error
   }
 
   log_info("Starting crypto handshake with server...");

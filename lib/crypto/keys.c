@@ -14,15 +14,18 @@
 #include <process.h>
 #include <conio.h>
 #include <sys/stat.h>
-#define popen _popen
-#define pclose _pclose
-#define unlink _unlink
+#define SAFE_POPEN _popen
+#define SAFE_PCLOSE _pclose
+#define SAFE_UNLINK _unlink
 #else
 #include <unistd.h>
 #include <termios.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
+#define SAFE_POPEN popen
+#define SAFE_PCLOSE pclose
+#define SAFE_UNLINK unlink
 #include <errno.h>
 #endif
 
@@ -331,38 +334,21 @@ int parse_public_key(const char *input, public_key_t *key_out) {
   if (strncmp(input, "gpg:", 4) == 0) {
     const char *key_id = input + 4;
 
-    // Check if gpg is available
-#ifdef _WIN32
-    FILE *fp = popen("gpg --version 2>nul", "r");
-#else
-    FILE *fp = popen("gpg --version 2>/dev/null", "r");
-#endif
-    if (!fp) {
-      log_error("GPG key requested but 'gpg' command not found");
-      log_error("Install GPG:");
-      log_error("  Ubuntu/Debian: apt-get install gnupg");
-      log_error("  macOS: brew install gnupg");
-      log_error("  Arch: pacman -S gnupg");
-      log_error("Or use password auth: --key mypassword");
+    // Extract public key from GPG keyring using gpg_get_public_key
+    uint8_t public_key[32];
+    if (gpg_get_public_key(key_id, public_key, NULL) != 0) {
+      log_error("Failed to get public key for GPG key ID: %s", key_id);
+      log_error("Make sure the key exists in your GPG keyring:");
+      log_error("  gpg --list-keys");
       return -1;
     }
 
-    char buf[256];
-    bool found = (fgets(buf, sizeof(buf), fp) != NULL);
-    pclose(fp);
-
-    if (!found) {
-      log_error("GPG command not available");
-      return -1;
-    }
-
-    // For now, create a dummy GPG-derived key
-    // TODO: Actually shell out to gpg --export and derive key material
-    memset(key_out->key, 0x42, 32); // Dummy key material
-    key_out->type = KEY_TYPE_GPG;
+    // Store the extracted public key
+    memcpy(key_out->key, public_key, 32);
+    key_out->type = KEY_TYPE_ED25519;
     snprintf(key_out->comment, sizeof(key_out->comment), "gpg:%s", key_id);
 
-    log_info("GPG key parsing (stub): %s", key_id);
+    log_info("Loaded GPG public key: %s", key_id);
     return 0;
   }
 
@@ -498,7 +484,7 @@ static int prompt_with_askpass(const char *askpass_program, const char *prompt, 
 
   log_debug("Running SSH_ASKPASS: %s", command);
 
-  FILE *fp = popen(command, "r");
+  FILE *fp = SAFE_POPEN(command, "r");
   if (!fp) {
     log_error("Failed to run SSH_ASKPASS program: %s", askpass_program);
     return -1;
@@ -506,11 +492,11 @@ static int prompt_with_askpass(const char *askpass_program, const char *prompt, 
 
   if (fgets(passphrase, max_len, fp) == NULL) {
     log_error("SSH_ASKPASS program returned no output");
-    pclose(fp);
+    SAFE_PCLOSE(fp);
     return -1;
   }
 
-  pclose(fp);
+  SAFE_PCLOSE(fp);
 
   // Remove newline
   size_t len = strlen(passphrase);
@@ -533,7 +519,7 @@ static int prompt_with_pinentry(char *passphrase, size_t max_len) {
 
     log_debug("Trying pinentry: %s", pinentry_programs[i]);
 
-    FILE *fp = popen(command, "r");
+    FILE *fp = SAFE_POPEN(command, "r");
     if (fp) {
       char line[1024];
       bool got_passphrase = false;
@@ -555,7 +541,7 @@ static int prompt_with_pinentry(char *passphrase, size_t max_len) {
         }
       }
 
-      pclose(fp);
+      SAFE_PCLOSE(fp);
 
       if (got_passphrase) {
         log_info("pinentry returned passphrase");
@@ -581,7 +567,7 @@ static bool ssh_agent_has_specific_key(const uint8_t ed25519_public_key[32]) {
   fprintf(stderr, "ssh_agent_has_specific_key: Checking SSH agent for specific key...\n");
 
   // List all keys in the agent
-  FILE *fp = popen("ssh-add -L 2>/dev/null", "r");
+  FILE *fp = SAFE_POPEN("ssh-add -L 2>/dev/null", "r");
   if (!fp) {
     fprintf(stderr, "ssh_agent_has_specific_key: Failed to run ssh-add -L\n");
     return false;
@@ -649,7 +635,7 @@ static bool ssh_agent_has_specific_key(const uint8_t ed25519_public_key[32]) {
     free(decoded);
   }
 
-  pclose(fp);
+  SAFE_PCLOSE(fp);
 
   if (!found_match) {
     fprintf(stderr, "ssh_agent_has_specific_key: Key NOT found in SSH agent\n");
@@ -715,9 +701,22 @@ static int decrypt_key_with_external_tool(const char *key_path, const char *pass
 //
 // See: https://datatracker.ietf.org/doc/html/rfc4253#section-6.6 for SSH key formats
 //
-int parse_private_key(const char *path, private_key_t *key_out) {
+asciichat_error_status_t parse_private_key(const char *path, private_key_t *key_out) {
   fprintf(stderr, "parse_private_key: Opening %s\n", path);
   memset(key_out, 0, sizeof(private_key_t));
+
+  // Reject GitHub/GitLab keys - they only provide public keys, not private keys
+  if (strncmp(path, "github:", 7) == 0 || strncmp(path, "gitlab:", 7) == 0) {
+    log_error("GitHub/GitLab keys cannot be used for private key authentication");
+    log_error("GitHub/GitLab only provide public keys, not private keys.");
+    log_error("");
+    log_error("For private key authentication, use:");
+    log_error("  /path/to/ssh/key    (SSH private key file)");
+    log_error("  gpg:KEYID           (GPG key via gpg-agent)");
+    log_error("");
+    log_error("GitHub/GitLab keys work with --client-keys and --server-keys");
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
+  }
 
   // Check for gpg:keyid format
   if (strncmp(path, "gpg:", 4) == 0) {
@@ -728,7 +727,14 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     if (!gpg_agent_is_available()) {
       log_error("GPG agent is not available. Please ensure gpg-agent is running.");
       log_error("You can start it with: gpgconf --launch gpg-agent");
-      return -1;
+      log_error("");
+      log_error("GPG agent is REQUIRED for 'gpg:' key format.");
+      log_error("Install GPG:");
+      log_error("  Ubuntu/Debian: sudo apt-get install gnupg gpg-agent");
+      log_error("  Fedora/RHEL:   sudo dnf install gnupg2");
+      log_error("  macOS:         brew install gnupg");
+      log_error("  Arch:          sudo pacman -S gnupg");
+      return ASCIICHAT_ERROR_CRYPTO_KEY;
     }
 
     // Extract public key and keygrip from GPG keyring
@@ -736,7 +742,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     char keygrip[64];
     if (gpg_get_public_key(key_id, public_key, keygrip) != 0) {
       log_error("Failed to get public key for GPG key ID: %s", key_id);
-      return -1;
+      return ASCIICHAT_ERROR_CRYPTO_KEY;
     }
 
     fprintf(stderr, "parse_private_key: Got GPG public key and keygrip: %s\n", keygrip);
@@ -754,13 +760,15 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     memset(&key_out->key, 0, sizeof(key_out->key));
 
     log_info("GPG agent mode: Will use gpg-agent for signing");
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   FILE *f = fopen(path, "r");
   if (f == NULL) {
     fprintf(stderr, "parse_private_key: Failed to open file: %s\n", path);
-    return -1;
+    log_error("Cannot open SSH key file: %s", path);
+    log_error("Error: %s", strerror(errno));
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   fprintf(stderr, "parse_private_key: File opened successfully\n");
 
@@ -797,7 +805,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
   if (base64_len == 0) {
     fprintf(stderr, "parse_private_key: No base64 data found\n");
     log_error("No private key data found in file: %s", path);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   fprintf(stderr, "parse_private_key: Read %zu bytes of base64 data\n", base64_len);
 
@@ -808,7 +816,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
   if (base64_decode_ssh_key(base64_data, base64_len, &blob, &blob_len) != 0) {
     fprintf(stderr, "parse_private_key: Base64 decode failed\n");
     log_error("Failed to decode base64 private key data");
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   fprintf(stderr, "parse_private_key: Decoded to %zu bytes\n", blob_len);
 
@@ -819,7 +827,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Blob too short (%zu bytes)\n", blob_len);
     log_error("Private key data too short");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   fprintf(stderr, "parse_private_key: Blob length OK (%zu bytes)\n", blob_len);
 
@@ -829,7 +837,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Magic number mismatch (not OpenSSH format)\n");
     log_error("Not an OpenSSH private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   fprintf(stderr, "parse_private_key: Magic number OK (OpenSSH format)\n");
 
@@ -838,7 +846,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Not enough data for ciphername length\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Read ciphername (should be "none" for unencrypted keys)
@@ -852,7 +860,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
             blob_len - offset);
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Save cipher info for later check
@@ -863,7 +871,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
       fprintf(stderr, "parse_private_key: Ciphername too long (%u bytes)\n", ciphername_len);
       log_error("Cipher name too long");
       free(blob);
-      return -1;
+      return ASCIICHAT_ERROR_CRYPTO_KEY;
     }
     memcpy(ciphername, blob + offset, ciphername_len);
     ciphername[ciphername_len] = '\0';
@@ -877,7 +885,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at kdfname length\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t kdfname_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
   offset += 4;
@@ -885,7 +893,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at kdfname\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   offset += kdfname_len;
 
@@ -894,7 +902,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at kdfoptions length\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t kdfoptions_len =
       (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
@@ -903,7 +911,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at kdfoptions\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   offset += kdfoptions_len;
 
@@ -912,14 +920,14 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at nkeys\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t nkeys = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
   offset += 4;
   if (nkeys != 1) {
     log_error("Expected 1 key, found %u", nkeys);
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Read and extract public key BEFORE handling encryption
@@ -927,7 +935,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at pubkey length\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t pubkey_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
   offset += 4;
@@ -935,7 +943,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Invalid key format at pubkey data\n");
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Extract Ed25519 public key from the public key blob
@@ -944,7 +952,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Public key too short\n");
     log_error("Public key too short");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   uint32_t key_type_len = (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
@@ -971,7 +979,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
       log_error("Unsupported key type - only Ed25519 is currently supported");
     }
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   size_t pubkey_offset = offset + 4 + 11; // Skip type_len and "ssh-ed25519"
@@ -981,7 +989,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Embedded key length is %u, expected 32\n", embedded_key_len);
     log_error("Invalid Ed25519 key length");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   uint8_t embedded_public_key[32];
@@ -1013,7 +1021,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
 
       log_info("SSH agent mode: Will use agent for identity signing, ephemeral X25519 for encryption");
       free(blob);
-      return 0;
+      return ASCIICHAT_OK;
     }
 
     fprintf(stderr, "parse_private_key: Key not in SSH agent, will prompt for password\n");
@@ -1025,7 +1033,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     if (prompt_ssh_passphrase(passphrase, sizeof(passphrase)) != 0) {
       fprintf(stderr, "[Decrypt] ERROR: Failed to get passphrase\n");
       free(blob);
-      return -1;
+      return ASCIICHAT_ERROR_CRYPTO_KEY;
     }
     fprintf(stderr, "[Decrypt] Attempting to decrypt with external tools (ssh-keygen)...\n");
 
@@ -1036,67 +1044,88 @@ int parse_private_key(const char *path, private_key_t *key_out) {
       free(blob);
 
       // Parse the decrypted key (it's now unencrypted so SSH agent check won't trigger)
-      int result = parse_private_key(temp_key_path, key_out);
+      asciichat_error_status_t result = parse_private_key(temp_key_path, key_out);
 
       // Clean up temporary file
       unlink(temp_key_path);
 
-      if (result == 0) {
+      if (result == ASCIICHAT_OK) {
         fprintf(stderr, "[Decrypt] Successfully parsed decrypted SSH key\n");
 
         // Try to add key to ssh-agent so user doesn't have to enter password again
         if (ssh_agent_is_available()) {
-          fprintf(stderr, "[SSH Agent] Adding key to ssh-agent to avoid future password prompts...\n");
+          // Check if ssh-add command is available
+          FILE *which_fp = SAFE_POPEN("which ssh-add 2>/dev/null", "r");
+          char ssh_add_path[256] = {0};
+          bool ssh_add_available = false;
 
-          // Shell out to ssh-add with the original key path
-          // Use expect/SSH_ASKPASS to provide password non-interactively
-          char ssh_add_cmd[1024];
+          if (which_fp) {
+            if (fgets(ssh_add_path, sizeof(ssh_add_path), which_fp) != NULL) {
+              ssh_add_available = true;
+            }
+            SAFE_PCLOSE(which_fp);
+          }
 
-          // Create a temporary script to provide the password
-          char askpass_script[512];
-          snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
+          if (!ssh_add_available) {
+            log_warn("ssh-add command not found in PATH - cannot automatically add key to agent");
+            log_warn("Install OpenSSH client package to enable automatic key addition:");
+            log_warn("  Ubuntu/Debian: sudo apt-get install openssh-client");
+            log_warn("  Fedora/RHEL:   sudo dnf install openssh-clients");
+            log_warn("  macOS:         ssh-add is pre-installed");
+            log_warn("  Arch:          sudo pacman -S openssh");
+          } else {
+            fprintf(stderr, "[SSH Agent] Adding key to ssh-agent to avoid future password prompts...\n");
 
-          FILE *askpass_fp = fopen(askpass_script, "w");
-          if (askpass_fp) {
-            fprintf(askpass_fp, "#!/bin/sh\necho '%s'\n", passphrase);
-            fclose(askpass_fp);
-            chmod(askpass_script, 0700);
+            // Shell out to ssh-add with the original key path
+            // Use expect/SSH_ASKPASS to provide password non-interactively
+            char ssh_add_cmd[1024];
 
-            // Use SSH_ASKPASS environment variable
-            snprintf(ssh_add_cmd, sizeof(ssh_add_cmd), "SSH_ASKPASS='%s' SSH_ASKPASS_REQUIRE=force ssh-add '%s' 2>&1",
-                     askpass_script, path);
+            // Create a temporary script to provide the password
+            char askpass_script[512];
+            snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
 
-            FILE *ssh_add_fp = popen(ssh_add_cmd, "r");
-            if (ssh_add_fp) {
-              char output[256];
-              bool added = false;
-              while (fgets(output, sizeof(output), ssh_add_fp)) {
-                if (strstr(output, "Identity added")) {
-                  added = true;
-                  fprintf(stderr, "[SSH Agent] ✓ Key successfully added to ssh-agent\n");
-                  log_info("Key added to ssh-agent - password won't be required again this session");
+            FILE *askpass_fp = fopen(askpass_script, "w");
+            if (askpass_fp) {
+              fprintf(askpass_fp, "#!/bin/sh\necho '%s'\n", passphrase);
+              fclose(askpass_fp);
+              chmod(askpass_script, 0700);
+
+              // Use SSH_ASKPASS environment variable
+              snprintf(ssh_add_cmd, sizeof(ssh_add_cmd), "SSH_ASKPASS='%s' SSH_ASKPASS_REQUIRE=force ssh-add '%s' 2>&1",
+                       askpass_script, path);
+
+              FILE *ssh_add_fp = SAFE_POPEN(ssh_add_cmd, "r");
+              if (ssh_add_fp) {
+                char output[256];
+                bool added = false;
+                while (fgets(output, sizeof(output), ssh_add_fp)) {
+                  if (strstr(output, "Identity added")) {
+                    added = true;
+                    fprintf(stderr, "[SSH Agent] ✓ Key successfully added to ssh-agent\n");
+                    log_info("Key added to ssh-agent - password won't be required again this session");
+                  }
+                }
+                SAFE_PCLOSE(ssh_add_fp);
+
+                if (!added) {
+                  fprintf(stderr, "[SSH Agent] Warning: Could not add key to ssh-agent\n");
                 }
               }
-              pclose(ssh_add_fp);
 
-              if (!added) {
-                fprintf(stderr, "[SSH Agent] Warning: Could not add key to ssh-agent\n");
-              }
+              // Clean up askpass script
+              unlink(askpass_script);
             }
-
-            // Clean up askpass script
-            unlink(askpass_script);
-          }
+          } // Close ssh_add_available block
         }
 
         // Zero out passphrase after using it
         sodium_memzero(passphrase, sizeof(passphrase));
         fprintf(stderr, "\n");
-        return 0;
+        return ASCIICHAT_OK;
       } else {
         fprintf(stderr, "[Decrypt] ERROR: Failed to parse decrypted key\n");
         sodium_memzero(passphrase, sizeof(passphrase));
-        return -1;
+        return ASCIICHAT_ERROR_CRYPTO_KEY;
       }
     } else {
       fprintf(stderr, "[Decrypt] ERROR: Failed to decrypt key with external tools\n");
@@ -1110,7 +1139,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
 
       sodium_memzero(passphrase, sizeof(passphrase));
       free(blob);
-      return -1;
+      return ASCIICHAT_ERROR_CRYPTO_KEY;
     }
   }
 
@@ -1122,7 +1151,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
             blob_len);
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t privkey_blob_len =
       (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
@@ -1135,7 +1164,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
         offset, privkey_blob_len, blob_len);
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Private key blob starts with check1 and check2 (8 bytes total)
@@ -1144,7 +1173,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
             privkey_blob_len);
     log_error("Private key blob too short");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   fprintf(stderr, "parse_private_key: Skipping check1/check2 (8 bytes)\n");
@@ -1157,7 +1186,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Cannot read keytype length (offset=%zu, blob_len=%zu)\n", offset, blob_len);
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Read the key type string length
@@ -1170,7 +1199,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Not an Ed25519 private key (priv_key_type_len=%u)\n", priv_key_type_len);
     log_error("Not an Ed25519 private key");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Skip type string (4 bytes length + 11 bytes "ssh-ed25519")
@@ -1182,7 +1211,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Cannot read public key length (offset=%zu, blob_len=%zu)\n", offset, blob_len);
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t pubkey_data_len =
       (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
@@ -1193,7 +1222,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Expected 32-byte Ed25519 public key, got %u bytes\n", pubkey_data_len);
     log_error("Invalid Ed25519 public key length");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   if (offset + 32 > blob_len) {
@@ -1201,7 +1230,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
             blob_len);
     log_error("Public key data too short");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Skip public key (we'll extract it from the private key later)
@@ -1213,7 +1242,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Cannot read private key length (offset=%zu, blob_len=%zu)\n", offset, blob_len);
     log_error("Invalid private key format");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
   uint32_t privkey_data_len =
       (blob[offset] << 24) | (blob[offset + 1] << 16) | (blob[offset + 2] << 8) | blob[offset + 3];
@@ -1224,7 +1253,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
     fprintf(stderr, "parse_private_key: Expected 64-byte Ed25519 private key, got %u bytes\n", privkey_data_len);
     log_error("Invalid Ed25519 private key length");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   if (offset + 64 > blob_len) {
@@ -1232,7 +1261,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
             blob_len);
     log_error("Private key data too short");
     free(blob);
-    return -1;
+    return ASCIICHAT_ERROR_CRYPTO_KEY;
   }
 
   // Extract the 64-byte Ed25519 private key (32-byte seed + 32-byte public key)
@@ -1265,7 +1294,7 @@ int parse_private_key(const char *path, private_key_t *key_out) {
   free(blob);
 
   log_info("Successfully parsed Ed25519 private key from %s (in-memory mode)", path);
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 // Convert private key to X25519 for DH
@@ -2193,17 +2222,35 @@ int ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *messag
     return -1;
   }
 
-  // libsodium's crypto_sign_verify_detached expects:
-  // - signature: signature to verify (64 bytes)
-  // - message: message that was signed
-  // - message_len: length of message
-  // - public_key: 32-byte Ed25519 public key
-  if (crypto_sign_verify_detached(signature, message, message_len, public_key) != 0) {
-    fprintf(stderr, "ed25519_verify_signature: signature verification failed\n");
-    return -1;
+  // IMPORTANT: This verification must match the signing method!
+  //
+  // For GPG agent Ed25519 keys:
+  // - GPG agent signs: EdDSA_sign(SHA512(message))  [pre-hashed]
+  // - We must verify:  EdDSA_verify(SHA512(message), signature, public_key)
+  //
+  // For standard Ed25519 (SSH agent):
+  // - SSH agent signs: EdDSA_sign(message)  [raw message, Ed25519 does internal hashing]
+  // - We must verify:  EdDSA_verify(message, signature, public_key)
+  //
+  // Since we don't know which type of key signed this, we try both approaches:
+
+  // Try 1: Standard Ed25519 verification (raw message)
+  if (crypto_sign_verify_detached(signature, message, message_len, public_key) == 0) {
+    return 0; // Success with standard Ed25519
   }
 
-  return 0;
+  // Try 2: GPG-style verification (pre-hashed message)
+  // Hash the message with SHA-512 (matching GPG's SETHASH --hash=sha512)
+  uint8_t message_hash[64];
+  crypto_hash_sha512(message_hash, message, message_len);
+
+  if (crypto_sign_verify_detached(signature, message_hash, 64, public_key) == 0) {
+    fprintf(stderr, "ed25519_verify_signature: verified with GPG-style pre-hashed message\n");
+    return 0; // Success with GPG-style signing
+  }
+
+  fprintf(stderr, "ed25519_verify_signature: signature verification failed (tried both standard and GPG-style)\n");
+  return -1;
 }
 
 // =============================================================================

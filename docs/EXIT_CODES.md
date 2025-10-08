@@ -8,7 +8,7 @@ ASCII-Chat uses a comprehensive exit code system to communicate detailed error i
 
 1. **Exit codes (0-255)**: Returned to the shell when the program exits
 2. **Internal error codes (negative)**: Used for function return values within library code
-3. **Conversion function**: `asciichat_error_to_exit()` converts internal codes to exit codes
+3. **Conversion function**: `asciichat_error_status_to_exit()` converts internal codes to exit codes
 
 ### Design Principles
 
@@ -528,10 +528,10 @@ EXIT_CRYPTO_AUTH_FAILED (62): Authentication failed
 int main(int argc, char **argv) {
     // ... initialization ...
 
-    asciichat_error_t err = webcam_init(0, false);
+    asciichat_error_status_t err = webcam_init(0, false);
     if (err != ASCIICHAT_OK) {
         fprintf(stderr, "Webcam error: %s\n", asciichat_error_string(err));
-        asciichat_exit_code_t exit_code = asciichat_error_to_exit(err);
+        asciichat_exit_code_t exit_code = asciichat_error_status_to_exit(err);
         return exit_code;
     }
 
@@ -599,7 +599,7 @@ Exit with an internal error code (converts to exit code automatically).
 #include "common.h"
 
 int main(void) {
-    asciichat_error_t err = webcam_init(0, false);
+    asciichat_error_status_t err = webcam_init(0, false);
     if (err != ASCIICHAT_OK) {
         FATAL_ERROR(err);  // Converts ASCIICHAT_ERR_WEBCAM to EXIT_WEBCAM_ERROR (20)
     }
@@ -681,13 +681,13 @@ Stack trace:
 
 | Macro | Takes | Converts? | Custom Message? | Use Case |
 |-------|-------|-----------|-----------------|----------|
-| `FATAL_ERROR(err)` | `asciichat_error_t` | Yes | No | When you have an internal error code from lib/ |
+| `FATAL_ERROR(err)` | `asciichat_error_status_t` | Yes | No | When you have an internal error code from lib/ |
 | `FATAL_EXIT(code)` | `asciichat_exit_code_t` | No | No | When you know the exact exit code |
 | `FATAL(code, ...)` | `asciichat_exit_code_t` + format | No | Yes | When you need a custom error message |
 
 ### Best Practices
 
-1. **Use FATAL_ERROR for library errors**: When library functions return `asciichat_error_t`, use `FATAL_ERROR()` to automatically convert to the appropriate exit code.
+1. **Use FATAL_ERROR for library errors**: When library functions return `asciichat_error_status_t`, use `FATAL_ERROR()` to automatically convert to the appropriate exit code.
 
 2. **Use FATAL for user-facing errors**: When you need to explain what went wrong (e.g., "Cannot bind to port 8080"), use `FATAL()` with a custom message.
 
@@ -716,7 +716,7 @@ int main(int argc, char **argv) {
     options_init(argc, argv, false);
 
     // Initialize crypto
-    asciichat_error_t crypto_err = crypto_init();
+    asciichat_error_status_t crypto_err = crypto_init();
     if (crypto_err != ASCIICHAT_OK) {
         FATAL_ERROR(crypto_err);  // Exits with EXIT_CRYPTO_INIT_ERROR (5)
     }

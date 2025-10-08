@@ -186,8 +186,12 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
     log_debug("Verifying server's signature over ephemeral key");
     if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, 32, server_signature) != 0) {
       log_error("Server signature verification FAILED - rejecting connection");
+      log_error("This indicates:");
+      log_error("  - Server's identity key does not match its ephemeral key");
+      log_error("  - Potential man-in-the-middle attack");
+      log_error("  - Corrupted or malicious server");
       buffer_pool_free(payload, payload_len);
-      return -1;
+      return CONNECTION_ERROR_HOST_KEY_FAILED; // Crypto verification failure - do not retry
     }
     log_info("Server signature verified successfully");
 
@@ -197,16 +201,19 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
       public_key_t expected_key;
       if (parse_public_key(ctx->expected_server_key, &expected_key) != 0) {
         log_error("Failed to parse expected server key: %s", ctx->expected_server_key);
+        log_error("Check that --server-key value is valid (ssh-ed25519 format or hex)");
         buffer_pool_free(payload, payload_len);
-        return -1;
+        return CONNECTION_ERROR_HOST_KEY_FAILED; // Config error - do not retry
       }
 
       // Compare server's IDENTITY key with expected key (constant-time to prevent timing attacks)
       if (sodium_memcmp(server_identity_key, expected_key.key, 32) != 0) {
         log_error("Server identity key mismatch - potential MITM attack!");
         log_error("Expected key: %s", ctx->expected_server_key);
+        log_error("Server presented a different key than specified with --server-key");
+        log_error("DO NOT CONNECT to this server - likely man-in-the-middle attack!");
         buffer_pool_free(payload, payload_len);
-        return -1;
+        return CONNECTION_ERROR_HOST_KEY_FAILED; // MITM detected - do not retry
       }
       log_info("Server identity key verified against --server-key");
     }
@@ -240,8 +247,12 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
     }
   } else {
     log_error("Invalid KEY_EXCHANGE_INIT size: %zu bytes (expected 32 or 128)", payload_len);
+    log_error("This indicates:");
+    log_error("  - Protocol violation or incompatible server version");
+    log_error("  - Potential man-in-the-middle attack");
+    log_error("  - Network corruption");
     buffer_pool_free(payload, payload_len);
-    return -1;
+    return CONNECTION_ERROR_HOST_KEY_FAILED; // Protocol violation - do not retry
   }
 
   // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret

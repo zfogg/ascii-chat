@@ -86,7 +86,7 @@ typedef enum {
 
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
-} asciichat_error_t;
+} asciichat_error_status_t;
 
 /* ============================================================================
  * Error String Utilities
@@ -94,7 +94,7 @@ typedef enum {
  */
 
 /* Get human-readable string for error/exit code */
-static inline const char *asciichat_error_string(asciichat_error_t code) {
+static inline const char *asciichat_error_string(asciichat_error_status_t code) {
   switch (code) {
   case ASCIICHAT_OK:
     return "Success";
@@ -191,10 +191,10 @@ void platform_print_backtrace(void);
 
 /**
  * @brief Exit with error code and standard message, with stack trace in debug builds
- * @param code Error code (asciichat_error_t)
+ * @param code Error code (asciichat_error_status_t)
  *
  * Usage:
- *   asciichat_error_t err = webcam_init(...);
+ *   asciichat_error_status_t err = webcam_init(...);
  *   if (err != ASCIICHAT_OK) {
  *       FATAL_ERROR(err);  // Prints "Webcam error" + stack trace + exits with 20
  *   }
@@ -212,7 +212,7 @@ void platform_print_backtrace(void);
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
- * @param code Error code (asciichat_error_t)
+ * @param code Error code (asciichat_error_status_t)
  * @param ... Custom message format string and arguments (printf-style)
  *
  * Usage:
