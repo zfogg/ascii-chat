@@ -17,6 +17,23 @@
 #include <stdbool.h>
 
 /* ============================================================================
+ * Connection Error Codes
+ * ============================================================================ */
+
+/**
+ * @brief Connection establishment error codes
+ *
+ * These codes are returned by server_connection_establish() to indicate
+ * different failure modes. Zero indicates success.
+ */
+typedef enum {
+  CONNECTION_SUCCESS = 0,               ///< Connection established successfully
+  CONNECTION_ERROR_GENERIC = -1,        ///< Generic error (retry allowed)
+  CONNECTION_ERROR_AUTH_FAILED = -2,    ///< Authentication failure (no retry)
+  CONNECTION_ERROR_HOST_KEY_FAILED = -3 ///< Host key verification failed (no retry)
+} connection_error_t;
+
+/* ============================================================================
  * Connection Management Functions
  * ============================================================================ */
 
@@ -54,6 +71,12 @@ socket_t server_connection_get_socket();
  * @return Client ID or 0 if not connected
  */
 uint32_t server_connection_get_client_id();
+
+/**
+ * @brief Get resolved server IP address
+ * @return Server IP address string (IPv4 or IPv6)
+ */
+const char *server_connection_get_ip();
 
 /**
  * @brief Close server connection gracefully

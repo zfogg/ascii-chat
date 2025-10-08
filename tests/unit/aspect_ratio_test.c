@@ -4,7 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include "tests/common.h"
-#include "aspect_ratio.h"
+#include "util/aspect_ratio.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(aspect_ratio);

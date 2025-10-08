@@ -155,6 +155,7 @@ int client_crypto_init(void) {
 
   // Set up server connection info for known_hosts
   SAFE_STRNCPY(g_crypto_ctx.server_hostname, opt_address, sizeof(g_crypto_ctx.server_hostname) - 1);
+  SAFE_STRNCPY(g_crypto_ctx.server_ip, server_connection_get_ip(), sizeof(g_crypto_ctx.server_ip) - 1);
   g_crypto_ctx.server_port = (uint16_t)strtoint_safe(opt_port);
 
   // Configure server key verification if specified
@@ -202,7 +203,7 @@ int client_crypto_handshake(socket_t socket) {
   if (result != 0) {
     log_error("Crypto key exchange failed");
     log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange failed with result=%d", result);
-    return -1;
+    return result; // Propagate error code (-3 for host key failure, -2 for auth failure, -1 for other errors)
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully");
 

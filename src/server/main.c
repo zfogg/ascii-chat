@@ -65,8 +65,11 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
 #else
 #include <unistd.h>
+#include <netdb.h>     // For getaddrinfo(), gai_strerror()
+#include <arpa/inet.h> // For inet_ntop()
 #endif
 
 #include <errno.h>
@@ -119,6 +122,17 @@
  * - Must be atomic to prevent race conditions during shutdown cascade
  */
 atomic_bool g_should_exit = false;
+
+/**
+ * @brief Shutdown check callback for library code
+ *
+ * Provides clean separation between application state and library code.
+ * Registered with shutdown_register_callback() so library code can check
+ * shutdown status without directly accessing g_should_exit.
+ */
+static bool check_shutdown(void) {
+  return atomic_load(&g_should_exit);
+}
 
 /**
  * @brief Global audio mixer instance for multi-client audio processing
@@ -501,6 +515,9 @@ int main(int argc, char *argv[]) {
   log_init(log_filename, LOG_DEBUG);
   log_info("Logging initialized");
 
+  // Register shutdown check callback for library code
+  shutdown_register_callback(check_shutdown);
+
   // Initialize crypto after logging is ready
   log_info("Initializing crypto...");
   if (init_server_crypto() != 0) {
@@ -590,25 +607,56 @@ int main(int argc, char *argv[]) {
     log_info("Statistics logger thread started");
   }
 
-  // Network setup
+  // Network setup - Dual-stack IPv6 with IPv4 support
   log_info("SERVER: Setting up network sockets...");
-  struct sockaddr_in serv_addr;
-  struct sockaddr_in client_addr;
+  struct sockaddr_storage serv_addr; // Address-family-agnostic storage
+  struct sockaddr_storage client_addr;
   socklen_t client_len = sizeof(client_addr);
 
+  // Parse bind address from opt_address
+  // Default is "::" (dual-stack: all IPv6 + IPv4-mapped)
+  struct addrinfo hints, *res = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET6; // IPv6 socket (with IPV6_V6ONLY=0 for dual-stack)
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST; // For bind() + numeric address
+
+  char port_str[16];
+  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
+
+  log_info("SERVER: Resolving bind address '%s' port %s...", opt_address, port_str);
+  int getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
+  if (getaddr_result != 0) {
+    // Try IPv4 fallback if IPv6 resolution fails
+    hints.ai_family = AF_INET;
+    getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
+    if (getaddr_result != 0) {
+      log_fatal("Failed to resolve bind address '%s': %s", opt_address, gai_strerror(getaddr_result));
+      exit(ASCIICHAT_ERROR_NETWORK);
+    }
+    log_info("SERVER: Using IPv4 binding (address family: AF_INET)");
+  } else {
+    log_info("SERVER: Using dual-stack IPv6 binding (address family: AF_INET6)");
+  }
+
+  // Copy resolved address to serv_addr
+  if (res->ai_addrlen > sizeof(serv_addr)) {
+    log_fatal("Address size too large: %zu bytes", (size_t)res->ai_addrlen);
+    freeaddrinfo(res);
+    exit(ASCIICHAT_ERROR_NETWORK);
+  }
+  memcpy(&serv_addr, res->ai_addr, res->ai_addrlen);
+  int address_family = res->ai_family;
+  socklen_t addrlen = res->ai_addrlen;
+  freeaddrinfo(res);
+
   log_info("SERVER: Creating listen socket...");
-  listenfd = socket_create(AF_INET, SOCK_STREAM, 0);
+  listenfd = socket_create(address_family, SOCK_STREAM, 0);
   if (listenfd == INVALID_SOCKET_VALUE) {
     log_fatal("Failed to create socket: %s", SAFE_STRERROR(errno));
     exit(1);
   }
   log_info("SERVER: Listen socket created (fd=%d)", listenfd);
-
-  log_info("Server listening on port %d", port);
-
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serv_addr.sin_port = htons(port);
 
   // Set socket options
   int yes = 1;
@@ -617,13 +665,25 @@ int main(int argc, char *argv[]) {
     exit(ASCIICHAT_ERROR_NETWORK);
   }
 
+  // Enable dual-stack mode for IPv6 sockets (allow IPv4-mapped addresses)
+  if (address_family == AF_INET6) {
+    int ipv6only = 0; // 0 = dual-stack (accept both IPv6 and IPv4-mapped)
+    if (socket_setsockopt(listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
+      log_warn("Failed to set IPV6_V6ONLY=0 (dual-stack mode): %s", SAFE_STRERROR(errno));
+      log_warn("Server may only accept IPv6 connections");
+    } else {
+      log_info("SERVER: Dual-stack mode enabled (IPv6 + IPv4-mapped addresses)");
+    }
+  }
+
   // If we Set keep-alive on the listener before accept(), connfd will inherit it.
   if (set_socket_keepalive(listenfd) < 0) {
     log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
   }
 
   // Bind socket
-  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+  log_info("Server binding to %s:%d", opt_address, port);
+  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
     log_fatal("Socket bind failed: %s", SAFE_STRERROR(errno));
     exit(1);
   }
@@ -874,11 +934,32 @@ main_loop:
       continue;
     }
 
-    // Log client connection
-    char client_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-    int client_port = ntohs(client_addr.sin_port);
-    log_info("New client connected from %s:%d", client_ip, client_port);
+    // Log client connection - handle both IPv4 and IPv6
+    char client_ip[INET6_ADDRSTRLEN]; // Large enough for both IPv4 and IPv6
+    int client_port = 0;
+
+    if (((struct sockaddr *)&client_addr)->sa_family == AF_INET) {
+      // IPv4 address
+      struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
+      inet_ntop(AF_INET, &addr_in->sin_addr, client_ip, sizeof(client_ip));
+      client_port = ntohs(addr_in->sin_port);
+      log_info("New client connected from %s:%d (IPv4)", client_ip, client_port);
+    } else if (((struct sockaddr *)&client_addr)->sa_family == AF_INET6) {
+      // IPv6 address
+      struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
+      inet_ntop(AF_INET6, &addr_in6->sin6_addr, client_ip, sizeof(client_ip));
+      client_port = ntohs(addr_in6->sin6_port);
+
+      // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
+      if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
+        log_info("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
+      } else {
+        log_info("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
+      }
+    } else {
+      snprintf(client_ip, sizeof(client_ip), "unknown");
+      log_warn("New client connected with unknown address family %d", ((struct sockaddr *)&client_addr)->sa_family);
+    }
 
     // Add client to multi-client manager
     int client_id = add_client(client_sock, client_ip, client_port);

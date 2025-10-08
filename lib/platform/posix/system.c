@@ -587,46 +587,7 @@ void platform_install_crash_handler(void) {
   sigaction(SIGBUS, &sa, NULL);  // Bus error
 }
 
-// ============================================================================
-// Safe String Functions
-// ============================================================================
-
-#include <stdarg.h>
-
-int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
-  if (!buffer || buffer_size == 0 || !format) {
-    return -1;
-  }
-
-  va_list args;
-  va_start(args, format);
-
-  // Use standard vsnprintf with size checking
-  int result = vsnprintf(buffer, buffer_size, format, args);
-
-  va_end(args);
-
-  // Ensure null termination (vsnprintf guarantees this but be explicit)
-  buffer[buffer_size - 1] = '\0';
-
-  return result;
-}
-
-int safe_fprintf(FILE *stream, const char *format, ...) {
-  if (!stream || !format) {
-    return -1;
-  }
-
-  va_list args;
-  va_start(args, format);
-
-  // Use standard vfprintf
-  int result = vfprintf(stream, format, args);
-
-  va_end(args);
-
-  return result;
-}
+// Safe string functions are defined in platform/posix/string.c
 
 // ============================================================================
 // Safe Memory Functions

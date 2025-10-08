@@ -11,6 +11,7 @@
 #include "../ascii.h"
 #include "image2ascii/output_buffer.h"
 #include "avx2.h"
+#include "util/math.h"
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 

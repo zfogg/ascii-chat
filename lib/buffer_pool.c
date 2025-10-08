@@ -2,6 +2,7 @@
 #include "common.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
+#include "util/format.h"
 #include <stdlib.h>
 #include <string.h>
 

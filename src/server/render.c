@@ -170,6 +170,7 @@
 #include "packet_queue.h"
 #include "mixer.h"
 #include "audio.h"
+#include "util/format.h"
 
 // Global client manager lock for thread-safe access
 extern rwlock_t g_client_manager_rwlock;

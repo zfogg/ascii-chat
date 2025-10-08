@@ -1297,40 +1297,52 @@ else()
 endif()
 
 # =============================================================================
-# Source Files (matching Makefile structure)
+# Modular Library Architecture
+# =============================================================================
+#
+# ASCII-Chat is organized into focused, independent modules for:
+# - Faster incremental builds (only rebuild changed modules)
+# - Better code organization (clear module boundaries)
+# - Easier testing (link only what you need)
+# - Optional unified library for external projects
+#
+# Module dependency tree:
+#   ascii-chat-util       (no dependencies - foundation)
+#   ascii-chat-platform   (depends on: util)
+#   ascii-chat-crypto     (depends on: util, platform)
+#   ascii-chat-simd       (depends on: util)
+#   ascii-chat-video      (depends on: util, platform, simd)
+#   ascii-chat-audio      (depends on: util, platform)
+#   ascii-chat-network    (depends on: util, platform, crypto)
+#   ascii-chat-core       (depends on: all above)
+#
 # =============================================================================
 
-# Common library sources (matching actual files in lib/)
-set(LIB_COMMON_SRCS
-    lib/common.c
-    lib/logging.c
-    lib/options.c
-    lib/network.c
-    lib/packet_queue.c
-    lib/buffer_pool.c
-    lib/hashtable.c
-    lib/ringbuffer.c
-    lib/video_frame.c
-    lib/compression.c
-    lib/crc32.c
+# =============================================================================
+# Module 1: Utilities (ultra-stable - changes rarely)
+# =============================================================================
+set(UTIL_SRCS
+    lib/util/format.c
+    lib/util/parsing.c
+    lib/util/path.c
+    lib/util/math.c
+    lib/util/ip.c
+    lib/util/aspect_ratio.c
+)
+
+# =============================================================================
+# Module 2: Cryptography (stable - changes monthly)
+# =============================================================================
+set(CRYPTO_SRCS
     lib/crypto/crypto.c
     lib/crypto/keys.c
     lib/crypto/known_hosts.c
     lib/crypto/handshake.c
-    lib/mixer.c
-    lib/audio.c
-    lib/image2ascii/image.c
-    lib/image2ascii/output_buffer.c
-    lib/aspect_ratio.c
-    lib/image2ascii/ascii.c
-    lib/ansi_fast.c
-    lib/lock_debug.c
-    lib/os/webcam.c
-    lib/palette.c
-    lib/utf8.c
 )
 
-# Platform-specific sources (matching Makefile platform detection)
+# =============================================================================
+# Module 3: Platform Abstraction (stable - changes monthly)
+# =============================================================================
 set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
 )
@@ -1414,148 +1426,331 @@ if(ENABLE_SIMD_SVE)
     set_source_files_properties(lib/image2ascii/simd/sve.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve")
 endif()
 
-# Combine all library sources
-set(LIB_SRCS
-    ${LIB_COMMON_SRCS}
-    ${PLATFORM_SRCS}
-    ${SIMD_SRCS}
+# =============================================================================
+# Module 4: SIMD (performance-critical - changes weekly)
+# =============================================================================
+# (Already defined above at line 1394)
+
+# =============================================================================
+# Module 5: Video Processing (changes weekly)
+# =============================================================================
+set(VIDEO_SRCS
+    lib/image2ascii/image.c
+    lib/image2ascii/output_buffer.c
+    lib/image2ascii/ascii.c
+    lib/ansi_fast.c
+    lib/palette.c
+    lib/utf8.c
+    lib/video_frame.c
+    lib/os/webcam.c
+)
+
+# Platform-specific webcam sources already added to PLATFORM_SRCS
+# (webcam_avfoundation.m, webcam_v4l2.c, webcam_mediafoundation.c)
+
+# =============================================================================
+# Module 6: Audio Processing (changes weekly)
+# =============================================================================
+set(AUDIO_SRCS
+    lib/audio.c
+    lib/mixer.c
+    lib/ringbuffer.c
 )
 
 # =============================================================================
-# Create Library
+# Module 7: Network (changes weekly)
+# =============================================================================
+set(NETWORK_SRCS
+    lib/network.c
+    lib/packet_queue.c
+    lib/buffer_pool.c
+    lib/hashtable.c
+    lib/compression.c
+    lib/crc32.c
+)
+
+# =============================================================================
+# Module 8: Core Application (changes daily)
+# =============================================================================
+set(CORE_SRCS
+    lib/common.c
+    lib/logging.c
+    lib/options.c
+    lib/lock_debug.c
+)
+
+# =============================================================================
+# Create Modular Libraries
 # =============================================================================
 
-add_library(ascii-chat-lib STATIC ${LIB_SRCS})
+# Helper macro to create a module with common settings
+macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
+    add_library(${MODULE_NAME} STATIC ${MODULE_SRCS})
 
-# Regenerate version header before building library
-add_dependencies(ascii-chat-lib generate_version)
+    # Version dependency
+    add_dependencies(${MODULE_NAME} generate_version)
 
-# Include generated version header
-target_include_directories(ascii-chat-lib PUBLIC ${CMAKE_BINARY_DIR}/generated)
+    # Include paths
+    target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_BINARY_DIR}/generated)
 
-# Define the project source root for logging (so relative paths work regardless of repo name)
-target_compile_definitions(ascii-chat-lib PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
+    # Project source root for logging
+    target_compile_definitions(${MODULE_NAME} PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
 
-# Define MI_DEBUG for our targets only (not mimalloc's build) to avoid macro redefinition warnings
-if(DEFINED MIMALLOC_DEBUG_LEVEL)
-    target_compile_definitions(ascii-chat-lib PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
-endif()
+    # MI_DEBUG for mimalloc
+    if(DEFINED MIMALLOC_DEBUG_LEVEL)
+        target_compile_definitions(${MODULE_NAME} PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
+    endif()
 
-# Define USE_MUSL flag for conditional compilation when using musl libc
-if(USE_MUSL)
-    target_compile_definitions(ascii-chat-lib PRIVATE USE_MUSL=1)
-endif()
+    # Musl flag
+    if(USE_MUSL)
+        target_compile_definitions(${MODULE_NAME} PRIVATE USE_MUSL=1)
+    endif()
+endmacro()
 
-# Link library dependencies (matching Makefile linking order)
+# -----------------------------------------------------------------------------
+# Module 1: Utilities (no dependencies)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
+
+# -----------------------------------------------------------------------------
+# Module 2: Platform Abstraction (depends on: util)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
+target_link_libraries(ascii-chat-platform ascii-chat-util)
+
+# Platform-specific system libraries
 if(WIN32)
-    target_link_libraries(ascii-chat-lib
+    target_link_libraries(ascii-chat-platform
         ${WS2_32_LIB}
         ${USER32_LIB}
         ${ADVAPI32_LIB}
         ${DBGHELP_LIB}
-        ${MF_LIB}
-        ${MFPLAT_LIB}
-        ${MFREADWRITE_LIB}
-        ${MFUUID_LIB}
-        ${OLE32_LIB}
-        ${PORTAUDIO_LIBRARIES}
-        ${ZLIB_LIBRARIES}
-        ${LIBSODIUM_LIBRARIES}
     )
-
-    # Add BearSSL if available
-    if(BEARSSL_FOUND)
-        target_link_libraries(ascii-chat-lib ${BEARSSL_LIBRARIES})
-        target_include_directories(ascii-chat-lib PRIVATE ${BEARSSL_INCLUDE_DIRS})
-    endif()
-
-    # Link mimalloc for Windows
-    if(USE_MIMALLOC)
-        target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
-    endif()
 else()
-    # Build LDFLAGS systematically (matches Makefile logic)
-    set(PLATFORM_LIBS)
-
     if(PLATFORM_DARWIN)
-        list(APPEND PLATFORM_LIBS
+        target_link_libraries(ascii-chat-platform
             ${FOUNDATION_FRAMEWORK}
             ${AVFOUNDATION_FRAMEWORK}
             ${COREMEDIA_FRAMEWORK}
             ${COREVIDEO_FRAMEWORK}
         )
     elseif(PLATFORM_LINUX)
-        list(APPEND PLATFORM_LIBS
-            ${CMAKE_THREAD_LIBS_INIT}
-        )
-
-        # Add JACK if available (matching Makefile)
-        # Skip JACK for musl static builds - it's complex and optional
-        if(JACK_FOUND AND NOT USE_MUSL)
-            list(APPEND PLATFORM_LIBS ${JACK_LIBRARIES})
-        endif()
-    endif()
-
-    # Check if pkg-config already provides pthread (matches Makefile)
-    string(FIND "${ZLIB_LDFLAGS};${LIBSODIUM_LDFLAGS};${PORTAUDIO_LDFLAGS}" "-lpthread" PTHREAD_PROVIDED)
-    if(PTHREAD_PROVIDED EQUAL -1)
-        find_package(Threads REQUIRED)
-        list(APPEND PLATFORM_LIBS ${CMAKE_THREAD_LIBS_INIT})
-    endif()
-
-    # Add unwind library if using Homebrew LLVM (to avoid duplicate -lunwind flags)
-    # Only add if not already in LDFLAGS environment variable
-    if(DEFINED HOMEBREW_LLVM_LIBS)
-        if(DEFINED ENV{LDFLAGS} AND "$ENV{LDFLAGS}" MATCHES "-lunwind")
-            message(STATUS "Skipping -lunwind (already in LDFLAGS environment variable)")
-        elseif(CMAKE_EXE_LINKER_FLAGS MATCHES "-lunwind")
-            message(STATUS "Skipping -lunwind (already in CMAKE_EXE_LINKER_FLAGS)")
-        else()
-            list(APPEND PLATFORM_LIBS ${HOMEBREW_LLVM_LIBS})
-        endif()
-    endif()
-
-    # When building with musl, don't add PortAudio to the library
-    # It will be linked only to the client
-    if(USE_MUSL)
-        # Enable function/data sections for dead code elimination
-        target_compile_options(ascii-chat-lib PRIVATE -ffunction-sections -fdata-sections)
-
-        # Use musl-built static libraries (no audio libraries)
-        target_link_libraries(ascii-chat-lib
-            ${MUSL_PREFIX}/lib/libsodium.a
-            ${MUSL_PREFIX}/lib/libz.a
-            ${MUSL_PREFIX}/lib/libexecinfo.a
-            m
-            ${CMAKE_THREAD_LIBS_INIT}
-        )
-        if(USE_MIMALLOC)
-            target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
-        endif()
-        # Add dependency on libexecinfo
-        add_dependencies(ascii-chat-lib libexecinfo-musl)
-    else()
-        # Standard glibc build includes all libraries
-        target_link_libraries(ascii-chat-lib
-            ${ZLIB_LIBRARIES}
-            ${LIBSODIUM_LIBRARIES}
-            ${PORTAUDIO_LIBRARIES}
-            ${PLATFORM_LIBS}
-            m  # math library
-        )
-
-        # Add BearSSL if available
-        if(BEARSSL_FOUND)
-            target_link_libraries(ascii-chat-lib ${BEARSSL_LIBRARIES})
-            target_include_directories(ascii-chat-lib PRIVATE ${BEARSSL_INCLUDE_DIRS})
-        endif()
-
-        # Link mimalloc for Unix/macOS/Linux
-        if(USE_MIMALLOC)
-            target_link_libraries(ascii-chat-lib ${MIMALLOC_LIBRARIES})
-        endif()
+        target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
     endif()
 endif()
+
+# -----------------------------------------------------------------------------
+# Module 3: Cryptography (depends on: util, platform)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-crypto "${CRYPTO_SRCS}")
+target_link_libraries(ascii-chat-crypto
+    ascii-chat-util
+    ascii-chat-platform
+    ${LIBSODIUM_LIBRARIES}
+)
+
+# Add BearSSL if available
+if(BEARSSL_FOUND)
+    target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
+    target_include_directories(ascii-chat-crypto PRIVATE ${BEARSSL_INCLUDE_DIRS})
+endif()
+
+# -----------------------------------------------------------------------------
+# Module 4: SIMD (depends on: util)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
+target_link_libraries(ascii-chat-simd ascii-chat-util)
+
+# -----------------------------------------------------------------------------
+# Module 5: Video Processing (depends on: util, platform, simd)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
+target_link_libraries(ascii-chat-video
+    ascii-chat-util
+    ascii-chat-platform
+    ascii-chat-simd
+)
+
+# -----------------------------------------------------------------------------
+# Module 6: Audio Processing (depends on: util, platform)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
+target_link_libraries(ascii-chat-audio
+    ascii-chat-util
+    ascii-chat-platform
+    ${PORTAUDIO_LIBRARIES}
+)
+
+# JACK support for Linux (optional)
+if(NOT WIN32 AND PLATFORM_LINUX AND JACK_FOUND AND NOT USE_MUSL)
+    target_link_libraries(ascii-chat-audio ${JACK_LIBRARIES})
+endif()
+
+# -----------------------------------------------------------------------------
+# Module 7: Network (depends on: util, platform, crypto)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+target_link_libraries(ascii-chat-network
+    ascii-chat-util
+    ascii-chat-platform
+    ascii-chat-crypto
+    ${ZLIB_LIBRARIES}
+)
+
+# -----------------------------------------------------------------------------
+# Module 8: Core Application (depends on: all above)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
+target_link_libraries(ascii-chat-core
+    ascii-chat-util
+    ascii-chat-platform
+    ascii-chat-crypto
+    ascii-chat-simd
+    ascii-chat-video
+    ascii-chat-audio
+    ascii-chat-network
+    ${ZLIB_LIBRARIES}
+    m  # math library
+)
+
+# Special musl handling for libexecinfo
+if(USE_MUSL)
+    target_link_libraries(ascii-chat-core ${MUSL_PREFIX}/lib/libexecinfo.a)
+    add_dependencies(ascii-chat-core libexecinfo-musl)
+endif()
+
+# mimalloc for core
+if(USE_MIMALLOC)
+    target_link_libraries(ascii-chat-core ${MIMALLOC_LIBRARIES})
+endif()
+
+# =============================================================================
+# Unified Library Targets (OPTIONAL - not built by default)
+# =============================================================================
+# These combine all modules into a single library for external projects.
+# Build with: cmake --build build --target ascii-chat-static
+#         or: cmake --build build --target ascii-chat-shared
+# =============================================================================
+
+# Shared unified library (libasciichat.so / libasciichat.dylib / asciichat.dll)
+# Links all module static libraries together without recompiling source code
+# macOS note: We use -Wl,-all_load to force inclusion of all symbols from static libs
+# Linux note: We use -Wl,--whole-archive to force inclusion of all symbols
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/empty.c "// Empty file for shared library\n")
+add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL ${CMAKE_CURRENT_BINARY_DIR}/empty.c)
+set_target_properties(ascii-chat-shared PROPERTIES OUTPUT_NAME "asciichat")
+
+# Link all module libraries
+if(APPLE)
+    target_link_libraries(ascii-chat-shared PRIVATE
+        -Wl,-all_load
+        ascii-chat-util ascii-chat-platform ascii-chat-crypto ascii-chat-simd
+        ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+    )
+else()
+    target_link_libraries(ascii-chat-shared PRIVATE
+        -Wl,--whole-archive
+        ascii-chat-util ascii-chat-platform ascii-chat-crypto ascii-chat-simd
+        ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+        -Wl,--no-whole-archive
+    )
+endif()
+
+# Add system library dependencies
+if(WIN32)
+    target_link_libraries(ascii-chat-shared PRIVATE
+        ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
+        ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
+        ${PORTAUDIO_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+    )
+    if(BEARSSL_FOUND)
+        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    endif()
+    if(USE_MIMALLOC)
+        target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+    endif()
+else()
+    target_link_libraries(ascii-chat-shared PRIVATE
+        ${PORTAUDIO_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
+    )
+    if(BEARSSL_FOUND)
+        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    endif()
+    if(PLATFORM_DARWIN)
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
+            ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
+        )
+    elseif(PLATFORM_LINUX)
+        target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+        if(JACK_FOUND AND NOT USE_MUSL)
+            target_link_libraries(ascii-chat-shared PRIVATE ${JACK_LIBRARIES})
+        endif()
+    endif()
+    if(USE_MUSL)
+        target_link_libraries(ascii-chat-shared PRIVATE ${MUSL_PREFIX}/lib/libexecinfo.a)
+        add_dependencies(ascii-chat-shared libexecinfo-musl)
+    endif()
+    if(USE_MIMALLOC)
+        target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+    endif()
+endif()
+
+# Static unified library (libasciichat.a)
+# Extracts object files from module .a files and combines them without recompiling
+# macOS uses libtool -static, Linux uses ar MRI script
+if(APPLE)
+    # macOS: Use libtool to combine static libraries
+    add_custom_target(ascii-chat-static
+        COMMAND libtool -static -o ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+            $<TARGET_FILE:ascii-chat-util>
+            $<TARGET_FILE:ascii-chat-platform>
+            $<TARGET_FILE:ascii-chat-crypto>
+            $<TARGET_FILE:ascii-chat-simd>
+            $<TARGET_FILE:ascii-chat-video>
+            $<TARGET_FILE:ascii-chat-audio>
+            $<TARGET_FILE:ascii-chat-network>
+            $<TARGET_FILE:ascii-chat-core>
+        DEPENDS
+            ascii-chat-util ascii-chat-platform ascii-chat-crypto ascii-chat-simd
+            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+        COMMENT "Combining module libraries into libasciichat.a (no recompilation)"
+        COMMAND_EXPAND_LISTS
+    )
+else()
+    # Linux/Windows: Use ar MRI script to combine archives
+    add_custom_target(ascii-chat-static
+        COMMAND ${CMAKE_COMMAND} -E echo "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a" > ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-util>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-platform>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-crypto>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-simd>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-video>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-audio>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-network>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-core>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "SAVE" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "END" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        DEPENDS
+            ascii-chat-util ascii-chat-platform ascii-chat-crypto ascii-chat-simd
+            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+        COMMENT "Combining module libraries into libasciichat.a (no recompilation)"
+        COMMAND_EXPAND_LISTS
+    )
+endif()
+
+# Print helpful message about optional targets
+message(STATUS "")
+message(STATUS "=== Modular Library Architecture ===")
+message(STATUS "Individual modules: ascii-chat-util, ascii-chat-platform, ascii-chat-crypto,")
+message(STATUS "                    ascii-chat-simd, ascii-chat-video, ascii-chat-audio,")
+message(STATUS "                    ascii-chat-network, ascii-chat-core")
+message(STATUS "")
+message(STATUS "Optional unified libraries (not built by default):")
+message(STATUS "  Static:  cmake --build build --target ascii-chat-static  → libasciichat.a")
+message(STATUS "  Shared:  cmake --build build --target ascii-chat-shared  → libasciichat.so/.dylib/.dll")
+message(STATUS "")
 
 # =============================================================================
 # Precompiled Headers (Speed up compilation by 20-30%)
@@ -1566,7 +1761,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
     option(USE_PRECOMPILED_HEADERS "Use precompiled headers for faster builds" ON)
 
     if(USE_PRECOMPILED_HEADERS)
-        # Add most commonly included headers as precompiled
+        # Add most commonly included headers as precompiled for the core module
         # Based on analysis: these headers appear in 30+ source files
         #
         # NOTE: We CANNOT use precompiled headers with common.h because it defines
@@ -1575,7 +1770,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
         # system headers like <malloc.h> are included, causing compiler errors.
         #
         # Instead, we precompile only safe headers that don't have macro conflicts.
-        target_precompile_headers(ascii-chat-lib PRIVATE
+        target_precompile_headers(ascii-chat-core PRIVATE
             # Platform abstraction (safe - no conflicting macros)
             lib/platform/abstraction.h
 
@@ -1621,7 +1816,7 @@ if(NOT WIN32)
     endif()
 endif()
 
-target_link_libraries(ascii-chat-server ascii-chat-lib)
+target_link_libraries(ascii-chat-server ascii-chat-core)
 
 # Strip symbols in Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -1667,7 +1862,7 @@ add_executable(ascii-chat-client
     src/client/audio.c
     src/client/keepalive.c
 )
-target_link_libraries(ascii-chat-client ascii-chat-lib)
+target_link_libraries(ascii-chat-client ascii-chat-core)
 
 # Strip symbols in Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

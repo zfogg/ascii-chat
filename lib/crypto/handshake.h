@@ -37,7 +37,8 @@ typedef struct {
   char expected_server_key[256];    // Expected server key (client only)
 
   // Connection info for known_hosts
-  char server_hostname[256]; // Server hostname
+  char server_hostname[256]; // Server hostname (user-provided)
+  char server_ip[256];       // Server IP address (resolved from connection)
   uint16_t server_port;      // Server port
 
   // Authentication

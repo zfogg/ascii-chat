@@ -17,6 +17,7 @@ extern size_t malloc_usable_size(void *ptr);
 #include "common.h"
 #include "platform/abstraction.h"
 #include "platform/system.h"
+#include "util/util.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -27,105 +28,22 @@ extern size_t malloc_usable_size(void *ptr);
 // Global frame rate variable - can be set via command line
 int g_max_fps = 0; // 0 means use default
 
-void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
-  const double MB = 1024.0 * 1024.0;
-  const double GB = MB * 1024.0;
-  const double TB = GB * 1024.0;
-
-  if ((double)bytes < MB) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%zu B", bytes));
-  } else if ((double)bytes < GB) {
-    double value = (double)bytes / MB;
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f MB", value));
-  } else if ((double)bytes < TB) {
-    double value = (double)bytes / GB;
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f GB", value));
-  } else {
-    double value = (double)bytes / TB;
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f TB", value));
-  }
-}
-
 /* ============================================================================
- * Safe Parsing Functions using strtoul
+ * Shutdown Check System Implementation
  * ============================================================================
  */
 
-int safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
-  if (!message || !width || !height) {
-    return -1;
-  }
+static shutdown_check_fn g_shutdown_callback = NULL;
 
-  // Check if message starts with "SIZE:"
-  if (strncmp(message, "SIZE:", 5) != 0) {
-    return -1;
-  }
-
-  const char *ptr = message + 5; // Skip "SIZE:"
-  char *endptr;
-
-  // Parse first number (width)
-  errno = 0;
-  unsigned long w = strtoul(ptr, &endptr, 10);
-  if (errno != 0 || endptr == ptr || w > UINT_MAX || w == 0) {
-    return -1;
-  }
-
-  // Check for comma separator
-  if (*endptr != ',') {
-    return -1;
-  }
-  ptr = endptr + 1;
-
-  // Parse second number (height)
-  errno = 0;
-  unsigned long h = strtoul(ptr, &endptr, 10);
-  if (errno != 0 || endptr == ptr || h > UINT_MAX || h == 0) {
-    return -1;
-  }
-
-  // Should end with newline or null terminator
-  if (*endptr != '\n' && *endptr != '\0') {
-    return -1;
-  }
-
-  // Additional bounds checking
-  if (w > 65535 || h > 65535) {
-    return -1;
-  }
-
-  *width = (unsigned int)w;
-  *height = (unsigned int)h;
-  return 0;
+void shutdown_register_callback(shutdown_check_fn callback) {
+  g_shutdown_callback = callback;
 }
 
-int safe_parse_audio_message(const char *message, unsigned int *num_samples) {
-  if (!message || !num_samples) {
-    return -1;
+bool shutdown_is_requested(void) {
+  if (g_shutdown_callback == NULL) {
+    return false; // No callback registered, assume not shutting down
   }
-
-  // Check if message starts with "AUDIO:"
-  if (strncmp(message, "AUDIO:", 6) != 0) {
-    return -1;
-  }
-
-  const char *ptr = message + 6; // Skip "AUDIO:"
-  char *endptr;
-
-  // Parse number
-  errno = 0;
-  unsigned long samples = strtoul(ptr, &endptr, 10);
-  if (errno != 0 || endptr == ptr || samples > UINT_MAX || samples == 0) {
-    return -1;
-  }
-
-  // Should end with newline or null terminator
-  if (*endptr != '\n' && *endptr != '\0') {
-    return -1;
-  }
-
-  *num_samples = (unsigned int)samples;
-  return 0;
+  return g_shutdown_callback();
 }
 
 /* ============================================================================
@@ -486,83 +404,3 @@ void debug_memory_report(void) {
 }
 
 #endif /* DEBUG_MEMORY */
-
-/* ============================================================================
- * Path Utilities (shared between logging, backtraces, debugging, etc.)
- * ============================================================================ */
-
-/* Helper function for slash-agnostic path matching (handles Windows/Unix path separators) */
-static bool path_char_match(char a, char b) {
-  /* Treat both / and \ as equivalent */
-  if ((a == '/' || a == '\\') && (b == '/' || b == '\\'))
-    return true;
-  return a == b;
-}
-
-/* Helper function to find source root in path (slash-agnostic for Windows compatibility) */
-static const char *find_source_root(const char *file, const char *source_root) {
-  if (!file || !source_root)
-    return NULL;
-
-  size_t root_len = strlen(source_root);
-  const char *file_pos = file;
-
-  /* Search for source_root in file path, treating / and \ as equivalent */
-  while (*file_pos) {
-    size_t i;
-    for (i = 0; i < root_len && file_pos[i]; i++) {
-      if (!path_char_match(file_pos[i], source_root[i]))
-        break;
-    }
-
-    /* Found a match if we compared all characters of source_root */
-    if (i == root_len) {
-      /* Verify it's followed by a path separator or end of string */
-      char next = file_pos[i];
-      if (next == '\0' || next == '/' || next == '\\')
-        return file_pos;
-    }
-
-    file_pos++;
-  }
-
-  return NULL;
-}
-
-const char *extract_project_relative_path(const char *file) {
-  if (!file)
-    return "unknown";
-
-#ifdef PROJECT_SOURCE_ROOT
-  /* Use the dynamically defined source root */
-  const char *source_root = PROJECT_SOURCE_ROOT;
-  const char *root_pos = find_source_root(file, source_root);
-
-  if (root_pos) {
-    /* Move past the source root */
-    const char *after_root = root_pos + strlen(source_root);
-
-    /* Skip the path separator if present */
-    if (*after_root == '/' || *after_root == '\\') {
-      after_root++;
-    }
-
-    /* Return the path relative to repo root */
-    if (*after_root != '\0') {
-      return after_root;
-    }
-  }
-#endif
-
-  /* Fallback: try to find just the filename */
-  const char *last_slash = strrchr(file, '/');
-  const char *last_backslash = strrchr(file, '\\');
-  const char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
-
-  if (last_sep) {
-    return last_sep + 1;
-  }
-
-  /* Last resort: return the original path */
-  return file;
-}

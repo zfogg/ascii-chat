@@ -419,9 +419,56 @@ After `HANDSHAKE_COMPLETE`, both sides:
 
 ## Key Management
 
+### Design Principle: Separation of Identity and Encryption
+
+**Core architecture decision:** SSH keys are ONLY used for authentication (identity proof), NEVER for encryption.
+
+**Why this matters:**
+
+1. **Forward Secrecy is Critical**
+   - If your SSH key is compromised **today**, an attacker should NOT be able to decrypt conversations from **last week**
+   - Ephemeral keys provide this guarantee: each session has unique encryption keys that are destroyed after use
+   - Using long-term keys for encryption breaks forward secrecy (recorded traffic can be decrypted later)
+
+2. **Consistency Across Environments**
+   - SSH agent availability varies by system (Unix-only, requires configuration)
+   - Users should get **identical security** regardless of environment
+   - Old design: SSH agent = forward secrecy, in-memory = no forward secrecy ❌
+   - New design: Both modes = forward secrecy ✅
+
+3. **Matches SSH Protocol Design**
+   - SSH itself uses this exact model: long-term host/user keys for identity, ephemeral DH keys for encryption
+   - Proven design with 30+ years of security analysis
+   - No need to reinvent the wheel
+
+**How it works:**
+
+```
+Handshake Protocol:
+  1. Server generates ephemeral X25519 keypair (random, per-connection)
+  2. Server signs ephemeral public key with long-term Ed25519 key
+  3. Server sends: [ephemeral_pk][identity_pk][signature]
+  4. Client verifies signature (proves server has identity key)
+  5. Client uses ephemeral_pk for encryption (forward secrecy)
+```
+
+The signature **cryptographically binds** the ephemeral encryption key to the long-term identity key. This provides:
+- ✅ Strong authentication (server must possess identity private key)
+- ✅ Forward secrecy (ephemeral keys are destroyed after session)
+- ✅ MITM protection (signature prevents key substitution attacks)
+
+**Alternative considered and rejected:**
+
+Using Ed25519→X25519 conversion for encryption would be simpler code-wise, but:
+- ❌ Breaks forward secrecy (recorded traffic can be decrypted if key is compromised later)
+- ❌ Inconsistent security (SSH agent mode would still need ephemeral keys)
+- ❌ Deviates from SSH protocol best practices
+
+**Result:** All modes use ephemeral encryption keys. SSH keys are authentication-only.
+
 ### SSH Ed25519 Keys
 
-ASCII-Chat can use existing SSH Ed25519 keys for both **authentication** and **encryption**:
+ASCII-Chat can use existing SSH Ed25519 keys for **authentication** (identity proof via signatures):
 
 ```bash
 # Server: Use SSH private key for identity
@@ -437,21 +484,225 @@ ascii-chat-client --server-key ~/.ssh/server_id_ed25519.pub
 - Encrypted private keys (prompts for passphrase)
 
 **Ed25519 to X25519 conversion:**
+
+ASCII-Chat can convert Ed25519 keys to X25519 format for compatibility, but **does NOT use the converted key for encryption**:
+
 ```c
-// Public key: Ed25519 (signing) → X25519 (DH)
+// Public key: Ed25519 (signing) → X25519 (for compatibility only)
 crypto_sign_ed25519_pk_to_curve25519(x25519_pk, ed25519_pk);
 
-// Private key: Ed25519 (signing) → X25519 (DH)
+// Private key: Ed25519 (signing) → X25519 (NEVER used for encryption)
 crypto_sign_ed25519_sk_to_curve25519(x25519_sk, ed25519_sk);
 ```
 
 **Why this works:**
 Both Ed25519 and X25519 use the same underlying curve (Curve25519). Ed25519 uses the Edwards form for signing, X25519 uses the Montgomery form for DH. libsodium provides safe conversion functions.
 
-**Security note:** The same key is used for both signing and DH. This is safe because:
-1. The signature operation (`crypto_sign_detached()`) uses a different derivation path than DH
-2. The signature proves possession of the Ed25519 private key
-3. The X25519 DH uses a mathematically independent operation
+**Security architecture:**
+- ✅ **SSH keys used for:** Identity authentication (Ed25519 signatures only)
+- ✅ **Ephemeral keys used for:** Encryption (X25519 Diffie-Hellman)
+- ✅ **Result:** Forward secrecy + strong authentication
+
+The SSH key proves identity through signatures. The ephemeral keys provide encryption with forward secrecy. The signature binds them together cryptographically, preventing MITM attacks while maintaining forward secrecy.
+
+### SSH Agent Integration
+
+ASCII-Chat supports **SSH agent** for encrypted private keys, allowing password-free authentication when your SSH key is already loaded in the agent.
+
+**How it works:**
+
+When you provide an encrypted SSH key via `--key`, ASCII-Chat automatically checks if that specific key is available in the SSH agent:
+
+```bash
+# 1. Start SSH agent (if not already running)
+eval "$(ssh-agent -s)"
+
+# 2. Add your encrypted key to the agent (prompts for password ONCE)
+ssh-add ~/.ssh/id_ed25519
+Enter passphrase for /Users/you/.ssh/id_ed25519: [password]
+Identity added: /Users/you/.ssh/id_ed25519
+
+# 3. Start server - uses agent, NO password prompt!
+ascii-chat-server --key ~/.ssh/id_ed25519
+INFO: Using SSH agent for this key (agent signing + ephemeral encryption)
+INFO: SSH agent mode: Will use agent for identity signing, ephemeral X25519 for encryption
+```
+
+**Key detection algorithm:**
+
+```c
+// lib/crypto/keys.c:823-844
+// When parsing an encrypted private key:
+if (is_encrypted) {
+  // Extract the public key from the encrypted key file
+  uint8_t embedded_public_key[32];
+
+  // Check if THIS SPECIFIC key is in SSH agent (not just any Ed25519 key)
+  bool ssh_agent_has_key = ssh_agent_has_specific_key(embedded_public_key);
+
+  if (ssh_agent_has_key) {
+    // Mode 1: SSH agent mode
+    key_out->type = KEY_TYPE_ED25519;
+    key_out->use_ssh_agent = true;
+    memcpy(key_out->public_key, embedded_public_key, 32);
+
+    // Use agent for identity signing, ephemeral X25519 for encryption
+    return 0;
+  } else {
+    // Mode 2: Password prompt (agent doesn't have this key)
+    // Prompts for passphrase and decrypts key
+  }
+}
+```
+
+**SSH agent signing protocol:**
+
+When `use_ssh_agent = true`, all Ed25519 signatures are delegated to the SSH agent:
+
+```c
+// lib/crypto/keys.c:1318-1494
+int ed25519_sign_message(const private_key_t *key, const uint8_t *message,
+                         size_t message_len, uint8_t signature[64]) {
+  if (key->use_ssh_agent) {
+    // 1. Connect to SSH agent Unix socket ($SSH_AUTH_SOCK)
+    int agent_fd = connect_to_agent();
+
+    // 2. Build SSH_AGENTC_SIGN_REQUEST (type 13)
+    //    [pubkey_blob][data_to_sign][flags]
+    uint8_t request[...];
+    send(agent_fd, request);
+
+    // 3. Receive SSH_AGENT_SIGN_RESPONSE (type 14)
+    //    [signature_blob: "ssh-ed25519" + 64-byte signature]
+    uint8_t response[...];
+    recv(agent_fd, response);
+
+    // 4. Extract 64-byte Ed25519 signature
+    memcpy(signature, response + offset, 64);
+    return 0;
+  } else {
+    // Use in-memory Ed25519 key to sign
+    crypto_sign_detached(signature, NULL, message, message_len, key->key.ed25519);
+    return 0;
+  }
+}
+```
+
+**Security architecture:**
+
+ASCII-Chat uses a **separation of concerns** design where SSH keys are ONLY used for authentication, never encryption:
+
+| Component | SSH Agent Mode | In-Memory Mode |
+|-----------|----------------|----------------|
+| **Identity signing** | SSH agent (Ed25519) | In-memory Ed25519 |
+| **Encryption keys** | Ephemeral X25519 | Ephemeral X25519 |
+| **Private key storage** | None (agent-only) | Decrypted in memory |
+| **Password required** | No (once in agent) | Yes (every restart) |
+| **Forward secrecy** | ✅ YES | ✅ YES |
+
+**Why always ephemeral encryption?**
+
+Both modes use ephemeral X25519 keys for encryption to provide **forward secrecy**:
+
+1. **Identity authentication:** SSH key proves identity via Ed25519 signature
+2. **Encryption:** Ephemeral X25519 keys generated fresh per connection
+3. **Cryptographic binding:** Signature covers ephemeral key, proving possession of both
+4. **Forward secrecy:** If SSH key is compromised later, past sessions remain secure
+
+This matches SSH protocol design: long-term keys for identity, ephemeral keys for encryption.
+
+**Handshake signature binding:**
+
+```c
+// Server proves: "I possess identity_Ed25519 AND I'm using ephemeral_X25519"
+Server sends: [ephemeral_X25519:32][identity_Ed25519:32][signature:64]
+  where: signature = sign(identity_private_key, ephemeral_X25519)
+```
+
+The signature **cryptographically binds** the ephemeral encryption key to the long-term identity key, preventing MITM attacks while maintaining forward secrecy.
+
+**Fallback behavior:**
+
+```bash
+# If key is encrypted but NOT in SSH agent:
+ascii-chat-server --key ~/.ssh/id_ed25519
+Encrypted private key detected (cipher: aes256-ctr)
+Key not in SSH agent, will prompt for password
+Enter passphrase for /Users/you/.ssh/id_ed25519: [password]
+Successfully decrypted key, parsing...
+
+# If SSH agent isn't running:
+ascii-chat-server --key ~/.ssh/id_ed25519
+ssh_agent_has_specific_key: SSH_AUTH_SOCK not set
+Key not in SSH agent, will prompt for password
+```
+
+**Environment variable:**
+
+SSH agent communication requires the `SSH_AUTH_SOCK` environment variable:
+
+```bash
+# Check if SSH agent is running
+echo $SSH_AUTH_SOCK
+/tmp/ssh-XXXXXX/agent.12345
+
+# If not set, start agent:
+eval "$(ssh-agent -s)"
+```
+
+**Security benefits:**
+
+- ✅ **Password once per session** - Add key to agent once, use many times
+- ✅ **No plaintext passwords** - Agent handles passphrase, applications never see it
+- ✅ **Process isolation** - Private key never leaves agent process
+- ✅ **Forward secrecy** - Ephemeral X25519 keys per connection
+- ✅ **Transparent fallback** - Works with or without agent
+
+**Limitations:**
+
+- ❌ **Unix-only** - SSH agent uses Unix domain sockets (not available on Windows)
+- ❌ **Signing only** - Cannot use agent for X25519 DH operations
+- ❌ **Session-scoped** - Keys removed from agent on logout/reboot
+
+**Implementation details:**
+
+The specific key detection uses `ssh-add -L` to list all keys in the agent, then compares the embedded public key from the encrypted file against each agent key:
+
+```c
+// lib/crypto/keys.c:438-524
+static bool ssh_agent_has_specific_key(const uint8_t ed25519_public_key[32]) {
+  // 1. List all keys in agent
+  FILE *fp = popen("ssh-add -L 2>/dev/null", "r");
+
+  // 2. Parse each "ssh-ed25519 <base64> comment" line
+  while (fgets(line, sizeof(line), fp)) {
+    if (!strstr(line, "ssh-ed25519")) continue;
+
+    // 3. Decode base64 to get SSH public key blob
+    base64_decode_ssh_key(base64_buf, &decoded, &decoded_len);
+
+    // 4. Extract 32-byte Ed25519 key (last 32 bytes of blob)
+    uint8_t *agent_key = decoded + decoded_len - 32;
+
+    // 5. Compare with our target key
+    if (memcmp(agent_key, ed25519_public_key, 32) == 0) {
+      return true;  // MATCH!
+    }
+  }
+
+  return false;  // Not found in agent
+}
+```
+
+**Code locations:**
+- `lib/crypto/keys.h:37` - `bool use_ssh_agent` flag in `private_key_t`
+- `lib/crypto/keys.c:438-524` - `ssh_agent_has_specific_key()` detection
+- `lib/crypto/keys.c:820-844` - Encrypted key parsing with agent check
+- `lib/crypto/keys.c:502-690` - `ed25519_sign_message()` with agent protocol
+- `lib/crypto/keys.c:1546-1580` - `crypto_setup_ssh_key_for_handshake()` architecture
+
+**Security guarantee:**
+Both SSH agent mode and in-memory mode provide **identical forward secrecy** - ephemeral X25519 keys are used for encryption in all cases. The only difference is where signatures come from (agent vs in-memory).
 
 ### GitHub/GitLab Key Fetching
 
@@ -509,27 +760,87 @@ Install GPG:
 Or use SSH keys: --key ~/.ssh/id_ed25519
 ```
 
-### Known Hosts (SSH-Style)
+### Known Hosts (IP-Based TOFU)
 
 **File location:** `~/.ascii-chat/known_hosts`
 
-**Format** (same as SSH):
+**Format:**
 ```
 # ASCII-Chat Known Hosts
-hostname:port ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFoo... server-comment
-192.168.1.100:27224 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBar... homeserver
-example.com:8080 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBaz... remote-server
+# Format: IP:port x25519 <hex-key> [comment]
+# IPv4 example:
+192.168.1.100:27224 x25519 a1b2c3d4e5f6... homeserver
+10.0.0.50:8080 x25519 1234567890ab... office-server
+
+# IPv6 example (bracket notation):
+[2001:db8::1]:27224 x25519 fedcba098765... ipv6-server
+[::1]:27224 x25519 abcdef123456... localhost-ipv6
+[::ffff:192.0.2.1]:8080 x25519 9876543210fe... ipv4-mapped
+```
+
+**Security Design: IP Binding (Not Hostnames)**
+
+ASCII-Chat binds server keys to **resolved IP addresses**, not DNS hostnames, for critical security reasons:
+
+**Why IP addresses?**
+1. **DNS Hijacking Prevention:**
+   - DNS responses can be spoofed or hijacked
+   - Attacker points `example.com` → malicious server IP
+   - With hostname binding: Attacker's server key accepted as `example.com`'s key ❌
+   - With IP binding: Client connects to attacker's IP, which won't match trusted IP ✅
+
+2. **Cryptographic Binding:**
+   - TCP connection is to a specific IP address, not a hostname
+   - Hostname is resolved once via `getaddrinfo()`, then IP is used
+   - Binding key to IP matches actual network connection
+
+3. **IPv6 Support:**
+   - Dual-stack servers accept IPv4 (`192.0.2.1`) and IPv6 (`2001:db8::1`)
+   - Each IP:port combination gets its own key binding
+   - Bracket notation `[::1]:8080` clearly distinguishes IPv6
+
+**Example attack scenario (hostname binding):**
+```
+1. User connects to example.com:27224
+2. DNS resolves to 203.0.113.50 (attacker-controlled)
+3. Attacker's server presents key_A
+4. Client saves: "example.com:27224 → key_A"
+5. Later, DNS changes to 198.51.100.25 (legitimate server)
+6. Legitimate server presents key_B
+7. Client sees hostname match, ACCEPTS key_B
+8. No MITM detection! ❌
+```
+
+**With IP binding (current implementation):**
+```
+1. User connects to example.com:27224
+2. DNS resolves to 203.0.113.50
+3. Attacker's server presents key_A
+4. Client saves: "203.0.113.50:27224 → key_A"
+5. Later, example.com resolves to 198.51.100.25
+6. Different IP! No key stored, prompts user
+7. User realizes IP changed, investigates
+8. MITM detected! ✅
 ```
 
 **Behavior:**
-1. **First connection:** If server not in known_hosts, prompt user:
+1. **First connection:** If server IP:port not in known_hosts, prompt user:
    ```
    The authenticity of host '192.168.1.100:27224' can't be established.
    Ed25519 key fingerprint is: SHA256:abc123...
    Are you sure you want to continue connecting (yes/no)? yes
    ```
-2. **Subsequent connections:** Verify server key matches stored key → ABORT if mismatch
-3. **Key change detected:**
+
+2. **IPv6 first connection:**
+   ```
+   The authenticity of host '[2001:db8::1]:27224' can't be established.
+   Ed25519 key fingerprint is: SHA256:def456...
+   Are you sure you want to continue connecting (yes/no)? yes
+   ```
+
+3. **Subsequent connections:** Verify server key matches stored key → ABORT if mismatch
+
+4. **Key change detected:**
    ```
    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
    @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
@@ -537,11 +848,23 @@ example.com:8080 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBaz... remote-server
    IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
 
    Connection ABORTED for security.
-   To remove old key: sed -i '/192.168.1.100:27224/d' ~/.ascii-chat/known_hosts
+   To remove old key: sed -i '/192.168.1.100:27224 /d' ~/.ascii-chat/known_hosts
    ```
 
+**Trade-offs:**
+
+| Aspect | IP Binding (Current) | Hostname Binding (SSH-style) |
+|--------|---------------------|------------------------------|
+| **DNS Hijacking** | ✅ Protected | ❌ Vulnerable |
+| **Server IP Change** | ⚠️ Prompts user (manual verification) | ✅ Transparent |
+| **Dynamic DNS** | ⚠️ New prompt per IP | ✅ Works seamlessly |
+| **Multi-homed Servers** | ⚠️ Separate entry per IP | ✅ Single entry |
+| **Security Model** | Paranoid (explicit trust) | Convenience (implicit trust) |
+
+**Recommendation:** The security benefit of IP binding outweighs the inconvenience of re-verification when server IPs change. For production servers, IP addresses should be stable (static IPs or fixed cloud instances).
+
 **Security model:**
-"Trust on first use" (TOFU) - assumes first connection is legitimate, detects changes thereafter.
+"Trust on first use" (TOFU) with IP binding - assumes first connection to specific IP:port is legitimate, detects any changes in either IP or key thereafter.
 
 ---
 
@@ -1421,6 +1744,100 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx,
 
 ---
 
+### Issue 7: Timing Attack on Public Key Comparisons ⚠️ **CRITICAL**
+
+**Severity:** Critical (side-channel information leakage)
+
+**Description:**
+Public key comparisons used variable-time `memcmp()` instead of constant-time comparison, allowing timing attacks that could leak information about cryptographic keys through side-channel analysis.
+
+**Vulnerability:**
+The standard C library function `memcmp()` returns early on the first byte difference. This creates timing differences that can be measured by an attacker to learn information about the expected key.
+
+```c
+// ❌ WRONG: memcmp() is NOT constant-time
+if (memcmp(server_key, expected_key.key, 32) == 0) {
+  return 1;  // Match
+}
+```
+
+**Attack scenario:**
+```
+Attacker tries different server identity keys:
+
+Attempt 1: Key starts with 0x00... → memcmp() fails on byte 0 → 10ns
+Attempt 2: Key starts with 0xAB... → memcmp() fails on byte 0 → 10ns
+Attempt 3: Key starts with 0xFF... → memcmp() succeeds on byte 0, fails on byte 1 → 11ns ✓
+
+Attacker learns: First byte of expected key is 0xFF
+Repeat for each byte to recover full 32-byte key
+```
+
+**Root cause:**
+Three locations used `memcmp()` for cryptographic key comparisons:
+1. `lib/crypto/handshake.c:194` - Server identity verification during client key exchange
+2. `lib/crypto/handshake.c:363` - Client whitelist verification during server auth challenge
+3. `lib/crypto/known_hosts.c:69` - Known hosts verification (client-side server verification)
+
+**Why this is critical:**
+- Timing attacks are **practical** - Measurable over network with enough samples
+- Leaks information about **expected keys** - Helps attacker forge identity
+- Affects **authentication bypass** - Compromise of identity verification
+- Applicable to **all authentication modes** - SSH keys, whitelists, known_hosts
+
+**Status:** 🟢 **FIXED** - All comparisons now use constant-time `sodium_memcmp()`
+
+**Implementation:**
+All cryptographic key comparisons now use libsodium's constant-time comparison:
+
+```c
+// ✅ CORRECT: sodium_memcmp() is constant-time
+// Compare server's IDENTITY key with expected key (constant-time to prevent timing attacks)
+if (sodium_memcmp(server_identity_key, expected_key.key, 32) != 0) {
+  log_error("Server identity key mismatch - potential MITM attack!");
+  return -1;
+}
+```
+
+**Code locations:**
+- `lib/crypto/handshake.c:194` - ✅ Fixed: Server identity verification
+- `lib/crypto/handshake.c:363` - ✅ Fixed: Client whitelist verification
+- `lib/crypto/known_hosts.c:69` - ✅ Fixed: Known hosts verification
+
+**How `sodium_memcmp()` prevents timing attacks:**
+```c
+// From libsodium source (simplified):
+int sodium_memcmp(const void *b1, const void *b2, size_t len) {
+  const unsigned char *c1 = b1;
+  const unsigned char *c2 = b2;
+  unsigned char d = 0;
+
+  // Always compares ALL bytes, never returns early
+  for (size_t i = 0; i < len; i++) {
+    d |= c1[i] ^ c2[i];
+  }
+
+  return (1 & ((d - 1) >> 8)) - 1;  // Constant-time final comparison
+}
+```
+
+**Benefits of constant-time comparison:**
+- ✅ **No timing variation** - Takes same time regardless of where keys differ
+- ✅ **Cryptographically sound** - Standard practice for key comparison
+- ✅ **libsodium guarantee** - Maintained by crypto experts
+- ✅ **Zero performance cost** - 32-byte comparison is <100ns either way
+
+**Cleanup performed:**
+Removed obsolete duplicate files that contained vulnerable code:
+- `lib/known_hosts.c` - Deleted (contained `memcmp()`, not used in build)
+- `lib/known_hosts.h` - Deleted (duplicate of `lib/crypto/known_hosts.h`)
+
+The build system only compiles `lib/crypto/known_hosts.c` which uses the secure implementation.
+
+**Impact:** Critical vulnerability fixed - All cryptographic key comparisons now resistant to timing attacks
+
+---
+
 ### Summary of Required Fixes
 
 | Issue | Severity | Fix Difficulty | Status |
@@ -1431,6 +1848,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx,
 | No Whitelist Revocation | 🟢 Low | N/A | 🟢 **Won't Fix** - Out of scope, manual restart acceptable |
 | TOFU Weakness | 🟢 Info | N/A | 🟢 **Acceptable** - Inherent to TOFU model |
 | Code Duplication | 🟢 Low | Low | ✅ **FIXED** - Shared authentication functions |
+| Timing Attack on Keys | 🔴 Critical | Low | ✅ **FIXED** - Constant-time `sodium_memcmp()` |
 
 ### Recommendations
 

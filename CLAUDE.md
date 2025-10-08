@@ -379,6 +379,62 @@ The test runner uses a sophisticated worker pool architecture:
 - File locking for thread-safe JUnit XML generation
 - Detailed failure reporting with last 50 lines of output
 
+### Criterion Parameterized Test Requirements
+
+**CRITICAL**: Parameterized tests have special memory requirements!
+
+When using Criterion's parameterized tests, any **pointers** in test parameter structures require Criterion's allocators (`cr_malloc`, `cr_calloc`, `cr_realloc`, `cr_free`). Using regular `malloc`/`free` or string literals causes **undefined behavior** and crashes.
+
+**Best Practice for This Project**: Use fixed-size char arrays to avoid allocation code:
+
+```c
+// ✅ RECOMMENDED - Use char arrays (simpler, no allocation needed)
+typedef struct {
+  char ip[256];              // Fixed-size array
+  char description[64];      // Fixed-size array
+  int expected_result;
+} test_case_t;
+
+static test_case_t cases[] = {
+    {"192.0.2.1", "example IP", 1},
+    {"invalid", "bad IP", 0}
+};
+
+// ⚠️ ALTERNATIVE - Pointers with cr_malloc (more complex, rarely needed)
+typedef struct {
+  const char *ip;
+  const char *description;
+  int expected_result;
+} test_case_t;
+
+ParameterizedTestParameters(suite, test) {
+  static test_case_t *cases = NULL;
+  if (!cases) {
+    cases = cr_malloc(2 * sizeof(test_case_t));
+    cases[0] = (test_case_t){
+      .ip = cr_strdup("192.0.2.1"),
+      .description = cr_strdup("example IP"),
+      .expected_result = 1
+    };
+    // ...
+  }
+  return cr_make_param_array(test_case_t, cases, 2);
+}
+
+// ❌ WRONG - String literals with pointers will crash!
+typedef struct {
+  const char *ip;            // Pointer to string literal - CRASHES!
+  const char *description;   // Pointer to string literal - CRASHES!
+  int expected_result;
+} test_case_t;
+
+static test_case_t cases[] = {
+    {"192.0.2.1", "example", 1}  // String literals - UNDEFINED BEHAVIOR!
+};
+```
+
+See [Criterion Parameterized Tests Documentation](https://criterion.readthedocs.io/en/master/parameterized.html) for details.
+
 ## Platform Abstraction Layer (NEW)
 
 ### Overview
