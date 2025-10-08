@@ -177,3 +177,29 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src);
  * @return 0 on success, -1 on failure
  */
 int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size);
+
+/**
+ * Load system CA certificates for TLS/HTTPS
+ *
+ * Loads the operating system's trusted root CA certificates in PEM format.
+ * This allows TLS connections to trust the same CAs that the OS trusts.
+ *
+ * Platform-specific paths:
+ *   - Linux (Debian/Ubuntu): /etc/ssl/certs/ca-certificates.crt
+ *   - Linux (RHEL/CentOS): /etc/pki/tls/certs/ca-bundle.crt
+ *   - macOS: /etc/ssl/cert.pem or Security framework
+ *   - Windows: Uses CryptoAPI certificate store
+ *
+ * @param pem_data_out Pointer to receive allocated PEM data (caller must free)
+ * @param pem_size_out Pointer to receive size of PEM data
+ * @return 0 on success, -1 on failure
+ *
+ * Example:
+ *   char* pem_data;
+ *   size_t pem_size;
+ *   if (platform_load_system_ca_certs(&pem_data, &pem_size) == 0) {
+ *       // Use pem_data for TLS verification
+ *       free(pem_data);
+ *   }
+ */
+int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);

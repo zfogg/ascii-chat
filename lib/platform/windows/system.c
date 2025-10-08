@@ -1089,4 +1089,83 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   return 0;
 }
 
+/**
+ * Load system CA certificates for TLS/HTTPS (Windows implementation)
+ *
+ * Uses Windows CryptoAPI to extract root CA certificates from the system store
+ * and converts them to PEM format for use with BearSSL or other TLS libraries.
+ *
+ * @param pem_data_out Pointer to receive allocated PEM data (caller must free)
+ * @param pem_size_out Pointer to receive size of PEM data
+ * @return 0 on success, -1 on failure
+ */
+int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
+  if (!pem_data_out || !pem_size_out) {
+    return -1;
+  }
+
+  // Open the Windows system root certificate store
+  HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
+  if (!hStore) {
+    return -1;
+  }
+
+  // Allocate buffer for PEM data (start with 256KB, can grow)
+  size_t pem_capacity = 256 * 1024;
+  size_t pem_size = 0;
+  char *pem_data = (char *)malloc(pem_capacity);
+  if (!pem_data) {
+    CertCloseStore(hStore, 0);
+    return -1;
+  }
+
+  // Enumerate all certificates in the store
+  PCCERT_CONTEXT pCertContext = NULL;
+  while ((pCertContext = CertEnumCertificatesInStore(hStore, pCertContext)) != NULL) {
+    // Convert DER to PEM format (Base64 with headers)
+    // Certificate is in pCertContext->pbCertEncoded (DER format)
+
+    // Calculate Base64 size needed (4/3 of input + padding)
+    DWORD base64_size = 0;
+    if (!CryptBinaryToStringA(pCertContext->pbCertEncoded, pCertContext->cbCertEncoded, CRYPT_STRING_BASE64HEADER, NULL,
+                              &base64_size)) {
+      continue; // Skip this cert
+    }
+
+    // Ensure we have enough space in PEM buffer
+    while (pem_size + base64_size + 100 > pem_capacity) {
+      pem_capacity *= 2;
+      char *new_pem_data = (char *)realloc(pem_data, pem_capacity);
+      if (!new_pem_data) {
+        free(pem_data);
+        CertFreeCertificateContext(pCertContext);
+        CertCloseStore(hStore, 0);
+        return -1;
+      }
+      pem_data = new_pem_data;
+    }
+
+    // Convert DER to Base64 with "-----BEGIN CERTIFICATE-----" header
+    DWORD written = (DWORD)(pem_capacity - pem_size);
+    if (CryptBinaryToStringA(pCertContext->pbCertEncoded, pCertContext->cbCertEncoded, CRYPT_STRING_BASE64HEADER,
+                             pem_data + pem_size, &written)) {
+      pem_size += written - 1; // -1 to exclude null terminator added by CryptBinaryToStringA
+    }
+  }
+
+  CertCloseStore(hStore, 0);
+
+  if (pem_size == 0) {
+    free(pem_data);
+    return -1; // No certificates found
+  }
+
+  // Null-terminate the PEM data
+  pem_data[pem_size] = '\0';
+
+  *pem_data_out = pem_data;
+  *pem_size_out = pem_size;
+  return 0;
+}
+
 #endif // !!_WIN32

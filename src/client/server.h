@@ -27,10 +27,11 @@
  * different failure modes. Zero indicates success.
  */
 typedef enum {
-  CONNECTION_SUCCESS = 0,               ///< Connection established successfully
-  CONNECTION_ERROR_GENERIC = -1,        ///< Generic error (retry allowed)
-  CONNECTION_ERROR_AUTH_FAILED = -2,    ///< Authentication failure (no retry)
-  CONNECTION_ERROR_HOST_KEY_FAILED = -3 ///< Host key verification failed (no retry)
+  CONNECTION_SUCCESS = 0,                ///< Connection established successfully
+  CONNECTION_WARNING_NO_CLIENT_AUTH = 1, ///< Server not using client verification (warning)
+  CONNECTION_ERROR_GENERIC = -1,         ///< Generic error (retry allowed)
+  CONNECTION_ERROR_AUTH_FAILED = -2,     ///< Authentication failure (no retry)
+  CONNECTION_ERROR_HOST_KEY_FAILED = -3  ///< Host key verification failed (no retry)
 } connection_error_t;
 
 /* ============================================================================
