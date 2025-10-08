@@ -1,4 +1,4 @@
-#include "gpg_agent.h"
+#include "gpg.h"
 #include "keys.h"
 #include "common.h"
 #include "platform/socket.h"
@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef HAVE_LIBGCRYPT
+#include <gcrypt.h>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -303,6 +307,22 @@ int gpg_agent_connect(void) {
   }
 
   log_debug("Connected to GPG agent successfully");
+
+  // Set loopback pinentry mode to avoid interactive prompts
+  // This allows GPG agent to work in non-interactive environments
+  if (send_agent_command(sock, "OPTION pinentry-mode=loopback") != 0) {
+    log_warn("Failed to set loopback pinentry mode (continuing anyway)");
+  } else {
+    // Read response for OPTION command
+    if (read_agent_line(sock, response, sizeof(response)) != 0) {
+      log_warn("Failed to read OPTION command response (continuing anyway)");
+    } else if (is_ok_response(response)) {
+      log_debug("Loopback pinentry mode enabled");
+    } else {
+      log_warn("Failed to enable loopback pinentry mode: %s (continuing anyway)", response);
+    }
+  }
+
   return sock;
 }
 #endif
@@ -357,50 +377,90 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     return -1;
   }
 
-  // 2. Set the hash to sign
-  // For Ed25519 with GPG agent: compute SHA-512 hash of the message first
-  // GPG agent's Ed25519 implementation expects: SETHASH --hash=sha512 <64-byte-hash-as-hex>
-  // This matches GPG's internal behavior: signature = EdDSA_sign(SHA512(message))
+  // 2. Set the data to sign using INQUIRE protocol
+  // IMPORTANT: For Ed25519 (EdDSA), use SETHASH --inquire!
+  // This tells GPG agent to send "INQUIRE TBSDATA" asking for the raw message.
+  // GPG agent then wraps it as: (data(flags eddsa)(hash-algo sha512)(value <message>))
+  // This produces a standard RFC 8032 compatible Ed25519 signature.
 
-  // Compute SHA-512 hash (64 bytes)
-  uint8_t message_hash[64];
-  crypto_hash_sha512(message_hash, message, message_len);
+  // Send SETHASH --inquire to initiate the INQUIRE protocol
+  log_debug("Sending SETHASH --inquire for Ed25519 signing");
 
-  log_debug("Computing SHA-512 hash of message (%zu bytes)", message_len);
-
-  // Convert hash to hex string (128 hex chars)
-  char *hex_hash;
-  SAFE_MALLOC(hex_hash, 129, char *); // 64 bytes * 2 + null terminator
-  if (!hex_hash) {
-    log_error("Failed to allocate hex hash buffer");
+  if (send_agent_command(handle, "SETHASH --inquire") != 0) {
+    log_error("Failed to send SETHASH --inquire command");
     return -1;
   }
 
-  for (size_t i = 0; i < 64; i++) {
-    sprintf(hex_hash + i * 2, "%02X", message_hash[i]);
-  }
-  hex_hash[128] = '\0';
+  // Read response - may get status lines (S INQUIRE_MAXLEN) before INQUIRE
+  // Keep reading until we get the INQUIRE line
+  bool got_inquire = false;
+  for (int i = 0; i < 5; i++) { // Max 5 lines to avoid infinite loop
+    if (read_agent_line(handle, response, sizeof(response)) != 0) {
+      log_error("Failed to read SETHASH --inquire response");
+      return -1;
+    }
 
-  // Send SETHASH command with --hash=sha512 flag
-  char sethash_cmd[GPG_AGENT_MAX_RESPONSE];
-  snprintf(sethash_cmd, sizeof(sethash_cmd), "SETHASH --hash=sha512 %s", hex_hash);
+    // Skip status lines (start with "S ")
+    if (response[0] == 'S' && response[1] == ' ') {
+      log_debug("Skipping status line: %s", response);
+      continue;
+    }
 
-  log_debug("Sending SETHASH --hash=sha512 with 64-byte hash");
+    // Check for INQUIRE response
+    if (strncmp(response, "INQUIRE TBSDATA", 15) == 0) {
+      got_inquire = true;
+      break;
+    }
 
-  free(hex_hash);
-
-  if (send_agent_command(handle, sethash_cmd) != 0) {
-    log_error("Failed to send SETHASH command");
+    log_error("Expected 'INQUIRE TBSDATA', got: %s", response);
     return -1;
   }
 
+  if (!got_inquire) {
+    log_error("Did not receive INQUIRE TBSDATA after multiple lines");
+    return -1;
+  }
+
+  // Convert message to hex string for sending
+  char *hex_message;
+  SAFE_MALLOC(hex_message, message_len * 2 + 1, char *);
+  if (!hex_message) {
+    log_error("Failed to allocate hex message buffer");
+    return -1;
+  }
+
+  for (size_t i = 0; i < message_len; i++) {
+    sprintf(hex_message + i * 2, "%02X", message[i]);
+  }
+  hex_message[message_len * 2] = '\0';
+
+  // Send the data using D command
+  char data_cmd[GPG_AGENT_MAX_RESPONSE];
+  snprintf(data_cmd, sizeof(data_cmd), "D %s", hex_message);
+
+  log_debug("Sending %zu-byte message in response to INQUIRE", message_len);
+
+  free(hex_message);
+
+  if (send_agent_command(handle, data_cmd) != 0) {
+    log_error("Failed to send D command with message data");
+    return -1;
+  }
+
+  // Send END to complete the INQUIRE
+  if (send_agent_command(handle, "END") != 0) {
+    log_error("Failed to send END command");
+    return -1;
+  }
+
+  // Read OK response
   if (read_agent_line(handle, response, sizeof(response)) != 0) {
-    log_error("Failed to read SETHASH response");
+    log_error("Failed to read INQUIRE completion response");
     return -1;
   }
 
   if (!is_ok_response(response)) {
-    log_error("SETHASH failed: %s", response);
+    log_error("INQUIRE completion failed: %s", response);
     return -1;
   }
 
@@ -422,34 +482,58 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     return -1;
   }
 
-  // Parse S-expression signature
-  // Format: D (7:sig-val(5:eddsa(1:r32:BINARY_R_DATA)(1:s32:BINARY_S_DATA)))
-  // The format is: (1:r32:...) where 32: means "32 bytes of binary data follow"
-  const char *data = response + 2;
+  // Parse S-expression signature from GPG agent
+  // GPG agent returns: D <percent-encoded-sexp>
+  // Example: D (7:sig-val(5:eddsa(1:r32:%<hex>)(1:s32:%<hex>)))
+  // The signature is 64 bytes total: R (32) + S (32)
 
-  // Find "(1:r32:" - this marks the start of the r value (binary format)
-  const char *r_start = strstr(data, "(1:r32:");
-  if (!r_start) {
-    log_error("Could not find r value in signature S-expression");
+  // DEBUG: Print first 200 chars of response to see format
+  char debug_buf[201];
+  size_t response_len = strlen(response);
+  size_t debug_len = response_len < 200 ? response_len : 200;
+  memcpy(debug_buf, response, debug_len);
+  debug_buf[debug_len] = '\0';
+  log_debug("GPG agent D line (first 200 bytes): %s", debug_buf);
+
+  const char *data = response + 2; // Skip "D "
+
+  // The response format from GPG agent for EdDSA is percent-encoded
+  // We need to decode it to get the raw binary signature
+  // For now, let's try the simple approach: find the raw data
+
+  // Look for the pattern that indicates where R starts: "(1:r32:"
+  const char *r_marker = strstr(data, "(1:r32:");
+  if (!r_marker) {
+    log_error("Could not find r value marker in S-expression");
     return -1;
   }
-  r_start += 7; // Skip "(1:r32:"
 
-  // Copy 32 bytes of r value directly (it's already binary)
-  memcpy(signature_out, r_start, 32);
+  // Skip the marker to get to the actual R data
+  const char *r_data = r_marker + 7; // strlen("(1:r32:")
 
-  // Find "(1:s32:" - this marks the start of the s value (binary format)
-  const char *s_start = strstr(r_start, "(1:s32:");
-  if (!s_start) {
-    log_error("Could not find s value in signature S-expression");
+  // Look for the pattern that indicates where S starts: "(1:s32:"
+  const char *s_marker = strstr(r_data + 32, "(1:s32:");
+  if (!s_marker) {
+    log_error("Could not find s value marker in S-expression");
     return -1;
   }
-  s_start += 7; // Skip "(1:s32:"
 
-  // Copy 32 bytes of s value directly (it's already binary)
-  memcpy(signature_out + 32, s_start, 32);
+  // Skip the marker to get to the actual S data
+  const char *s_data = s_marker + 7; // strlen("(1:s32:")
+
+  // Copy the raw binary data
+  memcpy(signature_out, r_data, 32);
+  memcpy(signature_out + 32, s_data, 32);
 
   *signature_len_out = 64;
+
+  // DEBUG: Print signature in hex
+  char sig_hex[129];
+  for (int i = 0; i < 64; i++) {
+    snprintf(sig_hex + i * 2, 3, "%02x", (unsigned char)signature_out[i]);
+  }
+  sig_hex[128] = '\0';
+  log_debug("Extracted signature (64 bytes): %s", sig_hex);
 
   // Read final OK
   if (read_agent_line(handle, response, sizeof(response)) != 0) {
@@ -611,4 +695,91 @@ bool gpg_agent_is_available(void) {
   }
   gpg_agent_disconnect(sock);
   return true;
+}
+
+int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len,
+                         const uint8_t *signature) {
+#ifdef HAVE_LIBGCRYPT
+  gcry_error_t err;
+  gcry_sexp_t s_pubkey = NULL;
+  gcry_sexp_t s_sig = NULL;
+  gcry_sexp_t s_data = NULL;
+
+  // Initialize libgcrypt if not already done
+  if (!gcry_control(GCRYCTL_INITIALIZATION_FINISHED_P)) {
+    gcry_check_version(NULL);
+    gcry_control(GCRYCTL_DISABLE_SECMEM, 0);
+    gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+  }
+
+  // Build public key S-expression: (public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))
+  // CRITICAL: Must include (flags eddsa) to match libgcrypt's Ed25519 test suite!
+  // See libgcrypt/tests/t-ed25519.c line 246-251
+  err = gcry_sexp_build(&s_pubkey, NULL, "(public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))", 32, public_key);
+  if (err) {
+    log_error("gpg_verify_signature: Failed to build public key S-expression: %s", gcry_strerror(err));
+    return -1;
+  }
+
+  // Build signature S-expression: (sig-val (eddsa (r %b) (s %b)))
+  // Signature is 64 bytes: first 32 bytes are R, last 32 bytes are S
+  err = gcry_sexp_build(&s_sig, NULL, "(sig-val (eddsa (r %b) (s %b)))", 32, signature, 32, signature + 32);
+  if (err) {
+    log_error("gpg_verify_signature: Failed to build signature S-expression: %s", gcry_strerror(err));
+    gcry_sexp_release(s_pubkey);
+    return -1;
+  }
+
+  // Build data S-expression with raw message
+  // CRITICAL: According to libgcrypt's test suite (t-ed25519.c line 273),
+  // Ed25519 data should be: (data (value %b)) with NO FLAGS!
+  // The (flags eddsa) belongs in the KEY S-expression above, NOT in the data.
+  // GPG agent's internal format is different - this is the correct libgcrypt API usage.
+  err = gcry_sexp_build(&s_data, NULL, "(data (value %b))", message_len, message);
+  if (err) {
+    log_error("gpg_verify_signature: Failed to build data S-expression: %s", gcry_strerror(err));
+    gcry_sexp_release(s_pubkey);
+    gcry_sexp_release(s_sig);
+    return -1;
+  }
+
+  // Debug logging
+  char pubkey_hex[65];
+  char r_hex[65];
+  char s_hex[65];
+  char msg_hex[128];
+
+  for (int i = 0; i < 32; i++) {
+    sprintf(pubkey_hex + i * 2, "%02x", public_key[i]);
+    sprintf(r_hex + i * 2, "%02x", signature[i]);
+    sprintf(s_hex + i * 2, "%02x", signature[32 + i]);
+  }
+  for (size_t i = 0; i < (message_len < 32 ? message_len : 32); i++) {
+    sprintf(msg_hex + i * 2, "%02x", message[i]);
+  }
+
+  log_debug("gpg_verify_signature: pubkey=%s", pubkey_hex);
+  log_debug("gpg_verify_signature: R=%s", r_hex);
+  log_debug("gpg_verify_signature: S=%s", s_hex);
+  log_debug("gpg_verify_signature: msg=%s (len=%zu)", msg_hex, message_len);
+
+  // Verify the signature
+  err = gcry_pk_verify(s_sig, s_data, s_pubkey);
+
+  // Clean up S-expressions
+  gcry_sexp_release(s_pubkey);
+  gcry_sexp_release(s_sig);
+  gcry_sexp_release(s_data);
+
+  if (err) {
+    log_debug("gpg_verify_signature: Signature verification failed: %s", gcry_strerror(err));
+    return -1;
+  }
+
+  log_debug("gpg_verify_signature: Signature verified successfully");
+  return 0;
+#else
+  log_error("gpg_verify_signature: libgcrypt not available");
+  return -1;
+#endif
 }

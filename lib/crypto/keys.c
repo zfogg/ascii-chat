@@ -1,13 +1,14 @@
 #include "keys.h"
 #include "handshake.h"
 #include "http_client.h"
-#include "gpg_agent.h"
+#include "gpg.h"
 #include "ssh_agent.h"
 #include "common.h"
 #include <sodium.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -350,6 +351,39 @@ int parse_public_key(const char *input, public_key_t *key_out) {
 
     log_info("Loaded GPG public key: %s", key_id);
     return 0;
+  }
+
+  // Check for "x25519 <hex>" or "ed25519 <hex>" format (used in known_hosts)
+  if (strncmp(input, "x25519 ", 7) == 0 || strncmp(input, "ed25519 ", 8) == 0) {
+    const char *hex_start = strchr(input, ' ');
+    if (hex_start) {
+      hex_start++; // Skip the space
+      // Extract hex part (64 hex characters)
+      char hex[65];
+      size_t i = 0;
+      while (i < 64 && hex_start[i] && !isspace((unsigned char)hex_start[i])) {
+        hex[i] = hex_start[i];
+        i++;
+      }
+      if (i == 64) {
+        hex[64] = '\0';
+        if (hex_decode(hex, key_out->key, 32) == 0) {
+          key_out->type = strncmp(input, "x25519", 6) == 0 ? KEY_TYPE_X25519 : KEY_TYPE_ED25519;
+          // Extract comment if present
+          const char *comment_start = hex_start + 64;
+          while (*comment_start && isspace((unsigned char)*comment_start))
+            comment_start++;
+          if (*comment_start) {
+            SAFE_STRNCPY(key_out->comment, comment_start, sizeof(key_out->comment));
+            // Remove trailing newline/whitespace
+            size_t len = strlen(key_out->comment);
+            while (len > 0 && isspace((unsigned char)key_out->comment[len - 1]))
+              key_out->comment[--len] = '\0';
+          }
+          return 0;
+        }
+      }
+    }
   }
 
   if (strlen(input) == 64) {
@@ -2225,31 +2259,36 @@ int ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *messag
   // IMPORTANT: This verification must match the signing method!
   //
   // For GPG agent Ed25519 keys:
-  // - GPG agent signs: EdDSA_sign(SHA512(message))  [pre-hashed]
-  // - We must verify:  EdDSA_verify(SHA512(message), signature, public_key)
+  // - GPG agent signs using libgcrypt's EdDSA with SHA-512 pre-hashing
+  // - We must verify with libgcrypt's gcry_pk_verify()
   //
   // For standard Ed25519 (SSH agent):
   // - SSH agent signs: EdDSA_sign(message)  [raw message, Ed25519 does internal hashing]
   // - We must verify:  EdDSA_verify(message, signature, public_key)
   //
-  // Since we don't know which type of key signed this, we try both approaches:
+  // Since we don't know which type of key signed this, we try all approaches:
 
-  // Try 1: Standard Ed25519 verification (raw message)
+  // Try 1: Standard Ed25519 verification (raw message) - for SSH keys
+  log_debug("ed25519_verify_signature: Trying standard Ed25519 verification (raw message)");
   if (crypto_sign_verify_detached(signature, message, message_len, public_key) == 0) {
-    return 0; // Success with standard Ed25519
+    log_info("ed25519_verify_signature: SUCCESS with standard Ed25519 verification");
+    return 0; // Success with standard Ed25519 (SSH keys)
   }
+  log_debug("ed25519_verify_signature: Standard verification failed, trying GPG libgcrypt");
 
-  // Try 2: GPG-style verification (pre-hashed message)
-  // Hash the message with SHA-512 (matching GPG's SETHASH --hash=sha512)
-  uint8_t message_hash[64];
-  crypto_hash_sha512(message_hash, message, message_len);
-
-  if (crypto_sign_verify_detached(signature, message_hash, 64, public_key) == 0) {
-    fprintf(stderr, "ed25519_verify_signature: verified with GPG-style pre-hashed message\n");
-    return 0; // Success with GPG-style signing
+  // Try 2: GPG libgcrypt verification - for GPG keys (when libgcrypt is available)
+#ifdef HAVE_LIBGCRYPT
+  log_debug("ed25519_verify_signature: Trying GPG libgcrypt verification");
+  if (gpg_verify_signature(public_key, message, message_len, signature) == 0) {
+    log_info("ed25519_verify_signature: SUCCESS with GPG libgcrypt verification");
+    return 0; // Success with GPG keys
   }
+  log_debug("ed25519_verify_signature: GPG libgcrypt verification failed");
+#else
+  log_debug("ed25519_verify_signature: libgcrypt not available, skipping GPG verification");
+#endif
 
-  fprintf(stderr, "ed25519_verify_signature: signature verification failed (tried both standard and GPG-style)\n");
+  log_error("ed25519_verify_signature: FAILED - all verification methods failed");
   return -1;
 }
 

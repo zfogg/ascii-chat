@@ -39,6 +39,7 @@ RUN pacman -Sy --noconfirm \
     zlib \
     portaudio \
     libsodium \
+    libgcrypt \
     criterion \
     protobuf-c \
     bc \

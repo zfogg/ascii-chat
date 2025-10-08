@@ -937,7 +937,6 @@ void *client_send_thread_func(void *arg) {
 
             // Check if crypto is ready and encrypt the packet
             if (crypto_server_is_ready(client->client_id)) {
-              log_debug("Encrypting ASCII frame packet to client %u", client->client_id);
               // Combine header and payload for encryption
               size_t plaintext_len = sizeof(header) + payload_size;
               uint8_t *plaintext = buffer_pool_alloc(plaintext_len);
@@ -987,7 +986,6 @@ void *client_send_thread_func(void *arg) {
                 if (sent == (ssize_t)ciphertext_len) {
                   sent_something = true;
                   last_video_send_time = current_time;
-                  log_debug("Sent encrypted packet to client %u: %zu bytes", client->client_id, ciphertext_len);
                 } else {
                   if (!atomic_load(&g_should_exit)) {
                     log_error("Failed to send encrypted packet payload to client %u: %zd/%zu bytes", client->client_id,
@@ -1251,7 +1249,6 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
   switch (type) {
   case PACKET_TYPE_IMAGE_FRAME:
-    log_debug("Processing decrypted IMAGE_FRAME packet from client %u: %zu bytes", client->client_id, len);
     handle_image_frame_packet(client, data, len);
     break;
 

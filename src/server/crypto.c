@@ -168,7 +168,6 @@ bool crypto_server_is_ready(uint32_t client_id) {
   }
 
   bool ready = crypto_handshake_is_ready(&client->crypto_handshake_ctx);
-  log_debug("Crypto ready check for client %u: initialized=%d, ready=%d", client_id, client->crypto_initialized, ready);
   return ready;
 }
 
