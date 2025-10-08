@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "../common.h" // For asciichat_error_status_t
 
 // Key type enumeration (Ed25519 and X25519 only - no RSA/ECDSA!)
 //
@@ -59,8 +60,8 @@ int parse_public_key(const char *input, public_key_t *key_out);
 //   - ~/.ssh/id_ed25519 (OpenSSH Ed25519 format)
 //   - Raw hex file (64 chars for X25519)
 // If the key is encrypted, prompts for password and decrypts it.
-// Returns: 0 on success, -1 on failure
-int parse_private_key(const char *path, private_key_t *key_out);
+// Returns: ASCIICHAT_OK on success, error code on failure
+asciichat_error_status_t parse_private_key(const char *path, private_key_t *key_out);
 
 // Convert public key to X25519 for DH
 // Ed25519 → X25519 conversion, X25519 passthrough, GPG already derived

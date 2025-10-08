@@ -23,13 +23,13 @@
  * ============================================================================
  */
 
-asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
+asciichat_error_status_t ascii_read_init(unsigned short int webcam_index) {
   log_info("Initializing ASCII reader with webcam index %u", webcam_index);
   webcam_init(webcam_index);
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
+asciichat_error_status_t ascii_write_init(int fd, bool reset_terminal) {
   // Validate file descriptor
   if (fd < 0) {
     log_error("Invalid file descriptor %d", fd);
@@ -251,7 +251,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 // NOTE: ascii_convert_with_custom_palette removed - use ascii_convert_with_capabilities() with enhanced
 // terminal_capabilities_t
 
-asciichat_error_t ascii_write(const char *frame) {
+asciichat_error_status_t ascii_write(const char *frame) {
   if (frame == NULL) {
     log_warn("Attempted to write NULL frame");
     return ASCIICHAT_ERROR_INVALID_PARAM;

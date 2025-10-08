@@ -420,32 +420,29 @@ static int init_server_crypto(void) {
 
   // Load server private key if provided via --key
   if (strlen(opt_encrypt_key) > 0) {
-    // --key is for file-based authentication (SSH keys, GPG keys, GitHub/GitLab)
+    // --key requires signing capabilities (SSH key files or GPG keys with gpg-agent)
 
-    // Check for special formats (gpg:, github:, gitlab:)
-    if (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
-        strncmp(opt_encrypt_key, "gitlab:", 7) == 0) {
-      // TODO: Implement GPG/GitHub/GitLab key fetching
-      log_error("GPG/GitHub/GitLab keys not yet implemented: %s", opt_encrypt_key);
-      log_error("Please use a local SSH key file with --key /path/to/key");
-      return -1;
+    // Validate SSH key file (skip validation for special prefixes - they have their own validation)
+    bool is_special_key = (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
+                           strncmp(opt_encrypt_key, "gitlab:", 7) == 0);
+
+    if (!is_special_key) {
+      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
+        return -1;
+      }
     }
 
-    // Validate SSH key file (shared validation logic)
-    if (validate_ssh_key_file(opt_encrypt_key) != 0) {
-      return -1;
-    }
-
-    // Parse SSH key file
-    log_info("Loading SSH key for authentication: %s", opt_encrypt_key);
-    if (parse_private_key(opt_encrypt_key, &g_server_private_key) == 0) {
-      log_info("Successfully loaded SSH key: %s", opt_encrypt_key);
+    // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
+    log_info("Loading key for authentication: %s", opt_encrypt_key);
+    if (parse_private_key(opt_encrypt_key, &g_server_private_key) == ASCIICHAT_OK) {
+      log_info("Successfully loaded server key: %s", opt_encrypt_key);
     } else {
-      log_error("Failed to parse SSH key file: %s", opt_encrypt_key);
+      log_error("Failed to parse key: %s", opt_encrypt_key);
       log_error("This may be due to:");
       log_error("  - Wrong password for encrypted key");
       log_error("  - Unsupported key type (only Ed25519 is currently supported)");
       log_error("  - Corrupted key file");
+      log_error("  - Invalid GPG key ID (use: gpg --list-secret-keys)");
       log_error("");
       log_error("Note: RSA and ECDSA keys are not yet supported");
       log_error("To generate an Ed25519 key: ssh-keygen -t ed25519");

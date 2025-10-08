@@ -3,10 +3,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sodium.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <sys/stat.h>
+#include <windows.h>
+#include <fcntl.h>
+#define SAFE_CLOSE _close
+#define SAFE_UNLINK _unlink
+#define SAFE_POPEN _popen
+#define SAFE_PCLOSE _pclose
+#else
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <sodium.h>
+#define SAFE_CLOSE close
+#define SAFE_UNLINK unlink
+#define SAFE_POPEN popen
+#define SAFE_PCLOSE pclose
+#endif
 
 bool ssh_agent_is_available(void) {
   // Check if SSH_AUTH_SOCK environment variable is set
@@ -16,13 +32,20 @@ bool ssh_agent_is_available(void) {
     return false;
   }
 
-  // Check if socket exists and is accessible
+  // Check if socket/pipe exists and is accessible
+#ifdef _WIN32
+  // On Windows, SSH_AUTH_SOCK points to a named pipe like \\.\pipe\openssh-ssh-agent
+  // We can't use access() on named pipes, so just check if the environment variable is set
+  // The actual connection will fail later if the agent isn't running
+  log_debug("ssh-agent appears available (SSH_AUTH_SOCK=%s)", auth_sock);
+#else
   if (access(auth_sock, W_OK) != 0) {
     log_debug("ssh-agent not available: cannot access socket at %s", auth_sock);
     return false;
   }
-
   log_debug("ssh-agent is available at %s", auth_sock);
+#endif
+
   return true;
 }
 
@@ -32,9 +55,30 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   }
 
   // Use ssh-add -l to list keys
-  FILE *fp = popen("ssh-add -l 2>/dev/null", "r");
+#ifdef _WIN32
+  FILE *fp = SAFE_POPEN("ssh-add -l 2>nul", "r");
+#else
+  FILE *fp = SAFE_POPEN("ssh-add -l 2>/dev/null", "r");
+#endif
   if (!fp) {
-    log_debug("Failed to run ssh-add -l");
+    log_error("Failed to run ssh-add - OpenSSH may not be installed or not in PATH");
+#ifdef _WIN32
+    log_error("To install OpenSSH on Windows:");
+    log_error("  1. Go to Settings → Apps → Optional Features");
+    log_error("  2. Click 'Add a feature' and install 'OpenSSH Client'");
+    log_error("  Or download from: https://github.com/PowerShell/Win32-OpenSSH/releases");
+#elif defined(__APPLE__)
+    log_error("OpenSSH should be pre-installed on macOS.");
+    log_error("If ssh-add is not found, ensure /usr/bin is in your PATH.");
+    log_error("You can also install the latest version via Homebrew:");
+    log_error("  brew install openssh");
+#else
+    log_error("To install OpenSSH on Linux:");
+    log_error("  Debian/Ubuntu: sudo apt-get install openssh-client");
+    log_error("  Fedora/RHEL:   sudo dnf install openssh-clients");
+    log_error("  Arch Linux:    sudo pacman -S openssh");
+    log_error("  Alpine Linux:  sudo apk add openssh-client");
+#endif
     return false;
   }
 
@@ -53,7 +97,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
     log_debug("ssh-agent key list: %s", line);
   }
 
-  pclose(fp);
+  SAFE_PCLOSE(fp);
 
   // For now, we don't do exact matching - ssh-add is idempotent anyway
   return false;
@@ -73,6 +117,23 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   log_info("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
 
   // Create temporary file with strict permissions
+#ifdef _WIN32
+  char tmpfile[MAX_PATH];
+  if (GetTempPathA(MAX_PATH, tmpfile) == 0) {
+    log_error("Failed to get temp directory");
+    return -1;
+  }
+  strcat(tmpfile, "ascii-chat-key-XXXXXX");
+  if (_mktemp_s(tmpfile, sizeof(tmpfile)) != 0) {
+    log_error("Failed to create temporary filename");
+    return -1;
+  }
+  int fd = _open(tmpfile, _O_CREAT | _O_EXCL | _O_RDWR, _S_IREAD | _S_IWRITE);
+  if (fd < 0) {
+    log_error("Failed to create temporary file for ssh-agent");
+    return -1;
+  }
+#else
   char tmpfile[] = "/tmp/ascii-chat-key-XXXXXX";
   int fd = mkstemp(tmpfile);
   if (fd < 0) {
@@ -83,17 +144,18 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   // Set file permissions to 600 (owner read/write only)
   if (fchmod(fd, S_IRUSR | S_IWUSR) != 0) {
     log_error("Failed to set permissions on temporary key file");
-    close(fd);
-    unlink(tmpfile);
+    SAFE_CLOSE(fd);
+    SAFE_UNLINK(tmpfile);
     return -1;
   }
+#endif
 
   // Write OpenSSH private key format
   FILE *f = fdopen(fd, "w");
   if (!f) {
     log_error("Failed to open temporary file for writing");
-    close(fd);
-    unlink(tmpfile);
+    SAFE_CLOSE(fd);
+    SAFE_UNLINK(tmpfile);
     return -1;
   }
 
@@ -245,7 +307,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   SAFE_MALLOC(base64, pos * 2, char *);
   if (!base64) {
     fclose(f);
-    unlink(tmpfile);
+    SAFE_UNLINK(tmpfile);
     return -1;
   }
 
@@ -267,11 +329,28 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   char cmd[512];
   snprintf(cmd, sizeof(cmd), "ssh-add %s 2>&1", tmpfile);
 
-  FILE *ssh_add = popen(cmd, "r");
+  FILE *ssh_add = SAFE_POPEN(cmd, "r");
   if (!ssh_add) {
-    log_error("Failed to run ssh-add");
+    log_error("Failed to run ssh-add - OpenSSH may not be installed or not in PATH");
+#ifdef _WIN32
+    log_error("To install OpenSSH on Windows:");
+    log_error("  1. Go to Settings → Apps → Optional Features");
+    log_error("  2. Click 'Add a feature' and install 'OpenSSH Client'");
+    log_error("  Or download from: https://github.com/PowerShell/Win32-OpenSSH/releases");
+#elif defined(__APPLE__)
+    log_error("OpenSSH should be pre-installed on macOS.");
+    log_error("If ssh-add is not found, ensure /usr/bin is in your PATH.");
+    log_error("You can also install the latest version via Homebrew:");
+    log_error("  brew install openssh");
+#else
+    log_error("To install OpenSSH on Linux:");
+    log_error("  Debian/Ubuntu: sudo apt-get install openssh-client");
+    log_error("  Fedora/RHEL:   sudo dnf install openssh-clients");
+    log_error("  Arch Linux:    sudo pacman -S openssh");
+    log_error("  Alpine Linux:  sudo apk add openssh-client");
+#endif
     sodium_memzero(buffer, sizeof(buffer));
-    unlink(tmpfile);
+    SAFE_UNLINK(tmpfile);
     return -1;
   }
 
@@ -285,11 +364,11 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
     }
   }
 
-  int ret = pclose(ssh_add);
+  int ret = SAFE_PCLOSE(ssh_add);
 
   // Securely delete temporary file
   sodium_memzero(buffer, sizeof(buffer));
-  unlink(tmpfile);
+  SAFE_UNLINK(tmpfile);
 
   if (ret == 0 || success) {
     log_info("Successfully added key to ssh-agent");
