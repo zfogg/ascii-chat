@@ -192,9 +192,127 @@ int client_crypto_handshake(socket_t socket) {
   log_info("Starting crypto handshake with server...");
   log_debug("CLIENT_CRYPTO: Starting crypto handshake with server...");
 
+  // Step 0a: Send protocol version to server
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending protocol version");
+  protocol_version_packet_t client_version = {0};
+  client_version.protocol_version = htons(1);      // Protocol version 1
+  client_version.protocol_revision = htons(0);     // Revision 0
+  client_version.supports_encryption = 1;          // We support encryption
+  client_version.compression_algorithms = 0;       // No compression for now
+  client_version.compression_threshold = 0;
+  client_version.feature_flags = 0;
+
+  int result = send_protocol_version_packet(socket, &client_version);
+  if (result != 0) {
+    log_error("Failed to send protocol version to server");
+    return -1;
+  }
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol version sent successfully");
+
+  // Step 0b: Receive server's protocol version
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Receiving server protocol version");
+  packet_type_t packet_type;
+  void *payload = NULL;
+  size_t payload_len = 0;
+
+  result = receive_packet(socket, &packet_type, &payload, &payload_len);
+  if (result != 1 || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
+    log_error("Failed to receive server protocol version (got type %u)", packet_type);
+    if (payload) {
+      buffer_pool_free(payload, payload_len);
+    }
+    return -1;
+  }
+
+  if (payload_len != sizeof(protocol_version_packet_t)) {
+    log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len, sizeof(protocol_version_packet_t));
+    buffer_pool_free(payload, payload_len);
+    return -1;
+  }
+
+  protocol_version_packet_t server_version;
+  memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
+  buffer_pool_free(payload, payload_len);
+
+  // Convert from network byte order
+  uint16_t server_proto_version = ntohs(server_version.protocol_version);
+  uint16_t server_proto_revision = ntohs(server_version.protocol_revision);
+
+  log_info("Server protocol version: %u.%u (encryption: %s)",
+           server_proto_version, server_proto_revision,
+           server_version.supports_encryption ? "yes" : "no");
+
+  if (!server_version.supports_encryption) {
+    log_error("Server does not support encryption");
+    return CONNECTION_ERROR_AUTH_FAILED;
+  }
+
+  // Step 0c: Send crypto capabilities to server
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending crypto capabilities");
+  crypto_capabilities_packet_t client_caps = {0};
+  client_caps.supported_kex_algorithms = htons(KEX_ALGO_X25519);
+  client_caps.supported_auth_algorithms = htons(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
+  client_caps.supported_cipher_algorithms = htons(CIPHER_ALGO_XSALSA20_POLY1305);
+  client_caps.requires_verification = 0;  // Client doesn't require server verification (uses known_hosts)
+  client_caps.preferred_kex = KEX_ALGO_X25519;
+  client_caps.preferred_auth = AUTH_ALGO_ED25519;
+  client_caps.preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+
+  result = send_crypto_capabilities_packet(socket, &client_caps);
+  if (result != 0) {
+    log_error("Failed to send crypto capabilities to server");
+    return -1;
+  }
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Crypto capabilities sent successfully");
+
+  // Step 0d: Receive server's crypto parameters
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Receiving server crypto parameters");
+  payload = NULL;
+  payload_len = 0;
+
+  result = receive_packet(socket, &packet_type, &payload, &payload_len);
+  if (result != 1 || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
+    log_error("Failed to receive server crypto parameters (got type %u)", packet_type);
+    if (payload) {
+      buffer_pool_free(payload, payload_len);
+    }
+    return -1;
+  }
+
+  if (payload_len != sizeof(crypto_parameters_packet_t)) {
+    log_error("Invalid crypto parameters packet size: %zu, expected %zu", payload_len, sizeof(crypto_parameters_packet_t));
+    buffer_pool_free(payload, payload_len);
+    return -1;
+  }
+
+  crypto_parameters_packet_t server_params;
+  memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
+  buffer_pool_free(payload, payload_len);
+
+  // Convert from network byte order
+  uint16_t kex_pubkey_size = ntohs(server_params.kex_public_key_size);
+  uint16_t signature_size = ntohs(server_params.signature_size);
+
+  log_info("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, sig_size=%u)",
+           server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher,
+           kex_pubkey_size, signature_size);
+
+  // Validate that server chose algorithms we support
+  if (server_params.selected_kex != KEX_ALGO_X25519) {
+    log_error("Server selected unsupported KEX algorithm: %u", server_params.selected_kex);
+    return CONNECTION_ERROR_AUTH_FAILED;
+  }
+
+  if (server_params.selected_cipher != CIPHER_ALGO_XSALSA20_POLY1305) {
+    log_error("Server selected unsupported cipher algorithm: %u", server_params.selected_cipher);
+    return CONNECTION_ERROR_AUTH_FAILED;
+  }
+
+  log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol negotiation completed successfully");
+
   // Step 1: Receive server's public key and send our public key
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
-  int result = crypto_handshake_client_key_exchange(&g_crypto_ctx, socket);
+  result = crypto_handshake_client_key_exchange(&g_crypto_ctx, socket);
   if (result != 0) {
     log_error("Crypto key exchange failed");
     log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange failed with result=%d", result);

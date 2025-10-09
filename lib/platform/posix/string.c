@@ -12,6 +12,7 @@
 #include "platform/string.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
   va_list args;
@@ -34,4 +35,21 @@ int safe_fprintf(FILE *stream, const char *format, ...) {
   va_end(args);
 
   return result;
+}
+
+char *platform_strcat(char *dest, size_t dest_size, const char *src) {
+  if (!dest || !src || dest_size == 0) {
+    return NULL;
+  }
+
+  // Calculate remaining space in dest buffer
+  size_t dest_len = strlen(dest);
+  size_t src_len = strlen(src);
+  size_t remaining = dest_size - dest_len;
+
+  if (remaining <= src_len) {
+    return NULL; // Buffer overflow prevented
+  }
+
+  return strcat(dest, src);
 }

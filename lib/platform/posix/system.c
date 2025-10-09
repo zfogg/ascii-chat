@@ -430,6 +430,16 @@ int platform_open(const char *pathname, int flags, ...) {
 }
 
 /**
+ * @brief Open file descriptor with platform-safe mode
+ * @param fd File descriptor
+ * @param mode File mode
+ * @return File pointer on success, NULL on failure
+ */
+FILE *platform_fdopen(int fd, const char *mode) {
+  return fdopen(fd, mode);
+}
+
+/**
  * @brief Read from file descriptor
  * @param fd File descriptor
  * @param buf Buffer to read into

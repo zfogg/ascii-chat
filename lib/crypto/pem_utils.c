@@ -141,30 +141,6 @@ static void *vector_expand(void *buf, size_t esize, size_t *ptr, size_t *len, si
   return nbuf;
 }
 
-/* ========== STRING COMPARISON (simplified from BearSSL names.c) ========== */
-
-/**
- * Compare two strings for equality (case-insensitive, ignoring some chars)
- * Simplified version - just does case-insensitive comparison
- */
-static int eqstr(const char *s1, const char *s2) {
-  size_t len1 = strlen(s1);
-  size_t len2 = strlen(s2);
-
-  if (len1 != len2) {
-    return 0;
-  }
-
-  for (size_t i = 0; i < len1; i++) {
-    char c1 = tolower((unsigned char)s1[i]);
-    char c2 = tolower((unsigned char)s2[i]);
-    if (c1 != c2) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 /* ========== DER DETECTION (from BearSSL files.c) ========== */
 
 static int looks_like_DER(const unsigned char *buf, size_t len) {
@@ -337,12 +313,25 @@ static br_x509_certificate *read_certificates_from_memory(const unsigned char *b
 
   // Extract certificates
   for (u = 0; u < num_pos; u++) {
-    if (eqstr(pos[u].name, "CERTIFICATE") || eqstr(pos[u].name, "X509 CERTIFICATE")) {
-      br_x509_certificate xc;
-      xc.data = pos[u].data;
-      xc.data_len = pos[u].data_len;
-      pos[u].data = NULL; // Transfer ownership
-      VEC_ADD(cert_list, xc);
+    // Windows CryptBinaryToStringA may append dashes to the name, so check for:
+    // "CERTIFICATE", "CERTIFICATE-----", "X509 CERTIFICATE", "X509 CERTIFICATE-----"
+    const char *name = pos[u].name;
+    if (name) {
+      // Strip trailing dashes for comparison
+      size_t name_len = strlen(name);
+      while (name_len > 0 && name[name_len - 1] == '-') {
+        name_len--;
+      }
+
+      // Check if name matches CERTIFICATE or X509 CERTIFICATE (ignoring trailing dashes)
+      if ((name_len == 11 && strncmp(name, "CERTIFICATE", 11) == 0) ||
+          (name_len == 16 && strncmp(name, "X509 CERTIFICATE", 16) == 0)) {
+        br_x509_certificate xc;
+        xc.data = pos[u].data;
+        xc.data_len = pos[u].data_len;
+        pos[u].data = NULL; // Transfer ownership
+        VEC_ADD(cert_list, xc);
+      }
     }
   }
 

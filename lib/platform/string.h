@@ -5,12 +5,11 @@
  * This file declares safe string functions that satisfy clang-tidy
  * cert-err33-c requirements.
  *
- * @author Assistant
- * @date December 2024
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date November 2025
  */
 
-#ifndef PLATFORM_STRING_H
-#define PLATFORM_STRING_H
+#pragma once
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -34,4 +33,11 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
  */
 int safe_fprintf(FILE *stream, const char *format, ...);
 
-#endif // PLATFORM_STRING_H
+/**
+ * @brief Safe version of strcat
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @param src Source string
+ * @return Destination buffer
+ */
+char *platform_strcat(char *dest, size_t dest_size, const char *src);

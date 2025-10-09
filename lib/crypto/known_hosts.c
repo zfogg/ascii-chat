@@ -9,18 +9,20 @@
 #ifdef _WIN32
 #include <direct.h>
 #define mkdir(path, mode) _mkdir(path)
+#define strncasecmp _strnicmp
 #else
 #include <sys/stat.h>
+#include <strings.h>
 #endif
 
 #define KNOWN_HOSTS_PATH "~/.ascii-chat/known_hosts"
 
 static char *expand_path(const char *path) {
   if (path[0] == '~') {
-    const char *home = getenv("HOME");
+    const char *home = platform_getenv("HOME");
     if (!home) {
       // On Windows, try USERPROFILE
-      home = getenv("USERPROFILE");
+      home = platform_getenv("USERPROFILE");
       if (!home)
         return NULL;
     }

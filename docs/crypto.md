@@ -203,15 +203,25 @@ typedef struct {
 
 ### Packet Types
 
-#### Handshake Packets (Always Unencrypted)
+#### Protocol Negotiation Packets (Always Unencrypted)
 ```c
-PACKET_TYPE_KEY_EXCHANGE_INIT      = 14  // Server → Client: DH public key
-PACKET_TYPE_KEY_EXCHANGE_RESPONSE  = 15  // Client → Server: DH public key
-PACKET_TYPE_AUTH_CHALLENGE         = 16  // Server → Client: Challenge nonce
-PACKET_TYPE_AUTH_RESPONSE          = 17  // Client → Server: HMAC response
-PACKET_TYPE_HANDSHAKE_COMPLETE     = 18  // Server → Client: Success
-PACKET_TYPE_AUTH_FAILED            = 19  // Server → Client: Failure
-PACKET_TYPE_NO_ENCRYPTION          = 21  // Client → Server: Opt-out
+PACKET_TYPE_PROTOCOL_VERSION       = 1   // Client → Server: Protocol version, compression support, encryption enabled
+```
+
+**Purpose:** Establishes basic protocol capabilities before any crypto handshake. Informs server whether client supports encryption and compression.
+
+#### Crypto Handshake Packets (Always Unencrypted)
+```c
+PACKET_TYPE_CRYPTO_CAPABILITIES       = 14  // Client → Server: Supported crypto algorithms
+PACKET_TYPE_CRYPTO_PARAMETERS         = 15  // Server → Client: Chosen algorithms + data sizes
+PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT  = 16  // Server → Client: DH public key
+PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP  = 17  // Client → Server: DH public key
+PACKET_TYPE_CRYPTO_AUTH_CHALLENGE     = 18  // Server → Client: Challenge nonce
+PACKET_TYPE_CRYPTO_AUTH_RESPONSE      = 19  // Client → Server: HMAC response
+PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 20  // Server → Client: Success
+PACKET_TYPE_CRYPTO_AUTH_FAILED        = 21  // Server → Client: Failure
+PACKET_TYPE_CRYPTO_NO_ENCRYPTION      = 23  // Client → Server: Opt-out
+PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP   = 24  // Server → Client: HMAC proof
 ```
 
 **Why unencrypted?**
@@ -219,7 +229,7 @@ These packets establish the encryption keys - they cannot be encrypted with keys
 
 #### Encrypted Packets (After Handshake)
 ```c
-PACKET_TYPE_ENCRYPTED = 20  // Wrapper for all post-handshake packets
+PACKET_TYPE_ENCRYPTED = 22  // Wrapper for all post-handshake packets
 ```
 
 All application packets (video, audio, control) are wrapped in `PACKET_TYPE_ENCRYPTED` after successful handshake.
@@ -280,7 +290,7 @@ Client                                    Server
   |                                         | Generate ephemeral keypair
   |                                         | (or use --key loaded SSH key)
   |                                         |
-  |<----- KEY_EXCHANGE_INIT ---------------|
+  |<----- CRYPTO_KEY_EXCHANGE_INIT --------|
   |       [32-byte X25519 public key]      |
   |       [32-byte Ed25519 identity key]   | (if using SSH key)
   |       [64-byte Ed25519 signature]      | (signature of X25519 key)
@@ -290,7 +300,7 @@ Client                                    Server
   | Check known_hosts (if exists)          |
   | Compute DH shared secret               |
   |                                         |
-  |------ KEY_EXCHANGE_RESPONSE ---------->|
+  |------ CRYPTO_KEY_EXCHANGE_RESP ------->|
   |       [32-byte X25519 public key]      |
   |       [32-byte Ed25519 identity key]   | (if using SSH key)
   |       [64-byte Ed25519 signature]      | (signature of X25519 key)
@@ -299,21 +309,21 @@ Client                                    Server
   |                                         | Check whitelist (if enabled)
   |                                         | Compute DH shared secret
   |                                         |
-  |<----- AUTH_CHALLENGE ------------------|
+  |<----- CRYPTO_AUTH_CHALLENGE -----------|
   |       [32-byte random nonce]           |
   |       [1-byte flags]                   | (password required? key required?)
   |                                         |
   | Compute HMAC(shared_secret, nonce)     |
   | If password: HMAC(password_key, nonce) |
   |                                         |
-  |------ AUTH_RESPONSE ------------------>|
+  |------ CRYPTO_AUTH_RESPONSE ----------->|
   |       [32-byte HMAC]                   |
   |                                         |
   |                                         | Verify HMAC
   |                                         | Check password (if required)
   |                                         | Check client key whitelist (if enabled)
   |                                         |
-  |<----- HANDSHAKE_COMPLETE --------------|
+  |<----- CRYPTO_HANDSHAKE_COMPLETE -------|
   |                                         |
   | ✅ Encryption active                    | ✅ Encryption active
   |                                         |

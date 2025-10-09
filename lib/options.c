@@ -86,7 +86,7 @@ static int detect_default_ssh_key(char *key_path, size_t path_size) {
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
 bool auto_width = true, auto_height = true;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1", opt_port[OPTIONS_BUFF_SIZE] = "27224";
+char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -305,8 +305,8 @@ int options_init(int argc, char **argv, bool is_client) {
 
   // Set different default addresses for client vs server
   if (is_client) {
-    // Client connects to localhost by default (IPv4)
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+    // Client connects to localhost by default (IPv6-first with IPv4 fallback)
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "localhost");
   } else {
     // Server binds to all interfaces by default (dual-stack IPv6 with IPv4-mapped support)
     // "::" binds to all IPv6 addresses and IPv4-mapped addresses (::ffff:x.x.x.x)
@@ -810,7 +810,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
   (void)fprintf(desc, USAGE_INDENT "-v --version                 " USAGE_INDENT "show version information\n");
-  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
+  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
   (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
                                    "hostname for DNS lookup (alternative to --address)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");

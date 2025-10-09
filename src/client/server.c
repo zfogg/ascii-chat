@@ -258,46 +258,56 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Try each address returned by getaddrinfo() until one succeeds
-  for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter->ai_next) {
-    // Create socket with appropriate address family
-    g_sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
-    if (g_sockfd == INVALID_SOCKET_VALUE) {
-      log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string(errno));
-      continue; // Try next address
-    }
-
-    // Log which address family we're trying
-    if (addr_iter->ai_family == AF_INET) {
-      log_debug("Trying IPv4 connection...");
-    } else if (addr_iter->ai_family == AF_INET6) {
-      log_debug("Trying IPv6 connection...");
-    }
-
-    // Attempt connection with timeout
-    if (connect_with_timeout(g_sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
-      // Connection successful!
-      log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
-                                                  : addr_iter->ai_family == AF_INET6 ? "IPv6"
-                                                                                     : "unknown protocol");
-
-      // Extract server IP address for known_hosts
-      if (addr_iter->ai_family == AF_INET) {
-        struct sockaddr_in *addr_in = (struct sockaddr_in *)addr_iter->ai_addr;
-        inet_ntop(AF_INET, &addr_in->sin_addr, g_server_ip, sizeof(g_server_ip));
-      } else if (addr_iter->ai_family == AF_INET6) {
-        struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)addr_iter->ai_addr;
-        inet_ntop(AF_INET6, &addr_in6->sin6_addr, g_server_ip, sizeof(g_server_ip));
+  // Prefer IPv6 over IPv4: try IPv6 addresses first, then fall back to IPv4
+  for (int address_family = AF_INET6; address_family >= AF_INET; address_family -= (AF_INET6 - AF_INET)) {
+    for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter->ai_next) {
+      // Skip addresses that don't match current pass (IPv6 first, then IPv4)
+      if (addr_iter->ai_family != address_family) {
+        continue;
       }
-      log_debug("Resolved server IP: %s", g_server_ip);
 
-      break; // Success - exit loop
+      // Create socket with appropriate address family
+      g_sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
+      if (g_sockfd == INVALID_SOCKET_VALUE) {
+        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string(errno));
+        continue; // Try next address
+      }
+
+      // Log which address family we're trying
+      if (addr_iter->ai_family == AF_INET) {
+        log_debug("Trying IPv4 connection...");
+      } else if (addr_iter->ai_family == AF_INET6) {
+        log_debug("Trying IPv6 connection...");
+      }
+
+      // Attempt connection with timeout
+      if (connect_with_timeout(g_sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
+        // Connection successful!
+        log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
+                                                    : addr_iter->ai_family == AF_INET6 ? "IPv6"
+                                                                                       : "unknown protocol");
+
+        // Extract server IP address for known_hosts
+        if (addr_iter->ai_family == AF_INET) {
+          struct sockaddr_in *addr_in = (struct sockaddr_in *)addr_iter->ai_addr;
+          inet_ntop(AF_INET, &addr_in->sin_addr, g_server_ip, sizeof(g_server_ip));
+        } else if (addr_iter->ai_family == AF_INET6) {
+          struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)addr_iter->ai_addr;
+          inet_ntop(AF_INET6, &addr_in6->sin6_addr, g_server_ip, sizeof(g_server_ip));
+        }
+        log_debug("Resolved server IP: %s", g_server_ip);
+
+        goto connection_success; // Break out of both loops
+      }
+
+      // Connection failed - close socket and try next address
+      log_debug("Connection failed: %s", network_error_string(errno));
+      close_socket(g_sockfd);
+      g_sockfd = INVALID_SOCKET_VALUE;
     }
-
-    // Connection failed - close socket and try next address
-    log_debug("Connection failed: %s", network_error_string(errno));
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
   }
+
+connection_success:
 
   freeaddrinfo(res);
 

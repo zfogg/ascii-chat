@@ -13,9 +13,12 @@
 #include "common.h"
 #include "pem_utils.h"
 #include "platform/abstraction.h"
+#include "version.h"
 
 #include <bearssl.h>
+#ifndef _WIN32
 #include <netdb.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,33 +131,35 @@ char *https_get(const char *hostname, const char *path) {
   }
   log_info("Loaded %zu trust anchors", num_anchors);
 
-  // Create TCP socket
-  socket_t sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock == INVALID_SOCKET_VALUE) {
-    log_error("Failed to create socket");
+  // Resolve hostname using getaddrinfo (modern, non-deprecated API)
+  struct addrinfo hints, *result;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET; // IPv4
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  if (getaddrinfo(hostname, "443", &hints, &result) != 0) {
+    log_error("Failed to resolve hostname: %s", hostname);
     goto cleanup_anchors;
   }
 
-  // Resolve hostname
-  struct hostent *he = gethostbyname(hostname);
-  if (!he) {
-    log_error("Failed to resolve hostname: %s", hostname);
-    socket_close(sock);
+  // Create TCP socket
+  socket_t sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+  if (sock == INVALID_SOCKET_VALUE) {
+    log_error("Failed to create socket");
+    freeaddrinfo(result);
     goto cleanup_anchors;
   }
 
   // Connect to server
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(443);
-  memcpy(&addr.sin_addr, he->h_addr_list[0], he->h_length);
-
-  if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+  if (connect(sock, result->ai_addr, (int)result->ai_addrlen) != 0) {
     log_error("Failed to connect to %s:443", hostname);
     socket_close(sock);
+    freeaddrinfo(result);
     goto cleanup_anchors;
   }
+
+  freeaddrinfo(result);
 
   log_info("Connected to %s:443", hostname);
 
@@ -186,7 +191,7 @@ char *https_get(const char *hostname, const char *path) {
                              "GET %s HTTP/1.1\r\n"
                              "Host: %s\r\n"
                              "Connection: close\r\n"
-                             "User-Agent: ascii-chat/1.0\r\n"
+                             "User-Agent: ascii-chat/" ASCII_CHAT_VERSION_STRING "\r\n"
                              "\r\n",
                              path, hostname);
 
