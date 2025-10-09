@@ -4,6 +4,7 @@
 #include "os/webcam.h"
 #include "common.h"
 #include "platform/windows_compat.h"
+#include "util/math.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>

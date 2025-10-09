@@ -322,20 +322,18 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
     } else if (errno == EINTR) {
       // Interrupted by signal - this is expected during shutdown
       return -1;
-    } else {
-#ifdef _WIN32
-      int wsa_error = WSAGetLastError();
-      log_info("DEBUG: socket_select error - result=%d, WSAError=%d", result, wsa_error);
-#else
-      log_info("DEBUG: socket_select error - result=%d, errno=%d", result, errno);
-#endif
     }
+    return -1;
+  }
+
+  // Explicitly check if socket is in the ready set
+  if (!socket_fd_isset(listenfd, &read_fds)) {
+    errno = ETIMEDOUT;
     return -1;
   }
 
   socket_t accept_result = accept(listenfd, addr, addrlen);
 
-  // Properly handle INVALID_SOCKET on Windows
   if (accept_result == INVALID_SOCKET_VALUE) {
     return -1;
   }
@@ -523,15 +521,12 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
 
   // Send header first
   ssize_t sent = send_with_timeout(sockfd, &header, sizeof(header), timeout);
-  // Check for error first to avoid signed/unsigned comparison issues
   if (sent < 0) {
-    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
-              SAFE_STRERROR(errno));
+    log_error("Failed to send packet header. errno=%d (%s)", errno, SAFE_STRERROR(errno));
     return -1;
   }
   if ((size_t)sent != sizeof(header)) {
-    log_error("Failed to send packet header: %zd/%zu bytes, errno=%d (%s)", sent, sizeof(header), errno,
-              SAFE_STRERROR(errno));
+    log_error("Failed to fully send packet header. Sent %zd/%zu bytes", sent, sizeof(header));
     return -1;
   }
 
@@ -540,18 +535,19 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
     sent = send_with_timeout(sockfd, data, len, timeout);
     // Check for error first to avoid signed/unsigned comparison issues
     if (sent < 0) {
-      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      log_error("Failed to send packet payload. errno=%d (%s)", errno, SAFE_STRERROR(errno));
       return -1;
     }
     if ((size_t)sent != len) {
-      log_error("Failed to send packet payload: %zd/%zu bytes", sent, len);
+      log_error("Failed to fully send packet payload. Sent %zd/%zu bytes", sent, len);
       return -1;
     }
   }
 
 #ifdef DEBUG_NETWORK
-  log_debug("Sent packet type=%d, len=%zu", type, len);
+  log_debug("Sent packet type=%d, len=%zu, errno=%d (%s)", type, len, errno, SAFE_STRERROR(errno));
 #endif
+
   return 0;
 }
 
@@ -564,8 +560,8 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
 
   // Read header
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
-  // Check for error first to avoid signed/unsigned comparison issues
   if (received < 0) {
+    log_error("Failed to receive packet header. errno=%d (%s)", errno, SAFE_STRERROR(errno));
     // recv_with_timeout returned an error
     return -1;
   }
@@ -606,6 +602,13 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
 
   // Validate packet type and size constraints
   switch (pkt_type) {
+  case PACKET_TYPE_PROTOCOL_VERSION:
+    // Protocol version packet has fixed size
+    if (pkt_len != sizeof(protocol_version_packet_t)) {
+      log_error("Invalid protocol version packet size: %u, expected %zu", pkt_len, sizeof(protocol_version_packet_t));
+      return -1;
+    }
+    break;
   case PACKET_TYPE_ASCII_FRAME:
     // ASCII frame contains header + frame data
     if (pkt_len < sizeof(ascii_frame_packet_t)) {
@@ -635,7 +638,7 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     break;
   case PACKET_TYPE_PING:
   case PACKET_TYPE_PONG:
-    if (pkt_len > 64) { // Ping/pong shouldn't be large
+    if (pkt_len != 0) { // Ping/pong are just header packets and no payload.
       log_error("Invalid ping/pong packet size: %u", pkt_len);
       return -1;
     }
@@ -684,13 +687,32 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     break;
   case PACKET_TYPE_ENCRYPTED:
     // Encrypted packet can contain any amount of data (within reasonable limits)
+    if (opt_no_encrypt) {
+      log_error("Encryption disabled but encrypted packet received: %u", pkt_len);
+      return -1;
+    }
     if (pkt_len == 0 || pkt_len > MAX_PACKET_SIZE) {
       log_error("Invalid encrypted packet size: %u", pkt_len);
       return -1;
     }
     break;
   // Crypto handshake packet types
-  case PACKET_TYPE_KEY_EXCHANGE_INIT:
+  case PACKET_TYPE_CRYPTO_CAPABILITIES:
+    // Crypto capabilities packet has fixed size
+    if (pkt_len != sizeof(crypto_capabilities_packet_t)) {
+      log_error("Invalid crypto capabilities packet size: %u, expected %zu", pkt_len,
+                sizeof(crypto_capabilities_packet_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CRYPTO_PARAMETERS:
+    // Crypto parameters packet has fixed size
+    if (pkt_len != sizeof(crypto_parameters_packet_t)) {
+      log_error("Invalid crypto parameters packet size: %u, expected %zu", pkt_len, sizeof(crypto_parameters_packet_t));
+      return -1;
+    }
+    break;
+  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
     // Server's public key: 32 bytes for X25519 only, or 128 bytes for authenticated (X25519 + Ed25519 identity +
     // signature)
     if (pkt_len != 32 && pkt_len != 128) {
@@ -698,7 +720,7 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
       return -1;
     }
     break;
-  case PACKET_TYPE_KEY_EXCHANGE_RESPONSE:
+  case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
     // Client's public key: 32 bytes (X25519 only), 64 bytes (X25519 + Ed25519), or 128 bytes (X25519 + Ed25519 +
     // signature)
     if (pkt_len != 32 && pkt_len != 64 && pkt_len != 128) {
@@ -706,30 +728,30 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
       return -1;
     }
     break;
-  case PACKET_TYPE_AUTH_CHALLENGE:
+  case PACKET_TYPE_CRYPTO_AUTH_CHALLENGE:
     // Challenge packet: 1 byte flags + 32 byte nonce (33 bytes total)
     if (pkt_len != 33) {
       log_error("Invalid auth challenge packet size: %u, expected 33", pkt_len);
       return -1;
     }
     break;
-  case PACKET_TYPE_AUTH_RESPONSE:
+  case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
     // HMAC + client nonce (64 bytes) for password auth, or Ed25519 signature + client nonce (96 bytes) for SSH key auth
     if (pkt_len != 64 && pkt_len != 96) {
       log_error("Invalid auth response packet size: %u, expected 64 or 96", pkt_len);
       return -1;
     }
     break;
-  case PACKET_TYPE_SERVER_AUTH_RESPONSE:
+  case PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP:
     // Server's HMAC of client's challenge nonce (32 bytes) - proves server has shared secret
     if (pkt_len != 32) {
       log_error("Invalid server auth response packet size: %u, expected 32", pkt_len);
       return -1;
     }
     break;
-  case PACKET_TYPE_HANDSHAKE_COMPLETE:
-  case PACKET_TYPE_AUTH_FAILED:
-  case PACKET_TYPE_NO_ENCRYPTION:
+  case PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE:
+  case PACKET_TYPE_CRYPTO_AUTH_FAILED:
+  case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
     // Status messages can be empty or contain text
     if (pkt_len > 256) {
       log_error("Invalid handshake status packet size: %u", pkt_len);
@@ -787,15 +809,6 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
     // Verify checksum
     uint32_t actual_crc = asciichat_crc32(*data, pkt_len);
     if (actual_crc != expected_crc) {
-      // Debug: log first few bytes of data
-      if (pkt_type == PACKET_TYPE_AUDIO) {
-        unsigned char *bytes = (unsigned char *)*data;
-        log_debug(
-            "Packet type %u first 16 bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-            "%02x %02x",
-            pkt_type, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
-            bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-      }
       log_error("Packet checksum mismatch for type %u: got 0x%x, expected 0x%x (len=%u)", pkt_type, actual_crc,
                 expected_crc, pkt_len);
       buffer_pool_free(*data, pkt_len);
@@ -862,6 +875,70 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   int result = send_packet(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size);
   free(buffer);
   return result;
+}
+
+// ============================================================================
+// Protocol Negotiation Functions
+// ============================================================================
+
+int send_protocol_version_packet(socket_t sockfd, const protocol_version_packet_t *version) {
+  if (!version) {
+    return -1;
+  }
+
+  // Convert to network byte order
+  protocol_version_packet_t net_version;
+  net_version.protocol_version = htons(version->protocol_version);
+  net_version.protocol_revision = htons(version->protocol_revision);
+  net_version.supports_encryption = version->supports_encryption;
+  net_version.compression_algorithms = version->compression_algorithms;
+  net_version.compression_threshold = version->compression_threshold;
+  net_version.feature_flags = htons(version->feature_flags);
+  SAFE_MEMSET(net_version.reserved, sizeof(net_version.reserved), 0, sizeof(net_version.reserved));
+
+  return send_packet(sockfd, PACKET_TYPE_PROTOCOL_VERSION, &net_version, sizeof(net_version));
+}
+
+int send_crypto_capabilities_packet(socket_t sockfd, const crypto_capabilities_packet_t *caps) {
+  if (!caps) {
+    return -1;
+  }
+
+  // Convert to network byte order
+  crypto_capabilities_packet_t net_caps;
+  net_caps.supported_kex_algorithms = htons(caps->supported_kex_algorithms);
+  net_caps.supported_auth_algorithms = htons(caps->supported_auth_algorithms);
+  net_caps.supported_cipher_algorithms = htons(caps->supported_cipher_algorithms);
+  net_caps.requires_verification = caps->requires_verification;
+  net_caps.preferred_kex = caps->preferred_kex;
+  net_caps.preferred_auth = caps->preferred_auth;
+  net_caps.preferred_cipher = caps->preferred_cipher;
+  SAFE_MEMSET(net_caps.reserved, sizeof(net_caps.reserved), 0, sizeof(net_caps.reserved));
+
+  return send_packet(sockfd, PACKET_TYPE_CRYPTO_CAPABILITIES, &net_caps, sizeof(net_caps));
+}
+
+int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packet_t *params) {
+  if (!params) {
+    return -1;
+  }
+
+  // Convert to network byte order
+  crypto_parameters_packet_t net_params;
+  net_params.selected_kex = params->selected_kex;
+  net_params.selected_auth = params->selected_auth;
+  net_params.selected_cipher = params->selected_cipher;
+  net_params.verification_enabled = params->verification_enabled;
+  net_params.kex_public_key_size = htons(params->kex_public_key_size);
+  net_params.auth_public_key_size = htons(params->auth_public_key_size);
+  net_params.signature_size = htons(params->signature_size);
+  net_params.shared_secret_size = htons(params->shared_secret_size);
+  net_params.nonce_size = params->nonce_size;
+  net_params.mac_size = params->mac_size;
+  net_params.hmac_size = params->hmac_size;
+  SAFE_MEMSET(net_params.reserved, sizeof(net_params.reserved), 0, sizeof(net_params.reserved));
+
+  return send_packet(sockfd, PACKET_TYPE_CRYPTO_PARAMETERS, &net_params, sizeof(net_params));
 }
 
 // Multi-user protocol functions implementation
@@ -1173,9 +1250,14 @@ int receive_packet_with_client(socket_t sockfd, packet_type_t *type, uint32_t *c
     // Use adaptive timeout for large packets
     int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, *data, pkt_len, recv_timeout);
+    if (received < 0) {
+      log_error("Failed to receive packet payload. errno=%d (%s)", errno, SAFE_STRERROR(errno));
+      buffer_pool_free(*data, pkt_len);
+      *data = NULL;
+      return -1;
+    }
     if (received != (ssize_t)pkt_len) {
-      log_error("Failed to receive packet payload: %zd/%u bytes, errno=%d (%s)", received, pkt_len, errno,
-                SAFE_STRERROR(errno));
+      log_error("Failed to receive packet payload. Received %zd/%u bytes", received, pkt_len);
       buffer_pool_free(*data, pkt_len);
       *data = NULL;
       return -1;
@@ -1217,6 +1299,7 @@ int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, u
   // Check if socket is invalid (e.g., closed by signal handler)
   if (sockfd == INVALID_SOCKET_VALUE) {
     errno = EBADF;
+    log_error("Invalid socket in receive_encrypted_packet_with_client. errno=%d (%s)", errno, SAFE_STRERROR(errno));
     return -1;
   }
 
@@ -1227,8 +1310,8 @@ int receive_encrypted_packet_with_client(socket_t sockfd, packet_type_t *type, u
   uint8_t encrypted_buffer[4096]; // Max encrypted packet size
   ssize_t received =
       recv_with_timeout(sockfd, encrypted_buffer, sizeof(encrypted_buffer), is_test_environment() ? 1 : RECV_TIMEOUT);
-
   if (received < 0) {
+    log_error("Failed to receive encrypted packet. errno=%d (%s)", errno, SAFE_STRERROR(errno));
     return -1;
   }
   if (received == 0) {
@@ -1260,6 +1343,7 @@ int send_clear_console_packet(socket_t sockfd) {
 
 int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state) {
   if (!state) {
+    log_error("Invalid server state packet");
     return -1;
   }
 
@@ -1274,6 +1358,7 @@ int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state
 
 int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabilities_packet_t *caps) {
   if (!caps) {
+    log_error("Invalid terminal capabilities packet");
     return -1;
   }
 
@@ -1308,6 +1393,11 @@ int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabiliti
 // Convenience function that sends terminal capabilities with auto-detection
 // This provides a drop-in replacement for send_size_packet
 int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width, unsigned short height) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    log_error("Invalid socket.");
+    return -1;
+  }
+
   // Detect terminal capabilities automatically
   terminal_capabilities_t caps = detect_terminal_capabilities();
 

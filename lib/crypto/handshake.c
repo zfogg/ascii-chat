@@ -126,12 +126,12 @@ int crypto_handshake_server_start(crypto_handshake_context_t *ctx, socket_t clie
     }
 
     log_info("Sending authenticated KEY_EXCHANGE_INIT (128 bytes: ephemeral + identity + signature)");
-    result = send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_INIT, extended_packet, 128);
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, extended_packet, 128);
   } else {
     // Legacy format: just ephemeral key (backward compatible)
     log_debug("Sending KEY_EXCHANGE_INIT packet with public key only (%d bytes)", CRYPTO_PUBLIC_KEY_SIZE);
-    result =
-        send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key, CRYPTO_PUBLIC_KEY_SIZE);
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key,
+                         CRYPTO_PUBLIC_KEY_SIZE);
   }
 
   if (result != 0) {
@@ -161,7 +161,7 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
   }
 
   // Verify packet type
-  if (packet_type != PACKET_TYPE_KEY_EXCHANGE_INIT) {
+  if (packet_type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT) {
     log_error("Expected KEY_EXCHANGE_INIT, got packet type %d", packet_type);
     buffer_pool_free(payload, payload_len);
     return -1;
@@ -311,7 +311,7 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
     }
 
     log_info("Sending authenticated KEY_EXCHANGE_RESPONSE (128 bytes: ephemeral + identity + signature)");
-    result = send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_RESPONSE, key_response, sizeof(key_response));
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, sizeof(key_response));
     if (result != 0) {
       log_error("Failed to send KEY_EXCHANGE_RESPONSE packet");
       return -1;
@@ -324,7 +324,7 @@ int crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket
     // Send X25519 encryption key only to server (no identity key)
     // Format: [X25519 pubkey (32)] = 32 bytes total (backward compatible)
     log_debug("Sending KEY_EXCHANGE_RESPONSE packet with X25519 key only (32 bytes)");
-    result = send_packet(client_socket, PACKET_TYPE_KEY_EXCHANGE_RESPONSE, ctx->crypto_ctx.public_key, 32);
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx->crypto_ctx.public_key, 32);
     if (result != 0) {
       log_error("Failed to send KEY_EXCHANGE_RESPONSE packet");
       return -1;
@@ -353,7 +353,7 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
   }
 
   // Check if client sent NO_ENCRYPTION response
-  if (packet_type == PACKET_TYPE_NO_ENCRYPTION) {
+  if (packet_type == PACKET_TYPE_CRYPTO_NO_ENCRYPTION) {
     log_error("SECURITY: Client sent NO_ENCRYPTION response - encryption mode mismatch");
     log_error("Server requires encryption, but client has --no-encrypt");
     log_error("Use matching encryption settings on both client and server");
@@ -362,12 +362,12 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     // Send AUTH_FAILED to inform client (though they already know)
     auth_failure_packet_t failure = {0};
     failure.reason_flags = 0; // No specific auth failure, just encryption mismatch
-    send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
+    send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
     return -1;
   }
 
   // Verify packet type
-  if (packet_type != PACKET_TYPE_KEY_EXCHANGE_RESPONSE) {
+  if (packet_type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP) {
     log_error("Expected KEY_EXCHANGE_RESPONSE, got packet type %d", packet_type);
     buffer_pool_free(payload, payload_len);
     return -1;
@@ -402,7 +402,7 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
       // Send AUTH_FAILED with specific reason
       auth_failure_packet_t failure = {0};
       failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
+      send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
       return -1;
     }
     log_info("Client signature verified successfully");
@@ -460,7 +460,7 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
       log_error("Client Ed25519 key not in whitelist - rejecting connection");
       buffer_pool_free(payload, payload_len);
       // Send AUTH_FAILED packet
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, NULL, 0);
+      send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, NULL, 0);
       return -1;
     }
   } else if (client_sent_identity) {
@@ -509,7 +509,7 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
 
     // Send AUTH_CHALLENGE with flags + nonce (33 bytes)
     log_debug("Sending AUTH_CHALLENGE packet with flags=0x%02x and nonce (33 bytes)", auth_flags);
-    result = send_packet(client_socket, PACKET_TYPE_AUTH_CHALLENGE, challenge_packet, 33);
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge_packet, 33);
     if (result != 0) {
       log_error("Failed to send AUTH_CHALLENGE packet");
       return -1;
@@ -524,7 +524,7 @@ int crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, sock
     log_debug("Skipping authentication (no password and client has no identity key)");
 
     // Send HANDSHAKE_COMPLETE immediately
-    result = send_packet(client_socket, PACKET_TYPE_HANDSHAKE_COMPLETE, NULL, 0);
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0);
     if (result != 0) {
       log_error("Failed to send HANDSHAKE_COMPLETE packet");
       return -1;
@@ -561,7 +561,7 @@ static int send_password_auth_response(crypto_handshake_context_t *ctx, socket_t
   memcpy(auth_packet + 32, ctx->client_challenge_nonce, 32);
 
   log_debug("Sending AUTH_RESPONSE packet with HMAC + client nonce (64 bytes) - %s", auth_context);
-  int result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, auth_packet, sizeof(auth_packet));
+  int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, sizeof(auth_packet));
   if (result != 0) {
     log_error("Failed to send AUTH_RESPONSE packet");
     return -1;
@@ -596,7 +596,7 @@ static int send_key_auth_response(crypto_handshake_context_t *ctx, socket_t clie
   sodium_memzero(signature, sizeof(signature));
 
   log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature + client nonce (96 bytes) - %s", auth_context);
-  int result = send_packet(client_socket, PACKET_TYPE_AUTH_RESPONSE, auth_packet, sizeof(auth_packet));
+  int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, sizeof(auth_packet));
   if (result != 0) {
     log_error("Failed to send AUTH_RESPONSE packet");
     return -1;
@@ -621,7 +621,7 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
   }
 
   // If server sent HANDSHAKE_COMPLETE, authentication was skipped (client has no key)
-  if (packet_type == PACKET_TYPE_HANDSHAKE_COMPLETE) {
+  if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
     buffer_pool_free(payload, payload_len);
     ctx->state = CRYPTO_HANDSHAKE_READY;
     log_info("Crypto handshake completed successfully (no authentication required)");
@@ -629,14 +629,14 @@ int crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socke
   }
 
   // If server sent AUTH_FAILED, client is not authorized
-  if (packet_type == PACKET_TYPE_AUTH_FAILED) {
+  if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
     log_error("Server rejected authentication - client key not authorized");
     buffer_pool_free(payload, payload_len);
     return -2; // Authentication failure - do not retry
   }
 
   // Otherwise, verify packet type is AUTH_CHALLENGE
-  if (packet_type != PACKET_TYPE_AUTH_CHALLENGE) {
+  if (packet_type != PACKET_TYPE_CRYPTO_AUTH_CHALLENGE) {
     log_error("Expected AUTH_CHALLENGE, HANDSHAKE_COMPLETE, or AUTH_FAILED, got packet type %d", packet_type);
     buffer_pool_free(payload, payload_len);
     return -1;
@@ -773,7 +773,7 @@ int crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t c
   }
 
   // Check packet type
-  if (packet_type == PACKET_TYPE_AUTH_FAILED) {
+  if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
     // Parse the auth failure packet to get specific reasons
     if (payload_len >= sizeof(auth_failure_packet_t)) {
       auth_failure_packet_t *failure = (auth_failure_packet_t *)payload;
@@ -813,7 +813,7 @@ int crypto_handshake_client_complete(crypto_handshake_context_t *ctx, socket_t c
     return -2; // Special code for auth failure - do not retry
   }
 
-  if (packet_type != PACKET_TYPE_SERVER_AUTH_RESPONSE) {
+  if (packet_type != PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP) {
     log_error("Expected SERVER_AUTH_RESPONSE or AUTH_FAILED, got packet type %d", packet_type);
     buffer_pool_free(payload, payload_len);
     return -1;
@@ -858,7 +858,7 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
   }
 
   // Verify packet type
-  if (packet_type != PACKET_TYPE_AUTH_RESPONSE) {
+  if (packet_type != PACKET_TYPE_CRYPTO_AUTH_RESPONSE) {
     log_error("Expected AUTH_RESPONSE, got packet type %d", packet_type);
     buffer_pool_free(payload, payload_len);
     return -1;
@@ -884,7 +884,7 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
       if (ctx->require_client_auth) {
         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
       }
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
+      send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
       return -1;
     }
 
@@ -921,7 +921,7 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
         // Password was verified, but key was not
         log_error("Note: Password was correct, but client key is required");
       }
-      send_packet(client_socket, PACKET_TYPE_AUTH_FAILED, &failure, sizeof(failure));
+      send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
       return -1;
     }
     log_info("Client key authentication successful (whitelist verified)");
@@ -943,7 +943,7 @@ int crypto_handshake_server_complete(crypto_handshake_context_t *ctx, socket_t c
   }
 
   log_debug("Sending SERVER_AUTH_RESPONSE packet with server HMAC (32 bytes) for mutual authentication");
-  result = send_packet(client_socket, PACKET_TYPE_SERVER_AUTH_RESPONSE, server_hmac, sizeof(server_hmac));
+  result = send_packet(client_socket, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac, sizeof(server_hmac));
   if (result != 0) {
     log_error("Failed to send SERVER_AUTH_RESPONSE packet");
     return -1;

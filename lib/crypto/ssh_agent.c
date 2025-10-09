@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
+#include "platform/system.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -85,7 +86,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   // Convert public key to hex for comparison
   char key_hex[65];
   for (int i = 0; i < 32; i++) {
-    snprintf(key_hex + i * 2, 3, "%02x", public_key->key[i]);
+    safe_snprintf(key_hex + i * 2, 3, "%02x", public_key->key[i]);
   }
 
   // Read output and check if our key is listed
@@ -128,7 +129,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
     log_error("Failed to create temporary filename");
     return -1;
   }
-  int fd = _open(tmpfile, _O_CREAT | _O_EXCL | _O_RDWR, _S_IREAD | _S_IWRITE);
+  int fd = platform_open(tmpfile, PLATFORM_O_CREAT | PLATFORM_O_EXCL | PLATFORM_O_RDWR, _S_IREAD | _S_IWRITE);
   if (fd < 0) {
     log_error("Failed to create temporary file for ssh-agent");
     return -1;
@@ -151,7 +152,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
 #endif
 
   // Write OpenSSH private key format
-  FILE *f = fdopen(fd, "w");
+  FILE *f = platform_fdopen(fd, "w");
   if (!f) {
     log_error("Failed to open temporary file for writing");
     SAFE_CLOSE(fd);
@@ -160,7 +161,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   }
 
   // Write OpenSSH Ed25519 private key format (unencrypted)
-  fprintf(f, "-----BEGIN OPENSSH PRIVATE KEY-----\n");
+  safe_fprintf(f, "-----BEGIN OPENSSH PRIVATE KEY-----\n");
 
   // Encode key in OpenSSH format
   // For simplicity, we'll write the raw bytes and let ssh-add handle it
@@ -218,7 +219,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   buffer[pos++] = (len >> 16) & 0xFF;
   buffer[pos++] = (len >> 8) & 0xFF;
   buffer[pos++] = len & 0xFF;
-  memcpy(buffer + pos, keytype, len);
+  SAFE_MEMCPY(buffer + pos, sizeof(buffer) - pos, keytype, len);
   pos += len;
 
   // Public key data (32 bytes)
@@ -227,7 +228,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   buffer[pos++] = (len >> 16) & 0xFF;
   buffer[pos++] = (len >> 8) & 0xFF;
   buffer[pos++] = len & 0xFF;
-  memcpy(buffer + pos, private_key->public_key, 32);
+  SAFE_MEMCPY(buffer + pos, sizeof(buffer) - pos, private_key->public_key, 32);
   pos += 32;
 
   // Write public key section length
@@ -258,7 +259,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   buffer[pos++] = (len >> 16) & 0xFF;
   buffer[pos++] = (len >> 8) & 0xFF;
   buffer[pos++] = len & 0xFF;
-  memcpy(buffer + pos, keytype, len);
+  SAFE_MEMCPY(buffer + pos, sizeof(buffer) - pos, keytype, len);
   pos += len;
 
   // Public key again
@@ -267,7 +268,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   buffer[pos++] = (len >> 16) & 0xFF;
   buffer[pos++] = (len >> 8) & 0xFF;
   buffer[pos++] = len & 0xFF;
-  memcpy(buffer + pos, private_key->public_key, 32);
+  SAFE_MEMCPY(buffer + pos, sizeof(buffer) - pos, private_key->public_key, 32);
   pos += 32;
 
   // Private key (64 bytes: 32 seed + 32 public key for Ed25519)
@@ -276,7 +277,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   buffer[pos++] = (len >> 16) & 0xFF;
   buffer[pos++] = (len >> 8) & 0xFF;
   buffer[pos++] = len & 0xFF;
-  memcpy(buffer + pos, private_key->key.ed25519, 64);
+  SAFE_MEMCPY(buffer + pos, sizeof(buffer) - pos, private_key->key.ed25519, 64);
   pos += 64;
 
   // Comment
@@ -286,7 +287,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   buffer[pos++] = (len >> 16) & 0xFF;
   buffer[pos++] = (len >> 8) & 0xFF;
   buffer[pos++] = len & 0xFF;
-  memcpy(buffer + pos, comment, len);
+  SAFE_MEMCPY(buffer + pos, sizeof(buffer) - pos, comment, len);
   pos += len;
 
   // Padding (align to 8 bytes)
@@ -317,17 +318,17 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   size_t base64_len = strlen(base64);
   for (size_t i = 0; i < base64_len; i += 70) {
     size_t line_len = (base64_len - i > 70) ? 70 : (base64_len - i);
-    fprintf(f, "%.*s\n", (int)line_len, base64 + i);
+    safe_fprintf(f, "%.*s\n", (int)line_len, base64 + i);
   }
 
   free(base64);
 
-  fprintf(f, "-----END OPENSSH PRIVATE KEY-----\n");
-  fclose(f);
+  safe_fprintf(f, "-----END OPENSSH PRIVATE KEY-----\n");
+  (void)fclose(f);
 
   // Add key to ssh-agent using ssh-add
   char cmd[512];
-  snprintf(cmd, sizeof(cmd), "ssh-add %s 2>&1", tmpfile);
+  safe_snprintf(cmd, sizeof(cmd), "ssh-add %s 2>&1", tmpfile);
 
   FILE *ssh_add = SAFE_POPEN(cmd, "r");
   if (!ssh_add) {

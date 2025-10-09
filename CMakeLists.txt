@@ -474,6 +474,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 elseif(WIN32)
     add_definitions(-D_WIN32 -DWIN32_LEAN_AND_MEAN)
     set(PLATFORM_WINDOWS TRUE)
+    set(IS_APPLE_SILICON 0)
+    set(IS_ROSETTA 0)
 
     # Windows SDK version detection will be handled by the comprehensive detection below
 
@@ -516,6 +518,12 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src
 )
 
+# =============================================================================
+# Hardware Acceleration Detection (must be before build type configuration)
+# =============================================================================
+# Note: CRC32 detection depends on SIMD detection, so SIMD must come first
+include(${CMAKE_SOURCE_DIR}/cmake/SIMD.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
 
 # =============================================================================
 # Build Type Configuration (using modular helper functions)
@@ -560,13 +568,6 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "TSan")
     add_definitions(-DDEBUG_MEMORY -DDEBUG_THREADS)
     configure_sanitizers(${USE_MIMALLOC} "TSan")
 endif()
-
-include(${CMAKE_SOURCE_DIR}/cmake/SIMD.cmake)
-
-# =============================================================================
-# Hardware Acceleration Detection (must be after SIMD detection)
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
 
 # musl libc Additional Configuration
 # =============================================================================
@@ -767,7 +768,7 @@ if(WIN32)
 
     # Try to find BearSSL (system install from Docker or pkg-config)
     # First check for system-installed version (e.g., from Docker image)
-    find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl
+    find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl bearssls
                  PATHS /usr/local/lib /usr/lib
                  NO_DEFAULT_PATH)
     find_path(BEARSSL_SYSTEM_INC NAMES bearssl.h
@@ -790,39 +791,66 @@ if(WIN32)
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
         # Build to cache directory to keep platform-specific builds separate
         set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build")
-        set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
+        # Windows uses bearssls.lib, Unix uses libbearssl.a
+        set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/bearssls.lib")
 
-        # Check if bearssl library exists, if not build it once using bearssl's Makefile
-        if(NOT EXISTS "${BEARSSL_LIB}")
-            message(STATUS "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}")
-            file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
+        file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
+
+        # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
+        # This needs to happen at configure time to ensure the source is patched
+        set(BEARSSL_PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/bearssl-windows-clang.patch")
+        execute_process(
+            COMMAND git -C "${BEARSSL_SOURCE_DIR}" diff --quiet src/inner.h
+            RESULT_VARIABLE BEARSSL_PATCH_NEEDED
+            OUTPUT_QUIET ERROR_QUIET
+        )
+        if(NOT BEARSSL_PATCH_NEEDED EQUAL 0)
+            message(STATUS "Applying BearSSL patch for Windows+Clang compatibility")
             execute_process(
-                COMMAND make
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                RESULT_VARIABLE BEARSSL_BUILD_RESULT
-                OUTPUT_QUIET
-                ERROR_QUIET
+                COMMAND git -C "${BEARSSL_SOURCE_DIR}" apply --ignore-whitespace "${BEARSSL_PATCH_FILE}"
+                RESULT_VARIABLE BEARSSL_PATCH_RESULT
+                OUTPUT_QUIET ERROR_QUIET
             )
-            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
-                message(FATAL_ERROR "Failed to build BearSSL library")
+            if(NOT BEARSSL_PATCH_RESULT EQUAL 0)
+                message(WARNING "Failed to apply BearSSL patch (may already be applied)")
             endif()
-            # Copy built library to cache directory
-            file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" DESTINATION "${BEARSSL_BUILD_DIR}")
-            message(STATUS "BearSSL library built successfully and cached")
         endif()
 
-        # Use bearssl library as imported target (persists across clean builds)
-        add_library(bearssl_static STATIC IMPORTED)
+        # Find build tools
+        find_program(NMAKE_EXECUTABLE nmake REQUIRED)
+        find_program(CLANG_CL_EXECUTABLE clang-cl REQUIRED)
+        find_program(LLVM_LIB_EXECUTABLE llvm-lib REQUIRED)
+
+        # Add custom command to build BearSSL if library is missing
+        # This creates a build rule that Ninja/Make can use to rebuild the library
+        add_custom_command(
+            OUTPUT "${BEARSSL_LIB}"
+            COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with nmake..."
+            COMMAND "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
+            WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+            COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"
+            VERBATIM
+        )
+
+        # Add custom target that depends on the library
+        add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
+
+        # Create an imported library that links to the custom command output
+        add_library(bearssl_static STATIC IMPORTED GLOBAL)
         set_target_properties(bearssl_static PROPERTIES
             IMPORTED_LOCATION "${BEARSSL_LIB}"
         )
         target_include_directories(bearssl_static INTERFACE
             "${BEARSSL_SOURCE_DIR}/inc"
         )
+        # Make sure the library is built before anything tries to link against it
+        add_dependencies(bearssl_static bearssl_build)
+
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "Using BearSSL library: ${BEARSSL_LIB}")
+        message(STATUS "BearSSL configured with rebuild rule: ${BEARSSL_LIB}")
     else()
         message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
@@ -885,37 +913,38 @@ else()
         set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build")
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
-        # Check if bearssl library exists, if not build it once using bearssl's Makefile
-        if(NOT EXISTS "${BEARSSL_LIB}")
-            message(STATUS "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}")
-            file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
-            execute_process(
-                COMMAND make
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                RESULT_VARIABLE BEARSSL_BUILD_RESULT
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
-            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
-                message(FATAL_ERROR "Failed to build BearSSL library")
-            endif()
-            # Copy built library to cache directory
-            file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" DESTINATION "${BEARSSL_BUILD_DIR}")
-            message(STATUS "BearSSL library built successfully and cached")
-        endif()
+        file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
 
-        # Use bearssl library as imported target (persists across clean builds)
-        add_library(bearssl_static STATIC IMPORTED)
+        # Add custom command to build BearSSL if library is missing
+        # This creates a build rule that Ninja/Make can use to rebuild the library
+        add_custom_command(
+            OUTPUT "${BEARSSL_LIB}"
+            COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with make..."
+            COMMAND make CC=${CMAKE_C_COMPILER} AR=${CMAKE_AR}
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
+            WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+            COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"
+            VERBATIM
+        )
+
+        # Add custom target that depends on the library
+        add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
+
+        # Create an imported library that links to the custom command output
+        add_library(bearssl_static STATIC IMPORTED GLOBAL)
         set_target_properties(bearssl_static PROPERTIES
             IMPORTED_LOCATION "${BEARSSL_LIB}"
         )
         target_include_directories(bearssl_static INTERFACE
             "${BEARSSL_SOURCE_DIR}/inc"
         )
+        # Make sure the library is built before anything tries to link against it
+        add_dependencies(bearssl_static bearssl_build)
+
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "Using BearSSL library: ${BEARSSL_LIB}")
+        message(STATUS "BearSSL configured with rebuild rule: ${BEARSSL_LIB}")
     else()
         message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
@@ -1033,6 +1062,57 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
                     "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}"
                     "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/um/${WIN_ARCH}"
                 )
+
+                # Find MSVC runtime libraries (required for Clang with lld-link)
+                set(MSVC_BASE_PATHS
+                    "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC"
+                    "C:/Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC"
+                    "C:/Program Files (x86)/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC"
+                    "C:/Program Files (x86)/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC"
+                    "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC"
+                )
+
+                set(MSVC_LIB_DIR)
+                foreach(MSVC_BASE IN LISTS MSVC_BASE_PATHS)
+                    if(EXISTS "${MSVC_BASE}")
+                        file(GLOB MSVC_VERSIONS "${MSVC_BASE}/*")
+                        if(MSVC_VERSIONS)
+                            # Sort to get latest version
+                            list(SORT MSVC_VERSIONS COMPARE NATURAL ORDER DESCENDING)
+                            list(GET MSVC_VERSIONS 0 MSVC_LATEST)
+                            set(MSVC_LIB_CANDIDATE "${MSVC_LATEST}/lib/${WIN_ARCH}")
+                            if(EXISTS "${MSVC_LIB_CANDIDATE}")
+                                set(MSVC_LIB_DIR "${MSVC_LIB_CANDIDATE}")
+                                get_filename_component(MSVC_VERSION_DIR "${MSVC_LATEST}" NAME)
+                                message(STATUS "Found MSVC runtime libraries: ${MSVC_VERSION_DIR}")
+                                break()
+                            endif()
+                        endif()
+                    endif()
+                endforeach()
+
+                if(MSVC_LIB_DIR)
+                    link_directories("${MSVC_LIB_DIR}")
+                else()
+                    message(WARNING "\n"
+                        "================================================================================\n"
+                        "WARNING: MSVC Runtime Libraries Not Found\n"
+                        "================================================================================\n"
+                        "Clang requires MSVC runtime libraries (libcmt.lib, oldnames.lib) for linking.\n"
+                        "Release builds may fail without these libraries.\n"
+                        "\n"
+                        "To install MSVC runtime libraries:\n"
+                        "  1. Open Visual Studio Installer\n"
+                        "  2. Click 'Modify' on your Visual Studio installation\n"
+                        "  3. Go to 'Individual Components' tab\n"
+                        "  4. Search for 'MSVC v143 - VS 2022 C++ x64/x86 build tools'\n"
+                        "  5. Select the component and click 'Modify' to install\n"
+                        "================================================================================")
+                endif()
 
                 message(STATUS "Found Windows SDK ${WINDOWS_SDK_VERSION}")
 
@@ -1506,6 +1586,12 @@ if(WIN32)
         ${USER32_LIB}
         ${ADVAPI32_LIB}
         ${DBGHELP_LIB}
+        ${MF_LIB}
+        ${MFPLAT_LIB}
+        ${MFREADWRITE_LIB}
+        ${MFUUID_LIB}
+        ${OLE32_LIB}
+        crypt32  # For Windows crypto certificate functions
     )
 else()
     if(PLATFORM_DARWIN)
@@ -1598,8 +1684,12 @@ target_link_libraries(ascii-chat-core
     ascii-chat-audio
     ascii-chat-network
     ${ZLIB_LIBRARIES}
-    m  # math library
 )
+
+# Math library (Unix only - Windows has math functions in C runtime)
+if(NOT WIN32)
+    target_link_libraries(ascii-chat-core m)
+endif()
 
 # Special musl handling for libexecinfo
 if(USE_MUSL)

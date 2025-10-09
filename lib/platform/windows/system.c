@@ -12,7 +12,9 @@
 #include "../internal.h"
 #include "../../common.h"
 #include "../windows_compat.h"
+#include "../socket.h"
 #include <dbghelp.h>
+#include <wincrypt.h>
 #include <io.h>
 #include <fcntl.h>
 #include <process.h>
@@ -25,8 +27,11 @@
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
+#include <mmsystem.h>  // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
 
 #include <stdatomic.h>
+
+#pragma comment(lib, "winmm.lib")  // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
 
 /**
  * @brief Get username from environment variables
@@ -59,7 +64,17 @@ int platform_init(void) {
   // Install crash handlers for automatic backtrace on crashes
   platform_install_crash_handler();
 
-  // Initialize Winsock will be done in socket_windows.c
+  // Set Windows timer resolution to 1ms for high-precision sleep
+  // This is required for multimedia applications that need accurate timing
+  // Without this, Sleep(1) can sleep up to 15.6ms (default Windows timer resolution)
+  // With timeBeginPeriod(1), Sleep(1) sleeps 1-2ms which is acceptable for 144 FPS capture
+  timeBeginPeriod(1);
+
+  // Initialize Winsock (required before getaddrinfo and socket operations)
+  if (socket_init() != 0) {
+    return -1;
+  }
+
   return 0;
 }
 
@@ -67,7 +82,10 @@ int platform_init(void) {
  * @brief Clean up platform-specific functionality
  */
 void platform_cleanup(void) {
-  // Cleanup will be done in socket_windows.c for Winsock
+  socket_cleanup();
+
+  // Restore original Windows timer resolution
+  timeEndPeriod(1);
 }
 
 /**
@@ -105,9 +123,9 @@ int usleep(unsigned int usec) {
  * @brief Cross-platform high-precision sleep function with shutdown support
  * @param usec Number of microseconds to sleep
  *
- * On Windows, uses Sleep() with millisecond precision.
- * Simple implementation due to Windows timer characteristics.
- * Sleep(1) may sleep up to 15.6ms due to timer resolution.
+ * On Windows, uses Sleep() with millisecond precision after calling timeBeginPeriod(1).
+ * With 1ms timer resolution enabled in platform_init(), Sleep(1) sleeps 1-2ms
+ * instead of the default 15.6ms, enabling proper frame rate limiting for 144 FPS capture.
  */
 void platform_sleep_usec(unsigned int usec) {
   // Convert microseconds to milliseconds, minimum 1ms
@@ -860,6 +878,16 @@ int platform_open(const char *pathname, int flags, ...) {
 }
 
 /**
+ * @brief Open file descriptor with platform-safe mode
+ * @param fd File descriptor
+ * @param mode File mode
+ * @return File pointer on success, NULL on failure
+ */
+FILE *platform_fdopen(int fd, const char *mode) {
+  return _fdopen(fd, mode);
+}
+
+/**
  * @brief Read from file descriptor
  * @param fd File descriptor
  * @param buf Buffer to read into
@@ -1150,6 +1178,12 @@ int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
     if (CryptBinaryToStringA(pCertContext->pbCertEncoded, pCertContext->cbCertEncoded, CRYPT_STRING_BASE64HEADER,
                              pem_data + pem_size, &written)) {
       pem_size += written - 1; // -1 to exclude null terminator added by CryptBinaryToStringA
+
+      // Add newline separator between certificates for proper PEM parsing
+      // CryptBinaryToStringA might not always include a trailing newline
+      if (pem_size > 0 && pem_data[pem_size - 1] != '\n') {
+        pem_data[pem_size++] = '\n';
+      }
     }
   }
 

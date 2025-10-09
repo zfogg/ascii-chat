@@ -493,9 +493,13 @@ int main(int argc, char *argv[]) {
   }
   (void)atexit(platform_cleanup);
 
-#ifdef USE_MIMALLOC_DEBUG
+#if defined(USE_MIMALLOC_DEBUG)
+#if !defined(_WIN32)
   // Register mimalloc stats printer at exit
   (void)atexit(print_mimalloc_stats);
+#else
+  UNUSED(print_mimalloc_stats);
+#endif
 #endif
 
   // Note: --help and --version will exit(0) directly within options_init
@@ -962,7 +966,7 @@ main_loop:
     int client_id = add_client(client_sock, client_ip, client_port);
     if (client_id < 0) {
       log_error("Failed to add client, rejecting connection");
-      close(client_sock);
+      socket_close(client_sock);
       continue;
     }
 

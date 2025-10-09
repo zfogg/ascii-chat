@@ -14,6 +14,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 // Define ssize_t for all platforms
 #ifdef _WIN32
@@ -80,6 +81,7 @@ void platform_set_last_error(int error);
 
 // Safe file operations
 int platform_open(const char *pathname, int flags, ...);
+FILE *platform_fdopen(int fd, const char *mode);
 ssize_t platform_read(int fd, void *buf, size_t count);
 ssize_t platform_write(int fd, const void *buf, size_t count);
 int platform_close(int fd);

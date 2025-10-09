@@ -347,9 +347,13 @@ int main(int argc, char *argv[]) {
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
 
-#ifdef USE_MIMALLOC_DEBUG
+#if defined(USE_MIMALLOC_DEBUG)
+#if !defined(_WIN32)
   // Register mimalloc stats printer at exit
   (void)atexit(print_mimalloc_stats);
+#else
+  UNUSED(print_mimalloc_stats);
+#endif
 #endif
 
   // Install signal handlers for graceful shutdown and terminal resize

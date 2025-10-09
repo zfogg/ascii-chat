@@ -4,6 +4,7 @@
 #include "gpg.h"
 #include "ssh_agent.h"
 #include "common.h"
+#include "platform/string.h"
 #include <sodium.h>
 #include <string.h>
 #include <stdio.h>
@@ -828,7 +829,11 @@ asciichat_error_status_t parse_private_key(const char *path, private_key_t *key_
       // Accumulate base64 data
       size_t line_len = strlen(line);
       if (base64_len + line_len < sizeof(base64_data)) {
-        strcat(base64_data, line);
+        if (platform_strcat(base64_data, sizeof(base64_data), line) == NULL) {
+          log_error("Failed to append base64 data: buffer overflow");
+          fclose(f);
+          return ASCIICHAT_ERROR_CRYPTO_KEY;
+        }
         base64_len += line_len;
       }
     }
@@ -996,7 +1001,6 @@ asciichat_error_status_t parse_private_key(const char *path, private_key_t *key_
     if (key_type_len < sizeof(key_type) && offset + 4 + key_type_len <= blob_len) {
       memcpy(key_type, blob + offset + 4, key_type_len);
       key_type[key_type_len] = '\0';
-      fprintf(stderr, "parse_private_key: Unsupported key type: %s\n", key_type);
       log_error("Unsupported key type '%s' - only Ed25519 is currently supported", key_type);
       log_error("SSH key type detected: %s", key_type);
       log_error("RSA and ECDSA keys are not yet supported for the following reasons:");
@@ -2073,7 +2077,24 @@ int ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_
       return -1;
     }
 
-    // Connect to SSH agent Unix socket
+#ifdef _WIN32
+    // Windows: SSH agent uses named pipes
+    HANDLE pipe = CreateFileA(ssh_auth_sock, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+
+    if (pipe == INVALID_HANDLE_VALUE) {
+      fprintf(stderr, "ed25519_sign_message: Failed to connect to SSH agent pipe: %lu\n", GetLastError());
+      return -1;
+    }
+
+    // Convert Windows HANDLE to file descriptor for consistent I/O
+    int agent_fd = _open_osfhandle((intptr_t)pipe, _O_RDWR);
+    if (agent_fd < 0) {
+      fprintf(stderr, "ed25519_sign_message: Failed to get file descriptor for pipe\n");
+      CloseHandle(pipe);
+      return -1;
+    }
+#else
+    // Unix: SSH agent uses Unix domain sockets
     int agent_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (agent_fd < 0) {
       fprintf(stderr, "ed25519_sign_message: Failed to create socket\n");
@@ -2090,6 +2111,7 @@ int ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_
       close(agent_fd);
       return -1;
     }
+#endif
 
     // Build SSH public key blob for the identity
     // Format: [type_len:uint32]["ssh-ed25519"][key_len:uint32][32 bytes key]
@@ -2387,11 +2409,13 @@ int validate_ssh_key_file(const char *key_path) {
   }
 
   // Check permissions for SSH key files (should be 600 or 400)
+#ifndef _WIN32
   if ((st.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
     log_warn("SSH key file %s has overly permissive permissions: %o", key_path, st.st_mode & 0777);
     log_warn("Recommended: chmod 600 %s", key_path);
     log_warn("Continuing anyway, but this is a security risk");
   }
+#endif
 
   return 0;
 }

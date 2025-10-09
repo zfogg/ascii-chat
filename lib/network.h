@@ -65,46 +65,53 @@ int parse_size_message(const char *message, unsigned short *width, unsigned shor
 #define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024) // 5MB max packet size
 
 typedef enum {
+  // Protocol negotiation
+  PACKET_TYPE_PROTOCOL_VERSION = 1, // Protocol version and capabilities negotiation
+
   // Unified frame packets (header + data in single packet)
-  PACKET_TYPE_ASCII_FRAME = 1, // Complete ASCII frame with all metadata
-  PACKET_TYPE_IMAGE_FRAME = 2, // Complete RGB image with dimensions
+  PACKET_TYPE_ASCII_FRAME = 2, // Complete ASCII frame with all metadata
+  PACKET_TYPE_IMAGE_FRAME = 3, // Complete RGB image with dimensions
 
   // Audio and control
-  PACKET_TYPE_AUDIO = 3,
-  PACKET_TYPE_CLIENT_CAPABILITIES = 4, // Client reports terminal capabilities
-  PACKET_TYPE_PING = 5,
-  PACKET_TYPE_PONG = 6,
+  PACKET_TYPE_AUDIO = 4,
+  PACKET_TYPE_CLIENT_CAPABILITIES = 5, // Client reports terminal capabilities
+  PACKET_TYPE_PING = 6,
+  PACKET_TYPE_PONG = 7,
 
   // Multi-user protocol extensions
-  PACKET_TYPE_CLIENT_JOIN = 7,    // Client announces capability to send media
-  PACKET_TYPE_CLIENT_LEAVE = 8,   // Clean disconnect notification
-  PACKET_TYPE_STREAM_START = 9,   // Client requests to start sending video/audio
-  PACKET_TYPE_STREAM_STOP = 10,   // Client stops sending media
-  PACKET_TYPE_CLEAR_CONSOLE = 11, // Server tells client to clear console
-  PACKET_TYPE_SERVER_STATE = 12,  // Server sends current state to clients
-  PACKET_TYPE_AUDIO_BATCH = 13,   // Batched audio packets for efficiency
+  PACKET_TYPE_CLIENT_JOIN = 8,    // Client announces capability to send media
+  PACKET_TYPE_CLIENT_LEAVE = 9,   // Clean disconnect notification
+  PACKET_TYPE_STREAM_START = 10,  // Client requests to start sending video/audio
+  PACKET_TYPE_STREAM_STOP = 11,   // Client stops sending media
+  PACKET_TYPE_CLEAR_CONSOLE = 12, // Server tells client to clear console
+  PACKET_TYPE_SERVER_STATE = 13,  // Server sends current state to clients
 
   // Crypto handshake packets (ALWAYS SENT UNENCRYPTED)
-  PACKET_TYPE_KEY_EXCHANGE_INIT = 14,     // Server -> Client: {server_pubkey[32]}
-  PACKET_TYPE_KEY_EXCHANGE_RESPONSE = 15, // Client -> Server: {client_pubkey[32]}
-  PACKET_TYPE_AUTH_CHALLENGE = 16,        // Server -> Client: {nonce[32]}
-  PACKET_TYPE_AUTH_RESPONSE = 17,         // Client -> Server: {HMAC[32]}
-  PACKET_TYPE_HANDSHAKE_COMPLETE = 18,    // Server -> Client: "encryption ready"
-  PACKET_TYPE_AUTH_FAILED = 19,           // Server -> Client: "authentication failed"
-  PACKET_TYPE_ENCRYPTED = 20,             // Encrypted packet (after handshake)
-  PACKET_TYPE_NO_ENCRYPTION = 21,         // Client -> Server: "I want to proceed without encryption"
-  PACKET_TYPE_SERVER_AUTH_RESPONSE = 22   // Server -> Client: {HMAC[32]} server proves knowledge of shared secret
+  PACKET_TYPE_CRYPTO_CAPABILITIES = 14,       // Client -> Server: Supported crypto algorithms
+  PACKET_TYPE_CRYPTO_PARAMETERS = 15,         // Server -> Client: Chosen algorithms + data sizes
+  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT = 16,  // Server -> Client: {server_pubkey[32]}
+  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP = 17,  // Client -> Server: {client_pubkey[32]}
+  PACKET_TYPE_CRYPTO_AUTH_CHALLENGE = 18,     // Server -> Client: {nonce[32]}
+  PACKET_TYPE_CRYPTO_AUTH_RESPONSE = 19,      // Client -> Server: {HMAC[32]}
+  PACKET_TYPE_CRYPTO_AUTH_FAILED = 20,        // Server -> Client: "authentication failed"
+  PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 21,      // Client -> Server: "I want to proceed without encryption"
+  PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP = 22,   // Server -> Client: {HMAC[32]} server proves knowledge of shared secret
+  PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 23, // Server -> Client: "encryption ready"
+  PACKET_TYPE_ENCRYPTED = 24,                 // Encrypted packet (after handshake)
+
+  // Audio batching (moved after crypto packets)
+  PACKET_TYPE_AUDIO_BATCH = 25 // Batched audio packets for efficiency
 } packet_type_t;
 
 /**
  * Determines if a packet type is a handshake packet that should NEVER be encrypted.
- * Handshake packets (types 14-22) are always sent in plaintext.
+ * Handshake packets (types 14-24) are always sent in plaintext.
  *
  * @param type The packet type to check
  * @return true if this is a handshake packet, false otherwise
  */
 static inline bool packet_is_handshake_type(packet_type_t type) {
-  return (type >= PACKET_TYPE_KEY_EXCHANGE_INIT && type <= PACKET_TYPE_SERVER_AUTH_RESPONSE);
+  return (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type <= PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP);
 }
 
 typedef struct {
@@ -159,6 +166,79 @@ typedef struct {
   uint8_t reason_flags; // Bitmask of auth_failure_reason_t values
   uint8_t reserved[7];  // Reserved for future use
 } PACKED_ATTR auth_failure_packet_t;
+
+// ============================================================================
+// Protocol Negotiation Packets
+// ============================================================================
+
+// Compression algorithm flags
+#define COMPRESS_ALGO_NONE 0x00 // No compression
+#define COMPRESS_ALGO_ZLIB 0x01 // zlib deflate compression
+#define COMPRESS_ALGO_LZ4 0x02  // LZ4 fast compression (future)
+
+// Feature flags for protocol_version_packet_t
+#define FEATURE_RLE_ENCODING 0x01 // Run-length encoding support
+#define FEATURE_DELTA_FRAMES 0x02 // Delta frame encoding (future)
+
+// Protocol version packet (Packet Type 1) - Initial handshake packet
+// Sent by both client and server to negotiate protocol capabilities
+typedef struct {
+  uint16_t protocol_version;      // Major version (e.g., 1)
+  uint16_t protocol_revision;     // Minor revision (e.g., 0)
+  uint8_t supports_encryption;    // Boolean: 1=yes, 0=no (plaintext mode)
+  uint8_t compression_algorithms; // Bitmap: COMPRESS_ALGO_ZLIB, etc.
+  uint8_t compression_threshold;  // 0-100 percentage (80 = 80%)
+  uint16_t feature_flags;         // FEATURE_RLE_ENCODING, etc.
+  uint8_t reserved[7];            // Padding to 16 bytes
+} PACKED_ATTR protocol_version_packet_t;
+
+// ============================================================================
+// Crypto Capability Negotiation Packets
+// ============================================================================
+
+// Key Exchange Algorithm flags
+#define KEX_ALGO_X25519 0x0001    // Curve25519 ECDH (current, 32-byte keys)
+#define KEX_ALGO_KYBER1024 0x0002 // Kyber1024 post-quantum KEX (future, 1568-byte keys)
+
+// Authentication/Signature Algorithm flags
+#define AUTH_ALGO_NONE 0x0000       // No signature verification
+#define AUTH_ALGO_ED25519 0x0001    // Ed25519 signatures (current, 64-byte sigs)
+#define AUTH_ALGO_DILITHIUM3 0x0002 // Dilithium3 post-quantum signatures (future, 3309-byte sigs)
+
+// Cipher Algorithm flags
+#define CIPHER_ALGO_XSALSA20_POLY1305 0x0001 // XSalsa20-Poly1305 AEAD (current)
+#define CIPHER_ALGO_CHACHA20_POLY1305 0x0002 // ChaCha20-Poly1305 AEAD (future)
+#define CIPHER_ALGO_AES256_GCM 0x0004        // AES-256-GCM AEAD (future)
+
+// Crypto capabilities packet (Packet Type 15) - Client → Server
+// Client describes which crypto algorithms it supports
+typedef struct {
+  uint16_t supported_kex_algorithms;    // Bitmap of KEX_ALGO_* flags
+  uint16_t supported_auth_algorithms;   // Bitmap of AUTH_ALGO_* flags
+  uint16_t supported_cipher_algorithms; // Bitmap of CIPHER_ALGO_* flags
+  uint8_t requires_verification;        // Boolean: client wants signature verification?
+  uint8_t preferred_kex;                // Client's preferred KEX (KEX_ALGO_*)
+  uint8_t preferred_auth;               // Client's preferred auth (AUTH_ALGO_*)
+  uint8_t preferred_cipher;             // Client's preferred cipher (CIPHER_ALGO_*)
+  uint8_t reserved[6];                  // Padding to 16 bytes
+} PACKED_ATTR crypto_capabilities_packet_t;
+
+// Crypto parameters packet (Packet Type 16) - Server → Client
+// Server replies with chosen algorithms and handshake data sizes
+typedef struct {
+  uint8_t selected_kex;          // Which KEX algorithm (KEX_ALGO_*)
+  uint8_t selected_auth;         // Which auth algorithm (AUTH_ALGO_*)
+  uint8_t selected_cipher;       // Which cipher algorithm (CIPHER_ALGO_*)
+  uint8_t verification_enabled;  // Boolean: server requires verification
+  uint16_t kex_public_key_size;  // e.g., 32 for X25519, 1568 for Kyber1024
+  uint16_t auth_public_key_size; // e.g., 32 for Ed25519, 1952 for Dilithium3
+  uint16_t signature_size;       // e.g., 64 for Ed25519, 3309 for Dilithium3
+  uint16_t shared_secret_size;   // e.g., 32 for X25519
+  uint8_t nonce_size;            // e.g., 24 for XSalsa20 nonce
+  uint8_t mac_size;              // e.g., 16 for Poly1305 MAC
+  uint8_t hmac_size;             // e.g., 32 for HMAC-SHA256
+  uint8_t reserved[3];           // Padding to 24 bytes
+} PACKED_ATTR crypto_parameters_packet_t;
 
 // Terminal capabilities packet - sent by client to inform server of capabilities
 typedef struct {
@@ -348,6 +428,11 @@ int send_server_state_packet(socket_t sockfd, const server_state_packet_t *state
 int send_terminal_capabilities_packet(socket_t sockfd, const terminal_capabilities_packet_t *caps);
 int send_terminal_size_with_auto_detect(socket_t sockfd, unsigned short width,
                                         unsigned short height); // Convenience function with auto-detection
+
+// Protocol negotiation functions
+int send_protocol_version_packet(socket_t sockfd, const protocol_version_packet_t *version);
+int send_crypto_capabilities_packet(socket_t sockfd, const crypto_capabilities_packet_t *caps);
+int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packet_t *params);
 
 // Frame sending functions
 int send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size, int width, int height);

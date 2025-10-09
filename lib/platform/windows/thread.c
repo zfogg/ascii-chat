@@ -8,7 +8,10 @@
 
 #ifdef _WIN32
 
+#include <windows.h>
 #include "../../common.h"
+#include "platform/thread.h"
+#include "util/path.h"
 #include <process.h>
 #include <stdint.h>
 #include <dbghelp.h>
