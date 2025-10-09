@@ -67,18 +67,21 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   }
 
   // Wait for connection to complete with timeout
-  fd_set write_fds;
+  // On Windows, failed connections signal the exception set, so we must check both
+  fd_set write_fds, except_fds;
   struct timeval timeout;
 
   socket_fd_zero(&write_fds);
+  socket_fd_zero(&except_fds);
   socket_fd_set(sockfd, &write_fds);
+  socket_fd_set(sockfd, &except_fds);
 
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
 
   // socket_select expects max_fd as the highest fd value (sockfd in this case)
   // On Windows it's ignored, but on POSIX it's crucial
-  result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
+  result = socket_select(sockfd, NULL, &write_fds, &except_fds, &timeout);
   if (result <= 0) {
     if (result == 0) {
       // Timeout occurred
@@ -89,6 +92,17 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
       return false; // Interrupted by signal
     }
     // Some other error occurred
+    return false;
+  }
+
+  // Check if socket is in exception set (connection failed)
+  if (socket_fd_isset(sockfd, &except_fds)) {
+    // Connection failed - get the error
+    int error = 0;
+    socklen_t len = sizeof(error);
+    if (socket_getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) == 0 && error != 0) {
+      errno = error;
+    }
     return false;
   }
 
