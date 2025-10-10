@@ -10,6 +10,7 @@
 
 #include "../../options.h"
 #include "../../common.h"
+#include "../../asciichat_errno.h"
 #include "../windows_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,21 +23,21 @@
  * @param size Pointer to terminal_size_t structure to fill
  * @return 0 on success, -1 on failure
  */
-int terminal_get_size(terminal_size_t *size) {
+asciichat_error_t terminal_get_size(terminal_size_t *size) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
 
   if (h == INVALID_HANDLE_VALUE) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
   }
 
   if (GetConsoleScreenBufferInfo(h, &csbi)) {
     size->cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
     size->rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-    return 0;
+    return ASCIICHAT_OK;
   }
 
-  return -1;
+  return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
 }
 
 /**
@@ -52,14 +53,16 @@ const char *get_tty_path(void) {
  * @param enable True to enable raw mode, false to restore normal mode
  * @return 0 on success, -1 on failure
  */
-int terminal_set_raw_mode(bool enable) {
+asciichat_error_t terminal_set_raw_mode(bool enable) {
   HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-  if (hStdin == INVALID_HANDLE_VALUE)
-    return -1;
+  if (hStdin == INVALID_HANDLE_VALUE) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+  }
 
   DWORD mode;
-  if (!GetConsoleMode(hStdin, &mode))
-    return -1;
+  if (!GetConsoleMode(hStdin, &mode)) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+  }
 
   if (enable) {
     mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
@@ -67,7 +70,10 @@ int terminal_set_raw_mode(bool enable) {
     mode |= (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
   }
 
-  return SetConsoleMode(hStdin, mode) ? 0 : -1;
+  if (!SetConsoleMode(hStdin, mode)) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+  }
+  return 0;
 }
 
 /**
@@ -75,14 +81,16 @@ int terminal_set_raw_mode(bool enable) {
  * @param enable True to enable echo, false to disable
  * @return 0 on success, -1 on failure
  */
-int terminal_set_echo(bool enable) {
+asciichat_error_t terminal_set_echo(bool enable) {
   HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-  if (hStdin == INVALID_HANDLE_VALUE)
-    return -1;
+  if (hStdin == INVALID_HANDLE_VALUE) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+  }
 
   DWORD mode;
-  if (!GetConsoleMode(hStdin, &mode))
-    return -1;
+  if (!GetConsoleMode(hStdin, &mode)) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+  }
 
   if (enable) {
     mode |= ENABLE_ECHO_INPUT;
@@ -90,7 +98,10 @@ int terminal_set_echo(bool enable) {
     mode &= ~ENABLE_ECHO_INPUT;
   }
 
-  return SetConsoleMode(hStdin, mode) ? 0 : -1;
+  if (!SetConsoleMode(hStdin, mode)) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
+  }
+  return 0;
 }
 
 /**
@@ -156,9 +167,9 @@ bool terminal_supports_unicode(void) {
  * @brief Clear the terminal screen
  * @return 0 on success, non-zero on failure
  */
-int terminal_clear_screen(void) {
+asciichat_error_t terminal_clear_screen(void) {
   system("cls");
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -167,10 +178,10 @@ int terminal_clear_screen(void) {
  * @param col Column position (0-based)
  * @return 0 on success, -1 on failure
  */
-int terminal_move_cursor(int row, int col) {
+asciichat_error_t terminal_move_cursor(int row, int col) {
   HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
   if (hConsole == INVALID_HANDLE_VALUE)
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
 
   COORD coord;
   coord.X = (SHORT)col;
@@ -204,15 +215,15 @@ void terminal_enable_ansi(void) {
  * @param line_buffered True for line buffering, false for no buffering
  * @return 0 on success, -1 on failure
  */
-int terminal_set_buffering(bool line_buffered) {
+asciichat_error_t terminal_set_buffering(bool line_buffered) {
   // Windows console doesn't have direct line buffering control
   // This is typically handled at the C runtime level
   if (line_buffered) {
-    setvbuf(stdout, NULL, _IOLBF, 0);
+    (void)setvbuf(stdout, NULL, _IOLBF, 0);
   } else {
-    setvbuf(stdout, NULL, _IONBF, 0);
+    (void)setvbuf(stdout, NULL, _IONBF, 0);
   }
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -220,7 +231,7 @@ int terminal_set_buffering(bool line_buffered) {
  * @param fd File descriptor (ignored on Windows - console APIs use stdout)
  * @return 0 on success, -1 on failure
  */
-int terminal_flush(int fd) {
+asciichat_error_t terminal_flush(int fd) {
   (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
   return fflush(stdout);
 }
@@ -231,16 +242,16 @@ int terminal_flush(int fd) {
  * @param col Pointer to store column position
  * @return 0 on success, -1 on failure
  */
-int terminal_get_cursor_position(int *row, int *col) {
+asciichat_error_t terminal_get_cursor_position(int *row, int *col) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
   if (hOut == INVALID_HANDLE_VALUE) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
   }
 
   if (!GetConsoleScreenBufferInfo(hOut, &csbi)) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Terminal operation failed");
   }
 
   if (row)
@@ -255,21 +266,21 @@ int terminal_get_cursor_position(int *row, int *col) {
  * @brief Save cursor position (using ANSI if available)
  * @return 0 on success, -1 on failure
  */
-int terminal_save_cursor(void) {
+asciichat_error_t terminal_save_cursor(void) {
   // Try ANSI escape sequence first (Windows 10+)
   printf("\033[s");
-  fflush(stdout);
-  return 0;
+  (void)fflush(stdout);
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Restore cursor position (using ANSI if available)
  * @return 0 on success, -1 on failure
  */
-int terminal_restore_cursor(void) {
+asciichat_error_t terminal_restore_cursor(void) {
   // Try ANSI escape sequence first (Windows 10+)
   printf("\033[u");
-  fflush(stdout);
+  (void)fflush(stdout);
   return 0;
 }
 
@@ -278,24 +289,24 @@ int terminal_restore_cursor(void) {
  * @param title New window title
  * @return 0 on success, -1 on failure
  */
-int terminal_set_title(const char *title) {
+asciichat_error_t terminal_set_title(const char *title) {
   if (SetConsoleTitleA(title)) {
-    return 0;
+    return ASCIICHAT_OK;
   }
   // Fallback to ANSI escape sequence
   printf("\033]0;%s\007", title);
-  fflush(stdout);
-  return 0;
+  (void)fflush(stdout);
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Ring terminal bell
  * @return 0 on success, -1 on failure
  */
-int terminal_ring_bell(void) {
+asciichat_error_t terminal_ring_bell(void) {
   // Use Windows beep
   Beep(800, 200); // 800Hz for 200ms
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -304,7 +315,7 @@ int terminal_ring_bell(void) {
  * @param hide True to hide cursor, false to show
  * @return 0 on success, -1 on failure
  */
-int terminal_hide_cursor(int fd, bool hide) {
+asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
   (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
   CONSOLE_CURSOR_INFO cursorInfo;
@@ -312,21 +323,29 @@ int terminal_hide_cursor(int fd, bool hide) {
   if (hOut == INVALID_HANDLE_VALUE) {
     // Fallback to ANSI
     printf(hide ? "\033[?25l" : "\033[?25h");
-    fflush(stdout);
-    return 0;
+    (void)fflush(stdout);
+    return ASCIICHAT_OK;
   }
 
   if (!GetConsoleCursorInfo(hOut, &cursorInfo)) {
-    return -1;
+    // If we can't get console cursor info, fall back to ANSI escape sequences
+    // This happens in PowerShell or other non-console environments
+    printf(hide ? "\033[?25l" : "\033[?25h");
+    (void)fflush(stdout);
+    return ASCIICHAT_OK;
   }
 
   cursorInfo.bVisible = !hide;
 
   if (!SetConsoleCursorInfo(hOut, &cursorInfo)) {
-    return -1;
+    // If we can't set console cursor info, fall back to ANSI escape sequences
+    // This happens in PowerShell or other non-console environments
+    printf(hide ? "\033[?25l" : "\033[?25h");
+    (void)fflush(stdout);
+    return ASCIICHAT_OK;
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -335,11 +354,11 @@ int terminal_hide_cursor(int fd, bool hide) {
  * @param bottom Bottom line of scroll region (1-based)
  * @return 0 on success, -1 on failure
  */
-int terminal_set_scroll_region(int top, int bottom) {
+asciichat_error_t terminal_set_scroll_region(int top, int bottom) {
   // Use ANSI escape sequence (Windows 10+ with VT processing enabled)
   printf("\033[%d;%dr", top, bottom);
-  fflush(stdout);
-  return 0;
+  (void)fflush(stdout);
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -347,7 +366,7 @@ int terminal_set_scroll_region(int top, int bottom) {
  * @param fd File descriptor for the terminal
  * @return 0 on success, -1 on failure
  */
-int terminal_reset(int fd) {
+asciichat_error_t terminal_reset(int fd) {
   // Reset using ANSI escape sequence
   const char *reset_seq = "\033c"; // Full reset
   HANDLE h = (HANDLE)_get_osfhandle(fd);
@@ -358,7 +377,7 @@ int terminal_reset(int fd) {
   } else {
     // Fall back to stdout if handle is invalid
     printf("%s", reset_seq);
-    fflush(stdout);
+    (void)fflush(stdout);
   }
 
   // Also reset Windows console attributes
@@ -367,7 +386,7 @@ int terminal_reset(int fd) {
     SetConsoleTextAttribute(hOut, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -375,11 +394,11 @@ int terminal_reset(int fd) {
  * @param fd File descriptor (ignored on Windows - console APIs use stdout)
  * @return 0 on success, -1 on failure
  */
-int terminal_cursor_home(int fd) {
+asciichat_error_t terminal_cursor_home(int fd) {
   (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
   // Use ANSI escape sequence (Windows 10+ with VT processing enabled)
   if (printf("\033[H") < 0) {
-    return -1;
+    return SET_ERRNO(ERROR_TERMINAL, "Failed to clear screen");
   }
   return fflush(stdout);
 }
@@ -389,11 +408,11 @@ int terminal_cursor_home(int fd) {
  * @param fd File descriptor (ignored on Windows - console APIs use stdout)
  * @return 0 on success, -1 on failure
  */
-int terminal_clear_scrollback(int fd) {
+asciichat_error_t terminal_clear_scrollback(int fd) {
   (void)fd; // Windows console APIs operate on stdout, not arbitrary file descriptors
   // Use ANSI escape sequence (Windows 10+ with VT processing enabled)
   if (printf("\033[3J") < 0) {
-    return -1;
+    return SET_ERRNO(ERROR_TERMINAL, "Failed to clear screen and scrollback");
   }
   return fflush(stdout);
 }
@@ -405,65 +424,42 @@ int terminal_clear_scrollback(int fd) {
 /**
  * Get terminal size with Windows Console API - simpler than Unix
  */
-int get_terminal_size(unsigned short int *width, unsigned short int *height) {
+asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
-  log_error("DEBUG_TERMINAL: get_terminal_size() called");
-
   if (console_handle == INVALID_HANDLE_VALUE) {
-    DWORD error = GetLastError();
-    log_error("DEBUG_TERMINAL: Failed to get console handle, error=%lu", error);
     goto fallback;
   }
-
-  log_error("DEBUG_TERMINAL: Got console handle=%p, calling GetConsoleScreenBufferInfo", console_handle);
 
   if (GetConsoleScreenBufferInfo(console_handle, &csbi)) {
     // Use window size, not buffer size
     *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
     *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-    log_error("DEBUG_TERMINAL: SUCCESS! Windows console size: %dx%d", *width, *height);
-    log_error("DEBUG_TERMINAL: Window coords: Left=%d, Top=%d, Right=%d, Bottom=%d", csbi.srWindow.Left,
-              csbi.srWindow.Top, csbi.srWindow.Right, csbi.srWindow.Bottom);
-    log_error("DEBUG_TERMINAL: Buffer size: %dx%d", csbi.dwSize.X, csbi.dwSize.Y);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
-  DWORD error = GetLastError();
-  log_error("DEBUG_TERMINAL: GetConsoleScreenBufferInfo FAILED: error=%lu", error);
-
 fallback:
-  log_error("DEBUG_TERMINAL: Entering fallback mode for terminal size detection");
-
   // Environment variable fallback
-  char *cols_str = SAFE_GETENV("COLUMNS");
-  char *lines_str = SAFE_GETENV("LINES");
-
-  log_error("DEBUG_TERMINAL: Environment variables: COLUMNS='%s', LINES='%s'", cols_str ? cols_str : "NULL",
-            lines_str ? lines_str : "NULL");
+  char *cols_env = SAFE_GETENV("COLUMNS");
+  char *lines_env = SAFE_GETENV("LINES");
 
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
 
-  log_error("DEBUG_TERMINAL: Set default dimensions: %dx%d", *width, *height);
+  if (cols_env && lines_env) {
+    char *endptr_width = NULL, *endptr_height = NULL;
+    int env_width = strtol(cols_env, &endptr_width, 10);
+    int env_height = strtol(lines_env, &endptr_height, 10);
 
-  if (cols_str && lines_str) {
-    int env_width = atoi(cols_str);
-    int env_height = atoi(lines_str);
-
-    log_error("DEBUG_TERMINAL: Parsed environment: width=%d, height=%d", env_width, env_height);
-
-    if (env_width > 0 && env_height > 0) {
+    if (endptr_width != cols_env && endptr_height != lines_env && env_width > 0 && env_height > 0) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
-      log_error("DEBUG_TERMINAL: Using environment size: %dx%d", *width, *height);
-      return 0;
+      return ASCIICHAT_OK;
     }
   }
 
-  log_error("DEBUG_TERMINAL: FINAL FALLBACK: Using default dimensions %dx%d", *width, *height);
-  return -1;
+  return SET_ERRNO(ERROR_TERMINAL, "Failed to get terminal size");
 }
 
 /**
@@ -473,7 +469,7 @@ tty_info_t get_current_tty(void) {
   tty_info_t result = {-1, NULL, false};
 
   // On Windows, use CON for console output
-  result.fd = SAFE_OPEN("CON", _O_WRONLY, 0);
+  result.fd = platform_open("CON", _O_WRONLY, 0);
   if (result.fd >= 0) {
     result.path = "CON";
     result.owns_fd = true;
@@ -626,7 +622,7 @@ const char *terminal_color_level_name(terminal_color_level_t level) {
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   static char summary[256];
 
-  snprintf(summary, sizeof(summary), "%s (%d colors), UTF-8: %s, TERM: %s, COLORTERM: %s",
+  safe_snprintf(summary, sizeof(summary), "%s (%d colors), UTF-8: %s, TERM: %s, COLORTERM: %s",
            terminal_color_level_name(caps->color_level), caps->color_count,
            (caps->capabilities & TERM_CAP_UTF8) ? "yes" : "no", caps->term_type, caps->colorterm);
 
@@ -639,10 +635,17 @@ void print_terminal_capabilities(const terminal_capabilities_t *caps) {
   printf("  Max Colors: %d\n", caps->color_count);
   printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
   printf("  Background Colors: %s\n", (caps->capabilities & TERM_CAP_BACKGROUND) ? "Yes" : "No");
-  printf("  Render Mode: %s\n", caps->render_mode == RENDER_MODE_FOREGROUND   ? "foreground"
-                                : caps->render_mode == RENDER_MODE_BACKGROUND ? "background"
-                                : caps->render_mode == RENDER_MODE_HALF_BLOCK ? "half-block"
-                                                                              : "unknown");
+  const char *render_mode_str;
+  if (caps->render_mode == RENDER_MODE_FOREGROUND) {
+    render_mode_str = "foreground";
+  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
+    render_mode_str = "background";
+  } else if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+    render_mode_str = "half-block";
+  } else {
+    render_mode_str = "unknown";
+  }
+  printf("  Render Mode: %s\n", render_mode_str);
   printf("  TERM: %s\n", caps->term_type);
   printf("  COLORTERM: %s\n", caps->colorterm);
   printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");

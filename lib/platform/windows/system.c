@@ -11,11 +11,13 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../../common.h"
-#include "../windows_compat.h"
+#include "../../asciichat_errno.h"
 #include "../socket.h"
+#include "../../util/path.h"
 #include <dbghelp.h>
 #include <wincrypt.h>
 #include <io.h>
+
 #include <fcntl.h>
 #include <process.h>
 #include <signal.h>
@@ -27,11 +29,11 @@
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
-#include <mmsystem.h>  // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
+#include <mmsystem.h> // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
 
 #include <stdatomic.h>
 
-#pragma comment(lib, "winmm.lib")  // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
+#pragma comment(lib, "winmm.lib") // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
 
 /**
  * @brief Get username from environment variables
@@ -55,7 +57,7 @@ const char *get_username_env(void) {
  * @brief Initialize platform-specific functionality
  * @return 0 on success, error code on failure
  */
-int platform_init(void) {
+asciichat_error_t platform_init(void) {
   // Set binary mode for stdin/stdout to handle raw data
   _setmode(_fileno(stdin), _O_BINARY);
   _setmode(_fileno(stdout), _O_BINARY);
@@ -72,7 +74,7 @@ int platform_init(void) {
 
   // Initialize Winsock (required before getaddrinfo and socket operations)
   if (socket_init() != 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
   }
 
   return 0;
@@ -96,12 +98,15 @@ void platform_sleep_ms(unsigned int ms) {
   Sleep(ms);
 }
 
-int platform_localtime(const time_t *timer, struct tm *result) {
+asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
   if (!timer || !result) {
-    return EINVAL;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for localtime");
   }
   errno_t err = localtime_s(result, timer);
-  return err;
+  if (err != 0) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Platform initialization failed");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -244,7 +249,7 @@ int platform_backtrace(void **buffer, int size) {
   HANDLE process = GetCurrentProcess();
   if (!SymInitialize(process, NULL, TRUE)) {
     DWORD error = GetLastError();
-    fprintf(stderr, "[ERROR] platform_backtrace: SymInitialize failed with error %lu\n", error);
+    log_error("[ERROR] platform_backtrace: SymInitialize failed with error %lu", error);
     return 0;
   }
 
@@ -285,7 +290,7 @@ int platform_backtrace(void **buffer, int size) {
     if (!result) {
       DWORD error = GetLastError();
       if (count == 0) {
-        fprintf(stderr, "[ERROR] platform_backtrace: StackWalk64 failed with error %lu\n", error);
+        log_error("[ERROR] platform_backtrace: StackWalk64 failed with error %lu", error);
       }
       break;
     }
@@ -314,16 +319,43 @@ static void init_windows_symbols(void) {
     return; // Already initialized
   }
 
+  // Use a simple mutex to prevent race conditions
+  static volatile LONG init_lock = 0;
+  if (InterlockedCompareExchange(&init_lock, 1, 0) != 0) {
+    // Another thread is initializing, wait for it to complete
+    while (!atomic_load(&g_symbols_initialized)) {
+      Sleep(1);
+    }
+    return;
+  }
+
   g_process_handle = GetCurrentProcess();
 
   // Set symbol options for better debugging
   SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
 
-  if (SymInitialize(g_process_handle, NULL, TRUE)) {
-    atomic_store(&g_symbols_initialized, true);
-    // Register cleanup function to be called on exit
-    atexit(cleanup_windows_symbols);
+  // Try to initialize with NULL (default search path)
+  // If it fails, try to cleanup first and retry
+  if (!SymInitialize(g_process_handle, NULL, TRUE)) {
+    // If initialization failed, try to cleanup and retry once
+    SymCleanup(g_process_handle);
+    if (!SymInitialize(g_process_handle, NULL, TRUE)) {
+      DWORD error = GetLastError();
+      log_error("Failed to initialize Windows symbol system, error: %lu", error);
+      return;
+    }
   }
+
+  // Load symbols for the current module
+  char module_path[MAX_PATH];
+  DWORD path_len = GetModuleFileNameA(NULL, module_path, MAX_PATH);
+  if (path_len > 0) {
+    SymLoadModule64(g_process_handle, NULL, module_path, NULL, 0, 0);
+  }
+
+  atomic_store(&g_symbols_initialized, true);
+  // Register cleanup function to be called on exit
+  (void)atexit(cleanup_windows_symbols);
 }
 
 // Function to cleanup Windows symbol resolution
@@ -335,19 +367,18 @@ static void cleanup_windows_symbols(void) {
   }
 }
 
-// Function to resolve a single symbol
 static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size) {
   if (!atomic_load(&g_symbols_initialized)) {
-    snprintf(buffer, buffer_size, "0x%llx", (DWORD64)(uintptr_t)addr);
+    safe_snprintf(buffer, buffer_size, "0x%llx", (DWORD64)(uintptr_t)addr);
     return;
   }
 
   DWORD64 address = (DWORD64)(uintptr_t)addr;
 
   // Allocate symbol info structure with space for name (large buffer for very long C++ symbols)
-  PSYMBOL_INFO symbol_info = (PSYMBOL_INFO)malloc(sizeof(SYMBOL_INFO) + 4096);
+  PSYMBOL_INFO symbol_info = SAFE_MALLOC(sizeof(SYMBOL_INFO) + 4096, PSYMBOL_INFO);
   if (!symbol_info) {
-    snprintf(buffer, buffer_size, "0x%llx", address);
+    safe_snprintf(buffer, buffer_size, "0x%llx", address);
     return;
   }
   symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
@@ -363,14 +394,8 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
   bool got_line = SymGetLineFromAddr64(g_process_handle, address, &displacement, &line_info);
 
   if (got_symbol && got_line) {
-    // Get just the filename without path
-    char *filename = strrchr(line_info.FileName, '\\');
-    if (!filename)
-      filename = strrchr(line_info.FileName, '/');
-    if (!filename)
-      filename = line_info.FileName;
-    else
-      filename++;
+    // Use the existing project relative path extraction function
+    const char *filename = extract_project_relative_path(line_info.FileName);
 
     // Ensure symbol name is null-terminated within our buffer
     symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
@@ -384,13 +409,13 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
       // Truncate symbol name to fit
       size_t max_symbol_len = buffer_size - filename_len - 32;
       if (max_symbol_len > 0) {
-        snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_info->Name, filename,
+        safe_snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_info->Name, filename,
                  line_info.LineNumber);
       } else {
-        snprintf(buffer, buffer_size, "0x%llx", address);
+        safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
-      snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_info->Name, filename, line_info.LineNumber);
+      safe_snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_info->Name, filename, line_info.LineNumber);
     }
   } else if (got_symbol) {
     // Ensure symbol name is null-terminated within our buffer
@@ -406,28 +431,28 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
         size_t max_symbol_len = buffer_size - 32;
         // Check for underflow before subtraction
         if (address >= symbol_info->Address) {
-          snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+          safe_snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
                    address - symbol_info->Address);
         } else {
-          snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+          safe_snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
                    symbol_info->Address - address);
         }
       } else {
-        snprintf(buffer, buffer_size, "0x%llx", address);
+        safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
       // Check for underflow before subtraction
       if (address >= symbol_info->Address) {
-        snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
+        safe_snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
       } else {
-        snprintf(buffer, buffer_size, "%s-0x%llx", symbol_info->Name, symbol_info->Address - address);
+        safe_snprintf(buffer, buffer_size, "%s-0x%llx", symbol_info->Name, symbol_info->Address - address);
       }
     }
   } else {
-    snprintf(buffer, buffer_size, "0x%llx", address);
+    safe_snprintf(buffer, buffer_size, "0x%llx", address);
   }
 
-  free(symbol_info);
+  SAFE_FREE(symbol_info);
 }
 
 /**
@@ -445,7 +470,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
   init_windows_symbols();
 
   // Allocate array of strings (size + 1 for NULL terminator)
-  char **symbols = (char **)malloc((size + 1) * sizeof(char *));
+  char **symbols = SAFE_MALLOC((size + 1) * sizeof(char *), char **);
   if (!symbols) {
     return NULL;
   }
@@ -457,7 +482,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
 
   // Resolve each symbol
   for (int i = 0; i < size; i++) {
-    symbols[i] = (char *)malloc(1024); // Increased buffer size for longer symbol names
+    symbols[i] = (char *)SAFE_MALLOC(1024, void *); // Increased buffer size for longer symbol names
     if (symbols[i]) {
       resolve_windows_symbol(buffer[i], symbols[i], 1024);
     }
@@ -477,11 +502,11 @@ void platform_backtrace_symbols_free(char **strings) {
 
   // Free each individual string
   for (int i = 0; strings[i] != NULL; i++) {
-    free(strings[i]);
+    SAFE_FREE(strings[i]);
   }
 
   // Free the array itself
-  free(strings);
+  SAFE_FREE(strings);
 }
 
 // ============================================================================
@@ -490,21 +515,24 @@ void platform_backtrace_symbols_free(char **strings) {
 
 /**
  * @brief Print backtrace to stderr
+ * @param skip_frames Number of additional frames to skip (beyond platform_print_backtrace itself)
  */
-void platform_print_backtrace(void) {
+void platform_print_backtrace(int skip_frames) {
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    fprintf(stderr, "\n=== BACKTRACE ===\n");
+    safe_fprintf(stderr, "\n=== BACKTRACE ===\n");
     char **symbols = platform_backtrace_symbols(buffer, size);
 
-    for (int i = 0; i < size; i++) {
-      fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
+    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
+    int start_frame = 1 + skip_frames;
+    for (int i = start_frame; i < size; i++) {
+      safe_fprintf(stderr, "%2d: %s\n", i - start_frame, symbols ? symbols[i] : "???");
     }
 
     platform_backtrace_symbols_free(symbols);
-    fprintf(stderr, "================\n\n");
+    safe_fprintf(stderr, "================\n\n");
   }
 }
 
@@ -512,42 +540,42 @@ void platform_print_backtrace(void) {
  * @brief Windows structured exception handler for crashes
  */
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
-  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
-  fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
+  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  safe_fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
 
   switch (exception_info->ExceptionRecord->ExceptionCode) {
   case EXCEPTION_ACCESS_VIOLATION:
-    fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
+    safe_fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
     break;
   case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-    fprintf(stderr, "Exception: Array Bounds Exceeded\n");
+    safe_fprintf(stderr, "Exception: Array Bounds Exceeded\n");
     break;
   case EXCEPTION_DATATYPE_MISALIGNMENT:
-    fprintf(stderr, "Exception: Data Type Misalignment\n");
+    safe_fprintf(stderr, "Exception: Data Type Misalignment\n");
     break;
   case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-    fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
+    safe_fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
     break;
   case EXCEPTION_FLT_INVALID_OPERATION:
-    fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
+    safe_fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
     break;
   case EXCEPTION_ILLEGAL_INSTRUCTION:
-    fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
+    safe_fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
     break;
   case EXCEPTION_INT_DIVIDE_BY_ZERO:
-    fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
+    safe_fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
     break;
   case EXCEPTION_STACK_OVERFLOW:
-    fprintf(stderr, "Exception: Stack Overflow\n");
+    safe_fprintf(stderr, "Exception: Stack Overflow\n");
     break;
   default:
-    fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
+    safe_fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
-  platform_print_backtrace();
+  platform_print_backtrace(0);
 #else
   fprintf(stderr, "Backtrace disabled in Release builds\n");
 #endif
@@ -560,25 +588,25 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
  * @brief Signal handler for Windows C runtime exceptions
  */
 static void windows_signal_handler(int sig) {
-  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
   switch (sig) {
   case SIGABRT:
-    fprintf(stderr, "Signal: SIGABRT (Abort)\n");
+    safe_fprintf(stderr, "Signal: SIGABRT (Abort)\n");
     break;
   case SIGFPE:
-    fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
+    safe_fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
     break;
   case SIGILL:
-    fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
+    safe_fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
     break;
   default:
-    fprintf(stderr, "Signal: %d (Unknown)\n", sig);
+    safe_fprintf(stderr, "Signal: %d (Unknown)\n", sig);
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
-  platform_print_backtrace();
+  platform_print_backtrace(0);
 #else
   fprintf(stderr, "Backtrace disabled in Release builds\n");
 #endif
@@ -607,7 +635,7 @@ void platform_install_crash_handler(void) {
  */
 int clock_gettime(int clk_id, struct timespec *tp) {
   if (!tp) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid timespec pointer");
   }
 
   if (clk_id == CLOCK_REALTIME) {
@@ -633,7 +661,7 @@ int clock_gettime(int clk_id, struct timespec *tp) {
     LARGE_INTEGER freq, counter;
 
     if (!QueryPerformanceFrequency(&freq) || !QueryPerformanceCounter(&counter)) {
-      return -1;
+      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Platform initialization failed");
     }
 
     // Convert to seconds and nanoseconds
@@ -666,125 +694,6 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result) {
     return NULL;
   }
   return result;
-}
-
-// ============================================================================
-// String Safety Functions
-// ============================================================================
-
-/**
- * @brief Platform-safe snprintf implementation
- * @param str Destination buffer
- * @param size Buffer size
- * @param format Format string
- * @return Number of characters written (excluding null terminator)
- */
-int platform_snprintf(char *str, size_t size, const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-  int result = vsnprintf_s(str, size, _TRUNCATE, format, args);
-  va_end(args);
-  return result;
-}
-
-/**
- * @brief Platform-safe vsnprintf implementation
- * @param str Destination buffer
- * @param size Buffer size
- * @param format Format string
- * @param ap Variable argument list
- * @return Number of characters written (excluding null terminator)
- */
-int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
-  return vsnprintf_s(str, size, _TRUNCATE, format, ap);
-}
-
-/**
- * @brief Duplicate a string
- * @param s Source string
- * @return Allocated copy of string, or NULL on failure
- */
-char *platform_strdup(const char *s) {
-  return _strdup(s);
-}
-
-/**
- * @brief Duplicate up to n characters of a string
- * @param s Source string
- * @param n Maximum number of characters to copy
- * @return Allocated copy of string, or NULL on failure
- */
-char *platform_strndup(const char *s, size_t n) {
-  size_t len = strnlen(s, n);
-  char *result = (char *)malloc(len + 1);
-  if (result) {
-    memcpy(result, s, len);
-    result[len] = '\0';
-  }
-  return result;
-}
-
-/**
- * @brief Case-insensitive string comparison
- * @param s1 First string
- * @param s2 Second string
- * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
- */
-int platform_strcasecmp(const char *s1, const char *s2) {
-  return _stricmp(s1, s2);
-}
-
-/**
- * @brief Case-insensitive string comparison with length limit
- * @param s1 First string
- * @param s2 Second string
- * @param n Maximum number of characters to compare
- * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
- */
-int platform_strncasecmp(const char *s1, const char *s2, size_t n) {
-  return _strnicmp(s1, s2, n);
-}
-
-/**
- * @brief Thread-safe string tokenization
- * @param str String to tokenize (NULL for continuation)
- * @param delim Delimiter string
- * @param saveptr Pointer to save state between calls
- * @return Pointer to next token, or NULL if no more tokens
- */
-char *platform_strtok_r(char *str, const char *delim, char **saveptr) {
-  return strtok_s(str, delim, saveptr);
-}
-
-/**
- * @brief Safe string copy with size limit
- * @param dst Destination buffer
- * @param src Source string
- * @param size Destination buffer size
- * @return Length of source string (excluding null terminator)
- */
-size_t platform_strlcpy(char *dst, const char *src, size_t size) {
-  if (size == 0)
-    return strlen(src);
-
-  strncpy_s(dst, size, src, _TRUNCATE);
-  return strlen(src);
-}
-
-/**
- * @brief Safe string concatenation with size limit
- * @param dst Destination buffer
- * @param src Source string
- * @param size Destination buffer size
- * @return Total length of resulting string
- */
-size_t platform_strlcat(char *dst, const char *src, size_t size) {
-  size_t dst_len = strnlen(dst, size);
-  if (dst_len == size)
-    return size + strlen(src);
-
-  strncat_s(dst, size, src, _TRUNCATE);
-  return dst_len + strlen(src);
 }
 
 // ============================================================================
@@ -829,7 +738,7 @@ static __declspec(thread) char error_buffer[256];
  * @return Error string (thread-local storage)
  */
 const char *platform_strerror(int errnum) {
-  strerror_s(error_buffer, sizeof(error_buffer), errnum);
+  (void)strerror_s(error_buffer, sizeof(error_buffer), errnum);
   return error_buffer;
 }
 
@@ -907,8 +816,18 @@ ssize_t platform_read(int fd, void *buf, size_t count) {
  * @return Number of bytes written, or -1 on error
  */
 ssize_t platform_write(int fd, const void *buf, size_t count) {
-  // Windows _write returns int, convert to ssize_t
-  return (ssize_t)_write(fd, buf, (unsigned int)count);
+  // Use Windows WriteFile API to avoid deprecated _write
+  HANDLE handle = (HANDLE)_get_osfhandle(fd);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return -1;
+  }
+
+  DWORD bytes_written = 0;
+  if (WriteFile(handle, buf, (DWORD)count, &bytes_written, NULL)) {
+    return (ssize_t)bytes_written;
+  }
+
+  return -1;
 }
 
 /**
@@ -920,78 +839,73 @@ int platform_close(int fd) {
   return _close(fd);
 }
 
-// ============================================================================
-// Safe String Functions
-// ============================================================================
-
-int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
-  if (!buffer || buffer_size == 0 || !format) {
-    return -1;
-  }
-
-  va_list args;
-  va_start(args, format);
-
-  // Use Windows _vsnprintf_s for enhanced security
-  int result = _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args);
-
-  va_end(args);
-
-  // Ensure null termination even if truncated
-  buffer[buffer_size - 1] = '\0';
-
-  return result;
+/**
+ * @brief Open file with platform-safe mode
+ * @param filename File path
+ * @param mode File mode (e.g., "r", "w", "a", "rb", "wb")
+ * @return File pointer on success, NULL on failure
+ */
+FILE *platform_fopen(const char *filename, const char *mode) {
+  return fopen(filename, mode);
 }
 
-int safe_fprintf(FILE *stream, const char *format, ...) {
-  if (!stream || !format) {
-    return -1;
-  }
+/**
+ * @brief Delete file
+ * @param pathname File path
+ * @return 0 on success, -1 on failure
+ */
+int platform_unlink(const char *pathname) {
+  return _unlink(pathname);
+}
 
-  va_list args;
-  va_start(args, format);
-
-  // Use Windows vfprintf_s for enhanced security
-  int result = vfprintf_s(stream, format, args);
-
-  va_end(args);
-
-  return result;
+/**
+ * @brief Change file permissions
+ * @param pathname File path
+ * @param mode Permission mode (e.g., _S_IREAD, _S_IWRITE, _S_IREAD | _S_IWRITE)
+ * @return 0 on success, -1 on failure
+ * @note Windows has limited permission support compared to POSIX
+ */
+int platform_chmod(const char *pathname, int mode) {
+  return _chmod(pathname, mode);
 }
 
 // ============================================================================
 // Safe Memory Functions
 // ============================================================================
 
-int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
+asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
-    return -1; // Invalid pointers
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memcpy");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
 #ifdef __STDC_LIB_EXT1__
   // Use memcpy_s if available (C11 Annex K)
   errno_t err = memcpy_s(dest, dest_size, src, count);
-  return err; // Returns 0 on success, non-zero on error
+  if (err != 0) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Platform initialization failed");
+  }
+  return ASCIICHAT_OK;
 #else
   // Fallback to standard memcpy with bounds already checked
   memcpy(dest, src, count);
-  return 0; // Success
+  return ASCIICHAT_OK;
 #endif
 }
 
-int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
+asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
   // Validate parameters
   if (!dest) {
-    return -1; // Invalid pointer
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointer for memset");
+    return ERROR_INVALID_PARAM;
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
 #ifdef __STDC_LIB_EXT1__
@@ -1008,11 +922,11 @@ int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
 int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
-    return -1; // Invalid pointers
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memmove");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
 #ifdef __STDC_LIB_EXT1__
@@ -1023,42 +937,6 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
   // Fallback to standard memmove with bounds already checked
   memmove(dest, src, count);
   return 0; // Success
-#endif
-}
-
-/**
- * Platform-safe strcpy wrapper
- *
- * Uses strcpy_s on Windows when available (C11) and strncpy with bounds checking on POSIX.
- * Always null-terminates the destination string.
- *
- * @param dest Destination buffer
- * @param dest_size Size of destination buffer
- * @param src Source string
- * @return 0 on success, non-zero on error
- */
-int platform_strcpy(char *dest, size_t dest_size, const char *src) {
-  if (!dest || !src) {
-    return -1;
-  }
-  if (dest_size == 0) {
-    return -1;
-  }
-
-  size_t src_len = strlen(src);
-  if (src_len >= dest_size) {
-    return -1; // Not enough space including null terminator
-  }
-
-#ifdef __STDC_LIB_EXT1__
-  // Use strcpy_s if available (C11 Annex K)
-  errno_t err = strcpy_s(dest, dest_size, src);
-  return err; // Returns 0 on success, non-zero on error
-#else
-  // Fallback to strncpy with bounds checking
-  strncpy(dest, src, dest_size - 1);
-  dest[dest_size - 1] = '\0'; // Ensure null termination
-  return 0;                   // Success
 #endif
 }
 
@@ -1075,13 +953,13 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src) {
  */
 int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
   if (!hostname || !ipv4_out || ipv4_out_size == 0) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
 
   // Initialize Winsock on Windows (required for getaddrinfo)
   WSADATA wsaData;
   if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
   }
 
   struct addrinfo hints, *result = NULL;
@@ -1094,13 +972,13 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   int ret = getaddrinfo(hostname, NULL, &hints, &result);
   if (ret != 0) {
     WSACleanup();
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
   }
 
   if (!result) {
     freeaddrinfo(result);
     WSACleanup();
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "No address found for hostname: %s", hostname);
   }
 
   // Extract IPv4 address from first result
@@ -1108,7 +986,7 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
     freeaddrinfo(result);
     WSACleanup();
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
   }
 
   freeaddrinfo(result);
@@ -1127,24 +1005,24 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
  * @param pem_size_out Pointer to receive size of PEM data
  * @return 0 on success, -1 on failure
  */
-int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
+asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
   if (!pem_data_out || !pem_size_out) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for CA cert loading");
   }
 
   // Open the Windows system root certificate store
   HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
   if (!hStore) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CRYPTO, "Crypto operation failed");
   }
 
   // Allocate buffer for PEM data (start with 256KB, can grow)
   size_t pem_capacity = 256 * 1024;
   size_t pem_size = 0;
-  char *pem_data = (char *)malloc(pem_capacity);
+  char *pem_data = SAFE_MALLOC(pem_capacity, char *);
   if (!pem_data) {
     CertCloseStore(hStore, 0);
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates");
   }
 
   // Enumerate all certificates in the store
@@ -1163,12 +1041,12 @@ int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
     // Ensure we have enough space in PEM buffer
     while (pem_size + base64_size + 100 > pem_capacity) {
       pem_capacity *= 2;
-      char *new_pem_data = (char *)realloc(pem_data, pem_capacity);
+      char *new_pem_data = SAFE_REALLOC(pem_data, pem_capacity, char *);
       if (!new_pem_data) {
-        free(pem_data);
+        SAFE_FREE(pem_data);
         CertFreeCertificateContext(pCertContext);
         CertCloseStore(hStore, 0);
-        return -1;
+        return SET_ERRNO(ERROR_CRYPTO, "Failed to convert certificate to PEM format");
       }
       pem_data = new_pem_data;
     }
@@ -1190,8 +1068,8 @@ int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
   CertCloseStore(hStore, 0);
 
   if (pem_size == 0) {
-    free(pem_data);
-    return -1; // No certificates found
+    SAFE_FREE(pem_data);
+    return SET_ERRNO(ERROR_CRYPTO, "No CA certificates found in system store");
   }
 
   // Null-terminate the PEM data

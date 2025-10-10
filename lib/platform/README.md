@@ -142,7 +142,7 @@ int socket_set_nodelay(socket_t sock, bool nodelay);
 int socket_get_error(socket_t sock);             // Get error for specific socket
 int socket_get_last_error(void);                 // Get last socket operation error
 const char *socket_get_error_string(void);       // Get error string
-int socket_is_valid(socket_t sock);              // Check if socket is valid
+bool socket_is_valid(socket_t sock);              // Check if socket is valid
 int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);  // Poll sockets
 int socket_get_fd(socket_t sock);                // Get file descriptor from socket
 ```
@@ -202,7 +202,7 @@ void platform_backtrace_symbols_free(char **strings);
 
 // Crash handling (automatically installed by platform_init)
 void platform_install_crash_handler(void);
-void platform_print_backtrace(void);
+void platform_print_backtrace(int skip_frames);
 ```
 
 ### String Operations (`string.h`)

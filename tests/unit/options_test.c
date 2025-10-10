@@ -165,7 +165,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     // Ensure argv is NULL-terminated for getopt_long and any library routines
     char **argv_with_null;
     if (argv[argc - 1] != NULL) {
-      argv_with_null = (char **)calloc((size_t)argc + 1, sizeof(char *));
+      argv_with_null = SAFE_CALLOC((size_t)argc + 1, sizeof(char *, char **));
       if (argv_with_null) {
         for (int i = 0; i < argc; i++) {
           argv_with_null[i] = argv[i];

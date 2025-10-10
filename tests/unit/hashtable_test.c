@@ -47,9 +47,9 @@ ParameterizedTest(hashtable_key_test_case_t *tc, hashtable, key_operations) {
 
   // Create test data
   test_data_t *data;
-  SAFE_MALLOC(data, sizeof(test_data_t), test_data_t *);
+  data = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
   data->id = (int)tc->key;
-  snprintf(data->name, sizeof(data->name), "Test %u", tc->key);
+  safe_snprintf(data->name, sizeof(data->name), "Test %u", tc->key);
   data->value = tc->key * 1.5;
 
   // Test insert
@@ -74,7 +74,7 @@ ParameterizedTest(hashtable_key_test_case_t *tc, hashtable, key_operations) {
     cr_assert_null(hashtable_lookup(ht, tc->key), "Lookup should fail after remove");
   }
 
-  free(data);
+  SAFE_FREE(data);
   hashtable_destroy(ht);
 }
 
@@ -109,9 +109,9 @@ ParameterizedTest(hashtable_collision_test_case_t *tc, hashtable, collision_scen
 
   // Insert all keys
   for (int i = 0; i < 4; i++) {
-    SAFE_MALLOC(items[i], sizeof(test_data_t), test_data_t *);
+    items[i] = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
     items[i]->id = (int)tc->keys[i];
-    snprintf(items[i]->name, sizeof(items[i]->name), "Item %u", tc->keys[i]);
+    safe_snprintf(items[i]->name, sizeof(items[i]->name), "Item %u", tc->keys[i]);
 
     bool result = hashtable_insert(ht, tc->keys[i], items[i]);
     if (result) {
@@ -131,7 +131,7 @@ ParameterizedTest(hashtable_collision_test_case_t *tc, hashtable, collision_scen
 
     // Clean up - all inserts succeeded, so free all items
     for (int i = 0; i < 4; i++) {
-      free(items[i]);
+      SAFE_FREE(items[i]);
     }
   } else {
     // For duplicate keys: hashtable_insert returns true but updates existing value
@@ -161,7 +161,7 @@ ParameterizedTest(hashtable_collision_test_case_t *tc, hashtable, collision_scen
     //                   items[1] and items[3] remain in hashtable
     // We need to free ALL four items
     for (int i = 0; i < 4; i++) {
-      free(items[i]);
+      SAFE_FREE(items[i]);
     }
   }
 
@@ -208,7 +208,7 @@ Test(hashtable, basic_insert_lookup) {
 
   // Create test data
   test_data_t *data;
-  SAFE_MALLOC(data, sizeof(test_data_t), test_data_t *);
+  data = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
   data->id = 123;
   strcpy(data->name, "Test Item");
   data->value = 3.14159;
@@ -230,7 +230,7 @@ Test(hashtable, basic_insert_lookup) {
   cr_assert(hashtable_contains(ht, 123), "Should contain key 123");
   cr_assert(hashtable_contains(ht, 456) == false, "Should not contain key 456");
 
-  free(data);
+  SAFE_FREE(data);
   hashtable_destroy(ht);
 }
 
@@ -240,9 +240,9 @@ Test(hashtable, basic_remove) {
 
   // Insert multiple items
   test_data_t *data1, *data2, *data3;
-  SAFE_MALLOC(data1, sizeof(test_data_t), test_data_t *);
-  SAFE_MALLOC(data2, sizeof(test_data_t), test_data_t *);
-  SAFE_MALLOC(data3, sizeof(test_data_t), test_data_t *);
+  data1 = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
+  data2 = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
+  data3 = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
 
   data1->id = 100;
   strcpy(data1->name, "Item 1");
@@ -270,9 +270,9 @@ Test(hashtable, basic_remove) {
   cr_assert_not_null(hashtable_lookup(ht, 100), "Item 1 should still exist");
   cr_assert_not_null(hashtable_lookup(ht, 300), "Item 3 should still exist");
 
-  free(data1);
-  free(data2);
-  free(data3);
+  SAFE_FREE(data1);
+  SAFE_FREE(data2);
+  SAFE_FREE(data3);
   hashtable_destroy(ht);
 }
 
@@ -308,9 +308,9 @@ Test(hashtable, multiple_items) {
   test_data_t *items[num_items];
 
   for (int i = 0; i < num_items; i++) {
-    SAFE_MALLOC(items[i], sizeof(test_data_t), test_data_t *);
+    items[i] = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
     items[i]->id = i + 1000;
-    snprintf(items[i]->name, sizeof(items[i]->name), "Item %d", i);
+    safe_snprintf(items[i]->name, sizeof(items[i]->name), "Item %d", i);
     items[i]->value = i * 1.5;
 
     bool result = hashtable_insert(ht, i + 1000, items[i]);
@@ -326,13 +326,13 @@ Test(hashtable, multiple_items) {
     cr_assert_eq(found->id, i + 1000, "Item %d ID should match", i);
 
     char expected_name[32];
-    snprintf(expected_name, sizeof(expected_name), "Item %d", i);
+    safe_snprintf(expected_name, sizeof(expected_name), "Item %d", i);
     cr_assert_str_eq(found->name, expected_name, "Item %d name should match", i);
   }
 
   // Clean up
   for (int i = 0; i < num_items; i++) {
-    free(items[i]);
+    SAFE_FREE(items[i]);
   }
   hashtable_destroy(ht);
 }
@@ -348,9 +348,9 @@ Test(hashtable, hash_collisions) {
   test_data_t *items[4];
 
   for (int i = 0; i < 4; i++) {
-    SAFE_MALLOC(items[i], sizeof(test_data_t), test_data_t *);
+    items[i] = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
     items[i]->id = keys[i];
-    snprintf(items[i]->name, sizeof(items[i]->name), "Collision %d", i);
+    safe_snprintf(items[i]->name, sizeof(items[i]->name), "Collision %d", i);
 
     bool result = hashtable_insert(ht, keys[i], items[i]);
     cr_assert(result, "Insert collision item %d should succeed", i);
@@ -374,7 +374,7 @@ Test(hashtable, hash_collisions) {
   cr_assert_not_null(hashtable_lookup(ht, keys[3]), "Other collision items should remain");
 
   for (int i = 0; i < 4; i++) {
-    free(items[i]);
+    SAFE_FREE(items[i]);
   }
   hashtable_destroy(ht);
 }
@@ -388,8 +388,8 @@ Test(hashtable, duplicate_key_insert) {
   cr_assert_not_null(ht, "Hashtable creation should succeed");
 
   test_data_t *data1, *data2;
-  SAFE_MALLOC(data1, sizeof(test_data_t), test_data_t *);
-  SAFE_MALLOC(data2, sizeof(test_data_t), test_data_t *);
+  data1 = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
+  data2 = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
 
   data1->id = 123;
   strcpy(data1->name, "Original");
@@ -410,8 +410,8 @@ Test(hashtable, duplicate_key_insert) {
   cr_assert_not_null(found, "Lookup should find an item");
   cr_assert_eq(found->id, 123, "Found item should have correct ID");
 
-  free(data1);
-  free(data2);
+  SAFE_FREE(data1);
+  SAFE_FREE(data2);
   hashtable_destroy(ht);
 }
 
@@ -430,9 +430,9 @@ Test(hashtable, entry_pool_exhaustion) {
 
   // Allocate all test items first
   for (int i = 0; i < test_items; i++) {
-    SAFE_MALLOC(items[i], sizeof(test_data_t), test_data_t *);
+    items[i] = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
     items[i]->id = i + 2001;
-    snprintf(items[i]->name, sizeof(items[i]->name), "Pooled %d", i);
+    safe_snprintf(items[i]->name, sizeof(items[i]->name), "Pooled %d", i);
   }
 
   // Try to insert items, stopping when pool exhausted
@@ -459,7 +459,7 @@ Test(hashtable, entry_pool_exhaustion) {
 
   // Clean up all allocated memory
   for (int i = 0; i < test_items; i++) {
-    free(items[i]);
+    SAFE_FREE(items[i]);
   }
   hashtable_destroy(ht);
 }
@@ -586,7 +586,7 @@ Test(hashtable, foreach_iteration) {
 
   for (int i = 0; i < 5; i++) {
     items[i].id = keys[i];
-    snprintf(items[i].name, sizeof(items[i].name), "Item %d", i);
+    safe_snprintf(items[i].name, sizeof(items[i].name), "Item %d", i);
     hashtable_insert(ht, keys[i], &items[i]);
   }
 
@@ -702,7 +702,7 @@ Test(hashtable, large_key_values) {
 
   for (int i = 0; i < 4; i++) {
     items[i].id = large_keys[i];
-    snprintf(items[i].name, sizeof(items[i].name), "Large %u", large_keys[i]);
+    safe_snprintf(items[i].name, sizeof(items[i].name), "Large %u", large_keys[i]);
 
     bool result = hashtable_insert(ht, large_keys[i], &items[i]);
     cr_assert(result, "Insert large key %u should succeed", large_keys[i]);
@@ -759,9 +759,9 @@ Test(hashtable, stress_test) {
 
   // Insert phase
   for (int i = 0; i < num_items; i++) {
-    SAFE_MALLOC(items[i], sizeof(test_data_t), test_data_t *);
+    items[i] = SAFE_MALLOC(sizeof(test_data_t), test_data_t *);
     items[i]->id = i + 10000;
-    snprintf(items[i]->name, sizeof(items[i]->name), "Stress %d", i);
+    safe_snprintf(items[i]->name, sizeof(items[i]->name), "Stress %d", i);
 
     bool result = hashtable_insert(ht, i + 10000, items[i]);
     cr_assert(result, "Stress insert %d should succeed", i);
@@ -792,7 +792,7 @@ Test(hashtable, stress_test) {
 
   // Clean up
   for (int i = 0; i < num_items; i++) {
-    free(items[i]);
+    SAFE_FREE(items[i]);
   }
   hashtable_destroy(ht);
 }

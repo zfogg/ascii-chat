@@ -288,15 +288,15 @@ if ($Interactive) {
         $BuildCommand = @"
 echo 'Clean rebuild - removing build_docker directory...'
 rm -rf build_docker
-echo 'Configuring CMake with Docker-specific deps cache...'
-CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+    echo 'Configuring CMake with Docker-specific deps cache...'
+    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=17 -DCMAKE_C_FLAGS='-std=c17' -DUSE_MIMALLOC=OFF -DDEBUG_MEMORY=OFF -DENABLE_AUDIO=OFF -DENABLE_VIDEO=OFF -DBUILD_TESTS=ON
 echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 "@
     } else {
         $BuildCommand = @"
 if [ ! -d build_docker ]; then
     echo 'First time setup - configuring CMake with Docker-specific deps cache...'
-    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=17 -DCMAKE_C_FLAGS='-std=c17' -DUSE_MIMALLOC=OFF -DDEBUG_MEMORY=OFF -DENABLE_AUDIO=OFF -DENABLE_VIDEO=OFF -DBUILD_TESTS=ON
     echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 else
     echo 'Using existing build_docker directory (run_tests.sh will build only the test executables needed)'

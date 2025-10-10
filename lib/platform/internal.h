@@ -53,6 +53,9 @@ char *platform_strtok_r(char *str, const char *delim, char **saveptr);
 size_t platform_strlcpy(char *dst, const char *src, size_t size);
 size_t platform_strlcat(char *dst, const char *src, size_t size);
 
+// Safe string copy with explicit size (for strncpy replacement)
+int platform_strncpy(char *dst, size_t dst_size, const char *src, size_t count);
+
 // ============================================================================
 // Memory Operations
 // ============================================================================
@@ -81,10 +84,13 @@ void platform_set_last_error(int error);
 
 // Safe file operations
 int platform_open(const char *pathname, int flags, ...);
+FILE *platform_fopen(const char *filename, const char *mode);
 FILE *platform_fdopen(int fd, const char *mode);
 ssize_t platform_read(int fd, void *buf, size_t count);
 ssize_t platform_write(int fd, const void *buf, size_t count);
 int platform_close(int fd);
+int platform_unlink(const char *pathname);
+int platform_chmod(const char *pathname, int mode);
 
 // File mode helpers
 #ifdef _WIN32
@@ -92,6 +98,7 @@ int platform_close(int fd);
 #define PLATFORM_O_WRONLY _O_WRONLY
 #define PLATFORM_O_RDWR _O_RDWR
 #define PLATFORM_O_CREAT _O_CREAT
+#define PLATFORM_O_EXCL _O_EXCL
 #define PLATFORM_O_TRUNC _O_TRUNC
 #define PLATFORM_O_APPEND _O_APPEND
 #define PLATFORM_O_BINARY _O_BINARY
@@ -100,6 +107,7 @@ int platform_close(int fd);
 #define PLATFORM_O_WRONLY O_WRONLY
 #define PLATFORM_O_RDWR O_RDWR
 #define PLATFORM_O_CREAT O_CREAT
+#define PLATFORM_O_EXCL O_EXCL
 #define PLATFORM_O_TRUNC O_TRUNC
 #define PLATFORM_O_APPEND O_APPEND
 #define PLATFORM_O_BINARY 0 // Not needed on POSIX

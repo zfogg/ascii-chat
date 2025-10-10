@@ -1,28 +1,25 @@
 #include "util/aspect_ratio.h"
 #include "platform/system.h"
+#include "asciichat_errno.h"
 #ifdef _WIN32
 #include "platform/windows/getopt.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <io.h>
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #else
 #include <getopt.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
 #endif
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <unistd.h>
-#endif
 #include <sys/stat.h>
-#ifdef _WIN32
-#include <io.h>
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-#endif
 
 #include "image2ascii/ascii.h"
 #include "options.h"
@@ -31,9 +28,10 @@
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "version.h"
+#include "crypto/constants.h"
 
 // Safely parse string to integer with validation
-int strtoint_safe(const char *str) {
+asciichat_error_t strtoint_safe(const char *str) {
   if (!str || *str == '\0') {
     return INT_MIN; // Error: NULL or empty string
   }
@@ -53,7 +51,7 @@ int strtoint_safe(const char *str) {
 }
 
 // Detect default SSH key path for the current user
-static int detect_default_ssh_key(char *key_path, size_t path_size) {
+static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
   const char *home_dir = platform_getenv("HOME");
   if (!home_dir) {
     // Fallback for Windows
@@ -61,8 +59,7 @@ static int detect_default_ssh_key(char *key_path, size_t path_size) {
   }
 
   if (!home_dir) {
-    (void)fprintf(stderr, "Could not determine user home directory\n");
-    return -1;
+    return SET_ERRNO(ERROR_CONFIG, "Could not determine user home directory");
   }
 
   // Only support Ed25519 keys (modern, secure, fast)
@@ -74,13 +71,11 @@ static int detect_default_ssh_key(char *key_path, size_t path_size) {
   if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode)) {
     SAFE_SNPRINTF(key_path, path_size, "%s", full_path);
     log_debug("Found default SSH key: %s", full_path);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   (void)fprintf(stderr, "No Ed25519 SSH key found at %s\n", full_path);
-  (void)fprintf(stderr, "Only Ed25519 keys are supported (modern, secure, fast)\n");
-  (void)fprintf(stderr, "Generate a new key with: ssh-keygen -t ed25519\n");
-  return -1;
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
 }
 
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
@@ -300,7 +295,7 @@ error:
   return NULL; // Signal error to caller
 }
 
-int options_init(int argc, char **argv, bool is_client) {
+asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
 
   // Set different default addresses for client vs server
@@ -340,7 +335,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'a': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
 
       // Parse IPv6 address (remove brackets if present)
       char parsed_addr[OPTIONS_BUFF_SIZE];
@@ -369,7 +364,7 @@ int options_init(int argc, char **argv, bool is_client) {
           (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
           (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
           (void)fprintf(stderr, "  Hostname: example.com\n");
-          return ASCIICHAT_ERROR_USAGE;
+          return ERROR_USAGE;
         }
       }
       break;
@@ -378,12 +373,12 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'H': { // --host (DNS lookup)
       char *hostname = get_required_argument(optarg, argbuf, sizeof(argbuf), "host", is_client);
       if (!hostname)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       char resolved_ip[OPTIONS_BUFF_SIZE];
       if (platform_resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
         (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", hostname);
         (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
       break;
@@ -392,13 +387,13 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'p': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "port", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       // Validate port is a number between 1 and 65535
       char *endptr;
       long port_num = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
         (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
@@ -407,11 +402,11 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'x': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "width", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       int width_val = strtoint_safe(value_str);
       if (width_val == INT_MIN || width_val <= 0) {
         (void)fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       opt_width = (unsigned short int)width_val;
       auto_width = false; // Mark as manually set
@@ -421,11 +416,11 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'y': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "height", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       int height_val = strtoint_safe(value_str);
       if (height_val == INT_MIN || height_val <= 0) {
         (void)fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       opt_height = (unsigned short int)height_val;
       auto_height = false; // Mark as manually set
@@ -435,12 +430,12 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'c': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       int parsed_index = strtoint_safe(value_str);
       if (parsed_index == INT_MIN || parsed_index < 0) {
         (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n",
                       value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       opt_webcam_index = (unsigned short int)parsed_index;
       break;
@@ -455,7 +450,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 1000: { // --color-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       if (strcmp(value_str, "auto") == 0) {
         opt_color_mode = COLOR_MODE_AUTO;
       } else if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
@@ -469,7 +464,7 @@ int options_init(int argc, char **argv, bool is_client) {
       } else {
         (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n",
                       value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       break;
     }
@@ -484,16 +479,16 @@ int options_init(int argc, char **argv, bool is_client) {
     case 1003: { // --fps (client only - sets client's desired frame rate)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --fps is a client-only option.\n");
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       extern int g_max_fps; // From common.c
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "fps", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       int fps_val = strtoint_safe(value_str);
       if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
         (void)fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       g_max_fps = fps_val;
       break;
@@ -502,7 +497,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 1004: { // --test-pattern (client only - use test pattern instead of webcam)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       opt_test_pattern = true;
       log_info("Using test pattern mode - webcam will not be opened");
@@ -512,7 +507,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'M': { // --render-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
         opt_render_mode = RENDER_MODE_FOREGROUND;
       } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
@@ -522,7 +517,7 @@ int options_init(int argc, char **argv, bool is_client) {
       } else {
         (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
                       value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       break;
     }
@@ -530,7 +525,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'P': { // --palette
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       if (strcmp(value_str, "standard") == 0) {
         opt_palette_type = PALETTE_STANDARD;
       } else if (strcmp(value_str, "blocks") == 0) {
@@ -547,7 +542,7 @@ int options_init(int argc, char **argv, bool is_client) {
         (void)fprintf(stderr,
                       "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
                       value_str);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       break;
     }
@@ -555,11 +550,11 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'C': { // --palette-chars
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
         (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
                       sizeof(opt_palette_custom) - 1);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
       opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
@@ -587,18 +582,18 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'D': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       char *endptr;
       opt_snapshot_delay = strtof(value_str, &endptr);
       if (*endptr != '\0' || value_str == endptr) {
         (void)fprintf(stderr, "Invalid snapshot delay value '%s'. Snapshot delay must be a number.\n", value_str);
         (void)fflush(stderr);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       if (opt_snapshot_delay < 0.0f) {
         (void)fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
         (void)fflush(stderr);
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       }
       break;
     }
@@ -606,7 +601,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'L': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
@@ -618,7 +613,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'K': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
 
       // --key is for file-based authentication only (SSH keys, GPG keys, GitHub/GitLab)
       // For password-based encryption, use --password instead
@@ -641,14 +636,14 @@ int options_init(int argc, char **argv, bool is_client) {
       // Check if it's "ssh" or "ssh:" to auto-detect SSH key
       else if (strcmp(value_str, "ssh") == 0 || strcmp(value_str, "ssh:") == 0) {
         char default_key[OPTIONS_BUFF_SIZE];
-        if (detect_default_ssh_key(default_key, sizeof(default_key)) == 0) {
+        if (detect_default_ssh_key(default_key, sizeof(default_key)) == ASCIICHAT_OK) {
           SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", default_key);
           opt_encrypt_enabled = 1;
         } else {
           (void)fprintf(stderr, "No Ed25519 SSH key found for auto-detection\n");
           (void)fprintf(stderr, "Please specify a key with --key /path/to/key\n");
           (void)fprintf(stderr, "Or generate a new key with: ssh-keygen -t ed25519\n");
-          return ASCIICHAT_ERROR_USAGE;
+          return ERROR_USAGE;
         }
       }
       // Otherwise, treat as a file path - will be validated later for existence/permissions
@@ -663,7 +658,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 'F': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
       break;
@@ -678,7 +673,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 1006: { // --server-key (client only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
@@ -686,7 +681,7 @@ int options_init(int argc, char **argv, bool is_client) {
     case 1008: { // --client-keys (server only)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
       SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
@@ -694,7 +689,21 @@ int options_init(int argc, char **argv, bool is_client) {
     case 1009: { // --password (password-based encryption)
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "password", is_client);
       if (!value_str)
-        return ASCIICHAT_ERROR_USAGE;
+        return ERROR_USAGE;
+
+      // Validate password length requirements
+      size_t password_len = strlen(value_str);
+      if (password_len < MIN_PASSWORD_LENGTH) {
+        (void)fprintf(stderr, "Error: Password too short (minimum %d characters, got %zu)\n",
+                     MIN_PASSWORD_LENGTH, password_len);
+        return ERROR_USAGE;
+      }
+      if (password_len > MAX_PASSWORD_LENGTH) {
+        (void)fprintf(stderr, "Error: Password too long (maximum %d characters, got %zu)\n",
+                     MAX_PASSWORD_LENGTH, password_len);
+        return ERROR_USAGE;
+      }
+
       SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when password provided
       break;
@@ -728,10 +737,10 @@ int options_init(int argc, char **argv, bool is_client) {
             // If we found a match and it's not exact, treat as unknown option
             if (matched_option && strlen(matched_option) != user_opt_len) {
               char abbreviated_opt[256];
-              snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
+              safe_snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
               fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
               usage(stderr, is_client);
-              return ASCIICHAT_ERROR_USAGE;
+              return ERROR_USAGE;
             }
           }
         }
@@ -773,12 +782,12 @@ int options_init(int argc, char **argv, bool is_client) {
           (void)fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
         }
       }
-      return ASCIICHAT_ERROR_USAGE;
+      return ERROR_USAGE;
 
     case '?':
       (void)fprintf(stderr, "Unknown option %c\n", optopt);
       usage(stderr, is_client);
-      return ASCIICHAT_ERROR_USAGE;
+      return ERROR_USAGE;
 
     case 'h':
       usage(stdout, is_client);
@@ -810,7 +819,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
   (void)fprintf(desc, USAGE_INDENT "-v --version                 " USAGE_INDENT "show version information\n");
-  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
   (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
                                    "hostname for DNS lookup (alternative to --address)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "client.h"
-#include "network.h"
+#include "network/network.h"
+#include "network/packet.h"
 #include <stdatomic.h>
 
 // Global shutdown flag

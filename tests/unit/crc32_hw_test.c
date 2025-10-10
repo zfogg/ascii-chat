@@ -209,7 +209,7 @@ Test(crc32_hw, large_buffer_1kb) {
 
 Test(crc32_hw, large_buffer_4kb) {
   uint8_t *data;
-  SAFE_MALLOC(data, 4096, uint8_t *);
+  data = SAFE_MALLOC(4096, uint8_t *);
   for (size_t i = 0; i < 4096; i++) {
     data[i] = (uint8_t)(i & 0xFF);
   }
@@ -219,13 +219,13 @@ Test(crc32_hw, large_buffer_4kb) {
 
   cr_assert_eq(crc_hw, crc_sw, "Hardware and software CRC32 of 4KB should match");
 
-  free(data);
+  SAFE_FREE(data);
 }
 
 Test(crc32_hw, large_buffer_64kb) {
   size_t size = 65536;
   uint8_t *data;
-  SAFE_MALLOC(data, size, uint8_t *);
+  data = size = SAFE_MALLOC(uint8_t *);
   for (size_t i = 0; i < size; i++) {
     data[i] = (uint8_t)(i & 0xFF);
   }
@@ -235,7 +235,7 @@ Test(crc32_hw, large_buffer_64kb) {
 
   cr_assert_eq(crc_hw, crc_sw, "Hardware and software CRC32 of 64KB should match");
 
-  free(data);
+  SAFE_FREE(data);
 }
 
 /* ============================================================================

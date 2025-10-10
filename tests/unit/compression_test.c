@@ -73,7 +73,7 @@ int create_test_socket(void) {
 
 // Helper function to generate test frame data
 char *generate_test_frame_data(size_t size) {
-  char *data = malloc(size + 1);
+  char *data = SAFE_MALLOC(size + 1, void *);
   if (!data)
     return NULL;
 
@@ -88,7 +88,7 @@ char *generate_test_frame_data(size_t size) {
 
 // Helper function to generate random test frame data
 char *generate_random_frame_data(size_t size) {
-  char *data = malloc(size + 1);
+  char *data = SAFE_MALLOC(size + 1, void *);
   if (!data)
     return NULL;
 
@@ -113,7 +113,7 @@ TheoryDataPoints(compression, compression_roundtrip_property) = {
 Theory((size_t data_size), compression, compression_roundtrip_property) {
   cr_assume(data_size > 0 && data_size <= 8192);
 
-  char *original_data = malloc(data_size);
+  char *original_data = SAFE_MALLOC(data_size, void *);
   cr_assume(original_data != NULL);
 
   for (size_t i = 0; i < data_size; i++) {
@@ -125,12 +125,12 @@ Theory((size_t data_size), compression, compression_roundtrip_property) {
   int compress_result = compress_data(original_data, data_size, &compressed_data, &compressed_size);
 
   if (compress_result != 0 || compressed_data == NULL) {
-    free(original_data);
+    SAFE_FREE(original_data);
     cr_skip("Compression failed for size %zu", data_size);
     return;
   }
 
-  char *decompressed_data = malloc(data_size);
+  char *decompressed_data = SAFE_MALLOC(data_size, void *);
   cr_assert_not_null(decompressed_data, "Decompression buffer allocation should succeed for size %zu", data_size);
 
   int decompress_result = decompress_data(compressed_data, compressed_size, decompressed_data, data_size);
@@ -139,9 +139,9 @@ Theory((size_t data_size), compression, compression_roundtrip_property) {
   cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0,
                "Compression roundtrip must preserve data for size %zu", data_size);
 
-  free(original_data);
-  free(compressed_data);
-  free(decompressed_data);
+  SAFE_FREE(original_data);
+  SAFE_FREE(compressed_data);
+  SAFE_FREE(decompressed_data);
 }
 
 // Theory: Compression effectiveness - compressible data should compress well
@@ -152,7 +152,7 @@ TheoryDataPoints(compression, compressible_data_property) = {
 Theory((size_t data_size), compression, compressible_data_property) {
   cr_assume(data_size > 0 && data_size <= 4096);
 
-  char *original_data = malloc(data_size);
+  char *original_data = SAFE_MALLOC(data_size, void *);
   cr_assume(original_data != NULL);
   memset(original_data, 'A', data_size);
 
@@ -165,19 +165,19 @@ Theory((size_t data_size), compression, compressible_data_property) {
     cr_assert_lt(ratio, 0.5f, "Highly compressible data should compress to <50%% for size %zu (got %.2f%%)", data_size,
                  ratio * 100.0f);
 
-    char *decompressed_data = malloc(data_size);
+    char *decompressed_data = SAFE_MALLOC(data_size, void *);
     if (decompressed_data != NULL) {
       int decompress_result = decompress_data(compressed_data, compressed_size, decompressed_data, data_size);
       if (decompress_result == 0) {
         cr_assert_eq(memcmp(original_data, decompressed_data, data_size), 0,
                      "Roundtrip must work for compressible data size %zu", data_size);
       }
-      free(decompressed_data);
+      SAFE_FREE(decompressed_data);
     }
-    free(compressed_data);
+    SAFE_FREE(compressed_data);
   }
 
-  free(original_data);
+  SAFE_FREE(original_data);
 }
 
 // Theory: Compression threshold property - should_compress follows threshold rule
@@ -234,7 +234,7 @@ Test(compression, send_ascii_frame_packet_basic) {
     cr_assert_eq(mock_send_packet_calls, 1); // Should call send_packet once
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -263,14 +263,14 @@ Test(compression, send_ascii_frame_packet_oversized_frame) {
 
   // Use smaller frame size in test environment for faster testing
   size_t test_size = (getenv("TESTING") || getenv("CRITERION_TEST")) ? 1024 : (1024 * 1024);
-  char *large_frame = malloc(test_size);
+  char *large_frame = SAFE_MALLOC(test_size, void *);
   cr_assert_not_null(large_frame);
   memset(large_frame, 'A', test_size);
 
   int result = send_ascii_frame_packet(sockfd, large_frame, test_size, 80, 24);
   cr_assert_eq(result, -1);
 
-  free(large_frame);
+  SAFE_FREE(large_frame);
   close(sockfd);
 }
 
@@ -293,7 +293,7 @@ Test(compression, send_ascii_frame_packet_compressible_data) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -316,7 +316,7 @@ Test(compression, send_ascii_frame_packet_uncompressible_data) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -338,7 +338,7 @@ Test(compression, send_ascii_frame_packet_send_failure) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -357,7 +357,7 @@ Test(compression, send_ascii_frame_packet_memory_allocation_failure) {
   // Should either succeed or fail gracefully
   cr_assert(result == -1 || result > 0);
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -384,7 +384,7 @@ Test(compression, send_image_frame_packet_basic) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(pixel_data);
+  SAFE_FREE(pixel_data);
   close(sockfd);
 }
 
@@ -425,7 +425,7 @@ Test(compression, send_image_frame_packet_send_failure) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(pixel_data);
+  SAFE_FREE(pixel_data);
   close(sockfd);
 }
 
@@ -442,7 +442,7 @@ Test(compression, send_image_frame_packet_memory_allocation_failure) {
   // Should either succeed or fail gracefully
   cr_assert(result == -1 || result > 0);
 
-  free(pixel_data);
+  SAFE_FREE(pixel_data);
   close(sockfd);
 }
 
@@ -472,7 +472,7 @@ Test(compression, send_compressed_frame_legacy) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -507,7 +507,7 @@ Test(compression, compression_ratio_threshold) {
   mock_send_packet_result = 100;
 
   // Test with data that compresses well (should use compression)
-  char *compressible_data = malloc(1000);
+  char *compressible_data = SAFE_MALLOC(1000, void *);
   cr_assert_not_null(compressible_data);
   memset(compressible_data, 'A', 1000); // Highly compressible
 
@@ -519,7 +519,7 @@ Test(compression, compression_ratio_threshold) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(compressible_data);
+  SAFE_FREE(compressible_data);
   close(sockfd);
 }
 
@@ -542,7 +542,7 @@ Test(compression, no_compression_when_ineffective) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(uncompressible_data);
+  SAFE_FREE(uncompressible_data);
   close(sockfd);
 }
 
@@ -568,7 +568,7 @@ Test(compression, very_small_frame) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -592,7 +592,7 @@ Test(compression, large_frame) {
     cr_assert_eq(mock_send_packet_calls, 1);
   }
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -614,7 +614,7 @@ Test(compression, multiple_frames) {
       successful_calls++;
     }
 
-    free(frame_data);
+    SAFE_FREE(frame_data);
   }
 
   // Should have at least some successful calls
@@ -649,7 +649,7 @@ Test(compression, different_image_formats) {
   cr_assert_geq(successful_calls, 0);
   cr_assert_leq(successful_calls, 4);
 
-  free(pixel_data);
+  SAFE_FREE(pixel_data);
   close(sockfd);
 }
 
@@ -670,7 +670,7 @@ Test(compression, zero_dimensions) {
   result = send_image_frame_packet(sockfd, frame_data, 100, 0, 0, 0x12345678);
   cr_assert(result == -1 || result > 0);
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -691,7 +691,7 @@ Test(compression, negative_dimensions) {
   result = send_image_frame_packet(sockfd, frame_data, 100, -1, -1, 0x12345678);
   cr_assert(result == -1 || result > 0);
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -725,7 +725,7 @@ ParameterizedTest(compression_data_test_case_t *tc, compression, data_patterns) 
   int sockfd = create_test_socket();
   cr_assert_geq(sockfd, 0, "Socket creation should succeed for %s", tc->description);
 
-  char *frame_data = malloc(tc->data_size);
+  char *frame_data = SAFE_MALLOC(tc->data_size, void *);
   cr_assert_not_null(frame_data, "Memory allocation should succeed for %s", tc->description);
 
   if (tc->fill_char == '\0') {
@@ -741,7 +741,7 @@ ParameterizedTest(compression_data_test_case_t *tc, compression, data_patterns) 
   int result = send_ascii_frame_packet(sockfd, frame_data, tc->data_size, 80, 24);
   cr_assert(result == -1 || result > 0, "Should handle %s gracefully", tc->description);
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -772,7 +772,7 @@ ParameterizedTest(compression_frame_test_case_t *tc, compression, frame_sizes) {
   int result = send_ascii_frame_packet(sockfd, frame_data, tc->frame_size, tc->width, tc->height);
   cr_assert(result == -1 || result > 0, "Should handle %s gracefully", tc->description);
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
   close(sockfd);
 }
 
@@ -801,7 +801,7 @@ ParameterizedTest(compression_image_format_test_case_t *tc, compression, image_f
   int result = send_image_frame_packet(sockfd, pixel_data, 1024, 32, 32, tc->pixel_format);
   cr_assert(result == -1 || result > 0, "Should handle %s gracefully", tc->description);
 
-  free(pixel_data);
+  SAFE_FREE(pixel_data);
   close(sockfd);
 }
 
@@ -875,7 +875,7 @@ ParameterizedTest(compression_stress_test_case_t *tc, compression, stress_tests)
       successful_calls++;
     }
 
-    free(frame_data);
+    SAFE_FREE(frame_data);
   }
 
   // Should have at least some successful calls

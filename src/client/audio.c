@@ -317,7 +317,7 @@ int audio_client_init() {
   }
 
   // Initialize PortAudio context using library function
-  if (audio_init(&g_audio_context) != 0) {
+  if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     return -1;
   }
@@ -329,7 +329,7 @@ int audio_client_init() {
   }
 
   // Start audio capture
-  if (audio_start_capture(&g_audio_context) != 0) {
+  if (audio_start_capture(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to start audio capture");
     return -1;
   }

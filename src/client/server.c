@@ -60,20 +60,20 @@
  */
 
 #include "server.h"
-#include "crypto/handshake.h"
-#include "crypto/known_hosts.h"
 #include "crypto.h"
 #include "crypto/crypto.h"
+#include "crypto/handshake.h"
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
-#include "network.h"
+#include "network/packet.h"
+#include "network/network.h"
+#include "network/av.h"
 #include "common.h"
+#include "display.h"
 #include "options.h"
-#include "buffer_pool.h"
 #include "palette.h"
 
-#include <errno.h>
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
@@ -167,7 +167,7 @@ static int close_socket(socket_t socketfd) {
   if (socket_is_valid(socketfd)) {
     log_info("Closing socket connection");
     if (socket_close(socketfd) != 0) {
-      log_error("Failed to close socket: %s", network_error_string(errno));
+      log_error("Failed to close socket: %s", network_error_string());
       return -1;
     }
     return 0;
@@ -269,7 +269,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       // Create socket with appropriate address family
       g_sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       if (g_sockfd == INVALID_SOCKET_VALUE) {
-        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string(errno));
+        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family,
+                  network_error_string());
         continue; // Try next address
       }
 
@@ -301,7 +302,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       }
 
       // Connection failed - close socket and try next address
-      log_debug("Connection failed: %s", network_error_string(errno));
+      log_debug("Connection failed: %s", network_error_string());
       close_socket(g_sockfd);
       g_sockfd = INVALID_SOCKET_VALUE;
     }
@@ -321,7 +322,7 @@ connection_success:
   struct sockaddr_storage local_addr = {0};
   socklen_t addr_len = sizeof(local_addr);
   if (getsockname(g_sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
-    log_error("Failed to get local socket address: %s", network_error_string(errno));
+    log_error("Failed to get local socket address: %s", network_error_string());
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
@@ -342,6 +343,7 @@ connection_success:
   atomic_store(&g_should_reconnect, false);
 
   // Initialize crypto BEFORE starting protocol handshake
+  // Note: server IP is already set above in the connection loop
   log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
   if (client_crypto_init() != 0) {
     log_error("Failed to initialize crypto (password required or incorrect)");
@@ -350,7 +352,6 @@ connection_success:
     g_sockfd = INVALID_SOCKET_VALUE;
     return CONNECTION_ERROR_AUTH_FAILED; // SSH key password was wrong - no retry
   }
-  log_debug("CLIENT_CONNECT: client_crypto_init() succeeded");
 
   // Perform crypto handshake if encryption is enabled
   log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
@@ -360,7 +361,8 @@ connection_success:
     log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
-    return handshake_result; // Propagate error code from crypto_handshake
+    FATAL(ERROR_CRYPTO_HANDSHAKE,
+                      "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
   }
   log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 
@@ -373,8 +375,8 @@ connection_success:
   }
 
   // Configure socket options for optimal performance
-  if (set_socket_keepalive(g_sockfd) < 0) {
-    log_warn("Failed to set socket keepalive: %s", network_error_string(errno));
+  if (socket_set_keepalive(g_sockfd, true) < 0) {
+    log_warn("Failed to set socket keepalive: %s", network_error_string());
   }
 
   // Set socket buffer sizes for large data transmission
@@ -382,23 +384,23 @@ connection_success:
   int recv_buffer_size = 1024 * 1024; // 1MB receive buffer
 
   if (socket_setsockopt(g_sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
-    log_warn("Failed to set send buffer size: %s", network_error_string(errno));
+    log_warn("Failed to set send buffer size: %s", network_error_string());
   }
 
   if (socket_setsockopt(g_sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
-    log_warn("Failed to set receive buffer size: %s", network_error_string(errno));
+    log_warn("Failed to set receive buffer size: %s", network_error_string());
   }
 
   // Enable TCP_NODELAY to reduce latency for large packets
   int nodelay = 1;
   if (socket_setsockopt(g_sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
-    log_warn("Failed to set TCP_NODELAY: %s", network_error_string(errno));
+    log_warn("Failed to set TCP_NODELAY: %s", network_error_string());
   }
 
   // Send initial terminal capabilities to server (this may generate debug logs)
   int result = threaded_send_terminal_size_with_auto_detect(opt_width, opt_height);
   if (result < 0) {
-    log_error("Failed to send initial capabilities to server: %s", network_error_string(errno));
+    log_error("Failed to send initial capabilities to server: %s", network_error_string());
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
@@ -430,7 +432,7 @@ connection_success:
   SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), "%s-%d", display_name, pid);
 
   if (threaded_send_client_join_packet(my_display_name, my_capabilities) < 0) {
-    log_error("Failed to send client join packet: %s", network_error_string(errno));
+    log_error("Failed to send client join packet: %s", network_error_string());
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
@@ -536,6 +538,7 @@ void server_connection_lost() {
   // Turn ON terminal logging when connection is lost
   printf("\n");
   log_set_terminal_output(true);
+  terminal_reset(g_tty_info.fd);
   log_info("Connection lost - terminal logging re-enabled");
 }
 
@@ -574,9 +577,9 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
 
   mutex_lock(&g_send_mutex);
 
-  // Use send_packet_auto() which handles encryption automatically based on packet type and crypto state
+  // Use send_packet_secure() which handles encryption and compression automatically
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-  int result = send_packet_auto(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
+  int result = send_packet_secure(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
 
   mutex_unlock(&g_send_mutex);
   return result;

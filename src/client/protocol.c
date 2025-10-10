@@ -87,12 +87,11 @@
 #include "audio.h"
 #include "audio.h"
 
-#include "network.h"
+#include "network/packet.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "options.h"
 #include "crc32.h"
-#include "crypto/handshake.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -263,7 +262,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    SAFE_MALLOC(frame_data, header.original_size + 1, char *);
+    frame_data = SAFE_MALLOC(header.original_size + 1, char *);
 
     // Decompress using zlib
     uLongf decompressed_size = header.original_size;
@@ -272,7 +271,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     if (result != Z_OK || decompressed_size != header.original_size) {
       log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
                 header.original_size);
-      free(frame_data);
+      SAFE_FREE(frame_data);
       return;
     }
 
@@ -289,7 +288,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
     // Ensure we don't have buffer overflow - use the actual header size for allocation
     size_t alloc_size = header.original_size + 1;
-    SAFE_MALLOC(frame_data, alloc_size, char *);
+    frame_data = SAFE_MALLOC(alloc_size, char *);
 
     // Only copy the actual amount of data we received
     size_t copy_size = (frame_data_len > header.original_size) ? header.original_size : frame_data_len;
@@ -301,7 +300,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   uint32_t actual_crc = asciichat_crc32(frame_data, header.original_size);
   if (actual_crc != header.checksum) {
     log_error("Frame checksum mismatch: got 0x%x, expected 0x%x", actual_crc, header.checksum);
-    free(frame_data);
+    SAFE_FREE(frame_data);
     return;
   }
 
@@ -360,7 +359,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!frame_data || header.original_size == 0) {
     log_error("Invalid frame data for rendering: frame_data=%p, size=%u", frame_data, header.original_size);
     if (frame_data) {
-      free(frame_data);
+      SAFE_FREE(frame_data);
     }
     return;
   }
@@ -388,7 +387,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     // Skip rendering if not enough time has passed (frame rate limiting)
     if (elapsed_ms > 0 && elapsed_ms < render_interval_ms) {
       // Drop this frame to maintain display FPS limit
-      free(frame_data);
+      SAFE_FREE(frame_data);
       return;
     }
 
@@ -396,11 +395,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     last_render_time = current_time;
   }
 
-  log_debug("CLIENT_RENDER: Calling display_render_frame with %u bytes", header.original_size);
   display_render_frame(frame_data, take_snapshot);
-  log_debug("CLIENT_RENDER: Frame rendered successfully");
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
 }
 
 /**
@@ -525,14 +522,14 @@ static void *data_reception_thread_func(void *arg) {
     packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
 
     // Handle different result codes
-    if (result == PACKET_RECV_CLOSED) {
+    if (result == PACKET_RECV_EOF) {
       log_info("CLIENT: Server closed connection");
       server_connection_lost();
       break;
     }
 
     if (result == PACKET_RECV_ERROR) {
-      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
+      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, SAFE_STRERROR(errno));
       server_connection_lost();
       break;
     }
@@ -548,12 +545,8 @@ static void *data_reception_thread_func(void *arg) {
     void *data = envelope.data;
     size_t len = envelope.len;
 
-    // DEBUG: Log all packet types received
-    log_debug("CLIENT_RECV: Received packet type=%d, len=%zu", type, len);
-
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
-      log_debug("CLIENT_RECV: Processing ASCII_FRAME packet, len=%zu", len);
       handle_ascii_frame_packet(data, len);
       break;
 
@@ -587,9 +580,10 @@ static void *data_reception_thread_func(void *arg) {
       break;
     }
 
-    // Clean up packet buffer (only if we actually allocated one)
-    if (data && len > 0) {
-      buffer_pool_free(data, len);
+    // Clean up packet buffer using the allocated_buffer pointer, not the data pointer
+    // The data pointer is offset into the buffer, but we need to free the actual allocated buffer
+    if (envelope.allocated_buffer && envelope.allocated_size > 0) {
+      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
     }
   }
 
@@ -622,9 +616,6 @@ int protocol_start_connection() {
   // Reset display state for new connection
   display_reset_for_new_connection();
 
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Starting protocol connection - creating threads");
-#endif
 
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
@@ -632,18 +623,12 @@ int protocol_start_connection() {
     log_error("Failed to create data reception thread");
     return -1;
   }
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Data reception thread created successfully");
-#endif
 
   // Start webcam capture thread
   if (capture_start_thread() != 0) {
     log_error("Failed to start webcam capture thread");
     return -1;
   }
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Webcam capture thread started successfully");
-#endif
 
   g_data_thread_created = true;
   return 0;
@@ -660,9 +645,6 @@ void protocol_stop_connection() {
     return;
   }
 
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Stopping protocol connection - stopping threads");
-#endif
 
   // Don't call signal_exit() here - that's for global shutdown only!
   // We just want to stop threads for this connection, not exit the entire client
@@ -672,9 +654,6 @@ void protocol_stop_connection() {
 
   // Stop webcam capture thread
   capture_stop_thread();
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Webcam capture thread stopped");
-#endif
 
   // Wait for thread to exit gracefully with timeout
   int wait_count = 0;

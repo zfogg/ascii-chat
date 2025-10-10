@@ -1,6 +1,7 @@
 #include "buffer_pool.h"
 #include "common.h"
-#include "platform/abstraction.h"
+#include "asciichat_errno.h"
+#include "platform/system.h"
 #include "platform/init.h"
 #include "util/format.h"
 #include <stdlib.h>
@@ -17,13 +18,13 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
   }
 
   buffer_pool_t *pool;
-  SAFE_MALLOC(pool, sizeof(buffer_pool_t), buffer_pool_t *);
+  pool = SAFE_MALLOC(sizeof(buffer_pool_t), buffer_pool_t *);
 
   // Allocate array of buffer nodes
-  SAFE_MALLOC(pool->nodes, sizeof(buffer_node_t) * pool_size, buffer_node_t *);
+  pool->nodes = SAFE_MALLOC(sizeof(buffer_node_t) * pool_size, buffer_node_t *);
 
   // Allocate single memory block for all buffers
-  SAFE_MALLOC(pool->memory_block, buffer_size * pool_size, void *);
+  pool->memory_block = SAFE_MALLOC(buffer_size * pool_size, void *);
 
   // Initialize each buffer node
   uint8_t *current_buffer = (uint8_t *)pool->memory_block;
@@ -103,7 +104,7 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
 
   buffer_node_t *node = &pool->nodes[index];
   if (!node->in_use) {
-    log_error("Double free detected in buffer pool!");
+    SET_ERRNO(ERROR_INVALID_STATE, "Double free detected in buffer pool!");
     return false;
   }
 
@@ -124,7 +125,7 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
 
 data_buffer_pool_t *data_buffer_pool_create(void) {
   data_buffer_pool_t *pool;
-  SAFE_MALLOC(pool, sizeof(data_buffer_pool_t), data_buffer_pool_t *);
+  pool = SAFE_MALLOC(sizeof(data_buffer_pool_t), data_buffer_pool_t *);
 
   // Create pools for different size classes
   pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
@@ -171,7 +172,7 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     // No pool, fallback to malloc
     log_warn("MALLOC FALLBACK (no pool): size=%zu at %s:%d", size, __FILE__, __LINE__);
     void *data;
-    SAFE_MALLOC(data, size, void *);
+    data = SAFE_MALLOC(size, void *);
     return data;
   }
 
@@ -225,7 +226,7 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     // }
     platform_backtrace_symbols_free(symbols);
 
-    SAFE_MALLOC(buffer, size, void *);
+    buffer = SAFE_MALLOC(size, void *);
     // log_error("MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p", size, buffer,
     //         (void *)pthread_self());
   }
@@ -332,7 +333,7 @@ void *buffer_pool_alloc(size_t size) {
     // If global pool not initialized, fall back to regular malloc
     // log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
     void *data;
-    SAFE_MALLOC(data, size, void *);
+    data = SAFE_MALLOC(size, void *);
     return data;
   }
   return data_buffer_pool_alloc(g_global_buffer_pool, size);
@@ -340,6 +341,7 @@ void *buffer_pool_alloc(size_t size) {
 
 void buffer_pool_free(void *data, size_t size) {
   if (!data) {
+    platform_print_backtrace(0);
     log_warn("BUFFER POOL FREE but no data: size=%zu", size);
     return;
   }

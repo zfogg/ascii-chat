@@ -24,9 +24,9 @@ static void test_github_ssh_keys(const char *username) {
 
     for (size_t i = 0; i < num_keys; i++) {
       printf("SSH Key %zu: %.80s...\n", i + 1, keys[i]);
-      free(keys[i]);
+      SAFE_FREE(keys[i]);
     }
-    free(keys);
+    SAFE_FREE(keys);
   } else {
     printf("✗ Failed to fetch SSH keys\n");
   }
@@ -61,9 +61,9 @@ static void test_github_gpg_keys(const char *username) {
         line_count++;
       }
       printf("  ... (%zu total bytes)\n", strlen(keys[i]));
-      free(keys[i]);
+      SAFE_FREE(keys[i]);
     }
-    free(keys);
+    SAFE_FREE(keys);
   } else {
     printf("✗ Failed to fetch GPG keys\n");
   }
@@ -82,9 +82,9 @@ static void test_gitlab_ssh_keys(const char *username) {
 
     for (size_t i = 0; i < num_keys; i++) {
       printf("SSH Key %zu: %.80s...\n", i + 1, keys[i]);
-      free(keys[i]);
+      SAFE_FREE(keys[i]);
     }
-    free(keys);
+    SAFE_FREE(keys);
   } else {
     printf("✗ Failed to fetch SSH keys (user may not have Ed25519 keys)\n");
   }
@@ -98,7 +98,7 @@ static void test_https_get(void) {
   if (response) {
     printf("✓ HTTPS GET successful\n");
     printf("Response: %s\n", response);
-    free(response);
+    SAFE_FREE(response);
   } else {
     printf("✗ HTTPS GET failed\n");
   }

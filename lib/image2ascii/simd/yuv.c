@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "../image.h"
+#include "../../util/math.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -130,12 +131,12 @@ static void convert_yuy2_to_rgb_sse2(const uint8_t *yuy2, rgb_t *rgb, int width,
     // Separate and duplicate U values for pixel pairs
     // U is at positions 0,2,4,6 in uv_vals
     __m128i u_vals = _mm_shufflelo_epi16(uv_vals, _MM_SHUFFLE(2, 2, 0, 0));
-    u_vals = _mm_shufflehi_epi16(u_vals, _MM_SHUFFLE(6, 6, 4, 4));
+    u_vals = _mm_shufflehi_epi16(u_vals, _MM_SHUFFLE(2, 2, 0, 0));
 
     // Separate and duplicate V values for pixel pairs
     // V is at positions 1,3,5,7 in uv_vals
     __m128i v_vals = _mm_shufflelo_epi16(uv_vals, _MM_SHUFFLE(3, 3, 1, 1));
-    v_vals = _mm_shufflehi_epi16(v_vals, _MM_SHUFFLE(7, 7, 5, 5));
+    v_vals = _mm_shufflehi_epi16(v_vals, _MM_SHUFFLE(3, 3, 1, 1));
 
     // Convert U,V from [0,255] to [-128,127]
     u_vals = _mm_sub_epi16(u_vals, offset_128);

@@ -7,33 +7,30 @@
 // libsodium includes
 #include <sodium.h>
 
+// Include required types
+#include "keys/types.h"  // For private_key_t
+#include "../common.h"  // For asciichat_error_t
+
 // Key sizes for X25519 key exchange
 #define CRYPTO_PUBLIC_KEY_SIZE crypto_box_PUBLICKEYBYTES  // 32 bytes
 #define CRYPTO_PRIVATE_KEY_SIZE crypto_box_SECRETKEYBYTES // 32 bytes
 #define CRYPTO_SHARED_KEY_SIZE crypto_box_BEFORENMBYTES   // 32 bytes
+
+// Ed25519 signature constants
+#define CRYPTO_ED25519_PUBLIC_KEY_SIZE 32   // Ed25519 public key size
+#define CRYPTO_ED25519_PRIVATE_KEY_SIZE 64  // Ed25519 private key size (seed + public)
+#define CRYPTO_ED25519_SIGNATURE_SIZE 64    // Ed25519 signature size
 
 // Encryption constants
 #define CRYPTO_NONCE_SIZE crypto_box_NONCEBYTES              // 24 bytes
 #define CRYPTO_SALT_SIZE crypto_pwhash_SALTBYTES             // 32 bytes
 #define CRYPTO_ENCRYPTION_KEY_SIZE crypto_secretbox_KEYBYTES // 32 bytes
 #define CRYPTO_MAC_SIZE crypto_box_MACBYTES                  // 16 bytes
+#define CRYPTO_HMAC_SIZE crypto_auth_hmacsha256_BYTES       // 32 bytes
 
 // Maximum sizes for encrypted data
 #define CRYPTO_MAX_PLAINTEXT_SIZE ((size_t)1024 * 1024) // 1MB max
 #define CRYPTO_MAX_CIPHERTEXT_SIZE (CRYPTO_MAX_PLAINTEXT_SIZE + CRYPTO_MAC_SIZE)
-
-// Key exchange packet types (for network protocol integration)
-typedef enum {
-  CRYPTO_PACKET_PUBLIC_KEY = 100,     // Send public key during handshake
-  CRYPTO_PACKET_KEY_EXCHANGE = 101,   // Complete key exchange
-  CRYPTO_PACKET_ENCRYPTED_DATA = 102, // Encrypted application data
-
-  // New crypto handshake packets
-  CRYPTO_PACKET_AUTH_CHALLENGE = 103,     // Server -> Client: {nonce[32]}
-  CRYPTO_PACKET_AUTH_RESPONSE = 104,      // Client -> Server: {HMAC[32]}
-  CRYPTO_PACKET_HANDSHAKE_COMPLETE = 105, // Server -> Client: "encryption ready"
-  CRYPTO_PACKET_AUTH_FAILED = 106         // Server -> Client: "authentication failed"
-} crypto_packet_type_t;
 
 // Crypto context for managing keys and state
 typedef struct {
@@ -116,6 +113,9 @@ bool crypto_is_ready(const crypto_context_t *ctx);
 // =============================================================================
 // Password-based encryption (optional additional layer)
 // =============================================================================
+
+// Validate password length requirements
+crypto_result_t crypto_validate_password(const char *password);
 
 // Derive key from password using Argon2id (memory-hard, secure)
 crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *password);
@@ -235,3 +235,35 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
 // Process received encrypted packet from peer
 crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len,
                                                 uint8_t *data_out, size_t data_size, size_t *data_len_out);
+
+// =============================================================================
+// Shared Cryptographic Operations
+// =============================================================================
+
+// Compute password-based HMAC for authentication
+asciichat_error_t crypto_compute_password_hmac(const uint8_t* password_key,
+                                                           const uint8_t* nonce,
+                                                           const uint8_t* shared_secret,
+                                                           uint8_t* hmac_out);
+
+// Verify peer's signature on ephemeral key
+asciichat_error_t crypto_verify_peer_signature(const uint8_t* peer_public_key,
+                                                    const uint8_t* ephemeral_key,
+                                                    size_t ephemeral_key_size,
+                                                    const uint8_t* signature);
+
+// Sign ephemeral key with private key
+asciichat_error_t crypto_sign_ephemeral_key(const private_key_t* private_key,
+                                                 const uint8_t* ephemeral_key,
+                                                 size_t ephemeral_key_size,
+                                                 uint8_t* signature_out);
+
+// Combine HMAC and challenge nonce for transmission
+void crypto_combine_auth_data(const uint8_t* hmac,
+                            const uint8_t* challenge_nonce,
+                            uint8_t* combined_out);
+
+// Extract HMAC and challenge nonce from combined data
+void crypto_extract_auth_data(const uint8_t* combined_data,
+                            uint8_t* hmac_out,
+                            uint8_t* challenge_out);

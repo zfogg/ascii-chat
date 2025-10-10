@@ -11,8 +11,8 @@
 
 #pragma once
 
-#include "platform/abstraction.h"
-#include "network.h"
+#include "platform/socket.h"
+#include "network/packet_types.h"
 #include <stdint.h>
 #include <stdbool.h>
 

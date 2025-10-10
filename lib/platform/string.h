@@ -41,3 +41,12 @@ int safe_fprintf(FILE *stream, const char *format, ...);
  * @return Destination buffer
  */
 char *platform_strcat(char *dest, size_t dest_size, const char *src);
+
+/**
+ * @brief Safe version of sscanf
+ * @param str String to parse
+ * @param format Format string
+ * @param ... Variable arguments for parsed values
+ * @return Number of successfully parsed items
+ */
+int safe_sscanf(const char *str, const char *format, ...);

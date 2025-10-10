@@ -1,10 +1,9 @@
 #pragma once
 
-#include "platform/abstraction.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "network.h"
+#include "network/packet.h"
 #include "buffer_pool.h"
 
 /*

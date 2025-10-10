@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "network.h"
+#include "network/network.h"
+#include "network/packet.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
 #include "video_frame.h"

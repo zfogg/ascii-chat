@@ -152,7 +152,7 @@ Test(image, image_print_basic) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -172,7 +172,7 @@ Test(image, image_print_color_basic) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -212,7 +212,7 @@ Test(image, image_print_zero_dimensions) {
   // Should return empty string or NULL for zero dimensions
   if (result) {
     cr_assert_eq(strlen(result), 0);
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(img);
@@ -493,7 +493,7 @@ Test(image, image_operations_with_zero_dimensions) {
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(img, palette);
   if (result) {
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(img);

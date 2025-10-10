@@ -14,6 +14,7 @@
  */
 
 #include <stddef.h>
+#include "../common.h"
 
 /**
  * Perform HTTPS GET request
@@ -29,7 +30,7 @@
  *   char* keys = https_get("github.com", "/zfogg.keys");
  *   if (keys) {
  *       printf("Keys: %s\n", keys);
- *       free(keys);
+ *       SAFE_FREE(keys);
  *   }
  */
 char *https_get(const char *hostname, const char *path);
@@ -51,12 +52,12 @@ char *https_get(const char *hostname, const char *path);
  *   if (fetch_github_ssh_keys("zfogg", &keys, &num_keys) == 0) {
  *       for (size_t i = 0; i < num_keys; i++) {
  *           printf("Key %zu: %s\n", i, keys[i]);
- *           free(keys[i]);
+ *           SAFE_FREE(keys[i]);
  *       }
- *       free(keys);
+ *       SAFE_FREE(keys);
  *   }
  */
-int fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out);
+asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out);
 
 /**
  * Fetch GitLab SSH public keys for a user
@@ -69,7 +70,7 @@ int fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_ke
  * @param num_keys_out Pointer to receive number of keys found
  * @return 0 on success, -1 on failure
  */
-int fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out);
+asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out);
 
 /**
  * Fetch GitHub GPG public keys for a user
@@ -88,12 +89,12 @@ int fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_ke
  *   if (fetch_github_gpg_keys("zfogg", &keys, &num_keys) == 0) {
  *       for (size_t i = 0; i < num_keys; i++) {
  *           printf("GPG Key %zu:\n%s\n", i, keys[i]);
- *           free(keys[i]);
+ *           SAFE_FREE(keys[i]);
  *       }
- *       free(keys);
+ *       SAFE_FREE(keys);
  *   }
  */
-int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out);
+asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out);
 
 /**
  * Fetch GitLab GPG public keys for a user
@@ -106,4 +107,4 @@ int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
  * @param num_keys_out Pointer to receive number of keys found
  * @return 0 on success, -1 on failure
  */
-int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out);
+asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out);

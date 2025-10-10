@@ -82,14 +82,14 @@ ParameterizedTest(ringbuffer_operation_test_case_t *tc, audio, ringbuffer_operat
   float *read_data = NULL;
 
   if (tc->write_size > 0) {
-    SAFE_MALLOC(write_data, tc->write_size * sizeof(float), float *);
+    write_data = SAFE_MALLOC(tc->write_size * sizeof(float), float *);
     for (size_t i = 0; i < tc->write_size; i++) {
       write_data[i] = (float)i * 0.1f;
     }
   }
 
   if (tc->read_size > 0) {
-    SAFE_MALLOC(read_data, tc->read_size * sizeof(float), float *);
+    read_data = SAFE_MALLOC(tc->read_size * sizeof(float), float *);
   }
 
   // Test write operation
@@ -117,9 +117,9 @@ ParameterizedTest(ringbuffer_operation_test_case_t *tc, audio, ringbuffer_operat
 
   // Clean up
   if (write_data)
-    free(write_data);
+    SAFE_FREE(write_data);
   if (read_data)
-    free(read_data);
+    SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -150,8 +150,8 @@ ParameterizedTest(ringbuffer_capacity_test_case_t *tc, audio, ringbuffer_capacit
   float *write_data = NULL;
   float *read_data = NULL;
 
-  SAFE_MALLOC(write_data, tc->buffer_size * sizeof(float), float *);
-  SAFE_MALLOC(read_data, tc->buffer_size * sizeof(float), float *);
+  write_data = SAFE_MALLOC(tc->buffer_size * sizeof(float), float *);
+  read_data = SAFE_MALLOC(tc->buffer_size * sizeof(float), float *);
 
   // Fill test data
   for (size_t i = 0; i < tc->buffer_size; i++) {
@@ -179,8 +179,8 @@ ParameterizedTest(ringbuffer_capacity_test_case_t *tc, audio, ringbuffer_capacit
   cr_assert_leq(total_read, total_written, "Should not read more than written for %s", tc->description);
 
   // Clean up
-  free(write_data);
-  free(read_data);
+  SAFE_FREE(write_data);
+  SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -199,8 +199,8 @@ Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assume(rb != NULL);
 
-  float *test_data = malloc(sample_count * sizeof(float));
-  float *read_data = malloc(sample_count * sizeof(float));
+  float *test_data = SAFE_MALLOC(sample_count * sizeof(float, void *));
+  float *read_data = SAFE_MALLOC(sample_count * sizeof(float, void *));
   cr_assume(test_data != NULL && read_data != NULL);
 
   // Fill test data with sine wave
@@ -224,8 +224,8 @@ Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
                        test_data[i], read_data[i]);
   }
 
-  free(test_data);
-  free(read_data);
+  SAFE_FREE(test_data);
+  SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -281,7 +281,7 @@ Theory((int write_size), audio, ringbuffer_overflow_property) {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assume(rb != NULL);
 
-  float *test_data = malloc(write_size * sizeof(float));
+  float *test_data = SAFE_MALLOC(write_size * sizeof(float, void *));
   cr_assume(test_data != NULL);
 
   for (int i = 0; i < write_size; i++) {
@@ -297,7 +297,7 @@ Theory((int write_size), audio, ringbuffer_overflow_property) {
                 write_size, available_space);
   cr_assert_geq(written, 0, "Should not return negative for write_size=%d", write_size);
 
-  free(test_data);
+  SAFE_FREE(test_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -551,7 +551,7 @@ Test(audio, audio_ring_buffer_partial_operations) {
   // If something was written, we should be able to read it back
   if (written > 0) {
     float *read_data;
-    SAFE_MALLOC(read_data, written * sizeof(float), float *);
+    read_data = SAFE_MALLOC(written * sizeof(float), float *);
 
     int read = audio_ring_buffer_read(rb, read_data, written);
     cr_assert_eq(read, written, "Should read back all written data");
@@ -561,7 +561,7 @@ Test(audio, audio_ring_buffer_partial_operations) {
       cr_assert_float_eq(read_data[i], large_data[i], 0.0001f, "Sample %d should match", i);
     }
 
-    free(read_data);
+    SAFE_FREE(read_data);
   }
 
   audio_ring_buffer_destroy(rb);
@@ -704,8 +704,8 @@ ParameterizedTest(audio_buffer_test_case_t *tc, audio, buffer_sizes) {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed for %s", tc->description);
 
-  float *test_data = malloc(tc->buffer_size * sizeof(float));
-  float *read_data = malloc(tc->buffer_size * sizeof(float));
+  float *test_data = SAFE_MALLOC(tc->buffer_size * sizeof(float, void *));
+  float *read_data = SAFE_MALLOC(tc->buffer_size * sizeof(float, void *));
   cr_assert_not_null(test_data);
   cr_assert_not_null(read_data);
 
@@ -727,8 +727,8 @@ ParameterizedTest(audio_buffer_test_case_t *tc, audio, buffer_sizes) {
     }
   }
 
-  free(test_data);
-  free(read_data);
+  SAFE_FREE(test_data);
+  SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -752,8 +752,8 @@ ParameterizedTest(audio_frequency_test_case_t *tc, audio, frequency_tests) {
   cr_assert_not_null(rb, "Ringbuffer creation should succeed for %s", tc->description);
 
   const size_t sample_count = 256;
-  float *test_data = malloc(sample_count * sizeof(float));
-  float *read_data = malloc(sample_count * sizeof(float));
+  float *test_data = SAFE_MALLOC(sample_count * sizeof(float, void *));
+  float *read_data = SAFE_MALLOC(sample_count * sizeof(float, void *));
   cr_assert_not_null(test_data);
   cr_assert_not_null(read_data);
 
@@ -770,8 +770,8 @@ ParameterizedTest(audio_frequency_test_case_t *tc, audio, frequency_tests) {
     cr_assert_eq(read, written, "Should read all written data for %s", tc->description);
   }
 
-  free(test_data);
-  free(read_data);
+  SAFE_FREE(test_data);
+  SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -794,8 +794,8 @@ ParameterizedTest(audio_stress_test_case_t *tc, audio, stress_tests) {
   cr_assert_not_null(rb, "Ringbuffer creation should succeed for %s", tc->description);
 
   const size_t sample_count = 64;
-  float *test_data = malloc(sample_count * sizeof(float));
-  float *read_data = malloc(sample_count * sizeof(float));
+  float *test_data = SAFE_MALLOC(sample_count * sizeof(float, void *));
+  float *read_data = SAFE_MALLOC(sample_count * sizeof(float, void *));
   cr_assert_not_null(test_data);
   cr_assert_not_null(read_data);
 
@@ -815,8 +815,8 @@ ParameterizedTest(audio_stress_test_case_t *tc, audio, stress_tests) {
     }
   }
 
-  free(test_data);
-  free(read_data);
+  SAFE_FREE(test_data);
+  SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }
 
@@ -845,7 +845,7 @@ ParameterizedTest(audio_edge_test_case_t *tc, audio, edge_cases) {
   float *read_data = NULL;
 
   if (tc->write_size > 0) {
-    write_data = malloc(tc->write_size * sizeof(float));
+    write_data = SAFE_MALLOC(tc->write_size * sizeof(float, void *));
     cr_assert_not_null(write_data);
 
     // Fill with test pattern
@@ -855,7 +855,7 @@ ParameterizedTest(audio_edge_test_case_t *tc, audio, edge_cases) {
   }
 
   if (tc->read_size > 0) {
-    read_data = malloc(tc->read_size * sizeof(float));
+    read_data = SAFE_MALLOC(tc->read_size * sizeof(float, void *));
     cr_assert_not_null(read_data);
   }
 
@@ -874,7 +874,7 @@ ParameterizedTest(audio_edge_test_case_t *tc, audio, edge_cases) {
     cr_assert_leq(read, written, "Should not read more than written for %s", tc->description);
   }
 
-  free(write_data);
-  free(read_data);
+  SAFE_FREE(write_data);
+  SAFE_FREE(read_data);
   audio_ring_buffer_destroy(rb);
 }

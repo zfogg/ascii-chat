@@ -95,10 +95,9 @@
 #include "server.h"
 #include "os/webcam.h"
 #include "image2ascii/image.h"
-#include "network.h"
 #include "common.h"
+#include "asciichat_errno.h"
 #include "options.h"
-#include "compression.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
@@ -212,96 +211,6 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
   image_destroy(original_image);
   return resized;
 }
-/**
- * Serialize image data into network packet format with compression
- *
- * Packs image data into format suitable for network transmission:
- * [width:4][height:4][compressed_flag:4][data_size:4][rgb_data:data_size]
- * Uses network byte order for all fields. RGB data is compressed if beneficial.
- *
- * @param image Image to serialize
- * @param packet_size Output parameter for total packet size
- * @return Allocated packet buffer or NULL on error
- */
-static uint8_t *serialize_image_packet(image_t *image, size_t *packet_size) {
-  if (!image || !packet_size) {
-    return NULL;
-  }
-
-  // Calculate RGB data size
-  size_t rgb_size = (size_t)image->w * (size_t)image->h * sizeof(rgb_t);
-
-  // Try compression to reduce packet size
-  void *compressed_data = NULL;
-  size_t compressed_size = 0;
-  bool use_compression = false;
-
-  if (compress_data(image->pixels, rgb_size, &compressed_data, &compressed_size) == 0) {
-    float compression_ratio = (float)compressed_size / (float)rgb_size;
-    log_info("DEBUG_COMPRESSION: Original=%zu, Compressed=%zu, Ratio=%.2f, Threshold=%.2f", rgb_size, compressed_size,
-             compression_ratio, COMPRESSION_RATIO_THRESHOLD);
-
-    if (should_compress(rgb_size, compressed_size)) {
-      use_compression = true;
-      log_info("DEBUG_COMPRESSION: Using compression (ratio %.2f < %.2f)", compression_ratio,
-               COMPRESSION_RATIO_THRESHOLD);
-    } else {
-      free(compressed_data);
-      compressed_data = NULL;
-      log_info("DEBUG_COMPRESSION: Not using compression (ratio %.2f >= %.2f)", compression_ratio,
-               COMPRESSION_RATIO_THRESHOLD);
-    }
-  } else {
-    log_info("DEBUG_COMPRESSION: Compression failed, using uncompressed data");
-  }
-
-  // Calculate final packet size
-  size_t data_size = use_compression ? compressed_size : rgb_size;
-  *packet_size = sizeof(uint32_t) * 4 + data_size; // width + height + flag + size + data
-
-  // Check packet size limits
-  if (*packet_size > MAX_PACKET_SIZE) {
-    log_error("Packet too large: %zu bytes (max %d)", *packet_size, MAX_PACKET_SIZE);
-    if (compressed_data)
-      free(compressed_data);
-    return NULL;
-  }
-
-  // Allocate packet buffer
-  uint8_t *packet_data = NULL;
-  SAFE_MALLOC(packet_data, *packet_size, uint8_t *);
-  if (!packet_data) {
-    log_error("Failed to allocate packet buffer of size %zu", *packet_size);
-    if (compressed_data)
-      free(compressed_data);
-    return NULL;
-  }
-
-  // Pack the packet data
-  uint32_t width_net = htonl(image->w);
-  uint32_t height_net = htonl(image->h);
-  uint32_t compressed_flag_net = htonl(use_compression ? 1 : 0);
-  uint32_t data_size_net = htonl(data_size);
-
-  size_t offset = 0;
-  memcpy(packet_data + offset, &width_net, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(packet_data + offset, &height_net, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(packet_data + offset, &compressed_flag_net, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(packet_data + offset, &data_size_net, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-
-  if (use_compression) {
-    memcpy(packet_data + offset, compressed_data, compressed_size);
-    free(compressed_data);
-  } else {
-    memcpy(packet_data + offset, image->pixels, rgb_size);
-  }
-
-  return packet_data;
-}
 /* ============================================================================
  * Capture Thread Implementation
  * ============================================================================ */
@@ -334,23 +243,15 @@ static void *webcam_capture_thread_func(void *arg) {
   (void)arg;
   struct timespec last_capture_time = {0, 0};
 
-  // DEBUG: Track capture thread loop iterations
-  static uint64_t capture_loop_count = 0;
+  log_warn("CAPTURE_THREAD_STARTED: Webcam capture thread is now running");
+  log_warn("CAPTURE_THREAD_CHECK: should_exit()=%d, server_connection_is_lost()=%d", should_exit(), server_connection_is_lost());
 
   while (!should_exit() && !server_connection_is_lost()) {
-    capture_loop_count++;
-    if (capture_loop_count % 144 == 0) { // Log every 144 iterations (1 second at 144fps)
-      log_info("DEBUG_CAPTURE_LOOP: [%llu] Capture thread loop iteration", capture_loop_count);
-    }
     // Check connection status
     if (!server_connection_is_active()) {
-      log_info("DEBUG: Server connection not active, waiting...");
       platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
-#ifdef DEBUG_THREADS
-    log_info("DEBUG: Server connection is active, proceeding with capture");
-#endif
     // Frame rate limiting using monotonic clock
     // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
     const long CAPTURE_INTERVAL_MS = 1000 / 144; // ~6.94ms for 144fps
@@ -364,42 +265,17 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Capture frame from webcam
-    // DEBUG: Track webcam_read calls
-    static uint64_t webcam_read_count = 0;
-    webcam_read_count++;
-    if (webcam_read_count % 144 == 0) { // Log every 144 calls (1 second at 144fps)
-      log_info("DEBUG_WEBCAM_READ: [%llu] Calling webcam_read()", webcam_read_count);
-    }
-
     image_t *image = webcam_read();
 
     if (!image) {
-      // DEBUG: Track webcam_read failures
-      static uint64_t webcam_read_fail_count = 0;
-      webcam_read_fail_count++;
-      if (webcam_read_fail_count % 144 == 0) { // Log every 144 failures
-        log_info("DEBUG_WEBCAM_READ_FAIL: [%llu] webcam_read() returned NULL", webcam_read_fail_count);
-      }
       log_info("No frame available from webcam yet (webcam_read returned NULL)");
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
-    // Process frame for network transmission
-    // DEBUG: Track frame processing
-    static uint64_t frame_process_count = 0;
-    frame_process_count++;
-    if (frame_process_count % 30 == 0) { // Log every 30 frames (1 second at 30fps)
-      log_info("DEBUG_FRAME_PROCESS: [%llu] Processing frame for transmission", frame_process_count);
-    }
 
+    // Process frame for network transmission
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
     if (!processed_image) {
-      // DEBUG: Track frame processing failures
-      static uint64_t frame_process_fail_count = 0;
-      frame_process_fail_count++;
-      if (frame_process_fail_count % 30 == 0) { // Log every 30 failures
-        log_info("DEBUG_FRAME_PROCESS_FAIL: [%llu] Failed to process frame for transmission", frame_process_fail_count);
-      }
       log_error("Failed to process frame for transmission");
       if (image) {
         image_destroy(image);
@@ -407,74 +283,59 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
     // Serialize image data for network transmission
-    // DEBUG: Track packet serialization
-    static uint64_t packet_serialize_count = 0;
-    packet_serialize_count++;
-    if (packet_serialize_count % 30 == 0) { // Log every 30 packets (1 second at 30fps)
-      log_info("DEBUG_PACKET_SERIALIZE: [%llu] Serializing image packet", packet_serialize_count);
-    }
 
-    size_t packet_size;
-    uint8_t *packet_data = serialize_image_packet(processed_image, &packet_size);
-    if (!packet_data) {
-      // DEBUG: Track packet serialization failures
-      static uint64_t packet_serialize_fail_count = 0;
-      packet_serialize_fail_count++;
-      if (packet_serialize_fail_count % 30 == 0) { // Log every 30 failures
-        log_info("DEBUG_PACKET_SERIALIZE_FAIL: [%llu] Failed to serialize image packet", packet_serialize_fail_count);
-      }
+    // Create image frame packet in new format: [width:4][height:4][compressed_flag:4][data_size:4][pixel_data]
+    // This matches what the server expects in handle_image_frame_packet()
+    size_t pixel_size = (size_t)processed_image->w * processed_image->h * sizeof(rgb_t);
+    size_t header_size = sizeof(uint32_t) * 4; // width, height, compressed_flag, data_size
+    size_t packet_size = header_size + pixel_size;
+
+    // Check packet size limits
+    if (packet_size > MAX_PACKET_SIZE) {
+      log_error("Packet too large: %zu bytes (max %d)", packet_size, MAX_PACKET_SIZE);
       image_destroy(processed_image);
       continue;
     }
-    // Check connection before sending
-    // DEBUG: Track connection checks
-    static uint64_t connection_check_count = 0;
-    connection_check_count++;
-    if (connection_check_count % 30 == 0) { // Log every 30 checks (1 second at 30fps)
-      log_info("DEBUG_CONNECTION_CHECK: [%llu] Checking server connection before sending", connection_check_count);
+
+    // Allocate packet buffer
+    uint8_t *packet_data = SAFE_MALLOC(packet_size, void *);
+    if (!packet_data) {
+      log_error("Failed to allocate packet buffer of size %zu", packet_size);
+      image_destroy(processed_image);
+      continue;
     }
 
+    // Build packet in new format
+    uint32_t *header = (uint32_t *)packet_data;
+    header[0] = htonl(processed_image->w);   // width
+    header[1] = htonl(processed_image->h);   // height
+    header[2] = htonl(0);                    // compressed_flag = 0 (uncompressed)
+    header[3] = htonl((uint32_t)pixel_size); // data_size = pixel data length
+
+    // Copy pixel data after header
+    memcpy(packet_data + header_size, processed_image->pixels, pixel_size);
+    // Check connection before sending
     if (!server_connection_is_active()) {
-      // DEBUG: Track connection failures
-      static uint64_t connection_fail_count = 0;
-      connection_fail_count++;
-      if (connection_fail_count % 30 == 0) { // Log every 30 failures
-        log_info("DEBUG_CONNECTION_FAIL: [%llu] Server connection not active, stopping transmission",
-                 connection_fail_count);
-      }
       log_debug("Connection lost, stopping video transmission");
-      free(packet_data);
+      SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
     // Send frame packet to server
-    // DEBUG: Track client video frame sending
-    static uint64_t client_frame_send_count = 0;
-    client_frame_send_count++;
-    if (client_frame_send_count % 30 == 0) { // Log every 30 frames (1 second at 30fps)
-      log_info("DEBUG_CLIENT_SEND: [%llu] Sending video frame to server (size=%zu)", client_frame_send_count,
-               packet_size);
-    }
+    int send_result = threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
 
-    if (threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size) < 0) {
-      // DEBUG: Track packet send failures
-      static uint64_t packet_send_fail_count = 0;
-      packet_send_fail_count++;
-      if (packet_send_fail_count % 30 == 0) { // Log every 30 failures
-        log_info("DEBUG_PACKET_SEND_FAIL: [%llu] Failed to send video frame to server: %s", packet_send_fail_count,
-                 strerror(errno));
-      }
-      log_error("Failed to send video frame to server: %s", strerror(errno));
+    if (send_result < 0) {
+      log_error("Failed to send video frame to server: %s", SAFE_STRERROR(errno));
       // Signal connection loss for reconnection
       server_connection_lost();
-      free(packet_data);
+      SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
     // Update capture timing
     last_capture_time = current_time;
     // Clean up resources
-    free(packet_data);
+    SAFE_FREE(packet_data);
     image_destroy(processed_image);
   }
 
@@ -516,7 +377,6 @@ int capture_init() {
  * @return 0 on success, negative on error
  */
 int capture_start_thread() {
-  log_info("DEBUG: capture_start_thread() called");
   if (g_capture_thread_created) {
     log_warn("Capture thread already created");
     return 0;
@@ -524,29 +384,23 @@ int capture_start_thread() {
 
   // Start webcam capture thread
   atomic_store(&g_capture_thread_exited, false);
+  log_warn("THREAD_CREATE: About to create webcam capture thread");
   int result = ascii_thread_create(&g_capture_thread, webcam_capture_thread_func, NULL);
-
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: ascii_thread_create() returned %d, thread handle = %p", result, g_capture_thread);
-#endif
+  log_warn("THREAD_CREATE: ascii_thread_create() returned %d, thread handle = %p", result, g_capture_thread);
 
   if (result != 0) {
-    log_error("Failed to create webcam capture thread");
+    log_error("THREAD_CREATE: Webcam capture thread creation FAILED with result=%d", result);
+    LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;
   }
 
   g_capture_thread_created = true;
-
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Webcam capture thread created successfully, handle = %p", g_capture_thread);
-#endif
+  log_warn("THREAD_CREATE: Webcam capture thread created successfully, handle = %p", g_capture_thread);
 
   // Notify server we're starting to send video
-  log_info("DEBUG_STREAM_START: Sending STREAM_START packet to server (STREAM_TYPE_VIDEO)");
   if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {
-    log_error("Failed to send stream start packet");
+    LOG_ERRNO_IF_SET("Failed to send stream start packet");
   } else {
-    log_info("DEBUG_STREAM_START: Successfully sent STREAM_START packet");
   }
 
   return 0;
@@ -567,7 +421,6 @@ void capture_stop_thread() {
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_capture_thread_exited)) {
     platform_sleep_usec(100000); // 100ms
-    wait_count++;
   }
 
   if (!atomic_load(&g_capture_thread_exited)) {

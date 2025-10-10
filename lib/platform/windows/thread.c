@@ -10,10 +10,12 @@
 
 #include <windows.h>
 #include "../../common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 #include "platform/thread.h"
 #include "util/path.h"
 #include <process.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <dbghelp.h>
 #pragma comment(lib, "dbghelp.lib")
 
@@ -62,7 +64,7 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
   // Check if function pointer is valid
   if (!wrapper->posix_func) {
     log_error("THREAD_WRAPPER: NULL function pointer!");
-    free(wrapper);
+    SAFE_FREE(wrapper);
     return 1;
   }
 
@@ -307,9 +309,9 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #ifdef DEBUG_MEMORY
 #undef free
     free(wrapper);
-#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#define SAFE_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
 #else
-    free(wrapper);
+    SAFE_FREE(wrapper);
 #endif
     return 1;
   }
@@ -318,9 +320,9 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #ifdef DEBUG_MEMORY
 #undef free
   free(wrapper);
-#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#define SAFE_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
 #else
-  free(wrapper);
+  SAFE_FREE(wrapper);
 #endif
   return (DWORD)(uintptr_t)result;
 }
@@ -352,11 +354,11 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
   // This is the ONLY allocation in the codebase that needs this special handling.
 #ifdef DEBUG_MEMORY
 #undef malloc
-  thread_wrapper_t *wrapper = (thread_wrapper_t *)malloc(sizeof(thread_wrapper_t));
-#define malloc(size) debug_malloc(size, __FILE__, __LINE__)
+  thread_wrapper_t *wrapper = malloc(sizeof(thread_wrapper_t, thread_wrapper_t *));
+#define SAFE_MALLOC(size, void *) debug_malloc(size, __FILE__, __LINE__)
 #else
   thread_wrapper_t *wrapper;
-  SAFE_MALLOC(wrapper, sizeof(thread_wrapper_t), thread_wrapper_t *);
+  wrapper = SAFE_MALLOC(sizeof(thread_wrapper_t), thread_wrapper_t *);
 #endif
 
 #ifdef DEBUG_THREADS
@@ -364,16 +366,13 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
 #endif
 
   if (!wrapper) {
-    log_error("DEBUG: malloc failed for thread wrapper");
+    log_error("malloc failed for thread wrapper");
     return -1;
   }
 
   wrapper->posix_func = func;
   wrapper->arg = arg;
 
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: About to call CreateThread");
-#endif
 
   DWORD thread_id;
 
@@ -387,22 +386,18 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
 #endif
 
   if (*thread == NULL) {
-    DWORD error = GetLastError();
-    log_error("CREATE_THREAD: FAILED, error=%lu", error);
-    // Use raw free - matches raw malloc (see allocation comment for rationale)
+    SET_ERRNO_SYS(ERROR_THREAD, "CreateThread failed");
+    // Use raw free - matches raw SAFE_MALLOC(see allocation comment for rationale, void *)
 #ifdef DEBUG_MEMORY
 #undef free
     free(wrapper);
-#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
+#define SAFE_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
 #else
-    free(wrapper);
+    SAFE_FREE(wrapper);
 #endif
     return -1;
   }
 
-#ifdef DEBUG_THREADS
-  log_debug("DEBUG: CreateThread succeeded, handle=%p, thread_id=%lu", *thread, thread_id);
-#endif
 
   // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
   MemoryBarrier();
@@ -418,6 +413,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
   if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
+    SET_ERRNO(ERROR_THREAD, "Invalid thread handle for join operation");
     return -1;
   }
 

@@ -1,5 +1,6 @@
 #include "audio.h"
 #include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +53,7 @@ audio_ring_buffer_t *audio_ring_buffer_create(void) {
   audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_pool_alloc(rb_size);
 
   if (!rb) {
-    log_error("Failed to allocate audio ring buffer from buffer pool");
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio ring buffer from buffer pool");
     return NULL;
   }
 
@@ -61,7 +62,7 @@ audio_ring_buffer_t *audio_ring_buffer_create(void) {
   rb->read_index = 0;
 
   if (mutex_init(&rb->mutex) != 0) {
-    log_error("Failed to initialize audio ring buffer mutex");
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize audio ring buffer mutex");
     buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
     return NULL;
   }
@@ -77,14 +78,14 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
 }
 
-int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples) {
+asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples) {
   if (!rb || !data || samples <= 0)
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: rb=%p, data=%p, samples=%d", rb, data, samples);
 
   // Validate samples doesn't exceed our buffer size
   if (samples > AUDIO_RING_BUFFER_SIZE) {
-    log_error("Attempted to write %d samples, but buffer size is only %d", samples, AUDIO_RING_BUFFER_SIZE);
-    return 0;
+    return SET_ERRNO(ERROR_BUFFER, "Attempted to write %d samples, but buffer size is only %d", samples,
+                  AUDIO_RING_BUFFER_SIZE);
   }
 
   mutex_lock(&rb->mutex);
@@ -115,12 +116,12 @@ int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samp
   rb->write_index = (write_idx + samples) % AUDIO_RING_BUFFER_SIZE;
 
   mutex_unlock(&rb->mutex);
-  return samples; // Always return that we wrote all samples
+  return ASCIICHAT_OK; // Success
 }
 
-int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
+asciichat_error_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
   if (!rb || !data || samples <= 0)
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: rb=%p, data=%p, samples=%d", rb, data, samples);
 
   mutex_lock(&rb->mutex);
 
@@ -144,7 +145,7 @@ int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples) {
   rb->read_index = (read_idx + to_read) % AUDIO_RING_BUFFER_SIZE;
 
   mutex_unlock(&rb->mutex);
-  return to_read;
+  return ASCIICHAT_OK; // Success
 }
 
 int audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
@@ -168,58 +169,53 @@ int audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
   return AUDIO_RING_BUFFER_SIZE - audio_ring_buffer_available_read(rb) - 1;
 }
 
-int audio_init(audio_context_t *ctx) {
+asciichat_error_t audio_init(audio_context_t *ctx) {
   if (!ctx) {
-    log_error("NULL audio context");
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
   }
 
   SAFE_MEMSET(ctx, sizeof(audio_context_t), 0, sizeof(audio_context_t));
 
   if (mutex_init(&ctx->state_mutex) != 0) {
-    log_error("Failed to initialize audio context mutex");
-    return -1;
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize audio context mutex");
+    return ERROR_THREAD;
   }
 
   PaError err = Pa_Initialize();
   if (err != paNoError) {
-    log_error("Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+    SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
     mutex_destroy(&ctx->state_mutex);
-    return -1;
+    return ERROR_AUDIO;
   }
 
   ctx->capture_buffer = audio_ring_buffer_create();
   if (!ctx->capture_buffer) {
-    log_error("Failed to create capture buffer");
+    SET_ERRNO(ERROR_MEMORY, "Failed to create capture buffer");
     Pa_Terminate();
     mutex_destroy(&ctx->state_mutex);
-    return -1;
+    return ERROR_MEMORY;
   }
 
   ctx->playback_buffer = audio_ring_buffer_create();
   if (!ctx->playback_buffer) {
-    log_error("Failed to create playback buffer");
+    SET_ERRNO(ERROR_MEMORY, "Failed to create playback buffer");
     audio_ring_buffer_destroy(ctx->capture_buffer);
     Pa_Terminate();
     mutex_destroy(&ctx->state_mutex);
-    return -1;
+    return ERROR_MEMORY;
   }
 
   ctx->initialized = true;
   log_info("Audio system initialized successfully");
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void audio_destroy(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    log_info("DEBUG: audio_destroy early return - ctx=%p, initialized=%s", ctx,
-             ctx ? (ctx->initialized ? "true" : "false") : "NULL");
     return;
   }
 
-  log_info("DEBUG: audio_destroy starting - about to lock mutex");
   mutex_lock(&ctx->state_mutex);
-  log_info("DEBUG: audio_destroy acquired mutex lock");
 
   if (ctx->recording) {
     audio_stop_capture(ctx);
@@ -232,39 +228,33 @@ void audio_destroy(audio_context_t *ctx) {
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
 
-  log_info("DEBUG: audio_destroy about to call Pa_Terminate()");
   Pa_Terminate();
-  log_info("DEBUG: audio_destroy Pa_Terminate() completed");
   ctx->initialized = false;
 
-  log_info("DEBUG: audio_destroy about to unlock mutex");
   mutex_unlock(&ctx->state_mutex);
-  log_info("DEBUG: audio_destroy unlocked mutex, about to destroy");
   mutex_destroy(&ctx->state_mutex);
-  log_info("DEBUG: audio_destroy mutex destroyed");
 
   log_info("Audio system destroyed");
 }
 
-int audio_start_capture(audio_context_t *ctx) {
+asciichat_error_t audio_start_capture(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    log_error("Audio context not initialized");
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx,
+                  ctx ? ctx->initialized : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
 
   if (ctx->recording) {
     mutex_unlock(&ctx->state_mutex);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   PaStreamParameters inputParameters;
   inputParameters.device = Pa_GetDefaultInputDevice();
   if (inputParameters.device == paNoDevice) {
-    log_error("No default input device available");
     mutex_unlock(&ctx->state_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_AUDIO, "No default input device available");
   }
 
   inputParameters.channelCount = AUDIO_CHANNELS;
@@ -276,18 +266,17 @@ int audio_start_capture(audio_context_t *ctx) {
                               paClipOff, input_callback, ctx);
 
   if (err != paNoError) {
-    log_error("Failed to open input stream: %s", Pa_GetErrorText(err));
+    SET_ERRNO(ERROR_AUDIO, "Failed to open input stream: %s", Pa_GetErrorText(err));
     mutex_unlock(&ctx->state_mutex);
-    return -1;
+    return ERROR_AUDIO;
   }
 
   err = Pa_StartStream(ctx->input_stream);
   if (err != paNoError) {
-    log_error("Failed to start input stream: %s", Pa_GetErrorText(err));
     Pa_CloseStream(ctx->input_stream);
     ctx->input_stream = NULL;
     mutex_unlock(&ctx->state_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_AUDIO, "Failed to start input stream: %s", Pa_GetErrorText(err));
   }
 
   // Set real-time priority for better audio performance
@@ -297,12 +286,13 @@ int audio_start_capture(audio_context_t *ctx) {
   mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio capture started");
-  return 0;
+  return ASCIICHAT_OK;
 }
 
-int audio_stop_capture(audio_context_t *ctx) {
+asciichat_error_t audio_stop_capture(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized || !ctx->recording) {
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, recording=%d",
+                     ctx, ctx ? ctx->initialized : 0, ctx ? ctx->recording : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -317,13 +307,13 @@ int audio_stop_capture(audio_context_t *ctx) {
   mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio capture stopped");
-  return 0;
+  return ASCIICHAT_OK;
 }
 
-int audio_start_playback(audio_context_t *ctx) {
+asciichat_error_t audio_start_playback(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    log_error("Audio context not initialized");
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx,
+                  ctx ? ctx->initialized : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -336,7 +326,7 @@ int audio_start_playback(audio_context_t *ctx) {
   PaStreamParameters outputParameters;
   outputParameters.device = Pa_GetDefaultOutputDevice();
   if (outputParameters.device == paNoDevice) {
-    log_error("No default output device available");
+    SET_ERRNO(ERROR_AUDIO, "No default output device available");
     mutex_unlock(&ctx->state_mutex);
     return -1;
   }
@@ -350,14 +340,14 @@ int audio_start_playback(audio_context_t *ctx) {
                               paClipOff, output_callback, ctx);
 
   if (err != paNoError) {
-    log_error("Failed to open output stream: %s", Pa_GetErrorText(err));
+    SET_ERRNO(ERROR_AUDIO, "Failed to open output stream: %s", Pa_GetErrorText(err));
     mutex_unlock(&ctx->state_mutex);
     return -1;
   }
 
   err = Pa_StartStream(ctx->output_stream);
   if (err != paNoError) {
-    log_error("Failed to start output stream: %s", Pa_GetErrorText(err));
+    SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
     Pa_CloseStream(ctx->output_stream);
     ctx->output_stream = NULL;
     mutex_unlock(&ctx->state_mutex);
@@ -371,12 +361,13 @@ int audio_start_playback(audio_context_t *ctx) {
   mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio playback started");
-  return 0;
+  return ASCIICHAT_OK;
 }
 
-int audio_stop_playback(audio_context_t *ctx) {
+asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized || !ctx->playing) {
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, playing=%d",
+                     ctx, ctx ? ctx->initialized : 0, ctx ? ctx->playing : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -391,20 +382,22 @@ int audio_stop_playback(audio_context_t *ctx) {
   mutex_unlock(&ctx->state_mutex);
 
   log_info("Audio playback stopped");
-  return 0;
+  return ASCIICHAT_OK;
 }
 
-int audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples) {
+asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d",
+                     ctx, buffer, num_samples);
   }
 
   return audio_ring_buffer_read(ctx->capture_buffer, buffer, num_samples);
 }
 
-int audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples) {
+asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d",
+                     ctx, buffer, num_samples);
   }
 
   return audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
@@ -421,7 +414,8 @@ int audio_set_realtime_priority(void) {
   // Try to set real-time scheduling for current thread
 #ifndef _WIN32
   if (pthread_setschedparam(ascii_thread_self(), policy, &param) != 0) {
-    log_error(
+    SET_ERRNO_SYS(
+        ERROR_THREAD, errno,
         "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
     return -1;
   }
@@ -446,7 +440,7 @@ int audio_set_realtime_priority(void) {
                                            THREAD_TIME_CONSTRAINT_POLICY_COUNT);
 
   if (result != KERN_SUCCESS) {
-    log_error("Failed to set real-time thread priority on macOS");
+    SET_ERRNO(ERROR_THREAD, "Failed to set real-time thread priority on macOS");
     return -1;
   }
 

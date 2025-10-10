@@ -3,8 +3,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+
 #include "crypto/crypto.h"
-#include "platform/abstraction.h"
+#include "platform/socket.h"
 
 // Initialize client crypto handshake
 int client_crypto_init(void);

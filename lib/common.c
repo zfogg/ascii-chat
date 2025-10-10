@@ -100,7 +100,7 @@ static void ensure_mutex_initialized(void) {
 }
 
 void *debug_malloc(size_t size, const char *file, int line) {
-  void *ptr = malloc(size);
+  void *ptr = SAFE_MALLOC(size, void *);
   if (!ptr)
     return NULL;
 
@@ -120,7 +120,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
   ensure_mutex_initialized();
   mutex_lock(&g_mem.mutex);
 
-  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+  mem_block_t *block = SAFE_MALLOC(sizeof(mem_block_t, mem_block_t *));
   if (block) {
     block->ptr = ptr;
     block->size = size;
@@ -161,7 +161,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
       freed_size = curr->size;
       found = true;
-      free(curr);
+      SAFE_FREE((void *)curr);
       break;
     }
     prev = curr;
@@ -199,12 +199,12 @@ void debug_free(void *ptr, const char *file, int line) {
     }
   }
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   size_t total = count * size;
-  void *ptr = calloc(count, size);
+  void *ptr = SAFE_CALLOC(count, size, void *);
   if (!ptr)
     return NULL;
 
@@ -224,7 +224,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   ensure_mutex_initialized();
   mutex_lock(&g_mem.mutex);
 
-  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+  mem_block_t *block = SAFE_MALLOC(sizeof(mem_block_t, mem_block_t *));
   if (block) {
     block->ptr = ptr;
     block->size = total;
@@ -270,7 +270,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   (void)prev; // Unused variable (for now 🤔 what could i do with this...)
   mutex_unlock(&g_mem.mutex);
 
-  void *new_ptr = realloc(ptr, size);
+  void *new_ptr = SAFE_REALLOC(ptr, size, void *);
   if (!new_ptr) {
     return NULL;
   }
@@ -323,7 +323,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     curr->file[sizeof(curr->file) - 1] = '\0';
     curr->line = line;
   } else {
-    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+    mem_block_t *block = SAFE_MALLOC(sizeof(mem_block_t, mem_block_t *));
     if (block) {
       block->ptr = new_ptr;
       block->size = size;

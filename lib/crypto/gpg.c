@@ -1,5 +1,5 @@
 #include "gpg.h"
-#include "keys.h"
+#include "keys/keys.h"
 #include "common.h"
 #include "platform/socket.h"
 
@@ -52,7 +52,7 @@ static int get_agent_socket_path(char *path_out, size_t path_size) {
   // Fallback to default GPG4Win location
   const char *appdata = SAFE_GETENV("APPDATA");
   if (appdata) {
-    snprintf(path_out, path_size, "%s\\gnupg\\S.gpg-agent", appdata);
+    safe_snprintf(path_out, path_size, "%s\\gnupg\\S.gpg-agent", appdata);
   } else {
     log_error("Could not determine APPDATA directory");
     return -1;
@@ -76,14 +76,14 @@ static int get_agent_socket_path(char *path_out, size_t path_size) {
   // Fallback to default location
   const char *gnupg_home = SAFE_GETENV("GNUPGHOME");
   if (gnupg_home) {
-    snprintf(path_out, path_size, "%s/S.gpg-agent", gnupg_home);
+    safe_snprintf(path_out, path_size, "%s/S.gpg-agent", gnupg_home);
   } else {
     const char *home = SAFE_GETENV("HOME");
     if (!home) {
       log_error("Could not determine home directory");
       return -1;
     }
-    snprintf(path_out, path_size, "%s/.gnupg/S.gpg-agent", home);
+    safe_snprintf(path_out, path_size, "%s/.gnupg/S.gpg-agent", home);
   }
 #endif
 
@@ -155,7 +155,7 @@ static int read_agent_line(int sock, char *buf, size_t buf_size) {
 static int send_agent_command(HANDLE pipe, const char *command) {
   size_t len = strlen(command);
   char *cmd_with_newline;
-  SAFE_MALLOC(cmd_with_newline, len + 2, char *);
+  cmd_with_newline = SAFE_MALLOC(len + 2, char *);
   if (!cmd_with_newline) {
     log_error("Failed to allocate memory for command");
     return -1;
@@ -167,7 +167,7 @@ static int send_agent_command(HANDLE pipe, const char *command) {
 
   DWORD bytes_written;
   BOOL result = WriteFile(pipe, cmd_with_newline, (DWORD)(len + 1), &bytes_written, NULL);
-  free(cmd_with_newline);
+  SAFE_FREE(cmd_with_newline);
 
   if (!result || bytes_written != (len + 1)) {
     log_error("Failed to send command to GPG agent: %lu", GetLastError());
@@ -180,7 +180,7 @@ static int send_agent_command(HANDLE pipe, const char *command) {
 static int send_agent_command(int sock, const char *command) {
   size_t len = strlen(command);
   char *cmd_with_newline;
-  SAFE_MALLOC(cmd_with_newline, len + 2, char *);
+  cmd_with_newline = SAFE_MALLOC(len + 2, char *);
   if (!cmd_with_newline) {
     log_error("Failed to allocate memory for command");
     return -1;
@@ -191,7 +191,7 @@ static int send_agent_command(int sock, const char *command) {
   cmd_with_newline[len + 1] = '\0';
 
   ssize_t sent = send(sock, cmd_with_newline, len + 1, 0);
-  free(cmd_with_newline);
+  SAFE_FREE(cmd_with_newline);
 
   if (sent != (ssize_t)(len + 1)) {
     log_error("Failed to send command to GPG agent");
@@ -354,7 +354,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
 
   // 1. Set the key to use (SIGKEY command)
   char sigkey_cmd[128];
-  snprintf(sigkey_cmd, sizeof(sigkey_cmd), "SIGKEY %s", keygrip);
+  safe_snprintf(sigkey_cmd, sizeof(sigkey_cmd), "SIGKEY %s", keygrip);
   if (send_agent_command(handle, sigkey_cmd) != 0) {
     log_error("Failed to send SIGKEY command");
     return -1;
@@ -416,7 +416,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
 
   // Convert message to hex string for sending
   char *hex_message;
-  SAFE_MALLOC(hex_message, message_len * 2 + 1, char *);
+  hex_message = SAFE_MALLOC(message_len * 2 + 1, char *);
   if (!hex_message) {
     log_error("Failed to allocate hex message buffer");
     return -1;
@@ -429,11 +429,11 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
 
   // Send the data using D command
   char data_cmd[GPG_AGENT_MAX_RESPONSE];
-  snprintf(data_cmd, sizeof(data_cmd), "D %s", hex_message);
+  safe_snprintf(data_cmd, sizeof(data_cmd), "D %s", hex_message);
 
   log_debug("Sending %zu-byte message in response to INQUIRE", message_len);
 
-  free(hex_message);
+  SAFE_FREE(hex_message);
 
   if (send_agent_command(handle, data_cmd) != 0) {
     log_error("Failed to send D command with message data");
@@ -523,7 +523,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   // DEBUG: Print signature in hex
   char sig_hex[129];
   for (int i = 0; i < 64; i++) {
-    snprintf(sig_hex + i * 2, 3, "%02x", (unsigned char)signature_out[i]);
+    safe_snprintf(sig_hex + i * 2, 3, "%02x", (unsigned char)signature_out[i]);
   }
   sig_hex[128] = '\0';
   log_debug("Extracted signature (64 bytes): %s", sig_hex);
@@ -552,9 +552,9 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Use gpg to list the key and get the keygrip
   char cmd[512];
 #ifdef _WIN32
-  snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", key_id);
 #else
-  snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", key_id);
 #endif
   FILE *fp = SAFE_POPEN(cmd, "r");
   if (!fp) {
@@ -627,9 +627,9 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   // Export the public key in ASCII armor format and parse it with existing parse_gpg_key()
 #ifdef _WIN32
-  snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>nul", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>nul", key_id);
 #else
-  snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>/dev/null", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>/dev/null", key_id);
 #endif
   fp = SAFE_POPEN(cmd, "r");
   if (!fp) {
@@ -772,6 +772,11 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   log_debug("gpg_verify_signature: Signature verified successfully");
   return 0;
 #else
+  // Explicitly mark parameters as unused when libgcrypt is not available
+  (void)public_key;
+  (void)message;
+  (void)message_len;
+  (void)signature;
   log_error("gpg_verify_signature: libgcrypt not available");
   return -1;
 #endif

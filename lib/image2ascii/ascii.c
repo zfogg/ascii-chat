@@ -23,17 +23,17 @@
  * ============================================================================
  */
 
-asciichat_error_status_t ascii_read_init(unsigned short int webcam_index) {
+asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
   log_info("Initializing ASCII reader with webcam index %u", webcam_index);
   webcam_init(webcam_index);
   return ASCIICHAT_OK;
 }
 
-asciichat_error_status_t ascii_write_init(int fd, bool reset_terminal) {
+asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   // Validate file descriptor
   if (fd < 0) {
     log_error("Invalid file descriptor %d", fd);
-    return ASCIICHAT_ERROR_INVALID_PARAM;
+    return ERROR_INVALID_PARAM;
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
@@ -44,7 +44,7 @@ asciichat_error_status_t ascii_write_init(int fd, bool reset_terminal) {
     // Disable echo using platform abstraction
     if (terminal_set_echo(false) != 0) {
       log_error("Failed to disable echo for fd %d", fd);
-      return ASCIICHAT_ERROR_TERMINAL;
+      return ERROR_TERMINAL;
     }
     // Hide cursor using platform abstraction
     if (terminal_hide_cursor(fd, true) != 0) {
@@ -152,16 +152,16 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   size_t ascii_len = strlen(ascii);
   if (ascii_len == 0) {
     log_error("ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w, resized->h);
-    free(ascii);
+    SAFE_FREE(ascii);
     image_destroy(resized);
     return NULL;
   }
 
   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-  free(ascii);
+  SAFE_FREE(ascii);
 
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-  free(ascii_width_padded);
+  SAFE_FREE(ascii_width_padded);
 
   // Only destroy resized if we allocated it (not when using original directly)
   image_destroy(resized);
@@ -232,16 +232,16 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   if (ascii_len == 0) {
     log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w,
               resized->h);
-    free(ascii);
+    SAFE_FREE(ascii);
     image_destroy(resized);
     return NULL;
   }
 
   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-  free(ascii);
+  SAFE_FREE(ascii);
 
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-  free(ascii_width_padded);
+  SAFE_FREE(ascii_width_padded);
 
   image_destroy(resized);
 
@@ -251,10 +251,10 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 // NOTE: ascii_convert_with_custom_palette removed - use ascii_convert_with_capabilities() with enhanced
 // terminal_capabilities_t
 
-asciichat_error_status_t ascii_write(const char *frame) {
+asciichat_error_t ascii_write(const char *frame) {
   if (frame == NULL) {
     log_warn("Attempted to write NULL frame");
-    return ASCIICHAT_ERROR_INVALID_PARAM;
+    return ERROR_INVALID_PARAM;
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
@@ -266,7 +266,7 @@ asciichat_error_status_t ascii_write(const char *frame) {
   size_t written = fwrite(frame, 1, frame_len, stdout);
   if (written != frame_len) {
     log_error("Failed to write ASCII frame");
-    return ASCIICHAT_ERROR_TERMINAL;
+    return ERROR_TERMINAL;
   }
 
   return ASCIICHAT_OK;
@@ -323,7 +323,7 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
     // worrying about the original allocation strategy.
     size_t orig_len = strlen(frame);
     char *copy;
-    SAFE_MALLOC(copy, orig_len + 1, char *);
+    copy = SAFE_MALLOC(orig_len + 1, char *);
     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
     return copy;
   }
@@ -345,7 +345,7 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   const size_t total_len = frame_len + left_padding_len;
 
   char *buffer;
-  SAFE_MALLOC(buffer, total_len + 1, char *);
+  buffer = SAFE_MALLOC(total_len + 1, char *);
 
   // Build the padded frame.
   bool at_line_start = true;
@@ -400,7 +400,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     // Create a frame of the target size filled with spaces
     size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
     char *result;
-    SAFE_MALLOC(result, target_size, char *);
+    result = SAFE_MALLOC(target_size, char *);
     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
     result[target_size - 1] = '\0';
 
@@ -541,7 +541,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   if (cell_width < 10 || cell_height < 3) {
     // Too small for grid layout, just use first source
     char *result;
-    SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
+    result = SAFE_MALLOC(sources[0].frame_size + 1, char *);
     if (sources[0].frame_data && sources[0].frame_size > 0) {
       SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
       result[sources[0].frame_size] = '\0';
@@ -557,7 +557,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   // Allocate mixed frame buffer
   size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
   char *mixed_frame;
-  SAFE_MALLOC(mixed_frame, mixed_size, char *);
+  mixed_frame = SAFE_MALLOC(mixed_size, char *);
 
   // Initialize mixed frame with spaces
   SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
@@ -648,7 +648,7 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
     // Nothing to do; return a copy because the caller knows to free() the value.
     size_t orig_len = strlen(frame);
     char *copy;
-    SAFE_MALLOC(copy, orig_len + 1, char *);
+    copy = SAFE_MALLOC(orig_len + 1, char *);
     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
     return copy;
   }
@@ -659,7 +659,7 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   size_t total_len = top_padding_len + frame_len;
 
   char *buffer;
-  SAFE_MALLOC(buffer, total_len + 1, char *);
+  buffer = SAFE_MALLOC(total_len + 1, char *);
 
   char *position = buffer;
 

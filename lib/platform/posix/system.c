@@ -11,6 +11,7 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../../common.h" // For log_error()
+#include "../../asciichat_errno.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -22,6 +23,7 @@
 #include <execinfo.h> // Provided by glibc or libexecinfo for musl
 #include <pthread.h>
 #include <stdatomic.h>
+#include <sys/stat.h>
 #include <netdb.h>
 
 /**
@@ -47,10 +49,10 @@ const char *get_username_env(void) {
  * @return 0 on success, error code on failure
  * @note POSIX platforms don't need special initialization
  */
-int platform_init(void) {
+asciichat_error_t platform_init(void) {
   // Install crash handlers for automatic backtrace on crashes
   platform_install_crash_handler();
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -80,12 +82,15 @@ void platform_sleep_usec(unsigned int usec) {
   usleep(usec);
 }
 
-int platform_localtime(const time_t *timer, struct tm *result) {
+asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
   if (!timer || !result) {
-    return EINVAL;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for localtime");
   }
   struct tm *tm_result = localtime_r(timer, result);
-  return tm_result ? 0 : errno;
+  if (!tm_result) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to convert time to local time");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -173,153 +178,6 @@ int platform_fsync(int fd) {
 }
 
 // ============================================================================
-// String Safety Functions
-// ============================================================================
-
-/**
- * @brief Platform-safe snprintf implementation
- * @param str Destination buffer
- * @param size Buffer size
- * @param format Format string
- * @return Number of characters written (excluding null terminator)
- */
-int platform_snprintf(char *str, size_t size, const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-  int result = vsnprintf(str, size, format, args);
-  va_end(args);
-  return result;
-}
-
-/**
- * @brief Platform-safe vsnprintf implementation
- * @param str Destination buffer
- * @param size Buffer size
- * @param format Format string
- * @param ap Variable argument list
- * @return Number of characters written (excluding null terminator)
- */
-int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
-  return vsnprintf(str, size, format, ap);
-}
-
-/**
- * @brief Duplicate a string
- * @param s Source string
- * @return Allocated copy of string, or NULL on failure
- */
-char *platform_strdup(const char *s) {
-  return strdup(s);
-}
-
-/**
- * @brief Duplicate up to n characters of a string
- * @param s Source string
- * @param n Maximum number of characters to copy
- * @return Allocated copy of string, or NULL on failure
- */
-char *platform_strndup(const char *s, size_t n) {
-#ifdef __APPLE__
-  // macOS has strndup but it may not be declared in older SDKs
-  size_t len = strnlen(s, n);
-  char *result = (char *)malloc(len + 1);
-  if (result) {
-    memcpy(result, s, len);
-    result[len] = '\0';
-  }
-  return result;
-#else
-  // Linux/BSD have strndup
-  return strndup(s, n);
-#endif
-}
-
-/**
- * @brief Case-insensitive string comparison
- * @param s1 First string
- * @param s2 Second string
- * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
- */
-int platform_strcasecmp(const char *s1, const char *s2) {
-  return strcasecmp(s1, s2);
-}
-
-/**
- * @brief Case-insensitive string comparison with length limit
- * @param s1 First string
- * @param s2 Second string
- * @param n Maximum number of characters to compare
- * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
- */
-int platform_strncasecmp(const char *s1, const char *s2, size_t n) {
-  return strncasecmp(s1, s2, n);
-}
-
-/**
- * @brief Thread-safe string tokenization
- * @param str String to tokenize (NULL for continuation)
- * @param delim Delimiter string
- * @param saveptr Pointer to save state between calls
- * @return Pointer to next token, or NULL if no more tokens
- */
-char *platform_strtok_r(char *str, const char *delim, char **saveptr) {
-  return strtok_r(str, delim, saveptr);
-}
-
-/**
- * @brief Safe string copy with size limit
- * @param dst Destination buffer
- * @param src Source string
- * @param size Destination buffer size
- * @return Length of source string (excluding null terminator)
- */
-size_t platform_strlcpy(char *dst, const char *src, size_t size) {
-#ifdef __APPLE__
-  // macOS has strlcpy
-  return strlcpy(dst, src, size);
-#else
-  // Linux doesn't have strlcpy, implement it
-  size_t src_len = strlen(src);
-  if (size > 0) {
-    size_t copy_len = (src_len >= size) ? size - 1 : src_len;
-    memcpy(dst, src, copy_len);
-    dst[copy_len] = '\0';
-  }
-  return src_len;
-#endif
-}
-
-/**
- * @brief Safe string concatenation with size limit
- * @param dst Destination buffer
- * @param src Source string
- * @param size Destination buffer size
- * @return Total length of resulting string
- */
-size_t platform_strlcat(char *dst, const char *src, size_t size) {
-#ifdef __APPLE__
-  // macOS has strlcat
-  return strlcat(dst, src, size);
-#else
-  // Linux doesn't have strlcat, implement it
-  size_t dst_len = strnlen(dst, size);
-  size_t src_len = strlen(src);
-
-  if (dst_len == size) {
-    return size + src_len;
-  }
-
-  size_t remain = size - dst_len - 1;
-  size_t copy_len = (src_len > remain) ? remain : src_len;
-
-  memcpy(dst + dst_len, src, copy_len);
-  dst[dst_len + copy_len] = '\0';
-
-  return dst_len + src_len;
-#endif
-}
-
-// ============================================================================
 // Memory Operations
 // ============================================================================
 
@@ -349,7 +207,7 @@ void *platform_aligned_alloc(size_t alignment, size_t size) {
  */
 void platform_aligned_free(void *ptr) {
   // Regular free works for aligned memory on POSIX
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 /**
@@ -376,7 +234,7 @@ const char *platform_strerror(int errnum) {
 #if defined(__APPLE__) || !defined(__GLIBC__)
   // macOS and non-glibc (including musl) use XSI-compliant strerror_r (returns int)
   if (strerror_r(errnum, error_buffer, sizeof(error_buffer)) != 0) {
-    snprintf(error_buffer, sizeof(error_buffer), "Unknown error %d", errnum);
+    safe_snprintf(error_buffer, sizeof(error_buffer), "Unknown error %d", errnum);
   }
 #else
   // glibc uses GNU strerror_r which returns a char*
@@ -470,6 +328,35 @@ int platform_close(int fd) {
   return close(fd);
 }
 
+/**
+ * @brief Open file with platform-safe mode
+ * @param filename File path
+ * @param mode File mode (e.g., "r", "w", "a", "rb", "wb")
+ * @return File pointer on success, NULL on failure
+ */
+FILE *platform_fopen(const char *filename, const char *mode) {
+  return fopen(filename, mode);
+}
+
+/**
+ * @brief Delete file
+ * @param pathname File path
+ * @return 0 on success, -1 on failure
+ */
+int platform_unlink(const char *pathname) {
+  return unlink(pathname);
+}
+
+/**
+ * @brief Change file permissions
+ * @param pathname File path
+ * @param mode Permission mode (e.g., 0600, 0700)
+ * @return 0 on success, -1 on failure
+ */
+int platform_chmod(const char *pathname, int mode) {
+  return chmod(pathname, (mode_t)mode);
+}
+
 // ============================================================================
 // Debug/Stack Trace Functions
 // ============================================================================
@@ -522,7 +409,7 @@ void platform_backtrace_symbols_free(char **strings) {
 /**
  * @brief Print backtrace to stderr
  */
-void platform_print_backtrace(void) {
+void platform_print_backtrace(int skip_frames) {
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
 
@@ -530,8 +417,10 @@ void platform_print_backtrace(void) {
     (void)fprintf(stderr, "\n=== BACKTRACE ===\n");
     char **symbols = platform_backtrace_symbols(buffer, size);
 
-    for (int i = 0; i < size; i++) {
-      (void)fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
+    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
+    int start_frame = 1 + skip_frames;
+    for (int i = start_frame; i < size; i++) {
+      (void)fprintf(stderr, "%2d: %s\n", i - start_frame, symbols ? symbols[i] : "???");
     }
 
     platform_backtrace_symbols_free(symbols);
@@ -570,7 +459,7 @@ static void crash_handler(int sig, siginfo_t *info, void *context) {
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
-  platform_print_backtrace();
+  platform_print_backtrace(0);
 #else
   (void)fprintf(stderr, "Backtrace disabled in Release builds\n");
 #endif
@@ -607,49 +496,49 @@ void platform_install_crash_handler(void) {
 // Safe Memory Functions
 // ============================================================================
 
-int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
+asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
-    return -1; // Invalid pointers
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memcpy");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
   // Use standard memcpy with bounds checking already done
   memcpy(dest, src, count);
-  return 0; // Success
+  return ASCIICHAT_OK;
 }
 
-int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
+asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
   // Validate parameters
   if (!dest) {
-    return -1; // Invalid pointer
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointer for memset");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
   // Use standard memset with bounds checking already done
   memset(dest, ch, count);
-  return 0; // Success
+  return ASCIICHAT_OK;
 }
 
-int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
+asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
-    return -1; // Invalid pointers
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memmove");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
   // Use standard memmove with bounds checking already done
   memmove(dest, src, count);
-  return 0; // Success
+  return ASCIICHAT_OK; // Success
 }
 
 /**
@@ -663,23 +552,23 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
  * @param src Source string
  * @return 0 on success, non-zero on error
  */
-int platform_strcpy(char *dest, size_t dest_size, const char *src) {
+asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src) {
   if (!dest || !src) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for strcpy");
   }
   if (dest_size == 0) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Destination buffer size is zero");
   }
 
   size_t src_len = strlen(src);
   if (src_len >= dest_size) {
-    return -1; // Not enough space including null terminator
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Source string too long for destination buffer: %zu >= %zu", src_len, dest_size);
   }
 
   // Use strncpy with bounds checking and ensure null termination
   strncpy(dest, src, dest_size - 1);
   dest[dest_size - 1] = '\0'; // Ensure null termination
-  return 0;                   // Success
+  return ASCIICHAT_OK;        // Success
 }
 
 /**
@@ -693,9 +582,9 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src) {
  * @param ipv4_out_size Size of the output buffer
  * @return 0 on success, -1 on failure
  */
-int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
+asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
   if (!hostname || !ipv4_out || ipv4_out_size == 0) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
 
   struct addrinfo hints, *result = NULL;
@@ -707,23 +596,23 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
 
   int ret = getaddrinfo(hostname, NULL, &hints, &result);
   if (ret != 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to resolve hostname: %s", hostname);
   }
 
   if (!result) {
     freeaddrinfo(result);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "No address found for hostname: %s", hostname);
   }
 
   // Extract IPv4 address from first result
   struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
   if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
     freeaddrinfo(result);
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to convert network address to string");
   }
 
   freeaddrinfo(result);
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -736,9 +625,9 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
  * @param pem_size_out Pointer to receive size of PEM data
  * @return 0 on success, -1 on failure
  */
-int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
+asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
   if (!pem_data_out || !pem_size_out) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for CA cert loading");
   }
 
   // Common CA certificate bundle paths (ordered by likelihood)
@@ -772,10 +661,10 @@ int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
     }
 
     // Allocate buffer for PEM data
-    char *pem_data = (char *)malloc((size_t)file_size + 1);
+    char *pem_data = SAFE_MALLOC((size_t, char *)file_size + 1);
     if (!pem_data) {
       fclose(f);
-      return -1;
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates");
     }
 
     // Read entire file
@@ -783,8 +672,8 @@ int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
     fclose(f);
 
     if (bytes_read != (size_t)file_size) {
-      free(pem_data);
-      return -1;
+      SAFE_FREE(pem_data);
+      return SET_ERRNO(ERROR_CRYPTO, "Failed to read complete CA certificate file");
     }
 
     // Null-terminate (PEM is text format)
@@ -793,11 +682,11 @@ int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
     // Success!
     *pem_data_out = pem_data;
     *pem_size_out = bytes_read;
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   // No CA bundle found
-  return -1;
+  return SET_ERRNO(ERROR_CRYPTO, "No CA certificate bundle found in standard locations");
 }
 
 #endif // !_WIN32

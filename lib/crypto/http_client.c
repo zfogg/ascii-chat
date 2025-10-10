@@ -12,12 +12,18 @@
 #include "http_client.h"
 #include "common.h"
 #include "pem_utils.h"
-#include "platform/abstraction.h"
 #include "version.h"
+#include "asciichat_errno.h"
+#include "platform/socket.h"
 
 #include <bearssl.h>
 #ifndef _WIN32
 #include <netdb.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,9 +40,11 @@ static int sock_read(void *ctx, unsigned char *buf, size_t len) {
   socket_t *sock = (socket_t *)ctx;
   ssize_t n = recv(*sock, (char *)buf, (int)len, 0);
   if (n < 0) {
+    SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive data from socket");
     return -1; // Error
   }
   if (n == 0) {
+    SET_ERRNO(ERROR_NETWORK, "Connection closed by remote");
     return -1; // Connection closed
   }
   return (int)n;
@@ -49,6 +57,7 @@ static int sock_write(void *ctx, const unsigned char *buf, size_t len) {
   socket_t *sock = (socket_t *)ctx;
   ssize_t n = send(*sock, (const char *)buf, (int)len, 0);
   if (n < 0) {
+    SET_ERRNO_SYS(ERROR_NETWORK, "Failed to send data to socket");
     return -1; // Error
   }
   return (int)n;
@@ -73,7 +82,7 @@ static char *extract_http_body(const char *response, size_t response_len) {
 
   size_t body_len = response_len - (body_start - response);
   char *body;
-  SAFE_MALLOC(body, body_len + 1, char *);
+  body = SAFE_MALLOC(body_len + 1, char *);
   memcpy(body, body_start, body_len);
   body[body_len] = '\0';
 
@@ -83,21 +92,19 @@ static char *extract_http_body(const char *response, size_t response_len) {
 /**
  * Check if HTTP response indicates success (200 OK)
  */
-static int check_http_status(const char *response) {
+static asciichat_error_t check_http_status(const char *response) {
   // Look for "HTTP/1.x 200 OK"
   if (strncmp(response, "HTTP/1.", 7) != 0) {
-    log_error("Invalid HTTP response");
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "Invalid HTTP response: %s", response);
   }
 
   // Skip to status code
   const char *status = response + 9;
   if (strncmp(status, "200", 3) != 0) {
-    log_error("HTTP request failed: %.50s", response);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "HTTP request failed: %.50s", response);
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 // ============================================================================
@@ -123,7 +130,7 @@ char *https_get(const char *hostname, const char *path) {
   // Parse PEM certificates into BearSSL trust anchors
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num_anchors = read_trust_anchors_from_memory(&anchors, (unsigned char *)pem_data, pem_size);
-  free(pem_data);
+  SAFE_FREE(pem_data);
 
   if (num_anchors == 0) {
     log_error("No trust anchors loaded");
@@ -173,7 +180,7 @@ char *https_get(const char *hostname, const char *path) {
 
   // Set I/O buffer
   unsigned char *iobuf;
-  SAFE_MALLOC(iobuf, BR_SSL_BUFSIZE_BIDI, unsigned char *);
+  iobuf = SAFE_MALLOC(BR_SSL_BUFSIZE_BIDI, unsigned char *);
   br_ssl_engine_set_buffer(&sc.eng, iobuf, BR_SSL_BUFSIZE_BIDI, 1);
 
   // Initialize I/O context
@@ -187,7 +194,7 @@ char *https_get(const char *hostname, const char *path) {
 
   // Build HTTP request
   char request[1024];
-  int request_len = snprintf(request, sizeof(request),
+  int request_len = safe_snprintf(request, sizeof(request),
                              "GET %s HTTP/1.1\r\n"
                              "Host: %s\r\n"
                              "Connection: close\r\n"
@@ -198,7 +205,7 @@ char *https_get(const char *hostname, const char *path) {
   // Send HTTP request over TLS
   if (br_sslio_write_all(&ioc, request, request_len) != 0) {
     log_error("Failed to send HTTP request");
-    free(iobuf);
+    SAFE_FREE(iobuf);
     socket_close(sock);
     goto cleanup_anchors;
   }
@@ -210,13 +217,13 @@ char *https_get(const char *hostname, const char *path) {
   char *response_buf = NULL;
   size_t response_capacity = 8192;
   size_t response_len = 0;
-  SAFE_MALLOC(response_buf, response_capacity, char *);
+  response_buf = SAFE_MALLOC(response_capacity, char *);
 
   while (1) {
     // Ensure we have space to read
     if (response_len + 1024 > response_capacity) {
       response_capacity *= 2;
-      SAFE_REALLOC(response_buf, response_capacity, char *);
+      response_buf = SAFE_REALLOC(response_buf, response_capacity, char *);
     }
 
     // Read data
@@ -226,8 +233,8 @@ char *https_get(const char *hostname, const char *path) {
       int err = br_ssl_engine_last_error(&sc.eng);
       if (err != BR_ERR_OK) {
         log_error("TLS error: %d", err);
-        free(response_buf);
-        free(iobuf);
+        SAFE_FREE(response_buf);
+        SAFE_FREE(iobuf);
         socket_close(sock);
         goto cleanup_anchors;
       }
@@ -249,21 +256,22 @@ char *https_get(const char *hostname, const char *path) {
   socket_close(sock);
 
   // Parse HTTP response
-  if (check_http_status(response_buf) != 0) {
-    free(response_buf);
-    free(iobuf);
+  asciichat_error_t status = check_http_status(response_buf);
+  if (status != ASCIICHAT_OK) {
+    SAFE_FREE(response_buf);
+    SAFE_FREE(iobuf);
     goto cleanup_anchors;
   }
 
   char *body = extract_http_body(response_buf, response_len);
-  free(response_buf);
-  free(iobuf);
+  SAFE_FREE(response_buf);
+  SAFE_FREE(iobuf);
 
   // Cleanup trust anchors
   for (size_t i = 0; i < anchors.ptr; i++) {
     free_ta_contents(&anchors.buf[i]);
   }
-  free(anchors.buf);
+  SAFE_FREE(anchors.buf);
 
   return body;
 
@@ -271,7 +279,7 @@ cleanup_anchors:
   for (size_t i = 0; i < anchors.ptr; i++) {
     free_ta_contents(&anchors.buf[i]);
   }
-  free(anchors.buf);
+  SAFE_FREE(anchors.buf);
   return NULL;
 }
 
@@ -312,7 +320,7 @@ static char **filter_ed25519_keys(const char *keys_text, size_t *num_keys_out) {
 
   // Allocate array of key strings
   char **keys;
-  SAFE_MALLOC(keys, num_keys * sizeof(char *), char **);
+  keys = SAFE_MALLOC(num_keys * sizeof(char *), char **);
 
   // Extract Ed25519 keys
   size_t key_idx = 0;
@@ -328,7 +336,7 @@ static char **filter_ed25519_keys(const char *keys_text, size_t *num_keys_out) {
       // Allocate and copy key
       size_t key_len = line_end - line;
       char *key;
-      SAFE_MALLOC(key, key_len + 1, char *);
+      key = SAFE_MALLOC(key_len + 1, char *);
       memcpy(key, line, key_len);
       key[key_len] = '\0';
 
@@ -348,23 +356,24 @@ static char **filter_ed25519_keys(const char *keys_text, size_t *num_keys_out) {
   return keys;
 }
 
-int fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
+asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
   if (!username || !keys_out || !num_keys_out) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for GitHub SSH key fetch");
   }
 
   // Build GitHub keys URL: https://github.com/username.keys
   char path[512];
-  snprintf(path, sizeof(path), "/%s.keys", username);
+  safe_snprintf(path, sizeof(path), "/%s.keys", username);
 
   char *keys_text = https_get("github.com", path);
   if (!keys_text) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to fetch GitHub SSH keys for user: %s", username);
     return -1;
   }
 
   // Filter Ed25519 keys only
   char **keys = filter_ed25519_keys(keys_text, num_keys_out);
-  free(keys_text);
+  SAFE_FREE(keys_text);
 
   if (!keys) {
     log_error("No Ed25519 keys found for GitHub user: %s", username);
@@ -375,14 +384,14 @@ int fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_ke
   return 0;
 }
 
-int fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
+asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
   if (!username || !keys_out || !num_keys_out) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for GitLab SSH key fetch");
   }
 
   // Build GitLab keys URL: https://gitlab.com/username.keys
   char path[512];
-  snprintf(path, sizeof(path), "/%s.keys", username);
+  safe_snprintf(path, sizeof(path), "/%s.keys", username);
 
   char *keys_text = https_get("gitlab.com", path);
   if (!keys_text) {
@@ -391,7 +400,7 @@ int fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_ke
 
   // Filter Ed25519 keys only
   char **keys = filter_ed25519_keys(keys_text, num_keys_out);
-  free(keys_text);
+  SAFE_FREE(keys_text);
 
   if (!keys) {
     log_error("No Ed25519 keys found for GitLab user: %s", username);
@@ -431,7 +440,7 @@ static char **parse_pgp_key_blocks(const char *gpg_text, size_t *num_keys_out) {
 
   // Allocate array for keys
   char **keys;
-  SAFE_MALLOC(keys, num_keys * sizeof(char *), char **);
+  keys = SAFE_MALLOC(num_keys * sizeof(char *), char **);
 
   // Extract each key block
   size_t key_idx = 0;
@@ -463,7 +472,7 @@ static char **parse_pgp_key_blocks(const char *gpg_text, size_t *num_keys_out) {
     // Allocate and copy key block
     size_t block_len = end - begin;
     char *key;
-    SAFE_MALLOC(key, block_len + 1, char *);
+    key = SAFE_MALLOC(block_len + 1, char *);
     memcpy(key, begin, block_len);
     key[block_len] = '\0';
 
@@ -475,14 +484,14 @@ static char **parse_pgp_key_blocks(const char *gpg_text, size_t *num_keys_out) {
   return keys;
 }
 
-int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
+asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
   if (!username || !keys_out || !num_keys_out) {
     return -1;
   }
 
   // Build GitHub GPG keys URL: https://github.com/username.gpg
   char path[512];
-  snprintf(path, sizeof(path), "/%s.gpg", username);
+  safe_snprintf(path, sizeof(path), "/%s.gpg", username);
 
   char *gpg_text = https_get("github.com", path);
   if (!gpg_text) {
@@ -491,7 +500,7 @@ int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
 
   // Parse PGP key blocks
   char **keys = parse_pgp_key_blocks(gpg_text, num_keys_out);
-  free(gpg_text);
+  SAFE_FREE(gpg_text);
 
   if (!keys) {
     log_error("No GPG keys found for GitHub user: %s", username);
@@ -502,14 +511,14 @@ int fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
   return 0;
 }
 
-int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
+asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys_out) {
   if (!username || !keys_out || !num_keys_out) {
     return -1;
   }
 
   // Build GitLab GPG keys URL: https://gitlab.com/username.gpg
   char path[512];
-  snprintf(path, sizeof(path), "/%s.gpg", username);
+  safe_snprintf(path, sizeof(path), "/%s.gpg", username);
 
   char *gpg_text = https_get("gitlab.com", path);
   if (!gpg_text) {
@@ -518,7 +527,7 @@ int fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_ke
 
   // Parse PGP key blocks
   char **keys = parse_pgp_key_blocks(gpg_text, num_keys_out);
-  free(gpg_text);
+  SAFE_FREE(gpg_text);
 
   if (!keys) {
     log_error("No GPG keys found for GitLab user: %s", username);

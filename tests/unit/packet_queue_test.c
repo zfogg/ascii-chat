@@ -179,7 +179,7 @@ Test(packet_queue, multiple_packets) {
   // Enqueue multiple packets
   for (int i = 0; i < 5; i++) {
     char data[32];
-    snprintf(data, sizeof(data), "Packet %d", i);
+    safe_snprintf(data, sizeof(data), "Packet %d", i);
 
     int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, strlen(data) + 1, i, true);
     cr_assert_eq(result, 0, "Enqueue %d should succeed", i);
@@ -194,7 +194,7 @@ Test(packet_queue, multiple_packets) {
     cr_assert_eq(ntohl(packet->header.client_id), (uint32_t)i, "Packet order should be FIFO");
 
     char expected[32];
-    snprintf(expected, sizeof(expected), "Packet %d", i);
+    safe_snprintf(expected, sizeof(expected), "Packet %d", i);
     cr_assert_str_eq((char *)packet->data, expected, "Packet %d data should match", i);
 
     packet_queue_free_packet(packet);
@@ -210,7 +210,7 @@ Test(packet_queue, enqueue_without_copy) {
 
   // Allocate data that we'll pass ownership to queue
   char *data;
-  SAFE_MALLOC(data, 100, char *);
+  data = SAFE_MALLOC(100, char *);
   strcpy(data, "Test data without copy");
 
   // Enqueue without copying (queue takes ownership)
@@ -225,7 +225,7 @@ Test(packet_queue, enqueue_without_copy) {
   cr_assert_eq(packet->owns_data, false, "Should not own data");
 
   // Free the data ourselves since queue doesn't own it
-  free(data);
+  SAFE_FREE(data);
 
   // Set packet data to NULL to avoid double-free in packet cleanup
   packet->data = NULL;
@@ -531,7 +531,7 @@ Test(packet_queue, large_packet_data) {
   // Create large test data
   size_t large_size = 64 * 1024; // 64KB
   char *large_data;
-  SAFE_MALLOC(large_data, large_size, char *);
+  large_data = large_size = SAFE_MALLOC(char *);
 
   // Fill with test pattern
   for (size_t i = 0; i < large_size; i++) {
@@ -554,7 +554,7 @@ Test(packet_queue, large_packet_data) {
                  "Large packet data should match at offset %zu", i);
   }
 
-  free(large_data);
+  SAFE_FREE(large_data);
   packet_queue_free_packet(packet);
   packet_queue_destroy(queue);
 }

@@ -84,7 +84,7 @@ void socket_fd_zero(fd_set *set);
 void socket_fd_set(socket_t sock, fd_set *set);
 int socket_fd_isset(socket_t sock, fd_set *set);
 int socket_get_fd(socket_t sock);
-int socket_is_valid(socket_t sock);
+bool socket_is_valid(socket_t sock);
 
 // Platform-specific error codes
 #ifdef _WIN32

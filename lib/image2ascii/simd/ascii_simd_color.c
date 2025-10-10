@@ -380,15 +380,21 @@ static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g,
 
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
   (void)use_256color; // Suppress unused parameter warning when SIMD not available
+
 #ifdef SIMD_SUPPORT_AVX2
-  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+  return image_print_color(image, ascii_chars); // debug: to compare
+  //return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSSE3)
+  log_info("DEBUG: Using SSSE3 SIMD path");
   return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSE2)
+  log_info("DEBUG: Using SSE2 SIMD path");
   return render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_NEON)
+  log_info("DEBUG: Using NEON SIMD path");
   return render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #else
+  log_info("DEBUG: Using scalar fallback path");
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds
   const int h = image->h;

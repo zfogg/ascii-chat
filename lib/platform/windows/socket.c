@@ -4,9 +4,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <mstcpip.h>
-#include "../windows_compat.h"
 #include <stdio.h>
-#include "common.h"
+#include <stdbool.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -195,7 +194,7 @@ const char *socket_error_string(int error) {
 }
 
 // Check if socket is valid
-int socket_is_valid(socket_t sock) {
+bool socket_is_valid(socket_t sock) {
   return sock != INVALID_SOCKET;
 }
 

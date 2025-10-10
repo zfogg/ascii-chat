@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "../common.h"
 
 // ============================================================================
 // Platform-Specific Signal Definitions
@@ -35,29 +36,29 @@ typedef struct {
 } terminal_size_t;
 
 // Basic terminal operations
-int terminal_get_size(terminal_size_t *size);
-int terminal_set_raw_mode(bool enable);
-int terminal_set_echo(bool enable);
+asciichat_error_t terminal_get_size(terminal_size_t *size);
+asciichat_error_t terminal_set_raw_mode(bool enable);
+asciichat_error_t terminal_set_echo(bool enable);
 bool terminal_supports_color(void);
 bool terminal_supports_unicode(void);
 bool terminal_supports_utf8(void);
-int terminal_clear_screen(void);
-int terminal_move_cursor(int row, int col);
+asciichat_error_t terminal_clear_screen(void);
+asciichat_error_t terminal_move_cursor(int row, int col);
 void terminal_enable_ansi(void);
 
 // Extended terminal control
-int terminal_set_buffering(bool line_buffered);
-int terminal_flush(int fd);
-int terminal_get_cursor_position(int *row, int *col);
-int terminal_save_cursor(void);
-int terminal_restore_cursor(void);
-int terminal_set_title(const char *title);
-int terminal_ring_bell(void);
-int terminal_hide_cursor(int fd, bool hide);
-int terminal_set_scroll_region(int top, int bottom);
-int terminal_reset(int fd);
-int terminal_cursor_home(int fd);
-int terminal_clear_scrollback(int fd);
+asciichat_error_t terminal_set_buffering(bool line_buffered);
+asciichat_error_t terminal_flush(int fd);
+asciichat_error_t terminal_get_cursor_position(int *row, int *col);
+asciichat_error_t terminal_save_cursor(void);
+asciichat_error_t terminal_restore_cursor(void);
+asciichat_error_t terminal_set_title(const char *title);
+asciichat_error_t terminal_ring_bell(void);
+asciichat_error_t terminal_hide_cursor(int fd, bool hide);
+asciichat_error_t terminal_set_scroll_region(int top, int bottom);
+asciichat_error_t terminal_reset(int fd);
+asciichat_error_t terminal_cursor_home(int fd);
+asciichat_error_t terminal_clear_scrollback(int fd);
 
 // ============================================================================
 // Terminal Detection and Capabilities
@@ -118,7 +119,7 @@ tty_info_t get_current_tty(void);
 bool is_valid_tty_path(const char *path);
 
 // Terminal size detection with multiple fallback methods
-int get_terminal_size(unsigned short int *width, unsigned short int *height);
+asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height);
 
 // Helper functions for capability reporting
 const char *terminal_color_level_name(terminal_color_level_t level);
