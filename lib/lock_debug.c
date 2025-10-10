@@ -53,7 +53,7 @@ static bool g_termios_saved = false;
  */
 static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_type, const char *file_name,
                                          int line_number, const char *function_name) {
-  lock_record_t *record = calloc(1, sizeof(lock_record_t));
+  lock_record_t *record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
   if (!record) {
     log_error("Failed to allocate lock record");
     return NULL;
@@ -70,7 +70,7 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
   // Get current time
   if (clock_gettime(CLOCK_MONOTONIC, &record->acquisition_time) != 0) {
     log_error("Failed to get acquisition time");
-    free(record);
+    SAFE_FREE(record);
     return NULL;
   }
 
@@ -129,7 +129,7 @@ static void free_lock_record(lock_record_t *record) {
     platform_backtrace_symbols_free(record->backtrace_symbols);
   }
 
-  free(record);
+  SAFE_FREE(record);
 }
 
 // ============================================================================
@@ -297,7 +297,7 @@ static void cleanup_usage_stats_callback(uint32_t key, void *value, void *user_d
   UNUSED(key);
   UNUSED(user_data);
   lock_usage_stats_t *stats = (lock_usage_stats_t *)value;
-  free(stats);
+  SAFE_FREE(stats);
 }
 
 /**
@@ -1104,7 +1104,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
 #endif
 
   // Create an orphaned release record to track this problematic unlock
-  lock_record_t *orphan_record = calloc(1, sizeof(lock_record_t));
+  lock_record_t *orphan_record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
   if (orphan_record) {
     orphan_record->lock_address = lock_ptr;
     if (strcmp(lock_type_str, "MUTEX") == 0) {

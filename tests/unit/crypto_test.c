@@ -159,7 +159,7 @@ Theory((size_t data_size), crypto, encryption_roundtrip_property) {
   cr_assert_eq(result, CRYPTO_OK, "Context init should succeed for size %zu", data_size);
 
   uint8_t *plaintext;
-  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  plaintext = data_size = SAFE_MALLOC(uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = (uint8_t)(i % 256);
   }
@@ -179,7 +179,7 @@ Theory((size_t data_size), crypto, encryption_roundtrip_property) {
   cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0,
                "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
 
-  free(plaintext);
+  SAFE_FREE(plaintext);
   crypto_cleanup(&ctx);
 }
 
@@ -207,7 +207,7 @@ Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
   crypto_set_peer_public_key(&ctx2, pub_key1);
 
   uint8_t *plaintext;
-  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  plaintext = data_size = SAFE_MALLOC(uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = (uint8_t)((i * 7) % 256);
   }
@@ -226,7 +226,7 @@ Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
   cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0, "Key exchange roundtrip must preserve data for size %zu",
                data_size);
 
-  free(plaintext);
+  SAFE_FREE(plaintext);
   crypto_cleanup(&ctx1);
   crypto_cleanup(&ctx2);
 }
@@ -412,7 +412,7 @@ Theory((size_t data_size), crypto, nonce_uniqueness_property) {
   crypto_init_with_password(&ctx, "nonce-test-password");
 
   uint8_t *plaintext;
-  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  plaintext = data_size = SAFE_MALLOC(uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = 0xAA;
   }
@@ -427,7 +427,7 @@ Theory((size_t data_size), crypto, nonce_uniqueness_property) {
   cr_assert_neq(memcmp(ciphertext1, ciphertext2, min_len), 0,
                 "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
 
-  free(plaintext);
+  SAFE_FREE(plaintext);
   crypto_cleanup(&ctx);
 }
 

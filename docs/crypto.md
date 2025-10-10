@@ -35,12 +35,13 @@ ASCII-Chat implements **end-to-end encryption by default** using modern cryptogr
 - **Client whitelisting** - Server-side access control
 - **Known hosts** - SSH-style server verification
 - **Forward secrecy** - Ephemeral key exchange per connection
+- **Dynamic algorithm negotiation** - Future-proof crypto with post-quantum support
 
 ### Non-Goals
 
 ❌ **Not a replacement for TLS/HTTPS** - Different trust model
 ❌ **Not anonymous** - Focus is encryption, not anonymity
-❌ **Not quantum-resistant** - Uses elliptic curve cryptography (X25519)
+❌ **Not quantum-resistant** - Uses elliptic curve cryptography (X25519) - *Post-quantum support planned via dynamic algorithm negotiation*
 
 ---
 
@@ -147,12 +148,22 @@ ciphertext = XSalsa20(key, nonce, plaintext) + Poly1305(key, ciphertext)
   - Memory: 64 MB (interactive limit)
   - Operations: 2 (OPSLIMIT_INTERACTIVE)
   - Parallelism: 1
+- **Password Requirements:**
+  - Minimum: 8 characters
+  - Maximum: 256 characters
+  - Validation: Enforced on both client and server
 
 **Why Argon2id?**
 - Memory-hard: Resistant to GPU/ASIC brute-force attacks
 - Modern: Winner of Password Hashing Competition (2015)
 - Hybrid: Combines data-dependent (Argon2d) and data-independent (Argon2i) modes
 - Tunable: Can increase difficulty as hardware improves
+
+**Password Length Enforcement:**
+- **Minimum (8 chars):** Prevents weak passwords vulnerable to dictionary attacks
+- **Maximum (256 chars):** Prevents DoS via extremely long passwords while allowing long passphrases
+- **Security benefit:** Reduces attack surface while maintaining usability
+- **Implementation:** Validated during key derivation setup on both client and server
 
 #### Ed25519 (Signatures - SSH Keys)
 - **Algorithm:** EdDSA signatures on Edwards curve (Curve25519)
@@ -218,18 +229,25 @@ PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT  = 16  // Server → Client: DH public key
 PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP  = 17  // Client → Server: DH public key
 PACKET_TYPE_CRYPTO_AUTH_CHALLENGE     = 18  // Server → Client: Challenge nonce
 PACKET_TYPE_CRYPTO_AUTH_RESPONSE      = 19  // Client → Server: HMAC response
-PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 20  // Server → Client: Success
-PACKET_TYPE_CRYPTO_AUTH_FAILED        = 21  // Server → Client: Failure
+PACKET_TYPE_CRYPTO_AUTH_FAILED        = 20  // Server → Client: Failure
+PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP   = 21  // Server → Client: HMAC proof
+PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 22  // Server → Client: Success
 PACKET_TYPE_CRYPTO_NO_ENCRYPTION      = 23  // Client → Server: Opt-out
-PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP   = 24  // Server → Client: HMAC proof
 ```
+
+**Dynamic Algorithm Negotiation:**
+The `CRYPTO_CAPABILITIES` and `CRYPTO_PARAMETERS` packets enable future-proof algorithm selection:
+
+- **Client Capabilities**: Declares supported algorithms (X25519, Ed25519, XSalsa20-Poly1305)
+- **Server Parameters**: Selects algorithms and provides key sizes for dynamic handshake
+- **Future-Proof**: Designed to support post-quantum algorithms (Kyber, Dilithium) when available
 
 **Why unencrypted?**
 These packets establish the encryption keys - they cannot be encrypted with keys that don't exist yet. This is standard for all key exchange protocols (TLS, SSH, etc.).
 
 #### Encrypted Packets (After Handshake)
 ```c
-PACKET_TYPE_ENCRYPTED = 22  // Wrapper for all post-handshake packets
+PACKET_TYPE_ENCRYPTED = 24  // Wrapper for all post-handshake packets
 ```
 
 All application packets (video, audio, control) are wrapped in `PACKET_TYPE_ENCRYPTED` after successful handshake.
@@ -284,54 +302,111 @@ client_id=0
 
 ```
 Client                                    Server
-  |                                         |
+  |                                        |
   |------ TCP Connect -------------------->|
-  |                                         |
-  |                                         | Generate ephemeral keypair
-  |                                         | (or use --key loaded SSH key)
-  |                                         |
+  |                                        |
+  |<----- PROTOCOL_VERSION ----------------|
+  |------ PROTOCOL_VERSION --------------->|
+  |       [version, encryption support]    |
+  |                                        |
+  |------ CRYPTO_CAPABILITIES ------------>|
+  |       [supported algorithms]           |
+  |       [preferred algorithms]           |
+  |                                        |
+  |<----- CRYPTO_PARAMETERS ---------------|
+  |       [selected algorithms + sizes]    |
+  |                                        |
+  |                                        | Generate ephemeral keypair
+  |                                        | (or use --key loaded SSH key)
+  |                                        |
   |<----- CRYPTO_KEY_EXCHANGE_INIT --------|
   |       [32-byte X25519 public key]      |
   |       [32-byte Ed25519 identity key]   | (if using SSH key)
   |       [64-byte Ed25519 signature]      | (signature of X25519 key)
-  |                                         |
+  |                                        |
   | Verify signature (if present)          |
   | Check against --server-key (if set)    |
   | Check known_hosts (if exists)          |
   | Compute DH shared secret               |
-  |                                         |
+  |                                        |
   |------ CRYPTO_KEY_EXCHANGE_RESP ------->|
   |       [32-byte X25519 public key]      |
   |       [32-byte Ed25519 identity key]   | (if using SSH key)
   |       [64-byte Ed25519 signature]      | (signature of X25519 key)
-  |                                         |
-  |                                         | Verify signature (if present)
-  |                                         | Check whitelist (if enabled)
-  |                                         | Compute DH shared secret
-  |                                         |
+  |                                        |
+  |                                        | Verify signature (if present)
+  |                                        | Check whitelist (if enabled)
+  |                                        | Compute DH shared secret
+  |                                        |
   |<----- CRYPTO_AUTH_CHALLENGE -----------|
   |       [32-byte random nonce]           |
   |       [1-byte flags]                   | (password required? key required?)
-  |                                         |
+  |                                        |
   | Compute HMAC(shared_secret, nonce)     |
   | If password: HMAC(password_key, nonce) |
-  |                                         |
+  |                                        |
   |------ CRYPTO_AUTH_RESPONSE ----------->|
   |       [32-byte HMAC]                   |
-  |                                         |
-  |                                         | Verify HMAC
-  |                                         | Check password (if required)
-  |                                         | Check client key whitelist (if enabled)
-  |                                         |
+  |                                        |
+  |                                        | Verify HMAC
+  |                                        | Check password (if required)
+  |                                        | Check client key whitelist (if enabled)
+  |                                        |
   |<----- CRYPTO_HANDSHAKE_COMPLETE -------|
-  |                                         |
-  | ✅ Encryption active                    | ✅ Encryption active
-  |                                         |
-  |<===== ENCRYPTED PACKETS ===============>|
+  |                                        |
+  | ✅ Encryption active                  | ✅ Encryption active
+  |                                        |
+  |<===== ENCRYPTED PACKETS ==============>|
   |       All future packets encrypted     |
 ```
 
 ### Handshake Phases Explained
+
+#### Phase 0: Dynamic Algorithm Negotiation
+
+**Client Capabilities (`CRYPTO_CAPABILITIES`):**
+```c
+typedef struct {
+  uint16_t supported_kex_algorithms;    // Bitmask of supported KEX algorithms
+  uint16_t supported_auth_algorithms;  // Bitmask of supported auth algorithms
+  uint16_t supported_cipher_algorithms; // Bitmask of supported cipher algorithms
+  uint8_t requires_verification;       // Boolean: requires server identity verification
+  uint8_t preferred_kex;               // Preferred KEX algorithm
+  uint8_t preferred_auth;             // Preferred auth algorithm
+  uint8_t preferred_cipher;           // Preferred cipher algorithm
+} crypto_capabilities_packet_t;
+```
+
+**Server Parameters (`CRYPTO_PARAMETERS`):**
+```c
+typedef struct {
+  uint8_t selected_kex;          // Which KEX algorithm (KEX_ALGO_*)
+  uint8_t selected_auth;         // Which auth algorithm (AUTH_ALGO_*)
+  uint8_t selected_cipher;       // Which cipher algorithm (CIPHER_ALGO_*)
+  uint8_t verification_enabled;  // Boolean: server requires verification
+  uint16_t kex_public_key_size;  // e.g., 32 for X25519, 1568 for Kyber1024
+  uint16_t auth_public_key_size; // e.g., 32 for Ed25519, 1952 for Dilithium3
+  uint16_t signature_size;       // e.g., 64 for Ed25519, 3309 for Dilithium3
+  uint16_t shared_secret_size;   // e.g., 32 for X25519
+  uint8_t nonce_size;            // e.g., 24 for XSalsa20 nonce
+  uint8_t mac_size;              // e.g., 16 for Poly1305 MAC
+  uint8_t hmac_size;             // e.g., 32 for HMAC-SHA256
+} crypto_parameters_packet_t;
+```
+
+**Current Algorithm Constants:**
+```c
+#define KEX_ALGO_X25519 0x01
+#define AUTH_ALGO_ED25519 0x01
+#define AUTH_ALGO_NONE 0x00
+#define CIPHER_ALGO_XSALSA20_POLY1305 0x01
+```
+
+**Future-Proofing Design:**
+- Algorithm negotiation enables post-quantum migration
+- Hybrid mode support (classical + post-quantum)
+- Backward compatibility with older clients
+- Dynamic key sizes for different algorithms
 
 #### Phase 1: Key Exchange Init (Server → Client)
 
@@ -757,7 +832,7 @@ The auto-add feature uses a temporary `SSH_ASKPASS` script to provide the passwo
 if (ssh_agent_is_available()) {
   // 1. Create temporary askpass script with user's password
   char askpass_script[512];
-  snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
+  safe_snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
 
   FILE *askpass_fp = fopen(askpass_script, "w");
   fprintf(askpass_fp, "#!/bin/sh\necho '%s'\n", passphrase);
@@ -765,7 +840,7 @@ if (ssh_agent_is_available()) {
   chmod(askpass_script, 0700);
 
   // 2. Shell out to ssh-add with SSH_ASKPASS
-  snprintf(ssh_add_cmd, sizeof(ssh_add_cmd),
+  safe_snprintf(ssh_add_cmd, sizeof(ssh_add_cmd),
            "SSH_ASKPASS='%s' SSH_ASKPASS_REQUIRE=force ssh-add '%s' 2>&1",
            askpass_script, path);
 
@@ -1081,6 +1156,13 @@ ascii-chat-client --password mySecretPass123
 
 **Password derivation:**
 ```c
+// Password validation
+if (strlen(password) < MIN_PASSWORD_LENGTH || strlen(password) > MAX_PASSWORD_LENGTH) {
+    log_error("Password length invalid (must be %d-%d characters)",
+              MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH);
+    return -1;
+}
+
 // Argon2id parameters
 uint8_t salt[32];  // Random, generated once
 uint8_t key[32];   // Derived key
@@ -2036,6 +2118,7 @@ The build system only compiles `lib/crypto/known_hosts.c` which uses the secure 
 - Implement verification server (issue #82) - For distributed trust infrastructure
 - Add out-of-band fingerprint verification helpers (QR codes, etc.) - For manual verification UX
 - Post-quantum cryptography (Kyber/Dilithium) - When libsodium adds support
+- **Dynamic algorithm system ready** - Protocol supports post-quantum migration when libsodium adds support
 
 ---
 
@@ -2076,11 +2159,34 @@ Similar to Signal's key server - optional, transparency log, user can verify out
 
 **Candidates:**
 - **Kyber:** NIST-selected post-quantum KEM (key encapsulation)
+- **Dilithium:** NIST-selected post-quantum signatures
 - **X25519-Kyber:** Hybrid combining classical + post-quantum
+- **Ed25519-Dilithium:** Hybrid signature algorithms
+
+**Implementation Strategy:**
+The dynamic algorithm negotiation system is designed to support post-quantum migration:
+
+1. **Phase 1**: Add post-quantum algorithms to capabilities
+   ```c
+   #define KEX_ALGO_KYBER1024 0x02
+   #define AUTH_ALGO_DILITHIUM3 0x02
+   #define KEX_ALGO_X25519_KYBER_HYBRID 0x03
+   #define AUTH_ALGO_ED25519_DILITHIUM_HYBRID 0x03
+   ```
+
+2. **Phase 2**: Prefer hybrid mode when both sides support it
+   - Client capabilities include both classical and post-quantum
+   - Server selects hybrid algorithms when available
+   - Fallback to classical-only for older clients
+
+3. **Phase 3**: Gradual migration
+   - New clients prefer post-quantum
+   - Legacy clients continue working
+   - Server can enforce post-quantum for sensitive applications
 
 **Timeline:** Wait for libsodium to add post-quantum support (currently in development)
 
-**Backward compatibility:** Hybrid mode allows gradual migration
+**Backward compatibility:** Hybrid mode allows gradual migration without breaking existing connections
 
 ### 3. Perfect Forward Secrecy Enhancement
 
@@ -2251,8 +2357,8 @@ crypto_secretbox_easy(ciphertext, plaintext, nonce, encryption_key);
 
 ---
 
-**Document Version:** 2.1
-**Last Updated:** October 2025 (SSH agent auto-add feature)
+**Document Version:** 2.2
+**Last Updated:** October 2025 (Dynamic algorithm negotiation + post-quantum future-proofing)
 **Maintainer:** ASCII-Chat Development Team
 **License:** Same as ASCII-Chat project (see LICENSE)
 

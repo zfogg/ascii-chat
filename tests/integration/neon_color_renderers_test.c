@@ -28,7 +28,7 @@ void restore_neon_logging(void) {
 // Test helper: create a simple test image
 static image_t *create_test_image(int width, int height, uint8_t r, uint8_t g, uint8_t b) {
   image_t *image;
-  SAFE_MALLOC(image, sizeof(image_t), image_t *);
+  image = SAFE_MALLOC(sizeof(image_t), image_t *);
   image->w = width;
   image->h = height;
 
@@ -46,7 +46,7 @@ static image_t *create_test_image(int width, int height, uint8_t r, uint8_t g, u
 // Test helper: create gradient test image
 static image_t *create_gradient_image(int width, int height) {
   image_t *image;
-  SAFE_MALLOC(image, sizeof(image_t), image_t *);
+  image = SAFE_MALLOC(sizeof(image_t), image_t *);
   image->w = width;
   image->h = height;
 
@@ -69,8 +69,8 @@ static image_t *create_gradient_image(int width, int height) {
 static void cleanup_image(image_t *image) {
   if (image) {
     if (image->pixels)
-      free(image->pixels);
-    free(image);
+      SAFE_FREE(image->pixels);
+    SAFE_FREE(image);
   }
 }
 
@@ -101,7 +101,7 @@ Test(neon_color_renderers, test_256color_solid_image) {
   // Should contain ANSI 256-color escape sequences
   cr_assert_not_null(strstr(result, "\033[38;5;"), "Should contain 256-color FG sequences");
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -120,7 +120,7 @@ Test(neon_color_renderers, test_256color_gradient_image) {
 
   log_debug("256-color gradient result length: %zu", strlen(result));
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -151,7 +151,7 @@ Test(neon_color_renderers, test_truecolor_solid_image) {
   // Should contain ANSI truecolor escape sequences
   cr_assert_not_null(strstr(result, "\033[38;2;"), "Should contain truecolor FG sequences");
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -170,7 +170,7 @@ Test(neon_color_renderers, test_truecolor_gradient_image) {
 
   log_debug("Truecolor gradient result length: %zu", strlen(result));
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -188,7 +188,7 @@ Test(neon_color_renderers, test_background_mode_256color) {
 
   log_debug("256-color background result (first 150 chars): %.150s", result);
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -206,7 +206,7 @@ Test(neon_color_renderers, test_background_mode_truecolor) {
 
   log_debug("Truecolor background result (first 150 chars): %.150s", result);
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -222,7 +222,7 @@ Test(neon_color_renderers, test_unified_dispatcher_256color) {
 
   log_debug("Dispatcher 256-color result length: %zu", strlen(result));
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -238,7 +238,7 @@ Test(neon_color_renderers, test_unified_dispatcher_truecolor) {
 
   log_debug("Dispatcher truecolor result length: %zu", strlen(result));
 
-  free(result);
+  SAFE_FREE(result);
   cleanup_image(image);
 }
 
@@ -273,9 +273,9 @@ Test(neon_color_renderers, test_direct_comparison) {
   cr_assert_not_null(result_true, "Truecolor should return non-NULL");
 
   if (result_256)
-    free(result_256);
+    SAFE_FREE(result_256);
   if (result_true)
-    free(result_true);
+    SAFE_FREE(result_true);
   cleanup_image(image);
 }
 
@@ -305,9 +305,9 @@ Test(neon_color_renderers, test_utf8_characters) {
   cr_assert_not_null(result_true, "Truecolor renderer should handle UTF-8 characters");
 
   if (result_256)
-    free(result_256);
+    SAFE_FREE(result_256);
   if (result_true)
-    free(result_true);
+    SAFE_FREE(result_true);
   cleanup_image(image);
 }
 

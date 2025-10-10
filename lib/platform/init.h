@@ -134,7 +134,7 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 // ============================================================================
 
 // Call this once at program startup
-int platform_init(void);
+asciichat_error_t platform_init(void);
 
 // Call this at program exit
 void platform_cleanup(void);

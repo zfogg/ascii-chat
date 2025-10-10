@@ -678,6 +678,13 @@ if(USE_MIMALLOC)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${_SAVED_LIBRARY_OUTPUT_DIR})
 
+    # Fix C23 compatibility issues with mimalloc
+    if(TARGET mimalloc-static)
+        # Add errno.h include for C23 compatibility
+        target_compile_options(mimalloc-static PRIVATE -include errno.h)
+        message(STATUS "Added errno.h include for mimalloc C23 compatibility")
+    endif()
+
     # For musl builds, set REALGCC environment for mimalloc build
     if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
         set_target_properties(mimalloc-static PROPERTIES
@@ -1392,13 +1399,17 @@ set(UTIL_SRCS
 # =============================================================================
 set(CRYPTO_SRCS
     lib/crypto/crypto.c
-    lib/crypto/keys.c
+    lib/crypto/keys/keys.c
     lib/crypto/known_hosts.c
     lib/crypto/handshake.c
     lib/crypto/http_client.c
     lib/crypto/pem_utils.c
     lib/crypto/gpg.c
     lib/crypto/ssh_agent.c
+    lib/crypto/keys/ssh_keys.c
+    lib/crypto/keys/gpg_keys.c
+    lib/crypto/keys/https_keys.c
+    lib/crypto/keys/validation.c
 )
 
 # =============================================================================
@@ -1522,7 +1533,9 @@ set(AUDIO_SRCS
 # Module 7: Network (changes weekly)
 # =============================================================================
 set(NETWORK_SRCS
-    lib/network.c
+    lib/network/network.c
+    lib/network/packet.c
+    lib/network/av.c
     lib/packet_queue.c
     lib/buffer_pool.c
     lib/hashtable.c
@@ -1535,6 +1548,7 @@ set(NETWORK_SRCS
 # =============================================================================
 set(CORE_SRCS
     lib/common.c
+    lib/asciichat_errno.c
     lib/logging.c
     lib/options.c
     lib/lock_debug.c
@@ -1825,6 +1839,23 @@ else()
 endif()
 
 # Print helpful message about optional targets
+# =============================================================================
+# Library Alias for Tests
+# =============================================================================
+# Create an alias that links all modules for test compatibility
+# This allows tests to link against ascii-chat-lib instead of individual modules
+add_library(ascii-chat-lib INTERFACE)
+target_link_libraries(ascii-chat-lib INTERFACE
+    ascii-chat-util
+    ascii-chat-platform
+    ascii-chat-crypto
+    ascii-chat-simd
+    ascii-chat-video
+    ascii-chat-audio
+    ascii-chat-network
+    ascii-chat-core
+)
+
 message(STATUS "")
 message(STATUS "=== Modular Library Architecture ===")
 message(STATUS "Individual modules: ascii-chat-util, ascii-chat-platform, ascii-chat-crypto,")

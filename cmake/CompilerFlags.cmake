@@ -8,6 +8,12 @@
 #   USE_MIMALLOC_ARG - Whether mimalloc is enabled
 #   USE_MUSL_ARG - Whether musl libc is enabled
 function(configure_debug_memory USE_MIMALLOC_ARG USE_MUSL_ARG)
+    # Don't add DEBUG_MEMORY if explicitly disabled
+    if(DEFINED DEBUG_MEMORY AND NOT DEBUG_MEMORY)
+        message(STATUS "DEBUG_MEMORY disabled by user")
+        return()
+    endif()
+    
     # Don't add DEBUG_MEMORY if mimalloc is enabled - mimalloc provides its own memory tracking
     # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
     if(NOT USE_MIMALLOC_ARG AND NOT USE_MUSL_ARG)

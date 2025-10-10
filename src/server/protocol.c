@@ -120,10 +120,8 @@
 
 #include "protocol.h"
 #include "client.h"
+#include "crypto.h"
 #include "common.h"
-#include "network.h"
-#include "packet_queue.h"
-#include "ringbuffer.h"
 #include "video_frame.h"
 #include "audio.h"
 #include "palette.h"
@@ -183,29 +181,17 @@ extern atomic_bool g_should_exit;
  */
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
-  // Handle client join request
   if (len == sizeof(client_info_packet_t)) {
     const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
-    // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
-    // This prevents deadlocks and ensures thread safety for client state modifications
-    rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&client->client_state_mutex);
-
     SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+
     client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
     client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
     client->wants_stretch = (join_info->capabilities & CLIENT_CAP_STRETCH) != 0;
 
-    mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
-
     log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", atomic_load(&client->client_id),
              client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
-
-    // REMOVED: Don't send CLEAR_CONSOLE to other clients when a new client joins
-    // This was causing flickering for existing clients
-    // The grid layout will update naturally with the next frame
   }
 }
 
@@ -246,33 +232,22 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
-  log_info("DEBUG_STREAM_START: Received STREAM_START packet from client %u", atomic_load(&client->client_id));
 
   // Handle stream start request
   if (len == sizeof(uint32_t)) {
     uint32_t stream_type = ntohl(*(uint32_t *)data);
-    log_info("DEBUG_STREAM_START: stream_type=0x%X (VIDEO=%d, AUDIO=%d)", stream_type,
-             (stream_type & STREAM_TYPE_VIDEO) ? 1 : 0, (stream_type & STREAM_TYPE_AUDIO) ? 1 : 0);
 
-    // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
-    // This prevents deadlocks and ensures thread safety for client state modifications
-    rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&client->client_state_mutex);
+    // FIXED: No locks needed - use atomic operations for thread-safe state updates
+    // The is_sending_video and is_sending_audio flags are atomic, so no mutex is required
 
     if (stream_type & STREAM_TYPE_VIDEO) {
       // Don't set is_sending_video=true here - wait for first IMAGE_FRAME
       // This prevents the race condition where server tries to generate frames
       // before client has sent any video data
-      log_info("DEBUG_STREAM_START: Client %u announced intention to send video (waiting for first frame)",
-               atomic_load(&client->client_id));
     }
     if (stream_type & STREAM_TYPE_AUDIO) {
       atomic_store(&client->is_sending_audio, true);
-      log_info("DEBUG_STREAM_START: Set is_sending_audio=true for client %u", atomic_load(&client->client_id));
     }
-
-    mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Log after releasing locks to avoid holding locks during I/O
     if (stream_type & STREAM_TYPE_VIDEO) {
@@ -281,8 +256,6 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
     if (stream_type & STREAM_TYPE_AUDIO) {
       log_info("Client %u started audio stream", atomic_load(&client->client_id));
     }
-  } else {
-    log_error("DEBUG_STREAM_START: Invalid packet length %zu (expected %zu)", len, sizeof(uint32_t));
   }
 }
 
@@ -434,121 +407,116 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     }
   }
 
-  if (data && len > sizeof(uint32_t) * 2) {
-    // Parse image dimensions
-    uint32_t img_width = ntohl(*(uint32_t *)data);
-    uint32_t img_height = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t)));
+  // Parse image dimensions
+  uint32_t img_width = ntohl(*(uint32_t *)data);
+  uint32_t img_height = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t)));
 
-    // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
-    size_t rgb_size = (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
-    size_t old_format_size = sizeof(uint32_t) * 2 + rgb_size;
-    bool is_new_format = (len != old_format_size) && (len > sizeof(uint32_t) * 4);
+  // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
+  size_t rgb_size = (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+  size_t old_format_size = sizeof(uint32_t) * 2 + rgb_size;
+  bool is_new_format = (len != old_format_size) && (len > sizeof(uint32_t) * 4);
 
-    void *rgb_data = NULL;
-    size_t rgb_data_size = 0;
-    bool needs_free = false;
+  void *rgb_data = NULL;
+  size_t rgb_data_size = 0;
+  bool needs_free = false;
 
-    if (is_new_format) {
-      // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
-      if (len < sizeof(uint32_t) * 4) {
-        log_error("Invalid new format image packet from client %u: too small for headers",
-                  atomic_load(&client->client_id));
+  if (is_new_format) {
+    // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
+    if (len < sizeof(uint32_t) * 4) {
+      log_error("Invalid new format image packet from client %u: too small for headers",
+                atomic_load(&client->client_id));
+      return;
+    }
+
+    uint32_t compressed_flag = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t) * 2));
+    uint32_t data_size = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t) * 3));
+    void *frame_data = (char *)data + sizeof(uint32_t) * 4;
+
+    size_t expected_total = sizeof(uint32_t) * 4 + data_size;
+    if (len != expected_total) {
+      log_error("Invalid new format image packet from client %u: expected %zu bytes, got %zu",
+                atomic_load(&client->client_id), expected_total, len);
+      return;
+    }
+
+    if (compressed_flag) {
+      // Decompress the data
+      rgb_data = SAFE_MALLOC(rgb_size, void *);
+      if (!rgb_data) {
+        log_error("Failed to allocate decompression buffer for client %u", atomic_load(&client->client_id));
         return;
       }
 
-      uint32_t compressed_flag = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t) * 2));
-      uint32_t data_size = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t) * 3));
-      void *frame_data = (char *)data + sizeof(uint32_t) * 4;
-
-      size_t expected_total = sizeof(uint32_t) * 4 + data_size;
-      if (len != expected_total) {
-        log_error("Invalid new format image packet from client %u: expected %zu bytes, got %zu",
-                  atomic_load(&client->client_id), expected_total, len);
+      if (decompress_data(frame_data, data_size, rgb_data, rgb_size) != 0) {
+        log_error("Failed to decompress frame data from client %u", atomic_load(&client->client_id));
+        SAFE_FREE(rgb_data);
         return;
       }
 
-      if (compressed_flag) {
-        // Decompress the data
-        rgb_data = malloc(rgb_size);
-        if (!rgb_data) {
-          log_error("Failed to allocate decompression buffer for client %u", atomic_load(&client->client_id));
-          return;
-        }
-
-        if (decompress_data(frame_data, data_size, rgb_data, rgb_size) != 0) {
-          log_error("Failed to decompress frame data from client %u", atomic_load(&client->client_id));
-          free(rgb_data);
-          return;
-        }
-
-        rgb_data_size = rgb_size;
-        needs_free = true;
-      } else {
-        // Uncompressed data
-        rgb_data = frame_data;
-        rgb_data_size = data_size;
-        if (rgb_data_size != rgb_size) {
-          log_error("Invalid uncompressed data size from client %u: expected %zu, got %zu",
-                    atomic_load(&client->client_id), rgb_size, rgb_data_size);
-          return;
-        }
-      }
-    } else {
-      // Old format: [width:4][height:4][rgb_data:w*h*3]
-      if (len != old_format_size) {
-        log_error("Invalid old format image packet from client %u: expected %zu bytes, got %zu",
-                  atomic_load(&client->client_id), old_format_size, len);
-        return;
-      }
-      rgb_data = (char *)data + sizeof(uint32_t) * 2;
       rgb_data_size = rgb_size;
-    }
-
-    // Use the new double-buffered video frame API
-    if (client->incoming_video_buffer) {
-      // Get the write buffer
-      video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
-      if (frame && frame->data) {
-        // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
-        size_t old_packet_size = sizeof(uint32_t) * 2 + rgb_data_size;
-        if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
-          uint32_t width_net = htonl(img_width);
-          uint32_t height_net = htonl(img_height);
-
-          // Pack in old format for internal consistency
-          memcpy(frame->data, &width_net, sizeof(uint32_t));
-          memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
-          memcpy((char *)frame->data + sizeof(uint32_t) * 2, rgb_data, rgb_data_size);
-
-          frame->size = old_packet_size;
-          frame->width = img_width;
-          frame->height = img_height;
-          frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
-          frame->sequence_number = ++client->frames_received;
-
-          // Commit the frame (atomic swap)
-          video_frame_commit(client->incoming_video_buffer);
-        } else {
-          log_warn("Frame from client %u too large (%zu bytes)", atomic_load(&client->client_id), old_packet_size);
-        }
-      } else {
-        log_warn("Failed to get write buffer for client %u", atomic_load(&client->client_id));
-      }
+      needs_free = true;
     } else {
-      // During shutdown, this is expected - don't spam error logs
-      if (!atomic_load(&g_should_exit)) {
-        log_error("Client %u has no incoming video buffer!", atomic_load(&client->client_id));
-      } else {
-        log_debug("Client %u: ignoring video packet during shutdown", atomic_load(&client->client_id));
+      // Uncompressed data
+      rgb_data = frame_data;
+      rgb_data_size = data_size;
+      if (rgb_data_size != rgb_size) {
+        log_error("Invalid uncompressed data size from client %u: expected %zu, got %zu",
+                  atomic_load(&client->client_id), rgb_size, rgb_data_size);
+        return;
       }
-    }
-
-    // Clean up decompressed data if allocated
-    if (needs_free && rgb_data) {
-      free(rgb_data);
     }
   } else {
-    log_debug("Ignoring video packet: len=%zu (too small)", len);
+    // Old format: [width:4][height:4][rgb_data:w*h*3]
+    if (len != old_format_size) {
+      log_error("Invalid old format image packet from client %u: expected %zu bytes, got %zu",
+                atomic_load(&client->client_id), old_format_size, len);
+      return;
+    }
+    rgb_data = (char *)data + sizeof(uint32_t) * 2;
+    rgb_data_size = rgb_size;
+  }
+
+  // Use the new double-buffered video frame API
+  if (client->incoming_video_buffer) {
+    // Get the write buffer
+    video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+    if (frame && frame->data) {
+      // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
+      size_t old_packet_size = sizeof(uint32_t) * 2 + rgb_data_size;
+      if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
+        uint32_t width_net = htonl(img_width);
+        uint32_t height_net = htonl(img_height);
+
+        // Pack in old format for internal consistency
+        memcpy(frame->data, &width_net, sizeof(uint32_t));
+        memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+        memcpy((char *)frame->data + sizeof(uint32_t) * 2, rgb_data, rgb_data_size);
+
+        frame->size = old_packet_size;
+        frame->width = img_width;
+        frame->height = img_height;
+        frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+        frame->sequence_number = ++client->frames_received;
+
+        video_frame_commit(client->incoming_video_buffer);
+      } else {
+        log_warn("Frame from client %u too large (%zu bytes)", atomic_load(&client->client_id), old_packet_size);
+      }
+    } else {
+      log_warn("Failed to get write buffer for client %u", atomic_load(&client->client_id));
+    }
+  } else {
+    // During shutdown, this is expected - don't spam error logs
+    if (!atomic_load(&g_should_exit)) {
+      log_error("Client %u has no incoming video buffer!", atomic_load(&client->client_id));
+    } else {
+      log_debug("Client %u: ignoring video packet during shutdown", atomic_load(&client->client_id));
+    }
+  }
+
+  // Clean up decompressed data if allocated
+  if (needs_free && rgb_data) {
+    SAFE_FREE(rgb_data);
   }
 }
 
@@ -832,8 +800,10 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
                   : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
              client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
 
+    // Release locks acquired at function start
     mutex_unlock(&client->client_state_mutex);
     rwlock_rdunlock(&g_client_manager_rwlock);
+
   } else {
     log_error("Invalid client capabilities packet size: %zu, expected %zu", len,
               sizeof(terminal_capabilities_packet_t));
@@ -1053,9 +1023,18 @@ int send_server_state_to_client(client_info_t *client) {
   net_state.active_client_count = htonl(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  // TODO: Send server state directly via socket instead of queueing
-  // For now, return success
-  (void)net_state; // Suppress unused variable warning
+  // Send server state directly via socket
+  const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
+  int result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                  (crypto_context_t *)crypto_ctx);
+
+  if (result != 0) {
+    log_error("Failed to send server state to client %u", client->client_id);
+    return -1;
+  }
+
+  log_debug("Sent server state to client %u: %u connected, %u active", client->client_id, state.connected_client_count,
+            state.active_client_count);
   return 0;
 }
 

@@ -64,7 +64,7 @@ Theory((int width, int height), ascii, image_size_property) {
   cr_assert_not_null(result, "ascii_convert should not return NULL for %dx%d image", width, height);
   cr_assert_gt(strlen(result), 0, "ascii_convert should not return empty string for %dx%d image", width, height);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -88,7 +88,7 @@ Test(ascii, ascii_convert_basic) {
   cr_assert_not_null(result, "ascii_convert returned NULL for valid 4x4 image");
   cr_assert_gt(strlen(result), 0, "ascii_convert returned empty string");
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -113,7 +113,7 @@ Test(ascii, ascii_convert_color) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -170,7 +170,7 @@ Test(ascii, ascii_convert_zero_dimensions) {
 
   char *result = ascii_convert(img, 0, 0, false, false, false, palette, luminance_palette);
   if (result) {
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(img);
@@ -195,15 +195,15 @@ Test(ascii, ascii_convert_different_sizes) {
   // Test different output sizes
   char *result1 = ascii_convert(img, 4, 4, false, false, false, palette, luminance_palette);
   cr_assert_not_null(result1);
-  free(result1);
+  SAFE_FREE(result1);
 
   char *result2 = ascii_convert(img, 8, 8, false, false, false, palette, luminance_palette);
   cr_assert_not_null(result2);
-  free(result2);
+  SAFE_FREE(result2);
 
   char *result3 = ascii_convert(img, 2, 2, false, false, false, palette, luminance_palette);
   cr_assert_not_null(result3);
-  free(result3);
+  SAFE_FREE(result3);
 
   image_destroy(img);
 }
@@ -228,7 +228,7 @@ Test(ascii, ascii_convert_with_aspect_ratio) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -252,7 +252,7 @@ Test(ascii, ascii_convert_with_stretch) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -291,7 +291,7 @@ Test(ascii, ascii_convert_with_capabilities_basic) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -365,7 +365,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
 
   char *result1 = ascii_convert_with_capabilities(img, 4, 4, &caps1, false, false, palette, luminance_palette);
   cr_assert_not_null(result1);
-  free(result1);
+  SAFE_FREE(result1);
 
   terminal_capabilities_t caps2 = {.capabilities = TERM_CAP_COLOR_16 | TERM_CAP_UTF8,
                                    .color_level = TERM_COLOR_16,
@@ -380,7 +380,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
 
   char *result2 = ascii_convert_with_capabilities(img, 4, 4, &caps2, false, false, palette, luminance_palette);
   cr_assert_not_null(result2);
-  free(result2);
+  SAFE_FREE(result2);
 
   terminal_capabilities_t caps3 = {.capabilities = TERM_CAP_COLOR_TRUE | TERM_CAP_UTF8,
                                    .color_level = TERM_COLOR_TRUECOLOR,
@@ -395,7 +395,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
 
   char *result3 = ascii_convert_with_capabilities(img, 4, 4, &caps3, false, false, palette, luminance_palette);
   cr_assert_not_null(result3);
-  free(result3);
+  SAFE_FREE(result3);
 
   image_destroy(img);
 }
@@ -424,7 +424,7 @@ Theory((int pad_width), ascii, width_padding_property) {
     cr_assert_gt(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_width=%d", pad_width);
   }
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 // Theory: Height padding property - padding should preserve content and add correct spacing
@@ -448,7 +448,7 @@ Theory((int pad_height), ascii, height_padding_property) {
                  pad_height);
   }
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_width_basic) {
@@ -458,7 +458,7 @@ Test(ascii, ascii_pad_frame_width_basic) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), strlen(frame));
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_width_zero_pad) {
@@ -469,7 +469,7 @@ Test(ascii, ascii_pad_frame_width_zero_pad) {
   cr_assert_eq(strlen(result), strlen(frame));
   cr_assert_str_eq(result, frame);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_width_null_frame) {
@@ -484,7 +484,7 @@ Test(ascii, ascii_pad_frame_width_empty_frame) {
   cr_assert_not_null(result);
   cr_assert_eq(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_width_single_line) {
@@ -494,7 +494,7 @@ Test(ascii, ascii_pad_frame_width_single_line) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), strlen(frame));
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_height_basic) {
@@ -504,7 +504,7 @@ Test(ascii, ascii_pad_frame_height_basic) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), strlen(frame));
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_height_zero_pad) {
@@ -515,7 +515,7 @@ Test(ascii, ascii_pad_frame_height_zero_pad) {
   cr_assert_eq(strlen(result), strlen(frame));
   cr_assert_str_eq(result, frame);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_height_null_frame) {
@@ -530,7 +530,7 @@ Test(ascii, ascii_pad_frame_height_empty_frame) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_pad_frame_height_single_line) {
@@ -540,7 +540,7 @@ Test(ascii, ascii_pad_frame_height_single_line) {
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), strlen(frame));
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 /* ============================================================================
@@ -561,7 +561,7 @@ Test(ascii, ascii_create_grid_basic) {
   cr_assert_gt(out_size, 0);
   cr_assert_gt(strlen(result), 0);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_create_grid_single_source) {
@@ -575,7 +575,7 @@ Test(ascii, ascii_create_grid_single_source) {
   cr_assert_not_null(result);
   cr_assert_gt(out_size, 0);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_create_grid_null_sources) {
@@ -630,7 +630,7 @@ Test(ascii, ascii_create_grid_empty_frames) {
   cr_assert_not_null(result);
   cr_assert_eq(out_size, 0);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 Test(ascii, ascii_create_grid_null_frame_data) {
@@ -648,7 +648,7 @@ Test(ascii, ascii_create_grid_null_frame_data) {
   // This is expected behavior - the function handles NULL gracefully
   cr_assert(out_size >= 0);
 
-  free(result);
+  SAFE_FREE(result);
 }
 
 /* ============================================================================
@@ -657,20 +657,20 @@ Test(ascii, ascii_create_grid_null_frame_data) {
 
 Test(ascii, ascii_write_basic) {
   const char *data = "Hello World\n";
-  asciichat_error_status_t result = ascii_write(data);
+  asciichat_error_t result = ascii_write(data);
 
   // Should succeed or fail gracefully
   cr_assert(result == ASCIICHAT_OK || result < 0);
 }
 
 Test(ascii, ascii_write_null_data) {
-  asciichat_error_status_t result = ascii_write(NULL);
+  asciichat_error_t result = ascii_write(NULL);
   cr_assert_lt(result, 0);
 }
 
 Test(ascii, ascii_write_empty_data) {
   const char *data = "";
-  asciichat_error_status_t result = ascii_write(data);
+  asciichat_error_t result = ascii_write(data);
 
   // Should succeed or fail gracefully
   cr_assert(result == ASCIICHAT_OK || result < 0);
@@ -689,7 +689,7 @@ Test(ascii, ascii_read_init_basic) {
     opt_test_pattern = true;
   }
 
-  asciichat_error_status_t result = ascii_read_init(0);
+  asciichat_error_t result = ascii_read_init(0);
 
   // Should succeed with test pattern or real webcam
   cr_assert_eq(result, ASCIICHAT_OK, "ascii_read_init should succeed with test pattern or webcam");
@@ -705,7 +705,7 @@ Test(ascii, ascii_read_init_basic) {
 Test(ascii, ascii_write_init_basic) {
   // Test with stdout
   bool reset_terminal = getenv("CI") != NULL;
-  asciichat_error_status_t result = ascii_write_init(STDOUT_FILENO, reset_terminal);
+  asciichat_error_t result = ascii_write_init(STDOUT_FILENO, reset_terminal);
 
   // Should succeed or fail gracefully
   cr_assert(result == ASCIICHAT_OK || result < 0);
@@ -715,7 +715,7 @@ Test(ascii, ascii_write_init_basic) {
 
 Test(ascii, ascii_write_init_invalid_fd) {
   bool reset_terminal = getenv("CI") != NULL;
-  asciichat_error_status_t result = ascii_write_init(-1, reset_terminal);
+  asciichat_error_t result = ascii_write_init(-1, reset_terminal);
 
   // Should fail with invalid file descriptor
   cr_assert_lt(result, 0);
@@ -774,12 +774,12 @@ Test(ascii, ascii_operations_with_extreme_values) {
   // Test with extreme dimensions
   char *result = ascii_convert(img, INT_MAX, INT_MAX, false, false, false, palette, luminance_palette);
   if (result) {
-    free(result);
+    SAFE_FREE(result);
   }
 
   result = ascii_convert(img, 0, 0, false, false, false, palette, luminance_palette);
   if (result) {
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(img);
@@ -832,7 +832,7 @@ ParameterizedTest(ascii_palette_test_case_t *tc, ascii, palette_tests) {
   if (tc->should_succeed) {
     cr_assert_not_null(result, "ASCII conversion should succeed for %s", tc->description);
     cr_assert_gt(strlen(result), 0, "Result should not be empty for %s", tc->description);
-    free(result);
+    SAFE_FREE(result);
   } else {
     cr_assert_null(result, "ASCII conversion should fail for %s", tc->description);
   }
@@ -899,7 +899,7 @@ ParameterizedTest(ascii_size_test_case_t *tc, ascii, size_tests) {
   }
   cr_assert_eq(line_count, expected_lines, "Result should have correct number of lines for %s", tc->description);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -942,7 +942,7 @@ ParameterizedTest(ascii_option_test_case_t *tc, ascii, option_tests) {
   cr_assert_not_null(result, "ASCII conversion should succeed for %s", tc->description);
   cr_assert_gt(strlen(result), 0, "Result should not be empty for %s", tc->description);
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(img);
 }
 
@@ -981,7 +981,7 @@ ParameterizedTest(ascii_stress_test_case_t *tc, ascii, stress_tests) {
     cr_assert_not_null(result, "ASCII conversion should succeed for iteration %d in %s", i, tc->description);
     cr_assert_gt(strlen(result), 0, "Result should not be empty for iteration %d in %s", i, tc->description);
 
-    free(result);
+    SAFE_FREE(result);
     image_destroy(img);
   }
 }

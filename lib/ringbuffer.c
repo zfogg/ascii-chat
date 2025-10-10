@@ -1,5 +1,6 @@
 #include "ringbuffer.h"
 #include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -37,26 +38,18 @@ static inline size_t next_power_of_two(size_t n) {
 
 ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   if (element_size == 0 || capacity == 0) {
-    log_error("Invalid ring buffer parameters: element_size=%zu, capacity=%zu", element_size, capacity);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ring buffer parameters: element_size=%zu, capacity=%zu",
+                  element_size, capacity);
     return NULL;
   }
 
   ringbuffer_t *rb;
-  SAFE_CALLOC(rb, 1, sizeof(ringbuffer_t), ringbuffer_t *);
-  if (!rb) {
-    log_error("Failed to allocate ring buffer structure");
-    return NULL;
-  }
+  rb = SAFE_CALLOC(1, sizeof(ringbuffer_t), ringbuffer_t *);
 
   /* Round capacity up to power of 2 for optimization */
   size_t actual_capacity = next_power_of_two(capacity);
 
-  SAFE_CALLOC(rb->buffer, actual_capacity, element_size, char *);
-  if (!rb->buffer) {
-    log_error("Failed to allocate ring buffer memory: %zu bytes", actual_capacity * element_size);
-    SAFE_FREE(rb);
-    return NULL;
-  }
+  rb->buffer = SAFE_CALLOC(actual_capacity, element_size, char *);
 
   rb->element_size = element_size;
   rb->capacity = actual_capacity;
@@ -65,8 +58,6 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   atomic_init(&rb->head, 0);
   atomic_init(&rb->tail, 0);
   atomic_init(&rb->size, 0);
-
-  log_debug("Created ring buffer: capacity=%zu, element_size=%zu", actual_capacity, element_size);
 
   return rb;
 }
@@ -156,7 +147,6 @@ void ringbuffer_clear(ringbuffer_t *rb) {
     atomic_store(&rb->head, 0);
     atomic_store(&rb->tail, 0);
     atomic_store(&rb->size, 0);
-    log_debug("Cleared ring buffer");
   }
 }
 
@@ -167,28 +157,24 @@ void ringbuffer_clear(ringbuffer_t *rb) {
 
 framebuffer_t *framebuffer_create(size_t capacity) {
   if (capacity == 0) {
-    log_error("Invalid frame buffer parameters");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid frame buffer parameters");
     return NULL;
   }
 
   framebuffer_t *fb;
-  SAFE_CALLOC(fb, 1, sizeof(framebuffer_t), framebuffer_t *);
-  if (!fb) {
-    log_error("Failed to allocate frame buffer structure");
-    return NULL;
-  }
+  fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
 
   // Initialize mutex for thread-safe access
   if (mutex_init(&fb->mutex) != 0) {
-    log_error("Failed to initialize framebuffer mutex");
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize framebuffer mutex");
     SAFE_FREE(fb);
     return NULL;
   }
 
   // Create ringbuffer to store frame_t structs
   fb->rb = ringbuffer_create(sizeof(frame_t), capacity);
-
   if (!fb->rb) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate frame buffer");
     mutex_destroy(&fb->mutex);
     SAFE_FREE(fb);
     return NULL;
@@ -199,20 +185,16 @@ framebuffer_t *framebuffer_create(size_t capacity) {
 
 framebuffer_t *framebuffer_create_multi(size_t capacity) {
   if (capacity == 0) {
-    log_error("Invalid capacity: %zu", capacity);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capacity: %zu", capacity);
     return NULL;
   }
 
   framebuffer_t *fb;
-  SAFE_CALLOC(fb, 1, sizeof(framebuffer_t), framebuffer_t *);
-  if (!fb) {
-    log_error("Failed to allocate frame buffer structure");
-    return NULL;
-  }
+  fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
 
   // Initialize mutex for thread-safe access
   if (mutex_init(&fb->mutex) != 0) {
-    log_error("Failed to initialize framebuffer mutex");
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize framebuffer mutex");
     SAFE_FREE(fb);
     return NULL;
   }
@@ -233,20 +215,14 @@ void framebuffer_destroy(framebuffer_t *fb) {
   if (!fb)
     return;
 
-  log_debug("Destroying framebuffer %p", fb);
-
   // Add magic number check to detect double-free using rb pointer
   if (fb->rb == (ringbuffer_t *)0xDEADBEEF) {
-    log_error("DOUBLE-FREE DETECTED: framebuffer %p already destroyed!", fb);
+    SET_ERRNO(ERROR_INVALID_STATE, "DOUBLE-FREE DETECTED: framebuffer %p already destroyed!", fb);
     return;
   }
 
-  // Use framebuffer_clear to properly clean up all frames
   framebuffer_clear(fb);
-
   ringbuffer_destroy(fb->rb);
-
-  // Destroy the mutex
   mutex_destroy(&fb->mutex);
 
   // Mark as destroyed before freeing
@@ -260,7 +236,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
 
   // Validate frame size to prevent overflow
   if (frame_size > 10 * 1024 * 1024) { // 10MB max for ASCII frames
-    log_error("Rejecting oversized frame: %zu bytes", frame_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Rejecting oversized frame: %zu bytes", frame_size);
     return false;
   }
 
@@ -273,7 +249,8 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
         old_frame.magic = FRAME_FREED;
         SAFE_FREE(old_frame.data);
       } else if (old_frame.magic != FRAME_MAGIC) {
-        log_error("CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
+        SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid old frame magic 0x%x when dropping",
+                      old_frame.magic);
       }
     }
   }
@@ -281,7 +258,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   // Allocate a copy of the frame data using buffer pool for better performance
   char *frame_copy = (char *)buffer_pool_alloc(frame_size + 1);
   if (!frame_copy) {
-    log_error("Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
     return false;
   }
 
@@ -296,7 +273,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   if (!result) {
     // If we still couldn't write to ringbuffer, return the buffer to pool
     buffer_pool_free(frame_copy, frame_size + 1);
-    log_error("Failed to write frame to ringbuffer even after dropping oldest");
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to write frame to ringbuffer even after dropping oldest");
   }
 
   return result;
@@ -317,21 +294,22 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
   // Validate the frame we just read
   if (result) {
     if (frame->magic != FRAME_MAGIC) {
-      log_error("CORRUPTION: Invalid frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid frame magic 0x%x (expected 0x%x)", frame->magic,
+                    FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
       return false;
     }
 
     if (frame->magic == FRAME_FREED) {
-      log_error("CORRUPTION: Reading already-freed frame!");
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Reading already-freed frame!");
       frame->data = NULL;
       frame->size = 0;
       return false;
     }
 
     if (frame->size > 10 * 1024 * 1024) {
-      log_error("CORRUPTION: Frame size too large: %zu", frame->size);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Frame size too large: %zu", frame->size);
       SAFE_FREE(frame->data);
       frame->data = NULL;
       frame->size = 0;
@@ -364,7 +342,8 @@ void framebuffer_clear(framebuffer_t *fb) {
         multi_frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
         buffer_pool_free(multi_frame.data, multi_frame.size);
       } else if (multi_frame.magic != FRAME_MAGIC && multi_frame.magic != 0) {
-        log_error("CORRUPTION: Invalid multi-source frame magic 0x%x during clear", multi_frame.magic);
+        SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x during clear",
+                      multi_frame.magic);
       }
     }
   } else if (fb->rb->element_size == sizeof(frame_t)) {
@@ -375,11 +354,12 @@ void framebuffer_clear(framebuffer_t *fb) {
         frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
         buffer_pool_free(frame.data, frame.size);
       } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
-        log_error("CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
+        SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
       }
     }
   } else {
-    log_error("Unknown frame buffer type with element size %zu", fb->rb->element_size);
+    SET_ERRNO(ERROR_INVALID_STATE, "Unknown frame buffer type with element size %zu",
+                  fb->rb->element_size);
   }
 
   // Clear the ringbuffer indices
@@ -402,7 +382,8 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   // Allocate memory for frame data using buffer pool for better performance
   char *data_copy = (char *)buffer_pool_alloc(frame_size);
   if (!data_copy) {
-    log_error("Failed to allocate %zu bytes from buffer pool for multi-source frame", frame_size);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for multi-source frame",
+                  frame_size);
     return false;
   }
 
@@ -445,7 +426,8 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
   if (result) {
     // Validate frame magic
     if (frame->magic != FRAME_MAGIC) {
-      log_error("CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)",
+                    frame->magic, FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
       frame->source_client_id = 0;
@@ -455,7 +437,8 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 
     // Additional validation
     if (frame->size == 0 || !frame->data) {
-      log_error("CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)", frame->size, frame->data);
+      SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)",
+                    frame->size, frame->data);
       mutex_unlock(&fb->mutex);
       return false;
     }
@@ -479,7 +462,9 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
   if (result) {
     // Validate frame magic
     if (frame->magic != FRAME_MAGIC) {
-      log_error("CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek", frame->magic, FRAME_MAGIC);
+      SET_ERRNO(ERROR_INVALID_STATE,
+                    "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek", frame->magic,
+                    FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
       frame->source_client_id = 0;
@@ -489,7 +474,9 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
 
     // Additional validation
     if (frame->size == 0 || !frame->data) {
-      log_error("CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek", frame->size, frame->data);
+      SET_ERRNO(ERROR_INVALID_STATE,
+                    "CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek", frame->size,
+                    frame->data);
       mutex_unlock(&fb->mutex);
       return false;
     }
@@ -498,9 +485,9 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
     // The original data pointer will remain valid in the ring buffer
     // Caller is responsible for freeing this copy
     char *data_copy;
-    SAFE_MALLOC(data_copy, frame->size, char *);
+    data_copy = SAFE_MALLOC(frame->size, char *);
     if (!data_copy) {
-      log_error("Failed to allocate memory for frame data copy in peek");
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for frame data copy in peek");
       mutex_unlock(&fb->mutex);
       return false;
     }

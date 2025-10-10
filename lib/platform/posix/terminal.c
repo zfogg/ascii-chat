@@ -13,6 +13,8 @@
 #include "../internal.h"
 #include "../../options.h"
 #include "../../common.h"
+#include "../../asciichat_errno.h"
+#include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -32,7 +34,7 @@
  * @param size Pointer to terminal_size_t structure to fill
  * @return 0 on success, -1 on failure
  */
-int terminal_get_size(terminal_size_t *size) {
+asciichat_error_t terminal_get_size(terminal_size_t *size) {
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
     size->rows = ws.ws_row;
@@ -55,7 +57,7 @@ const char *get_tty_path(void) {
  * @param enable True to enable raw mode, false to restore normal mode
  * @return 0 on success, -1 on failure
  */
-int terminal_set_raw_mode(bool enable) {
+asciichat_error_t terminal_set_raw_mode(bool enable) {
   static struct termios orig_termios;
   static bool saved = false;
 
@@ -82,10 +84,10 @@ int terminal_set_raw_mode(bool enable) {
  * @param enable True to enable echo, false to disable
  * @return 0 on success, -1 on failure
  */
-int terminal_set_echo(bool enable) {
+asciichat_error_t terminal_set_echo(bool enable) {
   struct termios tty;
   if (tcgetattr(STDIN_FILENO, &tty) != 0)
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal attributes");
 
   if (enable) {
     tty.c_lflag |= ECHO;
@@ -145,7 +147,7 @@ bool terminal_supports_utf8(void) {
  * @brief Clear the terminal screen
  * @return 0 on success, non-zero on failure
  */
-int terminal_clear_screen(void) {
+asciichat_error_t terminal_clear_screen(void) {
   return system("clear");
 }
 
@@ -155,7 +157,7 @@ int terminal_clear_screen(void) {
  * @param col Column position (0-based)
  * @return 0 on success, -1 on failure
  */
-int terminal_move_cursor(int row, int col) {
+asciichat_error_t terminal_move_cursor(int row, int col) {
   printf("\033[%d;%dH", row + 1, col + 1);
   (void)fflush(stdout);
   return 0;
@@ -175,7 +177,7 @@ void terminal_enable_ansi(void) {
  * @param fd File descriptor for TTY output
  * @return 0 on success, -1 on failure
  */
-int terminal_flush(int fd) {
+asciichat_error_t terminal_flush(int fd) {
   return fsync(fd);
 }
 
@@ -185,14 +187,14 @@ int terminal_flush(int fd) {
  * @param hide true to hide cursor, false to show
  * @return 0 on success, -1 on failure
  */
-int terminal_hide_cursor(int fd, bool hide) {
+asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
   if (hide) {
-    if (dprintf(fd, "\033[?25l") < 0) {
-      return -1;
+      if (dprintf(fd, "\033[?25l") < 0) {
+        return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to hide cursor");
     }
   } else {
     if (dprintf(fd, "\033[?25h") < 0) {
-      return -1;
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to show cursor");
     }
   }
   return fsync(fd);
@@ -203,9 +205,9 @@ int terminal_hide_cursor(int fd, bool hide) {
  * @param fd File descriptor for TTY output
  * @return 0 on success, -1 on failure
  */
-int terminal_cursor_home(int fd) {
+asciichat_error_t terminal_cursor_home(int fd) {
   if (dprintf(fd, "\033[H") < 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor to home");
   }
   return fsync(fd);
 }
@@ -215,9 +217,9 @@ int terminal_cursor_home(int fd) {
  * @param fd File descriptor for TTY output
  * @return 0 on success, -1 on failure
  */
-int terminal_clear_scrollback(int fd) {
+asciichat_error_t terminal_clear_scrollback(int fd) {
   if (dprintf(fd, "\033[3J") < 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to clear scrollback buffer");
   }
   return fsync(fd);
 }
@@ -322,9 +324,9 @@ bool is_valid_tty_path(const char *path) {
  * @param height Pointer to store terminal height
  * @return 0 on success, -1 on failure
  */
-int get_terminal_size(unsigned short int *width, unsigned short int *height) {
+asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height) {
   if (!width || !height) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_terminal_size");
   }
 
   // Method 1: ioctl(TIOCGWINSZ)
@@ -334,7 +336,7 @@ int get_terminal_size(unsigned short int *width, unsigned short int *height) {
       *width = ws.ws_col;
       *height = ws.ws_row;
       log_debug("POSIX terminal size from ioctl: %dx%d", *width, *height);
-      return 0;
+      return ASCIICHAT_OK;
     }
   }
 
@@ -637,11 +639,11 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
  * @param fd File descriptor for the terminal (e.g., from $TTY on macOS)
  * @return 0 on success, -1 on failure
  */
-int terminal_reset(int fd) {
+asciichat_error_t terminal_reset(int fd) {
   // Reset using ANSI escape sequence
   const char *reset_seq = "\033c"; // Full reset
   if (write(fd, reset_seq, strlen(reset_seq)) < 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to reset terminal");
   }
   return 0;
 }

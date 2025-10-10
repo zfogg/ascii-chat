@@ -75,7 +75,9 @@
 #include "platform/init.h"
 #include "platform/terminal.h"
 #include "common.h"
+#include "asciichat_errno.h"
 #include "options.h"
+#include "crypto/keys/keys.h"
 #include "buffer_pool.h"
 #include "palette.h"
 
@@ -164,7 +166,7 @@ static void sigwinch_handler(int sigwinch) {
     // Send new size to server if connected
     if (server_connection_is_active()) {
       if (threaded_send_terminal_size_with_auto_detect(opt_width, opt_height) < 0) {
-        log_warn("Failed to send terminal capabilities to server: %s", network_error_string(errno));
+        log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
       } else {
         display_full_reset();
         log_set_terminal_output(false);
@@ -220,8 +222,7 @@ static void shutdown_client() {
 static int initialize_client_systems() {
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
-    (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
-    return 1;
+    FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
   }
   (void)atexit(platform_cleanup);
 
@@ -229,13 +230,12 @@ static int initialize_client_systems() {
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
   if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
     log_error("Failed to apply palette configuration");
-    return 1;
+    FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
   }
 
   // Initialize display subsystem
   if (display_init() != 0) {
-    log_fatal("Failed to initialize display subsystem");
-    return ASCIICHAT_ERROR_DISPLAY;
+    FATAL(ERROR_DISPLAY, "Failed to initialize display subsystem");
   }
 
   // Initialize logging with appropriate settings
@@ -262,10 +262,31 @@ static int initialize_client_systems() {
   data_buffer_pool_init_global();
   (void)atexit(data_buffer_pool_cleanup_global);
 
+  // Register errno cleanup
+  (void)atexit(asciichat_errno_cleanup);
+
   // Initialize server connection management
   if (server_connection_init() != 0) {
-    log_fatal("Failed to initialize server connection");
-    return ASCIICHAT_ERROR_NETWORK;
+    FATAL(ERROR_NETWORK, "Failed to initialize server connection");
+  }
+
+  // Validate and load encryption key early (before connecting to server)
+  if (strlen(opt_encrypt_key) > 0) {
+    log_info("Validating encryption key: %s", opt_encrypt_key);
+
+    // For SSH key files (not gpg:keyid format), validate the file exists and is readable
+    if (strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
+      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
+        FATAL(ERROR_CRYPTO, "Failed to validate SSH key file: %s", opt_encrypt_key);
+      }
+      log_info("SSH key file validated successfully");
+    } else {
+      log_info("GPG key specified: %s", opt_encrypt_key);
+    }
+  } else if (strlen(opt_password) > 0) {
+    log_info("Password authentication will be used");
+  } else if (!opt_no_encrypt) {
+    log_info("No encryption key or password provided - using unencrypted connection");
   }
 
   // Initialize capture subsystems
@@ -278,8 +299,7 @@ static int initialize_client_systems() {
   // Initialize audio if enabled
   if (opt_audio_enabled) {
     if (audio_client_init() != 0) {
-      log_fatal("Failed to initialize audio system");
-      return ASCIICHAT_ERROR_AUDIO;
+      FATAL(ERROR_AUDIO, "Failed to initialize audio system");
     }
   }
 
@@ -318,7 +338,7 @@ int main(int argc, char *argv[]) {
   // Note: --help and --version will exit(0) directly within options_init
   int options_result = options_init(argc, argv, true);
   if (options_result != ASCIICHAT_OK) {
-    // options_init returns ASCIICHAT_ERROR_USAGE for invalid options (after printing error)
+    // options_init returns ERROR_USAGE for invalid options (after printing error)
     // Just exit with the returned error code
     return options_result;
   }
@@ -335,11 +355,13 @@ int main(int argc, char *argv[]) {
   int init_result = initialize_client_systems();
   if (init_result != 0) {
     // Check if this is a webcam-related error and print help
-    if (init_result == ASCIICHAT_ERROR_WEBCAM || init_result == ASCIICHAT_ERROR_WEBCAM_IN_USE ||
-        init_result == ASCIICHAT_ERROR_WEBCAM_PERMISSION) {
+    if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE ||
+        init_result == ERROR_WEBCAM_PERMISSION) {
       webcam_print_init_error_help(init_result);
-      FATAL_ERROR(init_result);
+      FATAL(init_result, "Client initialization failed");
     }
+    // For other errors, check if we have detailed error context
+    LOG_ERRNO_IF_SET("Client initialization failed");
     // For other errors, just exit with the error code
     return init_result;
   }
@@ -390,11 +412,13 @@ int main(int argc, char *argv[]) {
       // Check for authentication failure or host key verification failure - exit immediately without retry
       if (connection_result == CONNECTION_ERROR_AUTH_FAILED) {
         // Detailed error message already printed by crypto handshake code
-        FATAL_ERROR(ASCIICHAT_ERROR_CRYPTO_AUTH);
+        // Check if we have additional error context from the errno system
+        FATAL(ERROR_CRYPTO_AUTH, "Authentication error occurred. Cannot proceed.");
       }
       if (connection_result == CONNECTION_ERROR_HOST_KEY_FAILED) {
         // Host key verification failed or user declined - MITM warning already shown
-        FATAL_ERROR(ASCIICHAT_ERROR_CRYPTO_VERIFICATION);
+        // User declining security prompt is not an error - exit cleanly with code 0
+        exit(0);
       }
 
       // Connection failed - increment attempt counter and retry
@@ -413,6 +437,9 @@ int main(int argc, char *argv[]) {
       } else {
         log_info("Connection attempt #%d...", reconnect_attempt);
       }
+
+      // Log detailed error context if available
+      LOG_ERRNO_IF_SET("Connection attempt failed");
 
       // Continue retrying forever until user cancels (Ctrl+C)
       continue;

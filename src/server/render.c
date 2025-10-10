@@ -408,7 +408,14 @@ void *client_video_render_thread(void *arg) {
   int expected_video_fps = client_fps;
 
   bool should_continue = true;
+  uint64_t loop_iteration = 0;
   while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+    loop_iteration++;
+
+    // Debug: Log loop entry
+    if (loop_iteration % 60 == 1) { // Log every 60 iterations (about once per second at 60fps)
+    }
+
     // Check for immediate shutdown
     if (atomic_load(&g_should_exit)) {
       log_info("Video render thread stopping for client %u (g_should_exit)", thread_client_id);
@@ -589,7 +596,7 @@ void *client_video_render_thread(void *arg) {
 
       (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
 
-      free(ascii_frame);
+      SAFE_FREE(ascii_frame);
 
       // PROFILING: Calculate and log timing breakdown
       static uint64_t profile_count = 0;
@@ -746,9 +753,13 @@ void *client_audio_render_thread(void *arg) {
   // Take snapshot of client ID and display name at start to avoid race conditions
   uint32_t thread_client_id = client->client_id;
   char thread_display_name[64];
+
+  // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
+  rwlock_rdlock(&g_client_manager_rwlock);
   mutex_lock(&client->client_state_mutex);
   SAFE_STRNCPY(thread_display_name, client->display_name, sizeof(thread_display_name));
   mutex_unlock(&client->client_state_mutex);
+  rwlock_rdunlock(&g_client_manager_rwlock);
 
 #ifdef DEBUG_THREADS
   log_info("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);

@@ -12,7 +12,7 @@ All timeout values are defined in `network.h`:
 
 - `CONNECT_TIMEOUT`: 10 seconds - Timeout for establishing connections
 - `SEND_TIMEOUT`: 5 seconds - Timeout for sending data
-- `RECV_TIMEOUT`: 5 seconds - Timeout for receiving data  
+- `RECV_TIMEOUT`: 5 seconds - Timeout for receiving data
 - `ACCEPT_TIMEOUT`: 30 seconds - Timeout for accepting new connections
 
 ## Keep-Alive Settings
@@ -81,7 +81,7 @@ if (connfd < 0) {
 // Send with timeout
 ssize_t sent = send_with_timeout(connfd, data, len, SEND_TIMEOUT);
 if (sent < 0) {
-    printf("Send failed: %s\n", network_error_string(errno));
+    printf("Send failed: %s\n", network_error_string());
 }
 ```
 
@@ -89,14 +89,14 @@ if (sent < 0) {
 ```c
 // Connect with timeout
 if (!connect_with_timeout(sockfd, &addr, sizeof(addr), CONNECT_TIMEOUT)) {
-    printf("Connect failed: %s\n", network_error_string(errno));
+    printf("Connect failed: %s\n", network_error_string());
     // Handle reconnection...
 }
 
 // Receive with timeout
 ssize_t received = recv_with_timeout(sockfd, buffer, size, RECV_TIMEOUT);
 if (received < 0) {
-    printf("Receive failed: %s\n", network_error_string(errno));
+    printf("Receive failed: %s\n", network_error_string());
 }
 ```
 
@@ -114,4 +114,4 @@ Timeout values can be adjusted by modifying the constants in `network.h`. For pr
 
 - Increasing `CONNECT_TIMEOUT` for slow networks
 - Decreasing `SEND_TIMEOUT`/`RECV_TIMEOUT` for real-time applications
-- Adjusting keep-alive settings based on network characteristics 
+- Adjusting keep-alive settings based on network characteristics

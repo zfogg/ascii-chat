@@ -1,14 +1,17 @@
 #include "video_frame.h"
 #include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "platform/abstraction.h"
 #include <string.h>
 #include <stdlib.h>
 
 video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
-  video_frame_buffer_t *vfb = (video_frame_buffer_t *)calloc(1, sizeof(video_frame_buffer_t));
-  if (!vfb)
+  video_frame_buffer_t *vfb = SAFE_CALLOC(1, sizeof(video_frame_buffer_t), video_frame_buffer_t *);
+  if (!vfb) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate video frame buffer");
     return NULL;
+  }
 
   vfb->client_id = client_id;
   vfb->active = true;
@@ -38,9 +41,9 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
     // Fallback to malloc if pool is exhausted or not available
     if (!vfb->frames[0].data)
-      vfb->frames[0].data = malloc(frame_size);
+      vfb->frames[0].data = SAFE_MALLOC(frame_size, void *);
     if (!vfb->frames[1].data)
-      vfb->frames[1].data = malloc(frame_size);
+      vfb->frames[1].data = SAFE_MALLOC(frame_size, void *);
   }
 
   // Initialize synchronization
@@ -68,19 +71,19 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
     if (pool) {
       data_buffer_pool_free(pool, vfb->frames[0].data, vfb->allocated_buffer_size);
     } else {
-      free(vfb->frames[0].data);
+      SAFE_FREE(vfb->frames[0].data);
     }
   }
   if (vfb->frames[1].data) {
     if (pool) {
       data_buffer_pool_free(pool, vfb->frames[1].data, vfb->allocated_buffer_size);
     } else {
-      free(vfb->frames[1].data);
+      SAFE_FREE(vfb->frames[1].data);
     }
   }
 
   mutex_destroy(&vfb->swap_mutex);
-  free(vfb);
+  SAFE_FREE(vfb);
 }
 
 video_frame_t *video_frame_begin_write(video_frame_buffer_t *vfb) {
@@ -144,14 +147,14 @@ void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats
 
 // Simple frame swap implementation for basic cases
 simple_frame_swap_t *simple_frame_swap_create(void) {
-  simple_frame_swap_t *sfs = (simple_frame_swap_t *)calloc(1, sizeof(simple_frame_swap_t));
+  simple_frame_swap_t *sfs = SAFE_CALLOC(1, sizeof(simple_frame_swap_t), simple_frame_swap_t *);
   if (!sfs)
     return NULL;
 
   // Pre-allocate both frames
   const size_t frame_size = (size_t)2 * 1024 * 1024;
-  sfs->frame_a.data = malloc(frame_size);
-  sfs->frame_b.data = malloc(frame_size);
+  sfs->frame_a.data = SAFE_MALLOC(frame_size, void *);
+  sfs->frame_b.data = SAFE_MALLOC(frame_size, void *);
 
   atomic_store(&sfs->current_frame, (uintptr_t)&sfs->frame_a);
   atomic_store(&sfs->use_frame_a, false); // Next write goes to frame_b
@@ -162,9 +165,9 @@ simple_frame_swap_t *simple_frame_swap_create(void) {
 void simple_frame_swap_destroy(simple_frame_swap_t *sfs) {
   if (!sfs)
     return;
-  free(sfs->frame_a.data);
-  free(sfs->frame_b.data);
-  free(sfs);
+  SAFE_FREE(sfs->frame_a.data);
+  SAFE_FREE(sfs->frame_b.data);
+  SAFE_FREE(sfs);
 }
 
 void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t size) {

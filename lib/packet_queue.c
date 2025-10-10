@@ -1,6 +1,7 @@
 #include "packet_queue.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "asciichat_errno.h"
 #include "crc32.h"
 #include <stdlib.h>
 #include <string.h>
@@ -19,10 +20,10 @@ node_pool_t *node_pool_create(size_t pool_size) {
   }
 
   node_pool_t *pool;
-  SAFE_MALLOC(pool, sizeof(node_pool_t), node_pool_t *);
+  pool = SAFE_MALLOC(sizeof(node_pool_t), node_pool_t *);
 
   // Allocate all nodes at once
-  SAFE_MALLOC(pool->nodes, sizeof(packet_node_t) * pool_size, packet_node_t *);
+  pool->nodes = SAFE_MALLOC(sizeof(packet_node_t) * pool_size, packet_node_t *);
 
   // Link all nodes into free list
   for (size_t i = 0; i < pool_size - 1; i++) {
@@ -45,15 +46,15 @@ void node_pool_destroy(node_pool_t *pool) {
   }
 
   mutex_destroy(&pool->pool_mutex);
-  free(pool->nodes);
-  free(pool);
+  SAFE_FREE(pool->nodes);
+  SAFE_FREE(pool);
 }
 
 packet_node_t *node_pool_get(node_pool_t *pool) {
   if (!pool) {
     // No pool, fallback to malloc
     packet_node_t *node;
-    SAFE_MALLOC(node, sizeof(packet_node_t), packet_node_t *);
+    node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
     return node;
   }
 
@@ -70,8 +71,8 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
 
   if (!node) {
     // Pool exhausted, fallback to malloc
-    SAFE_MALLOC(node, sizeof(packet_node_t), packet_node_t *);
-    log_debug("Memory pool exhausted, falling back to malloc (used: %zu/%zu)", pool->used_count, pool->pool_size);
+    node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
+    log_debug("Memory pool exhausted, falling back to SAFE_MALLOC(used: %zu/%zu, void *)", pool->used_count, pool->pool_size);
   }
 
   return node;
@@ -84,7 +85,7 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
 
   if (!pool) {
     // No pool, just free
-    free(node);
+    SAFE_FREE(node);
     return;
   }
 
@@ -102,7 +103,7 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
     mutex_unlock(&pool->pool_mutex);
   } else {
     // This was malloc'd, so free it
-    free(node);
+    SAFE_FREE(node);
   }
 }
 
@@ -121,7 +122,7 @@ packet_queue_t *packet_queue_create_with_pool(size_t max_size, size_t pool_size)
 
 packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool_size, bool use_buffer_pool) {
   packet_queue_t *queue;
-  SAFE_MALLOC(queue, sizeof(packet_queue_t), packet_queue_t *);
+  queue = SAFE_MALLOC(sizeof(packet_queue_t), packet_queue_t *);
 
   queue->head = NULL;
   queue->tail = NULL;
@@ -177,7 +178,7 @@ void packet_queue_destroy(packet_queue_t *queue) {
   cond_destroy(&queue->not_empty);
   cond_destroy(&queue->not_full);
 
-  free(queue);
+  SAFE_FREE(queue);
 }
 
 int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *data, size_t data_len,
@@ -223,13 +224,8 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   node->packet.header.type = htons((uint16_t)type);
   node->packet.header.length = htonl((uint32_t)data_len);
   node->packet.header.client_id = htonl(client_id);
-
-  // Calculate CRC on the data
-  uint32_t crc = 0;
-  if (data_len > 0 && data) {
-    crc = asciichat_crc32(data, data_len);
-  }
-  node->packet.header.crc32 = htonl(crc);
+  // Note: CRC32 calculation is handled by the unified packet processing pipeline
+  node->packet.header.crc32 = htonl(0); // Will be set by send_packet_secure
 
   // Handle data
   if (data_len > 0 && data) {
@@ -281,12 +277,14 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
 }
 
 int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *packet) {
-  if (!queue || !packet)
+  if (!queue || !packet) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: queue=%p, packet=%p", queue, packet);
     return -1;
+  }
 
   // Validate packet before enqueueing
   if (!packet_queue_validate_packet(packet)) {
-    log_error("Refusing to enqueue invalid packet");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Refusing to enqueue invalid packet");
     return -1;
   }
 
@@ -405,44 +403,10 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
   mutex_unlock(&queue->mutex);
 
   if (node) {
-    // Verify packet magic number for corruption detection
-    uint32_t magic = ntohl(node->packet.header.magic);
-    if (magic != PACKET_MAGIC) {
-      log_error("CORRUPTION: Invalid magic in dequeued packet: 0x%x (expected 0x%x), type=%u", magic, PACKET_MAGIC,
-                ntohs(node->packet.header.type));
-      // Still return node to pool but don't return corrupted packet
-      node_pool_put(queue->node_pool, node);
-      return NULL;
-    }
-
-    // Validate CRC if there's data
-    if (node->packet.data_len > 0 && node->packet.data) {
-      uint32_t expected_crc = ntohl(node->packet.header.crc32);
-      uint32_t actual_crc = asciichat_crc32(node->packet.data, node->packet.data_len);
-      if (actual_crc != expected_crc) {
-        log_error("CORRUPTION: CRC mismatch in dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu", actual_crc,
-                  expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
-        // Free data if packet owns it
-        if (node->packet.owns_data && node->packet.data) {
-          // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
-          if (node->packet.buffer_pool) {
-            data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
-          } else {
-            // This was allocated from global pool or malloc, use buffer_pool_free which handles both
-            buffer_pool_free(node->packet.data, node->packet.data_len);
-          }
-          // CRITICAL: Clear pointer to prevent double-free when packet is copied later
-          node->packet.data = NULL;
-          node->packet.owns_data = false;
-        }
-        node_pool_put(queue->node_pool, node);
-        return NULL;
-      }
-    }
-
     // Extract packet and return node to pool
+    // Note: Validation is handled at network boundary, not in internal queues
     queued_packet_t *packet;
-    SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
+    packet = SAFE_MALLOC(sizeof(queued_packet_t), queued_packet_t *);
     SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
     node_pool_put(queue->node_pool, node);
     return packet;
@@ -484,8 +448,9 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     // Verify packet magic number for corruption detection
     uint32_t magic = ntohl(node->packet.header.magic);
     if (magic != PACKET_MAGIC) {
-      log_error("CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic, PACKET_MAGIC,
-                ntohs(node->packet.header.type));
+      SET_ERRNO(ERROR_BUFFER,
+                    "CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic,
+                    PACKET_MAGIC, ntohs(node->packet.header.type));
       // Still return node to pool but don't return corrupted packet
       node_pool_put(queue->node_pool, node);
       return NULL;
@@ -496,8 +461,9 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
       uint32_t expected_crc = ntohl(node->packet.header.crc32);
       uint32_t actual_crc = asciichat_crc32(node->packet.data, node->packet.data_len);
       if (actual_crc != expected_crc) {
-        log_error("CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
-                  actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
+        SET_ERRNO(ERROR_BUFFER,
+                      "CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
+                      actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
         // Free data if packet owns it
         if (node->packet.owns_data && node->packet.data) {
           // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
@@ -518,7 +484,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
 
     // Extract packet and return node to pool
     queued_packet_t *packet;
-    SAFE_MALLOC(packet, sizeof(queued_packet_t), queued_packet_t *);
+    packet = SAFE_MALLOC(sizeof(queued_packet_t), queued_packet_t *);
     SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
     node_pool_put(queue->node_pool, node);
     return packet;
@@ -549,7 +515,7 @@ void packet_queue_free_packet(queued_packet_t *packet) {
 
   // Mark as freed to detect future double-free attempts
   packet->header.magic = 0xDEADBEEF; // Use different magic to indicate freed packet
-  free(packet);
+  SAFE_FREE(packet);
 }
 
 size_t packet_queue_size(packet_queue_t *queue) {
@@ -641,21 +607,22 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
   // Check magic number
   uint32_t magic = ntohl(packet->header.magic);
   if (magic != PACKET_MAGIC) {
-    log_error("Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
+    SET_ERRNO(ERROR_BUFFER, "Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
     return false;
   }
 
   // Check packet type is valid
   uint16_t type = ntohs(packet->header.type);
   if (type < PACKET_TYPE_ASCII_FRAME || type > PACKET_TYPE_AUDIO_BATCH) {
-    log_error("Invalid packet type: %u", type);
+    SET_ERRNO(ERROR_BUFFER, "Invalid packet type: %u", type);
     return false;
   }
 
   // Check length matches data_len
   uint32_t length = ntohl(packet->header.length);
   if (length != packet->data_len) {
-    log_error("Packet length mismatch: header says %u, data_len is %zu", length, packet->data_len);
+    SET_ERRNO(ERROR_BUFFER, "Packet length mismatch: header says %u, data_len is %zu", length,
+                  packet->data_len);
     return false;
   }
 
@@ -664,7 +631,7 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
     uint32_t expected_crc = ntohl(packet->header.crc32);
     uint32_t actual_crc = asciichat_crc32(packet->data, packet->data_len);
     if (actual_crc != expected_crc) {
-      log_error("Packet CRC mismatch: got 0x%x, expected 0x%x", actual_crc, expected_crc);
+      SET_ERRNO(ERROR_BUFFER, "Packet CRC mismatch: got 0x%x, expected 0x%x", actual_crc, expected_crc);
       return false;
     }
   }

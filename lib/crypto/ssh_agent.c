@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sodium.h>
 #include "platform/system.h"
+#include "platform/file.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -104,15 +105,13 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   return false;
 }
 
-int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
+asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
   if (!ssh_agent_is_available()) {
-    log_debug("Cannot add key to ssh-agent: agent not available");
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO, "Cannot add key to ssh-agent: agent not available");
   }
 
   if (private_key->type != KEY_TYPE_ED25519) {
-    log_warn("Cannot add key to ssh-agent: only Ed25519 keys supported");
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot add key to ssh-agent: only Ed25519 keys supported");
   }
 
   log_info("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
@@ -121,43 +120,39 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
 #ifdef _WIN32
   char tmpfile[MAX_PATH];
   if (GetTempPathA(MAX_PATH, tmpfile) == 0) {
-    log_error("Failed to get temp directory");
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to get temp directory");
   }
-  strcat(tmpfile, "ascii-chat-key-XXXXXX");
+  if (platform_strlcat(tmpfile, "ascii-chat-key-XXXXXX", MAX_PATH) >= MAX_PATH) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Failed to create temporary filename path - buffer overflow");
+  }
   if (_mktemp_s(tmpfile, sizeof(tmpfile)) != 0) {
-    log_error("Failed to create temporary filename");
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create temporary filename");
   }
   int fd = platform_open(tmpfile, PLATFORM_O_CREAT | PLATFORM_O_EXCL | PLATFORM_O_RDWR, _S_IREAD | _S_IWRITE);
   if (fd < 0) {
-    log_error("Failed to create temporary file for ssh-agent");
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create temporary file for ssh-agent");
   }
 #else
   char tmpfile[] = "/tmp/ascii-chat-key-XXXXXX";
   int fd = mkstemp(tmpfile);
   if (fd < 0) {
-    log_error("Failed to create temporary file for ssh-agent");
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create temporary file for ssh-agent");
   }
 
   // Set file permissions to 600 (owner read/write only)
   if (fchmod(fd, S_IRUSR | S_IWUSR) != 0) {
-    log_error("Failed to set permissions on temporary key file");
     SAFE_CLOSE(fd);
     SAFE_UNLINK(tmpfile);
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to set permissions on temporary key file");
   }
 #endif
 
   // Write OpenSSH private key format
   FILE *f = platform_fdopen(fd, "w");
   if (!f) {
-    log_error("Failed to open temporary file for writing");
     SAFE_CLOSE(fd);
     SAFE_UNLINK(tmpfile);
-    return -1;
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open temporary file for writing");
   }
 
   // Write OpenSSH Ed25519 private key format (unencrypted)
@@ -305,11 +300,11 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
 
   // Base64 encode and write
   char *base64;
-  SAFE_MALLOC(base64, pos * 2, char *);
+  base64 = SAFE_MALLOC(pos * 2, char *);
   if (!base64) {
     fclose(f);
     SAFE_UNLINK(tmpfile);
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate base64 encoding buffer");
   }
 
   sodium_bin2base64(base64, pos * 2, buffer, pos, sodium_base64_VARIANT_ORIGINAL);
@@ -321,7 +316,7 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
     safe_fprintf(f, "%.*s\n", (int)line_len, base64 + i);
   }
 
-  free(base64);
+  SAFE_FREE(base64);
 
   safe_fprintf(f, "-----END OPENSSH PRIVATE KEY-----\n");
   (void)fclose(f);
@@ -332,7 +327,9 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
 
   FILE *ssh_add = SAFE_POPEN(cmd, "r");
   if (!ssh_add) {
-    log_error("Failed to run ssh-add - OpenSSH may not be installed or not in PATH");
+    sodium_memzero(buffer, sizeof(buffer));
+    SAFE_UNLINK(tmpfile);
+    SET_ERRNO(ERROR_CRYPTO, "Failed to run ssh-add - OpenSSH may not be installed or not in PATH");
 #ifdef _WIN32
     log_error("To install OpenSSH on Windows:");
     log_error("  1. Go to Settings → Apps → Optional Features");
@@ -350,9 +347,6 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
     log_error("  Arch Linux:    sudo pacman -S openssh");
     log_error("  Alpine Linux:  sudo apk add openssh-client");
 #endif
-    sodium_memzero(buffer, sizeof(buffer));
-    SAFE_UNLINK(tmpfile);
-    return -1;
   }
 
   // Read output
@@ -373,9 +367,8 @@ int ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
 
   if (ret == 0 || success) {
     log_info("Successfully added key to ssh-agent");
-    return 0;
+    return ASCIICHAT_OK;
   } else {
-    log_warn("ssh-add returned non-zero exit code: %d", ret);
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO, "ssh-add returned non-zero exit code: %d", ret);
   }
 }

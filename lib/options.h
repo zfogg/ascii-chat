@@ -13,7 +13,7 @@
 
 // Safely parse string to integer with validation
 // Returns the integer value, or INT_MIN on error
-int strtoint_safe(const char *str);
+asciichat_error_t strtoint_safe(const char *str);
 
 extern unsigned short int opt_width, opt_height;
 extern bool auto_width, auto_height;
@@ -82,9 +82,9 @@ extern const float weight_blue;
 
 extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
-// Returns ASCIICHAT_OK (0) on success, ASCIICHAT_ERROR_USAGE on parse errors
+// Returns ASCIICHAT_OK (0) on success, ERROR_USAGE on parse errors
 // Note: --help and --version also return ASCIICHAT_OK after printing info
-int options_init(int argc, char **argv, bool is_client);
+asciichat_error_t options_init(int argc, char **argv, bool is_client);
 
 void usage(FILE *desc, bool is_client);
 void usage_client(FILE *desc);

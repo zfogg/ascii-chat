@@ -141,7 +141,7 @@ ASCII-Chat now has comprehensive Windows support through a platform abstraction 
 - Full platform abstraction layer for threads, mutexes, sockets
 - CMake build system for Windows
 - Windows socket implementation with Winsock2
-- Platform-safe function wrappers (SAFE_GETENV, SAFE_SSCANF, SAFE_STRERROR, SAFE_OPEN)
+- Platform-safe function wrappers (SAFE_GETENV, SAFE_SSCANF, SAFE_STRERROR, platform_open)
 - Thread-safe error handling with thread-local storage
 - Webcam stub implementation (test pattern mode)
 
@@ -488,7 +488,7 @@ int count = SAFE_SSCANF(input, "%d %d", &x, &y);
 const char* error = SAFE_STRERROR(errno);
 
 // Safe file operations
-int fd = SAFE_OPEN(filename, O_RDWR | O_CREAT, 0600);
+int fd = platform_open(filename, O_RDWR | O_CREAT, 0600);
 
 // Safe string copy (already existed)
 SAFE_STRNCPY(dest, src, sizeof(dest));

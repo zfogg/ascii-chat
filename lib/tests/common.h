@@ -9,7 +9,9 @@
 #include <string.h>
 
 // System headers needed by tests
+#ifndef _WIN32
 #include <unistd.h>   // For unlink(), access(), etc.
+#endif
 #include <sys/stat.h> // For stat(), struct stat
 
 // Now include Criterion which will pull in system headers

@@ -12,7 +12,7 @@
 #include <string.h>
 
 #include "tests/common.h"
-#include "crypto/keys.h"
+#include "crypto/keys/keys.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with debug logging
@@ -312,9 +312,9 @@ Test(crypto_keys, fetch_github_keys_valid_user) {
 
     // Free the keys if they were allocated
     for (size_t i = 0; i < num_keys; i++) {
-      free(keys[i]);
+      SAFE_FREE(keys[i]);
     }
-    free(keys);
+    SAFE_FREE(keys);
   } else {
     // Expected to fail without BearSSL
     cr_assert_eq(result, -1, "Should fail without BearSSL");
@@ -347,9 +347,9 @@ Test(crypto_keys, fetch_gitlab_keys_valid_user) {
 
     // Free the keys if they were allocated
     for (size_t i = 0; i < num_keys; i++) {
-      free(keys[i]);
+      SAFE_FREE(keys[i]);
     }
-    free(keys);
+    SAFE_FREE(keys);
   } else {
     // Expected to fail without BearSSL
     cr_assert_eq(result, -1, "Should fail without BearSSL");

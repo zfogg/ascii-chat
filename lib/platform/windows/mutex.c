@@ -10,6 +10,7 @@
 
 #include "../abstraction.h"
 #include "../windows_compat.h"
+#include "asciichat_errno.h"
 
 /**
  * @brief Initialize a mutex
@@ -47,7 +48,7 @@ int mutex_lock_impl(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock(mutex_t *mutex) {
-  return TryEnterCriticalSection(mutex) ? 0 : EBUSY;
+  return TryEnterCriticalSection(mutex) ? 0 : 16; // EBUSY = 16
 }
 
 /**

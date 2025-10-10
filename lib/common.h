@@ -5,6 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Forward declaration for asciichat_fatal_with_context
+void asciichat_fatal_with_context(int code, const char *file, int line, const char *function, const char *format, ...);
+
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough.
 #ifndef UINT8_MAX
@@ -13,8 +16,6 @@ typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 #endif
-
-#include <stdlib.h>
 
 /* ============================================================================
  * Common Definitions
@@ -32,61 +33,70 @@ typedef unsigned long long uint64_t;
  *   - Application code passes these to exit()
  *   - Use FATAL macros in src/ code for automatic error reporting
  */
+
+/* Undefine Windows macros that conflict with our enum values */
+#ifdef _WIN32
+#undef ERROR_BUFFER_OVERFLOW
+#undef ERROR_INVALID_STATE
+#endif
+
 typedef enum {
   /* Standard codes (0-2) - Unix conventions */
   ASCIICHAT_OK = 0,            /* Success */
-  ASCIICHAT_ERROR_GENERAL = 1, /* Unspecified error */
-  ASCIICHAT_ERROR_USAGE = 2,   /* Invalid command line arguments or options */
+  ERROR_GENERAL = 1, /* Unspecified error */
+  ERROR_USAGE = 2,   /* Invalid command line arguments or options */
 
   /* Initialization failures (3-19) */
-  ASCIICHAT_ERROR_MEMORY = 3,        /* Memory allocation failed (OOM) */
-  ASCIICHAT_ERROR_CONFIG = 4,        /* Configuration file or settings error */
-  ASCIICHAT_ERROR_CRYPTO_INIT = 5,   /* Cryptographic initialization failed */
-  ASCIICHAT_ERROR_LOGGING_INIT = 6,  /* Logging system initialization failed */
-  ASCIICHAT_ERROR_PLATFORM_INIT = 7, /* Platform-specific initialization failed */
+  ERROR_MEMORY = 3,        /* Memory allocation failed (OOM) */
+  ERROR_CONFIG = 4,        /* Configuration file or settings error */
+  ERROR_CRYPTO_INIT = 5,   /* Cryptographic initialization failed */
+  ERROR_LOGGING_INIT = 6,  /* Logging system initialization failed */
+  ERROR_PLATFORM_INIT = 7, /* Platform-specific initialization failed */
 
   /* Hardware/Device errors (20-39) */
-  ASCIICHAT_ERROR_WEBCAM = 20,            /* Webcam initialization or capture failed */
-  ASCIICHAT_ERROR_WEBCAM_IN_USE = 21,     /* Webcam is in use by another application */
-  ASCIICHAT_ERROR_WEBCAM_PERMISSION = 22, /* Webcam permission denied */
-  ASCIICHAT_ERROR_AUDIO = 23,             /* Audio device initialization or I/O failed */
-  ASCIICHAT_ERROR_AUDIO_IN_USE = 24,      /* Audio device is in use */
-  ASCIICHAT_ERROR_TERMINAL = 25,          /* Terminal initialization or capability detection failed */
+  ERROR_WEBCAM = 20,            /* Webcam initialization or capture failed */
+  ERROR_WEBCAM_IN_USE = 21,     /* Webcam is in use by another application */
+  ERROR_WEBCAM_PERMISSION = 22, /* Webcam permission denied */
+  ERROR_AUDIO = 23,             /* Audio device initialization or I/O failed */
+  ERROR_AUDIO_IN_USE = 24,      /* Audio device is in use */
+  ERROR_TERMINAL = 25,          /* Terminal initialization or capability detection failed */
 
   /* Network errors (40-59) */
-  ASCIICHAT_ERROR_NETWORK = 40,          /* General network error */
-  ASCIICHAT_ERROR_NETWORK_BIND = 41,     /* Cannot bind to port (server) */
-  ASCIICHAT_ERROR_NETWORK_CONNECT = 42,  /* Cannot connect to server (client) */
-  ASCIICHAT_ERROR_NETWORK_TIMEOUT = 43,  /* Network operation timed out */
-  ASCIICHAT_ERROR_NETWORK_PROTOCOL = 44, /* Protocol violation or incompatible version */
-  ASCIICHAT_ERROR_NETWORK_SIZE = 45,     /* Network packet size error */
+  ERROR_NETWORK = 40,          /* General network error */
+  ERROR_NETWORK_BIND = 41,     /* Cannot bind to port (server) */
+  ERROR_NETWORK_CONNECT = 42,  /* Cannot connect to server (client) */
+  ERROR_NETWORK_TIMEOUT = 43,  /* Network operation timed out */
+  ERROR_NETWORK_PROTOCOL = 44, /* Protocol violation or incompatible version */
+  ERROR_NETWORK_SIZE = 45,     /* Network packet size error */
 
   /* Security/Crypto errors (60-79) */
-  ASCIICHAT_ERROR_CRYPTO = 60,              /* Cryptographic operation failed */
-  ASCIICHAT_ERROR_CRYPTO_KEY = 61,          /* Key loading, parsing, or generation failed */
-  ASCIICHAT_ERROR_CRYPTO_AUTH = 62,         /* Authentication failed */
-  ASCIICHAT_ERROR_CRYPTO_HANDSHAKE = 63,    /* Cryptographic handshake failed */
-  ASCIICHAT_ERROR_CRYPTO_VERIFICATION = 64, /* Signature or key verification failed */
+  ERROR_CRYPTO = 60,              /* Cryptographic operation failed */
+  ERROR_CRYPTO_KEY = 61,          /* Key loading, parsing, or generation failed */
+  ERROR_CRYPTO_AUTH = 62,         /* Authentication failed */
+  ERROR_CRYPTO_HANDSHAKE = 63,    /* Cryptographic handshake failed */
+  ERROR_CRYPTO_VERIFICATION = 64, /* Signature or key verification failed */
 
   /* Runtime errors (80-99) */
-  ASCIICHAT_ERROR_THREAD = 80,             /* Thread creation or management failed */
-  ASCIICHAT_ERROR_BUFFER = 81,             /* Buffer allocation or overflow */
-  ASCIICHAT_ERROR_BUFFER_FULL = 82,        /* Buffer full */
-  ASCIICHAT_ERROR_BUFFER_OVERFLOW = 83,    /* Buffer overflow */
-  ASCIICHAT_ERROR_DISPLAY = 84,            /* Display rendering or output error */
-  ASCIICHAT_ERROR_INVALID_STATE = 85,      /* Invalid program state */
-  ASCIICHAT_ERROR_INVALID_PARAM = 86,      /* Invalid parameter */
-  ASCIICHAT_ERROR_INVALID_FRAME = 87,      /* Invalid frame data */
-  ASCIICHAT_ERROR_RESOURCE_EXHAUSTED = 88, /* System resources exhausted */
+  ERROR_THREAD = 80,             /* Thread creation or management failed */
+  ERROR_BUFFER = 81,             /* Buffer allocation or overflow */
+  ERROR_BUFFER_FULL = 82,        /* Buffer full */
+  ERROR_BUFFER_OVERFLOW = 83,    /* Buffer overflow */
+  ERROR_DISPLAY = 84,            /* Display rendering or output error */
+  ERROR_INVALID_STATE = 85,      /* Invalid program state */
+  ERROR_INVALID_PARAM = 86,      /* Invalid parameter */
+  ERROR_INVALID_FRAME = 87,      /* Invalid frame data */
+  ERROR_RESOURCE_EXHAUSTED = 88, /* System resources exhausted */
+  ERROR_FORMAT = 89,             /* String formatting operation failed */
+  ERROR_STRING = 90,             /* String manipulation operation failed */
 
   /* Signal/Crash handlers (100-127) */
-  ASCIICHAT_ERROR_SIGNAL_INTERRUPT = 100, /* Interrupted by signal (SIGINT, SIGTERM) */
-  ASCIICHAT_ERROR_SIGNAL_CRASH = 101,     /* Fatal signal (SIGSEGV, SIGABRT, etc.) */
-  ASCIICHAT_ERROR_ASSERTION_FAILED = 102, /* Assertion or invariant violation */
+  ERROR_SIGNAL_INTERRUPT = 100, /* Interrupted by signal (SIGINT, SIGTERM) */
+  ERROR_SIGNAL_CRASH = 101,     /* Fatal signal (SIGSEGV, SIGABRT, etc.) */
+  ERROR_ASSERTION_FAILED = 102, /* Assertion or invariant violation */
 
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
-} asciichat_error_status_t;
+} asciichat_error_t;
 
 /* ============================================================================
  * Error String Utilities
@@ -94,81 +104,85 @@ typedef enum {
  */
 
 /* Get human-readable string for error/exit code */
-static inline const char *asciichat_error_string(asciichat_error_status_t code) {
+static inline const char *asciichat_error_string(asciichat_error_t code) {
   switch (code) {
   case ASCIICHAT_OK:
     return "Success";
-  case ASCIICHAT_ERROR_GENERAL:
+  case ERROR_GENERAL:
     return "General error";
-  case ASCIICHAT_ERROR_USAGE:
+  case ERROR_USAGE:
     return "Invalid command line usage";
-  case ASCIICHAT_ERROR_MEMORY:
+  case ERROR_MEMORY:
     return "Memory allocation failed";
-  case ASCIICHAT_ERROR_CONFIG:
+  case ERROR_CONFIG:
     return "Configuration error";
-  case ASCIICHAT_ERROR_CRYPTO_INIT:
+  case ERROR_CRYPTO_INIT:
     return "Cryptographic initialization failed";
-  case ASCIICHAT_ERROR_LOGGING_INIT:
+  case ERROR_LOGGING_INIT:
     return "Logging initialization failed";
-  case ASCIICHAT_ERROR_PLATFORM_INIT:
+  case ERROR_PLATFORM_INIT:
     return "Platform initialization failed";
-  case ASCIICHAT_ERROR_WEBCAM:
+  case ERROR_WEBCAM:
     return "Webcam error";
-  case ASCIICHAT_ERROR_WEBCAM_IN_USE:
+  case ERROR_WEBCAM_IN_USE:
     return "Webcam in use by another application";
-  case ASCIICHAT_ERROR_WEBCAM_PERMISSION:
+  case ERROR_WEBCAM_PERMISSION:
     return "Webcam permission denied";
-  case ASCIICHAT_ERROR_AUDIO:
+  case ERROR_AUDIO:
     return "Audio device error";
-  case ASCIICHAT_ERROR_AUDIO_IN_USE:
+  case ERROR_AUDIO_IN_USE:
     return "Audio device in use";
-  case ASCIICHAT_ERROR_TERMINAL:
+  case ERROR_TERMINAL:
     return "Terminal error";
-  case ASCIICHAT_ERROR_NETWORK:
+  case ERROR_NETWORK:
     return "Network error";
-  case ASCIICHAT_ERROR_NETWORK_BIND:
+  case ERROR_NETWORK_BIND:
     return "Cannot bind to network port";
-  case ASCIICHAT_ERROR_NETWORK_CONNECT:
+  case ERROR_NETWORK_CONNECT:
     return "Cannot connect to server";
-  case ASCIICHAT_ERROR_NETWORK_TIMEOUT:
+  case ERROR_NETWORK_TIMEOUT:
     return "Network timeout";
-  case ASCIICHAT_ERROR_NETWORK_PROTOCOL:
+  case ERROR_NETWORK_PROTOCOL:
     return "Network protocol error";
-  case ASCIICHAT_ERROR_NETWORK_SIZE:
+  case ERROR_NETWORK_SIZE:
     return "Network packet size error";
-  case ASCIICHAT_ERROR_CRYPTO:
+  case ERROR_CRYPTO:
     return "Cryptographic error";
-  case ASCIICHAT_ERROR_CRYPTO_KEY:
+  case ERROR_CRYPTO_KEY:
     return "Cryptographic key error";
-  case ASCIICHAT_ERROR_CRYPTO_AUTH:
+  case ERROR_CRYPTO_AUTH:
     return "Authentication failed";
-  case ASCIICHAT_ERROR_CRYPTO_HANDSHAKE:
+  case ERROR_CRYPTO_HANDSHAKE:
     return "Cryptographic handshake failed";
-  case ASCIICHAT_ERROR_CRYPTO_VERIFICATION:
+  case ERROR_CRYPTO_VERIFICATION:
     return "Signature verification failed";
-  case ASCIICHAT_ERROR_THREAD:
+  case ERROR_THREAD:
     return "Thread error";
-  case ASCIICHAT_ERROR_BUFFER:
+  case ERROR_BUFFER:
     return "Buffer error";
-  case ASCIICHAT_ERROR_BUFFER_FULL:
+  case ERROR_BUFFER_FULL:
     return "Buffer full";
-  case ASCIICHAT_ERROR_BUFFER_OVERFLOW:
+  case ERROR_BUFFER_OVERFLOW:
     return "Buffer overflow";
-  case ASCIICHAT_ERROR_DISPLAY:
+  case ERROR_DISPLAY:
     return "Display error";
-  case ASCIICHAT_ERROR_INVALID_STATE:
+  case ERROR_INVALID_STATE:
     return "Invalid program state";
-  case ASCIICHAT_ERROR_INVALID_PARAM:
+  case ERROR_INVALID_PARAM:
     return "Invalid parameter";
-  case ASCIICHAT_ERROR_INVALID_FRAME:
+  case ERROR_INVALID_FRAME:
     return "Invalid frame data";
-  case ASCIICHAT_ERROR_RESOURCE_EXHAUSTED:
+  case ERROR_RESOURCE_EXHAUSTED:
     return "System resources exhausted";
-  case ASCIICHAT_ERROR_SIGNAL_INTERRUPT:
+  case ERROR_FORMAT:
+    return "String formatting operation failed";
+  case ERROR_STRING:
+    return "String manipulation operation failed";
+  case ERROR_SIGNAL_INTERRUPT:
     return "Interrupted by signal";
-  case ASCIICHAT_ERROR_SIGNAL_CRASH:
+  case ERROR_SIGNAL_CRASH:
     return "Terminated by fatal signal";
-  case ASCIICHAT_ERROR_ASSERTION_FAILED:
+  case ERROR_ASSERTION_FAILED:
     return "Assertion failed";
   default:
     return "Unknown error";
@@ -182,78 +196,72 @@ static inline const char *asciichat_error_string(asciichat_error_status_t code) 
  * error message. In debug builds, they also print a stack trace.
  *
  * Usage in src/ code:
- *   FATAL_ERROR(ASCIICHAT_ERROR_WEBCAM);                    // Error code only
- *   FATAL(ASCIICHAT_ERROR_WEBCAM, "Custom msg: %d", val);   // Error code + custom message
+ *   FATAL(ERROR_WEBCAM, "Custom msg: %d", val);   // Error code + custom message
  */
 
-/* Forward declare platform_print_backtrace for stack trace support */
-void platform_print_backtrace(void);
-
-/**
- * @brief Exit with error code and standard message, with stack trace in debug builds
- * @param code Error code (asciichat_error_status_t)
- *
- * Usage:
- *   asciichat_error_status_t err = webcam_init(...);
- *   if (err != ASCIICHAT_OK) {
- *       FATAL_ERROR(err);  // Prints "Webcam error" + stack trace + exits with 20
- *   }
- */
-#define FATAL_ERROR(code)                                                                                              \
-  do {                                                                                                                 \
-    (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fprintf(stderr, "FATAL ERROR: %s\n", asciichat_error_string(code));                                          \
-    (void)fprintf(stderr, "Exit code: %d\n", (int)(code));                                                             \
-    (void)fprintf(stderr, "Location: %s:%d in %s()\n", __FILE__, __LINE__, __func__);                                  \
-    (void)fflush(stderr);                                                                                              \
-    NDEBUG_STACK_TRACE();                                                                                              \
-    exit(code);                                                                                                        \
-  } while (0)
+/* Include platform system header for platform_print_backtrace */
+#include "platform/system.h"
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
- * @param code Error code (asciichat_error_status_t)
+ * @param code Error code (asciichat_error_t)
  * @param ... Custom message format string and arguments (printf-style)
  *
  * Usage:
- *   FATAL(ASCIICHAT_ERROR_NETWORK_BIND, "Cannot bind to port %d", port_number);
+ *   FATAL(ERROR_NETWORK_BIND, "Cannot bind to port %d", port_number);
  */
-#define FATAL(code, ...)                                                                                               \
-  do {                                                                                                                 \
-    (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fprintf(stderr, "FATAL ERROR: ");                                                                            \
-    (void)fprintf(stderr, __VA_ARGS__);                                                                                \
-    (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fprintf(stderr, "Exit code: %d (%s)\n", (int)(code), asciichat_error_string(code));                          \
-    (void)fprintf(stderr, "Location: %s:%d in %s()\n", __FILE__, __LINE__, __func__);                                  \
-    (void)fflush(stderr);                                                                                              \
-    NDEBUG_STACK_TRACE();                                                                                              \
-    exit(code);                                                                                                        \
-  } while (0)
+#define FATAL(code, ...)  asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 
-/**
- * @brief Helper macro to print stack trace only in debug builds
- * Internal use only - used by FATAL_ERROR, FATAL_EXIT, and FATAL macros
- */
-#ifndef NDEBUG
-/* Debug build - print stack trace */
-#define NDEBUG_STACK_TRACE()                                                                                           \
-  do {                                                                                                                 \
-    (void)fprintf(stderr, "\nStack trace:\n");                                                                         \
-    platform_print_backtrace();                                                                                        \
-    (void)fprintf(stderr, "\n");                                                                                       \
-    (void)fflush(stderr);                                                                                              \
-  } while (0)
-#else
-/* Release build - no stack trace */
-#define NDEBUG_STACK_TRACE()                                                                                           \
-  do {                                                                                                                 \
-  } while (0)
-#endif
+// =============================================================================
+// Protocol Version Constants
+// =============================================================================
+
+#define PROTOCOL_VERSION_MAJOR 1                      // Major protocol version
+#define PROTOCOL_VERSION_MINOR 0                      // Minor protocol version
+
+// =============================================================================
+// Feature Flags
+// =============================================================================
+
+#define FEATURE_RLE_ENCODING 0x01                     // Run-length encoding support
+#define FEATURE_DELTA_FRAMES 0x02                     // Delta frame encoding support
+
+// =============================================================================
+// Compression Constants
+// =============================================================================
+
+#define COMPRESS_ALGO_NONE 0x00                       // No compression
+#define COMPRESS_ALGO_ZLIB 0x01                       // zlib deflate compression
+#define COMPRESS_ALGO_LZ4 0x02                        // LZ4 fast compression
+
+// =============================================================================
+// Frame Flags
+// =============================================================================
+
+#define FRAME_FLAG_HAS_COLOR 0x01                     // Frame includes ANSI color codes
+#define FRAME_FLAG_IS_COMPRESSED 0x02                 // Frame data is compressed
+#define FRAME_FLAG_RLE_COMPRESSED 0x04                // Frame data is RLE compressed
+#define FRAME_FLAG_IS_STRETCHED 0x08                  // Frame was stretched (aspect adjusted)
+
+// =============================================================================
+// Pixel Format Constants
+// =============================================================================
+
+#define PIXEL_FORMAT_RGB 0                            // RGB pixel format
+#define PIXEL_FORMAT_RGBA 1                           // RGBA pixel format
+#define PIXEL_FORMAT_BGR 2                            // BGR pixel format
+#define PIXEL_FORMAT_BGRA 3                           // BGRA pixel format
+
+// =============================================================================
+// Multi-Client Constants
+// =============================================================================
+
+#define MAX_DISPLAY_NAME_LEN 32                       // Maximum display name length
+#define MAX_CLIENTS 10                                // Maximum number of clients
 
 // Frame rate configuration - With 1ms timer resolution enabled, Windows can now handle 60 FPS
 #ifdef _WIN32
-#define DEFAULT_MAX_FPS 60 // Windows with timeBeginPeriod(1) can handle 60 FPS
+#define DEFAULT_MAX_FPS 30 // Windows with timeBeginPeriod(1) can handle 60 FPS
 #else
 #define DEFAULT_MAX_FPS 60 // macOS/Linux terminals can handle higher rates
 #endif
@@ -265,9 +273,6 @@ extern int g_max_fps;
 #define FRAME_INTERVAL_MS (1000 / MAX_FPS)
 
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
-
-/* Logging levels */
-typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;
 
 /* ============================================================================
  * Shutdown Check System
@@ -310,91 +315,96 @@ bool shutdown_is_requested(void);
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
-/* Safe memory allocation with error checking */
-#define SAFE_MALLOC(ptr, size, cast)                                                                                   \
-  do {                                                                                                                 \
-    (ptr) = (cast)malloc(size);                                                                                        \
-    if (!(ptr)) {                                                                                                      \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                            \
-    }                                                                                                                  \
-  } while (0)
+/* Safe memory allocation with error checking - returns allocated pointer */
+#define SAFE_MALLOC(size, cast)                                                                                        \
+  ({                                                                                                                    \
+    cast _ptr = (cast)malloc(size);                                                                                   \
+    if (!_ptr) {                                                                                                        \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                            \
+    }                                                                                                                   \
+    _ptr;                                                                                                               \
+  })
 
 /* Safe zero-initialized memory allocation */
-#define SAFE_CALLOC(ptr, count, size, cast)                                                                            \
-  do {                                                                                                                 \
-    (ptr) = (cast)calloc((count), (size));                                                                             \
-    if (!(ptr)) {                                                                                                      \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count),             \
+#define SAFE_CALLOC(count, size, cast)                                                                                        \
+  ({                                                                                                                    \
+    cast _ptr = (cast)calloc((count), (size));                                                                                   \
+    if (!_ptr) {                                                                                                        \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count),             \
             (size_t)(size));                                                                                           \
-    }                                                                                                                  \
-  } while (0)
+    }                                                                                                                   \
+    _ptr;                                                                                                               \
+  })
 
 /* Safe memory reallocation */
-#define SAFE_REALLOC(ptr, size, cast)                                                                                  \
-  do {                                                                                                                 \
-    void *tmp_ptr = realloc((ptr), (size));                                                                            \
-    if (!(tmp_ptr)) {                                                                                                  \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                          \
-    }                                                                                                                  \
-    (ptr) = (cast)(tmp_ptr);                                                                                           \
-  } while (0)
+#define SAFE_REALLOC(ptr, size, cast)                                                                                        \
+  ({                                                                                                                    \
+    void *tmp_ptr = realloc((ptr), (size));                                                                                   \
+    if (!tmp_ptr) {                                                                                                        \
+      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                          \
+    }                                                                                                                   \
+    (cast)(tmp_ptr);                                                                                                               \
+  })
 
 /* SIMD-aligned memory allocation macros for optimal NEON/AVX performance */
 #ifdef __APPLE__
 /* macOS uses posix_memalign() for aligned allocation */
-#define SAFE_MALLOC_ALIGNED(ptr, size, alignment, cast)                                                                \
-  do {                                                                                                                 \
-    int result = posix_memalign((void **)&(ptr), (alignment), (size));                                                 \
-    if (result != 0 || !(ptr)) {                                                                                       \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),      \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                        \
+  ({                                                                                                                    \
+    cast _ptr;                                                                                   \
+    int result = posix_memalign((void **)&_ptr, (alignment), (size));                                                 \
+    if (result != 0 || !_ptr) {                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),      \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
-    (ptr) = (cast)(ptr);                                                                                               \
-  } while (0)
+    _ptr;                                                                                               \
+  })
 #else
 /* Linux/other platforms use aligned_alloc() (C11) */
-#define SAFE_MALLOC_ALIGNED(ptr, size, alignment, cast)                                                                \
-  do {                                                                                                                 \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                        \
+  ({                                                                                                                    \
     size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
-    (ptr) = (cast)aligned_alloc((alignment), aligned_size);                                                            \
-    if (!(ptr)) {                                                                                                      \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,        \
+    cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                            \
+    if (!_ptr) {                                                                                                      \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,        \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
-  } while (0)
+    _ptr;                                                                                                               \
+  })
 #endif
 
 /* 16-byte aligned allocation for SIMD operations */
-#define SAFE_MALLOC_SIMD(ptr, size, cast) SAFE_MALLOC_ALIGNED(ptr, size, 16, cast)
+#define SAFE_MALLOC_SIMD(size, cast) SAFE_MALLOC_ALIGNED(size, 16, cast)
 
 /* 16-byte aligned zero-initialized allocation */
-#define SAFE_CALLOC_SIMD(ptr, count, size, cast)                                                                       \
-  do {                                                                                                                 \
+#define SAFE_CALLOC_SIMD(count, size, cast)                                                                                        \
+  ({                                                                                                                    \
     size_t total_size = (count) * (size);                                                                              \
-    SAFE_MALLOC_SIMD(ptr, total_size, cast);                                                                           \
-    memset((ptr), 0, total_size);                                                                                      \
-  } while (0)
+    cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                           \
+    memset(_ptr, 0, total_size);                                                                                      \
+    _ptr;                                                                                                               \
+  })
 
 /* Safe free that nulls the pointer - available in all builds */
 #define SAFE_FREE(ptr)                                                                                                 \
   do {                                                                                                                 \
     if ((ptr) != NULL) {                                                                                               \
-      free((ptr));                                                                                                     \
+      free((void *)(ptr));                                                                                             \
       (ptr) = NULL;                                                                                                    \
     }                                                                                                                  \
   } while (0)
 
 /* Safe string copy */
-#include "platform/system.h"
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
+#include "asciichat_errno.h"
 /* Safe string duplication with platform compatibility */
 #ifdef _WIN32
 #define SAFE_STRDUP(dst, src)                                                                                          \
   do {                                                                                                                 \
     (dst) = _strdup(src);                                                                                              \
     if (!(dst)) {                                                                                                      \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                    \
+      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)"); \
     }                                                                                                                  \
   } while (0)
 #else
@@ -402,7 +412,7 @@ bool shutdown_is_requested(void);
   do {                                                                                                                 \
     (dst) = strdup(src);                                                                                               \
     if (!(dst)) {                                                                                                      \
-      FATAL(ASCIICHAT_ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                    \
+      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)"); \
     }                                                                                                                  \
   } while (0)
 #endif
@@ -418,7 +428,6 @@ bool shutdown_is_requested(void);
   } while (0)
 
 /* Platform-safe environment variable access */
-#include "platform/system.h"
 #define SAFE_GETENV(name) ((char *)platform_getenv(name))
 
 /* Platform-safe sscanf */
@@ -427,10 +436,6 @@ bool shutdown_is_requested(void);
 /* Platform-safe strerror */
 #include "platform/internal.h"
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
-
-/* Platform-safe file open */
-#include "platform/file.h"
-#define SAFE_OPEN(path, flags, mode) platform_open(path, flags, mode)
 
 /* Safe memory functions */
 #define SAFE_MEMCPY(dest, dest_size, src, count) platform_memcpy((dest), (dest_size), (src), (count))
@@ -441,24 +446,8 @@ bool shutdown_is_requested(void);
 /* Safe string formatting */
 #define SAFE_SNPRINTF(buffer, buffer_size, ...) safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
 
-/* Logging functions */
-void log_init(const char *filename, log_level_t level);
-void log_destroy(void);
-void log_set_level(log_level_t level);
-log_level_t log_get_level(void);            /* Get current log level */
-void log_set_terminal_output(bool enabled); /* Control stderr output to terminal */
-bool log_get_terminal_output(void);         /* Get current terminal output setting */
-void log_truncate_if_large(void);           /* Manually truncate large log files */
-void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
-
-/* Logging macros */
-#define log_debug(...) log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_info(...) log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_warn(...) log_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
-
-/* New functions for coverage testing */
+/* Include logging.h to provide logging macros to all files that include common.h */
+#include "logging.h"
 
 /* Memory debugging (only in debug builds, disabled when mimalloc override is active) */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
@@ -470,8 +459,8 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 void debug_memory_report(void);
 void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
 
-#define malloc(size) debug_malloc(size, __FILE__, __LINE__)
-#define free(ptr) debug_free(ptr, __FILE__, __LINE__)
-#define calloc(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
-#define realloc(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
+#define SAFE_MALLOC(size, cast) ((cast)debug_malloc(size, __FILE__, __LINE__))
+#define SAFE_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
+#define SAFE_CALLOC(count, size, cast) ((cast)debug_calloc((count), (size), __FILE__, __LINE__))
+#define SAFE_REALLOC(ptr, size, cast) ((cast)debug_realloc((ptr), (size), __FILE__, __LINE__))
 #endif /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */

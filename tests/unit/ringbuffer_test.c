@@ -846,7 +846,7 @@ Theory((size_t capacity, size_t num_ops), ringbuffer, fifo_ordering_property) {
 
   // PROPERTY: Write sequence of integers
   int *written_values;
-  SAFE_MALLOC(written_values, num_ops * sizeof(int), int *);
+  written_values = SAFE_MALLOC(num_ops * sizeof(int), int *);
   cr_assume(written_values != NULL);
 
   for (size_t i = 0; i < num_ops; i++) {

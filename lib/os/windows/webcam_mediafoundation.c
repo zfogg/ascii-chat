@@ -31,22 +31,21 @@ static HRESULT enumerate_devices_and_print(void) {
   // Create attribute store for device enumeration
   hr = MFCreateAttributes(&attr, 1);
   if (FAILED(hr)) {
-    log_error("Failed to create MF attributes: 0x%08x", hr);
-    return hr;
+    return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to create MF attributes: 0x%08x", hr);
   }
 
   // Set the device type to video capture
   hr =
       IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
   if (FAILED(hr)) {
-    log_error("Failed to set MF device type: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to set MF device type: 0x%08x", hr);
     goto cleanup;
   }
 
   // Enumerate video capture devices
   hr = MFEnumDeviceSources(attr, &devices, &count);
   if (FAILED(hr)) {
-    log_error("Failed to enumerate MF devices: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to enumerate MF devices: 0x%08x", hr);
     goto cleanup;
   }
 
@@ -60,11 +59,11 @@ static HRESULT enumerate_devices_and_print(void) {
       // Convert wide string to multibyte for logging
       int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL, NULL);
       if (len > 0) {
-        char *mbName = malloc(len);
+        char *mbName = SAFE_MALLOC(len, void *);
         if (mbName && WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, mbName, len, NULL, NULL)) {
           log_info("  Device %d: %s", i, mbName);
         }
-        free(mbName);
+        SAFE_FREE(mbName);
       }
       CoTaskMemFree(friendlyName);
     } else {
@@ -88,11 +87,11 @@ cleanup:
   return hr;
 }
 
-int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
+asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   log_info("Opening Windows webcam with Media Foundation, device index %d", device_index);
 
   webcam_context_t *cam;
-  SAFE_MALLOC(cam, sizeof(webcam_context_t), webcam_context_t *);
+  cam = SAFE_MALLOC(sizeof(webcam_context_t), webcam_context_t *);
 
   // Initialize all fields
   cam->device = NULL;
@@ -113,14 +112,14 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   if (SUCCEEDED(hr)) {
     cam->com_initialized = TRUE;
   } else if (hr != RPC_E_CHANGED_MODE) {
-    log_error("Failed to initialize COM: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to initialize COM: 0x%08x", hr);
     goto error;
   }
 
   // Initialize Media Foundation
   hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
   if (FAILED(hr)) {
-    log_error("Failed to startup Media Foundation: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to startup Media Foundation: 0x%08x", hr);
     goto error;
   }
   cam->mf_initialized = TRUE;
@@ -131,32 +130,32 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   // Create attribute store for device enumeration
   hr = MFCreateAttributes(&attr, 1);
   if (FAILED(hr)) {
-    log_error("Failed to create MF attributes: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to create MF attributes: 0x%08x", hr);
     goto error;
   }
 
   hr =
       IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
   if (FAILED(hr)) {
-    log_error("Failed to set MF device type: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to set MF device type: 0x%08x", hr);
     goto error;
   }
 
   // Enumerate devices
   hr = MFEnumDeviceSources(attr, &devices, &count);
   if (FAILED(hr)) {
-    log_error("Failed to enumerate MF devices: 0x%08x", hr);
+    SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to enumerate MF devices: 0x%08x", hr);
     goto error;
   }
 
   if (count == 0) {
-    log_error("No video capture devices found");
+    SET_ERRNO(ERROR_WEBCAM, "No video capture devices found");
     hr = E_FAIL;
     goto error;
   }
 
   if (device_index >= count) {
-    log_error("Device index %d out of range (0-%d)", device_index, count - 1);
+    SET_ERRNO(ERROR_WEBCAM, "Device index %d out of range (0-%d)", device_index, count - 1);
     hr = E_FAIL;
     goto error;
   }
@@ -167,11 +166,10 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to activate MF device: 0x%08x", hr);
-    log_error("DEBUG: Common error codes:");
     log_error("  0x80070005 = E_ACCESSDENIED (device in use)");
     log_error("  0xc00d3704 = Device already in use");
     log_error("  0xc00d3e85 = MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED");
-    result = ASCIICHAT_ERROR_WEBCAM_IN_USE;
+    result = ERROR_WEBCAM_IN_USE;
     goto error;
   }
 
@@ -181,7 +179,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
-    result = ASCIICHAT_ERROR_WEBCAM_IN_USE;
+    result = ERROR_WEBCAM_IN_USE;
     goto error;
   }
 
@@ -292,7 +290,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read test frame during initialization: 0x%08x", hr);
-    result = ASCIICHAT_ERROR_WEBCAM_IN_USE;
+    result = ERROR_WEBCAM_IN_USE;
     goto error;
   }
 
@@ -308,7 +306,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
         IMFActivate_Release(devices[i]);
       }
     }
-    CoTaskMemFree(devices);
+    CoTaskMemFree((void *)devices);
     devices = NULL;
   }
   if (attr) {
@@ -317,7 +315,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
   }
 
   *ctx = cam;
-  return 0;
+  return ASCIICHAT_OK;
 
 error:
   // Only cleanup devices and attr if they haven't been cleaned up yet
@@ -374,12 +372,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
 }
 
 image_t *webcam_read_context(webcam_context_t *ctx) {
-  static int call_count = 0;
-  call_count++;
-
   if (!ctx || !ctx->reader) {
-    log_error("DEBUG: webcam_read_context call #%d - NULL context or reader (ctx=%p, reader=%p)", call_count, ctx,
-              ctx ? ctx->reader : NULL);
     return NULL;
   }
 
@@ -407,7 +400,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read MF sample on FIRST attempt: 0x%08x", hr);
-    log_error("DEBUG: Error code details:");
     log_error("  0x80070005 = E_ACCESSDENIED (device in use)");
     log_error("  0xc00d3704 = Device already in use");
     log_error("  0xc00d3e85 = MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED");
@@ -548,11 +540,11 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Create image_t structure with ACTUAL dimensions
   image_t *img;
-  SAFE_MALLOC(img, sizeof(image_t), image_t *);
+  img = SAFE_MALLOC(sizeof(image_t), image_t *);
 
   img->w = actualWidth;
   img->h = actualHeight;
-  SAFE_MALLOC(img->pixels, actualWidth * actualHeight * sizeof(rgb_t), rgb_t *);
+  img->pixels = SAFE_MALLOC(actualWidth * actualHeight * sizeof(rgb_t), rgb_t *);
 
   // Convert based on the ACTUAL format from Media Foundation
   if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24)) {

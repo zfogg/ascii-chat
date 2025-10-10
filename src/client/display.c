@@ -192,7 +192,7 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
     if (g_tty_info.fd >= 0) {
       // Always position cursor for TTY output (even in snapshot mode)
       cursor_reset(g_tty_info.fd);
-      write(g_tty_info.fd, frame_data, frame_len);
+      platform_write(g_tty_info.fd, frame_data, frame_len);
     } else {
       log_error("Failed to open TTY: %s", g_tty_info.path ? g_tty_info.path : "unknown");
     }
@@ -202,7 +202,7 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
     if (!opt_snapshot_mode) {
       cursor_reset(STDOUT_FILENO);
     }
-    write(STDOUT_FILENO, frame_data, frame_len);
+    platform_write(STDOUT_FILENO, frame_data, frame_len);
     // Only fsync if we have a valid file descriptor and not on Windows console
     if (!platform_isatty(STDOUT_FILENO)) {
       platform_fsync(STDOUT_FILENO);

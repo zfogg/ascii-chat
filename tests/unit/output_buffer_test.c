@@ -24,7 +24,7 @@ Test(output_buffer, ob_reserve_basic) {
   cr_assert(ob.cap >= 100);
   cr_assert_eq(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_reserve_zero) {
@@ -35,7 +35,7 @@ Test(output_buffer, ob_reserve_zero) {
   cr_assert(ob.cap >= 4096); // Default capacity
   cr_assert_eq(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_reserve_expansion) {
@@ -50,7 +50,7 @@ Test(output_buffer, ob_reserve_expansion) {
   cr_assert_gt(ob.cap, initial_cap);
   cr_assert(ob.cap >= 10000);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_putc_basic) {
@@ -64,7 +64,7 @@ Test(output_buffer, ob_putc_basic) {
   cr_assert_eq(ob.len, 2);
   cr_assert_eq(ob.buf[1], 'B');
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_putc_multiple) {
@@ -77,7 +77,7 @@ Test(output_buffer, ob_putc_multiple) {
   cr_assert_eq(ob.len, 100);
   cr_assert(ob.cap >= 100);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_write_basic) {
@@ -88,7 +88,7 @@ Test(output_buffer, ob_write_basic) {
   cr_assert_eq(ob.len, strlen(data));
   cr_assert_eq(memcmp(ob.buf, data, strlen(data)), 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_write_empty) {
@@ -97,7 +97,7 @@ Test(output_buffer, ob_write_empty) {
   ob_write(&ob, "", 0);
   cr_assert_eq(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_write_large) {
@@ -112,7 +112,7 @@ Test(output_buffer, ob_write_large) {
   cr_assert_eq(ob.len, 1000);
   cr_assert_eq(memcmp(ob.buf, data, 1000), 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, ob_term_basic) {
@@ -126,7 +126,7 @@ Test(output_buffer, ob_term_basic) {
   cr_assert_eq(ob.buf[2], '\0');
   cr_assert_str_eq(ob.buf, "Hi");
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 /* ============================================================================
@@ -163,7 +163,7 @@ ParameterizedTest(ob_u8_test_case_t *tc, output_buffer, ob_u8_values) {
   cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
                    ob.buf);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 // Parameterized test for ob_u32 with different values
@@ -199,7 +199,7 @@ ParameterizedTest(ob_u32_test_case_t *tc, output_buffer, ob_u32_values) {
   cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
                    ob.buf);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 /* ============================================================================
@@ -215,7 +215,7 @@ Test(output_buffer, emit_set_truecolor_fg_basic) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "38;2;255;128;64") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_set_truecolor_bg_basic) {
@@ -227,7 +227,7 @@ Test(output_buffer, emit_set_truecolor_bg_basic) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "48;2;0;255;128") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_set_256_color_fg_basic) {
@@ -239,7 +239,7 @@ Test(output_buffer, emit_set_256_color_fg_basic) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "38;5;42") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_set_256_color_bg_basic) {
@@ -251,7 +251,7 @@ Test(output_buffer, emit_set_256_color_bg_basic) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "48;5;200") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_reset_basic) {
@@ -263,7 +263,7 @@ Test(output_buffer, emit_reset_basic) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "0m") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_set_fg_basic) {
@@ -274,7 +274,7 @@ Test(output_buffer, emit_set_fg_basic) {
 
   cr_assert_gt(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_set_bg_basic) {
@@ -285,7 +285,7 @@ Test(output_buffer, emit_set_bg_basic) {
 
   cr_assert_gt(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 /* ============================================================================
@@ -314,7 +314,7 @@ Test(output_buffer, emit_rep_basic) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "5") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, emit_rep_large) {
@@ -326,7 +326,7 @@ Test(output_buffer, emit_rep_large) {
   cr_assert_gt(ob.len, 0);
   cr_assert(strstr(ob.buf, "1000") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 /* ============================================================================
@@ -371,7 +371,7 @@ Test(output_buffer, complex_ansi_sequence) {
   cr_assert(strstr(ob.buf, "48;2;0;255;0") != NULL);
   cr_assert(strstr(ob.buf, "0m") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, mixed_operations) {
@@ -390,7 +390,7 @@ Test(output_buffer, mixed_operations) {
   cr_assert(strstr(ob.buf, "Count: 42") != NULL);
   cr_assert(strstr(ob.buf, "Color text") != NULL);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, large_buffer_operations) {
@@ -406,7 +406,7 @@ Test(output_buffer, large_buffer_operations) {
   cr_assert_gt(ob.len, 1000);
   cr_assert(ob.cap >= ob.len);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 /* ============================================================================
@@ -437,7 +437,7 @@ Test(output_buffer, zero_length_operations) {
   ob_write(&ob, "test", 0);
   cr_assert_eq(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }
 
 Test(output_buffer, extreme_values) {
@@ -452,5 +452,5 @@ Test(output_buffer, extreme_values) {
 
   cr_assert_gt(ob.len, 0);
 
-  free(ob.buf);
+  SAFE_FREE(ob.buf);
 }

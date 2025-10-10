@@ -121,7 +121,7 @@ static NSArray *getSupportedDeviceTypes(void) {
 
 int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   webcam_context_t *context;
-  SAFE_MALLOC(context, sizeof(webcam_context_t), webcam_context_t *);
+  context = SAFE_MALLOC(sizeof(webcam_context_t), webcam_context_t *);
   if (!context) {
     log_error("Failed to allocate webcam context");
     return -1;
@@ -134,7 +134,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     context->session = [[AVCaptureSession alloc] init];
     if (!context->session) {
       log_error("Failed to create AVCaptureSession");
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
 
@@ -172,7 +172,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     if (!device) {
       log_error("No camera device found at index %d", device_index);
       [context->session release];
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
 
@@ -182,7 +182,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     if (!context->input || error) {
       log_error("Failed to create device input: %s", [[error localizedDescription] UTF8String]);
       [context->session release];
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
 
@@ -193,7 +193,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       log_error("Cannot add input to capture session");
       [context->input release];
       [context->session release];
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
 
@@ -203,7 +203,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       log_error("Failed to create video output");
       [context->input release];
       [context->session release];
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
 
@@ -227,7 +227,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->input release];
       [context->session release];
       dispatch_release(context->queue);
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
 
@@ -243,7 +243,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->input release];
       [context->session release];
       dispatch_release(context->queue);
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
     log_info("Capture session started successfully");
@@ -263,7 +263,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->input release];
       [context->session release];
       dispatch_release(context->queue);
-      free(context);
+      SAFE_FREE(context);
       return -1;
     }
   }
@@ -328,7 +328,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
     }
   }
 
-  free(ctx);
+  SAFE_FREE(ctx);
   // log_info("AVFoundation webcam cleaned up");
 }
 

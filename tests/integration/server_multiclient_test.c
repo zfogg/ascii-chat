@@ -37,7 +37,7 @@ static pid_t start_test_server(int port) {
   if (pid == 0) {
     // Child process - start server
     char port_str[16];
-    snprintf(port_str, sizeof(port_str), "%d", port);
+    safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
     // Redirect server output to log file for debugging
     FILE *log_file = fopen("/tmp/test_server_startup.log", "w");
@@ -55,13 +55,13 @@ static pid_t start_test_server(int port) {
 
     // Use BUILD_DIR if set, otherwise use appropriate default
     if (build_dir) {
-      snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
+      safe_snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
     } else if (in_docker) {
       // In Docker, use docker_build directory
-      snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
+      safe_snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
     } else {
       // Local testing, use build directory
-      snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
+      safe_snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
     }
 
     // Check if the server binary exists and is executable
@@ -115,7 +115,7 @@ static int connect_to_server(const char *address, int port) {
 static int send_test_frame(int socket, int frame_id) {
   // Create test ASCII frame
   char ascii_data[1000];
-  snprintf(ascii_data, sizeof(ascii_data),
+  safe_snprintf(ascii_data, sizeof(ascii_data),
            "Test Frame %d\n"
            "████████████\n"
            "██  %04d  ██\n"
@@ -130,7 +130,7 @@ static int send_image_frame(int socket, int width, int height, int client_id) {
   (void)client_id; // Unused parameter
   // Create test RGB image
   rgb_pixel_t *image_data;
-  SAFE_MALLOC(image_data, width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
+  image_data = SAFE_MALLOC(width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
   // Fill with test pattern
   for (int y = 0; y < height; y++) {
@@ -144,7 +144,7 @@ static int send_image_frame(int socket, int width, int height, int client_id) {
   // Use the send_image_frame_packet function from network.h
   // Just use 0 for pixel_format since IMAGE_FORMAT_RGB24 doesn't exist
   int result = send_image_frame_packet(socket, image_data, width * height * sizeof(rgb_pixel_t), width, height, 0);
-  free(image_data);
+  SAFE_FREE(image_data);
   return result;
 }
 

@@ -149,7 +149,7 @@ static void init_utf8_cache_system(void) {
     g_utf8_cache_table = hashtable_create();
 
     // Initialize min-heap for eviction
-    SAFE_MALLOC(g_utf8_heap, g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
+    g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
     g_utf8_heap_size = 0;
   }
 }
@@ -368,7 +368,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
   if (!cache) {
     // Create new cache
-    SAFE_MALLOC(cache, sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
+    cache = SAFE_MALLOC(sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
     memset(cache, 0, sizeof(utf8_palette_cache_t));
 
     // Build both cache types
@@ -533,8 +533,7 @@ void simd_caches_destroy_all(void) {
   }
   // Clean up heap arrays
   if (g_utf8_heap) {
-    free((void *)g_utf8_heap);
-    g_utf8_heap = NULL;
+    SAFE_FREE(g_utf8_heap);
     g_utf8_heap_size = 0;
   }
   rwlock_wrunlock(&g_utf8_cache_rwlock);

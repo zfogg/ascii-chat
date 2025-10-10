@@ -106,7 +106,7 @@ static char *expand_rle_sequences(const char *input) {
 
   size_t input_len = strlen(input);
   size_t output_capacity = input_len * 100; // Generous allocation for expansion
-  char *output = malloc(output_capacity);
+  char *output = SAFE_MALLOC(output_capacity, char *);
   if (!output)
     return NULL;
 
@@ -132,9 +132,9 @@ static char *expand_rle_sequences(const char *input) {
         for (unsigned long i = 0; i < count; i++) {
           if (output_pos >= output_capacity - 1) {
             output_capacity *= 2;
-            char *new_output = realloc(output, output_capacity);
+            char *new_output = SAFE_REALLOC(output, output_capacity, char *);
             if (!new_output) {
-              free(output);
+              SAFE_FREE(output);
               return NULL;
             }
             output = new_output;
@@ -146,9 +146,9 @@ static char *expand_rle_sequences(const char *input) {
         while (seq_start < input_len && seq_start <= input_pos) {
           if (output_pos >= output_capacity - 1) {
             output_capacity *= 2;
-            char *new_output = realloc(output, output_capacity);
+            char *new_output = SAFE_REALLOC(output, output_capacity, char *);
             if (!new_output) {
-              free(output);
+              SAFE_FREE(output);
               return NULL;
             }
             output = new_output;
@@ -160,9 +160,9 @@ static char *expand_rle_sequences(const char *input) {
       // Regular character
       if (output_pos >= output_capacity - 1) {
         output_capacity *= 2;
-        char *new_output = realloc(output, output_capacity);
+        char *new_output = SAFE_REALLOC(output, output_capacity, char *);
         if (!new_output) {
-          free(output);
+          SAFE_FREE(output);
           return NULL;
         }
         output = new_output;
@@ -214,7 +214,7 @@ Test(ascii_simd_integration, monochrome_performance_vs_scalar) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Scalar should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double scalar_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -224,7 +224,7 @@ Test(ascii_simd_integration, monochrome_performance_vs_scalar) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "SIMD should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double simd_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -266,7 +266,7 @@ Test(ascii_simd_integration, color_performance_vs_scalar) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_color(test_image, ascii_palette);
     cr_assert_not_null(result, "Scalar color should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double scalar_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -276,7 +276,7 @@ Test(ascii_simd_integration, color_performance_vs_scalar) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_color_simd(test_image, false, false, ascii_palette);
     cr_assert_not_null(result, "SIMD color should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double simd_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -319,7 +319,7 @@ Test(ascii_simd_integration, utf8_palette_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "ASCII SIMD should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double ascii_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -329,7 +329,7 @@ Test(ascii_simd_integration, utf8_palette_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, utf8_palette);
     cr_assert_not_null(result, "UTF-8 SIMD should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double utf8_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -380,7 +380,7 @@ Test(ascii_simd_integration, various_image_sizes_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print(test_image, ascii_palette);
       cr_assert_not_null(result, "Scalar should produce output for %s", test_sizes[size_idx].name);
-      free(result);
+      SAFE_FREE(result);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     double scalar_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -390,7 +390,7 @@ Test(ascii_simd_integration, various_image_sizes_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print_simd(test_image, ascii_palette);
       cr_assert_not_null(result, "SIMD should produce output for %s", test_sizes[size_idx].name);
-      free(result);
+      SAFE_FREE(result);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     double simd_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -471,7 +471,7 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
 
   size_t palette_char_count = utf8_palette_get_char_count(coverage_pal);
   bool *palette_coverage;
-  SAFE_MALLOC(palette_coverage, palette_char_count * sizeof(bool), bool *);
+  palette_coverage = SAFE_MALLOC(palette_char_count * sizeof(bool), bool *);
   memset(palette_coverage, 0, palette_char_count * sizeof(bool));
   int unique_chars_found = 0;
 
@@ -574,10 +574,10 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
   cr_assert_eq(scalar_lines, height - 1, "Scalar output should have %d lines", height - 1);
   cr_assert_eq(simd_lines, height - 1, "SIMD output should have %d lines", height - 1);
 
-  free(scalar_expanded);
+  SAFE_FREE(scalar_expanded);
 
-  free(scalar_result);
-  free(simd_result);
+  SAFE_FREE(scalar_result);
+  SAFE_FREE(simd_result);
   image_destroy(test_image);
 }
 
@@ -622,7 +622,7 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
     // Count unique characters in palette (some palettes have duplicate chars like "   ._...")
     size_t unique_palette_chars = 0;
     bool *seen_chars;
-    SAFE_MALLOC(seen_chars, palette_char_count * sizeof(bool), bool *);
+    seen_chars = SAFE_MALLOC(palette_char_count * sizeof(bool), bool *);
     memset(seen_chars, 0, palette_char_count * sizeof(bool));
 
     for (size_t pi = 0; pi < palette_char_count; pi++) {
@@ -648,7 +648,7 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
     log_debug("Palette %d: %zu total chars, %zu unique chars", p, palette_char_count, unique_palette_chars);
 
     bool *palette_coverage;
-    SAFE_MALLOC(palette_coverage, palette_char_count * sizeof(bool), bool *);
+    palette_coverage = SAFE_MALLOC(palette_char_count * sizeof(bool), bool *);
     memset(palette_coverage, 0, palette_char_count * sizeof(bool));
     int unique_chars_found = 0;
 
@@ -712,7 +712,7 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
       cr_assert_neq(result[i], 0, "UTF-8 output should not contain null bytes at position %zu", i);
     }
 
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(test_image);
@@ -734,7 +734,7 @@ Test(ascii_simd_integration, cache_system_efficiency) {
   // First call (cache warming)
   char *warmup = image_print_simd(test_image, ascii_palette);
   cr_assert_not_null(warmup, "Cache warmup should succeed");
-  free(warmup);
+  SAFE_FREE(warmup);
 
   // Benchmark with warmed cache
   struct timespec start, end;
@@ -742,7 +742,7 @@ Test(ascii_simd_integration, cache_system_efficiency) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "Cached call %d should succeed", i);
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double cached_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -788,7 +788,7 @@ Test(ascii_simd_integration, rwlock_concurrency_simulation) {
     size_t len = strlen(result);
     cr_assert_gt(len, 100, "Output should be substantial for %dx%d image", width, height);
 
-    free(result);
+    SAFE_FREE(result);
   }
 
   clock_gettime(CLOCK_MONOTONIC, &end);
@@ -847,11 +847,11 @@ Test(ascii_simd_integration, extreme_image_sizes) {
     cr_assert_str_eq(scalar_expanded, simd_expanded, "%s: Outputs should match after RLE expansion",
                      extreme_sizes[i].name);
 
-    free(scalar_expanded);
-    free(simd_expanded);
+    SAFE_FREE(scalar_expanded);
+    SAFE_FREE(simd_expanded);
 
-    free(scalar_result);
-    free(simd_result);
+    SAFE_FREE(scalar_result);
+    SAFE_FREE(simd_result);
     image_destroy(test_image);
   }
 }
@@ -892,7 +892,7 @@ Test(ascii_simd_integration, memory_safety_stress_test) {
       cr_assert(strchr(result, '\n') != NULL, "Test %d: Multi-row output should contain newlines", test);
     }
 
-    free(result);
+    SAFE_FREE(result);
     image_destroy(test_image);
   }
 }
@@ -958,8 +958,8 @@ Test(ascii_simd_integration, null_byte_padding_correctness) {
 
   cr_assert_lt(size_ratio, 2.0, "SIMD output shouldn't be more than 2x scalar size (got %.2fx)", size_ratio);
 
-  free(simd_result);
-  free(scalar_result);
+  SAFE_FREE(simd_result);
+  SAFE_FREE(scalar_result);
   image_destroy(test_image);
 }
 
@@ -1070,8 +1070,8 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
     cr_assert_gt(simd_len, width, "%s: SIMD output too small", mixed_palettes[p].name);
     cr_assert_gt(scalar_len, width, "%s: Scalar output too small", mixed_palettes[p].name);
 
-    free(scalar_result);
-    free(simd_result);
+    SAFE_FREE(scalar_result);
+    SAFE_FREE(simd_result);
   }
 
   image_destroy(test_image);
@@ -1105,7 +1105,7 @@ Test(ascii_simd_integration, utf8_padding_performance_penalty) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "ASCII SIMD should work");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double ascii_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1115,7 +1115,7 @@ Test(ascii_simd_integration, utf8_padding_performance_penalty) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, emoji_palette);
     cr_assert_not_null(result, "UTF-8 SIMD should work");
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double utf8_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1176,7 +1176,7 @@ Test(ascii_simd_integration, palette_system_integration) {
     // Check for reasonable output size (shouldn't be empty or massive)
     cr_assert_lt(len, width * height * 100, "Palette %d output should be reasonable size", p);
 
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(test_image);
@@ -1213,7 +1213,7 @@ Test(ascii_simd_integration, neon_architecture_verification) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "NEON iteration %d should succeed", i);
-    free(result);
+    SAFE_FREE(result);
   }
   clock_gettime(CLOCK_MONOTONIC, &end);
   double neon_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1248,7 +1248,7 @@ Test(ascii_simd_integration, simd_initialization_and_cleanup) {
   char *result = image_print_simd(test_image, "   ...',;:clodxkO0KXNWM");
   cr_assert_not_null(result, "SIMD should work after initialization");
 
-  free(result);
+  SAFE_FREE(result);
   image_destroy(test_image);
 
   // Cleanup should be safe
@@ -1303,7 +1303,7 @@ Test(ascii_simd_integration, terminal_capabilities_integration) {
     // Different capabilities should produce different output sizes
     log_debug("Capability %d: %zu bytes", c, len);
 
-    free(result);
+    SAFE_FREE(result);
   }
 
   image_destroy(test_image);
@@ -1354,7 +1354,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print(test_image, palette);
       cr_assert_not_null(result, "Scalar should work with %s", mixed_palettes[p].name);
-      free(result);
+      SAFE_FREE(result);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     double scalar_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1364,7 +1364,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print_simd(test_image, palette);
       cr_assert_not_null(result, "SIMD should work with %s", mixed_palettes[p].name);
-      free(result);
+      SAFE_FREE(result);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     double simd_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1447,7 +1447,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
     cr_assert_geq(unique_chars_found, min_required, "%s must exercise at least %d characters (%d/%zu found)",
                   mixed_palettes[p].name, min_required, unique_chars_found, palette_len);
     utf8_palette_destroy(utf8_pal);
-    free(coverage_test);
+    SAFE_FREE(coverage_test);
 
     if (scalar_vs_simd_ratio < 1.0)
       scalar_wins++;
@@ -1473,7 +1473,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
       clock_gettime(CLOCK_MONOTONIC, &start);
       for (int i = 0; i < 5; i++) {
         char *result = image_print(test_image, palette);
-        free(result);
+        SAFE_FREE(result);
       }
       clock_gettime(CLOCK_MONOTONIC, &end);
       double scalar_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1481,7 +1481,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
       clock_gettime(CLOCK_MONOTONIC, &start);
       for (int i = 0; i < 5; i++) {
         char *result = image_print_simd(test_image, palette);
-        free(result);
+        SAFE_FREE(result);
       }
       clock_gettime(CLOCK_MONOTONIC, &end);
       double simd_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1663,8 +1663,8 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
         }
       }
 
-      free(scalar_result);
-      free(simd_result);
+      SAFE_FREE(scalar_result);
+      SAFE_FREE(simd_result);
     }
   }
 
@@ -1770,7 +1770,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       for (int i = 0; i < iterations; i++) {
         char *scalar_result = image_print(test_image, palette);
         cr_assert_not_null(scalar_result, "Scalar should produce output");
-        free(scalar_result);
+        SAFE_FREE(scalar_result);
       }
 
       clock_gettime(CLOCK_MONOTONIC, &scalar_end);
@@ -1786,7 +1786,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       for (int i = 0; i < iterations; i++) {
         char *simd_result = image_print_simd(test_image, palette);
         cr_assert_not_null(simd_result, "SIMD should produce output");
-        free(simd_result);
+        SAFE_FREE(simd_result);
       }
 
       clock_gettime(CLOCK_MONOTONIC, &simd_cold_end);
@@ -1800,7 +1800,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       for (int i = 0; i < iterations; i++) {
         char *simd_result = image_print_simd(test_image, palette);
         cr_assert_not_null(simd_result, "SIMD hot should produce output");
-        free(simd_result);
+        SAFE_FREE(simd_result);
       }
 
       clock_gettime(CLOCK_MONOTONIC, &simd_hot_end);
@@ -1846,7 +1846,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       if (hot_speedup > best_speedup) {
         best_speedup = hot_speedup;
         static char best_buffer[256];
-        snprintf(best_buffer, sizeof(best_buffer), "%s-%s", palette_name, size_name);
+        safe_snprintf(best_buffer, sizeof(best_buffer), "%s-%s", palette_name, size_name);
         best_combo = best_buffer;
       }
 

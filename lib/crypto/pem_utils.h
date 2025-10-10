@@ -82,7 +82,7 @@ typedef struct {
  *       for (size_t i = 0; i < anchors.ptr; i++) {
  *           free_ta_contents(&anchors.buf[i]);
  *       }
- *       free(anchors.buf);
+ *       SAFE_FREE(anchors.buf);
  *   }
  */
 size_t read_trust_anchors_from_memory(anchor_list *dst, const unsigned char *pem_data, size_t pem_len);

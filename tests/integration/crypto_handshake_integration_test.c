@@ -15,7 +15,7 @@
 
 #include "tests/common.h"
 #include "crypto/handshake.h"
-#include "crypto/keys.h"
+#include "crypto/keys/keys.h"
 #include "crypto/known_hosts.h"
 #include "tests/logging.h"
 
@@ -63,13 +63,13 @@ void setup_mock_network(void) {
   g_network.server_fd = 1;
   g_network.client_fd = 2;
   g_network.connected = true;
-  g_network.buffer = malloc(4096);
+  g_network.buffer = SAFE_MALLOC(4096, void *);
   g_network.buffer_size = 4096;
   g_network.buffer_pos = 0;
 }
 
 void teardown_mock_network(void) {
-  free(g_network.buffer);
+  SAFE_FREE(g_network.buffer);
   memset(&g_network, 0, sizeof(g_network));
 }
 
@@ -392,9 +392,9 @@ Test(crypto_handshake_integration, large_data_encryption) {
 
   // Test with large data
   const size_t large_size = 1024 * 1024; // 1MB
-  uint8_t *large_data = malloc(large_size);
-  uint8_t *ciphertext = malloc(large_size + 1024); // Extra space for encryption overhead
-  uint8_t *decrypted = malloc(large_size);
+  uint8_t *large_data = SAFE_MALLOC(large_size, void *);
+  uint8_t *ciphertext = SAFE_MALLOC(large_size + 1024, char *); // Extra space for encryption overhead
+  uint8_t *decrypted = SAFE_MALLOC(large_size, void *);
 
   // Fill with test data
   for (size_t i = 0; i < large_size; i++) {
@@ -416,9 +416,9 @@ Test(crypto_handshake_integration, large_data_encryption) {
   cr_assert_eq(decrypted_len, large_size, "Decrypted size should match original");
   cr_assert_eq(memcmp(decrypted, large_data, large_size), 0, "Decrypted data should match original");
 
-  free(large_data);
-  free(ciphertext);
-  free(decrypted);
+  SAFE_FREE(large_data);
+  SAFE_FREE(ciphertext);
+  SAFE_FREE(decrypted);
 
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);

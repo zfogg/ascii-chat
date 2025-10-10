@@ -5,21 +5,68 @@
  * This file provides Windows implementations of safe string functions
  * that satisfy clang-tidy cert-err33-c requirements.
  *
+ * IMPORTANT: This file uses Windows Secure CRT functions (strcpy_s, strcat_s,
+ * etc.) which are ALWAYS available on Windows with MSVC or Clang, regardless
+ * of C11 Annex K support. These are Microsoft-specific extensions, not the
+ * optional C11 Annex K functions that require __STDC_LIB_EXT1__.
+ *
  * @author Assistant
  * @date December 2024
  */
 
+#include "common.h" // Must be first - defines errno constants for Windows
 #include "platform/string.h"
+#include "asciichat_errno.h" // For asciichat_errno system
+#include <corecrt.h>
 #include <stdarg.h>
 #include <string.h>
-#include "common.h"
+#include <stdlib.h> // For malloc
+#include <errno.h>  // For errno variable
 
-// safe_snprintf and safe_fprintf are implemented in system.c
-// to avoid duplicate symbol errors
+int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
+  if (!buffer || buffer_size == 0 || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use Windows _vsnprintf_s for enhanced security
+  int result = _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args);
+  if (result == -1) {
+    SET_ERRNO_SYS(ERROR_FORMAT, "vsnprintf_s failed");
+    return -1;
+  }
+  va_end(args);
+
+  // Ensure null termination even if truncated
+  buffer[buffer_size - 1] = '\0';
+
+  return result;
+}
+
+int safe_fprintf(FILE *stream, const char *format, ...) {
+  if (!stream || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use Windows vfprintf_s for enhanced security
+  int result = vfprintf_s(stream, format, args);
+  if (result == -1) {
+    SET_ERRNO_SYS(ERROR_FORMAT, "vfprintf_s failed");
+    return -1;
+  }
+  va_end(args);
+
+  return result;
+}
 
 char *platform_strcat(char *dest, size_t dest_size, const char *src) {
   if (!dest || !src || dest_size == 0) {
-    log_error("platform_strcat: invalid parameters");
+    SET_ERRNO(ERROR_INVALID_PARAM, "platform_strcat: invalid parameters");
     return NULL;
   }
 
@@ -29,15 +76,228 @@ char *platform_strcat(char *dest, size_t dest_size, const char *src) {
   size_t remaining = dest_size - dest_len;
 
   if (remaining <= src_len) {
-    log_error("platform_strcat: buffer overflow prevented (dest_len=%zu, src_len=%zu, remaining=%zu, dest_size=%zu)",
-              dest_len, src_len, remaining, dest_size);
+    SET_ERRNO(
+        ERROR_STRING,
+        "platform_strcat: buffer overflow prevented (dest_len=%zu, src_len=%zu, remaining=%zu, dest_size=%zu)",
+        dest_len, src_len, remaining, dest_size);
     return NULL;
   }
 
   errno_t err = strcat_s(dest, dest_size, src);
   if (err != 0) {
-    log_error("strcat_s failed: errno=%d (%s)", err, SAFE_STRERROR(err));
+    SET_ERRNO_SYS(ERROR_STRING, "strcat_s failed");
     return NULL;
   }
   return dest;
+}
+
+/**
+ * Platform-safe strcpy wrapper
+ *
+ * Uses strcpy_s on Windows (always available in MSVC/Clang Secure CRT).
+ * Always null-terminates the destination string.
+ *
+ * @param dest Destination buffer
+ * @param dest_size Size of destination buffer
+ * @param src Source string
+ * @return 0 on success, non-zero on error
+ */
+int platform_strcpy(char *dest, size_t dest_size, const char *src) {
+  if (!dest || !src) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "platform_strcpy: invalid parameters");
+    return -1;
+  }
+  if (dest_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "platform_strcpy: dest_size is zero");
+    return -1;
+  }
+
+  size_t src_len = strlen(src);
+  if (src_len >= dest_size) {
+    SET_ERRNO(ERROR_STRING, "platform_strcpy: source string too long for destination buffer");
+    return -1; // Not enough space including null terminator
+  }
+
+  // Windows always has strcpy_s via Secure CRT
+  errno_t err = strcpy_s(dest, dest_size, src);
+  return err; // Returns 0 on success, non-zero on error
+}
+
+// ============================================================================
+// Platform String Functions (moved from system.c)
+// ============================================================================
+
+/**
+ * @brief Platform-safe snprintf implementation
+ * @param str Destination buffer
+ * @param size Buffer size
+ * @param format Format string
+ * @return Number of characters written (excluding null terminator)
+ */
+int platform_snprintf(char *str, size_t size, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  int result = vsnprintf_s(str, size, _TRUNCATE, format, args);
+  if (result == -1) {
+    SET_ERRNO_SYS(ERROR_FORMAT, "vsnprintf_s failed");
+    return -1;
+  }
+  va_end(args);
+  return result;
+}
+
+/**
+ * @brief Platform-safe vsnprintf implementation
+ * @param str Destination buffer
+ * @param size Buffer size
+ * @param format Format string
+ * @param ap Variable argument list
+ * @return Number of characters written (excluding null terminator)
+ */
+int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
+  return vsnprintf_s(str, size, _TRUNCATE, format, ap);
+}
+
+/**
+ * @brief Duplicate a string
+ * @param s Source string
+ * @return Allocated copy of string, or NULL on failure
+ */
+char *platform_strdup(const char *s) {
+  return _strdup(s);
+}
+
+/**
+ * @brief Duplicate up to n characters of a string
+ * @param s Source string
+ * @param n Maximum number of characters to copy
+ * @return Allocated copy of string, or NULL on failure
+ */
+char *platform_strndup(const char *s, size_t n) {
+  size_t len = strnlen(s, n);
+  char *result = SAFE_MALLOC(len + 1, char *);
+  if (result) {
+    memcpy(result, s, len);
+    result[len] = '\0';
+  }
+  return result;
+}
+
+/**
+ * @brief Case-insensitive string comparison
+ * @param s1 First string
+ * @param s2 Second string
+ * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
+ */
+int platform_strcasecmp(const char *s1, const char *s2) {
+  return _stricmp(s1, s2);
+}
+
+/**
+ * @brief Case-insensitive string comparison with length limit
+ * @param s1 First string
+ * @param s2 Second string
+ * @param n Maximum number of characters to compare
+ * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
+ */
+int platform_strncasecmp(const char *s1, const char *s2, size_t n) {
+  return _strnicmp(s1, s2, n);
+}
+
+/**
+ * @brief Thread-safe string tokenization
+ * @param str String to tokenize (NULL for continuation)
+ * @param delim Delimiter string
+ * @param saveptr Pointer to save state between calls
+ * @return Pointer to next token, or NULL if no more tokens
+ */
+char *platform_strtok_r(char *str, const char *delim, char **saveptr) {
+  return strtok_s(str, delim, saveptr);
+}
+
+/**
+ * @brief Safe string copy with size limit
+ * @param dst Destination buffer
+ * @param src Source string
+ * @param size Destination buffer size
+ * @return Length of source string (excluding null terminator)
+ */
+size_t platform_strlcpy(char *dst, const char *src, size_t size) {
+  if (size == 0)
+    return strlen(src);
+
+  errno_t err = strncpy_s(dst, size, src, _TRUNCATE);
+  if (err != 0) {
+    SET_ERRNO_SYS(ERROR_STRING, "strncpy_s failed");
+    return -1;
+  }
+  return strlen(src);
+}
+
+/**
+ * @brief Safe string concatenation with size limit
+ * @param dst Destination buffer
+ * @param src Source string
+ * @param size Destination buffer size
+ * @return Total length of resulting string
+ */
+size_t platform_strlcat(char *dst, const char *src, size_t size) {
+  size_t dst_len = strnlen(dst, size);
+  if (dst_len == size)
+    return size + strlen(src);
+
+  errno_t err = strncat_s(dst, size, src, _TRUNCATE);
+  if (err != 0) {
+    SET_ERRNO_SYS(ERROR_STRING, "strncat_s failed");
+    return -1;
+  }
+  return dst_len + strlen(src);
+}
+
+/**
+ * @brief Safe string copy with explicit size (for strncpy replacement)
+ * @param dst Destination buffer
+ * @param dst_size Destination buffer size
+ * @param src Source string
+ * @param count Maximum number of characters to copy
+ * @return 0 on success, non-zero on error
+ */
+int platform_strncpy(char *dst, size_t dst_size, const char *src, size_t count) {
+  if (!dst || !src || dst_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "platform_strncpy: invalid parameters");
+    return -1;
+  }
+
+  // Use the smaller of count and dst_size-1
+  size_t copy_len = (count < dst_size - 1) ? count : dst_size - 1;
+
+  // strncpy_s: copies up to count characters, always null-terminates
+  errno_t err = strncpy_s(dst, dst_size, src, copy_len);
+  if (err != 0) {
+    SET_ERRNO_SYS(ERROR_STRING, "strncpy_s failed");
+    return -1;
+  }
+
+  return 0;
+}
+
+int safe_sscanf(const char *str, const char *format, ...) {
+  if (!str || !format) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "safe_sscanf: invalid parameters");
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Use Windows sscanf_s for enhanced security
+  int result = vsscanf_s(str, format, args);
+  if (result == EOF) {
+    SET_ERRNO_SYS(ERROR_FORMAT, "sscanf_s failed");
+    va_end(args);
+    return -1;
+  }
+
+  va_end(args);
+  return result;
 }

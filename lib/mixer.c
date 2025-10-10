@@ -1,6 +1,7 @@
 #include "audio.h"
 #include "mixer.h"
 #include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -141,8 +142,8 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   duck->release_coeff = expf(-1.0f / (release_tau * sample_rate + 1e-12f));
 
   // Allocate arrays
-  SAFE_MALLOC(duck->envelope, num_sources * sizeof(float), float *);
-  SAFE_MALLOC(duck->gain, num_sources * sizeof(float), float *);
+  duck->envelope = SAFE_MALLOC(num_sources * sizeof(float), float *);
+  duck->gain = SAFE_MALLOC(num_sources * sizeof(float), float *);
 
   // Initialize
   SAFE_MEMSET(duck->envelope, num_sources * sizeof(float), 0, num_sources * sizeof(float));
@@ -206,18 +207,20 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
 mixer_t *mixer_create(int max_sources, int sample_rate) {
   // Validate parameters
   if (max_sources <= 0 || max_sources > MIXER_MAX_SOURCES) {
-    log_error("Invalid max_sources: %d (must be 1-%d)", max_sources, MIXER_MAX_SOURCES);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_sources: %d (must be 1-%d)", max_sources,
+                  MIXER_MAX_SOURCES);
     return NULL;
   }
 
   if (sample_rate <= 0 || sample_rate > 192000) {
-    log_error("Invalid sample_rate: %d (must be 1-192000)", sample_rate);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid sample_rate: %d (must be 1-192000)", sample_rate);
     return NULL;
   }
 
   mixer_t *mixer;
-  SAFE_MALLOC(mixer, sizeof(mixer_t), mixer_t *);
+  mixer = SAFE_MALLOC(sizeof(mixer_t), mixer_t *);
   if (!mixer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate mixer structure");
     return NULL;
   }
 
@@ -226,24 +229,22 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->sample_rate = sample_rate;
 
   // Allocate source management arrays
-  SAFE_MALLOC(mixer->source_buffers, max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
+  mixer->source_buffers = SAFE_MALLOC(max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
   if (!mixer->source_buffers) {
     SAFE_FREE(mixer);
     return NULL;
   }
 
-  SAFE_MALLOC(mixer->source_ids, max_sources * sizeof(uint32_t), uint32_t *);
+  mixer->source_ids = SAFE_MALLOC(max_sources * sizeof(uint32_t), uint32_t *);
   if (!mixer->source_ids) {
-    free((void *)mixer->source_buffers);
-    mixer->source_buffers = NULL;
+    SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer);
     return NULL;
   }
 
-  SAFE_MALLOC(mixer->source_active, max_sources * sizeof(bool), bool *);
+  mixer->source_active = SAFE_MALLOC(max_sources * sizeof(bool), bool *);
   if (!mixer->source_active) {
-    free((void *)mixer->source_buffers);
-    mixer->source_buffers = NULL;
+    SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer);
     return NULL;
@@ -262,9 +263,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
-    log_error("Failed to initialize mixer source lock");
-    free((void *)mixer->source_buffers);
-    mixer->source_buffers = NULL;
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize mixer source lock");
+    SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
     SAFE_FREE(mixer->mix_buffer);
@@ -281,7 +281,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   compressor_init(&mixer->compressor, sample_rate);
 
   // Allocate mix buffer
-  SAFE_MALLOC(mixer->mix_buffer, MIXER_FRAME_SIZE * sizeof(float), float *);
+  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
 
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
@@ -297,8 +297,7 @@ void mixer_destroy(mixer_t *mixer) {
 
   ducking_free(&mixer->ducking);
 
-  free((void *)mixer->source_buffers);
-  mixer->source_buffers = NULL;
+  SAFE_FREE(mixer->source_buffers);
   SAFE_FREE(mixer->source_ids);
   SAFE_FREE(mixer->source_active);
   SAFE_FREE(mixer->mix_buffer);

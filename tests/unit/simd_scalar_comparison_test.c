@@ -16,7 +16,7 @@ static char *extract_ascii_chars(const char *output, size_t max_chars) {
     return NULL;
 
   char *ascii_chars;
-  SAFE_MALLOC(ascii_chars, max_chars + 1, char *);
+  ascii_chars = SAFE_MALLOC(max_chars + 1, char *);
   size_t ascii_pos = 0;
   size_t i = 0;
 
@@ -202,10 +202,10 @@ Test(simd_scalar_comparison, small_gradient_monochrome) {
   cr_assert_str_eq(scalar_ascii, simd_ascii, "ASCII characters should match between scalar and SIMD");
 
   // Cleanup
-  free(scalar_result);
-  free(simd_result);
-  free(scalar_ascii);
-  free(simd_ascii);
+  SAFE_FREE(scalar_result);
+  SAFE_FREE(simd_result);
+  SAFE_FREE(scalar_ascii);
+  SAFE_FREE(simd_ascii);
   image_destroy(test_image);
 }
 
@@ -263,10 +263,10 @@ Test(simd_scalar_comparison, single_pixel_values) {
     }
 
     // Cleanup
-    free(scalar_result);
-    free(simd_result);
-    free(scalar_ascii);
-    free(simd_ascii);
+    SAFE_FREE(scalar_result);
+    SAFE_FREE(simd_result);
+    SAFE_FREE(scalar_ascii);
+    SAFE_FREE(simd_ascii);
     image_destroy(test_image);
   }
 }
@@ -338,10 +338,10 @@ ParameterizedTest(palette_comparison_test_case_t *tc, simd_scalar_comparison, di
                    tc->description);
 
   // Cleanup
-  free(scalar_result);
-  free(simd_result);
-  free(scalar_ascii);
-  free(simd_ascii);
+  SAFE_FREE(scalar_result);
+  SAFE_FREE(simd_result);
+  SAFE_FREE(scalar_ascii);
+  SAFE_FREE(simd_ascii);
   image_destroy(test_image);
 }
 

@@ -17,7 +17,7 @@ TEST_SUITE_WITH_QUIET_LOGGING(common);
 
 Test(common, safe_malloc_basic) {
   void *ptr;
-  SAFE_MALLOC(ptr, 1024, void *);
+  ptr = SAFE_MALLOC(1024, void *);
   cr_assert_not_null(ptr, "SAFE_MALLOC should return valid pointer");
 
   // Write to memory to ensure it's accessible
@@ -26,7 +26,7 @@ Test(common, safe_malloc_basic) {
   cr_assert_eq(byte_ptr[0], 0xAA, "Memory should be writable");
   cr_assert_eq(byte_ptr[1023], 0xAA, "All allocated memory should be accessible");
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 // =============================================================================
@@ -46,7 +46,7 @@ Test(common, safe_calloc_basic) {
     cr_assert_eq(ptr[i], 0, "CALLOC memory should be zeroed at index %zu", i);
   }
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 // =============================================================================
@@ -56,7 +56,7 @@ Test(common, safe_calloc_basic) {
 Test(common, safe_realloc_basic) {
   void *ptr;
   // Initial allocation
-  SAFE_MALLOC(ptr, 512, void *);
+  ptr = SAFE_MALLOC(512, void *);
   cr_assert_not_null(ptr, "Initial malloc should succeed");
 
   // Write pattern to memory
@@ -72,7 +72,7 @@ Test(common, safe_realloc_basic) {
     cr_assert_eq(byte_ptr[i], 0xBB, "Original data should be preserved at index %d", i);
   }
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 // =============================================================================
@@ -195,7 +195,7 @@ Test(common, concurrent_allocations) {
 
   // Allocate multiple blocks
   for (int i = 0; i < 10; i++) {
-    SAFE_MALLOC(ptrs[i], 1024 * (i + 1), void *);
+    ptrs[i] = SAFE_MALLOC(1024 * (i + 1), void *);
     cr_assert_not_null(ptrs[i], "Allocation %d should succeed", i);
 
     // Write unique pattern to each block
@@ -211,7 +211,7 @@ Test(common, concurrent_allocations) {
 
   // Free all blocks
   for (int i = 0; i < 10; i++) {
-    free(ptrs[i]);
+    SAFE_FREE(ptrs[i]);
   }
 }
 
@@ -223,7 +223,7 @@ Test(common, large_allocations) {
   void *ptr;
   // Test reasonably large allocation (1MB)
   size_t large_size = 1024 * 1024;
-  SAFE_MALLOC(ptr, large_size, void *);
+  ptr = large_size = SAFE_MALLOC(void *);
 
   // Write to first and last bytes to ensure it's really allocated
   uint8_t *byte_ptr = (uint8_t *)ptr;
@@ -233,16 +233,16 @@ Test(common, large_allocations) {
   cr_assert_eq(byte_ptr[0], 0xFF, "First byte should be writable");
   cr_assert_eq(byte_ptr[large_size - 1], 0xEE, "Last byte should be writable");
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 Test(common, alignment_checks) {
   void *ptr1, *ptr2, *ptr3;
 
   // Test that allocated memory is properly aligned
-  SAFE_MALLOC(ptr1, 1, void *);
-  SAFE_MALLOC(ptr2, 3, void *);
-  SAFE_MALLOC(ptr3, 7, void *);
+  ptr1 = SAFE_MALLOC(1, void *);
+  ptr2 = SAFE_MALLOC(3, void *);
+  ptr3 = SAFE_MALLOC(7, void *);
 
   cr_assert_not_null(ptr1, "Small allocation should succeed");
   cr_assert_not_null(ptr2, "Small allocation should succeed");
@@ -257,9 +257,9 @@ Test(common, alignment_checks) {
   cr_assert_eq(addr2 % sizeof(void *), 0, "Memory should be pointer-aligned");
   cr_assert_eq(addr3 % sizeof(void *), 0, "Memory should be pointer-aligned");
 
-  free(ptr1);
-  free(ptr2);
-  free(ptr3);
+  SAFE_FREE(ptr1);
+  SAFE_FREE(ptr2);
+  SAFE_FREE(ptr3);
 }
 
 // =============================================================================
@@ -270,7 +270,7 @@ Test(common, log_memory_operations) {
   void *ptr;
 
   // Test logging during memory operations
-  SAFE_MALLOC(ptr, 1024, void *);
+  ptr = SAFE_MALLOC(1024, void *);
   log_debug("Allocated memory at %p", ptr);
 
   if (ptr) {
@@ -280,7 +280,7 @@ Test(common, log_memory_operations) {
     SAFE_REALLOC(ptr, 2048, void *);
     log_info("Reallocated memory to 2048 bytes at %p", ptr);
 
-    free(ptr);
+    SAFE_FREE(ptr);
     log_debug("Freed memory");
   }
 

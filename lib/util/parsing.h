@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../common.h"
+
 /**
  * @file parsing.h
  * @brief Safe parsing utilities
@@ -15,9 +17,9 @@
  * @param message Input message
  * @param width Output width
  * @param height Output height
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height);
+asciichat_error_t safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height);
 
 /**
  * Parse AUDIO message format
@@ -26,6 +28,6 @@ int safe_parse_size_message(const char *message, unsigned int *width, unsigned i
  *
  * @param message Input message
  * @param num_samples Output sample count
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int safe_parse_audio_message(const char *message, unsigned int *num_samples);
+asciichat_error_t safe_parse_audio_message(const char *message, unsigned int *num_samples);

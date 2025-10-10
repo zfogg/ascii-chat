@@ -6,7 +6,6 @@
 #include "avx2.h"
 #include "common.h"
 #include "../output_buffer.h"
-#include "../../buffer_pool.h"
 #include "../../ansi_fast.h"
 
 #ifdef SIMD_SUPPORT_AVX2
@@ -259,7 +258,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   // Plus 1 newline per row
   size_t output_size = (size_t)h * ((size_t)w * 12 + 1);
 
-  char *output = (char *)malloc(output_size);
+  char *output = SAFE_MALLOC(output_size, char *);
   if (!output) {
     log_error("Failed to allocate output buffer for AVX2 rendering");
     return NULL;
@@ -371,9 +370,10 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   const int width = image->w;
   const int height = image->h;
 
+
   if (width <= 0 || height <= 0) {
     char *empty;
-    SAFE_MALLOC(empty, 1, char *);
+    empty = SAFE_MALLOC(1, char *);
     empty[0] = '\0';
     return empty;
   }
@@ -389,7 +389,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   size_t bytes_per_pixel = use_256color ? 10u : 25u; // Conservative estimates
   size_t output_size = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 1024u;
 
-  char *output = (char *)malloc(output_size);
+  char *output = SAFE_MALLOC(output_size, char *);
   if (!output) {
     log_error("Failed to allocate output buffer for AVX2 color rendering");
     return NULL;
@@ -403,15 +403,19 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   int cur_color_idx = -1;
 
   // Generate output row by row with single-pass processing
+
   for (int y = 0; y < height; y++) {
     const rgb_pixel_t *row_pixels = &pixels_data[y * width];
     int x = 0;
 
+
     // AVX2 fast path: process 32 pixels at a time
     while (x + 31 < width) {
+
       // Process 32 pixels with AVX2 using thread-local buffers
       avx2_load_rgb32_optimized(&row_pixels[x], avx2_r_buffer, avx2_g_buffer, avx2_b_buffer);
       avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
+
 
       // Process each pixel in the chunk
       int i = 0;
@@ -422,6 +426,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
         const uint8_t luma_idx = avx2_luminance_buffer[i] >> 2;
         const uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
         const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+
 
         if (use_256color) {
           uint8_t color_idx = rgb_to_256color(R, G, B);
@@ -496,6 +501,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
           // Emit character with RLE
           memcpy(pos, char_info->utf8_bytes, char_info->byte_len);
           pos += char_info->byte_len;
+
 
           if (rep_is_profitable(run)) {
             pos = emit_rle_count(pos, run - 1);
@@ -612,6 +618,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
     if (y < height - 1) {
       *pos++ = '\n';
     }
+
   }
 
   *pos = '\0'; // Null terminate

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "keys.h"
+#include "keys/keys.h"
+#include "common.h"
 #include <stdbool.h>
 
 /**
@@ -13,9 +14,9 @@ bool ssh_agent_is_available(void);
  * @brief Add a private key to ssh-agent
  * @param private_key The private key to add
  * @param key_path Original key file path (for reference)
- * @return 0 on success, -1 on failure
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int ssh_agent_add_key(const private_key_t *private_key, const char *key_path);
+asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char *key_path);
 
 /**
  * @brief Check if a public key is already in ssh-agent

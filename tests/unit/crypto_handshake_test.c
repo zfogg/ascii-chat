@@ -13,7 +13,7 @@
 
 #include "tests/common.h"
 #include "crypto/handshake.h"
-#include "crypto/keys.h"
+#include "crypto/keys/keys.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -78,20 +78,20 @@ void setup_mock_sockets(void) {
 
   g_server_socket.fd = 1;
   g_server_socket.connected = true;
-  g_server_socket.recv_buffer = malloc(4096);
+  g_server_socket.recv_buffer = SAFE_MALLOC(4096, void *);
   g_server_socket.recv_buffer_size = 4096;
   g_server_socket.recv_buffer_pos = 0;
 
   g_client_socket.fd = 2;
   g_client_socket.connected = true;
-  g_client_socket.recv_buffer = malloc(4096);
+  g_client_socket.recv_buffer = SAFE_MALLOC(4096, void *);
   g_client_socket.recv_buffer_size = 4096;
   g_client_socket.recv_buffer_pos = 0;
 }
 
 void teardown_mock_sockets(void) {
-  free(g_server_socket.recv_buffer);
-  free(g_client_socket.recv_buffer);
+  SAFE_FREE(g_server_socket.recv_buffer);
+  SAFE_FREE(g_client_socket.recv_buffer);
   memset(&g_server_socket, 0, sizeof(g_server_socket));
   memset(&g_client_socket, 0, sizeof(g_client_socket));
 }
@@ -385,7 +385,7 @@ Test(crypto_handshake, handshake_with_large_data) {
 
   // Test with large socket buffers
   g_server_socket.recv_buffer_size = 1024 * 1024; // 1MB
-  g_server_socket.recv_buffer = realloc(g_server_socket.recv_buffer, g_server_socket.recv_buffer_size);
+  g_server_socket.recv_buffer = SAFE_REALLOC(g_server_socket.recv_buffer, g_server_socket.recv_buffer_size, void *);
 
   int result = crypto_handshake_server_start(&ctx, (int)&g_server_socket);
   cr_assert_eq(result, 0, "Should handle large buffers");

@@ -31,8 +31,9 @@
  * PEM data instead of files. Original code from BearSSL tools (ISC license).
  */
 
-#include "common.h"
+#include "../common.h"
 #include "pem_utils.h"
+#include "asciichat_errno.h"
 
 #include <bearssl.h>
 #include <ctype.h>
@@ -52,7 +53,7 @@
 
 #define VEC_CLEAR(vec)                                                                                                 \
   do {                                                                                                                 \
-    free((vec).buf);                                                                                                   \
+    SAFE_FREE((vec).buf);                                                                                                   \
     (vec).buf = NULL;                                                                                                  \
     (vec).ptr = 0;                                                                                                     \
     (vec).len = 0;                                                                                                     \
@@ -92,13 +93,13 @@ static void *xmalloc(size_t len) {
   if (len == 0) {
     return NULL;
   }
-  SAFE_MALLOC(buf, len, void *);
+  buf = SAFE_MALLOC(len, void *);
   return buf;
 }
 
 static void xfree(void *buf) {
   if (buf != NULL) {
-    free(buf);
+    SAFE_FREE(buf);
   }
 }
 
@@ -107,7 +108,7 @@ static void *xblobdup(const void *src, size_t len) {
   if (len == 0) {
     return NULL;
   }
-  SAFE_MALLOC(buf, len, void *);
+  buf = SAFE_MALLOC(len, void *);
   memcpy(buf, src, len);
   return buf;
 }
@@ -157,9 +158,11 @@ static int looks_like_DER(const unsigned char *buf, size_t len) {
   len -= 2;
   if (fb < 0x80) {
     return (size_t)fb == len;
-  } else if (fb == 0x80) {
+  }
+  if (fb == 0x80) {
     return 0;
-  } else {
+  }
+  {
     fb -= 0x80;
     if (len < (size_t)fb + 2) {
       return 0;
@@ -254,6 +257,10 @@ static pem_object *decode_pem(const void *src, size_t len, size_t *num) {
       log_error("Invalid PEM encoding");
       VEC_CLEAREXT(pem_list, free_pem_object_contents);
       return NULL;
+
+    default:
+      // Ignore other PEM events
+      break;
     }
 
     // Add extra newline at end to support PEM files without trailing newline
@@ -369,7 +376,7 @@ static void dn_append(void *ctx, const void *buf, size_t len) {
   VEC_ADDMANY(*(bvector *)ctx, buf, len);
 }
 
-static int certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, br_x509_certificate *xc) {
+static asciichat_error_t certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, br_x509_certificate *xc) {
   br_x509_decoder_context dc;
   bvector vdn = VEC_INIT;
   br_x509_pkey *pk;
@@ -378,9 +385,8 @@ static int certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, br_x509_c
   br_x509_decoder_push(&dc, xc->data, xc->data_len);
   pk = br_x509_decoder_get_pkey(&dc);
   if (pk == NULL) {
-    log_error("CA decoding failed with error %d", br_x509_decoder_last_error(&dc));
     VEC_CLEAR(vdn);
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO, "CA decoding failed with error %d", br_x509_decoder_last_error(&dc));
   }
 
   ta->dn.data = VEC_TOARRAY(vdn);
@@ -406,12 +412,11 @@ static int certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, br_x509_c
     ta->pkey.key.ec.qlen = pk->key.ec.qlen;
     break;
   default:
-    log_error("Unsupported public key type in CA");
     xfree(ta->dn.data);
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO, "Unsupported public key type in CA certificate");
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void free_ta_contents(br_x509_trust_anchor *ta) {
@@ -423,6 +428,9 @@ void free_ta_contents(br_x509_trust_anchor *ta) {
     break;
   case BR_KEYTYPE_EC:
     xfree((void *)ta->pkey.key.ec.q);
+    break;
+  default:
+    SET_ERRNO(ERROR_CRYPTO, "Unknown public key type in CA");
     break;
   }
 }
@@ -442,7 +450,7 @@ size_t read_trust_anchors_from_memory(anchor_list *dst, const unsigned char *pem
   for (u = 0; u < num; u++) {
     br_x509_trust_anchor ta;
 
-    if (certificate_to_trust_anchor_inner(&ta, &xcs[u]) < 0) {
+    if (certificate_to_trust_anchor_inner(&ta, &xcs[u]) != ASCIICHAT_OK) {
       VEC_CLEAREXT(tas, free_ta_contents);
       free_certificates(xcs, num);
       return 0;

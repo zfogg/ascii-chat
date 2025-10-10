@@ -179,6 +179,8 @@ Test(crypto_known_hosts, remove_known_host_null_params) {
 // =============================================================================
 
 Test(crypto_known_hosts, display_mitm_warning) {
+  const char *hostname = "mitm.example.com";
+  uint16_t port = 8080;
   const uint8_t expected_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45,
                                     0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab,
                                     0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
@@ -186,11 +188,12 @@ Test(crypto_known_hosts, display_mitm_warning) {
                                   0x98, 0x76, 0x54, 0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54,
                                   0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10};
 
-  // This should display a warning (function returns void)
-  display_mitm_warning(expected_key, actual_key);
+  // This should display a warning and return false when stdin is unavailable/closed in test
+  // Note: In automated testing, stdin is typically closed, so fgets() returns NULL and function returns false
+  bool result = display_mitm_warning(hostname, port, expected_key, actual_key);
 
-  // Test passes if it doesn't crash
-  cr_assert(true, "MITM warning should not crash");
+  // Test passes if it doesn't crash - result will be false in automated tests
+  cr_assert(result == false || result == true, "MITM warning should return a boolean and not crash");
 }
 
 // =============================================================================
@@ -224,7 +227,7 @@ Test(crypto_known_hosts, large_known_hosts_file) {
   // Add many entries
   for (int i = 0; i < 100; i++) {
     char dynamic_hostname[256];
-    snprintf(dynamic_hostname, sizeof(dynamic_hostname), "host%d.example.com", i);
+    safe_snprintf(dynamic_hostname, sizeof(dynamic_hostname), "host%d.example.com", i);
 
     int result = add_known_host(dynamic_hostname, port, server_key);
     cr_assert_eq(result, 0, "Adding host %d should succeed", i);

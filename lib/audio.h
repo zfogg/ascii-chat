@@ -33,10 +33,10 @@ typedef struct {
   mutex_t state_mutex;
 } audio_context_t;
 
-int audio_init(audio_context_t *ctx);
+asciichat_error_t audio_init(audio_context_t *ctx);
 void audio_destroy(audio_context_t *ctx);
 
-int audio_start_capture(audio_context_t *ctx);
+asciichat_error_t audio_start_capture(audio_context_t *ctx);
 int audio_stop_capture(audio_context_t *ctx);
 
 int audio_start_playback(audio_context_t *ctx);

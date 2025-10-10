@@ -66,7 +66,7 @@ static pid_t spawn_process(const char *path, char *const argv[], const char *nam
   if (pid == 0) {
     // Child: redirect output to log file
     char log_path[256];
-    snprintf(log_path, sizeof(log_path), "/tmp/ascii_chat_test_%s_%d.log", name, getpid());
+    safe_snprintf(log_path, sizeof(log_path), "/tmp/ascii_chat_test_%s_%d.log", name, getpid());
 
     FILE *log_file = fopen(log_path, "w");
     if (log_file) {
@@ -182,7 +182,7 @@ static bool wait_for_tcp_port(int port, int timeout_ms) {
 Test(main_integration, server_main_starts_and_stops) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   char *argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_server_main.log", NULL};
 
@@ -246,7 +246,7 @@ Test(main_integration, client_main_help_flag) {
 Test(main_integration, client_main_no_server) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   char *argv[] = {"ascii-chat-client",
                   "--port",
@@ -272,7 +272,7 @@ Test(main_integration, client_main_no_server) {
 Test(main_integration, server_client_basic_connection) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
   char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_server_client.log", NULL};
@@ -313,7 +313,7 @@ Test(main_integration, server_client_basic_connection) {
 Test(main_integration, server_multiple_clients_sequential) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
   char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_multi_seq.log", NULL};
@@ -327,7 +327,7 @@ Test(main_integration, server_multiple_clients_sequential) {
   // Connect multiple clients sequentially
   for (int i = 0; i < 3; i++) {
     char client_name[32];
-    snprintf(client_name, sizeof(client_name), "client_%d", i);
+    safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
     char *client_argv[] = {
         "ascii-chat-client",        "--port", port_str, "--address", "127.0.0.1", "--snapshot", "--log-file",
@@ -348,7 +348,7 @@ Test(main_integration, server_multiple_clients_sequential) {
 Test(main_integration, server_multiple_clients_concurrent) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
   char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_multi_concurrent.log", NULL};
@@ -363,10 +363,10 @@ Test(main_integration, server_multiple_clients_concurrent) {
   pid_t client_pids[3];
   for (int i = 0; i < 3; i++) {
     char client_name[32];
-    snprintf(client_name, sizeof(client_name), "client_%d", i);
+    safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
     char delay_str[16];
-    snprintf(delay_str, sizeof(delay_str), "%d", 2 + i); // Different durations
+    safe_snprintf(delay_str, sizeof(delay_str), "%d", 2 + i); // Different durations
 
     char *client_argv[] = {"ascii-chat-client",
                            "--port",
@@ -399,7 +399,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
 Test(main_integration, server_client_with_options) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server with options
   char *server_argv[] = {"ascii-chat-server",
@@ -450,7 +450,7 @@ Test(main_integration, server_client_with_options) {
 Test(main_integration, server_survives_client_crash) {
   int port = next_test_port++;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
   char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_server_survives.log", NULL};

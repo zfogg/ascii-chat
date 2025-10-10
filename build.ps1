@@ -67,7 +67,15 @@ if ($needsConfigure) {
   Write-Host "Configuring project ($Config build) in $BuildDir..." -ForegroundColor Cyan
 
   # Map Config parameter to preset name
-  $presetName = $Config.ToLower()
+  $presetName = switch ($Config.ToLower()) {
+    "debug" { "debug" }
+    "release" { "release-clang" }
+    "release-clang" { "release-clang" }
+    "dev" { "dev" }
+    "coverage" { "coverage" }
+    "relwithdebinfo" { "relwithdebinfo" }
+    default { "default" }
+  }
     
   # Check if using special modes that require custom configuration
   $useCustomConfig = $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
@@ -175,7 +183,7 @@ else {
 # Build the project
 Write-Host ""
 Write-Host "Building project..." -ForegroundColor Cyan
-& cmake --build build --config $Config --parallel
+& cmake --build $BuildDir --config $Config --parallel
 if ($LASTEXITCODE -ne 0) {
   Write-Host ""
   Write-Host "ERROR: Build failed!" -ForegroundColor Red
@@ -189,8 +197,8 @@ Write-Host "Copying build outputs to bin/ directory..." -ForegroundColor Cyan
 if (!(Test-Path "bin")) {
   New-Item -ItemType Directory -Path "bin" | Out-Null
 }
-# Copy everything from build/bin to bin
-Copy-Item "build\bin\*" "bin\" -Force -Recurse
+# Copy everything from $BuildDir/bin to bin
+Copy-Item "$BuildDir\bin\*" "bin\" -Force -Recurse
 Write-Host "Build complete!" -ForegroundColor Green
 
 Write-Host ""

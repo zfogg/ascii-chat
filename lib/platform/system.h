@@ -13,6 +13,7 @@
 
 #include <signal.h>
 #include <time.h>
+#include "../common.h"
 
 // Signal handler type
 typedef void (*signal_handler_t)(int);
@@ -22,7 +23,7 @@ typedef void (*signal_handler_t)(int);
 // ============================================================================
 
 // Platform initialization
-int platform_init(void);
+asciichat_error_t platform_init(void);
 void platform_cleanup(void);
 
 // Time functions
@@ -38,7 +39,7 @@ void platform_sleep_ms(unsigned int ms);
  * @param result Pointer to struct tm to receive result
  * @return 0 on success, non-zero on error
  */
-int platform_localtime(const time_t *timer, struct tm *result);
+asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
 
 // Process functions
 int platform_get_pid(void);
@@ -63,7 +64,7 @@ void platform_backtrace_symbols_free(char **strings);
 
 // Crash handling
 void platform_install_crash_handler(void);
-void platform_print_backtrace(void);
+void platform_print_backtrace(int skip_frames);
 
 // ============================================================================
 // Safe String Functions
@@ -122,7 +123,7 @@ int safe_fprintf(FILE *stream, const char *format, ...);
  * @param count Number of bytes to copy
  * @return 0 on success, non-zero on error
  */
-int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count);
+asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count);
 
 /**
  * Platform-safe memset wrapper
@@ -136,7 +137,7 @@ int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count)
  * @param count Number of bytes to set
  * @return 0 on success, non-zero on error
  */
-int platform_memset(void *dest, size_t dest_size, int ch, size_t count);
+asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t count);
 
 /**
  * Platform-safe memmove wrapper
@@ -150,7 +151,7 @@ int platform_memset(void *dest, size_t dest_size, int ch, size_t count);
  * @param count Number of bytes to move
  * @return 0 on success, non-zero on error
  */
-int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count);
+asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src, size_t count);
 
 /**
  * Platform-safe strcpy wrapper
@@ -163,7 +164,7 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
  * @param src Source string
  * @return 0 on success, non-zero on error
  */
-int platform_strcpy(char *dest, size_t dest_size, const char *src);
+asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src);
 
 /**
  * Resolve hostname to IPv4 address
@@ -176,7 +177,7 @@ int platform_strcpy(char *dest, size_t dest_size, const char *src);
  * @param ipv4_out_size Size of the output buffer
  * @return 0 on success, -1 on failure
  */
-int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size);
+asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size);
 
 /**
  * Load system CA certificates for TLS/HTTPS
@@ -199,7 +200,7 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
  *   size_t pem_size;
  *   if (platform_load_system_ca_certs(&pem_data, &pem_size) == 0) {
  *       // Use pem_data for TLS verification
- *       free(pem_data);
+ *       SAFE_FREE(pem_data);
  *   }
  */
-int platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);
+asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);

@@ -275,7 +275,7 @@ Test(network, random_size_messages) {
     unsigned short height = (rand() % 1000) + 1;
 
     char message[64];
-    snprintf(message, sizeof(message), "SIZE:%u,%u\n", width, height);
+    safe_snprintf(message, sizeof(message), "SIZE:%u,%u\n", width, height);
 
     unsigned short parsed_width, parsed_height;
     int result = parse_size_message(message, &parsed_width, &parsed_height);
