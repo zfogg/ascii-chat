@@ -287,13 +287,14 @@ void log_init(const char *filename, log_level_t level) {
 
   g_log.initialized = true;
 
-  // Now that logging is initialized, we can safely detect terminal capabilities
-  log_redetect_terminal_capabilities();
-
   // Restore the terminal output setting
   g_log.terminal_output_enabled = preserve_terminal_output;
 
   mutex_unlock(&g_log.mutex);
+
+  // Now that logging is initialized and mutex is released, we can safely detect terminal capabilities
+  // This MUST be after mutex_unlock() because detect_terminal_capabilities() uses log_debug()
+  log_redetect_terminal_capabilities();
 }
 
 void log_destroy(void) {

@@ -12,6 +12,7 @@
 #include "../internal.h"
 #include "../../common.h" // For log_error()
 #include "../../asciichat_errno.h"
+#include "../../util/path.h" // For extract_project_relative_path()
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -25,6 +26,9 @@
 #include <stdatomic.h>
 #include <sys/stat.h>
 #include <netdb.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 /**
  * @brief Get username from environment variables
@@ -362,13 +366,189 @@ int platform_chmod(const char *pathname, int mode) {
 // ============================================================================
 
 /**
+ * @brief Manual stack unwinding using frame pointers
+ * @param buffer Array to store trace addresses
+ * @param size Maximum number of addresses to retrieve
+ * @return Number of addresses retrieved
+ */
+static int manual_backtrace(void **buffer, int size) {
+  if (!buffer || size <= 0) {
+    return 0;
+  }
+
+  // Get current frame pointer and instruction pointer
+  void **frame = (void **)__builtin_frame_address(0);
+  int depth = 0;
+
+  // Walk the stack using frame pointers
+  while (frame && depth < size) {
+    // frame[0] = previous frame pointer
+    // frame[1] = return address (instruction pointer)
+    void *return_addr = frame[1];
+
+    // Sanity check - return address should be in code segment
+    if (!return_addr || return_addr < (void *)0x1000) {
+      break;
+    }
+
+    buffer[depth++] = return_addr;
+
+    // Move to previous frame
+    void **prev_frame = (void **)frame[0];
+
+    // Sanity checks to avoid infinite loops
+    if (!prev_frame || prev_frame <= frame || (uintptr_t)prev_frame & 0x7) {
+      break;
+    }
+
+    frame = prev_frame;
+  }
+
+  return depth;
+}
+
+/**
  * @brief Get stack trace
  * @param buffer Array to store trace addresses
  * @param size Maximum number of addresses to retrieve
  * @return Number of addresses retrieved
  */
 int platform_backtrace(void **buffer, int size) {
-  return backtrace(buffer, size);
+  // Try libexecinfo's backtrace first
+  int depth = backtrace(buffer, size);
+
+  // If that fails (musl limitation), use manual stack walking
+  if (depth == 0) {
+    depth = manual_backtrace(buffer, size);
+  }
+
+  return depth;
+}
+
+/**
+ * @brief Enhanced symbolization using addr2line for better backtraces
+ * @param buffer Array of addresses from platform_backtrace
+ * @param size Number of addresses in buffer
+ * @return Array of strings with cleaned symbol names (must be freed)
+ */
+static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size) {
+  if (size <= 0 || !buffer) {
+    return NULL;
+  }
+
+  // Allocate array for result strings (size + 1 for NULL terminator)
+  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
+  if (!result) {
+    return NULL;
+  }
+
+  // Get executable path (Linux: /proc/self/exe, macOS: _NSGetExecutablePath)
+  char exe_path[1024];
+#ifdef __linux__
+  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+  if (len <= 0) {
+    // Fallback to basic backtrace_symbols
+    SAFE_FREE(result);
+    return backtrace_symbols(buffer, size);
+  }
+  exe_path[len] = '\0';
+#elif defined(__APPLE__)
+  uint32_t bufsize = sizeof(exe_path);
+  if (_NSGetExecutablePath(exe_path, &bufsize) != 0) {
+    // Fallback to basic backtrace_symbols
+    SAFE_FREE(result);
+    return backtrace_symbols(buffer, size);
+  }
+#else
+  // Unknown platform - fallback
+  SAFE_FREE(result);
+  return backtrace_symbols(buffer, size);
+#endif
+
+  // Build addr2line command with all addresses
+  char cmd[4096];
+  int offset = snprintf(cmd, sizeof(cmd), "addr2line -e %s -f -C -i ", exe_path);
+  if (offset <= 0 || offset >= (int)sizeof(cmd)) {
+    SAFE_FREE(result);
+    return backtrace_symbols(buffer, size);
+  }
+
+  for (int i = 0; i < size; i++) {
+    int n = snprintf(cmd + offset, sizeof(cmd) - offset, "%p ", buffer[i]);
+    if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
+      break;
+    }
+    offset += n;
+  }
+
+  // Execute addr2line
+  FILE *fp = popen(cmd, "r");
+  if (!fp) {
+    SAFE_FREE(result);
+    return backtrace_symbols(buffer, size);
+  }
+
+  // Parse output (format: function name, then file:line)
+  int parsed = 0;
+  for (int i = 0; i < size; i++) {
+    char func_name[256];
+    char file_line[512];
+
+    if (fgets(func_name, sizeof(func_name), fp) == NULL) {
+      break;
+    }
+    if (fgets(file_line, sizeof(file_line), fp) == NULL) {
+      break;
+    }
+
+    // Remove newlines
+    func_name[strcspn(func_name, "\n")] = '\0';
+    file_line[strcspn(file_line, "\n")] = '\0';
+
+    // Extract just the relative path from file_line
+    const char *rel_path = extract_project_relative_path(file_line);
+
+    // Skip if unknown or ?? symbols
+    if (strcmp(func_name, "??") == 0 || strcmp(file_line, "??:0") == 0 || strcmp(file_line, "??:?") == 0) {
+      // Fallback to raw address
+      result[parsed] = SAFE_MALLOC(64, char *);
+      if (!result[parsed])
+        break;
+      snprintf(result[parsed], 64, "%p", buffer[i]);
+      parsed++;
+      continue;
+    }
+
+    // Format: file:line in function()
+    result[parsed] = SAFE_MALLOC(1024, char *);
+    if (!result[parsed])
+      break;
+
+    if (strstr(rel_path, ":") != NULL) {
+      // Has line number
+      snprintf(result[parsed], 1024, "%s in %s()", rel_path, func_name);
+    } else {
+      // No line number - just show function
+      snprintf(result[parsed], 1024, "%s() at %p", func_name, buffer[i]);
+    }
+    parsed++;
+  }
+
+  pclose(fp);
+
+  // If we didn't parse anything, clean up and return NULL to fallback
+  if (parsed == 0) {
+    SAFE_FREE(result);
+    return NULL;
+  }
+
+  // NULL-terminate the array so we know where it ends
+  // Allocate one extra slot for NULL terminator if needed
+  if (parsed < size) {
+    result[parsed] = NULL;
+  }
+
+  return result;
 }
 
 /**
@@ -378,6 +558,13 @@ int platform_backtrace(void **buffer, int size) {
  * @return Array of strings with symbol names (must be freed)
  */
 char **platform_backtrace_symbols(void *const *buffer, int size) {
+  // Try enhanced symbolization first (uses addr2line for better output)
+  char **enhanced = platform_backtrace_symbols_enhanced(buffer, size);
+  if (enhanced) {
+    return enhanced;
+  }
+
+  // Fallback to basic backtrace_symbols
   return backtrace_symbols(buffer, size);
 }
 
@@ -386,20 +573,35 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  * @param strings Array returned by platform_backtrace_symbols
  */
 void platform_backtrace_symbols_free(char **strings) {
-  // IMPORTANT: When using mimalloc (which overrides malloc/free globally),
-  // we cannot safely free memory allocated by backtrace_symbols() because:
-  // 1. backtrace_symbols() uses system malloc()
-  // 2. mimalloc's free() expects memory allocated by mimalloc
-  // 3. Calling free() on system-allocated memory causes a crash
-  //
-  // The memory leak is acceptable because:
-  // - Backtraces are only printed during crashes/errors
-  // - The memory is small (a few KB at most)
-  // - Process is about to exit anyway
-  //
-  // We check for mimalloc by testing if we're in Debug mode with memory debugging,
-  // which is when mimalloc is active as the global allocator.
-  (void)strings; // Suppress unused parameter warning - we intentionally don't free
+  if (!strings) {
+    return;
+  }
+
+  // Check if this is our enhanced symbols (allocated with SAFE_MALLOC)
+  // or system backtrace_symbols (system malloc)
+  // We can tell by checking if the first string has our format
+  if (strings[0] && (strstr(strings[0], " in ") != NULL || strstr(strings[0], "() at ") != NULL)) {
+    // This is our enhanced format - free each string individually
+    int i = 0;
+    while (strings[i] != NULL) {
+      SAFE_FREE(strings[i]);
+      i++;
+    }
+    SAFE_FREE(strings);
+  } else {
+    // This is system backtrace_symbols
+    // IMPORTANT: When using mimalloc (which overrides malloc/free globally),
+    // we cannot safely free memory allocated by backtrace_symbols() because:
+    // 1. backtrace_symbols() uses system malloc()
+    // 2. mimalloc's free() expects memory allocated by mimalloc
+    // 3. Calling free() on system-allocated memory causes a crash
+    //
+    // The memory leak is acceptable because:
+    // - Backtraces are only printed during crashes/errors
+    // - The memory is small (a few KB at most)
+    // - Process is about to exit anyway
+    (void)strings; // Suppress unused parameter warning - we intentionally don't free
+  }
 }
 
 // ============================================================================

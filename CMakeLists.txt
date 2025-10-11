@@ -503,6 +503,12 @@ endif()
 # Base warning flags for Clang/GCC compilers
 add_compile_options(-Wall -Wextra)
 
+# Enable frame pointers for better backtraces (required for musl + libexecinfo)
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-fno-omit-frame-pointer)
+    message(STATUS "Frame pointers enabled for backtraces")
+endif()
+
 # Platform-specific compiler flags
 if(PLATFORM_DARWIN)
     # Let CMake handle SDK paths automatically for cross-generator compatibility
@@ -1933,6 +1939,11 @@ endif()
 
 target_link_libraries(ascii-chat-server ascii-chat-core)
 
+# Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_link_options(ascii-chat-server PRIVATE -no-pie)
+endif()
+
 # Strip symbols in Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     find_program(STRIP_EXECUTABLE strip)
@@ -1953,7 +1964,7 @@ if(USE_MUSL)
 
     # Link against musl-built static libraries
     target_link_directories(ascii-chat-server PRIVATE ${MUSL_PREFIX}/lib)
-    target_link_options(ascii-chat-server PRIVATE -static)
+    target_link_options(ascii-chat-server PRIVATE -static -rdynamic)
 
     # Link all libraries (LTO requires this, dead code elimination removes unused code)
     target_link_libraries(ascii-chat-server
@@ -1979,6 +1990,11 @@ add_executable(ascii-chat-client
 )
 target_link_libraries(ascii-chat-client ascii-chat-core)
 
+# Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_link_options(ascii-chat-client PRIVATE -no-pie)
+endif()
+
 # Strip symbols in Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     if(STRIP_EXECUTABLE)
@@ -1996,7 +2012,7 @@ if(USE_MUSL)
 
     # Link against musl-built static libraries
     target_link_directories(ascii-chat-client PRIVATE ${MUSL_PREFIX}/lib)
-    target_link_options(ascii-chat-client PRIVATE -static)
+    target_link_options(ascii-chat-client PRIVATE -static -rdynamic)
 
     # Override system libraries with musl-built versions
     target_link_libraries(ascii-chat-client

@@ -361,8 +361,8 @@ static void init_windows_symbols(void) {
     }
 
     // Set up symbol search path: current dir, build dir, and system paths
-    safe_snprintf(symbol_path, sizeof(symbol_path), "%s;%s\\build\\bin;%s\\build;%s",
-             module_path, project_root, project_root, getenv("_NT_SYMBOL_PATH") ? getenv("_NT_SYMBOL_PATH") : "");
+    safe_snprintf(symbol_path, sizeof(symbol_path), "%s;%s\\build\\bin;%s\\build;%s", module_path, project_root,
+                  project_root, getenv("_NT_SYMBOL_PATH") ? getenv("_NT_SYMBOL_PATH") : "");
 
     log_debug("Setting symbol search path: %s", symbol_path);
   }

@@ -67,7 +67,7 @@ static uint64_t get_timestamp_microseconds(void) {
 }
 
 static void capture_backtrace(void **backtrace, char ***backtrace_symbols, int *stack_depth) {
-#ifdef DEBUG
+#ifndef NDEBUG // Capture in Debug and Dev modes
   *stack_depth = platform_backtrace(backtrace, 32);
   *backtrace_symbols = platform_backtrace_symbols(backtrace, *stack_depth);
 #else
@@ -88,7 +88,7 @@ static bool skip_backtrace_frame(const char *frame) {
 
 void log_labeled(const char *label, logging_color_t color, const char *message, ...) {
   va_list args;
-  va_start(args);
+  va_start(args, message);
   char *formatted_message = format_message(message, args);
   va_end(args);
 
@@ -256,7 +256,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 
   safe_fprintf(stderr, "\n");
   log_labeled("FATAL ERROR", LOGGING_COLOR_FATAL, "exit code %d (%s)", (int)code, asciichat_error_string(code));
-#ifdef DEBUG
+#ifndef NDEBUG
   const char *relative_file = extract_project_relative_path(file);
   log_plain("  Location: %s:%d in %s()", relative_file, line, function);
 #endif
@@ -269,20 +269,22 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     va_end(args);
   }
 
-#ifdef DEBUG
-  // Always print platform backtrace in debug builds
-  log_labeled("\nFATAL BACKTRACE", LOGGING_COLOR_ERROR, "");
+#ifndef NDEBUG
+  // Always print platform backtrace in debug/dev builds
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
   if (size > 0) {
+    log_labeled("\nFATAL BACKTRACE", LOGGING_COLOR_ERROR, "");
     char **symbols = platform_backtrace_symbols(buffer, size);
-    for (int i = 0; i < size; i++) {
-      if (!skip_backtrace_frame(symbols[i])) {
-        log_plain("  %s[%d]%s %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
-                  symbols ? symbols[i] : "???");
+    if (symbols) {
+      for (int i = 0; i < size; i++) {
+        if (symbols[i] && !skip_backtrace_frame(symbols[i])) {
+          log_plain("  %s[%d]%s %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
+                    symbols[i]);
+        }
       }
+      platform_backtrace_symbols_free(symbols);
     }
-    platform_backtrace_symbols_free(symbols);
   }
 #endif
 
@@ -326,11 +328,12 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   // Print stack trace from library error
-  log_labeled("\nBacktrace from library error", LOGGING_COLOR_ERROR, "");
   if (context->stack_depth > 0) {
+    log_labeled("\nBacktrace from library error", LOGGING_COLOR_ERROR, "");
     // Print stack trace starting from the first non-internal frame
     for (int i = 0; i < context->stack_depth; i++) {
-      if (!skip_backtrace_frame(context->backtrace_symbols[i])) {
+      if (context->backtrace_symbols && context->backtrace_symbols[i] &&
+          !skip_backtrace_frame(context->backtrace_symbols[i])) {
         log_plain("  [%d] %s", i, context->backtrace_symbols[i]);
       }
     }
