@@ -221,7 +221,6 @@ void platform_sleep_usec(unsigned int usec);
 // Platform-safe write function
 ssize_t platform_write(int fd, const void *buf, size_t count);
 
-
 // ============================================================================
 // Utility Macros
 // ============================================================================

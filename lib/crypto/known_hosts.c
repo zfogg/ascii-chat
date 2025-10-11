@@ -5,7 +5,7 @@
 #include "ip.h"
 #include "platform/internal.h"
 #include "platform/system.h" // For platform_isatty()
-#include "options.h"          // For opt_snapshot_mode
+#include "options.h"         // For opt_snapshot_mode
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -248,8 +248,8 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     }
   }
 
-  (void)fclose(f); // fclose() also closes the underlying fd
-  return ASCIICHAT_OK;        // Not found = first connection
+  (void)fclose(f);     // fclose() also closes the underlying fd
+  return ASCIICHAT_OK; // Not found = first connection
 }
 
 asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
@@ -532,9 +532,11 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
   safe_fprintf(stderr, "\n");
   safe_fprintf(stderr, "To update the key, run:\n");
   safe_fprintf(stderr, "  # Windows PowerShell:\n");
-  safe_fprintf(stderr, "  (Get-Content '%s') | Where-Object { $_ -notmatch '^%s ' } | Set-Content '%s'\n", known_hosts_path, ip_with_port, known_hosts_path);
+  safe_fprintf(stderr, "  (Get-Content '%s') | Where-Object { $_ -notmatch '^%s ' } | Set-Content '%s'\n",
+               known_hosts_path, ip_with_port, known_hosts_path);
   safe_fprintf(stderr, "  # Unix/Linux (grep approach - most reliable):\n");
-  safe_fprintf(stderr, "  grep -v '^%s ' %s > %s.tmp && mv %s.tmp %s\n", ip_with_port, known_hosts_path, known_hosts_path, known_hosts_path, known_hosts_path);
+  safe_fprintf(stderr, "  grep -v '^%s ' %s > %s.tmp && mv %s.tmp %s\n", ip_with_port, known_hosts_path,
+               known_hosts_path, known_hosts_path, known_hosts_path);
   safe_fprintf(stderr, "  # Alternative sed (may not work on all systems):\n");
   safe_fprintf(stderr, "  sed -i '' '/%s /d' %s\n", ip_with_port, known_hosts_path);
   safe_fprintf(stderr, "  # Or manually edit %s to remove lines starting with '%s '\n", known_hosts_path, ip_with_port);

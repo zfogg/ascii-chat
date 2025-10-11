@@ -55,5 +55,4 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame);
  */
 void display_cleanup();
 
-
 extern tty_info_t g_tty_info;

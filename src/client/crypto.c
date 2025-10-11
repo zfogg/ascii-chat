@@ -74,8 +74,7 @@ int client_crypto_init(void) {
     log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", opt_encrypt_key);
     if (parse_private_key(opt_encrypt_key, &private_key) == ASCIICHAT_OK) {
       log_info("Successfully parsed SSH private key");
-      log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d",
-                private_key.type, KEY_TYPE_ED25519);
+      log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
       is_ssh_key = true;
     } else {
       log_error("Failed to parse SSH key file: %s", opt_encrypt_key);
@@ -213,11 +212,10 @@ int client_crypto_handshake(socket_t socket) {
   result = receive_packet(socket, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
     log_error("Failed to receive server protocol version (got type %u)", packet_type);
-    log_error("Packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)",
-              packet_type, packet_type, PACKET_TYPE_PROTOCOL_VERSION, PACKET_TYPE_PROTOCOL_VERSION);
+    log_error("Packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)", packet_type, packet_type,
+              PACKET_TYPE_PROTOCOL_VERSION, PACKET_TYPE_PROTOCOL_VERSION);
     log_error("This suggests a protocol mismatch or packet corruption");
-    log_error("Raw packet type bytes: %02x %02x %02x %02x",
-              (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
+    log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
     if (payload) {
       buffer_pool_free(payload, payload_len);

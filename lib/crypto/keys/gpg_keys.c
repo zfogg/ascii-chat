@@ -13,8 +13,7 @@
 
 asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out) {
   if (!gpg_key_text || !key_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_out=%p",
-                  gpg_key_text, key_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_out=%p", gpg_key_text, key_out);
     return ERROR_INVALID_PARAM;
   }
 
@@ -47,8 +46,7 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out)
 
 asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key_size, public_key_t *key_out) {
   if (!gpg_key_binary || !key_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_binary=%p, key_out=%p",
-                  gpg_key_binary, key_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_binary=%p, key_out=%p", gpg_key_binary, key_out);
     return ERROR_INVALID_PARAM;
   }
 
@@ -91,8 +89,7 @@ asciichat_error_t validate_gpg_key_format(const char *gpg_key_text) {
 
 asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed25519_pk[32]) {
   if (!gpg_key_text || !ed25519_pk) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, ed25519_pk=%p",
-                  gpg_key_text, ed25519_pk);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, ed25519_pk=%p", gpg_key_text, ed25519_pk);
     return ERROR_INVALID_PARAM;
   }
 
@@ -109,8 +106,7 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed2
 
 asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[32]) {
   if (!gpg_key_text || !x25519_pk) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, x25519_pk=%p",
-                  gpg_key_text, x25519_pk);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, x25519_pk=%p", gpg_key_text, x25519_pk);
     return ERROR_INVALID_PARAM;
   }
 
@@ -136,8 +132,8 @@ asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_
 
 asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[20]) {
   if (!gpg_key_text || !fingerprint_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, fingerprint_out=%p",
-                  gpg_key_text, fingerprint_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, fingerprint_out=%p", gpg_key_text,
+              fingerprint_out);
     return ERROR_INVALID_PARAM;
   }
 
@@ -150,8 +146,7 @@ asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerpr
 
 asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]) {
   if (!gpg_key_text || !key_id_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_id_out=%p",
-                  gpg_key_text, key_id_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_id_out=%p", gpg_key_text, key_id_out);
     return ERROR_INVALID_PARAM;
   }
 
@@ -164,8 +159,7 @@ asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]
 
 asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expired) {
   if (!gpg_key_text || !is_expired) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, is_expired=%p",
-                  gpg_key_text, is_expired);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, is_expired=%p", gpg_key_text, is_expired);
     return ERROR_INVALID_PARAM;
   }
 
@@ -183,8 +177,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
 
 asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output, size_t output_size) {
   if (!gpg_key_text || !output) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, output=%p",
-                  gpg_key_text, output);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, output=%p", gpg_key_text, output);
     return ERROR_INVALID_PARAM;
   }
 
@@ -221,8 +214,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
 
 asciichat_error_t extract_gpg_key_comment(const char *gpg_key_text, char *comment_out, size_t comment_size) {
   if (!gpg_key_text || !comment_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, comment_out=%p",
-                  gpg_key_text, comment_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, comment_out=%p", gpg_key_text, comment_out);
     return ERROR_INVALID_PARAM;
   }
 

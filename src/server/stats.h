@@ -24,5 +24,7 @@ extern server_stats_t g_stats;
 extern mutex_t g_stats_mutex;
 
 // Statistics functions
+int stats_init(void);
+void stats_cleanup(void);
 void update_server_stats(void);
 void log_server_stats(void);

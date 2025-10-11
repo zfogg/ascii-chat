@@ -10,7 +10,7 @@
 
 #include "../constants.h"
 #include "../../common.h"
-#include "types.h"  // Include the key type definitions
+#include "types.h" // Include the key type definitions
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -121,8 +121,8 @@ asciichat_error_t compare_public_keys(const public_key_t *key1, const public_key
  * @param matches Output: true if fingerprint matches, false otherwise
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint,
-                                              size_t fingerprint_len, bool *matches);
+asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint, size_t fingerprint_len,
+                                        bool *matches);
 
 /**
  * @brief Generate key fingerprint
@@ -131,5 +131,4 @@ asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *
  * @param fingerprint_size Size of the fingerprint buffer
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t generate_key_fingerprint(const public_key_t *key, uint8_t *fingerprint_out,
-                                                size_t fingerprint_size);
+asciichat_error_t generate_key_fingerprint(const public_key_t *key, uint8_t *fingerprint_out, size_t fingerprint_size);

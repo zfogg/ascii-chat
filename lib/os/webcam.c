@@ -219,13 +219,13 @@ void webcam_print_init_error_help(int error_code) {
   safe_fprintf(stderr, "\n");
   safe_fprintf(stderr, "On macOS, you may need to grant camera permissions:\n");
   safe_fprintf(stderr,
-                "* Say \"yes\" to the popup about system camera access that you see when running this program for the "
-                "first time.\n");
+               "* Say \"yes\" to the popup about system camera access that you see when running this program for the "
+               "first time.\n");
   safe_fprintf(
       stderr, "* If you said \"no\" to the popup, go to System Preferences > Security & Privacy > Privacy > Camera.\n");
   safe_fprintf(stderr,
-                "   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
-                "access your camera.\n");
+               "   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to "
+               "access your camera.\n");
   safe_fprintf(stderr, "   Then just run this program again.\n");
   (void)fflush(stderr);
 #elif defined(_WIN32)

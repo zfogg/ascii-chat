@@ -355,8 +355,7 @@ int main(int argc, char *argv[]) {
   int init_result = initialize_client_systems();
   if (init_result != 0) {
     // Check if this is a webcam-related error and print help
-    if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE ||
-        init_result == ERROR_WEBCAM_PERMISSION) {
+    if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
       webcam_print_init_error_help(init_result);
       FATAL(init_result, "Client initialization failed");
     }

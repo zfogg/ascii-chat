@@ -85,7 +85,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   // Validate samples doesn't exceed our buffer size
   if (samples > AUDIO_RING_BUFFER_SIZE) {
     return SET_ERRNO(ERROR_BUFFER, "Attempted to write %d samples, but buffer size is only %d", samples,
-                  AUDIO_RING_BUFFER_SIZE);
+                     AUDIO_RING_BUFFER_SIZE);
   }
 
   mutex_lock(&rb->mutex);
@@ -239,8 +239,7 @@ void audio_destroy(audio_context_t *ctx) {
 
 asciichat_error_t audio_start_capture(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx,
-                  ctx ? ctx->initialized : 0);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx, ctx ? ctx->initialized : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -291,8 +290,8 @@ asciichat_error_t audio_start_capture(audio_context_t *ctx) {
 
 asciichat_error_t audio_stop_capture(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized || !ctx->recording) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, recording=%d",
-                     ctx, ctx ? ctx->initialized : 0, ctx ? ctx->recording : 0);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, recording=%d", ctx,
+                     ctx ? ctx->initialized : 0, ctx ? ctx->recording : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -312,8 +311,7 @@ asciichat_error_t audio_stop_capture(audio_context_t *ctx) {
 
 asciichat_error_t audio_start_playback(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx,
-                  ctx ? ctx->initialized : 0);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx, ctx ? ctx->initialized : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -366,8 +364,8 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
 
 asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized || !ctx->playing) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, playing=%d",
-                     ctx, ctx ? ctx->initialized : 0, ctx ? ctx->playing : 0);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, playing=%d", ctx,
+                     ctx ? ctx->initialized : 0, ctx ? ctx->playing : 0);
   }
 
   mutex_lock(&ctx->state_mutex);
@@ -387,8 +385,8 @@ asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
 
 asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d",
-                     ctx, buffer, num_samples);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer,
+                     num_samples);
   }
 
   return audio_ring_buffer_read(ctx->capture_buffer, buffer, num_samples);
@@ -396,8 +394,8 @@ asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int nu
 
 asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d",
-                     ctx, buffer, num_samples);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer,
+                     num_samples);
   }
 
   return audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);

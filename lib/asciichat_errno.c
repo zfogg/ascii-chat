@@ -77,35 +77,6 @@ static void capture_backtrace(void **backtrace, char ***backtrace_symbols, int *
 #endif
 }
 
-static char *format_context_message(const char *format, va_list args) {
-  if (!format) {
-    return NULL;
-  }
-
-  // First, determine the size needed
-  va_list args_copy;
-  va_copy(args_copy, args);
-  int size = vsnprintf(NULL, 0, format, args_copy);
-  va_end(args_copy);
-
-  if (size < 0) {
-    return NULL;
-  }
-
-  // Allocate and format the message
-  char *message = SAFE_MALLOC(size + 1, char *);
-  if (!message) {
-    return NULL;
-  }
-
-  int result = vsnprintf(message, (size_t)size + 1, format, args);
-  if (result < 0) {
-    SAFE_FREE(message);
-    return NULL;
-  }
-  return message;
-}
-
 static bool skip_backtrace_frame(const char *frame) {
   return (strstr(frame, "BaseThreadInitThunk") != NULL || strstr(frame, "RtlUserThreadStart") != NULL ||
           strstr(frame, "__scrt_common_main_seh") != NULL || strstr(frame, "capture_backtrace") != NULL ||
@@ -118,9 +89,12 @@ static bool skip_backtrace_frame(const char *frame) {
 void log_labeled(const char *label, logging_color_t color, const char *message, ...) {
   va_list args;
   va_start(args);
-  char *formatted_message = format_context_message(message, args);
+  char *formatted_message = format_message(message, args);
   va_end(args);
-  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOGGING_COLOR_RESET), formatted_message);
+
+  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOGGING_COLOR_RESET),
+               formatted_message);
+
   log_file("%s: %s", label, formatted_message);
 }
 
@@ -149,11 +123,13 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
   asciichat_errno = code;
 
   // Copy context message if provided
-  if (context_message) {
+  if (context_message == NULL) {
+    log_error("context_message is NULL");
+    asciichat_errno_context.context_message = "No context message (this is invalid - set a context message)";
+  } else {
     asciichat_errno_context.context_message = strdup(context_message);
     if (!asciichat_errno_context.context_message) {
-      // If strdup fails, we can't do much about it, but we should continue
-      // The error context will still be valid without the message
+      log_error("strdup failed for context_message");
     }
   }
 
@@ -173,7 +149,7 @@ void asciichat_set_errno_with_message(asciichat_error_t code, const char *file, 
   va_list args;
   va_start(args, format);
 
-  char *context_message = format_context_message(format, args);
+  char *context_message = format_message(format, args);
   asciichat_set_errno(code, file, line, function, context_message);
 
   if (context_message) {
@@ -195,7 +171,7 @@ void asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, c
   va_list args;
   va_start(args, format);
 
-  char *context_message = format_context_message(format, args);
+  char *context_message = format_message(format, args);
   asciichat_set_errno(code, file, line, function, context_message);
   asciichat_errno_context.system_errno = sys_errno;
   asciichat_errno_context.has_system_error = true;
@@ -205,6 +181,17 @@ void asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, c
   }
 
   va_end(args);
+}
+
+void asciichat_set_errno_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                        int wsa_error) {
+  asciichat_set_errno(code, file, line, function, NULL);
+  asciichat_errno_context.wsa_error = wsa_error;
+  asciichat_errno_context.has_wsa_error = true;
+}
+
+bool asciichat_has_wsa_error(void) {
+  return asciichat_errno_context.has_wsa_error;
 }
 
 /* ============================================================================
@@ -232,6 +219,13 @@ void asciichat_clear_errno(void) {
 
   memset(&asciichat_errno_context, 0, sizeof(asciichat_errno_context));
   asciichat_errno_context.code = ASCIICHAT_OK;
+  asciichat_errno_context.system_errno = 0;
+  asciichat_errno_context.has_system_error = false;
+  asciichat_errno_context.has_wsa_error = false;
+  asciichat_errno_context.wsa_error = 0;
+
+  WSASetLastError(0);
+  errno = 0;
 }
 
 asciichat_error_t asciichat_get_errno(void) {
@@ -268,7 +262,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   if (format) {
     va_list args;
     va_start(args, format);
-    const char *formatted_message = format_context_message(format, args);
+    const char *formatted_message = format_message(format, args);
     log_plain("  Error message: %s", formatted_message);
     va_end(args);
   }
@@ -307,12 +301,14 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
             context->function);
 
   if (context->context_message) {
-    safe_fprintf(stderr, "%s  Context:%s %s\n", log_level_color(LOGGING_COLOR_WARN), log_level_color(LOGGING_COLOR_RESET), context->context_message);
+    safe_fprintf(stderr, "%s  Context:%s %s\n", log_level_color(LOGGING_COLOR_WARN),
+                 log_level_color(LOGGING_COLOR_RESET), context->context_message);
     log_file("  Context: %s", context->context_message);
   }
 
   if (context->has_system_error) {
-    log_plain("  System error: %s (%d)", SAFE_STRERROR(context->system_errno), context->system_errno);
+    log_plain("  System error: %s (code: %d, meaning: %s)", SAFE_STRERROR(context->system_errno), context->system_errno,
+              strerror(context->system_errno));
   }
 
   // Print timestamp

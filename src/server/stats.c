@@ -175,20 +175,27 @@ server_stats_t g_stats = {0};
 mutex_t g_stats_mutex = {0};
 
 /**
+ * @brief Initialize the stats mutex
+ * @return 0 on success, -1 on failure
+ */
+int stats_init(void) {
+  return mutex_init(&g_stats_mutex);
+}
+
+/**
+ * @brief Cleanup the stats mutex
+ */
+void stats_cleanup(void) {
+  mutex_destroy(&g_stats_mutex);
+}
+
+/**
  * @brief Global shutdown flag from main.c - coordinate statistics thread termination
  *
  * The statistics thread monitors this flag to detect server shutdown and exit
  * its monitoring loop gracefully, ensuring clean resource cleanup.
  */
 extern atomic_bool g_should_exit;
-
-/**
- * @brief Global blank frame counter from render.c
- *
- * Tracks the total number of blank frames sent when no video sources are
- * available. Used for performance analysis and debugging video pipeline issues.
- */
-extern uint64_t g_blank_frames_sent;
 
 /* ============================================================================
  * Statistics Collection and Reporting Thread
@@ -326,34 +333,30 @@ void *stats_logger_thread(void *arg) {
       break;
     }
 
-    log_info("=== Periodic Statistics Report ===");
-
-    // Log lock debug statistics directly
+    // Collect all statistics data first
+    char lock_debug_info[512] = {0};
     if (lock_debug_is_initialized()) {
-      // Print lock debug information directly instead of using trigger
-      log_info("=== LOCK DEBUG: Lock Status Report ===");
-
       uint64_t total_acquired = 0, total_released = 0;
       uint32_t currently_held = 0;
       lock_debug_get_stats(&total_acquired, &total_released, &currently_held);
 
-      log_info("Historical Statistics:");
-      log_info("  Total locks acquired: %llu", (unsigned long long)total_acquired);
-      log_info("  Total locks released: %llu", (unsigned long long)total_released);
-      log_info("  Currently held: %u", currently_held);
-      log_info("  Net locks (acquired - released): %lld", (long long)total_acquired - (long long)total_released);
-      log_info("=== End Lock Debug ===");
+      safe_snprintf(lock_debug_info, sizeof(lock_debug_info),
+                    "Historical Mutex/RWLock Statistics:\n"
+                    "  Total locks acquired: %llu\n"
+                    "  Total locks released: %llu\n"
+                    "  Currently held: %u\n"
+                    "  Net locks (acquired - released): %lld",
+                    (unsigned long long)total_acquired, (unsigned long long)total_released, currently_held,
+                    (long long)total_acquired - (long long)total_released);
     }
 
-    // Log global buffer pool stats
-    log_info("=== Buffer Pool Global Stats ===");
-    buffer_pool_log_global_stats();
-
-    // Log client statistics
+    // Collect client statistics
     rwlock_rdlock(&g_client_manager_rwlock);
     int active_clients = 0;
     int clients_with_audio = 0;
     int clients_with_video = 0;
+    char client_details[2048] = {0};
+    int client_details_len = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (atomic_load(&g_client_manager.clients[i].active)) {
@@ -366,48 +369,57 @@ void *stats_logger_thread(void *arg) {
         }
       }
     }
-    rwlock_rdunlock(&g_client_manager_rwlock);
 
-    log_info("Active clients: %d, Audio: %d, Video: %d", active_clients, clients_with_audio, clients_with_video);
-    log_info("Blank frames sent: %llu", (unsigned long long)g_blank_frames_sent);
-
-    // Log hash table statistics
-    if (g_client_manager.client_hashtable) {
-      hashtable_print_stats(g_client_manager.client_hashtable, "Client Lookup");
-    }
-
-    // Log per-client buffer pool stats if they have local pools
-    rwlock_rdlock(&g_client_manager_rwlock);
+    // Collect per-client details
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
-      // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
-      // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-      bool is_active = atomic_load(&client->active);                 // Use atomic read to avoid deadlock
-      uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
+      bool is_active = atomic_load(&client->active);
+      uint32_t client_id_snapshot = atomic_load(&client->client_id);
 
       if (is_active && client_id_snapshot != 0) {
-        // Log packet queue stats if available
+        // Check audio queue stats
         if (client->audio_queue) {
           uint64_t enqueued, dequeued, dropped;
           packet_queue_get_stats(client->audio_queue, &enqueued, &dequeued, &dropped);
           if (enqueued > 0 || dequeued > 0 || dropped > 0) {
-            log_info("Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
-                     (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
+            int len =
+                snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
+                         "  Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
+                         (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
+            if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
+              client_details_len += len;
+            }
           }
         }
+        // Check video buffer stats
         if (client->outgoing_video_buffer) {
           video_frame_stats_t stats;
           video_frame_get_stats(client->outgoing_video_buffer, &stats);
           if (stats.total_frames > 0) {
-            log_info("Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)", client_id_snapshot,
-                     (unsigned long long)stats.total_frames, (unsigned long long)stats.dropped_frames,
-                     stats.drop_rate * 100.0f);
+            int len = snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
+                               "  Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)",
+                               client_id_snapshot, (unsigned long long)stats.total_frames,
+                               (unsigned long long)stats.dropped_frames, stats.drop_rate * 100.0f);
+            if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
+              client_details_len += len;
+            }
           }
         }
       }
     }
     rwlock_rdunlock(&g_client_manager_rwlock);
+
+    // Single comprehensive log statement
+
+    if (client_details_len > 0) {
+      log_info("Stats: Clients: %d, Audio: %d, Video: %d\n%s", active_clients, clients_with_audio, clients_with_video,
+               client_details);
+    }
   }
+
+  log_server_stats();
+
+  asciichat_error_stats_print();
 
   return NULL;
 }
@@ -489,9 +501,12 @@ void update_server_stats(void) {
  */
 void log_server_stats(void) {
   mutex_lock(&g_stats_mutex);
-  log_info("Server Statistics: frames_captured=%llu, frames_sent=%llu, frames_dropped=%llu",
+  log_info("Server Statistics:\n"
+           "  frames_captured=%llu\n"
+           "  frames_sent=%llu\n"
+           "  frames_dropped=%llu\n"
+           "  Average FPS: capture=%.2f, send=%.2f",
            (unsigned long long)g_stats.frames_captured, (unsigned long long)g_stats.frames_sent,
-           (unsigned long long)g_stats.frames_dropped);
-  log_info("Average FPS: capture=%.2f, send=%.2f", g_stats.avg_capture_fps, g_stats.avg_send_fps);
+           (unsigned long long)g_stats.frames_dropped, g_stats.avg_capture_fps, g_stats.avg_send_fps);
   mutex_unlock(&g_stats_mutex);
 }

@@ -22,14 +22,14 @@
 // =============================================================================
 
 // Packet size thresholds
-#define LARGE_PACKET_THRESHOLD (100 * 1024)           // 100KB threshold for large packets
-#define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)     // 5MB maximum packet size
+#define LARGE_PACKET_THRESHOLD (100 * 1024)       // 100KB threshold for large packets
+#define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024) // 5MB maximum packet size
 
 // Timeout constants (in seconds)
-#define BASE_SEND_TIMEOUT 5                           // Base send timeout
-#define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8         // Extra timeout per MB for large packets
-#define MIN_CLIENT_TIMEOUT 10                         // Minimum client timeout (server timeout + buffer)
-#define MAX_CLIENT_TIMEOUT 60                          // Maximum client timeout
+#define BASE_SEND_TIMEOUT 5                   // Base send timeout
+#define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8 // Extra timeout per MB for large packets
+#define MIN_CLIENT_TIMEOUT 10                 // Minimum client timeout (server timeout + buffer)
+#define MAX_CLIENT_TIMEOUT 60                 // Maximum client timeout
 
 // Audio batching for efficiency
 #define AUDIO_BATCH_COUNT 4                                                // Number of audio chunks per batch

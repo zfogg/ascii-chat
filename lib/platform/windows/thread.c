@@ -43,6 +43,223 @@ static void initialize_symbol_handler(void) {
   }
 }
 
+// Helper function to build consolidated exception message
+static void build_exception_message(char *buffer, size_t buffer_size, DWORD exceptionCode, DWORD threadId) {
+  const char *exceptionName = "UNKNOWN";
+  switch (exceptionCode) {
+  case EXCEPTION_ACCESS_VIOLATION:
+    exceptionName = "ACCESS_VIOLATION (segfault)";
+    break;
+  case EXCEPTION_STACK_OVERFLOW:
+    exceptionName = "STACK_OVERFLOW";
+    break;
+  case EXCEPTION_INT_DIVIDE_BY_ZERO:
+    exceptionName = "DIVIDE_BY_ZERO";
+    break;
+  case EXCEPTION_ILLEGAL_INSTRUCTION:
+    exceptionName = "ILLEGAL_INSTRUCTION";
+    break;
+  case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+    exceptionName = "ARRAY_BOUNDS_EXCEEDED";
+    break;
+  default:
+    exceptionName = "UNKNOWN";
+    break;
+  }
+
+  safe_snprintf(buffer, buffer_size,
+                "====== EXCEPTION CAUGHT! ======\n"
+                "Exception Code: 0x%lX\n"
+                "Exception Type: %s\n"
+                "Thread ID: %lu",
+                (unsigned long)exceptionCode, exceptionName, threadId);
+}
+
+// Helper function to build stack trace message
+static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT pContext, HANDLE hProcess) {
+  if (!pContext || IsBadReadPtr(pContext, sizeof(CONTEXT)) != 0) {
+    safe_snprintf(buffer, buffer_size, "Exception occurred at: <invalid context>");
+    return;
+  }
+
+  size_t offset = 0;
+
+  // Exception location
+  if (IsBadReadPtr(pContext, sizeof(CONTEXT)) == 0) {
+    offset +=
+        snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: 0x%016llX\n", pContext->Rip);
+  } else {
+    offset += snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: <invalid context>\n");
+  }
+
+  // Try to resolve the symbol at the crash address
+  DWORD64 dwDisplacement = 0;
+  char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+  PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symBuffer;
+  pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+  pSymbol->MaxNameLen = MAX_SYM_NAME;
+
+  if (g_symbols_initialized && SymFromAddr(hProcess, pContext->Rip, &dwDisplacement, pSymbol)) {
+    offset +=
+        snprintf(buffer + offset, buffer_size - offset, "  Function: %s + 0x%llX\n", pSymbol->Name, dwDisplacement);
+  } else {
+    // Try to get module name
+    HMODULE hModule;
+    CHAR moduleName[MAX_PATH];
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          (LPCTSTR)pContext->Rip, &hModule)) {
+      if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
+        char *lastSlash = strrchr(moduleName, '\\');
+        char *fileName = lastSlash ? lastSlash + 1 : moduleName;
+        offset += snprintf(buffer + offset, buffer_size - offset, "  Module: %s + 0x%llX\n", fileName,
+                           pContext->Rip - (DWORD64)hModule);
+      }
+    }
+  }
+
+  // Manual stack trace from RSP
+  offset += snprintf(buffer + offset, buffer_size - offset, "\nMANUAL STACK TRACE - Walking from RSP\n");
+
+  if (pContext->Rsp == 0 || IsBadReadPtr((void *)pContext->Rsp, sizeof(DWORD64) * 100) != 0) {
+    offset += snprintf(buffer + offset, buffer_size - offset, "  Invalid stack pointer: 0x%016llX\n", pContext->Rsp);
+    return;
+  }
+
+  DWORD64 *stackPtr = (DWORD64 *)pContext->Rsp;
+  for (int i = 0; i < 50 && offset < buffer_size - 200; i++) {
+    DWORD64 addr = 0;
+    __try {
+      addr = stackPtr[i];
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+      break;
+    }
+
+    if (addr > 0x10000 && addr < 0x7FFFFFFFFFFF) {
+      DWORD64 displacement = 0;
+      char symBuffer2[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+      PSYMBOL_INFO pSymbol2 = (PSYMBOL_INFO)symBuffer2;
+      pSymbol2->SizeOfStruct = sizeof(SYMBOL_INFO);
+      pSymbol2->MaxNameLen = MAX_SYM_NAME;
+
+      if (SymFromAddr(hProcess, addr, &displacement, pSymbol2)) {
+        IMAGEHLP_LINE64 line = {0};
+        line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD lineDisplacement = 0;
+        BOOL hasLineInfo = SymGetLineFromAddr64(hProcess, addr, &lineDisplacement, &line);
+
+        BOOL isOurCode = FALSE;
+        const char *relPath = NULL;
+        if (hasLineInfo && line.FileName) {
+          relPath = extract_project_relative_path(line.FileName);
+          if (relPath != line.FileName && relPath && *relPath != '\0') {
+            isOurCode = TRUE;
+          }
+        } else if (pSymbol2->Name[0] != '\0') {
+          if (!strstr(pSymbol2->Name, "ntdll") && !strstr(pSymbol2->Name, "kernel32") &&
+              !strstr(pSymbol2->Name, "ucrtbase") && !strstr(pSymbol2->Name, "msvcrt")) {
+            isOurCode = TRUE;
+          }
+        }
+
+        const char *prefix = isOurCode ? ">>>" : "  ";
+        if (hasLineInfo) {
+          const char *shortName =
+              relPath ? relPath : (strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName);
+          offset += snprintf(buffer + offset, buffer_size - offset, "%s RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]\n",
+                             prefix, i * 8, addr, pSymbol2->Name, displacement, shortName, line.LineNumber);
+        } else {
+          offset += snprintf(buffer + offset, buffer_size - offset, "%s RSP+0x%03X: 0x%016llX %s + 0x%llX\n", prefix,
+                             i * 8, addr, pSymbol2->Name, displacement);
+        }
+      } else {
+        HMODULE hModule;
+        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              (LPCTSTR)addr, &hModule)) {
+          CHAR moduleName[MAX_PATH];
+          if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
+            char *lastSlash = strrchr(moduleName, '\\');
+            char *fileName = lastSlash ? lastSlash + 1 : moduleName;
+            offset += snprintf(buffer + offset, buffer_size - offset, "  RSP+0x%03X: 0x%016llX %s + 0x%llX\n", i * 8,
+                               addr, fileName, addr - (DWORD64)hModule);
+          }
+        }
+      }
+    }
+  }
+
+  // StackWalk64 trace
+  offset += snprintf(buffer + offset, buffer_size - offset, "\nSTACK TRACE\n");
+  STACKFRAME64 stackFrame = {0};
+  stackFrame.AddrPC.Offset = pContext->Rip;
+  stackFrame.AddrPC.Mode = AddrModeFlat;
+  stackFrame.AddrStack.Offset = pContext->Rsp;
+  stackFrame.AddrStack.Mode = AddrModeFlat;
+  stackFrame.AddrFrame.Offset = pContext->Rbp;
+  stackFrame.AddrFrame.Mode = AddrModeFlat;
+
+  CONTEXT contextCopy = *pContext;
+  HANDLE hThread = GetCurrentThread();
+
+  for (int frameNum = 0; frameNum < 20 && offset < buffer_size - 200; frameNum++) {
+    if (stackFrame.AddrStack.Offset == 0 || stackFrame.AddrStack.Offset > 0x7FFFFFFFFFFF) {
+      offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d [Stack corrupted or end reached]\n", frameNum);
+      break;
+    }
+
+    if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, hProcess, hThread, &stackFrame, &contextCopy, NULL,
+                     SymFunctionTableAccess64, SymGetModuleBase64, NULL)) {
+      DWORD error = GetLastError();
+      if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
+        offset +=
+            snprintf(buffer + offset, buffer_size - offset, "  #%02d [StackWalk64 failed: %lu]\n", frameNum, error);
+      }
+      break;
+    }
+
+    if (stackFrame.AddrPC.Offset == 0) {
+      break;
+    }
+
+    DWORD64 symDisplacement = 0;
+    char symBuffer3[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+    PSYMBOL_INFO pSym = (PSYMBOL_INFO)symBuffer3;
+    pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
+    pSym->MaxNameLen = MAX_SYM_NAME;
+
+    if (g_symbols_initialized && SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &symDisplacement, pSym)) {
+      IMAGEHLP_LINE64 line = {0};
+      line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+      DWORD lineDisplacement = 0;
+      if (SymGetLineFromAddr64(hProcess, stackFrame.AddrPC.Offset, &lineDisplacement, &line)) {
+        const char *relPath = line.FileName ? extract_project_relative_path(line.FileName) : "unknown";
+        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s + 0x%llX [%s:%lu]\n", frameNum,
+                           stackFrame.AddrPC.Offset, pSym->Name, symDisplacement, relPath, line.LineNumber);
+      } else {
+        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s + 0x%llX\n", frameNum,
+                           stackFrame.AddrPC.Offset, pSym->Name, symDisplacement);
+      }
+    } else {
+      HMODULE hMod;
+      CHAR modName[MAX_PATH];
+      if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            (LPCTSTR)stackFrame.AddrPC.Offset, &hMod)) {
+        if (GetModuleFileNameA(hMod, modName, sizeof(modName))) {
+          char *slash = strrchr(modName, '\\');
+          char *name = slash ? slash + 1 : modName;
+          offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s!0x%llX\n", frameNum,
+                             stackFrame.AddrPC.Offset, name, stackFrame.AddrPC.Offset - (DWORD64)hMod);
+        } else {
+          offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX ???\n", frameNum,
+                             stackFrame.AddrPC.Offset);
+        }
+      } else {
+        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX ???\n", frameNum,
+                           stackFrame.AddrPC.Offset);
+      }
+    }
+  }
+}
+
 // Exception filter that captures exception information
 static LONG WINAPI exception_filter(EXCEPTION_POINTERS *exception_info) {
   // Store the exception info for use in the handler
@@ -51,6 +268,9 @@ static LONG WINAPI exception_filter(EXCEPTION_POINTERS *exception_info) {
   // Return EXCEPTION_EXECUTE_HANDLER to handle the exception
   return EXCEPTION_EXECUTE_HANDLER;
 }
+
+// Global flag to prevent recursive exception handling
+static volatile int g_in_exception_handler = 0;
 
 // Windows thread wrapper function that calls POSIX-style function
 static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
@@ -72,237 +292,88 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
   __try {
     result = wrapper->posix_func(wrapper->arg);
   } __except (exception_filter(GetExceptionInformation())) {
-    DWORD exceptionCode = GetExceptionCode();
-    log_error("====== EXCEPTION CAUGHT! ======");
-    log_error("Exception Code: 0x%lX", (unsigned long)exceptionCode);
-    log_error("Thread ID: %lu", GetCurrentThreadId());
-
-    // Decode common exception codes
-    const char *exceptionName = "UNKNOWN";
-    switch (exceptionCode) {
-    case EXCEPTION_ACCESS_VIOLATION:
-      exceptionName = "ACCESS_VIOLATION (segfault)";
-      break;
-    case EXCEPTION_STACK_OVERFLOW:
-      exceptionName = "STACK_OVERFLOW";
-      break;
-    case EXCEPTION_INT_DIVIDE_BY_ZERO:
-      exceptionName = "DIVIDE_BY_ZERO";
-      break;
-    case EXCEPTION_ILLEGAL_INSTRUCTION:
-      exceptionName = "ILLEGAL_INSTRUCTION";
-      break;
-    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-      exceptionName = "ARRAY_BOUNDS_EXCEEDED";
-      break;
+    // Prevent recursive exception handling
+    if (g_in_exception_handler) {
+      printf("CRASH: Recursive exception detected, aborting\n");
+      (void)fflush(stdout);
+      return 1;
     }
-    log_error("Exception Type: %s", exceptionName);
+    g_in_exception_handler = 1;
+    DWORD exceptionCode = GetExceptionCode();
+    DWORD threadId = GetCurrentThreadId();
+
+    // Build consolidated exception message
+    char exception_buffer[8192];
+    build_exception_message(exception_buffer, sizeof(exception_buffer), exceptionCode, threadId);
+
+    // Use direct printf instead of log_error to avoid logging system corruption
+    printf("%s\n", exception_buffer);
+    (void)fflush(stdout);
 
 #ifndef NDEBUG
-    // Try to get a simple backtrace (Debug builds only)
-    log_info("Attempting to get stack trace...");
-
-    // Use the captured exception info from the filter
+    // Build consolidated stack trace message
     if (g_exception_pointers && g_exception_pointers->ContextRecord) {
-      PCONTEXT pContext = g_exception_pointers->ContextRecord;
-
-#ifdef _M_X64
-      log_error("Exception occurred at:");
-      log_error("  RIP: 0x%016llX", pContext->Rip);
-
-      // Try to resolve the symbol at the crash address
-      HANDLE hProcess = GetCurrentProcess();
-      DWORD64 dwDisplacement = 0;
-      char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-      PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
-
-      pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-      pSymbol->MaxNameLen = MAX_SYM_NAME;
-
-      // Make sure symbols are initialized (should already be done at thread creation)
-      if (!g_symbols_initialized) {
-        initialize_symbol_handler();
-      }
-
-      if (g_symbols_initialized && SymFromAddr(hProcess, pContext->Rip, &dwDisplacement, pSymbol)) {
-        log_error("  Function: %s + 0x%llX", pSymbol->Name, dwDisplacement);
+      // Add safety check for ContextRecord before using it
+      if (IsBadReadPtr(g_exception_pointers->ContextRecord, sizeof(CONTEXT))) {
+        printf("Exception context is invalid or corrupted\n");
+        (void)fflush(stdout);
       } else {
-        // Try to at least get the module name
-        HMODULE hModule;
-        CHAR moduleName[MAX_PATH];
-        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                              (LPCTSTR)pContext->Rip, &hModule)) {
-          if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
-            char *lastSlash = strrchr(moduleName, '\\');
-            char *fileName = lastSlash ? lastSlash + 1 : moduleName;
-            log_error("  Module: %s + 0x%llX", fileName, pContext->Rip - (DWORD64)hModule);
-          }
-        }
-      }
-
-      // Now walk the stack from the exception context
-      // Also try manual stack walk from raw addresses in case StackWalk64 fails
-      log_info("MANUAL STACK TRACE - Walking from RSP");
-      DWORD64 *stackPtr = (DWORD64 *)pContext->Rsp;
-      for (int i = 0; i < 100; i++) { // Increased to walk further up the stack
-        DWORD64 addr = 0;
-        // Safe memory read with exception handling
+        // Use minimal output to avoid any potential crashes
         __try {
-          addr = stackPtr[i];
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-          break;
-        }
-
-        // Check if this looks like a code address
-        if (addr > 0x10000 && addr < 0x7FFFFFFFFFFF) {
-          // Try to resolve symbol
-          DWORD64 displacement = 0;
-          char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-          PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
-          pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-          pSymbol->MaxNameLen = MAX_SYM_NAME;
-
-          if (SymFromAddr(hProcess, addr, &displacement, pSymbol)) {
-            // Also try to get line info
-            IMAGEHLP_LINE64 line = {0};
-            line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-            DWORD lineDisplacement = 0;
-            BOOL hasLineInfo = SymGetLineFromAddr64(hProcess, addr, &lineDisplacement, &line);
-
-            // Check if this is OUR code (not system libraries)
-            BOOL isOurCode = FALSE;
-            const char *relPath = NULL;
-            if (hasLineInfo && line.FileName) {
-              // Use shared path extraction - if it returns a relative path, it's our code
-              relPath = extract_project_relative_path(line.FileName);
-              // If the relative path is different from the full path, we found our project root
-              if (relPath != line.FileName && relPath && *relPath != '\0') {
-                isOurCode = TRUE;
-              }
-            } else if (pSymbol->Name[0] != '\0') {
-              // Check symbol name for our functions
-              if (!strstr(pSymbol->Name, "ntdll") && !strstr(pSymbol->Name, "kernel32") &&
-                  !strstr(pSymbol->Name, "ucrtbase") && !strstr(pSymbol->Name, "msvcrt")) {
-                isOurCode = TRUE;
-              }
-            }
-
-            if (hasLineInfo) {
-              // Use the relative path we already extracted if available, else just get the filename
-              const char *shortName =
-                  relPath ? relPath : (strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName);
-              if (isOurCode) {
-                // Highlight our code with >>> prefix
-                log_info(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]", i * 8, addr, pSymbol->Name, displacement,
-                         shortName, line.LineNumber);
-              } else {
-                log_info("  RSP+0x%03X: 0x%016llX %s + 0x%llX [%s:%lu]", i * 8, addr, pSymbol->Name, displacement,
-                         shortName, line.LineNumber);
-              }
-            } else {
-              if (isOurCode) {
-                log_info(">>> RSP+0x%03X: 0x%016llX %s + 0x%llX", i * 8, addr, pSymbol->Name, displacement);
-              } else {
-                log_info("  RSP+0x%03X: 0x%016llX %s + 0x%llX", i * 8, addr, pSymbol->Name, displacement);
-              }
-            }
-          } else {
-            // Try to at least get module name
-            HMODULE hModule;
-            if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                  (LPCTSTR)addr, &hModule)) {
-              CHAR moduleName[MAX_PATH];
-              if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
-                char *lastSlash = strrchr(moduleName, '\\');
-                char *fileName = lastSlash ? lastSlash + 1 : moduleName;
-                log_info("  RSP+0x%03X: 0x%016llX %s + 0x%llX", i * 8, addr, fileName, addr - (DWORD64)hModule);
-              }
-            }
+          // Step 1: Minimal exception info
+          __try {
+            printf("EXCEPTION: Code=0x%08lX Thread=%lu\n",
+                   (unsigned long)g_exception_pointers->ExceptionRecord->ExceptionCode, GetCurrentThreadId());
+            (void)fflush(stdout);
+          } __except (EXCEPTION_EXECUTE_HANDLER) {
+            // If even printf crashes, just exit
+            return 1;
           }
-        }
-      }
 
-      log_info("STACK TRACE");
-      STACKFRAME64 stackFrame = {0};
-      stackFrame.AddrPC.Offset = pContext->Rip;
-      stackFrame.AddrPC.Mode = AddrModeFlat;
-      stackFrame.AddrStack.Offset = pContext->Rsp;
-      stackFrame.AddrStack.Mode = AddrModeFlat;
-      stackFrame.AddrFrame.Offset = pContext->Rbp;
-      stackFrame.AddrFrame.Mode = AddrModeFlat;
-
-      // Create a copy of the context for stack walking
-      CONTEXT contextCopy = *pContext;
-      HANDLE hThread = GetCurrentThread();
-
-      for (int frameNum = 0; frameNum < 50; frameNum++) {
-        // Validate stack frame before walking to prevent crashes on corrupted stack
-        if (stackFrame.AddrStack.Offset == 0 || stackFrame.AddrStack.Offset > 0x7FFFFFFFFFFF) {
-          log_error("  #%02d [Stack corrupted or end reached]", frameNum);
-          break;
-        }
-
-        // Use the context copy for stack walking
-        if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, hProcess, hThread, &stackFrame, &contextCopy, NULL,
-                         SymFunctionTableAccess64, SymGetModuleBase64, NULL)) {
-          DWORD error = GetLastError();
-          if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
-            log_error("  #%02d [StackWalk64 failed: %lu]", frameNum, error);
-          }
-          break;
-        }
-
-        if (stackFrame.AddrPC.Offset == 0) {
-          break;
-        }
-
-        // Try to get symbol name
-        DWORD64 symDisplacement = 0;
-        char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-        PSYMBOL_INFO pSym = (PSYMBOL_INFO)symBuffer;
-        pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
-        pSym->MaxNameLen = MAX_SYM_NAME;
-
-        if (g_symbols_initialized && SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &symDisplacement, pSym)) {
-          // Try to get source file and line info
-          IMAGEHLP_LINE64 line = {0};
-          line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-          DWORD lineDisplacement = 0;
-          if (SymGetLineFromAddr64(hProcess, stackFrame.AddrPC.Offset, &lineDisplacement, &line)) {
-            const char *relPath = line.FileName ? extract_project_relative_path(line.FileName) : "⁉️🤔";
-            log_info("  #%02d 0x%016llX %s + 0x%llX [%s:%lu]", frameNum, stackFrame.AddrPC.Offset, pSym->Name,
-                     symDisplacement, relPath, line.LineNumber);
-          } else {
-            log_info("  #%02d 0x%016llX %s + 0x%llX", frameNum, stackFrame.AddrPC.Offset, pSym->Name, symDisplacement);
-          }
-        } else {
-          // Try to get module name at least
-          HMODULE hMod;
-          CHAR modName[MAX_PATH];
-          if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                (LPCTSTR)stackFrame.AddrPC.Offset, &hMod)) {
-            if (GetModuleFileNameA(hMod, modName, sizeof(modName))) {
-              char *slash = strrchr(modName, '\\');
-              char *name = slash ? slash + 1 : modName;
-              log_info("  #%02d 0x%016llX %s!0x%llX", frameNum, stackFrame.AddrPC.Offset, name,
-                       stackFrame.AddrPC.Offset - (DWORD64)hMod);
-            } else {
-              log_info("  #%02d 0x%016llX ???", frameNum, stackFrame.AddrPC.Offset);
-            }
-          } else {
-            log_info("  #%02d 0x%016llX ???", frameNum, stackFrame.AddrPC.Offset);
-          }
-        }
-      }
+          // Step 2: Try to get RIP address safely
+          PCONTEXT pContext = g_exception_pointers->ContextRecord;
+          if (pContext && IsBadReadPtr(pContext, sizeof(CONTEXT)) == 0) {
+            __try {
+#ifdef _M_X64
+              printf("RIP: 0x%016llX\n", pContext->Rip);
 #else
-      log_error("Exception stack trace not available on non-x64 platforms");
-#endif // !!_M_X64
+              printf("EIP: 0x%08X\n", pContext->Eip);
+#endif
+              (void)fflush(stdout);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+              printf("RIP/EIP access failed\n");
+              (void)fflush(stdout);
+            }
+          }
+
+          // Step 3: Try to build stack trace safely
+          __try {
+            HANDLE hProcess = GetCurrentProcess();
+            char stack_buffer[16384];
+            memset(stack_buffer, 0, sizeof(stack_buffer));
+
+            build_stack_trace_message(stack_buffer, sizeof(stack_buffer), pContext, hProcess);
+            if (IsBadStringPtrA(stack_buffer, sizeof(stack_buffer))) {
+              printf("Stack trace corrupted\n");
+            } else {
+              printf("%s", stack_buffer);
+            }
+            (void)fflush(stdout);
+          } __except (EXCEPTION_EXECUTE_HANDLER) {
+            printf("Stack trace failed\n");
+            (void)fflush(stdout);
+          }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+          // If everything fails, just exit silently
+          return 1;
+        }
+      }
+
     } else {
-      log_error("Could not get exception context");
+      printf("Could not get exception context\n");
+      (void)fflush(stdout);
     }
 #endif // !NDEBUG
-
-    log_error("================================");
 
     // Use raw free to match raw malloc used in allocation (see allocation comment above for rationale)
     // Safe to use in exception handler - doesn't touch g_mem.mutex
@@ -313,6 +384,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #else
     SAFE_FREE(wrapper);
 #endif
+    // Reset the recursive exception flag
+    g_in_exception_handler = 0;
     return 1;
   }
 
@@ -373,7 +446,6 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
   wrapper->posix_func = func;
   wrapper->arg = arg;
 
-
   DWORD thread_id;
 
 #ifdef DEBUG_THREADS
@@ -397,7 +469,6 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
 #endif
     return -1;
   }
-
 
   // IMPORTANT: Add a memory barrier to ensure all writes complete before returning
   MemoryBarrier();

@@ -11,8 +11,8 @@
 // =============================================================================
 
 // Video frame buffer sizes
-#define VIDEO_FRAME_BUFFER_SIZE (2 * 1024 * 1024)     // 2MB per frame buffer
-#define MAX_FRAME_BUFFERS 2                           // Double buffering
+#define VIDEO_FRAME_BUFFER_SIZE (2 * 1024 * 1024) // 2MB per frame buffer
+#define MAX_FRAME_BUFFERS 2                       // Double buffering
 
 /**
  * Modern video frame management - inspired by WebRTC/Zoom/Meet architecture

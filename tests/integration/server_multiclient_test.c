@@ -116,11 +116,11 @@ static int send_test_frame(int socket, int frame_id) {
   // Create test ASCII frame
   char ascii_data[1000];
   safe_snprintf(ascii_data, sizeof(ascii_data),
-           "Test Frame %d\n"
-           "████████████\n"
-           "██  %04d  ██\n"
-           "████████████\n",
-           frame_id, frame_id);
+                "Test Frame %d\n"
+                "████████████\n"
+                "██  %04d  ██\n"
+                "████████████\n",
+                frame_id, frame_id);
 
   // Use the send_ascii_frame_packet function from network.h
   return send_ascii_frame_packet(socket, ascii_data, strlen(ascii_data), 80, 24);

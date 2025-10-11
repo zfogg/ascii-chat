@@ -623,8 +623,8 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   static char summary[256];
 
   safe_snprintf(summary, sizeof(summary), "%s (%d colors), UTF-8: %s, TERM: %s, COLORTERM: %s",
-           terminal_color_level_name(caps->color_level), caps->color_count,
-           (caps->capabilities & TERM_CAP_UTF8) ? "yes" : "no", caps->term_type, caps->colorterm);
+                terminal_color_level_name(caps->color_level), caps->color_count,
+                (caps->capabilities & TERM_CAP_UTF8) ? "yes" : "no", caps->term_type, caps->colorterm);
 
   return summary;
 }

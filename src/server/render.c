@@ -192,19 +192,6 @@ extern atomic_bool g_should_exit;
  */
 extern mixer_t *g_audio_mixer;
 
-// REMOVED: Unused shutdown synchronization primitives
-// All threads now use atomic g_should_exit checks for lock-free shutdown coordination
-
-/**
- * @brief Global counter for blank frames sent across all clients
- *
- * Tracks the total number of blank/empty frames sent when no video sources
- * are available. Used for debugging and performance monitoring.
- *
- * @note This counter is not thread-safe - used for approximate statistics only
- */
-uint64_t g_blank_frames_sent = 0;
-
 /* ============================================================================
  * Cross-Platform Utility Functions
  * ============================================================================
@@ -542,9 +529,9 @@ void *client_video_render_thread(void *arg) {
             char pretty_size[64];
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
-            LOG_DEBUG_EVERY(queue_count, 30 * 60,
-                            "Per-client render: [%d] Written ASCII frame to double buffer for client %u (%ux%u, %s)",
-                            queue_count_counter, client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
+            LOG_DEBUG_EVERY(queue_count, 30000000,
+                            "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",
+                            client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
           } else {
             log_warn("Frame too large for buffer: %zu > %zu", frame_size,
                      client->outgoing_video_buffer->allocated_buffer_size);
@@ -618,8 +605,8 @@ void *client_video_render_thread(void *arg) {
       }
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
-      LOG_DEBUG_EVERY(no_frame_count, 300, "Per-client render: No video sources available for client %u (%d attempts)",
-                      client_id_snapshot, no_frame_count_counter);
+      LOG_DEBUG_EVERY(no_frame_count, 3000000, "Per-client render: No video sources available for client %u",
+                      client_id_snapshot);
     }
 
     last_render_time = current_time;

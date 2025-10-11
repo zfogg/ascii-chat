@@ -207,8 +207,7 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
 mixer_t *mixer_create(int max_sources, int sample_rate) {
   // Validate parameters
   if (max_sources <= 0 || max_sources > MIXER_MAX_SOURCES) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_sources: %d (must be 1-%d)", max_sources,
-                  MIXER_MAX_SOURCES);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_sources: %d (must be 1-%d)", max_sources, MIXER_MAX_SOURCES);
     return NULL;
   }
 

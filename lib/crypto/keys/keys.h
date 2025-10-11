@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "../../common.h" // For asciichat_error_t
-#include "types.h"  // Include the key type definitions
+#include "types.h"        // Include the key type definitions
 
 // Include specialized key modules
 #include "ssh_keys.h"
@@ -48,12 +48,13 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
 // Sign a message with Ed25519 (uses SSH agent if available, otherwise in-memory key)
 // This is the main signing function that abstracts SSH agent vs in-memory signing
 // Returns: ASCIICHAT_OK on success, error code on failure
-asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len, uint8_t signature[64]);
+asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
+                                       uint8_t signature[64]);
 
 // Verify an Ed25519 signature
 // Returns: ASCIICHAT_OK on success, error code on failure
 asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                             const uint8_t signature[64]);
+                                           const uint8_t signature[64]);
 
 // Fetch SSH/GPG keys from GitHub using BearSSL
 // GET https://github.com/username.keys (SSH) or https://github.com/username.gpg (GPG)
@@ -82,7 +83,8 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
 
 // Parse client keys from file, comma-separated list, or single key
 // Supports multiple formats: authorized_keys, known_hosts, bare base64
-asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys_out, size_t max_keys);
+asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys_out,
+                                    size_t max_keys);
 
 // Convert public key to display format (ssh-ed25519 or x25519 hex)
 void format_public_key(const public_key_t *key, char *output, size_t output_size);
@@ -93,7 +95,6 @@ asciichat_error_t hex_decode(const char *hex, uint8_t *output, size_t output_len
 // Forward declaration (full definition in handshake.h)
 // Note: This avoids circular includes (handshake.h includes keys.h)
 typedef struct crypto_handshake_context_t crypto_handshake_context_t;
-
 
 /**
  * Validate SSH key file before parsing

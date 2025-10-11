@@ -325,8 +325,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 }
 
 // Handle single source video layout
-static image_t *create_single_source_composite(image_source_t *sources, int source_count,
-                                              uint32_t target_client_id, unsigned short width, unsigned short height) {
+static image_t *create_single_source_composite(image_source_t *sources, int source_count, uint32_t target_client_id,
+                                               unsigned short width, unsigned short height) {
   // Find the single source with video
   image_t *single_source = NULL;
   for (int i = 0; i < source_count; i++) {
@@ -360,11 +360,6 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
 
   // Create composite from buffer pool for consistent memory management
   image_t *composite = image_new_from_pool(composite_width_px, composite_height_px);
-  if (!composite) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Failed to create composite image", target_client_id);
-    return NULL;
-  }
-
   image_clear(composite);
 
   if (use_half_block) {
@@ -416,7 +411,7 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
 
 // Handle multi-source grid layout
 static image_t *create_multi_source_composite(image_source_t *sources, int source_count, int sources_with_video,
-                                             uint32_t target_client_id, unsigned short width, unsigned short height) {
+                                              uint32_t target_client_id, unsigned short width, unsigned short height) {
   client_info_t *target_client = find_client_by_id(target_client_id);
   bool use_half_block_multi = target_client && target_client->has_terminal_caps &&
                               target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
@@ -570,11 +565,6 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
 
   // Create composite with final dimensions - no recreation needed
   image_t *composite = image_new_from_pool(composite_width_px, composite_height_px);
-  if (!composite) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Failed to create composite image", target_client_id);
-    return NULL;
-  }
-
   image_clear(composite);
 
   // Place each source in the grid
@@ -718,10 +708,11 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
 
         if (x_overlap && y_overlap) {
           SET_ERRNO(ERROR_INVALID_STATE,
-            "OVERLAP DETECTED: source %d overlaps with source %d!\n"
-            "  Current: (%d,%d) to (%d,%d)\n"
-            "  Previous: (%d,%d) to (%d,%d)",
-            i, check_i, final_dst_x_start, final_dst_y_start, final_dst_x_end, final_dst_y_end, check_cell_x_start, check_cell_y_start, check_cell_x_end, check_cell_y_end);
+                    "OVERLAP DETECTED: source %d overlaps with source %d!\n"
+                    "  Current: (%d,%d) to (%d,%d)\n"
+                    "  Previous: (%d,%d) to (%d,%d)",
+                    i, check_i, final_dst_x_start, final_dst_y_start, final_dst_x_end, final_dst_y_end,
+                    check_cell_x_start, check_cell_y_start, check_cell_x_end, check_cell_y_end);
         }
       }
     }
@@ -754,52 +745,44 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
 }
 
 // Convert composite image to ASCII using client capabilities
-static char *convert_composite_to_ascii(image_t *composite, uint32_t target_client_id,
-                                       unsigned short width, unsigned short height) {
+static char *convert_composite_to_ascii(image_t *composite, uint32_t target_client_id, unsigned short width,
+                                        unsigned short height) {
   // Find the target client to get their terminal capabilities
   client_info_t *render_client = find_client_by_id(target_client_id);
   char *ascii_frame = NULL;
 
-  if (render_client) {
-    rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&render_client->client_state_mutex);
-    uint32_t client_id_snapshot = atomic_load(&render_client->client_id);
-    bool has_terminal_caps_snapshot = render_client->has_terminal_caps;
-    terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
-    mutex_unlock(&render_client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
-
-    if (client_id_snapshot != 0 && has_terminal_caps_snapshot) {
-      if (render_client->client_palette_initialized) {
-        // Render with client's custom palette using enhanced capabilities
-        const int h = caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
-        ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
-                                                      render_client->client_palette_chars,
-                                                      render_client->client_luminance_palette);
-      } else {
-        // Client palette not initialized - this is an error condition
-        SET_ERRNO(ERROR_TERMINAL, "Client %u palette not initialized - cannot render frame", target_client_id);
-        ascii_frame = NULL;
-      }
-    } else {
-      // Don't send frames until we receive client capabilities - saves bandwidth and CPU
-      log_warn("Per-client %u: Waiting for terminal capabilities before sending frames (no capabilities received yet)",
-                target_client_id);
-      ascii_frame = NULL;
-    }
-  } else {
-    // Target client not found
+  if (!render_client) {
     SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Target client not found", target_client_id);
+    return NULL;
+  }
+
+  rwlock_rdlock(&g_client_manager_rwlock);
+  mutex_lock(&render_client->client_state_mutex);
+  uint32_t client_id_snapshot = atomic_load(&render_client->client_id);
+  bool has_terminal_caps_snapshot = render_client->has_terminal_caps;
+  terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
+  mutex_unlock(&render_client->client_state_mutex);
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  if (client_id_snapshot == 0 || !has_terminal_caps_snapshot) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Target client not found or capabilities not received",
+              target_client_id);
+    return NULL;
+  }
+
+  if (!render_client->client_palette_initialized) {
+    SET_ERRNO(ERROR_TERMINAL, "Client %u palette not initialized - cannot render frame", target_client_id);
     ascii_frame = NULL;
   }
 
+  // Render with client's custom palette using enhanced capabilities
+  const int h = caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
+  ascii_frame =
+      ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
+                                      render_client->client_palette_chars, render_client->client_luminance_palette);
+
   return ascii_frame;
 }
-
-/* ============================================================================
- * Client Lookup Utilities
- * ============================================================================
- */
 
 /* ============================================================================
  * Per-Client Video Mixing and Frame Generation
@@ -973,7 +956,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     composite = create_single_source_composite(sources, source_count, target_client_id, width, height);
   } else {
     // Multiple sources - create grid layout
-    composite = create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
+    composite =
+        create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
   }
 
   if (!composite) {

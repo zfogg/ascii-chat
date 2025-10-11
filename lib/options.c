@@ -75,7 +75,9 @@ static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size
   }
 
   (void)fprintf(stderr, "No Ed25519 SSH key found at %s\n", full_path);
-  return SET_ERRNO(ERROR_CRYPTO_KEY, "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
+  return SET_ERRNO(
+      ERROR_CRYPTO_KEY,
+      "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
 }
 
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
@@ -694,13 +696,13 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       // Validate password length requirements
       size_t password_len = strlen(value_str);
       if (password_len < MIN_PASSWORD_LENGTH) {
-        (void)fprintf(stderr, "Error: Password too short (minimum %d characters, got %zu)\n",
-                     MIN_PASSWORD_LENGTH, password_len);
+        (void)fprintf(stderr, "Error: Password too short (minimum %d characters, got %zu)\n", MIN_PASSWORD_LENGTH,
+                      password_len);
         return ERROR_USAGE;
       }
       if (password_len > MAX_PASSWORD_LENGTH) {
-        (void)fprintf(stderr, "Error: Password too long (maximum %d characters, got %zu)\n",
-                     MAX_PASSWORD_LENGTH, password_len);
+        (void)fprintf(stderr, "Error: Password too long (maximum %d characters, got %zu)\n", MAX_PASSWORD_LENGTH,
+                      password_len);
         return ERROR_USAGE;
       }
 

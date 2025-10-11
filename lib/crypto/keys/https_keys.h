@@ -66,8 +66,8 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
  * @param max_keys Maximum number of keys to parse
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t response_len,
-                                                     char ***keys_out, size_t *num_keys, size_t max_keys);
+asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t response_len, char ***keys_out,
+                                               size_t *num_keys, size_t max_keys);
 
 /**
  * @brief Parse GPG keys from HTTPS response text
@@ -78,8 +78,8 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
  * @param max_keys Maximum number of keys to parse
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t response_len,
-                                                    char ***keys_out, size_t *num_keys, size_t max_keys);
+asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t response_len, char ***keys_out,
+                                               size_t *num_keys, size_t max_keys);
 
 // =============================================================================
 // URL Construction

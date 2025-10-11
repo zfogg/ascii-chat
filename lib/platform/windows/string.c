@@ -76,10 +76,9 @@ char *platform_strcat(char *dest, size_t dest_size, const char *src) {
   size_t remaining = dest_size - dest_len;
 
   if (remaining <= src_len) {
-    SET_ERRNO(
-        ERROR_STRING,
-        "platform_strcat: buffer overflow prevented (dest_len=%zu, src_len=%zu, remaining=%zu, dest_size=%zu)",
-        dest_len, src_len, remaining, dest_size);
+    SET_ERRNO(ERROR_STRING,
+              "platform_strcat: buffer overflow prevented (dest_len=%zu, src_len=%zu, remaining=%zu, dest_size=%zu)",
+              dest_len, src_len, remaining, dest_size);
     return NULL;
   }
 

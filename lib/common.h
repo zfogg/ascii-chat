@@ -42,7 +42,7 @@ typedef unsigned long long uint64_t;
 
 typedef enum {
   /* Standard codes (0-2) - Unix conventions */
-  ASCIICHAT_OK = 0,            /* Success */
+  ASCIICHAT_OK = 0,  /* Success */
   ERROR_GENERAL = 1, /* Unspecified error */
   ERROR_USAGE = 2,   /* Invalid command line arguments or options */
 
@@ -210,54 +210,54 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
  * Usage:
  *   FATAL(ERROR_NETWORK_BIND, "Cannot bind to port %d", port_number);
  */
-#define FATAL(code, ...)  asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define FATAL(code, ...) asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 
 // =============================================================================
 // Protocol Version Constants
 // =============================================================================
 
-#define PROTOCOL_VERSION_MAJOR 1                      // Major protocol version
-#define PROTOCOL_VERSION_MINOR 0                      // Minor protocol version
+#define PROTOCOL_VERSION_MAJOR 1 // Major protocol version
+#define PROTOCOL_VERSION_MINOR 0 // Minor protocol version
 
 // =============================================================================
 // Feature Flags
 // =============================================================================
 
-#define FEATURE_RLE_ENCODING 0x01                     // Run-length encoding support
-#define FEATURE_DELTA_FRAMES 0x02                     // Delta frame encoding support
+#define FEATURE_RLE_ENCODING 0x01 // Run-length encoding support
+#define FEATURE_DELTA_FRAMES 0x02 // Delta frame encoding support
 
 // =============================================================================
 // Compression Constants
 // =============================================================================
 
-#define COMPRESS_ALGO_NONE 0x00                       // No compression
-#define COMPRESS_ALGO_ZLIB 0x01                       // zlib deflate compression
-#define COMPRESS_ALGO_LZ4 0x02                        // LZ4 fast compression
+#define COMPRESS_ALGO_NONE 0x00 // No compression
+#define COMPRESS_ALGO_ZLIB 0x01 // zlib deflate compression
+#define COMPRESS_ALGO_LZ4 0x02  // LZ4 fast compression
 
 // =============================================================================
 // Frame Flags
 // =============================================================================
 
-#define FRAME_FLAG_HAS_COLOR 0x01                     // Frame includes ANSI color codes
-#define FRAME_FLAG_IS_COMPRESSED 0x02                 // Frame data is compressed
-#define FRAME_FLAG_RLE_COMPRESSED 0x04                // Frame data is RLE compressed
-#define FRAME_FLAG_IS_STRETCHED 0x08                  // Frame was stretched (aspect adjusted)
+#define FRAME_FLAG_HAS_COLOR 0x01      // Frame includes ANSI color codes
+#define FRAME_FLAG_IS_COMPRESSED 0x02  // Frame data is compressed
+#define FRAME_FLAG_RLE_COMPRESSED 0x04 // Frame data is RLE compressed
+#define FRAME_FLAG_IS_STRETCHED 0x08   // Frame was stretched (aspect adjusted)
 
 // =============================================================================
 // Pixel Format Constants
 // =============================================================================
 
-#define PIXEL_FORMAT_RGB 0                            // RGB pixel format
-#define PIXEL_FORMAT_RGBA 1                           // RGBA pixel format
-#define PIXEL_FORMAT_BGR 2                            // BGR pixel format
-#define PIXEL_FORMAT_BGRA 3                           // BGRA pixel format
+#define PIXEL_FORMAT_RGB 0  // RGB pixel format
+#define PIXEL_FORMAT_RGBA 1 // RGBA pixel format
+#define PIXEL_FORMAT_BGR 2  // BGR pixel format
+#define PIXEL_FORMAT_BGRA 3 // BGRA pixel format
 
 // =============================================================================
 // Multi-Client Constants
 // =============================================================================
 
-#define MAX_DISPLAY_NAME_LEN 32                       // Maximum display name length
-#define MAX_CLIENTS 10                                // Maximum number of clients
+#define MAX_DISPLAY_NAME_LEN 32 // Maximum display name length
+#define MAX_CLIENTS 10          // Maximum number of clients
 
 // Frame rate configuration - With 1ms timer resolution enabled, Windows can now handle 60 FPS
 #ifdef _WIN32
@@ -317,59 +317,58 @@ bool shutdown_is_requested(void);
 
 /* Safe memory allocation with error checking - returns allocated pointer */
 #define SAFE_MALLOC(size, cast)                                                                                        \
-  ({                                                                                                                    \
-    cast _ptr = (cast)malloc(size);                                                                                   \
-    if (!_ptr) {                                                                                                        \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                            \
-    }                                                                                                                   \
-    _ptr;                                                                                                               \
+  ({                                                                                                                   \
+    cast _ptr = (cast)malloc(size);                                                                                    \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
   })
 
 /* Safe zero-initialized memory allocation */
-#define SAFE_CALLOC(count, size, cast)                                                                                        \
-  ({                                                                                                                    \
-    cast _ptr = (cast)calloc((count), (size));                                                                                   \
-    if (!_ptr) {                                                                                                        \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count),             \
-            (size_t)(size));                                                                                           \
-    }                                                                                                                   \
-    _ptr;                                                                                                               \
+#define SAFE_CALLOC(count, size, cast)                                                                                 \
+  ({                                                                                                                   \
+    cast _ptr = (cast)calloc((count), (size));                                                                         \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
   })
 
 /* Safe memory reallocation */
-#define SAFE_REALLOC(ptr, size, cast)                                                                                        \
-  ({                                                                                                                    \
-    void *tmp_ptr = realloc((ptr), (size));                                                                                   \
-    if (!tmp_ptr) {                                                                                                        \
-      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                          \
-    }                                                                                                                   \
-    (cast)(tmp_ptr);                                                                                                               \
+#define SAFE_REALLOC(ptr, size, cast)                                                                                  \
+  ({                                                                                                                   \
+    void *tmp_ptr = realloc((ptr), (size));                                                                            \
+    if (!tmp_ptr) {                                                                                                    \
+      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                                    \
+    }                                                                                                                  \
+    (cast)(tmp_ptr);                                                                                                   \
   })
 
 /* SIMD-aligned memory allocation macros for optimal NEON/AVX performance */
 #ifdef __APPLE__
 /* macOS uses posix_memalign() for aligned allocation */
-#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                        \
-  ({                                                                                                                    \
-    cast _ptr;                                                                                   \
-    int result = posix_memalign((void **)&_ptr, (alignment), (size));                                                 \
-    if (result != 0 || !_ptr) {                                                                                       \
-      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),      \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    cast _ptr;                                                                                                         \
+    int result = posix_memalign((void **)&_ptr, (alignment), (size));                                                  \
+    if (result != 0 || !_ptr) {                                                                                        \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
-    _ptr;                                                                                               \
+    _ptr;                                                                                                              \
   })
 #else
 /* Linux/other platforms use aligned_alloc() (C11) */
-#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                                        \
-  ({                                                                                                                    \
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
     size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
-    cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                            \
-    if (!_ptr) {                                                                                                      \
-      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,        \
+    cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                        \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,                  \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
-    _ptr;                                                                                                               \
+    _ptr;                                                                                                              \
   })
 #endif
 
@@ -377,12 +376,12 @@ bool shutdown_is_requested(void);
 #define SAFE_MALLOC_SIMD(size, cast) SAFE_MALLOC_ALIGNED(size, 16, cast)
 
 /* 16-byte aligned zero-initialized allocation */
-#define SAFE_CALLOC_SIMD(count, size, cast)                                                                                        \
-  ({                                                                                                                    \
+#define SAFE_CALLOC_SIMD(count, size, cast)                                                                            \
+  ({                                                                                                                   \
     size_t total_size = (count) * (size);                                                                              \
-    cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                           \
-    memset(_ptr, 0, total_size);                                                                                      \
-    _ptr;                                                                                                               \
+    cast _ptr = SAFE_MALLOC_SIMD(total_size, cast);                                                                    \
+    memset(_ptr, 0, total_size);                                                                                       \
+    _ptr;                                                                                                              \
   })
 
 /* Safe free that nulls the pointer - available in all builds */
@@ -404,7 +403,7 @@ bool shutdown_is_requested(void);
   do {                                                                                                                 \
     (dst) = _strdup(src);                                                                                              \
     if (!(dst)) {                                                                                                      \
-      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)"); \
+      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                          \
     }                                                                                                                  \
   } while (0)
 #else
@@ -412,20 +411,10 @@ bool shutdown_is_requested(void);
   do {                                                                                                                 \
     (dst) = strdup(src);                                                                                               \
     if (!(dst)) {                                                                                                      \
-      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)"); \
+      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                          \
     }                                                                                                                  \
   } while (0)
 #endif
-
-/* Rate-limited debug logging - only logs every N calls */
-#define LOG_DEBUG_EVERY(name, count, fmt, ...)                                                                         \
-  do {                                                                                                                 \
-    static int name##_counter = 0;                                                                                     \
-    name##_counter++;                                                                                                  \
-    if (name##_counter % (count) == 0) {                                                                               \
-      log_debug(fmt, ##__VA_ARGS__);                                                                                   \
-    }                                                                                                                  \
-  } while (0)
 
 /* Platform-safe environment variable access */
 #define SAFE_GETENV(name) ((char *)platform_getenv(name))
@@ -434,7 +423,7 @@ bool shutdown_is_requested(void);
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
 
 /* Platform-safe strerror */
-#include "platform/internal.h"
+#include "platform/abstraction.h"
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */

@@ -1,4 +1,3 @@
-#include "asciichat_errno.h"
 #include "common.h"
 #include "platform/abstraction.h"
 #include "util/path.h"
@@ -17,10 +16,63 @@
 static terminal_capabilities_t g_terminal_caps = {0};
 static bool g_terminal_caps_initialized = false;
 
-/* Windows compatibility for strcasecmp */
-#ifdef _WIN32
-#define strcasecmp _stricmp
-#endif
+size_t get_current_time_formatted(char *time_buf) {
+  /* Log the rotation event */
+  struct timespec ts;
+  (void)clock_gettime(CLOCK_REALTIME, &ts);
+  struct tm tm_info;
+  platform_localtime(&ts.tv_sec, &tm_info);
+
+  // Format the time part first
+  size_t len = strftime(time_buf, 32, "%H:%M:%S", &tm_info);
+  if (len <= 0 || len >= 32) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format time");
+    return -1;
+  }
+
+  // Add microseconds manually
+  long microseconds = ts.tv_nsec / 1000;
+  if (microseconds < 0)
+    microseconds = 0;
+  if (microseconds > 999999)
+    microseconds = 999999;
+
+  int result = snprintf(time_buf + len, 32 - len, ".%06ld", microseconds);
+  if (result < 0 || result >= (int)(32 - len)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format microseconds");
+    return -1;
+  }
+
+  return len + result;
+}
+
+char *format_message(const char *format, va_list args) {
+  if (!format) {
+    return NULL;
+  }
+
+  // First, determine the size needed
+  va_list args_copy;
+  va_copy(args_copy, args);
+  int size = vsnprintf(NULL, 0, format, args_copy);
+  va_end(args_copy);
+
+  if (size < 0) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format context message");
+    return NULL;
+  }
+
+  // Allocate and format the message
+  char *message = SAFE_MALLOC(size + 1, char *);
+  int result = vsnprintf(message, (size_t)size + 1, format, args);
+  if (result < 0) {
+    SAFE_FREE(message);
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format context message");
+    return NULL;
+  }
+
+  return message;
+}
 
 /* ============================================================================
  * Logging Implementation
@@ -35,25 +87,32 @@ static log_level_t parse_log_level_from_env(void) {
   }
   size_t len = strnlen(env_level, 64);
   if (len >= 64) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_PARAM, "LOG_LEVEL is too long");
     return DEFAULT_LOG_LEVEL; // Invalid - too long, use default
   }
 
   // Case-insensitive comparison
-  if (strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "0") == 0) {
+  if (platform_strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "0") == 0) {
     return LOG_DEBUG;
-  } else if (strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
+  }
+  if (platform_strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
     return LOG_INFO;
-  } else if (strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
+  }
+  if (platform_strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
     return LOG_WARN;
-  } else if (strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
+  }
+  if (platform_strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
     return LOG_ERROR;
-  } else if (strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
+  }
+  if (platform_strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
     return LOG_FATAL;
-  } else if (strcasecmp(env_level, "DEV") == 0 || strcmp(env_level, "5") == 0) {
+  }
+  if (platform_strcasecmp(env_level, "DEV") == 0 || strcmp(env_level, "5") == 0) {
     return LOG_DEV;
   }
 
   // Invalid value - return default
+  log_warn("Invalid LOG_LEVEL: %s", env_level);
   return DEFAULT_LOG_LEVEL;
 }
 
@@ -96,7 +155,13 @@ static void rotate_log_if_needed_unlocked(void) {
 
     /* Read the tail into a temporary file */
     char temp_filename[512];
-    SAFE_SNPRINTF(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
+    int result = snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
+    if (result <= 0 || result >= (int)sizeof(temp_filename)) {
+      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
+      platform_close(read_file);
+      return;
+    }
+
     int temp_file = platform_open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
     if (temp_file < 0) {
       platform_close(read_file);
@@ -142,20 +207,26 @@ static void rotate_log_if_needed_unlocked(void) {
     /* Reopen for appending */
     g_log.file = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
     if (g_log.file < 0) {
-      safe_fprintf(stderr, "Failed to reopen rotated log file: %s\n", g_log.filename);
+      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to reopen rotated log file: %s", g_log.filename);
       g_log.file = STDERR_FILENO;
       g_log.filename[0] = '\0';
-    } else {
-      g_log.current_size = new_size;
-      /* Log the rotation event */
-      {
-        char log_msg[256];
-        int log_msg_len = SAFE_SNPRINTF(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n",
-                                        "00:00:00.000000", new_size);
-        if (log_msg_len > 0) {
-          (void)platform_write(g_log.file, log_msg, (size_t)log_msg_len);
-        }
-      }
+    }
+    g_log.current_size = new_size;
+
+    char time_buf[32];
+    get_current_time_formatted(time_buf);
+
+    char log_msg[256];
+    int log_msg_len =
+        safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
+    if (log_msg_len <= 0 || log_msg_len >= (int)sizeof(log_msg)) {
+      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
+      return;
+    }
+
+    if (platform_write(g_log.file, log_msg, log_msg_len) != log_msg_len) {
+      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write log message");
+      return;
     }
   }
 }
@@ -173,37 +244,23 @@ void log_init(const char *filename, log_level_t level) {
   // Preserve the terminal output setting
   bool preserve_terminal_output = g_log.terminal_output_enabled;
 
-  if (g_log.initialized) {
-    if (g_log.file && g_log.file != STDERR_FILENO) {
-      platform_close(g_log.file);
-    }
+  if (g_log.initialized && g_log.file && g_log.file != STDERR_FILENO) {
+    platform_close(g_log.file);
   }
 
   // Check LOG_LEVEL environment variable on first initialization
   // log_init() is an explicit call, so it overrides manual level setting
-  if (!g_log.env_checked) {
-    const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
-    if (env_level_str) {
-      // Environment variable is set - use it
-      log_level_t env_level = parse_log_level_from_env();
-      g_log.level = env_level;
-    } else {
-      // Environment variable not set - use the provided level parameter
-      g_log.level = level;
-    }
-    g_log.env_checked = true;
+
+  const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
+  if (env_level_str) {
+    // Environment variable takes precedence
+    log_level_t env_level = parse_log_level_from_env();
+    g_log.level = env_level;
   } else {
-    // On subsequent calls to log_init, check if env var is set
-    const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
-    if (env_level_str) {
-      // Environment variable takes precedence
-      log_level_t env_level = parse_log_level_from_env();
-      g_log.level = env_level;
-    } else {
-      // No env var - use the provided level parameter
-      g_log.level = level;
-    }
+    // No env var - use the provided level parameter
+    g_log.level = level;
   }
+
   // Reset the manual flag since log_init() is an explicit call
   g_log.level_manually_set = false;
   g_log.current_size = 0;
@@ -241,14 +298,11 @@ void log_init(const char *filename, log_level_t level) {
 
 void log_destroy(void) {
   mutex_lock(&g_log.mutex);
-
   if (g_log.file && g_log.file != STDERR_FILENO) {
     platform_close(g_log.file);
   }
-
   g_log.file = 0;
   g_log.initialized = false;
-
   mutex_unlock(&g_log.mutex);
 }
 
@@ -281,52 +335,57 @@ bool log_get_terminal_output(void) {
 
 void log_truncate_if_large(void) {
   mutex_lock(&g_log.mutex);
-
   if (g_log.file && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     /* Check if current log is too large */
     struct stat st;
     if (fstat(g_log.file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
       /* Save the current size and trigger rotation logic */
       g_log.current_size = (size_t)st.st_size;
-
       /* Use the same tail-keeping rotation logic */
       rotate_log_if_needed_unlocked();
     }
   }
-
   mutex_unlock(&g_log.mutex);
 }
-
 
 /* Helper: Write formatted log entry to actual log file (assumes mutex held)
  * Only writes to real file descriptors, not stderr
  */
 static void write_to_log_file_unlocked(const char *buffer, int length) {
   if (length == 0 || buffer == NULL) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "No log message to write or buffer is NULL");
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_PARAM, "No log message to write or buffer is NULL");
     return;
   }
+
   if (length > MAX_LOG_SIZE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Log message is too long");
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_PARAM, "Log message is too long");
     return;
   }
-  if (g_log.file > 0 && g_log.file != STDERR_FILENO) {
-    ssize_t written = platform_write(g_log.file, buffer, length);
-    if (written > 0) {
-      g_log.current_size += (size_t)written;
-    } else {
-      safe_fprintf(stderr, "Failed to write to log file: %s\n", g_log.filename);
-      log_file_msg("Failed to write to log file: %s", g_log.filename);
-    }
+
+  if (g_log.file <= 0 || g_log.file == STDERR_FILENO) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
+    return;
   }
+
+  ssize_t written = platform_write(g_log.file, buffer, length);
+  if (written <= 0 && length > 0) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
+    return;
+  }
+
+  g_log.current_size += (size_t)written;
 }
 
 /* Helper: Write formatted log entry to stderr fallback (assumes mutex held)
  * Used when no log file is configured
  */
-static void write_to_stderr_fallback_unlocked(const char *buffer) {
+static void write_to_stderr_fallback_unlocked(const char *buffer, int length) {
   if (g_log.file == STDERR_FILENO) {
-    safe_fprintf(stderr, "%s", buffer);
+    int written = platform_write(STDERR_FILENO, buffer, length);
+    if (written <= 0 && length > 0) {
+      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to stderr");
+      return;
+    }
     (void)fflush(stderr);
   }
 }
@@ -335,7 +394,7 @@ static void write_to_stderr_fallback_unlocked(const char *buffer) {
  * Returns the number of characters written to the buffer
  */
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
-                             const char *file, int line, const char *func, bool use_colors) {
+                             const char *file, int line, const char *func, bool use_colors, bool newline) {
   const char **colors = use_colors ? log_get_color_array() : NULL;
   const char *color = use_colors ? colors[level] : "";
   const char *reset = use_colors ? colors[LOGGING_COLOR_RESET] : "";
@@ -349,21 +408,27 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     level_string = "DEV  ";
   }
 
-#ifdef NDEBUG
-  // Release mode: simplified format (timestamp, level, message only)
-  return snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
-#else
+  const char *newline_or_not = newline ? "\n" : "";
+
   // Debug mode: full format with file location and function
   const char *rel_file = extract_project_relative_path(file);
+  int result = 0;
   if (use_colors) {
-    return snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s(): ",
-                    color, timestamp, reset, color, level_string, reset,
-                    colors[LOGGING_COLOR_WARN], rel_file, reset,
-                    colors[LOGGING_COLOR_FATAL], line, reset,
-                    colors[LOGGING_COLOR_DEV], func, reset);
+    result =
+        snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s():%s%s", color, timestamp, reset,
+                 color, level_string, reset, colors[LOGGING_COLOR_WARN], rel_file, reset, colors[LOGGING_COLOR_FATAL],
+                 line, reset, colors[LOGGING_COLOR_DEV], func, reset, reset, newline_or_not);
+  } else {
+    result = snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s():%s", timestamp, level_strings[level], rel_file,
+                      line, func, newline_or_not);
   }
-  return snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s(): ", timestamp, level_strings[level], rel_file, line, func);
-#endif
+
+  if (result <= 0 || result >= (int)buffer_size) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
+    return -1;
+  }
+
+  return result;
 }
 
 /* Helper: Write colored log entry to terminal (assumes mutex held)
@@ -371,10 +436,6 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  */
 static void write_to_terminal_unlocked(log_level_t level, const char *timestamp, const char *file, int line,
                                        const char *func, const char *fmt, va_list args) {
-  (void)file;
-  (void)line;
-  (void)func;
-
   if (!g_log.terminal_output_enabled) {
     return;
   }
@@ -386,20 +447,31 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
   // Format the header using centralized formatting
   char header_buffer[512];
   bool use_colors = isatty(fd);
-  int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors);
 
-  if (header_len > 0 && header_len < (int)sizeof(header_buffer)) {
+  int header_len =
+      format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, true);
+  if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
+    return;
+  }
+
+  if (use_colors) {
+    const char **colors = log_get_color_array();
+    // Write header with colors
+    safe_fprintf(output_stream, "%s", header_buffer);
+    // Reset color before message content
+    safe_fprintf(output_stream, "%s", colors[LOGGING_COLOR_RESET]);
+    // Write message content
+    (void)vfprintf(output_stream, fmt, args);
+    // Ensure color is reset at the end
+    safe_fprintf(output_stream, "%s\n", colors[LOGGING_COLOR_RESET]);
+  } else {
+    // No color requested.
     safe_fprintf(output_stream, "%s", header_buffer);
     (void)vfprintf(output_stream, fmt, args);
-
-    if (use_colors) {
-      const char **colors = log_get_color_array();
-      safe_fprintf(output_stream, "%s\n", colors[LOGGING_COLOR_RESET]); // Ensure color is reset after the message
-    } else {
-      safe_fprintf(output_stream, "\n");
-    }
-    (void)fflush(output_stream);
+    safe_fprintf(output_stream, "\n");
   }
+  (void)fflush(output_stream);
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
@@ -407,23 +479,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   // If not initialized, just don't log (main() should have initialized it)
   if (!g_log.initialized) {
     return; // Don't log if not initialized - this prevents the deadlock
-  }
-
-  // Check environment variable on first log call if not already checked
-  // This handles the case where log_msg is called before log_init
-  if (!g_log.env_checked && !g_log.level_manually_set) {
-    mutex_lock(&g_log.mutex);
-    if (!g_log.env_checked && !g_log.level_manually_set) {
-      const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
-      if (env_level_str) {
-        // Environment variable is set - use it
-        log_level_t env_level = parse_log_level_from_env();
-        g_log.level = env_level;
-      }
-      // Otherwise keep the default level (DEBUG or INFO) from static initialization
-      g_log.env_checked = true;
-    }
-    mutex_unlock(&g_log.mutex);
   }
 
   if (level < g_log.level) {
@@ -440,16 +495,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   platform_localtime(&ts.tv_sec, &tm_info);
 
   char time_buf[32];
-  (void)strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &tm_info);
-
-  char time_buf_ms[64]; // Increased size to prevent truncation
-  long microseconds = ts.tv_nsec / 1000;
-  // Clamp microseconds to valid range (0-999999) to ensure format safety
-  if (microseconds < 0)
-    microseconds = 0;
-  if (microseconds > 999999)
-    microseconds = 999999;
-  SAFE_SNPRINTF(time_buf_ms, sizeof(time_buf_ms), "%s.%06ld", time_buf, microseconds);
+  get_current_time_formatted(time_buf);
 
   /* Check if log rotation is needed */
   rotate_log_if_needed_unlocked();
@@ -460,12 +506,18 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_start(args, fmt);
 
   // Format header without colors for file output
-  int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf_ms, file, line, func, false);
+  int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, false);
+  if (header_len <= 0 || header_len >= (int)sizeof(log_buffer)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
+    return;
+  }
 
   // Add the actual message
   int msg_len = header_len;
-  if (header_len > 0 && header_len < (int)sizeof(log_buffer)) {
-    msg_len += vsnprintf(log_buffer + header_len, sizeof(log_buffer) - header_len, fmt, args);
+  msg_len += vsnprintf(log_buffer + header_len, sizeof(log_buffer) - header_len, fmt, args);
+  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
+    return;
   }
 
   // Add newline
@@ -480,12 +532,12 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   write_to_log_file_unlocked(log_buffer, msg_len);
 
   /* Write to stderr if no log file configured */
-  write_to_stderr_fallback_unlocked(log_buffer);
+  write_to_stderr_fallback_unlocked(log_buffer, msg_len);
 
   /* Also write to terminal with colors if terminal output enabled */
   va_list args_terminal;
   va_start(args_terminal, fmt);
-  write_to_terminal_unlocked(level, time_buf_ms, file, line, func, fmt, args_terminal);
+  write_to_terminal_unlocked(level, time_buf, file, line, func, fmt, args_terminal);
   va_end(args_terminal);
 
   mutex_unlock(&g_log.mutex);
@@ -537,11 +589,14 @@ void log_file_msg(const char *fmt, ...) {
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
   va_end(args);
 
-  if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
-    /* Write to log file only - no stderr output */
-    write_to_log_file_unlocked(log_buffer, msg_len);
-    write_to_log_file_unlocked("\n", 1);
+  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
+    return;
   }
+
+  /* Write to log file only - no stderr output */
+  write_to_log_file_unlocked(log_buffer, msg_len);
+  write_to_log_file_unlocked("\n", 1);
 
   mutex_unlock(&g_log.mutex);
 }
@@ -579,6 +634,11 @@ const char **log_get_color_array(void) {
     colors = level_colors_256;
   } else {
     colors = level_colors_16;
+  }
+
+  if (!colors) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Colors are not set");
+    return NULL;
   }
 
   return colors;

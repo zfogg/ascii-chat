@@ -58,7 +58,8 @@ image_t *image_new(size_t width, size_t height) {
 
   const size_t pixels_size = total_pixels * sizeof(rgb_t);
   if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height, pixels_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height,
+              pixels_size);
     SAFE_FREE(p);
     return NULL;
   }
@@ -88,8 +89,8 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   }
 
   if (width > IMAGE_MAX_WIDTH || height > IMAGE_MAX_HEIGHT) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u", width, height, IMAGE_MAX_WIDTH,
-              IMAGE_MAX_HEIGHT);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u", width, height,
+              IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
     return NULL;
   }
 
@@ -101,7 +102,8 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   // Allocate from buffer pool as single contiguous block
   void *buffer = buffer_pool_alloc(total_size);
   if (!buffer) {
-    SET_ERRNO(ERROR_MEMORY, "image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size, width, height);
+    SET_ERRNO(ERROR_MEMORY, "image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size,
+              width, height);
     return NULL;
   }
 
@@ -356,16 +358,14 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  */
 char *image_print_color(const image_t *p, const char *palette) {
   if (!p || !p->pixels || !palette) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "p=%p or p->pixels=%p or palette=%p is NULL", p, p->pixels,
-                      palette);
+    SET_ERRNO(ERROR_INVALID_PARAM, "p=%p or p->pixels=%p or palette=%p is NULL", p, p->pixels, palette);
     return NULL;
   }
 
   // Get UTF-8 character cache for proper multi-byte character support
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
   if (!utf8_cache) {
-    SET_ERRNO(ERROR_INVALID_STATE,
-                      "Failed to get UTF-8 palette cache for scalar color rendering");
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 palette cache for scalar color rendering");
     return NULL;
   }
 
@@ -496,7 +496,8 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
                                     const char luminance_palette[256] __attribute__((unused))) {
   if (!image || !image->pixels || !caps || !palette) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or caps=%p or palette=%p is NULL", image, image->pixels, caps, palette);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or caps=%p or palette=%p is NULL", image,
+              image->pixels, caps, palette);
     return NULL;
   }
 

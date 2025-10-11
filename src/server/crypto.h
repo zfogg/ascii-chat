@@ -4,13 +4,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "crypto/crypto.h"
-#include "platform/abstraction.h"
+#include "client.h"
 
 // Initialize server crypto handshake
 int server_crypto_init(void);
 
 // Perform crypto handshake with client
-int server_crypto_handshake(socket_t client_socket);
+int server_crypto_handshake(client_info_t *client);
 
 // Check if crypto handshake is ready for a specific client
 bool crypto_server_is_ready(uint32_t client_id);

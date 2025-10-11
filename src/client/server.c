@@ -269,8 +269,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       // Create socket with appropriate address family
       g_sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       if (g_sockfd == INVALID_SOCKET_VALUE) {
-        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family,
-                  network_error_string());
+        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string());
         continue; // Try next address
       }
 
@@ -362,7 +361,7 @@ connection_success:
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     FATAL(ERROR_CRYPTO_HANDSHAKE,
-                      "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
+          "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
   }
   log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 

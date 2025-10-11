@@ -48,21 +48,21 @@ int server_crypto_init(void) {
 /**
  * Perform crypto handshake with client
  *
- * @param client_socket Connected socket to client
+ * @param client Client info structure
  * @return 0 on success, -1 on failure
  */
-int server_crypto_handshake(socket_t client_socket) {
+int server_crypto_handshake(client_info_t *client) {
   if (opt_no_encrypt) {
     log_debug("Crypto handshake skipped (disabled)");
     return 0;
   }
 
-  // Find the client by socket to get their crypto context
-  client_info_t *client = find_client_by_socket(client_socket);
   if (!client) {
-    FATAL(ERROR_CRYPTO_HANDSHAKE, "Client not found for crypto handshake");
+    FATAL(ERROR_CRYPTO_HANDSHAKE, "Client is NULL for crypto handshake");
     return -1;
   }
+
+  
 
   // Initialize crypto context for this specific client
   int init_result;
@@ -114,7 +114,7 @@ int server_crypto_handshake(socket_t client_socket) {
   size_t payload_len = 0;
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to receive packet from client %u", atomic_load(&client->client_id));
-  int result = receive_packet(client_socket, &packet_type, &payload, &payload_len);
+  int result = receive_packet(client->socket, &packet_type, &payload, &payload_len);
   log_debug("SERVER_CRYPTO_HANDSHAKE: Received packet from client %u: result=%d, type=%u",
             atomic_load(&client->client_id), result, packet_type);
 
@@ -174,7 +174,7 @@ int server_crypto_handshake(socket_t client_socket) {
   server_version.compression_threshold = 0;
   server_version.feature_flags = 0;
 
-  result = send_protocol_version_packet(client_socket, &server_version);
+  result = send_protocol_version_packet(client->socket, &server_version);
   if (result != 0) {
     log_error("Failed to send protocol version to client %u", atomic_load(&client->client_id));
     log_info("Client %u disconnected - failed to send protocol version", atomic_load(&client->client_id));
@@ -187,7 +187,7 @@ int server_crypto_handshake(socket_t client_socket) {
   payload = NULL;
   payload_len = 0;
 
-  result = receive_packet(client_socket, &packet_type, &payload, &payload_len);
+  result = receive_packet(client->socket, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK) {
     log_info("Client %u disconnected during crypto capabilities exchange", atomic_load(&client->client_id));
     if (payload) {
@@ -275,7 +275,7 @@ int server_crypto_handshake(socket_t client_socket) {
   server_params.hmac_size = 32;                 // HMAC-SHA256 size
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: Sending crypto parameters to client %u", atomic_load(&client->client_id));
-  result = send_crypto_parameters_packet(client_socket, &server_params);
+  result = send_crypto_parameters_packet(client->socket, &server_params);
   if (result != 0) {
     log_error("Failed to send crypto parameters to client %u", atomic_load(&client->client_id));
     return -1;
@@ -293,13 +293,13 @@ int server_crypto_handshake(socket_t client_socket) {
   }
 
   // Step 1: Send our public key to client
-  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, client_socket);
+  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, client->socket);
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Failed to send server public key to client %u", atomic_load(&client->client_id));
   }
 
   // Step 2: Receive client's public key and send auth challenge
-  result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, client_socket);
+  result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, client->socket);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
@@ -314,7 +314,7 @@ int server_crypto_handshake(socket_t client_socket) {
   }
 
   // Step 3: Receive auth response and complete handshake
-  result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, client_socket);
+  result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, client->socket);
   if (result != ASCIICHAT_OK) {
     // Handle network errors (like client disconnection) gracefully
     if (result == ERROR_NETWORK) {

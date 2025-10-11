@@ -10,7 +10,7 @@
 
 #include "../constants.h"
 #include "../../common.h"
-#include "types.h"  // Include the key type definitions
+#include "types.h" // Include the key type definitions
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

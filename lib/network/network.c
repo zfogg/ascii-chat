@@ -41,15 +41,17 @@ static ssize_t network_platform_send(socket_t sockfd, const void *data, size_t l
   ssize_t sent;
   if (raw_sent == SOCKET_ERROR) {
     sent = -1;
-    // On Windows, use WSAGetLastError() instead of errno
-    errno = WSAGetLastError();
-    log_debug("Windows send() failed: WSAGetLastError=%d, sockfd=%llu, len=%zu", errno, (unsigned long long)sockfd,
+    // On Windows, use WSAGetLastError() and save to WSA error field
+    int wsa_error = WSAGetLastError();
+    errno = EIO; // Set a generic errno, but save the real WSA error
+    log_debug("Windows send() failed: WSAGetLastError=%d, sockfd=%llu, len=%zu", wsa_error, (unsigned long long)sockfd,
               len);
   } else {
     sent = (ssize_t)raw_sent;
     // CORRUPTION DETECTION: Check Windows send() return value
     if (raw_sent > (int)len) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CRITICAL: Windows send() returned more than requested: raw_sent=%d > len=%zu", raw_sent, len);
+      SET_ERRNO(ERROR_INVALID_STATE, "CRITICAL: Windows send() returned more than requested: raw_sent=%d > len=%zu",
+                raw_sent, len);
     }
   }
   return sent;
@@ -72,7 +74,8 @@ static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
 #ifdef _WIN32
   int raw_received = recv(sockfd, (char *)buf, (int)len, 0);
   if (raw_received == SOCKET_ERROR) {
-    errno = WSAGetLastError();
+    (void)WSAGetLastError(); // Get the error but don't use it yet
+    errno = EIO; // Set a generic errno
     return -1;
   }
   return (ssize_t)raw_received;
@@ -80,6 +83,7 @@ static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
   return recv(sockfd, buf, len, 0);
 #endif
 }
+
 
 /**
  * @brief Platform-specific error string retrieval
@@ -213,8 +217,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
     int result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout timed out after %d seconds",
-                          timeout_seconds);
+        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout timed out after %d seconds", timeout_seconds);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -225,8 +228,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
 
     // Check if socket is ready for writing
     if (!socket_fd_isset(sockfd, &write_fds)) {
-      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT,
-                        "send_with_timeout socket not ready for writing after select");
+      SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "send_with_timeout socket not ready for writing after select");
       return -1;
     }
 
@@ -277,8 +279,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
     int result = socket_select(sockfd, &read_fds, NULL, NULL, &timeout);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %d seconds",
-                          timeout_seconds);
+        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %d seconds", timeout_seconds);
         return -1;
       }
       if (network_handle_select_error(result)) {
@@ -345,12 +346,12 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
       asciichat_errno_context.has_system_error = true;
       asciichat_errno_context.system_errno = ETIMEDOUT;
       return -1;
-    } else {
-      if (network_handle_select_error(result)) {
-        return -1; // Don't retry for accept
-      }
-      return -1;
     }
+
+    if (network_handle_select_error(result)) {
+      return -1; // Don't retry for accept
+    }
+    return -1;
   }
 
   // Check if socket is ready
@@ -362,11 +363,48 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
     return -1;
   }
 
+  // Check if socket is still valid before attempting accept
+  if (listenfd == INVALID_SOCKET_VALUE) {
+    SET_ERRNO(ERROR_NETWORK, "accept_with_timeout: listening socket is closed");
+    return -1;
+  }
+
   socket_t accept_result = socket_accept(listenfd, addr, addrlen);
 
   if (accept_result == INVALID_SOCKET_VALUE) {
-    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s",
-                      network_get_error_string(errno));
+    // Check if this is a socket closed error (common during shutdown)
+#ifdef _WIN32
+    // On Windows, use WSAGetLastError() instead of errno
+    int error_code = WSAGetLastError();
+    // Windows-specific error codes for closed/invalid sockets
+    // WSAENOTSOCK = 10038, WSAEBADF = 10009, WSAENOTCONN = 10057
+    log_debug("accept_with_timeout: Windows error code %d, WSAENOTSOCK=%d, WSAEBADF=%d, WSAENOTCONN=%d", error_code,
+              WSAENOTSOCK, WSAEBADF, WSAENOTCONN);
+
+    if (error_code == WSAENOTSOCK || error_code == WSAEBADF || error_code == WSAENOTCONN) {
+      log_debug("accept_with_timeout: Matched socket closed error, using ERROR_NETWORK");
+      // During shutdown, don't log this as an error since it's expected behavior
+      asciichat_errno = ERROR_NETWORK;
+      asciichat_errno_context.code = ERROR_NETWORK;
+      asciichat_errno_context.has_system_error = false;
+    } else {
+      log_debug("accept_with_timeout: No match, using ERROR_NETWORK_BIND");
+      // Save Windows socket error to WSA error field for debugging
+      errno = EIO; // Set a generic errno
+      asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, __FILE__, __LINE__, __func__, error_code);
+    }
+#else
+    // POSIX error codes for closed/invalid sockets
+    int error_code = errno;
+    if (error_code == EBADF || error_code == ENOTSOCK) {
+      // During shutdown, don't log this as an error since it's expected behavior
+      asciichat_errno = ERROR_NETWORK;
+      asciichat_errno_context.code = ERROR_NETWORK;
+      asciichat_errno_context.has_system_error = false;
+    } else {
+      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", network_get_error_string(errno));
+    }
+#endif
     return -1;
   }
 
