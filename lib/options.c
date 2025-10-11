@@ -787,7 +787,41 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       return ERROR_USAGE;
 
     case '?':
-      (void)fprintf(stderr, "Unknown option %c\n", optopt);
+      // Handle unknown options - extract the actual option name from argv
+      if (optopt == 0 || optopt > 127) {
+        // Long option - extract from argv
+        const char *user_input = NULL;
+        if (optind > 0 && optind <= argc && argv && argv[optind - 1]) {
+          user_input = argv[optind - 1];
+        }
+
+        // Extract option name for long options
+        const char *option_name = "[unknown option name] (this is invalid and an error. this should never be printed)";
+        if (user_input && strlen(user_input) > 2 && strncmp(user_input, "--", 2) == 0) {
+          const char *user_opt = user_input + 2;
+          // Handle --option=value format
+          const char *eq_pos = strchr(user_opt, '=');
+          if (eq_pos) {
+            size_t user_opt_len = eq_pos - user_opt;
+            if (user_opt_len > 0 && user_opt_len < 256) {
+              char unsupported_opt[256];
+              SAFE_STRNCPY(unsupported_opt, user_opt, sizeof(unsupported_opt));
+              unsupported_opt[user_opt_len] = '\0';
+              option_name = unsupported_opt;
+            } else {
+              option_name = user_opt;
+            }
+          } else {
+            option_name = user_opt;
+          }
+        } else if (user_input) {
+          option_name = user_input;
+        }
+        safe_fprintf(stderr, "Unknown option '--%s'\n", option_name);
+      } else {
+        // Short option
+        safe_fprintf(stderr, "Unknown option '-%c'\n", optopt);
+      }
       usage(stderr, is_client);
       return ERROR_USAGE;
 
@@ -846,14 +880,14 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                              "(default: auto)\n");
   (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
                                    "show detected terminal capabilities and exit\n");
-  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
+  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT
+                                   "force enable UTF-8/Unicode support (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
                                    "foreground, background, half-block (default: foreground)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
-                                   "Custom palette characters for --palette=custom "
-                                   "(implies --palette=custom)\n");
+                                   "Custom palette characters (implies --palette=custom) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
                                    "enable audio capture and playback (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
