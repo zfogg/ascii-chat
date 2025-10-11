@@ -555,7 +555,7 @@ void *client_video_render_thread(void *arg) {
           if (video_frame_count > 1 && frame_interval_us > lag_threshold_us) {
             lag_counter++;
             if (lag_counter % 10 == 0) {
-              log_error("SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
+              LOG_WARN_EVERY(server_video_lag, 1000000, "SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
                         "fps: %.1f)",
                         thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
                         (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
