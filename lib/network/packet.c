@@ -295,7 +295,7 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
   // Send payload if present
   if (len > 0 && data) {
     // Check socket validity before sending payload to avoid race conditions
-    if (socket_is_valid(sockfd) != true) {
+    if (!socket_is_valid(sockfd)) {
       return SET_ERRNO(ERROR_NETWORK, "Socket became invalid between header and payload send");
     }
     sent = send_with_timeout(sockfd, data, len, timeout);

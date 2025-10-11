@@ -551,61 +551,68 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // 1. Verify IP address matches known_hosts entry
     // 2. Always require user confirmation (no silent connections)
     // 3. Store server fingerprint for future verification
+
+    if (ctx->server_ip[0] == '\0' || ctx->server_port <= 0) {
+      return SET_ERRNO(ERROR_CRYPTO, "Server IP or port not set, cannot check known_hosts");
+    }
+
+    log_debug("SECURITY_CHECK: Server has no identity key - implementing IP verification");
+
+    // Check if this server was previously connected to (IP verification)
+    int known_host_result;
     log_debug("SECURITY_CHECK: server_ip='%s', server_port=%u", ctx->server_ip, ctx->server_port);
-    if (ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
-      log_debug("SECURITY_CHECK: Server has no identity key - implementing IP verification");
+    const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+    if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, "1") == 0) {
+      log_warn("Skipping known_hosts checking. This is a security vulnerability.");
+      known_host_result = -1;
+    } else {
+      known_host_result = check_known_host_no_identity(ctx->server_ip, ctx->server_port);
+    }
 
-      // Check if this server was previously connected to (IP verification)
-      log_debug("SECURITY_DEBUG: Calling check_known_host_no_identity for %s:%u", ctx->server_ip, ctx->server_port);
-      int known_host_result = check_known_host_no_identity(ctx->server_ip, ctx->server_port);
-      log_debug("SECURITY_DEBUG: check_known_host_no_identity returned: %d", known_host_result);
+    if (known_host_result == 1) {
+      // Server IP is known - allow connection without user confirmation
+      log_warn("SECURITY: Server IP %s:%u is known (no-identity entry found)"
+               "SECURITY: This connection is vulnerable to man-in-the-middle attacks"
+               "SECURITY: Anyone can intercept your connection and read your data"
+               "SECURITY: Consider asking the server administrator to use --key for proper authentication"
+               "Allowing connection to known server without identity key (IP verified)",
+               ctx->server_ip, ctx->server_port);
+    } else if (known_host_result == 0) {
+      // Unknown server IP - require user confirmation
+      log_warn("SECURITY: Unknown server IP %s:%u with no identity key"
+               "SECURITY: This connection is vulnerable to man-in-the-middle attacks"
+               "SECURITY: Anyone can intercept your connection and read your data",
+               ctx->server_ip, ctx->server_port);
 
-      if (known_host_result == 1) {
-        // Server IP is known - allow connection without user confirmation
-        log_info("SECURITY: Server IP %s:%u is known (no-identity entry found)", ctx->server_ip, ctx->server_port);
-        log_warn("SECURITY: This connection is vulnerable to man-in-the-middle attacks");
-        log_warn("SECURITY: Anyone can intercept your connection and read your data");
-        log_warn("SECURITY: Consider asking the server administrator to use --key for proper authentication");
-
-        // Server IP is known - allow connection without prompting user
-        log_info("Allowing connection to known server without identity key (IP verified)");
-      } else if (known_host_result == 0) {
-        // Unknown server IP - require user confirmation
-        log_warn("SECURITY: Unknown server IP %s:%u with no identity key", ctx->server_ip, ctx->server_port);
-        log_warn("SECURITY: This connection is vulnerable to man-in-the-middle attacks");
-        log_warn("SECURITY: Anyone can intercept your connection and read your data");
-
-        if (!prompt_unknown_host_no_identity(ctx->server_ip, ctx->server_port)) {
-          if (payload) {
-            buffer_pool_free(payload, payload_len);
-          }
-          return SET_ERRNO(ERROR_CRYPTO, "User declined to connect to unknown server without identity key");
-        }
-
-        // User accepted - add to known_hosts as no-identity entry
-        // For servers without identity keys, pass zero key to indicate no-identity
-        uint8_t zero_key[32] = {0};
-        log_debug("SECURITY_DEBUG: Adding server to known_hosts with zero key for no-identity entry");
-        if (add_known_host(ctx->server_ip, ctx->server_port, zero_key) != 0) {
-          if (payload) {
-            buffer_pool_free(payload, payload_len);
-          }
-          return SET_ERRNO(ERROR_CONFIG,
-                           "CRITICAL SECURITY ERROR: Failed to create known_hosts "
-                           "file! This is a security vulnerability - the "
-                           "program cannot track known hosts. Please check file "
-                           "permissions and ensure the program can write to: %s",
-                           get_known_hosts_path());
-        }
-        log_info("Server added to known_hosts as no-identity entry (user confirmed)");
-      } else {
-        // Error checking known_hosts
-        log_error("SECURITY: Error checking known_hosts for server %s:%u", ctx->server_ip, ctx->server_port);
+      if (!prompt_unknown_host_no_identity(ctx->server_ip, ctx->server_port)) {
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
-        return SET_ERRNO(ERROR_CRYPTO, "Failed to verify server IP address");
+        return SET_ERRNO(ERROR_CRYPTO, "User declined to connect to unknown server without identity key");
       }
+
+      // User accepted - add to known_hosts as no-identity entry
+      // For servers without identity keys, pass zero key to indicate no-identity
+      uint8_t zero_key[32] = {0};
+      log_debug("SECURITY_DEBUG: Adding server to known_hosts with zero key for no-identity entry");
+      if (add_known_host(ctx->server_ip, ctx->server_port, zero_key) != 0) {
+        if (payload) {
+          buffer_pool_free(payload, payload_len);
+        }
+        return SET_ERRNO(ERROR_CONFIG,
+                         "CRITICAL SECURITY ERROR: Failed to create known_hosts "
+                         "file! This is a security vulnerability - the "
+                         "program cannot track known hosts. Please check file "
+                         "permissions and ensure the program can write to: %s",
+                         get_known_hosts_path());
+      }
+      log_info("Server added to known_hosts as no-identity entry (user confirmed)");
+    } else if (known_host_result != -1) {
+      // Error checking known_hosts
+      if (payload) {
+        buffer_pool_free(payload, payload_len);
+      }
+      return SET_ERRNO(ERROR_CRYPTO, "Failed to verify server IP address");
     }
   } else {
     if (payload) {
@@ -620,8 +627,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // retry
   }
 
-  // Set peer's public key (EPHEMERAL X25519) - this also derives the shared
-  // secret
+  // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret
   crypto_result_t crypto_result = crypto_set_peer_public_key(&ctx->crypto_ctx, server_ephemeral_key);
   if (payload) {
     buffer_pool_free(payload, payload_len);
