@@ -153,10 +153,34 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   char device_path[32];
   SAFE_SNPRINTF(device_path, sizeof(device_path), "/dev/video%d", device_index);
 
+  // Check if device file exists before trying to open it
   context->fd = platform_open(device_path, PLATFORM_O_RDWR | O_NONBLOCK);
   if (context->fd == -1) {
-    SAFE_FREE(context);
-    return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to open V4L2 device %s", device_path);
+    // Provide more helpful error messages based on errno
+    if (errno == ENOENT) {
+      SAFE_FREE(context);
+      return SET_ERRNO(ERROR_WEBCAM,
+                      "V4L2 device %s does not exist.\n"
+                      "No webcam found. Try:\n"
+                      "  1. Check if camera is connected: ls /dev/video*\n"
+                      "  2. Use test pattern instead: --test-pattern",
+                      device_path);
+    } else if (errno == EACCES) {
+      SAFE_FREE(context);
+      return SET_ERRNO(ERROR_WEBCAM_PERMISSION,
+                      "Permission denied accessing %s.\n"
+                      "Try: sudo usermod -a -G video $USER\n"
+                      "Then log out and log back in.",
+                      device_path);
+    } else if (errno == EBUSY) {
+      SAFE_FREE(context);
+      return SET_ERRNO(ERROR_WEBCAM_IN_USE,
+                      "V4L2 device %s is already in use by another application.",
+                      device_path);
+    } else {
+      SAFE_FREE(context);
+      return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to open V4L2 device %s", device_path);
+    }
   }
 
   // Check if it's a video capture device

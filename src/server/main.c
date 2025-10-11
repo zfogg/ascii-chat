@@ -956,6 +956,12 @@ main_loop:
     int client_id = add_client(client_sock, client_ip, client_port);
     if (client_id < 0) {
       log_error("Failed to add client, rejecting connection");
+      // Print error context if available (helps debug crypto/network failures)
+      if (HAS_ERRNO(&asciichat_errno_context)) {
+        PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+        // Clear the error so ASSERT_NO_ERRNO() doesn't abort on next iteration
+        CLEAR_ERRNO();
+      }
       socket_close(client_sock);
       continue;
     }
