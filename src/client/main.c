@@ -80,6 +80,7 @@
 #include "crypto/keys/keys.h"
 #include "buffer_pool.h"
 #include "palette.h"
+#include "network/network.h"
 
 #include <signal.h>
 #include <stdlib.h>
