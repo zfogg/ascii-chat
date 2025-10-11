@@ -56,7 +56,7 @@ typedef struct {
   char **backtrace_symbols; // Stack symbols (debug builds only)
   int stack_depth;          // Number of frames captured
   bool has_system_error;    // Whether system_errno is valid
-  bool has_wsa_error;      // Whether wsa_error is valid
+  bool has_wsa_error;       // Whether wsa_error is valid
 } asciichat_error_context_t;
 
 /* Thread-local storage for error context */

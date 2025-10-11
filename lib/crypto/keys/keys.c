@@ -158,7 +158,7 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
 
     if (result != ASCIICHAT_OK || num_fetched_keys == 0) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch keys from %s for user: %s", is_github ? "GitHub" : "GitLab",
-                username);
+                       username);
     }
 
     // Parse each fetched key
@@ -177,7 +177,8 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     SAFE_FREE(keys);
 
     if (*num_keys == 0) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found for %s user: %s", is_github ? "GitHub" : "GitLab", username);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found for %s user: %s", is_github ? "GitHub" : "GitLab",
+                       username);
     }
 
     return ASCIICHAT_OK;

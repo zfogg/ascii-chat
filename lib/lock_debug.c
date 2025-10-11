@@ -173,12 +173,12 @@ static void collect_lock_record_callback(uint32_t key, void *value, void *user_d
     break;
   }
 
-  *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                    "Lock #%u: %s at %p\n", collector->count, lock_type_str, record->lock_address);
-  *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                    "  Thread ID: %llu\n", (unsigned long long)record->thread_id);
-  *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                    "  Acquired: %s:%d in %s()\n", record->file_name, record->line_number, record->function_name);
+  *offset += snprintf(buffer + *offset, buffer_size - *offset, "Lock #%u: %s at %p\n", collector->count, lock_type_str,
+                      record->lock_address);
+  *offset +=
+      snprintf(buffer + *offset, buffer_size - *offset, "  Thread ID: %llu\n", (unsigned long long)record->thread_id);
+  *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Acquired: %s:%d in %s()\n", record->file_name,
+                      record->line_number, record->function_name);
 
   // Calculate how long the lock has been held
   struct timespec current_time;
@@ -192,18 +192,16 @@ static void collect_lock_record_callback(uint32_t key, void *value, void *user_d
       held_nsec += 1000000000;
     }
 
-    *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                      "  Held for: %lld.%09ld seconds\n", held_sec, held_nsec);
+    *offset +=
+        snprintf(buffer + *offset, buffer_size - *offset, "  Held for: %lld.%09ld seconds\n", held_sec, held_nsec);
   } else {
-    *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                      "  Acquired at: %lld.%09ld seconds (monotonic)\n", (long long)record->acquisition_time.tv_sec,
-                      record->acquisition_time.tv_nsec);
+    *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Acquired at: %lld.%09ld seconds (monotonic)\n",
+                        (long long)record->acquisition_time.tv_sec, record->acquisition_time.tv_nsec);
   }
 
   // Print backtrace using platform symbol resolution
   if (record->backtrace_size > 0) {
-    *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                      "  Call stack (%d frames):\n", record->backtrace_size);
+    *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Call stack (%d frames):\n", record->backtrace_size);
 
     // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
@@ -220,18 +218,16 @@ static void collect_lock_record_callback(uint32_t key, void *value, void *user_d
     for (int j = 0; j < record->backtrace_size; j++) {
       // Build the full line for each stack frame
       if (symbols && symbols[j] && has_symbols) {
-        *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                          "    %2d: %s\n", j, symbols[j]);
+        *offset += snprintf(buffer + *offset, buffer_size - *offset, "    %2d: %s\n", j, symbols[j]);
       } else {
-        *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                          "    %2d: %p\n", j, record->backtrace_buffer[j]);
+        *offset += snprintf(buffer + *offset, buffer_size - *offset, "    %2d: %p\n", j, record->backtrace_buffer[j]);
       }
     }
 
     // For static binaries, provide helpful message
     if (!has_symbols) {
       *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                        "  Resolve symbols with: addr2line -e <binary> -f -C <addresses>\n");
+                          "  Resolve symbols with: addr2line -e <binary> -f -C <addresses>\n");
     }
 
     // Clean up symbols
@@ -239,11 +235,9 @@ static void collect_lock_record_callback(uint32_t key, void *value, void *user_d
       platform_backtrace_symbols_free(symbols);
     }
   } else {
-    *offset += snprintf(buffer + *offset, buffer_size - *offset,
-                      "  Call stack: <capture failed>\n");
+    *offset += snprintf(buffer + *offset, buffer_size - *offset, "  Call stack: <capture failed>\n");
   }
 }
-
 
 /**
  * @brief Callback function for cleaning up lock records
@@ -423,70 +417,63 @@ void print_all_held_locks(void) {
   rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records->rwlock);
 
   // Header
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "=== LOCK DEBUG: Lock Status Report ===\n");
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "=== LOCK DEBUG: Lock Status Report ===\n");
 
   // Historical Statistics
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "Historical Statistics:\n");
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "  Total locks released: %llu\n", (unsigned long long)total_released);
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "  Currently held: %u\n", currently_held);
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "Historical Statistics:\n");
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Total locks acquired: %llu\n",
+                     (unsigned long long)total_acquired);
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Total locks released: %llu\n",
+                     (unsigned long long)total_released);
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Currently held: %u\n", currently_held);
 
   // Check for underflow before subtraction to avoid UB
   if (total_acquired >= total_released) {
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  Net locks (acquired - released): %lld\n", (long long)(total_acquired - total_released));
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Net locks (acquired - released): %lld\n",
+                       (long long)(total_acquired - total_released));
   } else {
     // This shouldn't happen - means more releases than acquires
     offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***\n",
-                      (unsigned long long)total_released, (unsigned long long)total_acquired,
-                      (long long)(total_released - total_acquired));
+                       "  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***\n",
+                       (unsigned long long)total_released, (unsigned long long)total_acquired,
+                       (long long)(total_released - total_acquired));
     offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  *** This indicates lock tracking was not enabled for some acquires ***\n");
+                       "  *** This indicates lock tracking was not enabled for some acquires ***\n");
   }
 
   // Currently Active Locks
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "Currently Active Locks:\n");
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "Currently Active Locks:\n");
   if (active_locks == 0) {
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  No locks currently held.\n");
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No locks currently held.\n");
     // Check for consistency issues
     if (currently_held > 0) {
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n", currently_held);
+                         "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",
+                         currently_held);
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  *** This may indicate a crash during lock acquisition or hashtable corruption. ***\n");
+                         "  *** This may indicate a crash during lock acquisition or hashtable corruption. ***\n");
 
       // Additional debug: Check hashtable statistics
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  *** DEBUG: Hashtable stats for lock_records: ***\n");
+                         "  *** DEBUG: Hashtable stats for lock_records: ***\n");
       if (g_lock_debug_manager.lock_records) {
         size_t count = hashtable_size(g_lock_debug_manager.lock_records);
-        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                          "  *** Hashtable size: %zu ***\n", count);
+        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  *** Hashtable size: %zu ***\n", count);
         if (count > 0) {
           offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                            "  *** Hashtable has entries but foreach didn't find them! ***\n");
+                             "  *** Hashtable has entries but foreach didn't find them! ***\n");
         }
       } else {
-        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                          "  *** Hashtable is NULL! ***\n");
+        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  *** Hashtable is NULL! ***\n");
       }
     }
   } else {
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  Active locks: %u\n", active_locks);
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Active locks: %u\n", active_locks);
     // Verify consistency the other way
     if (active_locks != currently_held) {
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***\n", active_locks,
-                        currently_held);
+                         "  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***\n", active_locks,
+                         currently_held);
     }
 
     // The lock details are already in the buffer from collect_lock_record_callback
@@ -494,8 +481,7 @@ void print_all_held_locks(void) {
   }
 
   // Print usage statistics by code location
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "Lock Usage Statistics by Code Location:\n");
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "Lock Usage Statistics by Code Location:\n");
   if (g_lock_debug_manager.usage_stats) {
     rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
 
@@ -505,24 +491,22 @@ void print_all_held_locks(void) {
     rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
 
     if (total_usage_locations == 0) {
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  No lock usage statistics available.\n");
+      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No lock usage statistics available.\n");
     } else {
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  Total code locations with lock usage: %u\n", total_usage_locations);
+                         "  Total code locations with lock usage: %u\n", total_usage_locations);
     }
   } else {
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  Usage statistics not available.\n");
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Usage statistics not available.\n");
   }
 
   // Print orphaned releases (unlocks without corresponding locks)
   offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "Orphaned Releases (unlocks without corresponding locks):\n");
+                     "Orphaned Releases (unlocks without corresponding locks):\n");
   if (g_lock_debug_manager.orphaned_releases) {
 #ifdef DEBUG_LOCKS
     offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "[DEBUG] About to call hashtable_foreach on orphaned_releases\n");
+                       "[DEBUG] About to call hashtable_foreach on orphaned_releases\n");
 #endif
     rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
 
@@ -531,30 +515,29 @@ void print_all_held_locks(void) {
                       &total_orphaned_releases);
 #ifdef DEBUG_LOCKS
     offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "[DEBUG] hashtable_foreach completed, total_orphaned_releases=%u\n", total_orphaned_releases);
+                       "[DEBUG] hashtable_foreach completed, total_orphaned_releases=%u\n", total_orphaned_releases);
 #endif
 
     rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
 
     if (total_orphaned_releases == 0) {
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  No orphaned releases found.\n");
+      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No orphaned releases found.\n");
     } else {
+      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Total orphaned releases: %u\n",
+                         total_orphaned_releases);
+      offset +=
+          snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
+                   "  *** WARNING: %u releases without corresponding locks detected! ***\n", total_orphaned_releases);
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  Total orphaned releases: %u\n", total_orphaned_releases);
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  *** WARNING: %u releases without corresponding locks detected! ***\n", total_orphaned_releases);
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                        "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
+                         "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
     }
   } else {
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                      "  Orphaned release tracking not available.\n");
+    offset +=
+        snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Orphaned release tracking not available.\n");
   }
 
   // End marker
-  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                    "=== End Lock Debug ===");
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "=== End Lock Debug ===");
 
   // Single log_debug call with all the information
   log_debug("%s", log_buffer);

@@ -75,7 +75,7 @@ static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
   int raw_received = recv(sockfd, (char *)buf, (int)len, 0);
   if (raw_received == SOCKET_ERROR) {
     (void)WSAGetLastError(); // Get the error but don't use it yet
-    errno = EIO; // Set a generic errno
+    errno = EIO;             // Set a generic errno
     return -1;
   }
   return (ssize_t)raw_received;
@@ -83,7 +83,6 @@ static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
   return recv(sockfd, buf, len, 0);
 #endif
 }
-
 
 /**
  * @brief Platform-specific error string retrieval

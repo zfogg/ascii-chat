@@ -62,8 +62,6 @@ int server_crypto_handshake(client_info_t *client) {
     return -1;
   }
 
-  
-
   // Initialize crypto context for this specific client
   int init_result;
   if (strlen(opt_password) > 0) {
