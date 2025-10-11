@@ -207,12 +207,33 @@ void webcam_cleanup(void) {
 void webcam_print_init_error_help(asciichat_error_t error_code) {
   // Platform-specific error messages and troubleshooting help
 #ifdef __linux__
-  (void)error_code;
   safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "On Linux, make sure:\n");
-  safe_fprintf(stderr, "* Your user is in the 'video' group: sudo usermod -a -G video $USER\n");
-  safe_fprintf(stderr, "* The camera device exists: ls /dev/video*\n");
-  safe_fprintf(stderr, "* No other application is using the camera\n");
+
+  if (error_code == ERROR_WEBCAM) {
+    safe_fprintf(stderr, "Webcam initialization failed on Linux.\n\n");
+    safe_fprintf(stderr, "Common solutions:\n");
+    safe_fprintf(stderr, "  1. Check if a camera is connected:\n");
+    safe_fprintf(stderr, "       ls /dev/video*\n\n");
+    safe_fprintf(stderr, "  2. If no camera is available, use test pattern mode:\n");
+    safe_fprintf(stderr, "       ascii-chat-client --test-pattern\n\n");
+    safe_fprintf(stderr, "  3. Install V4L2 drivers if needed:\n");
+    safe_fprintf(stderr, "       sudo apt-get install v4l-utils\n");
+  } else if (error_code == ERROR_WEBCAM_PERMISSION) {
+    safe_fprintf(stderr, "Camera permission denied.\n\n");
+    safe_fprintf(stderr, "Fix permissions with:\n");
+    safe_fprintf(stderr, "  sudo usermod -a -G video $USER\n");
+    safe_fprintf(stderr, "Then log out and log back in for changes to take effect.\n");
+  } else if (error_code == ERROR_WEBCAM_IN_USE) {
+    safe_fprintf(stderr, "Camera is already in use by another application.\n\n");
+    safe_fprintf(stderr, "Try closing other camera apps or use test pattern mode:\n");
+    safe_fprintf(stderr, "  ascii-chat-client --test-pattern\n");
+  } else {
+    safe_fprintf(stderr, "Webcam error on Linux.\n\n");
+    safe_fprintf(stderr, "General troubleshooting:\n");
+    safe_fprintf(stderr, "* Check camera: ls /dev/video*\n");
+    safe_fprintf(stderr, "* Check permissions: groups | grep video\n");
+    safe_fprintf(stderr, "* Use test pattern: ascii-chat-client --test-pattern\n");
+  }
   (void)fflush(stderr);
 #elif defined(__APPLE__)
   (void)error_code;
