@@ -48,13 +48,15 @@ typedef struct {
   const char *file;
   int line;
   const char *function;
-  char *context_message; // Optional custom message (dynamically allocated)
-  uint64_t timestamp;    // Microseconds since epoch
-  int system_errno;      // System errno value (if applicable)
-  void *backtrace[32]; // Stack trace (debug builds only)
+  char *context_message;    // Optional custom message (dynamically allocated)
+  uint64_t timestamp;       // Microseconds since epoch
+  int system_errno;         // System errno value (if applicable)
+  int wsa_error;            // Windows socket error code (if applicable)
+  void *backtrace[32];      // Stack trace (debug builds only)
   char **backtrace_symbols; // Stack symbols (debug builds only)
-  int stack_depth;       // Number of frames captured
-  bool has_system_error; // Whether system_errno is valid
+  int stack_depth;          // Number of frames captured
+  bool has_system_error;    // Whether system_errno is valid
+  bool has_wsa_error;      // Whether wsa_error is valid
 } asciichat_error_context_t;
 
 /* Thread-local storage for error context */
@@ -80,13 +82,13 @@ extern __thread asciichat_error_t asciichat_errno;
  *       return ERROR_NETWORK_BIND;
  *   }
  */
-#define SET_ERRNO(code, context_msg, ...)                                                                                  \
-  ({                                                                                                                       \
-    asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__);                      \
-    log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code, asciichat_error_string(code));    \
-    (code);                                                                                                                \
+#define SET_ERRNO(code, context_msg, ...)                                                                              \
+  ({                                                                                                                   \
+    asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__);                  \
+    log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code,                               \
+              asciichat_error_string(code));                                                                           \
+    (code);                                                                                                            \
   })
-
 
 /**
  * @brief Set error code with custom message and system error context
@@ -99,13 +101,13 @@ extern __thread asciichat_error_t asciichat_errno;
  *       return ERROR_CONFIG;
  *   }
  */
-#define SET_ERRNO_SYS(code, context_msg, ...)                                                                         \
+#define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
   ({                                                                                                                   \
-    int captured_errno = platform_get_last_error();                                                                   \
+    int captured_errno = platform_get_last_error();                                                                    \
     asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, captured_errno, context_msg, \
                                                       ##__VA_ARGS__);                                                  \
-    log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__,                          \
-              code, asciichat_error_string(code), captured_errno, platform_strerror(captured_errno));                 \
+    log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,             \
+              asciichat_error_string(code), captured_errno, platform_strerror(captured_errno));                        \
     (code);                                                                                                            \
   })
 
@@ -114,8 +116,6 @@ extern __thread asciichat_error_t asciichat_errno;
  * ============================================================================
  * These macros combine error setting with automatic logging
  */
-
-
 
 /* ============================================================================
  * Application Error Checking Macros
@@ -156,13 +156,19 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
 void asciichat_set_errno_with_message(asciichat_error_t code, const char *file, int line, const char *function,
                                       const char *format, ...);
 
-void asciichat_set_errno_with_system_error(asciichat_error_t code, const char *file, int line,
-                                           const char *function, int sys_errno);
+void asciichat_set_errno_with_system_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                           int sys_errno);
 
 void asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
                                                        const char *function, int sys_errno, const char *format, ...);
 
+void asciichat_set_errno_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
+                                        int wsa_error);
+
 bool asciichat_has_errno(asciichat_error_context_t *context);
+
+// Helper function to check if the current error has a WSA error code
+bool asciichat_has_wsa_error(void);
 
 void asciichat_clear_errno(void);
 
@@ -190,7 +196,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
  */
 #define ASSERT_NO_ERRNO()                                                                                              \
   do {                                                                                                                 \
-    asciichat_error_t err = asciichat_get_errno();                                                              \
+    asciichat_error_t err = asciichat_get_errno();                                                                     \
     if (err != ASCIICHAT_OK) {                                                                                         \
       asciichat_error_context_t ctx;                                                                                   \
       asciichat_has_errno(&ctx);                                                                                       \

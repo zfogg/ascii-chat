@@ -562,7 +562,8 @@ asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src)
 
   size_t src_len = strlen(src);
   if (src_len >= dest_size) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Source string too long for destination buffer: %zu >= %zu", src_len, dest_size);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Source string too long for destination buffer: %zu >= %zu", src_len,
+                     dest_size);
   }
 
   // Use strncpy with bounds checking and ensure null termination

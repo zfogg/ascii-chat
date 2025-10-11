@@ -72,7 +72,8 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
   if (!node) {
     // Pool exhausted, fallback to malloc
     node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
-    log_debug("Memory pool exhausted, falling back to SAFE_MALLOC(used: %zu/%zu, void *)", pool->used_count, pool->pool_size);
+    log_debug("Memory pool exhausted, falling back to SAFE_MALLOC(used: %zu/%zu, void *)", pool->used_count,
+              pool->pool_size);
   }
 
   return node;
@@ -448,9 +449,8 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     // Verify packet magic number for corruption detection
     uint32_t magic = ntohl(node->packet.header.magic);
     if (magic != PACKET_MAGIC) {
-      SET_ERRNO(ERROR_BUFFER,
-                    "CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic,
-                    PACKET_MAGIC, ntohs(node->packet.header.type));
+      SET_ERRNO(ERROR_BUFFER, "CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic,
+                PACKET_MAGIC, ntohs(node->packet.header.type));
       // Still return node to pool but don't return corrupted packet
       node_pool_put(queue->node_pool, node);
       return NULL;
@@ -462,8 +462,8 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
       uint32_t actual_crc = asciichat_crc32(node->packet.data, node->packet.data_len);
       if (actual_crc != expected_crc) {
         SET_ERRNO(ERROR_BUFFER,
-                      "CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
-                      actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
+                  "CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
+                  actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
         // Free data if packet owns it
         if (node->packet.owns_data && node->packet.data) {
           // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
@@ -621,8 +621,7 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
   // Check length matches data_len
   uint32_t length = ntohl(packet->header.length);
   if (length != packet->data_len) {
-    SET_ERRNO(ERROR_BUFFER, "Packet length mismatch: header says %u, data_len is %zu", length,
-                  packet->data_len);
+    SET_ERRNO(ERROR_BUFFER, "Packet length mismatch: header says %u, data_len is %zu", length, packet->data_len);
     return false;
   }
 

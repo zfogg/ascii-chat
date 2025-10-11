@@ -616,7 +616,6 @@ int protocol_start_connection() {
   // Reset display state for new connection
   display_reset_for_new_connection();
 
-
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
   if (ascii_thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
@@ -644,7 +643,6 @@ void protocol_stop_connection() {
   if (!g_data_thread_created) {
     return;
   }
-
 
   // Don't call signal_exit() here - that's for global shutdown only!
   // We just want to stop threads for this connection, not exit the entire client

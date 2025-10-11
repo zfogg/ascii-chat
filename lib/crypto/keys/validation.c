@@ -51,8 +51,7 @@ asciichat_error_t validate_public_key(const public_key_t *key) {
 
   // Check comment length
   if (strlen(key->comment) >= MAX_COMMENT_LEN) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment too long: %zu (maximum %d)",
-                  strlen(key->comment), MAX_COMMENT_LEN - 1);
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment too long: %zu (maximum %d)", strlen(key->comment), MAX_COMMENT_LEN - 1);
     return ERROR_CRYPTO_KEY;
   }
 
@@ -94,8 +93,8 @@ asciichat_error_t validate_private_key(const private_key_t *key) {
 
   // Check comment length
   if (strlen(key->key_comment) >= MAX_COMMENT_LEN) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment too long: %zu (maximum %d)",
-                  strlen(key->key_comment), MAX_COMMENT_LEN - 1);
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment too long: %zu (maximum %d)", strlen(key->key_comment),
+              MAX_COMMENT_LEN - 1);
     return ERROR_CRYPTO_KEY;
   }
 
@@ -212,8 +211,7 @@ asciichat_error_t validate_x25519_key_format(const char *key_hex) {
   // Check that all characters are valid hex
   for (size_t i = 0; i < hex_len; i++) {
     if (!isxdigit(key_hex[i])) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "X25519 key contains invalid hex character at position %zu: '%c'",
-                    i, key_hex[i]);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "X25519 key contains invalid hex character at position %zu: '%c'", i, key_hex[i]);
       return ERROR_CRYPTO_KEY;
     }
   }
@@ -271,9 +269,7 @@ asciichat_error_t validate_key_permissions(const char *key_path) {
 
   // Check for overly permissive permissions
   if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
-    SET_ERRNO(ERROR_CRYPTO_KEY,
-                  "Key file has overly permissive permissions: %o (recommended: 600)",
-                  st.st_mode & 0777);
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Key file has overly permissive permissions: %o (recommended: 600)", st.st_mode & 0777);
     return ERROR_CRYPTO_KEY;
   }
 #endif
@@ -283,8 +279,7 @@ asciichat_error_t validate_key_permissions(const char *key_path) {
 
 asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_patterns) {
   if (!key || !has_weak_patterns) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, has_weak_patterns=%p",
-                  key, has_weak_patterns);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, has_weak_patterns=%p", key, has_weak_patterns);
     return ERROR_INVALID_PARAM;
   }
 
@@ -293,7 +288,7 @@ asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_pat
   // Check for sequential patterns
   bool is_sequential = true;
   for (int i = 1; i < 32; i++) {
-    if (key->key[i] != key->key[i-1] + 1) {
+    if (key->key[i] != key->key[i - 1] + 1) {
       is_sequential = false;
       break;
     }
@@ -318,8 +313,7 @@ asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_pat
 
 asciichat_error_t compare_public_keys(const public_key_t *key1, const public_key_t *key2, bool *are_equal) {
   if (!key1 || !key2 || !are_equal) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key1=%p, key2=%p, are_equal=%p",
-                  key1, key2, are_equal);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key1=%p, key2=%p, are_equal=%p", key1, key2, are_equal);
     return ERROR_INVALID_PARAM;
   }
 
@@ -338,11 +332,10 @@ asciichat_error_t compare_public_keys(const public_key_t *key1, const public_key
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint,
-                                              size_t fingerprint_len, bool *matches) {
+asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint, size_t fingerprint_len,
+                                        bool *matches) {
   if (!key || !fingerprint || !matches) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, fingerprint=%p, matches=%p",
-                  key, fingerprint, matches);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, fingerprint=%p, matches=%p", key, fingerprint, matches);
     return ERROR_INVALID_PARAM;
   }
 
@@ -364,11 +357,9 @@ asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t generate_key_fingerprint(const public_key_t *key, uint8_t *fingerprint_out,
-                                                size_t fingerprint_size) {
+asciichat_error_t generate_key_fingerprint(const public_key_t *key, uint8_t *fingerprint_out, size_t fingerprint_size) {
   if (!key || !fingerprint_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, fingerprint_out=%p",
-                  key, fingerprint_out);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key=%p, fingerprint_out=%p", key, fingerprint_out);
     return ERROR_INVALID_PARAM;
   }
 

@@ -35,8 +35,7 @@ static int is_test_environment(void) {
  */
 int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_size) {
   if (!frame_data || frame_size == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: frame_data=%p, frame_size=%zu", frame_data,
-                  frame_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: frame_data=%p, frame_size=%zu", frame_data, frame_size);
     return -1;
   }
 
@@ -83,8 +82,7 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
  */
 int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height, uint8_t format) {
   if (!image_data || width == 0 || height == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: image_data=%p, width=%u, height=%u", image_data,
-                  width, height);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: image_data=%p, width=%u, height=%u", image_data, width, height);
     return -1;
   }
 
@@ -130,8 +128,7 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
  */
 int av_send_audio(socket_t sockfd, const float *samples, int num_samples) {
   if (!samples || num_samples <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: samples=%p, num_samples=%d", samples,
-                  num_samples);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: samples=%p, num_samples=%d", samples, num_samples);
     return -1;
   }
 
@@ -149,8 +146,7 @@ int av_send_audio(socket_t sockfd, const float *samples, int num_samples) {
  */
 int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, int sample_rate) {
   if (!samples || num_samples <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: samples=%p, num_samples=%d", samples,
-                  num_samples);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: samples=%p, num_samples=%d", samples, num_samples);
     return -1;
   }
 
@@ -251,8 +247,8 @@ int av_send_text_message(socket_t sockfd, const char *text) {
  */
 int av_receive_audio_message(socket_t sockfd, const char *header, float *samples, size_t max_samples) {
   if (!header || !samples || max_samples == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, samples=%p, max_samples=%zu", header,
-                  samples, max_samples);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, samples=%p, max_samples=%zu", header, samples,
+              max_samples);
     return -1;
   }
 
@@ -287,8 +283,7 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
  */
 int av_parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
   if (!message || !width || !height) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: message=%p, width=%p, height=%p", message, width,
-                  height);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: message=%p, width=%p, height=%p", message, width, height);
     return -1;
   }
 
@@ -321,8 +316,8 @@ int av_parse_size_message(const char *message, unsigned short *width, unsigned s
  */
 int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count) {
   if (!samples || num_samples <= 0 || batch_count <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d",
-                  samples, num_samples, batch_count);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples,
+              num_samples, batch_count);
     return -1;
   }
 

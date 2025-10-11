@@ -244,7 +244,8 @@ static void *webcam_capture_thread_func(void *arg) {
   struct timespec last_capture_time = {0, 0};
 
   log_warn("CAPTURE_THREAD_STARTED: Webcam capture thread is now running");
-  log_warn("CAPTURE_THREAD_CHECK: should_exit()=%d, server_connection_is_lost()=%d", should_exit(), server_connection_is_lost());
+  log_warn("CAPTURE_THREAD_CHECK: should_exit()=%d, server_connection_is_lost()=%d", should_exit(),
+           server_connection_is_lost());
 
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status

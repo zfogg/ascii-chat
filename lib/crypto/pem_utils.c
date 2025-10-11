@@ -53,7 +53,7 @@
 
 #define VEC_CLEAR(vec)                                                                                                 \
   do {                                                                                                                 \
-    SAFE_FREE((vec).buf);                                                                                                   \
+    SAFE_FREE((vec).buf);                                                                                              \
     (vec).buf = NULL;                                                                                                  \
     (vec).ptr = 0;                                                                                                     \
     (vec).len = 0;                                                                                                     \

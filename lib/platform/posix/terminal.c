@@ -189,8 +189,8 @@ asciichat_error_t terminal_flush(int fd) {
  */
 asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
   if (hide) {
-      if (dprintf(fd, "\033[?25l") < 0) {
-        return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to hide cursor");
+    if (dprintf(fd, "\033[?25l") < 0) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to hide cursor");
     }
   } else {
     if (dprintf(fd, "\033[?25h") < 0) {

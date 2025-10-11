@@ -332,12 +332,44 @@ static void init_windows_symbols(void) {
   g_process_handle = GetCurrentProcess();
 
   // Set symbol options for better debugging
-  SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+  SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_AUTO_PUBLICS);
 
-  // Try to initialize with NULL (default search path)
-  // If it fails, try to cleanup first and retry
-  if (!SymInitialize(g_process_handle, NULL, TRUE)) {
-    // If initialization failed, try to cleanup and retry once
+  // Configure symbol search path to include current directory and build directory
+  char symbol_path[MAX_PATH * 3];
+  char module_path[MAX_PATH];
+  char project_root[MAX_PATH];
+  DWORD path_len = GetModuleFileNameA(NULL, module_path, MAX_PATH);
+
+  if (path_len > 0) {
+    // Get directory of executable
+    char *last_slash = strrchr(module_path, '\\');
+    if (last_slash) {
+      *last_slash = '\0'; // Truncate to directory path
+    }
+
+    // Copy the directory path to project_root before further modifications
+    strncpy(project_root, module_path, sizeof(project_root) - 1);
+    project_root[sizeof(project_root) - 1] = '\0';
+
+    // If we're in build/bin, go up two levels to get to project root
+    if (strstr(module_path, "\\build\\bin") != NULL) {
+      // Remove \build\bin from the path to get project root
+      char *build_bin = strstr(project_root, "\\build\\bin");
+      if (build_bin) {
+        *build_bin = '\0';
+      }
+    }
+
+    // Set up symbol search path: current dir, build dir, and system paths
+    safe_snprintf(symbol_path, sizeof(symbol_path), "%s;%s\\build\\bin;%s\\build;%s",
+             module_path, project_root, project_root, getenv("_NT_SYMBOL_PATH") ? getenv("_NT_SYMBOL_PATH") : "");
+
+    log_debug("Setting symbol search path: %s", symbol_path);
+  }
+
+  // Try to initialize with custom search path
+  if (!SymInitialize(g_process_handle, symbol_path, TRUE)) {
+    // If initialization failed, try to cleanup and retry with default path
     SymCleanup(g_process_handle);
     if (!SymInitialize(g_process_handle, NULL, TRUE)) {
       DWORD error = GetLastError();
@@ -347,10 +379,44 @@ static void init_windows_symbols(void) {
   }
 
   // Load symbols for the current module
-  char module_path[MAX_PATH];
-  DWORD path_len = GetModuleFileNameA(NULL, module_path, MAX_PATH);
+  path_len = GetModuleFileNameA(NULL, module_path, MAX_PATH);
   if (path_len > 0) {
-    SymLoadModule64(g_process_handle, NULL, module_path, NULL, 0, 0);
+    DWORD64 base_addr = SymLoadModule64(g_process_handle, NULL, module_path, NULL, 0, 0);
+    if (base_addr == 0) {
+      DWORD error = GetLastError();
+      log_error("Failed to load symbols for module %s, error: %lu", module_path, error);
+    } else {
+      log_debug("Successfully loaded symbols for module %s at base 0x%llx", module_path, base_addr);
+    }
+
+    // Also try to load symbols from the build directory where PDB files are located
+    char build_pdb_path[MAX_PATH];
+    char *last_slash = strrchr(module_path, '\\');
+    if (last_slash) {
+      size_t dir_len = last_slash - module_path;
+      if (dir_len < MAX_PATH - 20) { // Leave room for "\build\bin\*.pdb"
+        strncpy(build_pdb_path, module_path, dir_len);
+        build_pdb_path[dir_len] = '\0';
+        strcat(build_pdb_path, "\\build\\bin");
+
+        // Try to load PDB files from build directory
+        WIN32_FIND_DATAA find_data;
+        char search_pattern[MAX_PATH];
+        safe_snprintf(search_pattern, sizeof(search_pattern), "%s\\*.pdb", build_pdb_path);
+
+        HANDLE find_handle = FindFirstFileA(search_pattern, &find_data);
+        if (find_handle != INVALID_HANDLE_VALUE) {
+          do {
+            char full_pdb_path[MAX_PATH];
+            safe_snprintf(full_pdb_path, sizeof(full_pdb_path), "%s\\%s", build_pdb_path, find_data.cFileName);
+            log_debug("Attempting to load PDB: %s", full_pdb_path);
+            // Note: SymLoadModule64 expects executable files, not PDB files directly
+            // The PDB should be automatically found by the symbol system
+          } while (FindNextFileA(find_handle, &find_data));
+          FindClose(find_handle);
+        }
+      }
+    }
   }
 
   atomic_store(&g_symbols_initialized, true);
@@ -393,6 +459,18 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
   bool got_symbol = SymFromAddr(g_process_handle, address, NULL, symbol_info);
   bool got_line = SymGetLineFromAddr64(g_process_handle, address, &displacement, &line_info);
 
+  /**
+  // Debug logging for symbol resolution
+  if (!got_symbol) {
+    DWORD error = GetLastError();
+    log_debug("SymFromAddr failed for address 0x%llx, error: %lu", address, error);
+  }
+  if (!got_line) {
+    DWORD error = GetLastError();
+    log_debug("SymGetLineFromAddr64 failed for address 0x%llx, error: %lu", address, error);
+  }
+  */
+
   if (got_symbol && got_line) {
     // Use the existing project relative path extraction function
     const char *filename = extract_project_relative_path(line_info.FileName);
@@ -410,7 +488,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
       size_t max_symbol_len = buffer_size - filename_len - 32;
       if (max_symbol_len > 0) {
         safe_snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_info->Name, filename,
-                 line_info.LineNumber);
+                      line_info.LineNumber);
       } else {
         safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
@@ -432,10 +510,10 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
         // Check for underflow before subtraction
         if (address >= symbol_info->Address) {
           safe_snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
-                   address - symbol_info->Address);
+                        address - symbol_info->Address);
         } else {
           safe_snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
-                   symbol_info->Address - address);
+                        symbol_info->Address - address);
         }
       } else {
         safe_snprintf(buffer, buffer_size, "0x%llx", address);

@@ -107,7 +107,7 @@ typedef struct {
   hashtable_t *client_hashtable;      // Hash table for O(1) lookup by client_id
   int client_count;
   mutex_t mutex;
-  uint32_t next_client_id; // For assigning unique IDs
+  _Atomic uint32_t next_client_id; // For assigning unique IDs
 } client_manager_t;
 
 // Global client manager

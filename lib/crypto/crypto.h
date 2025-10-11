@@ -8,7 +8,7 @@
 #include <sodium.h>
 
 // Include required types
-#include "keys/types.h"  // For private_key_t
+#include "keys/types.h" // For private_key_t
 #include "../common.h"  // For asciichat_error_t
 
 // Key sizes for X25519 key exchange
@@ -17,16 +17,16 @@
 #define CRYPTO_SHARED_KEY_SIZE crypto_box_BEFORENMBYTES   // 32 bytes
 
 // Ed25519 signature constants
-#define CRYPTO_ED25519_PUBLIC_KEY_SIZE 32   // Ed25519 public key size
-#define CRYPTO_ED25519_PRIVATE_KEY_SIZE 64  // Ed25519 private key size (seed + public)
-#define CRYPTO_ED25519_SIGNATURE_SIZE 64    // Ed25519 signature size
+#define CRYPTO_ED25519_PUBLIC_KEY_SIZE 32  // Ed25519 public key size
+#define CRYPTO_ED25519_PRIVATE_KEY_SIZE 64 // Ed25519 private key size (seed + public)
+#define CRYPTO_ED25519_SIGNATURE_SIZE 64   // Ed25519 signature size
 
 // Encryption constants
 #define CRYPTO_NONCE_SIZE crypto_box_NONCEBYTES              // 24 bytes
 #define CRYPTO_SALT_SIZE crypto_pwhash_SALTBYTES             // 32 bytes
 #define CRYPTO_ENCRYPTION_KEY_SIZE crypto_secretbox_KEYBYTES // 32 bytes
 #define CRYPTO_MAC_SIZE crypto_box_MACBYTES                  // 16 bytes
-#define CRYPTO_HMAC_SIZE crypto_auth_hmacsha256_BYTES       // 32 bytes
+#define CRYPTO_HMAC_SIZE crypto_auth_hmacsha256_BYTES        // 32 bytes
 
 // Maximum sizes for encrypted data
 #define CRYPTO_MAX_PLAINTEXT_SIZE ((size_t)1024 * 1024) // 1MB max
@@ -241,29 +241,19 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
 // =============================================================================
 
 // Compute password-based HMAC for authentication
-asciichat_error_t crypto_compute_password_hmac(const uint8_t* password_key,
-                                                           const uint8_t* nonce,
-                                                           const uint8_t* shared_secret,
-                                                           uint8_t* hmac_out);
+asciichat_error_t crypto_compute_password_hmac(const uint8_t *password_key, const uint8_t *nonce,
+                                               const uint8_t *shared_secret, uint8_t *hmac_out);
 
 // Verify peer's signature on ephemeral key
-asciichat_error_t crypto_verify_peer_signature(const uint8_t* peer_public_key,
-                                                    const uint8_t* ephemeral_key,
-                                                    size_t ephemeral_key_size,
-                                                    const uint8_t* signature);
+asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, const uint8_t *ephemeral_key,
+                                               size_t ephemeral_key_size, const uint8_t *signature);
 
 // Sign ephemeral key with private key
-asciichat_error_t crypto_sign_ephemeral_key(const private_key_t* private_key,
-                                                 const uint8_t* ephemeral_key,
-                                                 size_t ephemeral_key_size,
-                                                 uint8_t* signature_out);
+asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, const uint8_t *ephemeral_key,
+                                            size_t ephemeral_key_size, uint8_t *signature_out);
 
 // Combine HMAC and challenge nonce for transmission
-void crypto_combine_auth_data(const uint8_t* hmac,
-                            const uint8_t* challenge_nonce,
-                            uint8_t* combined_out);
+void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonce, uint8_t *combined_out);
 
 // Extract HMAC and challenge nonce from combined data
-void crypto_extract_auth_data(const uint8_t* combined_data,
-                            uint8_t* hmac_out,
-                            uint8_t* challenge_out);
+void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, uint8_t *challenge_out);

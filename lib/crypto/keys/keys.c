@@ -23,8 +23,7 @@
 
 asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
   if (!input || !key_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_public_key");
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_public_key");
   }
 
   // Clear output structure
@@ -71,12 +70,11 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     }
 
     if (result != ASCIICHAT_OK || num_keys == 0) {
-      SET_ERRNO(ERROR_CRYPTO, "Failed to fetch keys from %s", is_github ? "GitHub" : "GitLab");
-      return ERROR_CRYPTO;
+      return SET_ERRNO(ERROR_CRYPTO, "Failed to fetch keys from %s", is_github ? "GitHub" : "GitLab");
     }
 
     // Parse the first key
-      result = parse_public_key(keys[0], key_out);
+    result = parse_public_key(keys[0], key_out);
 
     // Free the keys array
     for (size_t i = 0; i < num_keys; i++) {
@@ -92,7 +90,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     // Assume it's a raw Ed25519 public key in hex
     key_out->type = KEY_TYPE_ED25519;
     for (int i = 0; i < 32; i++) {
-      char hex_byte[3] = {input[i*2], input[i*2+1], 0};
+      char hex_byte[3] = {input[i * 2], input[i * 2 + 1], 0};
       key_out->key[i] = (uint8_t)strtol(hex_byte, NULL, 16);
     }
     platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-hex", sizeof(key_out->comment) - 1);
@@ -112,14 +110,12 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     (void)fclose(f);
   }
 
-  SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key format: %s", input);
-  return ERROR_CRYPTO_KEY;
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key format: %s", input);
 }
 
 asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out) {
   if (!key_path || !key_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_private_key");
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_private_key");
   }
 
   // Clear output structure
@@ -129,11 +125,9 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   return parse_ssh_private_key(key_path, key_out);
 }
 
-asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out,
-                                         size_t *num_keys, size_t max_keys) {
+asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys, size_t max_keys) {
   if (!keys_file || !keys_out || !num_keys) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_client_keys");
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_client_keys");
   }
 
   *num_keys = 0;
@@ -163,9 +157,8 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     }
 
     if (result != ASCIICHAT_OK || num_fetched_keys == 0) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch keys from %s for user: %s",
-                    is_github ? "GitHub" : "GitLab", username);
-      return ERROR_CRYPTO_KEY;
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch keys from %s for user: %s", is_github ? "GitHub" : "GitLab",
+                username);
     }
 
     // Parse each fetched key
@@ -184,9 +177,7 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     SAFE_FREE(keys);
 
     if (*num_keys == 0) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found for %s user: %s",
-                    is_github ? "GitHub" : "GitLab", username);
-      return ERROR_CRYPTO_KEY;
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found for %s user: %s", is_github ? "GitHub" : "GitLab", username);
     }
 
     return ASCIICHAT_OK;
@@ -195,9 +186,8 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
   // Otherwise, treat as a file path
   FILE *f = platform_fopen(keys_file, "r");
   if (!f) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open client keys file: %s", keys_file);
-      return ERROR_CRYPTO_KEY;
-    }
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open client keys file: %s", keys_file);
+  }
 
   char line[1024];
 
@@ -211,13 +201,12 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     }
 
     if (parse_public_key(line, &keys_out[*num_keys]) == ASCIICHAT_OK) {
-        (*num_keys)++;
-      } else {
-      log_warn("Failed to parse client key: %s", line);
+      (*num_keys)++;
+    } else {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse client key: %s, keys: %d", line, num_keys);
     }
   }
 
   (void)fclose(f);
   return ASCIICHAT_OK;
 }
-

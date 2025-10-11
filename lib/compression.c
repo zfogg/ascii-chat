@@ -10,9 +10,8 @@
 // Compress data using zlib deflate
 int compress_data(const void *input, size_t input_size, void **output, size_t *output_size) {
   if (!input || input_size == 0 || !output || !output_size) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-                  "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p", input, input_size, output,
-                  output_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p", input,
+              input_size, output, output_size);
     return -1;
   }
 
@@ -44,9 +43,8 @@ int compress_data(const void *input, size_t input_size, void **output, size_t *o
 // Decompress data using zlib inflate
 int decompress_data(const void *input, size_t input_size, void *output, size_t output_size) {
   if (!input || input_size == 0 || !output || output_size == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-                  "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu", input, input_size, output,
-                  output_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu", input,
+              input_size, output, output_size);
     return -1;
   }
 

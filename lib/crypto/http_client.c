@@ -195,12 +195,12 @@ char *https_get(const char *hostname, const char *path) {
   // Build HTTP request
   char request[1024];
   int request_len = safe_snprintf(request, sizeof(request),
-                             "GET %s HTTP/1.1\r\n"
-                             "Host: %s\r\n"
-                             "Connection: close\r\n"
-                             "User-Agent: ascii-chat/" ASCII_CHAT_VERSION_STRING "\r\n"
-                             "\r\n",
-                             path, hostname);
+                                  "GET %s HTTP/1.1\r\n"
+                                  "Host: %s\r\n"
+                                  "Connection: close\r\n"
+                                  "User-Agent: ascii-chat/" ASCII_CHAT_VERSION_STRING "\r\n"
+                                  "\r\n",
+                                  path, hostname);
 
   // Send HTTP request over TLS
   if (br_sslio_write_all(&ioc, request, request_len) != 0) {

@@ -104,6 +104,16 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
 
   buffer_node_t *node = &pool->nodes[index];
   if (!node->in_use) {
+    // Enhanced debugging for double free detection
+    log_error("DOUBLE FREE DETECTED in buffer pool!");
+    log_error("  Pool: %p, Buffer: %p, Index: %zu", pool, data, index);
+    log_error("  Pool start: %p, Pool end: %p", pool_start, pool_end);
+    log_error("  Buffer size: %zu, Pool size: %zu", pool->buffer_size, pool->pool_size);
+    log_error("  Node in_use: %d, Node next: %p", node->in_use, node->next);
+
+    // Print backtrace to help identify the source
+    platform_print_backtrace(0);
+
     SET_ERRNO(ERROR_INVALID_STATE, "Double free detected in buffer pool!");
     return false;
   }

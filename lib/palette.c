@@ -128,7 +128,8 @@ bool validate_palette_chars(const char *chars, size_t len) {
     // Check character width - allow width 1 and 2 (for emoji and wide characters)
     int width = wcwidth(wc);
     if (width < 0 || width > 2) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)",
+      SET_ERRNO(ERROR_INVALID_PARAM,
+                "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)",
                 char_count, width);
       // Restore old locale
       if (old_locale) {

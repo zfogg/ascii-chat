@@ -38,7 +38,8 @@ static int calculate_packet_timeout(size_t packet_size) {
   // For large packets, increase timeout proportionally
   if (packet_size > LARGE_PACKET_THRESHOLD) {
     // Add extra timeout per MB above the threshold
-    int extra_timeout = (int)((packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) + 1;
+    int extra_timeout =
+        (int)((packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) + 1;
     int total_timeout = base_timeout + extra_timeout;
 
     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
@@ -66,9 +67,8 @@ static int calculate_packet_timeout(size_t packet_size) {
 int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
                            uint32_t *expected_crc) {
   if (!header || !pkt_type || !pkt_len || !expected_crc) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-                  "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p", header, pkt_type, pkt_len,
-                  expected_crc);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p", header,
+              pkt_type, pkt_len, expected_crc);
     return -1;
   }
 
@@ -104,7 +104,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
     // Protocol version packet has fixed size
     if (len != sizeof(protocol_version_packet_t)) {
       SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version packet size: %u, expected %zu", len,
-                    sizeof(protocol_version_packet_t));
+                sizeof(protocol_version_packet_t));
       return -1;
     }
     break;
@@ -112,7 +112,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
     // ASCII frame contains header + frame data
     if (len < sizeof(ascii_frame_packet_t)) {
       SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ASCII frame packet size: %u, minimum %zu", len,
-                    sizeof(ascii_frame_packet_t));
+                sizeof(ascii_frame_packet_t));
       return -1;
     }
     break;
@@ -120,7 +120,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
     // Image frame contains header + pixel data
     if (len < sizeof(image_frame_packet_t)) {
       SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid image frame packet size: %u, minimum %zu", len,
-                    sizeof(image_frame_packet_t));
+                sizeof(image_frame_packet_t));
       return -1;
     }
     break;
@@ -154,7 +154,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
   case PACKET_TYPE_CLIENT_JOIN:
     if (len != sizeof(client_info_packet_t)) {
       SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client join packet size: %u, expected %zu", len,
-                    sizeof(client_info_packet_t));
+                sizeof(client_info_packet_t));
       return -1;
     }
     break;
@@ -168,8 +168,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
   case PACKET_TYPE_STREAM_START:
   case PACKET_TYPE_STREAM_STOP:
     if (len != sizeof(uint32_t)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len,
-                    sizeof(uint32_t));
+      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len, sizeof(uint32_t));
       return -1;
     }
     break;
@@ -244,8 +243,7 @@ int packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
   if (len == 0) {
     // Empty packets should have CRC32 of 0
     if (expected_crc != 0) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid CRC32 for empty packet: 0x%x (expected 0)",
-                    expected_crc);
+      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid CRC32 for empty packet: 0x%x (expected 0)", expected_crc);
       return -1;
     }
     return 0;
@@ -253,8 +251,7 @@ int packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
 
   uint32_t calculated_crc = asciichat_crc32(data, len);
   if (calculated_crc != expected_crc) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc,
-                  expected_crc);
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc, expected_crc);
     return -1;
   }
 
@@ -291,8 +288,7 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return ERROR_NETWORK;
   }
   if ((size_t)sent != sizeof(header)) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to fully send packet header. Sent %zd/%zu bytes", sent,
-                  sizeof(header));
+    SET_ERRNO(ERROR_NETWORK, "Failed to fully send packet header. Sent %zd/%zu bytes", sent, sizeof(header));
     return ERROR_NETWORK;
   }
 
@@ -460,6 +456,9 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
+    if (result != 0) {
+      SET_ERRNO(ERROR_NETWORK, "Failed to send packet: %d", result);
+    }
     return result;
   }
 
@@ -613,8 +612,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     }
 
     if (plaintext_len < sizeof(packet_header_t)) {
-      SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len,
-                    sizeof(packet_header_t));
+      SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
       buffer_pool_free(plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }

@@ -2,16 +2,16 @@
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
-#include "platform/abstraction.h"
 #include <string.h>
 #include <stdlib.h>
 
 video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
-  video_frame_buffer_t *vfb = SAFE_CALLOC(1, sizeof(video_frame_buffer_t), video_frame_buffer_t *);
-  if (!vfb) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate video frame buffer");
+  if (client_id == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client ID is 0");
     return NULL;
   }
+
+  video_frame_buffer_t *vfb = SAFE_CALLOC(1, sizeof(video_frame_buffer_t), video_frame_buffer_t *);
 
   vfb->client_id = client_id;
   vfb->active = true;
@@ -60,8 +60,10 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
 }
 
 void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
-  if (!vfb)
+  if (!vfb) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer is NULL");
     return;
+  }
 
   vfb->active = false;
 
@@ -87,16 +89,28 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
 }
 
 video_frame_t *video_frame_begin_write(video_frame_buffer_t *vfb) {
-  if (!vfb || !vfb->active)
+  if (!vfb) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer is NULL");
     return NULL;
+  }
+  if (!vfb->active) {
+    SET_ERRNO(ERROR_INVALID_STATE, "vfb->active is not true");
+    return NULL;
+  }
 
   // Writer always owns the back buffer
   return vfb->back_buffer;
 }
 
 void video_frame_commit(video_frame_buffer_t *vfb) {
-  if (!vfb || !vfb->active)
+  if (!vfb) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer or active is NULL");
     return;
+  }
+  if (!vfb->active) {
+    SET_ERRNO(ERROR_INVALID_STATE, "vfb->active is not true");
+    return;
+  }
 
   // Check if reader has consumed the previous frame
   if (atomic_load(&vfb->new_frame_available)) {
@@ -122,8 +136,14 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
 }
 
 const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
-  if (!vfb || !vfb->active)
+  if (!vfb) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer is not active");
     return NULL;
+  }
+  if (!vfb->active) {
+    SET_ERRNO(ERROR_INVALID_STATE, "vfb->active is not true");
+    return NULL;
+  }
 
   // Mark that we've consumed any new frame
   atomic_exchange(&vfb->new_frame_available, false);
@@ -135,8 +155,14 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
 }
 
 void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats) {
-  if (!vfb || !stats)
+  if (!vfb || !stats) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Video frame buffer or stats is NULL");
     return;
+  }
+  if (!vfb->active) {
+    SET_ERRNO(ERROR_INVALID_STATE, "vfb->active is not true");
+    return;
+  }
 
   stats->total_frames = atomic_load(&vfb->total_frames_received);
   stats->dropped_frames = atomic_load(&vfb->total_frames_dropped);
@@ -148,8 +174,6 @@ void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats
 // Simple frame swap implementation for basic cases
 simple_frame_swap_t *simple_frame_swap_create(void) {
   simple_frame_swap_t *sfs = SAFE_CALLOC(1, sizeof(simple_frame_swap_t), simple_frame_swap_t *);
-  if (!sfs)
-    return NULL;
 
   // Pre-allocate both frames
   const size_t frame_size = (size_t)2 * 1024 * 1024;
@@ -163,16 +187,20 @@ simple_frame_swap_t *simple_frame_swap_create(void) {
 }
 
 void simple_frame_swap_destroy(simple_frame_swap_t *sfs) {
-  if (!sfs)
+  if (!sfs) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Simple frame swap is NULL");
     return;
+  }
   SAFE_FREE(sfs->frame_a.data);
   SAFE_FREE(sfs->frame_b.data);
   SAFE_FREE(sfs);
 }
 
 void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t size) {
-  if (!sfs || !data)
+  if (!sfs || !data) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Simple frame swap or data is NULL");
     return;
+  }
 
   // Determine which frame to write to
   bool use_a = atomic_load(&sfs->use_frame_a);
@@ -193,8 +221,10 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
 }
 
 const video_frame_t *simple_frame_swap_get(simple_frame_swap_t *sfs) {
-  if (!sfs)
+  if (!sfs) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Simple frame swap is NULL");
     return NULL;
+  }
   uintptr_t frame_ptr = atomic_load(&sfs->current_frame);
   return (const video_frame_t *)(void *)frame_ptr; // NOLINT(bugprone-casting-through-void,performance-no-int-to-ptr)
 }

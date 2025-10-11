@@ -67,6 +67,7 @@
 #ifdef _WIN32
 #include <io.h>
 #include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
+#include <winsock2.h>
 #else
 #include <unistd.h>
 #include <netdb.h>     // For getaddrinfo(), gai_strerror()
@@ -165,7 +166,7 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  * PLATFORM NOTE: Uses platform-abstracted socket_t type (SOCKET on Windows,
  * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
  */
-static volatile socket_t listenfd = INVALID_SOCKET_VALUE;
+static _Atomic socket_t listenfd = INVALID_SOCKET_VALUE;
 
 /**
  * @brief Global client manager for signal handler access
@@ -257,17 +258,18 @@ static void sigint_handler(int sigint) {
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_should_exit, true);
 
-  // STEP 2: Use printf for output (user says it's fine)
+  // STEP 2: Use printf for output (signal-safe)
   printf("\nSIGINT received - shutting down server...\n");
   (void)fflush(stdout);
 
   // STEP 3: Close listening socket to interrupt accept() in main loop
   // This is signal-safe on Windows and necessary to wake up blocked accept()
-  if (listenfd != INVALID_SOCKET_VALUE) {
-    printf("DEBUG: Signal handler closing listening socket %d\n", (int)listenfd);
+  socket_t current_listenfd = atomic_load(&listenfd);
+  if (current_listenfd != INVALID_SOCKET_VALUE) {
+    printf("DEBUG: Signal handler closing listening socket %d\n", (int)current_listenfd);
     (void)fflush(stdout);
-    socket_close(listenfd);
-    listenfd = INVALID_SOCKET_VALUE;
+    socket_close(current_listenfd);
+    atomic_store(&listenfd, INVALID_SOCKET_VALUE);
   }
 
   // STEP 4: DO NOT access client data structures in signal handler
@@ -503,7 +505,7 @@ int main(int argc, char *argv[]) {
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
   log_init(log_filename, LOG_DEBUG);
-  log_info("Logging initialized");
+  log_info("Logging initialized to %s", log_filename);
 
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
@@ -595,6 +597,13 @@ int main(int argc, char *argv[]) {
   } else {
     log_error("Failed to start lock debug thread");
   }
+  // Initialize statistics system
+  log_info("SERVER: Initializing statistics system...");
+  if (stats_init() != 0) {
+    FATAL(ERROR_THREAD, "Statistics system initialization failed");
+  }
+  log_info("Statistics system initialized");
+
   // Start statistics logging thread for periodic performance monitoring
   log_info("SERVER: Creating statistics logger thread...");
   if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL) != 0) {
@@ -646,22 +655,22 @@ int main(int argc, char *argv[]) {
   freeaddrinfo(res);
 
   log_info("SERVER: Creating listen socket...");
-  listenfd = socket_create(address_family, SOCK_STREAM, 0);
-  if (listenfd == INVALID_SOCKET_VALUE) {
+  socket_t new_listenfd = socket_create(address_family, SOCK_STREAM, 0);
+  if (new_listenfd == INVALID_SOCKET_VALUE) {
     FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
   }
-  log_info("SERVER: Listen socket created (fd=%d)", listenfd);
+  log_info("SERVER: Listen socket created (fd=%d)", new_listenfd);
 
   // Set socket options
   int yes = 1;
-  if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+  if (socket_setsockopt(new_listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
     FATAL(ERROR_NETWORK, "setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
   }
 
   // Enable dual-stack mode for IPv6 sockets (allow IPv4-mapped addresses)
   if (address_family == AF_INET6) {
     int ipv6only = 0; // 0 = dual-stack (accept both IPv6 and IPv4-mapped)
-    if (socket_setsockopt(listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
+    if (socket_setsockopt(new_listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
       log_warn("Failed to set IPV6_V6ONLY=0 (dual-stack mode): %s", SAFE_STRERROR(errno));
       log_warn("Server may only accept IPv6 connections");
     } else {
@@ -670,20 +679,23 @@ int main(int argc, char *argv[]) {
   }
 
   // If we Set keep-alive on the listener before accept(), connfd will inherit it.
-  if (set_socket_keepalive(listenfd) < 0) {
+  if (set_socket_keepalive(new_listenfd) < 0) {
     log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
   }
 
   // Bind socket
   log_info("Server binding to %s:%d", opt_address, port);
-  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
+  if (socket_bind(new_listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
     FATAL(ERROR_NETWORK_BIND, "Socket bind failed: %s", SAFE_STRERROR(errno));
   }
 
   // Listen for connections
-  if (socket_listen(listenfd, 10) < 0) {
+  if (socket_listen(new_listenfd, 10) < 0) {
     FATAL(ERROR_NETWORK, "Connection listen failed: %s", SAFE_STRERROR(errno));
   }
+
+  // Store the socket in the atomic variable
+  atomic_store(&listenfd, new_listenfd);
 
   struct timespec last_stats_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
@@ -832,7 +844,7 @@ main_loop:
     }
 
     // Check if listening socket was closed by signal handler
-    if (listenfd == INVALID_SOCKET_VALUE) {
+    if (atomic_load(&listenfd) == INVALID_SOCKET_VALUE) {
       break;
     }
 
@@ -843,10 +855,27 @@ main_loop:
       break;
     }
 
-    int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
+    // Check if listenfd is still valid before calling accept_with_timeout
+    socket_t current_listenfd = atomic_load(&listenfd);
+    if (current_listenfd == INVALID_SOCKET_VALUE) {
+      log_debug("Main loop: listenfd is invalid, breaking accept loop");
+      break;
+    }
+
+    // CRITICAL: Final check right before accept to prevent race condition
+    // The signal handler could close the socket between atomic_load() and accept()
+    socket_t final_listenfd = atomic_load(&listenfd);
+    if (final_listenfd == INVALID_SOCKET_VALUE) {
+      log_debug("Main loop: listenfd was closed by signal handler, breaking accept loop");
+      break;
+    }
+
+    ASSERT_NO_ERRNO();
+
+    int client_sock = accept_with_timeout(final_listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
 
 #ifdef _WIN32
-    int saved_errno = (client_sock < 0) ? WSAGetLastError() : 0; // Windows socket error
+    int saved_errno = asciichat_errno_context.system_errno; // Windows socket error
 #else
     int saved_errno = errno; // POSIX errno
 #endif
@@ -855,18 +884,23 @@ main_loop:
               client_sock < 0 ? socket_get_error_string() : "success");
 #endif
     if (client_sock < 0) {
-      if (saved_errno == ETIMEDOUT
-#ifdef _WIN32
-          || saved_errno == WSAETIMEDOUT
-#endif
-      ) {
+      if (saved_errno == ETIMEDOUT) {
 #ifdef DEBUG_NETWORK
         log_debug("Main loop: Accept timed out, checking g_should_exit=%d", atomic_load(&g_should_exit));
 #endif
-        // Timeout is normal, just continue
 #ifdef DEBUG_MEMORY
         // debug_memory_report();
 #endif
+        if (HAS_ERRNO(&asciichat_errno_context)) {
+          if (asciichat_errno_context.system_errno == ETIMEDOUT) {
+            log_warn("Clearing timeout error");
+            asciichat_clear_errno();
+          } else {
+            PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+          }
+        }
+        ASSERT_NO_ERRNO();
+
         continue;
       }
       if (saved_errno == EINTR) {
@@ -937,6 +971,11 @@ main_loop:
     if (atomic_load(&g_should_exit)) {
       break;
     }
+
+    if (HAS_ERRNO(&asciichat_errno_context)) {
+      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+    }
+    ASSERT_NO_ERRNO();
   }
 
   // Cleanup
@@ -1020,13 +1059,17 @@ main_loop:
   rwlock_destroy(&g_client_manager_rwlock);
   mutex_destroy(&g_client_manager.mutex);
 
+  // Clean up statistics system
+  stats_cleanup();
+
   // Clean up lock debugging system
   lock_debug_print_state();
   lock_debug_cleanup();
 
   // Close listen socket
-  if (listenfd != INVALID_SOCKET_VALUE) {
-    socket_close(listenfd);
+  socket_t current_listenfd = atomic_load(&listenfd);
+  if (current_listenfd != INVALID_SOCKET_VALUE) {
+    socket_close(current_listenfd);
   }
 
   // Clean up SIMD caches
@@ -1036,6 +1079,8 @@ main_loop:
   lock_debug_cleanup_thread();
 
   log_info("Server shutdown complete");
+
+  asciichat_error_stats_print();
 
   log_destroy();
   return 0;

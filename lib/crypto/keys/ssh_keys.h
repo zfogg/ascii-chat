@@ -10,7 +10,7 @@
 
 #include "../constants.h"
 #include "../../common.h"
-#include "types.h"  // Include the key type definitions
+#include "types.h" // Include the key type definitions
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -70,8 +70,8 @@ asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_
  * @param signature Output buffer for the signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message,
-                                             size_t message_len, uint8_t signature[64]);
+asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
+                                       uint8_t signature[64]);
 
 /**
  * @brief Verify an Ed25519 signature
@@ -81,5 +81,5 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
  * @param signature The signature to verify (64 bytes)
  * @return ASCIICHAT_OK if signature is valid, error code on failure
  */
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message,
-                                                  size_t message_len, const uint8_t signature[64]);
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
+                                           const uint8_t signature[64]);

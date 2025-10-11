@@ -77,15 +77,15 @@ asciichat_error_t crypto_handshake_init(crypto_handshake_context_t *ctx, bool is
 
 // Set crypto parameters from crypto_parameters_packet_t
 asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ctx,
-                                                         const crypto_parameters_packet_t *params);
+                                                  const crypto_parameters_packet_t *params);
 
 // Validate crypto packet size based on session parameters
-asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_context_t *ctx,
-                                                               uint16_t packet_type, size_t packet_size);
+asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_context_t *ctx, uint16_t packet_type,
+                                                        size_t packet_size);
 
 // Initialize crypto handshake context with password authentication
 asciichat_error_t crypto_handshake_init_with_password(crypto_handshake_context_t *ctx, bool is_server,
-                                                             const char *password);
+                                                      const char *password);
 
 // Cleanup crypto handshake context
 void crypto_handshake_cleanup(crypto_handshake_context_t *ctx);
@@ -97,8 +97,7 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket_t client_socket);
 
 // Server: Process client's public key and send auth challenge
-asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx,
-                                                                socket_t client_socket);
+asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, socket_t client_socket);
 
 // Client: Process auth challenge and send response
 asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket);
@@ -116,25 +115,23 @@ bool crypto_handshake_is_ready(const crypto_handshake_context_t *ctx);
 const crypto_context_t *crypto_handshake_get_context(const crypto_handshake_context_t *ctx);
 
 // Encrypt a packet using the established crypto context
-asciichat_error_t crypto_handshake_encrypt_packet(const crypto_handshake_context_t *ctx,
-                                                         const uint8_t *plaintext, size_t plaintext_len,
-                                                         uint8_t *ciphertext, size_t ciphertext_size,
-                                                         size_t *ciphertext_len);
+asciichat_error_t crypto_handshake_encrypt_packet(const crypto_handshake_context_t *ctx, const uint8_t *plaintext,
+                                                  size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
+                                                  size_t *ciphertext_len);
 
 // Decrypt a packet using the established crypto context
-asciichat_error_t crypto_handshake_decrypt_packet(const crypto_handshake_context_t *ctx,
-                                                         const uint8_t *ciphertext, size_t ciphertext_len,
-                                                         uint8_t *plaintext, size_t plaintext_size,
-                                                         size_t *plaintext_len);
+asciichat_error_t crypto_handshake_decrypt_packet(const crypto_handshake_context_t *ctx, const uint8_t *ciphertext,
+                                                  size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
+                                                  size_t *plaintext_len);
 
 // Helper: Encrypt with automatic passthrough if crypto not ready
 asciichat_error_t crypto_encrypt_packet_or_passthrough(const crypto_handshake_context_t *ctx, bool crypto_ready,
-                                                              const uint8_t *plaintext, size_t plaintext_len,
-                                                              uint8_t *ciphertext, size_t ciphertext_size,
-                                                              size_t *ciphertext_len);
+                                                       const uint8_t *plaintext, size_t plaintext_len,
+                                                       uint8_t *ciphertext, size_t ciphertext_size,
+                                                       size_t *ciphertext_len);
 
 // Helper: Decrypt with automatic passthrough if crypto not ready
 asciichat_error_t crypto_decrypt_packet_or_passthrough(const crypto_handshake_context_t *ctx, bool crypto_ready,
-                                                              const uint8_t *ciphertext, size_t ciphertext_len,
-                                                              uint8_t *plaintext, size_t plaintext_size,
-                                                              size_t *plaintext_len);
+                                                       const uint8_t *ciphertext, size_t ciphertext_len,
+                                                       uint8_t *plaintext, size_t plaintext_size,
+                                                       size_t *plaintext_len);
