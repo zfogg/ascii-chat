@@ -204,7 +204,7 @@ void webcam_cleanup(void) {
   }
 }
 
-void webcam_print_init_error_help(int error_code) {
+void webcam_print_init_error_help(asciichat_error_t error_code) {
   // Platform-specific error messages and troubleshooting help
 #ifdef __linux__
   (void)error_code;

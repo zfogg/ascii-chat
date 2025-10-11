@@ -93,7 +93,7 @@
 /** Use tty_info_t from platform abstraction */
 
 /** Global TTY information */
-static tty_info_t g_tty_info = {-1, NULL, false};
+tty_info_t g_tty_info = {-1, NULL, false};
 
 /** Flag indicating if we have a valid TTY for interactive output */
 static bool g_has_tty = false;

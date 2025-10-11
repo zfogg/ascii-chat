@@ -37,19 +37,19 @@ asciichat_error_t audio_init(audio_context_t *ctx);
 void audio_destroy(audio_context_t *ctx);
 
 asciichat_error_t audio_start_capture(audio_context_t *ctx);
-int audio_stop_capture(audio_context_t *ctx);
+asciichat_error_t audio_stop_capture(audio_context_t *ctx);
 
-int audio_start_playback(audio_context_t *ctx);
-int audio_stop_playback(audio_context_t *ctx);
+asciichat_error_t audio_start_playback(audio_context_t *ctx);
+asciichat_error_t audio_stop_playback(audio_context_t *ctx);
 
-int audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples);
-int audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples);
+asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples);
+asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples);
 
 int audio_set_realtime_priority(void);
 
 audio_ring_buffer_t *audio_ring_buffer_create(void);
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
-int audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples);
-int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples);
+asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples);
+asciichat_error_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples);
 int audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
 int audio_ring_buffer_available_write(audio_ring_buffer_t *rb);

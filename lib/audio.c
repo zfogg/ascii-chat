@@ -413,7 +413,7 @@ int audio_set_realtime_priority(void) {
 #ifndef _WIN32
   if (pthread_setschedparam(ascii_thread_self(), policy, &param) != 0) {
     SET_ERRNO_SYS(
-        ERROR_THREAD, errno,
+        ERROR_THREAD,
         "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
     return -1;
   }

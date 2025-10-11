@@ -662,7 +662,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
     }
 
     // Allocate buffer for PEM data
-    char *pem_data = SAFE_MALLOC((size_t, char *)file_size + 1);
+    char *pem_data = SAFE_MALLOC(file_size + 1, char *);
     if (!pem_data) {
       fclose(f);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates");

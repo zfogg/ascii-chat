@@ -1132,7 +1132,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
       log_error("SSH key file %s has overly permissive permissions: %o", key_path, st.st_mode & 0777);
       log_error("Run 'chmod 600 %s' to fix this", key_path);
-      S
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key file has overly permissive permissions: %s", key_path);
     }
   }
 #endif

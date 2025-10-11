@@ -5,9 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// Forward declaration for asciichat_fatal_with_context
-void asciichat_fatal_with_context(int code, const char *file, int line, const char *function, const char *format, ...);
-
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough.
 #ifndef UINT8_MAX
@@ -97,6 +94,10 @@ typedef enum {
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
 } asciichat_error_t;
+
+/* Forward declaration for asciichat_fatal_with_context - now after asciichat_error_t is defined */
+void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
+                                  const char *format, ...);
 
 /* ============================================================================
  * Error String Utilities

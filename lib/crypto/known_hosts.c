@@ -24,6 +24,7 @@
 #define STDIN_FILENO 0
 #endif
 #else
+#include <fcntl.h> // For O_RDONLY, O_WRONLY, O_CREAT, O_APPEND on POSIX
 #include <sys/stat.h>
 #include <strings.h>
 #include <unistd.h> // For STDIN_FILENO on POSIX

@@ -222,9 +222,11 @@ void asciichat_clear_errno(void) {
   asciichat_errno_context.system_errno = 0;
   asciichat_errno_context.has_system_error = false;
   asciichat_errno_context.has_wsa_error = false;
-  asciichat_errno_context.wsa_error = 0;
 
+#ifdef _WIN32
   WSASetLastError(0);
+  asciichat_errno_context.wsa_error = 0;
+#endif
   errno = 0;
 }
 

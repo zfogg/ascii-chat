@@ -278,13 +278,13 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   return img;
 }
 
-int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)
-    return -1;
+    return ERROR_INVALID_PARAM;
 
   *width = ctx->width;
   *height = ctx->height;
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 #endif // __linux__
