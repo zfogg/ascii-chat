@@ -227,6 +227,7 @@ void asciichat_clear_errno(void) {
   WSASetLastError(0);
   asciichat_errno_context.wsa_error = 0;
 #endif
+
   errno = 0;
 }
 
@@ -301,8 +302,12 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
     return;
   }
 
-  log_plain("  Location: %s:%d in %s()", extract_project_relative_path(context->file), context->line,
-            context->function);
+  if (context->file && context->line && context->function) {
+    log_plain("  Location: %s:%d in %s()", extract_project_relative_path(context->file), context->line,
+              context->function);
+  } else {
+    log_plain("  Location: unknown (set by system code)");
+  }
 
   if (context->context_message) {
     safe_fprintf(stderr, "%s  Context:%s %s\n", log_level_color(LOGGING_COLOR_WARN),
