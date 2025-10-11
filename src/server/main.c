@@ -874,26 +874,21 @@ main_loop:
 
     int client_sock = accept_with_timeout(final_listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
 
-#ifdef _WIN32
-    int saved_errno = asciichat_errno_context.system_errno; // Windows socket error
-#else
-    int saved_errno = errno; // POSIX errno
-#endif
+    // Get the error code from asciichat_errno_context (which accept_with_timeout sets)
+    int saved_errno = asciichat_errno_context.system_errno;
 #ifdef DEBUG_NETWORK
     log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
               client_sock < 0 ? socket_get_error_string() : "success");
 #endif
     if (client_sock < 0) {
-      if (saved_errno == ETIMEDOUT) {
-#ifdef DEBUG_NETWORK
+      if (saved_errno == ETIMEDOUT || saved_errno == EAGAIN || saved_errno == EWOULDBLOCK) {
         log_debug("Main loop: Accept timed out, checking g_should_exit=%d", atomic_load(&g_should_exit));
-#endif
 #ifdef DEBUG_MEMORY
         // debug_memory_report();
 #endif
+        // Clear asciichat_errno for timeouts (expected behavior)
         if (HAS_ERRNO(&asciichat_errno_context)) {
           if (asciichat_errno_context.system_errno == ETIMEDOUT) {
-            log_warn("Clearing timeout error");
             asciichat_clear_errno();
           } else {
             PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
