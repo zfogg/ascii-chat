@@ -195,9 +195,9 @@ cmake --build build
 cmake -B build -G "Visual Studio 17 2022"
 cmake --build build --config Debug
 
-# Run server and client
-./build/bin/ascii-chat-server.exe
-./build/bin/ascii-chat-client.exe
+# Run server and client (unified binary)
+./build/bin/ascii-chat.exe server
+./build/bin/ascii-chat.exe client
 ```
 
 ### Unix/macOS Building
@@ -250,38 +250,39 @@ The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -
 
 ### Essential Commands
 ```bash
-# Start server (listens on dynamic port - check server logs for actual port)
-./build/bin/ascii-chat-server  # Unix/macOS
-./build/bin/ascii-chat-server.exe  # Windows
+# Start server (listens on port 27224 by default)
+./build/bin/ascii-chat server  # Unix/macOS
+./build/bin/ascii-chat.exe server  # Windows
 
 # Start client (connects to localhost by default)
-./build/bin/ascii-chat-client  # Unix/macOS
-./build/bin/ascii-chat-client.exe  # Windows
+./build/bin/ascii-chat client  # Unix/macOS
+./build/bin/ascii-chat.exe client  # Windows
 
-# Connect to a server
-./build/bin/ascii-chat-client --address 127.0.0.1 --port 27224
+# Connect to a specific server
+./build/bin/ascii-chat client --address 127.0.0.1 --port 27224
 
 # Run with custom dimensions (by default it uses terminal size)
-./build/bin/ascii-chat-client --width 80 --height 24
+./build/bin/ascii-chat client --width 80 --height 24
 
-# Color and audio support
-./build/bin/ascii-chat-server --color --audio
-./build/bin/ascii-chat-client --color --audio
+# Color support and audio (audio is always enabled on server, optional for client)
+./build/bin/ascii-chat server --color
+./build/bin/ascii-chat client --color --audio
 
 # Help and options
-./build/bin/ascii-chat-server --help
-./build/bin/ascii-chat-client --help
+./build/bin/ascii-chat server --help
+./build/bin/ascii-chat client --help
+./build/bin/ascii-chat --help  # Shows mode selection help
 ```
 
 ### Debug Helpers
 ```bash
 # --log-file helps with debugging (better than pipe redirects)
-./build/bin/ascii-chat-server --log-file /tmp/server-test.log
-./build/bin/ascii-chat-client --log-file /tmp/client-test.log
+./build/bin/ascii-chat server --log-file /tmp/server-test.log
+./build/bin/ascii-chat client --log-file /tmp/client-test.log
 
 # --snapshot mode for testing without continuous capture
-./build/bin/ascii-chat-client --snapshot                    # Single frame and exit
-./build/bin/ascii-chat-client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
+./build/bin/ascii-chat client --snapshot                    # Single frame and exit
+./build/bin/ascii-chat client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
 ```
 
 ## Testing Framework (UPDATED - Use run_tests.sh!)
@@ -563,24 +564,23 @@ sudo tcpdump -i lo port 8080 -X    # Linux
 netsh trace start capture=yes tracefile=trace.etl provider=Microsoft-Windows-TCPIP # Windows
 
 # Memory debugging
-leaks --atExit -- ./build/bin/ascii-chat-server     # macOS
-valgrind ./build/bin/ascii-chat-server               # Linux
+leaks --atExit -- ./build/bin/ascii-chat server     # macOS
+valgrind ./build/bin/ascii-chat server               # Linux
 # Windows: Use Visual Studio diagnostics or Application Verifier
 
 # Debuggers
-lldb ./build/bin/ascii-chat-server                   # macOS (NOT gdb!)
-gdb ./build/bin/ascii-chat-server                    # Linux
-windbg ./build/bin/ascii-chat-server.exe # Windows
+lldb ./build/bin/ascii-chat server                   # macOS (NOT gdb!)
+gdb ./build/bin/ascii-chat server                    # Linux
+windbg ./build/bin/ascii-chat.exe server # Windows
 
 # Process monitoring
-lsof -p $(pgrep server)             # Unix file descriptors
-ps -M $(pgrep server)               # macOS threads
-ps -eLf | grep server               # Linux threads
-tasklist //FI "IMAGENAME eq server.exe" # Windows processes (NOTE: double slashes from bash!)
+lsof -p $(pgrep ascii-chat)          # Unix file descriptors
+ps -M $(pgrep ascii-chat)            # macOS threads
+ps -eLf | grep ascii-chat            # Linux threads
+tasklist //FI "IMAGENAME eq ascii-chat.exe" # Windows processes (NOTE: double slashes from bash!)
 
 # Windows process termination (NOTE: Use double slashes from bash!)
-taskkill //F //IM ascii-chat-server.exe   # Force kill by image name
-taskkill //F //IM ascii-chat-client.exe   # Force kill client
+taskkill //F //IM ascii-chat.exe   # Force kill by image name
 ```
 
 ## Network Protocol

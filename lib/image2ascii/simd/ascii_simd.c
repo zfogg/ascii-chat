@@ -75,13 +75,17 @@ void init_dec3(void) {
 }
 
 // **HIGH-IMPACT FIX 2**: Remove init guards from hot path - use constructor
-__attribute__((constructor)) static void ascii_ctor(void) {
-  init_dec3();
-  init_default_luminance_palette();
-}
+// NOTE: Constructor disabled for musl static builds - causes hangs
+// __attribute__((constructor)) static void ascii_ctor(void) {
+//   init_dec3();
+//   init_default_luminance_palette();
+// }
 
 void ascii_simd_init(void) {
-  ascii_ctor();
+  // Initialize SIMD lookup tables manually (constructor disabled for musl compatibility)
+  // Both init functions have guards to prevent double-initialization
+  init_dec3();
+  init_default_luminance_palette();
 }
 
 // Allocate a new image (RGB8), use SAFE_MALLOC for consistent error handling

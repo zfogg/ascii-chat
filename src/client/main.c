@@ -92,7 +92,7 @@
  * ============================================================================ */
 
 /** Global flag indicating shutdown has been requested */
-atomic_bool g_should_exit = false;
+static atomic_bool g_client_should_exit = false;
 
 /**
  * Check if shutdown has been requested
@@ -103,14 +103,14 @@ atomic_bool g_should_exit = false;
  * @return true if shutdown requested, false otherwise
  */
 bool should_exit() {
-  return atomic_load(&g_should_exit);
+  return atomic_load(&g_client_should_exit);
 }
 
 /**
  * Signal that shutdown should be requested
  */
 void signal_exit() {
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_client_should_exit, true);
 }
 
 /**
@@ -142,7 +142,7 @@ static void sigint_handler(int sigint) {
   }
 
   // Signal all subsystems to shutdown
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_client_should_exit, true);
 
   // Trigger server connection module to close socket
   server_connection_shutdown();
@@ -226,7 +226,7 @@ static void terminal_resize_callback(int cols, int rows) {
  */
 static void shutdown_client() {
   // Set global shutdown flag to stop all threads
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_client_should_exit, true);
 
 #ifdef _WIN32
   // Stop Windows console resize detection thread
@@ -381,7 +381,9 @@ static void print_mimalloc_stats(void) {
  * @param argv Command line argument vector
  * @return 0 on success, error code on failure
  */
-int main(int argc, char *argv[]) {
+#include "main.h"
+
+int client_main(int argc, char *argv[]) {
   // Parse command line options first
   // Note: --help and --version will exit(0) directly within options_init
   int options_result = options_init(argc, argv, true);

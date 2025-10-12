@@ -195,7 +195,7 @@ void stats_cleanup(void) {
  * The statistics thread monitors this flag to detect server shutdown and exit
  * its monitoring loop gracefully, ensuring clean resource cleanup.
  */
-extern atomic_bool g_should_exit;
+extern atomic_bool g_server_should_exit;
 
 /* ============================================================================
  * Statistics Collection and Reporting Thread
@@ -245,7 +245,7 @@ extern atomic_bool g_should_exit;
  * - Safe concurrent access with render threads
  *
  * RESPONSIVE SHUTDOWN:
- * - Checks g_should_exit every 10ms during sleep periods
+ * - Checks g_server_should_exit every 10ms during sleep periods
  * - Exits monitoring loop immediately when shutdown detected
  * - No hanging or delayed shutdown behavior
  * - Clean resource cleanup
@@ -322,14 +322,14 @@ extern atomic_bool g_should_exit;
 void *stats_logger_thread(void *arg) {
   (void)arg;
 
-  while (!atomic_load(&g_should_exit)) {
+  while (!atomic_load(&g_server_should_exit)) {
     // Log buffer pool statistics every 10 seconds with fast exit checking (10ms intervals)
-    for (int i = 0; i < 1000 && !atomic_load(&g_should_exit); i++) {
+    for (int i = 0; i < 1000 && !atomic_load(&g_server_should_exit); i++) {
       platform_sleep_usec(10000); // 10ms sleep
     }
 
     // Check exit condition before proceeding with statistics logging
-    if (atomic_load(&g_should_exit)) {
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 

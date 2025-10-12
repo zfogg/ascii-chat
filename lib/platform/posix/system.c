@@ -21,7 +21,16 @@
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
-#include <execinfo.h> // Provided by glibc or libexecinfo for musl
+// execinfo.h provides backtrace functions - available in glibc
+// For musl, libexecinfo provides it but may not be available during compile
+#ifndef USE_MUSL
+#include <execinfo.h>
+#else
+// Forward declarations for backtrace functions when execinfo.h is not available
+// These functions will either be provided by libexecinfo at link time, or we'll use fallbacks
+extern int backtrace(void **buffer, int size) __attribute__((weak));
+extern char **backtrace_symbols(void *const *buffer, int size) __attribute__((weak));
+#endif
 #include <pthread.h>
 #include <stdatomic.h>
 #include <sys/stat.h>
@@ -408,16 +417,44 @@ static int manual_backtrace(void **buffer, int size) {
 }
 
 /**
+ * @brief Safe wrapper for backtrace() with weak symbol check
+ */
+static inline int safe_backtrace(void **buffer, int size) {
+#ifdef USE_MUSL
+  if (backtrace != NULL) {
+    return backtrace(buffer, size);
+  }
+  return 0;
+#else
+  return backtrace(buffer, size);
+#endif
+}
+
+/**
+ * @brief Safe wrapper for backtrace_symbols() with weak symbol check
+ */
+static inline char **safe_backtrace_symbols(void *const *buffer, int size) {
+#ifdef USE_MUSL
+  if (backtrace_symbols != NULL) {
+    return backtrace_symbols(buffer, size);
+  }
+  return NULL;
+#else
+  return backtrace_symbols(buffer, size);
+#endif
+}
+
+/**
  * @brief Get stack trace
  * @param buffer Array to store trace addresses
  * @param size Maximum number of addresses to retrieve
  * @return Number of addresses retrieved
  */
 int platform_backtrace(void **buffer, int size) {
-  // Try libexecinfo's backtrace first
-  int depth = backtrace(buffer, size);
+  // Try libexecinfo's backtrace first (safe with weak symbols)
+  int depth = safe_backtrace(buffer, size);
 
-  // If that fails (musl limitation), use manual stack walking
+  // If that fails, use manual stack walking
   if (depth == 0) {
     depth = manual_backtrace(buffer, size);
   }
@@ -449,7 +486,7 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   if (len <= 0) {
     // Fallback to basic backtrace_symbols
     SAFE_FREE(result);
-    return backtrace_symbols(buffer, size);
+    return safe_backtrace_symbols(buffer, size);
   }
   exe_path[len] = '\0';
 #elif defined(__APPLE__)
@@ -457,12 +494,12 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   if (_NSGetExecutablePath(exe_path, &bufsize) != 0) {
     // Fallback to basic backtrace_symbols
     SAFE_FREE(result);
-    return backtrace_symbols(buffer, size);
+    return safe_backtrace_symbols(buffer, size);
   }
 #else
   // Unknown platform - fallback
   SAFE_FREE(result);
-  return backtrace_symbols(buffer, size);
+  return safe_backtrace_symbols(buffer, size);
 #endif
 
   // Build addr2line command with all addresses
@@ -470,7 +507,7 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   int offset = snprintf(cmd, sizeof(cmd), "addr2line -e %s -f -C -i ", exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     SAFE_FREE(result);
-    return backtrace_symbols(buffer, size);
+    return safe_backtrace_symbols(buffer, size);
   }
 
   for (int i = 0; i < size; i++) {
@@ -485,7 +522,7 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   FILE *fp = popen(cmd, "r");
   if (!fp) {
     SAFE_FREE(result);
-    return backtrace_symbols(buffer, size);
+    return safe_backtrace_symbols(buffer, size);
   }
 
   // Parse output (format: function name, then file:line)
@@ -564,8 +601,8 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     return enhanced;
   }
 
-  // Fallback to basic backtrace_symbols
-  return backtrace_symbols(buffer, size);
+  // Fallback to basic backtrace_symbols (safe with weak symbols)
+  return safe_backtrace_symbols(buffer, size);
 }
 
 /**

@@ -31,6 +31,66 @@ message(STATUS "MuslDependencies.cmake: FETCHCONTENT_BASE_DIR=${FETCHCONTENT_BAS
 message(STATUS "MuslDependencies.cmake: MUSL_PREFIX=${MUSL_PREFIX}")
 
 # =============================================================================
+# Copy kernel headers to project-local directory
+# =============================================================================
+# Clang with musl doesn't include kernel headers by default. We need linux/, asm/,
+# and asm-generic/ headers for ALSA and V4L2. Copy them to a project-local
+# directory so the build works on fresh installs without system modifications.
+
+set(KERNEL_HEADERS_DIR "${MUSL_PREFIX}/kernel-headers")
+
+# Find kernel headers from common locations
+set(KERNEL_HEADER_SEARCH_PATHS
+    "/usr/include/linux"
+    "/usr/include/x86_64-linux-gnu/asm"
+    "/usr/include/asm"
+    "/usr/include/asm-generic"
+)
+
+# Check if kernel headers exist
+set(KERNEL_HEADERS_FOUND FALSE)
+foreach(HEADER_PATH ${KERNEL_HEADER_SEARCH_PATHS})
+    if(EXISTS "${HEADER_PATH}")
+        set(KERNEL_HEADERS_FOUND TRUE)
+        break()
+    endif()
+endforeach()
+
+if(NOT KERNEL_HEADERS_FOUND)
+    message(WARNING "Kernel headers not found in common locations. Install linux-libc-dev or kernel-headers package.")
+else()
+    # Copy kernel headers only if they don't exist in cache
+    if(NOT EXISTS "${KERNEL_HEADERS_DIR}/linux")
+        message(STATUS "Copying kernel headers to ${KERNEL_HEADERS_DIR}...")
+        file(MAKE_DIRECTORY "${KERNEL_HEADERS_DIR}")
+
+        # Copy linux/ headers
+        if(EXISTS "/usr/include/linux")
+            file(COPY "/usr/include/linux" DESTINATION "${KERNEL_HEADERS_DIR}")
+        endif()
+
+        # Copy asm/ headers (try arch-specific first, then generic)
+        if(EXISTS "/usr/include/x86_64-linux-gnu/asm")
+            file(COPY "/usr/include/x86_64-linux-gnu/asm" DESTINATION "${KERNEL_HEADERS_DIR}")
+        elseif(EXISTS "/usr/include/asm")
+            file(COPY "/usr/include/asm" DESTINATION "${KERNEL_HEADERS_DIR}")
+        endif()
+
+        # Copy asm-generic/ headers
+        if(EXISTS "/usr/include/asm-generic")
+            file(COPY "/usr/include/asm-generic" DESTINATION "${KERNEL_HEADERS_DIR}")
+        endif()
+
+        message(STATUS "Kernel headers copied successfully")
+    else()
+        message(STATUS "Using cached kernel headers from ${KERNEL_HEADERS_DIR}")
+    endif()
+
+    # Set CFLAGS to include kernel headers for ALSA and PortAudio builds
+    set(MUSL_KERNEL_CFLAGS "-fPIC -I${KERNEL_HEADERS_DIR}")
+endif()
+
+# =============================================================================
 # zlib - Compression library
 # =============================================================================
 message(STATUS "Configuring zlib from source...")
@@ -80,7 +140,7 @@ ExternalProject_Add(alsa-lib-musl
     URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
     URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
     PREFIX ${FETCHCONTENT_BASE_DIR}/alsa-lib-musl
-    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
+    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
     BUILD_COMMAND env REALGCC=/usr/bin/gcc make
     INSTALL_COMMAND make install
     BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libasound.a

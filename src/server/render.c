@@ -182,7 +182,7 @@ extern rwlock_t g_client_manager_rwlock;
  * their processing loops gracefully. This prevents resource leaks and ensures
  * clean shutdown behavior.
  */
-extern atomic_bool g_should_exit;
+extern atomic_bool g_server_should_exit;
 
 /**
  * @brief Global audio mixer from main.c - provides multi-client audio mixing
@@ -308,7 +308,7 @@ extern mixer_t *g_audio_mixer;
  * - Safe concurrent access to client data
  *
  * SHUTDOWN COORDINATION:
- * - Monitors global g_should_exit flag
+ * - Monitors global g_server_should_exit flag
  * - Checks per-client running flags with mutex protection
  * - Responds to shutdown within one frame interval (16.67ms)
  *
@@ -396,7 +396,7 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   uint64_t loop_iteration = 0;
-  while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
     loop_iteration++;
 
     // Debug: Log loop entry
@@ -404,8 +404,8 @@ void *client_video_render_thread(void *arg) {
     }
 
     // Check for immediate shutdown
-    if (atomic_load(&g_should_exit)) {
-      log_info("Video render thread stopping for client %u (g_should_exit)", thread_client_id);
+    if (atomic_load(&g_server_should_exit)) {
+      log_info("Video render thread stopping for client %u (g_server_should_exit)", thread_client_id);
       break;
     }
 
@@ -428,13 +428,13 @@ void *client_video_render_thread(void *arg) {
       long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
       // Sleep in small chunks for reasonable shutdown response (balance performance vs responsiveness)
       const long max_sleep_chunk = 5000; // 5ms chunks for good shutdown response without destroying performance
-      while (sleep_us > 0 && !atomic_load(&g_should_exit)) {
+      while (sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
         long chunk = sleep_us > max_sleep_chunk ? max_sleep_chunk : sleep_us;
         platform_sleep_usec(chunk);
         sleep_us -= chunk;
 
         // Check all shutdown conditions after each tiny sleep
-        if (atomic_load(&g_should_exit))
+        if (atomic_load(&g_server_should_exit))
           break;
 
         bool still_running = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
@@ -763,10 +763,10 @@ void *client_audio_render_thread(void *arg) {
   int expected_audio_fps = 172; // 1000000us / 5800us ≈ 172 fps
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
     // Check for immediate shutdown
-    if (atomic_load(&g_should_exit)) {
-      log_info("Audio render thread stopping for client %u (g_should_exit)", thread_client_id);
+    if (atomic_load(&g_server_should_exit)) {
+      log_info("Audio render thread stopping for client %u (g_server_should_exit)", thread_client_id);
       break;
     }
 
@@ -780,7 +780,7 @@ void *client_audio_render_thread(void *arg) {
 
     if (!g_audio_mixer) {
       // Check shutdown flag while waiting
-      if (atomic_load(&g_should_exit))
+      if (atomic_load(&g_server_should_exit))
         break;
       platform_sleep_usec(10000);
       continue;
@@ -863,13 +863,13 @@ void *client_audio_render_thread(void *arg) {
     // Sleep in small chunks for better shutdown responsiveness
     long remaining_sleep_us = 5800;
     const long sleep_chunk = 1000; // 1ms chunks for reasonable shutdown response
-    while (remaining_sleep_us > 0 && !atomic_load(&g_should_exit)) {
+    while (remaining_sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
       long chunk = remaining_sleep_us > sleep_chunk ? sleep_chunk : remaining_sleep_us;
       platform_sleep_usec(chunk);
       remaining_sleep_us -= chunk;
 
       // Check all shutdown conditions
-      if (atomic_load(&g_should_exit))
+      if (atomic_load(&g_server_should_exit))
         break;
 
       bool still_running = atomic_load(&client->audio_render_thread_running) && atomic_load(&client->active);
@@ -1106,7 +1106,7 @@ void stop_client_render_threads(client_info_t *client) {
 
   // Wait for threads to finish (deterministic cleanup)
   // During shutdown, don't wait forever for threads to join
-  bool is_shutting_down = atomic_load(&g_should_exit);
+  bool is_shutting_down = atomic_load(&g_server_should_exit);
 
   if (ascii_thread_is_initialized(&client->video_render_thread)) {
     log_info("stop_client_render_threads: Joining video render thread for client %u", client->client_id);

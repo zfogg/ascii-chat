@@ -193,7 +193,6 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"port", required_argument, NULL, 'p'},
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
-                                         {"audio", no_argument, NULL, 'A'},
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
@@ -322,7 +321,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:hv"; // Leading ':' for error reporting
     options = client_options;
   } else {
-    optstring = ":a:p:P:C:AL:EK:F:hv"; // Leading ':' for error reporting
+    optstring = ":a:p:P:C:L:EK:F:hv"; // Leading ':' for error reporting (removed A for audio)
     options = server_options;
   }
 
@@ -831,13 +830,15 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
     case 'h':
       usage(stdout, is_client);
-      exit(0);
+      (void)fflush(stdout);
+      _exit(0);
 
     case 'v': {
       const char *binary_name = is_client ? "ascii-chat-client" : "ascii-chat-server";
       printf("%s v%d.%d.%d-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
              ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
-      exit(0);
+      (void)fflush(stdout);
+      _exit(0);
     }
 
     default:
@@ -853,7 +854,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   return ASCIICHAT_OK;
 }
 
-#define USAGE_INDENT "    "
+#define USAGE_INDENT "        "
 
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
@@ -929,11 +930,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-C --palette-chars CHARS " USAGE_INDENT "Custom palette characters for --palette=custom "
-                             "(implies --palette=custom)\n");
-  (void)fprintf(desc, USAGE_INDENT "-A --audio           " USAGE_INDENT
-                                   "enable audio streaming to clients (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     "
+                                   "Custom palette characters for --palette=custom (implies --palette=custom)\n");
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
@@ -945,8 +943,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
                                    "password for connection encryption (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt       " USAGE_INDENT "disable encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE  " USAGE_INDENT
+  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt      " USAGE_INDENT "disable encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE" USAGE_INDENT
                                    "allowed client keys file for authentication (default: [unset])\n");
 }
 

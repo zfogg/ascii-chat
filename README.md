@@ -69,10 +69,10 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 1. Clone this repo onto a computer with a webcam and `cd` to its directory.
 2. Install the dependencies for your OS (instructions listed above).
 3. Run `cmake --preset default && cmake --build --preset default`.
-4. Run `./build/bin/ascii-chat-server`.
+4. Run `./build/bin/ascii-chat server`.
 5. Open a second terminal window, tab, split, or pane. Or go to another computer.
-6. Run `./build/bin/ascii-chat-client`.
-7. 👯 *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat-client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
+6. Run `./build/bin/ascii-chat client`.
+7. 👯 *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
 
 Check the `CMakeLists.txt` to see how it works.
 
@@ -262,29 +262,29 @@ ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key a
 
 ```bash
 # SSH key authentication (prompts for passphrase if encrypted)
-./bin/ascii-chat-server --key ~/.ssh/id_ed25519
-./bin/ascii-chat-client --key ~/.ssh/id_ed25519
+./bin/ascii-chat server --key ~/.ssh/id_ed25519
+./bin/ascii-chat client --key ~/.ssh/id_ed25519
 
 # Password-based encryption
-./bin/ascii-chat-server --password "my_secure_password"
-./bin/ascii-chat-client --password "my_secure_password"
+./bin/ascii-chat server --password "my_secure_password"
+./bin/ascii-chat client --password "my_secure_password"
 
 # Both SSH key + password (maximum security)
-./bin/ascii-chat-server --key ~/.ssh/id_ed25519 --password "extra_encryption"
-./bin/ascii-chat-client --key ~/.ssh/id_ed25519 --password "extra_encryption"
+./bin/ascii-chat server --key ~/.ssh/id_ed25519 --password "extra_encryption"
+./bin/ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
 
 # Auto-detect SSH key from ~/.ssh/
-./bin/ascii-chat-server --key ssh
+./bin/ascii-chat server --key ssh
 
 # Disable encryption (for local testing)
-./bin/ascii-chat-server --no-encrypt
-./bin/ascii-chat-client --no-encrypt
+./bin/ascii-chat server --no-encrypt
+./bin/ascii-chat client --no-encrypt
 
 # Client key whitelisting (server only accepts specific clients)
-./bin/ascii-chat-server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
+./bin/ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
 
 # Server key verification (client verifies server identity)
-./bin/ascii-chat-client --key ~/.ssh/id_ed25519 --server-key <server_public_key>
+./bin/ascii-chat client --key ~/.ssh/id_ed25519 --server-key <server_public_key>
 ```
 
 
@@ -292,7 +292,7 @@ ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key a
 
 ### Client Options
 
-Run `./bin/ascii-chat-client -h` to see all client options:
+Run `./bin/ascii-chat client --help` to see all client options:
 
 **Connection:**
 - `-a --address ADDRESS`: IPv4 address to connect to (default: 127.0.0.1)
@@ -335,7 +335,7 @@ Run `./bin/ascii-chat-client -h` to see all client options:
 
 ### Server Options
 
-Run `./bin/ascii-chat-server -h` to see all server options:
+Run `./bin/ascii-chat server --help` to see all server options:
 
 **Connection:**
 - `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
@@ -346,7 +346,7 @@ Run `./bin/ascii-chat-server -h` to see all server options:
 - `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
 
 **Audio:**
-- `-A --audio`: Enable audio mixing and streaming
+- Audio is always enabled on the server (no flag needed)
 
 **Cryptography:**
 - `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' for auto-detect
@@ -463,14 +463,22 @@ changing command-line arguments.
 
 ## Usage
 
+ASCII-Chat uses a unified binary with two modes: `server` and `client`.
+
 Start the server and wait for client connections:
 ```bash
-./bin/ascii-chat-server [options]
+./bin/ascii-chat server [options]
 ```
 
 Start the client and connect to a running server:
 ```bash
-./bin/ascii-chat-client [options]
+./bin/ascii-chat client [options]
+```
+
+For help with either mode:
+```bash
+./bin/ascii-chat server --help
+./bin/ascii-chat client --help
 ```
 
 ## TODO

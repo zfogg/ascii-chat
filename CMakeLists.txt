@@ -78,29 +78,48 @@ if(USE_MUSL)
         message(FATAL_ERROR "musl libc is only supported on Linux. macOS and Windows use their own C libraries.")
     endif()
 
-    # Find musl-gcc compiler
-    find_program(MUSL_GCC musl-gcc)
-    if(NOT MUSL_GCC)
-        message(FATAL_ERROR "musl-gcc not found. Install musl-tools:\n"
+    # Use clang directly with musl instead of musl-gcc wrapper
+    # musl-gcc wrapper doesn't properly support -static-pie flag
+    # See: https://github.com/rust-lang/rust/issues/95926
+    find_program(CLANG_COMPILER clang)
+    if(NOT CLANG_COMPILER)
+        message(FATAL_ERROR "clang not found. Install clang for musl static-PIE support:\n"
+                            "  Ubuntu/Debian: sudo apt install clang")
+    endif()
+
+    # Verify musl development files are installed
+    if(NOT EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
+        message(FATAL_ERROR "musl development files not found. Install musl-dev:\n"
                             "  Arch Linux: sudo pacman -S musl\n"
                             "  Ubuntu/Debian: sudo apt install musl-tools musl-dev")
     endif()
 
-    # Find the real GCC (not ccache wrapper) for musl-gcc to use
-    find_program(REAL_GCC NAMES gcc PATHS /usr/bin /usr/local/bin NO_DEFAULT_PATH)
-    if(REAL_GCC)
-        # Set environment variable for musl-gcc wrapper script
-        # This must be done before project() so CMake's compiler tests work
-        set(ENV{REALGCC} "${REAL_GCC}")
-        message(STATUS "Set REALGCC environment variable: ${REAL_GCC}")
+    # Set compiler to clang BEFORE project()
+    set(CMAKE_C_COMPILER "${CLANG_COMPILER}" CACHE FILEPATH "C compiler" FORCE)
+    set(CMAKE_CXX_COMPILER "clang++" CACHE FILEPATH "CXX compiler" FORCE)
 
-        # Also set compiler launcher for build phase (after project() succeeds)
-        set(CMAKE_C_COMPILER_LAUNCHER "env" "REALGCC=${REAL_GCC}" CACHE STRING "Compiler launcher" FORCE)
-        set(CMAKE_CXX_COMPILER_LAUNCHER "env" "REALGCC=${REAL_GCC}" CACHE STRING "Compiler launcher" FORCE)
+    # Set LLVM archiver and ranlib for proper archive handling
+    # Search in LLVM installation directories
+    find_program(LLVM_AR
+        NAMES llvm-ar
+        PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
+        NO_DEFAULT_PATH
+    )
+    find_program(LLVM_RANLIB
+        NAMES llvm-ranlib
+        PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
+        NO_DEFAULT_PATH
+    )
+    if(LLVM_AR)
+        set(CMAKE_AR "${LLVM_AR}" CACHE FILEPATH "Archiver" FORCE)
+        message(STATUS "Using LLVM archiver: ${LLVM_AR}")
+    endif()
+    if(LLVM_RANLIB)
+        set(CMAKE_RANLIB "${LLVM_RANLIB}" CACHE FILEPATH "Ranlib" FORCE)
+        message(STATUS "Using LLVM ranlib: ${LLVM_RANLIB}")
     endif()
 
-    # Set compiler to musl-gcc BEFORE project()
-    set(CMAKE_C_COMPILER "${MUSL_GCC}" CACHE FILEPATH "C compiler" FORCE)
+    message(STATUS "Using clang with musl for static-PIE support")
 endif()
 
 # =============================================================================
@@ -581,33 +600,51 @@ endif()
 # This section handles linker flags and other post-project() configuration
 
 if(USE_MUSL)
-    # Use -static flag to build fully static binaries with musl
-    # This requires static versions of all dependencies
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+    # Use -static-pie flag to build fully static PIE binaries with musl
+    # Combines static linking with Position Independent Executable for security (ASLR)
+    # Using clang directly with musl for proper static-PIE support (musl-gcc wrapper doesn't support it)
+    # See: https://github.com/rust-lang/rust/issues/95926
 
-    # Disable precompiled headers - musl-gcc uses GCC which has different PCH syntax than Clang
-    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl-gcc" FORCE)
+    # Find GCC version for libgcc.a
+    execute_process(
+        COMMAND gcc -dumpversion
+        OUTPUT_VARIABLE GCC_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    string(REGEX REPLACE "\\.[0-9]+\\.[0-9]+$" "" GCC_MAJOR_VERSION "${GCC_VERSION}")
 
-    message(STATUS "musl C library enabled (static linking mode)")
-    message(STATUS "Precompiled headers disabled for musl-gcc compatibility")
+    set(MUSL_LIBDIR "/usr/lib/x86_64-linux-musl")
+    set(GCC_LIBDIR "/usr/lib/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}")
+
+    # Configure clang to use musl with static-PIE
+    # Based on: https://wiki.debian.org/musl
+    add_compile_options(
+        -target x86_64-linux-musl
+        -fPIE
+    )
+
+    # Linker flags for static-PIE with musl
+    # Use rcrt1.o for static-PIE (not Scrt1.o which is for dynamic PIE)
+    set(CMAKE_EXE_LINKER_FLAGS
+        "-target x86_64-linux-musl -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o"
+    )
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+
+    # Link with musl libc and libgcc at the end
+    link_libraries(c "${GCC_LIBDIR}/libgcc.a")
+    add_link_options("${MUSL_LIBDIR}/crtn.o")
+
+    # Enable PIE for security (Address Space Layout Randomization)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+    # Disable precompiled headers
+    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
+
+    message(STATUS "musl C library enabled (static-PIE mode with clang)")
+    message(STATUS "Using GCC ${GCC_VERSION} libgcc from: ${GCC_LIBDIR}")
+    message(STATUS "PIE (Position Independent Executable) enabled for static linking")
     message(STATUS "")
-    message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
-
-    # Note: MUSL_PREFIX will be set by MuslDependencies.cmake to use cache directory
-
-    # Set linker flags for static musl linking
-    # -rdynamic exports symbols for backtrace_symbols() to resolve function names
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -rdynamic")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static -rdynamic")
-
-    # Set REALGCC environment variable for musl-gcc wrapper
-    # This is needed because musl-gcc is a shell script that wraps gcc
-    set(ENV{REALGCC} "/usr/bin/gcc")
-
-    # Wrap musl-gcc with env for linking (CMAKE_C_COMPILER_LAUNCHER only affects compilation)
-    # We need to ensure REALGCC is set during linking too
-    set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_COMMAND> -E env REALGCC=/usr/bin/gcc <CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-    set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_COMMAND> -E env REALGCC=/usr/bin/gcc <CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+    message(STATUS "NOTE: Static-PIE linking enabled - will build static dependencies with musl")
 
     # Include ExternalProject module for building dependencies
     include(ExternalProject)
@@ -667,6 +704,21 @@ if(USE_MIMALLOC)
     # Platform-specific mimalloc options
     if(WIN32)
         set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
+    endif()
+
+    # musl-specific options for static-PIE compatibility
+    if(USE_MUSL)
+        # Disable malloc override for musl to avoid symbol conflicts with libc.a
+        # musl's static libc.a includes malloc/free, and overriding causes multiple definition errors
+        set(MI_OVERRIDE OFF CACHE BOOL "Don't override malloc for musl" FORCE)
+
+        # Use local-dynamic TLS model instead of initial-exec for static-PIE compatibility
+        # mimalloc's default initial-exec TLS doesn't work with static-PIE on musl
+        # See: https://github.com/microsoft/mimalloc/issues/644
+        set(MI_LOCAL_DYNAMIC_TLS ON CACHE BOOL "Use local-dynamic TLS for musl static-PIE")
+        set(MI_LIBC_MUSL ON CACHE BOOL "Build for musl libc")
+        message(STATUS "mimalloc: Disabled malloc override for musl (avoiding symbol conflicts)")
+        message(STATUS "mimalloc: Enabled musl-specific TLS options for static-PIE compatibility")
     endif()
 
     # Save current output directory settings
@@ -1358,11 +1410,19 @@ else()
             ${PORTAUDIO_INCLUDE_DIRS}
         )
     else()
-        # When using musl, strip /usr/include from all include paths
+        # When using musl, strip /usr/include from all include paths and add the cleaned paths
         list(REMOVE_ITEM ZLIB_INCLUDE_DIRS "/usr/include")
         list(REMOVE_ITEM LIBSODIUM_INCLUDE_DIRS "/usr/include")
         list(REMOVE_ITEM PORTAUDIO_INCLUDE_DIRS "/usr/include")
         list(REMOVE_ITEM BEARSSL_INCLUDE_DIRS "/usr/include")
+
+        # Add the musl-built library include paths (after removing /usr/include)
+        include_directories(
+            ${ZLIB_INCLUDE_DIRS}
+            ${LIBSODIUM_INCLUDE_DIRS}
+            ${PORTAUDIO_INCLUDE_DIRS}
+            ${BEARSSL_INCLUDE_DIRS}
+        )
     endif()
 endif()
 
@@ -1400,6 +1460,11 @@ set(UTIL_SRCS
     lib/util/ip.c
     lib/util/aspect_ratio.c
 )
+
+# Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
+if(USE_MUSL)
+    list(APPEND UTIL_SRCS lib/musl_c23_compat.c)
+endif()
 
 # =============================================================================
 # Module 2: Cryptography (stable - changes monthly)
@@ -1597,8 +1662,16 @@ create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
 # -----------------------------------------------------------------------------
 # Module 2: Platform Abstraction (depends on: util)
 # -----------------------------------------------------------------------------
+
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
 target_link_libraries(ascii-chat-platform ascii-chat-util)
+
+# Add kernel headers for musl builds (needed for V4L2)
+if(USE_MUSL AND EXISTS "${FETCHCONTENT_BASE_DIR}/musl-deps/kernel-headers")
+    target_include_directories(ascii-chat-platform PRIVATE
+        "${FETCHCONTENT_BASE_DIR}/musl-deps/kernel-headers"
+    )
+endif()
 
 # Platform-specific system libraries
 if(WIN32)
@@ -1916,8 +1989,10 @@ endif()
 # Executables
 # =============================================================================
 
-# Server executable - now modular
-add_executable(ascii-chat-server
+# Unified binary with both server and client modes
+add_executable(ascii-chat
+    src/main.c
+    # Server mode sources
     src/server/main.c
     src/server/client.c
     src/server/protocol.c
@@ -1925,61 +2000,7 @@ add_executable(ascii-chat-server
     src/server/stream.c
     src/server/render.c
     src/server/stats.c
-)
-
-# Server doesn't use audio drivers - enable dead code elimination
-# This works with both GCC (musl) and Clang
-target_compile_options(ascii-chat-server PRIVATE -ffunction-sections -fdata-sections)
-if(NOT WIN32)
-    if(APPLE)
-        target_link_options(ascii-chat-server PRIVATE -Wl,-dead_strip)
-    else()
-        target_link_options(ascii-chat-server PRIVATE -Wl,--gc-sections)
-    endif()
-endif()
-
-target_link_libraries(ascii-chat-server ascii-chat-core)
-
-# Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_link_options(ascii-chat-server PRIVATE -no-pie)
-endif()
-
-# Strip symbols in Release builds
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    find_program(STRIP_EXECUTABLE strip)
-    if(STRIP_EXECUTABLE)
-        add_custom_command(TARGET ascii-chat-server POST_BUILD
-            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat-server>
-            COMMENT "Stripping symbols from ascii-chat-server"
-        )
-    endif()
-endif()
-
-# Add musl dependency if building with musl
-if(USE_MUSL)
-    # Add dependencies on musl libraries (they'll build automatically)
-    # Note: LTO optimization requires PortAudio to be linked even though server doesn't call it
-    # The linker's dead code elimination will remove the unused audio code
-    add_dependencies(ascii-chat-server libsodium-musl zlib-musl libexecinfo-musl portaudio-musl alsa-lib-musl)
-
-    # Link against musl-built static libraries
-    target_link_directories(ascii-chat-server PRIVATE ${MUSL_PREFIX}/lib)
-    target_link_options(ascii-chat-server PRIVATE -static -rdynamic)
-
-    # Link all libraries (LTO requires this, dead code elimination removes unused code)
-    target_link_libraries(ascii-chat-server
-        ${MUSL_PREFIX}/lib/libportaudio.a
-        ${MUSL_PREFIX}/lib/libasound.a
-        ${MUSL_PREFIX}/lib/libsodium.a
-        ${MUSL_PREFIX}/lib/libz.a
-        ${MUSL_PREFIX}/lib/libexecinfo.a
-        -lm -lpthread
-    )
-endif()
-
-# Client executable
-add_executable(ascii-chat-client
+    # Client mode sources
     src/client/main.c
     src/client/server.c
     src/client/protocol.c
@@ -1989,19 +2010,31 @@ add_executable(ascii-chat-client
     src/client/audio.c
     src/client/keepalive.c
 )
-target_link_libraries(ascii-chat-client ascii-chat-core)
+
+# Enable dead code elimination for optimal binary size
+target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+if(NOT WIN32)
+    if(APPLE)
+        target_link_options(ascii-chat PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(ascii-chat PRIVATE -Wl,--gc-sections)
+    endif()
+endif()
+
+target_link_libraries(ascii-chat ascii-chat-core)
 
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_link_options(ascii-chat-client PRIVATE -no-pie)
+    target_link_options(ascii-chat PRIVATE -no-pie)
 endif()
 
 # Strip symbols in Release builds
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    find_program(STRIP_EXECUTABLE strip)
     if(STRIP_EXECUTABLE)
-        add_custom_command(TARGET ascii-chat-client POST_BUILD
-            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat-client>
-            COMMENT "Stripping symbols from ascii-chat-client"
+        add_custom_command(TARGET ascii-chat POST_BUILD
+            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+            COMMENT "Stripping symbols from ascii-chat"
         )
     endif()
 endif()
@@ -2009,14 +2042,14 @@ endif()
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
-    add_dependencies(ascii-chat-client portaudio-musl alsa-lib-musl libsodium-musl zlib-musl libexecinfo-musl)
+    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zlib-musl libexecinfo-musl)
 
     # Link against musl-built static libraries
-    target_link_directories(ascii-chat-client PRIVATE ${MUSL_PREFIX}/lib)
-    target_link_options(ascii-chat-client PRIVATE -static -rdynamic)
+    target_link_directories(ascii-chat PRIVATE ${MUSL_PREFIX}/lib)
+    target_link_options(ascii-chat PRIVATE -static -rdynamic)
 
-    # Override system libraries with musl-built versions
-    target_link_libraries(ascii-chat-client
+    # Link all libraries (LTO + dead code elimination removes unused code)
+    target_link_libraries(ascii-chat
         ${MUSL_PREFIX}/lib/libportaudio.a
         ${MUSL_PREFIX}/lib/libasound.a
         ${MUSL_PREFIX}/lib/libsodium.a
@@ -2026,12 +2059,19 @@ if(USE_MUSL)
     )
 endif()
 
-# macOS Info.plist embedding (matches Makefile)
+# macOS Info.plist embedding (for client mode webcam access)
 if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
-    set_target_properties(ascii-chat-client PROPERTIES
+    set_target_properties(ascii-chat PROPERTIES
         LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_SOURCE_DIR}/Info.plist"
     )
 endif()
+
+# =============================================================================
+# No Backwards Compatibility - Single Binary Only
+# =============================================================================
+# The unified binary is invoked as:
+#   ./ascii-chat server [options...]
+#   ./ascii-chat client [options...]
 
 # =============================================================================
 # Tests (matching Makefile test infrastructure)
@@ -2254,7 +2294,7 @@ endif()
 # Installation
 # =============================================================================
 
-install(TARGETS ascii-chat-server ascii-chat-client
+install(TARGETS ascii-chat
     RUNTIME DESTINATION bin
 )
 
@@ -2382,7 +2422,7 @@ if(SCAN_BUILD_EXECUTABLE)
         COMMAND ${SCAN_BUILD_EXECUTABLE}
             --use-analyzer=${CMAKE_C_COMPILER}
             -o ${CMAKE_BINARY_DIR}/scan-build-results
-            ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat-server ascii-chat-client
+            ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat
         COMMENT "Running scan-build static analyzer"
         VERBATIM
     )
@@ -2576,8 +2616,7 @@ message(STATUS "  Configure Dev:       cmake -B build -DCMAKE_BUILD_TYPE=Dev    
 message(STATUS "  Configure Release:   cmake -B build -DCMAKE_BUILD_TYPE=Release")
 message(STATUS "  Configure Coverage:  cmake -B build -DCMAKE_BUILD_TYPE=Coverage")
 message(STATUS "  Build:               cmake --build build")
-message(STATUS "  Run server:          ./build/bin/ascii-chat-server")
-message(STATUS "  Run client:          ./build/bin/ascii-chat-client")
+message(STATUS "  Run:                 ./build/bin/ascii-chat [--help|--version] [client|server] [options...]")
 if(CRITERION_FOUND)
     message(STATUS "  Run tests:           ./tests/scripts/run_tests.sh")
     message(STATUS "  Run tests (CMake):   cmake --build build --target test_all")

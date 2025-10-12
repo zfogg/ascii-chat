@@ -215,6 +215,11 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
       asciichat_print_error_context(&ctx);                                                                             \
     }                                                                                                                  \
   } while (0)
+#else
+// No-op versions for Release builds
+#define PRINT_ERRNO_CONTEXT(context) ((void)(context))
+#define ASSERT_NO_ERRNO() ((void)0)
+#define PRINT_ERRNO_IF_ERROR() ((void)0)
 #endif
 
 /* ============================================================================

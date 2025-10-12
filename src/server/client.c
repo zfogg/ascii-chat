@@ -177,7 +177,7 @@ client_manager_t g_client_manager = {0};
 rwlock_t g_client_manager_rwlock = {0};
 
 // External globals from main.c
-extern atomic_bool g_should_exit; ///< Global shutdown flag from main.c
+extern atomic_bool g_server_should_exit; ///< Global shutdown flag from main.c
 extern mixer_t *g_audio_mixer;    ///< Global audio mixer from main.c
 
 // Forward declarations for internal functions
@@ -637,7 +637,7 @@ int remove_client(uint32_t client_id) {
 
   // Wait for send thread to exit
   if (ascii_thread_is_initialized(&target_client->send_thread)) {
-    bool is_shutting_down = atomic_load(&g_should_exit);
+    bool is_shutting_down = atomic_load(&g_server_should_exit);
     int join_result;
 
     if (is_shutting_down) {
@@ -743,11 +743,11 @@ void *client_receive_thread(void *arg) {
 
   // Enable thread cancellation for clean shutdown
   // Thread cancellation not available in platform abstraction
-  // Threads should exit when g_should_exit is set
+  // Threads should exit when g_server_should_exit is set
 
   log_info("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
-  while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
+  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
 
     // Use unified secure packet reception with auto-decryption
     const crypto_context_t *crypto_ctx = NULL;
@@ -785,7 +785,7 @@ void *client_receive_thread(void *arg) {
     }
 
     // Check if shutdown was requested during the network call
-    if (atomic_load(&g_should_exit)) {
+    if (atomic_load(&g_server_should_exit)) {
       // Free any data that might have been allocated
       if (envelope.allocated_buffer) {
         buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
@@ -813,7 +813,7 @@ void *client_receive_thread(void *arg) {
     if (result == PACKET_RECV_SECURITY_VIOLATION) {
       log_error("SECURITY: Client %u violated encryption policy - terminating server", client->client_id);
       // Exit the server as a security measure
-      atomic_store(&g_should_exit, true);
+      atomic_store(&g_server_should_exit, true);
       break;
     }
 
@@ -883,7 +883,7 @@ void *client_send_thread_func(void *arg) {
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
 
-  while (!atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
+  while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     bool sent_something = false;
 
@@ -899,7 +899,7 @@ void *client_send_thread_func(void *arg) {
       ssize_t sent =
           send_with_timeout(client->socket, &audio_packet->header, sizeof(audio_packet->header), SEND_TIMEOUT);
       if (sent != sizeof(audio_packet->header)) {
-        if (!atomic_load(&g_should_exit)) {
+        if (!atomic_load(&g_server_should_exit)) {
           log_error("Failed to send audio packet header to client %u: %zd/%zu bytes", client->client_id, sent,
                     sizeof(audio_packet->header));
         }
@@ -911,7 +911,7 @@ void *client_send_thread_func(void *arg) {
       if (audio_packet->data_len > 0 && audio_packet->data) {
         sent = send_with_timeout(client->socket, audio_packet->data, audio_packet->data_len, SEND_TIMEOUT);
         if (sent != (ssize_t)audio_packet->data_len) {
-          if (!atomic_load(&g_should_exit)) {
+          if (!atomic_load(&g_server_should_exit)) {
             log_error("Failed to send audio packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
                       audio_packet->data_len);
           }
@@ -1003,7 +1003,7 @@ void *client_send_thread_func(void *arg) {
 
       if (send_result != 0) {
         rwlock_rdunlock(&client->video_buffer_rwlock);
-        if (!atomic_load(&g_should_exit)) {
+        if (!atomic_load(&g_server_should_exit)) {
           SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u", client->client_id);
         }
         break;
