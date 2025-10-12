@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "ip.h"
+#include "util/ip.h"
 #include "tests/common.h"
 #include "tests/logging.h"
 

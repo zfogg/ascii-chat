@@ -160,23 +160,21 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     if (errno == ENOENT) {
       SAFE_FREE(context);
       return SET_ERRNO(ERROR_WEBCAM,
-                      "V4L2 device %s does not exist.\n"
-                      "No webcam found. Try:\n"
-                      "  1. Check if camera is connected: ls /dev/video*\n"
-                      "  2. Use test pattern instead: --test-pattern",
-                      device_path);
+                       "V4L2 device %s does not exist.\n"
+                       "No webcam found. Try:\n"
+                       "  1. Check if camera is connected: ls /dev/video*\n"
+                       "  2. Use test pattern instead: --test-pattern",
+                       device_path);
     } else if (errno == EACCES) {
       SAFE_FREE(context);
       return SET_ERRNO(ERROR_WEBCAM_PERMISSION,
-                      "Permission denied accessing %s.\n"
-                      "Try: sudo usermod -a -G video $USER\n"
-                      "Then log out and log back in.",
-                      device_path);
+                       "Permission denied accessing %s.\n"
+                       "Try: sudo usermod -a -G video $USER\n"
+                       "Then log out and log back in.",
+                       device_path);
     } else if (errno == EBUSY) {
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_WEBCAM_IN_USE,
-                      "V4L2 device %s is already in use by another application.",
-                      device_path);
+      return SET_ERRNO(ERROR_WEBCAM_IN_USE, "V4L2 device %s is already in use by another application.", device_path);
     } else {
       SAFE_FREE(context);
       return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to open V4L2 device %s", device_path);

@@ -262,7 +262,7 @@ bool display_has_tty() {
  * Safe to call multiple times and handles mode-specific behavior.
  */
 void display_full_reset() {
-  if (g_tty_info.fd >= 0) {
+  if (g_tty_info.fd >= 0 && !should_exit()) {
     full_terminal_reset(g_tty_info.fd);
   }
 }

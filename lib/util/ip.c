@@ -160,24 +160,27 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
 }
 
 // Format IP address with port number
-int format_ip_with_port(const char *ip, uint16_t port, char *output, size_t output_size) {
-  if (!ip || !output || output_size == 0)
-    return -1;
+asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *output, size_t output_size) {
+  if (!ip || !output || output_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+  }
 
   // Check if it's IPv6 (contains ':')
   if (strchr(ip, ':') != NULL) {
     // IPv6 - use bracket notation
     int written = SAFE_SNPRINTF(output, output_size, "[%s]:%u", ip, port);
-    if (written < 0 || (size_t)written >= output_size)
-      return -1;
+    if (written < 0 || (size_t)written >= output_size) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ip=%s or port=%u", ip, port);
+    }
   } else {
     // IPv4 - no brackets
     int written = SAFE_SNPRINTF(output, output_size, "%s:%u", ip, port);
-    if (written < 0 || (size_t)written >= output_size)
-      return -1;
+    if (written < 0 || (size_t)written >= output_size) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ip=%s or port=%u", ip, port);
+    }
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 // Parse IP address and port from string

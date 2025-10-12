@@ -1,4 +1,5 @@
 #include "path.h"
+#include "common.h"
 #include <string.h>
 #include <stdbool.h>
 
@@ -76,4 +77,26 @@ const char *extract_project_relative_path(const char *file) {
 
   /* Last resort: return the original path */
   return file;
+}
+
+char *expand_path(const char *path) {
+  if (path[0] == '~') {
+    const char *home = platform_getenv("HOME");
+    if (!home) {
+      // On Windows, try USERPROFILE
+      home = platform_getenv("USERPROFILE");
+      if (!home)
+        return NULL;
+    }
+
+    char *expanded;
+    size_t total_len = strlen(home) + strlen(path) + 1;
+    expanded = SAFE_MALLOC(total_len, char *);
+    if (!expanded) {
+      return NULL;
+    }
+    safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
+    return expanded;
+  }
+  return platform_strdup(path);
 }

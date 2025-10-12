@@ -475,10 +475,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
     // Check known_hosts for this server (if we have server IP and port)
     if (ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
-      log_debug("SECURITY: Checking known_hosts for server %s:%u", ctx->server_ip, ctx->server_port);
       asciichat_error_t known_host_result = check_known_host(ctx->server_ip, ctx->server_port, server_identity_key);
-      log_debug("SECURITY: known_hosts check result: %d", known_host_result);
-
       if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
         // Key mismatch - MITM attack detected! Prompt user for confirmation
         log_error("SECURITY: Server key does NOT match known_hosts entry!");
@@ -570,18 +567,14 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
 
     if (known_host_result == 1) {
-      // Server IP is known - allow connection without user confirmation
-      log_warn("SECURITY: Server IP %s:%u is known (no-identity entry found)"
-               "SECURITY: This connection is vulnerable to man-in-the-middle attacks"
-               "SECURITY: Anyone can intercept your connection and read your data"
-               "SECURITY: Consider asking the server administrator to use --key for proper authentication"
-               "Allowing connection to known server without identity key (IP verified)",
+      // Server IP is known and verified - allow connection without warnings
+      log_info("SECURITY: Server IP %s:%u is known (no-identity entry found) - connection verified",
                ctx->server_ip, ctx->server_port);
-    } else if (known_host_result == 0) {
-      // Unknown server IP - require user confirmation
-      log_warn("SECURITY: Unknown server IP %s:%u with no identity key"
-               "SECURITY: This connection is vulnerable to man-in-the-middle attacks"
-               "SECURITY: Anyone can intercept your connection and read your data",
+    } else if (known_host_result == ASCIICHAT_OK) {
+      // Server IP is unknown - require user confirmation
+      log_warn("SECURITY: Unknown server IP %s:%u with no identity key\n"
+               "This connection is vulnerable to man-in-the-middle attacks\n"
+               "Anyone can intercept your connection and read your data",
                ctx->server_ip, ctx->server_port);
 
       if (!prompt_unknown_host_no_identity(ctx->server_ip, ctx->server_port)) {
@@ -595,7 +588,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       // For servers without identity keys, pass zero key to indicate no-identity
       uint8_t zero_key[32] = {0};
       log_debug("SECURITY_DEBUG: Adding server to known_hosts with zero key for no-identity entry");
-      if (add_known_host(ctx->server_ip, ctx->server_port, zero_key) != 0) {
+      if (add_known_host(ctx->server_ip, ctx->server_port, zero_key) != ASCIICHAT_OK) {
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
@@ -606,7 +599,14 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                          "permissions and ensure the program can write to: %s",
                          get_known_hosts_path());
       }
-      log_info("Server added to known_hosts as no-identity entry (user confirmed)");
+      log_info("Server host added to known_hosts successfully");
+    } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
+      // Server previously had identity key but now has none - potential security issue
+      log_warn("SECURITY: Server previously had identity key but now has none - potential security issue");
+      if (payload) {
+        buffer_pool_free(payload, payload_len);
+      }
+      return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "Server key configuration changed - potential security issue");
     } else if (known_host_result != -1) {
       // Error checking known_hosts
       if (payload) {

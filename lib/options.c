@@ -24,7 +24,7 @@
 #include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
-#include "ip.h"
+#include "util/ip.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "version.h"
