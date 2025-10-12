@@ -152,8 +152,7 @@ static void sigint_handler(int sigint) {
  * Platform-compatible SIGWINCH handler for terminal resize events
  *
  * Automatically updates terminal dimensions and notifies server when
- * both width and height are set to auto-detect mode. On Windows, this
- * is a no-op since SIGWINCH is not available.
+ * both width and height are set to auto-detect mode.
  *
  * @param sigwinch The signal number (unused)
  */
@@ -178,10 +177,43 @@ static void sigwinch_handler(int sigwinch) {
   }
 }
 #else
-// Windows-compatible signal handler (no-op implementation)
+// Windows-compatible signal handler (placeholder - actual resize detection uses callback)
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
-  log_debug("SIGWINCH received (Windows no-op implementation)");
+  // On Windows, SIGWINCH is not a real signal - resize detection uses ReadConsoleInput
+  // See terminal_resize_callback() for the actual Windows resize handling
+}
+
+/**
+ * Windows console resize callback function
+ *
+ * Called by the Windows console resize detection thread when terminal size changes.
+ * This provides equivalent functionality to Unix SIGWINCH signal handling.
+ *
+ * @param cols New terminal width in columns
+ * @param rows New terminal height in rows
+ */
+static void terminal_resize_callback(int cols, int rows) {
+  (void)cols;
+  (void)rows;
+
+  log_debug("Windows console resized to %dx%d", cols, rows);
+
+  // Terminal was resized, update dimensions and recalculate aspect ratio
+  // ONLY if both width and height are auto (not manually set)
+  if (auto_width && auto_height) {
+    update_dimensions_to_terminal_size();
+
+    // Send new size to server if connected
+    if (server_connection_is_active()) {
+      if (threaded_send_terminal_size_with_auto_detect(opt_width, opt_height) < 0) {
+        log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
+      } else {
+        display_full_reset();
+        log_set_terminal_output(false);
+      }
+    }
+  }
 }
 #endif
 
@@ -195,6 +227,11 @@ static void sigwinch_handler(int sigwinch) {
 static void shutdown_client() {
   // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
+
+#ifdef _WIN32
+  // Stop Windows console resize detection thread
+  terminal_stop_resize_detection();
+#endif
 
   // Shutdown server connection and all associated threads
   server_connection_cleanup();
@@ -305,6 +342,14 @@ static int initialize_client_systems() {
       FATAL(ERROR_AUDIO, "Failed to initialize audio system");
     }
   }
+
+#ifdef _WIN32
+  // Start Windows console resize detection thread
+  if (terminal_start_resize_detection(terminal_resize_callback) != 0) {
+    log_warn("Failed to start Windows console resize detection");
+    // Not fatal - terminal resizing will just not work
+  }
+#endif
 
   return 0;
 }
