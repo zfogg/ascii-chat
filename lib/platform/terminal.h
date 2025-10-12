@@ -129,3 +129,28 @@ void test_terminal_output_modes(void);
 
 // Apply command-line overrides to detected capabilities
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
+
+// ============================================================================
+// Windows Console Resize Detection
+// ============================================================================
+
+#ifdef _WIN32
+/**
+ * Callback function type for terminal resize events
+ * @param cols New terminal width in columns
+ * @param rows New terminal height in rows
+ */
+typedef void (*terminal_resize_callback_t)(int cols, int rows);
+
+/**
+ * Start Windows console resize detection thread
+ * @param callback Function to call when resize is detected
+ * @return 0 on success, -1 on failure
+ */
+int terminal_start_resize_detection(terminal_resize_callback_t callback);
+
+/**
+ * Stop Windows console resize detection thread
+ */
+void terminal_stop_resize_detection(void);
+#endif

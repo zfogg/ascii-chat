@@ -17,6 +17,180 @@
 #include <io.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdatomic.h>
+
+/* ============================================================================
+ * Windows Console Resize Detection
+ * ============================================================================ */
+
+/**
+ * Callback function type for terminal resize events
+ * @param cols New terminal width in columns
+ * @param rows New terminal height in rows
+ */
+typedef void (*terminal_resize_callback_t)(int cols, int rows);
+
+/** Global resize callback function pointer */
+static terminal_resize_callback_t g_resize_callback = NULL;
+
+/** Thread handle for resize detection */
+static asciithread_t g_resize_thread = {0};
+
+/** Flag to signal resize thread should exit */
+static atomic_bool g_resize_thread_should_exit = false;
+
+/** Flag indicating if resize detection is active */
+static atomic_bool g_resize_detection_active = false;
+
+/**
+ * Background thread that monitors for Windows console resize events
+ *
+ * Uses ReadConsoleInput to detect WINDOW_BUFFER_SIZE_EVENT which is
+ * triggered when the console window is resized. This provides equivalent
+ * functionality to Unix SIGWINCH signal handling.
+ *
+ * @param arg Unused thread argument
+ * @return NULL on exit
+ */
+static void *resize_detection_thread(void *arg) {
+  (void)arg;
+  HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
+  if (hConsoleInput == INVALID_HANDLE_VALUE) {
+    log_error("Failed to get console input handle for resize detection");
+    return NULL;
+  }
+
+  // Enable window input events
+  DWORD console_mode;
+  if (!GetConsoleMode(hConsoleInput, &console_mode)) {
+    log_error("Failed to get console mode for resize detection");
+    return NULL;
+  }
+
+  // Add WINDOW_INPUT flag to enable window buffer size events
+  console_mode |= ENABLE_WINDOW_INPUT;
+  if (!SetConsoleMode(hConsoleInput, console_mode)) {
+    log_error("Failed to enable window input events for resize detection");
+    return NULL;
+  }
+
+  log_debug("Windows console resize detection thread started");
+
+  // Store last known size to detect actual changes
+  CONSOLE_SCREEN_BUFFER_INFO last_csbi = {0};
+  if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &last_csbi)) {
+    log_debug("Initial console size: %dx%d", last_csbi.srWindow.Right - last_csbi.srWindow.Left + 1,
+              last_csbi.srWindow.Bottom - last_csbi.srWindow.Top + 1);
+  }
+
+  while (!atomic_load(&g_resize_thread_should_exit)) {
+    INPUT_RECORD input_record;
+    DWORD events_read = 0;
+
+    // Wait for console input with timeout (100ms)
+    DWORD wait_result = WaitForSingleObject(hConsoleInput, 100);
+    if (wait_result == WAIT_TIMEOUT) {
+      continue;
+    }
+    if (wait_result != WAIT_OBJECT_0) {
+      continue; // Error or unexpected result
+    }
+
+    // Read console input events
+    if (!ReadConsoleInput(hConsoleInput, &input_record, 1, &events_read)) {
+      continue;
+    }
+
+    if (events_read == 0) {
+      continue;
+    }
+
+    // Check for window buffer size event
+    if (input_record.EventType == WINDOW_BUFFER_SIZE_EVENT) {
+      CONSOLE_SCREEN_BUFFER_INFO csbi;
+      HANDLE hConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+
+      if (GetConsoleScreenBufferInfo(hConsoleOutput, &csbi)) {
+        int new_cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+        int new_rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+
+        // Only trigger callback if size actually changed
+        int old_cols = last_csbi.srWindow.Right - last_csbi.srWindow.Left + 1;
+        int old_rows = last_csbi.srWindow.Bottom - last_csbi.srWindow.Top + 1;
+
+        if (new_cols != old_cols || new_rows != old_rows) {
+          log_debug("Console resized: %dx%d -> %dx%d", old_cols, old_rows, new_cols, new_rows);
+
+          // Update last known size
+          last_csbi = csbi;
+
+          // Trigger callback if registered
+          if (g_resize_callback != NULL) {
+            g_resize_callback(new_cols, new_rows);
+          }
+        }
+      }
+    }
+  }
+
+  log_debug("Windows console resize detection thread exiting");
+  return NULL;
+}
+
+/**
+ * Start Windows console resize detection thread
+ *
+ * Spawns a background thread that monitors for console resize events
+ * and calls the registered callback function when resizing occurs.
+ *
+ * @param callback Function to call when resize is detected
+ * @return 0 on success, -1 on failure
+ */
+int terminal_start_resize_detection(terminal_resize_callback_t callback) {
+  if (atomic_load(&g_resize_detection_active)) {
+    log_warn("Resize detection already active");
+    return 0; // Already running
+  }
+
+  if (callback == NULL) {
+    log_error("Cannot start resize detection with NULL callback");
+    return -1;
+  }
+
+  g_resize_callback = callback;
+  atomic_store(&g_resize_thread_should_exit, false);
+
+  if (ascii_thread_create(&g_resize_thread, resize_detection_thread, NULL) != 0) {
+    log_error("Failed to create resize detection thread");
+    g_resize_callback = NULL;
+    return -1;
+  }
+
+  atomic_store(&g_resize_detection_active, true);
+  log_info("Windows console resize detection started");
+  return 0;
+}
+
+/**
+ * Stop Windows console resize detection thread
+ *
+ * Signals the resize detection thread to exit and waits for it to complete.
+ */
+void terminal_stop_resize_detection(void) {
+  if (!atomic_load(&g_resize_detection_active)) {
+    return; // Not running
+  }
+
+  log_debug("Stopping Windows console resize detection");
+  atomic_store(&g_resize_thread_should_exit, true);
+
+  // Wait for thread to exit
+  ascii_thread_join(&g_resize_thread, NULL);
+
+  atomic_store(&g_resize_detection_active, false);
+  g_resize_callback = NULL;
+  log_info("Windows console resize detection stopped");
+}
 
 /**
  * @brief Get terminal size
