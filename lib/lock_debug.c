@@ -54,10 +54,6 @@ static bool g_termios_saved = false;
 static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_type, const char *file_name,
                                          int line_number, const char *function_name) {
   lock_record_t *record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
-  if (!record) {
-    log_error("Failed to allocate lock record");
-    return NULL;
-  }
 
   // Fill in basic information
   record->lock_address = lock_address;
@@ -121,6 +117,7 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
  */
 static void free_lock_record(lock_record_t *record) {
   if (!record) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Freeing NULL lock record");
     return;
   }
 
@@ -243,12 +240,14 @@ static void collect_lock_record_callback(uint32_t key, void *value, void *user_d
  * @brief Callback function for cleaning up lock records
  * @param key Hashtable key (unused)
  * @param value Lock record pointer
- * @param user_data Unused
+ * @param user_data Pointer to counter for number of records cleaned up
  */
 static void cleanup_lock_record_callback(uint32_t key, void *value, void *user_data) {
   UNUSED(key);
-  UNUSED(user_data);
+  uint32_t *count = (uint32_t *)user_data;
   lock_record_t *record = (lock_record_t *)value;
+
+  (*count)++;
   free_lock_record(record);
 }
 
@@ -264,7 +263,7 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
   uint32_t *count = (uint32_t *)user_data;
   (*count)++;
 
-  // Print lock type
+  // Get lock type string
   const char *lock_type_str;
   switch (stats->lock_type) {
   case LOCK_TYPE_MUTEX:
@@ -284,21 +283,34 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
   // Calculate average hold time
   uint64_t avg_hold_time_ns = stats->total_hold_time_ns / stats->total_acquisitions;
 
-  log_info("Usage #%u: %s at %s:%d in %s()", *count, lock_type_str, stats->file_name, stats->line_number,
-           stats->function_name);
-  log_info("  Total acquisitions: %llu", (unsigned long long)stats->total_acquisitions);
-  log_info("  Total hold time: %llu.%03llu ms", (unsigned long long)(stats->total_hold_time_ns / 1000000),
-           (unsigned long long)((stats->total_hold_time_ns % 1000000) / 1000));
-  log_info("  Average hold time: %llu.%03llu ms", (unsigned long long)(avg_hold_time_ns / 1000000),
-           (unsigned long long)((avg_hold_time_ns % 1000000) / 1000));
-  log_info("  Max hold time: %llu.%03llu ms", (unsigned long long)(stats->max_hold_time_ns / 1000000),
-           (unsigned long long)((stats->max_hold_time_ns % 1000000) / 1000));
-  log_info("  Min hold time: %llu.%03llu ms", (unsigned long long)(stats->min_hold_time_ns / 1000000),
-           (unsigned long long)((stats->min_hold_time_ns % 1000000) / 1000));
-  log_info("  First acquisition: %lld.%09ld", (long long)stats->first_acquisition.tv_sec,
-           stats->first_acquisition.tv_nsec);
-  log_info("  Last acquisition: %lld.%09ld", (long long)stats->last_acquisition.tv_sec,
-           stats->last_acquisition.tv_nsec);
+  // Format all information into a single log message with newlines
+  char log_message[1024];
+  int offset = 0;
+
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "Usage #%u: %s at %s:%d in %s()\n", *count, lock_type_str, stats->file_name, stats->line_number, stats->function_name);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  Total acquisitions: %llu\n", (unsigned long long)stats->total_acquisitions);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  Total hold time: %llu.%03llu ms\n", (unsigned long long)(stats->total_hold_time_ns / 1000000),
+                         (unsigned long long)((stats->total_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  Average hold time: %llu.%03llu ms\n", (unsigned long long)(avg_hold_time_ns / 1000000),
+                         (unsigned long long)((avg_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  Max hold time: %llu.%03llu ms\n", (unsigned long long)(stats->max_hold_time_ns / 1000000),
+                         (unsigned long long)((stats->max_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  Min hold time: %llu.%03llu ms\n", (unsigned long long)(stats->min_hold_time_ns / 1000000),
+                         (unsigned long long)((stats->min_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  First acquisition: %lld.%09ld\n", (long long)stats->first_acquisition.tv_sec,
+                         stats->first_acquisition.tv_nsec);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
+                         "  Last acquisition: %lld.%09ld", (long long)stats->last_acquisition.tv_sec,
+                         stats->last_acquisition.tv_nsec);
+
+  log_info("%s", log_message);
 }
 
 /**
@@ -645,7 +657,7 @@ int lock_debug_init(void) {
   g_lock_debug_manager.lock_records = hashtable_create();
   if (!g_lock_debug_manager.lock_records) {
     atomic_store(&g_initializing, false);
-    log_error("Failed to create lock records hashtable");
+    SET_ERRNO(ERROR_MEMORY, "Failed to create lock records hashtable");
     return -1;
   }
 
@@ -656,7 +668,7 @@ int lock_debug_init(void) {
     hashtable_destroy(g_lock_debug_manager.lock_records);
     g_lock_debug_manager.lock_records = NULL;
     atomic_store(&g_initializing, false);
-    log_error("Failed to create usage statistics hashtable");
+    SET_ERRNO(ERROR_MEMORY, "Failed to create usage statistics hashtable");
     return -1;
   }
 
@@ -669,7 +681,7 @@ int lock_debug_init(void) {
     g_lock_debug_manager.lock_records = NULL;
     g_lock_debug_manager.usage_stats = NULL;
     atomic_store(&g_initializing, false);
-    log_error("Failed to create orphaned releases hashtable");
+    SET_ERRNO(ERROR_MEMORY, "Failed to create orphaned releases hashtable");
     return -1;
   }
 
@@ -694,7 +706,6 @@ int lock_debug_init(void) {
             atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing));
 #endif
 
-  log_info("Clearing initialization flag...");
   // Clear initialization flag FIRST, then mark as initialized
   // This prevents race condition where initialized=true but initializing=true
   atomic_store(&g_initializing, false);
@@ -717,8 +728,6 @@ int lock_debug_init(void) {
 }
 
 int lock_debug_start_thread(void) {
-  log_info("Attempting to start lock debug thread...");
-
   if (!atomic_load(&g_lock_debug_manager.initialized)) {
     return -1;
   }
@@ -737,9 +746,6 @@ int lock_debug_start_thread(void) {
     return -1;
   }
 
-  log_info("========================================");
-  log_info("Press '?' key to print currently held locks");
-  log_info("========================================");
   return 0;
 }
 
@@ -798,7 +804,11 @@ void lock_debug_cleanup(void) {
     log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all lock records...");
 #endif
     // Free all lock records
-    hashtable_foreach(g_lock_debug_manager.lock_records, cleanup_lock_record_callback, NULL);
+    uint32_t lock_records_cleaned = 0;
+    hashtable_foreach(g_lock_debug_manager.lock_records, cleanup_lock_record_callback, &lock_records_cleaned);
+    if (lock_records_cleaned > 0) {
+      log_info("Cleaned up %u lock records", lock_records_cleaned);
+    }
 
 #ifdef DEBUG_LOCKS
     log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on lock_records hashtable...");
@@ -871,7 +881,11 @@ void lock_debug_cleanup(void) {
 #endif
 
     // Free all orphaned release records
-    hashtable_foreach(g_lock_debug_manager.orphaned_releases, cleanup_lock_record_callback, NULL);
+    uint32_t orphaned_releases_cleaned = 0;
+    hashtable_foreach(g_lock_debug_manager.orphaned_releases, cleanup_lock_record_callback, &orphaned_releases_cleaned);
+    if (orphaned_releases_cleaned > 0) {
+      log_info("Cleaned up %u orphaned release records", orphaned_releases_cleaned);
+    }
 
 #ifdef DEBUG_LOCKS
     log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on orphaned_releases hashtable...");

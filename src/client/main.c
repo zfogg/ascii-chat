@@ -80,7 +80,6 @@
 #include "crypto/keys/keys.h"
 #include "buffer_pool.h"
 #include "palette.h"
-#include "network/network.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -136,7 +135,9 @@ static void sigint_handler(int sigint) {
   }
 
   if (!opt_quiet) {
-    printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
+    char *message = "Shutdown requested... (Press Ctrl-C again to force quit)";
+    safe_fprintf(stderr, "\n%s\n", message);
+    log_fatal(message);
   }
 
   // Signal all subsystems to shutdown
@@ -495,7 +496,6 @@ int main(int argc, char *argv[]) {
     // Re-enable terminal logging when connection is lost for debugging reconnection
     // (but only if we've ever successfully connected before)
     if (has_ever_connected) {
-      printf("\n");
       log_set_terminal_output(true);
     }
 

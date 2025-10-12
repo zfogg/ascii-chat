@@ -1,11 +1,3 @@
-#include "known_hosts.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "keys/keys.h"
-#include "ip.h"
-#include "platform/internal.h"
-#include "platform/system.h" // For platform_isatty()
-#include "options.h"         // For opt_snapshot_mode
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -30,33 +22,16 @@
 #include <unistd.h> // For STDIN_FILENO on POSIX
 #endif
 
-#ifdef _WIN32
-#define KNOWN_HOSTS_PATH "~\\.ascii-chat\\known_hosts"
-#else
-#define KNOWN_HOSTS_PATH "~/.ascii-chat/known_hosts"
-#endif
-
-static char *expand_path(const char *path) {
-  if (path[0] == '~') {
-    const char *home = platform_getenv("HOME");
-    if (!home) {
-      // On Windows, try USERPROFILE
-      home = platform_getenv("USERPROFILE");
-      if (!home)
-        return NULL;
-    }
-
-    char *expanded;
-    size_t total_len = strlen(home) + strlen(path) + 1;
-    expanded = SAFE_MALLOC(total_len, char *);
-    if (!expanded) {
-      return NULL;
-    }
-    safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
-    return expanded;
-  }
-  return platform_strdup(path);
-}
+#include "known_hosts.h"
+#include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
+#include "keys/keys.h"
+#include "util/ip.h"
+#include "platform/internal.h"
+#include "platform/system.h" // For platform_isatty()
+#include "options.h"         // For opt_snapshot_mode
+#include "util/path.h"
+#include "util/string.h"
 
 const char *get_known_hosts_path(void) {
   static char *path = NULL;
@@ -149,6 +124,32 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
       log_debug("SECURITY_DEBUG: Server key: %s", server_key_hex);
       log_debug("SECURITY_DEBUG: Stored key: %s", stored_key_hex);
 
+      // Check if server key is all zeros (no-identity server)
+      bool server_key_is_zero = true;
+      for (int i = 0; i < 32; i++) {
+        if (server_key[i] != 0) {
+          server_key_is_zero = false;
+          break;
+        }
+      }
+
+      // Check if stored key is all zeros
+      bool stored_key_is_zero = true;
+      for (int i = 0; i < 32; i++) {
+        if (stored_key.key[i] != 0) {
+          stored_key_is_zero = false;
+          break;
+        }
+      }
+
+      // If both keys are zero, this is a secure no-identity connection
+      // that was previously accepted by the user
+      if (server_key_is_zero && stored_key_is_zero) {
+        (void)fclose(f); // fclose() also closes the underlying fd
+        log_info("SECURITY: Zero key matches known_hosts - connection verified (no-identity server)");
+        return 1; // Match found!
+      }
+
       // Compare keys (constant-time to prevent timing attacks)
       if (sodium_memcmp(server_key, stored_key.key, 32) == 0) {
         (void)fclose(f); // fclose() also closes the underlying fd
@@ -175,7 +176,9 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 }
 
 // Check known_hosts for servers without identity key (no-identity entries)
-// Returns: 1 = known host (no-identity entry found), 0 = unknown host, -1 = error
+// Returns: ASCIICHAT_OK = known host (no-identity entry found),
+// ERROR_CRYPTO_VERIFICATION = unknown host, ERROR_CRYPTO = error,
+// -1 = previously accepted known host (no-identity entry found)
 asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t port) {
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
@@ -196,7 +199,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
@@ -222,24 +225,14 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
         return ASCIICHAT_OK;
       }
       char *key_type = line + prefix_len;
+      // Skip leading whitespace
+      while (*key_type == ' ' || *key_type == '\t') {
+        key_type++;
+      }
       if (strncmp(key_type, "no-identity", 11) == 0) {
-        // This is a server without identity key
-        log_debug("Found no-identity entry for server");
-
-        // SECURITY: Even for "known" servers without identity keys, we should
-        // require user confirmation due to the security implications
-        log_warn("SECURITY WARNING: Connecting to server without identity key verification");
-        log_warn("SECURITY WARNING: This connection is vulnerable to man-in-the-middle attacks");
-        log_warn("SECURITY WARNING: Anyone can intercept your connection and read your data");
-        log_warn("SECURITY WARNING: Consider asking the server administrator to use --key for proper authentication");
-
-        // SECURITY FIX: Always require user confirmation for no-identity servers
-        // This prevents silent MITM attacks even for "known" servers
-        if (!prompt_unknown_host_no_identity(server_ip, port)) {
-          return ERROR_CRYPTO; // User declined - abort connection
-        }
-
-        return 1; // Known host (no-identity entry) - user confirmed
+        // This is a server without identity key that was previously accepted by the user
+        // No warnings or user confirmation needed - user already accepted this server
+        return -1; // Known host (no-identity entry) - secure connection
       }
 
       // If we found a normal identity key entry, this is a mismatch
@@ -274,7 +267,6 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
 
   if (last_sep) {
     *last_sep = '\0';
-    log_debug("Creating directory: %s", dir);
     int mkdir_result = mkdir(dir, 0700);
     if (mkdir_result != 0 && errno != EEXIST) {
       // mkdir failed and it's not because the directory already exists
@@ -287,12 +279,6 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
       }
       // Directory exists despite error, close the test fd
       platform_close(test_fd);
-      log_debug("Directory already exists: %s", dir);
-    } else if (mkdir_result == 0) {
-      log_debug("Directory created successfully: %s", dir);
-    } else {
-      // errno == EEXIST - directory already exists
-      log_debug("Directory already exists: %s", dir);
     }
   }
   SAFE_FREE(dir);
@@ -443,38 +429,45 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }
 
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-  safe_fprintf(stderr, "@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n");
-  safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "The authenticity of host '%s' can't be established.\n", ip_with_port);
-  safe_fprintf(stderr, "Ed25519 key fingerprint is SHA256:%s\n", fingerprint);
-  safe_fprintf(stderr, "\n");
-
   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
+  const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+  if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, "1") == 0) {
+    log_warn("Skipping known_hosts checking. This is a security vulnerability.");
+    return true;
+  }
+
   if (!platform_isatty(STDIN_FILENO) || opt_snapshot_mode) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify unknown host in non-interactive mode");
-    log_error("SECURITY: Unknown host '%s' rejected in non-interactive mode", ip_with_port);
-    log_error("SECURITY: This prevents man-in-the-middle attacks when running without a TTY");
-    safe_fprintf(stderr, "ERROR: Cannot verify unknown host in non-interactive mode.\n");
-    safe_fprintf(stderr, "ERROR: This connection may be a man-in-the-middle attack!\n");
-    safe_fprintf(stderr, "\n");
-    safe_fprintf(stderr, "To connect to this host:\n");
-    safe_fprintf(stderr, "  1. Run the client interactively (from a terminal with TTY)\n");
-    safe_fprintf(stderr, "  2. Verify the fingerprint: SHA256:%s\n", fingerprint);
-    safe_fprintf(stderr, "  3. Accept the host when prompted\n");
-    safe_fprintf(stderr, "  4. The host will be added to: %s\n", get_known_hosts_path());
-    safe_fprintf(stderr, "\n");
-    safe_fprintf(stderr, "Connection aborted for security.\n");
-    safe_fprintf(stderr, "\n");
+    log_error("ERROR: Cannot verify unknown host in non-interactive mode without environment variable bypass.\n"
+              "This connection may be a man-in-the-middle attack!\n"
+              "\n"
+              "To connect to this host:\n"
+              "  1. Run the client interactively (from a terminal with TTY)\n"
+              "  2. Verify the fingerprint: SHA256:%s\n"
+              "  3. Accept the host when prompted\n"
+              "  4. The host will be added to: %s\n"
+              "\n"
+              "Connection aborted for security.\n"
+              "To bypass this check, set the environment variable ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK to 1",
+              fingerprint, get_known_hosts_path());
     return false; // REJECT unknown hosts in non-interactive mode
   }
 
   // Interactive mode - prompt user
-  safe_fprintf(stderr, "Are you sure you want to continue connecting (yes/no)? ");
-  (void)fflush(stderr);
+  char message[512];
+  safe_snprintf(message, sizeof(message),
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+                "@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n"
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+                "\n"
+                "The authenticity of host '%s' can't be established.\n"
+                "Ed25519 key fingerprint is SHA256:%s\n"
+                "\n"
+                "Are you sure you want to continue connecting (yes/no)? ",
+                ip_with_port, fingerprint);
+  safe_fprintf(stderr, message);
+  log_file(message);
 
   char response[10];
   if (fgets(response, sizeof(response), stdin) == NULL) {
@@ -484,12 +477,11 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
 
   // Accept "yes" or "y" (case insensitive)
   if (strncasecmp(response, "yes", 3) == 0 || strncasecmp(response, "y", 1) == 0) {
-    safe_fprintf(stderr, "Warning: Permanently added '%s' to the list of known hosts.\n", ip_with_port);
-    safe_fprintf(stderr, "\n");
+    log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
   }
 
-  safe_fprintf(stderr, "Connection aborted by user.\n");
+  log_warn("Connection aborted by user.");
   return false;
 }
 
@@ -510,40 +502,43 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }
 
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-  safe_fprintf(stderr, "@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\n");
-  safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\n");
-  safe_fprintf(stderr, "Someone could be eavesdropping on you right now (man-in-the-middle attack)!\n");
-  safe_fprintf(stderr, "It is also possible that the host key has just been changed.\n");
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "The fingerprint for the Ed25519 key sent by the remote host is:\n");
-  safe_fprintf(stderr, "SHA256:%s\n", received_fp);
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "Expected fingerprint:\n");
-  safe_fprintf(stderr, "SHA256:%s\n", expected_fp);
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "Please contact your system administrator.\n");
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "Add correct host key in %s to get rid of this message.\n", known_hosts_path);
-  safe_fprintf(stderr, "Offending key for IP address %s was found at:\n", ip_with_port);
-  safe_fprintf(stderr, "%s\n", known_hosts_path);
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "To update the key, run:\n");
-  safe_fprintf(stderr, "  # Windows PowerShell:\n");
-  safe_fprintf(stderr, "  (Get-Content '%s') | Where-Object { $_ -notmatch '^%s ' } | Set-Content '%s'\n",
-               known_hosts_path, ip_with_port, known_hosts_path);
-  safe_fprintf(stderr, "  # Unix/Linux (grep approach - most reliable):\n");
-  safe_fprintf(stderr, "  grep -v '^%s ' %s > %s.tmp && mv %s.tmp %s\n", ip_with_port, known_hosts_path,
-               known_hosts_path, known_hosts_path, known_hosts_path);
-  safe_fprintf(stderr, "  # Alternative sed (may not work on all systems):\n");
-  safe_fprintf(stderr, "  sed -i '' '/%s /d' %s\n", ip_with_port, known_hosts_path);
-  safe_fprintf(stderr, "  # Or manually edit %s to remove lines starting with '%s '\n", known_hosts_path, ip_with_port);
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "Host key verification failed.\n");
-  safe_fprintf(stderr, "\n");
+  char escaped_ip_with_port[128];
+  escape_ascii(ip_with_port, "[]", escaped_ip_with_port, 128);
+  log_warn("\n"
+           "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+           "@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\n"
+           "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+           "\n"
+           "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\n"
+           "Someone could be eavesdropping on you right now (man-in-the-middle attack)!\n"
+           "It is also possible that the host key has just been changed.\n"
+           "\n"
+           "The fingerprint for the Ed25519 key sent by the remote host is:\n"
+           "SHA256:%s\n"
+           "\n"
+           "Expected fingerprint:\n"
+           "SHA256:%s\n"
+           "\n"
+           "Please contact your system administrator.\n"
+           "\n"
+           "Add correct host key in %s to get rid of this message.\n"
+           "Offending key for IP address %s was found at:\n"
+           "%s\n"
+           "\n"
+           "To update the key, run:\n"
+           "  # Linux/macOS:\n"
+           "    sed -i '' '/%s /d' ~/.ascii-chat/known_hosts\n"
+           "    # or run this instead:\n"
+           "    cat ~/.ascii-chat/known_hosts | grep -v '%s ' > /tmp/x; cp /tmp/x ~/.ascii-chat/known_hosts\n"
+           "  # Windows PowerShell:\n"
+           "    (Get-Content ~/.ascii-chat/known_hosts) | Where-Object { $_ -notmatch '^%s ' } | Set-Content "
+           "~/.ascii-chat/known_hosts\n"
+           "  # Or manually edit ~/.ascii-chat/known_hosts to remove lines starting with '%s '\n"
+           "\n"
+           "Host key verification failed.\n"
+           "\n",
+           received_fp, expected_fp, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port,
+           escaped_ip_with_port, ip_with_port, ip_with_port);
 
   return false;
 }
@@ -558,35 +553,34 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }
 
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "The authenticity of host '%s' can't be established.\n", ip_with_port);
-  safe_fprintf(stderr, "The server has no identity key to verify its authenticity.\n");
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "WARNING: This connection is vulnerable to man-in-the-middle attacks!\n");
-  safe_fprintf(stderr, "Anyone can intercept your connection and read your data.\n");
-  safe_fprintf(stderr, "\n");
-  safe_fprintf(stderr, "To secure this connection:\n");
-  safe_fprintf(stderr, "  1. Server should use --key to provide an identity key\n");
-  safe_fprintf(stderr, "  2. Client should use --server-key to verify the server\n");
-  safe_fprintf(stderr, "\n");
+  log_warn("\n"
+           "The authenticity of host '%s' can't be established.\n"
+           "The server has no identity key to verify its authenticity.\n"
+           "\n"
+           "WARNING: This connection is vulnerable to man-in-the-middle attacks!\n"
+           "Anyone can intercept your connection and read your data.\n"
+           "\n"
+           "To secure this connection:\n"
+           "  1. Server should use --key to provide an identity key\n"
+           "  2. Client should use --server-key to verify the server\n"
+           "\n",
+           ip_with_port);
 
   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
   if (!platform_isatty(STDIN_FILENO) || opt_snapshot_mode) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts without identity
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify server without identity key in non-interactive mode");
-    log_error("SECURITY: Server has no identity key - rejected in non-interactive mode");
-    log_error("SECURITY: This prevents man-in-the-middle attacks when running without a TTY");
-    safe_fprintf(stderr, "ERROR: Cannot verify server without identity key in non-interactive mode.\n");
-    safe_fprintf(stderr, "ERROR: This connection is vulnerable to man-in-the-middle attacks!\n");
-    safe_fprintf(stderr, "\n");
-    safe_fprintf(stderr, "To connect to this host:\n");
-    safe_fprintf(stderr, "  1. Run the client interactively (from a terminal with TTY)\n");
-    safe_fprintf(stderr, "  2. Verify you trust this server despite no identity key\n");
-    safe_fprintf(stderr, "  3. Accept the risk when prompted\n");
-    safe_fprintf(stderr, "  OR better: Ask server admin to use --key for proper authentication\n");
-    safe_fprintf(stderr, "\n");
-    safe_fprintf(stderr, "Connection aborted for security.\n");
-    safe_fprintf(stderr, "\n");
+    log_error("ERROR: Cannot verify server without identity key in non-interactive mode.\n"
+              "ERROR: This connection is vulnerable to man-in-the-middle attacks!\n"
+              "\n"
+              "To connect to this host:\n"
+              "  1. Run the client interactively (from a terminal with TTY)\n"
+              "  2. Verify you trust this server despite no identity key\n"
+              "  3. Accept the risk when prompted\n"
+              "  OR better: Ask server admin to use --key for proper authentication\n"
+              "\n"
+              "Connection aborted for security.\n"
+              "\n");
     return false; // REJECT unknown hosts without identity in non-interactive mode
   }
 
@@ -602,9 +596,9 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
 
   // Accept "yes" or "y" (case insensitive)
   if (strncasecmp(response, "yes", 3) == 0 || strncasecmp(response, "y", 1) == 0) {
-    safe_fprintf(stderr, "Warning: Proceeding with unverified connection.\n");
-    safe_fprintf(stderr, "Your data may be intercepted by attackers!\n");
-    safe_fprintf(stderr, "\n");
+    log_warn("Warning: Proceeding with unverified connection.\n"
+             "Your data may be intercepted by attackers!\n"
+             "\n");
     return true;
   }
 

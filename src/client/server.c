@@ -537,7 +537,7 @@ void server_connection_lost() {
   // Turn ON terminal logging when connection is lost
   printf("\n");
   log_set_terminal_output(true);
-  terminal_reset(g_tty_info.fd);
+  display_full_reset();
   log_info("Connection lost - terminal logging re-enabled");
 }
 
