@@ -7,13 +7,15 @@
  * Each client has its own crypto context for secure communication.
  */
 
-#include "crypto.h"
 #include "client.h"
-#include "crypto/handshake.h"
-#include "crypto/keys/keys.h"
+#include "crypto.h"
+
 #include "options.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "crypto/handshake.h"
+#include "crypto/crypto.h"
+#include "crypto/keys/keys.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <sodium.h>
@@ -87,7 +89,8 @@ int server_crypto_handshake(client_info_t *client) {
 
     // Extract Ed25519 public key from private key for identity
     client->crypto_handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
-    memcpy(client->crypto_handshake_ctx.server_public_key.key, g_server_private_key.public_key, 32);
+    memcpy(client->crypto_handshake_ctx.server_public_key.key, g_server_private_key.public_key,
+           ED25519_PUBLIC_KEY_SIZE);
 
     // SSH key is already configured in the handshake context above
     // No additional setup needed - SSH keys are used only for authentication
@@ -112,7 +115,18 @@ int server_crypto_handshake(client_info_t *client) {
   size_t payload_len = 0;
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to receive packet from client %u", atomic_load(&client->client_id));
-  int result = receive_packet(client->socket, &packet_type, &payload, &payload_len);
+
+  // Protect socket access during crypto handshake
+  mutex_lock(&client->client_state_mutex);
+  socket_t socket = client->socket;
+  mutex_unlock(&client->client_state_mutex);
+
+  if (socket == INVALID_SOCKET_VALUE) {
+    log_debug("SERVER_CRYPTO_HANDSHAKE: Socket is invalid for client %u", atomic_load(&client->client_id));
+    return -1;
+  }
+
+  int result = receive_packet(socket, &packet_type, &payload, &payload_len);
   log_debug("SERVER_CRYPTO_HANDSHAKE: Received packet from client %u: result=%d, type=%u",
             atomic_load(&client->client_id), result, packet_type);
 
@@ -172,7 +186,7 @@ int server_crypto_handshake(client_info_t *client) {
   server_version.compression_threshold = 0;
   server_version.feature_flags = 0;
 
-  result = send_protocol_version_packet(client->socket, &server_version);
+  result = send_protocol_version_packet(socket, &server_version);
   if (result != 0) {
     log_error("Failed to send protocol version to client %u", atomic_load(&client->client_id));
     log_info("Client %u disconnected - failed to send protocol version", atomic_load(&client->client_id));
@@ -185,7 +199,7 @@ int server_crypto_handshake(client_info_t *client) {
   payload = NULL;
   payload_len = 0;
 
-  result = receive_packet(client->socket, &packet_type, &payload, &payload_len);
+  result = receive_packet(socket, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK) {
     log_info("Client %u disconnected during crypto capabilities exchange", atomic_load(&client->client_id));
     if (payload) {
@@ -256,31 +270,28 @@ int server_crypto_handshake(client_info_t *client) {
   server_params.verification_enabled = (g_num_whitelisted_clients > 0) ? 1 : 0;
 
   // Set crypto parameters for current algorithms
-  server_params.kex_public_key_size = htons(32); // X25519 public key size
+  server_params.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE; // X25519 public key size
 
   // Only set auth/signature sizes if we're using authentication
   if (server_params.selected_auth == AUTH_ALGO_ED25519) {
-    server_params.auth_public_key_size = htons(32); // Ed25519 public key size
-    server_params.signature_size = htons(64);       // Ed25519 signature size
+    server_params.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key size
+    server_params.signature_size = ED25519_SIGNATURE_SIZE;        // Ed25519 signature size
   } else {
-    server_params.auth_public_key_size = htons(0); // No authentication
-    server_params.signature_size = htons(0);       // No signature
+    server_params.auth_public_key_size = 0; // No authentication
+    server_params.signature_size = 0;       // No signature
   }
 
-  server_params.shared_secret_size = htons(32); // X25519 shared secret size
-  server_params.nonce_size = 24;                // XSalsa20 nonce size
-  server_params.mac_size = 16;                  // Poly1305 MAC size
-  server_params.hmac_size = 32;                 // HMAC-SHA256 size
+  server_params.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE; // X25519 shared secret size
+  server_params.nonce_size = CRYPTO_NONCE_SIZE;              // XSalsa20 nonce size
+  server_params.mac_size = CRYPTO_MAC_SIZE;                  // Poly1305 MAC size
+  server_params.hmac_size = CRYPTO_HMAC_SIZE;                // HMAC-SHA256 size
 
   log_debug("SERVER_CRYPTO_HANDSHAKE: Sending crypto parameters to client %u", atomic_load(&client->client_id));
-  result = send_crypto_parameters_packet(client->socket, &server_params);
+  result = send_crypto_parameters_packet(socket, &server_params);
   if (result != 0) {
     log_error("Failed to send crypto parameters to client %u", atomic_load(&client->client_id));
     return -1;
   }
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Crypto parameters sent successfully to client %u",
-            atomic_load(&client->client_id));
-
   log_info("Server selected crypto for client %u: KEX=%u, Auth=%u, Cipher=%u", atomic_load(&client->client_id),
            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher);
 
@@ -291,13 +302,14 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 1: Send our public key to client
-  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, client->socket);
+  log_info("SERVER_CRYPTO_HANDSHAKE: About to call crypto_handshake_server_start");
+  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Failed to send server public key to client %u", atomic_load(&client->client_id));
   }
 
   // Step 2: Receive client's public key and send auth challenge
-  result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, client->socket);
+  result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
@@ -312,7 +324,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 3: Receive auth response and complete handshake
-  result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, client->socket);
+  result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     // Handle network errors (like client disconnection) gracefully
     if (result == ERROR_NETWORK) {
@@ -429,12 +441,4 @@ void crypto_server_cleanup_client(uint32_t client_id) {
     client->crypto_initialized = false;
     log_debug("Crypto handshake cleaned up for client %u", client_id);
   }
-}
-
-/**
- * Cleanup crypto server resources (legacy function for compatibility)
- */
-void crypto_server_cleanup(void) {
-  // No global crypto context to cleanup anymore
-  log_debug("Server crypto cleanup (per-client contexts managed individually)");
 }

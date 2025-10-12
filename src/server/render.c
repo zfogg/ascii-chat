@@ -529,7 +529,7 @@ void *client_video_render_thread(void *arg) {
             char pretty_size[64];
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
-            LOG_DEBUG_EVERY(queue_count, 30000000,
+            log_debug_every(30000000,
                             "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",
                             client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
           } else {
@@ -555,8 +555,8 @@ void *client_video_render_thread(void *arg) {
           if (video_frame_count > 1 && frame_interval_us > lag_threshold_us) {
             lag_counter++;
             if (lag_counter % 10 == 0) {
-              LOG_WARN_EVERY(
-                  server_video_lag, 1000000,
+              log_warn_every(
+                  1000000,
                   "SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
                   "fps: %.1f)",
                   thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
@@ -574,7 +574,6 @@ void *client_video_render_thread(void *arg) {
             float actual_fps = (float)video_frame_count / ((float)elapsed_us / 1000000.0f);
             log_info("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
                      actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
-
             // Reset counters for next interval
             video_frame_count = 0;
             last_video_fps_report_time = current_time;
@@ -607,8 +606,7 @@ void *client_video_render_thread(void *arg) {
       }
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
-      LOG_DEBUG_EVERY(no_frame_count, 3000000, "Per-client render: No video sources available for client %u",
-                      client_id_snapshot);
+      log_debug_every(3000000, "Per-client render: No video sources available for client %u", client_id_snapshot);
     }
 
     last_render_time = current_time;
@@ -835,11 +833,13 @@ void *client_audio_render_thread(void *arg) {
 
         // Log error if packet took too long to process
         if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
-          log_error("SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
-                    "fps: %.1f)",
-                    thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
-                    (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
-                    1000000.0f / packet_interval_us);
+          log_error_every(
+              1000000,
+              "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
+              "fps: %.1f)",
+              thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
+              (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
+              1000000.0f / packet_interval_us);
         }
 
         // Report FPS every 5 seconds

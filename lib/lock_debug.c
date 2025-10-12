@@ -287,28 +287,26 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
   char log_message[1024];
   int offset = 0;
 
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "Usage #%u: %s at %s:%d in %s()\n", *count, lock_type_str, stats->file_name, stats->line_number, stats->function_name);
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  Total acquisitions: %llu\n", (unsigned long long)stats->total_acquisitions);
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  Total hold time: %llu.%03llu ms\n", (unsigned long long)(stats->total_hold_time_ns / 1000000),
-                         (unsigned long long)((stats->total_hold_time_ns % 1000000) / 1000));
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  Average hold time: %llu.%03llu ms\n", (unsigned long long)(avg_hold_time_ns / 1000000),
-                         (unsigned long long)((avg_hold_time_ns % 1000000) / 1000));
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  Max hold time: %llu.%03llu ms\n", (unsigned long long)(stats->max_hold_time_ns / 1000000),
-                         (unsigned long long)((stats->max_hold_time_ns % 1000000) / 1000));
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  Min hold time: %llu.%03llu ms\n", (unsigned long long)(stats->min_hold_time_ns / 1000000),
-                         (unsigned long long)((stats->min_hold_time_ns % 1000000) / 1000));
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  First acquisition: %lld.%09ld\n", (long long)stats->first_acquisition.tv_sec,
-                         stats->first_acquisition.tv_nsec);
-  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset,
-                         "  Last acquisition: %lld.%09ld", (long long)stats->last_acquisition.tv_sec,
-                         stats->last_acquisition.tv_nsec);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "Usage #%u: %s at %s:%d in %s()\n",
+                          *count, lock_type_str, stats->file_name, stats->line_number, stats->function_name);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  Total acquisitions: %llu\n",
+                          (unsigned long long)stats->total_acquisitions);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  Total hold time: %llu.%03llu ms\n",
+                          (unsigned long long)(stats->total_hold_time_ns / 1000000),
+                          (unsigned long long)((stats->total_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  Average hold time: %llu.%03llu ms\n",
+                          (unsigned long long)(avg_hold_time_ns / 1000000),
+                          (unsigned long long)((avg_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  Max hold time: %llu.%03llu ms\n",
+                          (unsigned long long)(stats->max_hold_time_ns / 1000000),
+                          (unsigned long long)((stats->max_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  Min hold time: %llu.%03llu ms\n",
+                          (unsigned long long)(stats->min_hold_time_ns / 1000000),
+                          (unsigned long long)((stats->min_hold_time_ns % 1000000) / 1000));
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  First acquisition: %lld.%09ld\n",
+                          (long long)stats->first_acquisition.tv_sec, stats->first_acquisition.tv_nsec);
+  offset += safe_snprintf(log_message + offset, sizeof(log_message) - offset, "  Last acquisition: %lld.%09ld",
+                          (long long)stats->last_acquisition.tv_sec, stats->last_acquisition.tv_nsec);
 
   log_info("%s", log_message);
 }

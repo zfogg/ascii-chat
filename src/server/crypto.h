@@ -28,6 +28,3 @@ int crypto_server_decrypt_packet(uint32_t client_id, const uint8_t *ciphertext, 
 
 // Cleanup crypto resources for a specific client
 void crypto_server_cleanup_client(uint32_t client_id);
-
-// Cleanup crypto server resources (legacy function for compatibility)
-void crypto_server_cleanup(void);

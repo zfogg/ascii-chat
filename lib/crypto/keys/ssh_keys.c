@@ -1,7 +1,8 @@
+#include "crypto/crypto.h"
 #include "ssh_keys.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../platform/password.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "platform/password.h"
 #include "platform/internal.h"
 #include <sodium.h>
 #include <string.h>

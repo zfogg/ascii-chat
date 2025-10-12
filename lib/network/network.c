@@ -42,10 +42,7 @@ static ssize_t network_platform_send(socket_t sockfd, const void *data, size_t l
   if (raw_sent == SOCKET_ERROR) {
     sent = -1;
     // On Windows, use WSAGetLastError() and save to WSA error field
-    int wsa_error = WSAGetLastError();
     errno = EIO; // Set a generic errno, but save the real WSA error
-    log_debug("Windows send() failed: WSAGetLastError=%d, sockfd=%llu, len=%zu", wsa_error, (unsigned long long)sockfd,
-              len);
   } else {
     sent = (ssize_t)raw_sent;
     // CORRUPTION DETECTION: Check Windows send() return value
@@ -73,9 +70,8 @@ static ssize_t network_platform_send(socket_t sockfd, const void *data, size_t l
 static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
 #ifdef _WIN32
   int raw_received = recv(sockfd, (char *)buf, (int)len, 0);
+
   if (raw_received == SOCKET_ERROR) {
-    (void)WSAGetLastError(); // Get the error but don't use it yet
-    errno = EIO;             // Set a generic errno
     return -1;
   }
   return (ssize_t)raw_received;
@@ -107,11 +103,9 @@ static const char *network_get_error_string(int error) {
  */
 static int network_handle_send_error(int error) {
   if (error == EAGAIN || error == EWOULDBLOCK) {
-    log_debug("send_with_timeout: would block, continuing");
     return 1; // Retry
   }
   if (error == EPIPE) {
-    log_debug("Connection closed by peer (EPIPE)");
     SET_ERRNO_SYS(ERROR_NETWORK, "Connection closed by peer during send");
     return 0; // Fatal
   }
@@ -139,6 +133,11 @@ static int network_handle_recv_error(int error) {
   }
   if (error == EINTR) {
     SET_ERRNO_SYS(ERROR_SIGNAL_INTERRUPT, "Signal interrupt occurred");
+    return 0; // Fatal
+  }
+  if (error == EBADF) {
+    // Socket is not a socket (WSAENOTSOCK on Windows) - socket was closed
+    SET_ERRNO_SYS(ERROR_NETWORK, "Socket is not a socket (closed by another thread)");
     return 0; // Fatal
   }
 #endif
@@ -258,6 +257,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
  */
 ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds) {
   if (sockfd == INVALID_SOCKET_VALUE) {
+    log_error("NETWORK_DEBUG: recv_with_timeout called with INVALID_SOCKET_VALUE");
     errno = EBADF;
     return -1;
   }
@@ -299,9 +299,13 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
 
     if (received < 0) {
       int error = errno;
+      log_error("NETWORK_DEBUG: network_platform_recv failed with error %d (errno=%d), sockfd=%d, buf=%p, len=%zu",
+                received, error, sockfd, data + total_received, bytes_to_recv);
       if (network_handle_recv_error(error)) {
+        log_debug("NETWORK_DEBUG: retrying after error %d", error);
         continue; // Retry
       }
+      log_error("NETWORK_DEBUG: fatal error %d, giving up", error);
       return -1; // Fatal error
     }
 
@@ -377,17 +381,12 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
     int error_code = WSAGetLastError();
     // Windows-specific error codes for closed/invalid sockets
     // WSAENOTSOCK = 10038, WSAEBADF = 10009, WSAENOTCONN = 10057
-    log_debug("accept_with_timeout: Windows error code %d, WSAENOTSOCK=%d, WSAEBADF=%d, WSAENOTCONN=%d", error_code,
-              WSAENOTSOCK, WSAEBADF, WSAENOTCONN);
-
     if (error_code == WSAENOTSOCK || error_code == WSAEBADF || error_code == WSAENOTCONN) {
-      log_debug("accept_with_timeout: Matched socket closed error, using ERROR_NETWORK");
       // During shutdown, don't log this as an error since it's expected behavior
       asciichat_errno = ERROR_NETWORK;
       asciichat_errno_context.code = ERROR_NETWORK;
       asciichat_errno_context.has_system_error = false;
     } else {
-      log_debug("accept_with_timeout: No match, using ERROR_NETWORK_BIND");
       // Save Windows socket error to WSA error field for debugging
       errno = EIO; // Set a generic errno
       asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, __FILE__, __LINE__, __func__, error_code);

@@ -1024,9 +1024,12 @@ int send_server_state_to_client(client_info_t *client) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Send server state directly via socket
+  // Protect crypto context access with client state mutex
+  mutex_lock(&client->client_state_mutex);
   const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
   int result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                   (crypto_context_t *)crypto_ctx);
+  mutex_unlock(&client->client_state_mutex);
 
   if (result != 0) {
     log_error("Failed to send server state to client %u", client->client_id);

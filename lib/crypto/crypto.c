@@ -1,7 +1,6 @@
 #include "crypto.h"
 #include "common.h"
 #include "asciichat_errno.h"
-#include "constants.h"
 
 #include <string.h>
 #include <time.h>
@@ -39,16 +38,19 @@ static crypto_result_t init_libsodium(void) {
 
 // Generate secure nonce with session ID and counter to prevent reuse
 static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
-  // Nonce format (24 bytes total):
+  // Nonce format (dynamic size based on algorithm):
   // - Bytes 0-15: Session ID (constant per connection, random across connections)
-  // - Bytes 16-23: Counter (increments per packet, prevents reuse within session)
+  // - Bytes 16+: Counter (increments per packet, prevents reuse within session)
   //
   // This prevents replay attacks both within and across sessions:
   // - Different session_id prevents cross-session replay
   // - Counter prevents within-session replay
+
   SAFE_MEMCPY(nonce_out, 16, ctx->session_id, 16);
   uint64_t counter = ctx->nonce_counter++;
-  SAFE_MEMCPY(nonce_out + 16, 8, &counter, 8);
+  size_t counter_size = ctx->nonce_size - 16;
+  SAFE_MEMCPY(nonce_out + 16, counter_size, &counter,
+              (counter_size < sizeof(counter)) ? counter_size : sizeof(counter));
 }
 
 // Securely clear memory
@@ -89,6 +91,17 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   ctx->nonce_counter = 1; // Start from 1 (0 reserved for testing)
   ctx->bytes_encrypted = 0;
   ctx->bytes_decrypted = 0;
+
+  // Set default algorithm-specific parameters (can be overridden during handshake)
+  ctx->nonce_size = XSALSA20_NONCE_SIZE;
+  ctx->mac_size = POLY1305_MAC_SIZE;
+  ctx->hmac_size = HMAC_SHA256_SIZE;
+  ctx->encryption_key_size = SECRETBOX_KEY_SIZE;
+  ctx->public_key_size = X25519_KEY_SIZE;
+  ctx->private_key_size = X25519_KEY_SIZE;
+  ctx->shared_key_size = X25519_KEY_SIZE;
+  ctx->salt_size = ARGON2ID_SALT_SIZE;
+  ctx->signature_size = ED25519_SIGNATURE_SIZE;
 
   // Generate unique session ID to prevent replay attacks across connections
   randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
@@ -173,7 +186,9 @@ crypto_result_t crypto_get_public_key(const crypto_context_t *ctx, uint8_t *publ
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  SAFE_MEMCPY(public_key_out, CRYPTO_PUBLIC_KEY_SIZE, ctx->public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  // Bounds check to prevent buffer overflow
+  size_t copy_size = (ctx->public_key_size <= X25519_KEY_SIZE) ? ctx->public_key_size : X25519_KEY_SIZE;
+  SAFE_MEMCPY(public_key_out, copy_size, ctx->public_key, copy_size);
   return CRYPTO_OK;
 }
 
@@ -186,7 +201,9 @@ crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t 
   }
 
   // Store peer's public key
-  SAFE_MEMCPY(ctx->peer_public_key, CRYPTO_PUBLIC_KEY_SIZE, peer_public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  // Bounds check to prevent buffer overflow
+  size_t copy_size = (ctx->public_key_size <= X25519_KEY_SIZE) ? ctx->public_key_size : X25519_KEY_SIZE;
+  SAFE_MEMCPY(ctx->peer_public_key, copy_size, peer_public_key, copy_size);
   ctx->peer_key_received = true;
 
   // Compute shared secret using X25519
@@ -254,10 +271,10 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
   // Use deterministic salt for consistent key derivation across client/server
   // This ensures the same password produces the same key on both sides
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
-  memcpy(ctx->password_salt, deterministic_salt, CRYPTO_SALT_SIZE);
+  memcpy(ctx->password_salt, deterministic_salt, ctx->salt_size);
 
   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
-  if (crypto_pwhash(ctx->password_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), ctx->password_salt,
+  if (crypto_pwhash(ctx->password_key, ctx->encryption_key_size, password, strlen(password), ctx->password_salt,
                     crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
                     crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
                     crypto_pwhash_ALG_DEFAULT) != 0) {
@@ -274,15 +291,15 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
     return false;
   }
 
-  uint8_t test_key[CRYPTO_ENCRYPTION_KEY_SIZE];
+  uint8_t test_key[SECRETBOX_KEY_SIZE]; // Use maximum size for buffer
 
   // Use the same deterministic salt for verification
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
-  uint8_t salt[CRYPTO_SALT_SIZE];
-  memcpy(salt, deterministic_salt, CRYPTO_SALT_SIZE);
+  uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
+  memcpy(salt, deterministic_salt, ctx->salt_size);
 
   // Derive key with same salt
-  if (crypto_pwhash(test_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), salt,
+  if (crypto_pwhash(test_key, ctx->encryption_key_size, password, strlen(password), salt,
                     crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
                     crypto_pwhash_ALG_DEFAULT) != 0) {
     secure_memzero(test_key, sizeof(test_key));
@@ -290,7 +307,7 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
   }
 
   // Constant-time comparison
-  bool match = (sodium_memcmp(test_key, ctx->password_key, CRYPTO_ENCRYPTION_KEY_SIZE) == 0);
+  bool match = (sodium_memcmp(test_key, ctx->password_key, ctx->encryption_key_size) == 0);
 
   secure_memzero(test_key, sizeof(test_key));
   return match;
@@ -298,7 +315,7 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
 
 // Derive a deterministic encryption key from password for handshake
 crypto_result_t crypto_derive_password_encryption_key(const char *password,
-                                                      uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]) {
+                                                      uint8_t encryption_key[SECRETBOX_KEY_SIZE]) {
   if (!password || !encryption_key) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "crypto_derive_password_encryption_key: Invalid parameters (password=%p, encryption_key=%p)", password,
@@ -314,11 +331,11 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password,
 
   // Use deterministic salt for consistent key derivation across client/server
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
-  uint8_t salt[CRYPTO_SALT_SIZE];
-  memcpy(salt, deterministic_salt, CRYPTO_SALT_SIZE);
+  uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
+  memcpy(salt, deterministic_salt, ARGON2ID_SALT_SIZE);
 
   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
-  if (crypto_pwhash(encryption_key, CRYPTO_ENCRYPTION_KEY_SIZE, password, strlen(password), salt,
+  if (crypto_pwhash(encryption_key, SECRETBOX_KEY_SIZE, password, strlen(password), salt,
                     crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
                     crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
                     crypto_pwhash_ALG_DEFAULT) != 0) {
@@ -354,7 +371,7 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   }
 
   // Check output buffer size
-  size_t required_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  size_t required_size = plaintext_len + ctx->nonce_size + ctx->mac_size;
   if (ciphertext_out_size < required_size) {
     SET_ERRNO(ERROR_BUFFER, "Ciphertext buffer too small: %zu < %zu", ciphertext_out_size, required_size);
     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
@@ -367,9 +384,9 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   }
 
   // Generate nonce and place at beginning of ciphertext
-  uint8_t nonce[CRYPTO_NONCE_SIZE];
+  uint8_t nonce[XSALSA20_NONCE_SIZE]; // Use maximum nonce size for buffer
   generate_nonce(ctx, nonce);
-  SAFE_MEMCPY(ciphertext_out, CRYPTO_NONCE_SIZE, nonce, CRYPTO_NONCE_SIZE);
+  SAFE_MEMCPY(ciphertext_out, ctx->nonce_size, nonce, ctx->nonce_size);
 
   // Choose encryption key (prefer shared key over password key)
   const uint8_t *encryption_key = NULL;
@@ -383,7 +400,7 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   }
 
   // Encrypt using NaCl secretbox (XSalsa20 + Poly1305)
-  if (crypto_secretbox_easy(ciphertext_out + CRYPTO_NONCE_SIZE, plaintext, plaintext_len, nonce, encryption_key) != 0) {
+  if (crypto_secretbox_easy(ciphertext_out + ctx->nonce_size, plaintext, plaintext_len, nonce, encryption_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Encryption failed");
     return CRYPTO_ERROR_ENCRYPTION;
   }
@@ -409,13 +426,13 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   }
 
   // Check minimum ciphertext size (nonce + MAC)
-  if (ciphertext_len < CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Ciphertext too small: %zu < %d", ciphertext_len,
-              CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE);
+  size_t min_ciphertext_size = ctx->nonce_size + ctx->mac_size;
+  if (ciphertext_len < min_ciphertext_size) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Ciphertext too small: %zu < %zu", ciphertext_len, min_ciphertext_size);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  size_t plaintext_len = ciphertext_len - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE;
+  size_t plaintext_len = ciphertext_len - ctx->nonce_size - ctx->mac_size;
   if (plaintext_out_size < plaintext_len) {
     SET_ERRNO(ERROR_BUFFER, "Plaintext buffer too small: %zu < %zu", plaintext_out_size, plaintext_len);
     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
@@ -423,7 +440,7 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
 
   // Extract nonce from beginning of ciphertext
   const uint8_t *nonce = ciphertext;
-  const uint8_t *encrypted_data = ciphertext + CRYPTO_NONCE_SIZE;
+  const uint8_t *encrypted_data = ciphertext + ctx->nonce_size;
 
   // Choose decryption key (prefer shared key over password key)
   const uint8_t *decryption_key = NULL;
@@ -437,7 +454,7 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
   }
 
   // Decrypt using NaCl secretbox (XSalsa20 + Poly1305)
-  if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - CRYPTO_NONCE_SIZE, nonce,
+  if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx->nonce_size, nonce,
                                  decryption_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Decryption failed - invalid MAC or corrupted data");
     return CRYPTO_ERROR_INVALID_MAC;
@@ -540,7 +557,7 @@ crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uin
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  size_t required_size = sizeof(uint32_t) + CRYPTO_PUBLIC_KEY_SIZE; // type + key
+  size_t required_size = sizeof(uint32_t) + ctx->public_key_size; // type + key
   if (packet_size < required_size) {
     SET_ERRNO(ERROR_BUFFER, "crypto_create_public_key_packet: Buffer too small (size=%zu, required=%zu)", packet_size,
               required_size);
@@ -550,7 +567,9 @@ crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uin
   // Pack packet: [type:4][public_key:32]
   uint32_t packet_type = CRYPTO_PACKET_PUBLIC_KEY;
   SAFE_MEMCPY(packet_out, sizeof(packet_type), &packet_type, sizeof(packet_type));
-  SAFE_MEMCPY(packet_out + sizeof(packet_type), CRYPTO_PUBLIC_KEY_SIZE, ctx->public_key, CRYPTO_PUBLIC_KEY_SIZE);
+  // Bounds check to prevent buffer overflow
+  size_t copy_size = (ctx->public_key_size <= X25519_KEY_SIZE) ? ctx->public_key_size : X25519_KEY_SIZE;
+  SAFE_MEMCPY(packet_out + sizeof(packet_type), copy_size, ctx->public_key, copy_size);
 
   *packet_len_out = required_size;
   return CRYPTO_OK;
@@ -564,7 +583,7 @@ crypto_result_t crypto_process_public_key_packet(crypto_context_t *ctx, const ui
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  size_t expected_size = sizeof(uint32_t) + CRYPTO_PUBLIC_KEY_SIZE;
+  size_t expected_size = sizeof(uint32_t) + ctx->public_key_size;
   if (packet_len != expected_size) {
     SET_ERRNO(ERROR_INVALID_PARAM, "crypto_process_public_key_packet: Invalid packet size (expected=%zu, got=%zu)",
               expected_size, packet_len);
@@ -599,7 +618,7 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
   }
 
-  size_t encrypted_size = data_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  size_t encrypted_size = data_len + ctx->nonce_size + ctx->mac_size;
   size_t required_size = sizeof(uint32_t) + sizeof(uint32_t) + encrypted_size; // type + len + encrypted_data
 
   if (packet_size < required_size) {
@@ -688,11 +707,11 @@ crypto_result_t crypto_generate_nonce(uint8_t nonce[32]) {
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32], uint8_t hmac[32]) {
-  if (!key || !data || !hmac) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_compute_hmac: Invalid parameters (key=%p, data=%p, hmac=%p)", key, data,
-              hmac);
-    return CRYPTO_ERROR_INVALID_PARAMS;
+crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32], const uint8_t data[32],
+                                    uint8_t hmac[32]) {
+  if (!ctx || !key || !data || !hmac) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "crypto_compute_hmac: Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)",
+                     ctx, key, data, hmac);
   }
 
   crypto_result_t result = init_libsodium();
@@ -704,12 +723,12 @@ crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32
   return CRYPTO_OK;
 }
 
-crypto_result_t crypto_compute_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len, uint8_t hmac[32]) {
-  if (!key || !data || !hmac || data_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "crypto_compute_hmac_ex: Invalid parameters (key=%p, data=%p, data_len=%zu, hmac=%p)", key, data,
-              data_len, hmac);
-    return CRYPTO_ERROR_INVALID_PARAMS;
+crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[32], const uint8_t *data,
+                                       size_t data_len, uint8_t hmac[32]) {
+  if (!ctx || !key || !data || !hmac || data_len == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "crypto_compute_hmac_ex: Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)", ctx,
+                     key, data, data_len, hmac);
   }
 
   crypto_result_t result = init_libsodium();
@@ -723,6 +742,8 @@ crypto_result_t crypto_compute_hmac_ex(const uint8_t key[32], const uint8_t *dat
 
 bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]) {
   if (!key || !data || !expected_hmac) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_verify_hmac: Invalid parameters (key=%p, data=%p, expected_hmac=%p)", key,
+              data, expected_hmac);
     return false;
   }
 
@@ -737,6 +758,9 @@ bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uin
 bool crypto_verify_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len,
                            const uint8_t expected_hmac[32]) {
   if (!key || !data || !expected_hmac || data_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "crypto_verify_hmac_ex: Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)", key, data,
+              data_len, expected_hmac);
     return false;
   }
 
@@ -769,12 +793,15 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
 
-  return crypto_compute_hmac_ex(auth_key, combined_data, 64, hmac_out);
+  return crypto_compute_hmac_ex(ctx, auth_key, combined_data, 64, hmac_out);
 }
 
 bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
                                  const uint8_t expected_hmac[32]) {
   if (!ctx || !nonce || !expected_hmac) {
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "crypto_verify_auth_response: Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)", ctx, nonce,
+              expected_hmac);
     return false;
   }
 
@@ -896,12 +923,12 @@ crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_
 // Shared Cryptographic Operations
 // =============================================================================
 
-asciichat_error_t crypto_compute_password_hmac(const uint8_t *password_key, const uint8_t *nonce,
+asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint8_t *password_key, const uint8_t *nonce,
                                                const uint8_t *shared_secret, uint8_t *hmac_out) {
-  if (!password_key || !nonce || !shared_secret || !hmac_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: password_key=%p, nonce=%p, shared_secret=%p, hmac_out=%p",
-              password_key, nonce, shared_secret, hmac_out);
-    return ERROR_INVALID_PARAM;
+  if (!ctx || !password_key || !nonce || !shared_secret || !hmac_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "Invalid parameters: ctx=%p, password_key=%p, nonce=%p, shared_secret=%p, hmac_out=%p", ctx,
+                     password_key, nonce, shared_secret, hmac_out);
   }
 
   // Combine nonce and shared_secret for HMAC computation
@@ -911,9 +938,8 @@ asciichat_error_t crypto_compute_password_hmac(const uint8_t *password_key, cons
   memcpy(combined_data + 32, shared_secret, 32);
 
   // Compute HMAC using the password-derived key
-  if (crypto_compute_hmac_ex(password_key, combined_data, 64, hmac_out) != 0) {
-    SET_ERRNO(ERROR_CRYPTO, "Failed to compute password HMAC");
-    return ERROR_CRYPTO;
+  if (crypto_compute_hmac_ex(ctx, password_key, combined_data, 64, hmac_out) != 0) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to compute password HMAC");
   }
 
   return ASCIICHAT_OK;
@@ -922,20 +948,17 @@ asciichat_error_t crypto_compute_password_hmac(const uint8_t *password_key, cons
 asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, const uint8_t *ephemeral_key,
                                                size_t ephemeral_key_size, const uint8_t *signature) {
   if (!peer_public_key || !ephemeral_key || !signature) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: peer_public_key=%p, ephemeral_key=%p, signature=%p",
-              peer_public_key, ephemeral_key, signature);
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: peer_public_key=%p, ephemeral_key=%p, signature=%p",
+                     peer_public_key, ephemeral_key, signature);
   }
 
   if (ephemeral_key_size == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ephemeral key size: %zu", ephemeral_key_size);
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ephemeral key size: %zu", ephemeral_key_size);
   }
 
   // Verify the signature using Ed25519
   if (crypto_sign_verify_detached(signature, ephemeral_key, ephemeral_key_size, peer_public_key) != 0) {
-    SET_ERRNO(ERROR_CRYPTO, "Peer signature verification failed");
-    return ERROR_CRYPTO;
+    return SET_ERRNO(ERROR_CRYPTO, "Peer signature verification failed");
   }
 
   return ASCIICHAT_OK;
@@ -944,9 +967,8 @@ asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, c
 asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, const uint8_t *ephemeral_key,
                                             size_t ephemeral_key_size, uint8_t *signature_out) {
   if (!private_key || !ephemeral_key || !signature_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: private_key=%p, ephemeral_key=%p, signature_out=%p",
-              private_key, ephemeral_key, signature_out);
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: private_key=%p, ephemeral_key=%p, signature_out=%p",
+                     private_key, ephemeral_key, signature_out);
   }
 
   if (ephemeral_key_size == 0) {
@@ -957,12 +979,10 @@ asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, co
   // Sign the ephemeral key with our Ed25519 private key
   if (private_key->type == KEY_TYPE_ED25519) {
     if (crypto_sign_detached(signature_out, NULL, ephemeral_key, ephemeral_key_size, private_key->key.ed25519) != 0) {
-      SET_ERRNO(ERROR_CRYPTO, "Failed to sign ephemeral key");
-      return ERROR_CRYPTO;
+      return SET_ERRNO(ERROR_CRYPTO, "Failed to sign ephemeral key");
     }
   } else {
-    SET_ERRNO(ERROR_CRYPTO, "Unsupported private key type for signing");
-    return ERROR_CRYPTO;
+    return SET_ERRNO(ERROR_CRYPTO, "Unsupported private key type for signing");
   }
 
   return ASCIICHAT_OK;
@@ -970,6 +990,8 @@ asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, co
 
 void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonce, uint8_t *combined_out) {
   if (!hmac || !challenge_nonce || !combined_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: hmac=%p, challenge_nonce=%p, combined_out=%p", hmac,
+              challenge_nonce, combined_out);
     return;
   }
 
@@ -980,6 +1002,8 @@ void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonc
 
 void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, uint8_t *challenge_out) {
   if (!combined_data || !hmac_out || !challenge_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: combined_data=%p, hmac_out=%p, challenge_out=%p", combined_data,
+              hmac_out, challenge_out);
     return;
   }
 

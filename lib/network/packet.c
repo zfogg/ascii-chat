@@ -794,5 +794,17 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: params=%p", params);
     return -1;
   }
-  return send_packet(sockfd, PACKET_TYPE_CRYPTO_PARAMETERS, params, sizeof(*params));
+
+  // Create a copy and convert uint16_t fields to network byte order
+  crypto_parameters_packet_t net_params = *params;
+  log_debug("NETWORK_DEBUG: Before htons: kex=%u, auth=%u, sig=%u, secret=%u", params->kex_public_key_size,
+            params->auth_public_key_size, params->signature_size, params->shared_secret_size);
+  net_params.kex_public_key_size = htons(params->kex_public_key_size);
+  net_params.auth_public_key_size = htons(params->auth_public_key_size);
+  net_params.signature_size = htons(params->signature_size);
+  net_params.shared_secret_size = htons(params->shared_secret_size);
+  log_debug("NETWORK_DEBUG: After htons: kex=%u, auth=%u, sig=%u, secret=%u", net_params.kex_public_key_size,
+            net_params.auth_public_key_size, net_params.signature_size, net_params.shared_secret_size);
+
+  return send_packet(sockfd, PACKET_TYPE_CRYPTO_PARAMETERS, &net_params, sizeof(net_params));
 }

@@ -219,7 +219,11 @@ client_info_t *find_client_by_id(uint32_t client_id) {
     return NULL;
   }
 
+  // Protect hashtable lookup with read lock to prevent concurrent access issues
+  rwlock_rdlock(&g_client_manager_rwlock);
   client_info_t *result = (client_info_t *)hashtable_lookup(g_client_manager.client_hashtable, client_id);
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
   if (!result) {
     log_warn("Client not found for ID %u", client_id);
   }
@@ -304,6 +308,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   memset(client, 0, sizeof(client_info_t));
 
   client->socket = socket;
+  log_debug("SOCKET_DEBUG: Client socket set to %d", socket);
   atomic_store(&client->client_id, atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
@@ -484,9 +489,12 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     // where the packet arrives but no thread is listening for it.
     log_debug("Waiting for initial capabilities packet from client %u", atomic_load(&client->client_id));
 
+    // Protect crypto context access with client state mutex
+    mutex_lock(&client->client_state_mutex);
     const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
     packet_envelope_t envelope;
     packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
+    mutex_unlock(&client->client_state_mutex);
 
     if (result != PACKET_RECV_SUCCESS) {
       log_error("Failed to receive initial capabilities packet from client %u: result=%d",
@@ -577,12 +585,14 @@ int remove_client(uint32_t client_id) {
   client_info_t *target_client = NULL;
   char display_name_copy[MAX_DISPLAY_NAME_LEN];
 
+  log_debug("SOCKET_DEBUG: Attempting to remove client %d", client_id);
   rwlock_wrlock(&g_client_manager_rwlock);
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->client_id == client_id && client->client_id != 0) {
       // Mark as shutting down and inactive immediately to stop new operations
+      log_debug("SOCKET_DEBUG: Found client %d to remove, socket=%d", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
       atomic_store(&client->active, false);
       target_client = client;
@@ -591,12 +601,16 @@ int remove_client(uint32_t client_id) {
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
       // Shutdown socket to unblock I/O operations, then close
+      mutex_lock(&client->client_state_mutex);
       if (client->socket != INVALID_SOCKET_VALUE) {
+        log_debug("SOCKET_DEBUG: Client %d closing socket %d", client->client_id, client->socket);
         // Shutdown both send and receive operations to unblock any pending I/O
         socket_shutdown(client->socket, 2); // 2 = SHUT_RDWR on POSIX, SD_BOTH on Windows
         socket_close(client->socket);
         client->socket = INVALID_SOCKET_VALUE;
+        log_debug("SOCKET_DEBUG: Client %d socket set to INVALID", client->client_id);
       }
+      mutex_unlock(&client->client_state_mutex);
 
       // Shutdown packet queues to unblock send thread
       if (client->audio_queue) {
@@ -680,6 +694,16 @@ int remove_client(uint32_t client_id) {
   rwlock_destroy(&target_client->video_buffer_rwlock);
   mutex_destroy(&target_client->client_state_mutex);
 
+  // CRITICAL: Reset client_id to 0 BEFORE clearing the structure to prevent race conditions
+  // This ensures that if a new client connects while cleanup is happening,
+  // it won't get assigned to a slot that's still being cleaned up
+  atomic_store(&target_client->client_id, 0);
+
+  // Small delay to ensure all threads have seen the client_id reset
+  // This prevents race conditions where new clients might get assigned
+  // to slots that are still being cleaned up
+  usleep(1000); // 1ms delay
+
   // Clear client structure
   // NOTE: After memset, the mutex handles are zeroed but the OS resources
   // have been released by the destroy calls above
@@ -728,16 +752,36 @@ void *client_receive_thread(void *arg) {
     // Use unified secure packet reception with auto-decryption
     const crypto_context_t *crypto_ctx = NULL;
     if (crypto_server_is_ready(client->client_id)) {
+      // Protect crypto context access with client state mutex
+      mutex_lock(&client->client_state_mutex);
       crypto_ctx = crypto_server_get_context(client->client_id);
+      mutex_unlock(&client->client_state_mutex);
     }
     packet_envelope_t envelope;
 
     // Use shorter timeout for faster packet processing
-    packet_recv_result_t result = receive_packet_secure(client->socket, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
+    // Protect socket access to prevent race conditions
+    mutex_lock(&client->client_state_mutex);
+    socket_t socket = client->socket;
+    mutex_unlock(&client->client_state_mutex);
 
-    // Add detailed result logging
-    if (result != PACKET_RECV_SUCCESS) {
-      // Handle non-success results below
+    if (socket == INVALID_SOCKET_VALUE) {
+      log_warn("SOCKET_DEBUG: Client %d socket is INVALID, client may be disconnecting", client->client_id);
+      break;
+    }
+
+    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
+
+    // Check if socket became invalid during the receive operation
+    if (result == PACKET_RECV_ERROR && (errno == EIO || errno == EBADF)) {
+      // Socket was closed by another thread, check if client is being removed
+      mutex_lock(&client->client_state_mutex);
+      bool socket_invalid = (client->socket == INVALID_SOCKET_VALUE);
+      mutex_unlock(&client->client_state_mutex);
+      if (socket_invalid) {
+        log_warn("SOCKET_DEBUG: Client %d socket was closed by another thread (errno=%d)", client->client_id, errno);
+        break;
+      }
     }
 
     // Check if shutdown was requested during the network call
@@ -892,8 +936,11 @@ void *client_send_thread_func(void *arg) {
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame
+        // Protect crypto context access with client state mutex
+        mutex_lock(&client->client_state_mutex);
         const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
+        mutex_unlock(&client->client_state_mutex);
         log_info("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
                  rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
@@ -919,8 +966,7 @@ void *client_send_thread_func(void *arg) {
       if (frame && frame->data && frame->size == 0) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
-        LOG_WARN_EVERY(no_frame_size, 1000000, "Client %u has no valid frame size: size=%zu", client->client_id,
-                       frame->size);
+        log_warn_every(1000000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
         rwlock_rdunlock(&client->video_buffer_rwlock);
         platform_sleep_usec(1000); // 1ms sleep
         continue;
@@ -948,9 +994,12 @@ void *client_send_thread_func(void *arg) {
       memcpy(payload + sizeof(ascii_frame_packet_t), frame->data, frame->size);
 
       // Use unified packet processing pipeline
+      // Protect crypto context access with client state mutex
+      mutex_lock(&client->client_state_mutex);
       const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
       int send_result = send_packet_secure(client->socket, PACKET_TYPE_ASCII_FRAME, payload, payload_size,
                                            (crypto_context_t *)crypto_ctx);
+      mutex_unlock(&client->client_state_mutex);
 
       if (send_result != 0) {
         rwlock_rdunlock(&client->video_buffer_rwlock);
@@ -1009,10 +1058,12 @@ void broadcast_server_state_to_all_clients(void) {
   // Send to all active clients
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->active) {
+    if (client->active && client->socket != INVALID_SOCKET_VALUE) {
+      mutex_lock(&client->client_state_mutex);
       const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
       int result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                       (crypto_context_t *)crypto_ctx);
+      mutex_unlock(&client->client_state_mutex);
 
       if (result != 0) {
         log_error("Failed to send server state to client %u", client->client_id);
@@ -1031,8 +1082,10 @@ void broadcast_server_state_to_all_clients(void) {
  */
 
 void stop_client_threads(client_info_t *client) {
-  if (!client)
+  if (!client) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
     return;
+  }
 
   // Signal threads to stop
   atomic_store(&client->active, false);
@@ -1048,8 +1101,10 @@ void stop_client_threads(client_info_t *client) {
 }
 
 void cleanup_client_media_buffers(client_info_t *client) {
-  if (!client)
+  if (!client) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
     return;
+  }
 
   if (client->incoming_video_buffer) {
     video_frame_buffer_destroy(client->incoming_video_buffer);

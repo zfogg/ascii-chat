@@ -11,22 +11,69 @@
 #include "keys/types.h" // For private_key_t
 #include "../common.h"  // For asciichat_error_t
 
-// Key sizes for X25519 key exchange
-#define CRYPTO_PUBLIC_KEY_SIZE crypto_box_PUBLICKEYBYTES  // 32 bytes
-#define CRYPTO_PRIVATE_KEY_SIZE crypto_box_SECRETKEYBYTES // 32 bytes
-#define CRYPTO_SHARED_KEY_SIZE crypto_box_BEFORENMBYTES   // 32 bytes
+// =============================================================================
+// ascii-chat Cryptographic Handshake Protocol Definitions
+// =============================================================================
 
-// Ed25519 signature constants
-#define CRYPTO_ED25519_PUBLIC_KEY_SIZE 32  // Ed25519 public key size
-#define CRYPTO_ED25519_PRIVATE_KEY_SIZE 64 // Ed25519 private key size (seed + public)
-#define CRYPTO_ED25519_SIGNATURE_SIZE 64   // Ed25519 signature size
+// Password requirements
+#define MIN_PASSWORD_LENGTH 8   // Minimum password length
+#define MAX_PASSWORD_LENGTH 256 // Maximum password length
 
-// Encryption constants
-#define CRYPTO_NONCE_SIZE crypto_box_NONCEBYTES              // 24 bytes
-#define CRYPTO_SALT_SIZE crypto_pwhash_SALTBYTES             // 32 bytes
-#define CRYPTO_ENCRYPTION_KEY_SIZE crypto_secretbox_KEYBYTES // 32 bytes
-#define CRYPTO_MAC_SIZE crypto_box_MACBYTES                  // 16 bytes
-#define CRYPTO_HMAC_SIZE crypto_auth_hmacsha256_BYTES        // 32 bytes
+// Algorithm-specific key sizes
+#define X25519_KEY_SIZE 32          // X25519 key size
+#define ED25519_PUBLIC_KEY_SIZE 32  // Ed25519 public key size
+#define ED25519_PRIVATE_KEY_SIZE 64 // Ed25519 private key (seed + public)
+#define ED25519_SIGNATURE_SIZE 64   // Ed25519 signature size
+#define XSALSA20_NONCE_SIZE 24      // XSalsa20 nonce size
+#define POLY1305_MAC_SIZE 16        // Poly1305 MAC size
+#define HMAC_SHA256_SIZE 32         // HMAC-SHA256 output size
+#define ARGON2ID_SALT_SIZE 32       // Argon2id salt size
+#define SECRETBOX_KEY_SIZE 32       // Secretbox key size
+
+// Constants main constants for the project to stay abstracted from the underlying algorithms
+#define CRYPTO_PUBLIC_KEY_SIZE X25519_KEY_SIZE
+#define CRYPTO_PRIVATE_KEY_SIZE X25519_KEY_SIZE
+#define CRYPTO_SHARED_KEY_SIZE X25519_KEY_SIZE
+#define CRYPTO_ED25519_PUBLIC_KEY_SIZE ED25519_PUBLIC_KEY_SIZE
+#define CRYPTO_ED25519_PRIVATE_KEY_SIZE ED25519_PRIVATE_KEY_SIZE
+#define CRYPTO_ED25519_SIGNATURE_SIZE ED25519_SIGNATURE_SIZE
+#define CRYPTO_NONCE_SIZE XSALSA20_NONCE_SIZE
+#define CRYPTO_SALT_SIZE ARGON2ID_SALT_SIZE
+#define CRYPTO_ENCRYPTION_KEY_SIZE SECRETBOX_KEY_SIZE
+#define CRYPTO_MAC_SIZE POLY1305_MAC_SIZE
+#define CRYPTO_HMAC_SIZE HMAC_SHA256_SIZE
+
+// Authentication packet sizes
+#define AUTH_HMAC_SIZE 32                                                        // HMAC size in auth packets
+#define AUTH_CHALLENGE_SIZE 32                                                   // Challenge nonce size
+#define AUTH_COMBINED_SIZE (AUTH_HMAC_SIZE + AUTH_CHALLENGE_SIZE)                // Combined auth data size
+#define AUTH_SIGNATURE_SIZE 64                                                   // Ed25519 signature size
+#define AUTH_SIGNATURE_COMBINED_SIZE (AUTH_SIGNATURE_SIZE + AUTH_CHALLENGE_SIZE) // Signature + challenge
+
+// Authentication challenge packet structure
+#define AUTH_CHALLENGE_FLAGS_SIZE 1                                                  // 1 byte for auth flags
+#define AUTH_CHALLENGE_PACKET_SIZE (AUTH_CHALLENGE_FLAGS_SIZE + AUTH_CHALLENGE_SIZE) // 1 + 32 = 33 bytes
+
+// Authentication response packet sizes
+#define AUTH_RESPONSE_PASSWORD_SIZE (AUTH_HMAC_SIZE + AUTH_CHALLENGE_SIZE)       // 32 + 32 = 64 bytes
+#define AUTH_RESPONSE_SIGNATURE_SIZE (AUTH_SIGNATURE_SIZE + AUTH_CHALLENGE_SIZE) // 64 + 32 = 96 bytes
+
+// Server authentication response
+#define SERVER_AUTH_RESPONSE_SIZE AUTH_HMAC_SIZE // 32 bytes
+
+// Packet size limits
+#define MAX_AUTH_FAILED_PACKET_SIZE 256 // Maximum AUTH_FAILED packet size
+#define MAX_ENCRYPTED_PACKET_SIZE 65536 // 64KB max for encrypted packets
+
+// Buffer sizes for hex string conversion
+#define HEX_STRING_SIZE_32 (32 * 2 + 1) // 32 bytes -> 64 hex chars + null
+#define HEX_STRING_SIZE_64 (64 * 2 + 1) // 64 bytes -> 128 hex chars + null
+
+// Password buffer sizes
+#define PASSWORD_BUFFER_SIZE 256 // Password input buffer size
+
+// Zero key for no-identity entries
+#define ZERO_KEY_SIZE X25519_KEY_SIZE // Size of zero key array
 
 // Maximum sizes for encrypted data
 #define CRYPTO_MAX_PLAINTEXT_SIZE ((size_t)1024 * 1024) // 1MB max
@@ -44,6 +91,19 @@ typedef struct {
   uint8_t password_key[CRYPTO_ENCRYPTION_KEY_SIZE];
   uint8_t password_salt[CRYPTO_SALT_SIZE];
 
+  // Dynamic crypto parameters (negotiated during handshake)
+  uint8_t nonce_size;          // e.g., 24 for XSalsa20, 12 for ChaCha20
+  uint8_t mac_size;            // e.g., 16 for Poly1305, 16 for GCM
+  uint8_t hmac_size;           // e.g., 32 for HMAC-SHA256, 64 for HMAC-SHA512
+  uint8_t encryption_key_size; // e.g., 32 for XSalsa20, 32 for AES-256
+
+  // Key sizes for dynamic negotiation
+  uint16_t public_key_size;  // e.g., 32 for X25519, 1568 for Kyber1024
+  uint16_t private_key_size; // e.g., 32 for X25519, 1568 for Kyber1024
+  uint16_t shared_key_size;  // e.g., 32 for X25519, 32 for Kyber1024
+  uint16_t salt_size;        // e.g., 16 for Argon2id
+  uint16_t signature_size;   // e.g., 64 for Ed25519, 3309 for Dilithium3
+
   // State tracking
   bool initialized;
   bool has_password;
@@ -52,8 +112,8 @@ typedef struct {
   bool handshake_complete;
 
   // Authentication
-  uint8_t auth_nonce[32]; // Server-generated nonce
-  uint8_t auth_hmac[32];  // Client's HMAC response
+  uint8_t auth_nonce[AUTH_CHALLENGE_SIZE]; // Server-generated nonce
+  uint8_t auth_hmac[CRYPTO_HMAC_SIZE];     // Client's HMAC response
 
   // Security parameters
   uint64_t nonce_counter; // Prevent nonce reuse within session
@@ -80,6 +140,34 @@ typedef enum {
   CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE = -11,
   CRYPTO_ERROR_NONCE_EXHAUSTED = -12
 } crypto_result_t;
+
+// =============================================================================
+// SSH Key Structure Constants
+// =============================================================================
+
+// SSH key blob structure sizes
+#define SSH_KEY_TYPE_LENGTH_SIZE 4       // Length of "ssh-ed25519" (4 bytes)
+#define SSH_KEY_TYPE_STRING_SIZE 11      // "ssh-ed25519" string length
+#define SSH_KEY_PUBLIC_KEY_LENGTH_SIZE 4 // Length of public key (4 bytes)
+#define SSH_KEY_PUBLIC_KEY_SIZE 32       // Ed25519 public key size
+#define SSH_KEY_HEADER_SIZE                                                                                            \
+  (SSH_KEY_TYPE_LENGTH_SIZE + SSH_KEY_TYPE_STRING_SIZE + SSH_KEY_PUBLIC_KEY_LENGTH_SIZE + SSH_KEY_PUBLIC_KEY_SIZE)
+
+// =============================================================================
+// File Permission Constants
+// =============================================================================
+
+#ifndef _WIN32
+#define SSH_KEY_PERMISSIONS_MASK (S_IRWXG | S_IRWXO) // Group and other permissions mask
+#define SSH_KEY_RECOMMENDED_PERMISSIONS 0600         // Recommended SSH key permissions
+#endif
+
+// =============================================================================
+// String and Display Constants
+// =============================================================================
+
+#define MAX_COMMENT_LEN 256    // Maximum key comment length
+#define MAX_GPG_KEYGRIP_LEN 64 // Maximum GPG keygrip length
 
 // =============================================================================
 // Core initialization and setup
@@ -163,10 +251,12 @@ crypto_result_t crypto_random_bytes(uint8_t *buffer, size_t len);
 crypto_result_t crypto_generate_nonce(uint8_t nonce[32]);
 
 // Compute HMAC for authentication (fixed 32-byte data)
-crypto_result_t crypto_compute_hmac(const uint8_t key[32], const uint8_t data[32], uint8_t hmac[32]);
+crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[32], const uint8_t data[32],
+                                    uint8_t hmac[32]);
 
 // Compute HMAC for variable-length data (for binding multiple values)
-crypto_result_t crypto_compute_hmac_ex(const uint8_t key[32], const uint8_t *data, size_t data_len, uint8_t hmac[32]);
+crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[32], const uint8_t *data,
+                                       size_t data_len, uint8_t hmac[32]);
 
 // Verify HMAC (fixed 32-byte data)
 bool crypto_verify_hmac(const uint8_t key[32], const uint8_t data[32], const uint8_t expected_hmac[32]);
@@ -241,7 +331,7 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
 // =============================================================================
 
 // Compute password-based HMAC for authentication
-asciichat_error_t crypto_compute_password_hmac(const uint8_t *password_key, const uint8_t *nonce,
+asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint8_t *password_key, const uint8_t *nonce,
                                                const uint8_t *shared_secret, uint8_t *hmac_out);
 
 // Verify peer's signature on ephemeral key
