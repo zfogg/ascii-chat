@@ -246,15 +246,81 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   }
 
   // Resolve server address using getaddrinfo() for IPv4/IPv6 support
+  // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
+  // Many systems only map "localhost" to 127.0.0.1 in /etc/hosts
+  bool is_localhost = (strcmp(address, "localhost") == 0 || strcmp(address, "127.0.0.1") == 0 || strcmp(address, "::1") == 0);
+
   struct addrinfo hints, *res = NULL, *addr_iter;
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM;
+  if (is_localhost) {
+    hints.ai_flags = AI_NUMERICSERV; // Optimize for localhost
+  }
 
   char port_str[16];
   SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
 
+  // For localhost, try IPv6 loopback (::1) first, then fall back to DNS resolution
+  if (is_localhost) {
+    log_debug("Localhost detected - trying IPv6 loopback [::1]:%s first...", port_str);
+    hints.ai_family = AF_INET6;
+    hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+
+    int ipv6_result = getaddrinfo("::1", port_str, &hints, &res);
+    if (ipv6_result == 0 && res != NULL) {
+      // Try IPv6 loopback connection
+      g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
+      if (g_sockfd != INVALID_SOCKET_VALUE) {
+        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
+          log_debug("Connection successful using IPv6 loopback");
+          SAFE_STRNCPY(g_server_ip, "::1", sizeof(g_server_ip));
+          freeaddrinfo(res);
+          res = NULL; // Prevent double-free at connection_success label
+          goto connection_success;
+        }
+        log_debug("IPv6 loopback connection failed: %s", network_error_string());
+        close_socket(g_sockfd);
+        g_sockfd = INVALID_SOCKET_VALUE;
+      }
+      freeaddrinfo(res);
+      res = NULL;
+    }
+
+    // IPv6 failed, try IPv4 loopback (127.0.0.1)
+    log_debug("IPv6 failed, trying IPv4 loopback 127.0.0.1:%s...", port_str);
+    hints.ai_family = AF_INET;
+
+    int ipv4_result = getaddrinfo("127.0.0.1", port_str, &hints, &res);
+    if (ipv4_result == 0 && res != NULL) {
+      g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
+      if (g_sockfd != INVALID_SOCKET_VALUE) {
+        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
+          log_debug("Connection successful using IPv4 loopback");
+          SAFE_STRNCPY(g_server_ip, "127.0.0.1", sizeof(g_server_ip));
+          freeaddrinfo(res);
+          res = NULL; // Prevent double-free at connection_success label
+          goto connection_success;
+        }
+        log_debug("IPv4 loopback connection failed: %s", network_error_string());
+        close_socket(g_sockfd);
+        g_sockfd = INVALID_SOCKET_VALUE;
+      }
+      freeaddrinfo(res);
+      res = NULL;
+    }
+
+    // Both IPv6 and IPv4 loopback failed for localhost
+    log_warn("Could not connect to localhost using either IPv6 or IPv4 loopback");
+    return -1;
+  }
+
+  // For non-localhost addresses, use standard resolution
   log_debug("Resolving server address '%s' port %s...", address, port_str);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_flags = 0;
   int getaddr_result = getaddrinfo(address, port_str, &hints, &res);
   if (getaddr_result != 0) {
     log_error("Failed to resolve server address '%s': %s", address, gai_strerror(getaddr_result));
@@ -313,7 +379,9 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
 connection_success:
 
-  freeaddrinfo(res);
+  if (res) {
+    freeaddrinfo(res);
+  }
 
   // If we exhausted all addresses without success, fail
   if (g_sockfd == INVALID_SOCKET_VALUE) {
