@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "common.h"
 
 /**
  * @file ip.h
@@ -52,7 +53,7 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size);
  * @param output_size Size of output buffer
  * @return 0 on success, -1 on error
  */
-int format_ip_with_port(const char *ip, uint16_t port, char *output, size_t output_size);
+asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *output, size_t output_size);
 
 /**
  * Parse IP address and port from string
