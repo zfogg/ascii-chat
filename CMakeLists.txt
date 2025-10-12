@@ -755,6 +755,9 @@ if(USE_MIMALLOC)
     message(STATUS "Built mimalloc from source (v2.1.7)")
     set(MIMALLOC_LIBRARIES mimalloc-static)
 
+    # Define USE_MIMALLOC for all source files so they can use mi_malloc/mi_free directly
+    add_compile_definitions(USE_MIMALLOC)
+
     message(STATUS "mimalloc will override malloc/free globally")
     message(STATUS "Your existing SAFE_MALLOC macros will automatically use mimalloc")
 endif()

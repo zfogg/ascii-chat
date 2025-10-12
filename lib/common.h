@@ -316,10 +316,33 @@ bool shutdown_is_requested(void);
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+/* ============================================================================
+ * Memory Allocation with mimalloc Support
+ * ============================================================================
+ * When USE_MIMALLOC is enabled:
+ * - MI_OVERRIDE=ON (glibc): malloc/free automatically redirected to mimalloc
+ * - MI_OVERRIDE=OFF (musl): must explicitly use mi_malloc/mi_free
+ */
+
+#ifdef USE_MIMALLOC
+#include <mimalloc.h>
+/* When MI_OVERRIDE is OFF (musl static builds), explicitly use mimalloc API */
+#define ALLOC_MALLOC(size) mi_malloc(size)
+#define ALLOC_CALLOC(count, size) mi_calloc((count), (size))
+#define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
+#define ALLOC_FREE(ptr) mi_free(ptr)
+#else
+/* Fall back to standard C library when mimalloc is disabled */
+#define ALLOC_MALLOC(size) malloc(size)
+#define ALLOC_CALLOC(count, size) calloc((count), (size))
+#define ALLOC_REALLOC(ptr, size) realloc((ptr), (size))
+#define ALLOC_FREE(ptr) free(ptr)
+#endif
+
 /* Safe memory allocation with error checking - returns allocated pointer */
 #define SAFE_MALLOC(size, cast)                                                                                        \
   ({                                                                                                                   \
-    cast _ptr = (cast)malloc(size);                                                                                    \
+    cast _ptr = (cast)ALLOC_MALLOC(size);                                                                              \
     if (!_ptr) {                                                                                                       \
       FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                      \
     }                                                                                                                  \
@@ -329,7 +352,7 @@ bool shutdown_is_requested(void);
 /* Safe zero-initialized memory allocation */
 #define SAFE_CALLOC(count, size, cast)                                                                                 \
   ({                                                                                                                   \
-    cast _ptr = (cast)calloc((count), (size));                                                                         \
+    cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                   \
     if (!_ptr) {                                                                                                       \
       FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));      \
     }                                                                                                                  \
@@ -339,7 +362,7 @@ bool shutdown_is_requested(void);
 /* Safe memory reallocation */
 #define SAFE_REALLOC(ptr, size, cast)                                                                                  \
   ({                                                                                                                   \
-    void *tmp_ptr = realloc((ptr), (size));                                                                            \
+    void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                      \
     if (!tmp_ptr) {                                                                                                    \
       FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                                    \
     }                                                                                                                  \
@@ -347,6 +370,19 @@ bool shutdown_is_requested(void);
   })
 
 /* SIMD-aligned memory allocation macros for optimal NEON/AVX performance */
+#ifdef USE_MIMALLOC
+/* Use mimalloc's aligned allocation (works on all platforms) */
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    cast _ptr = (cast)mi_malloc_aligned((size), (alignment));                                                          \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
+            (size_t)(alignment));                                                                                      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
+  })
+#else
+/* Fall back to platform-specific aligned allocation when mimalloc is disabled */
 #ifdef __APPLE__
 /* macOS uses posix_memalign() for aligned allocation */
 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
@@ -372,6 +408,7 @@ bool shutdown_is_requested(void);
     _ptr;                                                                                                              \
   })
 #endif
+#endif
 
 /* 16-byte aligned allocation for SIMD operations */
 #define SAFE_MALLOC_SIMD(size, cast) SAFE_MALLOC_ALIGNED(size, 16, cast)
@@ -389,7 +426,7 @@ bool shutdown_is_requested(void);
 #define SAFE_FREE(ptr)                                                                                                 \
   do {                                                                                                                 \
     if ((ptr) != NULL) {                                                                                               \
-      free((void *)(ptr));                                                                                             \
+      ALLOC_FREE((void *)(ptr));                                                                                       \
       (ptr) = NULL;                                                                                                    \
     }                                                                                                                  \
   } while (0)
