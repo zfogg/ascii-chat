@@ -359,7 +359,7 @@ int client_crypto_handshake(socket_t socket) {
       safe_fprintf(stderr, "To connect to this server, you need to:\n");
       safe_fprintf(stderr, "  1. Generate an Ed25519 key: ssh-keygen -t ed25519\n");
       safe_fprintf(stderr, "  2. Add the public key to the server's --client-keys list\n");
-      safe_fprintf(stderr, "  3. Connect with: ascii-chat-client --key /path/to/private/key\n");
+      safe_fprintf(stderr, "  3. Connect with: ascii-chat client --key /path/to/private/key\n");
       safe_fprintf(stderr, "\n");
       safe_fprintf(stderr, "Do you want to continue anyway (this will likely fail)? (yes/no): ");
       (void)fflush(stderr);

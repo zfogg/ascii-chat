@@ -236,10 +236,10 @@ ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-exis
 
 ```bash
 # Server
-./ascii-chat-server
+./ascii-chat server
 
 # Client
-./ascii-chat-client
+./ascii-chat client
 ```
 
 **What happens:**
@@ -261,10 +261,10 @@ ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-exis
 
 ```bash
 # Server with password
-./ascii-chat-server --password mySecretPass123
+./ascii-chat server --password mySecretPass123
 
 # Client with password
-./ascii-chat-client --password mySecretPass123
+./ascii-chat client --password mySecretPass123
 ```
 
 **What happens:**
@@ -290,16 +290,16 @@ ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-exis
 
 ```bash
 # Server uses existing SSH key
-./ascii-chat-server --key ~/.ssh/id_ed25519
+./ascii-chat server --key ~/.ssh/id_ed25519
 
 # Client verifies using GitHub
-./ascii-chat-client --server-key github:zfogg
+./ascii-chat client --server-key github:zfogg
 
 # Or paste SSH public key directly
-./ascii-chat-client --server-key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5..."
+./ascii-chat client --server-key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5..."
 
 # Or use known_hosts (automatic after first connection)
-./ascii-chat-client  # Checks ~/.ascii-chat/known_hosts
+./ascii-chat client  # Checks ~/.ascii-chat/known_hosts
 ```
 
 **What happens:**
@@ -324,7 +324,7 @@ ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-exis
 ssh-add ~/.ssh/id_ed25519
 
 # Start server - uses agent, NO password prompt!
-./ascii-chat-server --key ~/.ssh/id_ed25519
+./ascii-chat server --key ~/.ssh/id_ed25519
 # INFO: Using SSH agent for this key (agent signing + ephemeral encryption)
 ```
 
@@ -340,13 +340,13 @@ ssh-add ~/.ssh/id_ed25519
 
 ```bash
 # Server whitelist using GitHub usernames (fetches keys automatically!)
-./ascii-chat-server --client-keys github:alice,github:bob,github:carol
+./ascii-chat server --client-keys github:alice,github:bob,github:carol
 
 # Or use SSH authorized_keys format (everyone knows this!)
-./ascii-chat-server --client-keys ~/.ssh/authorized_keys
+./ascii-chat server --client-keys ~/.ssh/authorized_keys
 
 # Or paste SSH public keys directly
-./ascii-chat-server --client-keys "ssh-ed25519 AAAAC3...,ssh-ed25519 AAAAB3..."
+./ascii-chat server --client-keys "ssh-ed25519 AAAAC3...,ssh-ed25519 AAAAB3..."
 ```
 
 **What happens:**
@@ -376,13 +376,13 @@ ssh-add ~/.ssh/id_ed25519
 
 ```bash
 # Server: Password + SSH key + client whitelist
-./ascii-chat-server \
+./ascii-chat server \
   --key ~/.ssh/id_ed25519 \
   --password mySecretPass123 \
   --client-keys ~/.ssh/authorized_keys
 
 # Client: Password + server key verification
-./ascii-chat-client \
+./ascii-chat client \
   --password mySecretPass123 \
   --server-key github:zfogg
 ```
@@ -402,10 +402,10 @@ ssh-add ~/.ssh/id_ed25519
 
 ```bash
 # Server
-./ascii-chat-server --no-encrypt
+./ascii-chat server --no-encrypt
 
 # Client
-./ascii-chat-client --no-encrypt
+./ascii-chat client --no-encrypt
 ```
 
 **Security:**

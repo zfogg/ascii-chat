@@ -834,7 +834,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       _exit(0);
 
     case 'v': {
-      const char *binary_name = is_client ? "ascii-chat-client" : "ascii-chat-server";
+      const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
       printf("%s v%d.%d.%d-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
              ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
       (void)fflush(stdout);

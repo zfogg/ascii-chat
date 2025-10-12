@@ -467,18 +467,18 @@ ASCII-Chat uses a unified binary with two modes: `server` and `client`.
 
 Start the server and wait for client connections:
 ```bash
-./bin/ascii-chat server [options]
+ascii-chat server [options]
 ```
 
 Start the client and connect to a running server:
 ```bash
-./bin/ascii-chat client [options]
+ascii-chat client [options]
 ```
 
 For help with either mode:
 ```bash
-./bin/ascii-chat server --help
-./bin/ascii-chat client --help
+ascii-chat server --help
+ascii-chat client --help
 ```
 
 ## TODO

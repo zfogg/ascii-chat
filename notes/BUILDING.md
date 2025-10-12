@@ -10,8 +10,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
 # Run the server and client
-./build/bin/ascii-chat-server
-./build/bin/ascii-chat-client --test-pattern
+./build/bin/ascii-chat server
+./build/bin/ascii-chat client --test-pattern
 ```
 
 ## Build Types
@@ -238,7 +238,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
 # Run with verbose logging
-LOG_LEVEL=DEBUG ./build/bin/ascii-chat-server
+LOG_LEVEL=DEBUG ./build/bin/ascii-chat server
 ```
 
 ### Performance Testing
@@ -249,7 +249,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MIMALLOC=ON
 cmake --build build
 
 # Benchmark
-time ./build/bin/ascii-chat-server --benchmark
+time ./build/bin/ascii-chat server --benchmark
 ```
 
 ### Creating Releases (Linux)
@@ -260,7 +260,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON -DUSE_MIMALLOC=ON
 cmake --build build
 
 # Binary is fully static and portable
-ldd ./build/bin/ascii-chat-server
+ldd ./build/bin/ascii-chat server
 # Output: "not a dynamic executable"
 ```
 
@@ -284,7 +284,7 @@ cmake --build build
 
 Or suppress specific checks:
 ```bash
-ASAN_OPTIONS=detect_leaks=0 ./build/bin/ascii-chat-server
+ASAN_OPTIONS=detect_leaks=0 ./build/bin/ascii-chat server
 ```
 
 ### musl Build Fails (Linux)
@@ -328,9 +328,9 @@ cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
 cmake --build build-release
 
 # All executables are independent
-./build-dev/bin/ascii-chat-server
-./build-debug/bin/ascii-chat-server
-./build-release/bin/ascii-chat-server
+./build-dev/bin/ascii-chat server
+./build-debug/bin/ascii-chat server
+./build-release/bin/ascii-chat server
 ```
 
 ## Clean Builds

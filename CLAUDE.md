@@ -665,40 +665,40 @@ ASCII-Chat implements **end-to-end encryption by default** using libsodium with 
 
 **1. Default (Ephemeral DH):**
 ```bash
-./ascii-chat-server
-./ascii-chat-client
+./ascii-chat server
+./ascii-chat client
 # Privacy: encrypted against eavesdropping
 # Security: ❌ vulnerable to MITM (no identity verification)
 ```
 
 **2. Password Authentication:**
 ```bash
-./ascii-chat-server --password "shared_secret"
-./ascii-chat-client --password "shared_secret"
+./ascii-chat server --password "shared_secret"
+./ascii-chat client --password "shared_secret"
 # Binds password HMAC to DH shared_secret for MITM protection
 ```
 
 **3. SSH Key Authentication:**
 ```bash
 # Server with SSH key (prompts for passphrase or uses ssh-agent)
-./ascii-chat-server --key ~/.ssh/id_ed25519
+./ascii-chat server --key ~/.ssh/id_ed25519
 
 # Client verifies server identity
-./ascii-chat-client --server-key ~/.ssh/server_id_ed25519.pub
+./ascii-chat client --server-key ~/.ssh/server_id_ed25519.pub
 # OR fetch from GitHub:
-./ascii-chat-client --server-key github:zfogg
+./ascii-chat client --server-key github:zfogg
 ```
 
 **4. Client Whitelisting:**
 ```bash
 # Server only accepts pre-approved client keys
-./ascii-chat-server --client-keys ~/.ascii-chat/authorized_clients.txt
+./ascii-chat server --client-keys ~/.ascii-chat/authorized_clients.txt
 ```
 
 **5. Defense in Depth (All features):**
 ```bash
-./ascii-chat-server --key ~/.ssh/id_ed25519 --password "pass" --client-keys allowed.txt
-./ascii-chat-client --key ~/.ssh/id_ed25519 --password "pass" --server-key github:zfogg
+./ascii-chat server --key ~/.ssh/id_ed25519 --password "pass" --client-keys allowed.txt
+./ascii-chat client --key ~/.ssh/id_ed25519 --password "pass" --server-key github:zfogg
 ```
 
 ### SSH Agent Integration

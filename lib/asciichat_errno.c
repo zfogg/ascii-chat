@@ -125,17 +125,28 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
   // Copy context message if provided
   if (context_message == NULL) {
     log_error("context_message is NULL");
-    asciichat_errno_context.context_message = "No context message (this is invalid - set a context message)";
+    const char *fallback = "No context message (this is invalid - set a context message)";
+    size_t len = strlen(fallback) + 1;
+    asciichat_errno_context.context_message = SAFE_MALLOC(len, char *);
+    if (asciichat_errno_context.context_message) {
+      SAFE_STRNCPY(asciichat_errno_context.context_message, fallback, len);
+    } else {
+      log_error("SAFE_MALLOC failed for fallback context_message");
+    }
   } else {
-    asciichat_errno_context.context_message = strdup(context_message);
-    if (!asciichat_errno_context.context_message) {
-      log_error("strdup failed for context_message");
+    size_t len = strlen(context_message) + 1;
+    asciichat_errno_context.context_message = SAFE_MALLOC(len, char *);
+    if (asciichat_errno_context.context_message) {
+      SAFE_STRNCPY(asciichat_errno_context.context_message, context_message, len);
+    } else {
+      log_error("SAFE_MALLOC failed for context_message");
     }
   }
 
   // Capture stack trace in debug builds
   if (asciichat_errno_context.backtrace_symbols != NULL) {
-    SAFE_FREE(asciichat_errno_context.backtrace_symbols);
+    platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
+    asciichat_errno_context.backtrace_symbols = NULL;
   }
   capture_backtrace(asciichat_errno_context.backtrace, &asciichat_errno_context.backtrace_symbols,
                     &asciichat_errno_context.stack_depth);
@@ -215,6 +226,11 @@ void asciichat_clear_errno(void) {
   if (asciichat_errno_context.context_message) {
     SAFE_FREE(asciichat_errno_context.context_message);
     asciichat_errno_context.context_message = NULL;
+  }
+
+  if (asciichat_errno_context.backtrace_symbols != NULL) {
+    platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
+    asciichat_errno_context.backtrace_symbols = NULL;
   }
 
   memset(&asciichat_errno_context, 0, sizeof(asciichat_errno_context));
@@ -461,7 +477,8 @@ void asciichat_clear_thread_error(int thread_id) {
 
 void asciichat_errno_cleanup(void) {
   if (asciichat_errno_context.backtrace_symbols != NULL) {
-    SAFE_FREE(asciichat_errno_context.backtrace_symbols);
+    platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
+    asciichat_errno_context.backtrace_symbols = NULL;
   }
 
   if (asciichat_errno_context.context_message != NULL) {

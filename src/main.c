@@ -60,8 +60,8 @@
  * - **Windows** - .exe binary with mode argument (e.g., `ascii-chat.exe server`)
  *
  * Optional backwards compatibility via symlinks:
- * - `ascii-chat-server` → `ascii-chat server`
- * - `ascii-chat-client` → `ascii-chat client`
+ * - `ascii-chat server` → `ascii-chat server`
+ * - `ascii-chat client` → `ascii-chat client`
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025

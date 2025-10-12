@@ -33,12 +33,10 @@ rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 
 # Copy binaries
-cp "$BUILD_DIR/bin/ascii-chat-server" "$RELEASE_DIR/"
-cp "$BUILD_DIR/bin/ascii-chat-client" "$RELEASE_DIR/"
+cp "$BUILD_DIR/bin/ascii-chat" "$RELEASE_DIR/"
 
 # Strip binaries (remove debug symbols for smaller size)
-strip "$RELEASE_DIR/ascii-chat-server"
-strip "$RELEASE_DIR/ascii-chat-client"
+strip "$RELEASE_DIR/ascii-chat"
 
 # Copy documentation
 cp README.md "$RELEASE_DIR/" 2>/dev/null || true
@@ -59,22 +57,22 @@ cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
 - Linking: Static (no dependencies)
 
 ## Files
-- \`ascii-chat-server\` - Server binary
-- \`ascii-chat-client\` - Client binary
+- \`ascii-chat\` - Server binary
+- \`ascii-chat\` - Client binary
 
 ## Verification
 \`\`\`bash
 # Verify static linking:
-ldd ascii-chat-server  # Should say "not a dynamic executable"
+ldd ascii-chat  # Should say "not a dynamic executable"
 
 # Check binary info:
-file ascii-chat-server
+file ascii-chat
 
 # Run server:
-./ascii-chat-server --help
+./ascii-chat --help
 
 # Run client:
-./ascii-chat-client --help
+./ascii-chat --help
 \`\`\`
 
 ## System Requirements
@@ -100,4 +98,4 @@ ls -lh "${RELEASE_NAME}.tar.gz"
 echo ""
 echo "To test:"
 echo "  cd $RELEASE_DIR"
-echo "  ./ascii-chat-server --help"
+echo "  ./ascii-chat --help"

@@ -26,7 +26,7 @@ ASCII-Chat uses a comprehensive exit code system to communicate detailed error i
 **Success** - Operation completed successfully
 
 ```bash
-$ ascii-chat-client --help
+$ ascii-chat client --help
 # ... prints help ...
 $ echo $?
 0
@@ -47,7 +47,7 @@ Examples:
 - Invalid value for an option
 
 ```bash
-$ ascii-chat-server --port invalid
+$ ascii-chat server --port invalid
 Invalid port number: invalid
 $ echo $?
 2
@@ -63,7 +63,7 @@ $ echo $?
 The system ran out of available memory. This is typically unrecoverable.
 
 ```bash
-$ ascii-chat-server
+$ ascii-chat server
 ERROR: Memory allocation failed: 1048576 bytes
 $ echo $?
 3
@@ -86,7 +86,7 @@ Examples:
 **Logging initialization failed** - Cannot open log file or initialize logging system
 
 ```bash
-$ ascii-chat-server --log-file /root/server.log
+$ ascii-chat server --log-file /root/server.log
 ERROR: Cannot open log file: Permission denied
 $ echo $?
 6
@@ -110,7 +110,7 @@ Examples:
 Generic webcam error when the device cannot be opened or accessed.
 
 ```bash
-$ ascii-chat-client
+$ ascii-chat client
 ERROR: Failed to open webcam
 On Linux, make sure:
 * Your user is in the 'video' group: sudo usermod -a -G video $USER
@@ -126,7 +126,7 @@ $ echo $?
 This is especially common on Windows, which allows only one application to access the webcam at a time.
 
 ```bash
-$ ascii-chat-client
+$ ascii-chat client
 ERROR: Webcam is already in use by another application
 Try using --test-pattern to use a generated pattern instead
 $ echo $?
@@ -135,7 +135,7 @@ $ echo $?
 
 **Workaround**:
 ```bash
-$ ascii-chat-client --test-pattern
+$ ascii-chat client --test-pattern
 # Uses generated test pattern instead of webcam
 ```
 
@@ -145,7 +145,7 @@ $ ascii-chat-client --test-pattern
 On macOS, this occurs when camera access is denied in System Preferences.
 
 ```bash
-$ ascii-chat-client
+$ ascii-chat client
 ERROR: Webcam permission denied
 On macOS, grant camera access in:
 System Preferences > Security & Privacy > Privacy > Camera
@@ -162,7 +162,7 @@ Examples:
 - Audio stream cannot be opened
 
 ```bash
-$ ascii-chat-server --audio
+$ ascii-chat server --audio
 ERROR: Failed to initialize audio device
 $ echo $?
 23
@@ -180,7 +180,7 @@ Examples:
 - Cannot set terminal to raw mode
 
 ```bash
-$ ascii-chat-client < /dev/null
+$ ascii-chat client < /dev/null
 ERROR: Not running in a terminal
 $ echo $?
 25
@@ -204,7 +204,7 @@ Most commonly occurs when:
 - Address is already in use
 
 ```bash
-$ ascii-chat-server --port 80
+$ ascii-chat server --port 80
 ERROR: Cannot bind to port 80: Permission denied
 Try a port number above 1024, or run with sudo
 $ echo $?
@@ -221,7 +221,7 @@ Examples:
 - Firewall blocking connection
 
 ```bash
-$ ascii-chat-client --address 192.168.1.100 --port 27224
+$ ascii-chat client --address 192.168.1.100 --port 27224
 ERROR: Cannot connect to server: Connection refused
 $ echo $?
 42
@@ -268,7 +268,7 @@ Examples:
 - Key generation failed
 
 ```bash
-$ ascii-chat-server --key /path/to/invalid_key
+$ ascii-chat server --key /path/to/invalid_key
 ERROR: Failed to parse SSH key file: invalid format
 $ echo $?
 61
@@ -284,7 +284,7 @@ Examples:
 - Authentication challenge failed
 
 ```bash
-$ ascii-chat-client
+$ ascii-chat client
 ERROR: Authentication failed: incorrect password
 $ echo $?
 62
@@ -309,7 +309,7 @@ Examples:
 - Man-in-the-middle attack detected
 
 ```bash
-$ ascii-chat-client --server-key expected_key.pub
+$ ascii-chat client --server-key expected_key.pub
 ERROR: Server key verification failed
 WARNING: Possible man-in-the-middle attack!
 $ echo $?
@@ -362,7 +362,7 @@ Examples:
 - Maximum clients reached
 
 ```bash
-$ ascii-chat-server
+$ ascii-chat server
 ERROR: Maximum client limit reached (10/10)
 $ echo $?
 84
@@ -378,7 +378,7 @@ $ echo $?
 Occurs when user presses Ctrl-C or sends SIGTERM.
 
 ```bash
-$ ascii-chat-server
+$ ascii-chat server
 ^C
 Server shutting down...
 $ echo $?
@@ -419,14 +419,14 @@ Examples:
 #!/bin/bash
 
 # Start server and check exit code
-ascii-chat-server &
+ascii-chat server &
 SERVER_PID=$!
 
 # Wait for server to initialize
 sleep 1
 
 # Start client
-ascii-chat-client
+ascii-chat client
 CLIENT_EXIT=$?
 
 # Check client exit code
@@ -440,7 +440,7 @@ case $CLIENT_EXIT in
     ;;
   20)
     echo "Webcam error - trying test pattern mode"
-    ascii-chat-client --test-pattern
+    ascii-chat client --test-pattern
     ;;
   42)
     echo "Cannot connect to server"
@@ -452,7 +452,7 @@ case $CLIENT_EXIT in
     ;;
   *)
     echo "Unexpected error: $CLIENT_EXIT"
-    echo "Error: $(ascii-chat-client --help 2>&1 | grep EXIT_CODE_$CLIENT_EXIT)"
+    echo "Error: $(ascii-chat client --help 2>&1 | grep EXIT_CODE_$CLIENT_EXIT)"
     exit 1
     ;;
 esac
@@ -475,7 +475,7 @@ EXIT_NETWORK_CONNECT_ERROR = 42
 
 try:
     result = subprocess.run(
-        ["ascii-chat-client"],
+        ["ascii-chat client"],
         capture_output=True,
         timeout=30
     )
@@ -484,7 +484,7 @@ try:
         print("Client completed successfully")
     elif result.returncode == EXIT_WEBCAM_IN_USE:
         print("Webcam in use, retrying with test pattern...")
-        result = subprocess.run(["ascii-chat-client", "--test-pattern"])
+        result = subprocess.run(["ascii-chat client", "--test-pattern"])
     elif result.returncode == EXIT_NETWORK_CONNECT_ERROR:
         print("Cannot connect to server")
         sys.exit(1)
@@ -505,7 +505,7 @@ except subprocess.TimeoutExpired:
 ### View Exit Code After Running
 
 ```bash
-$ ascii-chat-client --some-option
+$ ascii-chat client --some-option
 # ... program runs ...
 $ echo $?
 2
@@ -749,7 +749,7 @@ int main(int argc, char **argv) {
 ```bash
 #!/bin/bash
 
-ascii-chat-server --port 8080
+ascii-chat server --port 8080
 EXIT_CODE=$?
 
 case $EXIT_CODE in
@@ -762,7 +762,7 @@ case $EXIT_CODE in
         ;;
     41)
         echo "Cannot bind to port - already in use?"
-        echo "Try: ascii-chat-server --port 8081"
+        echo "Try: ascii-chat server --port 8081"
         exit 1
         ;;
     *)
