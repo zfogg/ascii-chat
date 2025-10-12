@@ -425,10 +425,13 @@ asciichat_error_t terminal_clear_scrollback(int fd) {
  * Get terminal size with Windows Console API - simpler than Unix
  */
 asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height) {
+  log_debug("TERMINAL_DEBUG: get_terminal_size called");
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
+  log_debug("TERMINAL_DEBUG: console_handle = %p", (void *)console_handle);
   if (console_handle == INVALID_HANDLE_VALUE) {
+    log_debug("TERMINAL_DEBUG: Invalid console handle, using fallback");
     goto fallback;
   }
 
@@ -436,30 +439,41 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     // Use window size, not buffer size
     *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
     *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+    log_debug("TERMINAL_DEBUG: Got terminal size from console API: %dx%d", *width, *height);
     return ASCIICHAT_OK;
   }
+  log_debug("TERMINAL_DEBUG: GetConsoleScreenBufferInfo failed, using fallback");
 
 fallback:
   // Environment variable fallback
+  log_debug("TERMINAL_DEBUG: Using fallback method");
   char *cols_env = SAFE_GETENV("COLUMNS");
   char *lines_env = SAFE_GETENV("LINES");
 
+  log_debug("TERMINAL_DEBUG: Environment variables - COLUMNS=%s, LINES=%s", cols_env ? cols_env : "NULL",
+            lines_env ? lines_env : "NULL");
+
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
+  log_debug("TERMINAL_DEBUG: Using default size: %dx%d", *width, *height);
 
   if (cols_env && lines_env) {
     char *endptr_width = NULL, *endptr_height = NULL;
     int env_width = strtol(cols_env, &endptr_width, 10);
     int env_height = strtol(lines_env, &endptr_height, 10);
 
+    log_debug("TERMINAL_DEBUG: Parsed env values - width=%d, height=%d", env_width, env_height);
     if (endptr_width != cols_env && endptr_height != lines_env && env_width > 0 && env_height > 0) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
+      log_debug("TERMINAL_DEBUG: Using env size: %dx%d", *width, *height);
       return ASCIICHAT_OK;
     }
   }
 
-  return SET_ERRNO(ERROR_TERMINAL, "Failed to get terminal size");
+  log_debug("TERMINAL_DEBUG: All methods failed, returning default size: %dx%d", *width, *height);
+  // Don't return error - just use default size
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -507,6 +521,14 @@ static terminal_color_level_t detect_windows_color_support(void) {
   DWORD console_mode = 0;
   if (!GetConsoleMode(console_handle, &console_mode)) {
     log_debug("Cannot get console mode for color detection");
+    // Even if we can't get console mode, modern Windows terminals support ANSI colors
+    // Check for Windows Terminal or other modern terminals
+    const char *wt_session = SAFE_GETENV("WT_SESSION");
+    const char *conemu = SAFE_GETENV("ConEmuPID");
+    if (wt_session || conemu) {
+      log_debug("Detected modern Windows terminal, assuming ANSI color support");
+      return TERM_COLOR_TRUECOLOR;
+    }
     return TERM_COLOR_NONE;
   }
 
@@ -518,8 +540,40 @@ static terminal_color_level_t detect_windows_color_support(void) {
     return TERM_COLOR_TRUECOLOR;
   }
 
-  log_debug("Windows console does not support ANSI escape sequences");
-  return TERM_COLOR_NONE;
+  // Even if SetConsoleMode fails, modern Windows terminals still support ANSI colors
+  // Check for Windows Terminal or other modern terminals
+  const char *wt_session = SAFE_GETENV("WT_SESSION");
+  const char *conemu = SAFE_GETENV("ConEmuPID");
+  if (wt_session || conemu) {
+    log_debug("Detected modern Windows terminal, assuming ANSI color support despite console mode failure");
+    return TERM_COLOR_TRUECOLOR;
+  }
+
+  // For regular Windows console, try to detect if it's Windows 10+ (which supports ANSI)
+  // This is a fallback for cases where console mode detection fails
+  // Use modern Windows version detection via RtlGetVersion
+  typedef LONG(WINAPI * RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+  HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+  if (hMod) {
+    RtlGetVersionPtr fxPtr = (RtlGetVersionPtr)GetProcAddress(hMod, "RtlGetVersion");
+    if (fxPtr != NULL) {
+      RTL_OSVERSIONINFOW osInfo = {0};
+      osInfo.dwOSVersionInfoSize = sizeof(osInfo);
+      if (fxPtr(&osInfo) == 0) {
+        if (osInfo.dwMajorVersion >= 10) {
+          log_debug("Windows 10+ detected via RtlGetVersion, assuming ANSI color support");
+          return TERM_COLOR_TRUECOLOR;
+        }
+        log_debug("Windows version %lu.%lu detected, limited ANSI support", osInfo.dwMajorVersion,
+                  osInfo.dwMinorVersion);
+        return TERM_COLOR_16; // Fallback to 16-color for older Windows
+      }
+    }
+  }
+
+  // Final fallback: assume modern Windows with ANSI support
+  log_debug("Using fallback assumption of Windows 10+ ANSI color support");
+  return TERM_COLOR_TRUECOLOR;
 }
 
 /**

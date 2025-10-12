@@ -1,10 +1,10 @@
 #pragma once
 
-#include "platform/mutex.h"
 #include <stdarg.h>
+#include "platform/mutex.h"
 
 /* Logging levels */
-typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL, LOG_DEV } log_level_t;
+typedef enum { LOG_DEV = 0, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL } log_level_t;
 
 #ifdef NDEBUG
 #define DEFAULT_LOG_LEVEL LOG_INFO /* Release build: INFO and above */
@@ -14,7 +14,7 @@ typedef enum { LOG_DEBUG = 0, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL, LOG_DEV 
 
 #define MAX_LOG_SIZE (3 * 1024 * 1024) /* 3MB max log file size */
 
-static struct {
+static struct log_context_t {
   int file;
   log_level_t level;
   mutex_t mutex;
@@ -33,38 +33,38 @@ static struct {
     .level_manually_set = false,
 };
 
-static const char *level_strings[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL", "DEV"};
+static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
 // 16-color colors
 static const char *level_colors_16[] = {
+    "\x1b[34m", /* DEV: Blue */
     "\x1b[36m", /* DEBUG: Cyan */
     "\x1b[32m", /* INFO: Green */
     "\x1b[33m", /* WARN: Yellow */
     "\x1b[31m", /* ERROR: Red */
     "\x1b[35m", /* FATAL: Magenta */
-    "\x1b[34m", /* DEV: Blue */
     "\x1b[0m",  /* Reset */
 };
 
 // 256-color colors
 static const char *level_colors_256[] = {
+    "\x1b[94m", /* DEV: Bright Blue */
     "\x1b[96m", /* DEBUG: Bright Cyan */
     "\x1b[92m", /* INFO: Bright Green */
     "\x1b[33m", /* WARN: Yellow */
     "\x1b[31m", /* ERROR: Red */
     "\x1b[35m", /* FATAL: Magenta */
-    "\x1b[94m", /* DEV: Bright Blue */
     "\x1b[0m",  /* Reset */
 };
 
 // Truecolor RGB colors
 static const char *level_colors_truecolor[] = {
+    "\x1b[38;2;150;100;205m", /* DEV: Blue */
     "\x1b[38;2;30;205;255m",  /* DEBUG: Cyan */
     "\x1b[38;2;50;205;100m",  /* INFO: Green */
     "\x1b[38;2;205;185;40m",  /* WARN: Yellow */
     "\x1b[38;2;205;30;100m",  /* ERROR: Red */
     "\x1b[38;2;205;80;205m",  /* FATAL: Magenta */
-    "\x1b[38;2;150;100;205m", /* DEV: Blue */
     "\x1b[0m",                /* Reset */
 };
 
@@ -90,22 +90,6 @@ typedef enum {
   LOGGING_COLOR_RESET = COLOR_RESET
 } logging_color_t;
 
-/* Lowercase aliases for macro concatenation */
-#define LOGGING_COLOR_debug LOGGING_COLOR_DEBUG
-#define LOGGING_COLOR_info LOGGING_COLOR_INFO
-#define LOGGING_COLOR_warn LOGGING_COLOR_WARN
-#define LOGGING_COLOR_error LOGGING_COLOR_ERROR
-#define LOGGING_COLOR_fatal LOGGING_COLOR_FATAL
-#define LOGGING_COLOR_dev LOGGING_COLOR_DEV
-
-/* Uppercase log level constants for macro concatenation */
-#define LOG_debug LOG_DEBUG
-#define LOG_info LOG_INFO
-#define LOG_warn LOG_WARN
-#define LOG_error LOG_ERROR
-#define LOG_fatal LOG_FATAL
-#define LOG_dev LOG_DEV
-
 void log_init(const char *filename, log_level_t level);
 void log_destroy(void);
 void log_set_level(log_level_t level);
@@ -128,6 +112,8 @@ void log_redetect_terminal_capabilities(void);
 
 char *format_message(const char *format, va_list args);
 
+size_t get_current_time_formatted(char *time_buf);
+
 /* Logging macros */
 #define log_debug(...) log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_info(...) log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
@@ -144,28 +130,26 @@ char *format_message(const char *format, va_list args);
 /* Rate-limited debug logging - logs at most once per specified time interval.
  * Useful for threads that have an FPS and functions they call to prevent spammy logs.
  * interval_us: minimum microseconds between log messages for this name. */
-#define LOG_EVERY(log_level, name, interval_us, fmt, ...)                                                              \
+#define log_every(log_level, interval_us, fmt, ...)                                                                    \
   do {                                                                                                                 \
-    static uint64_t name##_last_log_time = 0;                                                                          \
+    static uint64_t last_log_time = 0;                                                                                 \
     uint64_t now_us = 0;                                                                                               \
     struct timespec ts;                                                                                                \
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {                                                                    \
       now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;                                      \
     }                                                                                                                  \
-    if (now_us - name##_last_log_time >= (uint64_t)(interval_us)) {                                                    \
-      name##_last_log_time = now_us;                                                                                   \
-      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, "[%s%s%s] " fmt,                                          \
-              log_level_color(LOGGING_COLOR_##log_level), #name, log_level_color(LOGGING_COLOR_RESET), ##__VA_ARGS__); \
+    if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
+      last_log_time = now_us;                                                                                          \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
     }                                                                                                                  \
   } while (0)
 
-/* Clean wrapper macros that use the main LOG_EVERY macro */
-#define LOG_INFO_EVERY(name, interval_us, fmt, ...) LOG_EVERY(info, name, interval_us, fmt, ##__VA_ARGS__)
-#define LOG_DEBUG_EVERY(name, interval_us, fmt, ...) LOG_EVERY(debug, name, interval_us, fmt, ##__VA_ARGS__)
-#define LOG_WARN_EVERY(name, interval_us, fmt, ...) LOG_EVERY(warn, name, interval_us, fmt, ##__VA_ARGS__)
-#define LOG_ERROR_EVERY(name, interval_us, fmt, ...) LOG_EVERY(error, name, interval_us, fmt, ##__VA_ARGS__)
-#define LOG_FATAL_EVERY(name, interval_us, fmt, ...) LOG_EVERY(fatal, name, interval_us, fmt, ##__VA_ARGS__)
-#define LOG_DEV_EVERY(name, interval_us, fmt, ...) LOG_EVERY(dev, name, interval_us, fmt, ##__VA_ARGS__)
+#define log_dev_every(interval_us, fmt, ...) log_every(DEV, interval_us, fmt, ##__VA_ARGS__)
+#define log_debug_every(interval_us, fmt, ...) log_every(DEBUG, interval_us, fmt, ##__VA_ARGS__)
+#define log_info_every(interval_us, fmt, ...) log_every(INFO, interval_us, fmt, ##__VA_ARGS__)
+#define log_warn_every(interval_us, fmt, ...) log_every(WARN, interval_us, fmt, ##__VA_ARGS__)
+#define log_error_every(interval_us, fmt, ...) log_every(ERROR, interval_us, fmt, ##__VA_ARGS__)
+#define log_fatal_every(interval_us, fmt, ...) log_every(FATAL, interval_us, fmt, ##__VA_ARGS__)
 
 // Don't use the logging functions to log errors about the logging system itself to avoid recursion.
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \

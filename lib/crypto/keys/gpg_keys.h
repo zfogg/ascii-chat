@@ -8,7 +8,6 @@
  * to X25519 for key exchange operations.
  */
 
-#include "../constants.h"
 #include "../../common.h"
 #include "types.h" // Include the key type definitions
 #include <stdint.h>

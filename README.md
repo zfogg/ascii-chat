@@ -360,6 +360,107 @@ Run `./bin/ascii-chat-server -h` to see all server options:
 - `-h --help`: Show help message
 
 
+## Environment Variables
+
+ASCII-Chat uses several environment variables for configuration and security
+controls. These variables can be set to modify the program's behavior without
+changing command-line arguments.
+
+### Security Variables
+
+#### `ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`
+- **Purpose**: Disables host identity verification (known_hosts checking)
+- **Values**: `1` (disable), unset or any other value (enable, default)
+- **⚠️ DANGER**: This completely bypasses security checks and makes connections vulnerable to man-in-the-middle attacks
+
+#### `SSH_AUTH_SOCK`
+- **Purpose**: SSH agent socket for secure key authentication
+- **Values**: Path to SSH agent socket (e.g., `/tmp/ssh-XXXXXX/agent.12345`)
+- **Security**: ✅ **Secure** - uses SSH agent for key management
+- **When to use**: Preferred method for SSH key authentication (automatically detected)
+- **Used for**: SSH key authentication without storing passphrases in environment
+
+#### `ASCII_CHAT_SSH_PASSWORD`
+- **Purpose**: Provides SSH key passphrase for encrypted SSH keys passed to --key
+- **Values**: The passphrase string for your encrypted SSH key
+- **Security**: ⚠️ **Sensitive data** - contains your SSH key passphrase - prefer ssh-agent over this (we support it)
+- **When to use**: When using encrypted SSH keys and you want to avoid interactive passphrase prompts
+
+### Terminal Variables (Used for Display Detection)
+
+#### `TERM`
+- **Purpose**: Terminal type detection for display capabilities
+- **Usage**: Automatically set by terminal emulators
+- **Used for**: Determining color support, character encoding, and display features
+
+#### `COLORTERM`
+- **Purpose**: Additional terminal color capability detection
+- **Usage**: Automatically set by modern terminal emulators
+- **Used for**: Enhanced color support detection beyond `TERM`
+
+#### `LANG`, `LC_ALL`, `LC_CTYPE`
+- **Purpose**: Locale and character encoding detection
+- **Usage**: Automatically set by system locale
+- **Used for**: UTF-8 support detection and character encoding
+
+#### `TTY`
+- **Purpose**: Terminal device detection
+- **Usage**: Automatically set by terminal sessions
+- **Used for**: Determining if running in a real terminal vs. script
+
+#### `LINES`, `COLUMNS`
+- **Purpose**: Terminal size detection for display dimensions
+- **Usage**: Automatically set by terminal emulators
+- **Used for**: Auto-detecting optimal video dimensions
+
+### POSIX-Specific Variables
+
+#### `USER`
+- **Purpose**: Username detection for system identification on POSIX systems
+- **Usage**: Automatically set by POSIX systems
+- **Used for**: System user identification and logging
+
+#### `HOME`
+- **Purpose**: Determines user home directory for configuration files on POSIX systems
+- **Usage**: Automatically detected by the system
+- **Used for**:
+  - SSH key auto-detection (`~/.ssh/`)
+  - Configuration file paths (`~/.ascii-chat/`)
+  - Path expansion with `~` prefix
+
+### Windows-Specific Variables
+
+#### `USERNAME`
+- **Purpose**: Username detection for system identification on Windows
+- **Usage**: Automatically set by Windows system
+- **Used for**: System user identification and logging
+
+#### `USERPROFILE`
+- **Purpose**: Determines user home directory for configuration files on Windows
+- **Usage**: Automatically detected by the Windows system
+- **Used for**:
+  - SSH key auto-detection (`~/.ssh/`)
+  - Configuration file paths (`~/.ascii-chat/`)
+  - Path expansion with `~` prefix
+
+#### `_NT_SYMBOL_PATH`
+- **Purpose**: Windows debug symbol path for crash analysis
+- **Usage**: Automatically set by Windows debug tools
+- **Used for**: Enhanced crash reporting and debugging
+
+### Development/Testing Variables
+
+#### `CI`
+- **Purpose**: Continuous Integration environment detection
+- **Values**: Any non-empty value indicates CI environment
+- **Used for**: Adjusting test behavior and terminal detection in automated environments
+
+#### `TESTING`, `CRITERION_TEST`
+- **Purpose**: Test environment detection
+- **Values**: Any non-empty value indicates test environment
+- **Used for**: Reducing test data sizes and adjusting performance expectations
+
+
 ## Usage
 
 Start the server and wait for client connections:
@@ -375,7 +476,7 @@ Start the client and connect to a running server:
 ## TODO
 - [x] Audio.
 - [x] Client should continuously attempt to reconnect
-- [ ] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
+- [x] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
 - [x] Colorize ASCII output
 - [ ] Refactor image processing algorithms
 - [x] client reconnect logic

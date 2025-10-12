@@ -225,8 +225,8 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   node->packet.header.type = htons((uint16_t)type);
   node->packet.header.length = htonl((uint32_t)data_len);
   node->packet.header.client_id = htonl(client_id);
-  // Note: CRC32 calculation is handled by the unified packet processing pipeline
-  node->packet.header.crc32 = htonl(0); // Will be set by send_packet_secure
+  // Calculate CRC32 for the data (0 for empty packets)
+  node->packet.header.crc32 = htonl(data_len > 0 ? asciichat_crc32(data, data_len) : 0);
 
   // Handle data
   if (data_len > 0 && data) {

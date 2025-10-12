@@ -8,7 +8,6 @@
  * and format verification for all supported key types.
  */
 
-#include "../constants.h"
 #include "../../common.h"
 #include "types.h" // Include the key type definitions
 #include <stdint.h>

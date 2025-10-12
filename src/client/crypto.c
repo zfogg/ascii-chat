@@ -11,8 +11,8 @@
 #include "server.h"
 #include "options.h"
 #include "common.h"
-#include "asciichat_errno.h"
 #include "crypto/handshake.h"
+#include "crypto/crypto.h"
 #include "crypto/keys/keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
@@ -104,7 +104,7 @@ int client_crypto_init(void) {
 
     // Extract Ed25519 public key from private key
     g_crypto_ctx.client_public_key.type = KEY_TYPE_ED25519;
-    memcpy(g_crypto_ctx.client_public_key.key, private_key.public_key, 32);
+    memcpy(g_crypto_ctx.client_public_key.key, private_key.public_key, ED25519_PUBLIC_KEY_SIZE);
     SAFE_STRNCPY(g_crypto_ctx.client_public_key.comment, private_key.key_comment,
                  sizeof(g_crypto_ctx.client_public_key.comment) - 1);
 
@@ -291,11 +291,16 @@ int client_crypto_handshake(socket_t socket) {
 
   // Convert from network byte order
   uint16_t kex_pubkey_size = ntohs(server_params.kex_public_key_size);
+  uint16_t auth_pubkey_size = ntohs(server_params.auth_public_key_size);
   uint16_t signature_size = ntohs(server_params.signature_size);
+  uint16_t shared_secret_size = ntohs(server_params.shared_secret_size);
 
-  log_info("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, sig_size=%u, verification=%u)",
+  log_info("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
+           "secret_size=%u, verification=%u)",
            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
-           signature_size, server_params.verification_enabled);
+           auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
+  log_info("CLIENT_CRYPTO_DEBUG: Raw server_params.kex_public_key_size = %u (network byte order)",
+           server_params.kex_public_key_size);
 
   // Set the crypto parameters in the handshake context
   result = crypto_handshake_set_parameters(&g_crypto_ctx, &server_params);

@@ -1,4 +1,3 @@
-#include "util/aspect_ratio.h"
 #include "platform/system.h"
 #include "asciichat_errno.h"
 #ifdef _WIN32
@@ -28,7 +27,7 @@
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "version.h"
-#include "crypto/constants.h"
+#include "crypto/crypto.h"
 
 // Safely parse string to integer with validation
 asciichat_error_t strtoint_safe(const char *str) {
@@ -211,9 +210,12 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
 void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
 
-  if (get_terminal_size(&term_width, &term_height) == 0) {
-    log_debug("Terminal size detected: %dx%d, auto_width=%d, auto_height=%d", term_width, term_height, (int)auto_width,
-              (int)auto_height);
+  log_debug("OPTIONS_DEBUG: update_dimensions_for_full_height called");
+  asciichat_error_t result = get_terminal_size(&term_width, &term_height);
+  log_debug("OPTIONS_DEBUG: get_terminal_size returned %d", result);
+  if (result == ASCIICHAT_OK) {
+    log_debug("OPTIONS_DEBUG: Terminal size detected successfully: %dx%d, auto_width=%d, auto_height=%d", term_width,
+              term_height, (int)auto_width, (int)auto_height);
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (auto_height && auto_width) {
@@ -229,6 +231,8 @@ void update_dimensions_for_full_height(void) {
       opt_width = term_width;
     }
   } else {
+    log_debug("OPTIONS_DEBUG: Terminal size detection failed, using default dimensions");
+    // Terminal size detection failed, but we can still continue with defaults
   }
 }
 

@@ -494,7 +494,9 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Note: --help and --version will exit(0) directly within options_init
+  log_debug("MAIN_DEBUG: About to call options_init");
   int options_result = options_init(argc, argv, false);
+  log_debug("MAIN_DEBUG: options_init returned %d", options_result);
   if (options_result != ASCIICHAT_OK) {
     // options_init returns ERROR_USAGE for invalid options (after printing error)
     // Just exit with the returned error code
@@ -876,13 +878,12 @@ main_loop:
 
     // Get the error code from asciichat_errno_context (which accept_with_timeout sets)
     int saved_errno = asciichat_errno_context.system_errno;
-#ifdef DEBUG_NETWORK
-    log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
-              client_sock < 0 ? socket_get_error_string() : "success");
-#endif
     if (client_sock < 0) {
       if (saved_errno == ETIMEDOUT || saved_errno == EAGAIN || saved_errno == EWOULDBLOCK) {
-        log_debug("Main loop: Accept timed out, checking g_should_exit=%d", atomic_load(&g_should_exit));
+#ifdef DEBUG_NETWORK
+        log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
+                  client_sock < 0 ? socket_get_error_string() : "success");
+#endif
 #ifdef DEBUG_MEMORY
         // debug_memory_report();
 #endif

@@ -85,30 +85,25 @@ static log_level_t parse_log_level_from_env(void) {
   if (!env_level) {
     return DEFAULT_LOG_LEVEL; // Default level based on build type
   }
-  size_t len = strnlen(env_level, 64);
-  if (len >= 64) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_PARAM, "LOG_LEVEL is too long");
-    return DEFAULT_LOG_LEVEL; // Invalid - too long, use default
-  }
 
   // Case-insensitive comparison
-  if (platform_strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "0") == 0) {
+  if (platform_strcasecmp(env_level, "DEV") == 0 || strcmp(env_level, "0") == 0) {
+    return LOG_DEV;
+  }
+  if (platform_strcasecmp(env_level, "DEBUG") == 0 || strcmp(env_level, "1") == 0) {
     return LOG_DEBUG;
   }
-  if (platform_strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "1") == 0) {
+  if (platform_strcasecmp(env_level, "INFO") == 0 || strcmp(env_level, "2") == 0) {
     return LOG_INFO;
   }
-  if (platform_strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "2") == 0) {
+  if (platform_strcasecmp(env_level, "WARN") == 0 || strcmp(env_level, "3") == 0) {
     return LOG_WARN;
   }
-  if (platform_strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "3") == 0) {
+  if (platform_strcasecmp(env_level, "ERROR") == 0 || strcmp(env_level, "4") == 0) {
     return LOG_ERROR;
   }
-  if (platform_strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "4") == 0) {
+  if (platform_strcasecmp(env_level, "FATAL") == 0 || strcmp(env_level, "5") == 0) {
     return LOG_FATAL;
-  }
-  if (platform_strcasecmp(env_level, "DEV") == 0 || strcmp(env_level, "5") == 0) {
-    return LOG_DEV;
   }
 
   // Invalid value - return default
@@ -415,10 +410,14 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   const char *rel_file = extract_project_relative_path(file);
   int result = 0;
   if (use_colors) {
-    result =
-        snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s():%s%s", color, timestamp, reset,
-                 color, level_string, reset, colors[LOGGING_COLOR_WARN], rel_file, reset, colors[LOGGING_COLOR_FATAL],
-                 line, reset, colors[LOGGING_COLOR_DEV], func, reset, reset, newline_or_not);
+    // Use specific colors for file/function info: file=yellow, line=magenta, function=blue
+    // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta)
+    const char *file_color = colors[3]; // WARN: Yellow for file paths
+    const char *line_color = colors[5]; // FATAL: Magenta for line numbers
+    const char *func_color = colors[0]; // DEV: Blue for function names
+    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s():%s%s", color, timestamp, reset,
+                      color, level_string, reset, file_color, rel_file, reset, line_color, line, reset, func_color,
+                      func, reset, reset, newline_or_not);
   } else {
     result = snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s():%s", timestamp, level_strings[level], rel_file,
                       line, func, newline_or_not);

@@ -6,8 +6,22 @@
 
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
-  if (!ip)
+  if (!ip) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
     return 0;
+  }
+
+  if (strlen(ip) == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;
+  }
+
+  if (strlen(ip) > 256) {
+    char ip_buffer[256];
+    SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
+    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    return 0;
+  }
 
   int segments = 0;
   int value = 0;
@@ -47,8 +61,22 @@ int is_valid_ipv4(const char *ip) {
 
 // Helper function to validate IPv6 address format
 int is_valid_ipv6(const char *ip) {
-  if (!ip)
+  if (!ip) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
     return 0;
+  }
+
+  if (strlen(ip) == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;
+  }
+
+  if (strlen(ip) > 256) {
+    char ip_buffer[256];
+    SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
+    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    return 0;
+  }
 
   // Special case: "::" is valid (all zeros)
   if (strcmp(ip, "::") == 0)
@@ -165,6 +193,18 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
   }
 
+  if (strlen(ip) == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;
+  }
+
+  if (strlen(ip) > 256) {
+    char ip_buffer[256];
+    SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
+    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    return 0;
+  }
+
   // Check if it's IPv6 (contains ':')
   if (strchr(ip, ':') != NULL) {
     // IPv6 - use bracket notation
@@ -185,8 +225,22 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
 
 // Parse IP address and port from string
 int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size, uint16_t *port_output) {
-  if (!input || !ip_output || !port_output || ip_output_size == 0)
+  if (!input || !ip_output || !port_output || ip_output_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", input);
     return -1;
+  }
+
+  if (strlen(input) == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", input);
+    return -1;
+  }
+
+  if (strlen(input) > 256) {
+    char input_buffer[256];
+    SAFE_STRNCPY(input_buffer, input, sizeof(input_buffer));
+    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", input_buffer);
+    return -1;
+  }
 
   // Check for IPv6 bracket notation: [2001:db8::1]:8080
   if (input[0] == '[') {

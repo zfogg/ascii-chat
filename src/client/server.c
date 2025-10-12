@@ -144,7 +144,8 @@ static bool g_encryption_enabled = false;
  * @return Delay in microseconds before next attempt
  */
 static float get_reconnect_delay(unsigned int reconnect_attempt) {
-  float delay = 0.01f + 0.2f * (reconnect_attempt - 1) * 1000 * 1000;
+  // Increased initial delay to allow socket cleanup
+  float delay = 0.1f + 0.2f * (reconnect_attempt - 1) * 1000 * 1000;
   if (delay > MAX_RECONNECT_DELAY)
     delay = (float)MAX_RECONNECT_DELAY;
   return delay;
@@ -170,6 +171,9 @@ static int close_socket(socket_t socketfd) {
       log_error("Failed to close socket: %s", network_error_string());
       return -1;
     }
+    // Small delay to ensure socket resources are fully released
+    // This prevents WSA error 10038 on subsequent connections
+    platform_sleep_usec(50000); // 50ms delay
     return 0;
   }
   return 0; // Socket already closed or invalid

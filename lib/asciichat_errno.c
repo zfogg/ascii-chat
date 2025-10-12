@@ -58,10 +58,10 @@ static struct {
  */
 
 static uint64_t get_timestamp_microseconds(void) {
-  // Use a simple approach that works on all platforms
-  time_t now = time(NULL);
-  if (now != (time_t)-1) {
-    return (uint64_t)now * 1000000ULL;
+  struct timespec ts;
+  if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
+    // Convert seconds and nanoseconds to microseconds
+    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000);
   }
   return 0;
 }
