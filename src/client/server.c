@@ -568,9 +568,7 @@ void server_connection_close() {
   }
 
   // Turn ON terminal logging when connection is closed
-  printf("\n");
   log_set_terminal_output(true);
-  log_info("Connection closed - terminal logging re-enabled");
 }
 
 /**
@@ -591,9 +589,7 @@ void server_connection_shutdown() {
   }
 
   // Turn ON terminal logging when connection is shutdown
-  printf("\n");
   log_set_terminal_output(true);
-  log_info("Connection shutdown - terminal logging re-enabled");
 }
 
 /**
@@ -607,10 +603,8 @@ void server_connection_lost() {
   atomic_store(&g_connection_active, false);
 
   // Turn ON terminal logging when connection is lost
-  printf("\n");
   log_set_terminal_output(true);
   display_full_reset();
-  log_info("Connection lost - terminal logging re-enabled");
 }
 
 /**
@@ -629,6 +623,7 @@ bool server_connection_is_lost() {
  * Called during client shutdown.
  */
 void server_connection_cleanup() {
+  log_set_terminal_output(true);
   server_connection_close();
   mutex_destroy(&g_send_mutex);
 }

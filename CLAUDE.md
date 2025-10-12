@@ -24,11 +24,11 @@ ASCII-Chat is a terminal-based video chat application that converts webcam video
 - Real-time webcam to ASCII conversion
 - Multi-client video grid layout (2x2, 3x3, etc)
 - Audio streaming with mixing
+- **End-to-end encryption** with libsodium (X25519, XSalsa20-Poly1305, Ed25519)
+- SSH key authentication with agent support
 - Compression support for frames
 - **Cross-platform (macOS/Linux/Windows)** ✨ NEW
 - Command line program for your terminal
-- Audio support via PortAudio
-- Supports multiple clients like Google Hangouts or Zoom
 - Half-block render mode for 2x vertical resolution
 - Customizable ASCII palettes
 - Comprehensive test suite with Criterion framework
@@ -91,6 +91,21 @@ ascii-chat/
 │   │       ├── terminal.c                          # Windows terminal (Console API) implementation
 │   │       ├── system.c                            # Windows system functions implementation
 │   │       └── socket.c                            # Windows socket (Winsock2) implementation
+│   ├── crypto/                                     # Cryptographic protocol implementation
+│   │   ├── crypto.c/h                              # Core crypto operations (X25519, XSalsa20-Poly1305)
+│   │   ├── handshake.c/h                           # Protocol handshake and mutual authentication
+│   │   ├── ssh_agent.c/h                           # SSH agent integration
+│   │   ├── known_hosts.c/h                         # Known hosts TOFU verification
+│   │   ├── pem_utils.c/h                           # PEM file parsing utilities
+│   │   ├── gpg.c/h                                 # GPG key support
+│   │   ├── http_client.c/h                         # HTTPS client for key fetching (BearSSL)
+│   │   └── keys/                                   # Key management implementations
+│   │       ├── keys.c/h                            # Key loading and management API
+│   │       ├── types.h                             # Key type definitions
+│   │       ├── ssh_keys.c/h                        # SSH Ed25519 key parsing
+│   │       ├── gpg_keys.c/h                        # GPG key handling
+│   │       ├── https_keys.c/h                      # GitHub/GitLab key fetching
+│   │       └── validation.c/h                      # Key validation utilities
 │   ├── logging.c                                   # Logging system implementation
 │   ├── options.c/h                                 # Command-line argument parsing
 │   ├── network.c/h                                 # Network protocol and packet handling
@@ -99,7 +114,6 @@ ascii-chat/
 │   ├── hashtable.c/h                               # Hash table implementation for client ID lookup
 │   ├── ringbuffer.c/h                              # Lock-free ring buffer implementation
 │   ├── compression.c/h                             # Frame compression with zlib
-│   ├── crypto.c/h                                  # Cryptographic operations using libsodium
 │   ├── crc32_hw.c/h                                # Hardware-accelerated CRC32 checksums
 │   ├── mixer.c/h                                   # Audio mixing for multiple clients
 │   ├── audio.c/h                                   # Audio capture/playback (PortAudio)
@@ -510,11 +524,20 @@ SAFE_STRNCPY(dest, src, sizeof(dest));
 ### 1. Environment Variables
 
 **Supported Environment Variables:**
+
+**Cryptography:**
+- `$SSH_AUTH_SOCK` - SSH agent socket path for password-free key authentication (Unix only)
+- `$ASCII_CHAT_SSH_PASSWORD` - Passphrase for encrypted SSH keys (⚠️ sensitive, prefer ssh-agent)
+- `$ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK` - Set to `1` to disable known_hosts verification (⚠️ DANGER: enables MITM attacks)
+
+**Terminal Detection:**
 - `$TERM` - Terminal type detection for capability negotiation
 - `$LANG`, `$LC_ALL`, `$LC_CTYPE` - Locale settings for UTF-8 support
 - `$LINES`, `$COLUMNS` - Terminal dimensions when auto-detection fails
 - `$COLORTERM` - Enhanced color capability detection
 - `$TTY` - TTY device path detection
+
+**System:**
 - `$USER` - User identification for logging
 - `$TESTING`, `$CRITERION_TEST` - Enable fast test mode
 - `$LOG_LEVEL` - Enable logging at a certain level (DEBUG/0, INFO/1, WARN/2, ERROR/3, FATAL/4)
@@ -619,6 +642,99 @@ typedef enum {
   PACKET_TYPE_AUDIO_BATCH = 13    // Batched audio packets
 } packet_type_t;
 ```
+
+## Cryptographic Protocol
+
+### Overview
+ASCII-Chat implements **end-to-end encryption by default** using libsodium with modern cryptographic primitives:
+
+**Algorithms:**
+- **X25519** - Elliptic curve Diffie-Hellman key exchange (32-byte keys)
+- **XSalsa20-Poly1305** - Authenticated encryption (AEAD cipher)
+- **Ed25519** - Digital signatures for SSH key authentication
+- **Argon2id** - Memory-hard password hashing (64MB, interactive mode)
+
+**Key Features:**
+- ✅ **Forward secrecy** - Ephemeral X25519 keys per connection
+- ✅ **SSH agent support** - Password-free authentication (Unix)
+- ✅ **Known hosts verification** - SSH-style TOFU (Trust On First Use)
+- ✅ **Client whitelisting** - Server-side access control
+- ✅ **GitHub/GitLab integration** - Fetch public keys via HTTPS
+
+### Authentication Modes
+
+**1. Default (Ephemeral DH):**
+```bash
+./ascii-chat-server
+./ascii-chat-client
+# Privacy: encrypted against eavesdropping
+# Security: ❌ vulnerable to MITM (no identity verification)
+```
+
+**2. Password Authentication:**
+```bash
+./ascii-chat-server --password "shared_secret"
+./ascii-chat-client --password "shared_secret"
+# Binds password HMAC to DH shared_secret for MITM protection
+```
+
+**3. SSH Key Authentication:**
+```bash
+# Server with SSH key (prompts for passphrase or uses ssh-agent)
+./ascii-chat-server --key ~/.ssh/id_ed25519
+
+# Client verifies server identity
+./ascii-chat-client --server-key ~/.ssh/server_id_ed25519.pub
+# OR fetch from GitHub:
+./ascii-chat-client --server-key github:zfogg
+```
+
+**4. Client Whitelisting:**
+```bash
+# Server only accepts pre-approved client keys
+./ascii-chat-server --client-keys ~/.ascii-chat/authorized_clients.txt
+```
+
+**5. Defense in Depth (All features):**
+```bash
+./ascii-chat-server --key ~/.ssh/id_ed25519 --password "pass" --client-keys allowed.txt
+./ascii-chat-client --key ~/.ssh/id_ed25519 --password "pass" --server-key github:zfogg
+```
+
+### SSH Agent Integration
+**Automatic key detection:** When you provide an encrypted SSH key via `--key`, ASCII-Chat automatically checks if that key is in your SSH agent:
+- **If in agent:** Uses agent for signatures, no password prompt
+- **If not in agent:** Prompts for password, then auto-adds key to agent for future use
+- **Environment:** Requires `$SSH_AUTH_SOCK` (Unix/macOS only, not Windows)
+
+### Known Hosts Verification
+**File location:** `~/.ascii-chat/known_hosts`
+**Format:** `<IP:port> x25519 <hex-key> [comment]`
+
+First connection to a new server prompts:
+```
+The authenticity of host '192.168.1.100:27224' can't be established.
+Ed25519 key fingerprint is: SHA256:abc123...
+Are you sure you want to continue connecting (yes/no)? yes
+```
+
+Subsequent connections verify against stored key. Key changes trigger warnings (MITM detection).
+
+**Note:** Keys are bound to **IP addresses**, not hostnames, to prevent DNS hijacking attacks.
+
+### Security Considerations
+**Strengths:**
+- ✅ Modern crypto primitives (X25519, XSalsa20-Poly1305, Argon2id)
+- ✅ Forward secrecy (ephemeral DH keys per session)
+- ✅ Authenticated encryption (Poly1305 MAC prevents tampering)
+- ✅ Mutual authentication (both client and server prove shared secret)
+
+**Weaknesses:**
+- ⚠️ Default mode vulnerable to MITM (use `--server-key` or known_hosts)
+- ⚠️ Password quality matters (use strong passwords for `--password`)
+- ⚠️ Known hosts TOFU vulnerable on first connection
+
+**For detailed protocol specification, see `docs/crypto.md`**
 
 ## Git Workflow
 
@@ -742,32 +858,50 @@ Before committing any changes:
 ### Core Infrastructure
 1. **platform.h/c**: Platform abstraction layer - CRITICAL for Windows support
 2. **network.h/c**: Defines ALL packet types and protocol
-3. **packet_queue.c**: Thread-safe per-client queue implementation
-4. **buffer_pool.c/h**: Memory buffer pool for efficient allocation
-5. **hashtable.c/h**: Hash table for client ID lookup
+3. **lib/crypto/**: Cryptographic protocol implementation
+   - `crypto.c/h`: Core crypto operations (X25519 DH, XSalsa20-Poly1305 AEAD)
+   - `handshake.c/h`: Protocol handshake and mutual authentication
+   - `ssh_agent.c/h`: SSH agent integration for password-free auth
+   - `known_hosts.c/h`: IP-based TOFU verification
+   - `keys/keys.c/h`: Key loading and management API
+   - `keys/ssh_keys.c/h`: SSH Ed25519 key parsing
+   - `keys/https_keys.c/h`: GitHub/GitLab key fetching
+   - `http_client.c/h`: HTTPS client using BearSSL
+4. **packet_queue.c**: Thread-safe per-client queue implementation
+5. **buffer_pool.c/h**: Memory buffer pool for efficient allocation
+6. **hashtable.c/h**: Hash table for client ID lookup
 
 ### Main Application
-6. **server.c**:
+7. **server.c**:
    - `video_broadcast_thread`: Mixes and sends video
    - `audio_mixer_thread`: Mixes and sends audio
    - `client_thread_func`: Handles individual client
-7. **client.c**:
+8. **client.c**:
    - `handle_ascii_frame_packet`: Processes received video
    - `video_capture_thread_func`: Captures and sends webcam
 
 ### Media Processing
-8. **lib/image2ascii/ascii.c**: ASCII conversion and grid layout
-9. **mixer.c**: Multi-client audio mixing with ducking
-10. **ringbuffer.c**: Framebuffer for multi-frame storage
-11. **ascii_simd.c/h**: SIMD optimization dispatch
-12. **ansi_fast.c**: Optimized ANSI escape sequences
+9. **lib/image2ascii/ascii.c**: ASCII conversion and grid layout
+10. **mixer.c**: Multi-client audio mixing with ducking
+11. **ringbuffer.c**: Framebuffer for multi-frame storage
+12. **ascii_simd.c/h**: SIMD optimization dispatch
+13. **ansi_fast.c**: Optimized ANSI escape sequences
 
 ### Testing Infrastructure
-13. **tests/scripts/run_tests.sh**: Main test runner - USE THIS!
-14. **tests/unit/**: Unit test implementations
-15. **CMakeLists.txt**: Cross-platform build configuration
+14. **tests/scripts/run_tests.sh**: Main test runner - USE THIS!
+15. **tests/unit/**: Unit test implementations
+16. **CMakeLists.txt**: Cross-platform build configuration
 
 ## Recent Updates (September 2025)
+
+### Cryptography Implementation (October 2025)
+- End-to-end encryption with libsodium (X25519, XSalsa20-Poly1305, Ed25519)
+- SSH key authentication with Ed25519 signatures
+- SSH agent integration for password-free authentication
+- Known hosts verification with IP-based TOFU
+- Client key whitelisting for access control
+- Mutual authentication protocol (client + server proof)
+- Forward secrecy with ephemeral DH keys
 
 ### Windows Platform Support (PR #ea36dbb)
 - Comprehensive platform abstraction layer
@@ -797,22 +931,16 @@ Before committing any changes:
 
 ## SIMD Optimization Notes
 
-### The Two-Phase Success Formula
-1. **Phase 1**: Fix algorithmic complexity (O(n²) → O(n))
-2. **Phase 2**: Optimize string generation (snprintf → lookup tables)
-3. **Result**: SIMD pixel processing shows true performance
+**Current Performance (September 2025):**
+- Terminal 203×64: 0.131ms/frame (FG), 0.189ms/frame (BG)
+- 10.5x string generation speedup with lookup tables
+- 8.4x overall speedup for terminal-sized frames
 
-### Current Performance (September 2025)
-- **Terminal 203×64**: 0.131ms/frame (FG), 0.189ms/frame (BG)
-- **10.5x string generation speedup** with lookup tables
-- **8.4x overall speedup** for terminal-sized frames
-- SIMD actively outperforming scalar in production
-
-### Key Lessons
-- Profile end-to-end pipeline, not just hot spots
-- Fix algorithmic complexity before adding SIMD
-- Compiler auto-vectorization often beats manual SIMD for simple loops
-- Two-phase optimization required: pixel processing AND string generation
+**Key Success Factors:**
+1. Fix algorithmic complexity first (O(n²) → O(n))
+2. Optimize string generation (snprintf → lookup tables)
+3. Profile end-to-end pipeline, not just hot spots
+4. SIMD works best when string generation is already optimized
 
 ## Critical C Programming Patterns
 
