@@ -88,7 +88,7 @@
  * - client.c: Called by receive threads, manages client lifecycle
  * - render.c: Consumes video/audio data stored by handlers
  * - stream.c: Uses client capabilities for frame generation
- * - main.c: Provides global state (g_should_exit, etc.)
+ * - main.c: Provides global state (g_server_should_exit, etc.)
  *
  * WHY THIS MODULAR DESIGN:
  * =========================
@@ -136,7 +136,7 @@
  * expected (e.g., buffer allocation failures, queue shutdowns). This flag
  * helps handlers distinguish between genuine errors and shutdown conditions.
  */
-extern atomic_bool g_should_exit;
+extern atomic_bool g_server_should_exit;
 
 /* ============================================================================
  * Client Lifecycle Packet Handlers
@@ -507,7 +507,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     }
   } else {
     // During shutdown, this is expected - don't spam error logs
-    if (!atomic_load(&g_should_exit)) {
+    if (!atomic_load(&g_server_should_exit)) {
       log_error("Client %u has no incoming video buffer!", atomic_load(&client->client_id));
     } else {
       log_debug("Client %u: ignoring video packet during shutdown", atomic_load(&client->client_id));

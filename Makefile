@@ -18,7 +18,7 @@ production:
 	cmake -B build-production -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON -DUSE_MIMALLOC=ON
 	cmake --build build-production -j$(NPROC)
 	@echo ""
-	@ls -lh build-production/bin/ascii-chat-{server,client}
+	@ls -lh build-production/bin/ascii-chat
 
 # Profile-Guided Optimization: 3-stage build for maximum performance
 # Note: PGO requires glibc, not musl (musl lacks __*_chk fortified functions needed by libgcov)
@@ -47,19 +47,19 @@ pgo:
 	@echo "  (Will run for 35 seconds to collect comprehensive profiles)"
 	@mkdir -p pgo-data
 	@rm -f pgo-data/*.gcda 2>/dev/null || true
-	@(build-pgo-profile/bin/ascii-chat-server --port 27777 > /dev/null 2>&1 &); \
+	@(build-pgo-profile/bin/ascii-chat server --port 27777 > /dev/null 2>&1 &); \
 	SERVER_PID=$$!; \
 	sleep 2; \
-	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	timeout 35 build-pgo-profile/bin/ascii-chat client --address 127.0.0.1 --port 27777 --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
 	CLIENT1_PID=$$!; \
 	sleep 1; \
-	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	timeout 35 build-pgo-profile/bin/ascii-chat client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
 	CLIENT2_PID=$$!; \
 	sleep 1; \
-	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	timeout 35 build-pgo-profile/bin/ascii-chat client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
 	CLIENT3_PID=$$!; \
 	sleep 1; \
-	timeout 35 build-pgo-profile/bin/ascii-chat-client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
+	timeout 35 build-pgo-profile/bin/ascii-chat client --address 127.0.0.1 --port 27777 --test-pattern --snapshot --snapshot-delay 30 > /dev/null 2>&1 & \
 	CLIENT4_PID=$$!; \
 	wait $$CLIENT1_PID $$CLIENT2_PID $$CLIENT3_PID $$CLIENT4_PID 2>/dev/null || true; \
 	sleep 1; \
@@ -78,7 +78,7 @@ pgo:
 	@echo "PGO Build Complete (glibc + dynamic)!"
 	@echo "========================================="
 	@echo "PGO-optimized build (glibc, NOT for release):"
-	@ls -lh build-pgo/bin/ascii-chat-{server,client}
+	@ls -lh build-pgo/bin/ascii-chat
 	@echo ""
 	@echo "NOTE: For official releases, use 'make production' (musl + static)"
 	@echo "Profile data: pgo-data/ ($$(du -sh pgo-data 2>/dev/null | cut -f1))"
@@ -94,7 +94,7 @@ development:
 	CC=clang CXX=clang++ cmake -B build-dev -DCMAKE_BUILD_TYPE=Debug -DUSE_MUSL=OFF -DUSE_MIMALLOC=OFF
 	cmake --build build-dev -j$(NPROC)
 	@echo ""
-	@ls -lh build-dev/bin/ascii-chat-{server,client}
+	@ls -lh build-dev/bin/ascii-chat
 
 # Fast iteration: glibc + clang, no sanitizers (default)
 dev: fast
@@ -108,23 +108,17 @@ fast:
 	CC=clang CXX=clang++ cmake -B build-fast -DCMAKE_BUILD_TYPE=Dev -DUSE_MUSL=OFF -DUSE_MIMALLOC=OFF
 	cmake --build build-fast -j$(NPROC)
 	@echo ""
-	@ls -lh build-fast/bin/ascii-chat-{server,client}
+	@ls -lh build-fast/bin/ascii-chat
 
-# Legacy targets (backwards compatibility)
+# Legacy targets (backwards compatibility with unified binary)
 ./build:
 	cmake -B build -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
-./build/bin/ascii-chat-server: ./build
-	cmake --build build --target ascii-chat-server
+./build/bin/ascii-chat: ./build
+	cmake --build build --target ascii-chat
 
-./build/bin/ascii-chat-client: ./build
-	cmake --build build --target ascii-chat-client
+all: ./build/bin/ascii-chat
 
-all: ./build/bin/ascii-chat-server ./build/bin/ascii-chat-client
-
-server: ./build/bin/ascii-chat-server
-
-client: ./build/bin/ascii-chat-client
 
 # =============================================================================
 # Release Target

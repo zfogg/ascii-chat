@@ -122,17 +122,17 @@
  * - Checked by all worker threads to know when to exit gracefully
  * - Must be atomic to prevent race conditions during shutdown cascade
  */
-atomic_bool g_should_exit = false;
+atomic_bool g_server_should_exit = false;
 
 /**
  * @brief Shutdown check callback for library code
  *
  * Provides clean separation between application state and library code.
  * Registered with shutdown_register_callback() so library code can check
- * shutdown status without directly accessing g_should_exit.
+ * shutdown status without directly accessing g_server_should_exit.
  */
 static bool check_shutdown(void) {
-  return atomic_load(&g_should_exit);
+  return atomic_load(&g_server_should_exit);
 }
 
 /**
@@ -228,7 +228,7 @@ size_t g_num_whitelisted_clients = 0;
  *
  * SHUTDOWN PROCESS:
  * =================
- * 1. Set atomic g_should_exit flag (signal-safe, checked by all threads)
+ * 1. Set atomic g_server_should_exit flag (signal-safe, checked by all threads)
  * 2. Use raw write() for immediate user feedback (async-signal-safe)
  * 3. Broadcast shutdown condition to wake sleeping threads
  * 4. Close all sockets to interrupt blocking I/O operations
@@ -242,7 +242,7 @@ size_t g_num_whitelisted_clients = 0;
  * - send() in client send threads (if network is slow)
  *
  * Closing sockets causes these functions to return with error codes,
- * allowing threads to check g_should_exit and exit gracefully.
+ * allowing threads to check g_server_should_exit and exit gracefully.
  *
  * PLATFORM CONSIDERATIONS:
  * ========================
@@ -256,7 +256,7 @@ static void sigint_handler(int sigint) {
   (void)(sigint);
 
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_server_should_exit, true);
 
   // STEP 2: Use printf for output (signal-safe)
   printf("\nSIGINT received - shutting down server...\n");
@@ -280,14 +280,14 @@ static void sigint_handler(int sigint) {
   // 3. Client array might be in an inconsistent state during modification
   //
   // SOLUTION: The listening socket closure above is sufficient to unblock accept_with_timeout()
-  // The main thread will detect g_should_exit and properly close client sockets with timeouts
+  // The main thread will detect g_server_should_exit and properly close client sockets with timeouts
 
   // Debug message to see if handler completes
   printf("DEBUG: Signal handler completed\n");
   (void)fflush(stdout);
 
   // NOTE: Do NOT call log_destroy() here - it's not async-signal-safe
-  // The main thread will handle cleanup when it detects g_should_exit
+  // The main thread will handle cleanup when it detects g_server_should_exit
 }
 
 /**
@@ -314,12 +314,12 @@ static void sigint_handler(int sigint) {
  */
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_server_should_exit, true);
 
   printf("SIGTERM received - shutting down server...\n");
   (void)fflush(stdout);
   // Return immediately - signal handlers must be minimal
-  // Main thread will detect g_should_exit and perform complete shutdown
+  // Main thread will detect g_server_should_exit and perform complete shutdown
 }
 
 /**
@@ -388,7 +388,7 @@ static void sigusr1_handler(int sigusr1) {
  * CLEANUP GUARANTEES:
  * ===================
  * The shutdown sequence ensures:
- * 1. Signal handlers set g_should_exit atomically
+ * 1. Signal handlers set g_server_should_exit atomically
  * 2. All worker threads check flag and exit gracefully
  * 3. Main thread waits for all threads to finish
  * 4. Resources cleaned up in reverse dependency order
@@ -476,7 +476,9 @@ static int init_server_crypto(void) {
   return 0;
 }
 
-int main(int argc, char *argv[]) {
+#include "main.h"
+
+int server_main(int argc, char *argv[]) {
 
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
@@ -494,9 +496,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Note: --help and --version will exit(0) directly within options_init
-  log_debug("MAIN_DEBUG: About to call options_init");
   int options_result = options_init(argc, argv, false);
-  log_debug("MAIN_DEBUG: options_init returned %d", options_result);
   if (options_result != ASCIICHAT_OK) {
     // options_init returns ERROR_USAGE for invalid options (after printing error)
     // Just exit with the returned error code
@@ -710,9 +710,9 @@ int main(int argc, char *argv[]) {
   // Lock debug system already initialized earlier in main()
 
   // Check if SIGINT was received during initialization
-  if (atomic_load(&g_should_exit)) {
+  if (atomic_load(&g_server_should_exit)) {
     // Skip rest of initialization and go straight to main loop
-    // which will detect g_should_exit and exit cleanly
+    // which will detect g_server_should_exit and exit cleanly
     goto main_loop;
   }
 
@@ -729,22 +729,20 @@ int main(int argc, char *argv[]) {
     FATAL(ERROR_MEMORY, "Failed to create client hash table");
   }
 
-  // Initialize audio mixer if audio is enabled
-  if (opt_audio_enabled && !atomic_load(&g_should_exit)) {
+  // Initialize audio mixer (always enabled on server)
+  if (!atomic_load(&g_server_should_exit)) {
     log_info("SERVER: Initializing audio mixer for per-client audio rendering...");
     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
     if (!g_audio_mixer) {
       LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
-      if (!atomic_load(&g_should_exit)) {
+      if (!atomic_load(&g_server_should_exit)) {
         log_error("Failed to initialize audio mixer");
       }
     } else {
-      if (!atomic_load(&g_should_exit)) {
+      if (!atomic_load(&g_server_should_exit)) {
         log_info("SERVER: Audio mixer initialized successfully for per-client audio rendering");
       }
     }
-  } else if (!atomic_load(&g_should_exit)) {
-    log_info("SERVER: Audio disabled, skipping audio mixer initialization");
   }
 
   // ========================================================================
@@ -762,10 +760,10 @@ int main(int argc, char *argv[]) {
   // by dead connections, eventually preventing new clients from joining.
 
 main_loop:
-  while (!atomic_load(&g_should_exit)) {
+  while (!atomic_load(&g_server_should_exit)) {
     // Debug: Log loop iteration
     // Check if we received a shutdown signal
-    if (atomic_load(&g_should_exit)) {
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
@@ -829,7 +827,7 @@ main_loop:
 
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
-      bool is_shutting_down = atomic_load(&g_should_exit);
+      bool is_shutting_down = atomic_load(&g_server_should_exit);
       if (is_shutting_down) {
         // During shutdown, give receive thread a brief chance to exit cleanly with timeout
         int join_result = ascii_thread_join_timeout(&cleanup_tasks[i].receive_thread, NULL, 200);
@@ -852,8 +850,8 @@ main_loop:
 
     // Accept network connection with timeout
 
-    // Check g_should_exit right before accept
-    if (atomic_load(&g_should_exit)) {
+    // Check g_server_should_exit right before accept
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
@@ -902,7 +900,7 @@ main_loop:
       if (saved_errno == EINTR) {
         // Interrupted by signal - check if we should exit
         log_debug("accept() interrupted by signal");
-        if (atomic_load(&g_should_exit)) {
+        if (atomic_load(&g_server_should_exit)) {
           break;
         }
         continue;
@@ -970,7 +968,7 @@ main_loop:
     log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
 
     // Check if we should exit after processing this client
-    if (atomic_load(&g_should_exit)) {
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
@@ -982,7 +980,7 @@ main_loop:
 
   // Cleanup
   log_info("Server shutting down...");
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_server_should_exit, true);
 
   // Wake up any threads that might be blocked on condition variables
   // (like packet queues) to ensure responsive shutdown
@@ -1005,7 +1003,7 @@ main_loop:
   }
   rwlock_rdunlock(&g_client_manager_rwlock);
 
-  log_info("Signaling all clients to stop (sockets closed, g_should_exit set)...");
+  log_info("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
 
   // Wait for stats logger thread to finish
   if (g_stats_logger_thread_created) {

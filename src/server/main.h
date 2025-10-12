@@ -1,9 +1,9 @@
 /**
- * @file client_mode.h
- * @brief ASCII-Chat Client Mode Entry Point Header
+ * @file server_mode.h
+ * @brief ASCII-Chat Server Mode Entry Point Header
  *
- * This header exposes the client mode entry point for the unified binary architecture.
- * The unified binary dispatches to client_main() when invoked as `ascii-chat client`.
+ * This header exposes the server mode entry point for the unified binary architecture.
+ * The unified binary dispatches to server_main() when invoked as `ascii-chat server`.
  *
  * ## Unified Binary Architecture
  *
@@ -28,8 +28,8 @@
  *
  * ## Implementation Notes
  *
- * The client_main() function is the original main() from src/client/main.c,
- * simply renamed to integrate with the mode dispatcher pattern. All client
+ * The server_main() function is the original main() from src/server/main.c,
+ * simply renamed to integrate with the mode dispatcher pattern. All server
  * functionality remains unchanged - only the entry point name differs.
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -39,17 +39,15 @@
 
 #pragma once
 
-#include <stdbool.h>
-
 /**
- * @brief Client mode entry point for unified binary
+ * @brief Server mode entry point for unified binary
  *
- * This function implements the complete client lifecycle including:
+ * This function implements the complete server lifecycle including:
  * - Command line option parsing
- * - Platform and display initialization
- * - Webcam and audio capture setup
- * - Server connection with reconnection logic
- * - Media streaming and frame display
+ * - Platform and crypto initialization
+ * - Network socket setup and binding
+ * - Main connection accept loop
+ * - Client lifecycle management
  * - Graceful shutdown and cleanup
  *
  * The function signature matches standard main() to allow seamless
@@ -61,27 +59,8 @@
  *
  * @example
  * // Invoked by dispatcher as:
- * // $ ascii-chat client --address localhost --audio
- * //   ^^^^^^^^^^^          ^^^^^^^^^^^^^^^^^^^^^^^^^
- * //   (dispatcher)         (passed to client_main)
+ * // $ ascii-chat server --port 8080
+ * //   ^^^^^^^^^^^          ^^^^^^^^^^^^^
+ * //   (dispatcher)         (passed to server_main)
  */
-int client_main(int argc, char *argv[]);
-
-/**
- * @brief Check if client should exit
- *
- * Thread-safe check of the global exit flag. Used by all client threads
- * to coordinate graceful shutdown.
- *
- * @return true if exit signal received, false otherwise
- */
-bool should_exit(void);
-
-/**
- * @brief Signal client to exit
- *
- * Sets the global exit flag to trigger graceful shutdown of all client
- * threads. Thread-safe and can be called from signal handlers.
- */
-void signal_exit(void);
-
+int server_main(int argc, char *argv[]);
