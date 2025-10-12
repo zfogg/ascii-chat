@@ -42,39 +42,25 @@ jobs:
 
     - name: Run memory leak detection
       run: |
-        echo "Testing server memory usage..."
+        echo "Testing binary memory usage..."
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat-server --help > valgrind_server.log 2>&1 || true
-
-        echo "Testing client memory usage..."
-        timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat-client --help > valgrind_client.log 2>&1 || true
+          ./build/bin/ascii-chat --help > valgrind.log 2>&1 || true
 
     - name: Analyze memory reports
       run: |
-        echo "=== Server Memory Analysis ==="
-        if grep -q "definitely lost" valgrind_server.log; then
-          echo "❌ Memory leaks detected in server"
-          grep "definitely lost" valgrind_server.log
+        echo "=== Binary Memory Analysis ==="
+        if grep -q "definitely lost" valgrind.log; then
+          echo "❌ Memory leaks detected"
+          grep "definitely lost" valgrind.log
         else
-          echo "✅ No memory leaks detected in server"
-        fi
-
-        echo "=== Client Memory Analysis ==="
-        if grep -q "definitely lost" valgrind_client.log; then
-          echo "❌ Memory leaks detected in client"
-          grep "definitely lost" valgrind_client.log
-        else
-          echo "✅ No memory leaks detected in client"
+          echo "✅ No memory leaks detected"
         fi
 
     - name: Upload memory reports
       uses: actions/upload-artifact@v4
       with:
         name: memory-analysis-reports
-        path: |
-          valgrind_server.log
-          valgrind_client.log
+        path: valgrind.log
         retention-days: 30
 
   build-optimization:
@@ -98,8 +84,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
         cmake --build build_debug
-        DEBUG_SERVER_SIZE=$(stat -f%z build_debug/bin/ascii-chat-server 2>/dev/null || stat -c%s build_debug/bin/ascii-chat-server)
-        DEBUG_CLIENT_SIZE=$(stat -f%z build_debug/bin/ascii-chat-client 2>/dev/null || stat -c%s build_debug/bin/ascii-chat-client)
+        DEBUG_SIZE=$(stat -f%z build_debug/bin/ascii-chat 2>/dev/null || stat -c%s build_debug/bin/ascii-chat)
 
         echo "Building release version..."
         CC=clang CXX=clang++ cmake -B build_release -G Ninja \
@@ -107,29 +92,23 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
         cmake --build build_release
-        RELEASE_SERVER_SIZE=$(stat -f%z build_release/bin/ascii-chat-server 2>/dev/null || stat -c%s build_release/bin/ascii-chat-server)
-        RELEASE_CLIENT_SIZE=$(stat -f%z build_release/bin/ascii-chat-client 2>/dev/null || stat -c%s build_release/bin/ascii-chat-client)
+        RELEASE_SIZE=$(stat -f%z build_release/bin/ascii-chat 2>/dev/null || stat -c%s build_release/bin/ascii-chat)
 
         echo "=== Binary Size Comparison ==="
-        echo "Server - Debug: $(($DEBUG_SERVER_SIZE / 1024))KB, Release: $(($RELEASE_SERVER_SIZE / 1024))KB"
-        echo "Client - Debug: $(($DEBUG_CLIENT_SIZE / 1024))KB, Release: $(($RELEASE_CLIENT_SIZE / 1024))KB"
+        echo "Binary - Debug: $(($DEBUG_SIZE / 1024))KB, Release: $(($RELEASE_SIZE / 1024))KB"
 
         # Calculate optimization savings
-        SERVER_SAVINGS=$((($DEBUG_SERVER_SIZE - $RELEASE_SERVER_SIZE) * 100 / $DEBUG_SERVER_SIZE))
-        CLIENT_SAVINGS=$((($DEBUG_CLIENT_SIZE - $RELEASE_CLIENT_SIZE) * 100 / $DEBUG_CLIENT_SIZE))
+        SAVINGS=$((($DEBUG_SIZE - $RELEASE_SIZE) * 100 / $DEBUG_SIZE))
 
-        echo "Space savings - Server: ${SERVER_SAVINGS}%, Client: ${CLIENT_SAVINGS}%"
+        echo "Space savings: ${SAVINGS}%"
 
     - name: Test startup performance
       run: |
         echo "Testing binary startup time..."
 
         # Test help command performance (safe to run without dependencies)
-        echo "Server help startup time:"
-        time ./build_release/bin/ascii-chat-server --help
-
-        echo "Client help startup time:"
-        time ./build_release/bin/ascii-chat-client --help
+        echo "Help command startup time:"
+        time ./build_release/bin/ascii-chat --help
 
   code-metrics:
     name: Code Quality Metrics

@@ -65,10 +65,10 @@ ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-exis
 
 ```bash
 # Server (ephemeral key generated)
-./ascii-chat-server
+./ascii-chat server
 
 # Client (ephemeral key generated, no verification)
-./ascii-chat-client
+./ascii-chat client
 ```
 
 **Why this default?**
@@ -558,10 +558,10 @@ ASCII-Chat can use existing SSH Ed25519 keys for **authentication** (identity pr
 
 ```bash
 # Server: Use SSH private key for identity
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 
 # Client: Verify server's SSH public key
-ascii-chat-client --server-key ~/.ssh/server_id_ed25519.pub
+ascii-chat client --server-key ~/.ssh/server_id_ed25519.pub
 ```
 
 **Key file formats supported:**
@@ -609,7 +609,7 @@ Enter passphrase for /Users/you/.ssh/id_ed25519: [password]
 Identity added: /Users/you/.ssh/id_ed25519
 
 # 3. Start server - uses agent, NO password prompt!
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 INFO: Using SSH agent for this key (agent signing + ephemeral encryption)
 INFO: SSH agent mode: Will use agent for identity signing, ephemeral X25519 for encryption
 ```
@@ -711,14 +711,14 @@ The signature **cryptographically binds** the ephemeral encryption key to the lo
 
 ```bash
 # If key is encrypted but NOT in SSH agent:
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 Encrypted private key detected (cipher: aes256-ctr)
 Key not in SSH agent, will prompt for password
 Enter passphrase for /Users/you/.ssh/id_ed25519: [password]
 Successfully decrypted key, parsing...
 
 # If SSH agent isn't running:
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 ssh_agent_has_specific_key: SSH_AUTH_SOCK not set
 Key not in SSH agent, will prompt for password
 ```
@@ -800,7 +800,7 @@ Both SSH agent mode and in-memory mode provide **identical forward secrecy** - e
 
 ```bash
 # First run with encrypted key (password required)
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 Encrypted private key detected (cipher: aes256-ctr)
 Key not in SSH agent, will prompt for password
 Enter passphrase for /Users/you/.ssh/id_ed25519: [enter password]
@@ -810,7 +810,7 @@ Successfully decrypted key, parsing...
 INFO: Key added to ssh-agent - password won't be required again this session
 
 # Second run (NO password prompt!)
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 INFO: Using SSH agent for this key (agent signing + ephemeral encryption)
 # Server starts immediately - no password needed!
 ```
@@ -883,7 +883,7 @@ On Windows, you'll need to enter your password each time:
 
 ```powershell
 # Windows behavior (no ssh-agent support)
-./ascii-chat-server.exe --key $env:USERPROFILE\.ssh\id_ed25519
+./ascii-chat server.exe --key $env:USERPROFILE\.ssh\id_ed25519
 Encrypted private key detected (cipher: aes256-ctr)
 Key not in SSH agent, will prompt for password
 Enter passphrase for C:\Users\you\.ssh\id_ed25519: [password required every time]
@@ -898,7 +898,7 @@ Enter passphrase for C:\Users\you\.ssh\id_ed25519: [password required every time
 
 2. **Use password authentication** instead of SSH keys:
    ```powershell
-   ./ascii-chat-server.exe --password "your-shared-password"
+   ./ascii-chat server.exe --password "your-shared-password"
    ```
 
 3. **Wait for Windows SSH agent support** (future enhancement - see issue #TBD)
@@ -957,10 +957,10 @@ ls -la ~/.ssh/id_ed25519
 
 ```bash
 # Server: Use your GitHub SSH key
-ascii-chat-server --key github:zfogg
+ascii-chat server --key github:zfogg
 
 # Client: Verify server using GitHub profile
-ascii-chat-client --server-key github:zfogg
+ascii-chat client --server-key github:zfogg
 ```
 
 **How it works:**
@@ -983,10 +983,10 @@ ascii-chat-client --server-key github:zfogg
 
 ```bash
 # Use GPG key by ID
-ascii-chat-server --key gpg:0xABCD1234
+ascii-chat server --key gpg:0xABCD1234
 
 # Use GPG key by fingerprint
-ascii-chat-server --key gpg:1234567890ABCDEF1234567890ABCDEF12345678
+ascii-chat server --key gpg:1234567890ABCDEF1234567890ABCDEF12345678
 ```
 
 **How it works:**
@@ -1121,12 +1121,12 @@ ASCII-Chat binds server keys to **resolved IP addresses**, not DNS hostnames, fo
 
 **Server:**
 ```bash
-ascii-chat-server
+ascii-chat server
 ```
 
 **Client:**
 ```bash
-ascii-chat-client
+ascii-chat client
 ```
 
 **Security:**
@@ -1140,12 +1140,12 @@ ascii-chat-client
 
 **Server:**
 ```bash
-ascii-chat-server --password mySecretPass123
+ascii-chat server --password mySecretPass123
 ```
 
 **Client:**
 ```bash
-ascii-chat-client --password mySecretPass123
+ascii-chat client --password mySecretPass123
 ```
 
 **Security:**
@@ -1196,12 +1196,12 @@ crypto_auth_verify(hmac, nonce, sizeof(nonce), password_key);
 
 **Server:**
 ```bash
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 ```
 
 **Client (verify using GitHub):**
 ```bash
-ascii-chat-client --server-key github:zfogg
+ascii-chat client --server-key github:zfogg
 ```
 
 **Security:**
@@ -1220,13 +1220,13 @@ ascii-chat-client --server-key github:zfogg
 
 **Server:**
 ```bash
-ascii-chat-server --client-keys ~/.ssh/authorized_keys
+ascii-chat server --client-keys ~/.ssh/authorized_keys
 ```
 
 **Client:**
 ```bash
 # Client displays their public key on startup
-ascii-chat-client
+ascii-chat client
 
 # Output:
 # Client public key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFoo... alice@laptop
@@ -1250,7 +1250,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBar... carol@phone
 
 **Server:**
 ```bash
-ascii-chat-server \
+ascii-chat server \
   --key ~/.ssh/id_ed25519 \
   --password myPass123 \
   --client-keys ~/.ssh/authorized_keys
@@ -1258,7 +1258,7 @@ ascii-chat-server \
 
 **Client:**
 ```bash
-ascii-chat-client \
+ascii-chat client \
   --password myPass123 \
   --server-key github:zfogg
 ```
@@ -1274,12 +1274,12 @@ ascii-chat-client \
 
 **Server:**
 ```bash
-ascii-chat-server --no-encrypt
+ascii-chat server --no-encrypt
 ```
 
 **Client:**
 ```bash
-ascii-chat-client --no-encrypt
+ascii-chat client --no-encrypt
 ```
 
 **Security:**
@@ -1504,12 +1504,12 @@ By default, ASCII-Chat does not verify server identity. An attacker who controls
 **Mitigation:**
 ```bash
 # Server: Use SSH key for identity
-ascii-chat-server --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
 
 # Client: Verify server (pick one)
-ascii-chat-client --server-key github:zfogg  # Fetch from GitHub
-ascii-chat-client --server-key ~/.ssh/server.pub  # Manual verification
-ascii-chat-client  # Will prompt to save to known_hosts
+ascii-chat client --server-key github:zfogg  # Fetch from GitHub
+ascii-chat client --server-key ~/.ssh/server.pub  # Manual verification
+ascii-chat client  # Will prompt to save to known_hosts
 ```
 
 ### Potential Bug: Nonce Counter Overflow
@@ -1805,8 +1805,8 @@ public_key_t *whitelist = load_whitelist("authorized_clients.txt");
 vim ~/.ascii-chat/authorized_clients.txt
 
 # 2. Restart server (takes ~2 seconds)
-killall ascii-chat-server
-./ascii-chat-server --client-keys ~/.ascii-chat/authorized_clients.txt
+killall ascii-chat server
+./ascii-chat server --client-keys ~/.ascii-chat/authorized_clients.txt
 
 # Result: Compromised key can no longer connect
 ```
@@ -1859,11 +1859,11 @@ User's first connection to server:
 1. **Manual verification (already supported):**
    ```bash
    # Server shows fingerprint
-   ascii-chat-server --key ~/.ssh/id_ed25519
+   ascii-chat server --key ~/.ssh/id_ed25519
    Server fingerprint: SHA256:abc123...
 
    # Client verifies before saving
-   ascii-chat-client --verify-fingerprint SHA256:abc123...
+   ascii-chat client --verify-fingerprint SHA256:abc123...
    ```
 
 2. **Future: Verification server (issue #82)**

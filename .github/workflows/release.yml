@@ -204,7 +204,8 @@ jobs:
           ```bash
           tar xzf ascii-chat-linux-*.tar.gz
           cd release-*
-          ./ascii-chat-server
+          ./ascii-chat server  # Start server
+          ./ascii-chat client  # Start client (in another terminal)
           ```
 
           **macOS (install dependencies first):**
@@ -212,13 +213,15 @@ jobs:
           brew install portaudio libsodium
           tar xzf ascii-chat-macos-*.tar.gz
           cd release-*
-          ./ascii-chat-server
+          ./ascii-chat server  # Start server
+          ./ascii-chat client  # Start client (in another terminal)
           ```
 
           **Windows (DLLs included):**
           ```
           Extract ascii-chat-windows-x86_64.tar.gz
-          Run ascii-chat-server.exe
+          Run: ascii-chat.exe server  (start server)
+          Run: ascii-chat.exe client  (start client in another terminal)
           ```
 
           ## Features
@@ -316,8 +319,7 @@ jobs:
         # Package
         RELEASE_DIR="release-${VERSION}-macos-${{ matrix.arch }}"
         mkdir -p "$RELEASE_DIR"
-        cp build/bin/ascii-chat-server "$RELEASE_DIR/"
-        cp build/bin/ascii-chat-client "$RELEASE_DIR/"
+        cp build/bin/ascii-chat "$RELEASE_DIR/"
         cp README.md "$RELEASE_DIR/" 2>/dev/null || true
         cp LICENSE "$RELEASE_DIR/" 2>/dev/null || true
 
@@ -342,8 +344,8 @@ jobs:
 
         Then run:
         \`\`\`bash
-        ./ascii-chat-server
-        ./ascii-chat-client
+        ./ascii-chat server  # Start server
+        ./ascii-chat client  # Start client (in another terminal)
         \`\`\`
         EOF
 
@@ -402,9 +404,8 @@ jobs:
         # Create release directory
         New-Item -ItemType Directory -Force -Path $RELEASE_DIR
 
-        # Copy binaries
-        Copy-Item build/bin/ascii-chat-server.exe $RELEASE_DIR/
-        Copy-Item build/bin/ascii-chat-client.exe $RELEASE_DIR/
+        # Copy binary
+        Copy-Item build/bin/ascii-chat.exe $RELEASE_DIR/
 
         # Copy runtime DLLs from vcpkg
         $vcpkgRoot = $env:VCPKG_ROOT
@@ -436,8 +437,8 @@ jobs:
 
 Extract the archive and run:
 ``````
-ascii-chat-server.exe
-ascii-chat-client.exe
+ascii-chat.exe server  # Start server
+ascii-chat.exe client  # Start client (in another terminal)
 ``````
 
 All required DLLs are included.

@@ -29,7 +29,7 @@ Write-Host ""
 
 # Kill any running server/client processes before building
 Write-Host "Checking for running ASCII-Chat processes..." -ForegroundColor Cyan
-$processes = @("ascii-chat-server", "ascii-chat-client", "server", "client")
+$processes = @("ascii-chat", "ascii-chat", "server", "client")
 $killed = $false
 
 foreach ($proc in $processes) {
@@ -202,5 +202,5 @@ Copy-Item "$BuildDir\bin\*" "bin\" -Force -Recurse
 Write-Host "Build complete!" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "Run the server:  bin\ascii-chat-server.exe" -ForegroundColor White
-Write-Host "Run the client:  bin\ascii-chat-client.exe" -ForegroundColor White
+Write-Host "Run the server:  bin\ascii-chat.exe" -ForegroundColor White
+Write-Host "Run the client:  bin\ascii-chat.exe" -ForegroundColor White

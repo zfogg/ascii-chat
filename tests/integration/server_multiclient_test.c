@@ -55,13 +55,13 @@ static pid_t start_test_server(int port) {
 
     // Use BUILD_DIR if set, otherwise use appropriate default
     if (build_dir) {
-      safe_snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
+      safe_snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat", build_dir);
     } else if (in_docker) {
       // In Docker, use docker_build directory
-      safe_snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
+      safe_snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat");
     } else {
       // Local testing, use build directory
-      safe_snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
+      safe_snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat");
     }
 
     // Check if the server binary exists and is executable

@@ -184,9 +184,9 @@ Test(main_integration, server_main_starts_and_stops) {
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  char *argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_server_main.log", NULL};
+  char *argv[] = {"ascii-chat", "--port", port_str, "--log-file", "/tmp/test_server_main.log", NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", argv, "server");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn successfully");
 
   // Wait for server to start listening
@@ -203,9 +203,9 @@ Test(main_integration, server_main_starts_and_stops) {
 }
 
 Test(main_integration, server_main_help_flag) {
-  char *argv[] = {"ascii-chat-server", "--help", NULL};
+  char *argv[] = {"ascii-chat", "--help", NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", argv, "server_help");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", argv, "server_help");
   cr_assert_gt(server_pid, 0, "Server should spawn for help");
 
   int exit_code;
@@ -215,10 +215,10 @@ Test(main_integration, server_main_help_flag) {
 }
 
 Test(main_integration, server_main_invalid_port) {
-  char *argv[] = {"ascii-chat-server", "--port", "99999", // Invalid port
+  char *argv[] = {"ascii-chat", "--port", "99999", // Invalid port
                   NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", argv, "server_bad_port");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", argv, "server_bad_port");
   cr_assert_gt(server_pid, 0, "Server should spawn");
 
   int exit_code;
@@ -232,9 +232,9 @@ Test(main_integration, server_main_invalid_port) {
 // =============================================================================
 
 Test(main_integration, client_main_help_flag) {
-  char *argv[] = {"ascii-chat-client", "--help", NULL};
+  char *argv[] = {"ascii-chat", "--help", NULL};
 
-  pid_t client_pid = spawn_process("./build/bin/ascii-chat-client", argv, "client_help");
+  pid_t client_pid = spawn_process("./build/bin/ascii-chat", argv, "client_help");
   cr_assert_gt(client_pid, 0, "Client should spawn for help");
 
   int exit_code;
@@ -248,7 +248,7 @@ Test(main_integration, client_main_no_server) {
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  char *argv[] = {"ascii-chat-client",
+  char *argv[] = {"ascii-chat",
                   "--port",
                   port_str,
                   "--address",
@@ -256,7 +256,7 @@ Test(main_integration, client_main_no_server) {
                   "--snapshot", // Exit after one frame
                   NULL};
 
-  pid_t client_pid = spawn_process("./build/bin/ascii-chat-client", argv, "client_no_server");
+  pid_t client_pid = spawn_process("./build/bin/ascii-chat", argv, "client_no_server");
   cr_assert_gt(client_pid, 0, "Client should spawn");
 
   int exit_code;
@@ -275,9 +275,9 @@ Test(main_integration, server_client_basic_connection) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
-  char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_server_client.log", NULL};
+  char *server_argv[] = {"ascii-chat", "--port", port_str, "--log-file", "/tmp/test_server_client.log", NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", server_argv, "server");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
 
   // Wait for server to be ready
@@ -285,7 +285,7 @@ Test(main_integration, server_client_basic_connection) {
   cr_assert(server_ready, "Server should be listening");
 
   // Start client
-  char *client_argv[] = {"ascii-chat-client",
+  char *client_argv[] = {"ascii-chat",
                          "--port",
                          port_str,
                          "--address",
@@ -297,7 +297,7 @@ Test(main_integration, server_client_basic_connection) {
                          "/tmp/test_client.log",
                          NULL};
 
-  pid_t client_pid = spawn_process("./build/bin/ascii-chat-client", client_argv, "client");
+  pid_t client_pid = spawn_process("./build/bin/ascii-chat", client_argv, "client");
   cr_assert_gt(client_pid, 0, "Client should spawn");
 
   // Wait for client to complete
@@ -316,9 +316,9 @@ Test(main_integration, server_multiple_clients_sequential) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
-  char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_multi_seq.log", NULL};
+  char *server_argv[] = {"ascii-chat", "--port", port_str, "--log-file", "/tmp/test_multi_seq.log", NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", server_argv, "server");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
 
   bool server_ready = wait_for_tcp_port(port, 2000);
@@ -330,10 +330,10 @@ Test(main_integration, server_multiple_clients_sequential) {
     safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
     char *client_argv[] = {
-        "ascii-chat-client",        "--port", port_str, "--address", "127.0.0.1", "--snapshot", "--log-file",
+        "ascii-chat",        "--port", port_str, "--address", "127.0.0.1", "--snapshot", "--log-file",
         "/tmp/test_client_seq.log", NULL};
 
-    pid_t client_pid = spawn_process("./build/bin/ascii-chat-client", client_argv, client_name);
+    pid_t client_pid = spawn_process("./build/bin/ascii-chat", client_argv, client_name);
     cr_assert_gt(client_pid, 0, "Client %d should spawn", i);
 
     int exit_code;
@@ -351,9 +351,9 @@ Test(main_integration, server_multiple_clients_concurrent) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
-  char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_multi_concurrent.log", NULL};
+  char *server_argv[] = {"ascii-chat", "--port", port_str, "--log-file", "/tmp/test_multi_concurrent.log", NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", server_argv, "server");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
 
   bool server_ready = wait_for_tcp_port(port, 2000);
@@ -368,7 +368,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
     char delay_str[16];
     safe_snprintf(delay_str, sizeof(delay_str), "%d", 2 + i); // Different durations
 
-    char *client_argv[] = {"ascii-chat-client",
+    char *client_argv[] = {"ascii-chat",
                            "--port",
                            port_str,
                            "--address",
@@ -380,7 +380,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
                            "/tmp/test_client_concurrent.log",
                            NULL};
 
-    client_pids[i] = spawn_process("./build/bin/ascii-chat-client", client_argv, client_name);
+    client_pids[i] = spawn_process("./build/bin/ascii-chat", client_argv, client_name);
     cr_assert_gt(client_pids[i], 0, "Client %d should spawn", i);
     usleep(100000); // 100ms between client starts
   }
@@ -402,7 +402,7 @@ Test(main_integration, server_client_with_options) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server with options
-  char *server_argv[] = {"ascii-chat-server",
+  char *server_argv[] = {"ascii-chat",
                          "--port",
                          port_str,
                          "--color",
@@ -411,14 +411,14 @@ Test(main_integration, server_client_with_options) {
                          "/tmp/test_server_options.log",
                          NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", server_argv, "server");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn with options");
 
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
   // Start client with matching options
-  char *client_argv[] = {"ascii-chat-client",
+  char *client_argv[] = {"ascii-chat",
                          "--port",
                          port_str,
                          "--address",
@@ -436,7 +436,7 @@ Test(main_integration, server_client_with_options) {
                          "/tmp/test_client_options.log",
                          NULL};
 
-  pid_t client_pid = spawn_process("./build/bin/ascii-chat-client", client_argv, "client");
+  pid_t client_pid = spawn_process("./build/bin/ascii-chat", client_argv, "client");
   cr_assert_gt(client_pid, 0, "Client should spawn with options");
 
   int client_exit_code;
@@ -453,19 +453,19 @@ Test(main_integration, server_survives_client_crash) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server
-  char *server_argv[] = {"ascii-chat-server", "--port", port_str, "--log-file", "/tmp/test_server_survives.log", NULL};
+  char *server_argv[] = {"ascii-chat", "--port", port_str, "--log-file", "/tmp/test_server_survives.log", NULL};
 
-  pid_t server_pid = spawn_process("./build/bin/ascii-chat-server", server_argv, "server");
+  pid_t server_pid = spawn_process("./build/bin/ascii-chat", server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
 
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
   // Start client
-  char *client_argv[] = {"ascii-chat-client",          "--port", port_str, "--address", "127.0.0.1", "--log-file",
+  char *client_argv[] = {"ascii-chat",          "--port", port_str, "--address", "127.0.0.1", "--log-file",
                          "/tmp/test_client_crash.log", NULL};
 
-  pid_t client_pid = spawn_process("./build/bin/ascii-chat-client", client_argv, "client");
+  pid_t client_pid = spawn_process("./build/bin/ascii-chat", client_argv, "client");
   cr_assert_gt(client_pid, 0, "Client should spawn");
 
   usleep(500000); // Let client connect
@@ -480,7 +480,7 @@ Test(main_integration, server_survives_client_crash) {
   cr_assert_eq(result, 0, "Server should survive client crash");
 
   // Try connecting another client to verify server is still functional
-  char *client2_argv[] = {"ascii-chat-client",
+  char *client2_argv[] = {"ascii-chat",
                           "--port",
                           port_str,
                           "--address",
@@ -490,7 +490,7 @@ Test(main_integration, server_survives_client_crash) {
                           "/tmp/test_client_after_crash.log",
                           NULL};
 
-  pid_t client2_pid = spawn_process("./build/bin/ascii-chat-client", client2_argv, "client2");
+  pid_t client2_pid = spawn_process("./build/bin/ascii-chat", client2_argv, "client2");
   cr_assert_gt(client2_pid, 0, "Second client should spawn");
 
   int exit_code;

@@ -121,7 +121,7 @@ if [ ! -d "build_tidy" ] || [ ! -f "build_tidy/compile_commands.json" ] || \
         -DBUILD_TESTS=OFF
 
     echo 'Building project to ensure compilation database is complete...'
-    cmake --build build_tidy --target ascii-chat-server ascii-chat-client
+    cmake --build build_tidy --target ascii-chat ascii-chat
 else
     echo 'Using cached build (build_tidy exists and is up to date)'
 fi

@@ -42,8 +42,8 @@ const char *get_known_hosts_path(void) {
 }
 
 // Format: IP:port x25519 <hex> [comment]
-// IPv4 example: 192.0.2.1:8080 x25519 1234abcd... ascii-chat-server
-// IPv6 example: [2001:db8::1]:8080 x25519 1234abcd... ascii-chat-server
+// IPv4 example: 192.0.2.1:8080 x25519 1234abcd... ascii-chat
+// IPv6 example: [2001:db8::1]:8080 x25519 1234abcd... ascii-chat
 asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
@@ -319,11 +319,11 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   if (is_placeholder) {
     // Server has no identity key - store as placeholder
     fprintf_result = safe_fprintf(
-        f, "%s no-identity 0000000000000000000000000000000000000000000000000000000000000000 ascii-chat-server\n",
+        f, "%s no-identity 0000000000000000000000000000000000000000000000000000000000000000 ascii-chat\n",
         ip_with_port);
   } else {
     // Server has identity key - store normally
-    fprintf_result = safe_fprintf(f, "%s x25519 %s ascii-chat-server\n", ip_with_port, hex);
+    fprintf_result = safe_fprintf(f, "%s x25519 %s ascii-chat\n", ip_with_port, hex);
   }
 
   // Check if fprintf failed

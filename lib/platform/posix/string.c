@@ -91,7 +91,15 @@ int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
  * @return Allocated copy of string, or NULL on failure
  */
 char *platform_strdup(const char *s) {
-  return strdup(s);
+  if (!s) {
+    return NULL;
+  }
+  size_t len = strlen(s) + 1;
+  char *result = SAFE_MALLOC(len, char *);
+  if (result) {
+    memcpy(result, s, len);
+  }
+  return result;
 }
 
 /**

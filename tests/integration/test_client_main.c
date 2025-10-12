@@ -27,7 +27,7 @@ Test(client_main, test_client_help) {
   ZeroMemory(&pi, sizeof(pi));
 
   // Run client with --help
-  char cmdLine[] = "ascii-chat-client.exe --help";
+  char cmdLine[] = "ascii-chat.exe --help";
   if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
     // Wait for process to complete
     WaitForSingleObject(pi.hProcess, INFINITE);
@@ -49,10 +49,10 @@ Test(client_main, test_client_help) {
   pid_t pid = fork();
   if (pid == 0) {
     // Child: run client with --help
-    char *argv[] = {"ascii-chat-client", "--help", NULL};
+    char *argv[] = {"ascii-chat", "--help", NULL};
 
     // Run the regular client binary
-    execv("./build/bin/ascii-chat-client", argv);
+    execv("./build/bin/ascii-chat", argv);
     exit(127); // If exec fails
   }
 

@@ -446,7 +446,7 @@ function ensure_tests_built() {
     # For integration tests, also build server and client binaries
     if [[ "$test_type" == "integration" ]] || [[ "$test_type" == "all" ]]; then
       log_info "🔨 Building server and client binaries for integration tests..."
-      cmake_build "$cmake_build_dir" --target ascii-chat-server ascii-chat-client
+      cmake_build "$cmake_build_dir" --target ascii-chat ascii-chat
     fi
   fi
 }
