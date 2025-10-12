@@ -124,8 +124,11 @@ image_t *webcam_read(void) {
         pixel->g = (pixel->g + diagonal) / 2;
         pixel->b = (pixel->b + diagonal) / 2;
 
-        // Add grid lines for visual separation
-        if (x % 160 == 0 || y % 120 == 0) {
+        // Add grid lines for visual separation (but skip center lines to avoid artifacts)
+        int center_x = test_frame->w / 2;
+        int center_y = test_frame->h / 2;
+        bool is_center_line = (x == center_x || y == center_y);
+        if (!is_center_line && (x % 160 == 0 || y % 120 == 0)) {
           pixel->r = 0;
           pixel->g = 0;
           pixel->b = 0;
@@ -133,21 +136,8 @@ image_t *webcam_read(void) {
       }
     }
 
-    // Add a center cross to help with alignment
-    int center_x = test_frame->w / 2;
-    int center_y = test_frame->h / 2;
-    for (int i = 0; i < test_frame->w; i++) {
-      rgb_t *pixel = &test_frame->pixels[center_y * test_frame->w + i];
-      pixel->r = 255;
-      pixel->g = 255;
-      pixel->b = 255;
-    }
-    for (int i = 0; i < test_frame->h; i++) {
-      rgb_t *pixel = &test_frame->pixels[i * test_frame->w + center_x];
-      pixel->r = 255;
-      pixel->g = 255;
-      pixel->b = 255;
-    }
+    // Note: Center crosshair removed to avoid visual artifacts in ASCII output
+    // The bright white line was creating a horizontal 'M' stripe across the display
 
     // Apply horizontal flip if requested (same as real webcam)
     if (opt_webcam_flip) {
