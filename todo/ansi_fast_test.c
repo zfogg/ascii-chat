@@ -16,11 +16,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <math.h>
-#include "../lib/ansi_fast.h"
+#include "../lib/image2ascii/ansi_fast.h"
 #include "../lib/common.h"
-#include "../lib/image2ascii/image.h"
 #include "../lib/image2ascii/simd/ascii_simd.h"
-#include "../lib/palette.h"
 
 // Test image dimensions
 #define TEST_WIDTH 203 // User's terminal width

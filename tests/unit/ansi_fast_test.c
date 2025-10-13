@@ -7,9 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "ansi_fast.h"
-#include "tests/common.h"
-#include "image2ascii/simd/ascii_simd.h"
+#include "image2ascii/ansi_fast.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
