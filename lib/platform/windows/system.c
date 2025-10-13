@@ -598,17 +598,19 @@ void platform_print_backtrace(int skip_frames) {
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    safe_fprintf(stderr, "\n=== BACKTRACE ===\n");
+    safe_fprintf(stderr, "=== BACKTRACE ===\n");
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     int start_frame = 1 + skip_frames;
+    const char **colors = log_get_color_array();
     for (int i = start_frame; i < size; i++) {
-      safe_fprintf(stderr, "%2d: %s\n", i - start_frame, symbols ? symbols[i] : "???");
+      safe_fprintf(stderr, "%[s%2d%s] %s\n", colors[LOGGING_COLOR_DEBUG], i - start_frame, LOGGING_COLOR_RESET,
+                   symbols ? symbols[i] : "???");
     }
+    safe_fprintf(stderr, "================\n");
 
     platform_backtrace_symbols_free(symbols);
-    safe_fprintf(stderr, "================\n\n");
   }
 }
 

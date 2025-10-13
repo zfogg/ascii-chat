@@ -10,6 +10,7 @@
  */
 
 #include "platform/string.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>

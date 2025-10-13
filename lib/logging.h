@@ -70,13 +70,13 @@ static const char *level_colors_truecolor[] = {
 
 /* Color names enum for better readability */
 typedef enum {
-  COLOR_CYAN = 0,
-  COLOR_GREEN = 1,
-  COLOR_YELLOW = 2,
-  COLOR_RED = 3,
-  COLOR_MAGENTA = 4,
-  COLOR_BLUE = 5,
-  COLOR_RESET = 6
+  COLOR_BLUE = 0,
+  COLOR_CYAN,
+  COLOR_GREEN,
+  COLOR_YELLOW,
+  COLOR_RED,
+  COLOR_MAGENTA,
+  COLOR_RESET,
 } color_t;
 
 /* Logging-specific color enum that maps to color_t values */

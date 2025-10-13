@@ -189,20 +189,14 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {0, 0, 0, 0}};
 
 // Server-only options
-static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
-                                         {"port", required_argument, NULL, 'p'},
-                                         {"palette", required_argument, NULL, 'P'},
-                                         {"palette-chars", required_argument, NULL, 'C'},
-                                         {"log-file", required_argument, NULL, 'L'},
-                                         {"encrypt", no_argument, NULL, 'E'},
-                                         {"key", required_argument, NULL, 'K'},
-                                         {"password", required_argument, NULL, 1009},
-                                         {"keyfile", required_argument, NULL, 'F'},
-                                         {"no-encrypt", no_argument, NULL, 1005},
-                                         {"client-keys", required_argument, NULL, 1008},
-                                         {"version", no_argument, NULL, 'v'},
-                                         {"help", optional_argument, NULL, 'h'},
-                                         {0, 0, 0, 0}};
+static struct option server_options[] = {
+    {"address", required_argument, NULL, 'a'},      {"port", required_argument, NULL, 'p'},
+    {"palette", required_argument, NULL, 'P'},      {"palette-chars", required_argument, NULL, 'C'},
+    {"log-file", required_argument, NULL, 'L'},     {"encrypt", no_argument, NULL, 'E'},
+    {"key", required_argument, NULL, 'K'},          {"password", required_argument, NULL, 1009},
+    {"keyfile", required_argument, NULL, 'F'},      {"no-encrypt", no_argument, NULL, 1005},
+    {"client-keys", required_argument, NULL, 1008}, {"version", no_argument, NULL, 'v'},
+    {"help", optional_argument, NULL, 'h'},         {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 

@@ -248,11 +248,7 @@ Test(main_integration, client_main_no_server) {
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  char *argv[] = {"ascii-chat",
-                  "--port",
-                  port_str,
-                  "--address",
-                  "127.0.0.1",
+  char *argv[] = {"ascii-chat", "--port", port_str, "--address", "127.0.0.1",
                   "--snapshot", // Exit after one frame
                   NULL};
 
@@ -329,9 +325,9 @@ Test(main_integration, server_multiple_clients_sequential) {
     char client_name[32];
     safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
-    char *client_argv[] = {
-        "ascii-chat",        "--port", port_str, "--address", "127.0.0.1", "--snapshot", "--log-file",
-        "/tmp/test_client_seq.log", NULL};
+    char *client_argv[] = {"ascii-chat", "--port",     port_str,     "--address",
+                           "127.0.0.1",  "--snapshot", "--log-file", "/tmp/test_client_seq.log",
+                           NULL};
 
     pid_t client_pid = spawn_process("./build/bin/ascii-chat", client_argv, client_name);
     cr_assert_gt(client_pid, 0, "Client %d should spawn", i);
@@ -368,16 +364,8 @@ Test(main_integration, server_multiple_clients_concurrent) {
     char delay_str[16];
     safe_snprintf(delay_str, sizeof(delay_str), "%d", 2 + i); // Different durations
 
-    char *client_argv[] = {"ascii-chat",
-                           "--port",
-                           port_str,
-                           "--address",
-                           "127.0.0.1",
-                           "--snapshot",
-                           "--snapshot-delay",
-                           delay_str,
-                           "--log-file",
-                           "/tmp/test_client_concurrent.log",
+    char *client_argv[] = {"ascii-chat", "--port",           port_str,  "--address",  "127.0.0.1",
+                           "--snapshot", "--snapshot-delay", delay_str, "--log-file", "/tmp/test_client_concurrent.log",
                            NULL};
 
     client_pids[i] = spawn_process("./build/bin/ascii-chat", client_argv, client_name);
@@ -402,14 +390,8 @@ Test(main_integration, server_client_with_options) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server with options
-  char *server_argv[] = {"ascii-chat",
-                         "--port",
-                         port_str,
-                         "--color",
-                         "--audio",
-                         "--log-file",
-                         "/tmp/test_server_options.log",
-                         NULL};
+  char *server_argv[] = {
+      "ascii-chat", "--port", port_str, "--color", "--audio", "--log-file", "/tmp/test_server_options.log", NULL};
 
   pid_t server_pid = spawn_process("./build/bin/ascii-chat", server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn with options");
@@ -462,8 +444,8 @@ Test(main_integration, server_survives_client_crash) {
   cr_assert(server_ready, "Server should be listening");
 
   // Start client
-  char *client_argv[] = {"ascii-chat",          "--port", port_str, "--address", "127.0.0.1", "--log-file",
-                         "/tmp/test_client_crash.log", NULL};
+  char *client_argv[] = {
+      "ascii-chat", "--port", port_str, "--address", "127.0.0.1", "--log-file", "/tmp/test_client_crash.log", NULL};
 
   pid_t client_pid = spawn_process("./build/bin/ascii-chat", client_argv, "client");
   cr_assert_gt(client_pid, 0, "Client should spawn");
@@ -480,14 +462,8 @@ Test(main_integration, server_survives_client_crash) {
   cr_assert_eq(result, 0, "Server should survive client crash");
 
   // Try connecting another client to verify server is still functional
-  char *client2_argv[] = {"ascii-chat",
-                          "--port",
-                          port_str,
-                          "--address",
-                          "127.0.0.1",
-                          "--snapshot",
-                          "--log-file",
-                          "/tmp/test_client_after_crash.log",
+  char *client2_argv[] = {"ascii-chat", "--port",     port_str,     "--address",
+                          "127.0.0.1",  "--snapshot", "--log-file", "/tmp/test_client_after_crash.log",
                           NULL};
 
   pid_t client2_pid = spawn_process("./build/bin/ascii-chat", client2_argv, "client2");

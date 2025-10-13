@@ -426,16 +426,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Option to use mimalloc (must be defined early so build type flags can check it)
 option(USE_MIMALLOC "Use mimalloc high-performance allocator" ON)
 
-# If using musl, disable ccache and sanitizers since musl-gcc wraps GCC
-# GCC doesn't support the same sanitizer flags as Clang
+# musl builds configuration
 if(USE_MUSL)
     set(USE_CCACHE OFF CACHE BOOL "Disable ccache when using musl" FORCE)
-
-    # Force Dev build type (debug symbols without sanitizers) if Debug was requested
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        message(WARNING "Changing build type from Debug to Dev - GCC (via musl-gcc) doesn't support all Clang sanitizers")
-        set(CMAKE_BUILD_TYPE "Dev" CACHE STRING "Build type" FORCE)
-    endif()
+    # Note: Sanitizers are automatically disabled for musl+mimalloc builds
+    # in configure_sanitizers() - no need to change build type
 endif()
 
 # =============================================================================
@@ -620,13 +615,12 @@ if(USE_MUSL)
     # Based on: https://wiki.debian.org/musl
     add_compile_options(
         -target x86_64-linux-musl
-        -fPIE
     )
 
-    # Linker flags for static-PIE with musl
-    # Use rcrt1.o for static-PIE (not Scrt1.o which is for dynamic PIE)
+    # Linker flags for static linking with musl
+    # Use crt1.o for regular static (not rcrt1.o which is for static-PIE)
     set(CMAKE_EXE_LINKER_FLAGS
-        "-target x86_64-linux-musl -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o"
+        "-target x86_64-linux-musl -static -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/crt1.o ${MUSL_LIBDIR}/crti.o"
     )
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
@@ -634,17 +628,13 @@ if(USE_MUSL)
     link_libraries(c "${GCC_LIBDIR}/libgcc.a")
     add_link_options("${MUSL_LIBDIR}/crtn.o")
 
-    # Enable PIE for security (Address Space Layout Randomization)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
 
-    message(STATUS "musl C library enabled (static-PIE mode with clang)")
+    message(STATUS "musl C library enabled (static linking with clang)")
     message(STATUS "Using GCC ${GCC_VERSION} libgcc from: ${GCC_LIBDIR}")
-    message(STATUS "PIE (Position Independent Executable) enabled for static linking")
     message(STATUS "")
-    message(STATUS "NOTE: Static-PIE linking enabled - will build static dependencies with musl")
+    message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
 
     # Include ExternalProject module for building dependencies
     include(ExternalProject)
@@ -1019,11 +1009,19 @@ else()
         set(BEARSSL_LIBRARIES "")
         set(BEARSSL_INCLUDE_DIRS "")
     endif()
+endif()
 
-    # Test dependencies (matching TEST_PKG_CONFIG_LIBS in Makefile)
-    if(BUILD_TESTS)
-        pkg_check_modules(CRITERION criterion)
-    endif()
+# Test dependencies (matching TEST_PKG_CONFIG_LIBS in Makefile)
+# Criterion detection is outside the USE_MUSL block so tests work with musl
+# Disable tests for musl builds - Criterion test framework requires glibc
+# Tests can be run with standard glibc builds instead
+if(USE_MUSL)
+    set(BUILD_TESTS OFF)
+    message(STATUS "Tests disabled for musl builds (Criterion requires glibc)")
+endif()
+
+if(BUILD_TESTS)
+    pkg_check_modules(CRITERION criterion)
 endif()
 
 # Windows SDK detection for native Clang builds
@@ -1627,6 +1625,7 @@ set(CORE_SRCS
     lib/logging.c
     lib/options.c
     lib/lock_debug.c
+    lib/version.c
 )
 
 # =============================================================================
@@ -2026,6 +2025,15 @@ endif()
 
 target_link_libraries(ascii-chat ascii-chat-core)
 
+# Preserve custom .ascii_chat_version section during linking
+if(NOT WIN32)
+    # Unix/macOS: Use linker flags to keep custom section
+    target_link_options(ascii-chat PRIVATE
+        "LINKER:--undefined=ascii_chat_version_string"
+        "LINKER:--undefined=ascii_chat_comment_string"
+    )
+endif()
+
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     target_link_options(ascii-chat PRIVATE -no-pie)
@@ -2081,12 +2089,11 @@ endif()
 # =============================================================================
 
 # Test framework setup
-if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
+if(BUILD_TESTS AND CRITERION_FOUND)
     enable_testing()
 
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS ${CRITERION_LIBRARIES})
-
     # Criterion requires libffi for theories support
     list(APPEND TEST_LDFLAGS ffi)
 
@@ -2112,33 +2119,37 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
             list(APPEND TEST_LDFLAGS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
         endif()
 
-        if(BOXFORT_FOUND)
-            list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
-        elseif(BOXFORT_LIBRARIES)
-            list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
-        else()
-            # Boxfort is optional - only add if library exists
-            find_library(BOXFORT_LIB boxfort)
-            if(BOXFORT_LIB)
-                list(APPEND TEST_LDFLAGS boxfort)
-            endif()
-        endif()
-
-        # Optional dependencies
-        if(NANOMSG_FOUND)
-            list(APPEND TEST_LDFLAGS ${NANOMSG_LIBRARIES})
-        endif()
-        if(LIBGIT2_FOUND)
-            list(APPEND TEST_LDFLAGS ${LIBGIT2_LIBRARIES})
-
-            # libgit2 requires OpenSSL, libssh2, and http_parser when statically linked
-            find_package(OpenSSL)
-            if(OpenSSL_FOUND)
-                list(APPEND TEST_LDFLAGS OpenSSL::SSL OpenSSL::Crypto)
+        # Boxfort (subprocess isolation) - skip for musl builds (requires glibc)
+        if(NOT USE_MUSL)
+            if(BOXFORT_FOUND)
+                list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
+            elseif(BOXFORT_LIBRARIES)
+                list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
             else()
-                # Fallback to direct library names
-                list(APPEND TEST_LDFLAGS ssl crypto)
+                # Boxfort is optional - only add if library exists
+                find_library(BOXFORT_LIB boxfort)
+                if(BOXFORT_LIB)
+                    list(APPEND TEST_LDFLAGS boxfort)
+                endif()
             endif()
+        endif()
+
+        # Optional dependencies (skip for musl static builds to avoid dynamic library issues)
+        if(NOT USE_MUSL)
+            if(NANOMSG_FOUND)
+                list(APPEND TEST_LDFLAGS ${NANOMSG_LIBRARIES})
+            endif()
+            if(LIBGIT2_FOUND)
+                list(APPEND TEST_LDFLAGS ${LIBGIT2_LIBRARIES})
+
+                # libgit2 requires OpenSSL, libssh2, and http_parser when statically linked
+                find_package(OpenSSL)
+                if(OpenSSL_FOUND)
+                    list(APPEND TEST_LDFLAGS OpenSSL::SSL OpenSSL::Crypto)
+                else()
+                    # Fallback to direct library names
+                    list(APPEND TEST_LDFLAGS ssl crypto)
+                endif()
 
             # Additional libgit2 dependencies (required for static linking)
             # These must be linked unconditionally when using static libgit2
@@ -2180,15 +2191,18 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
             if(NOT SSH2_LIB AND NOT HTTP_PARSER_LIB AND NOT PCRE2_LIB)
                 message(WARNING "No libgit2 dependencies found - git features will be disabled")
             endif()
-        endif()
+            endif() # LIBGIT2_FOUND
+        endif() # NOT USE_MUSL
 
-        # GSSAPI/Kerberos support
-        if(KRB5_GSSAPI_FOUND)
-            list(APPEND TEST_LDFLAGS ${KRB5_GSSAPI_LIBRARIES})
-        elseif(LIBSSH2_FOUND)
-            list(APPEND TEST_LDFLAGS ${LIBSSH2_LIBRARIES})
-        else()
-            list(APPEND TEST_LDFLAGS gssapi_krb5 krb5 k5crypto com_err)
+        # GSSAPI/Kerberos support (skip for musl to avoid dynamic library issues)
+        if(NOT USE_MUSL)
+            if(KRB5_GSSAPI_FOUND)
+                list(APPEND TEST_LDFLAGS ${KRB5_GSSAPI_LIBRARIES})
+            elseif(LIBSSH2_FOUND)
+                list(APPEND TEST_LDFLAGS ${LIBSSH2_LIBRARIES})
+            else()
+                list(APPEND TEST_LDFLAGS gssapi_krb5 krb5 k5crypto com_err)
+            endif()
         endif()
 
         # Additional system libraries (matches Makefile)
@@ -2248,11 +2262,24 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
 
+        # For musl builds, disable subprocess isolation (no forking)
+        if(USE_MUSL)
+            target_compile_definitions(${test_exe_name} PRIVATE CRITERION_NO_EARLY_EXIT=1)
+        endif()
+
         # Link test dependencies (order matters for linking)
         target_link_libraries(${test_exe_name}
             ascii-chat-lib
             ${TEST_LDFLAGS}
         )
+
+        # For musl static builds, allow undefined boxfort references (they won't be called)
+        if(USE_MUSL)
+            target_link_options(${test_exe_name} PRIVATE
+                -Wl,--allow-shlib-undefined
+                -Wl,--unresolved-symbols=ignore-all
+            )
+        endif()
 
         # Use release objects for performance tests
         if(test_subdir STREQUAL "performance")
@@ -2290,7 +2317,13 @@ if(BUILD_TESTS AND CRITERION_FOUND AND NOT USE_MUSL)
     )
 
 else()
-    message(WARNING "Criterion testing framework not found. Tests will not be built.")
+    if(USE_MUSL AND BUILD_TESTS)
+        message(STATUS "Tests disabled: System Criterion requires glibc (boxfort dependency)")
+        message(STATUS "  -> Use glibc build for tests: cmake -B build -DBUILD_TESTS=ON")
+        message(STATUS "  -> Musl builds are for deployment, not testing")
+    elseif(BUILD_TESTS)
+        message(WARNING "Criterion testing framework not found. Tests will not be built.")
+    endif()
 endif()
 
 # =============================================================================

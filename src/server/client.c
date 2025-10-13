@@ -178,7 +178,7 @@ rwlock_t g_client_manager_rwlock = {0};
 
 // External globals from main.c
 extern atomic_bool g_server_should_exit; ///< Global shutdown flag from main.c
-extern mixer_t *g_audio_mixer;    ///< Global audio mixer from main.c
+extern mixer_t *g_audio_mixer;           ///< Global audio mixer from main.c
 
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
@@ -747,7 +747,8 @@ void *client_receive_thread(void *arg) {
 
   log_info("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
-  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
+  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
+         client->socket != INVALID_SOCKET_VALUE) {
 
     // Use unified secure packet reception with auto-decryption
     const crypto_context_t *crypto_ctx = NULL;

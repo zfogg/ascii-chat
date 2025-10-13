@@ -248,7 +248,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   // Resolve server address using getaddrinfo() for IPv4/IPv6 support
   // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
   // Many systems only map "localhost" to 127.0.0.1 in /etc/hosts
-  bool is_localhost = (strcmp(address, "localhost") == 0 || strcmp(address, "127.0.0.1") == 0 || strcmp(address, "::1") == 0);
+  bool is_localhost =
+      (strcmp(address, "localhost") == 0 || strcmp(address, "127.0.0.1") == 0 || strcmp(address, "::1") == 0);
 
   struct addrinfo hints, *res = NULL, *addr_iter;
   memset(&hints, 0, sizeof(hints));

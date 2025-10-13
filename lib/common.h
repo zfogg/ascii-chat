@@ -326,13 +326,16 @@ bool shutdown_is_requested(void);
 
 #ifdef USE_MIMALLOC
 #include <mimalloc.h>
-/* When MI_OVERRIDE is OFF (musl static builds), explicitly use mimalloc API */
 #define ALLOC_MALLOC(size) mi_malloc(size)
 #define ALLOC_CALLOC(count, size) mi_calloc((count), (size))
 #define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
 #define ALLOC_FREE(ptr) mi_free(ptr)
+#elif defined(DEBUG_MEMORY)
+#define ALLOC_MALLOC(size) debug_malloc(size, __FILE__, __LINE__)
+#define ALLOC_CALLOC(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
+#define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
+#define ALLOC_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
 #else
-/* Fall back to standard C library when mimalloc is disabled */
 #define ALLOC_MALLOC(size) malloc(size)
 #define ALLOC_CALLOC(count, size) calloc((count), (size))
 #define ALLOC_REALLOC(ptr, size) realloc((ptr), (size))
@@ -485,9 +488,4 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 
 void debug_memory_report(void);
 void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
-
-#define SAFE_MALLOC(size, cast) ((cast)debug_malloc(size, __FILE__, __LINE__))
-#define SAFE_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
-#define SAFE_CALLOC(count, size, cast) ((cast)debug_calloc((count), (size), __FILE__, __LINE__))
-#define SAFE_REALLOC(ptr, size, cast) ((cast)debug_realloc((ptr), (size), __FILE__, __LINE__))
-#endif /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
+#endif                                        /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
