@@ -510,8 +510,9 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
 
   // Build addr2line command with all addresses
   // For PIE binaries, subtract base address to get file offsets
+  // IMPORTANT: Quote the exe_path to handle paths with shell metacharacters (spaces, parentheses, etc)
   char cmd[4096];
-  int offset = snprintf(cmd, sizeof(cmd), "addr2line -e %s -f -C -i ", exe_path);
+  int offset = snprintf(cmd, sizeof(cmd), "addr2line -e '%s' -f -C -i ", exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     SAFE_FREE(result);
     return safe_backtrace_symbols(buffer, size);
@@ -559,28 +560,31 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
     // Extract just the relative path from file_line
     const char *rel_path = extract_project_relative_path(file_line);
 
-    // Skip if unknown or ?? symbols
-    if (strcmp(func_name, "??") == 0 || strcmp(file_line, "??:0") == 0 || strcmp(file_line, "??:?") == 0) {
-      // Fallback to raw address
-      result[parsed] = SAFE_MALLOC(64, char *);
-      if (!result[parsed])
-        break;
-      snprintf(result[parsed], 64, "%p", buffer[i]);
-      parsed++;
-      continue;
-    }
-
-    // Format: file:line in function()
+    // Allocate result buffer
     result[parsed] = SAFE_MALLOC(1024, char *);
     if (!result[parsed])
       break;
 
-    if (strstr(rel_path, ":") != NULL) {
-      // Has line number
-      snprintf(result[parsed], 1024, "%s in %s()", rel_path, func_name);
-    } else {
-      // No line number - just show function
+    // Check if we have both function and file info
+    bool has_func = (strcmp(func_name, "??") != 0);
+    bool has_file = (strcmp(file_line, "??:0") != 0 && strcmp(file_line, "??:?") != 0);
+
+    if (!has_func && !has_file) {
+      // Complete unknown - show raw address
+      snprintf(result[parsed], 1024, "%p", buffer[i]);
+    } else if (has_func && has_file) {
+      // Best case - both function and file:line known
+      if (strstr(rel_path, ":") != NULL) {
+        snprintf(result[parsed], 1024, "%s in %s()", rel_path, func_name);
+      } else {
+        snprintf(result[parsed], 1024, "%s() at %s", func_name, rel_path);
+      }
+    } else if (has_func) {
+      // Function known but file unknown (common for library functions)
       snprintf(result[parsed], 1024, "%s() at %p", func_name, buffer[i]);
+    } else {
+      // File known but function unknown (rare)
+      snprintf(result[parsed], 1024, "%s (unknown function)", rel_path);
     }
     parsed++;
   }
