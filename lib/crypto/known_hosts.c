@@ -440,7 +440,8 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
   log_debug("SECURITY_DEBUG: Checking environment bypass variable");
   const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
-  log_debug("SECURITY_DEBUG: env_skip_known_hosts_checking=%s", env_skip_known_hosts_checking ? env_skip_known_hosts_checking : "NULL");
+  log_debug("SECURITY_DEBUG: env_skip_known_hosts_checking=%s",
+            env_skip_known_hosts_checking ? env_skip_known_hosts_checking : "NULL");
   if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, "1") == 0) {
     log_warn("Skipping known_hosts checking. This is a security vulnerability.");
     return true;
@@ -466,7 +467,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   }
 
   // Interactive mode - prompt user
-  char message[1024];  // Increased from 512 to 1024 to accommodate full message + IPv6 address + fingerprint
+  char message[1024]; // Increased from 512 to 1024 to accommodate full message + IPv6 address + fingerprint
   safe_snprintf(message, sizeof(message),
                 "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
                 "@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n"
