@@ -1020,7 +1020,9 @@ if(USE_MUSL)
     message(STATUS "Tests disabled for musl builds (Criterion requires glibc)")
 endif()
 
-if(BUILD_TESTS)
+# Windows doesn't use pkg-config, so skip Criterion detection on Windows
+# Tests are primarily Unix-based (Criterion requires pkg-config)
+if(BUILD_TESTS AND NOT WIN32)
     pkg_check_modules(CRITERION criterion)
 endif()
 
