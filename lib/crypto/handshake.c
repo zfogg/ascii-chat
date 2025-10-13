@@ -510,8 +510,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       asciichat_error_t known_host_result = check_known_host(ctx->server_ip, ctx->server_port, server_identity_key);
       if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
         // Key mismatch - MITM attack detected! Prompt user for confirmation
-        log_error("SECURITY: Server key does NOT match known_hosts entry!");
-        log_error("SECURITY: This indicates a possible man-in-the-middle attack!");
+        log_error("SECURITY: Server key does NOT match known_hosts entry!\n"
+                  "This indicates a possible man-in-the-middle attack!");
         uint8_t stored_key[ZERO_KEY_SIZE] = {0}; // We don't have the stored key easily
                                                  // accessible, use zeros for now
         if (!display_mitm_warning(ctx->server_ip, ctx->server_port, stored_key, server_identity_key)) {

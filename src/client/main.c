@@ -138,7 +138,7 @@ static void sigint_handler(int sigint) {
   if (!opt_quiet) {
     const char **colors = log_get_color_array();
     char *message = "Shutdown requested...\n  (Press Ctrl-c again to force quit)";
-    safe_fprintf(stderr, "%s%s%s\n", colors[LOGGING_COLOR_FATAL], message, colors[LOGGING_COLOR_RESET]);
+    safe_fprintf(stderr, "\n%s%s%s\n", colors[LOGGING_COLOR_FATAL], message, colors[LOGGING_COLOR_RESET]);
     log_file(message);
   }
 

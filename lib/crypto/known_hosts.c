@@ -47,10 +47,16 @@ const char *get_known_hosts_path(void) {
 asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
-  FILE *f = platform_fdopen(fd, "r");
-  if (!f) {
+  if (fd < 0) {
     // File doesn't exist - this is an unknown host that needs verification
     log_warn("Known hosts file does not exist: %s", path);
+    return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
+  }
+  FILE *f = platform_fdopen(fd, "r");
+  if (!f) {
+    // Failed to open file descriptor as FILE*
+    platform_close(fd);
+    log_warn("Failed to open known hosts file: %s", path);
     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
   }
 
@@ -182,15 +188,17 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t port) {
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
-
-  FILE *f = NULL;
-  if (fd >= 0) {
-    f = platform_fdopen(fd, "r");
-  }
-
-  if (!f) {
+  if (fd < 0) {
     // File doesn't exist - this is an unknown host that needs verification
     log_warn("Known hosts file does not exist: %s", path);
+    return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
+  }
+
+  FILE *f = platform_fdopen(fd, "r");
+  if (!f) {
+    // Failed to open file descriptor as FILE*
+    platform_close(fd);
+    log_warn("Failed to open known hosts file: %s", path);
     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
   }
 
@@ -430,11 +438,14 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   }
 
   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
+  log_debug("SECURITY_DEBUG: Checking environment bypass variable");
   const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+  log_debug("SECURITY_DEBUG: env_skip_known_hosts_checking=%s", env_skip_known_hosts_checking ? env_skip_known_hosts_checking : "NULL");
   if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, "1") == 0) {
     log_warn("Skipping known_hosts checking. This is a security vulnerability.");
     return true;
   }
+  log_debug("SECURITY_DEBUG: Environment bypass not set, continuing with normal flow");
 
   if (!platform_isatty(STDIN_FILENO) || opt_snapshot_mode) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
@@ -455,7 +466,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   }
 
   // Interactive mode - prompt user
-  char message[512];
+  char message[1024];  // Increased from 512 to 1024 to accommodate full message + IPv6 address + fingerprint
   safe_snprintf(message, sizeof(message),
                 "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
                 "@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n"
