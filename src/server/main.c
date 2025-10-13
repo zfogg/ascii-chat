@@ -253,7 +253,11 @@ size_t g_num_whitelisted_clients = 0;
  * @param sigint The signal number (unused, required by signal handler signature)
  */
 static void sigint_handler(int sigint) {
-  (void)(sigint);
+  static int sigint_count = 0;
+  sigint_count++;
+  if (sigint_count > 1) {
+    _exit(1);
+  }
 
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_server_should_exit, true);
