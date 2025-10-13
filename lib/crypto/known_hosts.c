@@ -318,9 +318,9 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   int fprintf_result;
   if (is_placeholder) {
     // Server has no identity key - store as placeholder
-    fprintf_result = safe_fprintf(
-        f, "%s no-identity 0000000000000000000000000000000000000000000000000000000000000000 ascii-chat\n",
-        ip_with_port);
+    fprintf_result =
+        safe_fprintf(f, "%s no-identity 0000000000000000000000000000000000000000000000000000000000000000 ascii-chat\n",
+                     ip_with_port);
   } else {
     // Server has identity key - store normally
     fprintf_result = safe_fprintf(f, "%s x25519 %s ascii-chat\n", ip_with_port, hex);

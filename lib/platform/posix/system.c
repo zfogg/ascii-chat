@@ -502,7 +502,14 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   return safe_backtrace_symbols(buffer, size);
 #endif
 
+  // For PIE binaries, we need to calculate the load base address
+  // For non-PIE (EXEC) binaries in Debug builds, base_addr stays 0
+  // NOTE: Skipping /proc/self/maps parsing to avoid sscanf issues with musl C23 compat
+  unsigned long base_addr = 0;
+  (void)base_addr; // Suppress unused variable warning
+
   // Build addr2line command with all addresses
+  // For PIE binaries, subtract base address to get file offsets
   char cmd[4096];
   int offset = snprintf(cmd, sizeof(cmd), "addr2line -e %s -f -C -i ", exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
@@ -511,7 +518,14 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   }
 
   for (int i = 0; i < size; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - offset, "%p ", buffer[i]);
+    // For PIE binaries, convert runtime address to file offset
+    unsigned long addr = (unsigned long)buffer[i];
+    if (base_addr > 0 && addr >= base_addr) {
+      addr -= base_addr;
+    }
+
+    // Use %lx instead of %p to avoid shell metacharacters in output
+    int n = snprintf(cmd + offset, sizeof(cmd) - offset, "0x%lx ", addr);
     if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
       break;
     }

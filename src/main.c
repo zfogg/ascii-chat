@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
   //       → ["ascii-chat", "--port", "8080"]
   //       mode_argc = 1 (program_name) + 2 (--port, 8080) = 3
   int args_after_mode = argc - mode_index - 1; // Number of args after mode
-  int mode_argc = 1 + args_after_mode; // program_name + args after mode
+  int mode_argc = 1 + args_after_mode;         // program_name + args after mode
   char **mode_argv = SAFE_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
 
   // Build new argv: [program_name, options_after_mode]
@@ -382,4 +382,3 @@ int main(int argc, char *argv[]) {
   SAFE_FREE(mode_argv);
   return exit_code;
 }
-

@@ -479,7 +479,6 @@ static int init_server_crypto(void) {
 #include "main.h"
 
 int server_main(int argc, char *argv[]) {
-
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
@@ -565,12 +564,9 @@ int server_main(int argc, char *argv[]) {
     log_error("Invalid port configuration: %s", opt_port);
     FATAL(ERROR_CONFIG, "Invalid port configuration: %s", opt_port);
   }
-  log_info("SERVER: Port set to %d", port);
 
-  log_info("SERVER: Initializing luminance palette...");
   ascii_simd_init();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
-  log_info("SERVER: RGB palettes precalculated");
 
   // Simple signal handling (temporarily disable complex threading signal handling)
   log_info("SERVER: Setting up simple signal handlers...");
@@ -589,10 +585,8 @@ int server_main(int argc, char *argv[]) {
   // SIGPIPE not supported on Windows
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
-  log_info("SERVER: Signal handling setup complete");
 
   // Start the lock debug thread (system already initialized earlier)
-  log_info("SERVER: Starting lock debug thread...");
   int thread_result = lock_debug_start_thread();
   if (thread_result == 0) {
     log_info("SERVER: Lock debug thread started - press '?' to print held locks");
@@ -600,14 +594,11 @@ int server_main(int argc, char *argv[]) {
     log_error("Failed to start lock debug thread");
   }
   // Initialize statistics system
-  log_info("SERVER: Initializing statistics system...");
   if (stats_init() != 0) {
     FATAL(ERROR_THREAD, "Statistics system initialization failed");
   }
-  log_info("Statistics system initialized");
 
   // Start statistics logging thread for periodic performance monitoring
-  log_info("SERVER: Creating statistics logger thread...");
   if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL) != 0) {
     LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
   } else {
@@ -616,7 +607,6 @@ int server_main(int argc, char *argv[]) {
   }
 
   // Network setup - Dual-stack IPv6 with IPv4 support
-  log_info("SERVER: Setting up network sockets...");
   struct sockaddr_storage serv_addr; // Address-family-agnostic storage
   struct sockaddr_storage client_addr;
   socklen_t client_len = sizeof(client_addr);
@@ -656,12 +646,10 @@ int server_main(int argc, char *argv[]) {
   socklen_t addrlen = res->ai_addrlen;
   freeaddrinfo(res);
 
-  log_info("SERVER: Creating listen socket...");
   socket_t new_listenfd = socket_create(address_family, SOCK_STREAM, 0);
   if (new_listenfd == INVALID_SOCKET_VALUE) {
     FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
   }
-  log_info("SERVER: Listen socket created (fd=%d)", new_listenfd);
 
   // Set socket options
   int yes = 1;

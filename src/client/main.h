@@ -84,4 +84,3 @@ bool should_exit(void);
  * threads. Thread-safe and can be called from signal handlers.
  */
 void signal_exit(void);
-

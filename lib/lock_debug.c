@@ -70,10 +70,10 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
     return NULL;
   }
 
-  // Capture backtrace - Skip for musl builds and mimalloc override as it crashes
-  // NOTE: backtrace_symbols() uses system malloc(), but mimalloc intercepts free()
-  // causing crashes when we try to free the backtrace memory
-#if !defined(USE_MUSL) && !defined(USE_MIMALLOC_DEBUG)
+  // Capture backtrace
+  // NOTE: platform_backtrace_symbols_free() safely handles the case where
+  // backtrace_symbols() uses system malloc() but mimalloc overrides free()
+  // by detecting our enhanced format and not freeing system-allocated memory
   record->backtrace_size = platform_backtrace(record->backtrace_buffer, MAX_BACKTRACE_FRAMES);
   if (record->backtrace_size > 0) {
     record->backtrace_symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
@@ -85,28 +85,14 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
       }
     }
   } else {
-    // Backtrace unavailable (e.g., musl libc doesn't provide backtrace())
+    // Backtrace unavailable (e.g., no libexecinfo)
     // Only log this once to avoid spam
     static bool backtrace_error_logged = false;
     if (!backtrace_error_logged) {
-      log_debug("Backtrace not available for lock debugging (musl or static build)");
+      log_debug("Backtrace not available for lock debugging");
       backtrace_error_logged = true;
     }
   }
-#else
-  // Skip backtrace for musl builds or mimalloc override - causes crashes with free()
-  record->backtrace_size = 0;
-  record->backtrace_symbols = NULL;
-  static bool warning_logged = false;
-  if (!warning_logged) {
-#ifdef USE_MIMALLOC_DEBUG
-    log_debug("Backtrace disabled with mimalloc malloc override (lock debugging will work without backtraces)");
-#else
-    log_debug("Backtrace disabled for musl build (lock debugging will work without backtraces)");
-#endif
-    warning_logged = true;
-  }
-#endif
 
   return record;
 }
