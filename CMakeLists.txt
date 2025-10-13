@@ -1582,13 +1582,13 @@ endif()
 # Module 5: Video Processing (changes weekly)
 # =============================================================================
 set(VIDEO_SRCS
+    lib/palette.c
+    lib/video_frame.c
     lib/image2ascii/image.c
     lib/image2ascii/output_buffer.c
     lib/image2ascii/ascii.c
-    lib/ansi_fast.c
-    lib/palette.c
-    lib/utf8.c
-    lib/video_frame.c
+    lib/image2ascii/ansi_fast.c
+    lib/util/utf8.c
     lib/os/webcam.c
 )
 

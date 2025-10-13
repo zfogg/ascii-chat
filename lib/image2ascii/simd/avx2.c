@@ -6,7 +6,7 @@
 #include "avx2.h"
 #include "common.h"
 #include "../output_buffer.h"
-#include "../../ansi_fast.h"
+#include "../ansi_fast.h"
 
 #ifdef SIMD_SUPPORT_AVX2
 #include <immintrin.h>

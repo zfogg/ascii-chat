@@ -35,7 +35,6 @@ static int wcwidth(wchar_t wc) {
 #endif
 #include "palette.h"
 #include "common.h"
-#include "image2ascii/simd/ascii_simd.h"
 #include "platform/terminal.h"
 
 /* Default palette constants for legacy functions */
