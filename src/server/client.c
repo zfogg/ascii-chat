@@ -1033,7 +1033,7 @@ void *client_send_thread_func(void *arg) {
       (void)clock_gettime(CLOCK_MONOTONIC, &frame_end);
       uint64_t frame_time_us = ((uint64_t)frame_end.tv_sec * 1000000 + (uint64_t)frame_end.tv_nsec / 1000) -
                                ((uint64_t)frame_start.tv_sec * 1000000 + (uint64_t)frame_start.tv_nsec / 1000);
-      if (frame_time_us > 5000) { // Log if sending a frame takes > 5ms
+      if (frame_time_us > 15000) { // Log if sending a frame takes > 15ms (encryption adds ~5-6ms)
         uint64_t step1_us = ((uint64_t)step1.tv_sec * 1000000 + (uint64_t)step1.tv_nsec / 1000) -
                             ((uint64_t)frame_start.tv_sec * 1000000 + (uint64_t)frame_start.tv_nsec / 1000);
         uint64_t step2_us = ((uint64_t)step2.tv_sec * 1000000 + (uint64_t)step2.tv_nsec / 1000) -

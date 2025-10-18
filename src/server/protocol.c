@@ -235,7 +235,10 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 
   // Handle stream start request
   if (len == sizeof(uint32_t)) {
-    uint32_t stream_type = ntohl(*(uint32_t *)data);
+    // Use memcpy to avoid unaligned access
+    uint32_t stream_type_net;
+    memcpy(&stream_type_net, data, sizeof(uint32_t));
+    uint32_t stream_type = ntohl(stream_type_net);
 
     // FIXED: No locks needed - use atomic operations for thread-safe state updates
     // The is_sending_video and is_sending_audio flags are atomic, so no mutex is required
@@ -297,7 +300,10 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
   // Handle stream stop request
   if (len == sizeof(uint32_t)) {
-    uint32_t stream_type = ntohl(*(uint32_t *)data);
+    // Use memcpy to avoid unaligned access
+    uint32_t stream_type_net;
+    memcpy(&stream_type_net, data, sizeof(uint32_t));
+    uint32_t stream_type = ntohl(stream_type_net);
 
     // LOCK OPTIMIZATION: No locks needed - is_sending_video and is_sending_audio are atomic
     // We already have a stable client pointer from receive thread
@@ -402,9 +408,12 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     }
   }
 
-  // Parse image dimensions
-  uint32_t img_width = ntohl(*(uint32_t *)data);
-  uint32_t img_height = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t)));
+  // Parse image dimensions (use memcpy to avoid unaligned access)
+  uint32_t img_width_net, img_height_net;
+  memcpy(&img_width_net, data, sizeof(uint32_t));
+  memcpy(&img_height_net, (char *)data + sizeof(uint32_t), sizeof(uint32_t));
+  uint32_t img_width = ntohl(img_width_net);
+  uint32_t img_height = ntohl(img_height_net);
 
   // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
   size_t rgb_size = (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
@@ -423,8 +432,12 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
       return;
     }
 
-    uint32_t compressed_flag = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t) * 2));
-    uint32_t data_size = ntohl(*(uint32_t *)((char *)data + sizeof(uint32_t) * 3));
+    // Use memcpy to avoid unaligned access for compressed_flag and data_size
+    uint32_t compressed_flag_net, data_size_net;
+    memcpy(&compressed_flag_net, (char *)data + sizeof(uint32_t) * 2, sizeof(uint32_t));
+    memcpy(&data_size_net, (char *)data + sizeof(uint32_t) * 3, sizeof(uint32_t));
+    uint32_t compressed_flag = ntohl(compressed_flag_net);
+    uint32_t data_size = ntohl(data_size_net);
     void *frame_data = (char *)data + sizeof(uint32_t) * 4;
 
     size_t expected_total = sizeof(uint32_t) * 4 + data_size;

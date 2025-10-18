@@ -140,8 +140,8 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
     {
       size_t simple_size = ctx->kex_public_key_size;
       // For authenticated format, use Ed25519 sizes since client has Ed25519 key
-      size_t ed25519_auth_size = ctx->crypto_ctx.public_key_size; // Use dynamic size
-      size_t ed25519_sig_size = ctx->crypto_ctx.signature_size;   // Use dynamic size
+      size_t ed25519_auth_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
+      size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;   // Ed25519 signature is always 64 bytes
       size_t authenticated_size = ctx->kex_public_key_size + ed25519_auth_size + ed25519_sig_size;
 
       if (packet_size != simple_size && packet_size != authenticated_size) {
@@ -691,8 +691,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // Send authenticated packet:
     // [ephemeral:kex_size][identity:auth_size][signature:sig_size]
     // Use Ed25519 sizes since client has Ed25519 key
-    size_t ed25519_pubkey_size = ctx->crypto_ctx.public_key_size; // Use dynamic size
-    size_t ed25519_sig_size = ctx->crypto_ctx.signature_size;     // Use dynamic size
+    size_t ed25519_pubkey_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
+    size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;     // Ed25519 signature is always 64 bytes
     size_t response_size = ctx->kex_public_key_size + ed25519_pubkey_size + ed25519_sig_size;
 
     uint8_t *key_response = SAFE_MALLOC(response_size, uint8_t *);
@@ -793,8 +793,8 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
   // Simple: kex_public_key_size bytes
   // Authenticated: kex_public_key_size + client_auth_key_size + client_sig_size bytes
   size_t simple_size = ctx->kex_public_key_size;
-  size_t ed25519_auth_size = ctx->crypto_ctx.public_key_size; // Use dynamic size
-  size_t ed25519_sig_size = ctx->crypto_ctx.signature_size;   // Use dynamic size
+  size_t ed25519_auth_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
+  size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;   // Ed25519 signature is always 64 bytes
   size_t authenticated_size = ctx->kex_public_key_size + ed25519_auth_size + ed25519_sig_size;
 
   bool client_sent_identity = false;
