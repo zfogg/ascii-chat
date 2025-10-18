@@ -17,7 +17,7 @@
         {
             "name": "default",
             "displayName": "Default (Debug)",
-            "description": "Default configuration - Debug build with AddressSanitizer",
+            "description": "Default configuration - Debug build with glibc, clang, and sanitizers (ASan+UBSan+LSan)",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
@@ -26,7 +26,7 @@
         {
             "name": "debug",
             "displayName": "Debug",
-            "description": "Debug build with AddressSanitizer",
+            "description": "Debug build with sanitizers (ASan+UBSan+LSan) - same as default",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
@@ -35,13 +35,13 @@
         {
             "name": "release-musl",
             "displayName": "Release (musl)",
-            "description": "Optimized static release build with musl and mimalloc",
+            "description": "Optimized static release build with musl (mimalloc disabled for musl)",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "USE_MUSL": "ON",
-                "USE_MIMALLOC": "ON",
+                "USE_MIMALLOC": "OFF",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
         },

@@ -190,14 +190,25 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
   // Check for shutdown before acquiring locks to prevent lock corruption
   if (atomic_load(&g_server_should_exit)) {
-    log_debug("collect_video_sources: shutdown detected, aborting frame generation");
     return 0;
   }
 
-  // CONCURRENCY FIX: Now using READ lock since framebuffer operations are thread-safe
-  // framebuffer_read_multi_frame() now uses internal mutex for thread safety
-  // Multiple video generation threads can safely access client list concurrently
-  rwlock_rdlock(&g_client_manager_rwlock);
+  // LOCK OPTIMIZATION: No locks needed! All client fields are atomic or stable pointers
+  // client_id, active, is_sending_video are all atomic variables
+  // incoming_video_buffer is set once during client creation and never changes
+
+  // Collect client info snapshots WITHOUT holding rwlock
+  typedef struct {
+    uint32_t client_id;
+    bool is_active;
+    bool is_sending_video;
+    video_frame_buffer_t *video_buffer;
+  } client_snapshot_t;
+
+  client_snapshot_t client_snapshots[MAX_CLIENTS];
+  int snapshot_count = 0;
+
+  // NO LOCK: All fields are atomic or stable pointers
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
 
@@ -205,121 +216,131 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       continue; // Skip uninitialized clients
     }
 
-    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
-
-    // Include ALL active clients in the grid, not just those sending video
-    // Thread-safe check for active client - use atomic read to avoid deadlock
-    bool is_active = atomic_load(&client->active);
-    bool is_sending_video = atomic_load(&client->is_sending_video);
-
-    if (is_active && source_count < max_sources) {
-      sources[source_count].client_id = client_id_snapshot;
-      sources[source_count].image = NULL; // Will be set if video is available
-      sources[source_count].has_video = false;
-
-      // Declare these outside the if block so they're accessible later
-      multi_source_frame_t current_frame = {0};
-      bool got_new_frame = false;
-
-      // Always try to get the last available video frame for consistent ASCII generation
-      // The double buffer ensures we always have the last valid frame
-      if (is_sending_video) {
-        // Use the new double-buffered video frame API
-        if (client->incoming_video_buffer) {
-          // Get the latest frame (always available from double buffer)
-          const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
-
-          if (frame && frame->data && frame->size > 0) {
-            // We have frame data - copy it to our working structure
-            data_buffer_pool_t *pool = data_buffer_pool_get_global();
-            if (pool) {
-              current_frame.data = data_buffer_pool_alloc(pool, frame->size);
-            }
-            if (!current_frame.data) {
-              current_frame.data = SAFE_MALLOC(frame->size, void *);
-            }
-
-            if (current_frame.data) {
-              memcpy(current_frame.data, frame->data, frame->size);
-              current_frame.size = frame->size;
-              current_frame.source_client_id = client_id_snapshot;
-              current_frame.timestamp = (uint32_t)(frame->capture_timestamp_us / 1000000);
-              got_new_frame = true;
-            }
-          } else {
-            SET_ERRNO(ERROR_INVALID_STATE, "Invalid frame for client %u", client_id_snapshot);
-          }
-        } else {
-          SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no video buffer", client_id_snapshot);
-        }
-      }
-
-      multi_source_frame_t *frame_to_use = got_new_frame ? &current_frame : NULL;
-
-      if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
-        // Parse the image data
-        // Format: [width:4][height:4][rgb_data:w*h*3]
-        uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
-        uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
-
-        // Debug logging to understand the data
-        if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
-          SET_ERRNO(ERROR_INVALID_STATE, "UNINITIALIZED MEMORY DETECTED! First 16 bytes of frame data:");
-          uint8_t *bytes = (uint8_t *)frame_to_use->data;
-          SET_ERRNO(ERROR_INVALID_STATE,
-                    "  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", bytes[0],
-                    bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10],
-                    bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-        }
-
-        // Validate dimensions are reasonable (max 4K resolution)
-        if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
-          SET_ERRNO(ERROR_INVALID_STATE,
-                    "Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)",
-                    client_id_snapshot, img_width, img_height);
-          // Clean up the current frame if we got a new one
-          if (got_new_frame) {
-            cleanup_current_frame_data(&current_frame);
-          }
-          source_count++;
-          continue;
-        }
-
-        // Validate that the frame size matches expected size
-        size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
-        if (frame_to_use->size != expected_size) {
-          SET_ERRNO(ERROR_INVALID_STATE,
-                    "Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
-                    client_id_snapshot, frame_to_use->size, expected_size, img_width, img_height);
-          // Clean up the current frame if we got a new one
-          if (got_new_frame) {
-            cleanup_current_frame_data(&current_frame);
-          }
-          source_count++;
-          continue;
-        }
-
-        // Extract pixel data
-        rgb_t *pixels = (rgb_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
-
-        // Create image from buffer pool for consistent video pipeline management
-        image_t *img = image_new_from_pool(img_width, img_height);
-        memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
-        sources[source_count].image = img;
-        sources[source_count].has_video = true;
-      }
-
-      // Clean up current_frame.data if we allocated it but frame_to_use check failed
-      // This handles cases where: frame too small, no data, etc.
-      if (got_new_frame && current_frame.data) {
-        cleanup_current_frame_data(&current_frame);
-      }
-
-      // Increment source count for this active client (with or without video)
-      source_count++;
-    }
+    // Snapshot all needed client state (all atomic reads or stable pointers)
+    client_snapshots[snapshot_count].client_id = atomic_load(&client->client_id);
+    client_snapshots[snapshot_count].is_active = atomic_load(&client->active);
+    client_snapshots[snapshot_count].is_sending_video = atomic_load(&client->is_sending_video);
+    client_snapshots[snapshot_count].video_buffer = client->incoming_video_buffer; // Stable pointer
+    snapshot_count++;
   }
-  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  // Process frames (expensive operations)
+  for (int i = 0; i < snapshot_count && source_count < max_sources; i++) {
+    client_snapshot_t *snap = &client_snapshots[i];
+
+    if (!snap->is_active) {
+      continue;
+    }
+
+    sources[source_count].client_id = snap->client_id;
+    sources[source_count].image = NULL; // Will be set if video is available
+    sources[source_count].has_video = false;
+
+    // Declare these outside the if block so they're accessible later
+    multi_source_frame_t current_frame = {0};
+    bool got_new_frame = false;
+
+    // Always try to get the last available video frame for consistent ASCII generation
+    // The double buffer ensures we always have the last valid frame
+    if (snap->is_sending_video && snap->video_buffer) {
+      // Get the latest frame (always available from double buffer)
+      const video_frame_t *frame = video_frame_get_latest(snap->video_buffer);
+
+      if (!frame) {
+        continue; // Skip to next snapshot
+      }
+
+      // Try to access frame fields ONE AT A TIME to pinpoint the hang
+      void *frame_data_ptr = frame->data;
+
+      size_t frame_size_val = frame->size;
+
+      if (frame_data_ptr && frame_size_val > 0) {
+        // We have frame data - copy it to our working structure
+        data_buffer_pool_t *pool = data_buffer_pool_get_global();
+        if (pool) {
+          current_frame.data = data_buffer_pool_alloc(pool, frame->size);
+        }
+        if (!current_frame.data) {
+          current_frame.data = SAFE_MALLOC(frame->size, void *);
+        }
+
+        if (current_frame.data) {
+          memcpy(current_frame.data, frame->data, frame->size);
+          current_frame.size = frame->size;
+          current_frame.source_client_id = snap->client_id;
+          current_frame.timestamp = (uint32_t)(frame->capture_timestamp_us / 1000000);
+          got_new_frame = true;
+        }
+      } else {
+      }
+    } else {
+    }
+
+    multi_source_frame_t *frame_to_use = got_new_frame ? &current_frame : NULL;
+
+    if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
+      // Parse the image data
+      // Format: [width:4][height:4][rgb_data:w*h*3]
+      uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
+      uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
+
+      // Debug logging to understand the data
+      if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
+        SET_ERRNO(ERROR_INVALID_STATE, "UNINITIALIZED MEMORY DETECTED! First 16 bytes of frame data:");
+        uint8_t *bytes = (uint8_t *)frame_to_use->data;
+        SET_ERRNO(ERROR_INVALID_STATE,
+                  "  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", bytes[0],
+                  bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10],
+                  bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+      }
+
+      // Validate dimensions are reasonable (max 4K resolution)
+      if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
+        SET_ERRNO(ERROR_INVALID_STATE,
+                  "Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)", snap->client_id,
+                  img_width, img_height);
+        // Clean up the current frame if we got a new one
+        if (got_new_frame) {
+          cleanup_current_frame_data(&current_frame);
+        }
+        source_count++;
+        continue;
+      }
+
+      // Validate that the frame size matches expected size
+      size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+      if (frame_to_use->size != expected_size) {
+        SET_ERRNO(ERROR_INVALID_STATE,
+                  "Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
+                  snap->client_id, frame_to_use->size, expected_size, img_width, img_height);
+        // Clean up the current frame if we got a new one
+        if (got_new_frame) {
+          cleanup_current_frame_data(&current_frame);
+        }
+        source_count++;
+        continue;
+      }
+
+      // Extract pixel data
+      rgb_t *pixels = (rgb_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
+
+      // Create image from buffer pool for consistent video pipeline management
+      image_t *img = image_new_from_pool(img_width, img_height);
+      memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
+      sources[source_count].image = img;
+      sources[source_count].has_video = true;
+    }
+
+    // Clean up current_frame.data if we allocated it but frame_to_use check failed
+    // This handles cases where: frame too small, no data, etc.
+    if (got_new_frame && current_frame.data) {
+      cleanup_current_frame_data(&current_frame);
+    }
+
+    // Increment source count for this active client (with or without video)
+    source_count++;
+  }
 
   return source_count;
 }
@@ -342,7 +363,15 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
   }
 
   // Single source - check if target client wants half-block mode for 2x resolution
-  client_info_t *target_client = find_client_by_id(target_client_id);
+  // LOCK OPTIMIZATION: Find client without calling find_client_by_id() to avoid rwlock
+  client_info_t *target_client = NULL;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (atomic_load(&client->client_id) == target_client_id) {
+      target_client = client;
+      break;
+    }
+  }
   bool use_half_block = target_client && target_client->has_terminal_caps &&
                         target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
 
@@ -412,7 +441,15 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
 // Handle multi-source grid layout
 static image_t *create_multi_source_composite(image_source_t *sources, int source_count, int sources_with_video,
                                               uint32_t target_client_id, unsigned short width, unsigned short height) {
-  client_info_t *target_client = find_client_by_id(target_client_id);
+  // LOCK OPTIMIZATION: Find client without calling find_client_by_id() to avoid rwlock
+  client_info_t *target_client = NULL;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (atomic_load(&client->client_id) == target_client_id) {
+      target_client = client;
+      break;
+    }
+  }
   bool use_half_block_multi = target_client && target_client->has_terminal_caps &&
                               target_client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK;
 
@@ -745,39 +782,50 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
 }
 
 // Convert composite image to ASCII using client capabilities
+// OPTIMIZATION: Takes client_id instead of finding client, avoids extra rwlock acquisition
 static char *convert_composite_to_ascii(image_t *composite, uint32_t target_client_id, unsigned short width,
                                         unsigned short height) {
-  // Find the target client to get their terminal capabilities
-  client_info_t *render_client = find_client_by_id(target_client_id);
-  char *ascii_frame = NULL;
+  // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily
+  // Instead, the render thread already has snapshot of client state, so we just need palette data
+  // which is stable after initialization
+
+  // We need to find the client to access palette data, but we can do this without locking
+  // since palette is initialized once and never changes
+  client_info_t *render_client = NULL;
+
+  // Find client without locking - client_id is atomic and stable once set
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (atomic_load(&client->client_id) == target_client_id) {
+      render_client = client;
+      break;
+    }
+  }
 
   if (!render_client) {
     SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Target client not found", target_client_id);
     return NULL;
   }
 
-  rwlock_rdlock(&g_client_manager_rwlock);
-  mutex_lock(&render_client->client_state_mutex);
-  uint32_t client_id_snapshot = atomic_load(&render_client->client_id);
+  // Snapshot terminal capabilities WITHOUT holding rwlock
+  // Terminal caps are set once during handshake and never change, so this is safe
   bool has_terminal_caps_snapshot = render_client->has_terminal_caps;
-  terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
-  mutex_unlock(&render_client->client_state_mutex);
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  if (client_id_snapshot == 0 || !has_terminal_caps_snapshot) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Target client not found or capabilities not received",
-              target_client_id);
+  if (!has_terminal_caps_snapshot) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Terminal capabilities not received", target_client_id);
     return NULL;
   }
 
+  terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
+
   if (!render_client->client_palette_initialized) {
     SET_ERRNO(ERROR_TERMINAL, "Client %u palette not initialized - cannot render frame", target_client_id);
-    ascii_frame = NULL;
+    return NULL;
   }
 
   // Render with client's custom palette using enhanced capabilities
+  // Palette data is stable after initialization, so no locking needed
   const int h = caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
-  ascii_frame =
+  char *ascii_frame =
       ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
                                       render_client->client_palette_chars, render_client->client_luminance_palette);
 
@@ -906,9 +954,18 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     return NULL;
   }
 
+  // PROFILING: Time collection phase
+  struct timespec prof_collect_start, prof_collect_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_collect_start);
+
   // Collect all active clients and their image sources
   image_source_t sources[MAX_CLIENTS];
   int source_count = collect_video_sources(sources, MAX_CLIENTS);
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_collect_end);
+  uint64_t collect_time_us =
+      ((uint64_t)prof_collect_end.tv_sec * 1000000 + (uint64_t)prof_collect_end.tv_nsec / 1000) -
+      ((uint64_t)prof_collect_start.tv_sec * 1000000 + (uint64_t)prof_collect_start.tv_nsec / 1000);
 
   // Count sources that actually have video data
   int sources_with_video = 0;
@@ -951,6 +1008,10 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     return NULL;
   }
 
+  // PROFILING: Time composite generation
+  struct timespec prof_composite_start, prof_composite_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_composite_start);
+
   if (sources_with_video == 1) {
     // Single source handling
     composite = create_single_source_composite(sources, source_count, target_client_id, width, height);
@@ -960,14 +1021,30 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
   }
 
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_composite_end);
+  uint64_t composite_time_us =
+      ((uint64_t)prof_composite_end.tv_sec * 1000000 + (uint64_t)prof_composite_end.tv_nsec / 1000) -
+      ((uint64_t)prof_composite_start.tv_sec * 1000000 + (uint64_t)prof_composite_start.tv_nsec / 1000);
+
   if (!composite) {
     SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Failed to create composite image", target_client_id);
     *out_size = 0;
     goto cleanup;
   }
 
+  // PROFILING: Time ASCII conversion
+  struct timespec prof_ascii_start, prof_ascii_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_ascii_start);
+
   // Convert composite to ASCII using client capabilities
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_ascii_end);
+  uint64_t ascii_time_us = ((uint64_t)prof_ascii_end.tv_sec * 1000000 + (uint64_t)prof_ascii_end.tv_nsec / 1000) -
+                           ((uint64_t)prof_ascii_start.tv_sec * 1000000 + (uint64_t)prof_ascii_start.tv_nsec / 1000);
+  (void)collect_time_us;
+  (void)composite_time_us;
+  (void)ascii_time_us;
 
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
@@ -1112,35 +1189,32 @@ int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t
  * sending video frames. Used by render threads to avoid generating frames
  * when no video sources are available (e.g., during webcam warmup).
  *
+ * LOCK OPTIMIZATION: Uses atomic reads only, no rwlock acquisition
+ * This is safe because client_id, active, and is_sending_video are all atomics
+ *
  * @return true if at least one client has is_sending_video flag set, false otherwise
  */
 bool any_clients_sending_video(void) {
-  bool has_video = false;
-
-  // Acquire read lock to check all clients
-  rwlock_rdlock(&g_client_manager_rwlock);
+  // LOCK OPTIMIZATION: Don't acquire rwlock - all fields we access are atomic
+  // client_id, active, is_sending_video are all atomic variables
 
   // Iterate through all client slots
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
 
-    // Skip uninitialized clients
+    // Skip uninitialized clients (atomic read)
     if (atomic_load(&client->client_id) == 0) {
       continue;
     }
 
-    // Debug: Log client state
+    // Check if client is active and sending video (both atomic reads)
     bool is_active = atomic_load(&client->active);
     bool is_sending = atomic_load(&client->is_sending_video);
 
-    // Check if client is active and sending video
     if (is_active && is_sending) {
-      has_video = true;
-      break;
+      return true;
     }
   }
 
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  return has_video;
+  return false;
 }

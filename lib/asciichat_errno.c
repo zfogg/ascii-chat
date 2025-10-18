@@ -296,7 +296,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     if (symbols) {
       for (int i = 0; i < size; i++) {
         if (symbols[i] && !skip_backtrace_frame(symbols[i])) {
-          log_plain("  %s[%d]%s %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
+          log_plain("  [%s%d%s] %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
                     symbols[i]);
         }
       }

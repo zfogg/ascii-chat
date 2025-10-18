@@ -395,13 +395,7 @@ void *client_video_render_thread(void *arg) {
   int expected_video_fps = client_fps;
 
   bool should_continue = true;
-  uint64_t loop_iteration = 0;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
-    loop_iteration++;
-
-    // Debug: Log loop entry
-    if (loop_iteration % 60 == 1) { // Log every 60 iterations (about once per second at 60fps)
-    }
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -409,11 +403,16 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
-                      !atomic_load(&client->shutting_down);
+    bool video_running = atomic_load(&client->video_render_thread_running);
+    bool active = atomic_load(&client->active);
+    bool shutting_down = atomic_load(&client->shutting_down);
+
+    should_continue = video_running && active && !shutting_down;
 
     if (!should_continue) {
-      log_info("Video render thread stopping for client %u (should_continue=false)", thread_client_id);
+      log_info("Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, "
+               "shutting_down=%d)",
+               thread_client_id, video_running, active, shutting_down);
       break;
     }
 
@@ -441,7 +440,7 @@ void *client_video_render_thread(void *arg) {
         if (!still_running)
           break;
       }
-      continue;
+      // Fall through to render frame after sleeping
     }
 
     // PROFILING: Mark start of frame generation
@@ -450,19 +449,21 @@ void *client_video_render_thread(void *arg) {
 
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
 
-    // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
-    // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
-    rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&client->client_state_mutex);
+    // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
+    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
+                      !atomic_load(&client->shutting_down);
+    if (!should_continue) {
+      break;
+    }
 
-    // Snapshot client state while holding both locks
-    uint32_t client_id_snapshot = client->client_id;
-    unsigned short width_snapshot = client->width;   // Direct read under mutex protection
-    unsigned short height_snapshot = client->height; // Direct read under mutex protection
-    bool active_snapshot = client->active;           // Direct read under mutex protection
-
-    mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
+    // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
+    // client_id: Set once at initialization, never changes
+    // width/height: atomic_ushort - use atomic_load
+    // active: atomic_bool - use atomic_load
+    uint32_t client_id_snapshot = client->client_id;               // Stable after init
+    unsigned short width_snapshot = atomic_load(&client->width);   // Atomic read
+    unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
+    bool active_snapshot = atomic_load(&client->active);           // Atomic read
 
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
 
@@ -482,10 +483,11 @@ void *client_video_render_thread(void *arg) {
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_video_check_end);
 
     if (!has_video_sources) {
-      // No video sources - skip frame generation and continue loop
-      // The frame timing at the top of the loop will handle the sleep
-      last_render_time = current_time;
-      continue;
+      // No video sources - skip frame generation but DON'T update last_render_time
+      // This ensures the next iteration still maintains proper frame timing
+      // DON'T continue here - let the loop update last_render_time at the bottom
+      // Fall through to update last_render_time at bottom of loop
+      goto skip_frame_generation;
     }
 
     int sources_count = 0; // Track number of video sources in this frame
@@ -509,32 +511,29 @@ void *client_video_render_thread(void *arg) {
       // Send thread will compare this with last sent count to detect grid changes
       atomic_store(&client->last_rendered_grid_sources, sources_count);
 
-      // Write to outgoing video buffer - this is a double buffer that never drops frames
-      // CRITICAL: Protect video buffer access with write lock to prevent use-after-free
-      rwlock_wrlock(&client->video_buffer_rwlock);
-      if (client->outgoing_video_buffer) {
-        video_frame_t *write_frame = video_frame_begin_write(client->outgoing_video_buffer);
+      // Use double-buffer system which has its own internal swap_mutex
+      // No external locking needed - the double-buffer is thread-safe by design
+      video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
+
+      if (vfb_snapshot) {
+        video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
         if (write_frame) {
-          // Copy ASCII frame data to the back buffer
-          if (write_frame->data && frame_size <= client->outgoing_video_buffer->allocated_buffer_size) {
+          // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
+          if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
             memcpy(write_frame->data, ascii_frame, frame_size);
             write_frame->size = frame_size;
             write_frame->capture_timestamp_us =
                 (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
 
-            // Commit the frame (swaps buffers atomically)
-            video_frame_commit(client->outgoing_video_buffer);
+            // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
+            video_frame_commit(vfb_snapshot);
 
             // Log occasionally for monitoring
             char pretty_size[64];
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
-            log_debug_every(30000000,
-                            "Per-client render: Written ASCII frame to double buffer for client %u (%ux%u, %s)",
-                            client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
           } else {
-            log_warn("Frame too large for buffer: %zu > %zu", frame_size,
-                     client->outgoing_video_buffer->allocated_buffer_size);
+            log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
           }
 
           // FPS tracking - frame successfully generated
@@ -580,35 +579,35 @@ void *client_video_render_thread(void *arg) {
           }
         }
       }
-      rwlock_wrunlock(&client->video_buffer_rwlock);
 
       (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
 
       SAFE_FREE(ascii_frame);
 
-      // PROFILING: Calculate and log timing breakdown
-      static uint64_t profile_count = 0;
-      profile_count++;
-      if (profile_count % (60 * 5) == 0) {
-        uint64_t lock_time_us =
-            ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
-            ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
-        uint64_t video_check_time_us =
-            ((uint64_t)profile_video_check_end.tv_sec * 1000000 + (uint64_t)profile_video_check_end.tv_nsec / 1000) -
-            ((uint64_t)profile_video_check_start.tv_sec * 1000000 + (uint64_t)profile_video_check_start.tv_nsec / 1000);
-        uint64_t write_time_us =
-            ((uint64_t)profile_write_end.tv_sec * 1000000 + (uint64_t)profile_write_end.tv_nsec / 1000) -
-            ((uint64_t)profile_write_start.tv_sec * 1000000 + (uint64_t)profile_write_start.tv_nsec / 1000);
-
-        log_info("FRAME TIMING BREAKDOWN: Lock=%.2fms, VideoCheck=%.2fms, ASCII=%.2fms, Write=%.2fms, TOTAL=%.2fms",
-                 lock_time_us / 1000.0, video_check_time_us / 1000.0, gen_time_us / 1000.0, write_time_us / 1000.0,
-                 (lock_time_us + video_check_time_us + gen_time_us + write_time_us) / 1000.0);
-      }
+      // PROFILING: Calculate and log timing breakdown on EVERY frame during debugging
+      uint64_t lock_time_us =
+          ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
+          ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
+      uint64_t video_check_time_us =
+          ((uint64_t)profile_video_check_end.tv_sec * 1000000 + (uint64_t)profile_video_check_end.tv_nsec / 1000) -
+          ((uint64_t)profile_video_check_start.tv_sec * 1000000 + (uint64_t)profile_video_check_start.tv_nsec / 1000);
+      uint64_t write_time_us =
+          ((uint64_t)profile_write_end.tv_sec * 1000000 + (uint64_t)profile_write_end.tv_nsec / 1000) -
+          ((uint64_t)profile_write_start.tv_sec * 1000000 + (uint64_t)profile_write_start.tv_nsec / 1000);
+      (void)lock_time_us;
+      (void)video_check_time_us;
+      (void)gen_time_us;
+      (void)write_time_us;
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
       log_debug_every(3000000, "Per-client render: No video sources available for client %u", client_id_snapshot);
     }
 
+  skip_frame_generation:
+    // Update last_render_time to maintain consistent frame timing
+    // CRITICAL: Use the current_time captured at the START of this iteration for rate limiting.
+    // This ensures we maintain the target frame rate based on when we STARTED processing,
+    // not when we FINISHED. This prevents timing drift from frame generation overhead.
     last_render_time = current_time;
   }
 
@@ -741,12 +740,11 @@ void *client_audio_render_thread(void *arg) {
   uint32_t thread_client_id = client->client_id;
   char thread_display_name[64];
 
-  // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
-  rwlock_rdlock(&g_client_manager_rwlock);
+  // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
+  // We already have a stable client pointer
   mutex_lock(&client->client_state_mutex);
   SAFE_STRNCPY(thread_display_name, client->display_name, sizeof(thread_display_name));
   mutex_unlock(&client->client_state_mutex);
-  rwlock_rdunlock(&g_client_manager_rwlock);
 
 #ifdef DEBUG_THREADS
   log_info("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
@@ -770,7 +768,8 @@ void *client_audio_render_thread(void *arg) {
       break;
     }
 
-    // Check thread state including shutting_down flag
+    // CRITICAL: Check thread state BEFORE acquiring any locks to prevent use-after-destroy
+    // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
     should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) &&
                        ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
 
@@ -786,18 +785,16 @@ void *client_audio_render_thread(void *arg) {
       continue;
     }
 
-    // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
-    // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
-    rwlock_rdlock(&g_client_manager_rwlock);
+    // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
+    // We already have a stable client pointer, no need for g_client_manager_rwlock
     mutex_lock(&client->client_state_mutex);
 
-    // Snapshot client state while holding both locks
+    // Snapshot client state while holding mutex
     uint32_t client_id_snapshot = client->client_id;            // client_id is set once and never changed
     bool active_snapshot = client->active;                      // Direct read under mutex protection
     packet_queue_t *audio_queue_snapshot = client->audio_queue; // audio_queue is set once and never changed
 
     mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
@@ -902,7 +899,6 @@ void *client_audio_render_thread(void *arg) {
  *
  * 1. MUTEX INITIALIZATION:
  *    - client_state_mutex: Protects client state variables
- *    - video_buffer_rwlock: Protects video buffer access (allows concurrent reads)
  *
  * 2. THREAD CREATION:
  *    - Create video rendering thread (60fps)

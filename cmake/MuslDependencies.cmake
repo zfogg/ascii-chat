@@ -99,6 +99,8 @@ ExternalProject_Add(zlib-musl
     URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
     URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
     PREFIX ${FETCHCONTENT_BASE_DIR}/zlib-musl
+    UPDATE_DISCONNECTED 1
+    BUILD_ALWAYS 0
     CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --static
     BUILD_COMMAND env REALGCC=/usr/bin/gcc make
     INSTALL_COMMAND make install
@@ -118,6 +120,8 @@ ExternalProject_Add(libsodium-musl
     URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
     URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
     PREFIX ${FETCHCONTENT_BASE_DIR}/libsodium-musl
+    UPDATE_DISCONNECTED 1
+    BUILD_ALWAYS 0
     CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
     BUILD_COMMAND env REALGCC=/usr/bin/gcc make
     INSTALL_COMMAND make install
@@ -140,6 +144,8 @@ ExternalProject_Add(alsa-lib-musl
     URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
     URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
     PREFIX ${FETCHCONTENT_BASE_DIR}/alsa-lib-musl
+    UPDATE_DISCONNECTED 1
+    BUILD_ALWAYS 0
     CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
     BUILD_COMMAND env REALGCC=/usr/bin/gcc make
     INSTALL_COMMAND make install
@@ -160,6 +166,8 @@ ExternalProject_Add(portaudio-musl
     URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
     URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
     PREFIX ${FETCHCONTENT_BASE_DIR}/portaudio-musl
+    UPDATE_DISCONNECTED 1
+    BUILD_ALWAYS 0
     CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${MUSL_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
     BUILD_COMMAND env REALGCC=/usr/bin/gcc make
     INSTALL_COMMAND make install
@@ -205,22 +213,37 @@ set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
 if(EXISTS "${BEARSSL_SOURCE_DIR}")
     if(NOT EXISTS "${BEARSSL_LIB}")
-        message(STATUS "Building BearSSL...")
+        message(STATUS "Building BearSSL library (static only)...")
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
 
+        # Clean any previous build to avoid leftover targets
         execute_process(
-            COMMAND make
+            COMMAND make clean
+            WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+
+        # Build only the static library target with -j1 to prevent parallel issues
+        # Use MAKEFLAGS to override any inherited parallelism
+        execute_process(
+            COMMAND env MAKEFLAGS= make -j1 lib
             WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
             RESULT_VARIABLE BEARSSL_MAKE_RESULT
+            OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
+            ERROR_VARIABLE BEARSSL_MAKE_ERROR
         )
 
         if(BEARSSL_MAKE_RESULT EQUAL 0)
             # Copy library to cache
             file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a"
                  DESTINATION "${BEARSSL_BUILD_DIR}")
+            message(STATUS "BearSSL library built and cached successfully")
+        else()
+            message(FATAL_ERROR "BearSSL build failed with exit code ${BEARSSL_MAKE_RESULT}\nOutput: ${BEARSSL_MAKE_OUTPUT}\nError: ${BEARSSL_MAKE_ERROR}")
         endif()
     else()
-        message(STATUS "Using cached BearSSL build")
+        message(STATUS "Using cached BearSSL library: ${BEARSSL_LIB}")
     endif()
 
     set(BEARSSL_FOUND TRUE)

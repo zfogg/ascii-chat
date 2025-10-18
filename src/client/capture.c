@@ -243,16 +243,17 @@ static void *webcam_capture_thread_func(void *arg) {
   (void)arg;
   struct timespec last_capture_time = {0, 0};
 
-  log_warn("CAPTURE_THREAD_STARTED: Webcam capture thread is now running");
-  log_warn("CAPTURE_THREAD_CHECK: should_exit()=%d, server_connection_is_lost()=%d", should_exit(),
-           server_connection_is_lost());
+  log_info("CAPTURE_DEBUG: Webcam capture thread started, entering main loop");
 
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
     if (!server_connection_is_active()) {
+      log_info("CAPTURE_DEBUG: Connection not active, waiting...");
       platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
+    log_info("CAPTURE_DEBUG: Connection active, about to capture frame");
+
     // Frame rate limiting using monotonic clock
     // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
     const long CAPTURE_INTERVAL_MS = 1000 / 144; // ~6.94ms for 144fps
@@ -266,16 +267,22 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Capture frame from webcam
+    log_info("CAPTURE_DEBUG: Calling webcam_read()");
     image_t *image = webcam_read();
+    log_info("CAPTURE_DEBUG: webcam_read() returned %p", (void*)image);
 
     if (!image) {
+      log_info("CAPTURE_DEBUG: Image is NULL, continuing");
       log_info("No frame available from webcam yet (webcam_read returned NULL)");
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
 
+    log_info("CAPTURE_DEBUG: Image is NOT NULL, about to process frame");
+
     // Process frame for network transmission
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
+    log_info("CAPTURE_DEBUG: process_frame_for_transmission returned %p", (void*)processed_image);
     if (!processed_image) {
       log_error("Failed to process frame for transmission");
       if (image) {
@@ -317,16 +324,19 @@ static void *webcam_capture_thread_func(void *arg) {
     memcpy(packet_data + header_size, processed_image->pixels, pixel_size);
     // Check connection before sending
     if (!server_connection_is_active()) {
-      log_debug("Connection lost, stopping video transmission");
+      log_debug("CAPTURE_DEBUG: Connection lost before sending, stopping video transmission");
       SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
+
+    log_info("CAPTURE_DEBUG: About to send IMAGE_FRAME packet, size=%zu", packet_size);
     // Send frame packet to server
     int send_result = threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
+    log_info("CAPTURE_DEBUG: threaded_send_packet returned %d", send_result);
 
     if (send_result < 0) {
-      log_error("Failed to send video frame to server: %s", SAFE_STRERROR(errno));
+      log_error("CAPTURE_DEBUG: Failed to send video frame to server: %s", SAFE_STRERROR(errno));
       // Signal connection loss for reconnection
       server_connection_lost();
       SAFE_FREE(packet_data);

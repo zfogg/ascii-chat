@@ -532,6 +532,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
  */
 packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
                                            packet_envelope_t *envelope) {
+
   if (!envelope) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: envelope=%p", envelope);
     return PACKET_RECV_ERROR;

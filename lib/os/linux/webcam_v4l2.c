@@ -279,12 +279,27 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     usleep(1000); // 1ms
   }
 
+  // Validate buffer index to prevent crashes
+  if (buf.index >= (unsigned int)ctx->buffer_count) {
+    log_error("V4L2 returned invalid buffer index %u (max: %d)", buf.index, ctx->buffer_count - 1);
+    return NULL;
+  }
+
+  // Validate buffer pointer
+  if (!ctx->buffers || !ctx->buffers[buf.index].start) {
+    log_error("V4L2 buffer %u not initialized (start=%p, buffers=%p)", buf.index,
+              ctx->buffers ? ctx->buffers[buf.index].start : NULL, ctx->buffers);
+    return NULL;
+  }
+
   // Create image_t structure
   image_t *img = image_new(ctx->width, ctx->height);
   if (!img) {
     log_error("Failed to allocate image buffer");
-    // Re-queue the buffer
-    ioctl(ctx->fd, VIDIOC_QBUF, &buf);
+    // Re-queue the buffer - use safe error handling
+    if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+      log_error("Failed to re-queue buffer after image allocation failure: %s", strerror(errno));
+    }
     return NULL;
   }
 
@@ -292,9 +307,11 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   const size_t frame_size = (size_t)ctx->width * ctx->height * 3;
   memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
 
-  // Re-queue the buffer
+  // Re-queue the buffer for future use
   if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-    log_error("Failed to re-queue V4L2 buffer: %s", strerror(errno));
+    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, strerror(errno),
+              ctx->fd, buf.type, buf.memory);
+    // Still return the image - the frame data was already copied
   }
 
   return img;

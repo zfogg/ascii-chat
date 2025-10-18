@@ -13,6 +13,7 @@
 #include "../../common.h" // For log_error()
 #include "../../asciichat_errno.h"
 #include "../../util/path.h" // For extract_project_relative_path()
+#include "../symbols.h"      // For symbol cache
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -63,6 +64,9 @@ const char *get_username_env(void) {
  * @note POSIX platforms don't need special initialization
  */
 asciichat_error_t platform_init(void) {
+  // Initialize symbol cache for backtrace resolution
+  symbol_cache_init();
+
   // Install crash handlers for automatic backtrace on crashes
   platform_install_crash_handler();
   return ASCIICHAT_OK;
@@ -73,7 +77,11 @@ asciichat_error_t platform_init(void) {
  * @note POSIX platforms don't need special cleanup
  */
 void platform_cleanup(void) {
-  // POSIX platforms don't need special cleanup
+  // Print symbol cache statistics before cleanup
+  symbol_cache_print_stats();
+
+  // Clean up symbol cache
+  symbol_cache_cleanup();
 }
 
 /**
@@ -611,16 +619,15 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
  * @param buffer Array of addresses from platform_backtrace
  * @param size Number of addresses in buffer
  * @return Array of strings with symbol names (must be freed)
+ *
+ * On POSIX, always uses the addr2line-based symbol cache for high-quality
+ * symbol resolution with proper function names, file paths, and line numbers.
+ * The cache serializes addr2line calls to prevent concurrent popen() issues
+ * and caches results for subsequent lookups.
  */
 char **platform_backtrace_symbols(void *const *buffer, int size) {
-  // Try enhanced symbolization first (uses addr2line for better output)
-  char **enhanced = platform_backtrace_symbols_enhanced(buffer, size);
-  if (enhanced) {
-    return enhanced;
-  }
-
-  // Fallback to basic backtrace_symbols (safe with weak symbols)
-  return safe_backtrace_symbols(buffer, size);
+  // Always use cached symbol resolution with addr2line for best quality
+  return symbol_cache_resolve_batch(buffer, size);
 }
 
 /**
@@ -632,17 +639,12 @@ void platform_backtrace_symbols_free(char **strings) {
     return;
   }
 
-  // Check if this is our enhanced symbols (allocated with SAFE_MALLOC)
+  // Check if this is our cached symbols (allocated with strdup)
   // or system backtrace_symbols (system malloc)
   // We can tell by checking if the first string has our format
   if (strings[0] && (strstr(strings[0], " in ") != NULL || strstr(strings[0], "() at ") != NULL)) {
-    // This is our enhanced format - free each string individually
-    int i = 0;
-    while (strings[i] != NULL) {
-      SAFE_FREE(strings[i]);
-      i++;
-    }
-    SAFE_FREE(strings);
+    // This is our cached format - use symbol cache free
+    symbol_cache_free_symbols(strings);
   } else {
     // This is system backtrace_symbols
     // IMPORTANT: When using mimalloc (which overrides malloc/free globally),
@@ -676,8 +678,10 @@ void platform_print_backtrace(int skip_frames) {
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     int start_frame = 1 + skip_frames;
+    const char **colors = log_get_color_array();
     for (int i = start_frame; i < size; i++) {
-      (void)fprintf(stderr, "%2d: %s\n", i - start_frame, symbols ? symbols[i] : "???");
+      (void)fprintf(stderr, "[%s%2d%s] %s\n", colors[LOGGING_COLOR_INFO], i - start_frame, colors[LOGGING_COLOR_RESET],
+                    symbols ? symbols[i] : "???");
     }
 
     platform_backtrace_symbols_free(symbols);

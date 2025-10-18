@@ -31,7 +31,13 @@ else()
     set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache")
 endif()
 
-set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
+# For musl, don't use per-build-type subdirectories since dependencies are static libs
+# For non-musl, use build-type-specific directories for mimalloc debug/release builds
+if(USE_MUSL)
+    set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}" CACHE PATH "FetchContent cache directory")
+else()
+    set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
+endif()
 message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
 
 # Set up vcpkg toolchain if available (must be before project())
@@ -424,7 +430,20 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # so compiler can be configured before CMake tests it
 
 # Option to use mimalloc (must be defined early so build type flags can check it)
-option(USE_MIMALLOC "Use mimalloc high-performance allocator" ON)
+# Default behavior:
+# - OFF for Debug/Dev builds (Debug has ASan, Dev is for regular development with glibc malloc)
+# - OFF for musl builds (TLS initialization conflicts)
+# - ON for Release/RelWithDebInfo builds (performance benefit)
+# See: https://github.com/microsoft/mimalloc/issues/644
+if(USE_MUSL)
+    # Force mimalloc OFF for musl to prevent TLS conflicts
+    set(USE_MIMALLOC OFF CACHE BOOL "Use mimalloc high-performance allocator (disabled for musl)" FORCE)
+    message(STATUS "mimalloc disabled for musl builds due to TLS conflicts - using musl's allocator")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+    option(USE_MIMALLOC "Use mimalloc high-performance allocator (disabled for Debug/Dev)" OFF)
+else()
+    option(USE_MIMALLOC "Use mimalloc high-performance allocator" ON)
+endif()
 
 # musl builds configuration
 if(USE_MUSL)
@@ -552,7 +571,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug mode WITH sanitizers (default)
-    configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL})
+    # DEBUG_MEMORY works with ASan now (fixed recursion bug)
+    configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
     configure_debug_build_flags("Debug")
 
     # Configure sanitizers (automatically handles mimalloc conflicts)
@@ -564,7 +584,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
     # Dev mode - debug WITHOUT sanitizers (faster iteration)
-    configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL})
+    # DEBUG_MEMORY disabled for performance (use Debug build for memory tracking)
+    message(STATUS "DEBUG_MEMORY disabled in Dev mode for performance")
     configure_debug_build_flags("Dev")
     # No sanitizers in Dev mode
 
@@ -694,21 +715,6 @@ if(USE_MIMALLOC)
     # Platform-specific mimalloc options
     if(WIN32)
         set(MI_WIN_REDIRECT ON CACHE BOOL "Redirect malloc on Windows")
-    endif()
-
-    # musl-specific options for static-PIE compatibility
-    if(USE_MUSL)
-        # Disable malloc override for musl to avoid symbol conflicts with libc.a
-        # musl's static libc.a includes malloc/free, and overriding causes multiple definition errors
-        set(MI_OVERRIDE OFF CACHE BOOL "Don't override malloc for musl" FORCE)
-
-        # Use local-dynamic TLS model instead of initial-exec for static-PIE compatibility
-        # mimalloc's default initial-exec TLS doesn't work with static-PIE on musl
-        # See: https://github.com/microsoft/mimalloc/issues/644
-        set(MI_LOCAL_DYNAMIC_TLS ON CACHE BOOL "Use local-dynamic TLS for musl static-PIE")
-        set(MI_LIBC_MUSL ON CACHE BOOL "Build for musl libc")
-        message(STATUS "mimalloc: Disabled malloc override for musl (avoiding symbol conflicts)")
-        message(STATUS "mimalloc: Enabled musl-specific TLS options for static-PIE compatibility")
     endif()
 
     # Save current output directory settings
@@ -975,13 +981,19 @@ else()
 
         # Add custom command to build BearSSL if library is missing
         # This creates a build rule that Ninja/Make can use to rebuild the library
+        # For musl builds: disable getentropy() (not in musl), force /dev/urandom
+        if(USE_MUSL)
+            set(BEARSSL_EXTRA_CFLAGS "-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1")
+        else()
+            set(BEARSSL_EXTRA_CFLAGS "")
+        endif()
         add_custom_command(
             OUTPUT "${BEARSSL_LIB}"
-            COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with make..."
-            COMMAND make CC=${CMAKE_C_COMPILER} AR=${CMAKE_AR}
+            COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make lib..."
+            COMMAND make lib CC=${CMAKE_C_COMPILER} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
             WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-            COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"
+            COMMENT "Building BearSSL static library to cache: ${BEARSSL_BUILD_DIR}"
             VERBATIM
         )
 
@@ -1506,6 +1518,7 @@ if(WIN32)
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
         lib/platform/windows/password.c
+        lib/platform/windows/symbols.c
         lib/os/windows/webcam_mediafoundation.c
     )
 
@@ -1526,6 +1539,7 @@ else()
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
         lib/platform/posix/password.c
+        lib/platform/posix/symbols.c
     )
 
     if(PLATFORM_DARWIN)
@@ -1537,6 +1551,13 @@ else()
             lib/os/linux/webcam_v4l2.c
         )
     endif()
+
+    # Add musl compatibility shims if building with musl
+    #if(USE_MUSL)
+    #    list(APPEND PLATFORM_SRCS
+    #        lib/platform/musl_compat.c
+    #    )
+    #endif()
 endif()
 
 # SIMD sources (architecture-specific, matching Makefile logic)
@@ -1613,7 +1634,6 @@ set(NETWORK_SRCS
     lib/network/av.c
     lib/packet_queue.c
     lib/buffer_pool.c
-    lib/hashtable.c
     lib/compression.c
     lib/crc32.c
 )
@@ -1664,11 +1684,20 @@ endmacro()
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
 
 # -----------------------------------------------------------------------------
-# Module 2: Platform Abstraction (depends on: util)
+# Module 2: Data Structures (depends on: util)
+# -----------------------------------------------------------------------------
+set(DATA_STRUCTURES_SRCS
+    lib/hashtable.c
+)
+create_ascii_chat_module(ascii-chat-data-structures "${DATA_STRUCTURES_SRCS}")
+target_link_libraries(ascii-chat-data-structures ascii-chat-util)
+
+# -----------------------------------------------------------------------------
+# Module 3: Platform Abstraction (depends on: util, data-structures)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
-target_link_libraries(ascii-chat-platform ascii-chat-util)
+target_link_libraries(ascii-chat-platform ascii-chat-util ascii-chat-data-structures)
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND EXISTS "${FETCHCONTENT_BASE_DIR}/musl-deps/kernel-headers")
@@ -1759,29 +1788,12 @@ if(NOT WIN32 AND PLATFORM_LINUX AND JACK_FOUND AND NOT USE_MUSL)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 7: Network (depends on: util, platform, crypto)
-# -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
-target_link_libraries(ascii-chat-network
-    ascii-chat-util
-    ascii-chat-platform
-    ascii-chat-crypto
-    ${ZLIB_LIBRARIES}
-)
-
-# -----------------------------------------------------------------------------
-# Module 8: Core Application (depends on: all above)
+# Module 7: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
 target_link_libraries(ascii-chat-core
     ascii-chat-util
     ascii-chat-platform
-    ascii-chat-crypto
-    ascii-chat-simd
-    ascii-chat-video
-    ascii-chat-audio
-    ascii-chat-network
-    ${ZLIB_LIBRARIES}
 )
 
 # Math library (Unix only - Windows has math functions in C runtime)
@@ -1797,8 +1809,22 @@ endif()
 
 # mimalloc for core
 if(USE_MIMALLOC)
-    target_link_libraries(ascii-chat-core ${MIMALLOC_LIBRARIES})
+    target_link_libraries(ascii-chat-core ${MIMALLOC_LIB})
 endif()
+
+# -----------------------------------------------------------------------------
+# Module 8: Network (depends on: util, platform, crypto, core)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+target_link_libraries(ascii-chat-network
+    ascii-chat-util
+    ascii-chat-platform
+    ascii-chat-crypto
+    ascii-chat-core
+    ${ZLIB_LIBRARIES}
+)
+
+# Core module was moved earlier in the dependency chain (Module 7)
 
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
@@ -2025,7 +2051,17 @@ if(NOT WIN32)
     endif()
 endif()
 
-target_link_libraries(ascii-chat ascii-chat-core)
+target_link_libraries(ascii-chat
+    ascii-chat-core
+    ascii-chat-network
+    ascii-chat-video
+    ascii-chat-audio
+    ascii-chat-crypto
+    ascii-chat-simd
+    ascii-chat-platform
+    ascii-chat-data-structures
+    ascii-chat-util
+)
 
 # Preserve custom .ascii_chat_version section during linking
 if(NOT WIN32)
