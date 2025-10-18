@@ -746,11 +746,8 @@ void *client_receive_thread(void *arg) {
   log_info("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d)",
            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE);
 
-  uint64_t iteration = 0;
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
          client->socket != INVALID_SOCKET_VALUE) {
-
-    iteration++;
 
     // Use unified secure packet reception with auto-decryption
     // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
