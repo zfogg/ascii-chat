@@ -427,11 +427,10 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
   // This is the ONLY allocation in the codebase that needs this special handling.
 #ifdef DEBUG_MEMORY
 #undef malloc
-  thread_wrapper_t *wrapper = malloc(sizeof(thread_wrapper_t, thread_wrapper_t *));
-#define SAFE_MALLOC(size, void *) debug_malloc(size, __FILE__, __LINE__)
+  thread_wrapper_t *wrapper = malloc(sizeof(thread_wrapper_t));
+#define SAFE_MALLOC(size, type) debug_malloc(size, __FILE__, __LINE__)
 #else
-  thread_wrapper_t *wrapper;
-  wrapper = SAFE_MALLOC(sizeof(thread_wrapper_t), thread_wrapper_t *);
+  thread_wrapper_t *wrapper = SAFE_MALLOC(sizeof(thread_wrapper_t), thread_wrapper_t *);
 #endif
 
 #ifdef DEBUG_THREADS
