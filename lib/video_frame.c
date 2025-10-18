@@ -123,12 +123,10 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
     }
   }
 
-  // Atomic pointer swap - this is the key operation
-  mutex_lock(&vfb->swap_mutex);
+  // Atomic pointer swap - NO MUTEX NEEDED since video_frame_commit() is only called by one thread (the receive thread)
   video_frame_t *temp = vfb->front_buffer;
   vfb->front_buffer = vfb->back_buffer;
   vfb->back_buffer = temp;
-  mutex_unlock(&vfb->swap_mutex);
 
   // Signal reader that new frame is available
   atomic_store(&vfb->new_frame_available, true);

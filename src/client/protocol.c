@@ -395,7 +395,10 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     last_render_time = current_time;
   }
 
+  log_info("CLIENT_DISPLAY_DEBUG: Calling display_render_frame() with frame_data=%p, size=%u, take_snapshot=%d",
+           frame_data, header.original_size, take_snapshot);
   display_render_frame(frame_data, take_snapshot);
+  log_info("CLIENT_DISPLAY_DEBUG: display_render_frame() completed");
 
   SAFE_FREE(frame_data);
 }
@@ -545,8 +548,11 @@ static void *data_reception_thread_func(void *arg) {
     void *data = envelope.data;
     size_t len = envelope.len;
 
+    log_info("CLIENT_RECV_DEBUG: Received packet type %d, len=%zu", type, len);
+
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
+      log_info("CLIENT_RECV_DEBUG: Processing ASCII_FRAME packet");
       handle_ascii_frame_packet(data, len);
       break;
 

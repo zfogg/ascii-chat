@@ -299,10 +299,8 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   if (len == sizeof(uint32_t)) {
     uint32_t stream_type = ntohl(*(uint32_t *)data);
 
-    // CRITICAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
-    // This prevents deadlocks and ensures thread safety for client state modifications
-    rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&client->client_state_mutex);
+    // LOCK OPTIMIZATION: No locks needed - is_sending_video and is_sending_audio are atomic
+    // We already have a stable client pointer from receive thread
 
     if (stream_type & STREAM_TYPE_VIDEO) {
       atomic_store(&client->is_sending_video, false);
@@ -310,9 +308,6 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
     if (stream_type & STREAM_TYPE_AUDIO) {
       atomic_store(&client->is_sending_audio, false);
     }
-
-    mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Log after releasing locks to avoid holding locks during I/O
     if (stream_type & STREAM_TYPE_VIDEO) {
@@ -476,13 +471,15 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     rgb_data_size = rgb_size;
   }
 
-  // Use the new double-buffered video frame API
+
   if (client->incoming_video_buffer) {
     // Get the write buffer
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+
     if (frame && frame->data) {
       // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
       size_t old_packet_size = sizeof(uint32_t) * 2 + rgb_data_size;
+
       if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
         uint32_t width_net = htonl(img_width);
         uint32_t height_net = htonl(img_height);
@@ -497,13 +494,13 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         frame->height = img_height;
         frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
         frame->sequence_number = ++client->frames_received;
-
         video_frame_commit(client->incoming_video_buffer);
       } else {
         log_warn("Frame from client %u too large (%zu bytes)", atomic_load(&client->client_id), old_packet_size);
       }
     } else {
-      log_warn("Failed to get write buffer for client %u", atomic_load(&client->client_id));
+      log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)",
+               atomic_load(&client->client_id), (void*)frame, frame ? frame->data : NULL);
     }
   } else {
     // During shutdown, this is expected - don't spam error logs
@@ -732,14 +729,16 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
   // Handle terminal capabilities from client
+  log_info("CAPS_HANDLER: Client %u starting capabilities processing", client->client_id);
 
   if (len == sizeof(terminal_capabilities_packet_t)) {
     const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
-    // IDEAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
-    // This prevents deadlocks when called concurrently with other functions that follow proper ordering
-    rwlock_rdlock(&g_client_manager_rwlock);
+    // LOCK OPTIMIZATION: Only need client_state_mutex for non-atomic fields
+    // We already have a stable client pointer from receive thread
+    log_info("CAPS_HANDLER: Client %u attempting to acquire client_state_mutex", client->client_id);
     mutex_lock(&client->client_state_mutex);
+    log_info("CAPS_HANDLER: Client %u acquired client_state_mutex", client->client_id);
 
     // Convert from network byte order and store dimensions
     atomic_store(&client->width, ntohs(caps->width));
@@ -800,9 +799,10 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
                   : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
              client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
 
-    // Release locks acquired at function start
+    // Release lock acquired at function start
+    log_info("CAPS_HANDLER: Client %u releasing client_state_mutex", client->client_id);
     mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
+    log_info("CAPS_HANDLER: Client %u released client_state_mutex", client->client_id);
 
   } else {
     log_error("Invalid client capabilities packet size: %zu, expected %zu", len,
@@ -849,14 +849,12 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
   if (len == sizeof(size_packet_t)) {
     const size_packet_t *size_pkt = (const size_packet_t *)data;
 
-    // IDEAL FIX: Follow lock ordering protocol - acquire rwlock first, then client mutex
-    // This prevents deadlocks when called concurrently with other functions that follow proper ordering
-    rwlock_rdlock(&g_client_manager_rwlock);
+    // LOCK OPTIMIZATION: Only need client_state_mutex for dimension updates
+    // Width and height are atomics, but mutex provides consistency
     mutex_lock(&client->client_state_mutex);
     client->width = ntohs(size_pkt->width);   // Regular assignment under mutex protection
     client->height = ntohs(size_pkt->height); // Regular assignment under mutex protection
     mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
 
     log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), client->width, client->height);
   }
@@ -1001,15 +999,13 @@ int send_server_state_to_client(client_info_t *client) {
     return -1;
   }
 
-  // Count active clients
+  // Count active clients - LOCK OPTIMIZATION: Use atomic reads, no rwlock needed
   int active_count = 0;
-  rwlock_rdlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active) {
+    if (atomic_load(&g_client_manager.clients[i].active)) {
       active_count++;
     }
   }
-  rwlock_rdunlock(&g_client_manager_rwlock);
 
   // Prepare server state packet
   server_state_packet_t state;
@@ -1024,12 +1020,11 @@ int send_server_state_to_client(client_info_t *client) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Send server state directly via socket
-  // Protect crypto context access with client state mutex
-  mutex_lock(&client->client_state_mutex);
-  const crypto_context_t *crypto_ctx = crypto_server_get_context(client->client_id);
+  // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
+  // Crypto context is stable after handshake and stored in client struct
+  const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
   int result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                   (crypto_context_t *)crypto_ctx);
-  mutex_unlock(&client->client_state_mutex);
 
   if (result != 0) {
     log_error("Failed to send server state to client %u", client->client_id);

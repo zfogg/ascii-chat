@@ -74,9 +74,13 @@ typedef struct {
   atomic_int last_rendered_grid_sources; // Render thread: source count in buffered frame
   atomic_int last_sent_grid_sources;     // Send thread: source count in last sent frame
 
-  // Pre-allocated buffers to avoid malloc/free in send thread (prevents deadlocks)
+  // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer pool contention)
   void *send_buffer;
   size_t send_buffer_size;
+  void *crypto_plaintext_buffer; // For encryption plaintext (frame + header)
+  size_t crypto_plaintext_size;
+  void *crypto_ciphertext_buffer; // For encryption ciphertext (encrypted result)
+  size_t crypto_ciphertext_size;
 
   // Per-client rendering threads
   asciithread_t video_render_thread;
@@ -90,8 +94,6 @@ typedef struct {
 
   // Per-client synchronization
   mutex_t client_state_mutex;
-  // THREAD-SAFE FRAMEBUFFER: Per-client video buffer rwlock for concurrent reads
-  rwlock_t video_buffer_rwlock;
 
   // Per-client crypto context for secure communication
   crypto_handshake_context_t crypto_handshake_ctx;

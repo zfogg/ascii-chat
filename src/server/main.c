@@ -483,11 +483,24 @@ static int init_server_crypto(void) {
 #include "main.h"
 
 int server_main(int argc, char *argv[]) {
+  // Parse options FIRST so --help and --version can exit immediately
+  // Note: --help and --version will exit(0) directly within options_init
+  int options_result = options_init(argc, argv, false);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ERROR_USAGE for invalid options (after printing error)
+    // Just exit with the returned error code
+    return options_result;
+  }
+
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != 0) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
   }
   (void)atexit(platform_cleanup);
+  fprintf(stderr, "it might be a log");
+  log_debug("platform_init done");
+  fprintf(stderr, "it's not a log");
+  (void)fflush(stderr);
 
 #if defined(USE_MIMALLOC_DEBUG)
 #if !defined(_WIN32)
@@ -497,14 +510,6 @@ int server_main(int argc, char *argv[]) {
   UNUSED(print_mimalloc_stats);
 #endif
 #endif
-
-  // Note: --help and --version will exit(0) directly within options_init
-  int options_result = options_init(argc, argv, false);
-  if (options_result != ASCIICHAT_OK) {
-    // options_init returns ERROR_USAGE for invalid options (after printing error)
-    // Just exit with the returned error code
-    return options_result;
-  }
 
   // Initialize logging first so errors are properly logged
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";

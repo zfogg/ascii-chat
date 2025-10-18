@@ -161,7 +161,9 @@ int server_crypto_handshake(client_info_t *client) {
 
   protocol_version_packet_t client_version;
   memcpy(&client_version, payload, sizeof(protocol_version_packet_t));
+  log_debug("SERVER_CRYPTO_HANDSHAKE: About to free payload for client %u", atomic_load(&client->client_id));
   buffer_pool_free(payload, payload_len);
+  log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %u", atomic_load(&client->client_id));
 
   // Convert from network byte order
   uint16_t client_proto_version = ntohs(client_version.protocol_version);
@@ -170,6 +172,8 @@ int server_crypto_handshake(client_info_t *client) {
   log_info("Client %u protocol version: %u.%u (encryption: %s)", atomic_load(&client->client_id), client_proto_version,
            client_proto_revision, client_version.supports_encryption ? "yes" : "no");
 
+  log_debug("SERVER_CRYPTO_HANDSHAKE: About to check encryption support for client %u", atomic_load(&client->client_id));
+
   if (!client_version.supports_encryption) {
     log_error("Client %u does not support encryption", atomic_load(&client->client_id));
     log_info("Client %u disconnected - encryption not supported", atomic_load(&client->client_id));
@@ -177,8 +181,9 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 0b: Send our protocol version to client
-  log_debug("SERVER_CRYPTO_HANDSHAKE: Sending server protocol version");
+  log_debug("SERVER_CRYPTO_HANDSHAKE: About to prepare server protocol version for client %u", atomic_load(&client->client_id));
   protocol_version_packet_t server_version = {0};
+  log_debug("SERVER_CRYPTO_HANDSHAKE: Initialized server_version struct for client %u", atomic_load(&client->client_id));
   server_version.protocol_version = htons(1);  // Protocol version 1
   server_version.protocol_revision = htons(0); // Revision 0
   server_version.supports_encryption = 1;      // We support encryption
@@ -186,7 +191,9 @@ int server_crypto_handshake(client_info_t *client) {
   server_version.compression_threshold = 0;
   server_version.feature_flags = 0;
 
+  log_debug("SERVER_CRYPTO_HANDSHAKE: About to call send_protocol_version_packet for client %u", atomic_load(&client->client_id));
   result = send_protocol_version_packet(socket, &server_version);
+  log_debug("SERVER_CRYPTO_HANDSHAKE: send_protocol_version_packet returned %d for client %u", result, atomic_load(&client->client_id));
   if (result != 0) {
     log_error("Failed to send protocol version to client %u", atomic_load(&client->client_id));
     log_info("Client %u disconnected - failed to send protocol version", atomic_load(&client->client_id));

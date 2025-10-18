@@ -3,21 +3,29 @@
 # =============================================================================
 # This module provides platform-specific compiler flags and debug mode setup
 
-# Configure DEBUG_MEMORY based on mimalloc and musl settings
+# Configure DEBUG_MEMORY based on mimalloc, musl, and sanitizer settings
 # Args:
 #   USE_MIMALLOC_ARG - Whether mimalloc is enabled
 #   USE_MUSL_ARG - Whether musl libc is enabled
+#   USE_SANITIZERS_ARG - Whether AddressSanitizer will be enabled (optional, defaults to false)
 function(configure_debug_memory USE_MIMALLOC_ARG USE_MUSL_ARG)
+    # Handle optional USE_SANITIZERS_ARG parameter
+    set(USE_SANITIZERS_ARG FALSE)
+    if(ARGC GREATER 2)
+        set(USE_SANITIZERS_ARG ${ARGV2})
+    endif()
+
     # Don't add DEBUG_MEMORY if explicitly disabled
     if(DEFINED DEBUG_MEMORY AND NOT DEBUG_MEMORY)
         message(STATUS "DEBUG_MEMORY disabled by user")
         return()
     endif()
-    
+
     # Don't add DEBUG_MEMORY if mimalloc is enabled - mimalloc provides its own memory tracking
     # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
-    if(NOT USE_MIMALLOC_ARG AND NOT USE_MUSL_ARG)
-        add_definitions(-DDEBUG_MEMORY)
+    # Don't add DEBUG_MEMORY if sanitizers are enabled - ASan conflicts with mutex initialization during static init
+    if(USE_SANITIZERS_ARG)
+        message(STATUS "DEBUG_MEMORY disabled - AddressSanitizer provides comprehensive memory checking (conflicts with mutex init)")
     elseif(USE_MIMALLOC_ARG)
         message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
         # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
@@ -25,6 +33,10 @@ function(configure_debug_memory USE_MIMALLOC_ARG USE_MUSL_ARG)
         set(MIMALLOC_DEBUG_LEVEL 2 PARENT_SCOPE)  # MI_DEBUG level 2: basic checks + internal assertions
     elseif(USE_MUSL_ARG)
         message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
+    else()
+        # Enable DEBUG_MEMORY only when no conflicts exist
+        add_definitions(-DDEBUG_MEMORY)
+        message(STATUS "DEBUG_MEMORY enabled for detailed memory leak tracking")
     endif()
 endfunction()
 

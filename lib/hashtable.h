@@ -16,7 +16,7 @@
 
 // Hash table configuration
 #define HASHTABLE_BUCKET_COUNT 1024 // Must be power of 2, increased to reduce collisions
-#define HASHTABLE_MAX_ENTRIES 32    // Pool size for pre-allocated entries
+#define HASHTABLE_MAX_ENTRIES 2048  // Pool size for pre-allocated entries (increased for symbol cache)
 
 // Hash table entry (for collision chaining)
 typedef struct hashtable_entry {

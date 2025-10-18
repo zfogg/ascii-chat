@@ -186,7 +186,11 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     return data;
   }
 
-  mutex_lock(&pool->pool_mutex);
+  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
+  // Lock debugging would call platform_backtrace_symbols() which uses symbol cache
+  // which uses hashtable which uses rwlocks which triggers lock debugging which
+  // calls buffer_pool_alloc() → DEADLOCK!
+  mutex_lock_impl(&pool->pool_mutex);
   pool->total_allocs++;
 
   void *buffer = NULL;
@@ -219,26 +223,14 @@ void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
     pool->malloc_fallbacks++;
   }
 
-  mutex_unlock(&pool->pool_mutex);
+  mutex_unlock_impl(&pool->pool_mutex);
 
   // If no buffer from pool, use malloc
+  // IMPORTANT: Backtrace must be done AFTER mutex_unlock to avoid deadlock!
+  // platform_backtrace_symbols() can trigger symbol cache operations which may
+  // call back into buffer_pool_alloc(), causing deadlock if we hold the mutex.
   if (!buffer) {
-    void *callstack[3];
-    int frames = platform_backtrace(callstack, 3);
-    char **symbols = platform_backtrace_symbols(callstack, frames);
-
-    // log_error("MALLOC FALLBACK ALLOC: size=%zu at %s:%d thread=%p", size, __FILE__, __LINE__,
-    //         (void *)pthread_self());
-    // if (symbols && frames >= 2) {
-    //   log_error("  Called from: %s", symbols[1]);
-    //   if (frames >= 3)
-    //     log_error("  Called from: %s", symbols[2]);
-    // }
-    platform_backtrace_symbols_free(symbols);
-
     buffer = SAFE_MALLOC(size, void *);
-    // log_error("MALLOC FALLBACK ALLOC COMPLETE: size=%zu -> ptr=%p thread=%p", size, buffer,
-    //         (void *)pthread_self());
   }
 
   return buffer;
@@ -256,7 +248,8 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
     return;
   }
 
-  mutex_lock(&pool->pool_mutex);
+  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
+  mutex_lock_impl(&pool->pool_mutex);
 
   bool freed = false;
 
@@ -271,7 +264,7 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
     freed = buffer_pool_free_single(pool->xlarge_pool, data);
   }
 
-  mutex_unlock(&pool->pool_mutex);
+  mutex_unlock_impl(&pool->pool_mutex);
 
   // If not from any pool, it was malloc'd
   if (!freed) {
@@ -288,12 +281,13 @@ void data_buffer_pool_get_stats(data_buffer_pool_t *pool, uint64_t *hits, uint64
     return;
   }
 
-  mutex_lock(&pool->pool_mutex);
+  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
+  mutex_lock_impl(&pool->pool_mutex);
   if (hits)
     *hits = pool->pool_hits;
   if (misses)
     *misses = pool->malloc_fallbacks;
-  mutex_unlock(&pool->pool_mutex);
+  mutex_unlock_impl(&pool->pool_mutex);
 }
 
 /* ============================================================================
@@ -378,7 +372,8 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
 
   SAFE_MEMSET(stats, sizeof(*stats), 0, sizeof(*stats));
 
-  mutex_lock(&pool->pool_mutex);
+  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
+  mutex_lock_impl(&pool->pool_mutex);
 
   // Small pool stats
   if (pool->small_pool) {
@@ -427,7 +422,7 @@ void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_d
     stats->total_pool_usage_percent = (total_hits * 100) / stats->total_allocations;
   }
 
-  mutex_unlock(&pool->pool_mutex);
+  mutex_unlock_impl(&pool->pool_mutex);
 }
 
 void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name) {
