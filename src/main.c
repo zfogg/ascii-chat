@@ -210,20 +210,7 @@ static void print_version() {
   printf("  C Library: Unknown\n");
 #endif
 
-  printf("  Platform: %s",
-#if defined(_WIN32)
-         "Windows"
-#elif defined(__APPLE__)
-         "macOS"
-#elif defined(__linux__)
-         "Linux"
-#elif defined(__unix__)
-         "Unix"
-#else
-         "Unknown"
-#endif
-  );
-  printf("\n");
+  printf("  Platform: %s\n", ASCII_CHAT_OS);
 
   printf("\n");
   printf("For more information: https://github.com/zfogg/ascii-chat\n");

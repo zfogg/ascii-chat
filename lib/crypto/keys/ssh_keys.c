@@ -205,8 +205,9 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at public key data");
   }
 
-  // Extract Ed25519 public key
-  memcpy(key_out->public_key, key_blob + offset, 32);
+  // Note: Don't extract public key here - we'll get it from the private key section later
+  // The public key in the OpenSSH format appears twice: once here and once in the private key data
+  // We need the one from the private key section for consistency
   offset += 32;
 
   // Read private key
@@ -791,7 +792,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     long temp_file_size = ftell(temp_file);
     (void)fseek(temp_file, 0, SEEK_SET);
 
-    char *temp_file_content = malloc(temp_file_size + 1);
+    char *temp_file_content = SAFE_MALLOC(temp_file_size + 1, char *);
     if (!temp_file_content) {
       (void)fclose(temp_file);
       unlink(temp_key_path);

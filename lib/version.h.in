@@ -9,6 +9,12 @@
 #define ASCII_CHAT_VERSION_STRING "@PROJECT_VERSION@"
 #define ASCII_CHAT_GIT_VERSION "@GIT_VERSION_STRING@"
 #define ASCII_CHAT_BUILD_TYPE "@VERSION_BUILD_TYPE@"
+#define ASCII_CHAT_OS "@VERSION_OS@"
 
 // Full version string like "v0.2.0-42+gf811525" (nvim-style)
 #define ASCII_CHAT_VERSION_FULL "v" ASCII_CHAT_VERSION_STRING "-" ASCII_CHAT_GIT_VERSION
+
+// Runtime version accessors
+const char *ascii_chat_get_version(void);
+const char *ascii_chat_get_comment(void);
+const char *ascii_chat_get_build_info(void);
