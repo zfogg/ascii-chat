@@ -253,6 +253,7 @@ size_t g_num_whitelisted_clients = 0;
  * @param sigint The signal number (unused, required by signal handler signature)
  */
 static void sigint_handler(int sigint) {
+  (void)(sigint);
   static int sigint_count = 0;
   sigint_count++;
   if (sigint_count > 1) {
@@ -497,10 +498,6 @@ int server_main(int argc, char *argv[]) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
   }
   (void)atexit(platform_cleanup);
-  fprintf(stderr, "it might be a log");
-  log_debug("platform_init done");
-  fprintf(stderr, "it's not a log");
-  (void)fflush(stderr);
 
 #if defined(USE_MIMALLOC_DEBUG)
 #if !defined(_WIN32)

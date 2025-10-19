@@ -752,7 +752,8 @@ if(USE_MIMALLOC)
     set(MIMALLOC_LIBRARIES mimalloc-static)
 
     # Define USE_MIMALLOC for all source files so they can use mi_malloc/mi_free directly
-    add_compile_definitions(USE_MIMALLOC)
+    # Also define MI_STATIC_LIB to tell mimalloc headers we're using static library (prevents dllimport)
+    add_compile_definitions(USE_MIMALLOC MI_STATIC_LIB)
 
     message(STATUS "mimalloc will override malloc/free globally")
     message(STATUS "Your existing SAFE_MALLOC macros will automatically use mimalloc")
@@ -779,30 +780,67 @@ if(WIN32)
     # Setup vcpkg paths if available
     if(DEFINED ENV{VCPKG_ROOT})
         set(VCPKG_ROOT $ENV{VCPKG_ROOT})
-        set(CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/x64-windows" ${CMAKE_PREFIX_PATH})
-        include_directories("${VCPKG_ROOT}/installed/x64-windows/include")
-        link_directories("${VCPKG_ROOT}/installed/x64-windows/lib")
         message(STATUS "Using vcpkg from: ${VCPKG_ROOT}")
     endif()
 
     # Find packages using vcpkg (toolchain already configured at top of file)
-    # Find zlib - vcpkg provides both debug and optimized libraries
-    find_package(ZLIB REQUIRED)
-    message(STATUS "Found ZLIB: ${ZLIB_VERSION_STRING}")
-    # ZLIB_LIBRARIES from vcpkg contains generator expressions that automatically
-    # select the debug library (zlibd.lib) for Debug builds and the optimized
-    # library (zlib.lib) for Release builds
+    # Use static libraries for Release builds, dynamic (DLL) libraries for Debug/Dev builds
+    # This avoids shipping DLLs with Release builds while enabling easier debugging
 
-    # Find libsodium - try finding it directly to avoid import issues
-    find_library(LIBSODIUM_LIBRARY NAMES libsodium sodium
-                PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
-    find_path(LIBSODIUM_INCLUDE_DIR NAMES sodium.h
-             PATHS "${VCPKG_ROOT}/installed/x64-windows/include")
-    if(LIBSODIUM_LIBRARY AND LIBSODIUM_INCLUDE_DIR)
-        set(LIBSODIUM_LIBRARIES ${LIBSODIUM_LIBRARY})
+    # Determine triplet based on build type
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(VCPKG_TRIPLET "x64-windows-static")
+        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/lib")
+        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/lib")
+        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/include")
+        message(STATUS "Using static libraries for Release build (triplet: ${VCPKG_TRIPLET})")
+    else()
+        set(VCPKG_TRIPLET "x64-windows")
+        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/lib")
+        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/lib")
+        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/include")
+        message(STATUS "Using dynamic libraries for Debug/Dev build (triplet: ${VCPKG_TRIPLET})")
+    endif()
+
+    # Set CMake paths to use the selected triplet
+    set(CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}" ${CMAKE_PREFIX_PATH})
+    include_directories("${VCPKG_INCLUDE_PATH}")
+    link_directories("${VCPKG_LIB_PATH}")
+
+    # Find zlib
+    find_library(ZLIB_LIBRARY_RELEASE NAMES zlib PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_library(ZLIB_LIBRARY_DEBUG NAMES zlibd zlib PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+
+    if(ZLIB_LIBRARY_RELEASE OR ZLIB_LIBRARY_DEBUG)
+        set(ZLIB_LIBRARIES optimized ${ZLIB_LIBRARY_RELEASE} debug ${ZLIB_LIBRARY_DEBUG})
+        set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
+        set(ZLIB_FOUND TRUE)
+        message(STATUS "Found ZLIB: ${ZLIB_LIBRARY_RELEASE}")
+
+        # Define ZLIB_STATIC for static builds to prevent dllimport
+        if(CMAKE_BUILD_TYPE MATCHES "Release")
+            add_compile_definitions(ZLIB_STATIC)
+        endif()
+    else()
+        message(FATAL_ERROR "Could not find zlib - required dependency")
+    endif()
+
+    # Find libsodium
+    find_library(LIBSODIUM_LIBRARY_RELEASE NAMES libsodium sodium PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_library(LIBSODIUM_LIBRARY_DEBUG NAMES libsodium sodium PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_path(LIBSODIUM_INCLUDE_DIR NAMES sodium.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+
+    if(LIBSODIUM_LIBRARY_RELEASE OR LIBSODIUM_LIBRARY_DEBUG)
+        set(LIBSODIUM_LIBRARIES optimized ${LIBSODIUM_LIBRARY_RELEASE} debug ${LIBSODIUM_LIBRARY_DEBUG})
         set(LIBSODIUM_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIR})
         set(LIBSODIUM_FOUND TRUE)
-        message(STATUS "Found libsodium: ${LIBSODIUM_LIBRARY}")
+        message(STATUS "Found libsodium: ${LIBSODIUM_LIBRARY_RELEASE}")
+
+        # Define SODIUM_STATIC for static builds to prevent dllimport
+        if(CMAKE_BUILD_TYPE MATCHES "Release")
+            add_compile_definitions(SODIUM_STATIC)
+        endif()
     else()
         message(WARNING "Could not find libsodium - will continue without encryption")
         set(LIBSODIUM_FOUND FALSE)
@@ -1326,10 +1364,19 @@ if(WIN32)
     set(MFUUID_LIB mfuuid)
     set(OLE32_LIB ole32)
 
-    # Find PortAudio - vcpkg provides appropriate library for each config
-    find_package(portaudio CONFIG REQUIRED)
-    set(PORTAUDIO_LIBRARIES portaudio)
-    set(PORTAUDIO_FOUND TRUE)
+    # Find PortAudio
+    find_library(PORTAUDIO_LIBRARY_RELEASE NAMES portaudio PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_library(PORTAUDIO_LIBRARY_DEBUG NAMES portaudio PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_path(PORTAUDIO_INCLUDE_DIR NAMES portaudio.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+
+    if(PORTAUDIO_LIBRARY_RELEASE OR PORTAUDIO_LIBRARY_DEBUG)
+        set(PORTAUDIO_LIBRARIES optimized ${PORTAUDIO_LIBRARY_RELEASE} debug ${PORTAUDIO_LIBRARY_DEBUG})
+        set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIR})
+        set(PORTAUDIO_FOUND TRUE)
+        message(STATUS "Found PortAudio: ${PORTAUDIO_LIBRARY_RELEASE}")
+    else()
+        message(FATAL_ERROR "Could not find portaudio - required dependency")
+    endif()
 else()
     # Platform-specific libraries (matching Makefile logic)
     if(PLATFORM_DARWIN)
@@ -1394,8 +1441,9 @@ include_directories(
 
 # Add dependency include directories (matching pkg-config approach)
 if(WIN32)
-    if(DEFINED ENV{VCPKG_ROOT})
-        include_directories($ENV{VCPKG_ROOT}/installed/x64-windows/include)
+    # Use triplet-specific include path (set earlier based on build type)
+    if(DEFINED VCPKG_INCLUDE_PATH)
+        include_directories(${VCPKG_INCLUDE_PATH})
     endif()
     # Add additional Windows include paths if found
     # Use SYSTEM for musl to avoid glibc header conflicts (-isystem vs -I)
@@ -1404,6 +1452,13 @@ if(WIN32)
     endif()
     if(LIBSODIUM_INCLUDE_DIRS)
         include_directories(SYSTEM ${LIBSODIUM_INCLUDE_DIRS})
+    endif()
+    if(PORTAUDIO_INCLUDE_DIRS)
+        include_directories(SYSTEM ${PORTAUDIO_INCLUDE_DIRS})
+    endif()
+    # Add mimalloc include directory for USE_MIMALLOC builds
+    if(USE_MIMALLOC)
+        include_directories(${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
     endif()
 else()
     # Use pkg-config flags (matches Makefile CFLAGS approach)
@@ -2062,6 +2117,11 @@ target_link_libraries(ascii-chat
     ascii-chat-data-structures
     ascii-chat-util
 )
+
+# Link mimalloc to the executable (needed for Release builds)
+if(USE_MIMALLOC)
+    target_link_libraries(ascii-chat mimalloc-static)
+endif()
 
 # Preserve custom .ascii_chat_version section during linking
 if(NOT WIN32)

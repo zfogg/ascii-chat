@@ -76,8 +76,9 @@ else()
     set(PROJECT_VERSION \"${PROJECT_VERSION}\")
 endif()
 
-# Set build type
+# Set build type and OS - these get substituted at file write time
 set(VERSION_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\")
+set(VERSION_OS \"${CMAKE_SYSTEM_NAME}\")
 
 # Generate version header
 configure_file(
