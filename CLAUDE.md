@@ -8,7 +8,7 @@
 - **ALWAYS** read and understand the `README.md` and `CMakeLists.txt` files first
 - Use the test runner script `./tests/scripts/run_tests.sh` for running tests
 - Format code with `cmake --build build --target format` after you edit it
-- Use `SAFE_MALLOC()` macro from common.h rather than regular `malloc()`
+- **Use memory macros** from common.h rather than regular malloc/free (see Memory Management section below)
 - On macOS: use `lldb` for debugging (gdb doesn't work with this project)
 - On Windows: use PowerShell build script `./build.ps1` or CMake directly
 - Use `clang` instead of `gcc`
@@ -16,6 +16,149 @@
 - Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
 - Use log_*() from logging.c and common.h for logging instead of printf()
 - When debugging and testing, make a test_whatever.sh and use that so you don't bother the developer by requesting to run commands over and over
+
+## Memory Management Macros (CRITICAL)
+
+**IMPORTANT**: ASCII-Chat uses custom memory macros for debugging and leak tracking. **ALWAYS** use these instead of standard C memory functions.
+
+### Safe Memory Allocation Macros
+
+All memory allocation macros are defined in `lib/common.h` and provide automatic leak tracking when `DEBUG_MEMORY` is enabled.
+
+**SAFE_MALLOC** - Allocate memory with leak tracking:
+```c
+// ✅ CORRECT - Two arguments: size and cast type
+uint8_t *buffer = SAFE_MALLOC(1024, uint8_t *);
+client_t *client = SAFE_MALLOC(sizeof(client_t), client_t *);
+
+// ❌ WRONG - Missing size argument
+uint8_t *buffer = SAFE_MALLOC(uint8_t *);  // COMPILE ERROR!
+
+// ❌ WRONG - Using old malloc
+uint8_t *buffer = malloc(1024);  // No leak tracking!
+```
+
+**SAFE_CALLOC** - Zero-initialized allocation:
+```c
+// ✅ CORRECT - Three arguments: count, size, cast type
+uint8_t *array = SAFE_CALLOC(10, sizeof(uint8_t), uint8_t *);
+client_t *clients = SAFE_CALLOC(MAX_CLIENTS, sizeof(client_t), client_t *);
+
+// ❌ WRONG - Using old calloc
+uint8_t *array = calloc(10, sizeof(uint8_t));  // No leak tracking!
+```
+
+**SAFE_REALLOC** - Resize allocated memory:
+```c
+// ✅ CORRECT - Three arguments: pointer, new size, cast type
+buffer = SAFE_REALLOC(buffer, new_size, uint8_t *);
+
+// ❌ WRONG - Using old realloc
+buffer = realloc(buffer, new_size);  // No leak tracking!
+```
+
+**SAFE_FREE** - Free allocated memory:
+```c
+// ✅ CORRECT - One argument: pointer (automatically sets to NULL)
+SAFE_FREE(buffer);
+// buffer is now NULL
+
+// ❌ WRONG - Using old free
+free(buffer);  // No leak tracking, pointer not nulled!
+buffer = NULL;  // Manual null assignment needed
+```
+
+**SAFE_STRDUP** - Duplicate string:
+```c
+// ✅ CORRECT - Two arguments: string, cast type
+char *copy = SAFE_STRDUP("hello", char *);
+
+// ❌ WRONG - Using old strdup
+char *copy = strdup("hello");  // No leak tracking!
+```
+
+### String Safety Macros
+
+**SAFE_STRNCPY** - Safe string copy with guaranteed null termination:
+```c
+// ✅ CORRECT - Three arguments: dest, src, size (NOT size-1!)
+char dest[256];
+SAFE_STRNCPY(dest, src, sizeof(dest));  // Guarantees null termination
+
+// ❌ WRONG - Manual strncpy without proper null termination
+strncpy(dest, src, sizeof(dest));  // May not be null-terminated!
+dest[sizeof(dest) - 1] = '\0';     // Manual null termination needed
+```
+
+### Memory Macro Summary Table
+
+| Macro | Arguments | Standard Equivalent | Auto Null on Free? | Leak Tracking? |
+|-------|-----------|---------------------|-------------------|----------------|
+| `SAFE_MALLOC(size, cast)` | 2 | `malloc(size)` | Yes | Yes |
+| `SAFE_CALLOC(count, size, cast)` | 3 | `calloc(count, size)` | Yes | Yes |
+| `SAFE_REALLOC(ptr, size, cast)` | 3 | `realloc(ptr, size)` | No | Yes |
+| `SAFE_FREE(ptr)` | 1 | `free(ptr); ptr = NULL;` | Yes | Yes |
+| `SAFE_STRDUP(str, cast)` | 2 | `strdup(str)` | Yes | Yes |
+| `SAFE_STRNCPY(dst, src, size)` | 3 | `strncpy+null` | N/A | No |
+
+### Common Pitfalls
+
+**Pitfall 1: Forgetting the cast argument**
+```c
+// ❌ WRONG
+uint8_t *data = SAFE_MALLOC(1024);  // Missing cast!
+
+// ✅ CORRECT
+uint8_t *data = SAFE_MALLOC(1024, uint8_t *);
+```
+
+**Pitfall 2: Using sizeof(pointer) instead of actual size**
+```c
+// ❌ WRONG
+uint8_t *data = SAFE_MALLOC(sizeof(data), uint8_t *);  // sizeof(pointer) = 8 bytes!
+
+// ✅ CORRECT
+uint8_t *data = SAFE_MALLOC(data_size, uint8_t *);  // Actual size variable
+```
+
+**Pitfall 3: Mixing SAFE_ macros with standard functions**
+```c
+// ❌ WRONG - Memory allocated with SAFE_MALLOC but freed with free()
+uint8_t *data = SAFE_MALLOC(1024, uint8_t *);
+free(data);  // Leak tracker won't record this free!
+
+// ✅ CORRECT - Use matching macros
+uint8_t *data = SAFE_MALLOC(1024, uint8_t *);
+SAFE_FREE(data);  // Properly tracked
+```
+
+**Pitfall 4: Freeing without SAFE_FREE**
+```c
+// ❌ WRONG - Pointer not nulled, can lead to double-free
+free(buffer);
+if (buffer) { free(buffer); }  // CRASH if buffer not nulled!
+
+// ✅ CORRECT - SAFE_FREE automatically nulls pointer
+SAFE_FREE(buffer);
+if (buffer) { free(buffer); }  // Never executes, buffer is NULL
+```
+
+### Debug Memory Tracking
+
+When `CMAKE_BUILD_TYPE=Debug`, all SAFE_* allocations are tracked:
+- Memory leaks are reported on program exit
+- Each allocation includes file and line number
+- Use `DEBUG_MEMORY` define for verbose allocation logs
+
+```bash
+# Enable memory debugging
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+
+# Run with memory leak detection
+./build/bin/ascii-chat server
+# On exit, memory leaks are reported with source locations
+```
 
 ## Project Overview
 ASCII-Chat is a terminal-based video chat application that converts webcam video to ASCII art in real-time. It supports multiple clients connecting to a single server, with video mixing and audio streaming capabilities.

@@ -1,4 +1,5 @@
 #include "gpg_keys.h"
+#include "validation.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../platform/string.h"
@@ -59,32 +60,6 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   // This requires parsing the OpenPGP packet format
   SET_ERRNO(ERROR_CRYPTO_KEY, "Binary GPG key parsing not yet implemented");
   return ERROR_CRYPTO_KEY;
-}
-
-asciichat_error_t validate_gpg_key_format(const char *gpg_key_text) {
-  if (!gpg_key_text) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p", gpg_key_text);
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Check for GPG armor header
-  if (strncmp(gpg_key_text, "-----BEGIN PGP", 14) != 0) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "GPG key does not start with armor header");
-    return ERROR_CRYPTO_KEY;
-  }
-
-  // Check for GPG armor footer
-  if (strstr(gpg_key_text, "-----END PGP") == NULL) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "GPG key does not contain armor footer");
-    return ERROR_CRYPTO_KEY;
-  }
-
-  // TODO: Add more comprehensive GPG key validation
-  // - Check for valid armor format
-  // - Verify base64 encoding
-  // - Check for required packet types
-
-  return ASCIICHAT_OK;
 }
 
 asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed25519_pk[32]) {

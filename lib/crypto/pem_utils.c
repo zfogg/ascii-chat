@@ -420,6 +420,9 @@ static asciichat_error_t certificate_to_trust_anchor_inner(br_x509_trust_anchor 
 }
 
 void free_ta_contents(br_x509_trust_anchor *ta) {
+  if (!ta) {
+    return;
+  }
   xfree(ta->dn.data);
   switch (ta->pkey.key_type) {
   case BR_KEYTYPE_RSA:

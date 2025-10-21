@@ -2133,8 +2133,9 @@ if(NOT WIN32)
 endif()
 
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_link_options(ascii-chat PRIVATE -no-pie)
+# Only on Unix/Linux/macOS - Windows doesn't support -no-pie flag
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
+    target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
 endif()
 
 # Strip symbols in Release builds
