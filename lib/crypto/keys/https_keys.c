@@ -11,8 +11,53 @@
 // Helper Functions
 // =============================================================================
 
-// Forward declaration for https_fetch_keys function
-extern asciichat_error_t https_fetch_keys(const char *url, char **response_text, size_t *response_len);
+/**
+ * Internal helper to fetch keys via HTTPS
+ * Parses URL to extract hostname and path, then calls https_get
+ */
+static asciichat_error_t https_fetch_keys(const char *url, char **response_text, size_t *response_len) {
+  if (!url || !response_text || !response_len) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Parse URL to extract hostname and path
+  // Expected format: https://hostname/path
+  if (strncmp(url, "https://", 8) != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "URL must start with https://");
+    return ERROR_INVALID_PARAM;
+  }
+
+  const char *hostname_start = url + 8; // Skip "https://"
+  const char *path_start = strchr(hostname_start, '/');
+
+  if (!path_start) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "URL must include a path");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Extract hostname
+  size_t hostname_len = path_start - hostname_start;
+  if (hostname_len == 0 || hostname_len > 255) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hostname length");
+    return ERROR_INVALID_PARAM;
+  }
+
+  char hostname[256];
+  memcpy(hostname, hostname_start, hostname_len);
+  hostname[hostname_len] = '\0';
+
+  // Use https_get from http_client
+  char *response = https_get(hostname, path_start);
+  if (!response) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to fetch from %s", url);
+    return ERROR_NETWORK;
+  }
+
+  *response_text = response;
+  *response_len = strlen(response);
+  return ASCIICHAT_OK;
+}
 
 // =============================================================================
 // URL Construction

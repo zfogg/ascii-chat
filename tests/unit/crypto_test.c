@@ -158,8 +158,7 @@ Theory((size_t data_size), crypto, encryption_roundtrip_property) {
   crypto_result_t result = crypto_init_with_password(&ctx, "test-password-for-theory");
   cr_assert_eq(result, CRYPTO_OK, "Context init should succeed for size %zu", data_size);
 
-  uint8_t *plaintext;
-  plaintext = data_size = SAFE_MALLOC(uint8_t *);
+  uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = (uint8_t)(i % 256);
   }
@@ -206,8 +205,7 @@ Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
   crypto_set_peer_public_key(&ctx1, pub_key2);
   crypto_set_peer_public_key(&ctx2, pub_key1);
 
-  uint8_t *plaintext;
-  plaintext = data_size = SAFE_MALLOC(uint8_t *);
+  uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = (uint8_t)((i * 7) % 256);
   }
@@ -411,8 +409,7 @@ Theory((size_t data_size), crypto, nonce_uniqueness_property) {
   memset(&ctx, 0, sizeof(ctx));
   crypto_init_with_password(&ctx, "nonce-test-password");
 
-  uint8_t *plaintext;
-  plaintext = data_size = SAFE_MALLOC(uint8_t *);
+  uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = 0xAA;
   }

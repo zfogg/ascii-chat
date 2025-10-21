@@ -270,8 +270,15 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
 
   // Use deterministic salt for consistent key derivation across client/server
   // This ensures the same password produces the same key on both sides
+  // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
-  memcpy(ctx->password_salt, deterministic_salt, ctx->salt_size);
+  size_t salt_str_len = strlen(deterministic_salt);
+
+  // Zero-initialize the salt buffer first
+  memset(ctx->password_salt, 0, ctx->salt_size);
+
+  // Copy the salt string (will be padded with zeros to ctx->salt_size)
+  memcpy(ctx->password_salt, deterministic_salt, (salt_str_len < ctx->salt_size) ? salt_str_len : ctx->salt_size);
 
   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
   if (crypto_pwhash(ctx->password_key, ctx->encryption_key_size, password, strlen(password), ctx->password_salt,
@@ -294,9 +301,16 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password) {
   uint8_t test_key[SECRETBOX_KEY_SIZE]; // Use maximum size for buffer
 
   // Use the same deterministic salt for verification
+  // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
   uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
-  memcpy(salt, deterministic_salt, ctx->salt_size);
+  size_t salt_str_len = strlen(deterministic_salt);
+
+  // Zero-initialize the salt buffer first
+  memset(salt, 0, ARGON2ID_SALT_SIZE);
+
+  // Copy the salt string (will be padded with zeros to ctx->salt_size)
+  memcpy(salt, deterministic_salt, (salt_str_len < ctx->salt_size) ? salt_str_len : ctx->salt_size);
 
   // Derive key with same salt
   if (crypto_pwhash(test_key, ctx->encryption_key_size, password, strlen(password), salt,
@@ -330,9 +344,16 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password,
   }
 
   // Use deterministic salt for consistent key derivation across client/server
+  // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
   uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
-  memcpy(salt, deterministic_salt, ARGON2ID_SALT_SIZE);
+  size_t salt_str_len = strlen(deterministic_salt);
+
+  // Zero-initialize the salt buffer first
+  memset(salt, 0, ARGON2ID_SALT_SIZE);
+
+  // Copy the salt string (will be padded with zeros to ARGON2ID_SALT_SIZE)
+  memcpy(salt, deterministic_salt, (salt_str_len < ARGON2ID_SALT_SIZE) ? salt_str_len : ARGON2ID_SALT_SIZE);
 
   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
   if (crypto_pwhash(encryption_key, SECRETBOX_KEY_SIZE, password, strlen(password), salt,
