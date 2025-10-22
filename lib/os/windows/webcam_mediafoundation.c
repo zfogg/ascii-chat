@@ -12,6 +12,8 @@
 #include <stdlib.h>
 
 // Windows Media Foundation webcam implementation
+// Note: MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING and
+//       MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING are defined in mfreadwrite.h
 
 struct webcam_context_t {
   IMFMediaSource *device;
@@ -173,9 +175,29 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  // Create source reader
-  hr = MFCreateSourceReaderFromMediaSource(cam->device, NULL, &cam->reader);
-  log_info("MFCreateSourceReaderFromMediaSource returned: 0x%08x", hr);
+  // Create source reader with GPU-accelerated video processing (Windows 8+)
+  // This enables automatic YUV->RGB conversion with hardware acceleration
+  IMFAttributes *readerAttrs = NULL;
+  hr = MFCreateAttributes(&readerAttrs, 1);
+  if (FAILED(hr)) {
+    log_error("Failed to create reader attributes: 0x%08x", hr);
+    result = ERROR_WEBCAM;
+    goto error;
+  }
+
+  // Enable advanced video processing for GPU-accelerated YUV->RGB conversion (Windows 8+)
+  // This is the recommended attribute for webcam capture with format conversion
+  hr = IMFAttributes_SetUINT32(readerAttrs, &MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, TRUE);
+  if (FAILED(hr)) {
+    log_warn("Failed to set advanced video processing attribute: 0x%08x", hr);
+  }
+
+  hr = MFCreateSourceReaderFromMediaSource(cam->device, readerAttrs, &cam->reader);
+  log_info("MFCreateSourceReaderFromMediaSource returned: 0x%08x, readerAttrs=%p", hr, (void *)readerAttrs);
+
+  if (readerAttrs) {
+    IMFAttributes_Release(readerAttrs);
+  }
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
@@ -197,64 +219,25 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  // Try to set a native format first (don't force RGB24 which might not be supported)
-  IMFMediaType *nativeType = NULL;
-  DWORD mediaTypeIndex = 0;
-  BOOL formatSet = FALSE;
+  // Request RGB32 output format (BGRA) - more widely supported than RGB24
+  // Combined with MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, this enables
+  // GPU-accelerated YUV->RGB conversion
+  IMFMediaType *rgbType = NULL;
+  hr = MFCreateMediaType(&rgbType);
+  if (SUCCEEDED(hr)) {
+    IMFMediaType_SetGUID(rgbType, &MF_MT_MAJOR_TYPE, &MFMediaType_Video);
+    IMFMediaType_SetGUID(rgbType, &MF_MT_SUBTYPE, &MFVideoFormat_RGB32);
 
-  // Try to find a suitable native format
-  while (!formatSet) {
-    hr = IMFSourceReader_GetNativeMediaType(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, mediaTypeIndex,
-                                            &nativeType);
-    if (FAILED(hr)) {
-      break; // No more media types
-    }
+    // Use partial type - let MF fill in frame size and other details
+    hr = IMFSourceReader_SetCurrentMediaType(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, rgbType);
+    IMFMediaType_Release(rgbType);
 
-    // Check if this is a video format we can use
-    GUID subtype;
-    hr = IMFMediaType_GetGUID(nativeType, &MF_MT_SUBTYPE, &subtype);
     if (SUCCEEDED(hr)) {
-      // Accept common formats: YUY2, NV12, RGB24, RGB32, MJPEG
-      const char *format_name = "UNKNOWN";
-      if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2))
-        format_name = "YUY2";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_NV12))
-        format_name = "NV12";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24))
-        format_name = "RGB24";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32))
-        format_name = "RGB32";
-      else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG))
-        format_name = "MJPEG";
-
-      log_info("Found format %s at index %d, attempting to set", format_name, mediaTypeIndex);
-
-      if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2) || IsEqualGUID(&subtype, &MFVideoFormat_NV12) ||
-          IsEqualGUID(&subtype, &MFVideoFormat_RGB24) || IsEqualGUID(&subtype, &MFVideoFormat_RGB32) ||
-          IsEqualGUID(&subtype, &MFVideoFormat_MJPG)) {
-
-        hr = IMFSourceReader_SetCurrentMediaType(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, nativeType);
-        log_info("SetCurrentMediaType returned: 0x%08x", hr);
-        if (SUCCEEDED(hr)) {
-          log_info("Set native media type at index %d", mediaTypeIndex);
-          formatSet = TRUE;
-        }
-      }
+      log_info("Successfully requested RGB32 output format");
+    } else {
+      log_warn("Could not set RGB32 format: 0x%08x, will use native format", hr);
+      // Don't fail - just use whatever format the camera provides
     }
-
-    IMFMediaType_Release(nativeType);
-    mediaTypeIndex++;
-  }
-
-  if (!formatSet) {
-    log_warn("Could not set a native format, using device default");
-  }
-
-  // Flush the reader to clear any buffered data
-  hr = IMFSourceReader_Flush(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM);
-  log_info("IMFSourceReader_Flush returned: 0x%08x", hr);
-  if (FAILED(hr)) {
-    log_warn("Failed to flush source reader: 0x%08x", hr);
   }
 
   // Get actual media type and dimensions
@@ -381,11 +364,20 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   DWORD streamIndex, flags;
   LONGLONG timestamp;
 
+  // Timing diagnostic: measure ReadSample duration
+  LARGE_INTEGER freq, start, end;
+  QueryPerformanceFrequency(&freq);
+  QueryPerformanceCounter(&start);
+
   // Read a sample from the source reader
   // Use 0 for synchronous blocking read (DRAIN flag was wrong - that's for EOF)
   hr = IMFSourceReader_ReadSample(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
                                   0, // Regular synchronous read
                                   &streamIndex, &flags, &timestamp, &sample);
+
+  QueryPerformanceCounter(&end);
+  double elapsed_ms = (double)(end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
+  log_info("ReadSample took %.2f ms (hr=0x%08x, flags=0x%08x, sample=%p)", elapsed_ms, hr, flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {
@@ -460,205 +452,46 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Query the ACTUAL format from Media Foundation - NO GUESSING!
+  // Get frame dimensions from current media type
   IMFMediaType *currentType = NULL;
-  HRESULT hr2 =
-      IMFSourceReader_GetCurrentMediaType(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
-
-  if (FAILED(hr2)) {
-    log_error("Failed to get current media type: 0x%08x", hr2);
+  hr = IMFSourceReader_GetCurrentMediaType(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
+  if (FAILED(hr)) {
+    log_error("Failed to get current media type: 0x%08x", hr);
     IMFMediaBuffer_Unlock(buffer);
     IMFMediaBuffer_Release(buffer);
     IMFSample_Release(sample);
     return NULL;
   }
 
-  // Get the actual format GUID
-  GUID subtype = {0};
-  HRESULT hrGuid = IMFMediaType_GetGUID(currentType, &MF_MT_SUBTYPE, &subtype);
-  if (FAILED(hrGuid)) {
-    log_error("Failed to get format subtype: 0x%08x", hrGuid);
-    IMFMediaType_Release(currentType);
-    IMFMediaBuffer_Unlock(buffer);
-    IMFMediaBuffer_Release(buffer);
-    IMFSample_Release(sample);
-    return NULL;
-  }
-
-  // Get actual dimensions (packed as UINT64)
   UINT64 frameSize = 0;
-  HRESULT hrSize = IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_SIZE, &frameSize);
-  if (FAILED(hrSize)) {
-    log_error("Failed to get frame size: 0x%08x", hrSize);
-    IMFMediaType_Release(currentType);
-    IMFMediaBuffer_Unlock(buffer);
-    IMFMediaBuffer_Release(buffer);
-    IMFSample_Release(sample);
-    return NULL;
-  }
-
-  UINT32 actualWidth = (UINT32)(frameSize >> 32);
-  UINT32 actualHeight = (UINT32)(frameSize & 0xFFFFFFFF);
-
-  // Get the stride (bytes per row)
-  UINT32 stride = 0;
-  HRESULT hrStride = IMFMediaType_GetUINT32(currentType, &MF_MT_DEFAULT_STRIDE, &stride);
-  if (FAILED(hrStride)) {
-    // Calculate stride based on format
-    if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) {
-      stride = actualWidth; // NV12 Y plane stride
-    } else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) {
-      stride = actualWidth * 2; // YUY2 stride
-    } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24)) {
-      stride = actualWidth * 3; // RGB24 stride
-    } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) {
-      stride = actualWidth * 4; // RGB32 stride
-    } else {
-      log_error("Unknown format, cannot calculate stride");
-      IMFMediaType_Release(currentType);
-      IMFMediaBuffer_Unlock(buffer);
-      IMFMediaBuffer_Release(buffer);
-      IMFSample_Release(sample);
-      return NULL;
-    }
-  }
-
-  // Log the actual format we're dealing with
-  const char *formatName = "UNKNOWN";
-  if (IsEqualGUID(&subtype, &MFVideoFormat_NV12))
-    formatName = "NV12";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2))
-    formatName = "YUY2";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24))
-    formatName = "RGB24";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32))
-    formatName = "RGB32";
-  else if (IsEqualGUID(&subtype, &MFVideoFormat_MJPG))
-    formatName = "MJPEG";
-
+  hr = IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_SIZE, &frameSize);
   IMFMediaType_Release(currentType);
 
-  // Create image_t structure with ACTUAL dimensions
-  image_t *img;
-  img = SAFE_MALLOC(sizeof(image_t), image_t *);
-
-  img->w = actualWidth;
-  img->h = actualHeight;
-  img->pixels = SAFE_MALLOC(actualWidth * actualHeight * sizeof(rgb_t), rgb_t *);
-
-  // Convert based on the ACTUAL format from Media Foundation
-  if (IsEqualGUID(&subtype, &MFVideoFormat_RGB24)) {
-    // RGB24 format (BGR order in Media Foundation)
-    for (UINT32 i = 0; i < actualWidth * actualHeight; i++) {
-      img->pixels[i].b = bufferData[i * 3 + 0]; // B
-      img->pixels[i].g = bufferData[i * 3 + 1]; // G
-      img->pixels[i].r = bufferData[i * 3 + 2]; // R
-    }
-  } else if (IsEqualGUID(&subtype, &MFVideoFormat_RGB32)) {
-    // RGB32 format (BGRX order in Media Foundation)
-    for (UINT32 i = 0; i < actualWidth * actualHeight; i++) {
-      img->pixels[i].b = bufferData[i * 4 + 0]; // B
-      img->pixels[i].g = bufferData[i * 4 + 1]; // G
-      img->pixels[i].r = bufferData[i * 4 + 2]; // R
-      // Skip alpha channel at [i * 4 + 3]
-    }
-  } else if (IsEqualGUID(&subtype, &MFVideoFormat_NV12)) {
-    // NV12 format: Y plane followed by interleaved UV plane
-    // Y plane: one byte per pixel
-    // UV plane: two bytes (U,V) for each 2x2 pixel block
-
-    BYTE *yPlane = bufferData;
-    BYTE *uvPlane = bufferData + (stride * actualHeight); // UV plane starts after Y plane
-
-    for (UINT32 y = 0; y < actualHeight; y++) {
-      for (UINT32 x = 0; x < actualWidth; x++) {
-        // Get Y value for this pixel
-        int yValue = yPlane[y * stride + x];
-
-        // Get UV values (shared by 2x2 pixel blocks)
-        UINT32 uvRow = y / 2;
-        UINT32 uvCol = x / 2;
-        UINT32 uvIndex = uvRow * stride + uvCol * 2; // UV pairs are interleaved
-
-        int uValue = uvPlane[uvIndex];
-        int vValue = uvPlane[uvIndex + 1];
-
-        // Convert YUV to RGB using ITU-R BT.601 coefficients
-        int C = yValue - 16;
-        int D = uValue - 128;
-        int E = vValue - 128;
-
-        int R = (298 * C + 409 * E + 128) >> 8;
-        int G = (298 * C - 100 * D - 208 * E + 128) >> 8;
-        int B = (298 * C + 516 * D + 128) >> 8;
-
-        // Clamp and store
-        UINT32 pixelIndex = y * actualWidth + x;
-        img->pixels[pixelIndex].r = clamp_rgb(R);
-        img->pixels[pixelIndex].g = clamp_rgb(G);
-        img->pixels[pixelIndex].b = clamp_rgb(B);
-      }
-    }
-  } else if (IsEqualGUID(&subtype, &MFVideoFormat_YUY2)) {
-    // YUY2 format: packed Y0 U Y1 V (4 bytes = 2 pixels)
-    // Use the stride from Media Foundation for proper row alignment
-
-    for (UINT32 y = 0; y < actualHeight; y++) {
-      for (UINT32 x = 0; x < actualWidth; x += 2) {
-        // Calculate source index for this pixel pair
-        // Use the ACTUAL stride from Media Foundation (includes padding)
-        int src_idx = y * stride + x * 2;
-
-        // Bounds check to prevent buffer overrun
-        if (src_idx + 3 >= (int)bufferLength) {
-          break;
-        }
-
-        // Extract YUY2 components for this pixel pair
-        // YUY2 format: Y0 U Y1 V (2 pixels in 4 bytes)
-        int y0 = bufferData[src_idx];     // First pixel Y (luma)
-        int u = bufferData[src_idx + 1];  // Shared U (Cb) - blue difference
-        int y1 = bufferData[src_idx + 2]; // Second pixel Y (luma)
-        int v = bufferData[src_idx + 3];  // Shared V (Cr) - red difference
-
-        // Convert YUV to RGB using ITU-R BT.601 coefficients
-        int C = y0 - 16;
-        int D = u - 128;
-        int E = v - 128;
-
-        // First pixel
-        int R = (298 * C + 409 * E + 128) >> 8;
-        int G = (298 * C - 100 * D - 208 * E + 128) >> 8;
-        int B = (298 * C + 516 * D + 128) >> 8;
-
-        // Store first pixel
-        UINT32 pixelIndex = y * actualWidth + x;
-        img->pixels[pixelIndex].r = clamp_rgb(R);
-        img->pixels[pixelIndex].g = clamp_rgb(G);
-        img->pixels[pixelIndex].b = clamp_rgb(B);
-
-        // Second pixel (if within bounds)
-        if (x + 1 < actualWidth) {
-          C = y1 - 16;
-          R = (298 * C + 409 * E + 128) >> 8;
-          G = (298 * C - 100 * D - 208 * E + 128) >> 8;
-          B = (298 * C + 516 * D + 128) >> 8;
-
-          pixelIndex = y * actualWidth + (x + 1);
-          img->pixels[pixelIndex].r = clamp_rgb(R);
-          img->pixels[pixelIndex].g = clamp_rgb(G);
-          img->pixels[pixelIndex].b = clamp_rgb(B);
-        }
-      }
-    }
-  } else {
-    // Unsupported format
-    log_error("Unsupported format from Media Foundation: %s", formatName);
-    image_destroy(img);
+  if (FAILED(hr)) {
+    log_error("Failed to get frame size: 0x%08x", hr);
     IMFMediaBuffer_Unlock(buffer);
     IMFMediaBuffer_Release(buffer);
     IMFSample_Release(sample);
     return NULL;
+  }
+
+  UINT32 width = (UINT32)(frameSize >> 32);
+  UINT32 height = (UINT32)(frameSize & 0xFFFFFFFF);
+
+  // Create image_t structure
+  image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
+  img->w = width;
+  img->h = height;
+  img->pixels = SAFE_MALLOC(width * height * sizeof(rgb_t), rgb_t *);
+
+  // Copy RGB32 data (BGRA order in Media Foundation)
+  // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline
+  // RGB32 format is 4 bytes per pixel: B, G, R, A (we ignore alpha)
+  for (UINT32 i = 0; i < width * height; i++) {
+    img->pixels[i].b = bufferData[i * 4 + 0]; // B
+    img->pixels[i].g = bufferData[i * 4 + 1]; // G
+    img->pixels[i].r = bufferData[i * 4 + 2]; // R
+    // bufferData[i * 4 + 3] is alpha, ignored
   }
 
   // Unlock and cleanup

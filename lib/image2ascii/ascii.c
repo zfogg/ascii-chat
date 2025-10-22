@@ -180,11 +180,9 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
-
   // Start with the target dimensions requested by the user
   ssize_t resized_width = width;
   ssize_t resized_height = height;
-
 
   // Height doubling for half-block mode is now handled by the server
 

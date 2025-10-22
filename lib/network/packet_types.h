@@ -75,25 +75,42 @@ typedef enum {
   PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 23,      // Client -> Server: "I want to proceed without encryption"
   PACKET_TYPE_ENCRYPTED = 24,                 // Encrypted packet (after handshake)
 
+  // Session rekeying packets (ALWAYS SENT UNENCRYPTED during rekey handshake)
+  PACKET_TYPE_CRYPTO_REKEY_REQUEST = 25,  // Initiator -> Responder: {new_ephemeral_pk[32]}
+  PACKET_TYPE_CRYPTO_REKEY_RESPONSE = 26, // Responder -> Initiator: {new_ephemeral_pk[32]}
+  PACKET_TYPE_CRYPTO_REKEY_COMPLETE = 27, // Initiator -> Responder: Empty (encrypted with NEW key)
+
   // Audio batching (moved after crypto packets)
-  PACKET_TYPE_AUDIO_BATCH = 25, // Batched audio packets for efficiency
+  PACKET_TYPE_AUDIO_BATCH = 28, // Batched audio packets for efficiency
 
   // Message packets
-  PACKET_TYPE_SIZE_MESSAGE = 26,  // Terminal size message
-  PACKET_TYPE_AUDIO_MESSAGE = 27, // Audio message
-  PACKET_TYPE_TEXT_MESSAGE = 28   // Text message
+  PACKET_TYPE_SIZE_MESSAGE = 29,  // Terminal size message
+  PACKET_TYPE_AUDIO_MESSAGE = 30, // Audio message
+  PACKET_TYPE_TEXT_MESSAGE = 31   // Text message
 } packet_type_t;
 
 /**
  * Determines if a packet type is a handshake packet that should NEVER be encrypted.
- * Handshake packets (types 14-23) are always sent in plaintext.
+ * Handshake packets (types 14-23) and rekey packets (types 25-27) are sent in plaintext.
  * This includes all crypto negotiation packets but NOT PACKET_TYPE_ENCRYPTED (24).
  *
+ * NOTE: PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27) is sent ENCRYPTED with the NEW key,
+ *       so it's technically encrypted but not with the current session key.
+ *       The packet handling logic must account for this special case.
+ *
  * @param type The packet type to check
- * @return true if this is a handshake packet, false otherwise
+ * @return true if this is a handshake/rekey packet, false otherwise
  */
 static inline bool packet_is_handshake_type(packet_type_t type) {
-  return (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type <= PACKET_TYPE_CRYPTO_NO_ENCRYPTION);
+  // Initial handshake packets (14-23)
+  if (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type <= PACKET_TYPE_CRYPTO_NO_ENCRYPTION) {
+    return true;
+  }
+  // Rekey packets (25-27) - Note: REKEY_COMPLETE is encrypted with new key but still considered handshake
+  if (type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
+    return true;
+  }
+  return false;
 }
 
 typedef struct {

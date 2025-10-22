@@ -29,3 +29,11 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 
 // Cleanup crypto client resources
 void crypto_client_cleanup(void);
+
+// Session rekeying functions
+bool crypto_client_should_rekey(void);
+int crypto_client_initiate_rekey(void);
+int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len);
+int crypto_client_send_rekey_response(void);
+int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_len);
+int crypto_client_send_rekey_complete(void);

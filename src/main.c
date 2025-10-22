@@ -158,12 +158,20 @@ static const mode_descriptor_t g_mode_table[] = {
  */
 static void print_usage(const char *program_name) {
   (void)program_name; // Unused - we use "ascii-chat" directly
+
+  // Use platform-specific binary name
+#ifdef _WIN32
+  const char *binary_name = "ascii-chat.exe";
+#else
+  const char *binary_name = "ascii-chat";
+#endif
+
   printf("ASCII-Chat - Real-time terminal video chat\n");
   printf("\n");
   printf("USAGE:\n");
-  printf("  ascii-chat <mode> [options...]\n");
-  printf("  ascii-chat --help\n");
-  printf("  ascii-chat --version\n");
+  printf("  %s <mode> [options...]\n", binary_name);
+  printf("  %s --help\n", binary_name);
+  printf("  %s --version\n", binary_name);
   printf("\n");
   printf("MODES:\n");
 
@@ -172,6 +180,10 @@ static void print_usage(const char *program_name) {
     printf("  %-10s  %s\n", mode->name, mode->description);
   }
 
+  printf("\n");
+  printf("MODE-SPECIFIC HELP:\n");
+  printf("  %s server --help     Show server options\n", binary_name);
+  printf("  %s client --help     Show client options\n", binary_name);
   printf("\n");
   printf("https://github.com/zfogg/ascii-chat\n");
 }

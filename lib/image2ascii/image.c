@@ -500,7 +500,6 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return NULL;
   }
 
-
   // Handle half-block mode first (requires NEON)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
 #ifdef SIMD_SUPPORT_NEON

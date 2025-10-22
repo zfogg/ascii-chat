@@ -156,7 +156,8 @@ Test(crypto_https_keys, build_gitlab_gpg_url_buffer_too_small) {
 // =============================================================================
 
 Test(crypto_https_keys, parse_ssh_keys_single_key) {
-  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -254,7 +255,8 @@ Test(crypto_https_keys, parse_ssh_keys_null_response) {
 }
 
 Test(crypto_https_keys, parse_ssh_keys_null_keys_out) {
-  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   size_t num_keys = 0;
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), NULL, &num_keys, 10);
@@ -263,7 +265,8 @@ Test(crypto_https_keys, parse_ssh_keys_null_keys_out) {
 }
 
 Test(crypto_https_keys, parse_ssh_keys_null_num_keys) {
-  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, NULL, 10);
@@ -296,8 +299,9 @@ Test(crypto_https_keys, parse_ssh_keys_only_newlines) {
 // =============================================================================
 
 Test(crypto_https_keys, parse_gpg_keys_valid) {
-  const char *response = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY "
-                         "BLOCK-----\n";
+  const char *response =
+      "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY "
+      "BLOCK-----\n";
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -353,7 +357,8 @@ Test(crypto_https_keys, parse_gpg_keys_invalid_format) {
 }
 
 Test(crypto_https_keys, parse_gpg_keys_ssh_key_input) {
-  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
   size_t num_keys = 0;
 

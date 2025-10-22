@@ -361,8 +361,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       // Update heap position (modifies heap structure)
       uint64_t last_access = atomic_load(&cache->last_access_time);
       uint32_t access_count = atomic_load(&cache->access_count);
-      double new_score =
-          calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
+      double new_score = calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
       utf8_heap_update_score(cache, new_score);
 
       rwlock_wrunlock(&g_utf8_cache_rwlock);

@@ -22,8 +22,7 @@ __attribute__((used, section(".ascii_chat_comment"))) const char ascii_chat_buil
 
 // MSVC: Use #pragma section and __declspec(allocate)
 #pragma section(".rdata$ascii_chat_version", read)
-__declspec(allocate(".rdata$ascii_chat_version")) const char ascii_chat_version_string[] =
-    ASCII_CHAT_VERSION_FULL;
+__declspec(allocate(".rdata$ascii_chat_version")) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
 
 #pragma section(".rdata$ascii_chat_comment", read)
 __declspec(allocate(".rdata$ascii_chat_comment")) const char ascii_chat_build_info[] =
