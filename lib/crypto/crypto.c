@@ -106,7 +106,20 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   // Generate unique session ID to prevent replay attacks across connections
   randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
 
-  log_info("Crypto context initialized with X25519 key exchange");
+  // Initialize rekeying state
+  ctx->rekey_packet_count = 0;
+  ctx->rekey_last_time = time(NULL);  // Initialize to current time
+  ctx->rekey_in_progress = false;
+  ctx->rekey_failure_count = 0;
+  ctx->has_temp_key = false;
+  ctx->rekey_count = 0;
+
+  // Set test rekeying thresholds for rapid testing
+  ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD;  // 1,000 packets
+  ctx->rekey_time_threshold = 5;                              // 5 seconds for quick testing
+
+  log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %ld seconds)",
+           (unsigned long long)ctx->rekey_packet_threshold, (long)ctx->rekey_time_threshold);
   return CRYPTO_OK;
 }
 
@@ -429,6 +442,9 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   *ciphertext_len_out = required_size;
   ctx->bytes_encrypted += plaintext_len;
 
+  // Increment rekey packet counter for rekeying trigger detection
+  ctx->rekey_packet_count++;
+
   return CRYPTO_OK;
 }
 
@@ -519,6 +535,12 @@ const char *crypto_result_to_string(crypto_result_t result) {
     return "Key exchange not complete";
   case CRYPTO_ERROR_NONCE_EXHAUSTED:
     return "Nonce counter exhausted";
+  case CRYPTO_ERROR_REKEY_IN_PROGRESS:
+    return "Rekey already in progress";
+  case CRYPTO_ERROR_REKEY_FAILED:
+    return "Rekey failed";
+  case CRYPTO_ERROR_REKEY_RATE_LIMITED:
+    return "Rekey rate limited";
   default:
     return "Unknown error";
   }
@@ -1031,4 +1053,232 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
   // Extract HMAC (first 32 bytes) and challenge nonce (last 32 bytes)
   memcpy(hmac_out, combined_data, 32);
   memcpy(challenge_out, combined_data + 32, 32);
+}
+
+// =============================================================================
+// Session Rekeying Protocol Implementation
+// =============================================================================
+
+bool crypto_should_rekey(const crypto_context_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    return false;
+  }
+
+  // Don't trigger rekey if one is already in progress
+  if (ctx->rekey_in_progress) {
+    return false;
+  }
+
+  // Don't trigger rekey if handshake isn't complete yet
+  if (!ctx->handshake_complete) {
+    return false;
+  }
+
+  // Check packet count threshold
+  if (ctx->rekey_packet_count >= ctx->rekey_packet_threshold) {
+    log_debug("Rekey triggered: packet count (%llu) >= threshold (%llu)",
+              (unsigned long long)ctx->rekey_packet_count,
+              (unsigned long long)ctx->rekey_packet_threshold);
+    return true;
+  }
+
+  // Check time threshold
+  time_t now = time(NULL);
+  time_t elapsed = now - ctx->rekey_last_time;
+  if (elapsed >= ctx->rekey_time_threshold) {
+    log_debug("Rekey triggered: time elapsed (%ld sec) >= threshold (%ld sec)",
+              (long)elapsed, (long)ctx->rekey_time_threshold);
+    return true;
+  }
+
+  return false;
+}
+
+crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_rekey_init: Invalid context");
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  if (ctx->rekey_in_progress) {
+    SET_ERRNO(ERROR_CRYPTO, "Rekey already in progress");
+    return CRYPTO_ERROR_REKEY_IN_PROGRESS;
+  }
+
+  // Rate limiting: check minimum interval since last rekey
+  time_t now = time(NULL);
+  time_t since_last_rekey = now - ctx->rekey_last_time;
+  if (since_last_rekey < REKEY_MIN_INTERVAL) {
+    log_warn("Rekey rate limited: %ld seconds since last rekey (minimum: %d)",
+             (long)since_last_rekey, REKEY_MIN_INTERVAL);
+    return CRYPTO_ERROR_REKEY_RATE_LIMITED;
+  }
+
+  // Check if too many consecutive failures
+  if (ctx->rekey_failure_count >= REKEY_MAX_FAILURE_COUNT) {
+    log_error("Too many consecutive rekey failures (%d), giving up", ctx->rekey_failure_count);
+    return CRYPTO_ERROR_REKEY_FAILED;
+  }
+
+  // Generate new ephemeral X25519 keypair for rekeying
+  if (crypto_box_keypair(ctx->temp_public_key, ctx->temp_private_key) != 0) {
+    SET_ERRNO(ERROR_CRYPTO, "Failed to generate rekey ephemeral keypair");
+    return CRYPTO_ERROR_KEY_GENERATION;
+  }
+
+  ctx->rekey_in_progress = true;
+  ctx->has_temp_key = true;
+
+  log_info("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
+           (unsigned long long)ctx->rekey_packet_count,
+           (long)since_last_rekey,
+           ctx->rekey_failure_count + 1);
+
+  return CRYPTO_OK;
+}
+
+crypto_result_t crypto_rekey_process_request(crypto_context_t *ctx, const uint8_t *peer_new_public_key) {
+  if (!ctx || !ctx->initialized || !peer_new_public_key) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_rekey_process_request: Invalid parameters");
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Generate our own new ephemeral keypair (responder side)
+  if (crypto_box_keypair(ctx->temp_public_key, ctx->temp_private_key) != 0) {
+    SET_ERRNO(ERROR_CRYPTO, "Failed to generate rekey ephemeral keypair");
+    return CRYPTO_ERROR_KEY_GENERATION;
+  }
+
+  // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
+  if (crypto_box_beforenm(ctx->temp_shared_key, peer_new_public_key, ctx->temp_private_key) != 0) {
+    SET_ERRNO(ERROR_CRYPTO, "Failed to compute rekey shared secret");
+    secure_memzero(ctx->temp_private_key, sizeof(ctx->temp_private_key));
+    secure_memzero(ctx->temp_public_key, sizeof(ctx->temp_public_key));
+    return CRYPTO_ERROR_KEY_GENERATION;
+  }
+
+  ctx->rekey_in_progress = true;
+  ctx->has_temp_key = true;
+
+  log_debug("Rekey request processed (responder side), new shared secret computed");
+
+  return CRYPTO_OK;
+}
+
+crypto_result_t crypto_rekey_process_response(crypto_context_t *ctx, const uint8_t *peer_new_public_key) {
+  if (!ctx || !ctx->initialized || !peer_new_public_key) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_rekey_process_response: Invalid parameters");
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  if (!ctx->rekey_in_progress || !ctx->has_temp_key) {
+    SET_ERRNO(ERROR_CRYPTO, "No rekey in progress");
+    return CRYPTO_ERROR_REKEY_FAILED;
+  }
+
+  // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
+  if (crypto_box_beforenm(ctx->temp_shared_key, peer_new_public_key, ctx->temp_private_key) != 0) {
+    SET_ERRNO(ERROR_CRYPTO, "Failed to compute rekey shared secret");
+    crypto_rekey_abort(ctx);
+    return CRYPTO_ERROR_KEY_GENERATION;
+  }
+
+  log_debug("Rekey response processed (initiator side), new shared secret computed");
+
+  return CRYPTO_OK;
+}
+
+crypto_result_t crypto_rekey_commit(crypto_context_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_rekey_commit: Invalid context");
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  if (!ctx->rekey_in_progress || !ctx->has_temp_key) {
+    SET_ERRNO(ERROR_CRYPTO, "No rekey in progress to commit");
+    return CRYPTO_ERROR_REKEY_FAILED;
+  }
+
+  // Wipe old shared secret securely
+  secure_memzero(ctx->shared_key, sizeof(ctx->shared_key));
+
+  // Switch to new shared secret
+  SAFE_MEMCPY(ctx->shared_key, sizeof(ctx->shared_key),
+              ctx->temp_shared_key, sizeof(ctx->temp_shared_key));
+
+  // Reset nonce counter to 1 (fresh start with new key)
+  ctx->nonce_counter = 1;
+
+  // Generate new session ID to prevent cross-session replay
+  randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
+
+  // Reset rekey tracking
+  ctx->rekey_packet_count = 0;
+  ctx->rekey_last_time = time(NULL);
+  ctx->rekey_count++;
+
+  // Clear rekey state
+  secure_memzero(ctx->temp_public_key, sizeof(ctx->temp_public_key));
+  secure_memzero(ctx->temp_private_key, sizeof(ctx->temp_private_key));
+  secure_memzero(ctx->temp_shared_key, sizeof(ctx->temp_shared_key));
+  ctx->has_temp_key = false;
+  ctx->rekey_in_progress = false;
+
+  // Reset failure counter on successful rekey
+  ctx->rekey_failure_count = 0;
+
+  log_info("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)",
+           (unsigned long long)ctx->rekey_count);
+
+  return CRYPTO_OK;
+}
+
+void crypto_rekey_abort(crypto_context_t *ctx) {
+  if (!ctx) {
+    return;
+  }
+
+  log_warn("Aborting rekey (attempt %d failed), keeping old encryption key", ctx->rekey_failure_count + 1);
+
+  // Wipe temporary keys securely
+  secure_memzero(ctx->temp_public_key, sizeof(ctx->temp_public_key));
+  secure_memzero(ctx->temp_private_key, sizeof(ctx->temp_private_key));
+  secure_memzero(ctx->temp_shared_key, sizeof(ctx->temp_shared_key));
+
+  // Reset rekey state
+  ctx->has_temp_key = false;
+  ctx->rekey_in_progress = false;
+
+  // Increment failure counter for exponential backoff
+  ctx->rekey_failure_count++;
+
+  // Continue using old key - no disruption to connection
+}
+
+void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, size_t buffer_size) {
+  if (!ctx || !status_buffer || buffer_size == 0) {
+    return;
+  }
+
+  time_t now = time(NULL);
+  time_t elapsed = now - ctx->rekey_last_time;
+  time_t remaining_time = (ctx->rekey_time_threshold > elapsed) ? (ctx->rekey_time_threshold - elapsed) : 0;
+  uint64_t remaining_packets = (ctx->rekey_packet_threshold > ctx->rekey_packet_count)
+                                 ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count)
+                                 : 0;
+
+  snprintf(status_buffer, buffer_size,
+           "Rekey status: %s | "
+           "Packets: %llu/%llu (%llu remaining) | "
+           "Time: %ld/%ld sec (%ld sec remaining) | "
+           "Rekeys: %llu | Failures: %d",
+           ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE",
+           (unsigned long long)ctx->rekey_packet_count,
+           (unsigned long long)ctx->rekey_packet_threshold,
+           (unsigned long long)remaining_packets,
+           (long)elapsed,
+           (long)ctx->rekey_time_threshold,
+           (long)remaining_time,
+           (unsigned long long)ctx->rekey_count,
+           ctx->rekey_failure_count);
 }

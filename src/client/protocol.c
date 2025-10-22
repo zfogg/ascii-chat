@@ -100,6 +100,8 @@ const crypto_context_t *crypto_client_get_context(void);
 int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
                                  size_t plaintext_size, size_t *plaintext_len);
 
+#include "crypto.h"
+
 #include <stdatomic.h>
 #include <string.h>
 #include <time.h>
@@ -520,9 +522,12 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     // Use unified secure packet reception with auto-decryption
-    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+    // FIX: Use per-client crypto ready state instead of global opt_no_encrypt
+    // Encryption is enforced only AFTER this client completes the handshake
+    bool crypto_ready = crypto_client_is_ready();
+    const crypto_context_t *crypto_ctx = crypto_ready ? crypto_client_get_context() : NULL;
     packet_envelope_t envelope;
-    packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
+    packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx, crypto_ready, &envelope);
 
     // Handle different result codes
     if (result == PACKET_RECV_EOF) {
@@ -580,6 +585,47 @@ static void *data_reception_thread_func(void *arg) {
     case PACKET_TYPE_SERVER_STATE:
       handle_server_state_packet(data, len);
       break;
+
+    // Session rekeying packets
+    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
+      log_info("CLIENT: Received REKEY_REQUEST from server");
+
+      // Process the server's rekey request
+      asciichat_error_t result = crypto_client_process_rekey_request(data, len);
+      if (result != ASCIICHAT_OK) {
+        log_error("CLIENT: Failed to process REKEY_REQUEST: %d", result);
+        break;
+      }
+
+      // Send REKEY_RESPONSE
+      result = crypto_client_send_rekey_response();
+      if (result != ASCIICHAT_OK) {
+        log_error("CLIENT: Failed to send REKEY_RESPONSE: %d", result);
+      } else {
+        log_info("CLIENT: Sent REKEY_RESPONSE to server");
+      }
+      break;
+    }
+
+    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
+      log_info("CLIENT: Received REKEY_RESPONSE from server");
+
+      // Process server's response
+      asciichat_error_t result = crypto_client_process_rekey_response(data, len);
+      if (result != ASCIICHAT_OK) {
+        log_error("CLIENT: Failed to process REKEY_RESPONSE: %d", result);
+        break;
+      }
+
+      // Send REKEY_COMPLETE
+      result = crypto_client_send_rekey_complete();
+      if (result != ASCIICHAT_OK) {
+        log_error("CLIENT: Failed to send REKEY_COMPLETE: %d", result);
+      } else {
+        log_info("CLIENT: Session rekeying completed successfully");
+      }
+      break;
+    }
 
     default:
       log_warn("Unknown packet type: %d", type);

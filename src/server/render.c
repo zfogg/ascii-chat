@@ -828,9 +828,9 @@ void *client_audio_render_thread(void *arg) {
         uint64_t expected_interval_us = 1000000 / expected_audio_fps;
         uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
 
-        // Log error if packet took too long to process
+        // Log warning if packet took too long to process
         if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
-          log_error_every(
+          log_warn_every(
               1000000,
               "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
               "fps: %.1f)",

@@ -480,3 +480,143 @@ void crypto_client_cleanup(void) {
     log_debug("Client crypto handshake cleaned up");
   }
 }
+
+// =============================================================================
+// Session Rekeying Functions
+// =============================================================================
+
+/**
+ * Check if session rekeying should be triggered
+ *
+ * @return true if rekey should be initiated, false otherwise
+ */
+bool crypto_client_should_rekey(void) {
+  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+    return false;
+  }
+  return crypto_handshake_should_rekey(&g_crypto_ctx);
+}
+
+/**
+ * Initiate session rekeying (client-initiated)
+ *
+ * @return 0 on success, -1 on failure
+ */
+int crypto_client_initiate_rekey(void) {
+  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+    log_error("Cannot initiate rekey: crypto not initialized or not ready");
+    return -1;
+  }
+
+  socket_t socket = server_connection_get_socket();
+  if (socket == INVALID_SOCKET_VALUE) {
+    log_error("Cannot initiate rekey: invalid socket");
+    return -1;
+  }
+
+  log_info("CLIENT: Initiating session rekey");
+  asciichat_error_t result = crypto_handshake_rekey_request(&g_crypto_ctx, socket);
+  if (result != ASCIICHAT_OK) {
+    log_error("CLIENT: Failed to send REKEY_REQUEST: %d", result);
+    return -1;
+  }
+
+  log_info("CLIENT: Sent REKEY_REQUEST to server");
+  return 0;
+}
+
+/**
+ * Process received REKEY_REQUEST packet from server
+ *
+ * @param packet Packet data
+ * @param packet_len Packet length
+ * @return 0 on success, -1 on failure
+ */
+int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len) {
+  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+    log_error("Cannot process rekey request: crypto not initialized or not ready");
+    return -1;
+  }
+
+  asciichat_error_t result = crypto_handshake_process_rekey_request(&g_crypto_ctx, packet, packet_len);
+  if (result != ASCIICHAT_OK) {
+    log_error("CLIENT: Failed to process REKEY_REQUEST: %d", result);
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * Send REKEY_RESPONSE packet to server
+ *
+ * @return 0 on success, -1 on failure
+ */
+int crypto_client_send_rekey_response(void) {
+  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+    log_error("Cannot send rekey response: crypto not initialized or not ready");
+    return -1;
+  }
+
+  socket_t socket = server_connection_get_socket();
+  if (socket == INVALID_SOCKET_VALUE) {
+    log_error("Cannot send rekey response: invalid socket");
+    return -1;
+  }
+
+  asciichat_error_t result = crypto_handshake_rekey_response(&g_crypto_ctx, socket);
+  if (result != ASCIICHAT_OK) {
+    log_error("CLIENT: Failed to send REKEY_RESPONSE: %d", result);
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * Process received REKEY_RESPONSE packet from server
+ *
+ * @param packet Packet data
+ * @param packet_len Packet length
+ * @return 0 on success, -1 on failure
+ */
+int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_len) {
+  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+    log_error("Cannot process rekey response: crypto not initialized or not ready");
+    return -1;
+  }
+
+  asciichat_error_t result = crypto_handshake_process_rekey_response(&g_crypto_ctx, packet, packet_len);
+  if (result != ASCIICHAT_OK) {
+    log_error("CLIENT: Failed to process REKEY_RESPONSE: %d", result);
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * Send REKEY_COMPLETE packet to server and commit to new key
+ *
+ * @return 0 on success, -1 on failure
+ */
+int crypto_client_send_rekey_complete(void) {
+  if (!g_crypto_initialized || !crypto_client_is_ready()) {
+    log_error("Cannot send rekey complete: crypto not initialized or not ready");
+    return -1;
+  }
+
+  socket_t socket = server_connection_get_socket();
+  if (socket == INVALID_SOCKET_VALUE) {
+    log_error("Cannot send rekey complete: invalid socket");
+    return -1;
+  }
+
+  asciichat_error_t result = crypto_handshake_rekey_complete(&g_crypto_ctx, socket);
+  if (result != ASCIICHAT_OK) {
+    log_error("CLIENT: Failed to send REKEY_COMPLETE: %d", result);
+    return -1;
+  }
+
+  return 0;
+}

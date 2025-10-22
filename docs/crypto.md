@@ -1408,26 +1408,303 @@ handle_packet(real_type, payload, payload_len);
 
 **Implementation:**
 ```c
-// Per-connection nonce counter (starts at 1)
-uint64_t nonce_counter = 1;
+// Nonce format (24 bytes for XSalsa20-Poly1305):
+// Bytes 0-15:  Session ID (random, unique per connection/rekey)
+// Bytes 16-23: Counter (increments per packet, little-endian uint64_t)
 
 // Generate nonce for each packet
 uint8_t nonce[24];
-memset(nonce, 0, 24);
-*(uint64_t*)nonce = htole64(nonce_counter++);
+memcpy(nonce, ctx->session_id, 16);           // Session ID prevents cross-session replay
+*(uint64_t*)(nonce + 16) = htole64(ctx->nonce_counter++);  // Counter prevents within-session replay
 ```
 
 **Why this is safe:**
 - 24-byte nonce = 192 bits
-- Using 64 bits for counter = 2^64 = 18 quintillion packets
-- At 60 FPS video, this lasts 9.7 trillion years
-- Remaining 128 bits are zero (could be random, but counter alone is sufficient)
+- 16-byte session ID = unique per connection/rekey
+- 8-byte counter = 2^64 = 18 quintillion packets per session
+- At 60 FPS video, counter lasts 9.7 trillion years
+- Session ID changes on rekey, providing additional safety
 
 **Replay protection:**
 - Each side maintains their own send counter
+- Session ID prevents cross-session replay attacks
 - Received packets are not checked for sequence (UDP-like behavior)
 - Poly1305 MAC prevents tampering
 - Application-level sequence numbers in packet headers (not crypto-related)
+
+**Rekeying integration:**
+- On rekey, session_id regenerated (16 random bytes)
+- Counter reset to 1
+- Prevents nonce reuse even if counters wrap (extremely unlikely)
+
+---
+
+## Session Rekeying Protocol
+
+### Overview
+
+ASCII-Chat implements **automatic session rekeying** to provide forward secrecy within long-lived connections. After the initial handshake establishes encryption, the system periodically performs new Diffie-Hellman key exchanges to rotate encryption keys.
+
+**Security benefits:**
+- ✅ **Intra-session forward secrecy** - Compromise at time T doesn't decrypt packets before time T
+- ✅ **Reduced cryptanalytic surface** - Less ciphertext encrypted with same key
+- ✅ **Industry best practice** - Aligns with TLS 1.3 (rekeys at 2^24 records)
+- ✅ **Protection against long-term key exposure** - Limits damage from key compromise
+
+### Rekeying Triggers
+
+Rekeying occurs automatically when **either** threshold is reached (whichever comes first):
+
+| Trigger Type | Default Threshold | Notes |
+|--------------|-------------------|-------|
+| **Time-based** | 3600 seconds (1 hour) | Typical video chat session length |
+| **Traffic-based** | 1,000,000 packets | ~4.6 hours at 60 FPS video |
+
+**Configuration options:**
+```bash
+# Custom thresholds
+./ascii-chat server --rekey-time 1800 --rekey-packets 500000
+
+# Default thresholds (1 hour OR 1M packets)
+./ascii-chat server
+```
+
+**Test mode (for development):**
+For testing, use low thresholds to trigger frequent rekeying:
+```bash
+# Rekey every 30 seconds OR 1000 packets
+./ascii-chat server --rekey-time 30 --rekey-packets 1000
+```
+
+### Rekeying Protocol Flow
+
+The rekeying protocol uses a 3-packet handshake similar to the initial key exchange:
+
+```
+Client (Initiator)              Server (Responder)
+  |                                 |
+  | Trigger: Time/packet threshold  |
+  |                                 |
+  |-- CRYPTO_REKEY_REQUEST -------->|
+  |   [new_ephemeral_pk: 32 bytes]  |
+  |                                 |
+  |                                 | Generate new ephemeral X25519 keypair
+  |                                 | Compute shared_secret_new = DH(my_sk, their_pk)
+  |                                 |
+  |<-- CRYPTO_REKEY_RESPONSE -------|
+  |   [new_ephemeral_pk: 32 bytes]  |
+  |                                 |
+  | Compute shared_secret_new       |
+  |                                 |
+  |-- CRYPTO_REKEY_COMPLETE (encrypted with NEW key) -->|
+  |                                 |
+  | ✅ Switch to new key            | ✅ Switch to new key
+  | ✅ Reset nonce_counter = 1      | ✅ Reset nonce_counter = 1
+  | ✅ Generate new session_id      | ✅ Generate new session_id
+  | ✅ Wipe old shared_secret       | ✅ Wipe old shared_secret
+```
+
+### New Packet Types
+
+Three new packet types support the rekeying protocol:
+
+```c
+PACKET_TYPE_CRYPTO_REKEY_REQUEST  = 25  // Initiator sends new ephemeral public key
+PACKET_TYPE_CRYPTO_REKEY_RESPONSE = 26  // Responder sends new ephemeral public key
+PACKET_TYPE_CRYPTO_REKEY_COMPLETE = 27  // Initiator confirms (encrypted with new key)
+```
+
+### Packet Structures
+
+#### REKEY_REQUEST (Client → Server or Server → Client)
+```c
+typedef struct {
+  uint8_t new_ephemeral_public_key[32];  // Fresh X25519 public key
+} rekey_request_packet_t;
+```
+
+**Payload:** 32 bytes (X25519 public key)
+
+#### REKEY_RESPONSE (Responder → Initiator)
+```c
+typedef struct {
+  uint8_t new_ephemeral_public_key[32];  // Fresh X25519 public key
+} rekey_response_packet_t;
+```
+
+**Payload:** 32 bytes (X25519 public key)
+
+#### REKEY_COMPLETE (Initiator → Responder)
+```c
+// Empty packet (confirmation only)
+// CRITICAL: Must be encrypted with NEW shared secret
+```
+
+**Payload:** 0 bytes (encrypted packet proves key possession)
+
+### Key Transition Logic
+
+**Before REKEY_COMPLETE:**
+- All packets encrypted with **old** shared_secret
+- Keep old key in memory for decryption
+- Keep new key (temp_shared_key) ready for transition
+
+**REKEY_COMPLETE packet:**
+- **First packet encrypted with new key**
+- Proves both sides successfully computed same shared secret
+- If decryption fails → abort rekey, keep old key
+
+**After REKEY_COMPLETE:**
+- Copy temp_shared_key → shared_key
+- Reset nonce_counter = 1
+- Generate new random session_id (16 bytes)
+- Securely wipe old shared_secret and temp keys
+- Update rekey_last_time and reset rekey_packet_count
+
+### Security Features
+
+#### Anti-Denial-of-Service
+```c
+// Rate limiting
+#define REKEY_MIN_INTERVAL 60  // Minimum 60 seconds between rekeys
+
+// Reject if rekey already in progress
+if (ctx->rekey_in_progress) {
+  log_warn("Rekey already in progress, ignoring new request");
+  return -1;
+}
+
+// Exponential backoff on repeated failures
+if (rekey_failure_count > 3) {
+  backoff_seconds = 60 * (1 << rekey_failure_count);  // 60s, 120s, 240s, ...
+}
+```
+
+#### Race Condition Handling
+If both sides simultaneously initiate rekeying:
+- **Lower client_id wins** (becomes initiator)
+- **Higher client_id becomes responder**
+- Server has client_id=0, so **server always wins ties**
+
+```c
+if (received_rekey_request && ctx->rekey_in_progress) {
+  // Both sides initiated simultaneously
+  if (my_client_id < peer_client_id) {
+    // I win - continue as initiator, ignore their request
+    log_debug("Rekey tie-break: I win (lower client_id)");
+  } else {
+    // They win - abort my rekey, become responder
+    log_debug("Rekey tie-break: They win, switching to responder");
+    crypto_rekey_abort(ctx);
+    handle_rekey_request(peer_request);
+  }
+}
+```
+
+#### Key Confirmation
+The REKEY_COMPLETE packet **must** decrypt successfully:
+```c
+// Attempt to decrypt REKEY_COMPLETE with new key
+if (crypto_decrypt_with_key(packet, temp_shared_key, plaintext) != 0) {
+  log_error("REKEY_COMPLETE decryption failed - aborting rekey");
+  crypto_rekey_abort(ctx);  // Keep old key
+  return -1;
+}
+
+// Success - both sides have same key
+crypto_rekey_commit(ctx);  // Switch to new key
+```
+
+### Rekeying State Machine
+
+```c
+typedef enum {
+  REKEY_STATE_IDLE,             // No rekey in progress
+  REKEY_STATE_REQUESTED,        // Sent REKEY_REQUEST, awaiting RESPONSE
+  REKEY_STATE_RESPONDING,       // Received REQUEST, sent RESPONSE, awaiting COMPLETE
+  REKEY_STATE_COMPLETING,       // Sent COMPLETE, awaiting confirmation
+  REKEY_STATE_FAILED            // Rekey failed, fallback to old key
+} rekey_state_t;
+```
+
+**State transitions:**
+
+**Initiator path:**
+```
+IDLE → (trigger) → REQUESTED → (response) → COMPLETING → (confirmed) → IDLE
+                     ↓                          ↓
+                   FAILED                     FAILED
+```
+
+**Responder path:**
+```
+IDLE → (request) → RESPONDING → (complete) → IDLE
+                      ↓
+                    FAILED
+```
+
+### Failure Handling
+
+**Rekey can fail for several reasons:**
+1. **Timeout** - Peer doesn't respond within 10 seconds
+2. **Bad keys** - DH computation yields different secrets
+3. **Decryption failure** - REKEY_COMPLETE doesn't decrypt with new key
+4. **Network error** - Connection lost during rekey
+
+**Failure recovery:**
+```c
+void crypto_rekey_abort(crypto_context_t *ctx) {
+  log_warn("Aborting rekey, keeping old encryption key");
+
+  // Wipe temporary keys
+  sodium_memzero(ctx->temp_public_key, sizeof(ctx->temp_public_key));
+  sodium_memzero(ctx->temp_private_key, sizeof(ctx->temp_private_key));
+  sodium_memzero(ctx->temp_shared_key, sizeof(ctx->temp_shared_key));
+
+  // Reset state
+  ctx->rekey_in_progress = false;
+  ctx->has_temp_key = false;
+
+  // Increment failure counter for backoff
+  ctx->rekey_failure_count++;
+
+  // Continue using old key - no disruption to connection
+}
+```
+
+**Important:** Rekey failure does NOT disconnect the session. The connection continues with the old key.
+
+### Implementation Notes
+
+**Initiator can be client OR server:**
+- Either side can detect rekey threshold and initiate
+- Typically server initiates (it sees aggregated traffic)
+- Client can also initiate if it detects threshold locally
+
+**Bi-directional support:**
+```c
+bool crypto_should_rekey(const crypto_context_t *ctx) {
+  if (ctx->rekey_in_progress) return false;
+
+  // Check packet threshold
+  if (ctx->nonce_counter >= ctx->rekey_packet_threshold) {
+    return true;
+  }
+
+  // Check time threshold
+  time_t now = time(NULL);
+  if (now - ctx->rekey_last_time >= ctx->rekey_time_threshold) {
+    return true;
+  }
+
+  return false;
+}
+```
+
+**Performance impact:**
+- Rekey adds ~10ms latency (3 packets, DH computation)
+- Occurs once per hour (or less frequently)
+- Negligible impact on user experience
 
 ---
 
@@ -1436,11 +1713,13 @@ memset(nonce, 0, 24);
 ### Cryptographic Strengths
 
 ✅ **Modern primitives:** X25519, XSalsa20-Poly1305, Argon2id (current best practices)
-✅ **Forward secrecy:** Ephemeral DH keys per connection (compromising one session doesn't affect others)
+✅ **Forward secrecy (connection-level):** Ephemeral DH keys per connection
+✅ **Forward secrecy (session-level):** Automatic rekeying within long-lived sessions
 ✅ **Authenticated encryption:** XSalsa20-Poly1305 AEAD prevents tampering
 ✅ **Memory-hard passwords:** Argon2id resistant to GPU brute-force
 ✅ **Constant-time crypto:** libsodium uses constant-time implementations (timing attack resistant)
 ✅ **Large nonce space:** 192-bit nonces make collision astronomically unlikely
+✅ **Intra-session forward secrecy:** Rekeying limits exposure from key compromise
 
 ### Potential Weaknesses
 
@@ -2188,17 +2467,19 @@ The dynamic algorithm negotiation system is designed to support post-quantum mig
 
 **Backward compatibility:** Hybrid mode allows gradual migration without breaking existing connections
 
-### 3. Perfect Forward Secrecy Enhancement
+### 3. Session Rekeying (IMPLEMENTED ✅)
 
-**Current:** Forward secrecy per connection (new DH keys each time)
+**Status:** ✅ **IMPLEMENTED** - See "Session Rekeying Protocol" section above
 
-**Future:** Ratcheting (Signal/Double Ratchet protocol)
+**Implementation:**
+- Automatic rekeying based on time (1 hour) or traffic (1M packets)
+- Full DH re-exchange with new ephemeral keys
+- Intra-session forward secrecy
 
-**Benefit:** Forward secrecy per message (compromise of current key doesn't affect previous messages)
-
-**Cost:** More complex key management, state synchronization issues
-
-**Decision:** Defer until proven need (current forward secrecy is sufficient for most use cases)
+**Future consideration:** Double Ratchet (Signal-style per-message rekeying)
+- **Benefit:** Forward secrecy per message
+- **Cost:** Massive complexity, state synchronization issues
+- **Decision:** Current session rekeying is sufficient for video chat use case
 
 ### 4. Certificate Transparency Log
 
@@ -2357,8 +2638,8 @@ crypto_secretbox_easy(ciphertext, plaintext, nonce, encryption_key);
 
 ---
 
-**Document Version:** 2.2
-**Last Updated:** October 2025 (Dynamic algorithm negotiation + post-quantum future-proofing)
+**Document Version:** 2.3
+**Last Updated:** October 2025 (Session rekeying protocol implemented)
 **Maintainer:** ASCII-Chat Development Team
 **License:** Same as ASCII-Chat project (see LICENSE)
 

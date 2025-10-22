@@ -484,7 +484,6 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     rgb_data_size = rgb_size;
   }
 
-
   if (client->incoming_video_buffer) {
     // Get the write buffer
     video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
@@ -512,8 +511,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         log_warn("Frame from client %u too large (%zu bytes)", atomic_load(&client->client_id), old_packet_size);
       }
     } else {
-      log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)",
-               atomic_load(&client->client_id), (void*)frame, frame ? frame->data : NULL);
+      log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)", atomic_load(&client->client_id),
+               (void *)frame, frame ? frame->data : NULL);
     }
   } else {
     // During shutdown, this is expected - don't spam error logs

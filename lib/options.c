@@ -26,6 +26,7 @@
 #include "util/ip.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
+#include "platform/password.h"
 #include "version.h"
 #include "crypto/crypto.h"
 
@@ -180,23 +181,27 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
-                                         {"password", required_argument, NULL, 1009},
+                                         {"password", optional_argument, NULL, 1009},
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"server-key", required_argument, NULL, 1006},
-                                         {"version", no_argument, NULL, 'v'},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
 // Server-only options
-static struct option server_options[] = {
-    {"address", required_argument, NULL, 'a'},      {"port", required_argument, NULL, 'p'},
-    {"palette", required_argument, NULL, 'P'},      {"palette-chars", required_argument, NULL, 'C'},
-    {"log-file", required_argument, NULL, 'L'},     {"encrypt", no_argument, NULL, 'E'},
-    {"key", required_argument, NULL, 'K'},          {"password", required_argument, NULL, 1009},
-    {"keyfile", required_argument, NULL, 'F'},      {"no-encrypt", no_argument, NULL, 1005},
-    {"client-keys", required_argument, NULL, 1008}, {"version", no_argument, NULL, 'v'},
-    {"help", optional_argument, NULL, 'h'},         {0, 0, 0, 0}};
+static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"port", required_argument, NULL, 'p'},
+                                         {"palette", required_argument, NULL, 'P'},
+                                         {"palette-chars", required_argument, NULL, 'C'},
+                                         {"log-file", required_argument, NULL, 'L'},
+                                         {"encrypt", no_argument, NULL, 'E'},
+                                         {"key", required_argument, NULL, 'K'},
+                                         {"password", optional_argument, NULL, 1009},
+                                         {"keyfile", required_argument, NULL, 'F'},
+                                         {"no-encrypt", no_argument, NULL, 1005},
+                                         {"client-keys", required_argument, NULL, 1008},
+                                         {"help", optional_argument, NULL, 'h'},
+                                         {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 
@@ -308,11 +313,28 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:hv"; // Leading ':' for error reporting
+    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:h"; // Leading ':' for error reporting
     options = client_options;
   } else {
-    optstring = ":a:p:P:C:L:EK:F:hv"; // Leading ':' for error reporting (removed A for audio)
+    optstring = ":a:p:P:C:L:EK:F:h"; // Leading ':' for error reporting (removed A for audio)
     options = server_options;
+  }
+
+  // Pre-pass: Check for --help or --version first (they have priority over everything)
+  // This ensures help/version are shown without triggering password prompts or other side effects
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+      usage(stdout, is_client);
+      (void)fflush(stdout);
+      _exit(0);
+    }
+    if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+      const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
+      printf("%s v%d.%d.%d-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
+      (void)fflush(stdout);
+      _exit(0);
+    }
   }
 
   int longindex = 0; // Move outside loop so ':' case can access it
@@ -682,9 +704,36 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1009: { // --password (password-based encryption)
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "password", is_client);
-      if (!value_str)
-        return ERROR_USAGE;
+      char *value_str = NULL;
+
+      // Check if password was provided as argument
+      if (optarg && strlen(optarg) > 0) {
+        // Password provided with --password=value format
+        value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      }
+      // Check if next argument exists and doesn't start with '-' (space-separated format)
+      else if (optind < argc && argv[optind] && argv[optind][0] != '-') {
+        // Password provided with --password value format (space-separated)
+        SAFE_SNPRINTF(argbuf, sizeof(argbuf), "%s", argv[optind]);
+        value_str = argbuf;
+        optind++; // Consume this argument
+      }
+
+      // If no password argument provided, prompt the user
+      if (!value_str) {
+        char prompted_password[OPTIONS_BUFF_SIZE];
+        if (platform_prompt_password("Enter password for encryption:", prompted_password, sizeof(prompted_password)) !=
+            0) {
+          (void)fprintf(stderr, "Error: Failed to read password\n");
+          return ERROR_USAGE;
+        }
+        value_str = prompted_password;
+        // Copy to argbuf so it persists beyond this scope
+        SAFE_SNPRINTF(argbuf, sizeof(argbuf), "%s", prompted_password);
+        value_str = argbuf;
+        // Clear the prompted_password buffer for security
+        memset(prompted_password, 0, sizeof(prompted_password));
+      }
 
       // Validate password length requirements
       size_t password_len = strlen(value_str);
@@ -701,6 +750,9 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
       SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when password provided
+
+      // Clear the temporary buffer for security
+      memset(argbuf, 0, sizeof(argbuf));
       break;
     }
 
@@ -849,7 +901,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-v --version                 " USAGE_INDENT "show version information\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
   (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
@@ -902,8 +953,10 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, "
                                    "gitlab:user, or 'ssh' for auto-detect "
                                    "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --password PASS            " USAGE_INDENT
-                                   "password for connection encryption (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(
+      desc, USAGE_INDENT
+      "   --password [PASS]          " USAGE_INDENT
+      "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc,
@@ -915,7 +968,6 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
 void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-v --version         " USAGE_INDENT "show version information\n");
   (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
@@ -929,8 +981,10 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
                 "-K --key KEY         " USAGE_INDENT
                 "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' "
                 "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --password PASS   " USAGE_INDENT
-                                   "password for connection encryption (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(
+      desc, USAGE_INDENT
+      "   --password [PASS] " USAGE_INDENT
+      "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --no-encrypt      " USAGE_INDENT "disable encryption (default: [unset])\n");

@@ -135,3 +135,84 @@ asciichat_error_t crypto_decrypt_packet_or_passthrough(const crypto_handshake_co
                                                        const uint8_t *ciphertext, size_t ciphertext_len,
                                                        uint8_t *plaintext, size_t plaintext_size,
                                                        size_t *plaintext_len);
+
+// =============================================================================
+// Session Rekeying Protocol
+// =============================================================================
+
+/**
+ * Send REKEY_REQUEST packet (initiator side).
+ * Sends the initiator's new ephemeral public key to the peer.
+ *
+ * @param ctx Crypto handshake context
+ * @param socket Socket to send on
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx, socket_t socket);
+
+/**
+ * Send REKEY_RESPONSE packet (responder side).
+ * Sends the responder's new ephemeral public key to the peer.
+ *
+ * @param ctx Crypto handshake context
+ * @param socket Socket to send on
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ctx, socket_t socket);
+
+/**
+ * Send REKEY_COMPLETE packet (initiator side).
+ * CRITICAL: This packet is encrypted with the NEW shared secret.
+ * It proves that both sides have computed the same shared secret.
+ *
+ * @param ctx Crypto handshake context
+ * @param socket Socket to send on
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ctx, socket_t socket);
+
+/**
+ * Process received REKEY_REQUEST packet (responder side).
+ * Extracts peer's new ephemeral public key and computes new shared secret.
+ *
+ * @param ctx Crypto handshake context
+ * @param packet Packet payload (32-byte public key)
+ * @param packet_len Packet length (should be 32)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_context_t *ctx, const uint8_t *packet,
+                                                          size_t packet_len);
+
+/**
+ * Process received REKEY_RESPONSE packet (initiator side).
+ * Extracts peer's new ephemeral public key and computes new shared secret.
+ *
+ * @param ctx Crypto handshake context
+ * @param packet Packet payload (32-byte public key)
+ * @param packet_len Packet length (should be 32)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_context_t *ctx, const uint8_t *packet,
+                                                           size_t packet_len);
+
+/**
+ * Process received REKEY_COMPLETE packet (responder side).
+ * Verifies that the packet decrypts with the new shared secret.
+ * If successful, commits to the new key.
+ *
+ * @param ctx Crypto handshake context
+ * @param packet Encrypted packet (empty payload, encrypted with NEW key)
+ * @param packet_len Packet length
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_context_t *ctx, const uint8_t *packet,
+                                                           size_t packet_len);
+
+/**
+ * Check if rekeying should be triggered for this handshake context.
+ * Wrapper around crypto_should_rekey() for handshake context.
+ *
+ * @param ctx Crypto handshake context
+ * @return true if rekey should be initiated, false otherwise
+ */
+bool crypto_handshake_should_rekey(const crypto_handshake_context_t *ctx);

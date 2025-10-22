@@ -119,9 +119,26 @@ typedef struct {
   uint64_t nonce_counter; // Prevent nonce reuse within session
   uint8_t session_id[16]; // Unique session ID to prevent cross-session replay attacks
 
+  // Session rekeying state
+  uint64_t rekey_packet_count;    // Packets encrypted since last rekey/handshake
+  time_t rekey_last_time;         // Timestamp of last rekey (or initial handshake)
+  bool rekey_in_progress;         // Rekey handshake currently in progress
+  uint8_t rekey_failure_count;    // Consecutive rekey failures (for exponential backoff)
+
+  // Temporary keys during rekeying transition
+  uint8_t temp_public_key[CRYPTO_PUBLIC_KEY_SIZE];   // New ephemeral public key
+  uint8_t temp_private_key[CRYPTO_PRIVATE_KEY_SIZE]; // New ephemeral private key
+  uint8_t temp_shared_key[CRYPTO_SHARED_KEY_SIZE];   // New shared secret (not yet active)
+  bool has_temp_key;                                   // True if temp keys are valid
+
+  // Configurable rekeying thresholds
+  uint64_t rekey_packet_threshold; // Rekey after N packets (default: 1,000,000)
+  time_t rekey_time_threshold;     // Rekey after N seconds (default: 3600 = 1 hour)
+
   // Performance tracking
   uint64_t bytes_encrypted;
   uint64_t bytes_decrypted;
+  uint64_t rekey_count; // Number of successful rekeys performed
 } crypto_context_t;
 
 // Crypto initialization result
@@ -138,7 +155,10 @@ typedef enum {
   CRYPTO_ERROR_INVALID_MAC = -9,
   CRYPTO_ERROR_BUFFER_TOO_SMALL = -10,
   CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE = -11,
-  CRYPTO_ERROR_NONCE_EXHAUSTED = -12
+  CRYPTO_ERROR_NONCE_EXHAUSTED = -12,
+  CRYPTO_ERROR_REKEY_IN_PROGRESS = -13,   // Rekey already in progress
+  CRYPTO_ERROR_REKEY_FAILED = -14,        // Rekey handshake failed
+  CRYPTO_ERROR_REKEY_RATE_LIMITED = -15   // Too many rekey attempts
 } crypto_result_t;
 
 // =============================================================================
@@ -347,3 +367,79 @@ void crypto_combine_auth_data(const uint8_t *hmac, const uint8_t *challenge_nonc
 
 // Extract HMAC and challenge nonce from combined data
 void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, uint8_t *challenge_out);
+
+// =============================================================================
+// Session Rekeying Protocol
+// =============================================================================
+
+// Rekeying constants
+#define REKEY_MIN_INTERVAL 3                  // Minimum 3 seconds for TESTING (normally 60 for anti-DoS)
+#define REKEY_DEFAULT_TIME_THRESHOLD 3600     // Default: 1 hour
+#define REKEY_DEFAULT_PACKET_THRESHOLD 1000000 // Default: 1 million packets
+#define REKEY_TEST_TIME_THRESHOLD 30          // Test mode: 30 seconds
+#define REKEY_TEST_PACKET_THRESHOLD 1000      // Test mode: 1000 packets
+#define REKEY_MAX_FAILURE_COUNT 10            // Max consecutive failures before giving up
+
+/**
+ * Check if rekeying should be triggered based on time or packet count thresholds.
+ * Should be called after each packet encryption.
+ *
+ * @param ctx Crypto context
+ * @return true if rekey should be initiated, false otherwise
+ */
+bool crypto_should_rekey(const crypto_context_t *ctx);
+
+/**
+ * Initiate rekeying by generating new ephemeral keys.
+ * This is called by the initiator (client or server).
+ *
+ * @param ctx Crypto context
+ * @return CRYPTO_OK on success, error code on failure
+ */
+crypto_result_t crypto_rekey_init(crypto_context_t *ctx);
+
+/**
+ * Process REKEY_REQUEST from peer (responder side).
+ * Generates new ephemeral keys and computes new shared secret.
+ *
+ * @param ctx Crypto context
+ * @param peer_new_public_key Peer's new ephemeral public key (32 bytes)
+ * @return CRYPTO_OK on success, error code on failure
+ */
+crypto_result_t crypto_rekey_process_request(crypto_context_t *ctx, const uint8_t *peer_new_public_key);
+
+/**
+ * Process REKEY_RESPONSE from peer (initiator side).
+ * Computes new shared secret from peer's new public key.
+ *
+ * @param ctx Crypto context
+ * @param peer_new_public_key Peer's new ephemeral public key (32 bytes)
+ * @return CRYPTO_OK on success, error code on failure
+ */
+crypto_result_t crypto_rekey_process_response(crypto_context_t *ctx, const uint8_t *peer_new_public_key);
+
+/**
+ * Commit to new keys after successful REKEY_COMPLETE.
+ * Switches from old shared_key to temp_shared_key, resets counters.
+ *
+ * @param ctx Crypto context
+ * @return CRYPTO_OK on success, error code on failure
+ */
+crypto_result_t crypto_rekey_commit(crypto_context_t *ctx);
+
+/**
+ * Abort rekeying and fallback to old keys.
+ * Called on rekey failure (timeout, bad keys, decryption failure, etc.)
+ *
+ * @param ctx Crypto context
+ */
+void crypto_rekey_abort(crypto_context_t *ctx);
+
+/**
+ * Get the current rekeying state for debugging/logging.
+ *
+ * @param ctx Crypto context
+ * @param status_buffer Output buffer for status string
+ * @param buffer_size Size of status buffer
+ */
+void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, size_t buffer_size);

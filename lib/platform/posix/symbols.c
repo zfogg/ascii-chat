@@ -311,11 +311,11 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
   // The cache must be initialized explicitly by platform_init() before use
   if (!atomic_load(&g_symbol_cache_initialized)) {
-    // Cache not initialized - fall back to uncached resolution
-    // This happens during early initialization before platform_init() completes
-    #ifndef _WIN32
+// Cache not initialized - fall back to uncached resolution
+// This happens during early initialization before platform_init() completes
+#ifndef _WIN32
     return run_addr2line_batch(buffer, size);
-    #else
+#else
     // Windows: just return raw addresses
     char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
     if (result) {
@@ -327,7 +327,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
       }
     }
     return result;
-    #endif
+#endif
   }
 
   // Allocate result array

@@ -166,13 +166,25 @@ image_t *webcam_read(void) {
 
   // Apply horizontal flip if requested
   if (opt_webcam_flip) {
-    // Flip the image horizontally
+    // Flip the image horizontally - optimized for large images
+    // Process entire rows to improve cache locality
+    rgb_t *left = frame->pixels;
+    rgb_t *right = frame->pixels + frame->w - 1;
+
     for (int y = 0; y < frame->h; y++) {
+      rgb_t *row_left = left;
+      rgb_t *row_right = right;
+
+      // Swap pixels from both ends moving inward
       for (int x = 0; x < frame->w / 2; x++) {
-        rgb_t temp = frame->pixels[y * frame->w + x];                                       // Store left pixel
-        frame->pixels[y * frame->w + x] = frame->pixels[y * frame->w + (frame->w - 1 - x)]; // Move right pixel to left
-        frame->pixels[y * frame->w + (frame->w - 1 - x)] = temp; // Move stored left pixel to right
+        rgb_t temp = *row_left;
+        *row_left++ = *row_right;
+        *row_right-- = temp;
       }
+
+      // Move to next row
+      left += frame->w;
+      right += frame->w;
     }
   }
 

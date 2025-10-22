@@ -452,6 +452,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready) {
+    log_warn("CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void*)crypto_ctx, ready);
     int result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
@@ -463,6 +464,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
+  log_debug("CRYPTO_DEBUG: Encrypting packet type %d with crypto_ctx=%p", type, (void*)crypto_ctx);
   packet_header_t header = {.magic = htonl(PACKET_MAGIC),
                             .type = htons((uint16_t)type),
                             .length = htonl((uint32_t)final_len),
@@ -512,6 +514,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Send as PACKET_TYPE_ENCRYPTED
+  log_debug("CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", type);
   int send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
   buffer_pool_free(ciphertext, ciphertext_size);
 
@@ -570,6 +573,8 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %u > %d", pkt_len, MAX_PACKET_SIZE);
     return PACKET_RECV_ERROR;
   }
+
+  log_debug("RECV_DEBUG: Received packet type %d, len %u (ENCRYPTED=%d)", pkt_type, pkt_len, PACKET_TYPE_ENCRYPTED);
 
   // Handle encrypted packets
   if (pkt_type == PACKET_TYPE_ENCRYPTED) {

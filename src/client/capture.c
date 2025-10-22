@@ -267,9 +267,14 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Capture frame from webcam
+    struct timespec t1, t2, t3, t4, t5;
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+
     log_info("CAPTURE_DEBUG: Calling webcam_read()");
     image_t *image = webcam_read();
-    log_info("CAPTURE_DEBUG: webcam_read() returned %p", (void*)image);
+    clock_gettime(CLOCK_MONOTONIC, &t2);
+    long read_ms = (t2.tv_sec - t1.tv_sec) * 1000 + (t2.tv_nsec - t1.tv_nsec) / 1000000;
+    log_info("CAPTURE_DEBUG: webcam_read() took %ld ms, returned %p", read_ms, (void *)image);
 
     if (!image) {
       log_info("CAPTURE_DEBUG: Image is NULL, continuing");
@@ -278,11 +283,15 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    log_info("CAPTURE_DEBUG: Image is NOT NULL, about to process frame");
+    log_info("CAPTURE_DEBUG: Image is NOT NULL (%dx%d), about to process frame", image->w, image->h);
 
     // Process frame for network transmission
+    clock_gettime(CLOCK_MONOTONIC, &t3);
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
-    log_info("CAPTURE_DEBUG: process_frame_for_transmission returned %p", (void*)processed_image);
+    clock_gettime(CLOCK_MONOTONIC, &t4);
+    long process_ms = (t4.tv_sec - t3.tv_sec) * 1000 + (t4.tv_nsec - t3.tv_nsec) / 1000000;
+    log_info("CAPTURE_DEBUG: process_frame_for_transmission took %ld ms, returned %p", process_ms,
+             (void *)processed_image);
     if (!processed_image) {
       log_error("Failed to process frame for transmission");
       if (image) {
@@ -332,8 +341,12 @@ static void *webcam_capture_thread_func(void *arg) {
 
     log_info("CAPTURE_DEBUG: About to send IMAGE_FRAME packet, size=%zu", packet_size);
     // Send frame packet to server
+    clock_gettime(CLOCK_MONOTONIC, &t5);
     int send_result = threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
-    log_info("CAPTURE_DEBUG: threaded_send_packet returned %d", send_result);
+    struct timespec t6;
+    clock_gettime(CLOCK_MONOTONIC, &t6);
+    long send_ms = (t6.tv_sec - t5.tv_sec) * 1000 + (t6.tv_nsec - t5.tv_nsec) / 1000000;
+    log_info("CAPTURE_DEBUG: threaded_send_packet took %ld ms, returned %d", send_ms, send_result);
 
     if (send_result < 0) {
       log_error("CAPTURE_DEBUG: Failed to send video frame to server: %s", SAFE_STRERROR(errno));

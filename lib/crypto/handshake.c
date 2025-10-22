@@ -1014,6 +1014,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     }
 
     ctx->state = CRYPTO_HANDSHAKE_READY;
+    ctx->crypto_ctx.handshake_complete = true;  // Mark crypto context as ready for rekeying
     log_info("Crypto handshake completed successfully (no authentication)");
   }
 
@@ -1110,6 +1111,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
       buffer_pool_free(payload, payload_len);
     }
     ctx->state = CRYPTO_HANDSHAKE_READY;
+    ctx->crypto_ctx.handshake_complete = true;  // Mark crypto context as ready for rekeying
     log_info("Crypto handshake completed successfully (no authentication required)");
     return ASCIICHAT_OK;
   }
@@ -1605,4 +1607,251 @@ asciichat_error_t crypto_decrypt_packet_or_passthrough(const crypto_handshake_co
   }
 
   return crypto_handshake_decrypt_packet(ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, plaintext_len);
+}
+
+// =============================================================================
+// Session Rekeying Protocol Implementation
+// =============================================================================
+
+/**
+ * Send REKEY_REQUEST packet (initiator side).
+ * Sends the initiator's new ephemeral public key to the peer.
+ */
+asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx, socket_t socket) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
+                     ctx ? crypto_handshake_is_ready(ctx) : 0);
+  }
+
+  // Initialize rekey process (generates new ephemeral keypair)
+  crypto_result_t result = crypto_rekey_init(&ctx->crypto_ctx);
+  if (result != CRYPTO_OK) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to initialize rekey: %s", crypto_result_to_string(result));
+  }
+
+  // Send REKEY_REQUEST with new ephemeral public key (32 bytes)
+  log_info("Sending REKEY_REQUEST with new ephemeral X25519 public key (32 bytes)");
+  int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_REQUEST, ctx->crypto_ctx.temp_public_key,
+                                 CRYPTO_PUBLIC_KEY_SIZE);
+  if (send_result != 0) {
+    crypto_rekey_abort(&ctx->crypto_ctx); // Clean up temp keys on failure
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send REKEY_REQUEST packet");
+  }
+
+  log_debug("REKEY_REQUEST sent successfully, awaiting REKEY_RESPONSE");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Send REKEY_RESPONSE packet (responder side).
+ * Sends the responder's new ephemeral public key to the peer.
+ */
+asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ctx, socket_t socket) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
+                     ctx ? crypto_handshake_is_ready(ctx) : 0);
+  }
+
+  if (!ctx->crypto_ctx.rekey_in_progress || !ctx->crypto_ctx.has_temp_key) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "No rekey in progress or temp key missing");
+  }
+
+  // Send REKEY_RESPONSE with new ephemeral public key (32 bytes)
+  log_info("Sending REKEY_RESPONSE with new ephemeral X25519 public key (32 bytes)");
+  int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, ctx->crypto_ctx.temp_public_key,
+                                 CRYPTO_PUBLIC_KEY_SIZE);
+  if (send_result != 0) {
+    crypto_rekey_abort(&ctx->crypto_ctx); // Clean up temp keys on failure
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send REKEY_RESPONSE packet");
+  }
+
+  log_debug("REKEY_RESPONSE sent successfully, awaiting REKEY_COMPLETE");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Send REKEY_COMPLETE packet (initiator side).
+ * CRITICAL: This packet is encrypted with the NEW shared secret.
+ * It proves that both sides have computed the same shared secret.
+ */
+asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ctx, socket_t socket) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
+                     ctx ? crypto_handshake_is_ready(ctx) : 0);
+  }
+
+  if (!ctx->crypto_ctx.rekey_in_progress || !ctx->crypto_ctx.has_temp_key) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "No rekey in progress or temp key missing");
+  }
+
+  // Encrypt empty payload with NEW key to prove possession
+  uint8_t plaintext[1] = {0}; // Minimal payload
+  uint8_t ciphertext[256];    // Sufficient for nonce + MAC + minimal payload
+  size_t ciphertext_len = 0;
+
+  // Temporarily swap keys to encrypt with NEW key
+  uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
+  memcpy(old_shared_key, ctx->crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
+  memcpy(ctx->crypto_ctx.shared_key, ctx->crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
+
+  // Encrypt with NEW key
+  crypto_result_t result =
+      crypto_encrypt(&ctx->crypto_ctx, plaintext, sizeof(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
+
+  // Restore old key immediately (commit will happen after successful send)
+  memcpy(ctx->crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
+  sodium_memzero(old_shared_key, sizeof(old_shared_key));
+
+  if (result != CRYPTO_OK) {
+    crypto_rekey_abort(&ctx->crypto_ctx);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt REKEY_COMPLETE: %s", crypto_result_to_string(result));
+  }
+
+  // Send encrypted REKEY_COMPLETE
+  log_info("Sending REKEY_COMPLETE (encrypted with NEW key, %zu bytes)", ciphertext_len);
+  int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, ciphertext, ciphertext_len);
+  if (send_result != 0) {
+    crypto_rekey_abort(&ctx->crypto_ctx);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send REKEY_COMPLETE packet");
+  }
+
+  // Commit to new key (atomic switch)
+  result = crypto_rekey_commit(&ctx->crypto_ctx);
+  if (result != CRYPTO_OK) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to commit rekey: %s", crypto_result_to_string(result));
+  }
+
+  log_info("Session rekeying completed successfully (initiator side)");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Process received REKEY_REQUEST packet (responder side).
+ * Extracts peer's new ephemeral public key and computes new shared secret.
+ */
+asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_context_t *ctx, const uint8_t *packet,
+                                                          size_t packet_len) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
+                     ctx ? crypto_handshake_is_ready(ctx) : 0);
+  }
+
+  // Validate packet size (should be 32 bytes for X25519 public key)
+  if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid REKEY_REQUEST packet size: %zu (expected %d)", packet_len,
+                     CRYPTO_PUBLIC_KEY_SIZE);
+  }
+
+  log_info("Received REKEY_REQUEST with peer's new ephemeral public key (32 bytes)");
+
+  // Initialize our rekey process (generates our new ephemeral keypair)
+  crypto_result_t result = crypto_rekey_init(&ctx->crypto_ctx);
+  if (result != CRYPTO_OK) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to initialize rekey: %s", crypto_result_to_string(result));
+  }
+
+  // Process peer's public key and compute new shared secret
+  result = crypto_rekey_process_request(&ctx->crypto_ctx, packet);
+  if (result != CRYPTO_OK) {
+    crypto_rekey_abort(&ctx->crypto_ctx);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to process REKEY_REQUEST: %s", crypto_result_to_string(result));
+  }
+
+  log_debug("REKEY_REQUEST processed successfully, new shared secret computed (responder side)");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Process received REKEY_RESPONSE packet (initiator side).
+ * Extracts peer's new ephemeral public key and computes new shared secret.
+ */
+asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_context_t *ctx, const uint8_t *packet,
+                                                           size_t packet_len) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
+                     ctx ? crypto_handshake_is_ready(ctx) : 0);
+  }
+
+  // Validate packet size (should be 32 bytes for X25519 public key)
+  if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid REKEY_RESPONSE packet size: %zu (expected %d)", packet_len,
+                     CRYPTO_PUBLIC_KEY_SIZE);
+  }
+
+  if (!ctx->crypto_ctx.rekey_in_progress || !ctx->crypto_ctx.has_temp_key) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "No rekey in progress or temp key missing");
+  }
+
+  log_info("Received REKEY_RESPONSE with peer's new ephemeral public key (32 bytes)");
+
+  // Process peer's public key and compute new shared secret
+  crypto_result_t result = crypto_rekey_process_response(&ctx->crypto_ctx, packet);
+  if (result != CRYPTO_OK) {
+    crypto_rekey_abort(&ctx->crypto_ctx);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to process REKEY_RESPONSE: %s", crypto_result_to_string(result));
+  }
+
+  log_debug("REKEY_RESPONSE processed successfully, new shared secret computed (initiator side)");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Process received REKEY_COMPLETE packet (responder side).
+ * Verifies that the packet decrypts with the new shared secret.
+ * If successful, commits to the new key.
+ */
+asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_context_t *ctx, const uint8_t *packet,
+                                                           size_t packet_len) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
+                     ctx ? crypto_handshake_is_ready(ctx) : 0);
+  }
+
+  if (!ctx->crypto_ctx.rekey_in_progress || !ctx->crypto_ctx.has_temp_key) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "No rekey in progress or temp key missing");
+  }
+
+  log_info("Received REKEY_COMPLETE packet (%zu bytes), verifying with NEW key", packet_len);
+
+  // Temporarily swap keys to decrypt with NEW key
+  uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
+  memcpy(old_shared_key, ctx->crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
+  memcpy(ctx->crypto_ctx.shared_key, ctx->crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
+
+  // Attempt to decrypt with NEW key
+  uint8_t plaintext[256];
+  size_t plaintext_len = 0;
+  crypto_result_t result =
+      crypto_decrypt(&ctx->crypto_ctx, packet, packet_len, plaintext, sizeof(plaintext), &plaintext_len);
+
+  // Restore old key immediately
+  memcpy(ctx->crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
+  sodium_memzero(old_shared_key, sizeof(old_shared_key));
+
+  if (result != CRYPTO_OK) {
+    crypto_rekey_abort(&ctx->crypto_ctx);
+    return SET_ERRNO(ERROR_CRYPTO, "REKEY_COMPLETE decryption failed (key mismatch): %s", crypto_result_to_string(result));
+  }
+
+  log_info("REKEY_COMPLETE verified successfully, committing to new key");
+
+  // Commit to new key (atomic switch)
+  result = crypto_rekey_commit(&ctx->crypto_ctx);
+  if (result != CRYPTO_OK) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to commit rekey: %s", crypto_result_to_string(result));
+  }
+
+  log_info("Session rekeying completed successfully (responder side)");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Check if rekeying should be triggered for this handshake context.
+ * Wrapper around crypto_should_rekey() for handshake context.
+ */
+bool crypto_handshake_should_rekey(const crypto_handshake_context_t *ctx) {
+  if (!ctx || !crypto_handshake_is_ready(ctx)) {
+    return false;
+  }
+  return crypto_should_rekey(&ctx->crypto_ctx);
 }

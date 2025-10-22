@@ -118,7 +118,8 @@ Test(crypto_validation, validate_private_key_all_zeros) {
 // =============================================================================
 
 Test(crypto_validation, validate_ssh_key_format_valid) {
-  const char *valid_ssh_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *valid_ssh_key =
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
 
   asciichat_error_t result = validate_ssh_key_format(valid_ssh_key);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid SSH key format should pass");
@@ -144,7 +145,8 @@ Test(crypto_validation, validate_ssh_key_format_no_data) {
 }
 
 Test(crypto_validation, validate_gpg_key_format_valid) {
-  const char *valid_gpg = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY BLOCK-----\n";
+  const char *valid_gpg =
+      "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY BLOCK-----\n";
 
   asciichat_error_t result = validate_gpg_key_format(valid_gpg);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid GPG key format should pass");

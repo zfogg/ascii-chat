@@ -283,7 +283,9 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (slot == -1 && atomic_load(&g_client_manager.clients[i].client_id) == 0) {
       slot = i; // Take first available slot
-    } else {
+    }
+    // Count only active clients
+    if (atomic_load(&g_client_manager.clients[i].client_id) != 0 && atomic_load(&g_client_manager.clients[i].active)) {
       existing_count++;
     }
   }
@@ -485,8 +487,14 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     // Protect crypto context access with client state mutex
     mutex_lock(&client->client_state_mutex);
     const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
+
+    // FIX: Use per-client crypto state to determine enforcement
+    // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
+    bool enforce_encryption =
+        !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+
     packet_envelope_t envelope;
-    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
+    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, enforce_encryption, &envelope);
     mutex_unlock(&client->client_state_mutex);
 
     if (result != PACKET_RECV_SUCCESS) {
@@ -755,7 +763,8 @@ void *client_receive_thread(void *arg) {
     const crypto_context_t *crypto_ctx = NULL;
 
     // Check if crypto is ready without acquiring rwlock (optimization for receive thread)
-    bool crypto_ready = !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+    bool crypto_ready =
+        !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
 
     if (crypto_ready) {
       crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
@@ -772,7 +781,9 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, !opt_no_encrypt, &envelope);
+    // FIX: Use per-client crypto_ready state instead of global opt_no_encrypt
+    // This ensures encryption is only enforced AFTER this specific client completes the handshake
+    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, crypto_ready, &envelope);
 
     // Check if socket became invalid during the receive operation
     if (result == PACKET_RECV_ERROR && (errno == EIO || errno == EBADF)) {
@@ -841,6 +852,75 @@ void *client_receive_thread(void *arg) {
       process_decrypted_packet(client, type, data, len);
       break;
 
+    // Session rekeying packets
+    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
+      log_info("SERVER: Received REKEY_REQUEST from client %u", client->client_id);
+
+      // Process the client's rekey request
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_process_rekey_request(&client->crypto_handshake_ctx, data, len);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("SERVER: Failed to process REKEY_REQUEST from client %u: %d", client->client_id, result);
+        break;
+      }
+
+      // Send REKEY_RESPONSE
+      mutex_lock(&client->client_state_mutex);
+      result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("SERVER: Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, result);
+      } else {
+        log_info("SERVER: Sent REKEY_RESPONSE to client %u", client->client_id);
+      }
+      break;
+    }
+
+    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
+      log_info("SERVER: Received REKEY_RESPONSE from client %u", client->client_id);
+
+      // Process the client's rekey response
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_process_rekey_response(&client->crypto_handshake_ctx, data, len);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("SERVER: Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, result);
+        break;
+      }
+
+      // Send REKEY_COMPLETE to confirm and activate new key
+      mutex_lock(&client->client_state_mutex);
+      result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("SERVER: Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, result);
+      } else {
+        log_info("SERVER: Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
+      }
+      break;
+    }
+
+    case PACKET_TYPE_CRYPTO_REKEY_COMPLETE: {
+      log_info("SERVER: Received REKEY_COMPLETE from client %u", client->client_id);
+
+      // Process and commit to new key
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_process_rekey_complete(&client->crypto_handshake_ctx, data, len);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("SERVER: Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, result);
+      } else {
+        log_info("SERVER: Session rekeying completed successfully with client %u", client->client_id);
+      }
+      break;
+    }
+
     default:
       log_warn("Received unhandled packet type %d from client %u", type, client->client_id);
       break;
@@ -889,6 +969,27 @@ void *client_send_thread_func(void *arg) {
          atomic_load(&client->send_thread_running)) {
     bool sent_something = false;
 
+    // Check if session rekeying should be triggered
+    mutex_lock(&client->client_state_mutex);
+    bool should_rekey = !opt_no_encrypt && client->crypto_initialized &&
+                        crypto_handshake_is_ready(&client->crypto_handshake_ctx) &&
+                        crypto_handshake_should_rekey(&client->crypto_handshake_ctx);
+    mutex_unlock(&client->client_state_mutex);
+
+    if (should_rekey) {
+      log_info("SERVER: Rekey threshold reached for client %u, initiating session rekey", client->client_id);
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("SERVER: Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
+        // Don't break - continue with packet sending, rekey will be retried
+      } else {
+        log_info("SERVER: Sent REKEY_REQUEST to client %u", client->client_id);
+      }
+    }
+
     // Try to get audio packet first (higher priority for low latency)
     queued_packet_t *audio_packet = NULL;
     if (client->audio_queue) {
@@ -897,29 +998,27 @@ void *client_send_thread_func(void *arg) {
 
     // Send audio packet if we have one
     if (audio_packet) {
-      // Send header
-      ssize_t sent =
-          send_with_timeout(client->socket, &audio_packet->header, sizeof(audio_packet->header), SEND_TIMEOUT);
-      if (sent != sizeof(audio_packet->header)) {
+      // FIX: Use send_packet_secure() to encrypt audio packets
+      // Get crypto context for this client
+      const crypto_context_t *crypto_ctx = NULL;
+      bool crypto_ready = !opt_no_encrypt && client->crypto_initialized &&
+                          crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+      if (crypto_ready) {
+        crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+      }
+
+      // Extract packet type from header
+      packet_type_t pkt_type = (packet_type_t)ntohs(audio_packet->header.type);
+
+      // Send using secure packet function
+      int result = send_packet_secure(client->socket, pkt_type, audio_packet->data,
+                                      audio_packet->data_len, (crypto_context_t *)crypto_ctx);
+      if (result != 0) {
         if (!atomic_load(&g_server_should_exit)) {
-          log_error("Failed to send audio packet header to client %u: %zd/%zu bytes", client->client_id, sent,
-                    sizeof(audio_packet->header));
+          log_error("Failed to send audio packet to client %u", client->client_id);
         }
         packet_queue_free_packet(audio_packet);
         break; // Socket error, exit thread
-      }
-
-      // Send payload
-      if (audio_packet->data_len > 0 && audio_packet->data) {
-        sent = send_with_timeout(client->socket, audio_packet->data, audio_packet->data_len, SEND_TIMEOUT);
-        if (sent != (ssize_t)audio_packet->data_len) {
-          if (!atomic_load(&g_server_should_exit)) {
-            log_error("Failed to send audio packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
-                      audio_packet->data_len);
-          }
-          packet_queue_free_packet(audio_packet);
-          break; // Socket error, exit thread
-        }
       }
 
       packet_queue_free_packet(audio_packet);
@@ -1095,10 +1194,19 @@ void broadcast_server_state_to_all_clients(void) {
       active_video_count++;
     }
     if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
+      // Get crypto context and skip if not ready (handshake still in progress)
+      const crypto_context_t *crypto_ctx =
+          crypto_handshake_get_context(&g_client_manager.clients[i].crypto_handshake_ctx);
+      if (!crypto_ctx) {
+        // Skip clients that haven't completed crypto handshake yet
+        log_debug("Skipping server_state broadcast to client %u: crypto handshake not ready",
+                  g_client_manager.clients[i].client_id);
+        continue;
+      }
+
       client_snapshots[snapshot_count].socket = g_client_manager.clients[i].socket;
       client_snapshots[snapshot_count].client_id = g_client_manager.clients[i].client_id;
-      client_snapshots[snapshot_count].crypto_ctx =
-          crypto_handshake_get_context(&g_client_manager.clients[i].crypto_handshake_ctx);
+      client_snapshots[snapshot_count].crypto_ctx = crypto_ctx;
       snapshot_count++;
     }
   }
@@ -1115,18 +1223,11 @@ void broadcast_server_state_to_all_clients(void) {
   net_state.active_client_count = htonl(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
-  uint64_t lock_held_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
-                          ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
-  // CRITICAL FIX: Release lock BEFORE network I/O to prevent blocking render threads
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  if (lock_held_us > 1000) { // Log if held > 1ms (should be very rare now)
-    log_warn("broadcast_server_state: rwlock held for %.2fms (should be <1ms now)", lock_held_us / 1000.0);
-  }
-
-  // NOW send to all clients WITHOUT holding any locks (uses snapshots)
+  // Send to all clients WHILE HOLDING THE LOCK
+  // This ensures crypto contexts remain valid during transmission
   for (int i = 0; i < snapshot_count; i++) {
+    log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
+              client_snapshots[i].client_id, client_snapshots[i].socket, (void*)client_snapshots[i].crypto_ctx);
     int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                     (crypto_context_t *)client_snapshots[i].crypto_ctx);
 
@@ -1136,6 +1237,15 @@ void broadcast_server_state_to_all_clients(void) {
       log_debug("Sent server state to client %u: %u connected, %u active", client_snapshots[i].client_id,
                 state.connected_client_count, state.active_client_count);
     }
+  }
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
+  uint64_t lock_held_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
+                          ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  if (lock_held_us > 1000) { // Log if held > 1ms (should be very rare now with optimized send)
+    log_warn("broadcast_server_state: rwlock held for %.2fms (includes network I/O)", lock_held_us / 1000.0);
   }
 }
 

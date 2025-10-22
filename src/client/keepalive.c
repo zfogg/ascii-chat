@@ -69,6 +69,7 @@
 #include "keepalive.h"
 #include "main.h"
 #include "server.h"
+#include "crypto.h"
 
 #include "common.h"
 #include "platform/abstraction.h"
@@ -137,6 +138,15 @@ static void *ping_thread_func(void *arg) {
     if (!server_connection_is_active()) {
       log_debug("Connection inactive, exiting ping thread");
       break;
+    }
+
+    // Check if session rekeying should be triggered
+    if (crypto_client_should_rekey()) {
+      log_info("CLIENT: Rekey threshold reached, initiating session rekey");
+      if (crypto_client_initiate_rekey() < 0) {
+        log_error("CLIENT: Failed to initiate rekey");
+        // Don't break - continue with keepalive, rekey will be retried
+      }
     }
 
     // Send ping packet every PING_INTERVAL_SECONDS to keep connection alive

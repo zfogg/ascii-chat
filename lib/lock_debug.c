@@ -994,8 +994,7 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
       strstr(function_name, "hashtable_") != NULL || strstr(function_name, "create_lock_record") != NULL ||
       strstr(function_name, "update_usage_stats") != NULL || strstr(function_name, "print_") != NULL ||
       strstr(function_name, "debug_") != NULL || strstr(function_name, "lock_debug") != NULL ||
-      strstr(file_name, "symbols.c") != NULL ||
-      strstr(function_name, "ascii_thread") != NULL) {
+      strstr(file_name, "symbols.c") != NULL || strstr(function_name, "ascii_thread") != NULL) {
     return true;
   }
 
