@@ -1001,8 +1001,8 @@ void *client_send_thread_func(void *arg) {
       // FIX: Use send_packet_secure() to encrypt audio packets
       // Get crypto context for this client
       const crypto_context_t *crypto_ctx = NULL;
-      bool crypto_ready = !opt_no_encrypt && client->crypto_initialized &&
-                          crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+      bool crypto_ready =
+          !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
       if (crypto_ready) {
         crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
       }
@@ -1011,8 +1011,8 @@ void *client_send_thread_func(void *arg) {
       packet_type_t pkt_type = (packet_type_t)ntohs(audio_packet->header.type);
 
       // Send using secure packet function
-      int result = send_packet_secure(client->socket, pkt_type, audio_packet->data,
-                                      audio_packet->data_len, (crypto_context_t *)crypto_ctx);
+      int result = send_packet_secure(client->socket, pkt_type, audio_packet->data, audio_packet->data_len,
+                                      (crypto_context_t *)crypto_ctx);
       if (result != 0) {
         if (!atomic_load(&g_server_should_exit)) {
           log_error("Failed to send audio packet to client %u", client->client_id);
@@ -1227,7 +1227,7 @@ void broadcast_server_state_to_all_clients(void) {
   // This ensures crypto contexts remain valid during transmission
   for (int i = 0; i < snapshot_count; i++) {
     log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
-              client_snapshots[i].client_id, client_snapshots[i].socket, (void*)client_snapshots[i].crypto_ctx);
+              client_snapshots[i].client_id, client_snapshots[i].socket, (void *)client_snapshots[i].crypto_ctx);
     int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                     (crypto_context_t *)client_snapshots[i].crypto_ctx);
 

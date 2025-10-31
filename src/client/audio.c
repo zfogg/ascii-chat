@@ -88,6 +88,7 @@
 
 #include <stdatomic.h>
 #include <string.h>
+#include <math.h>
 
 #include "platform/abstraction.h"
 
@@ -116,7 +117,7 @@ static atomic_bool g_audio_capture_thread_exited = false;
  * ============================================================================ */
 
 /** Audio volume boost multiplier for received samples */
-#define AUDIO_VOLUME_BOOST 2.0f
+#define AUDIO_VOLUME_BOOST 1.0f // No boost - use natural volume
 
 /* ============================================================================
  * Audio Processing Functions
@@ -230,22 +231,84 @@ static void *audio_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Read audio samples from microphone
-    int samples_read = audio_read_samples(&g_audio_context, audio_buffer, AUDIO_SAMPLES_PER_PACKET);
+    // Check how many samples are available in the ring buffer
+    int available = audio_ring_buffer_available_read(g_audio_context.capture_buffer);
+    if (available <= 0) {
+      // No samples available, sleep briefly and continue
+      platform_sleep_usec(5 * 1000); // 5ms
+      continue;
+    }
+
+    // Read samples from the ring buffer (up to AUDIO_SAMPLES_PER_PACKET)
+    int to_read = (available < AUDIO_SAMPLES_PER_PACKET) ? available : AUDIO_SAMPLES_PER_PACKET;
+    asciichat_error_t read_result = audio_read_samples(&g_audio_context, audio_buffer, to_read);
+
+    if (read_result != ASCIICHAT_OK) {
+      log_error("Failed to read audio samples from ring buffer");
+      platform_sleep_usec(5 * 1000); // 5ms
+      continue;
+    }
+
+    int samples_read = to_read; // We successfully read this many samples
+
+    // Log every 10 reads to see if we're getting samples
+    static int total_reads = 0;
+    total_reads++;
+    if (total_reads % 10 == 0) {
+      log_info("Audio capture loop iteration #%d: available=%d, samples_read=%d", total_reads, available, samples_read);
+    }
 
     if (samples_read > 0) {
+      // Log sample levels every 100 reads for debugging
+      static int read_count = 0;
+      read_count++;
+      if (read_count % 100 == 0) {
+        // Calculate RMS of captured samples
+        float sum_squares = 0.0f;
+        for (int i = 0; i < samples_read; i++) {
+          sum_squares += audio_buffer[i] * audio_buffer[i];
+        }
+        float rms = sqrtf(sum_squares / samples_read);
+        log_info("Audio capture read #%d: samples=%d, first=[%.4f, %.4f, %.4f], RMS=%.6f", read_count, samples_read,
+                 audio_buffer[0], audio_buffer[1], audio_buffer[2], rms);
+      }
+
       // Apply audio processing chain
       // 1. High-pass filter to remove low-frequency rumble
       highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
 
-      // 2. Noise gate to eliminate background noise
+      // 2. Apply automatic gain control - boost quiet audio
+      // Calculate RMS to measure audio level
+      float sum_squares = 0.0f;
+      for (int i = 0; i < samples_read; i++) {
+        sum_squares += audio_buffer[i] * audio_buffer[i];
+      }
+      float rms = sqrtf(sum_squares / samples_read);
+
+      // Target RMS level (aim for moderate volume, not too quiet)
+      const float target_rms = 0.1f; // 10% of full scale
+      const float max_gain = 20.0f;  // Maximum 20x amplification
+
+      if (rms > 0.001f) { // Only apply gain if there's actual audio (not silence)
+        float gain = target_rms / rms;
+        if (gain > max_gain)
+          gain = max_gain; // Limit maximum gain
+        if (gain > 1.0f) { // Only apply if we need to boost
+          for (int i = 0; i < samples_read; i++) {
+            audio_buffer[i] *= gain;
+          }
+        }
+      }
+
+      // 3. Noise gate to eliminate background noise
       noise_gate_process_buffer(&noise_gate, audio_buffer, samples_read);
 
-      // 3. Soft clipping to prevent harsh distortion
+      // 4. Soft clipping to prevent harsh distortion after gain
       soft_clip_buffer(audio_buffer, samples_read, 0.95F);
 
+      // TEMPORARILY DISABLE NOISE GATE CHECK FOR TESTING
       // Only batch if gate is open (reduces network traffic for silence)
-      if (noise_gate_is_open(&noise_gate)) {
+      if (true || noise_gate_is_open(&noise_gate)) {
         // Copy processed samples to batch buffer using platform-safe memcpy
         size_t copy_size = samples_read * sizeof(float);
         size_t dest_space = (AUDIO_BATCH_SAMPLES - batch_samples_collected) * sizeof(float);
@@ -256,13 +319,20 @@ static void *audio_capture_thread_func(void *arg) {
         batch_samples_collected += samples_read;
         batch_chunks_collected++;
 
+        log_info("Audio batch collecting: chunks=%d/%d, samples=%d/%d", batch_chunks_collected, AUDIO_BATCH_COUNT,
+                 batch_samples_collected, AUDIO_BATCH_SAMPLES);
+
         // Send batch when we have enough chunks or buffer is full
         if (batch_chunks_collected >= AUDIO_BATCH_COUNT ||
             batch_samples_collected + AUDIO_SAMPLES_PER_PACKET > AUDIO_BATCH_SAMPLES) {
 
+          log_info("Sending audio batch: %d chunks, %d samples", batch_chunks_collected, batch_samples_collected);
+
           if (threaded_send_audio_batch_packet(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
-            log_debug("Failed to send audio batch to server");
+            log_error("Failed to send audio batch to server");
             // Don't set connection lost here as receive thread will detect it
+          } else {
+            log_info("Audio batch sent successfully");
           }
 #ifdef DEBUG_AUDIO
           else {
@@ -346,7 +416,10 @@ int audio_client_init() {
  * @return 0 on success, negative on error
  */
 int audio_start_thread() {
+  log_info("audio_start_thread called: opt_audio_enabled=%d", opt_audio_enabled);
+
   if (!opt_audio_enabled) {
+    log_info("Audio is disabled, skipping audio capture thread creation");
     return 0; // Audio disabled - not an error
   }
 

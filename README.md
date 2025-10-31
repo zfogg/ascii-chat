@@ -23,17 +23,38 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 ## Dependencies
 
+ASCII-Chat relies on several key libraries for its functionality. Each dependency serves a specific purpose in the application:
+
+### Core Dependencies
+
+#### [BearSSL](https://bearssl.org/) - SSL/TLS Library
+- **Purpose**: Building HTTPS client for fetching public keys from GitHub/GitLab
+- **License**: MIT
+
+#### [PortAudio](http://www.portaudio.com/) - Audio I/O Library
+- **Purpose**: Cross-platform audio capture and playback for real-time audio streaming between clients
+- **License**: MIT
+
+#### [zstd](https://facebook.github.io/zstd/) - Compression Library
+- **Purpose**: Compressing video frames before transmission (level 1 for optimal real-time performance)
+- **License**: BSD/GPLv2
+
+#### [libsodium](https://libsodium.org/) - Cryptographic Library
+- **Purpose**: End-to-end encryption and authentication
+- **License**: ISC
+
+### Platform APIs (No External Dependencies)
 **Update**: OpenCV is no longer required! The project now uses ✨ native platform APIs 🪄:
-- **Linux**: V4L2 (Video4Linux2)
-- **macOS**: AVFoundation
-- **Windows**: Media Foundation
+- **Linux**: V4L2 (Video4Linux2 kernel module)
+- **macOS**: AVFoundation (macOS native API)
+- **Windows**: Media Foundation (Windows native API)
 
 ### Linux
-- **Ubuntu/Debian**: `apt-get install build-essential clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev zlib1g-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Arch**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zlib portaudio libsodium criterion`
+- **Ubuntu/Debian**: `apt-get install build-essential clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **Arch**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zstd portaudio libsodium criterion`
 
 ### macOS
-- `brew install cmake ninja zlib portaudio libsodium criterion`
+- `brew install cmake ninja zstd portaudio libsodium criterion`
 
 ### Windows
 1. **Install Scoop** (if not already installed):
@@ -58,8 +79,11 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
    cd vcpkg
    .\bootstrap-vcpkg.bat
 
-   # Install required packages
-   .\vcpkg install zlib:x64-windows portaudio:x64-windows libsodium:x64-windows
+   # Install required packages for a development build
+   vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows mimalloc:x64-windows
+
+   # If you want to do a release build:
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static libsodium:x64-windows-static
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
@@ -173,7 +197,6 @@ The project uses a unified test runner script at `tests/scripts/run_tests.sh` th
 ./tests/scripts/run_tests.sh -b debug
 ./tests/scripts/run_tests.sh -b release
 ./tests/scripts/run_tests.sh -b debug-coverage
-./tests/scripts/run_tests.sh -b release-coverage
 
 # Generate JUnit XML for CI
 ./tests/scripts/run_tests.sh -J
@@ -243,13 +266,16 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 
 ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
 
+ascii-chat's crypto works like your web browser's HTTPS: the client and server perform the Diffie-Hellman exchange to establish secure communication with ephemeral keys every connection. HTTPS depends on certificates tied to DNS names with a certificate authority roots build into the operating system, but ascii-chat is built on TCP so DNS doesn't work for us to secure our servers. ascii-chat users need to verify their server's public keys manually until ACDS (ascii-chat discovery service) is built.
+
 ### Authentication Options
 
 **SSH Key Authentication** (`--key`):
 - Use your existing SSH Ed25519 keys for authentication
 - Supports encrypted keys (prompts for passphrase or uses ssh-agent)
 - Supports auto-detection with `--key ssh` or `--key ssh:`
-- Future support planned for: `gpg:keyid`, `github:username`, `gitlab:username`
+- Supports GitHub public keys with `--key github:username`
+- Future support planned for: `gpg:keyid`, `github:username.gpg`
 
 **Password-Based Encryption** (`--password`):
 - Simple password string for encrypting connections
@@ -262,29 +288,29 @@ ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key a
 
 ```bash
 # SSH key authentication (prompts for passphrase if encrypted)
-./bin/ascii-chat server --key ~/.ssh/id_ed25519
-./bin/ascii-chat client --key ~/.ssh/id_ed25519
+ascii-chat server --key ~/.ssh/id_ed25519
+ascii-chat client --key ~/.ssh/id_ed25519
 
 # Password-based encryption
-./bin/ascii-chat server --password "my_secure_password"
-./bin/ascii-chat client --password "my_secure_password"
+ascii-chat server --password "my_secure_password"
+ascii-chat client --password "my_secure_password"
 
-# Both SSH key + password (maximum security)
-./bin/ascii-chat server --key ~/.ssh/id_ed25519 --password "extra_encryption"
-./bin/ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
+# Both SSH key + password (double security)
+ascii-chat server --key ~/.ssh/id_ed25519 --password "extra_encryption"
+ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
 
 # Auto-detect SSH key from ~/.ssh/
-./bin/ascii-chat server --key ssh
+ascii-chat server --key ssh
 
 # Disable encryption (for local testing)
-./bin/ascii-chat server --no-encrypt
-./bin/ascii-chat client --no-encrypt
+ascii-chat server --no-encrypt
+ascii-chat client --no-encrypt
 
 # Client key whitelisting (server only accepts specific clients)
-./bin/ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
+ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
 
 # Server key verification (client verifies server identity)
-./bin/ascii-chat client --key ~/.ssh/id_ed25519 --server-key <server_public_key>
+ascii-chat client --key ~/.ssh/id_ed25519 --server-key <server_public_key>
 ```
 
 
@@ -349,7 +375,7 @@ Run `./bin/ascii-chat server --help` to see all server options:
 - Audio is always enabled on the server (no flag needed)
 
 **Cryptography:**
-- `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' for auto-detect
+- `-K --key FILE`: SSH key info for authentication: /path/to/key, github:user, gitlab:user, or 'ssh' for auto-detect
 - `--password PASS`: Password for connection encryption
 - `--no-encrypt`: Disable encryption (for local testing)
 - `--client-keys FILE`: Allowed client keys file for authentication (whitelist)
@@ -370,7 +396,7 @@ changing command-line arguments.
 
 #### `ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`
 - **Purpose**: Disables host identity verification (known_hosts checking)
-- **Values**: `1` (disable), unset or any other value (enable, default)
+- **Values**: `1` (enable), unset or any other value (disable, default)
 - **⚠️ DANGER**: This completely bypasses security checks and makes connections vulnerable to man-in-the-middle attacks
 
 #### `SSH_AUTH_SOCK`

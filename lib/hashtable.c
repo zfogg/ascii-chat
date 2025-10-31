@@ -281,19 +281,24 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
     return;
   }
 
+  // In Release builds, skip all hashtable stats printing
+#ifdef NDEBUG
+  return;
+#endif
+
   rwlock_rdlock(&ht->rwlock);
 
   double hit_rate = (ht->lookups > 0) ? ((double)ht->hits * 100.0 / (double)ht->lookups) : 0.0;
   double load_factor = (double)ht->entry_count / (double)HASHTABLE_BUCKET_COUNT;
   size_t free_entries = ht->pool_size - ht->entry_count;
 
-  log_info("=== Hashtable Stats: %s ===", name ? name : "Unknown");
-  log_info("Size: %zu/%zu entries, Load factor: %.2f, Free: %zu", ht->entry_count, ht->pool_size, load_factor,
-           free_entries);
-  log_info("Operations: %llu lookups (%.1f%% hit rate), %llu insertions, %llu deletions",
+  log_info("=== Hashtable Stats: %s ===\n"
+           "Size: %zu/%zu entries, Load factor: %.2f, Free: %zu\n"
+           "Operations: %llu lookups (%.1f%% hit rate), %llu insertions, %llu deletions\n"
+           "Collisions: %llu",
+           name ? name : "Unknown", ht->entry_count, ht->pool_size, load_factor, free_entries,
            (unsigned long long)ht->lookups, hit_rate, (unsigned long long)ht->insertions,
-           (unsigned long long)ht->deletions);
-  log_info("Collisions: %llu", (unsigned long long)ht->collisions);
+           (unsigned long long)ht->deletions, (unsigned long long)ht->collisions);
 
   rwlock_rdunlock(&ht->rwlock);
 }

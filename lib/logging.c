@@ -406,9 +406,18 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
 
   const char *newline_or_not = newline ? "\n" : "";
 
+  int result = 0;
+
+#ifdef NDEBUG
+  // Release mode: Simple one-line format without file/line/function
+  if (use_colors) {
+    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
+  } else {
+    result = snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_strings[level]);
+  }
+#else
   // Debug mode: full format with file location and function
   const char *rel_file = extract_project_relative_path(file);
-  int result = 0;
   if (use_colors) {
     // Use specific colors for file/function info: file=yellow, line=magenta, function=blue
     // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta)
@@ -422,6 +431,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     result = snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s():%s", timestamp, level_strings[level], rel_file,
                       line, func, newline_or_not);
   }
+#endif
 
   if (result <= 0 || result >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");

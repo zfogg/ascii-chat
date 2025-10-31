@@ -669,7 +669,7 @@ if(USE_MUSL)
     endif()
     message(STATUS "Using compiler for musl dependencies: ${MUSL_CC}")
 
-    # Note: zlib-musl, libsodium-musl, alsa-lib-musl, portaudio-musl, and libexecinfo-musl are now built in MuslDependencies.cmake
+    # Note: zstd-musl, libsodium-musl, alsa-lib-musl, portaudio-musl, and libexecinfo-musl are now built in MuslDependencies.cmake
 
     # Note: JACK is complex and optional - we'll skip it for static musl builds
 endif()
@@ -807,23 +807,23 @@ if(WIN32)
     include_directories("${VCPKG_INCLUDE_PATH}")
     link_directories("${VCPKG_LIB_PATH}")
 
-    # Find zlib
-    find_library(ZLIB_LIBRARY_RELEASE NAMES zlib PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_library(ZLIB_LIBRARY_DEBUG NAMES zlibd zlib PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+    # Find zstd
+    find_library(ZSTD_LIBRARY_RELEASE NAMES zstd zstd_static PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_library(ZSTD_LIBRARY_DEBUG NAMES zstdd zstd zstd_static PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
 
-    if(ZLIB_LIBRARY_RELEASE OR ZLIB_LIBRARY_DEBUG)
-        set(ZLIB_LIBRARIES optimized ${ZLIB_LIBRARY_RELEASE} debug ${ZLIB_LIBRARY_DEBUG})
-        set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
-        set(ZLIB_FOUND TRUE)
-        message(STATUS "Found ZLIB: ${ZLIB_LIBRARY_RELEASE}")
+    if(ZSTD_LIBRARY_RELEASE OR ZSTD_LIBRARY_DEBUG)
+        set(ZSTD_LIBRARIES optimized ${ZSTD_LIBRARY_RELEASE} debug ${ZSTD_LIBRARY_DEBUG})
+        set(ZSTD_INCLUDE_DIRS ${ZSTD_INCLUDE_DIR})
+        set(ZSTD_FOUND TRUE)
+        message(STATUS "Found ZSTD: ${ZSTD_LIBRARY_RELEASE}")
 
-        # Define ZLIB_STATIC for static builds to prevent dllimport
+        # Define ZSTD_STATIC for static builds to prevent dllimport
         if(CMAKE_BUILD_TYPE MATCHES "Release")
-            add_compile_definitions(ZLIB_STATIC)
+            add_compile_definitions(ZSTD_STATIC)
         endif()
     else()
-        message(FATAL_ERROR "Could not find zlib - required dependency")
+        message(FATAL_ERROR "Could not find zstd - required dependency")
     endif()
 
     # Find libsodium
@@ -964,21 +964,21 @@ else()
     find_package(PkgConfig REQUIRED)
 
     # Core dependencies (matching PKG_CONFIG_LIBS in Makefile)
-    # On macOS, prefer Homebrew zlib over system zlib for consistency
+    # On macOS, prefer Homebrew zstd over system zstd for consistency
     if(APPLE)
-        # Check for Homebrew zlib first
-        if(EXISTS "/usr/local/opt/zlib/lib/pkgconfig/zlib.pc")
-            set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/zlib/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-            message(STATUS "Using Homebrew zlib from /usr/local/opt/zlib")
-        elseif(EXISTS "/opt/homebrew/opt/zlib/lib/pkgconfig/zlib.pc")
-            set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/zlib/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-            message(STATUS "Using Homebrew zlib from /opt/homebrew/opt/zlib")
+        # Check for Homebrew zstd first
+        if(EXISTS "/usr/local/opt/zstd/lib/pkgconfig/libzstd.pc")
+            set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+            message(STATUS "Using Homebrew zstd from /usr/local/opt/zstd")
+        elseif(EXISTS "/opt/homebrew/opt/zstd/lib/pkgconfig/libzstd.pc")
+            set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+            message(STATUS "Using Homebrew zstd from /opt/homebrew/opt/zstd")
         endif()
     endif()
 
     # Skip pkg-config when using musl - dependencies are built from source
     if(NOT USE_MUSL)
-        pkg_check_modules(ZLIB REQUIRED zlib)
+        pkg_check_modules(ZSTD REQUIRED libzstd)
         pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
         pkg_check_modules(LIBSODIUM REQUIRED libsodium)
         # libgcrypt is optional - GPG Ed25519 signature verification
@@ -1447,8 +1447,8 @@ if(WIN32)
     endif()
     # Add additional Windows include paths if found
     # Use SYSTEM for musl to avoid glibc header conflicts (-isystem vs -I)
-    if(ZLIB_INCLUDE_DIRS)
-        include_directories(SYSTEM ${ZLIB_INCLUDE_DIRS})
+    if(ZSTD_INCLUDE_DIRS)
+        include_directories(SYSTEM ${ZSTD_INCLUDE_DIRS})
     endif()
     if(LIBSODIUM_INCLUDE_DIRS)
         include_directories(SYSTEM ${LIBSODIUM_INCLUDE_DIRS})
@@ -1462,8 +1462,8 @@ if(WIN32)
     endif()
 else()
     # Use pkg-config flags (matches Makefile CFLAGS approach)
-    if(ZLIB_CFLAGS_OTHER)
-        add_compile_options(${ZLIB_CFLAGS_OTHER})
+    if(ZSTD_CFLAGS_OTHER)
+        add_compile_options(${ZSTD_CFLAGS_OTHER})
     endif()
     if(LIBSODIUM_CFLAGS_OTHER)
         add_compile_options(${LIBSODIUM_CFLAGS_OTHER})
@@ -1475,20 +1475,20 @@ else()
     # Don't add system include paths when using musl - musl-gcc handles this via -specs
     if(NOT USE_MUSL)
         include_directories(
-            ${ZLIB_INCLUDE_DIRS}
+            ${ZSTD_INCLUDE_DIRS}
             ${LIBSODIUM_INCLUDE_DIRS}
             ${PORTAUDIO_INCLUDE_DIRS}
         )
     else()
         # When using musl, strip /usr/include from all include paths and add the cleaned paths
-        list(REMOVE_ITEM ZLIB_INCLUDE_DIRS "/usr/include")
+        list(REMOVE_ITEM ZSTD_INCLUDE_DIRS "/usr/include")
         list(REMOVE_ITEM LIBSODIUM_INCLUDE_DIRS "/usr/include")
         list(REMOVE_ITEM PORTAUDIO_INCLUDE_DIRS "/usr/include")
         list(REMOVE_ITEM BEARSSL_INCLUDE_DIRS "/usr/include")
 
         # Add the musl-built library include paths (after removing /usr/include)
         include_directories(
-            ${ZLIB_INCLUDE_DIRS}
+            ${ZSTD_INCLUDE_DIRS}
             ${LIBSODIUM_INCLUDE_DIRS}
             ${PORTAUDIO_INCLUDE_DIRS}
             ${BEARSSL_INCLUDE_DIRS}
@@ -1876,7 +1876,7 @@ target_link_libraries(ascii-chat-network
     ascii-chat-platform
     ascii-chat-crypto
     ascii-chat-core
-    ${ZLIB_LIBRARIES}
+    ${ZSTD_LIBRARIES}
 )
 
 # Core module was moved earlier in the dependency chain (Module 7)
@@ -1918,7 +1918,7 @@ if(WIN32)
     target_link_libraries(ascii-chat-shared PRIVATE
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
         ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
-        ${PORTAUDIO_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+        ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
     )
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
@@ -1931,7 +1931,7 @@ if(WIN32)
     endif()
 else()
     target_link_libraries(ascii-chat-shared PRIVATE
-        ${PORTAUDIO_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
+        ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
     )
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
@@ -2152,7 +2152,7 @@ endif()
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
-    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zlib-musl libexecinfo-musl)
+    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
 
     # Link against musl-built static libraries
     target_link_directories(ascii-chat PRIVATE ${MUSL_PREFIX}/lib)
@@ -2587,7 +2587,7 @@ add_custom_target(clean_all
 # Dependency installation targets (matches Makefile deps targets)
 if(PLATFORM_DARWIN)
     add_custom_target(deps
-        COMMAND brew install portaudio libsodium criterion zlib coreutils make || true
+        COMMAND brew install portaudio libsodium criterion zstd coreutils make || true
         COMMENT "Installing macOS dependencies via Homebrew"
     )
     add_custom_target(deps-test
@@ -2597,7 +2597,7 @@ if(PLATFORM_DARWIN)
     )
 elseif(PLATFORM_LINUX)
     add_custom_target(deps
-        COMMAND sudo apt-get update && sudo apt-get install -y build-essential pkg-config libportaudio2 portaudio19-dev libsodium-dev libcriterion-dev zlib1g-dev || true
+        COMMAND sudo apt-get update && sudo apt-get install -y build-essential pkg-config libportaudio2 portaudio19-dev libsodium-dev libcriterion-dev libzstd-dev || true
         COMMENT "Installing Linux dependencies via apt"
     )
     add_custom_target(deps-test
@@ -2721,10 +2721,10 @@ if(CRITERION_FOUND)
 else()
     message(STATUS "  Tests:             ${Red}Not Found${ColorReset}")
 endif()
-if(ZLIB_FOUND)
-    message(STATUS "  zlib:              ${Green}Found${ColorReset}")
+if(ZSTD_FOUND)
+    message(STATUS "  zstd:              ${Green}Found${ColorReset}")
 else()
-    message(STATUS "  zlib:              ${Red}Not Found${ColorReset}")
+    message(STATUS "  zstd:              ${Red}Not Found${ColorReset}")
 endif()
 if(LIBSODIUM_FOUND)
     message(STATUS "  libsodium:         ${Green}Found${ColorReset}")

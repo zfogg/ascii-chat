@@ -21,6 +21,11 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 // Internal helper functions
 // =============================================================================
 
+// Check if we're in a test environment
+static int is_test_environment(void) {
+  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
+}
+
 // Initialize libsodium (thread-safe, idempotent)
 static crypto_result_t init_libsodium(void) {
   if (g_libsodium_initialized) {
@@ -108,18 +113,28 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
 
   // Initialize rekeying state
   ctx->rekey_packet_count = 0;
-  ctx->rekey_last_time = time(NULL);  // Initialize to current time
+  ctx->rekey_last_time = time(NULL); // Initialize to current time
+  ctx->rekey_last_request_time = 0;  // No rekey request yet
   ctx->rekey_in_progress = false;
   ctx->rekey_failure_count = 0;
   ctx->has_temp_key = false;
   ctx->rekey_count = 0;
 
-  // Set test rekeying thresholds for rapid testing
-  ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD;  // 1,000 packets
-  ctx->rekey_time_threshold = 5;                              // 5 seconds for quick testing
-
-  log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %ld seconds)",
-           (unsigned long long)ctx->rekey_packet_threshold, (long)ctx->rekey_time_threshold);
+  // SECURITY: Use production-safe rekey thresholds by default
+  // Rekey every 1 hour OR 1 million packets (whichever comes first)
+  // Only use test mode if explicitly requested via environment variable
+  if (is_test_environment()) {
+    ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
+    ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
+    log_info(
+        "Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %ld seconds)",
+        (unsigned long long)ctx->rekey_packet_threshold, (long)ctx->rekey_time_threshold);
+  } else {
+    ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
+    ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
+    log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %ld seconds)",
+             (unsigned long long)ctx->rekey_packet_threshold, (long)ctx->rekey_time_threshold);
+  }
   return CRYPTO_OK;
 }
 
@@ -1076,8 +1091,7 @@ bool crypto_should_rekey(const crypto_context_t *ctx) {
 
   // Check packet count threshold
   if (ctx->rekey_packet_count >= ctx->rekey_packet_threshold) {
-    log_debug("Rekey triggered: packet count (%llu) >= threshold (%llu)",
-              (unsigned long long)ctx->rekey_packet_count,
+    log_debug("Rekey triggered: packet count (%llu) >= threshold (%llu)", (unsigned long long)ctx->rekey_packet_count,
               (unsigned long long)ctx->rekey_packet_threshold);
     return true;
   }
@@ -1086,8 +1100,8 @@ bool crypto_should_rekey(const crypto_context_t *ctx) {
   time_t now = time(NULL);
   time_t elapsed = now - ctx->rekey_last_time;
   if (elapsed >= ctx->rekey_time_threshold) {
-    log_debug("Rekey triggered: time elapsed (%ld sec) >= threshold (%ld sec)",
-              (long)elapsed, (long)ctx->rekey_time_threshold);
+    log_debug("Rekey triggered: time elapsed (%ld sec) >= threshold (%ld sec)", (long)elapsed,
+              (long)ctx->rekey_time_threshold);
     return true;
   }
 
@@ -1109,8 +1123,8 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   time_t now = time(NULL);
   time_t since_last_rekey = now - ctx->rekey_last_time;
   if (since_last_rekey < REKEY_MIN_INTERVAL) {
-    log_warn("Rekey rate limited: %ld seconds since last rekey (minimum: %d)",
-             (long)since_last_rekey, REKEY_MIN_INTERVAL);
+    log_warn("Rekey rate limited: %ld seconds since last rekey (minimum: %d)", (long)since_last_rekey,
+             REKEY_MIN_INTERVAL);
     return CRYPTO_ERROR_REKEY_RATE_LIMITED;
   }
 
@@ -1130,9 +1144,7 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   ctx->has_temp_key = true;
 
   log_info("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
-           (unsigned long long)ctx->rekey_packet_count,
-           (long)since_last_rekey,
-           ctx->rekey_failure_count + 1);
+           (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
 
   return CRYPTO_OK;
 }
@@ -1203,8 +1215,7 @@ crypto_result_t crypto_rekey_commit(crypto_context_t *ctx) {
   secure_memzero(ctx->shared_key, sizeof(ctx->shared_key));
 
   // Switch to new shared secret
-  SAFE_MEMCPY(ctx->shared_key, sizeof(ctx->shared_key),
-              ctx->temp_shared_key, sizeof(ctx->temp_shared_key));
+  SAFE_MEMCPY(ctx->shared_key, sizeof(ctx->shared_key), ctx->temp_shared_key, sizeof(ctx->temp_shared_key));
 
   // Reset nonce counter to 1 (fresh start with new key)
   ctx->nonce_counter = 1;
@@ -1264,21 +1275,16 @@ void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, s
   time_t elapsed = now - ctx->rekey_last_time;
   time_t remaining_time = (ctx->rekey_time_threshold > elapsed) ? (ctx->rekey_time_threshold - elapsed) : 0;
   uint64_t remaining_packets = (ctx->rekey_packet_threshold > ctx->rekey_packet_count)
-                                 ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count)
-                                 : 0;
+                                   ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count)
+                                   : 0;
 
   snprintf(status_buffer, buffer_size,
            "Rekey status: %s | "
            "Packets: %llu/%llu (%llu remaining) | "
            "Time: %ld/%ld sec (%ld sec remaining) | "
            "Rekeys: %llu | Failures: %d",
-           ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE",
-           (unsigned long long)ctx->rekey_packet_count,
-           (unsigned long long)ctx->rekey_packet_threshold,
-           (unsigned long long)remaining_packets,
-           (long)elapsed,
-           (long)ctx->rekey_time_threshold,
-           (long)remaining_time,
-           (unsigned long long)ctx->rekey_count,
+           ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count,
+           (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
+           (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count,
            ctx->rekey_failure_count);
 }

@@ -731,6 +731,7 @@ void *client_video_render_thread(void *arg) {
 
 void *client_audio_render_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
+
   if (!client || client->socket <= 0) {
     log_error("Invalid client info in audio render thread");
     return NULL;
@@ -761,7 +762,13 @@ void *client_audio_render_thread(void *arg) {
   int expected_audio_fps = 172; // 1000000us / 5800us ≈ 172 fps
 
   bool should_continue = true;
+  int loop_count = 0;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+    loop_count++;
+    if (loop_count % 100 == 0) {
+      log_info("Audio render loop iteration #%d for client %u", loop_count, thread_client_id);
+    }
+
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
       log_info("Audio render thread stopping for client %u (g_server_should_exit)", thread_client_id);
@@ -774,10 +781,14 @@ void *client_audio_render_thread(void *arg) {
                        ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
 
     if (!should_continue) {
+      log_info("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
       break;
     }
 
     if (!g_audio_mixer) {
+      if (loop_count % 100 == 0) {
+        log_info("Audio render waiting for mixer (client %u)", thread_client_id);
+      }
       // Check shutdown flag while waiting
       if (atomic_load(&g_server_should_exit))
         break;
@@ -804,6 +815,14 @@ void *client_audio_render_thread(void *arg) {
     // Create mix excluding THIS client's audio using snapshot data
     int samples_mixed =
         mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+
+    // Debug logging every 100 iterations
+    static int mix_count = 0;
+    mix_count++;
+    if (mix_count % 100 == 0) {
+      log_info("Audio render for client %u: iteration #%d, samples_mixed=%d", client_id_snapshot, mix_count,
+               samples_mixed);
+    }
 
     // Queue audio directly for this specific client using snapshot data
     if (samples_mixed > 0) {

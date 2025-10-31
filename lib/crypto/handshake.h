@@ -181,7 +181,7 @@ asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ct
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_context_t *ctx, const uint8_t *packet,
-                                                          size_t packet_len);
+                                                         size_t packet_len);
 
 /**
  * Process received REKEY_RESPONSE packet (initiator side).
@@ -193,7 +193,7 @@ asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_contex
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_context_t *ctx, const uint8_t *packet,
-                                                           size_t packet_len);
+                                                          size_t packet_len);
 
 /**
  * Process received REKEY_COMPLETE packet (responder side).
@@ -206,7 +206,7 @@ asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_conte
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_context_t *ctx, const uint8_t *packet,
-                                                           size_t packet_len);
+                                                          size_t packet_len);
 
 /**
  * Check if rekeying should be triggered for this handshake context.

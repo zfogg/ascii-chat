@@ -5,7 +5,7 @@
 # build all dependencies from source and cache them in .deps-cache-musl/.
 #
 # Dependencies built from source:
-#   - zlib (compression)
+#   - zstd (compression)
 #   - libsodium (crypto)
 #   - PortAudio (audio I/O)
 #   - BearSSL (TLS for SSH key fetching)
@@ -91,25 +91,26 @@ else()
 endif()
 
 # =============================================================================
-# zlib - Compression library
+# zstd - Compression library
 # =============================================================================
-message(STATUS "Configuring zlib from source...")
+message(STATUS "Configuring zstd from source...")
 
-ExternalProject_Add(zlib-musl
-    URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
-    URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
-    PREFIX ${FETCHCONTENT_BASE_DIR}/zlib-musl
+ExternalProject_Add(zstd-musl
+    URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+    URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+    PREFIX ${FETCHCONTENT_BASE_DIR}/zstd-musl
     UPDATE_DISCONNECTED 1
     BUILD_ALWAYS 0
-    CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --static
-    BUILD_COMMAND env REALGCC=/usr/bin/gcc make
-    INSTALL_COMMAND make install
-    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libz.a
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR> lib-release PREFIX=${MUSL_PREFIX}
+    INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
+    BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libzstd.a
 )
 
-set(ZLIB_FOUND TRUE)
-set(ZLIB_LIBRARIES "${MUSL_PREFIX}/lib/libz.a")
-set(ZLIB_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+set(ZSTD_FOUND TRUE)
+set(ZSTD_LIBRARIES "${MUSL_PREFIX}/lib/libzstd.a")
+set(ZSTD_INCLUDE_DIRS "${MUSL_PREFIX}/include")
 
 # =============================================================================
 # libsodium - Cryptography library
@@ -125,7 +126,7 @@ ExternalProject_Add(libsodium-musl
     CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
     BUILD_COMMAND env REALGCC=/usr/bin/gcc make
     INSTALL_COMMAND make install
-    DEPENDS zlib-musl
+    DEPENDS zstd-musl
     BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libsodium.a
 )
 

@@ -32,6 +32,9 @@ __thread asciichat_error_context_t asciichat_errno_context = {.code = ASCIICHAT_
 
 __thread asciichat_error_t asciichat_errno = ASCIICHAT_OK;
 
+// Suppression flag to prevent error context allocation during cleanup
+static bool g_suppress_error_context = false;
+
 /* ============================================================================
  * Error Statistics
  * ============================================================================
@@ -105,6 +108,11 @@ void log_labeled(const char *label, logging_color_t color, const char *message, 
 
 void asciichat_set_errno(asciichat_error_t code, const char *file, int line, const char *function,
                          const char *context_message) {
+  // Suppress error context allocation during cleanup to prevent leaks
+  if (g_suppress_error_context) {
+    return;
+  }
+
   // Clear any existing context message
   if (asciichat_errno_context.context_message) {
     SAFE_FREE(asciichat_errno_context.context_message);
@@ -475,6 +483,10 @@ void asciichat_clear_thread_error(int thread_id) {
  * ============================================================================
  */
 
+void asciichat_errno_suppress(bool suppress) {
+  g_suppress_error_context = suppress;
+}
+
 void asciichat_errno_cleanup(void) {
   if (asciichat_errno_context.backtrace_symbols != NULL) {
     platform_backtrace_symbols_free(asciichat_errno_context.backtrace_symbols);
@@ -488,4 +500,8 @@ void asciichat_errno_cleanup(void) {
   // Reset the context to a clean state
   memset(&asciichat_errno_context, 0, sizeof(asciichat_errno_context));
   asciichat_errno_context.code = ASCIICHAT_OK;
+
+  // Suppress any further error context allocation to prevent cleanup-phase leaks
+  // This prevents other atexit() functions from allocating new contexts after we've cleaned up
+  g_suppress_error_context = true;
 }

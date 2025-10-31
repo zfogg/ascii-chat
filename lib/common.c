@@ -455,6 +455,12 @@ static const char *strip_project_path(const char *full_path) {
 }
 
 void debug_memory_report(void) {
+  // Free any pending errno context before reporting memory
+  // This catches any errors that occurred during other cleanup functions
+  // Note: cleanup also enables suppression to prevent further allocations
+  extern void asciichat_errno_cleanup(void);
+  asciichat_errno_cleanup();
+
   bool quiet = g_mem.quiet_mode;
   if (!quiet) {
     // NOTE: Write directly to stderr in case logging is already destroyed at exit

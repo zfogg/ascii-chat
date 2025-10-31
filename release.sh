@@ -57,8 +57,7 @@ cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
 - Linking: Static (no dependencies)
 
 ## Files
-- \`ascii-chat\` - Server binary
-- \`ascii-chat\` - Client binary
+- \`ascii-chat\` - ASCII-Chat binary
 
 ## Verification
 \`\`\`bash

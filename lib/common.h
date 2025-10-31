@@ -438,24 +438,21 @@ bool shutdown_is_requested(void);
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
 #include "asciichat_errno.h"
-/* Safe string duplication with platform compatibility */
-#ifdef _WIN32
+/* Safe string duplication with memory tracking */
 #define SAFE_STRDUP(dst, src)                                                                                          \
   do {                                                                                                                 \
-    (dst) = _strdup(src);                                                                                              \
-    if (!(dst)) {                                                                                                      \
-      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                          \
+    if (src) {                                                                                                         \
+      size_t _len = strlen(src) + 1;                                                                                   \
+      (dst) = SAFE_MALLOC(_len, char *);                                                                               \
+      if (dst) {                                                                                                       \
+        SAFE_MEMCPY((dst), _len, (src), _len);                                                                         \
+      } else {                                                                                                         \
+        SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src));                                           \
+      }                                                                                                                \
+    } else {                                                                                                           \
+      (dst) = NULL;                                                                                                    \
     }                                                                                                                  \
   } while (0)
-#else
-#define SAFE_STRDUP(dst, src)                                                                                          \
-  do {                                                                                                                 \
-    (dst) = strdup(src);                                                                                               \
-    if (!(dst)) {                                                                                                      \
-      SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src) ? (src) : "(null)");                          \
-    }                                                                                                                  \
-  } while (0)
-#endif
 
 /* Platform-safe environment variable access */
 #define SAFE_GETENV(name) ((char *)platform_getenv(name))

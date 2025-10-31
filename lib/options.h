@@ -43,6 +43,7 @@ extern unsigned short int opt_show_capabilities; // Show detected capabilities a
 extern unsigned short int opt_force_utf8;        // Force enable UTF-8 support via --utf8
 
 extern unsigned short int opt_audio_enabled;
+extern int opt_audio_device; // Audio input device index (-1 = use default)
 
 // If non-zero, allow image to stretch or shrink without preserving aspect ratio
 extern unsigned short int opt_stretch;

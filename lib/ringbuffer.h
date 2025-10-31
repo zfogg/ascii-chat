@@ -32,11 +32,14 @@ typedef struct {
  */
 
 #define AUDIO_RING_BUFFER_SIZE (256 * 32) // 8192 samples = ~186ms @ 44.1kHz, 8x batch size
+#define AUDIO_JITTER_BUFFER_THRESHOLD                                                                                  \
+  (256 * 8) // Wait for 8 packets (~46ms) before starting playback - increased for network latency
 
 typedef struct audio_ring_buffer {
   float data[AUDIO_RING_BUFFER_SIZE];
   volatile int write_index;
   volatile int read_index;
+  volatile bool jitter_buffer_filled; // True after initial fill
   mutex_t mutex;
 } audio_ring_buffer_t;
 

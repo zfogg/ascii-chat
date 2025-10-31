@@ -314,7 +314,8 @@ int av_parse_size_message(const char *message, unsigned short *width, unsigned s
  * @param batch_count Number of batches
  * @return 0 on success, -1 on error
  */
-int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count) {
+int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
+                            crypto_context_t *crypto_ctx) {
   if (!samples || num_samples <= 0 || batch_count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples,
               num_samples, batch_count);
@@ -329,7 +330,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   header.channels = htonl(1);        // Mono for now
 
   // Calculate total payload size
-  size_t data_size = num_samples * sizeof(float);
+  size_t data_size = num_samples * sizeof(uint32_t); // Send as 32-bit integers for portability
   size_t total_size = sizeof(header) + data_size;
 
   // Allocate buffer for header + data
@@ -339,12 +340,29 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
     return -1;
   }
 
-  // Copy header and data
+  // Copy header
   memcpy(buffer, &header, sizeof(header));
-  memcpy(buffer + sizeof(header), samples, data_size);
 
-  // Send packet
-  int result = send_packet(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size);
+  // Convert floats to network byte order (as 32-bit integers with scaling)
+  // Floats in range [-1.0, 1.0] are scaled to INT32 range for transmission
+  uint32_t *sample_data = (uint32_t *)(buffer + sizeof(header));
+  for (int i = 0; i < num_samples; i++) {
+    // Scale float [-1.0, 1.0] to int32 range and convert to network byte order
+    int32_t scaled = (int32_t)(samples[i] * 2147483647.0f);
+    sample_data[i] = htonl((uint32_t)scaled);
+  }
+
+  // Debug: Log first few samples to verify conversion
+  static int send_count = 0;
+  send_count++;
+  if (send_count % 100 == 0) {
+    log_info("SEND: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
+    log_info("SEND: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", (int32_t)(samples[0] * 2147483647.0f),
+             (int32_t)(samples[1] * 2147483647.0f), (int32_t)(samples[2] * 2147483647.0f));
+  }
+
+  // Send packet with encryption support
+  int result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);
   buffer_pool_free(buffer, total_size);
 
   return result;
