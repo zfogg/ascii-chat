@@ -452,7 +452,8 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready) {
-    log_warn("CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void*)crypto_ctx, ready);
+    log_warn("CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void *)crypto_ctx,
+             ready);
     int result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
@@ -464,7 +465,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
-  log_debug("CRYPTO_DEBUG: Encrypting packet type %d with crypto_ctx=%p", type, (void*)crypto_ctx);
+  log_debug("CRYPTO_DEBUG: Encrypting packet type %d with crypto_ctx=%p", type, (void *)crypto_ctx);
   packet_header_t header = {.magic = htonl(PACKET_MAGIC),
                             .type = htons((uint16_t)type),
                             .length = htonl((uint32_t)final_len),
@@ -548,10 +549,17 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
   packet_header_t header;
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
 
-  if (received != sizeof(header)) {
-    if (received == 0) {
-      return PACKET_RECV_EOF;
-    }
+  // Check for errors first (before comparing signed with unsigned)
+  if (received < 0) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));
+    return PACKET_RECV_ERROR;
+  }
+
+  if (received == 0) {
+    return PACKET_RECV_EOF;
+  }
+
+  if ((size_t)received != sizeof(header)) {
     SET_ERRNO(ERROR_NETWORK, "Failed to receive packet header: %zd/%zu bytes", received, sizeof(header));
     return PACKET_RECV_ERROR;
   }

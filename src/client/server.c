@@ -60,6 +60,7 @@
  */
 
 #include "server.h"
+#include "main.h"
 #include "crypto.h"
 #include "crypto/crypto.h"
 #include "crypto/handshake.h"
@@ -241,6 +242,12 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     float delay = get_reconnect_delay(reconnect_attempt);
     // Reconnection attempt logged only to file
     platform_sleep_usec((unsigned int)delay);
+
+    // Check if user requested exit during reconnection delay
+    if (should_exit()) {
+      log_debug("Exit requested during reconnection delay");
+      return -1;
+    }
   } else {
     // Initial connection logged only to file
   }
@@ -287,6 +294,12 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       }
       freeaddrinfo(res);
       res = NULL;
+    }
+
+    // Check if user requested exit (Ctrl-C) before trying IPv4
+    if (should_exit()) {
+      log_debug("Exit requested during connection attempt");
+      return -1;
     }
 
     // IPv6 failed, try IPv4 loopback (127.0.0.1)
@@ -659,7 +672,11 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
   }
 
   mutex_lock(&g_send_mutex);
-  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count);
+
+  // Get crypto context if encryption is enabled
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
+
   mutex_unlock(&g_send_mutex);
   return result;
 }

@@ -632,6 +632,14 @@ void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
  * @see AUDIO_BATCH_SAMPLES For maximum batch size constant
  */
 void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len) {
+  // Log every audio batch packet reception
+  static int batch_count = 0;
+  batch_count++;
+  if (batch_count % 10 == 0) {
+    log_info("SERVER: Received audio batch packet #%d from client %u (len=%zu, is_sending_audio=%d)", batch_count,
+             atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
+  }
+
   // Handles batched audio samples from client (new efficient format)
   if (atomic_load(&client->is_sending_audio) && data && len >= sizeof(audio_batch_packet_t)) {
     // Parse batch header
@@ -645,8 +653,8 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     (void)batch_count; // Used in DEBUG_AUDIO log
     (void)sample_rate; // Used in DEBUG_AUDIO log
 
-    // Validate batch parameters
-    size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(float));
+    // Validate batch parameters (samples now transmitted as uint32_t for portability)
+    size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
     if (len != expected_size) {
       log_error("Invalid audio batch size from client %u: got %zu, expected %zu", atomic_load(&client->client_id), len,
                 expected_size);
@@ -658,8 +666,35 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
       return;
     }
 
-    // Extract samples (they follow the header)
-    const float *samples = (const float *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+    // Extract samples (they follow the header as network byte order uint32_t)
+    const uint32_t *network_samples = (const uint32_t *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+
+    // Convert from network byte order integers back to floats
+    // Allocate temporary buffer for converted samples
+    float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+    if (!samples) {
+      log_error("Failed to allocate memory for audio sample conversion");
+      return;
+    }
+
+    for (uint32_t i = 0; i < total_samples; i++) {
+      // Convert from network byte order and scale back to [-1.0, 1.0]
+      int32_t scaled = (int32_t)ntohl(network_samples[i]);
+      samples[i] = (float)scaled / 2147483647.0f;
+    }
+
+    // Debug: Log first few samples to verify conversion
+    static int recv_count = 0;
+    recv_count++;
+    if (recv_count % 100 == 0) {
+      int32_t scaled0 = (int32_t)ntohl(network_samples[0]);
+      int32_t scaled1 = (int32_t)ntohl(network_samples[1]);
+      int32_t scaled2 = (int32_t)ntohl(network_samples[2]);
+      log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", network_samples[0], network_samples[1],
+               network_samples[2]);
+      log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
+      log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
+    }
 
     // Write all samples to the ring buffer
     if (client->incoming_audio_buffer) {
@@ -667,6 +702,9 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
       // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
       (void)written;
     }
+
+    // Free temporary buffer
+    SAFE_FREE(samples);
   }
 }
 

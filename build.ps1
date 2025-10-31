@@ -202,5 +202,4 @@ Copy-Item "$BuildDir\bin\*" "bin\" -Force -Recurse
 Write-Host "Build complete!" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "Run the server:  bin\ascii-chat.exe" -ForegroundColor White
-Write-Host "Run the client:  bin\ascii-chat.exe" -ForegroundColor White
+Write-Host "Run it:  bin\ascii-chat.exe [--help|--version] [server|client] [options...]" -ForegroundColor White

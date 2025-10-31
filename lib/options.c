@@ -98,6 +98,7 @@ unsigned short int opt_show_capabilities = 0;           // Don't show capabiliti
 unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
 
 unsigned short int opt_audio_enabled = 0;
+int opt_audio_device = -1; // -1 means use default device
 
 // Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
 unsigned short int opt_stretch = 0;
@@ -174,6 +175,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
                                          {"audio", no_argument, NULL, 'A'},
+                                         {"audio-device", required_argument, NULL, 1007},
                                          {"stretch", no_argument, NULL, 's'},
                                          {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
@@ -586,6 +588,14 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
     case 'A':
       opt_audio_enabled = 1;
+      break;
+
+    case 1007: // --audio-device
+      opt_audio_device = strtoint_safe(optarg);
+      if (opt_audio_device < 0) {
+        fprintf(stderr, "Error: Invalid audio device index '%s'\n", optarg);
+        return -1;
+      }
       break;
 
     case 'q':

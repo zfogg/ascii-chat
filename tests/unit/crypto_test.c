@@ -682,8 +682,7 @@ Test(crypto, rekey_initialization) {
   cr_assert_eq(ctx1.rekey_failure_count, 0, "Initial failure count should be 0");
 
   // Check default thresholds
-  cr_assert_eq(ctx1.rekey_packet_threshold, REKEY_DEFAULT_PACKET_THRESHOLD,
-               "Default packet threshold should be 1M");
+  cr_assert_eq(ctx1.rekey_packet_threshold, REKEY_DEFAULT_PACKET_THRESHOLD, "Default packet threshold should be 1M");
   cr_assert_eq(ctx1.rekey_time_threshold, REKEY_DEFAULT_TIME_THRESHOLD, "Default time threshold should be 3600s");
 }
 

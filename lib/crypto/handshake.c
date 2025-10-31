@@ -436,6 +436,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       if (payload) {
         buffer_pool_free(payload, payload_len);
       }
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_CRYPTO, "Server signature verification FAILED - rejecting connection. "
                                      "This indicates: Server's identity key does not "
                                      "match its ephemeral key, Potential man-in-the-middle attack, "
@@ -451,6 +454,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CONFIG,
                          "Failed to parse expected server key: %s. Check that "
                          "--server-key value is valid (ssh-ed25519 "
@@ -464,6 +470,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CRYPTO,
                          "Server identity key mismatch - potential MITM attack! "
                          "Expected key: %s, Server presented a different key "
@@ -519,6 +528,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
           if (payload) {
             buffer_pool_free(payload, payload_len);
           }
+          SAFE_FREE(server_ephemeral_key);
+          SAFE_FREE(server_identity_key);
+          SAFE_FREE(server_signature);
           return SET_ERRNO(ERROR_CRYPTO_VERIFICATION,
                            "SECURITY: Connection aborted - server key mismatch (possible MITM attack)");
         }
@@ -531,6 +543,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
           if (payload) {
             buffer_pool_free(payload, payload_len);
           }
+          SAFE_FREE(server_ephemeral_key);
+          SAFE_FREE(server_identity_key);
+          SAFE_FREE(server_signature);
           return SET_ERRNO(ERROR_CRYPTO, "User declined to verify unknown host");
         }
 
@@ -539,6 +554,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
           if (payload) {
             buffer_pool_free(payload, payload_len);
           }
+          SAFE_FREE(server_ephemeral_key);
+          SAFE_FREE(server_identity_key);
+          SAFE_FREE(server_signature);
           return SET_ERRNO(ERROR_CONFIG,
                            "CRITICAL SECURITY ERROR: Failed to create known_hosts "
                            "file! This is a security vulnerability - the "
@@ -555,6 +573,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
         return SET_ERRNO(known_host_result, "SECURITY: known_hosts verification failed with error code %d",
                          known_host_result);
       }
@@ -582,6 +603,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // 3. Store server fingerprint for future verification
 
     if (ctx->server_ip[0] == '\0' || ctx->server_port <= 0) {
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_CRYPTO, "Server IP or port not set, cannot check known_hosts");
     }
 
@@ -613,6 +637,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CRYPTO, "User declined to connect to unknown server without identity key");
       }
 
@@ -624,6 +651,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CONFIG,
                          "CRITICAL SECURITY ERROR: Failed to create known_hosts "
                          "file! This is a security vulnerability - the "
@@ -638,18 +668,27 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       if (payload) {
         buffer_pool_free(payload, payload_len);
       }
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "Server key configuration changed - potential security issue");
     } else if (known_host_result != -1) {
       // Error checking known_hosts
       if (payload) {
         buffer_pool_free(payload, payload_len);
       }
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_CRYPTO, "Failed to verify server IP address");
     }
   } else {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
+    SAFE_FREE(server_ephemeral_key);
+    SAFE_FREE(server_identity_key);
+    SAFE_FREE(server_signature);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
                      "Invalid KEY_EXCHANGE_INIT size: %zu bytes (expected %zu or "
                      "%zu). This indicates: Protocol violation "
@@ -665,6 +704,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     buffer_pool_free(payload, payload_len);
   }
   if (crypto_result != CRYPTO_OK) {
+    SAFE_FREE(server_ephemeral_key);
+    SAFE_FREE(server_identity_key);
+    SAFE_FREE(server_signature);
     return SET_ERRNO(ERROR_CRYPTO, "Failed to set peer public key and derive shared secret: %s",
                      crypto_result_to_string(crypto_result));
   }
@@ -708,6 +750,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       if (ed25519_sign_message(&ctx->client_private_key, ctx->crypto_ctx.public_key, ctx->kex_public_key_size,
                                key_response + ctx->kex_public_key_size + ed25519_pubkey_size) != 0) {
         SAFE_FREE(key_response);
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to sign client ephemeral key");
       }
     } else {
@@ -722,6 +767,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size);
     if (result != 0) {
       SAFE_FREE(key_response);
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_NETWORK, "Failed to send KEY_EXCHANGE_RESPONSE packet");
     }
 
@@ -735,11 +783,19 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx->crypto_ctx.public_key,
                          ctx->kex_public_key_size);
     if (result != 0) {
+      SAFE_FREE(server_ephemeral_key);
+      SAFE_FREE(server_identity_key);
+      SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_NETWORK, "Failed to send KEY_EXCHANGE_RESPONSE packet");
     }
   }
 
   ctx->state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
+
+  // Free temporary buffers before successful return
+  SAFE_FREE(server_ephemeral_key);
+  SAFE_FREE(server_identity_key);
+  SAFE_FREE(server_signature);
 
   return ASCIICHAT_OK;
 }
@@ -1014,7 +1070,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     }
 
     ctx->state = CRYPTO_HANDSHAKE_READY;
-    ctx->crypto_ctx.handshake_complete = true;  // Mark crypto context as ready for rekeying
+    ctx->crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
     log_info("Crypto handshake completed successfully (no authentication)");
   }
 
@@ -1111,7 +1167,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
       buffer_pool_free(payload, payload_len);
     }
     ctx->state = CRYPTO_HANDSHAKE_READY;
-    ctx->crypto_ctx.handshake_complete = true;  // Mark crypto context as ready for rekeying
+    ctx->crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
     log_info("Crypto handshake completed successfully (no authentication required)");
     return ASCIICHAT_OK;
   }
@@ -1631,8 +1687,8 @@ asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx
 
   // Send REKEY_REQUEST with new ephemeral public key (32 bytes)
   log_info("Sending REKEY_REQUEST with new ephemeral X25519 public key (32 bytes)");
-  int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_REQUEST, ctx->crypto_ctx.temp_public_key,
-                                 CRYPTO_PUBLIC_KEY_SIZE);
+  int send_result =
+      send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_REQUEST, ctx->crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE);
   if (send_result != 0) {
     crypto_rekey_abort(&ctx->crypto_ctx); // Clean up temp keys on failure
     return SET_ERRNO(ERROR_NETWORK, "Failed to send REKEY_REQUEST packet");
@@ -1658,8 +1714,8 @@ asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ct
 
   // Send REKEY_RESPONSE with new ephemeral public key (32 bytes)
   log_info("Sending REKEY_RESPONSE with new ephemeral X25519 public key (32 bytes)");
-  int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, ctx->crypto_ctx.temp_public_key,
-                                 CRYPTO_PUBLIC_KEY_SIZE);
+  int send_result =
+      send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, ctx->crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE);
   if (send_result != 0) {
     crypto_rekey_abort(&ctx->crypto_ctx); // Clean up temp keys on failure
     return SET_ERRNO(ERROR_NETWORK, "Failed to send REKEY_RESPONSE packet");
@@ -1730,11 +1786,25 @@ asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ct
  * Extracts peer's new ephemeral public key and computes new shared secret.
  */
 asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_context_t *ctx, const uint8_t *packet,
-                                                          size_t packet_len) {
+                                                         size_t packet_len) {
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
   }
+
+  // DDoS PROTECTION: Rate limit rekey requests
+  time_t now = time(NULL);
+  if (ctx->crypto_ctx.rekey_last_request_time > 0) {
+    time_t elapsed = now - ctx->crypto_ctx.rekey_last_request_time;
+    if (elapsed < REKEY_MIN_REQUEST_INTERVAL) {
+      return SET_ERRNO(ERROR_CRYPTO,
+                       "SECURITY: Rekey request rejected - too frequent (%ld sec since last, minimum %d sec required)",
+                       (long)elapsed, REKEY_MIN_REQUEST_INTERVAL);
+    }
+  }
+
+  // Update last request time
+  ctx->crypto_ctx.rekey_last_request_time = now;
 
   // Validate packet size (should be 32 bytes for X25519 public key)
   if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
@@ -1766,7 +1836,7 @@ asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_contex
  * Extracts peer's new ephemeral public key and computes new shared secret.
  */
 asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_context_t *ctx, const uint8_t *packet,
-                                                           size_t packet_len) {
+                                                          size_t packet_len) {
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -1801,7 +1871,7 @@ asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_conte
  * If successful, commits to the new key.
  */
 asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_context_t *ctx, const uint8_t *packet,
-                                                           size_t packet_len) {
+                                                          size_t packet_len) {
   if (!ctx || !crypto_handshake_is_ready(ctx)) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Handshake not ready for rekeying: ctx=%p, ready=%d", ctx,
                      ctx ? crypto_handshake_is_ready(ctx) : 0);
@@ -1830,7 +1900,8 @@ asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_conte
 
   if (result != CRYPTO_OK) {
     crypto_rekey_abort(&ctx->crypto_ctx);
-    return SET_ERRNO(ERROR_CRYPTO, "REKEY_COMPLETE decryption failed (key mismatch): %s", crypto_result_to_string(result));
+    return SET_ERRNO(ERROR_CRYPTO, "REKEY_COMPLETE decryption failed (key mismatch): %s",
+                     crypto_result_to_string(result));
   }
 
   log_info("REKEY_COMPLETE verified successfully, committing to new key");

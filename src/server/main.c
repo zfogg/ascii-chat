@@ -104,6 +104,7 @@
 #include "stats.h"
 #include "platform/string.h"
 #include "crypto/keys/keys.h"
+#include "crypto/known_hosts.h"
 
 /* ============================================================================
  * Global State
@@ -561,6 +562,10 @@ int server_main(int argc, char *argv[]) {
 
   // Register errno cleanup
   (void)atexit(asciichat_errno_cleanup);
+
+  // Register known_hosts cleanup
+  (void)atexit(known_hosts_cleanup);
+
   log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 

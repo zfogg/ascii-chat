@@ -105,11 +105,12 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include <stdatomic.h>
 #include <string.h>
 #include <time.h>
-#include <zlib.h>
 
 #ifdef _WIN32
 #include "platform/windows_compat.h"
 #endif
+
+#include "compression.h"
 
 /* ============================================================================
  * Thread State Management
@@ -266,13 +267,11 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
     frame_data = SAFE_MALLOC(header.original_size + 1, char *);
 
-    // Decompress using zlib
-    uLongf decompressed_size = header.original_size;
-    int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)frame_data_ptr, frame_data_len);
+    // Decompress using compression API
+    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, header.original_size);
 
-    if (result != Z_OK || decompressed_size != header.original_size) {
-      log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
-                header.original_size);
+    if (result != 0) {
+      log_error("Decompression failed for expected size %u", header.original_size);
       SAFE_FREE(frame_data);
       return;
     }
@@ -676,10 +675,20 @@ int protocol_start_connection() {
   }
 
   // Start webcam capture thread
+  log_info("Starting webcam capture thread...");
   if (capture_start_thread() != 0) {
     log_error("Failed to start webcam capture thread");
     return -1;
   }
+  log_info("Webcam capture thread started successfully");
+
+  // Start audio capture thread if audio is enabled
+  log_info("Starting audio capture thread...");
+  if (audio_start_thread() != 0) {
+    log_error("Failed to start audio capture thread");
+    return -1;
+  }
+  log_info("Audio capture thread started successfully (or skipped if audio disabled)");
 
   g_data_thread_created = true;
   return 0;

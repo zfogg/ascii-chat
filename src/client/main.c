@@ -78,6 +78,7 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "crypto/keys/keys.h"
+#include "crypto/known_hosts.h"
 #include "buffer_pool.h"
 #include "palette.h"
 #include "network/network.h"
@@ -267,6 +268,10 @@ static int initialize_client_systems() {
   }
   (void)atexit(platform_cleanup);
 
+  // Initialize logging EARLY - palette validation may need it for error reporting
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
+  log_init(log_filename, LOG_DEBUG);
+
   // Initialize palette based on command line options
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
   if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
@@ -278,10 +283,6 @@ static int initialize_client_systems() {
   if (display_init() != 0) {
     FATAL(ERROR_DISPLAY, "Failed to initialize display subsystem");
   }
-
-  // Initialize logging with appropriate settings
-  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
-  log_init(log_filename, LOG_DEBUG);
 
   // Register shutdown check callback for library code
   shutdown_register_callback(should_exit);
@@ -305,6 +306,9 @@ static int initialize_client_systems() {
 
   // Register errno cleanup
   (void)atexit(asciichat_errno_cleanup);
+
+  // Register known_hosts cleanup
+  (void)atexit(known_hosts_cleanup);
 
   // Initialize server connection management
   if (server_connection_init() != 0) {
@@ -338,6 +342,8 @@ static int initialize_client_systems() {
   }
 
   // Initialize audio if enabled
+  // Note: Audio capture thread will be started later in protocol_start_connection()
+  // after the server connection is established
   if (opt_audio_enabled) {
     if (audio_client_init() != 0) {
       FATAL(ERROR_AUDIO, "Failed to initialize audio system");

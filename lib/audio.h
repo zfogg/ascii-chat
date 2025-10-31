@@ -50,6 +50,6 @@ int audio_set_realtime_priority(void);
 audio_ring_buffer_t *audio_ring_buffer_create(void);
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
 asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples);
-asciichat_error_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples);
+int audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, int samples);
 int audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
 int audio_ring_buffer_available_write(audio_ring_buffer_t *rb);

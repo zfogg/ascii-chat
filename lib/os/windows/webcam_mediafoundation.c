@@ -206,13 +206,13 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   // IMPORTANT: Select the video stream first before configuring
-  hr = IMFSourceReader_SetStreamSelection(cam->reader, MF_SOURCE_READER_ALL_STREAMS, FALSE);
+  hr = IMFSourceReader_SetStreamSelection(cam->reader, (DWORD)MF_SOURCE_READER_ALL_STREAMS, FALSE);
   log_info("SetStreamSelection (deselect all) returned: 0x%08x", hr);
   if (FAILED(hr)) {
     log_warn("Failed to deselect all streams: 0x%08x", hr);
   }
 
-  hr = IMFSourceReader_SetStreamSelection(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, TRUE);
+  hr = IMFSourceReader_SetStreamSelection(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, TRUE);
   log_info("SetStreamSelection (select video) returned: 0x%08x", hr);
   if (FAILED(hr)) {
     log_error("Failed to select video stream: 0x%08x", hr);
@@ -229,7 +229,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     IMFMediaType_SetGUID(rgbType, &MF_MT_SUBTYPE, &MFVideoFormat_RGB32);
 
     // Use partial type - let MF fill in frame size and other details
-    hr = IMFSourceReader_SetCurrentMediaType(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, rgbType);
+    hr = IMFSourceReader_SetCurrentMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, rgbType);
     IMFMediaType_Release(rgbType);
 
     if (SUCCEEDED(hr)) {
@@ -242,7 +242,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Get actual media type and dimensions
   IMFMediaType *currentType = NULL;
-  hr = IMFSourceReader_GetCurrentMediaType(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
+  hr = IMFSourceReader_GetCurrentMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
   if (SUCCEEDED(hr)) {
     UINT64 frameSize = 0;
     hr = IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_SIZE, &frameSize);
@@ -267,7 +267,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   LONGLONG timestamp;
   IMFSample *sample = NULL;
 
-  hr = IMFSourceReader_ReadSample(cam->reader, MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+  hr = IMFSourceReader_ReadSample(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
                                   0, // Regular synchronous read
                                   &streamIndex, &flags, &timestamp, &sample);
 

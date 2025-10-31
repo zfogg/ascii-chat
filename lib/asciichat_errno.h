@@ -251,6 +251,7 @@ void asciichat_set_thread_error(int thread_id, asciichat_error_t code);
 void asciichat_clear_thread_error(int thread_id);
 
 /* Cleanup Functions */
+void asciichat_errno_suppress(bool suppress);
 void asciichat_errno_cleanup(void);
 
 /* ============================================================================

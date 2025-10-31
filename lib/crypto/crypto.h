@@ -122,6 +122,7 @@ typedef struct {
   // Session rekeying state
   uint64_t rekey_packet_count;    // Packets encrypted since last rekey/handshake
   time_t rekey_last_time;         // Timestamp of last rekey (or initial handshake)
+  time_t rekey_last_request_time; // Timestamp of last rekey request (for DDoS protection)
   bool rekey_in_progress;         // Rekey handshake currently in progress
   uint8_t rekey_failure_count;    // Consecutive rekey failures (for exponential backoff)
 
@@ -129,7 +130,7 @@ typedef struct {
   uint8_t temp_public_key[CRYPTO_PUBLIC_KEY_SIZE];   // New ephemeral public key
   uint8_t temp_private_key[CRYPTO_PRIVATE_KEY_SIZE]; // New ephemeral private key
   uint8_t temp_shared_key[CRYPTO_SHARED_KEY_SIZE];   // New shared secret (not yet active)
-  bool has_temp_key;                                   // True if temp keys are valid
+  bool has_temp_key;                                 // True if temp keys are valid
 
   // Configurable rekeying thresholds
   uint64_t rekey_packet_threshold; // Rekey after N packets (default: 1,000,000)
@@ -156,9 +157,9 @@ typedef enum {
   CRYPTO_ERROR_BUFFER_TOO_SMALL = -10,
   CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE = -11,
   CRYPTO_ERROR_NONCE_EXHAUSTED = -12,
-  CRYPTO_ERROR_REKEY_IN_PROGRESS = -13,   // Rekey already in progress
-  CRYPTO_ERROR_REKEY_FAILED = -14,        // Rekey handshake failed
-  CRYPTO_ERROR_REKEY_RATE_LIMITED = -15   // Too many rekey attempts
+  CRYPTO_ERROR_REKEY_IN_PROGRESS = -13, // Rekey already in progress
+  CRYPTO_ERROR_REKEY_FAILED = -14,      // Rekey handshake failed
+  CRYPTO_ERROR_REKEY_RATE_LIMITED = -15 // Too many rekey attempts
 } crypto_result_t;
 
 // =============================================================================
@@ -373,12 +374,13 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
 // =============================================================================
 
 // Rekeying constants
-#define REKEY_MIN_INTERVAL 3                  // Minimum 3 seconds for TESTING (normally 60 for anti-DoS)
-#define REKEY_DEFAULT_TIME_THRESHOLD 3600     // Default: 1 hour
+#define REKEY_MIN_INTERVAL 3                   // Minimum 3 seconds for TESTING (normally 60 for anti-DoS)
+#define REKEY_DEFAULT_TIME_THRESHOLD 3600      // Default: 1 hour
 #define REKEY_DEFAULT_PACKET_THRESHOLD 1000000 // Default: 1 million packets
-#define REKEY_TEST_TIME_THRESHOLD 30          // Test mode: 30 seconds
-#define REKEY_TEST_PACKET_THRESHOLD 1000      // Test mode: 1000 packets
-#define REKEY_MAX_FAILURE_COUNT 10            // Max consecutive failures before giving up
+#define REKEY_TEST_TIME_THRESHOLD 30           // Test mode: 30 seconds
+#define REKEY_TEST_PACKET_THRESHOLD 1000       // Test mode: 1000 packets
+#define REKEY_MAX_FAILURE_COUNT 10             // Max consecutive failures before giving up
+#define REKEY_MIN_REQUEST_INTERVAL 60          // DDoS protection: min 60 seconds between rekey requests
 
 /**
  * Check if rekeying should be triggered based on time or packet count thresholds.

@@ -33,12 +33,14 @@
 #include "util/path.h"
 #include "util/string.h"
 
+// Global variable to cache the expanded known_hosts path
+static char *g_known_hosts_path_cache = NULL;
+
 const char *get_known_hosts_path(void) {
-  static char *path = NULL;
-  if (!path) {
-    path = expand_path(KNOWN_HOSTS_PATH);
+  if (!g_known_hosts_path_cache) {
+    g_known_hosts_path_cache = expand_path(KNOWN_HOSTS_PATH);
   }
-  return path;
+  return g_known_hosts_path_cache;
 }
 
 // Format: IP:port x25519 <hex> [comment]
@@ -616,4 +618,12 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
 
   safe_fprintf(stderr, "Connection aborted by user.\n");
   return false;
+}
+
+// Cleanup function to free the cached known_hosts path
+void known_hosts_cleanup(void) {
+  if (g_known_hosts_path_cache) {
+    SAFE_FREE(g_known_hosts_path_cache);
+    g_known_hosts_path_cache = NULL;
+  }
 }

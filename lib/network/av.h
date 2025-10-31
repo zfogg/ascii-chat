@@ -9,6 +9,7 @@
  */
 
 #include "platform/socket.h"
+#include "crypto/crypto.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -57,9 +58,11 @@ int av_send_audio(socket_t sockfd, const float *samples, int num_samples);
  * @param samples Audio samples
  * @param num_samples Number of samples
  * @param batch_count Number of batches
+ * @param crypto_ctx Crypto context for encryption (NULL for unencrypted)
  * @return 0 on success, -1 on error
  */
-int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count);
+int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
+                            crypto_context_t *crypto_ctx);
 
 /**
  * @brief Send audio batch packet

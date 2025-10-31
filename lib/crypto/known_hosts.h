@@ -43,3 +43,6 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port);
 
 // Compute SHA256 fingerprint of Ed25519 key for display
 void compute_key_fingerprint(const uint8_t key[32], char fingerprint[65]);
+
+// Cleanup function to free cached known_hosts path
+void known_hosts_cleanup(void);
