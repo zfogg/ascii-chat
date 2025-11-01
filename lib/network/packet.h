@@ -46,7 +46,7 @@ typedef enum {
  * @return 0 on success, -1 on error
  */
 asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
-                           uint32_t *expected_crc);
+                                         uint32_t *expected_crc);
 
 /**
  * @brief Validate packet CRC32

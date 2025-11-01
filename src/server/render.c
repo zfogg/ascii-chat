@@ -380,16 +380,15 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_info("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)",
-             client->client_id, client_fps, has_caps, desired_fps);
+    log_info("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+             desired_fps);
   } else {
-    log_info("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)",
-             client->client_id, client_fps, has_caps, desired_fps);
+    log_info("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+             desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
-  log_info("Client %u render interval: %dms (%d FPS)",
-           client->client_id, base_frame_interval_ms, client_fps);
+  log_info("Client %u render interval: %dms (%d FPS)", client->client_id, base_frame_interval_ms, client_fps);
   struct timespec last_render_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 

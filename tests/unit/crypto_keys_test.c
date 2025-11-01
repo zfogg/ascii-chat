@@ -66,12 +66,14 @@ ParameterizedTest(hex_decode_test_case_t *tc, crypto_keys, hex_decode_tests) {
   log_debug("Test hex=%s, expected_len=%zu", tc->hex, tc->expected_len);
 
   uint8_t output[32];
-  int result = hex_decode(tc->hex, output, tc->expected_len);
+  asciichat_error_t result = hex_decode(tc->hex, output, tc->expected_len);
 
   log_debug("hex_decode returned %d", result);
-  cr_assert_eq(result, tc->expected_result, "Failed for case: %s", tc->description);
 
+  // hex_decode returns asciichat_error_t: ASCIICHAT_OK (0) for success, error code for failure
   if (tc->expected_result == 0) {
+    cr_assert_eq(result, ASCIICHAT_OK, "Failed for case: %s", tc->description);
+
     // For valid cases, verify the output is not all zeros
     bool all_zero = true;
     for (size_t i = 0; i < tc->expected_len; i++) {
@@ -81,6 +83,9 @@ ParameterizedTest(hex_decode_test_case_t *tc, crypto_keys, hex_decode_tests) {
       }
     }
     cr_assert_not(all_zero, "Decoded output should not be all zeros for case: %s", tc->description);
+  } else {
+    // Expected to fail - should return an error code (not ASCIICHAT_OK)
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail for case: %s", tc->description);
   }
 }
 
@@ -149,14 +154,17 @@ ParameterizedTest(parse_public_key_test_case_t *tc, crypto_keys, parse_public_ke
   log_debug("Testing case: %s", tc->description);
   log_debug("Input: %s", input_ptr ? input_ptr : "(null)");
 
-  int result = parse_public_key(input_ptr, &key);
+  asciichat_error_t result = parse_public_key(input_ptr, &key);
 
   log_debug("Result: %d, Expected: %d", result, tc->expected_result);
 
-  cr_assert_eq(result, tc->expected_result, "Failed for case: %s", tc->description);
-
+  // parse_public_key returns asciichat_error_t: ASCIICHAT_OK (0) for success, error code for failure
   if (tc->expected_result == 0) {
+    cr_assert_eq(result, ASCIICHAT_OK, "Failed for case: %s", tc->description);
     cr_assert_eq(key.type, tc->expected_type, "Key type should match for case: %s", tc->description);
+  } else {
+    // Expected to fail - should return an error code (not ASCIICHAT_OK)
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail for case: %s", tc->description);
   }
 }
 
@@ -167,29 +175,29 @@ ParameterizedTest(parse_public_key_test_case_t *tc, crypto_keys, parse_public_ke
 Test(crypto_keys, parse_private_key_ed25519_file) {
   private_key_t key;
   // Test with a mock Ed25519 private key file path
-  int result = parse_private_key("~/.ssh/id_ed25519", &key);
+  asciichat_error_t result = parse_private_key("~/.ssh/id_ed25519", &key);
 
   // This will likely fail without a real key file, but tests the interface
-  if (result == 0) {
+  if (result == ASCIICHAT_OK) {
     cr_assert_eq(key.type, KEY_TYPE_ED25519, "Should parse as Ed25519 key");
   } else {
-    // Expected to fail without real key file
-    cr_assert_eq(result, -1, "Should fail without real key file");
+    // Expected to fail without real key file - returns error code (not ASCIICHAT_OK)
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail without real key file");
   }
 }
 
 Test(crypto_keys, parse_private_key_nonexistent) {
   private_key_t key;
-  int result = parse_private_key("/nonexistent/path", &key);
+  asciichat_error_t result = parse_private_key("/nonexistent/path", &key);
 
-  cr_assert_eq(result, -1, "Parsing nonexistent private key should fail");
+  cr_assert_neq(result, ASCIICHAT_OK, "Parsing nonexistent private key should fail");
 }
 
 Test(crypto_keys, parse_private_key_null_path) {
   private_key_t key;
-  int result = parse_private_key(NULL, &key);
+  asciichat_error_t result = parse_private_key(NULL, &key);
 
-  cr_assert_eq(result, -1, "Parsing NULL path should fail");
+  cr_assert_neq(result, ASCIICHAT_OK, "Parsing NULL path should fail");
 }
 
 // =============================================================================
@@ -209,9 +217,9 @@ Test(crypto_keys, public_key_to_x25519_ed25519) {
   memcpy(key.key, valid_ed25519_pk, 32);
 
   uint8_t x25519_key[32];
-  int result = public_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  cr_assert_eq(result, 0, "Ed25519 to X25519 conversion should succeed");
+  cr_assert_eq(result, ASCIICHAT_OK, "Ed25519 to X25519 conversion should succeed");
 
   // Verify the output is not all zeros
   bool all_zero = true;
@@ -231,9 +239,9 @@ Test(crypto_keys, public_key_to_x25519_x25519_passthrough) {
   memset(key.key, 0x42, 32);
 
   uint8_t x25519_key[32];
-  int result = public_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  cr_assert_eq(result, 0, "X25519 passthrough should succeed");
+  cr_assert_eq(result, ASCIICHAT_OK, "X25519 passthrough should succeed");
   cr_assert_eq(memcmp(key.key, x25519_key, 32), 0, "X25519 key should be unchanged");
 }
 
@@ -244,9 +252,9 @@ Test(crypto_keys, public_key_to_x25519_gpg) {
   memset(key.key, 0x42, 32);
 
   uint8_t x25519_key[32];
-  int result = public_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  cr_assert_eq(result, 0, "GPG to X25519 conversion should succeed");
+  cr_assert_eq(result, ASCIICHAT_OK, "GPG to X25519 conversion should succeed");
 }
 
 Test(crypto_keys, public_key_to_x25519_unknown_type) {
@@ -255,9 +263,9 @@ Test(crypto_keys, public_key_to_x25519_unknown_type) {
   key.type = KEY_TYPE_UNKNOWN;
 
   uint8_t x25519_key[32];
-  int result = public_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  cr_assert_eq(result, -1, "Unknown key type should fail");
+  cr_assert_neq(result, ASCIICHAT_OK, "Unknown key type should fail");
 }
 
 Test(crypto_keys, private_key_to_x25519_ed25519) {
@@ -277,9 +285,9 @@ Test(crypto_keys, private_key_to_x25519_ed25519) {
   memcpy(key.key.ed25519, valid_ed25519_sk, 64);
 
   uint8_t x25519_key[32];
-  int result = private_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = private_key_to_x25519(&key, x25519_key);
 
-  cr_assert_eq(result, 0, "Ed25519 private key to X25519 should succeed");
+  cr_assert_eq(result, ASCIICHAT_OK, "Ed25519 private key to X25519 should succeed");
 }
 
 Test(crypto_keys, private_key_to_x25519_x25519_passthrough) {
@@ -289,9 +297,9 @@ Test(crypto_keys, private_key_to_x25519_x25519_passthrough) {
   memset(key.key.x25519, 0x42, 32);
 
   uint8_t x25519_key[32];
-  int result = private_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = private_key_to_x25519(&key, x25519_key);
 
-  cr_assert_eq(result, 0, "X25519 private key passthrough should succeed");
+  cr_assert_eq(result, ASCIICHAT_OK, "X25519 private key passthrough should succeed");
   cr_assert_eq(memcmp(key.key.x25519, x25519_key, 32), 0, "X25519 private key should be unchanged");
 }
 
@@ -303,10 +311,10 @@ Test(crypto_keys, fetch_github_keys_valid_user) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_github_keys("octocat", &keys, &num_keys, false);
+  asciichat_error_t result = fetch_github_keys("octocat", &keys, &num_keys, false);
 
   // This will fail without BearSSL, but tests the interface
-  if (result == 0) {
+  if (result == ASCIICHAT_OK) {
     cr_assert_not_null(keys, "Keys array should be allocated");
     cr_assert_gt(num_keys, 0, "Should fetch at least one key");
 
@@ -316,8 +324,8 @@ Test(crypto_keys, fetch_github_keys_valid_user) {
     }
     SAFE_FREE(keys);
   } else {
-    // Expected to fail without BearSSL
-    cr_assert_eq(result, -1, "Should fail without BearSSL");
+    // Expected to fail without BearSSL - returns error code
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail without BearSSL");
     cr_assert_null(keys, "Keys array should be NULL on failure");
     cr_assert_eq(num_keys, 0, "Number of keys should be 0 on failure");
   }
@@ -327,9 +335,9 @@ Test(crypto_keys, fetch_github_keys_invalid_user) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_github_keys("nonexistentuser12345", &keys, &num_keys, false);
+  asciichat_error_t result = fetch_github_keys("nonexistentuser12345", &keys, &num_keys, false);
 
-  cr_assert_eq(result, -1, "Invalid user should fail");
+  cr_assert_neq(result, ASCIICHAT_OK, "Invalid user should fail");
   cr_assert_null(keys, "Keys array should be NULL on failure");
   cr_assert_eq(num_keys, 0, "Number of keys should be 0 on failure");
 }
@@ -338,10 +346,10 @@ Test(crypto_keys, fetch_gitlab_keys_valid_user) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_gitlab_keys("gitlab", &keys, &num_keys, false);
+  asciichat_error_t result = fetch_gitlab_keys("gitlab", &keys, &num_keys, false);
 
   // This will fail without BearSSL, but tests the interface
-  if (result == 0) {
+  if (result == ASCIICHAT_OK) {
     cr_assert_not_null(keys, "Keys array should be allocated");
     cr_assert_gt(num_keys, 0, "Should fetch at least one key");
 
@@ -351,8 +359,8 @@ Test(crypto_keys, fetch_gitlab_keys_valid_user) {
     }
     SAFE_FREE(keys);
   } else {
-    // Expected to fail without BearSSL
-    cr_assert_eq(result, -1, "Should fail without BearSSL");
+    // Expected to fail without BearSSL - returns error code
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail without BearSSL");
   }
 }
 
@@ -360,10 +368,10 @@ Test(crypto_keys, fetch_github_gpg_keys) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_github_gpg_keys("octocat", &keys, &num_keys);
+  asciichat_error_t result = fetch_github_gpg_keys("octocat", &keys, &num_keys);
 
   // This will fail without BearSSL, but tests the interface
-  cr_assert_eq(result, -1, "Should fail without BearSSL");
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail without BearSSL");
   cr_assert_null(keys, "Keys array should be NULL on failure");
   cr_assert_eq(num_keys, 0, "Number of keys should be 0 on failure");
 }
@@ -376,9 +384,9 @@ Test(crypto_keys, parse_keys_from_file_nonexistent) {
   public_key_t keys[10];
   size_t num_keys = 0;
 
-  int result = parse_keys_from_file("/nonexistent/authorized_keys", keys, &num_keys, 10);
+  asciichat_error_t result = parse_keys_from_file("/nonexistent/authorized_keys", keys, &num_keys, 10);
 
-  cr_assert_eq(result, -1, "Parsing nonexistent file should fail");
+  cr_assert_neq(result, ASCIICHAT_OK, "Parsing nonexistent file should fail");
   cr_assert_eq(num_keys, 0, "Number of keys should be 0 on failure");
 }
 
@@ -386,9 +394,9 @@ Test(crypto_keys, parse_keys_from_file_null_path) {
   public_key_t keys[10];
   size_t num_keys = 0;
 
-  int result = parse_keys_from_file(NULL, keys, &num_keys, 10);
+  asciichat_error_t result = parse_keys_from_file(NULL, keys, &num_keys, 10);
 
-  cr_assert_eq(result, -1, "Parsing NULL path should fail");
+  cr_assert_neq(result, ASCIICHAT_OK, "Parsing NULL path should fail");
 }
 
 // =============================================================================
@@ -464,13 +472,13 @@ Theory((key_type_t key_type), crypto_keys, key_type_validation) {
   // Test that the key type is preserved
   cr_assert_eq(key.type, key_type, "Key type should be preserved");
 
-  // Test conversion to X25519 (should work for all types)
+  // Test conversion to X25519 (should work for all types except UNKNOWN)
   uint8_t x25519_key[32];
-  int result = public_key_to_x25519(&key, x25519_key);
+  asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
   if (key_type == KEY_TYPE_UNKNOWN) {
-    cr_assert_eq(result, -1, "Unknown key type should fail conversion");
+    cr_assert_neq(result, ASCIICHAT_OK, "Unknown key type should fail conversion");
   } else {
-    cr_assert_eq(result, 0, "Valid key type should succeed conversion");
+    cr_assert_eq(result, ASCIICHAT_OK, "Valid key type should succeed conversion");
   }
 }

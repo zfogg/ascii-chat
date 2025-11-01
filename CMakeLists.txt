@@ -1692,6 +1692,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # Project source root for logging
     target_compile_definitions(${MODULE_NAME} PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
 
+    # Build directory for llvm-symbolizer --debug-file-directory
+    target_compile_definitions(${MODULE_NAME} PRIVATE BUILD_DIR="${CMAKE_BINARY_DIR}")
+
     # MI_DEBUG for mimalloc
     if(DEFINED MIMALLOC_DEBUG_LEVEL)
         target_compile_definitions(${MODULE_NAME} PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})

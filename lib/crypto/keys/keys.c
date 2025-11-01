@@ -85,16 +85,33 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     return result;
   }
 
-  // Try raw hex key
+  // Try raw hex key (64 hex chars = 32 bytes)
   if (strlen(input) == 64) {
-    // Assume it's a raw Ed25519 public key in hex
-    key_out->type = KEY_TYPE_ED25519;
-    for (int i = 0; i < 32; i++) {
-      char hex_byte[3] = {input[i * 2], input[i * 2 + 1], 0};
-      key_out->key[i] = (uint8_t)strtol(hex_byte, NULL, 16);
+    // Check if it's valid hex
+    bool is_valid_hex = true;
+    for (int i = 0; i < 64; i++) {
+      if (!((input[i] >= '0' && input[i] <= '9') || (input[i] >= 'a' && input[i] <= 'f') ||
+            (input[i] >= 'A' && input[i] <= 'F'))) {
+        is_valid_hex = false;
+        break;
+      }
     }
-    platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-hex", sizeof(key_out->comment) - 1);
-    return ASCIICHAT_OK;
+
+    if (is_valid_hex) {
+      // Assume it's a raw X25519 public key in hex (default for raw hex)
+      key_out->type = KEY_TYPE_X25519;
+      for (int i = 0; i < 32; i++) {
+        char hex_byte[3] = {input[i * 2], input[i * 2 + 1], 0};
+        char *endptr;
+        unsigned long val = strtoul(hex_byte, &endptr, 16);
+        if (endptr != hex_byte + 2 || val > 255) {
+          return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid hex character in key");
+        }
+        key_out->key[i] = (uint8_t)val;
+      }
+      platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-hex", sizeof(key_out->comment) - 1);
+      return ASCIICHAT_OK;
+    }
   }
 
   // Try reading from file

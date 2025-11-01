@@ -11,7 +11,8 @@ ENV CC=clang \
     CXX=clang++ \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    TESTING=1
+    TESTING=1 \
+    ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
 # Configure ccache for Docker volume caching
 # CCACHE_DIR: Cache directory (will be mounted as volume)
@@ -27,7 +28,9 @@ ENV CCACHE_DIR=/ccache \
 # Using packages from README.md Arch instructions
 # Note: Using -S (not -Syu) to avoid upgrading base system packages
 RUN pacman -Sy --noconfirm \
+    which \
     pkg-config \
+    llvm \
     clang \
     cmake \
     ninja \
@@ -36,7 +39,7 @@ RUN pacman -Sy --noconfirm \
     musl \
     mimalloc \
     v4l-utils \
-    zlib \
+    zstd \
     portaudio \
     libsodium \
     libgcrypt \

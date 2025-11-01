@@ -384,11 +384,19 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
       int64_t sec_diff = (int64_t)current_time.tv_sec - (int64_t)last_render_time.tv_sec;
       int64_t nsec_diff = (int64_t)current_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
-      elapsed_us = (uint64_t)(sec_diff * 1000000LL) + (uint64_t)(nsec_diff / 1000);
-      // Handle underflow when nanoseconds are negative
-      if (nsec_diff < 0 && sec_diff > 0) {
-        elapsed_us -= 1000000;
+
+      // Handle nanosecond underflow by borrowing from seconds
+      if (nsec_diff < 0) {
+        sec_diff -= 1;
+        nsec_diff += 1000000000LL; // Add 1 second worth of nanoseconds
       }
+
+      // Convert to microseconds (now both values are properly normalized)
+      // sec_diff should be >= 0 for forward time progression
+      if (sec_diff >= 0) {
+        elapsed_us = (uint64_t)sec_diff * 1000000ULL + (uint64_t)(nsec_diff / 1000);
+      }
+      // If sec_diff is negative, time went backwards - treat as 0 elapsed
     }
 
     // Skip rendering if not enough time has passed (frame rate limiting)

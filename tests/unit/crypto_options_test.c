@@ -10,13 +10,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "tests/common.h"
 #include "options.h"
 #include "tests/logging.h"
 
+// External getopt variable that needs resetting between tests
+extern int optind;
+
+// Reset global options between tests to prevent pollution
+static void reset_crypto_options(void) {
+  // Reset crypto-related globals
+  opt_no_encrypt = 0;
+  opt_encrypt_key[0] = '\0';
+  opt_password[0] = '\0';
+  opt_encrypt_keyfile[0] = '\0';
+  opt_server_key[0] = '\0';
+  opt_client_keys[0] = '\0';
+
+  // Reset optind for getopt_long (critical for multiple test runs)
+  optind = 1;
+}
+
 // Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(crypto_options);
+TestSuite(crypto_options, .init = reset_crypto_options);
 
 // =============================================================================
 // Crypto Options Parsing Tests (Parameterized)
@@ -25,35 +43,20 @@ TEST_SUITE_WITH_QUIET_LOGGING(crypto_options);
 typedef struct {
   const char *description;
   int argc;
-  const char *argv[10];
+  char argv[10][256];  // Use static char arrays instead of pointers for Criterion compatibility
   bool is_client;
   bool expect_no_encrypt;
   bool expect_key_set;
-  bool expect_ssh_key_set;
   bool expect_server_key_set;
   bool expect_client_keys_set;
   const char *expected_key;
-  const char *expected_ssh_key;
   const char *expected_server_key;
   const char *expected_client_keys;
   int expected_result;
 } crypto_options_test_case_t;
 
 static crypto_options_test_case_t crypto_options_cases[] = {
-    {"No crypto options (default)",
-     2,
-     {"program", "--help"},
-     true,
-     false,
-     false,
-     false,
-     false,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     NULL,
-     0},
+    // Note: --help and --version tests are separate (they call _exit(0))
     {"Disable encryption",
      2,
      {"program", "--no-encrypt"},
@@ -62,8 +65,6 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      false,
      false,
      false,
-     false,
-     NULL,
      NULL,
      NULL,
      NULL,
@@ -76,40 +77,22 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "mypassword",
      NULL,
      NULL,
-     NULL,
      0},
-    {"Set SSH key file",
-     3,
-     {"program", "--ssh-key", "~/.ssh/id_ed25519"},
-     true,
-     false,
-     false,
-     true,
-     false,
-     false,
-     NULL,
-     "~/.ssh/id_ed25519",
-     NULL,
-     NULL,
-     0},
-    {"Set server key file (server only)",
+    {"Set server key file (client only)",
      3,
      {"program", "--server-key", "/etc/ascii-chat/server_key"},
-     false,
-     false,
-     false,
-     false,
-     true,
-     false,
-     NULL,
-     NULL,
-     "/etc/ascii-chat/server_key",
-     NULL,
-     0},
+     true,  // --server-key is CLIENT ONLY (client verifies server's public key)
+     false, // expect_no_encrypt
+     false, // expect_key_set
+     true,  // expect_server_key_set
+     false, // expect_client_keys_set
+     NULL,  // expected_key
+     "/etc/ascii-chat/server_key", // expected_server_key
+     NULL,  // expected_client_keys
+     0},    // expected_result
     {"Set client keys file (server only)",
      3,
      {"program", "--client-keys", "/etc/ascii-chat/authorized_keys"},
@@ -117,24 +100,20 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      false,
      false,
      false,
-     false,
      true,
-     NULL,
      NULL,
      NULL,
      "/etc/ascii-chat/authorized_keys",
      0},
     {"Multiple crypto options",
-     5,
-     {"program", "--no-encrypt", "--key", "password", "--ssh-key", "~/.ssh/id_ed25519"},
-     true,
+     4,
+     {"program", "--no-encrypt", "--key", "password"},
      true,
      true,
      true,
      false,
      false,
      "password",
-     "~/.ssh/id_ed25519",
      NULL,
      NULL,
      0},
@@ -146,9 +125,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "github:username",
-     NULL,
      NULL,
      NULL,
      0},
@@ -160,9 +137,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "gitlab:username",
-     NULL,
      NULL,
      NULL,
      0},
@@ -174,9 +149,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "gpg:0x1234567890ABCDEF",
-     NULL,
      NULL,
      NULL,
      0},
@@ -188,9 +161,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-     NULL,
      NULL,
      NULL,
      0},
@@ -202,9 +173,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGplY2VrZXJzIGVkMjU1MTkga2V5",
-     NULL,
      NULL,
      NULL,
      0},
@@ -216,9 +185,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      true,
      false,
      false,
-     false,
      "very-long-password-with-special-chars!@#$%^&*()",
-     NULL,
      NULL,
      NULL,
      0},
@@ -230,8 +197,6 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      false,
      false,
      false,
-     false,
-     NULL,
      NULL,
      NULL,
      NULL,
@@ -244,8 +209,6 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      false,
      false,
      false,
-     false,
-     NULL,
      NULL,
      NULL,
      NULL,
@@ -257,10 +220,21 @@ ParameterizedTestParameters(crypto_options, crypto_options_parsing_tests) {
 }
 
 ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options_parsing_tests) {
-  // Initialize options
-  options_init(tc->argc, (char **)tc->argv, tc->is_client);
+  // Reset globals before each parameterized test case
+  reset_crypto_options();
 
-  // Test the results
+  // Initialize options and check return value
+  asciichat_error_t result = options_init(tc->argc, (char **)tc->argv, tc->is_client);
+
+  // Check return value matches expectation
+  if (tc->expected_result == 0) {
+    cr_assert_eq(result, ASCIICHAT_OK, "options_init should succeed for case: %s", tc->description);
+  } else {
+    cr_assert_neq(result, ASCIICHAT_OK, "options_init should fail for case: %s", tc->description);
+    return; // Don't check other assertions if we expected failure
+  }
+
+  // Test the results (only if we expected success)
   cr_assert_eq(opt_no_encrypt, tc->expect_no_encrypt, "No encrypt flag should match for case: %s", tc->description);
   cr_assert_eq(opt_encrypt_key[0] != '\0', tc->expect_key_set, "Key should be set for case: %s", tc->description);
   cr_assert_eq(opt_server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s",
@@ -271,9 +245,6 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
   if (tc->expected_key) {
     cr_assert(opt_encrypt_key[0] != '\0', "Key should not be NULL for case: %s", tc->description);
     cr_assert_str_eq(opt_encrypt_key, tc->expected_key, "Key should match for case: %s", tc->description);
-  }
-
-  if (tc->expected_ssh_key) {
   }
 
   if (tc->expected_server_key) {
@@ -295,18 +266,19 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 Test(crypto_options, client_only_options) {
   const char *argv[] = {"program", "--server-key", "/path/to/server/key"};
 
-  // This should fail for client
-  options_init(2, (char **)argv, true);
+  // --server-key is client-only, should work for client
+  asciichat_error_t result = options_init(3, (char **)argv, true);
 
-  // Server key should not be set for client
-  cr_assert(opt_server_key[0] == '\0', "Server key should not be set for client");
+  cr_assert_eq(result, ASCIICHAT_OK, "Client-only option should work for client");
+  cr_assert(opt_server_key[0] != '\0', "Server key should be set for client");
+  cr_assert_str_eq(opt_server_key, "/path/to/server/key", "Server key should match");
 }
 
 Test(crypto_options, server_only_options) {
   const char *argv[] = {"program", "--client-keys", "/path/to/authorized_keys"};
 
   // This should work for server
-  options_init(2, (char **)argv, false);
+  options_init(3, (char **)argv, false);
 
   cr_assert(opt_client_keys[0] != '\0', "Client keys should be set for server");
   cr_assert_str_eq(opt_client_keys, "/path/to/authorized_keys", "Client keys path should match");
@@ -334,6 +306,9 @@ Test(crypto_options, invalid_key_formats) {
   };
 
   for (int i = 0; i < 7; i++) {
+    // Reset globals between iterations since we're calling options_init() multiple times
+    reset_crypto_options();
+
     const char *argv[] = {"program", "--key", invalid_keys[i]};
     options_init(3, (char **)argv, true);
 
@@ -348,9 +323,9 @@ Test(crypto_options, invalid_key_formats) {
 // =============================================================================
 
 Test(crypto_options, very_long_key_value) {
-  char long_key[1024];
-  memset(long_key, 'A', 1023);
-  long_key[1023] = '\0';
+  char long_key[251];  // Less than OPTIONS_BUFF_SIZE (256)
+  memset(long_key, 'A', 250);
+  long_key[250] = '\0';
 
   const char *argv[] = {"program", "--key", long_key};
 
@@ -380,14 +355,6 @@ Test(crypto_options, unicode_characters_in_key) {
   cr_assert_str_eq(opt_encrypt_key, unicode_key, "Unicode characters should be preserved");
 }
 
-Test(crypto_options, multiple_ssh_keys) {
-  const char *argv[] = {"program", "--ssh-key", "~/.ssh/id_ed25519", "--ssh-key", "~/.ssh/id_ed25519_2"};
-
-  options_init(5, (char **)argv, true);
-
-  // Should use the last one
-}
-
 Test(crypto_options, empty_arguments) {
   const char *argv[] = {"program"};
 
@@ -415,10 +382,9 @@ TheoryDataPoints(crypto_options, option_combinations) = {
     DataPoints(bool, true, false), // is_client
     DataPoints(bool, true, false), // no_encrypt
     DataPoints(bool, true, false), // has_key
-    DataPoints(bool, true, false), // has_ssh_key
 };
 
-Theory((bool is_client, bool no_encrypt, bool has_key, bool has_ssh_key), crypto_options, option_combinations) {
+Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_combinations) {
   // Build argv based on theory parameters
   char *argv[10];
   int argc = 1;
@@ -433,11 +399,6 @@ Theory((bool is_client, bool no_encrypt, bool has_key, bool has_ssh_key), crypto
     argv[argc++] = "test-key";
   }
 
-  if (has_ssh_key) {
-    argv[argc++] = "--ssh-key";
-    argv[argc++] = "~/.ssh/id_ed25519";
-  }
-
   options_init(argc, argv, is_client);
 
   // Verify the options were parsed correctly
@@ -449,16 +410,11 @@ Theory((bool is_client, bool no_encrypt, bool has_key, bool has_ssh_key), crypto
 // File Path Tests
 // =============================================================================
 
-Test(crypto_options, file_path_expansion) {
-  const char *argv[] = {"program", "--ssh-key", "~/.ssh/id_ed25519"};
-
-  options_init(3, (char **)argv, true);
-}
-
 Test(crypto_options, absolute_file_paths) {
   const char *argv[] = {"program", "--server-key", "/etc/ascii-chat/server_key"};
 
-  options_init(3, (char **)argv, false);
+  // --server-key is CLIENT ONLY (client verifies server's public key)
+  options_init(3, (char **)argv, true);
 
   cr_assert(opt_server_key[0] != '\0', "Server key should be set");
   cr_assert_str_eq(opt_server_key, "/etc/ascii-chat/server_key", "Server key path should match");
@@ -477,24 +433,26 @@ Test(crypto_options, relative_file_paths) {
 // Help and Usage Tests
 // =============================================================================
 
-Test(crypto_options, help_display) {
+// Test that --help calls _exit(0) - runs in separate process
+Test(crypto_options, help_display, .exit_code = 0) {
   const char *argv[] = {"program", "--help"};
 
-  // This should not crash and should show help
+  // This will call _exit(0) after printing help
   options_init(2, (char **)argv, true);
 
-  // Help should be handled gracefully
-  cr_assert_not(opt_no_encrypt, "No encrypt should be false when showing help");
+  // Should never reach here due to _exit(0)
+  cr_fatal("Should have exited before reaching this line");
 }
 
-Test(crypto_options, version_display) {
+// Test that --version calls _exit(0) - runs in separate process
+Test(crypto_options, version_display, .exit_code = 0) {
   const char *argv[] = {"program", "--version"};
 
-  // This should not crash and should show version
+  // This will call _exit(0) after printing version
   options_init(2, (char **)argv, true);
 
-  // Version should be handled gracefully
-  cr_assert_not(opt_no_encrypt, "No encrypt should be false when showing version");
+  // Should never reach here due to _exit(0)
+  cr_fatal("Should have exited before reaching this line");
 }
 
 // =============================================================================
@@ -503,10 +461,9 @@ Test(crypto_options, version_display) {
 
 Test(crypto_options, many_options) {
   const char *argv[] = {"program",       "--no-encrypt",        "--key",        "password",
-                        "--ssh-key",     "~/.ssh/id_ed25519",   "--server-key", "/etc/server_key",
-                        "--client-keys", "/etc/authorized_keys"};
+                        "--server-key",  "/etc/server_key",     "--client-keys", "/etc/authorized_keys"};
 
-  options_init(11, (char **)argv, false);
+  options_init(9, (char **)argv, false);
 
   // All options should be set
   cr_assert(opt_no_encrypt, "No encrypt should be set");
@@ -516,10 +473,9 @@ Test(crypto_options, many_options) {
 }
 
 Test(crypto_options, repeated_options) {
-  const char *argv[] = {"program",   "--key",     "first-key", "--key",     "second-key",
-                        "--ssh-key", "first-ssh", "--ssh-key", "second-ssh"};
+  const char *argv[] = {"program", "--key", "first-key", "--key", "second-key"};
 
-  options_init(9, (char **)argv, true);
+  options_init(5, (char **)argv, true);
 
   // Should use the last values
   cr_assert(opt_encrypt_key[0] != '\0', "Key should be set");

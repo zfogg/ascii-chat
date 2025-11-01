@@ -295,7 +295,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
         if (socket_get_error(g_sockfd) != 0) {
           log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
         } else {
-          //log_debug("IPv6 loopback connection failed: %s", network_error_string());
+          // log_debug("IPv6 loopback connection failed: %s", network_error_string());
         }
         close_socket(g_sockfd);
         g_sockfd = INVALID_SOCKET_VALUE;
@@ -329,7 +329,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
         if (socket_get_error(g_sockfd) != 0) {
           log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
         } else {
-          //log_debug("IPv4 loopback connection failed: %s", network_error_string());
+          // log_debug("IPv4 loopback connection failed: %s", network_error_string());
         }
         close_socket(g_sockfd);
         g_sockfd = INVALID_SOCKET_VALUE;
@@ -400,7 +400,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       if (socket_get_error(g_sockfd) != 0) {
         log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
       } else {
-        //log_debug("Connection failed: %s", network_error_string());
+        // log_debug("Connection failed: %s", network_error_string());
       }
       close_socket(g_sockfd);
       g_sockfd = INVALID_SOCKET_VALUE;

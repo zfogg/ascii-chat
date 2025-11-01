@@ -1185,8 +1185,8 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_server_values,
-    ARGV_LIST("server", "--address=0.0.0.0", "--port=12345", "--palette=minimal",
-              "--log-file=/tmp/server.log", "--encrypt", "--keyfile=/etc/server.key"),
+    ARGV_LIST("server", "--address=0.0.0.0", "--port=12345", "--palette=minimal", "--log-file=/tmp/server.log",
+              "--encrypt", "--keyfile=/etc/server.key"),
     false,
     {
       // Verify server values

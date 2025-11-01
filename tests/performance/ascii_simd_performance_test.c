@@ -395,6 +395,8 @@ Test(ascii_simd_performance, simd_architecture_benchmarks) {
   }
   log_info("  Winner:  %s", color_bench.best_method);
 
+  image_destroy(test_image);
+
 // Performance assertions - each SIMD implementation should be at least as fast as scalar
 #ifdef SIMD_SUPPORT_SSE2
   if (mono_bench.sse2_time > 0) {
