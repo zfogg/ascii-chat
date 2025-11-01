@@ -579,20 +579,20 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
 
     if (!has_func && !has_file) {
       // Complete unknown - show raw address
-      snprintf(result[parsed], 1024, "%p", buffer[i]);
+      SAFE_SNPRINTF(result[parsed], 1024, "%p", buffer[i]);
     } else if (has_func && has_file) {
       // Best case - both function and file:line known
       if (strstr(rel_path, ":") != NULL) {
-        snprintf(result[parsed], 1024, "%s in %s()", rel_path, func_name);
+        SAFE_SNPRINTF(result[parsed], 1024, "%s in %s()", rel_path, func_name);
       } else {
-        snprintf(result[parsed], 1024, "%s() at %s", func_name, rel_path);
+        SAFE_SNPRINTF(result[parsed], 1024, "%s() at %s", func_name, rel_path);
       }
     } else if (has_func) {
       // Function known but file unknown (common for library functions)
-      snprintf(result[parsed], 1024, "%s() at %p", func_name, buffer[i]);
+      SAFE_SNPRINTF(result[parsed], 1024, "%s() at %p", func_name, buffer[i]);
     } else {
       // File known but function unknown (rare)
-      snprintf(result[parsed], 1024, "%s (unknown function)", rel_path);
+      SAFE_SNPRINTF(result[parsed], 1024, "%s (unknown function)", rel_path);
     }
     parsed++;
   }
@@ -607,8 +607,21 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
 
   // NULL-terminate the array so we know where it ends
   // Allocate one extra slot for NULL terminator if needed
+  // NULL-terminate the array
   if (parsed < size) {
     result[parsed] = NULL;
+  } else {
+    // We didn't allocate enough space for all the symbols, so we need to reallocate
+    // But this should never happen since we allocate size+1 upfront
+    // If it does, free the old buffer and allocate a new one
+    size_t new_size = (size_t)(parsed + 1);
+    char **new_result = SAFE_REALLOC(result, new_size * sizeof(char *), char **);
+    if (!new_result) {
+      SAFE_FREE(result);
+      return NULL;
+    }
+    result = new_result;
+    result[parsed] = NULL; // Set the last slot to NULL to indicate end of array
   }
 
   return result;
@@ -641,23 +654,49 @@ void platform_backtrace_symbols_free(char **strings) {
 
   // Check if this is our cached symbols (allocated with strdup)
   // or system backtrace_symbols (system malloc)
-  // We can tell by checking if the first string has our format
-  if (strings[0] && (strstr(strings[0], " in ") != NULL || strstr(strings[0], "() at ") != NULL)) {
-    // This is our cached format - use symbol cache free
+  // We can tell by checking if any string has our format (not just the first one,
+  // since the first entry might be NULL if allocation failed)
+  // IMPORTANT: We must be very careful about bounds - arrays are allocated with size+1,
+  // so we should NOT access beyond what we know is safe. We'll check entries one at a time
+  // looking for our format marker, but stop at the first terminator (NULL followed by NULL)
+  bool is_our_format = false;
+  bool has_any_non_null = false;
+
+  // Check first few entries (up to 32) for format markers, stopping at first NULL
+  // We can't safely check beyond the allocated array, so stop at the first NULL we encounter
+  for (int i = 0; i < 32; i++) {
+    if (strings[i] == NULL) {
+      // Found NULL - could be terminator or NULL in middle, but we stop checking here
+      // to avoid accessing beyond allocated memory
+      break;
+    }
+
+    // strings[i] is non-NULL, safe to check
+    has_any_non_null = true;
+    // Check if this string has our format marker
+    if (strstr(strings[i], " in ") != NULL || strstr(strings[i], "() at ") != NULL) {
+      is_our_format = true;
+      // Found format - can break here since we know it's ours
+      break;
+    }
+  }
+
+  // Decision logic: be conservative and free everything that looks like ours
+  // - If we found our format marker -> definitely ours, use symbol_cache_free_symbols
+  // - If all entries are NULL -> likely ours with failed allocations, use symbol_cache_free_symbols
+  // - If we have non-NULL entries but no format marker -> default to freeing it
+  //   (symbol_cache_free_symbols is safe and will handle the terminator correctly)
+  // Only skip freeing if we're certain it's system backtrace_symbols (very rare)
+  // Since platform_backtrace_symbols always returns our format, we should almost always call
+  // symbol_cache_free_symbols
+  if (is_our_format || !has_any_non_null) {
+    // This is our cached format (or all NULL which is our format with failed allocations)
+    // Use symbol cache free which handles NULL entries and terminator properly
     symbol_cache_free_symbols(strings);
   } else {
-    // This is system backtrace_symbols
-    // IMPORTANT: When using mimalloc (which overrides malloc/free globally),
-    // we cannot safely free memory allocated by backtrace_symbols() because:
-    // 1. backtrace_symbols() uses system malloc()
-    // 2. mimalloc's free() expects memory allocated by mimalloc
-    // 3. Calling free() on system-allocated memory causes a crash
-    //
-    // The memory leak is acceptable because:
-    // - Backtraces are only printed during crashes/errors
-    // - The memory is small (a few KB at most)
-    // - Process is about to exit anyway
-    (void)strings; // Suppress unused parameter warning - we intentionally don't free
+    // Unknown format - default to freeing with symbol_cache_free_symbols for safety
+    // (it handles the terminator correctly and won't crash)
+    symbol_cache_free_symbols(strings);
   }
 }
 

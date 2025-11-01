@@ -45,7 +45,7 @@ typedef enum {
  * @param expected_crc Output: expected CRC32
  * @return 0 on success, -1 on error
  */
-int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
+asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
                            uint32_t *expected_crc);
 
 /**
@@ -55,7 +55,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
  * @param expected_crc Expected CRC32 value
  * @return 0 on success, -1 on error
  */
-int packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc);
+asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc);
 
 /**
  * @brief Send a packet with proper header and CRC32

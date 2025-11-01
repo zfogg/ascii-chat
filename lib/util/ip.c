@@ -7,20 +7,17 @@
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
   if (!ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
   }
 
   if (strlen(ip) == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
   }
 
   if (strlen(ip) > 256) {
     char ip_buffer[256];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
-    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
   }
 
   int segments = 0;
@@ -62,20 +59,17 @@ int is_valid_ipv4(const char *ip) {
 // Helper function to validate IPv6 address format
 int is_valid_ipv6(const char *ip) {
   if (!ip) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
   }
 
   if (strlen(ip) == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
   }
 
   if (strlen(ip) > 256) {
     char ip_buffer[256];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
-    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
   }
 
   // Special case: "::" is valid (all zeros)
@@ -194,15 +188,13 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
   }
 
   if (strlen(ip) == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
   }
 
   if (strlen(ip) > 256) {
     char ip_buffer[256];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
-    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
-    return 0;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
   }
 
   // Check if it's IPv6 (contains ':')

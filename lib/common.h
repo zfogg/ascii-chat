@@ -262,7 +262,7 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 
 // Frame rate configuration - With 1ms timer resolution enabled, Windows can now handle 60 FPS
 #ifdef _WIN32
-#define DEFAULT_MAX_FPS 30 // Windows with timeBeginPeriod(1) can handle 60 FPS
+#define DEFAULT_MAX_FPS 60 // Windows with timeBeginPeriod(1) can handle 60 FPS
 #else
 #define DEFAULT_MAX_FPS 60 // macOS/Linux terminals can handle higher rates
 #endif

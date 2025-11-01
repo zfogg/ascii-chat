@@ -670,8 +670,6 @@ if(USE_MUSL)
     message(STATUS "Using compiler for musl dependencies: ${MUSL_CC}")
 
     # Note: zstd-musl, libsodium-musl, alsa-lib-musl, portaudio-musl, and libexecinfo-musl are now built in MuslDependencies.cmake
-
-    # Note: JACK is complex and optional - we'll skip it for static musl builds
 endif()
 
 # =============================================================================
@@ -848,26 +846,6 @@ if(WIN32)
         set(LIBSODIUM_INCLUDE_DIRS "")
     endif()
 
-    # Find libgcrypt - try finding it directly to avoid import issues
-    # Note: libgcrypt is not available on Windows via vcpkg (requires MinGW which we don't support)
-    # GPG key support will be unavailable on Windows
-    find_library(LIBGCRYPT_LIBRARY NAMES libgcrypt gcrypt
-                PATHS "${VCPKG_ROOT}/installed/x64-windows/lib")
-    find_path(LIBGCRYPT_INCLUDE_DIR NAMES gcrypt.h
-             PATHS "${VCPKG_ROOT}/installed/x64-windows/include")
-    if(LIBGCRYPT_LIBRARY AND LIBGCRYPT_INCLUDE_DIR)
-        set(LIBGCRYPT_LIBRARIES ${LIBGCRYPT_LIBRARY})
-        set(LIBGCRYPT_INCLUDE_DIRS ${LIBGCRYPT_INCLUDE_DIR})
-        set(LIBGCRYPT_FOUND TRUE)
-        message(STATUS "Found libgcrypt: ${LIBGCRYPT_LIBRARY}")
-    else()
-        message(WARNING "Could not find libgcrypt - GPG Ed25519 signature verification will be disabled")
-        message(WARNING "  libgcrypt is not available on Windows (requires MinGW). GPG keys will not work on Windows.")
-        set(LIBGCRYPT_FOUND FALSE)
-        set(LIBGCRYPT_LIBRARIES "")
-        set(LIBGCRYPT_INCLUDE_DIRS "")
-    endif()
-
     # Try to find BearSSL (system install from Docker or pkg-config)
     # First check for system-installed version (e.g., from Docker image)
     find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl bearssls
@@ -981,11 +959,6 @@ else()
         pkg_check_modules(ZSTD REQUIRED libzstd)
         pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
         pkg_check_modules(LIBSODIUM REQUIRED libsodium)
-        # libgcrypt is optional - GPG Ed25519 signature verification
-        pkg_check_modules(LIBGCRYPT libgcrypt)
-        if(NOT LIBGCRYPT_FOUND)
-            message(WARNING "libgcrypt not found - GPG Ed25519 signature verification will be disabled")
-        endif()
     endif()
 
     # Try to find BearSSL (system install from Docker or pkg-config)
@@ -1390,9 +1363,6 @@ else()
         # Linux library search paths (matches Makefile)
         link_directories(/usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu)
 
-        # Check for JACK (optional, matches Makefile)
-        pkg_check_modules(JACK jack)
-
         # Additional Linux test dependencies (matching Makefile complex setup)
         if(CRITERION_FOUND)
             # Protobuf-C
@@ -1623,6 +1593,7 @@ list(APPEND SIMD_SRCS
     lib/image2ascii/simd/ascii_simd.c
     lib/image2ascii/simd/ascii_simd_color.c
     lib/image2ascii/simd/common.c
+    lib/image2ascii/output_buffer.c
 )
 
 # Architecture-specific SIMD sources based on detection
@@ -1658,10 +1629,8 @@ endif()
 # Module 5: Video Processing (changes weekly)
 # =============================================================================
 set(VIDEO_SRCS
-    lib/palette.c
     lib/video_frame.c
     lib/image2ascii/image.c
-    lib/image2ascii/output_buffer.c
     lib/image2ascii/ascii.c
     lib/image2ascii/ansi_fast.c
     lib/util/utf8.c
@@ -1703,6 +1672,7 @@ set(CORE_SRCS
     lib/options.c
     lib/lock_debug.c
     lib/version.c
+    lib/palette.c
 )
 
 # =============================================================================
@@ -1752,7 +1722,11 @@ target_link_libraries(ascii-chat-data-structures ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 create_ascii_chat_module(ascii-chat-platform "${PLATFORM_SRCS}")
-target_link_libraries(ascii-chat-platform ascii-chat-util ascii-chat-data-structures)
+target_link_libraries(ascii-chat-platform
+    ascii-chat-util
+    ascii-chat-data-structures
+    ascii-chat-core
+)
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND EXISTS "${FETCHCONTENT_BASE_DIR}/musl-deps/kernel-headers")
@@ -1795,15 +1769,9 @@ create_ascii_chat_module(ascii-chat-crypto "${CRYPTO_SRCS}")
 target_link_libraries(ascii-chat-crypto
     ascii-chat-util
     ascii-chat-platform
+    ascii-chat-network
     ${LIBSODIUM_LIBRARIES}
 )
-
-# Add libgcrypt if available
-if(LIBGCRYPT_FOUND)
-    target_link_libraries(ascii-chat-crypto ${LIBGCRYPT_LIBRARIES})
-    target_include_directories(ascii-chat-crypto PRIVATE ${LIBGCRYPT_INCLUDE_DIRS})
-    target_compile_definitions(ascii-chat-crypto PRIVATE HAVE_LIBGCRYPT)
-endif()
 
 # Add BearSSL if available
 if(BEARSSL_FOUND)
@@ -1812,18 +1780,26 @@ if(BEARSSL_FOUND)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 4: SIMD (depends on: util)
+# Module 4: SIMD (depends on: util, core, video)
+# Note: Circular dependency with video (simd needs video for benchmark code,
+#       video needs simd for SIMD functions). This is resolved at link time
+#       since both libraries are linked together in executables.
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
-target_link_libraries(ascii-chat-simd ascii-chat-util)
+target_link_libraries(ascii-chat-simd
+    ascii-chat-util
+    ascii-chat-core
+    ascii-chat-video
+)
 
 # -----------------------------------------------------------------------------
-# Module 5: Video Processing (depends on: util, platform, simd)
+# Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 target_link_libraries(ascii-chat-video
     ascii-chat-util
     ascii-chat-platform
+    ascii-chat-core
     ascii-chat-simd
 )
 
@@ -1836,11 +1812,6 @@ target_link_libraries(ascii-chat-audio
     ascii-chat-platform
     ${PORTAUDIO_LIBRARIES}
 )
-
-# JACK support for Linux (optional)
-if(NOT WIN32 AND PLATFORM_LINUX AND JACK_FOUND AND NOT USE_MUSL)
-    target_link_libraries(ascii-chat-audio ${JACK_LIBRARIES})
-endif()
 
 # -----------------------------------------------------------------------------
 # Module 7: Core Infrastructure (depends on: util, platform)
@@ -1923,9 +1894,6 @@ if(WIN32)
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
-    if(LIBGCRYPT_FOUND)
-        target_link_libraries(ascii-chat-shared PRIVATE ${LIBGCRYPT_LIBRARIES})
-    endif()
     if(USE_MIMALLOC)
         target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
     endif()
@@ -1936,9 +1904,6 @@ else()
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
-    if(LIBGCRYPT_FOUND)
-        target_link_libraries(ascii-chat-shared PRIVATE ${LIBGCRYPT_LIBRARIES})
-    endif()
     if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-shared PRIVATE
             ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
@@ -1946,9 +1911,6 @@ else()
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-        if(JACK_FOUND AND NOT USE_MUSL)
-            target_link_libraries(ascii-chat-shared PRIVATE ${JACK_LIBRARIES})
-        endif()
     endif()
     if(USE_MUSL)
         target_link_libraries(ascii-chat-shared PRIVATE ${MUSL_PREFIX}/lib/libexecinfo.a)
@@ -2740,9 +2702,6 @@ if(PORTAUDIO_FOUND)
     message(STATUS "  PortAudio:         ${Green}Found${ColorReset}")
 else()
     message(STATUS "  PortAudio:         ${Red}Not Found${ColorReset}")
-endif()
-if(JACK_FOUND)
-    message(STATUS "  JACK:              ${Green}Found${ColorReset}")
 endif()
 message(STATUS "")
 message(STATUS "Build Commands:")

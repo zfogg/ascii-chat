@@ -96,13 +96,15 @@ typedef struct {
   uint8_t mac_size;            // e.g., 16 for Poly1305, 16 for GCM
   uint8_t hmac_size;           // e.g., 32 for HMAC-SHA256, 64 for HMAC-SHA512
   uint8_t encryption_key_size; // e.g., 32 for XSalsa20, 32 for AES-256
+  uint8_t auth_challenge_size; // e.g., 32 for challenge nonce size
 
   // Key sizes for dynamic negotiation
-  uint16_t public_key_size;  // e.g., 32 for X25519, 1568 for Kyber1024
-  uint16_t private_key_size; // e.g., 32 for X25519, 1568 for Kyber1024
-  uint16_t shared_key_size;  // e.g., 32 for X25519, 32 for Kyber1024
-  uint16_t salt_size;        // e.g., 16 for Argon2id
-  uint16_t signature_size;   // e.g., 64 for Ed25519, 3309 for Dilithium3
+  uint16_t public_key_size;      // e.g., 32 for X25519, 1568 for Kyber1024 (KEX public key size)
+  uint16_t private_key_size;     // e.g., 32 for X25519, 1568 for Kyber1024
+  uint16_t shared_key_size;      // e.g., 32 for X25519, 32 for Kyber1024
+  uint16_t auth_public_key_size; // e.g., 32 for Ed25519, 1952 for Dilithium3 (Auth public key size)
+  uint16_t salt_size;            // e.g., 16 for Argon2id
+  uint16_t signature_size;       // e.g., 64 for Ed25519, 3309 for Dilithium3
 
   // State tracking
   bool initialized;

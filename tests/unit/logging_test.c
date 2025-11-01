@@ -239,7 +239,7 @@ Test(logging, log_memory_operations) {
     memset(ptr, 0xAB, 1024);
     log_info("Filled memory with pattern 0xAB");
 
-    SAFE_REALLOC(ptr, 2048, void *);
+    ptr = SAFE_REALLOC(ptr, 2048, void *);
     log_info("Reallocated memory to 2048 bytes at %p", ptr);
 
     SAFE_FREE(ptr);
@@ -251,10 +251,10 @@ Test(logging, log_memory_operations) {
 
 Test(logging, log_error_codes) {
   // Test logging with common error codes
-  log_error("Network error: %d", ASCIICHAT_ERR_NETWORK);
-  log_error("Memory error: %d", ASCIICHAT_ERR_MALLOC);
-  log_error("Invalid param error: %d", ASCIICHAT_ERR_INVALID_PARAM);
-  log_warn("Buffer full error: %d", ASCIICHAT_ERR_BUFFER_FULL);
+  log_error("Network error: %d", ERROR_NETWORK);
+  log_error("Memory error: %d", ERROR_MEMORY);
+  log_error("Invalid param error: %d", ERROR_INVALID_PARAM);
+  log_warn("Buffer full error: %d", ERROR_BUFFER_FULL);
   log_info("Test numeric value: %d", 42);
 
   cr_assert(true, "Error code logging should work");
@@ -678,6 +678,9 @@ ParameterizedTest(log_init_test_case_t *tc, logging, log_initialization_variatio
   // Log message appropriate to the level
   switch (tc->level) {
   case LOG_DEBUG:
+    log_debug("%s message after init", tc->level_name);
+    break;
+  case LOG_DEV:
     log_debug("%s message after init", tc->level_name);
     break;
   case LOG_INFO:

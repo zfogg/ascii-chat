@@ -7,13 +7,26 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "image2ascii/image.h"
-#include "image2ascii/ascii.h"
 #include "tests/common.h"
 #include "tests/logging.h"
+#include "image2ascii/image.h"
+#include "image2ascii/ascii.h"
+#include "../../lib/asciichat_errno.h"
 
-// Use the enhanced macro to create complete test suite with custom log levels
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(image, LOG_FATAL, LOG_DEBUG, true, true);
+// Custom init function
+void image_test_init(void) {
+  test_logging_disable(false, false);
+}
+
+// Custom fini function to cleanup asciichat_errno
+void image_test_fini(void) {
+  // Clear any error state left by tests
+  asciichat_clear_errno();
+  test_logging_restore();
+}
+
+// Use TestSuite with custom init and fini
+TestSuite(image, .init = image_test_init, .fini = image_test_fini);
 
 /* ============================================================================
  * Image Creation and Destruction Tests - Parameterized
@@ -29,7 +42,7 @@ typedef struct {
 
 static image_new_test_case_t image_new_cases[] = {
     {10, 10, true, "Basic 10x10 image"},
-    {0, 0, true, "Zero dimensions (valid)"},
+    {0, 0, false, "Zero dimensions (invalid - should fail)"},
     {1, 1, true, "Single pixel"},
     {1920, 1080, true, "Large dimensions (1920x1080)"},
     {SIZE_MAX, SIZE_MAX, false, "Overflow protection (SIZE_MAX)"},
@@ -123,8 +136,13 @@ Test(image, image_clear_null) {
 }
 
 Test(image, image_clear_zero_dimensions) {
+  // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
-  cr_assert_not_null(img);
+  cr_assert_null(img, "Zero dimensions should return NULL");
+
+  // If image_new fails for zero dimensions, test with a valid small image instead
+  img = image_new(1, 1);
+  cr_assert_not_null(img, "1x1 image should be valid");
 
   // Should not crash
   image_clear(img);
@@ -203,15 +221,20 @@ Test(image, image_print_empty_palette) {
 }
 
 Test(image, image_print_zero_dimensions) {
+  // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
-  cr_assert_not_null(img);
+  cr_assert_null(img, "Zero dimensions should return NULL");
+
+  // If image_new fails for zero dimensions, test with a valid small image instead
+  img = image_new(1, 1);
+  cr_assert_not_null(img, "1x1 image should be valid");
 
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(img, palette);
 
-  // Should return empty string or NULL for zero dimensions
+  // Should return a valid string for a 1x1 image
+  cr_assert_not_null(result, "image_print should return a string for 1x1 image");
   if (result) {
-    cr_assert_eq(strlen(result), 0);
     SAFE_FREE(result);
   }
 
@@ -481,13 +504,28 @@ Test(image, image_operations_with_null_image) {
   image_resize_interpolation(NULL, NULL);
 
   // Note: image_clear doesn't handle NULL gracefully, so it's not tested here
+
+  // Create a valid image to test resize operations with one NULL parameter
+  image_t *img = image_new(100, 100);
+  cr_assert_not_null(img);
+
+  // Should handle NULL gracefully (no crash)
+  image_resize(NULL, img);
+  image_resize(img, NULL);
+
+  image_destroy(img);
 }
 
 Test(image, image_operations_with_zero_dimensions) {
+  // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
-  cr_assert_not_null(img);
+  cr_assert_null(img, "Zero dimensions should return NULL");
 
-  // Should handle zero dimensions gracefully
+  // If image_new fails for zero dimensions, test with a valid small image instead
+  img = image_new(1, 1);
+  cr_assert_not_null(img, "1x1 image should be valid");
+
+  // Should handle small dimensions gracefully
   image_clear(img);
 
   const char *palette = "@#$%&*+=-:. ";

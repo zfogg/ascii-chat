@@ -48,13 +48,8 @@ typedef struct crypto_handshake_context_t {
   char client_keys_path[256];   // Server: client keys file path
 
   // Dynamic crypto parameters (from crypto_parameters_packet_t)
-  uint16_t kex_public_key_size;  // e.g., 32 for X25519, 1568 for Kyber1024
-  uint16_t auth_public_key_size; // e.g., 32 for Ed25519, 1952 for Dilithium3
-  uint16_t signature_size;       // e.g., 64 for Ed25519, 3309 for Dilithium3
-  uint16_t shared_secret_size;   // e.g., 32 for X25519
-  uint8_t nonce_size;            // e.g., 24 for XSalsa20 nonce
-  uint8_t mac_size;              // e.g., 16 for Poly1305 MAC
-  uint8_t hmac_size;             // e.g., 32 for HMAC-SHA256
+  // Note: all size fields are stored in crypto_ctx and accessed via ctx->crypto_ctx.*
+  // (public_key_size, auth_public_key_size, shared_key_size, signature_size, etc.)
 
   // Client whitelist (server only)
   public_key_t *client_whitelist;   // Pointer to whitelist array

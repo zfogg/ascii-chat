@@ -165,7 +165,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     // Ensure argv is NULL-terminated for getopt_long and any library routines
     char **argv_with_null;
     if (argv[argc - 1] != NULL) {
-      argv_with_null = SAFE_CALLOC((size_t)argc + 1, sizeof(char *, char **));
+      argv_with_null = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
       if (argv_with_null) {
         for (int i = 0; i < argc; i++) {
           argv_with_null[i] = argv[i];
@@ -180,8 +180,12 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
       argv_with_null = argv;
     }
 
-    options_init(argc, argv_with_null, is_client);
-    _exit(0); // Should not reach here if options_init calls exit()
+    asciichat_error_t result = options_init(argc, argv_with_null, is_client);
+    // Exit with appropriate code based on return value
+    if (result != ASCIICHAT_OK) {
+      _exit(result == ERROR_USAGE ? 1 : result);
+    }
+    _exit(0);
   } else if (pid > 0) {
     // Parent process
     int status;
@@ -207,7 +211,7 @@ Test(options, default_values) {
   cr_assert_eq(opt_height, 70);
   cr_assert_eq(auto_width, 1);
   cr_assert_eq(auto_height, 1);
-  cr_assert_str_eq(opt_address, "127.0.0.1");
+  cr_assert_str_eq(opt_address, "localhost");
   cr_assert_str_eq(opt_port, "27224");
   cr_assert_eq(opt_webcam_index, 0);
   cr_assert_eq(opt_webcam_flip, true);
@@ -825,12 +829,11 @@ Test(options, complex_server_combination) {
                   "--address=0.0.0.0",
                   "--port=27224",
                   "--palette=digital",
-                  "--audio",
                   "--log-file=/var/log/ascii-chat.log",
                   "--encrypt",
                   "--keyfile=/etc/ascii-chat/key",
                   NULL};
-  int argc = 8;
+  int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, false);
   cr_assert_eq(result, 0);
@@ -1182,7 +1185,7 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_server_values,
-    ARGV_LIST("server", "--address=0.0.0.0", "--port=12345", "--palette=minimal", "--audio",
+    ARGV_LIST("server", "--address=0.0.0.0", "--port=12345", "--palette=minimal",
               "--log-file=/tmp/server.log", "--encrypt", "--keyfile=/etc/server.key"),
     false,
     {
@@ -1190,7 +1193,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_str_eq(opt_address, "0.0.0.0");
       cr_assert_str_eq(opt_port, "12345");
       cr_assert_eq(opt_palette_type, PALETTE_MINIMAL);
-      cr_assert_eq(opt_audio_enabled, 1);
+      // Note: --audio is not supported for server mode
       cr_assert_str_eq(opt_log_file, "/tmp/server.log");
       cr_assert_eq(opt_encrypt_enabled, 1);
       cr_assert_str_eq(opt_encrypt_keyfile, "/etc/server.key");

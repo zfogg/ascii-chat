@@ -682,8 +682,10 @@ Test(crypto, rekey_initialization) {
   cr_assert_eq(ctx1.rekey_failure_count, 0, "Initial failure count should be 0");
 
   // Check default thresholds
-  cr_assert_eq(ctx1.rekey_packet_threshold, REKEY_DEFAULT_PACKET_THRESHOLD, "Default packet threshold should be 1M");
-  cr_assert_eq(ctx1.rekey_time_threshold, REKEY_DEFAULT_TIME_THRESHOLD, "Default time threshold should be 3600s");
+  // Note: crypto_init() uses test thresholds when CRITERION_TEST or TESTING env vars are set
+  // The test environment sets these, so we expect test thresholds, not default thresholds
+  cr_assert_eq(ctx1.rekey_packet_threshold, REKEY_TEST_PACKET_THRESHOLD, "Test packet threshold should be 1000");
+  cr_assert_eq(ctx1.rekey_time_threshold, REKEY_TEST_TIME_THRESHOLD, "Test time threshold should be 30s");
 }
 
 Test(crypto, rekey_should_trigger_on_packet_count) {
@@ -766,8 +768,8 @@ Test(crypto, rekey_init_rate_limiting) {
   ctx1.key_exchange_complete = true;
   ctx1.handshake_complete = true;
 
-  // Set last rekey time to 30 seconds ago (less than REKEY_MIN_INTERVAL)
-  ctx1.rekey_last_time = time(NULL) - 30;
+  // Set last rekey time to 1 second ago (less than REKEY_MIN_INTERVAL which is 3 seconds)
+  ctx1.rekey_last_time = time(NULL) - 1;
 
   crypto_result_t result = crypto_rekey_init(&ctx1);
   cr_assert_eq(result, CRYPTO_ERROR_REKEY_RATE_LIMITED, "Should be rate limited");

@@ -11,7 +11,6 @@
 #include "../../options.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
-#include "../windows_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>
@@ -181,15 +180,11 @@ void terminal_stop_resize_detection(void) {
     return; // Not running
   }
 
-  log_debug("Stopping Windows console resize detection");
   atomic_store(&g_resize_thread_should_exit, true);
-
   // Wait for thread to exit
   ascii_thread_join(&g_resize_thread, NULL);
-
   atomic_store(&g_resize_detection_active, false);
   g_resize_callback = NULL;
-  log_info("Windows console resize detection stopped");
 }
 
 /**
@@ -599,13 +594,10 @@ asciichat_error_t terminal_clear_scrollback(int fd) {
  * Get terminal size with Windows Console API - simpler than Unix
  */
 asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height) {
-  log_debug("TERMINAL_DEBUG: get_terminal_size called");
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
-  log_debug("TERMINAL_DEBUG: console_handle = %p", (void *)console_handle);
   if (console_handle == INVALID_HANDLE_VALUE) {
-    log_debug("TERMINAL_DEBUG: Invalid console handle, using fallback");
     goto fallback;
   }
 
@@ -613,39 +605,29 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     // Use window size, not buffer size
     *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
     *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-    log_debug("TERMINAL_DEBUG: Got terminal size from console API: %dx%d", *width, *height);
     return ASCIICHAT_OK;
   }
-  log_debug("TERMINAL_DEBUG: GetConsoleScreenBufferInfo failed, using fallback");
 
 fallback:
   // Environment variable fallback
-  log_debug("TERMINAL_DEBUG: Using fallback method");
   char *cols_env = SAFE_GETENV("COLUMNS");
   char *lines_env = SAFE_GETENV("LINES");
 
-  log_debug("TERMINAL_DEBUG: Environment variables - COLUMNS=%s, LINES=%s", cols_env ? cols_env : "NULL",
-            lines_env ? lines_env : "NULL");
-
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
-  log_debug("TERMINAL_DEBUG: Using default size: %dx%d", *width, *height);
 
   if (cols_env && lines_env) {
     char *endptr_width = NULL, *endptr_height = NULL;
     int env_width = strtol(cols_env, &endptr_width, 10);
     int env_height = strtol(lines_env, &endptr_height, 10);
 
-    log_debug("TERMINAL_DEBUG: Parsed env values - width=%d, height=%d", env_width, env_height);
     if (endptr_width != cols_env && endptr_height != lines_env && env_width > 0 && env_height > 0) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
-      log_debug("TERMINAL_DEBUG: Using env size: %dx%d", *width, *height);
       return ASCIICHAT_OK;
     }
   }
 
-  log_debug("TERMINAL_DEBUG: All methods failed, returning default size: %dx%d", *width, *height);
   // Don't return error - just use default size
   return ASCIICHAT_OK;
 }
@@ -688,19 +670,19 @@ static terminal_color_level_t detect_windows_color_support(void) {
   // Check if we can enable ANSI processing
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
   if (console_handle == INVALID_HANDLE_VALUE) {
-    log_debug("Cannot get console handle for color detection");
+    // Don't log here - avoid color changes during detection
     return TERM_COLOR_NONE;
   }
 
   DWORD console_mode = 0;
   if (!GetConsoleMode(console_handle, &console_mode)) {
-    log_debug("Cannot get console mode for color detection");
+    // Don't log here - avoid color changes during detection
     // Even if we can't get console mode, modern Windows terminals support ANSI colors
     // Check for Windows Terminal or other modern terminals
     const char *wt_session = SAFE_GETENV("WT_SESSION");
     const char *conemu = SAFE_GETENV("ConEmuPID");
     if (wt_session || conemu) {
-      log_debug("Detected modern Windows terminal, assuming ANSI color support");
+      // Don't log here - avoid color changes during detection
       return TERM_COLOR_TRUECOLOR;
     }
     return TERM_COLOR_NONE;
@@ -710,7 +692,7 @@ static terminal_color_level_t detect_windows_color_support(void) {
   DWORD new_mode = console_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   if (SetConsoleMode(console_handle, new_mode)) {
     // Success! Windows supports ANSI escapes, assume truecolor
-    log_debug("Windows console supports ANSI escape sequences");
+    // Don't log here - avoid color changes during detection
     return TERM_COLOR_TRUECOLOR;
   }
 
@@ -719,7 +701,7 @@ static terminal_color_level_t detect_windows_color_support(void) {
   const char *wt_session = SAFE_GETENV("WT_SESSION");
   const char *conemu = SAFE_GETENV("ConEmuPID");
   if (wt_session || conemu) {
-    log_debug("Detected modern Windows terminal, assuming ANSI color support despite console mode failure");
+    // Don't log here - avoid color changes during detection
     return TERM_COLOR_TRUECOLOR;
   }
 
@@ -735,18 +717,17 @@ static terminal_color_level_t detect_windows_color_support(void) {
       osInfo.dwOSVersionInfoSize = sizeof(osInfo);
       if (fxPtr(&osInfo) == 0) {
         if (osInfo.dwMajorVersion >= 10) {
-          log_debug("Windows 10+ detected via RtlGetVersion, assuming ANSI color support");
+          // Don't log here - avoid color changes during detection
           return TERM_COLOR_TRUECOLOR;
         }
-        log_debug("Windows version %lu.%lu detected, limited ANSI support", osInfo.dwMajorVersion,
-                  osInfo.dwMinorVersion);
+        // Don't log here - avoid color changes during detection
         return TERM_COLOR_16; // Fallback to 16-color for older Windows
       }
     }
   }
 
   // Final fallback: assume modern Windows with ANSI support
-  log_debug("Using fallback assumption of Windows 10+ ANSI color support");
+  // Don't log here - avoid color changes during detection
   return TERM_COLOR_TRUECOLOR;
 }
 
@@ -755,7 +736,7 @@ static terminal_color_level_t detect_windows_color_support(void) {
  */
 static bool detect_windows_utf8_support(void) {
   UINT codepage = GetConsoleOutputCP();
-  log_debug("Windows console code page: %u", codepage);
+  // Don't log here - avoid color changes during detection
   return (codepage == CP_UTF8);
 }
 
@@ -823,8 +804,8 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
     caps.desired_fps = DEFAULT_MAX_FPS; // 60 FPS on Windows with timeBeginPeriod(1)
   }
 
-  log_debug("Windows terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", caps.color_level,
-            caps.capabilities, caps.utf8_support ? "yes" : "no", caps.desired_fps);
+  // Don't log here - log after colors are initialized to avoid color changes
+  // The log will be done in log_redetect_terminal_capabilities() after detection
 
   return caps;
 }

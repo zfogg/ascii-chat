@@ -67,7 +67,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
@@ -309,7 +309,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
@@ -365,7 +365,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
@@ -434,7 +434,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }
@@ -511,7 +511,7 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }
@@ -562,7 +562,7 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
 bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
-  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != 0) {
+  if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
   }

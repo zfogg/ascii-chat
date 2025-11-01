@@ -5,20 +5,33 @@
 #include <string.h>
 #include <math.h>
 
-#include "mixer.h"
-#include "audio.h"
 #include "tests/common.h"
 #include "tests/logging.h"
+#include "mixer.h"
+#include "audio.h"
+#include "../../lib/asciichat_errno.h"
 
-// Use the enhanced macro to create complete test suites with custom log levels
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer_utils, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(compressor, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ducking, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(noise_gate, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(highpass_filter, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(soft_clip, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(mixer_integration, LOG_FATAL, LOG_DEBUG, true, true);
+// Custom init function
+void mixer_test_init(void) {
+  test_logging_disable(false, false);
+}
+
+// Custom fini function to cleanup asciichat_errno for all mixer test suites
+void mixer_test_fini(void) {
+  // Clear any error state left by tests
+  asciichat_clear_errno();
+  test_logging_restore();
+}
+
+// Use TestSuite directly with custom init and fini to cleanup error state
+TestSuite(mixer, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(mixer_utils, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(compressor, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(ducking, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(noise_gate, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(highpass_filter, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(soft_clip, .init = mixer_test_init, .fini = mixer_test_fini);
+TestSuite(mixer_integration, .init = mixer_test_init, .fini = mixer_test_fini);
 
 // Test data generation helpers
 static void generate_sine_wave(float *buffer, int num_samples, float frequency, float sample_rate, float amplitude) {
@@ -38,8 +51,13 @@ static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int 
   audio_ring_buffer_t *buffer = audio_ring_buffer_create();
   cr_assert_not_null(buffer);
 
-  int written = audio_ring_buffer_write(buffer, data, num_samples);
-  cr_assert_eq(written, num_samples);
+  // audio_ring_buffer_write returns asciichat_error_t, not sample count
+  asciichat_error_t result = audio_ring_buffer_write(buffer, data, num_samples);
+  cr_assert_eq(result, ASCIICHAT_OK, "audio_ring_buffer_write should succeed");
+
+  // For tests, mark jitter buffer as filled immediately so reads work
+  // (Normally this happens after AUDIO_JITTER_BUFFER_THRESHOLD samples are written)
+  buffer->jitter_buffer_filled = true;
 
   return buffer;
 }
@@ -728,7 +746,8 @@ Theory((size_t num_sources, float amplitude), mixer_integration, audio_bounds_pr
     float test_data[256];
     generate_sine_wave(test_data, 256, 440.0f + (float)i * 100.0f, 48000.0f, amplitude);
 
-    audio_ring_buffer_write(buffers[i], test_data, 256);
+    asciichat_error_t write_result = audio_ring_buffer_write(buffers[i], test_data, 256);
+    cr_assume(write_result == ASCIICHAT_OK);
     mixer_add_source(mixer, 100 + (uint32_t)i, buffers[i]);
   }
 

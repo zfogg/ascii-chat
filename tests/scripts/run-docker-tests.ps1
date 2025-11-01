@@ -12,15 +12,16 @@
 #   ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect # Run unit tests: options and terminal_detect
 #   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation" # Run specific test case
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding=$false)]
 param(
+    [Parameter(Position=0)]
     [string]$Suite = "",
+    [Parameter(Position=1)]
     [string]$Test = "",
     [string]$Filter = "",
     [switch]$Build,
     [switch]$NoBuild,
     [switch]$Interactive,
-    [switch]$VerboseOutput,
     [switch]$Clean,
     [string]$BuildType = "debug",
     [int]$ScanPort = 8080,
@@ -262,7 +263,9 @@ if ($Interactive) {
         $TestCommand += " -b $BuildType"
     }
 
-    if ($VerboseOutput) {
+    # Use PowerShell's built-in -Verbose parameter (from [CmdletBinding()])
+    # $VerbosePreference is set to 'Continue' when -Verbose is used
+    if ($PSBoundParameters.ContainsKey('Verbose') -or $VerbosePreference -eq 'Continue') {
         $TestCommand += " --verbose"
     }
 
@@ -280,6 +283,7 @@ if ($Interactive) {
         # Fall back to positional arguments for backward compatibility
         $TestCommand += " " + ($TestTargets -join " ")
     }
+    # If neither Suite nor TestTargets are provided, run_tests.sh will default to "all"
 
     # Configure CMake if build_docker doesn't exist or -Clean is specified
     # Let run_tests.sh handle building only the specific test executables needed
@@ -308,7 +312,9 @@ fi
     $DockerFlags = "-t"
 
     Write-Host "Running tests in Docker container..." -ForegroundColor Cyan
-    if ($TestTargets.Count -gt 0) {
+    if ($Suite) {
+        Write-Host "Running $Suite tests" -ForegroundColor Gray
+    } elseif ($TestTargets.Count -gt 0) {
         Write-Host "Test targets: $($TestTargets -join ', ')" -ForegroundColor Gray
     } else {
         Write-Host "Running all tests" -ForegroundColor Gray

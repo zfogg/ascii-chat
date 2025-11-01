@@ -162,6 +162,12 @@ void ansi_rle_finish(ansi_rle_context_t *ctx) {
   }
 }
 
+// Initialize the decimal lookup table (call once at startup)
+void ansi_fast_init(void) {
+  // Initialize the dec3 cache used by truecolor functions
+  ascii_simd_init();
+}
+
 // 256-color mode initialization (optional high-speed mode)
 void ansi_fast_init_256color(void) {
   if (color256_initialized)

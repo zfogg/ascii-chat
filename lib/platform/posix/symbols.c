@@ -9,15 +9,25 @@
  * @date January 2025
  */
 
-#include "../symbols.h"
-#include "../../common.h"
-#include "../../hashtable.h"
-#include "../abstraction.h"
-#include "../../util/path.h"
+#ifndef _WIN32
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdatomic.h>
+
+#include "../symbols.h"
+#include "../../common.h"
+#include "../../hashtable.h"
+#include "../../util/path.h"
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+// Sentinel string for failed allocations (replaces NULL in middle of array)
+#define NULL_SENTINEL "[NULL]"
 
 // ============================================================================
 // Cache State
@@ -44,11 +54,14 @@ static atomic_uint_fast64_t g_cache_misses = 0;
  */
 static inline uint32_t hash_address(void *addr) {
   uintptr_t val = (uintptr_t)addr;
-  // Mix the bits to get better distribution
-  val = ((val >> 16) ^ val) * 0x45d9f3b;
-  val = ((val >> 16) ^ val) * 0x45d9f3b;
-  val = (val >> 16) ^ val;
-  return (uint32_t)val;
+  // Use XOR folding to avoid overflow issues
+  // This is guaranteed to not overflow and provides good distribution
+  uint32_t low = (uint32_t)val;
+  uint32_t high = (uint32_t)(val >> 32);
+
+  // Fold 64-bit address into 32-bit hash
+  // XOR folding is safe and avoids any overflow concerns
+  return low ^ high;
 }
 
 /**
@@ -95,14 +108,24 @@ void symbol_cache_cleanup(void) {
     return;
   }
 
+  // Mark as uninitialized FIRST to prevent new inserts during cleanup
+  atomic_store(&g_symbol_cache_initialized, false);
+
   if (g_symbol_cache) {
-    // Free all symbol entries (hashtable is already thread-safe)
+    // Acquire write lock to prevent any concurrent operations
+    hashtable_write_lock(g_symbol_cache);
+
+    // Free all symbol entries using hashtable_foreach
+    // We iterate through all buckets with the lock held, ensuring no new entries
+    // can be inserted (since initialized=false prevents new inserts)
     hashtable_foreach(g_symbol_cache, cleanup_symbol_entry_callback, NULL);
+
+    // Release lock before destroying
+    hashtable_write_unlock(g_symbol_cache);
+
     hashtable_destroy(g_symbol_cache);
     g_symbol_cache = NULL;
   }
-
-  atomic_store(&g_symbol_cache_initialized, false);
 
   log_debug("Symbol cache cleaned up (hits=%llu, misses=%llu)", (unsigned long long)atomic_load(&g_cache_hits),
             (unsigned long long)atomic_load(&g_cache_misses));
@@ -125,44 +148,150 @@ const char *symbol_cache_lookup(void *addr) {
   return NULL;
 }
 
+// Helper function to hash uint32_t (duplicated from hashtable.c to avoid dependency)
+static inline uint32_t hash_uint32_for_cache(uint32_t key) {
+  // FNV-1a hash - same as hashtable.c
+  uint64_t hash = 2166136261ULL;
+  const uint64_t fnv_prime = 16777619ULL;
+
+  hash ^= (key & 0xFF);
+  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
+  hash ^= ((key >> 8) & 0xFF);
+  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
+  hash ^= ((key >> 16) & 0xFF);
+  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
+  hash ^= ((key >> 24) & 0xFF);
+  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
+
+  // Use bit masking for power-of-2 bucket count
+  return (uint32_t)hash & (HASHTABLE_BUCKET_COUNT - 1);
+}
+
 bool symbol_cache_insert(void *addr, const char *symbol) {
   if (!atomic_load(&g_symbol_cache_initialized) || !g_symbol_cache || !symbol) {
     return false;
   }
 
+  uint32_t key = hash_address(addr);
+
+  // Acquire write lock to make the entire operation atomic
+  // This prevents other threads from inserting between our check and insert
+  // Store local pointer before locking to avoid race with cleanup
+  hashtable_t *cache = g_symbol_cache;
+  if (!cache) {
+    return false;
+  }
+
+  hashtable_write_lock(cache);
+
+  // Double-check g_symbol_cache is still valid and initialized after acquiring lock
+  // (cleanup might have destroyed it or marked it uninitialized between our check and lock acquisition)
+  if (!g_symbol_cache || !atomic_load(&g_symbol_cache_initialized)) {
+    hashtable_write_unlock(cache);
+    return false;
+  }
+
+  // Use local cache variable for rest of function
+  cache = g_symbol_cache;
+
+  // Calculate bucket index
+  uint32_t bucket_idx = hash_uint32_for_cache(key);
+
+  // Check if entry already exists by directly accessing hashtable buckets
+  // We can do this because we hold the write lock
+  hashtable_entry_t *curr = cache->buckets[bucket_idx];
+  hashtable_entry_t *prev = NULL;
+  hashtable_entry_t *existing_entry = NULL;
+  symbol_entry_t *existing_value = NULL;
+
+  while (curr) {
+    if (curr->key == key && curr->in_use) {
+      existing_entry = curr;
+      existing_value = (symbol_entry_t *)curr->value;
+      break;
+    }
+    prev = curr;
+    curr = curr->next;
+  }
+
+  // If entry exists with same address, nothing to do
+  if (existing_value && existing_value->addr == addr) {
+    hashtable_write_unlock(cache);
+    return true;
+  }
+
+  // If key exists but address doesn't match, remove and free the old entry
+  if (existing_entry) {
+    // Free the old entry's symbol string and structure
+    if (existing_value) {
+      if (existing_value->symbol) {
+        SAFE_FREE(existing_value->symbol);
+      }
+      SAFE_FREE(existing_value);
+    }
+
+    // Remove from chain (we already have prev and existing_entry)
+    if (prev) {
+      prev->next = existing_entry->next;
+    } else {
+      cache->buckets[bucket_idx] = existing_entry->next;
+    }
+
+    // Return entry to pool
+    existing_entry->key = 0;
+    existing_entry->value = NULL;
+    existing_entry->in_use = false;
+    existing_entry->next = cache->free_list;
+    cache->free_list = existing_entry;
+
+    cache->entry_count--;
+    cache->deletions++;
+  }
+
   // Create new entry
   symbol_entry_t *entry = SAFE_MALLOC(sizeof(symbol_entry_t), symbol_entry_t *);
   if (!entry) {
+    hashtable_write_unlock(cache);
     return false;
   }
 
   entry->addr = addr;
-  entry->symbol = strdup(symbol); // Use strdup for symbol string
+  entry->symbol = strdup(symbol);
   if (!entry->symbol) {
     SAFE_FREE(entry);
+    hashtable_write_unlock(cache);
     return false;
   }
 
-  uint32_t key = hash_address(addr);
-
-  // Check if entry already exists (race condition prevention)
-  // Hashtable is already thread-safe with internal rwlocks
-  symbol_entry_t *existing = (symbol_entry_t *)hashtable_lookup(g_symbol_cache, key);
-  if (existing && existing->addr == addr) {
-    // Entry already exists, free our new entry and return success
+  // Get a free entry from pool
+  hashtable_entry_t *ht_entry = cache->free_list;
+  if (!ht_entry) {
+    // Pool exhausted
     SAFE_FREE(entry->symbol);
     SAFE_FREE(entry);
-    return true;
-  }
-
-  // Insert new entry (hashtable handles thread safety)
-  bool success = hashtable_insert(g_symbol_cache, key, entry);
-
-  if (!success) {
-    SAFE_FREE(entry->symbol);
-    SAFE_FREE(entry);
+    hashtable_write_unlock(cache);
+    SET_ERRNO(ERROR_MEMORY, "Hashtable entry pool exhausted");
     return false;
   }
+
+  cache->free_list = ht_entry->next;
+  ht_entry->next = NULL;
+  ht_entry->in_use = true;
+
+  // Insert new entry
+  ht_entry->key = key;
+  ht_entry->value = entry;
+  ht_entry->next = cache->buckets[bucket_idx];
+  if (cache->buckets[bucket_idx]) {
+    cache->collisions++;
+  }
+  cache->buckets[bucket_idx] = ht_entry;
+
+  cache->entry_count++;
+  cache->insertions++;
+
+  // Release lock
+  hashtable_write_unlock(cache);
 
   return true;
 }
@@ -194,8 +323,6 @@ void symbol_cache_print_stats(void) {
 // ============================================================================
 // Batch Resolution with addr2line
 // ============================================================================
-
-#ifndef _WIN32 // addr2line is POSIX-specific
 
 /**
  * @brief Run addr2line on a batch of addresses and parse results
@@ -283,25 +410,27 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     bool has_file = (strcmp(file_line, "??:0") != 0 && strcmp(file_line, "??:?") != 0);
 
     if (!has_func && !has_file) {
-      snprintf(result[i], 1024, "%p", buffer[i]);
+      // Complete unknown - show raw address
+      SAFE_SNPRINTF(result[i], 1024, "%p", buffer[i]);
     } else if (has_func && has_file) {
+      // Best case - both function and file:line known
       if (strstr(rel_path, ":") != NULL) {
-        snprintf(result[i], 1024, "%s in %s()", rel_path, func_name);
+        SAFE_SNPRINTF(result[i], 1024, "%s in %s()", rel_path, func_name);
       } else {
-        snprintf(result[i], 1024, "%s() at %s", func_name, rel_path);
+        SAFE_SNPRINTF(result[i], 1024, "%s() at %s", func_name, rel_path);
       }
     } else if (has_func) {
-      snprintf(result[i], 1024, "%s() at %p", func_name, buffer[i]);
+      // Function known but file unknown (common for library functions)
+      SAFE_SNPRINTF(result[i], 1024, "%s() at %p", func_name, buffer[i]);
     } else {
-      snprintf(result[i], 1024, "%s (unknown function)", rel_path);
+      // File known but function unknown (rare)
+      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)", rel_path);
     }
   }
 
   pclose(fp);
   return result;
 }
-
-#endif // !_WIN32
 
 char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
@@ -311,30 +440,20 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
   // The cache must be initialized explicitly by platform_init() before use
   if (!atomic_load(&g_symbol_cache_initialized)) {
-// Cache not initialized - fall back to uncached resolution
-// This happens during early initialization before platform_init() completes
-#ifndef _WIN32
+    // Cache not initialized - fall back to uncached resolution
+    // This happens during early initialization before platform_init() completes
     return run_addr2line_batch(buffer, size);
-#else
-    // Windows: just return raw addresses
-    char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
-    if (result) {
-      for (int i = 0; i < size; i++) {
-        result[i] = SAFE_MALLOC(32, char *);
-        if (result[i]) {
-          snprintf(result[i], 32, "%p", buffer[i]);
-        }
-      }
-    }
-    return result;
-#endif
   }
 
-  // Allocate result array
+  // Allocate result array (size + 1 for NULL terminator)
+  // CALLOC zeros the memory, so result[size] is already NULL
   char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
   if (!result) {
     return NULL;
   }
+
+  // Ensure NULL terminator is explicitly set (CALLOC already did this, but be explicit)
+  result[size] = NULL;
 
   // First pass: check cache for all addresses
   int uncached_count = 0;
@@ -345,7 +464,11 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
     const char *cached = symbol_cache_lookup(buffer[i]);
     if (cached) {
       // Cache hit - duplicate the string
-      result[i] = strdup(cached);
+      result[i] = platform_strdup(cached);
+      // If allocation failed, use sentinel string instead of NULL
+      if (!result[i]) {
+        result[i] = platform_strdup(NULL_SENTINEL);
+      }
     } else {
       // Cache miss - track for batch resolution
       uncached_addrs[uncached_count] = buffer[i];
@@ -356,33 +479,53 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // Second pass: resolve uncached addresses with addr2line
   if (uncached_count > 0) {
-#ifndef _WIN32
     char **resolved = run_addr2line_batch(uncached_addrs, uncached_count);
 
     if (resolved) {
       for (int i = 0; i < uncached_count; i++) {
         if (resolved[i]) {
           int orig_idx = uncached_indices[i];
-          result[orig_idx] = strdup(resolved[i]);
+          result[orig_idx] = platform_strdup(resolved[i]);
 
-          // Insert into cache
-          symbol_cache_insert(uncached_addrs[i], resolved[i]);
+          // If strdup failed, use sentinel string instead of NULL
+          if (!result[orig_idx]) {
+            result[orig_idx] = platform_strdup(NULL_SENTINEL);
+          }
+
+          // Only insert into cache if strdup succeeded (and it's not the sentinel)
+          if (result[orig_idx] && strcmp(result[orig_idx], NULL_SENTINEL) != 0) {
+            symbol_cache_insert(uncached_addrs[i], resolved[i]);
+          }
 
           SAFE_FREE(resolved[i]);
+        } else {
+          // resolved[i] is NULL - use sentinel string
+          int orig_idx = uncached_indices[i];
+          if (!result[orig_idx]) {
+            result[orig_idx] = platform_strdup(NULL_SENTINEL);
+            // If platform_strdup fails (out of memory), we'll have NULL in the middle
+            // but this should be extremely rare
+          }
         }
       }
       SAFE_FREE(resolved);
-    }
-#else
-    // Windows: just use raw addresses
-    for (int i = 0; i < uncached_count; i++) {
-      int orig_idx = uncached_indices[i];
-      result[orig_idx] = SAFE_MALLOC(32, char *);
-      if (result[orig_idx]) {
-        snprintf(result[orig_idx], 32, "%p", uncached_addrs[i]);
+    } else {
+      // addr2line failed - fill uncached entries with raw addresses or sentinel
+      for (int i = 0; i < uncached_count; i++) {
+        int orig_idx = uncached_indices[i];
+        if (!result[orig_idx]) {
+          result[orig_idx] = SAFE_MALLOC(32, char *);
+          if (result[orig_idx]) {
+            SAFE_SNPRINTF(result[orig_idx], 32, "%p", uncached_addrs[i]);
+          } else {
+            // Even SAFE_MALLOC failed - use sentinel string
+            result[orig_idx] = platform_strdup(NULL_SENTINEL);
+            // If platform_strdup fails (out of memory), we'll have NULL in the middle
+            // but this should be extremely rare
+          }
+        }
       }
     }
-#endif
   }
 
   return result;
@@ -393,10 +536,28 @@ void symbol_cache_free_symbols(char **symbols) {
     return;
   }
 
-  int i = 0;
-  while (symbols[i] != NULL) {
+  // The array is NULL-terminated (allocated with size+1, with result[size] = NULL)
+  // The terminator is a SINGLE NULL at index 'size'
+  // Failed allocations use the NULL_SENTINEL string "[NULL]" instead of NULL,
+  // so there are no NULL entries in the middle - only at the terminator
+  // This makes iteration safe: we can iterate until we find the first NULL (the terminator)
+
+  // Iterate through entries, freeing all non-NULL entries until we hit the NULL terminator
+  for (int i = 0; i < 64; i++) { // Reasonable limit to prevent infinite loop
+    if (symbols[i] == NULL) {
+      // Found NULL - this is the terminator, stop here
+      break;
+    }
+
+    // Found a non-NULL entry - check if it's the sentinel string
+    // Both regular strings and sentinel strings are allocated (with strdup),
+    // so we free them all
     SAFE_FREE(symbols[i]);
-    i++;
+    symbols[i] = NULL; // Clear pointer after freeing
   }
+
+  // Free the array itself
   SAFE_FREE(symbols);
 }
+
+#endif // !_WIN32

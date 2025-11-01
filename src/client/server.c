@@ -167,16 +167,20 @@ static float get_reconnect_delay(unsigned int reconnect_attempt) {
  */
 static int close_socket(socket_t socketfd) {
   if (socket_is_valid(socketfd)) {
-    log_info("Closing socket connection");
+    log_debug("Closing socket %d", socketfd);
+
     if (socket_close(socketfd) != 0) {
       log_error("Failed to close socket: %s", network_error_string());
       return -1;
     }
+
     // Small delay to ensure socket resources are fully released
     // This prevents WSA error 10038 on subsequent connections
     platform_sleep_usec(50000); // 50ms delay
+
     return 0;
   }
+
   return 0; // Socket already closed or invalid
 }
 
@@ -280,7 +284,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       // Try IPv6 loopback connection
       g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
           SAFE_STRNCPY(g_server_ip, "::1", sizeof(g_server_ip));
@@ -288,7 +292,11 @@ int server_connection_establish(const char *address, int port, int reconnect_att
           res = NULL; // Prevent double-free at connection_success label
           goto connection_success;
         }
-        log_debug("IPv6 loopback connection failed: %s", network_error_string());
+        if (socket_get_error(g_sockfd) != 0) {
+          log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
+        } else {
+          //log_debug("IPv6 loopback connection failed: %s", network_error_string());
+        }
         close_socket(g_sockfd);
         g_sockfd = INVALID_SOCKET_VALUE;
       }
@@ -310,7 +318,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     if (ipv4_result == 0 && res != NULL) {
       g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
           SAFE_STRNCPY(g_server_ip, "127.0.0.1", sizeof(g_server_ip));
@@ -318,7 +326,11 @@ int server_connection_establish(const char *address, int port, int reconnect_att
           res = NULL; // Prevent double-free at connection_success label
           goto connection_success;
         }
-        log_debug("IPv4 loopback connection failed: %s", network_error_string());
+        if (socket_get_error(g_sockfd) != 0) {
+          log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
+        } else {
+          //log_debug("IPv4 loopback connection failed: %s", network_error_string());
+        }
         close_socket(g_sockfd);
         g_sockfd = INVALID_SOCKET_VALUE;
       }
@@ -385,7 +397,11 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       }
 
       // Connection failed - close socket and try next address
-      log_debug("Connection failed: %s", network_error_string());
+      if (socket_get_error(g_sockfd) != 0) {
+        log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
+      } else {
+        //log_debug("Connection failed: %s", network_error_string());
+      }
       close_socket(g_sockfd);
       g_sockfd = INVALID_SOCKET_VALUE;
     }
