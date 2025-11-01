@@ -5,10 +5,9 @@
 #include <arpa/inet.h> // For htonl/ntohl
 
 #include "tests/common.h"
-#include "packet_queue.h"
-#include "network.h"
-#include "crc32.h" // For CRC calculation
 #include "tests/logging.h"
+#include "packet_queue.h"
+#include "crc32.h" // For CRC calculation
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);
@@ -531,7 +530,7 @@ Test(packet_queue, large_packet_data) {
   // Create large test data
   size_t large_size = 64 * 1024; // 64KB
   char *large_data;
-  large_data = large_size = SAFE_MALLOC(char *);
+  large_data = SAFE_MALLOC(large_size, char *);
 
   // Fill with test pattern
   for (size_t i = 0; i < large_size; i++) {

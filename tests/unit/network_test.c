@@ -10,12 +10,41 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "network.h"
 #include "tests/common.h"
 #include "tests/logging.h"
+#include "network/network.h"
+#include "network/packet.h"
+#include "network/packet_types.h"
+#include "network/av.h"
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);
+
+// Stub implementations for client-specific functions
+int send_audio_data(int sockfd, const float *samples, int num_samples) {
+  (void)sockfd;
+  (void)samples;
+  (void)num_samples;
+  return -1; // Stub - not implemented in library
+}
+
+int receive_audio_data(int sockfd, float *samples, int num_samples) {
+  (void)sockfd;
+  (void)samples;
+  (void)num_samples;
+  return -1; // Stub - not implemented in library
+}
+
+int send_client_join_packet(int sockfd, const char *username, uint32_t capabilities) {
+  (void)sockfd;
+  (void)username;
+  (void)capabilities;
+  return -1; // Stub - client-specific function
+}
+
+int parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
+  return av_parse_size_message(message, width, height);
+}
 
 static int create_test_socket(void) {
   return socket(AF_INET, SOCK_STREAM, 0);

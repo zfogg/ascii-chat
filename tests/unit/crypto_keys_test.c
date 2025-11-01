@@ -303,7 +303,7 @@ Test(crypto_keys, fetch_github_keys_valid_user) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_github_keys("octocat", &keys, &num_keys);
+  int result = fetch_github_keys("octocat", &keys, &num_keys, false);
 
   // This will fail without BearSSL, but tests the interface
   if (result == 0) {
@@ -327,7 +327,7 @@ Test(crypto_keys, fetch_github_keys_invalid_user) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_github_keys("nonexistentuser12345", &keys, &num_keys);
+  int result = fetch_github_keys("nonexistentuser12345", &keys, &num_keys, false);
 
   cr_assert_eq(result, -1, "Invalid user should fail");
   cr_assert_null(keys, "Keys array should be NULL on failure");
@@ -338,7 +338,7 @@ Test(crypto_keys, fetch_gitlab_keys_valid_user) {
   char **keys = NULL;
   size_t num_keys = 0;
 
-  int result = fetch_gitlab_keys("gitlab", &keys, &num_keys);
+  int result = fetch_gitlab_keys("gitlab", &keys, &num_keys, false);
 
   // This will fail without BearSSL, but tests the interface
   if (result == 0) {

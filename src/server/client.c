@@ -1025,12 +1025,25 @@ void *client_send_thread_func(void *arg) {
       sent_something = true;
     }
 
+    // Always consume frames from the buffer to prevent accumulation
+    // Rate-limit the actual sending, but always mark frames as consumed
+    if (!client->outgoing_video_buffer) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no outgoing video buffer", client->client_id);
+      break;
+    }
+
+    // Get latest frame from double buffer (lock-free operation)
+    // This marks the frame as consumed even if we don't send it yet
+    const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
+
     // Check if it's time to send a video frame (60fps rate limiting)
+    // Only rate-limit the SEND operation, not frame consumption
     struct timespec ts, frame_start, frame_end, step1, step2, step3, step4, step5;
     (void)clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t current_time = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
     if (current_time - last_video_send_time >= video_send_interval_us) {
       (void)clock_gettime(CLOCK_MONOTONIC, &frame_start);
+
       // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
       // If so, send CLEAR_CONSOLE before sending the new frame
       int rendered_sources = atomic_load(&client->last_rendered_grid_sources);
@@ -1047,14 +1060,6 @@ void *client_send_thread_func(void *arg) {
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
       }
-
-      if (!client->outgoing_video_buffer) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no outgoing video buffer", client->client_id);
-        break;
-      }
-
-      // Get latest frame from double buffer (lock-free operation)
-      const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
 
       if (!frame || !frame->data) {
         SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame or frame->data: frame=%p, data=%p",

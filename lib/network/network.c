@@ -416,6 +416,11 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
  * @return 0 on success, -1 on error
  */
 int set_socket_timeout(socket_t sockfd, int timeout_seconds) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
+
   struct timeval timeout;
   timeout.tv_sec = timeout_seconds;
   timeout.tv_usec = 0;
@@ -437,6 +442,10 @@ int set_socket_timeout(socket_t sockfd, int timeout_seconds) {
  * @return 0 on success, -1 on error
  */
 int set_socket_keepalive(socket_t sockfd) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
   return socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
 }
 
@@ -446,6 +455,10 @@ int set_socket_keepalive(socket_t sockfd) {
  * @return 0 on success, -1 on error
  */
 int set_socket_nonblocking(socket_t sockfd) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return -1;
+  }
   return socket_set_nonblocking(sockfd, true);
 }
 
@@ -467,6 +480,11 @@ const char *network_error_string() {
  * @return true on success, false on failure
  */
 bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    errno = EBADF;
+    return false;
+  }
+
   // Set socket to non-blocking for timeout control
   if (set_socket_nonblocking(sockfd) != 0) {
     return false;

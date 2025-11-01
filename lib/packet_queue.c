@@ -213,7 +213,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
       queue->count--;
       queue->packets_dropped++;
 
-      log_debug("Dropped packet from queue (full): type=%d, client=%u", type, client_id);
+      log_debug_every(1000000, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
     }
   }
 

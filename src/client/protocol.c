@@ -373,33 +373,38 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!take_snapshot) {
     // Get the client's desired FPS (what we told the server we can display)
     int client_display_fps = MAX_FPS; // This respects the --fps command line flag
-    long render_interval_ms = 1000 / client_display_fps;
+    // Use microseconds for precision - avoid integer division loss
+    uint64_t render_interval_us = 1000000 / client_display_fps;
 
     struct timespec current_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    // Calculate elapsed time since last render
-    long elapsed_ms = 0;
+    // Calculate elapsed time since last render in microseconds (high precision)
+    uint64_t elapsed_us = 0;
     if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
-      elapsed_ms = (current_time.tv_sec - last_render_time.tv_sec) * 1000 +
-                   (current_time.tv_nsec - last_render_time.tv_nsec) / 1000000;
+      int64_t sec_diff = (int64_t)current_time.tv_sec - (int64_t)last_render_time.tv_sec;
+      int64_t nsec_diff = (int64_t)current_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
+      elapsed_us = (uint64_t)(sec_diff * 1000000LL) + (uint64_t)(nsec_diff / 1000);
+      // Handle underflow when nanoseconds are negative
+      if (nsec_diff < 0 && sec_diff > 0) {
+        elapsed_us -= 1000000;
+      }
     }
 
     // Skip rendering if not enough time has passed (frame rate limiting)
-    if (elapsed_ms > 0 && elapsed_ms < render_interval_ms) {
-      // Drop this frame to maintain display FPS limit
-      SAFE_FREE(frame_data);
-      return;
+    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
+      if (elapsed_us > 0 && elapsed_us < render_interval_us) {
+        // Drop this frame to maintain display FPS limit
+        SAFE_FREE(frame_data);
+        return;
+      }
     }
 
     // Update last render time
     last_render_time = current_time;
   }
 
-  log_info("CLIENT_DISPLAY_DEBUG: Calling display_render_frame() with frame_data=%p, size=%u, take_snapshot=%d",
-           frame_data, header.original_size, take_snapshot);
   display_render_frame(frame_data, take_snapshot);
-  log_info("CLIENT_DISPLAY_DEBUG: display_render_frame() completed");
 
   SAFE_FREE(frame_data);
 }
@@ -552,11 +557,8 @@ static void *data_reception_thread_func(void *arg) {
     void *data = envelope.data;
     size_t len = envelope.len;
 
-    log_info("CLIENT_RECV_DEBUG: Received packet type %d, len=%zu", type, len);
-
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
-      log_info("CLIENT_RECV_DEBUG: Processing ASCII_FRAME packet");
       handle_ascii_frame_packet(data, len);
       break;
 

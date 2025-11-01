@@ -459,11 +459,8 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   // Mark detection as reliable (POSIX has good environment variable support)
   caps.detection_reliable = true;
 
-  log_debug("POSIX capabilities: color=%s, utf8=%s, mode=%s", terminal_color_level_name(caps.color_level),
-            caps.utf8_support ? "yes" : "no",
-            caps.render_mode == RENDER_MODE_HALF_BLOCK   ? "half-block"
-            : caps.render_mode == RENDER_MODE_BACKGROUND ? "background"
-                                                         : "foreground");
+  // Don't log here - log after colors are initialized to avoid color changes
+  // The log will be done in log_redetect_terminal_capabilities() after detection
 
   return caps;
 }

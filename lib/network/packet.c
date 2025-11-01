@@ -64,20 +64,18 @@ static int calculate_packet_timeout(size_t packet_size) {
  * @param expected_crc Output: expected CRC32
  * @return 0 on success, -1 on error
  */
-int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
+asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
                            uint32_t *expected_crc) {
   if (!header || !pkt_type || !pkt_len || !expected_crc) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p", header,
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p", header,
               pkt_type, pkt_len, expected_crc);
-    return -1;
   }
 
   // First validate packet length BEFORE converting from network byte order
   // This prevents potential integer overflow issues
   uint32_t pkt_len_network = header->length;
   if (pkt_len_network == 0xFFFFFFFF) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet length in network byte order: 0xFFFFFFFF");
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet length in network byte order: 0xFFFFFFFF");
   }
 
   // Convert from network byte order
@@ -88,14 +86,12 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
 
   // Validate magic
   if (magic != PACKET_MAGIC) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
   }
 
   // Validate packet size with bounds checking
   if (len > MAX_PACKET_SIZE) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %u > %d", len, MAX_PACKET_SIZE);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %u > %d", len, MAX_PACKET_SIZE);
   }
 
   // Validate packet type and size constraints
@@ -103,94 +99,81 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
   case PACKET_TYPE_PROTOCOL_VERSION:
     // Protocol version packet has fixed size
     if (len != sizeof(protocol_version_packet_t)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version packet size: %u, expected %zu", len,
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version packet size: %u, expected %zu", len,
                 sizeof(protocol_version_packet_t));
-      return -1;
     }
     break;
   case PACKET_TYPE_ASCII_FRAME:
     // ASCII frame contains header + frame data
     if (len < sizeof(ascii_frame_packet_t)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ASCII frame packet size: %u, minimum %zu", len,
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ASCII frame packet size: %u, minimum %zu", len,
                 sizeof(ascii_frame_packet_t));
-      return -1;
     }
     break;
   case PACKET_TYPE_IMAGE_FRAME:
     // Image frame contains header + pixel data
     if (len < sizeof(image_frame_packet_t)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid image frame packet size: %u, minimum %zu", len,
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid image frame packet size: %u, minimum %zu", len,
                 sizeof(image_frame_packet_t));
-      return -1;
     }
     break;
   case PACKET_TYPE_AUDIO:
     if (len == 0 || len > AUDIO_SAMPLES_PER_PACKET * sizeof(float) * 2) { // Max stereo samples
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio packet size: %u", len);
     }
     break;
   case PACKET_TYPE_AUDIO_BATCH:
     // Batch must have at least header + some samples
     if (len < sizeof(audio_batch_packet_t) + sizeof(float)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio batch packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio batch packet size: %u", len);
     }
     break;
   case PACKET_TYPE_PING:
   case PACKET_TYPE_PONG:
     if (len != 0) { // Ping/pong are just header packets and no payload.
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ping/pong packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ping/pong packet size: %u", len);
     }
     break;
   case PACKET_TYPE_CLIENT_CAPABILITIES:
     // Client capabilities packet can be empty or contain capability data
     if (len > 1024) { // Reasonable limit for capability data
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client capabilities packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client capabilities packet size: %u", len);
     }
     break;
   case PACKET_TYPE_CLIENT_JOIN:
     if (len != sizeof(client_info_packet_t)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client join packet size: %u, expected %zu", len,
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client join packet size: %u, expected %zu", len,
                 sizeof(client_info_packet_t));
-      return -1;
     }
     break;
   case PACKET_TYPE_CLIENT_LEAVE:
     // Client leave packet can be empty or contain reason
     if (len > 256) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client leave packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client leave packet size: %u", len);
     }
     break;
   case PACKET_TYPE_STREAM_START:
   case PACKET_TYPE_STREAM_STOP:
     if (len != sizeof(uint32_t)) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len, sizeof(uint32_t));
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len, sizeof(uint32_t));
     }
     break;
   case PACKET_TYPE_SIZE_MESSAGE:
     // Size message format: "SIZE:width,height"
     if (len == 0 || len > 32) { // Reasonable size for "SIZE:1234,5678"
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid size message packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid size message packet size: %u", len);
     }
     break;
   case PACKET_TYPE_AUDIO_MESSAGE:
     // Audio message format: "AUDIO:num_samples"
     if (len == 0 || len > 32) { // Reasonable size for "AUDIO:1234"
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio message packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio message packet size: %u", len);
     }
     break;
   case PACKET_TYPE_TEXT_MESSAGE:
     // Text message can be empty or contain message
     if (len > 1024) { // Reasonable limit for text messages
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid text message packet size: %u", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid text message packet size: %u", len);
     }
     break;
   // All crypto handshake packet types - validate using session parameters
@@ -208,15 +191,13 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
     // Crypto packets are validated by the crypto handshake context
     // This is just a basic sanity check for extremely large packets
     if (len > 65536) { // 64KB should be enough for even large post-quantum crypto packets
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Crypto packet too large: %u bytes (max 65536)", len);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Crypto packet too large: %u bytes (max 65536)", len);
     }
     // Note: Proper size validation is done in crypto_handshake_validate_packet_size()
     // which uses the session's crypto parameters for accurate validation
     break;
   default:
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown packet type: %u", type);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown packet type: %u", type);
   }
 
   // Return parsed values
@@ -224,7 +205,7 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
   *pkt_len = len;
   *expected_crc = crc;
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -234,25 +215,22 @@ int packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, ui
  * @param expected_crc Expected CRC32 value
  * @return 0 on success, -1 on error
  */
-int packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
+asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
   if (!data && len > 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: data=%p but len=%zu", data, len);
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: data=%p but len=%zu", data, len);
   }
 
   if (len == 0) {
     // Empty packets should have CRC32 of 0
     if (expected_crc != 0) {
-      SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid CRC32 for empty packet: 0x%x (expected 0)", expected_crc);
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid CRC32 for empty packet: 0x%x (expected 0)", expected_crc);
     }
     return 0;
   }
 
   uint32_t calculated_crc = asciichat_crc32(data, len);
   if (calculated_crc != expected_crc) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc, expected_crc);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc, expected_crc);
   }
 
   return ASCIICHAT_OK;
@@ -267,9 +245,12 @@ int packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
  * @return 0 on success, -1 on error
  */
 asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *data, size_t len) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
+  }
+
   if (len > MAX_PACKET_SIZE) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
-    return ERROR_NETWORK_SIZE;
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
 
   packet_header_t header = {.magic = htonl(PACKET_MAGIC),
@@ -288,8 +269,7 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return ERROR_NETWORK;
   }
   if ((size_t)sent != sizeof(header)) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to fully send packet header. Sent %zd/%zu bytes", sent, sizeof(header));
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_NETWORK, "Failed to fully send packet header. Sent %zd/%zu bytes", sent, sizeof(header));
   }
 
   // Send payload if present
@@ -325,40 +305,40 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
  * @return 0 on success, -1 on error
  */
 asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **data, size_t *len) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
+  }
   if (!type || !data || !len) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: type=%p, data=%p, len=%p", type, data, len);
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: type=%p, data=%p, len=%p", type, data, len);
   }
 
+  // Read packet header into memory from network socket
   packet_header_t header;
-
-  // Read header
   ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
-  log_debug("DEBUG packet_receive: received=%zd, expected=%zu", received, sizeof(header));
   if (received < 0) {
     // Error context is already set by recv_with_timeout
     return ERROR_NETWORK;
   }
   if ((size_t)received != sizeof(header)) {
     if (received == 0) {
-      log_info("Connection closed while reading packet header");
+      log_warn("Connection closed while reading packet header");
       // Set output parameters to indicate connection closed
       *type = 0;
       *data = NULL;
       *len = 0;
-      log_debug("DEBUG packet_receive: Connection closed, setting type=0, data=NULL, len=0");
+      log_debug("Connection closed while reading packet header, setting type=0, data=NULL, len=0");
       return ASCIICHAT_OK;
-    } else {
-      SET_ERRNO(ERROR_NETWORK, "Partial packet header received: %zd/%zu bytes", received, sizeof(header));
-      return ERROR_NETWORK;
     }
+
+    return SET_ERRNO(ERROR_NETWORK, "Partial packet header received: %zd/%zu bytes", received, sizeof(header));
   }
 
-  // Validate header
+  // Validate packet header
   uint16_t pkt_type;
   uint32_t pkt_len;
   uint32_t expected_crc;
-  if (packet_validate_header(&header, &pkt_type, &pkt_len, &expected_crc) != 0) {
+  if (packet_validate_header(&header, &pkt_type, &pkt_len, &expected_crc) != ASCIICHAT_OK) {
+    // Error context is already set by packet_validate_header
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -366,28 +346,23 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   void *payload = NULL;
   if (pkt_len > 0) {
     payload = buffer_pool_alloc(pkt_len);
-    if (!payload) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for packet payload: %u bytes", pkt_len);
-      return ERROR_MEMORY;
-    }
 
     // Use adaptive timeout for large packets
     int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
-      SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive packet payload");
       buffer_pool_free(payload, pkt_len);
-      return ERROR_NETWORK;
+      return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive packet payload");
     }
     if (received != (ssize_t)pkt_len) {
-      SET_ERRNO(ERROR_NETWORK, "Partial packet payload received: %zd/%u bytes", received, pkt_len);
       buffer_pool_free(payload, pkt_len);
-      return ERROR_NETWORK;
+      return SET_ERRNO(ERROR_NETWORK, "Partial packet payload received: %zd/%u bytes", received, pkt_len);
     }
 
     // Validate CRC32
-    if (packet_validate_crc32(payload, pkt_len, expected_crc) != 0) {
+    if (packet_validate_crc32(payload, pkt_len, expected_crc) != ASCIICHAT_OK) {
       buffer_pool_free(payload, pkt_len);
+      // Error context is already set by packet_validate_crc32
       return ERROR_NETWORK_PROTOCOL;
     }
   }
@@ -452,20 +427,19 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready) {
-    log_warn("CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void *)crypto_ctx,
+    log_warn_every(1000000, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void *)crypto_ctx,
              ready);
     int result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
-    if (result != 0) {
+    if (result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send packet: %d", result);
     }
     return result;
   }
 
   // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
-  log_debug("CRYPTO_DEBUG: Encrypting packet type %d with crypto_ctx=%p", type, (void *)crypto_ctx);
   packet_header_t header = {.magic = htonl(PACKET_MAGIC),
                             .type = htons((uint16_t)type),
                             .length = htonl((uint32_t)final_len),
@@ -515,7 +489,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Send as PACKET_TYPE_ENCRYPTED
-  log_debug("CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", type);
+  log_debug_every(10000000, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", type);
   int send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
   buffer_pool_free(ciphertext, ciphertext_size);
 
@@ -581,8 +555,6 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %u > %d", pkt_len, MAX_PACKET_SIZE);
     return PACKET_RECV_ERROR;
   }
-
-  log_debug("RECV_DEBUG: Received packet type %d, len %u (ENCRYPTED=%d)", pkt_type, pkt_len, PACKET_TYPE_ENCRYPTED);
 
   // Handle encrypted packets
   if (pkt_type == PACKET_TYPE_ENCRYPTED) {
@@ -721,7 +693,8 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
  * @return 0 on success, -1 on error
  */
 int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len) {
-  return packet_send(sockfd, type, data, len);
+  asciichat_error_t result = packet_send(sockfd, type, data, len);
+  return result == ASCIICHAT_OK ? 0 : -1;
 }
 
 /**
@@ -733,7 +706,8 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
  * @return 0 on success, -1 on error
  */
 int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *len) {
-  return packet_receive(sockfd, type, data, len);
+  asciichat_error_t result = packet_receive(sockfd, type, data, len);
+  return result == ASCIICHAT_OK ? 0 : -1;
 }
 
 /* ============================================================================
@@ -748,7 +722,8 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
  * @return 0 on success, -1 on error
  */
 int send_ping_packet(socket_t sockfd) {
-  return send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
+  asciichat_error_t result = send_packet(sockfd, PACKET_TYPE_PING, NULL, 0);
+  return result == ASCIICHAT_OK ? 0 : -1;
 }
 
 /**
@@ -757,7 +732,8 @@ int send_ping_packet(socket_t sockfd) {
  * @return 0 on success, -1 on error
  */
 int send_pong_packet(socket_t sockfd) {
-  return send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
+  asciichat_error_t result = send_packet(sockfd, PACKET_TYPE_PONG, NULL, 0);
+  return result == ASCIICHAT_OK ? 0 : -1;
 }
 
 /**

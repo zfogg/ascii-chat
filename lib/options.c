@@ -370,6 +370,18 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       else if (is_valid_ipv6(value_str)) {
         SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       }
+      // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
+      // This prevents trying to resolve malformed IPs like "192.168.1" as hostnames
+      else if (strchr(value_str, '.') != NULL) {
+        // Has dots but not valid IPv4 - reject immediately
+        (void)fprintf(stderr, "Invalid IP address format '%s'.\n", value_str);
+        (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (e.g., 192.0.2.1).\n");
+        (void)fprintf(stderr, "Supported formats:\n");
+        (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
+        (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
+        (void)fprintf(stderr, "  Hostname: example.com\n");
+        return ERROR_USAGE;
+      }
       // Otherwise, try to resolve as hostname
       else {
         // Try to resolve hostname to IPv4 first (for backward compatibility)

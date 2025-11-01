@@ -46,6 +46,7 @@ RUN pacman -Sy --noconfirm \
     git \
     pcre2 \
     libssh2 \
+    lldb \
     && pacman -Scc --noconfirm \
     && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 

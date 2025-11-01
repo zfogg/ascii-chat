@@ -15,6 +15,7 @@
 /* Terminal capabilities cache */
 static terminal_capabilities_t g_terminal_caps = {0};
 static bool g_terminal_caps_initialized = false;
+static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 
 size_t get_current_time_formatted(char *time_buf) {
   /* Log the rotation event */
@@ -285,10 +286,18 @@ void log_init(const char *filename, log_level_t level) {
   // Restore the terminal output setting
   g_log.terminal_output_enabled = preserve_terminal_output;
 
+  // Reset initialization state if we're using defaults (not reliably detected)
+  // This ensures we'll re-detect with proper colors after unlocking
+  if (g_terminal_caps_initialized && !g_terminal_caps.detection_reliable) {
+    // Reset to allow re-detection with proper colors
+    g_terminal_caps_initialized = false;
+  }
+
   mutex_unlock(&g_log.mutex);
 
   // Now that logging is initialized and mutex is released, we can safely detect terminal capabilities
   // This MUST be after mutex_unlock() because detect_terminal_capabilities() uses log_debug()
+  // Detect capabilities ONCE here so all subsequent logs use consistent colors
   log_redetect_terminal_capabilities();
 }
 
@@ -392,6 +401,10 @@ static void write_to_stderr_fallback_unlocked(const char *buffer, int length) {
 static int format_log_header(char *buffer, size_t buffer_size, log_level_t level, const char *timestamp,
                              const char *file, int line, const char *func, bool use_colors, bool newline) {
   const char **colors = use_colors ? log_get_color_array() : NULL;
+  // Safety check: if colors is NULL, disable colors to prevent crashes
+  if (use_colors && colors == NULL) {
+    use_colors = false;
+  }
   const char *color = use_colors ? colors[level] : "";
   const char *reset = use_colors ? colors[LOGGING_COLOR_RESET] : "";
 
@@ -424,11 +437,11 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     const char *file_color = colors[3]; // WARN: Yellow for file paths
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
-    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s():%s%s", color, timestamp, reset,
+    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color, timestamp, reset,
                       color, level_string, reset, file_color, rel_file, reset, line_color, line, reset, func_color,
                       func, reset, reset, newline_or_not);
   } else {
-    result = snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s():%s", timestamp, level_strings[level], rel_file,
+    result = snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s(): %s", timestamp, level_strings[level], rel_file,
                       line, func, newline_or_not);
   }
 #endif
@@ -459,7 +472,7 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
   bool use_colors = isatty(fd);
 
   int header_len =
-      format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, true);
+      format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
   if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     return;
@@ -467,14 +480,22 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
 
   if (use_colors) {
     const char **colors = log_get_color_array();
-    // Write header with colors
-    safe_fprintf(output_stream, "%s", header_buffer);
-    // Reset color before message content
-    safe_fprintf(output_stream, "%s", colors[LOGGING_COLOR_RESET]);
-    // Write message content
-    (void)vfprintf(output_stream, fmt, args);
-    // Ensure color is reset at the end
-    safe_fprintf(output_stream, "%s\n", colors[LOGGING_COLOR_RESET]);
+    // Safety check: if colors is NULL, disable colors to prevent crashes
+    if (colors == NULL) {
+      // Write header without colors
+      safe_fprintf(output_stream, "%s", header_buffer);
+      (void)vfprintf(output_stream, fmt, args);
+      safe_fprintf(output_stream, "\n");
+    } else {
+      // Write header with colors
+      safe_fprintf(output_stream, "%s", header_buffer);
+      // Reset color before message content
+      safe_fprintf(output_stream, "%s", colors[LOGGING_COLOR_RESET]);
+      // Write message content
+      (void)vfprintf(output_stream, fmt, args);
+      // Ensure color is reset at the end
+      safe_fprintf(output_stream, "%s\n", colors[LOGGING_COLOR_RESET]);
+    }
   } else {
     // No color requested.
     safe_fprintf(output_stream, "%s", header_buffer);
@@ -524,10 +545,20 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   // Add the actual message
   int msg_len = header_len;
-  msg_len += vsnprintf(log_buffer + header_len, sizeof(log_buffer) - header_len, fmt, args);
-  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+  int formatted_len = vsnprintf(log_buffer + header_len, sizeof(log_buffer) - header_len, fmt, args);
+  if (formatted_len < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
+    va_end(args);
+    mutex_unlock(&g_log.mutex);
     return;
+  }
+  // vsnprintf returns the number of characters that would be written (excluding null terminator)
+  // If the result is >= buffer size, it means the message was truncated
+  msg_len += formatted_len;
+  if (msg_len >= (int)sizeof(log_buffer)) {
+    // Message was too long - truncate it safely
+    msg_len = sizeof(log_buffer) - 1;
+    log_buffer[msg_len] = '\0';
   }
 
   // Add newline
@@ -618,6 +649,10 @@ void log_file_msg(const char *fmt, ...) {
 /* Initialize terminal capabilities if not already done */
 static void init_terminal_capabilities(void) {
   if (!g_terminal_caps_initialized) {
+    // NEVER call detect_terminal_capabilities() from here - it causes infinite recursion
+    // because detect_terminal_capabilities() uses log_debug() which calls log_get_color_array()
+    // which calls init_terminal_capabilities() again.
+    // Always use defaults here - log_redetect_terminal_capabilities() will do the actual detection
     // Use safe fallback during logging initialization to avoid recursion
     g_terminal_caps.color_level = TERM_COLOR_16;
     g_terminal_caps.capabilities = TERM_CAP_COLOR_16;
@@ -629,8 +664,28 @@ static void init_terminal_capabilities(void) {
 
 /* Re-detect terminal capabilities after logging is initialized */
 void log_redetect_terminal_capabilities(void) {
-  g_terminal_caps = detect_terminal_capabilities();
-  g_terminal_caps_initialized = true;
+  // Guard against recursion
+  if (g_terminal_caps_detecting) {
+    return;
+  }
+
+  // Detect if not initialized, or if we're using defaults (not reliably detected)
+  // This ensures we get proper detection after logging is ready, replacing any defaults
+  // Once we have reliable detection, never re-detect to keep colors consistent
+  if (!g_terminal_caps_initialized || !g_terminal_caps.detection_reliable) {
+    g_terminal_caps_detecting = true;
+    g_terminal_caps = detect_terminal_capabilities();
+    g_terminal_caps_detecting = false;
+    g_terminal_caps_initialized = true;
+
+    // Now log the capabilities AFTER colors are set, so this log uses the correct colors
+    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d",
+              g_terminal_caps.color_level, g_terminal_caps.capabilities,
+              g_terminal_caps.utf8_support ? "yes" : "no", g_terminal_caps.desired_fps);
+
+    // Now that we've detected once with reliable results, keep these colors consistent for all future logs
+  }
+  // Once initialized with reliable detection, never re-detect to keep colors consistent
 }
 
 /* Get the appropriate color array based on terminal capabilities */
@@ -656,6 +711,9 @@ const char **log_get_color_array(void) {
 
 const char *log_level_color(logging_color_t color) {
   const char **colors = log_get_color_array();
+  if (colors == NULL) {
+    return ""; /* Return empty string if colors not available */
+  }
   if (color >= 0 && color <= LOGGING_COLOR_RESET) {
     return colors[color];
   }

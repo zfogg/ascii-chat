@@ -225,7 +225,7 @@ Test(crc32_hw, large_buffer_4kb) {
 Test(crc32_hw, large_buffer_64kb) {
   size_t size = 65536;
   uint8_t *data;
-  data = size = SAFE_MALLOC(uint8_t *);
+  data = SAFE_MALLOC(size, uint8_t *);
   for (size_t i = 0; i < size; i++) {
     data[i] = (uint8_t)(i & 0xFF);
   }

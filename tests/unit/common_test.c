@@ -38,7 +38,7 @@ Test(common, safe_calloc_basic) {
   size_t count = 256;
   size_t size = sizeof(int);
 
-  SAFE_CALLOC(ptr, count, size, int *);
+  ptr = SAFE_CALLOC(count, size, int *);
   cr_assert_not_null(ptr, "SAFE_CALLOC should return valid pointer");
 
   // Verify memory is zeroed
@@ -63,7 +63,7 @@ Test(common, safe_realloc_basic) {
   memset(ptr, 0xBB, 512);
 
   // Realloc to larger size
-  SAFE_REALLOC(ptr, 1024, void *);
+  ptr = SAFE_REALLOC(ptr, 1024, void *);
   cr_assert_not_null(ptr, "SAFE_REALLOC should return valid pointer");
 
   // Verify original data is preserved
@@ -87,10 +87,10 @@ typedef struct {
 
 static error_code_test_case_t error_code_cases[] = {
     {ASCIICHAT_OK, "ASCIICHAT_OK", "Success code"},
-    {ASCIICHAT_ERR_NETWORK, "ASCIICHAT_ERR_NETWORK", "Network error code"},
-    {ASCIICHAT_ERR_MALLOC, "ASCIICHAT_ERR_MALLOC", "Memory allocation error code"},
-    {ASCIICHAT_ERR_INVALID_PARAM, "ASCIICHAT_ERR_INVALID_PARAM", "Invalid parameter error code"},
-    {ASCIICHAT_ERR_BUFFER_FULL, "ASCIICHAT_ERR_BUFFER_FULL", "Buffer full error code"},
+    {ERROR_NETWORK, "ERROR_NETWORK", "Network error code"},
+    {ERROR_MEMORY, "ERROR_MEMORY", "Memory allocation error code"},
+    {ERROR_INVALID_PARAM, "ERROR_INVALID_PARAM", "Invalid parameter error code"},
+    {ERROR_BUFFER_FULL, "ERROR_BUFFER_FULL", "Buffer full error code"},
 };
 
 ParameterizedTestParameters(common, error_code_definitions) {
@@ -110,8 +110,7 @@ ParameterizedTest(error_code_test_case_t *tc, common, error_code_definitions) {
 
 Test(common, error_codes_are_distinct) {
   // Test that all error codes are distinct from each other
-  int codes[] = {ASCIICHAT_OK, ASCIICHAT_ERR_NETWORK, ASCIICHAT_ERR_MALLOC, ASCIICHAT_ERR_INVALID_PARAM,
-                 ASCIICHAT_ERR_BUFFER_FULL};
+  int codes[] = {ASCIICHAT_OK, ERROR_NETWORK, ERROR_MEMORY, ERROR_INVALID_PARAM, ERROR_BUFFER_FULL};
   size_t count = sizeof(codes) / sizeof(codes[0]);
 
   for (size_t i = 0; i < count; i++) {
@@ -223,7 +222,7 @@ Test(common, large_allocations) {
   void *ptr;
   // Test reasonably large allocation (1MB)
   size_t large_size = 1024 * 1024;
-  ptr = large_size = SAFE_MALLOC(void *);
+  ptr = SAFE_MALLOC(large_size, void *);
 
   // Write to first and last bytes to ensure it's really allocated
   uint8_t *byte_ptr = (uint8_t *)ptr;
@@ -277,7 +276,7 @@ Test(common, log_memory_operations) {
     memset(ptr, 0xAB, 1024);
     log_info("Filled memory with pattern 0xAB");
 
-    SAFE_REALLOC(ptr, 2048, void *);
+    ptr = SAFE_REALLOC(ptr, 2048, void *);
     log_info("Reallocated memory to 2048 bytes at %p", ptr);
 
     SAFE_FREE(ptr);

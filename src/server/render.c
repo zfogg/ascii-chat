@@ -380,10 +380,16 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_info("Client %u using FPS %d", client->client_id, client_fps);
+    log_info("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)",
+             client->client_id, client_fps, has_caps, desired_fps);
+  } else {
+    log_info("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)",
+             client->client_id, client_fps, has_caps, desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
+  log_info("Client %u render interval: %dms (%d FPS)",
+           client->client_id, base_frame_interval_ms, client_fps);
   struct timespec last_render_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
@@ -420,11 +426,13 @@ void *client_video_render_thread(void *arg) {
     struct timespec current_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    long elapsed_ms = ((current_time.tv_sec - last_render_time.tv_sec) * 1000) +
-                      ((current_time.tv_nsec - last_render_time.tv_nsec) / 1000000);
+    // Use microseconds for precision - avoid integer division precision loss
+    int64_t elapsed_us = ((int64_t)(current_time.tv_sec - last_render_time.tv_sec) * 1000000LL) +
+                         ((int64_t)(current_time.tv_nsec - last_render_time.tv_nsec) / 1000);
+    int64_t base_frame_interval_us = (int64_t)base_frame_interval_ms * 1000;
 
-    if (elapsed_ms < base_frame_interval_ms) {
-      long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
+    if (elapsed_us < base_frame_interval_us) {
+      long sleep_us = (long)(base_frame_interval_us - elapsed_us);
       // Sleep in small chunks for reasonable shutdown response (balance performance vs responsiveness)
       const long max_sleep_chunk = 5000; // 5ms chunks for good shutdown response without destroying performance
       while (sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
@@ -762,12 +770,8 @@ void *client_audio_render_thread(void *arg) {
   int expected_audio_fps = 172; // 1000000us / 5800us ≈ 172 fps
 
   bool should_continue = true;
-  int loop_count = 0;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
-    loop_count++;
-    if (loop_count % 100 == 0) {
-      log_info("Audio render loop iteration #%d for client %u", loop_count, thread_client_id);
-    }
+    log_debug_every(10000000, "Audio render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -786,9 +790,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     if (!g_audio_mixer) {
-      if (loop_count % 100 == 0) {
-        log_info("Audio render waiting for mixer (client %u)", thread_client_id);
-      }
+      log_info_every(1000000, "Audio render waiting for mixer (client %u)", thread_client_id);
       // Check shutdown flag while waiting
       if (atomic_load(&g_server_should_exit))
         break;
@@ -817,12 +819,7 @@ void *client_audio_render_thread(void *arg) {
         mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
 
     // Debug logging every 100 iterations
-    static int mix_count = 0;
-    mix_count++;
-    if (mix_count % 100 == 0) {
-      log_info("Audio render for client %u: iteration #%d, samples_mixed=%d", client_id_snapshot, mix_count,
-               samples_mixed);
-    }
+    log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Queue audio directly for this specific client using snapshot data
     if (samples_mixed > 0) {

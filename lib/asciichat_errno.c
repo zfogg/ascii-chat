@@ -299,7 +299,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
   if (size > 0) {
-    log_labeled("\nFATAL BACKTRACE", LOGGING_COLOR_ERROR, "");
+    log_labeled("\nFATAL BACKTRACE", LOGGING_COLOR_FATAL, "");
     char **symbols = platform_backtrace_symbols(buffer, size);
     if (symbols) {
       for (int i = 0; i < size; i++) {
@@ -363,7 +363,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
     for (int i = 0; i < context->stack_depth; i++) {
       if (context->backtrace_symbols && context->backtrace_symbols[i] &&
           !skip_backtrace_frame(context->backtrace_symbols[i])) {
-        log_plain("  [%d] %s", i, context->backtrace_symbols[i]);
+        log_plain("  [%s%d%s] %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET), context->backtrace_symbols[i]);
       }
     }
   }

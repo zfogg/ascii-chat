@@ -224,19 +224,19 @@ ParameterizedTest(format_ip_port_test_case_t *tc, ip_utils, format_ip_with_port)
 
 Test(ip_utils, format_ip_with_port_buffer_too_small) {
   char small_output[10];
-  int result = format_ip_with_port("192.168.1.1", 8080, small_output, sizeof(small_output));
-  cr_assert_eq(result, -1, "Should fail with buffer too small");
+  asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, small_output, sizeof(small_output));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with buffer too small");
 }
 
 Test(ip_utils, format_ip_with_port_null_output) {
-  int result = format_ip_with_port("192.168.1.1", 8080, NULL, 512);
-  cr_assert_eq(result, -1, "Should fail with NULL output buffer");
+  asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, NULL, 512);
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with NULL output buffer");
 }
 
 Test(ip_utils, format_ip_with_port_zero_size) {
   char output[512];
-  int result = format_ip_with_port("192.168.1.1", 8080, output, 0);
-  cr_assert_eq(result, -1, "Should fail with zero size buffer");
+  asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, output, 0);
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with zero size buffer");
 }
 
 // =============================================================================

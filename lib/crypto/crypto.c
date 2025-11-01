@@ -102,6 +102,7 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   ctx->mac_size = POLY1305_MAC_SIZE;
   ctx->hmac_size = HMAC_SHA256_SIZE;
   ctx->encryption_key_size = SECRETBOX_KEY_SIZE;
+  ctx->auth_challenge_size = AUTH_CHALLENGE_SIZE;
   ctx->public_key_size = X25519_KEY_SIZE;
   ctx->private_key_size = X25519_KEY_SIZE;
   ctx->shared_key_size = X25519_KEY_SIZE;
@@ -842,6 +843,13 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
+  // Ensure shared secret is derived before computing HMAC
+  // This is critical for password HMAC which binds to the shared secret
+  if (!ctx->key_exchange_complete) {
+    SET_ERRNO(ERROR_CRYPTO, "Cannot compute auth response - key exchange not complete");
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
   uint8_t combined_data[64];
@@ -863,6 +871,13 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
     return false;
   }
 
+  // Ensure shared secret is derived before verifying HMAC
+  // This is critical for password HMAC verification which binds to the shared secret
+  if (!ctx->key_exchange_complete) {
+    SET_ERRNO(ERROR_CRYPTO, "Cannot verify auth response - key exchange not complete");
+    return false;
+  }
+
   // Bind password HMAC to DH shared_secret to prevent MITM
   // Combined data: nonce || shared_secret
   uint8_t combined_data[64];
@@ -871,6 +886,9 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
+
+  log_debug("Verifying auth response: has_password=%d, key_exchange_complete=%d, using_password_key=%d",
+            ctx->has_password, ctx->key_exchange_complete, (auth_key == ctx->password_key));
 
   return crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
 }
@@ -885,7 +903,7 @@ crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  size_t required_size = sizeof(uint32_t) + 32; // type + nonce
+  size_t required_size = sizeof(uint32_t) + ctx->auth_challenge_size; // type + nonce
   if (packet_size < required_size) {
     SET_ERRNO(ERROR_BUFFER, "crypto_create_auth_challenge: Buffer too small (size=%zu, required=%zu)", packet_size,
               required_size);
@@ -898,10 +916,10 @@ crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_
     return result;
   }
 
-  // Pack packet: [type:4][nonce:32]
+  // Pack packet: [type:4][nonce:auth_challenge_size]
   uint32_t packet_type = CRYPTO_PACKET_AUTH_CHALLENGE;
   SAFE_MEMCPY(packet_out, sizeof(packet_type), &packet_type, sizeof(packet_type));
-  SAFE_MEMCPY(packet_out + sizeof(packet_type), 32, ctx->auth_nonce, 32);
+  SAFE_MEMCPY(packet_out + sizeof(packet_type), ctx->auth_challenge_size, ctx->auth_nonce, ctx->auth_challenge_size);
 
   *packet_len_out = required_size;
   return CRYPTO_OK;
@@ -915,14 +933,14 @@ crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  size_t expected_size = sizeof(uint32_t) + 32; // type + nonce
+  size_t expected_size = sizeof(uint32_t) + ctx->auth_challenge_size; // type + nonce
   if (packet_len != expected_size) {
     SET_ERRNO(ERROR_INVALID_PARAM, "crypto_process_auth_challenge: Invalid packet size (expected=%zu, got=%zu)",
               expected_size, packet_len);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  // Unpack packet: [type:4][nonce:32]
+  // Unpack packet: [type:4][nonce:auth_challenge_size]
   uint32_t packet_type;
   SAFE_MEMCPY(&packet_type, sizeof(packet_type), packet, sizeof(packet_type));
 
@@ -932,8 +950,8 @@ crypto_result_t crypto_process_auth_challenge(crypto_context_t *ctx, const uint8
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  // Store the nonce for HMAC computation
-  SAFE_MEMCPY(ctx->auth_nonce, 32, packet + sizeof(packet_type), 32);
+  // Store the nonce for HMAC computation (use buffer size for memcpy size, actual size from context)
+  SAFE_MEMCPY(ctx->auth_nonce, sizeof(ctx->auth_nonce), packet + sizeof(packet_type), ctx->auth_challenge_size);
 
   log_debug("Auth challenge received and processed");
   return CRYPTO_OK;

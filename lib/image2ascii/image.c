@@ -207,8 +207,12 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 
 // Optimized image printing with better memory access patterns
 char *image_print(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_print: p or p->pixels or palette is NULL");
+  if (!p || !palette) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_print: p=%p or palette=%p is NULL", p, palette);
+    return NULL;
+  }
+  if (!p->pixels) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_print: p->pixels is NULL");
     return NULL;
   }
 
@@ -355,8 +359,12 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  *       during string construction (should never happen with correct calculation).
  */
 char *image_print_color(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "p=%p or p->pixels=%p or palette=%p is NULL", p, p->pixels, palette);
+  if (!p || !palette) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "p=%p or palette=%p is NULL", p, palette);
+    return NULL;
+  }
+  if (!p->pixels) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "p->pixels is NULL");
     return NULL;
   }
 

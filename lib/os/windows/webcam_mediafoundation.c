@@ -3,13 +3,10 @@
 #define COBJMACROS
 #include "os/webcam.h"
 #include "common.h"
-#include "platform/windows_compat.h"
-#include "util/math.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include <mferror.h>
-#include <stdlib.h>
 
 // Windows Media Foundation webcam implementation
 // Note: MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING and
@@ -219,7 +216,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     goto error;
   }
 
-  // Request RGB32 output format (BGRA) - more widely supported than RGB24
+  // Request RGB32 output format (BGRA) at 640x480 resolution
   // Combined with MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, this enables
   // GPU-accelerated YUV->RGB conversion
   IMFMediaType *rgbType = NULL;
@@ -228,12 +225,20 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     IMFMediaType_SetGUID(rgbType, &MF_MT_MAJOR_TYPE, &MFMediaType_Video);
     IMFMediaType_SetGUID(rgbType, &MF_MT_SUBTYPE, &MFVideoFormat_RGB32);
 
-    // Use partial type - let MF fill in frame size and other details
+    // Request 640x480 resolution (we only need 480x270 max for ASCII-Chat)
+    // This dramatically reduces pixel copy overhead (307,200 vs 8,294,400 pixels)
+    UINT64 frameSize = ((UINT64)640 << 32) | (UINT64)480;
+    hr = IMFMediaType_SetUINT64(rgbType, &MF_MT_FRAME_SIZE, frameSize);
+    if (FAILED(hr)) {
+      log_warn("Could not set frame size to 640x480: 0x%08x", hr);
+    }
+
+    // Use partial type - let MF fill in other details
     hr = IMFSourceReader_SetCurrentMediaType(cam->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, rgbType);
     IMFMediaType_Release(rgbType);
 
     if (SUCCEEDED(hr)) {
-      log_info("Successfully requested RGB32 output format");
+      log_info("Successfully requested RGB32 output format at 640x480");
     } else {
       log_warn("Could not set RGB32 format: 0x%08x, will use native format", hr);
       // Don't fail - just use whatever format the camera provides
@@ -350,7 +355,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
       ctx->com_initialized = FALSE;
     }
     SAFE_FREE(ctx);
-    log_info("Windows Media Foundation webcam closed");
+    log_debug("Windows Media Foundation webcam closed");
   }
 }
 
@@ -452,31 +457,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Get frame dimensions from current media type
-  IMFMediaType *currentType = NULL;
-  hr = IMFSourceReader_GetCurrentMediaType(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &currentType);
-  if (FAILED(hr)) {
-    log_error("Failed to get current media type: 0x%08x", hr);
-    IMFMediaBuffer_Unlock(buffer);
-    IMFMediaBuffer_Release(buffer);
-    IMFSample_Release(sample);
-    return NULL;
-  }
-
-  UINT64 frameSize = 0;
-  hr = IMFMediaType_GetUINT64(currentType, &MF_MT_FRAME_SIZE, &frameSize);
-  IMFMediaType_Release(currentType);
-
-  if (FAILED(hr)) {
-    log_error("Failed to get frame size: 0x%08x", hr);
-    IMFMediaBuffer_Unlock(buffer);
-    IMFMediaBuffer_Release(buffer);
-    IMFSample_Release(sample);
-    return NULL;
-  }
-
-  UINT32 width = (UINT32)(frameSize >> 32);
-  UINT32 height = (UINT32)(frameSize & 0xFFFFFFFF);
+  // Use cached frame dimensions from context (no need to query media type every frame)
+  UINT32 width = (UINT32)ctx->width;
+  UINT32 height = (UINT32)ctx->height;
 
   // Create image_t structure
   image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
@@ -487,12 +470,50 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // Copy RGB32 data (BGRA order in Media Foundation)
   // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline
   // RGB32 format is 4 bytes per pixel: B, G, R, A (we ignore alpha)
-  for (UINT32 i = 0; i < width * height; i++) {
-    img->pixels[i].b = bufferData[i * 4 + 0]; // B
-    img->pixels[i].g = bufferData[i * 4 + 1]; // G
-    img->pixels[i].r = bufferData[i * 4 + 2]; // R
-    // bufferData[i * 4 + 3] is alpha, ignored
+
+  LARGE_INTEGER copy_start, copy_end;
+  QueryPerformanceCounter(&copy_start);
+
+  UINT32 pixel_count = width * height;
+  BYTE *src = bufferData;
+  rgb_t *dst = img->pixels;
+
+  // Optimized pixel copy - process 4 pixels at a time
+  UINT32 i;
+  for (i = 0; i + 4 <= pixel_count; i += 4) {
+    // Pixel 0
+    dst[0].b = src[0];
+    dst[0].g = src[1];
+    dst[0].r = src[2];
+    // Pixel 1
+    dst[1].b = src[4];
+    dst[1].g = src[5];
+    dst[1].r = src[6];
+    // Pixel 2
+    dst[2].b = src[8];
+    dst[2].g = src[9];
+    dst[2].r = src[10];
+    // Pixel 3
+    dst[3].b = src[12];
+    dst[3].g = src[13];
+    dst[3].r = src[14];
+
+    src += 16; // 4 pixels * 4 bytes
+    dst += 4;
   }
+
+  // Handle remaining pixels
+  for (; i < pixel_count; i++) {
+    dst->b = src[0];
+    dst->g = src[1];
+    dst->r = src[2];
+    src += 4;
+    dst++;
+  }
+
+  QueryPerformanceCounter(&copy_end);
+  double copy_ms = (double)(copy_end.QuadPart - copy_start.QuadPart) * 1000.0 / freq.QuadPart;
+  log_info("Pixel copy took %.2f ms (%u pixels)", copy_ms, pixel_count);
 
   // Unlock and cleanup
   IMFMediaBuffer_Unlock(buffer);

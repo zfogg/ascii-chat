@@ -6,7 +6,7 @@
  * Returns raw addresses instead of resolved symbols.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date September 2025
  */
 
 #ifdef _WIN32
@@ -68,7 +68,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   for (int i = 0; i < size; i++) {
     result[i] = SAFE_MALLOC(32, char *);
     if (result[i]) {
-      snprintf(result[i], 32, "%p", buffer[i]);
+      SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
     }
   }
 
