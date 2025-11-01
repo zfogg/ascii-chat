@@ -48,22 +48,29 @@ const char *extract_project_relative_path(const char *file) {
 #ifdef PROJECT_SOURCE_ROOT
   /* Use the dynamically defined source root */
   const char *source_root = PROJECT_SOURCE_ROOT;
-  const char *root_pos = find_source_root(file, source_root);
 
-  if (root_pos) {
-    /* Move past the source root */
-    const char *after_root = root_pos + strlen(source_root);
+  /* First, try to strip the project source root */
+  if (source_root && *source_root) {
+    const char *root_pos = find_source_root(file, source_root);
 
-    /* Skip the path separator if present */
-    if (*after_root == '/' || *after_root == '\\') {
-      after_root++;
-    }
+    if (root_pos) {
+      /* Move past the source root */
+      const char *after_root = root_pos + strlen(source_root);
 
-    /* Return the path relative to repo root */
-    if (*after_root != '\0') {
-      return after_root;
+      /* Skip the path separator if present */
+      if (*after_root == '/' || *after_root == '\\') {
+        after_root++;
+      }
+
+      /* Return the path relative to repo root */
+      if (*after_root != '\0') {
+        return after_root;
+      }
     }
   }
+#else
+  /* PROJECT_SOURCE_ROOT not defined at compile time - cannot strip project path */
+  (void)find_source_root; /* Suppress unused function warning */
 #endif
 
   /* Fallback: try to find just the filename */

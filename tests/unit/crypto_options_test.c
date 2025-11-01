@@ -43,7 +43,7 @@ TestSuite(crypto_options, .init = reset_crypto_options);
 typedef struct {
   const char *description;
   int argc;
-  char argv[10][256];  // Use static char arrays instead of pointers for Criterion compatibility
+  char argv[10][256]; // Use static char arrays instead of pointers for Criterion compatibility
   bool is_client;
   bool expect_no_encrypt;
   bool expect_key_set;
@@ -57,18 +57,7 @@ typedef struct {
 
 static crypto_options_test_case_t crypto_options_cases[] = {
     // Note: --help and --version tests are separate (they call _exit(0))
-    {"Disable encryption",
-     2,
-     {"program", "--no-encrypt"},
-     true,
-     true,
-     false,
-     false,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     0},
+    {"Disable encryption", 2, {"program", "--no-encrypt"}, true, true, false, false, false, NULL, NULL, NULL, 0},
     {"Set password key",
      3,
      {"program", "--key", "mypassword"},
@@ -84,15 +73,15 @@ static crypto_options_test_case_t crypto_options_cases[] = {
     {"Set server key file (client only)",
      3,
      {"program", "--server-key", "/etc/ascii-chat/server_key"},
-     true,  // --server-key is CLIENT ONLY (client verifies server's public key)
-     false, // expect_no_encrypt
-     false, // expect_key_set
-     true,  // expect_server_key_set
-     false, // expect_client_keys_set
-     NULL,  // expected_key
+     true,                         // --server-key is CLIENT ONLY (client verifies server's public key)
+     false,                        // expect_no_encrypt
+     false,                        // expect_key_set
+     true,                         // expect_server_key_set
+     false,                        // expect_client_keys_set
+     NULL,                         // expected_key
      "/etc/ascii-chat/server_key", // expected_server_key
-     NULL,  // expected_client_keys
-     0},    // expected_result
+     NULL,                         // expected_client_keys
+     0},                           // expected_result
     {"Set client keys file (server only)",
      3,
      {"program", "--client-keys", "/etc/ascii-chat/authorized_keys"},
@@ -189,18 +178,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      NULL,
      NULL,
      0},
-    {"Empty key (should fail)",
-     3,
-     {"program", "--key", ""},
-     true,
-     false,
-     false,
-     false,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     -1},
+    {"Empty key (should fail)", 3, {"program", "--key", ""}, true, false, false, false, false, NULL, NULL, NULL, -1},
     {"Missing key value (should fail)",
      2,
      {"program", "--key"},
@@ -323,7 +301,7 @@ Test(crypto_options, invalid_key_formats) {
 // =============================================================================
 
 Test(crypto_options, very_long_key_value) {
-  char long_key[251];  // Less than OPTIONS_BUFF_SIZE (256)
+  char long_key[251]; // Less than OPTIONS_BUFF_SIZE (256)
   memset(long_key, 'A', 250);
   long_key[250] = '\0';
 
@@ -460,8 +438,8 @@ Test(crypto_options, version_display, .exit_code = 0) {
 // =============================================================================
 
 Test(crypto_options, many_options) {
-  const char *argv[] = {"program",       "--no-encrypt",        "--key",        "password",
-                        "--server-key",  "/etc/server_key",     "--client-keys", "/etc/authorized_keys"};
+  const char *argv[] = {"program",      "--no-encrypt",    "--key",         "password",
+                        "--server-key", "/etc/server_key", "--client-keys", "/etc/authorized_keys"};
 
   options_init(9, (char **)argv, false);
 

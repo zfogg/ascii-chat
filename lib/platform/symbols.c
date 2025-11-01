@@ -54,9 +54,9 @@
 // ============================================================================
 
 typedef enum {
-  SYMBOLIZER_NONE = 0,      // No symbolizer available, use raw addresses
-  SYMBOLIZER_LLVM = 1,      // llvm-symbolizer (preferred)
-  SYMBOLIZER_ADDR2LINE = 2  // addr2line (fallback)
+  SYMBOLIZER_NONE = 0,     // No symbolizer available, use raw addresses
+  SYMBOLIZER_LLVM = 1,     // llvm-symbolizer (preferred)
+  SYMBOLIZER_ADDR2LINE = 2 // addr2line (fallback)
 } symbolizer_type_t;
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
@@ -491,56 +491,36 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Parse output - llvm-symbolizer with --output-style=LLVM produces:
-  // function_name() at file:line:column
-  //  (inlined by) caller_function() at file:line:column
-  // (one line per frame, inlined frames indented)
+  // Parse output - llvm-symbolizer produces THREE lines per address:
+  // Line 1: function_name (or "??")
+  // Line 2: /path/to/file:line:column (or "??:0")
+  // Line 3: blank line (separator)
   for (int i = 0; i < size; i++) {
-    char line[1024];
-
-    // Read first line for this address (primary frame, or "??" if unknown)
-    if (fgets(line, sizeof(line), fp) == NULL) {
-      break;
-    }
-
-    // Remove newline
-    line[strcspn(line, "\n")] = '\0';
-
-    // Check if this is an inlined frame marker (starts with space and contains "inlined by")
-    // If so, skip it and read the actual function line
-    while (strstr(line, "(inlined by)") != NULL) {
-      if (fgets(line, sizeof(line), fp) == NULL) {
-        break;
-      }
-      line[strcspn(line, "\n")] = '\0';
-    }
-
-    // Parse the line: "function_name() at file:line:column" or "??"
     char func_name[512] = "??";
     char file_location[512] = "??:0";
+    char blank_line[8];
 
-    // Look for " at " separator
-    char *at_pos = strstr(line, " at ");
-    if (at_pos) {
-      // Extract function name (everything before " at ")
-      size_t func_len = at_pos - line;
-      if (func_len < sizeof(func_name)) {
-        memcpy(func_name, line, func_len);
-        func_name[func_len] = '\0';
-      }
+    // Read function name line
+    if (fgets(func_name, sizeof(func_name), fp) == NULL) {
+      break;
+    }
+    func_name[strcspn(func_name, "\n")] = '\0';
 
-      // Extract file location (everything after " at ")
-      const char *file_start = at_pos + 4; // Skip " at "
-      SAFE_STRNCPY(file_location, file_start, sizeof(file_location));
+    // Read file location line
+    if (fgets(file_location, sizeof(file_location), fp) == NULL) {
+      break;
+    }
+    file_location[strcspn(file_location, "\n")] = '\0';
 
-      // Remove column number (last :N)
-      char *last_colon = strrchr(file_location, ':');
-      if (last_colon) {
-        *last_colon = '\0';
-      }
-    } else {
-      // No " at " found - entire line is function name or "??"
-      SAFE_STRNCPY(func_name, line, sizeof(func_name));
+    // Read blank separator line (and discard it)
+    if (fgets(blank_line, sizeof(blank_line), fp) == NULL) {
+      // End of output - not an error, just means this was the last address
+    }
+
+    // Remove column number (last :N) from file_location
+    char *last_colon = strrchr(file_location, ':');
+    if (last_colon) {
+      *last_colon = '\0';
     }
 
     // Extract relative path
@@ -554,8 +534,8 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
     // Format symbol
     bool has_func = (strcmp(func_name, "??") != 0 && strlen(func_name) > 0);
-    bool has_file = (strcmp(file_location, "??:0") != 0 && strcmp(file_location, "??:?") != 0 &&
-                     strcmp(file_location, "??") != 0);
+    bool has_file =
+        (strcmp(file_location, "??:0") != 0 && strcmp(file_location, "??:?") != 0 && strcmp(file_location, "??") != 0);
 
     if (!has_func && !has_file) {
       // Complete unknown - show raw address
