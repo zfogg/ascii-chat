@@ -6,7 +6,7 @@
  * ../symbols.c. This file just includes it for Windows builds.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date October 2025
  */
 
 // The implementation in symbols.c is cross-platform and handles

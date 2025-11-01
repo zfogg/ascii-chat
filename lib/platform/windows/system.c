@@ -15,10 +15,10 @@
 #include "../socket.h"
 #include "../../util/path.h"
 #include "../symbols.h"
+
 #include <dbghelp.h>
 #include <wincrypt.h>
 #include <io.h>
-
 #include <fcntl.h>
 #include <process.h>
 #include <signal.h>
@@ -29,9 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <errno.h>
 #include <mmsystem.h> // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
-
 #include <stdatomic.h>
 
 #pragma comment(lib, "winmm.lib") // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
@@ -41,16 +39,23 @@
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-  static char username[256];
-  const char *user = getenv("USERNAME");
-  if (!user) {
-    user = getenv("USER");
-  }
-  if (user) {
-    strncpy(username, user, sizeof(username) - 1);
-    username[sizeof(username) - 1] = '\0';
+  static char username[256] = {'\0'};
+  if (username[0] != '\0') {
+    log_debug("Username already cached: %s", username);
     return username;
   }
+  const char *user = platform_getenv("USERNAME");
+  if (!user) {
+    user = platform_getenv("USER");
+  }
+  if (user) {
+    if (platform_strncpy(username, sizeof(username), user, sizeof(username) - 1) != 0) {
+      SET_ERRNO(ERROR_STRING, "Failed to copy username");
+      return "unknown";
+    }
+    return username;
+  }
+  SET_ERRNO(ERROR_STRING, "Failed to get username");
   return "unknown";
 }
 
@@ -64,27 +69,38 @@ asciichat_error_t platform_init(void) {
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stderr), _O_BINARY);
 
-  // Install crash handlers for automatic backtrace on crashes
-  platform_install_crash_handler();
-
   // Set Windows timer resolution to 1ms for high-precision sleep
   // This is required for multimedia applications that need accurate timing
   // Without this, Sleep(1) can sleep up to 15.6ms (default Windows timer resolution)
   // With timeBeginPeriod(1), Sleep(1) sleeps 1-2ms which is acceptable for 144 FPS capture
   timeBeginPeriod(1);
 
-  // Initialize Winsock (required before getaddrinfo and socket operations)
-  if (socket_init() != 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
+  get_username_env();
+  get_username_env();
+  get_username_env();
+
+  // Install crash handlers for automatic backtrace on crashes
+  platform_install_crash_handler();
+
+  if (symbol_cache_init() != ASCIICHAT_OK) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Symbol cache initialization failed");
   }
 
-  return 0;
+  // Initialize Winsock (required before getaddrinfo and socket operations)
+  if (socket_init() != ASCIICHAT_OK) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Network operation failed");
+  }
+
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Clean up platform-specific functionality
  */
 void platform_cleanup(void) {
+  // Cleanup binary PATH cache
+  platform_cleanup_binary_path_cache();
+
   socket_cleanup();
 
   // Restore original Windows timer resolution
@@ -97,32 +113,6 @@ void platform_cleanup(void) {
  */
 void platform_sleep_ms(unsigned int ms) {
   Sleep(ms);
-}
-
-asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
-  if (!timer || !result) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for localtime");
-  }
-  errno_t err = localtime_s(result, timer);
-  if (err != 0) {
-    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Platform initialization failed");
-  }
-  return ASCIICHAT_OK;
-}
-
-/**
- * @brief POSIX-compatible usleep function for Windows
- * @param usec Number of microseconds to sleep
- * @return 0 on success
- */
-int usleep(unsigned int usec) {
-  // Convert microseconds to milliseconds, minimum 1ms
-  int timeout_ms = (int)(usec / 1000);
-  if (timeout_ms == 0 && usec > 0) {
-    timeout_ms = 1; // Minimum 1ms on Windows
-  }
-  Sleep(timeout_ms);
-  return 0;
 }
 
 /**
@@ -140,6 +130,23 @@ void platform_sleep_usec(unsigned int usec) {
     timeout_ms = 1;
 
   Sleep(timeout_ms);
+}
+
+/**
+ * @brief Convert time_t to local time
+ * @param timer Pointer to time_t value
+ * @param result Pointer to struct tm to receive result
+ * @return 0 on success, non-zero on error
+ */
+asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
+  if (!timer || !result) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for localtime");
+  }
+  errno_t err = localtime_s(result, timer);
+  if (err != 0) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to convert time to local time");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -1202,5 +1209,11 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   *pem_size_out = pem_size;
   return 0;
 }
+
+// Include hashtable.h for binary PATH detection cache
+#include "../../hashtable.h"
+
+// Include cross-platform system utilities (binary PATH detection)
+#include "../system.c"
 
 #endif // !!_WIN32

@@ -7,24 +7,20 @@
  * Supports both Windows (llvm-symbolizer.exe/addr2line.exe) and POSIX (llvm-symbolizer/addr2line).
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date October 2025
  */
 
 // Platform-specific binary names
 #ifdef _WIN32
 #define LLVM_SYMBOLIZER_BIN "llvm-symbolizer.exe"
 #define ADDR2LINE_BIN "addr2line.exe"
-#define PATH_CHECK_CMD "where"
 #define popen _popen
 #define pclose _pclose
 #define strdup _strdup
 #else
 #define LLVM_SYMBOLIZER_BIN "llvm-symbolizer"
 #define ADDR2LINE_BIN "addr2line"
-#define PATH_CHECK_CMD "command -v"
 #endif
-
-#if !defined(_WIN32) || defined(_WIN32)
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +34,7 @@
 #endif
 
 #include "symbols.h"
+#include "system.h"
 #include "../common.h"
 #include "../hashtable.h"
 #include "../util/path.h"
@@ -117,49 +114,19 @@ static void cleanup_symbol_entry_callback(uint32_t key, void *value, void *user_
  * @return symbolizer_type_t indicating which tool to use
  */
 static symbolizer_type_t detect_symbolizer(void) {
-  char cmd[512];
-  FILE *fp;
-  char buf[256];
-
   // Try llvm-symbolizer first (preferred)
-  SAFE_SNPRINTF(cmd, sizeof(cmd), "%s %s 2>%s", PATH_CHECK_CMD, LLVM_SYMBOLIZER_BIN,
-#ifdef _WIN32
-                "nul"
-#else
-                "/dev/null"
-#endif
-  );
-
-  fp = popen(cmd, "r");
-  if (fp) {
-    if (fgets(buf, sizeof(buf), fp) != NULL) {
-      pclose(fp);
-      log_debug("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
-      return SYMBOLIZER_LLVM;
-    }
-    pclose(fp);
+  if (platform_is_binary_in_path("llvm-symbolizer")) {
+    log_debug("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
+    return SYMBOLIZER_LLVM;
   }
 
   // Fall back to addr2line
-  SAFE_SNPRINTF(cmd, sizeof(cmd), "%s %s 2>%s", PATH_CHECK_CMD, ADDR2LINE_BIN,
-#ifdef _WIN32
-                "nul"
-#else
-                "/dev/null"
-#endif
-  );
-
-  fp = popen(cmd, "r");
-  if (fp) {
-    if (fgets(buf, sizeof(buf), fp) != NULL) {
-      pclose(fp);
-      log_debug("Found %s in PATH (%s not available)", ADDR2LINE_BIN, LLVM_SYMBOLIZER_BIN);
-      return SYMBOLIZER_ADDR2LINE;
-    }
-    pclose(fp);
+  if (platform_is_binary_in_path("addr2line")) {
+    log_debug("Found %s in PATH (%s not available)", ADDR2LINE_BIN, LLVM_SYMBOLIZER_BIN);
+    return SYMBOLIZER_ADDR2LINE;
   }
 
-  log_warn("No symbolizer found in PATH (tried %s, %s)", LLVM_SYMBOLIZER_BIN, ADDR2LINE_BIN);
+  log_warn("No symbolizer found in PATH (tried %s, %s) - using native backend", LLVM_SYMBOLIZER_BIN, ADDR2LINE_BIN);
   return SYMBOLIZER_NONE;
 }
 
@@ -167,7 +134,7 @@ static symbolizer_type_t detect_symbolizer(void) {
 // Public API Implementation
 // ============================================================================
 
-int symbol_cache_init(void) {
+asciichat_error_t symbol_cache_init(void) {
   bool expected = false;
   if (!atomic_compare_exchange_strong(&g_symbol_cache_initialized, &expected, true)) {
     return 0; // Already initialized
@@ -183,13 +150,12 @@ int symbol_cache_init(void) {
   g_symbol_cache = hashtable_create();
   if (!g_symbol_cache) {
     atomic_store(&g_symbol_cache_initialized, false);
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create symbol cache hashtable");
   }
 
   atomic_store(&g_cache_hits, 0);
   atomic_store(&g_cache_misses, 0);
 
-  log_debug("Symbol cache initialized");
   return 0;
 }
 
@@ -426,26 +392,10 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   }
 
   // Get executable path
-  char exe_path[1024];
-#ifdef _WIN32
-  DWORD len = GetModuleFileNameA(NULL, exe_path, sizeof(exe_path));
-  if (len == 0 || len >= sizeof(exe_path)) {
+  char exe_path[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
     return NULL;
   }
-#elif defined(__linux__)
-  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
-  if (len <= 0) {
-    return NULL;
-  }
-  exe_path[len] = '\0';
-#elif defined(__APPLE__)
-  uint32_t bufsize = sizeof(exe_path);
-  if (_NSGetExecutablePath(exe_path, &bufsize) != 0) {
-    return NULL;
-  }
-#else
-  return NULL; // Unsupported platform
-#endif
 
   // Build llvm-symbolizer command with --demangle, --output-style=LLVM, --relativenames, --inlining,
   // and --debug-file-directory
@@ -586,26 +536,10 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   }
 
   // Get executable path
-  char exe_path[1024];
-#ifdef _WIN32
-  DWORD len = GetModuleFileNameA(NULL, exe_path, sizeof(exe_path));
-  if (len == 0 || len >= sizeof(exe_path)) {
+  char exe_path[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
     return NULL;
   }
-#elif defined(__linux__)
-  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
-  if (len <= 0) {
-    return NULL;
-  }
-  exe_path[len] = '\0';
-#elif defined(__APPLE__)
-  uint32_t bufsize = sizeof(exe_path);
-  if (_NSGetExecutablePath(exe_path, &bufsize) != 0) {
-    return NULL;
-  }
-#else
-  return NULL; // Unsupported platform
-#endif
 
   // Build addr2line command
   // Note: Use double quotes for paths with spaces (works on both Windows and Unix)
@@ -658,9 +592,6 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
     // Allocate result buffer
     result[i] = SAFE_MALLOC(1024, char *);
-    if (!result[i]) {
-      break;
-    }
 
     // Format symbol
     bool has_func = (strcmp(func_name, "??") != 0);
@@ -760,32 +691,34 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
     if (resolved) {
       for (int i = 0; i < uncached_count; i++) {
+        int orig_idx = uncached_indices[i];
         if (resolved[i]) {
-          int orig_idx = uncached_indices[i];
           result[orig_idx] = platform_strdup(resolved[i]);
-
           // If strdup failed, use sentinel string instead of NULL
           if (!result[orig_idx]) {
+            SET_ERRNO(ERROR_MEMORY, "Failed to duplicate string for result[%d]", orig_idx);
             result[orig_idx] = platform_strdup(NULL_SENTINEL);
           }
-
           // Only insert into cache if strdup succeeded (and it's not the sentinel)
           if (result[orig_idx] && strcmp(result[orig_idx], NULL_SENTINEL) != 0) {
-            symbol_cache_insert(uncached_addrs[i], resolved[i]);
+            if (!symbol_cache_insert(uncached_addrs[i], resolved[i])) {
+              SET_ERRNO(ERROR_MEMORY, "Failed to insert symbol into cache for result[%d]", orig_idx);
+            }
           }
-
           SAFE_FREE(resolved[i]);
         } else {
           // resolved[i] is NULL - use sentinel string
-          int orig_idx = uncached_indices[i];
           if (!result[orig_idx]) {
             result[orig_idx] = platform_strdup(NULL_SENTINEL);
-            // If platform_strdup fails (out of memory), we'll have NULL in the middle
-            // but this should be extremely rare
           }
         }
+        if (!result[orig_idx]) {
+          SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for result[%d]", orig_idx);
+        }
       }
+
       SAFE_FREE(resolved);
+
     } else {
       // addr2line failed - fill uncached entries with raw addresses or sentinel
       for (int i = 0; i < uncached_count; i++) {
@@ -795,11 +728,11 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
           if (result[orig_idx]) {
             SAFE_SNPRINTF(result[orig_idx], 32, "%p", uncached_addrs[i]);
           } else {
-            // Even SAFE_MALLOC failed - use sentinel string
             result[orig_idx] = platform_strdup(NULL_SENTINEL);
-            // If platform_strdup fails (out of memory), we'll have NULL in the middle
-            // but this should be extremely rare
           }
+        }
+        if (!result[orig_idx]) {
+          SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for result[%d]", orig_idx);
         }
       }
     }
@@ -836,5 +769,3 @@ void symbol_cache_free_symbols(char **symbols) {
   // Free the array itself
   SAFE_FREE(symbols);
 }
-
-#endif // !_WIN32

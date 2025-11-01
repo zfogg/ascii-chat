@@ -212,7 +212,7 @@ static bool is_ok_response(const char *line) {
 #ifdef _WIN32
 // On Windows, we return HANDLE cast to int (handle values are always even on Windows)
 int gpg_agent_connect(void) {
-  char pipe_path[512];
+  char pipe_path[PLATFORM_MAX_PATH_LENGTH];
   if (get_agent_socket_path(pipe_path, sizeof(pipe_path)) != 0) {
     log_error("Failed to get GPG agent pipe path");
     return -1;
@@ -260,7 +260,7 @@ int gpg_agent_connect(void) {
 }
 #else
 int gpg_agent_connect(void) {
-  char socket_path[512];
+  char socket_path[PLATFORM_MAX_PATH_LENGTH];
   if (get_agent_socket_path(socket_path, sizeof(socket_path)) != 0) {
     log_error("Failed to get GPG agent socket path");
     return -1;

@@ -263,7 +263,7 @@ static void shutdown_client() {
  */
 static int initialize_client_systems() {
   // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != 0) {
+  if (platform_init() != ASCIICHAT_OK) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
   }
   (void)atexit(platform_cleanup);

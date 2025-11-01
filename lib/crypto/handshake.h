@@ -42,10 +42,10 @@ typedef struct crypto_handshake_context_t {
   uint16_t server_port;      // Server port
 
   // Authentication
-  bool verify_server_key;       // Client: verify server key
-  bool require_client_auth;     // Server: require client authentication
-  bool server_uses_client_auth; // Client: whether server is using client verification
-  char client_keys_path[256];   // Server: client keys file path
+  bool verify_server_key;                          // Client: verify server key
+  bool require_client_auth;                        // Server: require client authentication
+  bool server_uses_client_auth;                    // Client: whether server is using client verification
+  char client_keys_path[PLATFORM_MAX_PATH_LENGTH]; // Server: client keys file path
 
   // Dynamic crypto parameters (from crypto_parameters_packet_t)
   // Note: all size fields are stored in crypto_ctx and accessed via ctx->crypto_ctx.*

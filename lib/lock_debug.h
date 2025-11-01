@@ -30,7 +30,7 @@
  * 5. Cleanup: lock_debug_cleanup()
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date September 2025
  */
 
 #include <stdatomic.h>

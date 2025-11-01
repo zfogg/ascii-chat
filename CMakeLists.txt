@@ -986,51 +986,60 @@ if(WIN32)
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
         # Build to cache directory to keep platform-specific builds separate
-        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build")
+        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build-${CMAKE_BUILD_TYPE}")
         # Windows uses bearssls.lib, Unix uses libbearssl.a
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/bearssls.lib")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
 
-        # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
-        # This needs to happen at configure time to ensure the source is patched
-        set(BEARSSL_PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/bearssl-windows-clang.patch")
-        execute_process(
-            COMMAND git -C "${BEARSSL_SOURCE_DIR}" diff --quiet src/inner.h
-            RESULT_VARIABLE BEARSSL_PATCH_NEEDED
-            OUTPUT_QUIET ERROR_QUIET
-        )
-        if(NOT BEARSSL_PATCH_NEEDED EQUAL 0)
-            message(STATUS "Applying BearSSL patch for Windows+Clang compatibility")
+        # Only build BearSSL if the cached library doesn't exist
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            message(STATUS "BearSSL library not found in cache, will build from source: ${BEARSSL_LIB}")
+
+            # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
+            # This needs to happen at configure time to ensure the source is patched
+            set(BEARSSL_PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/bearssl-windows-clang.patch")
             execute_process(
-                COMMAND git -C "${BEARSSL_SOURCE_DIR}" apply --ignore-whitespace "${BEARSSL_PATCH_FILE}"
-                RESULT_VARIABLE BEARSSL_PATCH_RESULT
+                COMMAND git -C "${BEARSSL_SOURCE_DIR}" diff --quiet src/inner.h
+                RESULT_VARIABLE BEARSSL_PATCH_NEEDED
                 OUTPUT_QUIET ERROR_QUIET
             )
-            if(NOT BEARSSL_PATCH_RESULT EQUAL 0)
-                message(WARNING "Failed to apply BearSSL patch (may already be applied)")
+            if(NOT BEARSSL_PATCH_NEEDED EQUAL 0)
+                message(STATUS "Applying BearSSL patch for Windows+Clang compatibility")
+                execute_process(
+                    COMMAND git -C "${BEARSSL_SOURCE_DIR}" apply --ignore-whitespace "${BEARSSL_PATCH_FILE}"
+                    RESULT_VARIABLE BEARSSL_PATCH_RESULT
+                    OUTPUT_QUIET ERROR_QUIET
+                )
+                if(NOT BEARSSL_PATCH_RESULT EQUAL 0)
+                    message(WARNING "Failed to apply BearSSL patch (may already be applied)")
+                endif()
             endif()
+
+            # Find build tools
+            find_program(NMAKE_EXECUTABLE nmake REQUIRED)
+            find_program(CLANG_CL_EXECUTABLE clang-cl REQUIRED)
+            find_program(LLVM_LIB_EXECUTABLE llvm-lib REQUIRED)
+
+            # Add custom command to build BearSSL if library is missing
+            # This creates a build rule that Ninja/Make can use to rebuild the library
+            add_custom_command(
+                OUTPUT "${BEARSSL_LIB}"
+                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with nmake..."
+                COMMAND "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"
+                VERBATIM
+            )
+
+            # Add custom target that depends on the library
+            add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
+        else()
+            message(STATUS "BearSSL library found in cache: ${BEARSSL_LIB}")
+            # Create a dummy target so dependencies work
+            add_custom_target(bearssl_build)
         endif()
-
-        # Find build tools
-        find_program(NMAKE_EXECUTABLE nmake REQUIRED)
-        find_program(CLANG_CL_EXECUTABLE clang-cl REQUIRED)
-        find_program(LLVM_LIB_EXECUTABLE llvm-lib REQUIRED)
-
-        # Add custom command to build BearSSL if library is missing
-        # This creates a build rule that Ninja/Make can use to rebuild the library
-        add_custom_command(
-            OUTPUT "${BEARSSL_LIB}"
-            COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with nmake..."
-            COMMAND "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
-            WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-            COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"
-            VERBATIM
-        )
-
-        # Add custom target that depends on the library
-        add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
 
         # Create an imported library that links to the custom command output
         add_library(bearssl_static STATIC IMPORTED GLOBAL)
@@ -1046,7 +1055,7 @@ if(WIN32)
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "BearSSL configured with rebuild rule: ${BEARSSL_LIB}")
+        message(STATUS "BearSSL configured: ${BEARSSL_LIB}")
     else()
         message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
@@ -1101,7 +1110,7 @@ else()
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
         # Build to cache directory to keep platform-specific builds separate
-        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build")
+        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/bearssl-build-${CMAKE_BUILD_TYPE}")
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
@@ -1119,20 +1128,24 @@ else()
                 set(BEARSSL_CC "${CMAKE_C_COMPILER}")
             endif()
 
-            # Clean BearSSL build directory during CMake configuration to remove stale object files
-            # This ensures fortification flags are applied to all object files
-            message(STATUS "  Cleaning BearSSL build directory to remove stale object files...")
-            execute_process(
-                COMMAND make clean
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
+            # Only clean BearSSL if we're actually going to rebuild it
+            # This avoids invalidating the cache when the library already exists
+            if(NOT EXISTS "${BEARSSL_LIB}")
+                message(STATUS "  Cleaning BearSSL build directory before initial build...")
+                execute_process(
+                    COMMAND make clean
+                    WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+            else()
+                message(STATUS "  Skipping BearSSL clean - cached library exists")
+            endif()
 
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make lib..."
-                COMMAND make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
+                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make static..."
+                COMMAND make static CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 COMMENT "Building BearSSL static library to cache: ${BEARSSL_BUILD_DIR}"
@@ -1665,6 +1678,7 @@ set(CRYPTO_SRCS
 # =============================================================================
 set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
+    # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
 )
 
 if(WIN32)
@@ -2695,28 +2709,18 @@ add_custom_target(clean_all
     COMMENT "Cleaning all build artifacts"
 )
 
-# Dependency installation targets (matches Makefile deps targets)
-if(PLATFORM_DARWIN)
-    add_custom_target(deps
-        COMMAND brew install portaudio libsodium criterion zstd coreutils make || true
-        COMMENT "Installing macOS dependencies via Homebrew"
-    )
-    add_custom_target(deps-test
-        COMMAND brew install gcovr || true
-        COMMENT "Installing macOS test dependencies"
-        DEPENDS deps
-    )
-elseif(PLATFORM_LINUX)
-    add_custom_target(deps
-        COMMAND sudo apt-get update && sudo apt-get install -y build-essential pkg-config libportaudio2 portaudio19-dev libsodium-dev libcriterion-dev libzstd-dev || true
-        COMMENT "Installing Linux dependencies via apt"
-    )
-    add_custom_target(deps-test
-        COMMAND sudo apt-get install -y lcov gcovr valgrind || true
-        COMMENT "Installing Linux test dependencies"
-        DEPENDS deps
-    )
-endif()
+# =============================================================================
+# Dependency Installation
+# =============================================================================
+# CMake cannot install dependencies before configuration since find_package()
+# fails if deps are missing. Use the standalone scripts instead:
+#
+# Windows:  ./scripts/deps.ps1
+# Unix:     ./scripts/deps.sh
+#
+# These scripts install all required dependencies (zstd, libsodium, portaudio)
+# before CMake configuration, solving the chicken-and-egg problem.
+# =============================================================================
 
 # =============================================================================
 # Status Messages
@@ -2866,6 +2870,10 @@ if(CRITERION_FOUND)
 endif()
 message(STATUS "  Format code:         cmake --build build --target format")
 message(STATUS "  Check formatting:    cmake --build build --target format-check")
-message(STATUS "  Install deps:        cmake --build build --target deps")
+if(WIN32)
+    message(STATUS "  Install deps:        ./scripts/deps.ps1")
+else()
+    message(STATUS "  Install deps:        ./scripts/deps.sh")
+endif()
 message(STATUS "========================================")
 message(STATUS "")

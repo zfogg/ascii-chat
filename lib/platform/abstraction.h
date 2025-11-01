@@ -186,8 +186,6 @@ void *aligned_alloc(size_t alignment, size_t size);
 // Windows POSIX time function declarations (implemented in system.c)
 int clock_gettime(int clk_id, struct timespec *tp);
 struct tm *gmtime_r(const time_t *timep, struct tm *result);
-// Windows usleep declaration (implemented in system.c)
-int usleep(unsigned int usec);
 // Define useconds_t for Windows
 typedef unsigned int useconds_t;
 

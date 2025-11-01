@@ -58,12 +58,6 @@
  * @version 2.0 (Post-Modularization)
  */
 
-#include "hashtable.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
-#include "platform/init.h"
-#include "errno.h"
-
 #ifdef _WIN32
 #include <io.h>
 #include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
@@ -87,10 +81,16 @@
 #include <time.h>
 #include <stdatomic.h>
 
+#include "main.h"
+#include "common.h"
+#include "hashtable.h"
+#include "platform/abstraction.h"
+#include "platform/socket.h"
+#include "platform/init.h"
+#include "errno.h"
 #include "image2ascii/image.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
-#include "common.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "options.h"
@@ -98,7 +98,6 @@
 #include "mixer.h"
 #include "palette.h"
 #include "audio.h"
-
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
@@ -446,16 +445,16 @@ static int init_server_crypto(void) {
     if (parse_private_key(opt_encrypt_key, &g_server_private_key) == ASCIICHAT_OK) {
       log_info("Successfully loaded server key: %s", opt_encrypt_key);
     } else {
-      log_error("Failed to parse key: %s", opt_encrypt_key);
-      log_error("This may be due to:");
-      log_error("  - Wrong password for encrypted key");
-      log_error("  - Unsupported key type (only Ed25519 is currently supported)");
-      log_error("  - Corrupted key file");
-      log_error("  - Invalid GPG key ID (use: gpg --list-secret-keys)");
-      log_error("");
-      log_error("Note: RSA and ECDSA keys are not yet supported");
-      log_error("To generate an Ed25519 key: ssh-keygen -t ed25519");
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key type: %s", opt_encrypt_key);
+      log_error("Failed to parse key: %s\n"
+                "This may be due to:\n"
+                "  - Wrong password for encrypted key\n"
+                "  - Unsupported key type (only Ed25519 is currently supported)\n"
+                "  - Corrupted key file\n"
+                "\n"
+                "Note: RSA and ECDSA keys are not yet supported\n"
+                "To generate an Ed25519 key: ssh-keygen -t ed25519\n",
+                opt_encrypt_key);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", opt_encrypt_key);
       return -1;
     }
   } else if (strlen(opt_password) == 0) {
@@ -466,11 +465,9 @@ static int init_server_crypto(void) {
   }
 
   // Load client whitelist if provided
-  log_debug("opt_client_keys='%s', strlen=%zu", opt_client_keys, strlen(opt_client_keys));
   if (strlen(opt_client_keys) > 0) {
-    log_debug("Loading whitelist from: %s", opt_client_keys);
     if (parse_client_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed");
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", opt_client_keys);
       return -1;
     }
     log_debug("Loaded %zu whitelisted clients", g_num_whitelisted_clients);
@@ -478,11 +475,8 @@ static int init_server_crypto(void) {
   }
 
   g_server_encryption_enabled = true;
-  log_info("Encryption: ENABLED");
   return 0;
 }
-
-#include "main.h"
 
 int server_main(int argc, char *argv[]) {
   // Parse options FIRST so --help and --version can exit immediately
@@ -494,8 +488,17 @@ int server_main(int argc, char *argv[]) {
     return options_result;
   }
 
+  // Register shutdown check callback for library code
+  shutdown_register_callback(check_shutdown);
+
+  // Initialize logging first so errors are properly logged
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
+  safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
+  log_init(log_filename, LOG_DEBUG);
+  log_info("Logging initialized to %s", log_filename);
+
   // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != 0) {
+  if (platform_init() != ASCIICHAT_OK) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
   }
   (void)atexit(platform_cleanup);
@@ -508,15 +511,6 @@ int server_main(int argc, char *argv[]) {
   UNUSED(print_mimalloc_stats);
 #endif
 #endif
-
-  // Initialize logging first so errors are properly logged
-  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
-  safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
-  log_init(log_filename, LOG_DEBUG);
-  log_info("Logging initialized to %s", log_filename);
-
-  // Register shutdown check callback for library code
-  shutdown_register_callback(check_shutdown);
 
   // Initialize crypto after logging is ready
   log_info("Initializing crypto...");

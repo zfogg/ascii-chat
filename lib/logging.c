@@ -150,7 +150,7 @@ static void rotate_log_if_needed_unlocked(void) {
     }
 
     /* Read the tail into a temporary file */
-    char temp_filename[512];
+    char temp_filename[PLATFORM_MAX_PATH_LENGTH];
     int result = snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
     if (result <= 0 || result >= (int)sizeof(temp_filename)) {
       LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
