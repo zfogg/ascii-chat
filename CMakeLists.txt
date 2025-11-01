@@ -1128,24 +1128,19 @@ else()
                 set(BEARSSL_CC "${CMAKE_C_COMPILER}")
             endif()
 
-            # Only clean BearSSL if we're actually going to rebuild it
-            # This avoids invalidating the cache when the library already exists
-            if(NOT EXISTS "${BEARSSL_LIB}")
-                message(STATUS "  Cleaning BearSSL build directory before initial build...")
-                execute_process(
-                    COMMAND make clean
-                    WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                    OUTPUT_QUIET
-                    ERROR_QUIET
-                )
-            else()
-                message(STATUS "  Skipping BearSSL clean - cached library exists")
-            endif()
+            # Clean BearSSL build directory before initial build
+            message(STATUS "  Cleaning BearSSL build directory before initial build...")
+            execute_process(
+                COMMAND make clean
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
 
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make static..."
-                COMMAND make static CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
+                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make lib..."
+                COMMAND make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 COMMENT "Building BearSSL static library to cache: ${BEARSSL_BUILD_DIR}"
