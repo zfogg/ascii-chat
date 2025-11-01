@@ -78,10 +78,12 @@ ParameterizedTest(add_known_host_test_case_t *tc, crypto_known_hosts, add_known_
   asciichat_error_t result = add_known_host(tc->hostname, tc->port, tc->server_key);
 
   if (tc->expected_result == 0) {
-    cr_assert_eq(result, ASCIICHAT_OK, "Failed for case: %s (got %d, expected %d)", tc->description, result, ASCIICHAT_OK);
+    cr_assert_eq(result, ASCIICHAT_OK, "Failed for case: %s (got %d, expected %d)", tc->description, result,
+                 ASCIICHAT_OK);
   } else {
     // Expected to fail - should return an error (not ASCIICHAT_OK)
-    cr_assert_neq(result, ASCIICHAT_OK, "Should fail for case: %s (got %d, expected != %d)", tc->description, result, ASCIICHAT_OK);
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail for case: %s (got %d, expected != %d)", tc->description, result,
+                  ASCIICHAT_OK);
   }
 }
 

@@ -849,8 +849,7 @@ Test(ascii_simd_integration, extreme_image_sizes) {
 
     bool scalar_expanded_valid = (scalar_expanded != NULL);
     bool simd_expanded_valid = (simd_expanded != NULL);
-    bool outputs_match = (scalar_expanded_valid && simd_expanded_valid &&
-                          strcmp(scalar_expanded, simd_expanded) == 0);
+    bool outputs_match = (scalar_expanded_valid && simd_expanded_valid && strcmp(scalar_expanded, simd_expanded) == 0);
 
     // Cleanup - do before assertions so it always runs even if assertions fail
     SAFE_FREE(scalar_expanded);
@@ -1698,8 +1697,8 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
           if (exact_match) {
             log_debug("  ✅ PERFECT MATCH: All %zu bytes identical", scalar_len);
           } else {
-            log_debug("  ❌ CONTENT MISMATCH at byte %d: scalar=0x%02x vs simd=0x%02x", first_diff,
-                      scalar_diff_byte, simd_diff_byte);
+            log_debug("  ❌ CONTENT MISMATCH at byte %d: scalar=0x%02x vs simd=0x%02x", first_diff, scalar_diff_byte,
+                      simd_diff_byte);
 
             if (test_modes[m].is_color) {
               log_debug("  📝 NOTE: Color shuffle mask optimization not yet implemented - EXPECTED FAILURE");

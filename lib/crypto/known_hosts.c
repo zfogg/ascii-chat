@@ -350,7 +350,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   }
 
   // Convert key to hex for storage
-  char hex[65] = {0};  // Initialize to zeros for safety
+  char hex[65] = {0}; // Initialize to zeros for safety
   bool is_placeholder = true;
   // Build hex string byte by byte to avoid buffer overflow issues
   for (int i = 0; i < 32; i++) {
@@ -362,7 +362,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
       is_placeholder = false;
     }
   }
-  hex[64] = '\0';  // Ensure null termination (64 hex digits + null terminator)
+  hex[64] = '\0'; // Ensure null termination (64 hex digits + null terminator)
 
   // Write to file and check for errors
   int fprintf_result;

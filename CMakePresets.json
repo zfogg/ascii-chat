@@ -17,7 +17,7 @@
         {
             "name": "default",
             "displayName": "Default (Debug)",
-            "description": "Default configuration - Debug build with glibc, clang, and sanitizers (ASan+UBSan+LSan)",
+            "description": "Default configuration - Debug build with system libc, clang, and all compatible sanitizers (ASan+UBSan+LSan+Integer+Nullability)",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
@@ -26,10 +26,20 @@
         {
             "name": "debug",
             "displayName": "Debug",
-            "description": "Debug build with sanitizers (ASan+UBSan+LSan) - same as default",
+            "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "debug-musl",
+            "displayName": "Debug (musl - Linux only)",
+            "description": "Debug build with musl - static linked, no sanitizers (incompatible with musl)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "USE_MUSL": "ON"
             }
         },
         {
@@ -98,6 +108,10 @@
         {
             "name": "debug",
             "configurePreset": "debug"
+        },
+        {
+            "name": "debug-musl",
+            "configurePreset": "debug-musl"
         },
         {
             "name": "release-musl",

@@ -252,18 +252,21 @@ static __thread char error_buffer[256];
  */
 const char *platform_strerror(int errnum) {
   // Use strerror_r for thread safety
-#if defined(__APPLE__) || !defined(__GLIBC__)
-  // macOS and non-glibc (including musl) use XSI-compliant strerror_r (returns int)
+#if defined(__APPLE__) || !defined(__GLIBC__) || defined(USE_MUSL)
+  // macOS, musl, and non-glibc use XSI-compliant strerror_r (returns int)
   if (strerror_r(errnum, error_buffer, sizeof(error_buffer)) != 0) {
     safe_snprintf(error_buffer, sizeof(error_buffer), "Unknown error %d", errnum);
   }
 #else
   // glibc uses GNU strerror_r which returns a char*
   char *result = strerror_r(errnum, error_buffer, sizeof(error_buffer));
-  if (result != error_buffer) {
-    // GNU strerror_r may return a static string
+  if (result != error_buffer && result != NULL) {
+    // GNU strerror_r may return a static string, but never NULL in normal cases
     strncpy(error_buffer, result, sizeof(error_buffer) - 1);
     error_buffer[sizeof(error_buffer) - 1] = '\0';
+  } else if (result == NULL) {
+    // Defensive: handle unexpected NULL return
+    safe_snprintf(error_buffer, sizeof(error_buffer), "Unknown error %d", errnum);
   }
 #endif
   return error_buffer;
@@ -497,6 +500,15 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
     return safe_backtrace_symbols(buffer, size);
   }
   exe_path[len] = '\0';
+
+  // Check if binary was deleted/replaced (contains " (deleted)" suffix)
+  // This happens when the binary is rebuilt while running
+  char *deleted_marker = strstr(exe_path, " (deleted)");
+  if (deleted_marker) {
+    // Binary was deleted - addr2line won't work, use basic symbols
+    SAFE_FREE(result);
+    return safe_backtrace_symbols(buffer, size);
+  }
 #elif defined(__APPLE__)
   uint32_t bufsize = sizeof(exe_path);
   if (_NSGetExecutablePath(exe_path, &bufsize) != 0) {
@@ -516,11 +528,15 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
   unsigned long base_addr = 0;
   (void)base_addr; // Suppress unused variable warning
 
-  // Build addr2line command with all addresses
-  // For PIE binaries, subtract base address to get file offsets
+  // Build symbolizer command with all addresses
+  // Try llvm-symbolizer first (better for Clang builds), fall back to addr2line
   // IMPORTANT: Quote the exe_path to handle paths with shell metacharacters (spaces, parentheses, etc)
+  // Redirect stderr to /dev/null to suppress error messages
   char cmd[4096];
-  int offset = snprintf(cmd, sizeof(cmd), "addr2line -e '%s' -f -C -i ", exe_path);
+
+  // Try llvm-symbolizer first (it's better at resolving symbols for LLVM/Clang builds)
+  int offset =
+      snprintf(cmd, sizeof(cmd), "llvm-symbolizer --exe='%s' --functions=short --inlines --demangle ", exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     SAFE_FREE(result);
     return safe_backtrace_symbols(buffer, size);
@@ -539,6 +555,14 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
       break;
     }
     offset += n;
+  }
+
+  // Append stderr redirect to suppress error messages
+  int n = snprintf(cmd + offset, sizeof(cmd) - offset, "2>/dev/null");
+  if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
+    // Command too long, fallback
+    SAFE_FREE(result);
+    return safe_backtrace_symbols(buffer, size);
   }
 
   // Execute addr2line
@@ -566,7 +590,48 @@ static char **platform_backtrace_symbols_enhanced(void *const *buffer, int size)
     file_line[strcspn(file_line, "\n")] = '\0';
 
     // Extract just the relative path from file_line
-    const char *rel_path = extract_project_relative_path(file_line);
+    // Strip project root prefix to show lib/file.c:line instead of /full/path/lib/file.c:line
+    const char *rel_path = file_line;
+
+#ifdef PROJECT_SOURCE_ROOT
+    // Use strlen() at runtime to get the actual length (sizeof doesn't work with macros)
+    const char *project_root = PROJECT_SOURCE_ROOT;
+    size_t root_len = strlen(project_root);
+
+    // Check if path starts with project root
+    if (strncmp(file_line, project_root, root_len) == 0) {
+      // Skip past project root
+      rel_path = file_line + root_len;
+      // Skip the slash separator
+      if (*rel_path == '/') {
+        rel_path++;
+      }
+    } else if (file_line[0] == '/') {
+      // Absolute path but doesn't match - try to find project root anywhere in the path
+      const char *found = strstr(file_line, project_root);
+      if (found) {
+        rel_path = found + root_len;
+        // Skip the slash separator
+        if (*rel_path == '/') {
+          rel_path++;
+        }
+      } else {
+        // Last resort: extract just filename
+        const char *last_slash = strrchr(file_line, '/');
+        if (last_slash) {
+          rel_path = last_slash + 1;
+        }
+      }
+    }
+#else
+    // PROJECT_SOURCE_ROOT not defined - just extract filename
+    if (file_line[0] == '/') {
+      const char *last_slash = strrchr(file_line, '/');
+      if (last_slash) {
+        rel_path = last_slash + 1;
+      }
+    }
+#endif
 
     // Allocate result buffer
     result[parsed] = SAFE_MALLOC(1024, char *);

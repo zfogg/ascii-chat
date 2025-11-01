@@ -600,8 +600,8 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
   // - Width: 1 char = 1 horizontal pixel
   // - Height: 1 char = 2 vertical pixels (half-block = 2 pixels per char)
   const int PIXELS_PER_CHAR_HEIGHT = 2;
-  int composite_width_px = width;                              // chars = pixels horizontally
-  int composite_height_px = height * PIXELS_PER_CHAR_HEIGHT;   // chars * 2 = pixels vertically
+  int composite_width_px = width;                            // chars = pixels horizontally
+  int composite_height_px = height * PIXELS_PER_CHAR_HEIGHT; // chars * 2 = pixels vertically
 
   // Create composite with final dimensions - no recreation needed
   image_t *composite = image_new_from_pool(composite_width_px, composite_height_px);
@@ -640,9 +640,8 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
       target_width_px = (int)((cell_height_px * src_aspect) + 0.5f);
     }
 
-    log_info("Cell %d: %dx%d px, video %.2f, cell %.2f → target %dx%d px (fill %s)",
-             video_source_index - 1, cell_width_px, cell_height_px, src_aspect,
-             cell_visual_aspect, target_width_px, target_height_px,
+    log_info("Cell %d: %dx%d px, video %.2f, cell %.2f → target %dx%d px (fill %s)", video_source_index - 1,
+             cell_width_px, cell_height_px, src_aspect, cell_visual_aspect, target_width_px, target_height_px,
              (src_aspect > cell_visual_aspect) ? "WIDTH" : "HEIGHT");
 
     // Create resized image with standard allocation
@@ -683,12 +682,12 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
 
         // Clip to cell boundaries (prevents bleeding into adjacent cells)
         if (dst_x < cell_x_min || dst_x > cell_x_max || dst_y < cell_y_min || dst_y > cell_y_max) {
-          continue;  // Skip pixels outside cell boundaries
+          continue; // Skip pixels outside cell boundaries
         }
 
         // Additional composite boundary check
         if (dst_x < 0 || dst_x >= composite->w || dst_y < 0 || dst_y >= composite->h) {
-          continue;  // Skip pixels outside composite
+          continue; // Skip pixels outside composite
         }
 
         // Copy pixel

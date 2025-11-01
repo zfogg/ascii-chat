@@ -105,17 +105,48 @@ if(USE_MUSL)
     set(CMAKE_CXX_COMPILER "clang++" CACHE FILEPATH "CXX compiler" FORCE)
 
     # Set LLVM archiver and ranlib for proper archive handling
-    # Search in LLVM installation directories
-    find_program(LLVM_AR
-        NAMES llvm-ar
-        PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
-        NO_DEFAULT_PATH
+    # Use llvm-config to find the correct LLVM installation
+    find_program(LLVM_CONFIG
+        NAMES llvm-config-20 llvm-config-19 llvm-config-18 llvm-config
+        DOC "Path to llvm-config"
     )
-    find_program(LLVM_RANLIB
-        NAMES llvm-ranlib
-        PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
-        NO_DEFAULT_PATH
-    )
+
+    if(LLVM_CONFIG)
+        # Get LLVM binary directory from llvm-config
+        execute_process(
+            COMMAND ${LLVM_CONFIG} --bindir
+            OUTPUT_VARIABLE LLVM_BINDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        message(STATUS "Found LLVM via llvm-config: ${LLVM_CONFIG}")
+        message(STATUS "LLVM binary directory: ${LLVM_BINDIR}")
+
+        # Find llvm-ar and llvm-ranlib in LLVM's binary directory
+        find_program(LLVM_AR
+            NAMES llvm-ar
+            PATHS ${LLVM_BINDIR}
+            NO_DEFAULT_PATH
+        )
+        find_program(LLVM_RANLIB
+            NAMES llvm-ranlib
+            PATHS ${LLVM_BINDIR}
+            NO_DEFAULT_PATH
+        )
+    else()
+        # Fallback: search in common LLVM installation directories
+        message(STATUS "llvm-config not found, searching common paths")
+        find_program(LLVM_AR
+            NAMES llvm-ar
+            PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
+            NO_DEFAULT_PATH
+        )
+        find_program(LLVM_RANLIB
+            NAMES llvm-ranlib
+            PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
+            NO_DEFAULT_PATH
+        )
+    endif()
+
     if(LLVM_AR)
         set(CMAKE_AR "${LLVM_AR}" CACHE FILEPATH "Archiver" FORCE)
         message(STATUS "Using LLVM archiver: ${LLVM_AR}")
@@ -151,6 +182,17 @@ project(ascii-chat
     HOMEPAGE_URL "https://github.com/zfogg/ascii-chat"
     LANGUAGES ${PROJECT_LANGUAGES}
 )
+
+# Fix LLVM ranlib not being called automatically (must be after project())
+# This prevents "archive has no index" link errors
+if(CMAKE_RANLIB)
+    set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+endif()
 
 # =============================================================================
 # Include modular CMake helpers
@@ -990,28 +1032,48 @@ else()
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
 
-        # Add custom command to build BearSSL if library is missing
-        # This creates a build rule that Ninja/Make can use to rebuild the library
-        # For musl builds: disable getentropy() (not in musl), force /dev/urandom
-        if(USE_MUSL)
-            set(BEARSSL_EXTRA_CFLAGS "-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1")
+        # Only add build command if library doesn't exist
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            message(STATUS "BearSSL library not found in cache, will build from source: ${BEARSSL_LIB}")
+
+            # For musl builds: disable getentropy() (not in musl), force /dev/urandom, disable fortification
+            if(USE_MUSL)
+                set(BEARSSL_EXTRA_CFLAGS "-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector")
+                set(BEARSSL_CC "/usr/bin/musl-gcc")
+            else()
+                set(BEARSSL_EXTRA_CFLAGS "")
+                set(BEARSSL_CC "${CMAKE_C_COMPILER}")
+            endif()
+
+            # Clean BearSSL build directory during CMake configuration to remove stale object files
+            # This ensures fortification flags are applied to all object files
+            message(STATUS "  Cleaning BearSSL build directory to remove stale object files...")
+            execute_process(
+                COMMAND make clean
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+
+            add_custom_command(
+                OUTPUT "${BEARSSL_LIB}"
+                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make lib..."
+                COMMAND make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                COMMENT "Building BearSSL static library to cache: ${BEARSSL_BUILD_DIR}"
+                VERBATIM
+            )
+
+            # Add custom target that depends on the library
+            add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
         else()
-            set(BEARSSL_EXTRA_CFLAGS "")
+            message(STATUS "BearSSL library found in cache: ${BEARSSL_LIB}")
+            # Create a dummy target so dependencies work
+            add_custom_target(bearssl_build)
         endif()
-        add_custom_command(
-            OUTPUT "${BEARSSL_LIB}"
-            COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make lib..."
-            COMMAND make lib CC=${CMAKE_C_COMPILER} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
-            WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-            COMMENT "Building BearSSL static library to cache: ${BEARSSL_BUILD_DIR}"
-            VERBATIM
-        )
 
-        # Add custom target that depends on the library
-        add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
-
-        # Create an imported library that links to the custom command output
+        # Create an imported library that links to the cached library
         add_library(bearssl_static STATIC IMPORTED GLOBAL)
         set_target_properties(bearssl_static PROPERTIES
             IMPORTED_LOCATION "${BEARSSL_LIB}"
@@ -1025,7 +1087,7 @@ else()
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
-        message(STATUS "BearSSL configured with rebuild rule: ${BEARSSL_LIB}")
+        message(STATUS "BearSSL configured: ${BEARSSL_LIB}")
     else()
         message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
         set(BEARSSL_FOUND FALSE)
@@ -2103,10 +2165,20 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
     target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
 endif()
 
-# Strip symbols in Release builds
+# Strip symbols in Release builds and clean .comment section
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     find_program(STRIP_EXECUTABLE strip)
-    if(STRIP_EXECUTABLE)
+    find_program(OBJCOPY_EXECUTABLE objcopy)
+    if(STRIP_EXECUTABLE AND OBJCOPY_EXECUTABLE)
+        add_custom_command(TARGET ascii-chat POST_BUILD
+            # Strip all symbols
+            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+            # Clean .comment section (remove duplicates, keep version string)
+            COMMAND ${CMAKE_SOURCE_DIR}/cmake/clean_comment.sh $<TARGET_FILE:ascii-chat>
+            COMMENT "Stripping symbols and deduplicating .comment section"
+        )
+    elseif(STRIP_EXECUTABLE)
+        # Fallback: just strip symbols if objcopy not available
         add_custom_command(TARGET ascii-chat POST_BUILD
             COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
             COMMENT "Stripping symbols from ascii-chat"
@@ -2121,14 +2193,14 @@ if(USE_MUSL)
 
     # Link against musl-built static libraries
     target_link_directories(ascii-chat PRIVATE ${MUSL_PREFIX}/lib)
-    target_link_options(ascii-chat PRIVATE -static -rdynamic)
+    # Note: -rdynamic is incompatible with -static and not needed for musl + libexecinfo
+    target_link_options(ascii-chat PRIVATE -static)
 
     # Link all libraries (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat
         ${MUSL_PREFIX}/lib/libportaudio.a
         ${MUSL_PREFIX}/lib/libasound.a
         ${MUSL_PREFIX}/lib/libsodium.a
-        ${MUSL_PREFIX}/lib/libz.a
         ${MUSL_PREFIX}/lib/libexecinfo.a
         -lm -lpthread
     )

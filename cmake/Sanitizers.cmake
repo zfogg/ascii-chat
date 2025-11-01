@@ -24,6 +24,18 @@ function(configure_sanitizers USE_MIMALLOC_ARG BUILD_TYPE_ARG)
         return()
     endif()
 
+    # CRITICAL: musl + sanitizers don't work together in static builds
+    # Sanitizers require glibc-specific symbols like gnu_get_libc_version, dlvsym, _DYNAMIC, etc.
+    # which are not available in musl. This is a known limitation.
+    if(USE_MUSL)
+        add_compile_options(
+            -fno-omit-frame-pointer
+            -fno-optimize-sibling-calls
+        )
+        message(STATUS "${BUILD_TYPE_ARG} build: Disabled all sanitizers - incompatible with static musl builds")
+        return()
+    endif()
+
     # Sanitizer configuration based on build type
     if(BUILD_TYPE_ARG STREQUAL "Debug" OR BUILD_TYPE_ARG STREQUAL "Sanitize")
         configure_asan_ubsan_sanitizers()
