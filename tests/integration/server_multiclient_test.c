@@ -12,7 +12,9 @@
 #include <stdio.h>
 
 #include "tests/common.h"
-#include "network.h"
+#include "network/av.h"
+#include "network/packet.h"
+#include "network/packet_types.h"
 #include "image2ascii/simd/common.h"
 
 void setup_server_quiet_logging(void);
@@ -57,8 +59,8 @@ static pid_t start_test_server(int port) {
     if (build_dir) {
       safe_snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat", build_dir);
     } else if (in_docker) {
-      // In Docker, use docker_build directory
-      safe_snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat");
+      // In Docker, use build_docker directory (matches docker-compose.yml)
+      safe_snprintf(server_path, sizeof(server_path), "./build_docker/bin/ascii-chat");
     } else {
       // Local testing, use build directory
       safe_snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat");
@@ -73,7 +75,7 @@ static pid_t start_test_server(int port) {
       fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
     }
 
-    execl(server_path, "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
+    execl(server_path, "ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
 
     // If execl fails, print error
     fprintf(stderr, "Failed to execute server at: %s\n", server_path);
@@ -122,8 +124,8 @@ static int send_test_frame(int socket, int frame_id) {
                 "████████████\n",
                 frame_id, frame_id);
 
-  // Use the send_ascii_frame_packet function from network.h
-  return send_ascii_frame_packet(socket, ascii_data, strlen(ascii_data), 80, 24);
+  // Use the av_send_ascii_frame function from av.h
+  return av_send_ascii_frame(socket, ascii_data, strlen(ascii_data));
 }
 
 static int send_image_frame(int socket, int width, int height, int client_id) {
@@ -141,9 +143,9 @@ static int send_image_frame(int socket, int width, int height, int client_id) {
     }
   }
 
-  // Use the send_image_frame_packet function from network.h
+  // Use the av_send_image_frame function from av.h
   // Just use 0 for pixel_format since IMAGE_FORMAT_RGB24 doesn't exist
-  int result = send_image_frame_packet(socket, image_data, width * height * sizeof(rgb_pixel_t), width, height, 0);
+  int result = av_send_image_frame(socket, image_data, width, height, 0);
   SAFE_FREE(image_data);
   return result;
 }

@@ -293,16 +293,17 @@ Theory((const char *auth_method, bool known_hosts_verification, bool client_whit
   int client_auth = crypto_handshake_client_auth_response(&client_ctx, g_network.client_fd);
   int server_complete = crypto_handshake_server_complete(&server_ctx, g_network.server_fd);
 
-  // All steps should succeed
+  // Cleanup - do before assertions so it always runs even if assertions fail
+  crypto_handshake_cleanup(&server_ctx);
+  crypto_handshake_cleanup(&client_ctx);
+  teardown_mock_network();
+
+  // All steps should succeed (assertions after cleanup to ensure cleanup always runs)
   cr_assert_eq(server_start, 0, "Server start should succeed for auth method: %s", auth_method);
   cr_assert_eq(client_key_exchange, 0, "Client key exchange should succeed for auth method: %s", auth_method);
   cr_assert_eq(server_auth, 0, "Server auth should succeed for auth method: %s", auth_method);
   cr_assert_eq(client_auth, 0, "Client auth should succeed for auth method: %s", auth_method);
   cr_assert_eq(server_complete, 0, "Server complete should succeed for auth method: %s", auth_method);
-
-  crypto_handshake_cleanup(&server_ctx);
-  crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
 }
 
 // =============================================================================
@@ -406,23 +407,28 @@ Test(crypto_handshake_integration, large_data_encryption) {
   // Encrypt large data
   int encrypt_result = crypto_handshake_encrypt_packet(&server_ctx, large_data, large_size, ciphertext,
                                                        large_size + 1024, &ciphertext_len);
-  cr_assert_eq(encrypt_result, 0, "Large data encryption should succeed");
-  cr_assert_gt(ciphertext_len, 0, "Ciphertext should not be empty");
 
   // Decrypt large data
   int decrypt_result =
       crypto_handshake_decrypt_packet(&client_ctx, ciphertext, ciphertext_len, decrypted, large_size, &decrypted_len);
-  cr_assert_eq(decrypt_result, 0, "Large data decryption should succeed");
-  cr_assert_eq(decrypted_len, large_size, "Decrypted size should match original");
-  cr_assert_eq(memcmp(decrypted, large_data, large_size), 0, "Decrypted data should match original");
 
+  // Save comparison result before freeing memory
+  int memcmp_result = memcmp(decrypted, large_data, large_size);
+
+  // Cleanup - do before assertions so it always runs even if assertions fail
   SAFE_FREE(large_data);
   SAFE_FREE(ciphertext);
   SAFE_FREE(decrypted);
-
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
   teardown_mock_network();
+
+  // Assertions after cleanup to ensure cleanup always runs
+  cr_assert_eq(encrypt_result, 0, "Large data encryption should succeed");
+  cr_assert_gt(ciphertext_len, 0, "Ciphertext should not be empty");
+  cr_assert_eq(decrypt_result, 0, "Large data decryption should succeed");
+  cr_assert_eq(decrypted_len, large_size, "Decrypted size should match original");
+  cr_assert_eq(memcmp_result, 0, "Decrypted data should match original");
 }
 
 // =============================================================================

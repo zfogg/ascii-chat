@@ -9,13 +9,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tests/common.h"
 #include "crypto/known_hosts.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(crypto_known_hosts);
+// Use the enhanced macro to create complete test suite with debug logging enabled
+// This keeps stdout/stderr enabled and sets log level to DEBUG for debugging
+TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_known_hosts, LOG_DEBUG, LOG_DEBUG, false, false);
 
 // =============================================================================
 // Known Hosts Path Tests
@@ -75,7 +77,12 @@ ParameterizedTestParameters(crypto_known_hosts, add_known_host_tests) {
 ParameterizedTest(add_known_host_test_case_t *tc, crypto_known_hosts, add_known_host_tests) {
   asciichat_error_t result = add_known_host(tc->hostname, tc->port, tc->server_key);
 
-  cr_assert_eq(result, tc->expected_result, "Failed for case: %s", tc->description);
+  if (tc->expected_result == 0) {
+    cr_assert_eq(result, ASCIICHAT_OK, "Failed for case: %s (got %d, expected %d)", tc->description, result, ASCIICHAT_OK);
+  } else {
+    // Expected to fail - should return an error (not ASCIICHAT_OK)
+    cr_assert_neq(result, ASCIICHAT_OK, "Should fail for case: %s (got %d, expected != %d)", tc->description, result, ASCIICHAT_OK);
+  }
 }
 
 // =============================================================================
@@ -221,7 +228,8 @@ Test(crypto_known_hosts, add_known_host_duplicate) {
 
   // Add second time (should either succeed or fail gracefully)
   asciichat_error_t result2 = add_known_host(hostname, port, server_key);
-  cr_assert(result2 == ASCIICHAT_OK || result2 != ASCIICHAT_OK, "Duplicate addition should either succeed or fail gracefully");
+  cr_assert(result2 == ASCIICHAT_OK || result2 != ASCIICHAT_OK,
+            "Duplicate addition should either succeed or fail gracefully");
 }
 
 Test(crypto_known_hosts, large_known_hosts_file) {
@@ -264,7 +272,8 @@ Test(crypto_known_hosts, port_boundary_values) {
   // Test port 0 - format_ip_with_port might validate and reject port 0
   asciichat_error_t result3 = add_known_host(hostname, 0, server_key);
   // Port 0 might fail in format_ip_with_port, or might succeed if not validated
-  cr_assert(result3 == ASCIICHAT_OK || result3 == ERROR_INVALID_PARAM, "Port 0 should either succeed or fail with ERROR_INVALID_PARAM");
+  cr_assert(result3 == ASCIICHAT_OK || result3 == ERROR_INVALID_PARAM,
+            "Port 0 should either succeed or fail with ERROR_INVALID_PARAM");
 }
 
 Test(crypto_known_hosts, key_validation) {

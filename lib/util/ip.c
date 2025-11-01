@@ -7,17 +7,20 @@
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
   if (!ip) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;  // Invalid
   }
 
   if (strlen(ip) == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;  // Invalid
   }
 
   if (strlen(ip) > 256) {
     char ip_buffer[256];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    return 0;  // Invalid
   }
 
   int segments = 0;
@@ -59,17 +62,20 @@ int is_valid_ipv4(const char *ip) {
 // Helper function to validate IPv6 address format
 int is_valid_ipv6(const char *ip) {
   if (!ip) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;  // Invalid
   }
 
   if (strlen(ip) == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", ip);
+    return 0;  // Invalid
   }
 
   if (strlen(ip) > 256) {
     char ip_buffer[256];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
+    return 0;  // Invalid
   }
 
   // Special case: "::" is valid (all zeros)

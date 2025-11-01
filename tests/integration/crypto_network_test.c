@@ -248,7 +248,7 @@ Test(crypto_network_integration, large_message_handling) {
   // Create large message (simulating video frame data)
   size_t large_message_size = 64 * 1024; // 64KB
   uint8_t *large_message;
-  large_message = large_message_size = SAFE_MALLOC(uint8_t *);
+  large_message = SAFE_MALLOC(large_message_size, uint8_t *);
 
   // Fill with pattern
   for (size_t i = 0; i < large_message_size; i++) {
@@ -267,7 +267,7 @@ Test(crypto_network_integration, large_message_handling) {
 
   // Decrypt large message
   uint8_t *decrypted_message;
-  decrypted_message = large_message_size = SAFE_MALLOC(uint8_t *);
+  decrypted_message = SAFE_MALLOC(large_message_size, uint8_t *);
   size_t decrypted_len;
 
   result = crypto_process_encrypted_packet(&ctx2, encrypted_packet, packet_len, decrypted_message, large_message_size,

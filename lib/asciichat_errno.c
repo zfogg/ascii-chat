@@ -363,7 +363,8 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
     for (int i = 0; i < context->stack_depth; i++) {
       if (context->backtrace_symbols && context->backtrace_symbols[i] &&
           !skip_backtrace_frame(context->backtrace_symbols[i])) {
-        log_plain("  [%s%d%s] %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET), context->backtrace_symbols[i]);
+        log_plain("  [%s%d%s] %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
+                  context->backtrace_symbols[i]);
       }
     }
   }

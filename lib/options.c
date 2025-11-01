@@ -235,8 +235,8 @@ void update_dimensions_for_full_height(void) {
 void update_dimensions_to_terminal_size(void) {
   unsigned short int term_width, term_height;
   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
-  int terminal_result = get_terminal_size(&term_width, &term_height);
-  if (terminal_result == 0) {
+  asciichat_error_t terminal_result = get_terminal_size(&term_width, &term_height);
+  if (terminal_result == ASCIICHAT_OK) {
     if (auto_width) {
       opt_width = term_width;
     }
@@ -298,6 +298,20 @@ error:
 }
 
 asciichat_error_t options_init(int argc, char **argv, bool is_client) {
+  // Validate arguments (safety check for tests)
+  if (argc < 0 || argc > 1000) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
+  }
+  if (argv == NULL) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "argv is NULL");
+  }
+  // Validate all argv elements are non-NULL up to argc
+  for (int i = 0; i < argc; i++) {
+    if (argv[i] == NULL) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "argv[%d] is NULL (argc=%d)", i, argc);
+    }
+  }
+
   // Parse arguments first, then update dimensions (moved below)
 
   // Set different default addresses for client vs server
@@ -325,6 +339,9 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   // Pre-pass: Check for --help or --version first (they have priority over everything)
   // This ensures help/version are shown without triggering password prompts or other side effects
   for (int i = 1; i < argc; i++) {
+    if (argv[i] == NULL) {
+      break; // Stop if we hit a NULL element (safety check for tests with malformed argv)
+    }
     if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
       usage(stdout, is_client);
       (void)fflush(stdout);

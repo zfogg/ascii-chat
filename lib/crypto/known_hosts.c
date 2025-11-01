@@ -39,6 +39,18 @@ static char *g_known_hosts_path_cache = NULL;
 const char *get_known_hosts_path(void) {
   if (!g_known_hosts_path_cache) {
     g_known_hosts_path_cache = expand_path(KNOWN_HOSTS_PATH);
+    // If expand_path fails, fall back to a default path
+    if (!g_known_hosts_path_cache) {
+      // Use /tmp/.ascii-chat/known_hosts as fallback if HOME expansion fails
+      const char *fallback = "/tmp/.ascii-chat/known_hosts";
+      size_t len = strlen(fallback) + 1;
+      g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
+      if (g_known_hosts_path_cache) {
+        // Use memcpy instead of SAFE_STRNCPY for safety
+        memcpy(g_known_hosts_path_cache, fallback, len);
+        g_known_hosts_path_cache[len - 1] = '\0'; // Ensure null termination
+      }
+    }
   }
   return g_known_hosts_path_cache;
 }
@@ -47,6 +59,11 @@ const char *get_known_hosts_path(void) {
 // IPv4 example: 192.0.2.1:8080 x25519 1234abcd... ascii-chat
 // IPv6 example: [2001:db8::1]:8080 x25519 1234abcd... ascii-chat
 asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
+  // Validate parameters first
+  if (!server_ip || !server_key) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: server_ip=%p, server_key=%p", server_ip, server_key);
+  }
+
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
   if (fd < 0) {
@@ -257,18 +274,36 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
 }
 
 asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
+  // Validate parameters first
+  if (!server_ip || !server_key) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: server_ip=%p, server_key=%p", server_ip, server_key);
+  }
+
+  // Check for empty string (must be after NULL check)
+  size_t ip_len = strlen(server_ip);
+  if (ip_len == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Empty hostname/IP");
+  }
+
   const char *path = get_known_hosts_path();
-  if (!path) {
+  if (!path || path[0] == '\0') {
     SET_ERRNO(ERROR_CONFIG, "Failed to get known hosts file path");
     return ERROR_CONFIG;
   }
 
   // Create directory if needed - handle both Windows and Unix paths
-  char *dir = platform_strdup(path);
+  // Use strlen to safely get the length before duplicating
+  size_t path_len = strlen(path);
+  if (path_len == 0) {
+    SET_ERRNO(ERROR_CONFIG, "Empty known hosts file path");
+    return ERROR_CONFIG;
+  }
+  char *dir = SAFE_MALLOC(path_len + 1, char *);
   if (!dir) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
     return ERROR_MEMORY;
   }
+  memcpy(dir, path, path_len + 1);
 
   // Find the last path separator (handle both / and \)
   char *last_slash = strrchr(dir, '/');
@@ -294,35 +329,40 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   SAFE_FREE(dir);
 
   // Create the file if it doesn't exist, then append to it
-  log_debug("KNOWN_HOSTS: Attempting to create/open file: %s", path);
-  int fd = platform_open(path, PLATFORM_O_CREAT | PLATFORM_O_WRONLY | PLATFORM_O_APPEND, 0600);
-  if (fd < 0) {
+  // Note: Temporarily removed log_debug to avoid potential crashes during debugging
+  // log_debug("KNOWN_HOSTS: Attempting to create/open file: %s", path);
+  // Use "a" mode for append-only (simpler and works better with chmod)
+  FILE *f = platform_fopen(path, "a");
+  if (!f) {
+    // log_debug("KNOWN_HOSTS: platform_fopen failed: %s (errno=%d)", SAFE_STRERROR(errno), errno);
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create/open known hosts file: %s", path);
   }
-  log_debug("KNOWN_HOSTS: Successfully opened file: %s (fd=%d)", path, fd);
-
-  FILE *f = platform_fdopen(fd, "a");
-  if (!f) {
-    platform_close(fd);
-    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open known hosts file for writing: %s", path);
-  }
+  // Set secure permissions (0600) - only owner can read/write
+  // Note: chmod may fail if file was just created by fopen, but that's okay
+  (void)platform_chmod(path, 0600);
+  // log_debug("KNOWN_HOSTS: Successfully opened file: %s", path);
 
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[512];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
-    (void)fclose(f); // fclose() also closes the underlying fd
+    (void)fclose(f);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
 
   // Convert key to hex for storage
-  char hex[65];
+  char hex[65] = {0};  // Initialize to zeros for safety
   bool is_placeholder = true;
+  // Build hex string byte by byte to avoid buffer overflow issues
   for (int i = 0; i < 32; i++) {
-    safe_snprintf(hex + i * 2, 3, "%02x", server_key[i]);
-    if (server_key[i] != 0) {
+    // Convert each byte to 2 hex digits directly
+    uint8_t byte = server_key[i];
+    hex[i * 2] = "0123456789abcdef"[byte >> 4];      // High nibble
+    hex[i * 2 + 1] = "0123456789abcdef"[byte & 0xf]; // Low nibble
+    if (byte != 0) {
       is_placeholder = false;
     }
   }
+  hex[64] = '\0';  // Ensure null termination (64 hex digits + null terminator)
 
   // Write to file and check for errors
   int fprintf_result;
@@ -338,23 +378,28 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
 
   // Check if fprintf failed
   if (fprintf_result < 0) {
-    (void)fclose(f); // fclose() also closes the underlying fd
+    (void)fclose(f);
     return SET_ERRNO_SYS(ERROR_CONFIG, "CRITICAL SECURITY ERROR: Failed to write to known_hosts file: %s", path);
   }
 
   // Flush to ensure data is written
   if (fflush(f) != 0) {
-    (void)fclose(f); // fclose() also closes the underlying fd
+    (void)fclose(f);
     return SET_ERRNO_SYS(ERROR_CONFIG, "CRITICAL SECURITY ERROR: Failed to flush known_hosts file: %s", path);
   }
 
-  (void)fclose(f); // fclose() also closes the underlying fd
+  (void)fclose(f);
   log_debug("KNOWN_HOSTS: Successfully added host to known_hosts file: %s", path);
 
   return ASCIICHAT_OK;
 }
 
 asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
+  // Validate parameters first
+  if (!server_ip) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameter: server_ip=%p", server_ip);
+  }
+
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
   FILE *f = platform_fdopen(fd, "r");
@@ -393,7 +438,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   (void)fclose(f); // fclose() also closes the underlying fd
 
   // Write back the filtered lines
-  fd = platform_open(path, PLATFORM_O_WRONLY, 0600);
+  fd = platform_open(path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, 0600);
   f = platform_fdopen(fd, "w");
   if (!f) {
     // Cleanup on error - fdopen failed, so fd is still open but f is NULL
@@ -421,8 +466,11 @@ void compute_key_fingerprint(const uint8_t key[32], char fingerprint[65]) {
   uint8_t hash[32];
   crypto_hash_sha256(hash, key, 32);
 
+  // Build hex string byte by byte to avoid buffer overflow issues
   for (int i = 0; i < 32; i++) {
-    safe_snprintf(fingerprint + i * 2, 3, "%02x", hash[i]);
+    uint8_t byte = hash[i];
+    fingerprint[i * 2] = "0123456789abcdef"[byte >> 4];      // High nibble
+    fingerprint[i * 2 + 1] = "0123456789abcdef"[byte & 0xf]; // Low nibble
   }
   fingerprint[64] = '\0';
 }

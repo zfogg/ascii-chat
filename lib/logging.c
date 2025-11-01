@@ -679,9 +679,8 @@ void log_redetect_terminal_capabilities(void) {
     g_terminal_caps_initialized = true;
 
     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
-    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d",
-              g_terminal_caps.color_level, g_terminal_caps.capabilities,
-              g_terminal_caps.utf8_support ? "yes" : "no", g_terminal_caps.desired_fps);
+    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", g_terminal_caps.color_level,
+              g_terminal_caps.capabilities, g_terminal_caps.utf8_support ? "yes" : "no", g_terminal_caps.desired_fps);
 
     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
   }

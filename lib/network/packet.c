@@ -65,10 +65,10 @@ static int calculate_packet_timeout(size_t packet_size) {
  * @return 0 on success, -1 on error
  */
 asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
-                           uint32_t *expected_crc) {
+                                         uint32_t *expected_crc) {
   if (!header || !pkt_type || !pkt_len || !expected_crc) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p", header,
-              pkt_type, pkt_len, expected_crc);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p",
+                     header, pkt_type, pkt_len, expected_crc);
   }
 
   // First validate packet length BEFORE converting from network byte order
@@ -100,21 +100,21 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
     // Protocol version packet has fixed size
     if (len != sizeof(protocol_version_packet_t)) {
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid protocol version packet size: %u, expected %zu", len,
-                sizeof(protocol_version_packet_t));
+                       sizeof(protocol_version_packet_t));
     }
     break;
   case PACKET_TYPE_ASCII_FRAME:
     // ASCII frame contains header + frame data
     if (len < sizeof(ascii_frame_packet_t)) {
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid ASCII frame packet size: %u, minimum %zu", len,
-                sizeof(ascii_frame_packet_t));
+                       sizeof(ascii_frame_packet_t));
     }
     break;
   case PACKET_TYPE_IMAGE_FRAME:
     // Image frame contains header + pixel data
     if (len < sizeof(image_frame_packet_t)) {
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid image frame packet size: %u, minimum %zu", len,
-                sizeof(image_frame_packet_t));
+                       sizeof(image_frame_packet_t));
     }
     break;
   case PACKET_TYPE_AUDIO:
@@ -143,7 +143,7 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
   case PACKET_TYPE_CLIENT_JOIN:
     if (len != sizeof(client_info_packet_t)) {
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid client join packet size: %u, expected %zu", len,
-                sizeof(client_info_packet_t));
+                       sizeof(client_info_packet_t));
     }
     break;
   case PACKET_TYPE_CLIENT_LEAVE:
@@ -155,7 +155,8 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
   case PACKET_TYPE_STREAM_START:
   case PACKET_TYPE_STREAM_STOP:
     if (len != sizeof(uint32_t)) {
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len, sizeof(uint32_t));
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid stream control packet size: %u, expected %zu", len,
+                       sizeof(uint32_t));
     }
     break;
   case PACKET_TYPE_SIZE_MESSAGE:
@@ -230,7 +231,8 @@ asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t e
 
   uint32_t calculated_crc = asciichat_crc32(data, len);
   if (calculated_crc != expected_crc) {
-    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc, expected_crc);
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "CRC32 mismatch: calculated 0x%x, expected 0x%x", calculated_crc,
+                     expected_crc);
   }
 
   return ASCIICHAT_OK;
@@ -427,8 +429,8 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready) {
-    log_warn_every(1000000, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type, (void *)crypto_ctx,
-             ready);
+    log_warn_every(1000000, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
+                   (void *)crypto_ctx, ready);
     int result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);

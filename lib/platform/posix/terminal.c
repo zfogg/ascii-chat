@@ -363,7 +363,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   *width = 80;
   *height = 24;
   log_debug("POSIX terminal size fallback: %dx%d", *width, *height);
-  return -1; // Indicate fallback was used
+  return ASCIICHAT_OK; // Fallback succeeded with defaults
 }
 
 /**

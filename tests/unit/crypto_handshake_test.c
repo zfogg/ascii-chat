@@ -242,19 +242,23 @@ Test(crypto_handshake, complete_handshake_flow) {
   cr_assert_eq(server_result, ASCIICHAT_OK, "Server start should succeed");
 
   // Client key exchange
-  asciichat_error_t client_result = crypto_handshake_client_key_exchange(&client_ctx, (socket_t)(uintptr_t)&g_client_socket);
+  asciichat_error_t client_result =
+      crypto_handshake_client_key_exchange(&client_ctx, (socket_t)(uintptr_t)&g_client_socket);
   cr_assert_eq(client_result, ASCIICHAT_OK, "Client key exchange should succeed");
 
   // Server auth challenge
-  asciichat_error_t server_auth_result = crypto_handshake_server_auth_challenge(&server_ctx, (socket_t)(uintptr_t)&g_server_socket);
+  asciichat_error_t server_auth_result =
+      crypto_handshake_server_auth_challenge(&server_ctx, (socket_t)(uintptr_t)&g_server_socket);
   cr_assert_eq(server_auth_result, ASCIICHAT_OK, "Server auth challenge should succeed");
 
   // Client auth response
-  asciichat_error_t client_auth_result = crypto_handshake_client_auth_response(&client_ctx, (socket_t)(uintptr_t)&g_client_socket);
+  asciichat_error_t client_auth_result =
+      crypto_handshake_client_auth_response(&client_ctx, (socket_t)(uintptr_t)&g_client_socket);
   cr_assert_eq(client_auth_result, ASCIICHAT_OK, "Client auth response should succeed");
 
   // Server complete
-  asciichat_error_t server_complete_result = crypto_handshake_server_complete(&server_ctx, (socket_t)(uintptr_t)&g_server_socket);
+  asciichat_error_t server_complete_result =
+      crypto_handshake_server_complete(&server_ctx, (socket_t)(uintptr_t)&g_server_socket);
   cr_assert_eq(server_complete_result, ASCIICHAT_OK, "Server complete should succeed");
 
   // Verify final states

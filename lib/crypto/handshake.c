@@ -76,15 +76,17 @@ asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ct
   ctx->crypto_ctx.nonce_size = params->nonce_size;
   ctx->crypto_ctx.mac_size = params->mac_size;
   ctx->crypto_ctx.hmac_size = params->hmac_size;
-  ctx->crypto_ctx.auth_challenge_size = AUTH_CHALLENGE_SIZE; // Auth challenge size is fixed for now, could be negotiated later
+  ctx->crypto_ctx.auth_challenge_size =
+      AUTH_CHALLENGE_SIZE; // Auth challenge size is fixed for now, could be negotiated later
   ctx->crypto_ctx.encryption_key_size = ctx->crypto_ctx.shared_key_size; // Use shared key size as encryption key size
-  ctx->crypto_ctx.private_key_size = ctx->crypto_ctx.public_key_size; // Same as public key for X25519
-  ctx->crypto_ctx.salt_size = ARGON2ID_SALT_SIZE; // Salt size doesn't change
+  ctx->crypto_ctx.private_key_size = ctx->crypto_ctx.public_key_size;    // Same as public key for X25519
+  ctx->crypto_ctx.salt_size = ARGON2ID_SALT_SIZE;                        // Salt size doesn't change
 
   log_debug("Crypto parameters set: kex_key=%u, auth_key=%u, sig=%u, "
             "secret=%u, nonce=%u, mac=%u, hmac=%u",
-            ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size, ctx->crypto_ctx.signature_size, ctx->crypto_ctx.shared_key_size,
-            ctx->crypto_ctx.nonce_size, ctx->crypto_ctx.mac_size, ctx->crypto_ctx.hmac_size);
+            ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size, ctx->crypto_ctx.signature_size,
+            ctx->crypto_ctx.shared_key_size, ctx->crypto_ctx.nonce_size, ctx->crypto_ctx.mac_size,
+            ctx->crypto_ctx.hmac_size);
 
   return ASCIICHAT_OK;
 }
@@ -117,7 +119,8 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
     // 2. Authenticated format: kex_public_key_size + auth_public_key_size + signature_size
     {
       size_t simple_size = ctx->crypto_ctx.public_key_size;
-      size_t authenticated_size = ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;
+      size_t authenticated_size =
+          ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;
 
       if (packet_size != simple_size && packet_size != authenticated_size) {
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
@@ -144,8 +147,8 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
                          "Invalid KEY_EXCHANGE_RESP size: %zu (expected %zu for simple or %zu for authenticated: "
                          "kex=%u + auth=%u + sig=%u)",
-                         packet_size, simple_size, authenticated_size, ctx->crypto_ctx.public_key_size, ed25519_auth_size,
-                         ed25519_sig_size);
+                         packet_size, simple_size, authenticated_size, ctx->crypto_ctx.public_key_size,
+                         ed25519_auth_size, ed25519_sig_size);
       }
     }
     break;
@@ -155,8 +158,8 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
     {
       size_t expected_size = AUTH_CHALLENGE_FLAGS_SIZE + ctx->crypto_ctx.auth_challenge_size;
       if (packet_size != expected_size) {
-        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid AUTH_CHALLENGE size: %zu (expected %zu: flags=%d + nonce=%u)", packet_size,
-                         expected_size, AUTH_CHALLENGE_FLAGS_SIZE, ctx->crypto_ctx.auth_challenge_size);
+        return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid AUTH_CHALLENGE size: %zu (expected %zu: flags=%d + nonce=%u)",
+                         packet_size, expected_size, AUTH_CHALLENGE_FLAGS_SIZE, ctx->crypto_ctx.auth_challenge_size);
       }
     }
     break;
@@ -270,10 +273,12 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
   int result;
 
   // Calculate packet size based on negotiated crypto parameters
-  size_t expected_packet_size = ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;
+  size_t expected_packet_size =
+      ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;
 
-  log_debug("SERVER_KEY_EXCHANGE: kex_size=%u, auth_size=%u, sig_size=%u, expected_size=%zu", ctx->crypto_ctx.public_key_size,
-            ctx->crypto_ctx.auth_public_key_size, ctx->crypto_ctx.signature_size, expected_packet_size);
+  log_debug("SERVER_KEY_EXCHANGE: kex_size=%u, auth_size=%u, sig_size=%u, expected_size=%zu",
+            ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size, ctx->crypto_ctx.signature_size,
+            expected_packet_size);
 
   // Check if we have an identity key to send authenticated packet
   if (ctx->server_private_key.type == KEY_TYPE_ED25519) {
@@ -289,7 +294,8 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     memcpy(extended_packet, ctx->crypto_ctx.public_key, ctx->crypto_ctx.public_key_size);
 
     // Copy identity public key
-    memcpy(extended_packet + ctx->crypto_ctx.public_key_size, ctx->server_private_key.public_key, ctx->crypto_ctx.auth_public_key_size);
+    memcpy(extended_packet + ctx->crypto_ctx.public_key_size, ctx->server_private_key.public_key,
+           ctx->crypto_ctx.auth_public_key_size);
 
     // DEBUG: Print identity key being sent
     char hex[HEX_STRING_SIZE_32];
@@ -301,7 +307,8 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
     // Sign the ephemeral key with our identity key
     log_debug("Signing ephemeral key with server identity key");
     if (ed25519_sign_message(&ctx->server_private_key, ctx->crypto_ctx.public_key, ctx->crypto_ctx.public_key_size,
-                             extended_packet + ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size) != 0) {
+                             extended_packet + ctx->crypto_ctx.public_key_size +
+                                 ctx->crypto_ctx.auth_public_key_size) != 0) {
       SAFE_FREE(extended_packet);
       return SET_ERRNO(ERROR_CRYPTO, "Failed to sign ephemeral key with identity key");
     }
@@ -351,11 +358,13 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   }
 
   log_debug("CLIENT_KEY_EXCHANGE: Received packet with payload_len=%zu, kex_size=%u, auth_size=%u, sig_size=%u",
-            payload_len, ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size, ctx->crypto_ctx.signature_size);
+            payload_len, ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size,
+            ctx->crypto_ctx.signature_size);
 
   // Check payload size - only authenticated format supported
   // Authenticated: public_key_size + auth_public_key_size + signature_size bytes
-  size_t expected_auth_size = ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;
+  size_t expected_auth_size =
+      ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;
 
   uint8_t *server_ephemeral_key;
   // Use the crypto context's public key size to ensure compatibility
@@ -399,7 +408,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     log_info("Received authenticated KEY_EXCHANGE_INIT (%zu bytes)", expected_auth_size);
     memcpy(server_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
     memcpy(server_identity_key, payload + ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size);
-    memcpy(server_signature, payload + ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size, ctx->crypto_ctx.signature_size);
+    memcpy(server_signature, payload + ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size,
+           ctx->crypto_ctx.signature_size);
 
     // Server is using client authentication
     ctx->server_uses_client_auth = true;
@@ -738,8 +748,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       }
     } else {
       // Client has no identity key - send null identity and null signature
-      memset(key_response + ctx->crypto_ctx.public_key_size, 0, ed25519_pubkey_size);                    // Null identity
-      memset(key_response + ctx->crypto_ctx.public_key_size + ed25519_pubkey_size, 0, ed25519_sig_size); // Null signature
+      memset(key_response + ctx->crypto_ctx.public_key_size, 0, ed25519_pubkey_size); // Null identity
+      memset(key_response + ctx->crypto_ctx.public_key_size + ed25519_pubkey_size, 0,
+             ed25519_sig_size); // Null signature
     }
 
     result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size);
@@ -864,7 +875,8 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     // [ephemeral:kex_size][identity:auth_size][signature:sig_size]
     memcpy(client_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
     memcpy(client_identity_key, payload + ctx->crypto_ctx.public_key_size, ED25519_PUBLIC_KEY_SIZE);
-    memcpy(client_signature, payload + ctx->crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE, ED25519_SIGNATURE_SIZE);
+    memcpy(client_signature, payload + ctx->crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE,
+           ED25519_SIGNATURE_SIZE);
     client_sent_identity = true;
     ctx->client_sent_identity = true;
 
@@ -909,7 +921,8 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
       ctx->client_ed25519_key.type = KEY_TYPE_ED25519;
       memcpy(ctx->client_ed25519_key.key, client_identity_key, ctx->crypto_ctx.public_key_size);
     }
-  } else if (ctx->crypto_ctx.auth_public_key_size == 0 && ctx->crypto_ctx.signature_size == 0 && payload_len == ctx->crypto_ctx.public_key_size) {
+  } else if (ctx->crypto_ctx.auth_public_key_size == 0 && ctx->crypto_ctx.signature_size == 0 &&
+             payload_len == ctx->crypto_ctx.public_key_size) {
     // Non-authenticated format: [ephemeral:public_key_size] only
     log_debug("Client sent non-authenticated response (%zu bytes)", payload_len);
     memcpy(client_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
@@ -1029,8 +1042,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     memcpy(challenge_packet + 1, ctx->crypto_ctx.auth_nonce, ctx->crypto_ctx.auth_challenge_size);
 
     // Send AUTH_CHALLENGE with flags + nonce (challenge_packet_size bytes)
-    result =
-        send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge_packet, challenge_packet_size);
+    result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge_packet, challenge_packet_size);
     if (result != 0) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_CHALLENGE packet");
     }
@@ -1056,8 +1068,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 
 // Helper: Send password-based authentication response with mutual auth
 static asciichat_error_t send_password_auth_response(crypto_handshake_context_t *ctx, socket_t client_socket,
-                                                     const uint8_t *nonce,
-                                                     const char *auth_context) {
+                                                     const uint8_t *nonce, const char *auth_context) {
   // Ensure shared secret is derived before computing password HMAC
   // This is critical for password HMAC computation which binds to the shared secret
   if (!ctx->crypto_ctx.key_exchange_complete) {
@@ -1085,8 +1096,7 @@ static asciichat_error_t send_password_auth_response(crypto_handshake_context_t 
   memcpy(auth_packet, hmac_response, ctx->crypto_ctx.hmac_size);
   memcpy(auth_packet + ctx->crypto_ctx.hmac_size, ctx->client_challenge_nonce, ctx->crypto_ctx.auth_challenge_size);
 
-  log_debug("Sending AUTH_RESPONSE packet with HMAC + client nonce (%zu bytes) - %s", auth_packet_size,
-            auth_context);
+  log_debug("Sending AUTH_RESPONSE packet with HMAC + client nonce (%zu bytes) - %s", auth_packet_size, auth_context);
   int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
   if (result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_RESPONSE packet");
@@ -1100,7 +1110,8 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
                                                 const uint8_t *nonce, const char *auth_context) {
   // Sign the challenge with our Ed25519 private key
   uint8_t signature[ED25519_SIGNATURE_SIZE]; // Maximum size buffer
-  asciichat_error_t sign_result = ed25519_sign_message(&ctx->client_private_key, nonce, ctx->crypto_ctx.auth_challenge_size, signature);
+  asciichat_error_t sign_result =
+      ed25519_sign_message(&ctx->client_private_key, nonce, ctx->crypto_ctx.auth_challenge_size, signature);
   if (sign_result != ASCIICHAT_OK) {
     return SET_ERRNO(ERROR_CRYPTO, "Failed to sign challenge with Ed25519 key");
   }
@@ -1117,7 +1128,8 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
   size_t auth_packet_size = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
   uint8_t auth_packet[ED25519_SIGNATURE_SIZE + HMAC_SHA256_SIZE]; // Maximum size buffer (signature + challenge)
   memcpy(auth_packet, signature, ctx->crypto_ctx.signature_size);
-  memcpy(auth_packet + ctx->crypto_ctx.signature_size, ctx->client_challenge_nonce, ctx->crypto_ctx.auth_challenge_size);
+  memcpy(auth_packet + ctx->crypto_ctx.signature_size, ctx->client_challenge_nonce,
+         ctx->crypto_ctx.auth_challenge_size);
   sodium_memzero(signature, sizeof(signature));
 
   log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature + client "
@@ -1241,7 +1253,8 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
   // NOTE: Identity verification happens during KEY_EXCHANGE phase, not
   // AUTH_RESPONSE!
   // 1. If server requires password → MUST send HMAC (hmac_size bytes), error if no password
-  // 2. Else if server requires identity (whitelist) → MUST send Ed25519 signature (signature_size bytes), error if no key
+  // 2. Else if server requires identity (whitelist) → MUST send Ed25519 signature (signature_size bytes), error if no
+  // key
   // 3. Else if client has password → send HMAC (optional password auth)
   // 4. Else if client has SSH key → send Ed25519 signature (optional identity
   // proof)
@@ -1475,13 +1488,14 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
     }
 
     // Verify password HMAC (binds to DH shared_secret to prevent MITM)
-    log_debug("Verifying password HMAC: has_password=%d, key_exchange_complete=%d",
-              ctx->crypto_ctx.has_password, ctx->crypto_ctx.key_exchange_complete);
+    log_debug("Verifying password HMAC: has_password=%d, key_exchange_complete=%d", ctx->crypto_ctx.has_password,
+              ctx->crypto_ctx.key_exchange_complete);
     if (!crypto_verify_auth_response(&ctx->crypto_ctx, ctx->crypto_ctx.auth_nonce, payload)) {
       log_debug("Password HMAC verification failed");
       // Enhanced error message when both password and whitelist are required
       if (ctx->require_client_auth) {
-        SET_ERRNO(ERROR_CRYPTO, "Password authentication failed - incorrect password (server also requires whitelisted client key)");
+        SET_ERRNO(ERROR_CRYPTO,
+                  "Password authentication failed - incorrect password (server also requires whitelisted client key)");
       } else {
         SET_ERRNO(ERROR_CRYPTO, "Password authentication failed - incorrect password");
       }
@@ -1510,7 +1524,8 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
     size_t expected_password_size = ctx->crypto_ctx.hmac_size + ctx->crypto_ctx.auth_challenge_size;
     if (payload_len == expected_signature_size) {
       // Signature + client nonce
-      memcpy(ctx->client_challenge_nonce, payload + ctx->crypto_ctx.signature_size, ctx->crypto_ctx.auth_challenge_size);
+      memcpy(ctx->client_challenge_nonce, payload + ctx->crypto_ctx.signature_size,
+             ctx->crypto_ctx.auth_challenge_size);
     } else if (payload_len == expected_password_size) {
       // Just client nonce (legacy or password-only mode without password enabled)
       // Use ctx->crypto_ctx.hmac_size and ctx->crypto_ctx.auth_challenge_size (negotiated during handshake)

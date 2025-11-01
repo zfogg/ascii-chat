@@ -14,6 +14,7 @@
 #include "../../asciichat_errno.h"
 #include "../socket.h"
 #include "../../util/path.h"
+#include "../symbols.h"
 #include <dbghelp.h>
 #include <wincrypt.h>
 #include <io.h>
@@ -532,22 +533,33 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
 }
 
 /**
- * @brief Convert stack trace addresses to symbols using Windows SymFromAddr
+ * @brief Convert stack trace addresses to symbols using llvm-symbolizer/addr2line + Windows SymFromAddr
  * @param buffer Array of addresses from platform_backtrace
  * @param size Number of addresses in buffer
  * @return Array of strings with symbol names (must be freed with platform_backtrace_symbols_free)
+ *
+ * Uses multi-layered symbol resolution strategy:
+ * 1. Try llvm-symbolizer/addr2line cache first (works in all build modes)
+ * 2. Fall back to Windows DbgHelp (SymFromAddr/SymGetLineFromAddr64) if cache fails
+ * 3. Last resort: display raw address
  */
 char **platform_backtrace_symbols(void *const *buffer, int size) {
   if (!buffer || size <= 0) {
     return NULL;
   }
 
-  // Initialize Windows symbols once
+  // Initialize Windows symbols once (for fallback)
   init_windows_symbols();
+
+  // Try using the symbol cache (llvm-symbolizer/addr2line) in batch mode FIRST
+  char **cache_symbols = symbol_cache_resolve_batch(buffer, size);
 
   // Allocate array of strings (size + 1 for NULL terminator)
   char **symbols = SAFE_MALLOC((size + 1) * sizeof(char *), char **);
   if (!symbols) {
+    if (cache_symbols) {
+      symbol_cache_free_symbols(cache_symbols);
+    }
     return NULL;
   }
 
@@ -556,12 +568,45 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     symbols[i] = NULL;
   }
 
-  // Resolve each symbol
+  // Resolve each symbol, preferring cache results
   for (int i = 0; i < size; i++) {
     symbols[i] = (char *)SAFE_MALLOC(1024, void *); // Increased buffer size for longer symbol names
-    if (symbols[i]) {
-      resolve_windows_symbol(buffer[i], symbols[i], 1024);
+    if (!symbols[i]) {
+      continue;
     }
+
+    // Try llvm-symbolizer/addr2line cache FIRST
+    bool cache_success = false;
+    if (cache_symbols && cache_symbols[i]) {
+      // Check if cache actually resolved the symbol (not just "0x..." or "??")
+      const char *sym = cache_symbols[i];
+      if (sym[0] != '0' && sym[0] != '?' && sym[0] != '\0') {
+        SAFE_STRNCPY(symbols[i], sym, 1024);
+        cache_success = true;
+      }
+    }
+
+    // Fall back to DbgHelp if cache failed
+    if (!cache_success && atomic_load(&g_symbols_initialized)) {
+      char temp_buffer[1024];
+      resolve_windows_symbol(buffer[i], temp_buffer, sizeof(temp_buffer));
+
+      // Check if DbgHelp actually resolved the symbol (not just "0x...")
+      if (temp_buffer[0] != '0' || temp_buffer[1] != 'x') {
+        SAFE_STRNCPY(symbols[i], temp_buffer, 1024);
+        cache_success = true; // Mark as resolved
+      }
+    }
+
+    // Last resort: just print the address
+    if (!cache_success) {
+      safe_snprintf(symbols[i], 1024, "%p", buffer[i]);
+    }
+  }
+
+  // Clean up cache symbols
+  if (cache_symbols) {
+    symbol_cache_free_symbols(cache_symbols);
   }
 
   return symbols;
