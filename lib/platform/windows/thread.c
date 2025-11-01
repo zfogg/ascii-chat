@@ -373,6 +373,8 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
       printf("Could not get exception context\n");
       (void)fflush(stdout);
     }
+#else
+    (void)build_stack_trace_message;
 #endif // !NDEBUG
 
     // Use raw free to match raw malloc used in allocation (see allocation comment above for rationale)

@@ -87,7 +87,7 @@ jobs:
         DEBUG_SIZE=$(stat -f%z build_debug/bin/ascii-chat 2>/dev/null || stat -c%s build_debug/bin/ascii-chat)
 
         echo "Building release version..."
-        CC=clang CXX=clang++ cmake -B build_release -G Ninja \
+        CC=clang CXX=clang++ cmake -B build_release --preset release -G Ninja \
           -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
           -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
