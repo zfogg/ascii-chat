@@ -65,7 +65,14 @@ const char *get_username_env(void) {
  */
 asciichat_error_t platform_init(void) {
   // Initialize symbol cache for backtrace resolution
-  symbol_cache_init();
+  if (symbol_cache_init() != ASCIICHAT_OK) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Symbol cache initialization failed");
+  }
+
+  // Initialize Winsock (required before getaddrinfo and socket operations)
+  if (socket_init() != ASCIICHAT_OK) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Network operation failed");
+  }
 
   // Install crash handlers for automatic backtrace on crashes
   platform_install_crash_handler();
@@ -77,6 +84,9 @@ asciichat_error_t platform_init(void) {
  * @note POSIX platforms don't need special cleanup
  */
 void platform_cleanup(void) {
+  // Cleanup binary PATH cache
+  platform_cleanup_binary_path_cache();
+
   // Print symbol cache statistics before cleanup
   symbol_cache_print_stats();
 
@@ -103,6 +113,12 @@ void platform_sleep_usec(unsigned int usec) {
   usleep(usec);
 }
 
+/**
+ * @brief Convert time_t to local time
+ * @param timer Pointer to time_t value
+ * @param result Pointer to struct tm to receive result
+ * @return 0 on success, non-zero on error
+ */
 asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
   if (!timer || !result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for localtime");
@@ -1054,5 +1070,11 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   // No CA bundle found
   return SET_ERRNO(ERROR_CRYPTO, "No CA certificate bundle found in standard locations");
 }
+
+// Include hashtable.h for binary PATH detection cache
+#include "../../hashtable.h"
+
+// Include cross-platform system utilities (binary PATH detection)
+#include "../system.c"
 
 #endif // !_WIN32

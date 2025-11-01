@@ -31,12 +31,14 @@ typedef int socket_t;
 #define INVALID_SOCKET_VALUE (-1)
 #endif
 
+#include "../common.h"
+
 // ============================================================================
 // Socket Functions
 // ============================================================================
 
 // Initialization (required on Windows)
-int socket_init(void);
+asciichat_error_t socket_init(void);
 void socket_cleanup(void);
 
 // Basic socket operations

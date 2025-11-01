@@ -1,11 +1,13 @@
 #ifdef _WIN32
 
-#include "platform/socket.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <mstcpip.h>
 #include <stdio.h>
 #include <stdbool.h>
+
+#include "common.h"
+#include "platform/socket.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -14,15 +16,16 @@ static int winsock_initialized = 0;
 static WSADATA wsaData;
 
 // Socket implementation
-int socket_init(void) {
+asciichat_error_t socket_init(void) {
   if (!winsock_initialized) {
     int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (result != 0) {
-      return -1;
+      return SET_ERRNO(ERROR_NETWORK, "WSAStartup failed");
     }
     winsock_initialized = 1;
   }
-  return 0;
+
+  return ASCIICHAT_OK;
 }
 
 void socket_cleanup(void) {
@@ -34,7 +37,7 @@ void socket_cleanup(void) {
 
 socket_t socket_create(int domain, int type, int protocol) {
   // Ensure Winsock is initialized
-  if (socket_init() != 0) {
+  if (socket_init() != ASCIICHAT_OK) {
     return INVALID_SOCKET;
   }
 

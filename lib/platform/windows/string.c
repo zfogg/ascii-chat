@@ -21,7 +21,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h> // For malloc
-#include <errno.h>  // For errno variable
 
 int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
   if (!buffer || buffer_size == 0 || !format) {
@@ -41,6 +40,16 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
 
   // Ensure null termination even if truncated
   buffer[buffer_size - 1] = '\0';
+
+  if (result < 0) {
+    SET_ERRNO(ERROR_FORMAT, "vsnprintf_s failed: result=%d", result);
+    return result;
+  }
+  if ((size_t)result >= buffer_size) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "vsnprintf_s failed (buffer overflow): result=%d, buffer_size=%zu", result,
+              buffer_size);
+    return result;
+  }
 
   return result;
 }

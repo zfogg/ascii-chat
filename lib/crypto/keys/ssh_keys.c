@@ -694,7 +694,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
 
     // Use ssh-keygen to decrypt to a temporary file (safer approach)
-    char temp_key_path[1024];
+    char temp_key_path[PLATFORM_MAX_PATH_LENGTH];
     safe_snprintf(temp_key_path, sizeof(temp_key_path), "%s_temp_decrypted", key_path);
 
     // Copy the encrypted key file to temp location using C file operations (more reliable than batch copy)
@@ -738,7 +738,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     log_debug("DEBUG: Copied encrypted key to temp file: %s", temp_key_path);
 
     // Create a batch script that decrypts the temporary file
-    char script_path[1024];
+    char script_path[PLATFORM_MAX_PATH_LENGTH];
     safe_snprintf(script_path, sizeof(script_path), "%s_script.bat", key_path);
 
     FILE *script_file = platform_fopen(script_path, "w");

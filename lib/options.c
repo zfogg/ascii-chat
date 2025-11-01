@@ -63,7 +63,7 @@ static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size
   }
 
   // Only support Ed25519 keys (modern, secure, fast)
-  char full_path[1024];
+  char full_path[PLATFORM_MAX_PATH_LENGTH];
   SAFE_SNPRINTF(full_path, sizeof(full_path), "%s/.ssh/id_ed25519", home_dir);
 
   // Check if the Ed25519 private key file exists

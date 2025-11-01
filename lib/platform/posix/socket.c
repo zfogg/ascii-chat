@@ -1,6 +1,5 @@
 #ifndef _WIN32
 
-#include "platform/abstraction.h"
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -13,10 +12,13 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "common.h"
+#include "platform/abstraction.h"
+
 // Socket implementation (mostly pass-through for POSIX)
-int socket_init(void) {
+asciichat_error_t socket_init(void) {
   // POSIX doesn't need socket initialization
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void socket_cleanup(void) {

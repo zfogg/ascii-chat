@@ -19,10 +19,10 @@ static struct log_context_t {
   log_level_t level;
   mutex_t mutex;
   bool initialized;
-  char filename[256];           /* Store filename for rotation */
-  size_t current_size;          /* Track current file size */
-  bool terminal_output_enabled; /* Control stderr output to terminal */
-  bool level_manually_set;      /* Track if level was set manually */
+  char filename[PLATFORM_MAX_PATH_LENGTH]; /* Store filename for rotation */
+  size_t current_size;                     /* Track current file size */
+  bool terminal_output_enabled;            /* Control stderr output to terminal */
+  bool level_manually_set;                 /* Track if level was set manually */
 } g_log = {
     .file = 0,
     .level = DEFAULT_LOG_LEVEL,

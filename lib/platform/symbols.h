@@ -15,11 +15,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "../common.h"
+
 /**
  * @brief Initialize the symbol cache
- * @return 0 on success, -1 on failure
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int symbol_cache_init(void);
+asciichat_error_t symbol_cache_init(void);
 
 /**
  * @brief Clean up the symbol cache and free all resources

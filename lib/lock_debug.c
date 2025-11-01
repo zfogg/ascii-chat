@@ -7,7 +7,7 @@
  * Uses the existing hashtable.c implementation for efficient lock record storage.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date September 2025
  */
 
 #include "lock_debug.h"

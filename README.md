@@ -160,6 +160,7 @@ cmake --preset release && cmake --build build
 - `cmake --build --preset debug --target format` - Format source code using clang-format
 - `cmake --build --preset debug --target format-check` - Check code formatting
 - `cmake --build --preset debug --target clang-tidy` - Run clang-tidy on sources
+- `.\build.ps1` - A PowerShell script that kills running processes, cleans, configures, builds, and copies binaries to bin/. I tend to only use this to build when I develop on Windows.
 
 ### Configuration Options
 CMake supports several configuration options:
@@ -168,149 +169,27 @@ CMake supports several configuration options:
 - `-DCRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
 - Ninja automatically uses all available CPU cores for parallel builds
 
-## Testing
 
-The project uses a unified test runner script at `tests/scripts/run_tests.sh` that consolidates all test execution logic. It accepts all sorts of arguments and auto-builds the test executables it's gonna run beforehand with ninja, which is convenient because it allows you to simply iterate on code and then run this script, going between those two things.
+## Usage
 
-### Quick Start
-* Have the dependencies installed.
-* Choose:
-  1. Linux or macOS: run test runner script: `./tests/scripts/run_tests.sh`
-  2. Windows: use Docker: `./tests/scripts/run-docker-tests.ps1` (just calls `run_tests.sh` in a container)
+ASCII-Chat uses a unified binary with two modes: `server` and `client`.
 
-### Test Types
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions and full workflows
-- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
-
-### Using the Test Script Directly
+Start the server and wait for client connections:
 ```bash
-# Run all tests in debug mode
-./tests/scripts/run_tests.sh
-
-# Run specific test types
-./tests/scripts/run_tests.sh -t unit
-./tests/scripts/run_tests.sh -t integration
-./tests/scripts/run_tests.sh -t performance
-
-# Run with different build configurations
-./tests/scripts/run_tests.sh -b debug
-./tests/scripts/run_tests.sh -b release
-./tests/scripts/run_tests.sh -b debug-coverage
-
-# Generate JUnit XML for CI
-./tests/scripts/run_tests.sh -J
-
-# Run in parallel (default: number of CPU cores)
-./tests/scripts/run_tests.sh -j 4
-
-# Verbose output
-./tests/scripts/run_tests.sh -v
+bin/ascii-chat [--help|--version] [server|client] [options...]
+# or on windows:
+bin\ascii-chat.exe [--help|--version] [server|client] [options...]
 ```
 
-### Windows Docker Testing
-On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
-
-```powershell
-# Run all tests
-./tests/scripts/run-docker-tests.ps1
-
-# Run specific test types
-./tests/scripts/run-docker-tests.ps1 unit
-./tests/scripts/run-docker-tests.ps1 integration
-./tests/scripts/run-docker-tests.ps1 performance
-
-# Run specific tests
-./tests/scripts/run-docker-tests.ps1 unit options
-./tests/scripts/run-docker-tests.ps1 unit buffer_pool packet_queue
-
-# Run with verbose output
-./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
-
-# Run with different build types
-./tests/scripts/run-docker-tests.ps1 unit -BuildType release
-
-# Run clang-tidy static analysis
-./tests/scripts/run-docker-tests.ps1 clang-tidy
-./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
-
-# Interactive shell for debugging
-./tests/scripts/run-docker-tests.ps1 -Interactive
+Start the client and connect to a running server:
+```bash
+ascii-chat client [options]
 ```
 
-The Docker script automatically:
-- Builds the test container if needed
-- Mounts your source code for live testing
-- Handles incremental builds
-- Provides the same test interface as the native script
-
-### Manual Test Execution
-You can also run individual test executables directly:
+For help with either mode:
 ```bash
-# Build the project first
-cmake --preset debug && cmake --build --preset debug
-
-# Run individual tests
-build/bin/test_unit_mixer --verbose
-build/bin/test_performance_ascii_simd --filter "*monochrome*"
-```
-
-### Testing Framework
-- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
-- **Coverage**: Code coverage reports generated in CI
-- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
-- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
-
-
-## Cryptography
-
-ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
-
-ascii-chat's crypto works like your web browser's HTTPS: the client and server perform the Diffie-Hellman exchange to establish secure communication with ephemeral keys every connection. HTTPS depends on certificates tied to DNS names with a certificate authority roots build into the operating system, but ascii-chat is built on TCP so DNS doesn't work for us to secure our servers. ascii-chat users need to verify their server's public keys manually until ACDS (ascii-chat discovery service) is built.
-
-### Authentication Options
-
-**SSH Key Authentication** (`--key`):
-- Use your existing SSH Ed25519 keys for authentication
-- Supports encrypted keys (prompts for passphrase or uses ssh-agent)
-- Supports auto-detection with `--key ssh` or `--key ssh:`
-- Supports GitHub public keys with `--key github:username`
-- Future support planned for: `gpg:keyid`, `github:username.gpg`
-
-**Password-Based Encryption** (`--password`):
-- Simple password string for encrypting connections
-- Can be combined with `--key` for dual authentication + encryption
-
-**Ephemeral Keys** (default):
-- When no authentication is provided, generates temporary keypair for the session
-
-### Usage Examples
-
-```bash
-# SSH key authentication (prompts for passphrase if encrypted)
-ascii-chat server --key ~/.ssh/id_ed25519
-ascii-chat client --key ~/.ssh/id_ed25519
-
-# Password-based encryption
-ascii-chat server --password "my_secure_password"
-ascii-chat client --password "my_secure_password"
-
-# Both SSH key + password (double security)
-ascii-chat server --key ~/.ssh/id_ed25519 --password "extra_encryption"
-ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
-
-# Auto-detect SSH key from ~/.ssh/
-ascii-chat server --key ssh
-
-# Disable encryption (for local testing)
-ascii-chat server --no-encrypt
-ascii-chat client --no-encrypt
-
-# Client key whitelisting (server only accepts specific clients)
-ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
-
-# Server key verification (client verifies server identity)
-ascii-chat client --key ~/.ssh/id_ed25519 --server-key <server_public_key>
+ascii-chat server --help
+ascii-chat client --help
 ```
 
 
@@ -384,6 +263,66 @@ Run `./bin/ascii-chat server --help` to see all server options:
 - `-L --log-file FILE`: Redirect logs to file
 - `-v --version`: Display version information
 - `-h --help`: Show help message
+
+
+
+## Cryptography
+
+ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
+
+ascii-chat's crypto works like your web browser's HTTPS: the client and server perform the Diffie-Hellman exchange to establish secure communication with ephemeral keys every connection. HTTPS depends on certificates tied to DNS names with a certificate authority roots build into the operating system, but ascii-chat is built on TCP so DNS doesn't work for us to secure our servers. ascii-chat users need to verify their server's public keys manually until ACDS (ascii-chat discovery service) is built.
+
+### Authentication Options
+
+**SSH Key Authentication** (`--key`):
+- Use your existing SSH Ed25519 keys for authentication
+- Supports encrypted keys (prompts for passphrase or uses ssh-agent)
+- Supports auto-detection with `--key ssh` or `--key ssh:`
+- Supports GitHub public keys with `--key github:username`
+- Future support planned for: `gpg:keyid`, `github:username.gpg`
+
+**Password-Based Encryption** (`--password`):
+- Simple password string for encrypting connections
+- Can be combined with `--key` for dual authentication + encryption
+
+**Ephemeral Keys** (default):
+- When no authentication is provided, generates temporary keypair for the session
+
+### Usage Examples
+
+```bash
+# SSH key authentication (prompts for passphrase if encrypted)
+ascii-chat server --key ~/.ssh/id_ed25519
+ascii-chat client --key ~/.ssh/id_ed25519
+
+# Password-based encryption
+ascii-chat server --password "my_secure_password"
+ascii-chat client --password "my_secure_password"
+
+# Both SSH key + password (double security)
+ascii-chat server --key ~/.ssh/id_ed25519 --password "extra_encryption"
+ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
+
+# Auto-detect SSH key from ~/.ssh/
+ascii-chat server --key ssh
+
+# Disable encryption (for local testing)
+ascii-chat server --no-encrypt
+ascii-chat client --no-encrypt
+
+# Server key verification (client verifies server identity)
+ascii-chat client --key ~/.ssh/id_ed25519 --server-key ~/.ssh/server1.pub
+# This .pub file format is the same one ssh-keygen generates for any ed25519 keys it creates.
+
+# Client key whitelisting (server only accepts specific clients)
+ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
+# This .txt file contains multiple .pub file contents, 1 per line, where each line is a client key that is allowed to connect to the server.
+
+# Combine all three for maximum security!
+ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --password "password123"
+ascii-chat client --key ~/.ssh/id_ed25519  --server-key ~/.ssh/server1.pub --password "password123"
+# You need to know the server public key and the password before connecting, and the server needs to know your public key.
+```
 
 
 ## Environment Variables
@@ -487,25 +426,99 @@ changing command-line arguments.
 - **Used for**: Reducing test data sizes and adjusting performance expectations
 
 
-## Usage
+## Testing
 
-ASCII-Chat uses a unified binary with two modes: `server` and `client`.
+The project uses a unified test runner script at `tests/scripts/run_tests.sh` that consolidates all test execution logic. It accepts all sorts of arguments and auto-builds the test executables it's gonna run beforehand with ninja, which is convenient because it allows you to simply iterate on code and then run this script, going between those two things.
 
-Start the server and wait for client connections:
+### Quick Start
+* Have the dependencies installed.
+* Choose:
+  1. Linux or macOS: run test runner script: `./tests/scripts/run_tests.sh`
+  2. Windows: use Docker: `./tests/scripts/run-docker-tests.ps1` (just calls `run_tests.sh` in a container)
+
+### Test Types
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test component interactions and full workflows
+- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
+
+### Using the Test Script Directly
 ```bash
-ascii-chat server [options]
+# Run all tests in debug mode
+./tests/scripts/run_tests.sh
+
+# Run specific test types
+./tests/scripts/run_tests.sh -t unit
+./tests/scripts/run_tests.sh -t integration
+./tests/scripts/run_tests.sh -t performance
+
+# Run with different build configurations
+./tests/scripts/run_tests.sh -b debug
+./tests/scripts/run_tests.sh -b release
+./tests/scripts/run_tests.sh -b debug-coverage
+
+# Generate JUnit XML for CI
+./tests/scripts/run_tests.sh -J
+
+# Run in parallel (default: number of CPU cores)
+./tests/scripts/run_tests.sh -j 4
+
+# Verbose output
+./tests/scripts/run_tests.sh -v
 ```
 
-Start the client and connect to a running server:
-```bash
-ascii-chat client [options]
+### Windows Docker Testing
+On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
+
+```powershell
+# Run all tests
+./tests/scripts/run-docker-tests.ps1
+
+# Run specific test types
+./tests/scripts/run-docker-tests.ps1 unit
+./tests/scripts/run-docker-tests.ps1 integration
+./tests/scripts/run-docker-tests.ps1 performance
+
+# Run specific tests
+./tests/scripts/run-docker-tests.ps1 unit options
+./tests/scripts/run-docker-tests.ps1 unit buffer_pool packet_queue
+
+# Run with verbose output
+./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+
+# Run with different build types
+./tests/scripts/run-docker-tests.ps1 unit -BuildType release
+
+# Run clang-tidy static analysis
+./tests/scripts/run-docker-tests.ps1 clang-tidy
+./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+
+# Interactive shell for debugging
+./tests/scripts/run-docker-tests.ps1 -Interactive
 ```
 
-For help with either mode:
+The Docker script automatically:
+- Builds the test container if needed
+- Mounts your source code for live testing
+- Handles incremental builds
+- Provides the same test interface as the native script
+
+### Manual Test Execution
+You can also run individual test executables directly:
 ```bash
-ascii-chat server --help
-ascii-chat client --help
+# Build the project first
+cmake --preset debug && cmake --build --preset debug
+
+# Run individual tests
+build/bin/test_unit_mixer --verbose
+build/bin/test_performance_ascii_simd --filter "*monochrome*"
 ```
+
+### Testing Framework
+- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
+- **Coverage**: Code coverage reports generated in CI
+- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
+- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
+
 
 ## TODO
 - [x] Audio.
@@ -513,6 +526,7 @@ ascii-chat client --help
 - [x] switch Client "-a/--address" option to "host" and make it accept domains as well as ipv4
 - [x] Colorize ASCII output
 - [ ] Refactor image processing algorithms
+- [x] Grid packing algorithm.
 - [x] client reconnect logic
 - [x] terminal resize events
 - [x] A nice protocol for the thing (packets and headers).
@@ -528,6 +542,11 @@ ascii-chat client --help
 - [ ] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
 - [ ] Lock-free packet send queues.
 - [x] Hardware-accelerated ASCII-conversion via SIMD.
+- [x] Windows support.
+- [x] Linux support.
+- [x] Crypto.
+- [ ] GPG key support for crypto (there's a bug upstream in libgcrypt).
+- [ ] v4l2 webcam images working.
 
 
 ## Notes
