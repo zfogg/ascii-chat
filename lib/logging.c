@@ -422,6 +422,11 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   int result = 0;
 
 #ifdef NDEBUG
+  (void)newline_or_not;
+  (void)file;
+  (void)line;
+  (void)func;
+
   // Release mode: Simple one-line format without file/line/function
   if (use_colors) {
     result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
