@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
  * Returns a pointer to a static buffer (not thread-safe, but sufficient for __FILE__ normalization)
@@ -27,8 +26,7 @@ static const char *normalize_path(const char *path) {
 
   /* Check if path is absolute (Windows drive or Unix root) */
 #ifdef _WIN32
-  if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' &&
-      (path[2] == '\\' || path[2] == '/')) {
+  if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
     absolute = true;
   }
 #else

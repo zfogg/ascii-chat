@@ -85,7 +85,7 @@ extern __thread asciichat_error_t asciichat_errno;
 #ifdef NDEBUG
 #define SET_ERRNO(code, context_msg, ...)                                                                              \
   ({                                                                                                                   \
-    asciichat_set_errno_with_message(code, NULL, 0, NULL, context_msg, ##__VA_ARGS__);                                   \
+    asciichat_set_errno_with_message(code, NULL, 0, NULL, context_msg, ##__VA_ARGS__);                                 \
     log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code,                               \
               asciichat_error_string(code));                                                                           \
     (code);                                                                                                            \
@@ -93,7 +93,7 @@ extern __thread asciichat_error_t asciichat_errno;
 #else
 #define SET_ERRNO(code, context_msg, ...)                                                                              \
   ({                                                                                                                   \
-    asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__);                    \
+    asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__);                  \
     log_error("SET_ERRNO: " context_msg " (code: %d, meaning: %s)", ##__VA_ARGS__, code,                               \
               asciichat_error_string(code));                                                                           \
     (code);                                                                                                            \
@@ -115,7 +115,8 @@ extern __thread asciichat_error_t asciichat_errno;
 #define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
   ({                                                                                                                   \
     int captured_errno = platform_get_last_error();                                                                    \
-    asciichat_set_errno_with_system_error_and_message(code, NULL, 0, NULL, captured_errno, context_msg, ##__VA_ARGS__);  \
+    asciichat_set_errno_with_system_error_and_message(code, NULL, 0, NULL, captured_errno, context_msg,                \
+                                                      ##__VA_ARGS__);                                                  \
     log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,             \
               asciichat_error_string(code), captured_errno, platform_strerror(captured_errno));                        \
     (code);                                                                                                            \
@@ -124,8 +125,8 @@ extern __thread asciichat_error_t asciichat_errno;
 #define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
   ({                                                                                                                   \
     int captured_errno = platform_get_last_error();                                                                    \
-    asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, captured_errno, context_msg,  \
-                                                      ##__VA_ARGS__);                                                    \
+    asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, captured_errno, context_msg, \
+                                                      ##__VA_ARGS__);                                                  \
     log_error("SETERRNO_SYS: " context_msg " (code: %d - %s, system error: %d - %s)", ##__VA_ARGS__, code,             \
               asciichat_error_string(code), captured_errno, platform_strerror(captured_errno));                        \
     (code);                                                                                                            \

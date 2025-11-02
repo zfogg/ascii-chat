@@ -8,19 +8,16 @@
 #include <stdatomic.h>
 
 // Include SIMD architecture headers for cleanup functions
+// Note: Only ONE SIMD implementation is compiled based on highest available instruction set
 #ifdef SIMD_SUPPORT_NEON
 #include "neon.h"
-#endif
-#ifdef SIMD_SUPPORT_SSE2
-#include "sse2.h"
-#endif
-#ifdef SIMD_SUPPORT_SSSE3
-#include "ssse3.h"
-#endif
-#ifdef SIMD_SUPPORT_AVX2
+#elif defined(SIMD_SUPPORT_AVX2)
 #include "avx2.h"
-#endif
-#ifdef SIMD_SUPPORT_SVE
+#elif defined(SIMD_SUPPORT_SSSE3)
+#include "ssse3.h"
+#elif defined(SIMD_SUPPORT_SSE2)
+#include "sse2.h"
+#elif defined(SIMD_SUPPORT_SVE)
 #include "sve.h"
 #endif
 
@@ -562,19 +559,17 @@ void simd_caches_destroy_all(void) {
   rwlock_wrunlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
+  // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
+  // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
 #ifdef SIMD_SUPPORT_NEON
   neon_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_SSE2
-  sse2_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_SSSE3
-  ssse3_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_AVX2
+#elif defined(SIMD_SUPPORT_AVX2)
   avx2_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_SVE
+#elif defined(SIMD_SUPPORT_SSSE3)
+  ssse3_caches_destroy();
+#elif defined(SIMD_SUPPORT_SSE2)
+  sse2_caches_destroy();
+#elif defined(SIMD_SUPPORT_SVE)
   sve_caches_destroy();
 #endif
 
