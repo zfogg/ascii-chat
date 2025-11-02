@@ -282,14 +282,8 @@ ParameterizedTest(parse_size_message_test_case_t *tc, network, parse_size_messag
 // Replaced by parameterized test: invalid_socket_operations
 
 Test(network, network_error_string_valid_codes) {
-  const char *error1 = network_error_string(0);
-  cr_assert_not_null(error1);
-
-  const char *error2 = network_error_string(-1);
-  cr_assert_not_null(error2);
-
-  const char *error3 = network_error_string(100);
-  cr_assert_not_null(error3);
+  const char *error = network_error_string();
+  cr_assert_not_null(error);
 }
 
 Test(network, random_size_messages) {

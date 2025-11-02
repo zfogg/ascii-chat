@@ -76,7 +76,6 @@ int set_socket_nonblocking(socket_t sockfd);
 
 /**
  * @brief Get human-readable error string for network errors
- * @param error_code Error code
  * @return Error string
  */
 const char *network_error_string();
