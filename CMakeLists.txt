@@ -1851,6 +1851,11 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         target_compile_definitions(${MODULE_NAME} PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
     endif()
 
+    # Mimalloc include directory
+    if(USE_MIMALLOC)
+        target_include_directories(${MODULE_NAME} PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+    endif()
+
     # Musl flag
     if(USE_MUSL)
         target_compile_definitions(${MODULE_NAME} PRIVATE USE_MUSL=1)
@@ -2243,6 +2248,8 @@ target_link_libraries(ascii-chat
 # Link mimalloc to the executable (needed for Release builds)
 if(USE_MIMALLOC)
     target_link_libraries(ascii-chat mimalloc-static)
+    # Add mimalloc include directory for executable sources (they include common.h which includes mimalloc.h)
+    target_include_directories(ascii-chat PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
 endif()
 
 # Preserve custom .ascii_chat_version section during linking
